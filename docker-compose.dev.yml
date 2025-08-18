@@ -1,0 +1,83 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: alexandria-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: alexandria_dev
+      POSTGRES_USER: alexandria_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_password_123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - alexandria-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alexandria_user -d alexandria_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: alexandria-minio-dev
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dev_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dev_password_123}
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+      MINIO_LOG_LEVEL: DEBUG
+    volumes:
+      - minio_dev_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - alexandria-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # MinIO Client - Initialize buckets and policies
+  minio-init:
+    image: minio/mc:latest
+    container_name: alexandria-minio-init-dev
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dev_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dev_password_123}
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set alexandria http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb alexandria/alexandria-files --ignore-existing;
+      /usr/bin/mc mb alexandria/alexandria-thumbnails --ignore-existing;
+      /usr/bin/mc mb alexandria/alexandria-temp --ignore-existing;
+      /usr/bin/mc mb alexandria/alexandria-dev-testing --ignore-existing;
+      /usr/bin/mc anonymous set download alexandria/alexandria-thumbnails;
+      /usr/bin/mc anonymous set download alexandria/alexandria-dev-testing;
+      /usr/bin/mc ilm add alexandria/alexandria-temp --expiry-days 1;
+      echo 'MinIO DEV initialization completed';
+      "
+    networks:
+      - alexandria-network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  minio_dev_data:
+    driver: local
+
+networks:
+  alexandria-network:
+    driver: bridge
