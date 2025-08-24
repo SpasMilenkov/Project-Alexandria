@@ -1,0 +1,14 @@
+### Example POST request
+POST https://localhost:7076/example
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "age": 25
+}
+
+### Health GET request
+
+GET https://localhost:7076/health
+Content-Type: application/json
