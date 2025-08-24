@@ -7,3 +7,8 @@ Content-Type: application/json
   "lastName": "Doe",
   "age": 25
 }
+
+### Health GET request
+
+GET https://localhost:7076/health
+Content-Type: application/json
