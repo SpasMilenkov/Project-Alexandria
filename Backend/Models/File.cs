@@ -6,8 +6,6 @@ namespace Models;
 
 public class File : IBase
 {
-    public Guid Id { get; set; }
-
     [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
     [StringLength(ValidationConstants.StringLengths.MediumString)]
     public required string Name { get; set; }
@@ -27,9 +25,13 @@ public class File : IBase
 
     public DateTime CreatedAt { get; set; }
 
+    public Guid Id { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
     public DateTime? DeletedAt { get; set; }
+
+    public bool HasPreview { get; set; } = false;
+    public DateTime? PreviewGeneratedAt { get; set; }
 
     [StringLength(ValidationConstants.StringLengths.UserId)]
     public string? UpdatedBy { get; set; }
