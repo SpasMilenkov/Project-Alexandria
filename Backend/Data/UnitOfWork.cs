@@ -1,0 +1,107 @@
+using Common;
+using Data.Context;
+using Microsoft.EntityFrameworkCore.Storage;
+
+namespace Data;
+
+public sealed class UnitOfWork(
+    AlexandriaDbContext dbContext) : IUnitOfWork
+{
+    private readonly AlexandriaDbContext _dbContext = dbContext;
+    private IDbContextTransaction? _transaction;
+    private bool _disposed;
+
+    private int _transactionCount = 0;
+
+    public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        // If this is the first transaction request, create a new transaction
+        if (_transactionCount == 0)
+        {
+            _transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        }
+
+        // Increment the transaction counter
+        _transactionCount++;
+    }
+
+    public async Task CommitAsync(CancellationToken cancellationToken = default)
+    {
+        // Decrement the transaction counter
+        _transactionCount--;
+
+        // Only commit when all nested transactions are complete
+        if (_transactionCount == 0)
+        {
+            try
+            {
+                await SaveChangesAsync(cancellationToken);
+                await _transaction!.CommitAsync(cancellationToken);
+            }
+            finally
+            {
+                await _transaction!.DisposeAsync();
+                _transaction = null;
+            }
+        }
+    }
+
+
+    public async Task RollbackAsync(CancellationToken cancellationToken = default)
+    {
+        if (_transaction is null) return;
+
+        // Reset the counter since we're rolling back
+        _transactionCount = 0;
+
+        try
+        {
+            await _transaction.RollbackAsync(cancellationToken);
+        }
+        finally
+        {
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore();
+        Dispose(false);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposed && disposing)
+        {
+            _dbContext.Dispose();
+            _transaction?.Dispose();
+        }
+
+        _disposed = true;
+    }
+
+    private async ValueTask DisposeAsyncCore()
+    {
+        if (_disposed) return;
+
+        await _dbContext.DisposeAsync();
+        if (_transaction is not null)
+            await _transaction.DisposeAsync();
+
+        _disposed = true;
+    }
+}

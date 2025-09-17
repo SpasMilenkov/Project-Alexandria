@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Models", "Models\Models.csproj", "{4BF3FD7E-A180-4FC6-AA78-0AB9C25A5D61}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "Infrastructure\Infrastructure.csproj", "{8CAED378-E7A7-4742-AADA-283E6024E581}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,10 @@ Global
 		{4BF3FD7E-A180-4FC6-AA78-0AB9C25A5D61}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4BF3FD7E-A180-4FC6-AA78-0AB9C25A5D61}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4BF3FD7E-A180-4FC6-AA78-0AB9C25A5D61}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CAED378-E7A7-4742-AADA-283E6024E581}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CAED378-E7A7-4742-AADA-283E6024E581}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CAED378-E7A7-4742-AADA-283E6024E581}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CAED378-E7A7-4742-AADA-283E6024E581}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5658CEF6-4735-488F-80AF-9AE34C4F294C} = {42552979-4F59-4895-9F9A-719F27FDA50D}

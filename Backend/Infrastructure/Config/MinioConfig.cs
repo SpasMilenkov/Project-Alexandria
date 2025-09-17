@@ -1,4 +1,4 @@
-namespace API.Config;
+namespace Infrastructure.Config;
 
 public class MinioConfig
 {

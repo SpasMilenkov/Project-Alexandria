@@ -1,50 +1,48 @@
 using FastEndpoints;
+using Infrastructure.Config;
 using Infrastructure.Domain.Services;
 using Microsoft.Extensions.Options;
-using MinioConfig = Infrastructure.Config.MinioConfig;
 
-namespace API.Features.DownloadFile;
+namespace API.Features.DownloadFileById;
 
-public class DownloadFileEndpoint(
+public class DownloadFileByIdEndpoint(
     IStorageService storageService,
     IOptions<MinioConfig> options
-) : Endpoint<DownloadFileRequest>
+) : Endpoint<DownloadFileByIdRequest>
 {
     public override void Configure()
     {
         AllowAnonymous();
-        Get("/file");
+        Get("/file/{id}");
 
         Summary(s =>
         {
-            s.Summary = "Download a file from storage";
-            s.Description = "Downloads a file by name and optional path.";
+            s.Summary = "Download a file by ID";
+            s.Description = "Downloads a file using its unique database ID.";
             s.Responses[200] = "File downloaded successfully";
             s.Responses[404] = "File not found";
             s.Responses[500] = "Internal server error";
         });
     }
 
-    public override async Task HandleAsync(DownloadFileRequest req, CancellationToken ct)
+    public override async Task HandleAsync(DownloadFileByIdRequest req, CancellationToken ct)
     {
         try
         {
             var bucket = options.Value.UploadBucket;
             if (bucket is null) ThrowError("Invalid bucket configuration");
 
-            var objectName = string.IsNullOrWhiteSpace(req.Path)
-                ? req.Name
-                : $"{req.Path.TrimEnd('/')}/{req.Name}";
-
-            // Verify file exists in database and get metadata
-            var filePath = $"{bucket}/{objectName}";
-            var fileMetadata = await storageService.GetFileByPath(filePath, ct);
+            // Get file metadata from database
+            var fileMetadata = await storageService.GetFileMetadata(req.Id, ct);
 
             if (fileMetadata == null)
             {
                 await Send.NotFoundAsync(ct);
                 return;
             }
+
+            // Extract object name from file path
+            var objectName = fileMetadata.Path.Replace($"{bucket}/", "");
 
             // Set response headers with database metadata
             HttpContext.Response.ContentType = fileMetadata.MimeType;
@@ -57,7 +55,7 @@ public class DownloadFileEndpoint(
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
         {
-            await Send.OkAsync(ct, ct);
+            await Send.NotFoundAsync(ct);
         }
         catch (Exception ex)
         {

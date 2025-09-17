@@ -1,49 +1,78 @@
 using FastEndpoints;
+using Infrastructure.Config;
+using Infrastructure.Domain.Services;
 using Microsoft.Extensions.Options;
-using Minio;
-using Minio.ApiEndpoints;
-using Minio.DataModel;
-using Minio.DataModel.Args;
 
 namespace API.Features.ListFiles;
 
 public class ListFilesEndpoint(
-    IMinioClient minio,
-    IOptions<API.Config.MinioConfig> options
+    IStorageService storageService,
+    IOptions<MinioConfig> options
 ) : Endpoint<ListFilesRequest, ListFilesResponse>
 {
     public override void Configure()
     {
         Get("/files");
         AllowAnonymous();
+
+        Summary(s =>
+        {
+            s.Summary = "List files in storage";
+            s.Description = "Returns a list of files matching the specified path filter.";
+            s.Responses[200] = "Files retrieved successfully";
+            s.Responses[500] = "Internal server error";
+        });
     }
 
     public override async Task HandleAsync(ListFilesRequest req, CancellationToken ct)
     {
-        var bucket = options.Value.UploadBucket;
-        
-        IAsyncEnumerable<Item> items = minio.ListObjectsEnumAsync(
-            new ListObjectsArgs()
-                .WithBucket(bucket)
-                .WithPrefix(req.Path ?? string.Empty)
-                .WithRecursive(true), ct);
-
-        var files = new List<FileInfoDto>();
-
-        await foreach (var item in items)
+        try
         {
-            files.Add(new FileInfoDto
+            var bucket = options.Value.UploadBucket;
+            if (bucket is null) ThrowError("Invalid bucket configuration");
+
+            // Get all files from database
+            var allFiles = await storageService.GetAllFiles(ct);
+
+            // Filter files based on the requested path
+            var filteredFiles = allFiles.Where(f =>
             {
-                Name = item.Key,
-                Size = (long)item.Size,
-                LastModified = item.LastModifiedDateTime,
-                IsDir = item.IsDir
+                var relativePath = f.Path.Replace($"{bucket}/", "");
+                return string.IsNullOrEmpty(req.Path) || relativePath.StartsWith(req.Path);
             });
-        }
 
-        await Send.OkAsync(new ListFilesResponse
+            var files = new List<FileInfoDto>();
+
+            foreach (var file in filteredFiles)
+            {
+                var relativePath = file.Path.Replace($"{bucket}/", "");
+
+                files.Add(new FileInfoDto
+                {
+                    Id = file.Id,
+                    Name = file.Name,
+                    Path = relativePath,
+                    Size = (long)file.Size,
+                    LastModified = file.UpdatedAt ?? file.CreatedAt,
+                    IsDir = false, // Files from database are never directories
+                    MimeType = file.MimeType,
+                    HasPreview = file.HasPreview,
+                    PreviewGeneratedAt = file.PreviewGeneratedAt,
+                    UpdatedBy = file.UpdatedBy
+                });
+            }
+
+            // Sort files by name for consistent ordering
+            files = files.OrderBy(f => f.Name).ToList();
+
+            await Send.OkAsync(new ListFilesResponse
+            {
+                Files = files
+            }, ct);
+        }
+        catch (Exception ex)
         {
-            Files = files
-        }, ct);
+            ThrowError($"Failed to list files: {ex.Message}");
+        }
     }
 }

@@ -1,43 +1,59 @@
 using FastEndpoints;
+using Infrastructure.Config;
+using Infrastructure.Domain.Services;
 using Microsoft.Extensions.Options;
-using Minio;
-using Minio.DataModel.Args;
 
 namespace API.Features.ListRootDirectories;
 
 public class ListRootDirectoriesEndpoint(
-    IMinioClient minio,
-    IOptions<API.Config.MinioConfig> options)
+    IStorageService storageService,
+    IOptions<MinioConfig> options)
     : EndpointWithoutRequest<ListRootDirectoriesResponse>
 {
     public override void Configure()
     {
         Get("/files/list-root-directories");
         AllowAnonymous();
+
+        Summary(s =>
+        {
+            s.Summary = "List root directories in storage";
+            s.Description = "Returns a list of root-level directories in the storage bucket.";
+            s.Responses[200] = "Root directories retrieved successfully";
+            s.Responses[500] = "Internal server error";
+        });
     }
 
-    public override async Task<Task> HandleAsync(CancellationToken ct)
+    public override async Task HandleAsync(CancellationToken ct)
     {
-        var bucketName = options.Value.UploadBucket;
-        var directories = new List<string>();
-        // Prepare ListObjectsArgs
-        var listArgs = new ListObjectsArgs()
-            .WithBucket(bucketName)
-            .WithPrefix("")
-            .WithRecursive(false);
-
-        // Subscribe to the IObservable<Item>
-        var tcs = new TaskCompletionSource<bool>();
-
-        var items = minio.ListObjectsEnumAsync(listArgs, ct);
-
-        await foreach (var item in items)
+        try
         {
-            if(item.IsDir) directories.Add(item.Key);
+            var bucketName = options.Value.UploadBucket;
+            if (bucketName is null) ThrowError("Invalid bucket configuration");
+
+            // Ensure bucket exists
+            await storageService.EnsureBucketExistsAsync(bucketName, ct);
+
+            // Get all files from database
+            var allFiles = await storageService.GetAllFiles(ct);
+
+            // Extract unique root directories from file paths
+            var directories = allFiles
+                .Select(f => f.Path.Replace($"{bucketName}/", "")) // Remove bucket prefix
+                .Where(path => path.Contains('/'))
+                .Select(path => path.Split('/')[0])
+                .Distinct()
+                .OrderBy(dir => dir)
+                .ToList();
+
+            await Send.OkAsync(new ListRootDirectoriesResponse
+            {
+                Directories = directories
+            }, ct);
         }
-        return Send.OkAsync(new ListRootDirectoriesResponse()
+        catch (Exception ex)
         {
-            Directories = directories
-        }, ct);
+            ThrowError($"Failed to list directories: {ex.Message}");
+        }
     }
 }

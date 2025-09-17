@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace API.Features.UploadFile;
+namespace Infrastructure;
 
 public class ChecksumCalculatingStream(Stream innerStream) : Stream
 {
@@ -19,10 +19,11 @@ public class ChecksumCalculatingStream(Stream innerStream) : Stream
     public override bool CanSeek => _innerStream.CanSeek;
     public override bool CanWrite => false;
     public override long Length => _innerStream.Length;
-    public override long Position 
-    { 
-        get => _innerStream.Position; 
-        set => _innerStream.Position = value; 
+
+    public override long Position
+    {
+        get => _innerStream.Position;
+        set => _innerStream.Position = value;
     }
 
     public override int Read(byte[] buffer, int offset, int count)
@@ -32,6 +33,7 @@ public class ChecksumCalculatingStream(Stream innerStream) : Stream
         {
             _sha256.TransformBlock(buffer, offset, bytesRead, buffer, offset);
         }
+
         return bytesRead;
     }
 
@@ -42,6 +44,7 @@ public class ChecksumCalculatingStream(Stream innerStream) : Stream
         {
             _sha256.TransformBlock(buffer, offset, bytesRead, buffer, offset);
         }
+
         return bytesRead;
     }
 
@@ -73,6 +76,7 @@ public class ChecksumCalculatingStream(Stream innerStream) : Stream
             _innerStream?.Dispose();
             _disposed = true;
         }
+
         base.Dispose(disposing);
     }
 }
