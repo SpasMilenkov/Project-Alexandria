@@ -1,12 +1,11 @@
 using FastEndpoints;
+using Infrastructure.Domain.Services;
 using Microsoft.Extensions.Options;
-using Minio;
-using Minio.DataModel.Args;
-using MinioConfig = API.Config.MinioConfig;
+using MinioConfig = Infrastructure.Config.MinioConfig;
 
 namespace API.Features.UploadFile;
 
-public class UploadFileEndpoint(IMinioClient minio, IOptions<MinioConfig> options)
+public class UploadFileEndpoint(IOptions<MinioConfig> options, IStorageService storage)
     : EndpointWithoutRequest
 {
     public override void Configure()
@@ -14,7 +13,7 @@ public class UploadFileEndpoint(IMinioClient minio, IOptions<MinioConfig> option
         Post("/files/upload");
         AllowAnonymous();
         AllowFileUploads();
-        
+
         // Swagger documentation
         Summary(s =>
         {
@@ -24,8 +23,8 @@ public class UploadFileEndpoint(IMinioClient minio, IOptions<MinioConfig> option
             s.Responses[400] = "Bad request - missing file or validation error";
             s.Responses[500] = "Internal server error";
         });
-        
-        // Configure for file upload in Swagger UI
+
+        // Configuration for file upload in Swagger UI
         Options(x =>
         {
             x.WithMetadata(new
@@ -40,15 +39,17 @@ public class UploadFileEndpoint(IMinioClient minio, IOptions<MinioConfig> option
 
     public override async Task HandleAsync(CancellationToken ct)
     {
+        //TODO: add proper user data extraction after introducing JWT authorization and authentication
+        var user = "John Doe";
         var bucketName = options.Value.UploadBucket;
         Console.WriteLine($"Bucket: {bucketName}");
-        
+
         // Ensure bucket exists and versioning is enabled
-        await EnsureBucketExistsAsync(bucketName, ct);
+        if (bucketName is null) ThrowError("Invalid bucket configuration");
+        await storage.EnsureBucketExistsAsync(bucketName, ct);
 
         string? fileName = null;
         string? path = null;
-        string? expectedChecksum = null;
         string contentType = "application/octet-stream";
         Stream? fileStream = null;
 
@@ -68,9 +69,6 @@ public class UploadFileEndpoint(IMinioClient minio, IOptions<MinioConfig> option
                     case "path":
                         path = fieldValue;
                         break;
-                    case "expectedchecksum":
-                        expectedChecksum = fieldValue;
-                        break;
                 }
             }
             else if (section.IsFileSection)
@@ -80,7 +78,7 @@ public class UploadFileEndpoint(IMinioClient minio, IOptions<MinioConfig> option
                 contentType = section.FileSection.Section.ContentType ?? contentType;
                 // FileLength is not available, we'll use -1 for unknown size
                 fileStream = section.FileSection.FileStream;
-                
+
                 // Process the file stream immediately
                 break;
             }
@@ -105,46 +103,20 @@ public class UploadFileEndpoint(IMinioClient minio, IOptions<MinioConfig> option
 
         try
         {
-            // Create a streaming checksum calculator
-            using var checksumStream = new ChecksumCalculatingStream(fileStream);
-            
             // Upload to MinIO using the checksum stream
-            await minio.PutObjectAsync(new PutObjectArgs()
-                .WithBucket(bucketName)
-                .WithObject(objectName)
-                .WithStreamData(checksumStream)
-                .WithObjectSize(-1) // Unknown size - let MinIO determine it
-                .WithContentType(contentType), ct);
+            var uploadResult = await storage.UploadFile(bucketName: bucketName, objectName, contentType, fileStream, ct,
+                -1, fileName, user);
 
             // Get the calculated checksum
-            var calculatedChecksum = checksumStream.GetChecksum();
 
-            // Verify checksum if provided
-            if (!string.IsNullOrEmpty(expectedChecksum) &&
-                !calculatedChecksum.Equals(expectedChecksum, StringComparison.OrdinalIgnoreCase))
-            {
-                // Clean up the uploaded object since checksum failed
-                await minio.RemoveObjectAsync(new RemoveObjectArgs()
-                    .WithBucket(bucketName)
-                    .WithObject(objectName), ct);
-                
-                ThrowError("Checksum mismatch: uploaded file does not match expected hash.");
-                return;
-            }
-
-            // Get version info
-            var stat = await minio.StatObjectAsync(
-                new StatObjectArgs()
-                    .WithBucket(bucketName)
-                    .WithObject(objectName), ct);
-
+            var stat = await storage.GetVersionInfo(bucketName, objectName, ct);
             await Send.OkAsync(new UploadFileResponse
             {
-                ObjectName = objectName,
-                Url = $"{bucketName}/{objectName}",
-                Checksum = calculatedChecksum,
-                VersionId = stat.VersionId,
-                Size = stat.Size
+                ObjectName = uploadResult.ObjectName,
+                Url = uploadResult.Url,
+                Checksum = uploadResult.Checksum,
+                VersionId = uploadResult.VersionId,
+                Size = uploadResult.Size,
             }, ct);
         }
         catch (Exception ex)
@@ -153,21 +125,4 @@ public class UploadFileEndpoint(IMinioClient minio, IOptions<MinioConfig> option
             ThrowError($"Upload failed: {ex.Message}");
         }
     }
-
-    private async Task EnsureBucketExistsAsync(string bucketName, CancellationToken ct)
-    {
-        var found = await minio.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName), ct);
-        if (!found)
-        {
-            await minio.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName), ct);
-        }
-
-        // Enable versioning
-        await minio.SetVersioningAsync(
-            new SetVersioningArgs()
-                .WithBucket(bucketName)
-                .WithVersioningEnabled(), ct);
-    }
 }
-
-
