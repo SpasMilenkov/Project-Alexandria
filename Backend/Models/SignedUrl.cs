@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Common;
-using Common.Enumerators;
+using Models.Enumerators;
 
 namespace Models;
 

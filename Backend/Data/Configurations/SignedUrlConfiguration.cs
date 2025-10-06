@@ -1,9 +1,9 @@
 using Common;
-using Common.Enumerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Models;
+using Models.Enumerators;
 
 namespace Data.Configurations;
 

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Minio;
 using Minio.DataModel.Args;
-using MinioConfig = Infrastructure.Config.MinioConfig;
+using MinioConfig = Common.Config.MinioConfig;
 
 namespace Infrastructure;
 
@@ -40,18 +40,29 @@ public static class MinioExtensions
 
         try
         {
-            bool bucketExists = await minioClient.BucketExistsAsync(
+            // Set up upload bucket on startup
+            bool uploadsBucketExists = await minioClient.BucketExistsAsync(
                 new BucketExistsArgs().WithBucket(minioConfig.UploadBucket));
 
-            if (!bucketExists)
+            if (!uploadsBucketExists)
             {
                 await minioClient.MakeBucketAsync(new MakeBucketArgs()
                     .WithBucket(minioConfig.UploadBucket));
             }
-
+            
             await minioClient.SetVersioningAsync(new SetVersioningArgs()
-                .WithBucket(minioConfig.UploadBucket)
+                .WithBucket(minioConfig.PreviewBucket)
                 .WithVersioningEnabled());
+            bool previewBucketExists = await minioClient.BucketExistsAsync(
+                new BucketExistsArgs().WithBucket(minioConfig.PreviewBucket));
+
+            if (!previewBucketExists)
+            {
+                await minioClient.MakeBucketAsync(new MakeBucketArgs()
+                    .WithBucket(minioConfig.PreviewBucket));
+            }
+
+            
 
             Console.WriteLine($"MinIO bucket '{minioConfig.UploadBucket}' is ready with versioning enabled");
         }

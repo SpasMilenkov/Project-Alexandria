@@ -2,6 +2,7 @@ namespace Common;
 
 public interface IUnitOfWork
 {
+    IFileRepository Files { get; }
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);
     public Task RollbackAsync(CancellationToken cancellationToken = default);
