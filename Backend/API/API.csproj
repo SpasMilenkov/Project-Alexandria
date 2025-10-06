@@ -15,19 +15,24 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
 
+    <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
+
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Common\Common.csproj" />
-    <ProjectReference Include="..\Data\Data.csproj" />
       <ProjectReference Include="..\Infrastructure\Infrastructure.csproj"/>
     <ProjectReference Include="..\Models\Models.csproj" />
+        <ProjectReference Include="..\PreviewService\PreviewService.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="..\..\docker-compose.dev.yml">
       <Link>docker-compose.dev.yml</Link>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Features\Storage\Preview\GetDocumentPagesById\" />
   </ItemGroup>
 
 </Project>
