@@ -4,9 +4,10 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Data;
 
-public sealed class UnitOfWork(
+public sealed class UnitOfWork(IFileRepository files,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
+    public IFileRepository Files { get; } = files;
     private readonly AlexandriaDbContext _dbContext = dbContext;
     private IDbContextTransaction? _transaction;
     private bool _disposed;
