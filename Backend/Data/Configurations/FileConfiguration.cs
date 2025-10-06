@@ -1,6 +1,7 @@
 using Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Models;
 using File = Models.File;
 
 namespace Data.Configurations;
