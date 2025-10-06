@@ -16,7 +16,11 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Common\Common.csproj" />
         <ProjectReference Include="..\Data\Data.csproj"/>
+        <ProjectReference Include="..\PreviewService\PreviewService.csproj" />
+        <ProjectReference Include="..\Repositories\Repositories.csproj" />
+        <ProjectReference Include="..\Storage\Storage.csproj" />
     </ItemGroup>
 
 </Project>

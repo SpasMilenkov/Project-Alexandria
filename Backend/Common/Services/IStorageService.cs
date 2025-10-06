@@ -1,7 +1,8 @@
-using Infrastructure.Domain.DomainObjects;
+using DTO;
+using Models.Enumerators;
 using File = Models.File;
 
-namespace Infrastructure.Domain.Services;
+namespace Common.Services;
 
 public interface IStorageService
 {
@@ -17,8 +18,11 @@ public interface IStorageService
         string? uploadedBy = null);
 
     // File Download
-    Task<Stream> DownloadFile(string bucketName, string objectName, CancellationToken ct);
+    Task<Stream> DownloadFile(string? bucketName, string objectName, CancellationToken ct);
+    Task<FileResultSummary?> GetCachedPreview(Guid id, CancellationToken ct);
+    Task<FileResult> GetFileById(Guid id, CancellationToken ct);
 
+    FileCategory CategorizeFile(string mimeType);
     // File Metadata Operations
     Task<File?> GetFileMetadata(Guid fileId, CancellationToken ct = default);
     Task<File?> GetFileByPath(string path, CancellationToken ct = default);
@@ -39,4 +43,7 @@ public interface IStorageService
     // Storage Management
     Task EnsureBucketExistsAsync(string bucketName, CancellationToken ct);
     Task<VersionInfo> GetVersionInfo(string bucketName, string objectName, CancellationToken ct);
+    
+    // File Data Management
+    public Task<FileSummary?> GetFileSummary(Guid fieldId, CancellationToken ct = default);
 }

@@ -1,4 +1,4 @@
-namespace Infrastructure.Config;
+namespace Common.Config;
 
 public class MinioConfig
 {
@@ -6,4 +6,5 @@ public class MinioConfig
     public string? SecretKey { get; set; }
     public string? AccessKey { get; set; }
     public string? UploadBucket { get; set; }
+    public string? PreviewBucket { get; set; }
 }

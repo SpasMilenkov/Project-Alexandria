@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using Models;
 
-namespace Infrastructure.Domain.Repositories;
+namespace Common;
 
 public interface IRepository<T> where T : class, IBase
 {
