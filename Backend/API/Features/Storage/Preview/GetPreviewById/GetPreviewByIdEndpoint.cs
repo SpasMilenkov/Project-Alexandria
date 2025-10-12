@@ -1,6 +1,5 @@
 using Common.Services;
 using FastEndpoints;
-using SixLabors.ImageSharp.Diagnostics;
 
 namespace API.Features.Storage.Preview.GetPreviewById;
 
@@ -27,7 +26,10 @@ public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<G
 
         try
         {
-
+            if (preview is null)
+            {
+                return;
+            }
             HttpContext.Response.StatusCode = 200;
             HttpContext.Response.ContentType = preview.Metadata.MimeType;
             var encodedFileName = System.Net.WebUtility.UrlEncode(preview.Metadata.FileName)
@@ -46,7 +48,8 @@ public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<G
         }
         finally
         {
-            await preview.FileStream.DisposeAsync();
+            if(preview is not null)
+                await preview.FileStream.DisposeAsync();
         }
     }
 }

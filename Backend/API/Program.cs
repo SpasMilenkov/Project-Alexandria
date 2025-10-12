@@ -8,6 +8,7 @@ bld.Services
     .AddDatabase(bld.Configuration)
     .AddAuthAndIdentity()
     .AddMinio(bld.Configuration)
+    .AddRabbitMqAsync(bld.Configuration)
     .AddApiServices()
     .AddServices();
 

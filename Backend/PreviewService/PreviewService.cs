@@ -1,3 +1,5 @@
+using System.Text;
+using Common;
 using Common.Config;
 using Common.Services;
 using DTO;
@@ -11,7 +13,8 @@ public class PreviewService(
     IStorageService storageService,
     IImagePreviewService imagePreviewService,
     IOptions<MinioConfig> storageConfig,
-    IMemoryCache memoryCache) : IPreviewService
+    IMemoryCache memoryCache,
+    IPublisherService publisherService) : IPreviewService
 {
     private static readonly SemaphoreSlim Pool = new(3, 3);
 
@@ -54,8 +57,8 @@ public class PreviewService(
             return new FileResultSummary(new MemoryStream(result.data), result.metadata);
         }
 
-        // Create a new task for this file
         var tcs = new TaskCompletionSource<(byte[] data, FileSummary metadata)>();
+        // Create a new task for this file
         OngoingTasks[fileId] = tcs.Task;
         TaskDictionaryLock.Release();
 
@@ -108,17 +111,21 @@ public class PreviewService(
 
                             return previewResult with { FileStream = new MemoryStream(previewData) };
                         }
-
-                    case FileCategory.Unknown:
-                    case FileCategory.Audio:
-                    case FileCategory.Video:
                     case FileCategory.Document:
                     case FileCategory.Spreadsheet:
                     case FileCategory.Presentation:
                     case FileCategory.Archive:
                     case FileCategory.Pdf:
+                        //TODO: Add the pub sub method
+                        var body = Encoding.UTF8.GetBytes(fileId.ToString());
+                        await publisherService.Publish(body, $"document.{fileData.MimeType.Split('/')[1]}");
+                        //TODO: add proper endpoint behavior when this path returns null
+                        return null;
                     case FileCategory.Text:
                         break;
+                    case FileCategory.Audio:
+                    case FileCategory.Video:
+                    case FileCategory.Unknown:
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
