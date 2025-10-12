@@ -25,6 +25,7 @@ public class GetThumbnailByIdEndpoint(IPreviewService previewService): Endpoint<
 
         try
         {
+            if (preview is null) return;
             HttpContext.Response.StatusCode = 200;
             HttpContext.Response.ContentType = preview.Metadata.MimeType;
             var encodedFileName = System.Net.WebUtility.UrlEncode(preview.Metadata.FileName)
@@ -43,7 +44,8 @@ public class GetThumbnailByIdEndpoint(IPreviewService previewService): Endpoint<
         }
         finally
         {
-            await preview.FileStream.DisposeAsync();
+            if (preview is not null)
+                await preview.FileStream.DisposeAsync();
         }
     }
 }

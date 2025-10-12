@@ -2,8 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace API.Features.Storage.DownloadFile;
 
-public class DownloadFileRequest
+public class DownloadFileRequest(string name, string path)
 {
-    [Required] public string Name { get; set; }
-    [Required] public string Path { get; set; }
+    [Required] public string Name { get; } = name;
+    [Required] public string Path { get; } = path;
 }
