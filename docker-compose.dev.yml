@@ -72,10 +72,36 @@ services:
     networks:
       - alexandria-network
 
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: alexandria-rabbitmq-dev
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dev_admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dev_password_123}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-alexandria}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+    volumes:
+      - rabbitmq_dev_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    networks:
+      - alexandria-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
 volumes:
   postgres_dev_data:
     driver: local
   minio_dev_data:
+    driver: local
+  rabbitmq_dev_data:
     driver: local
 
 networks:
