@@ -283,6 +283,9 @@ namespace Data.Migrations
                     b.Property<DateTime?>("PreviewGeneratedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("PreviewId")
+                        .HasColumnType("uuid");
+
                     b.Property<BigInteger>("Size")
                         .HasColumnType("numeric(20,0)");
 
@@ -298,6 +301,58 @@ namespace Data.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.ToTable("Files", (string)null);
+                });
+
+            modelBuilder.Entity("Models.Preview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<BigInteger>("Size")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("varchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("FileId")
+                        .IsUnique();
+
+                    b.ToTable("Previews", (string)null);
                 });
 
             modelBuilder.Entity("Models.SignedUrl", b =>
@@ -413,6 +468,17 @@ namespace Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Models.Preview", b =>
+                {
+                    b.HasOne("Models.File", "File")
+                        .WithOne("Preview")
+                        .HasForeignKey("Models.Preview", "FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+                });
+
             modelBuilder.Entity("Models.SignedUrl", b =>
                 {
                     b.HasOne("Models.File", "FileInfo")
@@ -426,6 +492,8 @@ namespace Data.Migrations
 
             modelBuilder.Entity("Models.File", b =>
                 {
+                    b.Navigation("Preview");
+
                     b.Navigation("SignedUrls");
                 });
 #pragma warning restore 612, 618
