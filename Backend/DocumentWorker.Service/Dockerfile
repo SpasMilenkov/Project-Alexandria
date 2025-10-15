@@ -1,5 +1,5 @@
 ﻿# ===== BASE IMAGE =====
-FROM mcr.microsoft.com/dotnet/runtime:9.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
 
 #   Third Party tools used

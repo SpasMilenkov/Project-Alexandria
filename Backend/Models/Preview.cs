@@ -3,8 +3,10 @@ using System.Numerics;
 
 namespace Models;
 
-public class File : IBase
+public class Preview : IBase
 {
+    public Guid Id { get; set; }
+    
     [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
     [StringLength(ValidationConstants.StringLengths.MediumString)]
     public required string Name { get; set; }
@@ -23,21 +25,14 @@ public class File : IBase
     public BigInteger Size { get; set; }
 
     public DateTime CreatedAt { get; set; }
-
-    public Guid Id { get; set; }
+    
     public DateTime? UpdatedAt { get; set; }
 
     public DateTime? DeletedAt { get; set; }
-    public bool HasPreview { get; set; } = false;
-    // TODO: Drop that if it breaks normalization
-    public DateTime? PreviewGeneratedAt { get; set; }
 
     [StringLength(ValidationConstants.StringLengths.UserId)]
     public string? UpdatedBy { get; set; }
-
-    // Navigation property for related SignedUrls
-    public virtual ICollection<SignedUrl> SignedUrls { get; set; } = new List<SignedUrl>();
     
-    public Guid PreviewId { get; set; }
-    public Preview? Preview { get; set; }
+    public Guid FileId { get; set; }
+    public File? File { get; set; }
 }

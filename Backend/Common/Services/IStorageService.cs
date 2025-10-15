@@ -17,8 +17,23 @@ public interface IStorageService
         string? originalFileName = null,
         string? uploadedBy = null);
 
+    public Task<UploadResult> UploadPreview(
+        string bucketName,
+        string objectName,
+        string contentType,
+        Stream fileStream,
+        Guid originalFileId,
+        long contentLength = -1,
+        string? originalFileName = null,
+        string? uploadedBy = null,
+        CancellationToken ct = default);
     // File Download
     Task<Stream> DownloadFile(string? bucketName, string objectName, CancellationToken ct);
+
+    public Task StreamFile(
+        string fileId,
+        Stream destination,
+        CancellationToken ct);
     Task<FileResultSummary?> GetCachedPreview(Guid id, CancellationToken ct);
     Task<FileResult> GetFileById(Guid id, CancellationToken ct);
 

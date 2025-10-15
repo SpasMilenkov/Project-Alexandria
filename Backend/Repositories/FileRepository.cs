@@ -7,20 +7,21 @@ using File = Models.File;
 
 namespace Repositories;
 
-public class FileRepository : IFileRepository
+public class FileRepository(AlexandriaDbContext context) : IFileRepository
 {
-    private readonly AlexandriaDbContext _context;
-    private readonly DbSet<File> _files;
-
-    public FileRepository(AlexandriaDbContext context)
-    {
-        _context = context;
-        _files = context.Files;
-    }
+    private readonly DbSet<File> _files = context.Files;
 
     public async Task<File?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         return await _files
+            .Where(f => f.DeletedAt == null)
+            .FirstOrDefaultAsync(f => f.Id == id, ct);
+    }
+
+    public async Task<File> GetFileWithPreviewAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _files
+            .Include(f => f.Preview)
             .Where(f => f.DeletedAt == null)
             .FirstOrDefaultAsync(f => f.Id == id, ct);
     }
@@ -56,7 +57,7 @@ public class FileRepository : IFileRepository
         entity.DeletedAt = null;
 
         var result = await _files.AddAsync(entity, ct);
-        await _context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct);
         return result.Entity;
     }
 
@@ -73,7 +74,7 @@ public class FileRepository : IFileRepository
         }
 
         await _files.AddRangeAsync(files, ct);
-        await _context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct);
         return files;
     }
 
@@ -150,7 +151,7 @@ public class FileRepository : IFileRepository
         // Note: MimeType is marked as init-only, so it shouldn't be updated
 
         _files.Update(existingFile);
-        await _context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct);
 
         return existingFile;
     }

@@ -4,6 +4,7 @@ using System.Numerics;
 using Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251014203602_AddPreviewsTable")]
+    partial class AddPreviewsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -283,9 +286,6 @@ namespace Data.Migrations
                     b.Property<DateTime?>("PreviewGeneratedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("PreviewId")
-                        .HasColumnType("uuid");
-
                     b.Property<BigInteger>("Size")
                         .HasColumnType("numeric(20,0)");
 
@@ -349,8 +349,7 @@ namespace Data.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("FileId")
-                        .IsUnique();
+                    b.HasIndex("FileId");
 
                     b.ToTable("Previews", (string)null);
                 });
@@ -470,13 +469,13 @@ namespace Data.Migrations
 
             modelBuilder.Entity("Models.Preview", b =>
                 {
-                    b.HasOne("Models.File", "File")
-                        .WithOne("Preview")
-                        .HasForeignKey("Models.Preview", "FileId")
+                    b.HasOne("Models.File", "FIle")
+                        .WithMany()
+                        .HasForeignKey("FileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("File");
+                    b.Navigation("FIle");
                 });
 
             modelBuilder.Entity("Models.SignedUrl", b =>
@@ -492,8 +491,6 @@ namespace Data.Migrations
 
             modelBuilder.Entity("Models.File", b =>
                 {
-                    b.Navigation("Preview");
-
                     b.Navigation("SignedUrls");
                 });
 #pragma warning restore 612, 618

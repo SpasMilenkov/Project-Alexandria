@@ -1,14 +1,12 @@
-using Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Models;
-using File = Models.File;
 
 namespace Data.Configurations;
 
-public class FileConfiguration : IEntityTypeConfiguration<File>
+public class PreviewConfiguration : IEntityTypeConfiguration<Preview>
 {
-    public void Configure(EntityTypeBuilder<File> builder)
+    public void Configure(EntityTypeBuilder<Preview> builder)
     {
         builder.HasKey(e => e.Id);
 
@@ -32,13 +30,6 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             .HasColumnType($"varchar({ValidationConstants.StringLengths.UserId})")
             .IsRequired(false);
 
-        // Relations
-        builder.HasOne(f => f.Preview)
-            .WithOne(p => p.File)
-            .HasForeignKey<Preview>(p => p.FileId)
-            .OnDelete(DeleteBehavior.Cascade);
-        
-        // BigInteger for file size - using numeric for PostgreSQL
         builder.Property(e => e.Size)
             .HasColumnType("numeric(20,0)")
             .IsRequired();
@@ -60,6 +51,6 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
         builder.HasIndex(e => e.CreatedAt);
 
         // Table name
-        builder.ToTable("Files");
+        builder.ToTable("Previews");
     }
 }

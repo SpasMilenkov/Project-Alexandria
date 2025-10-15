@@ -3,14 +3,15 @@ using Common.Services;
 using Data;
 using Microsoft.Extensions.DependencyInjection;
 using PreviewService;
+using PreviewService.Documents;
 using Repositories;
 using Storage;
 
-namespace Infrastructure;
+namespace Infrastructure.DocumentWorker;
 
 public static class ServiceExtensions
 {
-    public static IServiceCollection AddServices(this IServiceCollection services)
+    public static IServiceCollection AddSWorkerServices(this IServiceCollection services)
     {
         
         services.AddMemoryCache(options =>
@@ -22,10 +23,9 @@ public static class ServiceExtensions
 
         
         services.AddScoped<IStorageService, MinioStorageService>();
-        services.AddScoped<IFileRepository, FileRepository>();
+        services.AddScoped<IPdfPreviewService, PdfPreviewService>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
-        services.AddScoped<IImagePreviewService, ImagePreviewService>();
-        services.AddScoped<IPreviewService, PreviewService.PreviewService>();
+        services.AddScoped<IFileRepository, FileRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

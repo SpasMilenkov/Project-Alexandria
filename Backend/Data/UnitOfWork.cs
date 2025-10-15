@@ -5,10 +5,11 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace Data;
 
 public sealed class UnitOfWork(IFileRepository files,
+    IPreviewRepository previews,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
-    private readonly AlexandriaDbContext _dbContext = dbContext;
+    public IPreviewRepository Previews { get; } = previews;
     private IDbContextTransaction? _transaction;
     private bool _disposed;
 
@@ -19,7 +20,7 @@ public sealed class UnitOfWork(IFileRepository files,
         // If this is the first transaction request, create a new transaction
         if (_transactionCount == 0)
         {
-            _transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+            _transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         }
 
         // Increment the transaction counter
@@ -68,7 +69,7 @@ public sealed class UnitOfWork(IFileRepository files,
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public void Dispose()
@@ -88,7 +89,7 @@ public sealed class UnitOfWork(IFileRepository files,
     {
         if (!_disposed && disposing)
         {
-            _dbContext.Dispose();
+            dbContext.Dispose();
             _transaction?.Dispose();
         }
 
@@ -99,7 +100,7 @@ public sealed class UnitOfWork(IFileRepository files,
     {
         if (_disposed) return;
 
-        await _dbContext.DisposeAsync();
+        await dbContext.DisposeAsync();
         if (_transaction is not null)
             await _transaction.DisposeAsync();
 
