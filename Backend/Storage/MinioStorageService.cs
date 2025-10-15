@@ -5,6 +5,7 @@ using DTO;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
+using Models;
 using Models.Enumerators;
 using File = Models.File;
 using MinioConfig = Common.Config.MinioConfig;
@@ -102,6 +103,93 @@ public class MinioStorageService(
         }
     }
 
+    public async Task<UploadResult> UploadPreview(
+        string bucketName,
+        string objectName,
+        string contentType,
+        Stream fileStream,
+        Guid originalFileId,
+        long contentLength = -1,
+        string? originalFileName = null,
+        string? uploadedBy = null,
+        CancellationToken ct = default)
+    {
+        await unitOfWork.BeginTransactionAsync(ct);
+
+        try
+        {
+            var filePath = $"{bucketName}/{objectName}";
+
+            await using var checksumStream = new ChecksumCalculatingStream(fileStream);
+
+            await minio.PutObjectAsync(new PutObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectName)
+                .WithStreamData(checksumStream)
+                .WithObjectSize(contentLength > 0 ? contentLength : -1)
+                .WithContentType(contentType), ct);
+
+            var calculatedChecksum = checksumStream.GetChecksum();
+
+            var stat = await GetVersionInfo(objectName: objectName, bucketName: bucketName, ct: ct);
+
+            var existingFile = await unitOfWork.Previews.FirstOrDefaultAsync(f => f.Path == filePath, ct);
+
+            Preview savedFile;
+
+            if (existingFile != null)
+            {
+                existingFile.Name = originalFileName ?? existingFile.Name;
+                existingFile.Size = new BigInteger(stat.Size);
+                existingFile.UpdatedBy = uploadedBy;
+
+                savedFile = await unitOfWork.Previews.UpdateAsync(existingFile, ct);
+            }
+            else
+            {
+                var fileEntity = new Preview
+                {
+                    Id = Guid.NewGuid(),
+                    Name = originalFileName ?? objectName,
+                    Path = filePath,
+                    MimeType = contentType,
+                    Size = new BigInteger(stat.Size),
+                    UpdatedBy = uploadedBy,
+                    FileId = originalFileId 
+                };
+
+                savedFile = await unitOfWork.Previews.CreateAsync(fileEntity, ct);
+            }
+
+            await unitOfWork.CommitAsync(ct);
+
+            return new UploadResult(
+                objectName,
+                filePath,
+                calculatedChecksum,
+                stat.VersionId,
+                stat.Size,
+                savedFile.Id);
+        }
+        catch (Exception ex)
+        {
+            await unitOfWork.RollbackAsync(ct);
+
+            try
+            {
+                await minio.RemoveObjectAsync(new RemoveObjectArgs()
+                    .WithBucket(bucketName)
+                    .WithObject(objectName), ct);
+            }
+            catch
+            {
+                // TODO: Log errors with proper logging
+            }
+
+            throw new InvalidOperationException($"Upload failed: {ex.Message}", ex);
+        }
+    }
+
     public FileCategory CategorizeFile(string mimeType)
     {
         if (string.IsNullOrWhiteSpace(mimeType))
@@ -110,42 +198,43 @@ public class MinioStorageService(
         return mimeType.ToLowerInvariant() switch
         {
             // ====== Images ======
-            "image/jpeg" or "image/jpg" or "image/png" or "image/gif" or "image/webp" or 
-            "image/bmp" or "image/tiff" or "image/svg+xml" 
+            "image/jpeg" or "image/jpg" or "image/png" or "image/gif" or "image/webp" or
+                "image/bmp" or "image/tiff" or "image/svg+xml"
                 => FileCategory.Image,
 
             // ====== Audio ======
-            "audio/mpeg" or "audio/mp3" or "audio/wav" or "audio/ogg" or 
-            "audio/flac" or "audio/aac" 
+            "audio/mpeg" or "audio/mp3" or "audio/wav" or "audio/ogg" or
+                "audio/flac" or "audio/aac"
                 => FileCategory.Audio,
 
             // ====== Video ======
-            "video/mp4" or "video/x-msvideo" or "video/x-matroska" or 
-            "video/webm" or "video/quicktime"
+            "video/mp4" or "video/x-msvideo" or "video/x-matroska" or
+                "video/webm" or "video/quicktime"
                 => FileCategory.Video,
 
             // ====== Documents (Word, OpenDoc, RTF, Plaintext) ======
             "application/msword" or "application/vnd.openxmlformats-officedocument.wordprocessingml.document" or
-            "application/vnd.oasis.opendocument.text" or "application/rtf" or "text/plain" 
+                "application/vnd.oasis.opendocument.text" or "application/rtf" or "text/plain"
                 => FileCategory.Document,
 
             // ====== Spreadsheets ======
             "application/vnd.ms-excel" or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" or
-            "application/vnd.oasis.opendocument.spreadsheet" 
+                "application/vnd.oasis.opendocument.spreadsheet"
                 => FileCategory.Spreadsheet,
 
             // ====== Presentations ======
-            "application/vnd.ms-powerpoint" or "application/vnd.openxmlformats-officedocument.presentationml.presentation" or
-            "application/vnd.oasis.opendocument.presentation" 
+            "application/vnd.ms-powerpoint"
+                or "application/vnd.openxmlformats-officedocument.presentationml.presentation" or
+                "application/vnd.oasis.opendocument.presentation"
                 => FileCategory.Presentation,
 
             // ====== PDF ======
-            "application/pdf" 
+            "application/pdf"
                 => FileCategory.Pdf,
 
             // ====== Archives / Compressed ======
-            "application/zip" or "application/x-7z-compressed" or 
-            "application/x-rar-compressed" or "application/gzip" or "application/x-tar" 
+            "application/zip" or "application/x-7z-compressed" or
+                "application/x-rar-compressed" or "application/gzip" or "application/x-tar"
                 => FileCategory.Archive,
 
             // ====== Text (Markdown, JSON, HTML, XML, etc.) ======
@@ -156,28 +245,60 @@ public class MinioStorageService(
             _ => FileCategory.Unknown
         };
     }
-    
+
     public async Task<FileResultSummary?> GetCachedPreview(Guid id, CancellationToken ct = default)
     {
-        var fileData = await GetFileSummary(id, ct);
+        var fileData = await unitOfWork.Files.GetFileWithPreviewAsync(id, ct);
 
         if (fileData is null) throw new FileNotFoundException();
 
-        if (!fileData.HasPreview) return null;
+        if (fileData.Preview is null) return null;
 
-        return new FileResultSummary(await DownloadFile(config.Value.PreviewBucket ?? "user-previews", "previews/" + fileData.FileName, ct), fileData);
+        var category = CategorizeFile(fileData.MimeType);
+
+        switch (category)
+        {
+            case FileCategory.Image:
+                return new FileResultSummary(
+                    await DownloadFileNoCheckAsync(config.Value.PreviewBucket ?? "user-previews",
+                        "previews/" + fileData.Name, ct), new FileSummary(fileData.Name, fileData.MimeType, true,
+                        fileData.Preview.Path));
+            case FileCategory.Document:
+            case FileCategory.Spreadsheet:
+            case FileCategory.Presentation:
+            case FileCategory.Pdf:
+                return new FileResultSummary(
+                    await DownloadFileNoCheckAsync(config.Value.PreviewBucket ?? "user-previews",
+                        "previews/" + fileData.Name + ".pdf", ct),
+                    new FileSummary(fileData.Name, fileData.Preview.MimeType, true,
+                        fileData.Preview.Path));
+            case FileCategory.Text:
+                break;
+            case FileCategory.Archive:
+            case FileCategory.Audio:
+            case FileCategory.Video:
+            case FileCategory.Unknown:
+            default:
+                return new FileResultSummary(
+                    await DownloadFileNoCheckAsync(config.Value.PreviewBucket ?? "user-previews",
+                        "previews/" + fileData.Name, ct), new FileSummary(fileData.Name, fileData.MimeType, true,
+                        fileData.Preview.Path));
+        }
+
+        return null;
     }
-    
+
     public async Task<FileResult> GetFileById(Guid id, CancellationToken ct)
     {
         var fileData = await GetFileMetadata(id, ct);
         if (fileData is null) throw new FileNotFoundException();
-        
+
         //TODO: Remove magic number later, should be 20MB in bytes
         if (fileData.Size > 40971520) throw new InvalidOperationException("Filesize too large for preview");
 
-        
-        return new FileResult(await DownloadFile(config.Value.UploadBucket ?? "user-uploads", fileData.Name, ct), fileData);
+
+        return new FileResult(await DownloadFile(config.Value.UploadBucket ?? "user-uploads", fileData.Name, ct),
+            fileData);
     }
 
     public async Task<File?> GetFileMetadata(Guid fileId, CancellationToken ct = default)
@@ -189,7 +310,7 @@ public class MinioStorageService(
     {
         return await unitOfWork.Files.GetFileNameAndMimeType(fieldId, ct);
     }
-    
+
     public async Task<File?> GetFileByPath(string path, CancellationToken ct = default)
     {
         return await unitOfWork.Files.FirstOrDefaultAsync(f => f.Path == path, ct);
@@ -210,9 +331,7 @@ public class MinioStorageService(
             var fileEntity = await unitOfWork.Files.FirstOrDefaultAsync(f => f.Path == path, ct);
 
             if (fileEntity == null)
-            {
                 throw new InvalidOperationException($"File with path {path} not found in database.");
-            }
 
             if (hardDelete)
             {
@@ -251,30 +370,18 @@ public class MinioStorageService(
         try
         {
             var fileEntity = await unitOfWork.Files.GetByIdAsync(fileId, ct);
-            if (fileEntity == null)
-            {
-                throw new InvalidOperationException($"File with ID {fileId} not found.");
-            }
+            if (fileEntity == null) throw new InvalidOperationException($"File with ID {fileId} not found.");
 
             // Update only provided fields
-            if (!string.IsNullOrEmpty(newName))
-            {
-                fileEntity.Name = newName;
-            }
+            if (!string.IsNullOrEmpty(newName)) fileEntity.Name = newName;
 
             if (hasPreview.HasValue)
             {
                 fileEntity.HasPreview = hasPreview.Value;
-                if (hasPreview.Value)
-                {
-                    fileEntity.PreviewGeneratedAt = DateTime.UtcNow;
-                }
+                if (hasPreview.Value) fileEntity.PreviewGeneratedAt = DateTime.UtcNow;
             }
 
-            if (!string.IsNullOrEmpty(updatedBy))
-            {
-                fileEntity.UpdatedBy = updatedBy;
-            }
+            if (!string.IsNullOrEmpty(updatedBy)) fileEntity.UpdatedBy = updatedBy;
 
             var updatedFile = await unitOfWork.Files.UpdateAsync(fileEntity, ct);
             await unitOfWork.CommitAsync(ct);
@@ -288,17 +395,14 @@ public class MinioStorageService(
         }
     }
 
-    public async Task<Stream> DownloadFile(string? bucketName,  string objectName, CancellationToken ct)
+    public async Task<Stream> DownloadFile(string? bucketName, string objectName, CancellationToken ct)
     {
         bucketName ??= config.Value.UploadBucket;
         // Verify file exists in database first
         var path = $"{bucketName}/{objectName}";
         var fileExists = await unitOfWork.Files.ExistsAsync(f => f.Path == path, ct);
 
-        if (!fileExists)
-        {
-            throw new InvalidOperationException($"File {path} not found in database.");
-        }
+        if (!fileExists) throw new InvalidOperationException($"File {path} not found in database.");
 
         // Download from MinIO
         var stream = new MemoryStream();
@@ -311,13 +415,42 @@ public class MinioStorageService(
         return stream;
     }
 
+    private async Task<Stream> DownloadFileNoCheckAsync(string? bucketName, string objectName, CancellationToken ct)
+    {
+        bucketName ??= config.Value.UploadBucket;
+        // Verify file exists in database first
+        var path = $"{bucketName}/{objectName}";
+        // Download from MinIO
+        var stream = new MemoryStream();
+        await minio.GetObjectAsync(new GetObjectArgs()
+            .WithBucket(bucketName)
+            .WithObject(objectName)
+            .WithCallbackStream(s => s.CopyTo(stream)), ct);
+
+        stream.Position = 0;
+        return stream;
+    }
+
+    public async Task StreamFile(
+        string fileId,
+        Stream destination,
+        CancellationToken ct)
+    {
+        var fileData = await unitOfWork.Files.GetByIdAsync(Guid.Parse(fileId), ct);
+
+        if (fileData is null)
+            throw new InvalidOperationException($"File with ID: {fileId} not found in database.");
+
+        await minio.GetObjectAsync(new GetObjectArgs()
+            .WithBucket(config.Value.UploadBucket)
+            .WithObject(fileData.Name)
+            .WithCallbackStream(s => s.CopyTo(destination)), ct);
+    }
+
     public async Task EnsureBucketExistsAsync(string bucketName, CancellationToken ct)
     {
         var found = await minio.BucketExistsAsync(new BucketExistsArgs().WithBucket(bucketName), ct);
-        if (!found)
-        {
-            await minio.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName), ct);
-        }
+        if (!found) await minio.MakeBucketAsync(new MakeBucketArgs().WithBucket(bucketName), ct);
 
         // Enable versioning
         await minio.SetVersioningAsync(
@@ -347,10 +480,7 @@ public class MinioStorageService(
 
     public async Task<int> GetFileCount(string? mimeTypeFilter = null, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(mimeTypeFilter))
-        {
-            return await unitOfWork.Files.CountAsync(null, ct);
-        }
+        if (string.IsNullOrEmpty(mimeTypeFilter)) return await unitOfWork.Files.CountAsync(null, ct);
 
         return await unitOfWork.Files.CountAsync(f => f.MimeType == mimeTypeFilter, ct);
     }
