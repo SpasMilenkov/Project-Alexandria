@@ -23,132 +23,133 @@ public class PreviewService(
 
     public async Task<FileResultSummary?> GetPreview(Guid fileId, CancellationToken ct)
     {
-        if (memoryCache.TryGetValue(fileId, out (byte[] fileBytes, FileSummary metadata) cacheValue))
+         if (memoryCache.TryGetValue(fileId, out (byte[] fileBytes, FileSummary metadata) cacheValue))
             return new FileResultSummary(new MemoryStream(cacheValue.fileBytes), cacheValue.metadata);
 
-        var cachedPreview = await storageService.GetCachedPreview(fileId, ct);
-        if (cachedPreview is not null)
-        {
-            using var ms = new MemoryStream();
-            await cachedPreview.FileStream.CopyToAsync(ms, ct);
-            var previewData = ms.ToArray();
+         var cachedPreview = await storageService.GetCachedPreview(fileId, ct);
+         if (cachedPreview is not null)
+         {
+             using var ms = new MemoryStream();
+             await cachedPreview.FileStream.CopyToAsync(ms, ct);
+             var previewData = ms.ToArray();
 
-            var cacheOptions = new MemoryCacheEntryOptions
-            {
-                Size = Math.Max(1, previewData.Length / (1024 * 1024)),
-                SlidingExpiration = TimeSpan.FromMinutes(5)
-            };
+             var cacheOptions = new MemoryCacheEntryOptions
+             {
+                 Size = Math.Max(1, previewData.Length / (1024 * 1024)),
+                 SlidingExpiration = TimeSpan.FromMinutes(5)
+             };
 
-            memoryCache.Set(fileId, (previewData, cachedPreview.Metadata), cacheOptions);
+             memoryCache.Set(fileId, (previewData, cachedPreview.Metadata), cacheOptions);
 
-            await cachedPreview.FileStream.DisposeAsync();
+             await cachedPreview.FileStream.DisposeAsync();
 
-            return new FileResultSummary(new MemoryStream(previewData), cachedPreview.Metadata);
-        }
+             return new FileResultSummary(new MemoryStream(previewData), cachedPreview.Metadata);
+         }
 
-        await TaskDictionaryLock.WaitAsync(ct);
-        Task<(byte[] data, FileSummary metadata)> ongoingTask;
+         await TaskDictionaryLock.WaitAsync(ct);
+         Task<(byte[] data, FileSummary metadata)> ongoingTask;
 
-        if (OngoingTasks.TryGetValue(fileId, out var existingTask))
-        {
-            // Another request is already processing this file so we are going to wait for that one 
-            TaskDictionaryLock.Release();
-            var result = await existingTask;
-            return new FileResultSummary(new MemoryStream(result.data), result.metadata);
-        }
+         if (OngoingTasks.TryGetValue(fileId, out var existingTask))
+         {
+             // Another request is already processing this file so we are going to wait for that one 
+             TaskDictionaryLock.Release();
+             var result = await existingTask;
+             return new FileResultSummary(new MemoryStream(result.data), result.metadata);
+         }
 
-        var tcs = new TaskCompletionSource<(byte[] data, FileSummary metadata)>();
-        // Create a new task for this file
-        OngoingTasks[fileId] = tcs.Task;
-        TaskDictionaryLock.Release();
+         var tcs = new TaskCompletionSource<(byte[] data, FileSummary metadata)>();
+         // Create a new task for this file
+         OngoingTasks[fileId] = tcs.Task;
+         TaskDictionaryLock.Release();
 
-        try
-        {
-            await Pool.WaitAsync(ct);
-            try
-            {
-                var fileData = await storageService.GetFileMetadata(fileId, ct);
-                if (fileData is null) throw new FileNotFoundException();
+         try
+         {
+             await Pool.WaitAsync(ct);
+             try
+             {
+                 var fileData = await storageService.GetFileMetadata(fileId, ct);
+                 if (fileData is null) throw new FileNotFoundException();
 
-                var fileStream = await storageService.DownloadFile(null, fileData.Name, ct);
-                var category = storageService.CategorizeFile(fileData.MimeType);
+                 var fileStream = await storageService.DownloadFile(null, fileData.Name, ct);
+                 var category = storageService.CategorizeFile(fileData.MimeType);
 
-                switch (category)
-                {
-                    case FileCategory.Image:
-                        var previewStream =
-                            await imagePreviewService.GenerateImagePreview(fileStream, fileData.MimeType);
-                        await storageService.UploadFile(
-                            storageConfig.Value.PreviewBucket ?? "user-previews",
-                            "previews/" + fileData.Name,
-                            fileData.MimeType,
-                            previewStream,
-                            uploadedBy: "system",
-                            ct: ct);
-                        await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: "system", ct: ct);
+                 switch (category)
+                 {
+                     case FileCategory.Image:
+                         var previewStream =
+                             await imagePreviewService.GenerateImagePreview(fileStream, fileData.MimeType);
+                         await storageService.UploadPreview(
+                             storageConfig.Value.PreviewBucket ?? "user-previews",
+                             "previews/" + fileData.Name,
+                             fileData.MimeType,
+                             previewStream,
+                             uploadedBy: "system",
+                             originalFileId: fileData.Id,
+                             ct: ct);
+                         await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: "system", ct: ct);
 
-                        var previewResult = await storageService.GetCachedPreview(fileId, ct);
-                        if (previewResult is null) throw new InvalidOperationException();
+                         var previewResult = await storageService.GetCachedPreview(fileId, ct);
+                         if (previewResult is null) throw new InvalidOperationException();
 
-                        // Read stream into byte array for caching
-                        using (var ms = new MemoryStream())
-                        {
-                            await previewResult.FileStream.CopyToAsync(ms, ct);
-                            var previewData = ms.ToArray();
+                         // Read stream into byte array for caching
+                         using (var ms = new MemoryStream())
+                         {
+                             await previewResult.FileStream.CopyToAsync(ms, ct);
+                             var previewData = ms.ToArray();
 
-                            var cacheOptions = new MemoryCacheEntryOptions
-                            {
-                                Size = Math.Max(1, previewData.Length / (1024 * 1024)),
-                                SlidingExpiration = TimeSpan.FromMinutes(5)
-                            };
+                             var cacheOptions = new MemoryCacheEntryOptions
+                             {
+                                 Size = Math.Max(1, previewData.Length / (1024 * 1024)),
+                                 SlidingExpiration = TimeSpan.FromMinutes(5)
+                             };
 
-                            var resultTuple = (previewData, previewResult.Metadata);
-                            memoryCache.Set(fileId, resultTuple, cacheOptions);
+                             var resultTuple = (previewData, previewResult.Metadata);
+                             memoryCache.Set(fileId, resultTuple, cacheOptions);
 
-                            await previewResult.FileStream.DisposeAsync();
+                             await previewResult.FileStream.DisposeAsync();
 
-                            tcs.SetResult(resultTuple);
+                             tcs.SetResult(resultTuple);
 
-                            return previewResult with { FileStream = new MemoryStream(previewData) };
-                        }
-                    case FileCategory.Document:
-                    case FileCategory.Spreadsheet:
-                    case FileCategory.Presentation:
-                    case FileCategory.Archive:
-                    case FileCategory.Pdf:
-                        //TODO: Add the pub sub method
-                        var body = Encoding.UTF8.GetBytes(fileId.ToString());
-                        await publisherService.Publish(body, $"document.{fileData.MimeType.Split('/')[1]}");
-                        //TODO: add proper endpoint behavior when this path returns null
-                        return null;
-                    case FileCategory.Text:
-                        break;
-                    case FileCategory.Audio:
-                    case FileCategory.Video:
-                    case FileCategory.Unknown:
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                             return previewResult with { FileStream = new MemoryStream(previewData) };
+                         }
+                     case FileCategory.Document:
+                     case FileCategory.Spreadsheet:
+                     case FileCategory.Presentation:
+                     case FileCategory.Archive:
+                     case FileCategory.Pdf:
+                         //TODO: Add the pub sub method
+                         var body = Encoding.UTF8.GetBytes(fileId.ToString());
+                         await publisherService.Publish(body, $"document.{fileData.MimeType.Split('/')[1]}");
+                         //TODO: add proper endpoint behavior when this path returns null
+                         return null;
+                     case FileCategory.Text:
+                         break;
+                     case FileCategory.Audio:
+                     case FileCategory.Video:
+                     case FileCategory.Unknown:
+                     default:
+                         throw new ArgumentOutOfRangeException();
+                 }
 
-                tcs.SetResult((Array.Empty<byte>(), null));
-                return null;
-            }
-            finally
-            {
-                Pool.Release();
-            }
-        }
-        catch (Exception ex)
-        {
-            tcs.SetException(ex);
-            throw;
-        }
-        finally
-        {
-            await TaskDictionaryLock.WaitAsync(ct);
-            OngoingTasks.Remove(fileId);
-            TaskDictionaryLock.Release();
-        }
+                 tcs.SetResult((Array.Empty<byte>(), null));
+                 return null;
+             }
+             finally
+             {
+                 Pool.Release();
+             }
+         }
+         catch (Exception ex)
+         {
+             tcs.SetException(ex);
+             throw;
+         }
+         finally
+         {
+             await TaskDictionaryLock.WaitAsync(ct);
+             OngoingTasks.Remove(fileId);
+             TaskDictionaryLock.Release();
+         }
     }
 
     public async Task<FileResultSummary?> GetThumbnail(Guid fileId, int width, int height,
