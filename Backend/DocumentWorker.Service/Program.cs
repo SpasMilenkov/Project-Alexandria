@@ -1,10 +1,14 @@
 using DocumentWorker.Service;
 using DocumentWorker.Service.Extensions;
 using Infrastructure;
+using Infrastructure.DocumentWorker;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services
-    .AddRabbitMqConsumer(builder.Configuration);
+    .AddDatabase(builder.Configuration)
+    .AddMinio(builder.Configuration)
+    .AddRabbitMqConsumer(builder.Configuration)
+    .AddSWorkerServices();
 
 builder.Services.AddHostedService<Worker>();
 
