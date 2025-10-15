@@ -37,7 +37,6 @@ public static class RabbitMqExtensions
             ));
 
         services.AddSingleton<IPublisherService, PublisherService>();
-        services.AddScoped<IChannelPool, ChannelPool>();
         return services;
     }
 }
