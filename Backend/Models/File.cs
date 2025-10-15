@@ -28,8 +28,8 @@ public class File : IBase
     public DateTime? UpdatedAt { get; set; }
 
     public DateTime? DeletedAt { get; set; }
-
     public bool HasPreview { get; set; } = false;
+    // TODO: Drop that if it breaks normalization
     public DateTime? PreviewGeneratedAt { get; set; }
 
     [StringLength(ValidationConstants.StringLengths.UserId)]
@@ -37,4 +37,7 @@ public class File : IBase
 
     // Navigation property for related SignedUrls
     public virtual ICollection<SignedUrl> SignedUrls { get; set; } = new List<SignedUrl>();
+    
+    public Guid PreviewId { get; set; }
+    public Preview? Preview { get; set; }
 }

@@ -32,6 +32,12 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             .HasColumnType($"varchar({ValidationConstants.StringLengths.UserId})")
             .IsRequired(false);
 
+        // Relations
+        builder.HasOne(f => f.Preview)
+            .WithOne(p => p.File)
+            .HasForeignKey<Preview>(p => p.FileId)
+            .OnDelete(DeleteBehavior.Cascade);
+        
         // BigInteger for file size - using numeric for PostgreSQL
         builder.Property(e => e.Size)
             .HasColumnType("numeric(20,0)")
