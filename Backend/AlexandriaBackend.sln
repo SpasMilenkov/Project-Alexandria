@@ -27,6 +27,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Workers", "Workers", "{B52E
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DocumentWorker.Service", "DocumentWorker.Service\DocumentWorker.Service.csproj", "{B32F321D-4E18-4CEB-AEF0-AE4FA6380675}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaWorkerService", "MediaWorkerService\MediaWorkerService.csproj", "{F00411C8-1657-4347-8A6E-4B137A345E96}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -76,10 +78,15 @@ Global
 		{B32F321D-4E18-4CEB-AEF0-AE4FA6380675}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B32F321D-4E18-4CEB-AEF0-AE4FA6380675}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B32F321D-4E18-4CEB-AEF0-AE4FA6380675}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F00411C8-1657-4347-8A6E-4B137A345E96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F00411C8-1657-4347-8A6E-4B137A345E96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F00411C8-1657-4347-8A6E-4B137A345E96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F00411C8-1657-4347-8A6E-4B137A345E96}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5658CEF6-4735-488F-80AF-9AE34C4F294C} = {42552979-4F59-4895-9F9A-719F27FDA50D}
 		{4BF3FD7E-A180-4FC6-AA78-0AB9C25A5D61} = {42552979-4F59-4895-9F9A-719F27FDA50D}
 		{B32F321D-4E18-4CEB-AEF0-AE4FA6380675} = {B52EDD61-CE5F-478F-82DF-D049222E7524}
+		{F00411C8-1657-4347-8A6E-4B137A345E96} = {B52EDD61-CE5F-478F-82DF-D049222E7524}
 	EndGlobalSection
 EndGlobal
