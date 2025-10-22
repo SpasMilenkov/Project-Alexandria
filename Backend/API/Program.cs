@@ -15,12 +15,12 @@ bld.Services
 bld.WebHost.ConfigureKestrelMaxRequestSize();
 
 var app = bld.Build();
+app.UseCors("AllowOrigin");
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseFastEndpoints().UseSwaggerGen();
 app.MapHealthChecks("/health");
-app.UseCors("AllowOrigin");
 
 await app.SetupMinioBucketAsync();
 
