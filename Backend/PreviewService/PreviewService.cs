@@ -117,15 +117,17 @@ public class PreviewService(
                      case FileCategory.Presentation:
                      case FileCategory.Archive:
                      case FileCategory.Pdf:
-                         //TODO: Add the pub sub method
-                         var body = Encoding.UTF8.GetBytes(fileId.ToString());
-                         await publisherService.Publish(body, $"document.{fileData.MimeType.Split('/')[1]}");
+                         var documentBody = Encoding.UTF8.GetBytes(fileId.ToString());
+                         await publisherService.Publish(documentBody, $"document.{fileData.MimeType.Split('/')[1]}");
                          //TODO: add proper endpoint behavior when this path returns null
                          return null;
                      case FileCategory.Text:
                          break;
                      case FileCategory.Audio:
                      case FileCategory.Video:
+                         var mediaBody = Encoding.UTF8.GetBytes(fileId.ToString());
+                         await publisherService.Publish(mediaBody, $"media.{fileData.MimeType.Split('/')[1]}");
+                         return null;
                      case FileCategory.Unknown:
                      default:
                          throw new ArgumentOutOfRangeException();
