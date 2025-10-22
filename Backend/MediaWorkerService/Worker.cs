@@ -1,9 +1,9 @@
 using System.Text;
-using DocumentWorker.Service.Handlers;
+using MediaWorkerService.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace DocumentWorker.Service;
+namespace MediaWorkerService;
 
 public class Worker(
     ILogger<Worker> logger,
@@ -14,24 +14,24 @@ public class Worker(
 {
     private IChannel? _channel;
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken ct)
     {
         logger.LogInformation("RabbitMQ Worker starting...");
     
-        _channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
+        _channel = await connection.CreateChannelAsync(cancellationToken: ct);
 
         var exchangeName = "content-exchange";
-        var routingKey = "document.#";
+        var routingKey = "media.#";
         var prefetchCount = configuration.GetValue<ushort>("RabbitMQ:Consumer:PrefetchCount", 10);
     
-        await _channel.BasicQosAsync(0, prefetchCount, false, stoppingToken);
+        await _channel.BasicQosAsync(0, prefetchCount, false, ct);
     
         await _channel.ExchangeDeclareAsync(
             exchange: exchangeName,
             type: ExchangeType.Topic,
             durable: true,
             autoDelete: false,
-            cancellationToken: stoppingToken);
+            cancellationToken: ct);
 
         var queueDeclareResult = await _channel.QueueDeclareAsync(
             // queue: queueName,
@@ -39,7 +39,7 @@ public class Worker(
             exclusive: false,
             autoDelete: false,
             arguments: null,
-            cancellationToken: stoppingToken);
+            cancellationToken: ct);
         
         string queueName = queueDeclareResult.QueueName;
 
@@ -49,7 +49,7 @@ public class Worker(
             exchange: exchangeName,
             routingKey: routingKey,
             arguments: null,
-            cancellationToken: stoppingToken);
+            cancellationToken: ct);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
         
@@ -66,10 +66,10 @@ public class Worker(
                 logger.LogInformation("Received message: {Message}", message);
                 
                 // Process message
-                await messageHandler.HandleAsync(message);
+                await messageHandler.HandleAsync(message, ct);
                 
                 // Acknowledge message
-                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
             }
             catch (Exception ex)
             {
@@ -80,7 +80,7 @@ public class Worker(
                     eventArgs.DeliveryTag, 
                     false, 
                     requeue: false,
-                    stoppingToken);
+                    ct);
             }
         };
 
@@ -88,24 +88,24 @@ public class Worker(
             queue: queueName,
             autoAck: false,
             consumer: consumer,
-            cancellationToken: stoppingToken);
+            cancellationToken: ct);
 
         logger.LogInformation("RabbitMQ Worker started and listening on queue: {QueueName}", queueName);
 
         // Keep running until cancellation
-        await Task.Delay(Timeout.Infinite, stoppingToken);
+        await Task.Delay(Timeout.Infinite, ct);
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    public override async Task StopAsync(CancellationToken ct)
     {
         logger.LogInformation("RabbitMQ Worker stopping...");
         
         if (_channel != null)
         {
-            await _channel.CloseAsync(cancellationToken);
+            await _channel.CloseAsync(ct);
             await _channel.DisposeAsync();
         }
         
-        await base.StopAsync(cancellationToken);
+        await base.StopAsync(ct);
     }
 }

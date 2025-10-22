@@ -1,6 +1,7 @@
 using DTO;
 using Models.Enumerators;
 using File = Models.File;
+using MediaMetadata = DTO.MediaMetadata;
 
 namespace Common.Services;
 
@@ -17,7 +18,7 @@ public interface IStorageService
         string? originalFileName = null,
         string? uploadedBy = null);
 
-    public Task<UploadResult> UploadPreview(
+    Task<UploadResult> UploadPreview(
         string bucketName,
         string objectName,
         string contentType,
@@ -27,10 +28,20 @@ public interface IStorageService
         string? originalFileName = null,
         string? uploadedBy = null,
         CancellationToken ct = default);
+
+    // Task UploadThumbnailAsync(
+    //     string objectName,
+    //     Stream fileStream,
+    //     long contentLength = -1,
+    //     CancellationToken ct = default);
+
+    Task UploadMediaData(Stream previewStream, Stream thumbnailStream, string objectName, Guid fileId,
+        MediaMetadata metadataDto,
+        CancellationToken ct = default);
     // File Download
     Task<Stream> DownloadFile(string? bucketName, string objectName, CancellationToken ct);
 
-    public Task StreamFile(
+    Task StreamFile(
         string fileId,
         Stream destination,
         CancellationToken ct);
@@ -60,5 +71,5 @@ public interface IStorageService
     Task<VersionInfo> GetVersionInfo(string bucketName, string objectName, CancellationToken ct);
     
     // File Data Management
-    public Task<FileSummary?> GetFileSummary(Guid fieldId, CancellationToken ct = default);
+    Task<FileSummary?> GetFileSummary(Guid fieldId, CancellationToken ct = default);
 }

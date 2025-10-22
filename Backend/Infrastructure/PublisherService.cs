@@ -8,7 +8,7 @@ public class PublisherService(IChannelPool channelPool) : IPublisherService
     public async Task Publish(byte[] body, string routingKey)
     {
         var channel = await channelPool.AcquireChannelAsync();
-        var exchangeName = "document-exchange";
+        var exchangeName = "content-exchange";
         await channel.ExchangeDeclareAsync(
             exchange: exchangeName,
             type: ExchangeType.Topic,
