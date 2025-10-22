@@ -2,12 +2,14 @@ using System.Numerics;
 using Common;
 using Common.Services;
 using DTO;
+using DTO.Extensions;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
 using Models;
 using Models.Enumerators;
 using File = Models.File;
+using MediaMetadata = DTO.MediaMetadata;
 using MinioConfig = Common.Config.MinioConfig;
 
 namespace Storage;
@@ -190,6 +192,132 @@ public class MinioStorageService(
         }
     }
 
+    /// <summary>
+    ///     Takes in the preview video and the thumbnail streams, uploads them to storage and registers a metadata entity into
+    ///     the database
+    /// </summary>
+    /// <param name="previewStream">The stream of the video preview</param>
+    /// <param name="thumbnailStream">The thumbnail stream</param>
+    /// <param name="metadataDto">The metadata DTO object returned from FFMPEG</param>
+    /// <param name="objectName">The original object's name into the database</param>
+    /// <param name="fileId">The original file's entity ID inside the database</param>
+    /// <param name="ct">Cancellation token</param>
+    public async Task UploadMediaData(Stream previewStream, Stream thumbnailStream, 
+        string objectName, Guid fileId, MediaMetadata metadataDto,
+        CancellationToken ct = default)
+    {
+        var bucketName = config.Value.PreviewBucket;
+        var filePath = $"{bucketName}/{objectName}";
+        var previewKey = $"previews/{objectName}";
+        var thumbnailKey = $"thumbnails/{fileId}.jpg";
+
+        await unitOfWork.BeginTransactionAsync(ct);
+        
+        try
+        {
+            var originalFileExists = await unitOfWork.Files.ExistsAsync(f => f.Id == fileId, ct);
+
+            if (!originalFileExists) throw new InvalidOperationException();
+            if (previewStream.CanSeek) previewStream.Position = 0;
+            if (thumbnailStream.CanSeek) thumbnailStream.Position = 0;
+            
+            await minio.PutObjectAsync(new PutObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(previewKey)
+                .WithStreamData(previewStream)
+                .WithObjectSize(previewStream.CanSeek ? previewStream.Length : -1)
+                .WithContentType(metadataDto.FormatName), ct);
+            
+            if (thumbnailStream.CanSeek) thumbnailStream.Position = 0;
+            
+            await minio.PutObjectAsync(new PutObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(thumbnailKey)
+                .WithStreamData(thumbnailStream)
+                .WithObjectSize(thumbnailStream.CanSeek ? thumbnailStream.Length : -1)
+                .WithContentType("image/jpeg"), ct);
+            
+            var existingMetadata = await unitOfWork.MediaMetadata.FirstOrDefaultAsync(f => f.FileId == fileId, ct);
+
+            if (existingMetadata != null)
+            {
+                // Update existing metadata
+                existingMetadata.Duration = metadataDto.Duration;
+                existingMetadata.BitrateMbps = metadataDto.BitrateMbps;
+                existingMetadata.FormatName = metadataDto.FormatName;
+                existingMetadata.ThumbnailPath = $"{bucketName}/{thumbnailKey}";
+                existingMetadata.VideoCodec = metadataDto.VideoCodec;
+                existingMetadata.AudioCodec = metadataDto.AudioCodec;
+                existingMetadata.Width = metadataDto.Width;
+                existingMetadata.Height = metadataDto.Height;
+                existingMetadata.HasAudio = metadataDto.HasAudio;
+                existingMetadata.Title = metadataDto.Title;
+                existingMetadata.Artist = metadataDto.Artist;
+                existingMetadata.Album = metadataDto.Album;
+                existingMetadata.Year = metadataDto.Year;
+                existingMetadata.Genre = metadataDto.Genre;
+                existingMetadata.UpdatedBy = "System";
+            
+                await unitOfWork.MediaMetadata.UpdateAsync(existingMetadata, ct);
+            }
+            else
+            {
+                var mediaMetadata = metadataDto.ToEntity(fileId, $"{bucketName}/{thumbnailKey}");
+                mediaMetadata.ThumbnailPath = thumbnailKey;
+                await unitOfWork.MediaMetadata.CreateAsync(mediaMetadata, ct);
+            }
+
+            var stat = await GetVersionInfo(objectName: previewKey, bucketName: bucketName, ct: ct);
+            
+            var existingPreview = await unitOfWork.Previews.FirstOrDefaultAsync(f => f.Path == filePath, ct);
+            
+            if (existingPreview != null)
+            {
+                existingPreview.Name =existingPreview.Name;
+                existingPreview.Size = new BigInteger(stat.Size);
+                existingPreview.UpdatedBy = "System";
+
+                await unitOfWork.Previews.UpdateAsync(existingPreview, ct);
+            }
+            else
+            {
+                var fileEntity = new Preview
+                {
+                    Id = Guid.NewGuid(),
+                    Name = previewKey,
+                    Path = filePath,
+                    MimeType = metadataDto.FormatName ?? "mp4",
+                    Size = new BigInteger(stat.Size),
+                    UpdatedBy = "System",
+                    FileId = fileId 
+                };
+
+                await unitOfWork.Previews.CreateAsync(fileEntity, ct);
+            }
+            await unitOfWork.CommitAsync(ct);
+        }
+        catch (Exception e)
+        {
+            await unitOfWork.RollbackAsync(ct);
+            // logger.LogError(e, "Failed to upload media data");
+            try
+            {
+                await minio.RemoveObjectAsync(new RemoveObjectArgs()
+                    .WithBucket(bucketName)
+                    .WithObject(previewKey), ct);
+                
+                await minio.RemoveObjectAsync(new RemoveObjectArgs()
+                    .WithBucket(bucketName)
+                    .WithObject(thumbnailKey), ct);
+            }
+            catch (Exception cleanupEx)
+            {
+                // logger.LogWarning(cleanupEx, "Failed to clean up failed uploads");
+            }
+            throw;
+        }
+    }
+    
     public FileCategory CategorizeFile(string mimeType)
     {
         if (string.IsNullOrWhiteSpace(mimeType))
@@ -414,7 +542,7 @@ public class MinioStorageService(
         stream.Position = 0;
         return stream;
     }
-
+    //TODO: This is probably introducing memory leaks as well and will need to be migrated to the direct stream pattern
     private async Task<Stream> DownloadFileNoCheckAsync(string? bucketName, string objectName, CancellationToken ct)
     {
         bucketName ??= config.Value.UploadBucket;
