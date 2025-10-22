@@ -11,6 +11,7 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
 {
     public DbSet<File> Files { get; set; }
     public DbSet<SignedUrl> SignedUrls { get; set; }
+    public DbSet<MediaMetadata> MediaMetadata { get; set; }
     public DbSet<Preview> Previews { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,5 +36,6 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
         modelBuilder.ApplyConfiguration(new FileConfiguration());
         modelBuilder.ApplyConfiguration(new SignedUrlConfiguration());
         modelBuilder.ApplyConfiguration(new PreviewConfiguration());
+        modelBuilder.ApplyConfiguration(new MediaMetadataConfiguration());
     }
 }
