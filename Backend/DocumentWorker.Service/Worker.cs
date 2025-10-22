@@ -20,7 +20,7 @@ public class Worker(
     
         _channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
-        var exchangeName = "document-exchange";
+        var exchangeName = "content-exchange";
         var routingKey = "document.#";
         var prefetchCount = configuration.GetValue<ushort>("RabbitMQ:Consumer:PrefetchCount", 10);
     
