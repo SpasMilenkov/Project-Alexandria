@@ -2,6 +2,7 @@ using Common;
 using Common.Services;
 using Data;
 using Microsoft.Extensions.DependencyInjection;
+using Models;
 using PreviewService;
 using Repositories;
 using Storage;
@@ -23,6 +24,7 @@ public static class ServiceExtensions
         
         services.AddScoped<IStorageService, MinioStorageService>();
         services.AddScoped<IFileRepository, FileRepository>();
+        services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
         services.AddScoped<IImagePreviewService, ImagePreviewService>();
         services.AddScoped<IPreviewService, PreviewService.PreviewService>();
