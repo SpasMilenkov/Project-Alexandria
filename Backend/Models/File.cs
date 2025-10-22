@@ -29,7 +29,6 @@ public class File : IBase
 
     public DateTime? DeletedAt { get; set; }
     public bool HasPreview { get; set; } = false;
-    // TODO: Drop that if it breaks normalization
     public DateTime? PreviewGeneratedAt { get; set; }
 
     [StringLength(ValidationConstants.StringLengths.UserId)]
