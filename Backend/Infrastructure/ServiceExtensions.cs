@@ -4,6 +4,8 @@ using Data;
 using Microsoft.Extensions.DependencyInjection;
 using Models;
 using PreviewService;
+using PreviewService.Archives;
+using PreviewService.Text;
 using Repositories;
 using Storage;
 
@@ -25,6 +27,8 @@ public static class ServiceExtensions
         services.AddScoped<IStorageService, MinioStorageService>();
         services.AddScoped<IFileRepository, FileRepository>();
         services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();
+        services.AddScoped<IArchivePreviewService, ArchivePreviewService>();
+        services.AddScoped<ITextPreviewService, TextPreviewService>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
         services.AddScoped<IImagePreviewService, ImagePreviewService>();
         services.AddScoped<IPreviewService, PreviewService.PreviewService>();

@@ -342,7 +342,7 @@ public class MinioStorageService(
 
             // ====== Documents (Word, OpenDoc, RTF, Plaintext) ======
             "application/msword" or "application/vnd.openxmlformats-officedocument.wordprocessingml.document" or
-                "application/vnd.oasis.opendocument.text" or "application/rtf" or "text/plain"
+                "application/vnd.oasis.opendocument.text" or "application/rtf" 
                 => FileCategory.Document,
 
             // ====== Spreadsheets ======
@@ -366,7 +366,7 @@ public class MinioStorageService(
                 => FileCategory.Archive,
 
             // ====== Text (Markdown, JSON, HTML, XML, etc.) ======
-            "text/markdown" or "application/json" or "application/xml" or "text/xml" or "text/html"
+            "text/markdown" or "application/json" or "application/xml" or "text/xml" or "text/html" or "text/plain"
                 => FileCategory.Text,
 
             // ====== Fallback ======
