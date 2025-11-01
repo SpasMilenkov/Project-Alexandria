@@ -206,7 +206,7 @@ public class MinioStorageService(
         string objectName, Guid fileId, MediaMetadata metadataDto,
         CancellationToken ct = default)
     {
-        var bucketName = config.Value.PreviewBucket;
+        var bucketName = config.Value.PreviewBucket ?? throw new InvalidOperationException();
         var filePath = $"{bucketName}/{objectName}";
         var previewKey = $"previews/{objectName}";
         var thumbnailKey = $"thumbnails/{fileId}.jpg";
@@ -273,7 +273,6 @@ public class MinioStorageService(
             
             if (existingPreview != null)
             {
-                existingPreview.Name =existingPreview.Name;
                 existingPreview.Size = new BigInteger(stat.Size);
                 existingPreview.UpdatedBy = "System";
 
