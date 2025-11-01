@@ -27,6 +27,7 @@ public static class ServiceExtensions
         services.AddScoped<IStorageService, MinioStorageService>();
         services.AddScoped<IFileRepository, FileRepository>();
         services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IArchivePreviewService, ArchivePreviewService>();
         services.AddScoped<ITextPreviewService, TextPreviewService>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();

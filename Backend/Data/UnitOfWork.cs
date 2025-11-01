@@ -7,11 +7,13 @@ namespace Data;
 public sealed class UnitOfWork(IFileRepository files,
     IPreviewRepository previews,
     IMediaMetadataRepository mediaData,
+    IRefreshTokenRepository refreshTokens,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
     public IPreviewRepository Previews { get; } = previews;
     public IMediaMetadataRepository MediaMetadata { get; } = mediaData;
+    public IRefreshTokenRepository RefreshTokens { get; } = refreshTokens;
     private IDbContextTransaction? _transaction;
     private bool _disposed;
 
