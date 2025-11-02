@@ -34,7 +34,7 @@ public class File : IBase
     [StringLength(ValidationConstants.StringLengths.UserId)]
     public string? UpdatedBy { get; set; }
 
-    // Navigation property for related SignedUrls
+    public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public virtual ICollection<SignedUrl> SignedUrls { get; set; } = new List<SignedUrl>();
     
     public Guid PreviewId { get; set; }
