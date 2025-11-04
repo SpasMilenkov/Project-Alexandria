@@ -7,6 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Reference Include="AWSSDK.S3">
+        <HintPath>..\..\..\..\.nuget\packages\awssdk.s3\4.0.9.1\lib\net8.0\AWSSDK.S3.dll</HintPath>
+      </Reference>
       <Reference Include="Minio">
         <HintPath>..\..\..\..\.nuget\packages\minio\6.0.5\lib\net8.0\Minio.dll</HintPath>
       </Reference>
@@ -14,6 +17,10 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Common\Common.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="AWSSDK.S3" Version="4.0.9.1" />
     </ItemGroup>
 
 </Project>
