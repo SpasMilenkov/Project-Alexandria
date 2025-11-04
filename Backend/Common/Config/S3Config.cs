@@ -1,6 +1,6 @@
 namespace Common.Config;
 
-public class MinioConfig
+public class S3Config
 {
     public string? Endpoint { get; set; }
     public string? SecretKey { get; set; }

@@ -24,8 +24,9 @@ public static class ServiceExtensions
         });
 
         
-        services.AddScoped<IStorageService, MinioStorageService>();
+        services.AddScoped<IStorageService, S3StorageService>();
         services.AddScoped<IFileRepository, FileRepository>();
+        services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IArchivePreviewService, ArchivePreviewService>();
@@ -33,6 +34,7 @@ public static class ServiceExtensions
         services.AddScoped<IPreviewRepository, PreviewRepository>();
         services.AddScoped<IImagePreviewService, ImagePreviewService>();
         services.AddScoped<IPreviewService, PreviewService.PreviewService>();
+        services.AddScoped<IFileTagService, FileTagService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }
