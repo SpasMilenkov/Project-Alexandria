@@ -20,7 +20,9 @@ public static class PreviewExtensions
         });
 
         
-        services.AddScoped<IStorageService, MinioStorageService>();
+        services.AddScoped<IStorageService, S3StorageService>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();
         services.AddScoped<IMediaPreviewService, MediaPreviewService>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
