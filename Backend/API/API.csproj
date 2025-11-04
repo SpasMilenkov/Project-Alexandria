@@ -30,8 +30,4 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Features\Storage\Preview\GetDocumentPagesById\" />
-  </ItemGroup>
-
 </Project>

@@ -9,8 +9,8 @@ public class UpdateFileMetadataEndpoint(
 {
     public override void Configure()
     {
-        Put("/file/{id}/metadata");
-        AllowAnonymous(); // You might want to add proper authorization here
+        Put("/files/{id}/metadata");
+        AllowAnonymous();
 
         Summary(s =>
         {

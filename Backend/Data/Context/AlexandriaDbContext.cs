@@ -14,6 +14,7 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
     public DbSet<MediaMetadata> MediaMetadata { get; set; }
     public DbSet<Preview> Previews { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<Tag> Tags { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -40,5 +41,6 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
         modelBuilder.ApplyConfiguration(new MediaMetadataConfiguration());
         modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());
+        modelBuilder.ApplyConfiguration(new TagConfiguration());
     }
 }

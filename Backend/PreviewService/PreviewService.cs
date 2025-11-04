@@ -13,7 +13,7 @@ namespace PreviewService;
 public class PreviewService(
     IStorageService storageService,
     IImagePreviewService imagePreviewService,
-    IOptions<MinioConfig> storageConfig,
+    IOptions<S3Config> storageConfig,
     IMemoryCache memoryCache,
     IPublisherService publisherService,
     ITextPreviewService textPreviewService,

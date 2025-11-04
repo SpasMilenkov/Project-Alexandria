@@ -7,13 +7,13 @@ namespace API.Features.Storage.DownloadFileById;
 
 public class DownloadFileByIdEndpoint(
     IStorageService storageService,
-    IOptions<MinioConfig> options
+    IOptions<S3Config> options
 ) : Endpoint<DownloadFileByIdRequest>
 {
     public override void Configure()
     {
         AllowAnonymous();
-        Get("/file/{id}");
+        Get("/files/{id}");
 
         Summary(s =>
         {
@@ -27,39 +27,23 @@ public class DownloadFileByIdEndpoint(
 
     public override async Task HandleAsync(DownloadFileByIdRequest req, CancellationToken ct)
     {
-        try
-        {
-            var bucket = options.Value.UploadBucket;
-            if (bucket is null) ThrowError("Invalid bucket configuration");
-
-            // Get file metadata from database
-            var fileMetadata = await storageService.GetFileMetadata(req.Id, ct);
-
-            if (fileMetadata == null)
-            {
-                await Send.NotFoundAsync(ct);
-                return;
-            }
-
-            // Extract object name from file path
-            var objectName = fileMetadata.Path.Replace($"{bucket}/", "");
-
-            // Set response headers with database metadata
-            HttpContext.Response.ContentType = fileMetadata.MimeType;
-            HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileMetadata.Name}\"";
-            HttpContext.Response.Headers.ContentLength = (long)fileMetadata.Size;
-
-            // Stream file from storage
-            await using var fileStream = await storageService.DownloadFile(bucket, objectName, ct);
-            await fileStream.CopyToAsync(HttpContext.Response.Body, ct);
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
+        var fileMetadata = await storageService.GetFileMetadata(req.Id, ct);
+    
+        if (fileMetadata == null)
         {
             await Send.NotFoundAsync(ct);
+            return;
         }
-        catch (Exception ex)
-        {
-            ThrowError($"Download failed: {ex.Message}");
-        }
+
+        var bucket = options.Value.UploadBucket;
+        var objectName = fileMetadata.Path.Replace($"{bucket}/", "");
+
+        HttpContext.Response.ContentType = fileMetadata.MimeType;
+        HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileMetadata.Name}\"";
+        HttpContext.Response.ContentLength = (long)fileMetadata.Size;
+
+        // This now uses TRUE streaming - ~80KB memory usage instead of 2GB
+        await using var fileStream = await storageService.DownloadFile(bucket, objectName, ct);
+        await fileStream.CopyToAsync(HttpContext.Response.Body, ct);
     }
 }

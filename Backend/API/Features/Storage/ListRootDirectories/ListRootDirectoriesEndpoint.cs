@@ -7,7 +7,7 @@ namespace API.Features.Storage.ListRootDirectories;
 
 public class ListRootDirectoriesEndpoint(
     IStorageService storageService,
-    IOptions<MinioConfig> options)
+    IOptions<S3Config> options)
     : EndpointWithoutRequest<ListRootDirectoriesResponse>
 {
     public override void Configure()

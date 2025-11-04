@@ -38,6 +38,18 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             .HasForeignKey<Preview>(p => p.FileId)
             .OnDelete(DeleteBehavior.Cascade);
         
+        builder.HasMany(f => f.Tags)
+            .WithMany(t => t.Files)
+            .UsingEntity<Dictionary<string, object>>(
+                "FileTags", // Join table name
+                j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId"),
+                j => j.HasOne<File>().WithMany().HasForeignKey("FileId"),
+                j =>
+                {
+                    j.HasKey("FileId", "TagId");
+                    j.ToTable("FileTags");
+                });
+        
         // BigInteger for file size - using numeric for PostgreSQL
         builder.Property(e => e.Size)
             .HasColumnType("numeric(20,0)")
