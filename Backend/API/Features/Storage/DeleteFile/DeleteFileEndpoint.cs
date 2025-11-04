@@ -8,9 +8,9 @@ namespace API.Features.Storage.DeleteFile;
 public class DeleteFileEndpoint : Endpoint<DeleteFileRequest>
 {
     private readonly IStorageService _storage;
-    private readonly IOptions<MinioConfig> _options;
+    private readonly IOptions<S3Config> _options;
 
-    public DeleteFileEndpoint(IStorageService storage, IOptions<MinioConfig> options)
+    public DeleteFileEndpoint(IStorageService storage, IOptions<S3Config> options)
     {
         _storage = storage;
         _options = options;

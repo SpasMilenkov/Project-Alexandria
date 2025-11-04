@@ -1,14 +1,14 @@
+using Common.Config;
 using FastEndpoints;
 using Microsoft.Extensions.Options;
 using Minio;
 using Minio.DataModel.Args;
-using MinioConfig = Common.Config.MinioConfig;
 
 namespace API.Features.Storage.GenerateSignedUrlEndpoint;
 
 public class GenerateSignedUrlEndpoint(
     IMinioClient minio,
-    IOptions<MinioConfig> options
+    IOptions<S3Config> options
 ) : Endpoint<GenerateSignedUrlRequest, GenerateSignedUrlResponse>
 {
     public override void Configure()

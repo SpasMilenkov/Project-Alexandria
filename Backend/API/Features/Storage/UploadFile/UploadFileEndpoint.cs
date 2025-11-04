@@ -1,11 +1,12 @@
+using Common.Config;
 using Common.Services;
 using FastEndpoints;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Options;
-using MinioConfig = Common.Config.MinioConfig;
 
 namespace API.Features.Storage.UploadFile;
 
-public class UploadFileEndpoint(IOptions<MinioConfig> options, IStorageService storage)
+public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService storage)
     : EndpointWithoutRequest
 {
     public override void Configure()
@@ -95,7 +96,14 @@ public class UploadFileEndpoint(IOptions<MinioConfig> options, IStorageService s
             ThrowError("File name is required.");
             return;
         }
-
+        
+        // if (contentType == "application/octet-stream")
+        // {
+        //     var provider = new FileExtensionContentTypeProvider();
+        //     if (provider.TryGetContentType(fileName, out var inferred))
+        //         contentType = inferred;
+        // }
+        
         // Construct object name
         var objectName = string.IsNullOrWhiteSpace(path)
             ? fileName

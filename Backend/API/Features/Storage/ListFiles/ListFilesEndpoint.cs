@@ -7,7 +7,7 @@ namespace API.Features.Storage.ListFiles;
 
 public class ListFilesEndpoint(
     IStorageService storageService,
-    IOptions<MinioConfig> options
+    IOptions<S3Config> options
 ) : Endpoint<ListFilesRequest, ListFilesResponse>
 {
     public override void Configure()
