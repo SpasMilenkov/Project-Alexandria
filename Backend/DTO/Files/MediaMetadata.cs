@@ -1,4 +1,4 @@
-namespace DTO;
+namespace DTO.Files;
 
 /// <summary>
 /// Metadata extracted from media files

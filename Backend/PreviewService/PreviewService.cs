@@ -3,6 +3,7 @@ using Common;
 using Common.Config;
 using Common.Services;
 using DTO;
+using DTO.Files;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Models.Enumerators;

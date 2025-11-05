@@ -1,4 +1,4 @@
-namespace DTO;
+namespace DTO.Files;
 
 public class PaginatedResult<T>
 {

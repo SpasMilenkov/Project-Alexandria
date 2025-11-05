@@ -1,6 +1,6 @@
 using Models.Enumerators;
 
-namespace DTO;
+namespace DTO.Tags;
 
 public class FileTagSearchQuery
 {

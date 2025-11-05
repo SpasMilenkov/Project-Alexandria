@@ -1,3 +1,5 @@
+using Common.Repositories;
+
 namespace Common;
 
 public interface IUnitOfWork

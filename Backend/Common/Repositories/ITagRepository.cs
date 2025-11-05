@@ -1,8 +1,8 @@
-using System.Linq.Expressions;
 using DTO;
+using DTO.Tags;
 using Models;
 
-namespace Common;
+namespace Common.Repositories;
 
 public interface ITagRepository : IRepository<Tag>
 {

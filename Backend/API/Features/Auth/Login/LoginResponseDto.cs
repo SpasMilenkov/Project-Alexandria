@@ -1,4 +1,5 @@
 using DTO;
+using DTO.Files;
 
 namespace API.Features.Auth.Login;
 

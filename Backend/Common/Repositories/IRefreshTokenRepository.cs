@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using Models;
 
-namespace Common;
+namespace Common.Repositories;
 
 public interface IRefreshTokenRepository
 {

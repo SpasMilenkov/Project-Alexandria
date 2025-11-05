@@ -1,5 +1,7 @@
 using Common;
-using DTO;
+using Common.Services;
+using DTO.Files;
+using DTO.Tags;
 using Microsoft.Extensions.Logging;
 using Models;
 using File = Models.File;

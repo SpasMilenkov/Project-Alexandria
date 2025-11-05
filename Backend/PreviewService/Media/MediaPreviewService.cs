@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using DTO;
+using DTO.Files;
 using Microsoft.Extensions.Logging;
 using Models.Enumerators;
 using PreviewService.Media.Dto;

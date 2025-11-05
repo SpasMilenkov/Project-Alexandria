@@ -1,4 +1,4 @@
-namespace DTO;
+namespace DTO.Tags;
 
 public class TagSearchQuery
 {

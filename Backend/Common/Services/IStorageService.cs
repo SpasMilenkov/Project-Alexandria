@@ -1,7 +1,8 @@
 using DTO;
+using DTO.Files;
 using Models.Enumerators;
 using File = Models.File;
-using MediaMetadata = DTO.MediaMetadata;
+using MediaMetadata = DTO.Files.MediaMetadata;
 
 namespace Common.Services;
 

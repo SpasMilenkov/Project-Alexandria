@@ -1,5 +1,7 @@
 using Common;
+using Common.Services;
 using DTO;
+using DTO.Files;
 using FastEndpoints;
 namespace API.Features.Auth.Login;
 

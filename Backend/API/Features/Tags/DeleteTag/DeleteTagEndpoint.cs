@@ -1,4 +1,5 @@
 using Common;
+using Common.Services;
 using FastEndpoints;
 
 namespace API.Features.Tags.DeleteTag;

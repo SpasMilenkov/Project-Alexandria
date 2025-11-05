@@ -1,5 +1,6 @@
 using Common;
 using DTO;
+using DTO.Tags;
 
 namespace API.Features.Tags.GetAllTags;
 

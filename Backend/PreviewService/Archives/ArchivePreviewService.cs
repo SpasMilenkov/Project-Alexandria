@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Common.Services;
 using SharpCompress.Archives;
 
 namespace PreviewService.Archives;

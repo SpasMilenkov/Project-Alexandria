@@ -1,8 +1,10 @@
 using DTO;
+using DTO.Files;
+using DTO.Tags;
 using Models;
 using File = Models.File;
 
-namespace Common;
+namespace Common.Services;
 
 /// <summary>
 /// Service for managing file tags and their associations with files.

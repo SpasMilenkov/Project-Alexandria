@@ -8,12 +8,13 @@ using Common.Config;
 using Common.Services;
 using DTO;
 using DTO.Extensions;
+using DTO.Files;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Models;
 using Models.Enumerators;
 using File = Models.File;
-using MediaMetadata = DTO.MediaMetadata;
+using MediaMetadata = DTO.Files.MediaMetadata;
 
 namespace Storage;
 

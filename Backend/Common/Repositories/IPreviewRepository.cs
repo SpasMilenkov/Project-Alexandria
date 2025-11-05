@@ -1,6 +1,6 @@
 using Models;
 
-namespace Common;
+namespace Common.Repositories;
 
 public interface IPreviewRepository : IRepository<Preview>
 {

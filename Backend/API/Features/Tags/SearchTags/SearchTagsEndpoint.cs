@@ -1,6 +1,8 @@
 using API.Features.Tags.GetAllTags;
 using Common;
+using Common.Services;
 using DTO;
+using DTO.Tags;
 using FastEndpoints;
 
 namespace API.Features.Tags.SearchTags;

@@ -1,4 +1,5 @@
 using Common;
+using Common.Services;
 using Infrastructure;
 
 namespace API.Features.Auth.Extensions;

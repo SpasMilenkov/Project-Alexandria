@@ -1,4 +1,4 @@
-namespace PreviewService.Archives;
+namespace Common.Services;
 
 public interface IArchivePreviewService
 {

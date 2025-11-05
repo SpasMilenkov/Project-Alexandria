@@ -1,4 +1,4 @@
-namespace Common;
+namespace Common.Services;
 
 public interface IPublisherService
 {

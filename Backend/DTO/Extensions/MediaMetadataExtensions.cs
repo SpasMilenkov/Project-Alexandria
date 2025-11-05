@@ -1,3 +1,5 @@
+using DTO.Files;
+
 namespace DTO.Extensions;
 
 public static class MediaMetadataExtensions 

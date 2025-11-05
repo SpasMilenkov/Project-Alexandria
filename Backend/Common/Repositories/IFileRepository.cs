@@ -1,7 +1,9 @@
 using DTO;
+using DTO.Files;
+using DTO.Tags;
 using File = Models.File;
 
-namespace Common;
+namespace Common.Repositories;
 
 public interface IFileRepository : IRepository<File>
 {

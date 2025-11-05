@@ -1,7 +1,7 @@
 using DTO;
 using Models;
 
-namespace Common;
+namespace Common.Services;
 
 public interface IAuthService
 {
