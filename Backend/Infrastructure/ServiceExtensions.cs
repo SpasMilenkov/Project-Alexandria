@@ -9,6 +9,7 @@ using PreviewService.Archives;
 using PreviewService.Text;
 using Repositories;
 using Storage;
+using Storage.Directories;
 
 namespace Infrastructure;
 
@@ -39,6 +40,8 @@ public static class ServiceExtensions
         services.AddScoped<IDirectoryRepository, DirectoryRepository>();
         services.AddScoped<IDirectoryService, DirectoryService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.AddResourceMonitoring();
         return services;
     }
 }
