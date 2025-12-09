@@ -34,9 +34,13 @@ public class File : IBase
     [StringLength(ValidationConstants.StringLengths.UserId)]
     public string? UpdatedBy { get; set; }
 
-    public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();
-    public virtual ICollection<SignedUrl> SignedUrls { get; set; } = new List<SignedUrl>();
+    public ICollection<Tag> Tags { get; set; } = new List<Tag>();
+    public ICollection<SignedUrl> SignedUrls { get; set; } = new List<SignedUrl>();
     
     public Guid PreviewId { get; set; }
     public Preview? Preview { get; set; }
+    public ApplicationUser? Owner { get; set; }
+    public Guid OwnerId { get; set; }
+    public Directory? Directory { get; set; }
+    public Guid? DirectoryId { get; set; }
 }
