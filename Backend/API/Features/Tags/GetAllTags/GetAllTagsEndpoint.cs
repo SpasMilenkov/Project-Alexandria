@@ -11,7 +11,6 @@ public class GetTagsEndpoint(IFileTagService tagService) : Endpoint<GetTagsReque
     public override void Configure()
     {
         Get("/tags");
-        AllowAnonymous(); // TODO: Replace with proper authorization
         
         Summary(s =>
         {
@@ -34,7 +33,7 @@ public class GetTagsEndpoint(IFileTagService tagService) : Endpoint<GetTagsReque
                 {
                     Id = t.Id,
                     Name = t.Name,
-                    UserId = t.UserId,
+                    UserId = t.OwnerId,
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt
                 }).ToList(),

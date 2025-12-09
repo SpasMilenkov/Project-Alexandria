@@ -7,16 +7,11 @@ using FastEndpoints;
 
 namespace API.Features.Tags.GetTagsForFile;
 
-
-
-
-
 public class GetTagsForFileEndpoint(IFileTagService tagService) : Endpoint<GetTagsForFileRequest, GetTagsForFileResponse>
 {
     public override void Configure()
     {
         Get("/files/{FileId}/tags");
-        AllowAnonymous(); // TODO: Replace with proper authorization
         
         Summary(s =>
         {
@@ -40,7 +35,7 @@ public class GetTagsForFileEndpoint(IFileTagService tagService) : Endpoint<GetTa
                 {
                     Id = t.Id,
                     Name = t.Name,
-                    UserId = t.UserId,
+                    UserId = t.OwnerId,
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt
                 }).ToList()

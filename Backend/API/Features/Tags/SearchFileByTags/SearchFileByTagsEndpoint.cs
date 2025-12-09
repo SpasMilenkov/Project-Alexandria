@@ -12,7 +12,6 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService) : Endpoint<Se
     public override void Configure()
     {
         Post("/files/search/tags");
-        AllowAnonymous(); // TODO: Replace with proper authorization
         
         Summary(s =>
         {
@@ -72,7 +71,7 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService) : Endpoint<Se
                     {
                         Id = t.Id,
                         Name = t.Name,
-                        UserId = t.UserId,
+                        UserId = t.OwnerId,
                         CreatedAt = t.CreatedAt,
                         UpdatedAt = t.UpdatedAt
                     }).ToList()
