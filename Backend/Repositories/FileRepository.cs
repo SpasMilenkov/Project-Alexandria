@@ -1,7 +1,10 @@
 using System.Linq.Expressions;
 using Common;
+using Common.Repositories;
 using Data.Context;
 using DTO;
+using DTO.Files;
+using DTO.Tags;
 using Microsoft.EntityFrameworkCore;
 using Models.Enumerators;
 using File = Models.File;
@@ -49,7 +52,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         if (query.UserId.HasValue)
         {
             filesQuery = filesQuery.Where(f => 
-                f.Tags.Any(t => t.UserId == query.UserId.Value && t.DeletedAt == null));
+                f.Tags.Any(t => t.OwnerId == query.UserId.Value && t.DeletedAt == null));
         }
 
         // Apply file size filters
@@ -189,7 +192,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         }
 
         _files.UpdateRange(entities);
-        // Note: SaveChanges should be called by the Unit of Work or service layer
     }
 
     public async Task<int> CountAsync(Expression<Func<File, bool>>? predicate = null, CancellationToken ct = default)
@@ -252,7 +254,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     {
         return await _files
             .Where(f => f.Id == fileId)
-            .Select(f => new FileSummary(f.Name, f.MimeType, f.HasPreview, f.Path))
+            .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview, f.Path))
             .FirstOrDefaultAsync(ct);
     }
 }

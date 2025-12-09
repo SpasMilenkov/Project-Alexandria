@@ -1,3 +1,6 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using API.Features.Auth.Extensions;
 using API.Middlewares;
 using FastEndpoints;
@@ -15,19 +18,42 @@ bld.Services
     .AddServices()
     .AddAuthServices();
 
+// Standard .NET JWT Authentication
+bld.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = bld.Configuration["Jwt:Issuer"],
+            ValidAudience = bld.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(bld.Configuration["Jwt:Secret"]!))
+        };
+    });
+
+bld.Services.AddAuthorization();
+
 bld.WebHost.ConfigureKestrelMaxRequestSize();
 
 var app = bld.Build();
+
 app.UseCors("AllowOrigin");
 
-// Middlewares
 app.UseMiddleware<JwtFromCookieMiddleware>();
-app.UseMiddleware<CsrfMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+// app.UseMiddleware<CsrfMiddleware>();
+
 app.UseFastEndpoints().UseSwaggerGen();
 app.MapHealthChecks("/health");
 
 await app.SetupMinioBucketAsync();
-
 app.Run();

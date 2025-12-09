@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Common;
+using Common.Services;
 using FastEndpoints;
 
 namespace API.Features.Tags.AddTagsToFile;
@@ -11,8 +13,6 @@ public class AddTagsToFileEndpoint(IFileTagService tagService) : Endpoint<AddTag
     public override void Configure()
     {
         Post("/files/{FileId}/tags");
-        AllowAnonymous(); // TODO: Replace with proper authorization
-        
         Summary(s =>
         {
             s.Summary = "Add tags to a file";
@@ -30,8 +30,11 @@ public class AddTagsToFileEndpoint(IFileTagService tagService) : Endpoint<AddTag
 
     public override async Task HandleAsync(AddTagsToFileRequest req, CancellationToken ct)
     {
-        // TODO: Extract from JWT token
-        var userId = Guid.Parse("019a3f05-659b-7628-9102-1eef78035977"); // Placeholder
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                           ?? User.FindFirst("sub")?.Value
+                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+    
+        var userId = Guid.Parse(userIdString);
 
         try
         {

@@ -1,3 +1,5 @@
+using Common.Repositories;
+
 namespace Common;
 
 public interface IUnitOfWork
@@ -7,6 +9,7 @@ public interface IUnitOfWork
     IMediaMetadataRepository MediaMetadata { get; }
     IRefreshTokenRepository RefreshTokens { get;  }
     ITagRepository Tags { get; }
+    IDirectoryRepository Directories { get; }
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);
     public Task RollbackAsync(CancellationToken cancellationToken = default);

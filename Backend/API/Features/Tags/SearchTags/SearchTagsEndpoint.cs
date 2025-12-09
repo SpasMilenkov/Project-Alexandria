@@ -1,6 +1,8 @@
 using API.Features.Tags.GetAllTags;
 using Common;
+using Common.Services;
 using DTO;
+using DTO.Tags;
 using FastEndpoints;
 
 namespace API.Features.Tags.SearchTags;
@@ -13,7 +15,6 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
     public override void Configure()
     {
         Post("/tags/search");
-        AllowAnonymous(); // TODO: Replace with proper authorization
         
         Summary(s =>
         {
@@ -58,7 +59,7 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
                 {
                     Id = t.Id,
                     Name = t.Name,
-                    UserId = t.UserId,
+                    UserId = t.OwnerId,
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt
                 }).ToList(),

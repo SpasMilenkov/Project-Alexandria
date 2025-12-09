@@ -16,7 +16,7 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
             .IsRequired();
         
-        builder.Property(e => e.UserId)
+        builder.Property(e => e.OwnerId)
             .IsRequired();
         
         builder.Property(e => e.UpdatedBy)
@@ -38,9 +38,9 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
             .IsRequired(false);
         
         // Relations
-        builder.HasOne(t => t.User)
+        builder.HasOne(t => t.Owner)
             .WithMany()
-            .HasForeignKey(t => t.UserId)
+            .HasForeignKey(t => t.OwnerId)
             .OnDelete(DeleteBehavior.Cascade);
         
         // Many-to-many relationship with Files
@@ -57,10 +57,10 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
                 });
         
         // Indexes for performance
-        builder.HasIndex(e => e.UserId);
-        builder.HasIndex(e => e.Name);
+        builder.HasIndex(e => e.OwnerId);
+        builder.HasIndex(e => e.Name);  
         builder.HasIndex(e => e.CreatedAt);
-        builder.HasIndex(e => new { e.UserId, e.Name })
+        builder.HasIndex(e => new { e.OwnerId, e.Name })
             .IsUnique();
         
         // Table name

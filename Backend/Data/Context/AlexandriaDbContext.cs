@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using File = Models.File;
-
+using Directory = Models.Directory;
 namespace Data.Context;
 
 public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
@@ -15,6 +15,7 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
     public DbSet<Preview> Previews { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<Tag> Tags { get; set; }
+    public DbSet<Directory> Directories { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -42,5 +43,6 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
         modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new TagConfiguration());
+        modelBuilder.ApplyConfiguration(new DirectoryConfiguration());
     }
 }

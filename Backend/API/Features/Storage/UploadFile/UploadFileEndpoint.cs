@@ -47,10 +47,13 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
 
         // Ensure bucket exists and versioning is enabled
         if (bucketName is null) ThrowError("Invalid bucket configuration");
+        #if !DEBUG
         await storage.EnsureBucketExistsAsync(bucketName, ct);
+        #endif
 
         string? fileName = null;
         string? path = null;
+        Guid? directoryId = null;
         string contentType = "application/octet-stream";
         Stream? fileStream = null;
 
@@ -69,6 +72,9 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
                         break;
                     case "path":
                         path = fieldValue;
+                        break;
+                    case "directoryId":
+                        directoryId = Guid.Parse(fieldValue);
                         break;
                 }
             }
@@ -97,13 +103,6 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
             return;
         }
         
-        // if (contentType == "application/octet-stream")
-        // {
-        //     var provider = new FileExtensionContentTypeProvider();
-        //     if (provider.TryGetContentType(fileName, out var inferred))
-        //         contentType = inferred;
-        // }
-        
         // Construct object name
         var objectName = string.IsNullOrWhiteSpace(path)
             ? fileName
@@ -113,7 +112,7 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
         {
             // Upload to MinIO using the checksum stream
             var uploadResult = await storage.UploadFile(bucketName: bucketName, objectName, contentType, fileStream, ct,
-                -1, fileName, user);
+                -1, directoryId , fileName, user);
 
             // Get the calculated checksum
 

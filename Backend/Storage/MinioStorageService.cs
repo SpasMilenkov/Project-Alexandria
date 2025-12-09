@@ -8,12 +8,13 @@ using Common.Config;
 using Common.Services;
 using DTO;
 using DTO.Extensions;
+using DTO.Files;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Models;
 using Models.Enumerators;
 using File = Models.File;
-using MediaMetadata = DTO.MediaMetadata;
+using MediaMetadata = DTO.Files.MediaMetadata;
 
 namespace Storage;
 
@@ -21,6 +22,7 @@ public class S3StorageService(
     IAmazonS3 s3,
     IUnitOfWork unitOfWork,
     IOptions<S3Config> config,
+    IDirectoryService dirService,
     ILogger<S3StorageService> logger)
     : IStorageService
 {
@@ -29,8 +31,9 @@ public class S3StorageService(
         string objectName,
         string contentType,
         Stream fileStream,
-        CancellationToken ct,
-        long contentLength,
+        CancellationToken ct = default,
+        long contentLength = -1,
+        Guid? directoryId = null,
         string? originalFileName = null,
         string? uploadedBy = null)
     {
@@ -42,6 +45,12 @@ public class S3StorageService(
 
         try
         {
+            if (directoryId is not null)
+            {
+                var exists = await dirService.DirectoryExistsAsync((Guid)directoryId, ct);
+                if(!exists) throw new DirectoryNotFoundException();
+            }
+            
             var filePath = $"{bucketName}/{objectName}";
 
             await using var checksumStream = new ChecksumCalculatingStream(fileStream);
@@ -76,7 +85,8 @@ public class S3StorageService(
                 existingFile.Name = originalFileName ?? existingFile.Name;
                 existingFile.Size = new BigInteger(stat.Size);
                 existingFile.UpdatedBy = uploadedBy;
-
+                existingFile.DirectoryId = directoryId;
+                
                 savedFile = await unitOfWork.Files.UpdateAsync(existingFile, ct);
             }
             else
@@ -89,6 +99,7 @@ public class S3StorageService(
                 {
                     Id = Guid.NewGuid(),
                     Name = originalFileName ?? objectName,
+                    DirectoryId = directoryId,
                     Path = filePath,
                     MimeType = contentType,
                     Size = new BigInteger(stat.Size),
@@ -548,7 +559,7 @@ public class S3StorageService(
                 case FileCategory.Image:
                     return new FileResultSummary(
                         await DownloadFileNoCheckAsync(config.Value.PreviewBucket ?? "user-previews",
-                            "previews/" + fileData.Name, ct), new FileSummary(fileData.Name, fileData.MimeType, true,
+                            "previews/" + fileData.Name, ct), new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true,
                             fileData.Preview.Path));
                 case FileCategory.Document:
                 case FileCategory.Spreadsheet:
@@ -557,7 +568,7 @@ public class S3StorageService(
                     return new FileResultSummary(
                         await DownloadFileNoCheckAsync(config.Value.PreviewBucket ?? "user-previews",
                             "previews/" + fileData.Name + ".pdf", ct),
-                        new FileSummary(fileData.Name, fileData.Preview.MimeType, true,
+                        new FileSummary(fileData.Id, fileData.Name, fileData.Preview.MimeType, true,
                             fileData.Preview.Path));
                 case FileCategory.Text:
                     break;
@@ -568,7 +579,7 @@ public class S3StorageService(
                 default:
                     return new FileResultSummary(
                         await DownloadFileNoCheckAsync(config.Value.PreviewBucket ?? "user-previews",
-                            "previews/" + fileData.Name, ct), new FileSummary(fileData.Name, fileData.MimeType, true,
+                            "previews/" + fileData.Name, ct), new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true,
                             fileData.Preview.Path));
             }
 

@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Common;
+using Common.Services;
 using FastEndpoints;
 
 namespace API.Features.Tags.DeleteTag;
@@ -9,7 +11,6 @@ public class DeleteTagEndpoint(IFileTagService tagService) : Endpoint<DeleteTagR
     public override void Configure()
     {
         Delete("/tags/{TagId}");
-        AllowAnonymous(); // TODO: Replace with proper authorization
         
         Summary(s =>
         {
@@ -23,8 +24,11 @@ public class DeleteTagEndpoint(IFileTagService tagService) : Endpoint<DeleteTagR
 
     public override async Task HandleAsync(DeleteTagRequest req, CancellationToken ct)
     {
-        // TODO: Extract from JWT token
-        var userId = Guid.Parse("019a3f05-659b-7628-9102-1eef78035977"); // Placeholder
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                           ?? User.FindFirst("sub")?.Value
+                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+    
+        var userId = Guid.Parse(userIdString);
 
         try
         {

@@ -3,6 +3,7 @@ using Common;
 using Common.Config;
 using Common.Services;
 using DTO;
+using DTO.Files;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Models.Enumerators;
@@ -137,7 +138,7 @@ public class PreviewService(
                          
                          await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: "system", ct: ct);
 
-                         var archivePreviewSummary = new FileSummary(fileData.Name + ".json", "application/json", true, archivePreviewUpload.Url);
+                         var archivePreviewSummary = new FileSummary(fileData.Id, fileData.Name + ".json", "application/json", true, archivePreviewUpload.Url);
 
                          var archiveCacheOptions = new MemoryCacheEntryOptions
                          {
@@ -167,7 +168,7 @@ public class PreviewService(
                          
                          await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: "system", ct: ct);
 
-                         var textPreviewSummary = new FileSummary(fileData.Name, "application/json", true, textPreviewUpload.Url);
+                         var textPreviewSummary = new FileSummary(fileData.Id, fileData.Name, "application/json", true, textPreviewUpload.Url);
 
                              var textCacheOptions = new MemoryCacheEntryOptions
                              {
@@ -181,7 +182,7 @@ public class PreviewService(
                              tcs.SetResult(textResultTuple);
 
                              return new FileResultSummary(new MemoryStream(textPreview.data),
-                                 new FileSummary(fileData.Name, textPreview.mimeType, true, textPreviewUpload.Url));
+                                 new FileSummary(fileData.Id, fileData.Name, textPreview.mimeType, true, textPreviewUpload.Url));
 
                      case FileCategory.Audio:
                      case FileCategory.Video:
@@ -256,7 +257,7 @@ public class PreviewService(
                     SlidingExpiration = TimeSpan.FromMinutes(20)
                 };
 
-                var metadataSummary = new FileSummary(fileData.Name, fileData.MimeType, fileData.HasPreview, "");
+                var metadataSummary = new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, fileData.HasPreview, "");
 
                 var resultTuple = (previewData, metadataSummary);
                 memoryCache.Set(cacheKey, resultTuple, cacheOptions);

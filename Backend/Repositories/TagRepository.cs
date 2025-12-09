@@ -1,7 +1,9 @@
 using System.Linq.Expressions;
 using Common;
+using Common.Repositories;
 using Data.Context;
 using DTO;
+using DTO.Tags;
 using Microsoft.EntityFrameworkCore;
 using Models;
 
@@ -100,19 +102,19 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
     // Additional methods specific to Tags
     public async Task<IEnumerable<Tag>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        return await _tags.Where(t => t.UserId == userId).ToListAsync(ct);
+        return await _tags.Where(t => t.OwnerId == userId).ToListAsync(ct);
     }
     
     public async Task<Tag?> GetByNameAndUserIdAsync(string name, Guid userId, CancellationToken ct = default)
     {
-        return await _tags.FirstOrDefaultAsync(t => t.Name == name && t.UserId == userId, ct);
+        return await _tags.FirstOrDefaultAsync(t => t.Name == name && t.OwnerId == userId, ct);
     }
     
     public async Task<IEnumerable<Tag>> GetTagsWithFilesAsync(Guid userId, CancellationToken ct = default)
     {
         return await _tags
             .Include(t => t.Files)
-            .Where(t => t.UserId == userId)
+            .Where(t => t.OwnerId == userId)
             .ToListAsync(ct);
     }
     
@@ -131,13 +133,13 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
         // Apply user ID filter
         if (query.UserId.HasValue)
         {
-            tagsQuery = tagsQuery.Where(t => t.UserId == query.UserId.Value);
+            tagsQuery = tagsQuery.Where(t => t.OwnerId == query.UserId.Value);
         }
 
         // Apply created by filter
         if (query.CreatedBy.HasValue)
         {
-            tagsQuery = tagsQuery.Where(t => t.UserId == query.CreatedBy.Value);
+            tagsQuery = tagsQuery.Where(t => t.OwnerId == query.CreatedBy.Value);
         }
 
         // Apply updated by filter

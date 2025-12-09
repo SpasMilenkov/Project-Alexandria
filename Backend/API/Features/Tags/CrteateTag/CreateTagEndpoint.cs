@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Common;
+using Common.Services;
 using FastEndpoints;
 
 namespace API.Features.Tags.CrteateTag;
@@ -8,7 +10,6 @@ public class CreateTagEndpoint(IFileTagService tagService) : Endpoint<CreateTagR
     public override void Configure()
     {
         Post("/tags");
-        AllowAnonymous(); // TODO: Replace with proper authorization
         
         Summary(s =>
         {
@@ -23,8 +24,11 @@ public class CreateTagEndpoint(IFileTagService tagService) : Endpoint<CreateTagR
 
     public override async Task HandleAsync(CreateTagRequest req, CancellationToken ct)
     {
-        // TODO: Extract from JWT token after implementing authentication
-        var userId = Guid.Parse("019a3f05-659b-7628-9102-1eef78035977"); // Placeholder
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                           ?? User.FindFirst("sub")?.Value
+                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+    
+        var userId = Guid.Parse(userIdString);
 
         try
         {
@@ -34,7 +38,7 @@ public class CreateTagEndpoint(IFileTagService tagService) : Endpoint<CreateTagR
             {
                 Id = tag.Id,
                 Name = tag.Name,
-                UserId = tag.UserId,
+                UserId = tag.OwnerId,
                 CreatedAt = tag.CreatedAt
             }, ct);
         }

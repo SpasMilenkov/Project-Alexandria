@@ -1,4 +1,5 @@
 using Common;
+using Common.Repositories;
 using Data.Context;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -9,6 +10,7 @@ public sealed class UnitOfWork(IFileRepository files,
     IMediaMetadataRepository mediaData,
     IRefreshTokenRepository refreshTokens,
     ITagRepository tags,
+    IDirectoryRepository directories,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -16,6 +18,8 @@ public sealed class UnitOfWork(IFileRepository files,
     public IMediaMetadataRepository MediaMetadata { get; } = mediaData;
     public IRefreshTokenRepository RefreshTokens { get; } = refreshTokens;
     public ITagRepository Tags { get; } = tags;
+    public IDirectoryRepository Directories { get; } = directories;
+    
     private IDbContextTransaction? _transaction;
     private bool _disposed;
 
