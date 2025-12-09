@@ -14,8 +14,9 @@ public interface IStorageService
         string objectName,
         string contentType,
         Stream fileStream,
-        CancellationToken ct,
+        CancellationToken ct = default,
         long contentLength = -1,
+        Guid? directoryId = null,
         string? originalFileName = null,
         string? uploadedBy = null);
 
