@@ -31,7 +31,7 @@ public class FileTagService(
         {
             Id = Guid.NewGuid(),
             Name = name.Trim(),
-            UserId = userId,
+            OwnerId = userId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -110,7 +110,7 @@ public class FileTagService(
         if (tag == null || tag.DeletedAt != null)
             throw new InvalidOperationException($"Tag {tagId} not found");
 
-        if (tag.UserId != userId)
+        if (tag.OwnerId != userId)
             throw new UnauthorizedAccessException("You do not have permission to update this tag");
 
         if (tag.Name != name.Trim())
@@ -148,7 +148,7 @@ public class FileTagService(
         if (tag is not { DeletedAt: null })
             throw new InvalidOperationException($"Tag {tagId} not found");
 
-        if (tag.UserId != userId)
+        if (tag.OwnerId != userId)
             throw new UnauthorizedAccessException("You do not have permission to delete this tag");
 
         tag.DeletedAt = DateTime.UtcNow;
@@ -199,7 +199,7 @@ public class FileTagService(
                     continue;
                 }
 
-                if (tag.UserId != userId)
+                if (tag.OwnerId != userId)
                 {
                     logger.LogWarning("User {UserId} does not own tag {TagId}, skipping", userId, tagId);
                     continue;
@@ -246,7 +246,7 @@ public class FileTagService(
             return;
         }
 
-        if (tag.UserId != userId)
+        if (tag.OwnerId != userId)
             throw new UnauthorizedAccessException("You do not have permission to remove this tag");
 
         try
