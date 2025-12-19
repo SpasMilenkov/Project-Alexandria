@@ -122,7 +122,7 @@ public class FileTagService(
 
         tag.Name = name.Trim();
         tag.UpdatedAt = DateTime.UtcNow;
-        tag.UpdatedBy = userId.ToString();
+        tag.UpdatedBy = userId;
 
         try
         {
@@ -152,7 +152,7 @@ public class FileTagService(
             throw new UnauthorizedAccessException("You do not have permission to delete this tag");
 
         tag.DeletedAt = DateTime.UtcNow;
-        tag.UpdatedBy = userId.ToString();
+        tag.UpdatedBy = userId;
 
         try
         {

@@ -145,8 +145,7 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
         // Apply updated by filter
         if (query.UpdatedBy.HasValue)
         {
-            var updatedByString = query.UpdatedBy.Value.ToString();
-            tagsQuery = tagsQuery.Where(t => t.UpdatedBy == updatedByString);
+            tagsQuery = tagsQuery.Where(t => t.UpdatedBy == query.UpdatedBy);
         }
 
         // Apply creation date filters
@@ -176,8 +175,7 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
         // Apply name search filter
         if (!string.IsNullOrWhiteSpace(query.NameContains))
         {
-            tagsQuery = tagsQuery.Where(t => 
-                EF.Functions.Like(t.Name, $"%{query.NameContains}%"));
+            tagsQuery = tagsQuery.Where(d => d.Name.Contains(query.NameContains));
         }
 
         // Apply has files filter
