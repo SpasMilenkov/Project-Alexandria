@@ -9,7 +9,9 @@ public class LogoutEndpoint(IAuthService authService) : EndpointWithoutRequest
 
     public override void Configure()
     {
-        Post("/api/auth/logout");
+        Post("/auth/logout");
+        Version(0);
+
     }
 
     public override async Task HandleAsync(CancellationToken ct)

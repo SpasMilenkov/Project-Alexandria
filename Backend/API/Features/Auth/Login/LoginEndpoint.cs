@@ -21,8 +21,10 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
 
     public override void Configure()
     {
-        Post("/api/auth/login");
+        Post("/auth/login");
         AllowAnonymous();
+        Tags("Auth");
+        Version(0);
     }
 
     public override async Task HandleAsync(LoginRequest req, CancellationToken ct)

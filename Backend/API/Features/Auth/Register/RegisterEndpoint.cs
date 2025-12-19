@@ -21,10 +21,11 @@ public class RegisterEndpoint : Endpoint<RegisterRequest, RegisterResponse>
 
     public override void Configure()
     {
-        Post("/api/auth/register");
+        Post("/auth/register");
         AllowAnonymous();
         // Add rate limiting if available
-        Throttle(5, 60); // 1 request per 60 seconds per IP
+        Throttle(5, 60); // 5 requests per 60 seconds per IP
+        Version(0);
     }
 
     public override async Task HandleAsync(RegisterRequest req, CancellationToken ct)

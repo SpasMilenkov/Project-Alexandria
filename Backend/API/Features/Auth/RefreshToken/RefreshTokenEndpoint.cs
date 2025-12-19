@@ -9,8 +9,9 @@ public class RefreshTokenEndpoint(IAuthService authService, CsrfService csrfServ
 {
     public override void Configure()
     {
-        Post("/api/auth/refresh");
+        Post("/auth/refresh");
         AllowAnonymous();
+        Version(0);
     }
 
     public override async Task HandleAsync(CancellationToken ct)
