@@ -31,7 +31,7 @@ public class Preview : IBase
     public DateTime? DeletedAt { get; set; }
 
     [StringLength(ValidationConstants.StringLengths.UserId)]
-    public string? UpdatedBy { get; set; }
+    public Guid? UpdatedBy { get; set; }
     
     public Guid FileId { get; set; }
     public File? File { get; set; }

@@ -8,7 +8,7 @@ public class Tag : IBase
      public DateTime CreatedAt { get; set; }
      public DateTime? UpdatedAt { get; set; }
      public DateTime? DeletedAt { get; set; }
-     public string? UpdatedBy { get; set; }
+     public Guid? UpdatedBy { get; set; }
      public ApplicationUser? Owner { get; set; }
      public Guid OwnerId { get; set; }
  }

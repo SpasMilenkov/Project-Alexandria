@@ -13,9 +13,11 @@ public class DirectoryConfiguration: IEntityTypeConfiguration<Directory>
             .HasMaxLength(ValidationConstants.StringLengths.MediumString)
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})");
         
+        // builder.Property(e => e.IsStarred)
+        //     .HasDefaultValue(false);
+        
         builder.Property(e => e.UpdatedBy)
-            .HasMaxLength(ValidationConstants.StringLengths.UserId)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.UserId})")
+            .HasColumnType("uuid")
             .IsRequired(false);
         
         // DateTime properties
@@ -36,6 +38,9 @@ public class DirectoryConfiguration: IEntityTypeConfiguration<Directory>
         
         //Index to ensure that a parent can't have a child directory with the same name
         builder.HasIndex(e => new { e.ParentId, e.Name }).IsUnique();
+        builder.HasIndex(d => d.Name)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
         
         builder.ToTable("Directories");
     }

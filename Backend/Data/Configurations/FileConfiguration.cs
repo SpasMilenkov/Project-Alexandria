@@ -28,8 +28,7 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             .IsRequired();
 
         builder.Property(e => e.UpdatedBy)
-            .HasMaxLength(ValidationConstants.StringLengths.UserId)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.UserId})")
+            .HasColumnType("uuid")
             .IsRequired(false);
 
         // Relations
@@ -70,7 +69,9 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
 
         // Indexes for performance
         builder.HasIndex(e => e.CreatedAt);
-
+        builder.HasIndex(f => f.Name)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
         // Table name
         builder.ToTable("Files");
     }
