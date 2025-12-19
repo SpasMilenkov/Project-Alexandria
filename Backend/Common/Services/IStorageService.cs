@@ -9,26 +9,25 @@ namespace Common.Services;
 public interface IStorageService
 {
     // File Upload
-    Task<UploadResult> UploadFile(
-        string bucketName,
+    Task<UploadResult> UploadFile(string bucketName,
         string objectName,
         string contentType,
         Stream fileStream,
+        Guid uploadedBy,
         CancellationToken ct = default,
-        long contentLength = -1,
+        long contentLength = -1L,
         Guid? directoryId = null,
-        string? originalFileName = null,
-        string? uploadedBy = null);
+        string? originalFileName = null);
 
-    Task<UploadResult> UploadPreview(
+    public Task<UploadResult> UploadPreview(
         string bucketName,
         string objectName,
         string contentType,
         Stream fileStream,
         Guid originalFileId,
+        Guid uploadedBy,
         long contentLength = -1,
         string? originalFileName = null,
-        string? uploadedBy = null,
         CancellationToken ct = default);
 
     // Task UploadThumbnailAsync(
@@ -63,9 +62,9 @@ public interface IStorageService
 
     Task<File> UpdateFileMetadata(
         Guid fileId,
+        Guid updatedBy,
         string? newName = null,
         bool? hasPreview = null,
-        string? updatedBy = null,
         CancellationToken ct = default);
 
     // Storage Management
@@ -74,4 +73,7 @@ public interface IStorageService
     
     // File Data Management
     Task<FileSummary?> GetFileSummary(Guid fieldId, CancellationToken ct = default);
+
+    public Task<PaginatedResult<FileSummary>> GetRootFilesAsync(Guid ownerId, int page = 1, int pageSize = 25,
+        CancellationToken ct = default);
 }

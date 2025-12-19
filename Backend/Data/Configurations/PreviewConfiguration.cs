@@ -26,8 +26,7 @@ public class PreviewConfiguration : IEntityTypeConfiguration<Preview>
             .IsRequired();
 
         builder.Property(e => e.UpdatedBy)
-            .HasMaxLength(ValidationConstants.StringLengths.UserId)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.UserId})")
+            .HasColumnType("uuid")
             .IsRequired(false);
 
         builder.Property(e => e.Size)

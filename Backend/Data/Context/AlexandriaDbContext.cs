@@ -31,7 +31,7 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
                     .IsRequired();
                 entity.Property<DateTime?>("UpdatedAt");
                 entity.Property<DateTime?>("DeletedAt");
-                entity.Property<string?>("UpdatedBy")
+                entity.Property<Guid?>("UpdatedBy")
                     .HasMaxLength(100);
             }
         }

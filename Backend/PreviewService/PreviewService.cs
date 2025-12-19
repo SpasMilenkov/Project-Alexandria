@@ -26,6 +26,7 @@ public class PreviewService(
     private static readonly SemaphoreSlim TaskDictionaryLock = new(1, 1);
 
     //TODO: break down this monstrosity into smaller more manageable chunks
+    //TODO: Replace all Guid.Empty with the system account ID when that is seeded into the database
     public async Task<FileResultSummary?> GetPreview(Guid fileId, CancellationToken ct)
     {
          if (memoryCache.TryGetValue(fileId, out (byte[] fileBytes, FileSummary metadata) cacheValue))
@@ -74,10 +75,10 @@ public class PreviewService(
              {
                  var fileData = await storageService.GetFileMetadata(fileId, ct);
                  if (fileData is null) throw new FileNotFoundException();
-
+         
                  var fileStream = await storageService.DownloadFile(null, fileData.Name, ct);
                  var category = storageService.CategorizeFile(fileData.MimeType);
-
+         
                  switch (category)
                  {
                      case FileCategory.Image:
@@ -90,33 +91,37 @@ public class PreviewService(
                              "previews/" + fileData.Name,
                              fileData.MimeType,
                              previewStream,
-                             uploadedBy: "system",
+                             /*
+                                TODO: This should be changed to the default system profile once project initialization
+                                is seeding the database properly 
+                             */
+                             uploadedBy: Guid.Empty,
                              originalFileId: fileData.Id,
                              ct: ct);
-                         await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: "system", ct: ct);
-
+                         await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: Guid.Empty, ct: ct);
+         
                          var previewResult = await storageService.GetCachedPreview(fileId, ct);
                          if (previewResult is null) throw new InvalidOperationException();
-
+         
                          // Read stream into byte array for caching
                          using (var ms = new MemoryStream())
                          {
                              await previewResult.FileStream.CopyToAsync(ms, ct);
                              var previewData = ms.ToArray();
-
+         
                              var cacheOptions = new MemoryCacheEntryOptions
                              {
                                  Size = Math.Max(1, previewData.Length / (1024 * 1024)),
                                  SlidingExpiration = TimeSpan.FromMinutes(5)
                              };
-
+         
                              var resultTuple = (previewData, previewResult.Metadata);
                              memoryCache.Set(fileId, resultTuple, cacheOptions);
-
+         
                              await previewResult.FileStream.DisposeAsync();
-
+         
                              tcs.SetResult(resultTuple);
-
+         
                              return previewResult with { FileStream = new MemoryStream(previewData) };
                          }
                      case FileCategory.Document:
@@ -132,25 +137,24 @@ public class PreviewService(
                          var archivePreviewUpload = await storageService.UploadPreview(
                              storageConfig.Value.PreviewBucket ?? "user-previews",
                              "previews/" + fileData.Name + ".json",
-                             "application/json", new MemoryStream(archivePreview.data), fileData.Id, -1, 
-                             uploadedBy:"System",
+                             "application/json", new MemoryStream(archivePreview.data), fileData.Id,uploadedBy:Guid.Empty,
                              ct: ct);
                          
-                         await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: "system", ct: ct);
-
+                         await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: Guid.Empty, ct: ct);
+         
                          var archivePreviewSummary = new FileSummary(fileData.Id, fileData.Name + ".json", "application/json", true, archivePreviewUpload.Url);
-
+         
                          var archiveCacheOptions = new MemoryCacheEntryOptions
                          {
                              Size = Math.Max(1, archivePreview.data.Length / (1024 * 1024)),
                              SlidingExpiration = TimeSpan.FromMinutes(5)
                          };
-
+         
                          var archiveResultTuple = (archivePreview.data, archivePreviewSummary);
                          memoryCache.Set(fileId, archiveResultTuple, archiveCacheOptions);
                              
                          tcs.SetResult(archiveResultTuple);
-
+         
                          return new FileResultSummary(new MemoryStream(archivePreview.data),
                              archivePreviewSummary);
                      
@@ -163,27 +167,27 @@ public class PreviewService(
                              textPreview.mimeType,
                              new MemoryStream(textPreview.data),
                              fileData.Id,
-                             uploadedBy: "System",
+                             uploadedBy: Guid.Empty,
                              ct: ct);
                          
-                         await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: "system", ct: ct);
-
+                         await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: Guid.Empty, ct: ct);
+         
                          var textPreviewSummary = new FileSummary(fileData.Id, fileData.Name, "application/json", true, textPreviewUpload.Url);
-
+         
                              var textCacheOptions = new MemoryCacheEntryOptions
                              {
                                  Size = Math.Max(1, textPreview.data.Length / (1024 * 1024)),
                                  SlidingExpiration = TimeSpan.FromMinutes(5)
                              };
-
+         
                              var textResultTuple = (textPreview.data, textPreviewSummary);
                              memoryCache.Set(fileId, textResultTuple, textCacheOptions);
                              
                              tcs.SetResult(textResultTuple);
-
+         
                              return new FileResultSummary(new MemoryStream(textPreview.data),
                                  new FileSummary(fileData.Id, fileData.Name, textPreview.mimeType, true, textPreviewUpload.Url));
-
+         
                      case FileCategory.Audio:
                      case FileCategory.Video:
                          var mediaBody = Encoding.UTF8.GetBytes(fileId.ToString());
@@ -210,6 +214,8 @@ public class PreviewService(
              OngoingTasks.Remove(fileId);
              TaskDictionaryLock.Release();
          }
+
+         throw new NotImplementedException();
     }
 
     public async Task<FileResultSummary?> GetThumbnail(Guid fileId, int width, int height,

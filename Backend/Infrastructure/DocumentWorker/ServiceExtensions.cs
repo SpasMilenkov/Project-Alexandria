@@ -7,6 +7,7 @@ using PreviewService;
 using PreviewService.Documents;
 using Repositories;
 using Storage;
+using Storage.Directories;
 
 namespace Infrastructure.DocumentWorker;
 
@@ -30,6 +31,8 @@ public static class ServiceExtensions
         services.AddScoped<IPdfPreviewService, PdfPreviewService>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
         services.AddScoped<IFileRepository, FileRepository>();
+        services.AddScoped<IDirectoryRepository, DirectoryRepository>();
+        services.AddScoped<IDirectoryService, DirectoryService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }
