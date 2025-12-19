@@ -5,6 +5,7 @@ using Data;
 using PreviewService.Media;
 using Repositories;
 using Storage;
+using Storage.Directories;
 
 namespace MediaWorkerService.Extensions;
 
@@ -28,6 +29,8 @@ public static class PreviewExtensions
         services.AddScoped<IMediaPreviewService, MediaPreviewService>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
         services.AddScoped<IFileRepository, FileRepository>();
+        services.AddScoped<IDirectoryRepository, DirectoryRepository>();
+        services.AddScoped<IDirectoryService, DirectoryService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }
