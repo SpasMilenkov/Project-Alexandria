@@ -1,11 +1,11 @@
+using System.Net;
 using Amazon.S3;
+using Amazon.S3.Model;
 using Common.Config;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Minio;
-using Minio.DataModel.Args;
 
 namespace Infrastructure;
 
@@ -13,78 +13,101 @@ public static class MinioExtensions
 {
     public static IServiceCollection AddMinio(this IServiceCollection services, IConfiguration config)
     {
-        var minioConfig = config.GetSection("Minio").Get<S3Config>();
-        if (minioConfig is null) throw new InvalidOperationException("Minio configuration is missing");
+        var minioConfig = config.GetSection("S3Storage").Get<S3Config>();
+        if (minioConfig is null) throw new InvalidOperationException("S3 storage configuration is missing");
 
-        services.Configure<S3Config>(config.GetSection("Minio"));
+        services.Configure<S3Config>(config.GetSection("S3Storage"));
 
-        services.AddSingleton<IMinioClient>(_ =>
-        {
-            var client = new MinioClient()
-                .WithEndpoint("localhost:9000")
-                .WithCredentials(minioConfig.AccessKey, minioConfig.SecretKey);
-
-            return client.Build();
-        });
-        
         services.AddSingleton<IAmazonS3>(sp =>
         {
             var storageConfiguration = sp.GetRequiredService<IOptions<S3Config>>().Value;
-    
+
             var s3Config = new AmazonS3Config
             {
                 ServiceURL = storageConfiguration.Endpoint,
                 ForcePathStyle = true,
                 UseHttp = storageConfiguration.Endpoint != null && !storageConfiguration.Endpoint.StartsWith("https")
             };
-    
+
             return new AmazonS3Client(storageConfiguration.AccessKey, storageConfiguration.SecretKey, s3Config);
         });
 
         return services;
     }
 
-    public static async Task SetupMinioBucketAsync(this WebApplication app)
+    public static async Task SetupS3BucketAsync(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
-        var minioConfig = scope.ServiceProvider.GetRequiredService<IConfiguration>()
+        var s3Config = scope.ServiceProvider.GetRequiredService<IConfiguration>()
             .GetSection("Minio").Get<S3Config>();
 
-        if (minioConfig is null) return;
+        if (s3Config is null) return;
 
-        var minioClient = scope.ServiceProvider.GetRequiredService<IMinioClient>();
+        var s3Client = scope.ServiceProvider.GetRequiredService<IAmazonS3>();
 
         try
         {
             // Set up upload bucket on startup
-            bool uploadsBucketExists = await minioClient.BucketExistsAsync(
-                new BucketExistsArgs().WithBucket(minioConfig.UploadBucket));
+            var uploadsBucketExists = await BucketExistsAsync(s3Client, s3Config.UploadBucket);
 
             if (!uploadsBucketExists)
+                await s3Client.PutBucketAsync(new PutBucketRequest
+                {
+                    BucketName = s3Config.UploadBucket
+                });
+
+            // Enable versioning on upload bucket
+            await s3Client.PutBucketVersioningAsync(new PutBucketVersioningRequest
             {
-                await minioClient.MakeBucketAsync(new MakeBucketArgs()
-                    .WithBucket(minioConfig.UploadBucket));
-            }
-            
-            await minioClient.SetVersioningAsync(new SetVersioningArgs()
-                .WithBucket(minioConfig.PreviewBucket)
-                .WithVersioningEnabled());
-            bool previewBucketExists = await minioClient.BucketExistsAsync(
-                new BucketExistsArgs().WithBucket(minioConfig.PreviewBucket));
+                BucketName = s3Config.UploadBucket,
+                VersioningConfig = new S3BucketVersioningConfig
+                {
+                    Status = VersionStatus.Enabled
+                }
+            });
+
+            // Set up preview bucket
+            var previewBucketExists = await BucketExistsAsync(s3Client, s3Config.PreviewBucket);
 
             if (!previewBucketExists)
+                await s3Client.PutBucketAsync(new PutBucketRequest
+                {
+                    BucketName = s3Config.PreviewBucket
+                });
+
+            // Enable versioning on preview bucket
+            await s3Client.PutBucketVersioningAsync(new PutBucketVersioningRequest
             {
-                await minioClient.MakeBucketAsync(new MakeBucketArgs()
-                    .WithBucket(minioConfig.PreviewBucket));
-            }
+                BucketName = s3Config.PreviewBucket,
+                VersioningConfig = new S3BucketVersioningConfig
+                {
+                    Status = VersionStatus.Enabled
+                }
+            });
 
-            
-
-            Console.WriteLine($"MinIO bucket '{minioConfig.UploadBucket}' is ready with versioning enabled");
+            Console.WriteLine(
+                $"S3 buckets '{s3Config.UploadBucket}' and '{s3Config.PreviewBucket}' are ready with versioning enabled");
+        }
+        catch (AmazonS3Exception ex)
+        {
+            Console.WriteLine($"Error setting up S3 buckets: {ex.Message}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error setting up MinIO bucket: {ex.Message}");
+            Console.WriteLine($"Error setting up S3 buckets: {ex.Message}");
+        }
+    }
+
+    private static async Task<bool> BucketExistsAsync(IAmazonS3 s3Client, string bucketName)
+    {
+        try
+        {
+            await s3Client.GetBucketLocationAsync(bucketName);
+            return true;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
         }
     }
 }
