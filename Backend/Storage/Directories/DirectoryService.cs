@@ -1,6 +1,8 @@
 using Common;
 using Common.Services;
 using DTO.Directories;
+using DTO.Files;
+using Models.Enumerators;
 using Storage.Directories.Exceptions;
 using DirectoryNotFoundException = Storage.Directories.Exceptions.DirectoryNotFoundException;
 using File = Models.File;
@@ -99,6 +101,11 @@ public class DirectoryService : IDirectoryService
         return dir.ToSummaryDto();
     }
 
+    public Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query, CancellationToken ct = default)
+    {
+        return _unitOfWork.Directories.FindDirectoryAsync(userId, query, ct);
+    }
+
     public async Task<DirectoryDto> GetDirectoryWithDetailsAsync(Guid id, Guid userId, CancellationToken ct = default)
     {
         var directory = await _unitOfWork.Directories.GetByIdWithDetailsAsync(id, ct);
@@ -115,17 +122,28 @@ public class DirectoryService : IDirectoryService
 
         return directory.ToDto();
     }
-    
+
+    public async Task<PaginatedResult<DirectorySummaryDto>> GetPaginatedDirectories(Guid id, Guid userId,
+        int currentPage = 1,
+        int pageSize = 25,
+        SortDirection sortDirection = SortDirection.Asc,
+        DirectorySortBy sortBy = DirectorySortBy.Name,
+        CancellationToken ct = default)
+    {
+        return await _unitOfWork.Directories.GetSubdirectoriesAsync(id, userId, currentPage, pageSize, sortDirection, sortBy, ct );
+    }
+
+    public async Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(Guid ownerId, int page = 1, int pageSize = 25, CancellationToken ct = default)
+    {
+        return await _unitOfWork.Directories.GetRootDirectoriesAsync(ownerId, page, pageSize, ct);
+    }
+
+
     public async Task<IEnumerable<DirectorySummaryDto>> GetUserDirectoriesAsync(Guid userId, Guid? parentId = null, 
         CancellationToken ct = default)
     {
         var dirs = await _unitOfWork.Directories.GetUserDirectories(userId, parentId, ct);
         return dirs.Select(d => d.ToSummaryDto());
-    }
-
-    public async Task<RootContentSummaryDto> GetRootDirectoriesAsync(Guid userId, CancellationToken ct = default)
-    {
-        return await _unitOfWork.Directories.GetRootContentSummaryAsync(userId, ct);
     }
 
     /*
@@ -149,7 +167,8 @@ public class DirectoryService : IDirectoryService
         return await _unitOfWork.Directories.GetAllFilesInDirectoryAsync(directoryId, includeSubdirectories, ct);
     }
 
-    public async Task<string> GetDirectoryPathAsync(Guid directoryId, Guid userId, CancellationToken ct = default)
+    public async Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, Guid userId,
+        CancellationToken ct = default)
     {
         await VerifyDirectoryAccessAsync(directoryId, userId, ct);
         
@@ -175,7 +194,7 @@ public class DirectoryService : IDirectoryService
 
         directory.Name = name;
         directory.UpdatedAt = DateTime.UtcNow;
-        directory.UpdatedBy = userId.ToString();
+        directory.UpdatedBy = userId;
 
         await _unitOfWork.BeginTransactionAsync(ct);
         try
@@ -231,7 +250,7 @@ public class DirectoryService : IDirectoryService
 
         directory.ParentId = newParentId;
         directory.UpdatedAt = DateTime.UtcNow;
-        directory.UpdatedBy = userId.ToString();
+        directory.UpdatedBy = userId;
 
         await _unitOfWork.BeginTransactionAsync(ct);
         try
@@ -306,6 +325,11 @@ public class DirectoryService : IDirectoryService
     public async Task<bool> DirectoryExistsAsync(Guid id, CancellationToken ct = default)
     {
         return await _unitOfWork.Directories.ExistsAsync(d => d.Id == id && d.DeletedAt == null, ct);
+    }
+
+    public async Task<bool> DirectoryExistsWithOwnershipAsync(Guid id, Guid ownerId, CancellationToken ct = default)
+    {
+        return await _unitOfWork.Directories.ExistsAsync(d => d.Id == id && d.DeletedAt == null && d.OwnerId == ownerId, ct);
     }
 
     public async Task<bool> HasAccessToDirectoryAsync(Guid directoryId, Guid userId, 

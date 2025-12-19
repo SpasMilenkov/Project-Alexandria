@@ -1,9 +1,11 @@
 using System.Linq.Expressions;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Common.Repositories;
 using Data.Context;
 using DTO.Directories;
 using DTO.Files;
+using Models.Enumerators;
 using Directory = Models.Directory;
 using File = Models.File;
 
@@ -19,7 +21,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .FirstOrDefaultAsync(d => d.Id == id && d.DeletedAt == null, ct);
     }
 
-    public async Task<Directory?> GetByIdWithDetailsAsync(Guid id, CancellationToken ct = default)
+    public async Task<Directory?> GetByIdWithDetailsAsync(Guid id,
+        CancellationToken ct = default)
     {
         return await context.Directories
             .AsSplitQuery()
@@ -163,6 +166,59 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         return allDirectories;
     }
 
+    public async Task<PaginatedResult<DirectorySummaryDto>> GetSubdirectoriesAsync(Guid parentDirectoryId,
+        Guid userId,
+        int currentPage = 1,
+        int pageSize = 25,
+        SortDirection sortDirection = SortDirection.Asc,
+        DirectorySortBy sortBy = DirectorySortBy.Name, 
+        CancellationToken ct = default)
+    {
+        var dbQuery = context.Directories.AsQueryable();
+
+        dbQuery = dbQuery.Where(d => d.ParentId == parentDirectoryId && d.OwnerId == userId);
+        
+        dbQuery = sortBy switch
+        {
+            DirectorySortBy.Name => sortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.Name)
+                : dbQuery.OrderByDescending(d => d.Name),
+
+            DirectorySortBy.CreatedAt => sortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.CreatedAt)
+                : dbQuery.OrderByDescending(d => d.CreatedAt),
+
+            DirectorySortBy.UpdatedAt => sortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.UpdatedAt)
+                : dbQuery.OrderByDescending(d => d.UpdatedAt),
+
+            _ => dbQuery.OrderBy(d => d.Name)
+        };
+
+        var totalCount = await dbQuery.CountAsync(cancellationToken: ct);
+        
+        var result = await dbQuery
+            .AsNoTracking()
+            .Skip(currentPage * pageSize)
+            .Take(pageSize)
+            .Select(d => new DirectorySummaryDto(
+                d.Id, d.Name, d.ParentId, d.CreatedAt, d.UpdatedAt, new UserDto
+                {
+                    Id = d.OwnerId,
+                    Name = d.Owner.Name,
+                    Email = d.Owner.Email
+                })).ToListAsync(cancellationToken: ct);
+
+        return new PaginatedResult<DirectorySummaryDto>
+        {
+            Items = result,
+            CurrentPage = currentPage,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        };
+    }
+    
     public async Task<IEnumerable<File>> GetAllFilesInDirectoryAsync(Guid directoryId, bool includeSubdirectories = false, CancellationToken ct = default)
     {
         if (!includeSubdirectories)
@@ -219,11 +275,186 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         };
     }
 
-    public async Task<RootContentSummaryDto> GetRootContentSummaryAsync(Guid ownerId, CancellationToken ct = default)
+    public async Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query, CancellationToken ct)
     {
-        var directories = await context.Directories
+        if (query.CurrentPage < 0)
+            throw new ArgumentException("Page number must be non-negative", nameof(query.CurrentPage));
+
+        if (query.PageSize <= 0 || query.PageSize > 100)
+            throw new ArgumentException("Page size must be between 1 and 100", nameof(query.PageSize));
+
+        var dbQuery = context.Directories.AsQueryable();
+        
+        //When file and directory sharing comes later on this will be optional in combination
+        //with the new access policies for Now users have no access to directories of other users
+        dbQuery = dbQuery.Where(d => d.OwnerId == userId);
+        if (query.IsDeleted)
+        {
+            dbQuery = dbQuery.Where(d => d.DeletedAt != null);
+        }
+        else
+        {
+            dbQuery = dbQuery.Where(d => d.DeletedAt == null);
+        }
+        
+        if (query.DeletedAt.HasValue)
+        {
+            var startOfDay = query.DeletedAt.Value.Date;
+            var endOfDay = startOfDay.AddDays(1);
+            dbQuery = dbQuery.Where(d => d.DeletedAt >= startOfDay && d.DeletedAt < endOfDay);
+        }
+
+        if (query.DirectoryId.HasValue)
+        {
+            dbQuery = dbQuery.Where(d => d.Id == query.DirectoryId.Value);
+        }
+
+        if (query.OwnerId.HasValue)
+        {
+            dbQuery = dbQuery.Where(d => d.OwnerId == query.OwnerId.Value);
+        }
+
+        // if (query.IsShared.HasValue)
+        // {
+        //     dbQuery = dbQuery.Where(d => d.IsShared == query.IsShared.Value);
+        // }
+
+        if (query.CreatedBefore.HasValue)
+        {
+            dbQuery = dbQuery.Where(d => d.CreatedAt <= query.CreatedBefore.Value);
+        }
+        
+        if (query.CreatedAfter.HasValue)
+        {
+            dbQuery = dbQuery.Where(d => d.CreatedAt >= query.CreatedAfter.Value);
+        }
+
+        if (query.UpdatedBefore.HasValue)
+        {
+            dbQuery = dbQuery.Where(d => d.UpdatedAt <= query.UpdatedBefore.Value);
+        }
+
+        if (query.UpdatedAfter.HasValue)
+        {
+            dbQuery = dbQuery.Where(d => d.UpdatedAt >= query.UpdatedAfter.Value);
+        }
+
+        if (query.HasFiles.HasValue)
+        {
+            if (query.HasFiles.Value)
+            {
+                dbQuery = dbQuery.Where(d => d.Files.Any());
+            }
+            else
+            {
+                dbQuery = dbQuery.Where(d => !d.Files.Any());
+            }
+        }
+
+        if (query.HasSubdirectories.HasValue)
+        {
+            if (query.HasSubdirectories.Value)
+            {
+                dbQuery = dbQuery.Where(d => d.Children.Any());
+            }
+            else
+            {
+                dbQuery = dbQuery.Where(d => !d.Children.Any());
+            }
+        }
+        
+        if (!string.IsNullOrWhiteSpace(query.NameContains))
+        {
+            var searchTerm = query.NameContains.Trim();
+            
+            // Lower threshold for short strings
+            var similarityThreshold = searchTerm.Length <= 3 ? 0.09 : 0.3;
+            
+            dbQuery = dbQuery   
+                .Where(d => 
+                    EF.Functions.ILike(d.Name, $"%{searchTerm}%") ||
+                    EF.Functions.TrigramsSimilarity(d.Name, searchTerm) > similarityThreshold)
+                .OrderByDescending(d => 
+                    EF.Functions.ILike(d.Name, $"{searchTerm}%") ? 3 :      // Starts with (exact)
+                    EF.Functions.ILike(d.Name, $"%{searchTerm}%") ? 2 :     // Contains
+                    EF.Functions.TrigramsSimilarity(d.Name, searchTerm) > similarityThreshold ? 1 : 0); // Fuzzy
+        }
+
+        if (query.ParentDirectoryId.HasValue)
+        {
+            dbQuery = dbQuery.Where(d => d.ParentId == query.ParentDirectoryId.Value);
+        }
+
+        // if (query.IsStarred)
+        // {
+        //     dbQuery = dbQuery.Where(d => d.IsStarred == true);
+        // }
+        
+        var totalCount = await dbQuery.CountAsync(ct);
+        
+        dbQuery = query.SortBy switch
+        {
+            DirectorySortBy.Name => query.SortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.Name)
+                : dbQuery.OrderByDescending(d => d.Name),
+
+            DirectorySortBy.CreatedAt => query.SortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.CreatedAt)
+                : dbQuery.OrderByDescending(d => d.CreatedAt),
+
+            DirectorySortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.UpdatedAt)
+                : dbQuery.OrderByDescending(d => d.UpdatedAt),
+
+            _ => dbQuery.OrderBy(d => d.Name)
+        };
+        
+        var items = await dbQuery
             .AsNoTracking()
-            .Where(d => d.ParentId == null && d.OwnerId == ownerId && d.DeletedAt == null)
+            .Skip(query.CurrentPage * query.PageSize)
+            .Take(query.PageSize)
+            .Select(d => new DirectorySummaryDto
+            (
+                d.Id,
+                d.Name,
+                d.ParentId,
+                d.CreatedAt,
+                d.UpdatedAt,
+                new UserDto
+                {
+                    Id = d.Owner.Id,
+                    Email = d.Owner.Email,
+                    Name = d.Owner.Name
+                }
+            ))
+            .ToListAsync(ct);
+        
+        return new PaginatedResult<DirectorySummaryDto>()
+        {
+            Items = items,
+            TotalCount = totalCount,
+            CurrentPage = query.CurrentPage,
+            PageSize = query.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
+        };
+    }
+        
+    public async Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(
+        Guid ownerId, 
+        int page = 1,
+        int pageSize = 25, 
+        CancellationToken ct = default)
+    {
+        var query = context.Directories
+            .AsNoTracking()
+            .Where(d => d.ParentId == null && d.OwnerId == ownerId && d.DeletedAt == null);
+        
+        var totalCount = await query.CountAsync(ct);
+        
+        var directories = await query
+            .OrderBy(d => d.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(d => new DirectorySummaryDto(
                 d.Id,
                 d.Name,
@@ -238,9 +469,32 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                 }))
             .ToListAsync(ct);
         
-        var files = await context.Files
+        return new PaginatedResult<DirectorySummaryDto>
+        {
+            Items = directories,
+            TotalCount = totalCount,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        };
+    }
+
+    public async Task<PaginatedResult<FileSummary>> GetRootFilesAsync(
+        Guid ownerId,
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        var query = context.Files
             .AsNoTracking()
-            .Where(f => f.DirectoryId == null && f.OwnerId == ownerId && f.DeletedAt == null)
+            .Where(f => f.DirectoryId == null && f.OwnerId == ownerId && f.DeletedAt == null);
+        
+        var totalCount = await query.CountAsync(ct);
+        
+        var files = await query
+            .OrderBy(f => f.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(f => new FileSummary(
                 f.Id,
                 f.Name,
@@ -249,24 +503,27 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                 f.Path))
             .ToListAsync(ct);
         
-        return new RootContentSummaryDto
+        return new PaginatedResult<FileSummary>
         {
-            Directories = directories,
-            Files = files
+            Items = files,
+            TotalCount = totalCount,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
         };
     }
     
-    public async Task<string> GetDirectoryPathAsync(Guid directoryId, CancellationToken ct = default)
+    public async Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, CancellationToken ct = default)
     {
-        var pathParts = new List<string>();
+        var pathParts = new List<PathPartDto>();
+        
         var currentDir = await context.Directories
             .Include(d => d.Parent)
             .FirstOrDefaultAsync(d => d.Id == directoryId && d.DeletedAt == null, ct);
 
-        while (currentDir != null)
+        while (currentDir != null)  
         {
-            pathParts.Insert(0, currentDir.Name);
-            
+            pathParts.Insert(0, new PathPartDto(currentDir.Id, currentDir.Name));
             if (currentDir.ParentId.HasValue)
             {
                 currentDir = await context.Directories
@@ -279,6 +536,6 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             }
         }
 
-        return string.Join("/", pathParts);
+        return pathParts;
     }
 }
