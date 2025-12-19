@@ -10,7 +10,16 @@ public static class ApiExtensions
 {
     public static IServiceCollection AddApiServices(this IServiceCollection services)
     {
-        services.AddFastEndpoints().SwaggerDocument();
+        services.AddFastEndpoints()
+            .SwaggerDocument(o =>
+            {
+                o.DocumentSettings = s =>
+                {
+                    s.DocumentName = "Beta release";
+                    s.Title = "Alexandria API";
+                    s.Version = "v0";
+                };
+            });
         services.AddHealthChecks();
         services.AddCors(c =>
         {
