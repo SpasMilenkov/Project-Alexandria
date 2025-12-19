@@ -1,4 +1,4 @@
-namespace API.Features.Storage.DownloadFile;
+namespace API.Features.Storage.Files.DownloadFile;
 
 public class DownloadFileResponse
 {

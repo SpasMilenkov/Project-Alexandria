@@ -1,15 +1,15 @@
 using Common.Services;
 using FastEndpoints;
 
-namespace API.Features.Storage.Preview.GetPreviewById;
+namespace API.Features.Storage.Files.Preview.GetThumbnailById;
 
-public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<GetPreviewByIdRequest>
+public class GetThumbnailByIdEndpoint(IPreviewService previewService): Endpoint<GetThumbnailByIdRequest>
 {
-    public override void Configure()
+    public override void Configure()    
     {
-        Get("/files/{id}/preview");
+        Get("/files/{id}/thumbnail/{width}/{height}");
         AllowAnonymous();
-        Description(b => b.WithTags("Preview"));
+        Description(b => b.WithTags("Preview", "Files"));
         Summary(s =>
         {
             s.Summary = "Endpoint for generating preview of files for use in the frontend";
@@ -19,17 +19,13 @@ public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<G
                             " and take a while."; 
         });
     }
-    
-    public override async Task HandleAsync(GetPreviewByIdRequest req, CancellationToken ct)
+    public override async Task HandleAsync(GetThumbnailByIdRequest req, CancellationToken ct)
     {
-        var preview = await previewService.GetPreview(req.Id, ct);
+        var preview = await previewService.GetThumbnail(req.Id , req.Width, req.Height, ct);
 
         try
         {
-            if (preview is null)
-            {
-                return;
-            }
+            if (preview is null) return;
             HttpContext.Response.StatusCode = 200;
             HttpContext.Response.ContentType = preview.Metadata.MimeType;
             var encodedFileName = System.Net.WebUtility.UrlEncode(preview.Metadata.FileName)
@@ -48,7 +44,7 @@ public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<G
         }
         finally
         {
-            if(preview is not null)
+            if (preview is not null)
                 await preview.FileStream.DisposeAsync();
         }
     }

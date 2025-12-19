@@ -1,4 +1,4 @@
-namespace API.Features.Storage.Preview.GetPreviewById;
+namespace API.Features.Storage.Files.Preview.GetPreviewById;
 
 public class GetPreviewByIdRequest
 {

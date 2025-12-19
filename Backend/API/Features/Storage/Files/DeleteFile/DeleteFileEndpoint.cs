@@ -3,7 +3,7 @@ using Common.Services;
 using FastEndpoints;
 using Microsoft.Extensions.Options;
 
-namespace API.Features.Storage.DeleteFile;
+namespace API.Features.Storage.Files.DeleteFile;
 
 public class DeleteFileEndpoint : Endpoint<DeleteFileRequest>
 {
@@ -19,7 +19,7 @@ public class DeleteFileEndpoint : Endpoint<DeleteFileRequest>
     public override void Configure()
     {
         Delete("/files/{path}");
-        AllowAnonymous(); // TODO: Add proper authorization
+        Description(x => x.WithTags("Files"));
 
         Summary(s =>
         {

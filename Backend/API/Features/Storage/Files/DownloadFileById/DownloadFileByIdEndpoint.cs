@@ -3,7 +3,7 @@ using Common.Services;
 using FastEndpoints;
 using Microsoft.Extensions.Options;
 
-namespace API.Features.Storage.DownloadFileById;
+namespace API.Features.Storage.Files.DownloadFileById;
 
 public class DownloadFileByIdEndpoint(
     IStorageService storageService,
@@ -14,6 +14,7 @@ public class DownloadFileByIdEndpoint(
     {
         AllowAnonymous();
         Get("/files/{id}");
+        Description(x => x.WithTags("Files"));
 
         Summary(s =>
         {
@@ -39,7 +40,7 @@ public class DownloadFileByIdEndpoint(
         var objectName = fileMetadata.Path.Replace($"{bucket}/", "");
 
         HttpContext.Response.ContentType = fileMetadata.MimeType;
-        HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileMetadata.Name}\"";
+        HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{System.Net.WebUtility.UrlEncode(fileMetadata.Name)}\"";
         HttpContext.Response.ContentLength = (long)fileMetadata.Size;
 
         // This now uses TRUE streaming - ~80KB memory usage instead of 2GB

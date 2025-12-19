@@ -1,4 +1,4 @@
-namespace API.Features.Storage.DownloadFileById;
+namespace API.Features.Storage.Files.DownloadFileById;
 
 public class DownloadFileByIdRequest
 {

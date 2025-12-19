@@ -1,4 +1,4 @@
-namespace API.Features.Storage.Preview.GetThumbnailById;
+namespace API.Features.Storage.Files.Preview.GetThumbnailById;
 
 public class GetThumbnailByIdRequest
 {

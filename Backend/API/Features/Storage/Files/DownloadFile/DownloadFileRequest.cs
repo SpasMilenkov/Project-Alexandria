@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace API.Features.Storage.DownloadFile;
+namespace API.Features.Storage.Files.DownloadFile;
 
 public class DownloadFileRequest(string name, string path)
 {

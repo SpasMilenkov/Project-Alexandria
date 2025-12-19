@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace API.Features.Storage.GenerateSignedUrlEndpoint;
+namespace API.Features.Storage.Files.GenerateSignedUrlEndpoint;
 
 public class GenerateSignedUrlRequest
 {

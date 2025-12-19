@@ -1,4 +1,4 @@
-namespace API.Features.Storage.UploadFile;
+namespace API.Features.Storage.Files.UploadFile;
 
 public class UploadFileResponse
 {

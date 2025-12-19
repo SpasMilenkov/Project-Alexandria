@@ -1,4 +1,4 @@
-namespace API.Features.Storage.DeleteFile;
+namespace API.Features.Storage.Files.DeleteFile;
 
 public class DeleteFileRequest
 {

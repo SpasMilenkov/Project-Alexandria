@@ -1,4 +1,4 @@
-namespace API.Features.Storage.GenerateSignedUrlEndpoint;
+namespace API.Features.Storage.Files.GenerateSignedUrlEndpoint;
 
 public class GenerateSignedUrlResponse
 {

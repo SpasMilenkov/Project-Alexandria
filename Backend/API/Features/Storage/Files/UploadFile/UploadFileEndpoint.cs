@@ -1,10 +1,10 @@
+using System.Security.Claims;
 using Common.Config;
 using Common.Services;
 using FastEndpoints;
-using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Options;
 
-namespace API.Features.Storage.UploadFile;
+namespace API.Features.Storage.Files.UploadFile;
 
 public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService storage)
     : EndpointWithoutRequest
@@ -14,7 +14,6 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
         Post("/files/upload");
         AllowAnonymous();
         AllowFileUploads();
-
         // Swagger documentation
         Summary(s =>
         {
@@ -24,7 +23,7 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
             s.Responses[400] = "Bad request - missing file or validation error";
             s.Responses[500] = "Internal server error";
         });
-
+        Description(x => x.WithTags("Files"));
         // Configuration for file upload in Swagger UI
         Options(x =>
         {
@@ -40,16 +39,15 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        //TODO: add proper user data extraction after introducing JWT authorization and authentication
-        var user = "John Doe";
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                           ?? User.FindFirst("sub")?.Value
+                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+        var userId = Guid.Parse(userIdString);
         var bucketName = options.Value.UploadBucket;
         Console.WriteLine($"Bucket: {bucketName}");
 
         // Ensure bucket exists and versioning is enabled
         if (bucketName is null) ThrowError("Invalid bucket configuration");
-        #if !DEBUG
-        await storage.EnsureBucketExistsAsync(bucketName, ct);
-        #endif
 
         string? fileName = null;
         string? path = null;
@@ -62,7 +60,7 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
         {
             if (section.IsFormSection)
             {
-                var fieldName = section.FormSection.Name.ToLowerInvariant();
+                var fieldName = section.FormSection.Name;
                 var fieldValue = await section.FormSection.GetValueAsync(ct);
 
                 switch (fieldName)
@@ -111,8 +109,7 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
         try
         {
             // Upload to MinIO using the checksum stream
-            var uploadResult = await storage.UploadFile(bucketName: bucketName, objectName, contentType, fileStream, ct,
-                -1, directoryId , fileName, user);
+            var uploadResult = await storage.UploadFile(bucketName: bucketName, objectName: objectName, contentType: contentType, fileStream: fileStream, uploadedBy: userId, ct: ct, contentLength: -1, directoryId: directoryId, originalFileName: fileName);
 
             // Get the calculated checksum
 

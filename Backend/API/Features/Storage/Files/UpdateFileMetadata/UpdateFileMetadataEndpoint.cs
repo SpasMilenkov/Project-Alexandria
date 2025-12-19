@@ -1,7 +1,8 @@
+using System.Security.Claims;
 using Common.Services;
 using FastEndpoints;
 
-namespace API.Features.Storage.UpdateFileMetadata;
+namespace API.Features.Storage.Files.UpdateFileMetadata;
 
 public class UpdateFileMetadataEndpoint(
     IStorageService storageService
@@ -11,6 +12,7 @@ public class UpdateFileMetadataEndpoint(
     {
         Put("/files/{id}/metadata");
         AllowAnonymous();
+        Description(x => x.WithTags("Files"));
 
         Summary(s =>
         {
@@ -27,14 +29,16 @@ public class UpdateFileMetadataEndpoint(
     {
         try
         {
-            //TODO: add proper user data extraction after introducing JWT authorization and authentication
-            var user = "John Doe";
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                               ?? User.FindFirst("sub")?.Value
+                               ?? throw new UnauthorizedAccessException("User ID not found in token");
+            var userId = Guid.Parse(userIdString);
 
             var updatedFile = await storageService.UpdateFileMetadata(
                 req.Id,
+                userId,
                 req.Name,
                 req.HasPreview,
-                user,
                 ct);
 
             await Send.OkAsync(new UpdateFileMetadataResponse
@@ -44,7 +48,7 @@ public class UpdateFileMetadataEndpoint(
                 HasPreview = updatedFile.HasPreview,
                 PreviewGeneratedAt = updatedFile.PreviewGeneratedAt,
                 UpdatedAt = updatedFile.UpdatedAt,
-                UpdatedBy = updatedFile.UpdatedBy
+                UpdatedBy = updatedFile.UpdatedBy ?? userId
             }, ct);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
@@ -72,5 +76,5 @@ public class UpdateFileMetadataResponse
     public bool HasPreview { get; set; }
     public DateTime? PreviewGeneratedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public string? UpdatedBy { get; set; }
+    public Guid UpdatedBy { get; set; }
 }
