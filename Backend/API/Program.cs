@@ -52,8 +52,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 // app.UseMiddleware<CsrfMiddleware>();
 
-app.UseFastEndpoints().UseSwaggerGen();
+app.UseFastEndpoints(c =>
+    {
+        c.Versioning.Prefix = "v";
+        c.Endpoints.RoutePrefix = "api";
+        c.Versioning.PrependToRoute = true;
+    }
+    ).UseSwaggerGen();
 app.MapHealthChecks("/health");
 
-await app.SetupMinioBucketAsync();
+await app.SetupS3BucketAsync();
 app.Run();
