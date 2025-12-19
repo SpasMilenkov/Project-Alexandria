@@ -6,7 +6,6 @@ using Amazon.S3.Transfer;
 using Common;
 using Common.Config;
 using Common.Services;
-using DTO;
 using DTO.Extensions;
 using DTO.Files;
 using Microsoft.Extensions.Logging;
@@ -31,11 +30,12 @@ public class S3StorageService(
         string objectName,
         string contentType,
         Stream fileStream,
+        Guid uploadedBy,
         CancellationToken ct = default,
         long contentLength = -1,
         Guid? directoryId = null,
-        string? originalFileName = null,
-        string? uploadedBy = null)
+        string? originalFileName = null
+        )
     {
         logger.LogInformation(
             "Starting file upload: Bucket={BucketName}, Object={ObjectName}, ContentType={ContentType}, Size={ContentLength}",
@@ -47,7 +47,7 @@ public class S3StorageService(
         {
             if (directoryId is not null)
             {
-                var exists = await dirService.DirectoryExistsAsync((Guid)directoryId, ct);
+                var exists = await dirService.DirectoryExistsWithOwnershipAsync((Guid)directoryId, uploadedBy, ct);
                 if(!exists) throw new DirectoryNotFoundException();
             }
             
@@ -103,7 +103,8 @@ public class S3StorageService(
                     Path = filePath,
                     MimeType = contentType,
                     Size = new BigInteger(stat.Size),
-                    UpdatedBy = uploadedBy
+                    UpdatedBy = uploadedBy,
+                    OwnerId = uploadedBy
                 };
 
                 savedFile = await unitOfWork.Files.CreateAsync(fileEntity, ct);
@@ -160,9 +161,9 @@ public class S3StorageService(
         string contentType,
         Stream fileStream,
         Guid originalFileId,
+        Guid uploadedBy,
         long contentLength = -1,
         string? originalFileName = null,
-        string? uploadedBy = null,
         CancellationToken ct = default)
     {
         logger.LogInformation(
@@ -390,7 +391,7 @@ public class S3StorageService(
                 existingMetadata.Album = metadataDto.Album;
                 existingMetadata.Year = metadataDto.Year;
                 existingMetadata.Genre = metadataDto.Genre;
-                existingMetadata.UpdatedBy = "System";
+                // existingMetadata.UpdatedBy = "System";
 
                 await unitOfWork.MediaMetadata.UpdateAsync(existingMetadata, ct);
             }
@@ -416,7 +417,7 @@ public class S3StorageService(
                     existingPreview.Id);
 
                 existingPreview.Size = new BigInteger(stat.Size);
-                existingPreview.UpdatedBy = "System";
+                // existingPreview.UpdatedBy = "System";
 
                 await unitOfWork.Previews.UpdateAsync(existingPreview, ct);
             }
@@ -433,7 +434,7 @@ public class S3StorageService(
                     Path = filePath,
                     MimeType = metadataDto.FormatName ?? "mp4",
                     Size = new BigInteger(stat.Size),
-                    UpdatedBy = "System",
+                    // UpdatedBy = "System",
                     FileId = fileId
                 };
 
@@ -706,9 +707,9 @@ public class S3StorageService(
 
     public async Task<File> UpdateFileMetadata(
         Guid fileId,
+        Guid updatedBy,
         string? newName = null,
         bool? hasPreview = null,
-        string? updatedBy = null,
         CancellationToken ct = default)
     {
         logger.LogInformation(
@@ -742,7 +743,7 @@ public class S3StorageService(
                 if (hasPreview.Value) fileEntity.PreviewGeneratedAt = DateTime.UtcNow;
             }
 
-            if (!string.IsNullOrEmpty(updatedBy)) fileEntity.UpdatedBy = updatedBy;
+            fileEntity.UpdatedBy = updatedBy;
 
             var updatedFile = await unitOfWork.Files.UpdateAsync(fileEntity, ct);
             await unitOfWork.CommitAsync(ct);
@@ -987,6 +988,11 @@ public class S3StorageService(
     public async Task<IEnumerable<File>> GetAllFiles(CancellationToken ct = default)
     {
         return await unitOfWork.Files.GetAllAsync(ct);
+    }
+    public async Task<PaginatedResult<FileSummary>> GetRootFilesAsync(Guid ownerId, int page = 1, int pageSize = 25,
+        CancellationToken ct = default)
+    {
+        return await unitOfWork.Directories.GetRootFilesAsync(ownerId, page, pageSize, ct);
     }
 
     public async Task<int> GetFileCount(string? mimeTypeFilter = null, CancellationToken ct = default)
