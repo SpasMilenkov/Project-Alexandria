@@ -41,8 +41,10 @@ public class PreviewGenerationHandler(ILogger<PreviewGenerationHandler> logger, 
                 previewPath, new FileInfo(previewPath).Length);
         
             await using var previewStream = File.OpenRead(previewPath);
-            await storage.UploadPreview("user-previews", $"previews/{fileData.Name}.pdf", "application/pdf", previewStream, originalFileId: fileData.Id, ct: ct);
-            await storage.UpdateFileMetadata(fileIdGuid, hasPreview: true, ct: ct);
+            
+            //TODO: Change Guid.Empty when the system account is seeded into the database
+            await storage.UploadPreview("user-previews", $"previews/{fileData.Name}.pdf", "application/pdf", previewStream, originalFileId: fileData.Id, Guid.Empty, ct: ct);
+            await storage.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
         
             File.Delete(previewPath);
         }

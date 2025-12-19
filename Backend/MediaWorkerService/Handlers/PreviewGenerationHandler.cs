@@ -50,8 +50,8 @@ public class PreviewGenerationHandler(
             await using var thumbnailStream = File.OpenRead(result.ThumbnailPath);
             await storage.UploadMediaData(previewStream, thumbnailStream, fileData.Name, fileData.Id, result.Metadata, ct);
             
-
-            await storage.UpdateFileMetadata(fileIdGuid, hasPreview: true, ct: ct);
+            //TODO: Change Guid.Empty when the system account is seeded into the database
+            await storage.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
         }
         finally
         {
