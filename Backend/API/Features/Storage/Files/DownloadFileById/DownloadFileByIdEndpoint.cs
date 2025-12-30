@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Common.Config;
 using Common.Services;
 using FastEndpoints;
@@ -12,7 +13,6 @@ public class DownloadFileByIdEndpoint(
 {
     public override void Configure()
     {
-        AllowAnonymous();
         Get("/files/{id}");
         Description(x => x.WithTags("Files"));
 
@@ -28,7 +28,13 @@ public class DownloadFileByIdEndpoint(
 
     public override async Task HandleAsync(DownloadFileByIdRequest req, CancellationToken ct)
     {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                           ?? User.FindFirst("sub")?.Value
+                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+        var userId = Guid.Parse(userIdString);
+        
         var fileMetadata = await storageService.GetFileMetadata(req.Id, ct);
+        
     
         if (fileMetadata == null)
         {
@@ -37,14 +43,14 @@ public class DownloadFileByIdEndpoint(
         }
 
         var bucket = options.Value.UploadBucket;
-        var objectName = fileMetadata.Path.Replace($"{bucket}/", "");
+        // var objectName = fileMetadata.Path.Replace($"{bucket}/", "");
 
         HttpContext.Response.ContentType = fileMetadata.MimeType;
-        HttpContext.Response.Headers.ContentDisposition = $"attachment; filename=\"{System.Net.WebUtility.UrlEncode(fileMetadata.Name)}\"";
-        HttpContext.Response.ContentLength = (long)fileMetadata.Size;
+        HttpContext.Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
+        //TODO: Fetch the length from the current active version
+        // HttpContext.Response.ContentLength = (long)fileMetadata.Size;
 
-        // This now uses TRUE streaming - ~80KB memory usage instead of 2GB
-        await using var fileStream = await storageService.DownloadFile(bucket, objectName, ct);
+        await using var fileStream = await storageService.DownloadFile(req.Id, userId, ct);
         await fileStream.CopyToAsync(HttpContext.Response.Body, ct);
     }
 }

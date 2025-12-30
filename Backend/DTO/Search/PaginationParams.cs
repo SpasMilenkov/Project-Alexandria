@@ -1,8 +1,8 @@
 using Models.Enumerators;
 
-namespace API.Features.Storage.Directories.GetRootDirectories;
+namespace DTO.Search;
 
-public class GetRootDirRequest
+public class PaginationParams
 {
     public int Page { get; set; }
     public int PageSize { get; set; }

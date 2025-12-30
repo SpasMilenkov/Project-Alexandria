@@ -46,7 +46,7 @@ public class SearchDirectoryEndpoint(IDirectoryService directoryService)
             IsDeleted = req.IsDeleted,
             IsStarred = req.IsStarred,
     
-            CurrentPage = req.CurrentPage,
+            CurrentPage = req.Page,
             PageSize = req.PageSize,
             SortBy = req.SortBy,
             SortDirection = req.SortDirection

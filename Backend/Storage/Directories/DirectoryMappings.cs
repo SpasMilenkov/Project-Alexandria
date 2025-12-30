@@ -58,8 +58,8 @@ public static class DirectoryMappings
             Id: file.Id,
             FileName: file.Name,
             MimeType: file.MimeType,
-            HasPreview: file.HasPreview,
-            Path: file.Path
+            HasPreview: file.HasPreview
+            // Path: file.Path
         );
     }
 }

@@ -31,8 +31,6 @@ public class CreateDirEndpoint(IDirectoryService dirService): Endpoint<CreateDir
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
-        // Also check if user is authenticated
-        Console.WriteLine($"Is Authenticated: {User.Identity?.IsAuthenticated}");
         var userId = Guid.Parse(userIdString);
         var dir = await dirService.CreateDirectoryAsync(req.Name, userId, req.ParentId, ct);
         await Send.OkAsync( new CreateDirResult

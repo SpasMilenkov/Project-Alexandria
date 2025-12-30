@@ -127,15 +127,17 @@ public class DirectoryService : IDirectoryService
         int currentPage = 1,
         int pageSize = 25,
         SortDirection sortDirection = SortDirection.Asc,
-        DirectorySortBy sortBy = DirectorySortBy.Name,
+        SortBy sortBy = SortBy.Name,
         CancellationToken ct = default)
     {
         return await _unitOfWork.Directories.GetSubdirectoriesAsync(id, userId, currentPage, pageSize, sortDirection, sortBy, ct );
     }
 
-    public async Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(Guid ownerId, int page = 1, int pageSize = 25, CancellationToken ct = default)
+    public async Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(Guid ownerId, int page = 1, int pageSize = 25,
+        SortDirection sortDirection = SortDirection.Asc,
+        SortBy sortBy = SortBy.Name, CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.GetRootDirectoriesAsync(ownerId, page, pageSize, ct);
+        return await _unitOfWork.Directories.GetRootDirectoriesAsync(ownerId, page, pageSize, sortBy, sortDirection, ct);
     }
 
 

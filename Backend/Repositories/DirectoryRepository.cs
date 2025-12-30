@@ -5,6 +5,7 @@ using Common.Repositories;
 using Data.Context;
 using DTO.Directories;
 using DTO.Files;
+using DTO.Tags;
 using Models.Enumerators;
 using Directory = Models.Directory;
 using File = Models.File;
@@ -171,7 +172,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         int currentPage = 1,
         int pageSize = 25,
         SortDirection sortDirection = SortDirection.Asc,
-        DirectorySortBy sortBy = DirectorySortBy.Name, 
+        SortBy sortBy = SortBy.Name, 
         CancellationToken ct = default)
     {
         var dbQuery = context.Directories.AsQueryable();
@@ -180,26 +181,26 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         
         dbQuery = sortBy switch
         {
-            DirectorySortBy.Name => sortDirection == SortDirection.Asc
+            SortBy.Name => sortDirection == SortDirection.Asc
                 ? dbQuery.OrderBy(d => d.Name)
                 : dbQuery.OrderByDescending(d => d.Name),
 
-            DirectorySortBy.CreatedAt => sortDirection == SortDirection.Asc
+            SortBy.CreatedAt => sortDirection == SortDirection.Asc
                 ? dbQuery.OrderBy(d => d.CreatedAt)
                 : dbQuery.OrderByDescending(d => d.CreatedAt),
 
-            DirectorySortBy.UpdatedAt => sortDirection == SortDirection.Asc
+            SortBy.UpdatedAt => sortDirection == SortDirection.Asc
                 ? dbQuery.OrderBy(d => d.UpdatedAt)
                 : dbQuery.OrderByDescending(d => d.UpdatedAt),
 
             _ => dbQuery.OrderBy(d => d.Name)
         };
 
-        var totalCount = await dbQuery.CountAsync(cancellationToken: ct);
+        var totalCount = await dbQuery.CountAsync(ct);
         
         var result = await dbQuery
             .AsNoTracking()
-            .Skip(currentPage * pageSize)
+            .Skip((currentPage -1) * pageSize)
             .Take(pageSize)
             .Select(d => new DirectorySummaryDto(
                 d.Id, d.Name, d.ParentId, d.CreatedAt, d.UpdatedAt, new UserDto
@@ -372,8 +373,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             
             dbQuery = dbQuery   
                 .Where(d => 
-                    EF.Functions.ILike(d.Name, $"%{searchTerm}%") ||
-                    EF.Functions.TrigramsSimilarity(d.Name, searchTerm) > similarityThreshold)
+                    EF.Functions.ILike(d.Name, $"%{searchTerm}%"))
                 .OrderByDescending(d => 
                     EF.Functions.ILike(d.Name, $"{searchTerm}%") ? 3 :      // Starts with (exact)
                     EF.Functions.ILike(d.Name, $"%{searchTerm}%") ? 2 :     // Contains
@@ -394,15 +394,15 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         
         dbQuery = query.SortBy switch
         {
-            DirectorySortBy.Name => query.SortDirection == SortDirection.Asc
+            SortBy.Name => query.SortDirection == SortDirection.Asc
                 ? dbQuery.OrderBy(d => d.Name)
                 : dbQuery.OrderByDescending(d => d.Name),
 
-            DirectorySortBy.CreatedAt => query.SortDirection == SortDirection.Asc
+            SortBy.CreatedAt => query.SortDirection == SortDirection.Asc
                 ? dbQuery.OrderBy(d => d.CreatedAt)
                 : dbQuery.OrderByDescending(d => d.CreatedAt),
 
-            DirectorySortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
+            SortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
                 ? dbQuery.OrderBy(d => d.UpdatedAt)
                 : dbQuery.OrderByDescending(d => d.UpdatedAt),
 
@@ -442,7 +442,9 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
     public async Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(
         Guid ownerId, 
         int page = 1,
-        int pageSize = 25, 
+        int pageSize = 25,
+        SortBy sortBy = SortBy.Name,
+        SortDirection sortDirection = SortDirection.Asc,
         CancellationToken ct = default)
     {
         var query = context.Directories
@@ -450,9 +452,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .Where(d => d.ParentId == null && d.OwnerId == ownerId && d.DeletedAt == null);
         
         var totalCount = await query.CountAsync(ct);
-        
+
         var directories = await query
-            .OrderBy(d => d.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(d => new DirectorySummaryDto(
@@ -479,31 +480,70 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         };
     }
 
-    public async Task<PaginatedResult<FileSummary>> GetRootFilesAsync(
+    public async Task<PaginatedResult<FileResult>> GetRootFilesAsync(
         Guid ownerId,
         int page = 1,
         int pageSize = 25,
+        SortBy sortBy = SortBy.Name,
+        SortDirection sortDirection = SortDirection.Asc,
         CancellationToken ct = default)
     {
-        var query = context.Files
+        var dbQuery = context.Files
             .AsNoTracking()
             .Where(f => f.DirectoryId == null && f.OwnerId == ownerId && f.DeletedAt == null);
         
-        var totalCount = await query.CountAsync(ct);
+        dbQuery = sortBy switch
+        {
+            SortBy.Name => sortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.Name)
+                : dbQuery.OrderByDescending(d => d.Name),
+
+            SortBy.CreatedAt => sortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.CreatedAt)
+                : dbQuery.OrderByDescending(d => d.CreatedAt),
+
+            SortBy.UpdatedAt => sortDirection == SortDirection.Asc
+                ? dbQuery.OrderBy(d => d.UpdatedAt)
+                : dbQuery.OrderByDescending(d => d.UpdatedAt),
+
+            _ => dbQuery.OrderBy(d => d.Name)
+        };
         
-        var files = await query
-            .OrderBy(f => f.Name)
+        var totalCount = await dbQuery.CountAsync(ct);
+        
+        var files = await dbQuery
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(f => new FileSummary(
-                f.Id,
-                f.Name,
-                f.MimeType,
-                f.HasPreview,
-                f.Path))
+            .Select(f => new FileResult(
+                f.Id, 
+                f.Name, 
+                f.MimeType, 
+                f.CreatedAt, 
+                f.UpdatedAt, 
+                f.DeletedAt,
+                new FileVersionDto(
+                    f.CurrentVersion.Id, 
+                    f.CurrentVersion.Size, 
+                    f.CurrentVersion.MimeType, 
+                    f.CurrentVersion.VersionNumber),
+                f.Tags.Select(t => new TagDto
+                {
+                    Id = t.Id,
+                    CreatedAt = t.CreatedAt,
+                    UpdatedAt = t.UpdatedAt,
+                    Name = t.Name,
+                    UserId = t.OwnerId
+                }).ToList(),
+                new UserDto
+                {
+                    Id = f.OwnerId,
+                    Name = f.Owner.Name,
+                    Email = f.Owner.Email
+                }
+            ))
             .ToListAsync(ct);
         
-        return new PaginatedResult<FileSummary>
+        return new PaginatedResult<FileResult>
         {
             Items = files,
             TotalCount = totalCount,

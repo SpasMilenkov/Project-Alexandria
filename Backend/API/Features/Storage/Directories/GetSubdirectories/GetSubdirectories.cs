@@ -10,10 +10,10 @@ namespace API.Features.Storage.Directories.GetSubdirectories;
 internal sealed class GetSubdirectoriesRequest
 {
     public Guid DirectoryId { get; set; }
-    public int CurrentPage { get; set; }
+    public int Page { get; set; }
     public int PageSize { get; set; } 
     public SortDirection SortDirection { get; set; }
-    public DirectorySortBy SortBy { get; set; }
+    public SortBy SortBy { get; set; }
 }
 
 internal sealed class GetSubdirectories(IDirectoryService directoryService) : Endpoint<GetSubdirectoriesRequest, PaginatedResult<DirectorySummaryDto>>
@@ -33,7 +33,7 @@ internal sealed class GetSubdirectories(IDirectoryService directoryService) : En
     
         var userId = Guid.Parse(userIdString);
         var result = await directoryService.GetPaginatedDirectories(req.DirectoryId,
-            userId, req.CurrentPage, req.PageSize, req.SortDirection, req.SortBy, ct);
+            userId, req.Page, req.PageSize, req.SortDirection, req.SortBy, ct);
 
         await Send.OkAsync(result, ct);
     }

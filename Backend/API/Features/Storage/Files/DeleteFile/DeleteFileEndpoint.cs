@@ -1,24 +1,14 @@
-using Common.Config;
+using System.Security.Claims;
 using Common.Services;
 using FastEndpoints;
-using Microsoft.Extensions.Options;
 
 namespace API.Features.Storage.Files.DeleteFile;
 
-public class DeleteFileEndpoint : Endpoint<DeleteFileRequest>
+public class DeleteFileEndpoint(IStorageService storage) : Endpoint<DeleteFileRequest>
 {
-    private readonly IStorageService _storage;
-    private readonly IOptions<S3Config> _options;
-
-    public DeleteFileEndpoint(IStorageService storage, IOptions<S3Config> options)
-    {
-        _storage = storage;
-        _options = options;
-    }
-
     public override void Configure()
     {
-        Delete("/files/{path}");
+        Delete("/files/{id}");
         Description(x => x.WithTags("Files"));
 
         Summary(s =>
@@ -34,13 +24,16 @@ public class DeleteFileEndpoint : Endpoint<DeleteFileRequest>
 
     public override async Task HandleAsync(DeleteFileRequest req, CancellationToken ct)
     {
-        var bucketName = _options.Value.UploadBucket;
-        if (bucketName is null) ThrowError("Invalid bucket configuration");
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                           ?? User.FindFirst("sub")?.Value
+                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+        var userId = Guid.Parse(userIdString);
 
         try
         {
-            await _storage.DeleteFile(bucketName, req.Path, ct, hardDelete: false);
-            await Send.OkAsync(new { Message = "File soft deleted successfully", Path = req.Path }, ct);
+            //TODO: pass a hard delete parameter as well
+            await storage.DeleteFile(req.Id, userId, ct, false);
+            await Send.OkAsync(new { Message = "File soft deleted successfully" }, ct);
         }
         catch (InvalidOperationException ex)
         {

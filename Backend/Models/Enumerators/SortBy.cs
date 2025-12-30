@@ -1,10 +1,9 @@
 namespace Models.Enumerators;
 
-public enum DirectorySortBy
+public enum SortBy
 {
     Name,
     CreatedAt,
     UpdatedAt,
-    FileCount,
-    TotalSize
+    Size
 }
