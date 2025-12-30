@@ -22,19 +22,23 @@ public interface IDirectoryRepository: IRepository<Directory>
         Guid ownerId,
         int page = 1,
         int pageSize = 25,
+        SortBy sortBy = SortBy.Name,
+        SortDirection sortDirection = SortDirection.Asc,
         CancellationToken ct = default);
     
     Task<PaginatedResult<DirectorySummaryDto>> GetSubdirectoriesAsync(Guid parentDirectoryId, Guid userId,
         int currentPage = 1,
         int pageSize = 25,
         SortDirection sortDirection = SortDirection.Asc,
-        DirectorySortBy sortBy = DirectorySortBy.Name,
+        SortBy sortBy = SortBy.Name,
         CancellationToken ct = default);
 
-    Task<PaginatedResult<FileSummary>> GetRootFilesAsync(
+    Task<PaginatedResult<FileResult>> GetRootFilesAsync(
         Guid ownerId,
         int page = 1,
         int pageSize = 25,
+        SortBy sortBy = SortBy.Name,
+        SortDirection sortDirection = SortDirection.Asc,
         CancellationToken ct = default);
     
     Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query, CancellationToken ct);
