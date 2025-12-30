@@ -6,10 +6,12 @@ using API.Middlewares;
 using FastEndpoints;
 using FastEndpoints.Swagger;
 using Infrastructure;
+using Infrastructure.Converters;
 
 var bld = WebApplication.CreateBuilder();
 
 bld.Services
+    .AddHttpContextAccessor()
     .AddDatabase(bld.Configuration)
     .AddAuthAndIdentity()
     .AddMinio(bld.Configuration)
@@ -57,6 +59,7 @@ app.UseFastEndpoints(c =>
         c.Versioning.Prefix = "v";
         c.Endpoints.RoutePrefix = "api";
         c.Versioning.PrependToRoute = true;
+        c.Serializer.Options.Converters.Add(new BigIntegerJsonConverter());
     }
     ).UseSwaggerGen();
 app.MapHealthChecks("/health");
