@@ -1,39 +1,65 @@
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui'
-import { reactive } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import { loginSchema, type LoginSchema } from '@/schemas/auth'
-import { useRouter } from 'vue-router'
-const authStore = useAuthStore()
-const router = useRouter()
-const state = reactive<Partial<LoginSchema>>({
-  email: undefined,
-  password: undefined,
-})
+import type { FormSubmitEvent, AuthFormField } from "@nuxt/ui";
+import { loginSchema, type LoginSchema } from "@/schemas/auth";
+import { useAuthStore } from "@/stores/auth";
+import { useRouter } from "vue-router";
 
-const toast = useToast()
-async function onSubmit(event: FormSubmitEvent<LoginSchema>) {
-  toast.add({ title: 'Success', description: 'The form has been submitted.', color: 'success' })
-  console.log(event.data)
-  const result = await authStore.login(event.data)
-  if(result.success) router.push("/dashboard")
+const toast = useToast();
+const authStore = useAuthStore();
+const router = useRouter();
+
+const fields: AuthFormField[] = [
+  {
+    name: "email",
+    type: "email",
+    label: "Email",
+    placeholder: "Enter your email",
+    required: true,
+  },
+  {
+    name: "password",
+    label: "Password",
+    type: "password",
+    placeholder: "Enter your password",
+    required: true,
+  },
+  {
+    name: "remember",
+    label: "Remember me",
+    type: "checkbox",
+  },
+];
+
+async function onSubmit(payload: FormSubmitEvent<LoginSchema>) {
+  console.log("Submitted", payload);
+  toast.add({
+    title: "Submitted",
+    description: "Login Request successfully submitted",
+  });
+  await authStore.login(payload.data);
+
+  if (authStore.error) {
+    toast.add({
+      title: "Error trying to log in",
+      description: authStore.error,
+    });
+    return;
+  }
+  router.push("/dashboard");
 }
 </script>
 
 <template>
-  <UCard>
-    <template #header> Welcome </template>
-
-    <UForm :schema="loginSchema" :state="state" class="space-y-4" @submit="onSubmit">
-      <UFormField label="Email" name="email">
-        <UInput v-model="state.email" />
-      </UFormField>
-
-      <UFormField label="Password" name="password">
-        <UInput v-model="state.password" type="password" />
-      </UFormField>
-
-      <UButton type="submit"> Submit </UButton>
-    </UForm>
-  </UCard>
+  <div class="flex flex-col items-center justify-center gap-4 p-4">
+    <UPageCard class="w-full max-w-md">
+      <UAuthForm
+        :schema="loginSchema"
+        title="Login"
+        description="Enter your credentials to access your account."
+        icon="i-lucide-user"
+        :fields="fields"
+        @submit="onSubmit"
+      />
+    </UPageCard>
+  </div>
 </template>
