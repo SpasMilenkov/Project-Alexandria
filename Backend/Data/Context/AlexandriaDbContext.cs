@@ -1,4 +1,6 @@
 using Data.Configurations;
+using Data.Interceptors;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Models;
@@ -6,9 +8,26 @@ using File = Models.File;
 using Directory = Models.Directory;
 namespace Data.Context;
 
-public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
-    : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>(options)
+public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
+    private readonly IHttpContextAccessor? _httpContextAccessor;
+
+    // Constructor for DI (used at runtime)
+    public AlexandriaDbContext(
+        DbContextOptions<AlexandriaDbContext> options,
+        IHttpContextAccessor httpContextAccessor) 
+        : base(options)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    // Constructor for migrations (when IHttpContextAccessor is not available)
+    public AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options) 
+        : base(options)
+    {
+        _httpContextAccessor = null;
+    }
+
     public DbSet<File> Files { get; set; }
     public DbSet<SignedUrl> SignedUrls { get; set; }
     public DbSet<MediaMetadata> MediaMetadata { get; set; }
@@ -16,6 +35,10 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<Tag> Tags { get; set; }
     public DbSet<Directory> Directories { get; set; }
+    public DbSet<FileVersion> FileVersions { get; set; }
+    public DbSet<ContentObject> ContentObjects { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -44,5 +67,17 @@ public class AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new TagConfiguration());
         modelBuilder.ApplyConfiguration(new DirectoryConfiguration());
+        modelBuilder.ApplyConfiguration(new FileVersionConfiguration());
+        modelBuilder.ApplyConfiguration(new ContentObjectConfiguration());
+        modelBuilder.ApplyConfiguration(new AuditLogConfiguration());
+    }
+    
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        // Only add interceptor if we have HttpContext (not during migrations)
+        if (_httpContextAccessor != null)
+        {
+            optionsBuilder.AddInterceptors(new AuditInterceptor(_httpContextAccessor));
+        }
     }
 }

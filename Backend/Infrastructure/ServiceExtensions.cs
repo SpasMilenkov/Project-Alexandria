@@ -24,7 +24,6 @@ public static class ServiceExtensions
             options.CompactionPercentage = 0.25;
             options.ExpirationScanFrequency = TimeSpan.FromMinutes(5);
         });
-
         
         services.AddScoped<IStorageService, S3StorageService>();
         services.AddScoped<IFileRepository, FileRepository>();
@@ -39,6 +38,10 @@ public static class ServiceExtensions
         services.AddScoped<IFileTagService, FileTagService>();
         services.AddScoped<IDirectoryRepository, DirectoryRepository>();
         services.AddScoped<IDirectoryService, DirectoryService>();
+        services.AddScoped<IFileVersionRepository, FileVersionRepository>();
+        services.AddScoped<IContentObjectRepository, ContentObjectRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddResourceMonitoring();

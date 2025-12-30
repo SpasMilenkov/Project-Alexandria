@@ -1,17 +1,12 @@
 using System.Security.Claims;
 using Common.Services;
 using DTO.Files;
+using DTO.Search;
 using FastEndpoints;
 
 namespace API.Features.Storage.Files.GetRootFiles;
 
-sealed class GetRootFilesRequest
-{
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-}
-
-sealed class GetRootFilesEndpoint(IStorageService storageService) : Endpoint<GetRootFilesRequest, PaginatedResult<FileSummary>>
+sealed class GetRootFilesEndpoint(IStorageService storageService) : Endpoint<PaginationParams, PaginatedResult<FileResult>>
 {
     public override void Configure()
     {
@@ -20,7 +15,7 @@ sealed class GetRootFilesEndpoint(IStorageService storageService) : Endpoint<Get
 
     }
 
-    public override async Task HandleAsync(GetRootFilesRequest req, CancellationToken ct)
+    public override async Task HandleAsync(PaginationParams req, CancellationToken ct)
     {
         var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                            ?? User.FindFirst("sub")?.Value
@@ -28,6 +23,6 @@ sealed class GetRootFilesEndpoint(IStorageService storageService) : Endpoint<Get
     
         var userId = Guid.Parse(userIdString);
 
-        await Send.OkAsync(await storageService.GetRootFilesAsync(userId, req.Page, req.PageSize, ct), ct);
+        await Send.OkAsync(await storageService.GetRootFilesAsync(userId, req.Page, req.PageSize, req.SortBy, req.SortDirection, ct), ct);
     }
 }

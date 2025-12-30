@@ -2,9 +2,10 @@ namespace Common.Config;
 
 public class S3Config
 {
-    public string? Endpoint { get; set; }
-    public string? SecretKey { get; set; }
-    public string? AccessKey { get; set; }
-    public string? UploadBucket { get; set; }
-    public string? PreviewBucket { get; set; }
+    public required string Endpoint { get; set; }
+    public required string SecretKey { get; set; }
+    public required string AccessKey { get; set; }
+    public required string UploadBucket { get; set; }
+    public required string PreviewBucket { get; set; }
+    public required string TempBucket { get; set; }
 }

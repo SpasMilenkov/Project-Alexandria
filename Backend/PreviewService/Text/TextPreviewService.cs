@@ -5,7 +5,7 @@ namespace PreviewService.Text;
 
 public class TextPreviewService : ITextPreviewService
 {
-    public async Task<(byte[] data, string mimeType)> GenerateTextPreviewAsync(
+    public async Task<(string data, string mimeType)> GenerateTextPreviewAsync(
         Stream fileStream,
         string mimeType,
         int maxBytes = 512 * 1024, // 512KB preview limit
@@ -36,6 +36,6 @@ public class TextPreviewService : ITextPreviewService
         if (totalRead >= maxBytes)
             text += "\n\n... (preview truncated)";
 
-        return (Encoding.UTF8.GetBytes(text), "text/plain");
+        return (text, mimeType);
     }
 }

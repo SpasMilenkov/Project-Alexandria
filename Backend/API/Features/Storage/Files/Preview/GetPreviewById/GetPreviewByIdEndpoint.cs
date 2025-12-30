@@ -1,14 +1,15 @@
+using System.Security.Claims;
 using Common.Services;
+using DTO.Files;
 using FastEndpoints;
 
 namespace API.Features.Storage.Files.Preview.GetPreviewById;
 
-public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<GetPreviewByIdRequest>
+public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<GetPreviewByIdRequest, PreviewResultDto>
 {
     public override void Configure()
     {
         Get("/files/{id}/preview");
-        AllowAnonymous();
         Description(b => b.WithTags("Preview", "Files"));
         Summary(s =>
         {
@@ -23,34 +24,27 @@ public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<G
     
     public override async Task HandleAsync(GetPreviewByIdRequest req, CancellationToken ct)
     {
-        var preview = await previewService.GetPreview(req.Id, ct);
-
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                           ?? User.FindFirst("sub")?.Value
+                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+        var userId = Guid.Parse(userIdString);
+        
+        var preview = await previewService.GetPreviewUrl(req.Id, userId, ct);
+    
         try
         {
             if (preview is null)
             {
                 return;
             }
-            HttpContext.Response.StatusCode = 200;
-            HttpContext.Response.ContentType = preview.Metadata.MimeType;
-            var encodedFileName = System.Net.WebUtility.UrlEncode(preview.Metadata.FileName)
-                .Replace("+", "%20");
-        
-            HttpContext.Response.Headers.ContentDisposition = 
-                $"attachment; filename*=UTF-8''{encodedFileName}";
             // Stream file from storage
-            await preview.FileStream.CopyToAsync(HttpContext.Response.Body, ct);
-            
+            await Send.OkAsync(preview, ct);
+
         }
         catch (Exception e)
         {
             Console.WriteLine(e);
             throw;
-        }
-        finally
-        {
-            if(preview is not null)
-                await preview.FileStream.DisposeAsync();
         }
     }
 }

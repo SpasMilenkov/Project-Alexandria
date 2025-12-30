@@ -33,6 +33,9 @@ public static class ServiceExtensions
         services.AddScoped<IFileRepository, FileRepository>();
         services.AddScoped<IDirectoryRepository, DirectoryRepository>();
         services.AddScoped<IDirectoryService, DirectoryService>();
+        services.AddScoped<IFileVersionRepository, FileVersionRepository>();
+        services.AddScoped<IContentObjectRepository, ContentObjectRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         return services;
     }

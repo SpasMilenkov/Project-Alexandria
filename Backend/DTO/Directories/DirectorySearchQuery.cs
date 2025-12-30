@@ -32,6 +32,6 @@ public class DirectorySearchQuery
         // Paging & sorting
         public int CurrentPage { get; set; } = 0;
         public int PageSize { get; set; } = 20;
-        public DirectorySortBy SortBy { get; set; } = DirectorySortBy.Name;
+        public SortBy SortBy { get; set; } = SortBy.Name;
         public SortDirection SortDirection { get; set; } = SortDirection.Asc;
 }

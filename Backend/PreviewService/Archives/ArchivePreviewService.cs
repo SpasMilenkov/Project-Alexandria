@@ -12,7 +12,7 @@ public class ArchivePreviewService : IArchivePreviewService
         WriteIndented = true
     };
 
-    public async Task<(byte[] data, string mimeType)> GenerateArchivePreviewAsync(
+    public async Task<(string? data, string mimeType)> GenerateArchivePreviewAsync(
         Stream archiveStream,
         string fileName,
         CancellationToken ct)
@@ -40,19 +40,12 @@ public class ArchivePreviewService : IArchivePreviewService
             };
 
             var json = JsonSerializer.Serialize(previewData, JsonOptions);
-            return (Encoding.UTF8.GetBytes(json), "application/json");
+            return (json, "application/json");
         }
         catch (Exception ex)
         {
-            // Graceful fallback — return a short JSON error message
-            var error = JsonSerializer.Serialize(new
-            {
-                Error = "Unable to preview archive.",
-                Message = ex.Message,
-                FileName = fileName
-            }, JsonOptions);
-
-            return (Encoding.UTF8.GetBytes(error), "application/json");
+            Console.WriteLine("Could not generate archive preview", ex);
+            return (null, null);
         }
     }
 }

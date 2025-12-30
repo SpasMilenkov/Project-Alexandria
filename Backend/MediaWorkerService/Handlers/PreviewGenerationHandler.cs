@@ -1,3 +1,4 @@
+using Common;
 using Common.Services;
 using Models.Enumerators;
 using PreviewService.Documents;
@@ -8,7 +9,8 @@ namespace MediaWorkerService.Handlers;
 public class PreviewGenerationHandler(
     ILogger<PreviewGenerationHandler> logger, 
     IStorageService storage, 
-    IMediaPreviewService mediaPreviewService) : IPreviewGenerationHandler
+    IMediaPreviewService mediaPreviewService,
+    IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string fileId, CancellationToken ct = default)
     {
@@ -16,6 +18,10 @@ public class PreviewGenerationHandler(
         var fileData = await storage.GetFileMetadata(fileIdGuid, ct);
         if (fileData is null) 
             throw new InvalidOperationException($"File with that ID: {fileId} does not exist.");
+
+        var fileHash = Convert.ToHexStringLower( 
+            await unitOfWork.Files.GetFileHash(fileData.Id, fileData.OwnerId, ct) 
+            ?? throw new InvalidOperationException("File does not have related content object"));
     
         logger.LogInformation("Processing media preview for file: {FileId}", fileId);
     
@@ -48,7 +54,7 @@ public class PreviewGenerationHandler(
 
             await using var previewStream = File.OpenRead(result.PreviewPath);
             await using var thumbnailStream = File.OpenRead(result.ThumbnailPath);
-            await storage.UploadMediaData(previewStream, thumbnailStream, fileData.Name, fileData.Id, result.Metadata, ct);
+            await storage.UploadMediaData(previewStream, thumbnailStream, fileHash, fileData.Id, result.Metadata, ct);
             
             //TODO: Change Guid.Empty when the system account is seeded into the database
             await storage.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);

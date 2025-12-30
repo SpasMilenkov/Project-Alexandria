@@ -1,7 +1,9 @@
 using FastEndpoints;
 using FastEndpoints.Swagger;
+using Infrastructure.Converters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure;
@@ -32,6 +34,10 @@ public static class ApiExtensions
                     .AllowAnyMethod()
                     .AllowAnyHeader()
             );
+        });
+        services.Configure<JsonOptions>(options =>
+        {
+            options.SerializerOptions.Converters.Add(new BigIntegerJsonConverter());
         });
 
         return services;

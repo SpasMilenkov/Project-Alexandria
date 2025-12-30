@@ -8,7 +8,7 @@ public class SearchDirectoryRequestValidator : Validator<SearchDirectoryRequest>
     public SearchDirectoryRequestValidator()
     {
         // Pagination validation
-        RuleFor(x => x.CurrentPage)
+        RuleFor(x => x.Page)
             .GreaterThanOrEqualTo(0)
             .WithMessage("Page number must be non-negative");
 

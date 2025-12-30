@@ -62,9 +62,8 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService) : Endpoint<Se
                 {
                     Id = f.Id,
                     Name = f.Name,
-                    Path = f.Path,
                     MimeType = f.MimeType,
-                    Size = f.Size.ToString(),
+                    // Size = f.Size.ToString(),
                     CreatedAt = f.CreatedAt,
                     HasPreview = f.HasPreview,
                     Tags = f.Tags.Where(t => t.DeletedAt == null).Select(t => new TagDto

@@ -27,12 +27,13 @@ public interface IDirectoryService
         int currentPage = 1,
         int pageSize = 25,
         SortDirection sortDirection = SortDirection.Asc,
-        DirectorySortBy sortBy = DirectorySortBy.Name,
+        SortBy sortBy = SortBy.Name,
         CancellationToken ct = default);
-    Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(
-        Guid ownerId,
+    Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(Guid ownerId,
         int page = 1,
         int pageSize = 25,
+        SortDirection sortDirection = SortDirection.Asc,
+        SortBy sortBy = SortBy.Name,
         CancellationToken ct = default);
     
     Task<IEnumerable<File>> GetDirectoryFilesAsync(Guid directoryId, Guid userId, 

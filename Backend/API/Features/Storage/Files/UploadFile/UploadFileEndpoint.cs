@@ -12,7 +12,6 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
     public override void Configure()
     {
         Post("/files/upload");
-        AllowAnonymous();
         AllowFileUploads();
         // Swagger documentation
         Summary(s =>
@@ -43,6 +42,7 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
         var userId = Guid.Parse(userIdString);
+        
         var bucketName = options.Value.UploadBucket;
         Console.WriteLine($"Bucket: {bucketName}");
 
@@ -52,6 +52,7 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
         string? fileName = null;
         string? path = null;
         Guid? directoryId = null;
+        string? sha256 = null;
         string contentType = "application/octet-stream";
         Stream? fileStream = null;
 
@@ -73,6 +74,9 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
                         break;
                     case "directoryId":
                         directoryId = Guid.Parse(fieldValue);
+                        break;
+                    case "sha256":
+                        sha256 = fieldValue;
                         break;
                 }
             }
@@ -109,15 +113,26 @@ public class UploadFileEndpoint(IOptions<S3Config> options, IStorageService stor
         try
         {
             // Upload to MinIO using the checksum stream
-            var uploadResult = await storage.UploadFile(bucketName: bucketName, objectName: objectName, contentType: contentType, fileStream: fileStream, uploadedBy: userId, ct: ct, contentLength: -1, directoryId: directoryId, originalFileName: fileName);
+            var uploadResult = await storage.UploadFile
+                (
+                    bucketName: bucketName,
+                    objectName: objectName,
+                    contentType: contentType,
+                    sha256,
+                    fileStream: fileStream,
+                    uploadedBy: userId,
+                    ct: ct,
+                    contentLength: -1,
+                    directoryId: directoryId,
+                    originalFileName: fileName
+                );
 
             // Get the calculated checksum
 
-            var stat = await storage.GetVersionInfo(bucketName, objectName, ct);
+            // var stat = await storage.GetVersionInfo(bucketName, objectName, ct);
             await Send.OkAsync(new UploadFileResponse
             {
                 ObjectName = uploadResult.ObjectName,
-                Url = uploadResult.Url,
                 Checksum = uploadResult.Checksum,
                 VersionId = uploadResult.VersionId,
                 Size = uploadResult.Size,

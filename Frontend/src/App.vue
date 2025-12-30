@@ -1,33 +1,26 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui'
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute } from "vue-router";
+import { useSettingsStore } from "@/stores/settings";
+import DefaultLayout from "@/layouts/DefaultLayout.vue";
+import DashboardLayout from "@/layouts/DashboardLayout.vue";
 
-const route = useRoute()
+const route = useRoute();
 
-const items = computed<NavigationMenuItem[]>(() => [
-  {
-    label: 'Log in',
-    to: '/auth',
-    active: route.path.startsWith('/auth'),
-  },
-])
+// Initialize the settings store immediately
+// This will trigger the theme application via the store's watchers
+const settingsStore = useSettingsStore();
+
+const layouts = {
+  default: DefaultLayout,
+  dashboard: DashboardLayout,
+};
 </script>
 
 <template>
   <UApp>
-    <UHeader>
-      <template #title>Alexandria</template>
-      <UNavigationMenu :items="items" />
-      <template #right>
-        <UColorModeButton />
-      </template>
-    </UHeader>
-    <UMain>
-      <UContainer class="flex justify-center">
-        <RouterView />
-      </UContainer>
-    </UMain>
+    <component :is="layouts[route.meta.layout || 'default']">
+      <RouterView />
+    </component>
     <UFooter />
   </UApp>
 </template>
