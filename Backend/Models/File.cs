@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Numerics;
+using Models.Enumerators;
 
 namespace Models;
 
@@ -10,17 +11,8 @@ public class File : IBase
     public required string Name { get; set; }
 
     [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
-    [StringLength(ValidationConstants.StringLengths.ExtraLongString)]
-    public required string Path { get; set; }
-
-    [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
     [StringLength(ValidationConstants.StringLengths.MediumString)]
     public required string MimeType { get; init; }
-
-    [Range(ValidationConstants.FileConstants.MinFileSize,
-        ValidationConstants.FileConstants.MaxFileSize,
-        ErrorMessage = ValidationConstants.ErrorMessages.FileSizeRange)]
-    public BigInteger Size { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
@@ -43,4 +35,7 @@ public class File : IBase
     public Guid OwnerId { get; set; }
     public Directory? Directory { get; set; }
     public Guid? DirectoryId { get; set; }
+    
+    public Guid? CurrentVersionId { get; set; }
+    public FileVersion CurrentVersion { get; set; } = null!;
 }

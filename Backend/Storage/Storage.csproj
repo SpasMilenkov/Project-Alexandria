@@ -13,6 +13,9 @@
       <Reference Include="Minio">
         <HintPath>..\..\..\..\.nuget\packages\minio\6.0.5\lib\net8.0\Minio.dll</HintPath>
       </Reference>
+      <Reference Include="Npgsql">
+        <HintPath>..\..\..\..\.nuget\packages\npgsql\9.0.3\lib\net8.0\Npgsql.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
     <ItemGroup>
@@ -20,7 +23,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="AWSSDK.S3" Version="4.0.9.1" />
+      <PackageReference Include="AWSSDK.S3" Version="4.0.15.2" />
+      <PackageReference Include="SeekableS3Stream" Version="1.0.3" />
     </ItemGroup>
 
 </Project>

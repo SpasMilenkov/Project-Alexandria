@@ -56,15 +56,15 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         }
 
         // Apply file size filters
-        if (query.MinFileSize.HasValue)
-        {
-            filesQuery = filesQuery.Where(f => f.Size >= query.MinFileSize.Value);
-        }
-
-        if (query.MaxFileSize.HasValue)
-        {
-            filesQuery = filesQuery.Where(f => f.Size <= query.MaxFileSize.Value);
-        }
+        // if (query.MinFileSize.HasValue)
+        // {
+        //     filesQuery = filesQuery.Where(f => f.Size >= query.MinFileSize.Value);
+        // }
+        //
+        // if (query.MaxFileSize.HasValue)
+        // {
+        //     filesQuery = filesQuery.Where(f => f.Size <= query.MaxFileSize.Value);
+        // }
 
         // Apply MIME type filter
         if (!string.IsNullOrWhiteSpace(query.MimeTypePrefix))
@@ -218,6 +218,101 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return await AddAsync(file, ct);
     }
 
+    public async Task<byte[]?> GetFileHash(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    {
+        var result = await _files
+            .AsNoTracking()
+            .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
+            .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct);
+        return result?.ContentHash;
+    }
+    public async Task<string> GetFileHashAsString(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    {
+        var result = await _files
+            .AsNoTracking()
+            .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
+            .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct);
+
+        if (result is null) throw new InvalidOperationException("File hash not found");
+        
+        return BitConverter.ToString(result.ContentHash)
+            .Replace("-", "")
+            .ToLowerInvariant();;
+    }
+    
+    public async Task<PaginatedResult<FileResult>> GetFilesByDirectoryIdAsync(
+        Guid parentDirectoryId,
+        Guid userId,
+        int currentPage = 1,
+        int pageSize = 25,
+        SortDirection sortDirection = SortDirection.Asc,
+        SortBy sortBy = SortBy.Name, 
+        CancellationToken ct = default)
+    {
+        var baseQuery = context.Files
+            .AsNoTracking()
+            .Where(f => f.DirectoryId == parentDirectoryId && f.OwnerId == userId);
+
+        // Apply sorting
+        var sortedQuery = sortBy switch
+        {
+            SortBy.Name => sortDirection == SortDirection.Asc
+                ? baseQuery.OrderBy(f => f.Name)
+                : baseQuery.OrderByDescending(f => f.Name),
+            SortBy.CreatedAt => sortDirection == SortDirection.Asc
+                ? baseQuery.OrderBy(f => f.CreatedAt)
+                : baseQuery.OrderByDescending(f => f.CreatedAt),
+            SortBy.UpdatedAt => sortDirection == SortDirection.Asc
+                ? baseQuery.OrderBy(f => f.UpdatedAt)
+                : baseQuery.OrderByDescending(f => f.UpdatedAt),
+            _ => baseQuery.OrderBy(f => f.Name)
+        };
+
+        var count = await baseQuery.CountAsync(ct);
+        
+        var itemsTask = sortedQuery
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .Select(f => new FileResult(
+                f.Id, 
+                f.Name, 
+                f.MimeType, 
+                f.CreatedAt, 
+                f.UpdatedAt, 
+                f.DeletedAt,
+                new FileVersionDto(
+                    f.CurrentVersion.Id, 
+                    f.CurrentVersion.Size, 
+                    f.CurrentVersion.MimeType, 
+                    f.CurrentVersion.VersionNumber),
+                f.Tags.Select(t => new TagDto
+                {
+                    Id = t.Id,
+                    CreatedAt = t.CreatedAt,
+                    UpdatedAt = t.UpdatedAt,
+                    Name = t.Name,
+                    UserId = t.OwnerId
+                }).ToList(),
+                new UserDto
+                {
+                    Id = f.OwnerId,
+                    Name = f.Owner.Name,
+                    Email = f.Owner.Email
+                }
+            ))
+            .ToListAsync(ct);
+        
+
+        return new PaginatedResult<FileResult>
+        {
+            Items = itemsTask.Result,
+            CurrentPage = currentPage,
+            PageSize = pageSize,
+            TotalCount = count,
+            TotalPages = (int)Math.Ceiling(count / (double)pageSize)
+        };
+    }
+
     public async Task<File> UpdateAsync(File file, CancellationToken ct = default)
     {
         var existingFile = await GetByIdAsync(file.Id, ct);
@@ -228,8 +323,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         // Update mutable properties
         existingFile.Name = file.Name;
-        existingFile.Path = file.Path;
-        existingFile.Size = file.Size;
+        // existingFile.Path = file.Path;
         existingFile.HasPreview = file.HasPreview;
         existingFile.PreviewGeneratedAt = file.PreviewGeneratedAt;
         existingFile.UpdatedBy = file.UpdatedBy;
@@ -254,7 +348,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     {
         return await _files
             .Where(f => f.Id == fileId)
-            .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview, f.Path))
+            .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview))
             .FirstOrDefaultAsync(ct);
     }
 }
