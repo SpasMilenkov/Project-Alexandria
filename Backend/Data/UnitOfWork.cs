@@ -5,12 +5,16 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Data;
 
-public sealed class UnitOfWork(IFileRepository files,
+public sealed class UnitOfWork(
+    IFileRepository files,
     IPreviewRepository previews,
     IMediaMetadataRepository mediaData,
     IRefreshTokenRepository refreshTokens,
     ITagRepository tags,
     IDirectoryRepository directories,
+    IFileVersionRepository fileVersions,
+    IContentObjectRepository contentObjects,
+    IAuditLogRepository auditLogs,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -19,7 +23,10 @@ public sealed class UnitOfWork(IFileRepository files,
     public IRefreshTokenRepository RefreshTokens { get; } = refreshTokens;
     public ITagRepository Tags { get; } = tags;
     public IDirectoryRepository Directories { get; } = directories;
-    
+    public IFileVersionRepository FileVersions { get; } = fileVersions;
+    public IContentObjectRepository ContentObjects { get; } = contentObjects;
+    public IAuditLogRepository AuditLogs { get; } = auditLogs;
+
     private IDbContextTransaction? _transaction;
     private bool _disposed;
 
