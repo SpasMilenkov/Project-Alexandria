@@ -1,9 +1,10 @@
+using Common;
 using Common.Services;
 using PreviewService.Documents;
 
 namespace DocumentWorker.Service.Handlers;
 
-public class PreviewGenerationHandler(ILogger<PreviewGenerationHandler> logger, IStorageService storage, IPdfPreviewService pdfPreviewService) : IPreviewGenerationHandler
+public class PreviewGenerationHandler(ILogger<PreviewGenerationHandler> logger, IStorageService storage, IPdfPreviewService pdfPreviewService, IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
 
     public async Task HandleAsync(string fileId, CancellationToken ct = default)
@@ -11,6 +12,9 @@ public class PreviewGenerationHandler(ILogger<PreviewGenerationHandler> logger, 
         var fileIdGuid = Guid.Parse(fileId);
         var fileData = await storage.GetFileMetadata(fileIdGuid, ct);
         if (fileData is null) throw new InvalidOperationException($"File with that ID: {fileId} does not exist.");
+        var contentHash = Convert.ToHexStringLower( 
+            await unitOfWork.Files.GetFileHash(fileData.Id, fileData.OwnerId, ct)
+            ?? throw new InvalidOperationException("File does not have content object hash"));
     
         logger.LogInformation("Processing preview for file: {FileId}", fileId);
     
@@ -43,7 +47,7 @@ public class PreviewGenerationHandler(ILogger<PreviewGenerationHandler> logger, 
             await using var previewStream = File.OpenRead(previewPath);
             
             //TODO: Change Guid.Empty when the system account is seeded into the database
-            await storage.UploadPreview("user-previews", $"previews/{fileData.Name}.pdf", "application/pdf", previewStream, originalFileId: fileData.Id, Guid.Empty, ct: ct);
+            await storage.UploadPreview("user-previews", $"previews/{contentHash}", "application/pdf", previewStream, originalFileId: fileData.Id, Guid.Empty, ct: ct);
             await storage.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
         
             File.Delete(previewPath);
