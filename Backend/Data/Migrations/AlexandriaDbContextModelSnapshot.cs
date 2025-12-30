@@ -270,6 +270,106 @@ namespace Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Models.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<bool>("IsEnriched")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("json");
+
+                    b.Property<string>("OperationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs", (string)null);
+                });
+
+            modelBuilder.Entity("Models.ContentObject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Hash")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("OrphanedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RefCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.ToTable("ContentObjects", (string)null);
+                });
+
             modelBuilder.Entity("Models.Directory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -328,6 +428,9 @@ namespace Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<Guid?>("CurrentVersionId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -350,19 +453,11 @@ namespace Data.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Path")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
-
                     b.Property<DateTime?>("PreviewGeneratedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("PreviewId")
                         .HasColumnType("uuid");
-
-                    b.Property<BigInteger>("Size")
-                        .HasColumnType("numeric(20,0)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -375,6 +470,9 @@ namespace Data.Migrations
 
                     b.HasIndex("CreatedAt");
 
+                    b.HasIndex("CurrentVersionId")
+                        .IsUnique();
+
                     b.HasIndex("DirectoryId");
 
                     b.HasIndex("Name");
@@ -385,6 +483,62 @@ namespace Data.Migrations
                     b.HasIndex("OwnerId");
 
                     b.ToTable("Files", (string)null);
+                });
+
+            modelBuilder.Entity("Models.FileVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("ContentHash")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid>("ContentObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<decimal>("Size")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentHash");
+
+                    b.HasIndex("ContentObjectId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.ToTable("FileVersions", (string)null);
                 });
 
             modelBuilder.Entity("Models.MediaMetadata", b =>
@@ -766,6 +920,11 @@ namespace Data.Migrations
 
             modelBuilder.Entity("Models.File", b =>
                 {
+                    b.HasOne("Models.FileVersion", "CurrentVersion")
+                        .WithOne("File")
+                        .HasForeignKey("Models.File", "CurrentVersionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Models.Directory", "Directory")
                         .WithMany("Files")
                         .HasForeignKey("DirectoryId");
@@ -776,9 +935,22 @@ namespace Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("CurrentVersion");
+
                     b.Navigation("Directory");
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Models.FileVersion", b =>
+                {
+                    b.HasOne("Models.ContentObject", "ContentObject")
+                        .WithMany()
+                        .HasForeignKey("ContentObjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ContentObject");
                 });
 
             modelBuilder.Entity("Models.MediaMetadata", b =>
@@ -848,6 +1020,12 @@ namespace Data.Migrations
                     b.Navigation("Preview");
 
                     b.Navigation("SignedUrls");
+                });
+
+            modelBuilder.Entity("Models.FileVersion", b =>
+                {
+                    b.Navigation("File")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

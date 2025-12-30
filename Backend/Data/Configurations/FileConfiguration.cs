@@ -17,11 +17,6 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
             .IsRequired();
 
-        builder.Property(e => e.Path)
-            .HasMaxLength(ValidationConstants.StringLengths.ExtraLongString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.ExtraLongString})")
-            .IsRequired();
-
         builder.Property(e => e.MimeType)
             .HasMaxLength(ValidationConstants.StringLengths.MediumString)
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
@@ -49,11 +44,14 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
                     j.ToTable("FileTags");
                 });
         
-        // BigInteger for file size - using numeric for PostgreSQL
-        builder.Property(e => e.Size)
-            .HasColumnType("numeric(20,0)")
-            .IsRequired();
-
+        builder.Property(f => f.CurrentVersionId)
+            .IsRequired(false);
+        
+        builder.HasOne(f => f.CurrentVersion)
+            .WithMany()
+            .HasForeignKey(f => f.CurrentVersionId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false); 
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")

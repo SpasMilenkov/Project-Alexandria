@@ -3,6 +3,8 @@ using Common.Services;
 using DTO;
 using DTO.Files;
 using FastEndpoints;
+using Models.Enumerators;
+
 namespace API.Features.Auth.Login;
 
 /** TODO Needs to be tested on multiple devices to see the behavior of the tokens,
@@ -12,11 +14,12 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
 {
     private readonly IAuthService _authService;
     private readonly CsrfService _csrfService;
-
-    public LoginEndpoint(IAuthService authService, CsrfService csrfService)
+    private readonly IAuditService _auditService;
+    public LoginEndpoint(IAuthService authService, CsrfService csrfService, IAuditService auditService)
     {
         _authService = authService;
         _csrfService = csrfService;
+        _auditService = auditService;
     }
 
     public override void Configure()
@@ -70,6 +73,17 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
             MaxAge = TimeSpan.FromHours(1)
         });
 
+        await _auditService.Log(
+            new AuditLogDto(
+                OperationType.Login,
+                EntityType.User,
+                result.User.Id,
+                result.User.Id,
+                $"User logged in.", 
+                null,
+                HttpContext.Connection.RemoteIpAddress?.ToString() ?? ""
+                    ));
+        
         await Send.OkAsync(new LoginResponse
         {
             Success = true,
