@@ -111,6 +111,8 @@ export const useFileExplorer = () => {
       );
       if (filesResult) files.value = filesResult.data?.items as FileResult[];
       filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
+
+      updateDirectoryPath();
       return;
     }
     updateDirectoryPath(dirId);
@@ -252,7 +254,8 @@ export const useFileExplorer = () => {
     selectedDirectories.value = new Set<string>();
   };
 
-  const updateDirectoryPath = async (id: string) => {
+  const updateDirectoryPath = async (id?: string) => {
+    if (!id) return (pathList.value = []);
     pathList.value = (await getDirectoryPath(id)) ?? [];
   };
   return {
