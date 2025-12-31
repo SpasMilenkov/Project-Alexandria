@@ -57,8 +57,21 @@
       </div>
     </div>
 
-    <!-- <FilePathBreadCrumbs /> -->
-    <UBreadcrumb :items="breadcrumbs" class="p-4" />
+    <UBreadcrumb :items="breadcrumbs" class="p-4">
+      <template #item="{ item }">
+        <UButton
+          :icon="item.icon"
+          :label="item.label"
+          color="neutral"
+          variant="link"
+          class="p-0.5"
+          @click="handleNavigate(item.key)"
+        />
+      </template>
+      <template #separator>
+        <span class="mx-2 text-muted">/</span>
+      </template>
+    </UBreadcrumb>
 
     <!-- Content Area -->
     <div ref="containerRef" class="flex-1 overflow-auto relative">
@@ -219,6 +232,7 @@ import MoveDirectoryModal from "./Modals/MoveDirectoryModal.vue";
 import FileUploadModal from "./Modals/FileUploadModal.vue";
 import { useFileExplorer } from "@/composables/useFileExplorer";
 import { useTabStore } from "@/stores/tab";
+import type { BreadcrumbItem } from "@nuxt/ui";
 
 const tabStore = useTabStore();
 
@@ -371,11 +385,12 @@ const handleFileUpload = async () => {
 };
 
 const breadcrumbs = computed(() => {
-  const items = [
+  const items: BreadcrumbItem[] = [
     {
       label: "Home",
       to: { name: "dashboard" },
       icon: "i-heroicons-home",
+      key: null,
     },
   ];
 
@@ -384,11 +399,10 @@ const breadcrumbs = computed(() => {
   if (path && path.value.length > 0) {
     const pathItems = path.value.map((segment) => ({
       label: segment.name,
-      to: { name: "dashboard", params: { dirId: segment.id } },
+      key: segment.id,
     }));
     items.push(...pathItems);
   }
-  console.log("path items", items);
   return items;
 });
 
