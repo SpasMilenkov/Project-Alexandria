@@ -646,16 +646,6 @@ const pdfDocumentMimes = [
   // Rich Text
   "application/rtf",
 
-  // Plain / markup text (often converted)
-  "text/plain",
-  "text/markdown",
-  "text/html",
-  "application/xhtml+xml",
-
-  // Structured text
-  "application/xml",
-  "text/xml",
-  "application/json",
 ];
 
 const pdfSpreadsheetMimes = [
@@ -808,6 +798,7 @@ const setFilePreviews = async () => {
     previewMimeType.value = result.data.metaData.mimeType;
     textPreview.value = result.data.textPreview;
     archivePreview.value = result.data.archivePreview;
+    
   }
   console.log("previewUrl", previewUrl.value);
   console.log("thumbnailUrl", thumbnailUrl.value);
