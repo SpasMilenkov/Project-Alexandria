@@ -94,6 +94,8 @@ export const fileApi = {
         params: {
           page: paginationParams.page,
           pageSize: paginationParams.pageSize,
+          sortBy: paginationParams.orderBy,
+          sortDirection: paginationParams.sortDirection
         },
       }
     );
@@ -101,7 +103,7 @@ export const fileApi = {
   },
 
   getSubFiles: async(directoryId: string, paginationParams: PaginationParams): Promise<PaginatedResponse<FileResult>> => {
-    const response = await apiClient.get<PaginatedResponse<FileResult>>(
+    const response = await apiClient.get<PaginatedResponse<FileResult>>( 
       `files/directory/${directoryId}`,
       {
         params: {

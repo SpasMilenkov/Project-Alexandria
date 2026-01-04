@@ -88,6 +88,7 @@
                 :items="sortByOptions"
                 size="sm"
                 placeholder="Sort by"
+                @update:model-value="handleSorting"
               >
                 <template #default="{ modelValue }">
                   <Icon icon="mdi:sort" class="w-4 h-4 mr-1" />
@@ -101,12 +102,14 @@
                 variant="ghost"
                 @click="toggleSortDirection"
                 :aria-label="
-                  selectedSortDirection === 'Asc' ? 'Ascending' : 'Descending'
+                  selectedSortDirection === SortDirection.Asc
+                    ? 'Ascending'
+                    : 'Descending'
                 "
               >
                 <Icon
                   :icon="
-                    selectedSortDirection === 'Asc'
+                    selectedSortDirection === SortDirection.Asc
                       ? 'mdi:sort-ascending'
                       : 'mdi:sort-descending'
                   "
@@ -127,6 +130,7 @@
               @rename="handleDirectoryRename"
               @move="handleDirectoryMove"
               @click="handleItemClick($event, dir.id, 'directory')"
+              @copy="handleCopy"
             />
           </div>
           <UButton
@@ -150,6 +154,7 @@
               :is-selected="isFileSelected(file.fileId)"
               @download="downloadFile(file.fileId, file.fileName)"
               @click="handleItemClick($event, file.fileId, 'file')"
+              @copy="handleCopy"
             />
           </div>
           <UButton
@@ -177,6 +182,7 @@
             :is-selected="isDirectorySelected(dir.id)"
             @navigate="handleNavigate(dir.id)"
             @click="handleItemClick($event, dir.id, 'directory')"
+            @copy="handleCopy"
           />
           <UButton
             variant="ghost"
@@ -206,6 +212,7 @@
             :is-selected="isFileSelected(file.fileId)"
             @download="downloadFile(file.fileId, file.fileName)"
             @click="handleItemClick($event, file.fileId, 'file')"
+            @copy="handleCopy"
           />
           <UButton
             variant="ghost"
@@ -233,6 +240,7 @@ import FileUploadModal from "./Modals/FileUploadModal.vue";
 import { useFileExplorer } from "@/composables/useFileExplorer";
 import { useTabStore } from "@/stores/tab";
 import type { BreadcrumbItem } from "@nuxt/ui";
+import { SortDirection } from "@/enums/SortDirection";
 
 const tabStore = useTabStore();
 
@@ -254,6 +262,7 @@ const {
   loadMoreDirs,
   loadMoreFiles,
   navigateTo,
+  refreshDir,
   toggleSelect,
   isDirectorySelected,
   isFileSelected,
@@ -270,11 +279,19 @@ const sortByOptions = ref([
 ]);
 
 const selectedSortBy = ref({ label: "Name", value: OrderBy.Name });
-const selectedSortDirection = ref<"Asc" | "Desc">("Asc");
+const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
 
-const toggleSortDirection = () => {
+const toggleSortDirection = async () => {
   selectedSortDirection.value =
-    selectedSortDirection.value === "Asc" ? "Desc" : "Asc";
+    selectedSortDirection.value === SortDirection.Asc
+      ? SortDirection.Desc
+      : SortDirection.Asc;
+
+  filePagination.value.paginationParams.sortDirection =
+    selectedSortDirection.value;
+  dirPagination.value.paginationParams.sortDirection =
+    selectedSortDirection.value;
+  await refreshDir(currentDirId.value);
 };
 
 // Modals
@@ -328,6 +345,15 @@ const handleDirectoryRename = async (directoryId: string) => {
   //     color: "error",
   //     id: "modal-error",
   //   });
+};
+
+const handleCopy = async () => {};
+
+const handleSorting = async () => {
+  filePagination.value.paginationParams.orderBy = selectedSortBy.value.value;
+  dirPagination.value.paginationParams.orderBy = selectedSortBy.value.value;
+
+  await refreshDir(currentDirId.value);
 };
 
 const handleDirectoryMove = async (directoryId: string) => {

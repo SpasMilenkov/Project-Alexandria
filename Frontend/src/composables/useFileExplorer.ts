@@ -138,7 +138,57 @@ export const useFileExplorer = () => {
       name: "dashboard",
       params: { dirId },
     });
-    directoryStore.navigationHistory.push({ id: dirId, at: Date.now() });
+    directoryStore.navigationHistory.push(currentDirId.value);
+  };
+
+    const refreshDir = async (dirId?: string | null) => {
+    if (!dirId) {
+      router.push({
+        name: "dashboard",
+      });
+      const directoriesResult = await getRootSubDirectories(
+        dirPagination.value.paginationParams
+      );
+
+      if (directoriesResult) {
+        directories.value = directoriesResult.data
+          ?.items as DirectorySummaryDto[];
+        dirPagination.value.hasNext = directoriesResult?.data?.hasNext ?? false;
+      }
+
+      const filesResult = await getRootSubFiles(
+        filePagination.value.paginationParams
+      );
+      if (filesResult) files.value = filesResult.data?.items as FileResult[];
+      filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
+
+      updateDirectoryPath();
+      return;
+    }
+    updateDirectoryPath(dirId);
+
+    const directoriesResult = await getSubDirectories(
+      dirId,
+      dirPagination.value.paginationParams
+    );
+
+    if (directoriesResult)
+      directories.value = directoriesResult.data
+        ?.items as DirectorySummaryDto[];
+
+    const filesResult = await getSubFiles(
+      dirId,
+      filePagination.value.paginationParams
+    );
+    if (filesResult) {
+      files.value = filesResult.data?.items as FileResult[];
+      filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
+    }
+    router.push({
+      name: "dashboard",
+      params: { dirId },
+    });
+    directoryStore.navigationHistory.push(currentDirId.value);
   };
   const loadMoreDirs = async () => {
     if (!dirPagination.value.hasNext) return;
@@ -268,6 +318,7 @@ export const useFileExplorer = () => {
     pathList,
     lastSelected,
     navigateTo,
+    refreshDir,
     loadMoreDirs,
     loadMoreFiles,
     toggleSelect,
