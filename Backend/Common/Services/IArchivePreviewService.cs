@@ -2,8 +2,7 @@ namespace Common.Services;
 
 public interface IArchivePreviewService
 {
-    Task<(byte[] data, string mimeType)> GenerateArchivePreviewAsync(
-        Stream archiveStream,
+    Task<(string? data, string mimeType)> GenerateArchivePreviewAsync(Stream archiveStream,
         string fileName,
         CancellationToken ct);
 }

@@ -2,9 +2,9 @@ namespace Common.Services;
 
 public interface ITextPreviewService
 {
-    Task<(byte[] data, string mimeType)> GenerateTextPreviewAsync(
-        Stream fileStream,
+    Task<(string data, string mimeType)> GenerateTextPreviewAsync(Stream fileStream,
         string mimeType,
-        int maxBytes = 512 * 1024, // 512KB preview limit
-        CancellationToken ct = default);
+        int maxBytes = 524288, // 512KB preview limit
+        CancellationToken ct = default
+    );
 }
