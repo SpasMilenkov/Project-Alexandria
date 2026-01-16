@@ -3,3 +3,4 @@
 docker-compose.yml
 **appsettings.json
 **appsettings.Development.json
+.env.save*

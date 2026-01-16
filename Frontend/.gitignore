@@ -36,3 +36,5 @@ playwright-report/
 auto-imports.d.ts
 components.d.ts
 
+# SonarQube
+.scannerwork
