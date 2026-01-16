@@ -28,6 +28,7 @@ export const useFileStore = defineStore("file", () => {
   const currentFile = ref<FileMetadata | null>(null);
   const uploadProgress = ref<number>(0);
   const downloadProgress = ref<number>(0);
+  const filesToCopy = ref<string[]>([]);
   const signedUrls = ref<Record<string, { url: string; expiresAt: string }>>(
     {}
   );
@@ -173,16 +174,14 @@ export const useFileStore = defineStore("file", () => {
   };
 
   // Delete a file
-  const deleteFile = async (path: string) => {
+  const deleteFile = async (ids: string[]) => {
     isLoading.value = true;
     error.value = null;
     try {
-      await fileApi.deleteFile(path);
-      // Remove from files list by path (would need to track path in state)
-      // For now, we'll just clear the files list - in production you'd want better tracking
+      await fileApi.deleteFiles(ids);
       return { success: true };
     } catch (err: unknown) {
-      const message = handleError(err, "Failed to delete file");
+      const message = handleError(err, "Failed to delete files");
       return { success: false, error: message };
     } finally {
       isLoading.value = false;
@@ -209,17 +208,44 @@ export const useFileStore = defineStore("file", () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const response = await fileApi.getPreview(id)
-      console.log('store response', response)
-      return {success: true, data: response}
+      const response = await fileApi.getPreview(id);
+      console.log("store response", response);
+      return { success: true, data: response };
     } catch (err: unknown) {
-      const message = handleError(err, "Failed to fetch preview")
-      return {success: false, error: message}
+      const message = handleError(err, "Failed to fetch preview");
+      return { success: false, error: message };
+    } finally {
+      isLoading.value = false;
     }
-    finally{
-      isLoading.value = false
+  };
+
+  const copyFiles = async (fileIds: string[], destinationId: string) => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await fileApi.copyFiles(fileIds, destinationId);
+    } catch (err: unknown) {
+      const message = handleError(err, "Failed to copy selected files");
+      return { success: false, error: message };
+    } finally {
+      isLoading.value = false;
     }
-  }
+  };
+
+  const moveFiles = async (fileIds: string[], destinationId: string) => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      await fileApi.moveFiles(fileIds, destinationId);
+
+      return { success: true };
+    } catch (err: unknown) {
+      const message = handleError(err, "Failed to copy selected files");
+      return { success: false, error: message };
+    } finally {
+      isLoading.value = false;
+    }
+  };
 
   // Set current file
   const setCurrentFile = (file: FileMetadata | null) => {
@@ -245,7 +271,6 @@ export const useFileStore = defineStore("file", () => {
     error.value = null;
   };
 
-
   const clearSignedUrls = () => {
     signedUrls.value = {};
   };
@@ -256,6 +281,7 @@ export const useFileStore = defineStore("file", () => {
     currentFile,
     uploadProgress,
     downloadProgress,
+    filesToCopy,
     signedUrls,
     isLoading,
     isUploading,
@@ -275,6 +301,8 @@ export const useFileStore = defineStore("file", () => {
     getFilePreview,
     generateSignedUrl,
     setCurrentFile,
+    copyFiles,
+    moveFiles,
     clearError,
     clearSignedUrls,
   };
