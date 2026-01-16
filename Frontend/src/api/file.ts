@@ -35,15 +35,15 @@ export interface FileResult {
 
 export interface PreviewResultDto {
   metaData: {
-    id: string,
-    fileName: string,
-    mimeType: string,
-    hasPreview: boolean
-  },
-  previewUrl: string,
-  thumbnailUrl: string,
-  textPreview: string,
-  archivePreview: string
+    id: string;
+    fileName: string;
+    mimeType: string;
+    hasPreview: boolean;
+  };
+  previewUrl: string;
+  thumbnailUrl: string;
+  textPreview: string;
+  archivePreview: string;
 }
 
 export interface FileVersionDto {
@@ -85,9 +85,7 @@ export const fileApi = {
     return response.data;
   },
 
-  getRootFiles: async (
-    paginationParams: PaginationParams
-  )=> {
+  getRootFiles: async (paginationParams: PaginationParams) => {
     const response = await apiClient.get<PaginatedResponse<FileResult>>(
       "/files/root",
       {
@@ -95,27 +93,30 @@ export const fileApi = {
           page: paginationParams.page,
           pageSize: paginationParams.pageSize,
           sortBy: paginationParams.orderBy,
-          sortDirection: paginationParams.sortDirection
+          sortDirection: paginationParams.sortDirection,
         },
       }
     );
-    return{success: true, data: response.data};
+    return { success: true, data: response.data };
   },
 
-  getSubFiles: async(directoryId: string, paginationParams: PaginationParams): Promise<PaginatedResponse<FileResult>> => {
-    const response = await apiClient.get<PaginatedResponse<FileResult>>( 
+  getSubFiles: async (
+    directoryId: string,
+    paginationParams: PaginationParams
+  ): Promise<PaginatedResponse<FileResult>> => {
+    const response = await apiClient.get<PaginatedResponse<FileResult>>(
       `files/directory/${directoryId}`,
       {
         params: {
-        directoryId,
-        page: paginationParams.page,
-        pageSize: paginationParams.pageSize,
-        sortBy: paginationParams.orderBy,
-        sortDirection: paginationParams.sortDirection,
-      },
+          directoryId,
+          page: paginationParams.page,
+          pageSize: paginationParams.pageSize,
+          sortBy: paginationParams.orderBy,
+          sortDirection: paginationParams.sortDirection,
+        },
       }
-    )
-    return response.data
+    );
+    return response.data;
   },
 
   // Update file metadata
@@ -131,8 +132,12 @@ export const fileApi = {
   },
 
   // Delete a file (soft delete)
-  deleteFile: async (path: string): Promise<void> => {
-    await apiClient.delete(`/files/${path}`);
+  deleteFiles: async (ids: string[]): Promise<void> => {
+    await apiClient.delete(`/files/`, {
+      data: {
+        ids,
+      },
+    });
   },
 
   // Generate signed URL for file upload/access
@@ -148,8 +153,23 @@ export const fileApi = {
 
   // Get file preview
   getPreview: async (id: string): Promise<PreviewResultDto> => {
-    const response = await apiClient.get<PreviewResultDto>(`/files/${id}/preview`);
+    const response = await apiClient.get<PreviewResultDto>(
+      `/files/${id}/preview`
+    );
     return response.data;
+  },
+
+  copyFiles: async (fileIds: string[], destinationId: string) =>
+    await apiClient.post(`/files/copy`, {
+      fileIds,
+      destinationId,
+    }),
+
+  moveFiles: async (fileIds: string[], destinationId: string) => {
+    await apiClient.post("/files/move", {
+      fileIds,
+      destinationId,
+    });
   },
 
   // Get file thumbnail with specific dimensions
