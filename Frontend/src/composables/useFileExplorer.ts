@@ -11,7 +11,6 @@ import { useDirectoryStore } from "@/stores/directory";
 export const useFileExplorer = () => {
   const router = useRouter();
   const directoryStore = useDirectoryStore();
-
   // STATE
   const currentDirId: Ref<string | null> = ref(null);
   const pathList = ref<{ id: string; name: string }[]>([]);
@@ -31,7 +30,7 @@ export const useFileExplorer = () => {
       orderBy: OrderBy.Name,
       sortDirection: SortDirection.Asc,
     },
-    hasNext: true,
+    hasNext: false,
   });
   //   filePagination;
   const filePagination: Ref<{
@@ -44,7 +43,7 @@ export const useFileExplorer = () => {
       orderBy: OrderBy.Name,
       sortDirection: SortDirection.Asc,
     },
-    hasNext: true,
+    hasNext: false,
   });
   //   sort;
   //   viewMode;
@@ -64,7 +63,6 @@ export const useFileExplorer = () => {
     getSubDirectories,
     getSubFiles,
     fileDownload,
-    fileUpload,
     getDirectoryPath,
   } = useFileExplorerApi();
 
@@ -122,9 +120,12 @@ export const useFileExplorer = () => {
       dirPagination.value.paginationParams
     );
 
-    if (directoriesResult)
+    if (directoriesResult) {
       directories.value = directoriesResult.data
         ?.items as DirectorySummaryDto[];
+
+      dirPagination.value.hasNext = directoriesResult.data?.hasNext ?? false;
+    }
 
     const filesResult = await getSubFiles(
       dirId,
@@ -141,7 +142,7 @@ export const useFileExplorer = () => {
     directoryStore.navigationHistory.push(currentDirId.value);
   };
 
-    const refreshDir = async (dirId?: string | null) => {
+  const refreshDir = async (dirId?: string | null) => {
     if (!dirId) {
       router.push({
         name: "dashboard",
@@ -317,6 +318,8 @@ export const useFileExplorer = () => {
     dirPagination,
     pathList,
     lastSelected,
+    selectedFiles,
+    selectedDirectories,
     navigateTo,
     refreshDir,
     loadMoreDirs,
