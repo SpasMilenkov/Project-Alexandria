@@ -10,17 +10,16 @@ public class MoveDirEndpoint(IDirectoryService dirService) : Endpoint<MoveDirReq
     {
         Put("/directories/move");
         Description(x => x.WithTags("Directories"));
-
     }
 
     public override async Task HandleAsync(MoveDirRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
-    
+
         var userId = Guid.Parse(userIdString);
-        var dir = await dirService.MoveDirectoryAsync(req.DirectoryId, req.DestinationId, userId, ct);
+        await dirService.MoveDirectoryAsync(req.DirectoryIds, req.DestinationId, userId, ct);
 
         await Send.OkAsync(cancellation: ct);
     }
