@@ -1,4 +1,3 @@
-using DTO;
 using DTO.Files;
 using DTO.Tags;
 using Models.Enumerators;
@@ -22,11 +21,21 @@ public interface IFileRepository : IRepository<File>
         SortDirection sortDirection = SortDirection.Asc,
         SortBy sortBy = SortBy.Name,
         CancellationToken ct = default);
+
     Task<FileSummary?> GetFileNameAndMimeType(Guid fileId, CancellationToken ct = default);
 
     Task<(IEnumerable<File> Files, int TotalCount)> FindFilesByTagsAsync(
-        FileTagSearchQuery query, 
+        FileTagSearchQuery query,
         CancellationToken ct = default);
-    
-    Task<File> GetFileWithPreviewAsync(Guid fileId, CancellationToken ct = default);
+
+    Task<File?> GetFileWithPreviewAsync(Guid fileId, CancellationToken ct = default);
+    Task MoveFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
+    Task HasDuplicatesAsync(Guid[] fileIds, Guid destinationId, Guid userId, CancellationToken ct = default);
+    Task MarkAsDeleted(Guid[] fileIds, Guid userId, CancellationToken ct = default);
+
+    Task CopyFilesAsync(
+        Guid[] fileIds,
+        Guid destinationId,
+        Guid userId,
+        CancellationToken ct);
 }

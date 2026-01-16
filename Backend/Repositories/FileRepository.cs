@@ -1,11 +1,10 @@
 using System.Linq.Expressions;
-using Common;
 using Common.Repositories;
 using Data.Context;
-using DTO;
 using DTO.Files;
 using DTO.Tags;
 using Microsoft.EntityFrameworkCore;
+using Models;
 using Models.Enumerators;
 using File = Models.File;
 
@@ -14,6 +13,7 @@ namespace Repositories;
 public class FileRepository(AlexandriaDbContext context) : IFileRepository
 {
     private readonly DbSet<File> _files = context.Files;
+    private readonly DbSet<FileVersion> _fileVersions = context.FileVersions;
 
     public async Task<File?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -21,9 +21,9 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .Where(f => f.DeletedAt == null)
             .FirstOrDefaultAsync(f => f.Id == id, ct);
     }
-    
+
     public async Task<(IEnumerable<File> Files, int TotalCount)> FindFilesByTagsAsync(
-        FileTagSearchQuery query, 
+        FileTagSearchQuery query,
         CancellationToken ct = default)
     {
         IQueryable<File> filesQuery = _files
@@ -34,24 +34,24 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         filesQuery = query.MatchType switch
         {
             // ANY: File has at least one of the specified tags
-            TagMatchType.Any => filesQuery.Where(f => 
+            TagMatchType.Any => filesQuery.Where(f =>
                 f.Tags.Any(t => query.TagIds.Contains(t.Id) && t.DeletedAt == null)),
-            
+
             // ALL: File has all of the specified tags
             TagMatchType.All => ApplyAllTagsFilter(filesQuery, query.TagIds),
-            
+
             // EXACT: File has exactly these tags, no more, no less
             TagMatchType.Exact => filesQuery.Where(f =>
                 f.Tags.Count(t => t.DeletedAt == null) == query.TagIds.Count &&
                 f.Tags.Count(t => query.TagIds.Contains(t.Id) && t.DeletedAt == null) == query.TagIds.Count),
-            
+
             _ => throw new ArgumentException("Invalid match type", nameof(query.MatchType))
         };
 
         // Apply user filter - files that have at least one tag from this user
         if (query.UserId.HasValue)
         {
-            filesQuery = filesQuery.Where(f => 
+            filesQuery = filesQuery.Where(f =>
                 f.Tags.Any(t => t.OwnerId == query.UserId.Value && t.DeletedAt == null));
         }
 
@@ -93,26 +93,192 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         return (files, totalCount);
     }
-    
+
     private static IQueryable<File> ApplyAllTagsFilter(IQueryable<File> query, ICollection<Guid> tagIds)
     {
         foreach (var tagId in tagIds)
         {
             // Capture the tagId in a local variable to avoid closure issues
             var currentTagId = tagId;
-            query = query.Where(f => 
+            query = query.Where(f =>
                 f.Tags.Any(t => t.Id == currentTagId && t.DeletedAt == null));
         }
+
         return query;
     }
-    
-    public async Task<File> GetFileWithPreviewAsync(Guid id, CancellationToken ct = default)
+
+    public async Task<File?> GetFileWithPreviewAsync(Guid id, CancellationToken ct = default)
     {
         return await _files
+            .AsNoTracking()
             .Include(f => f.Preview)
             .Where(f => f.DeletedAt == null)
             .FirstOrDefaultAsync(f => f.Id == id, ct);
     }
+
+    public async Task HasDuplicatesAsync(Guid[] fileIds, Guid destinationId, Guid userId,
+        CancellationToken ct = default)
+    {
+        var hasDuplicates = await _files.AnyAsync(f =>
+                f.OwnerId == userId &&
+                f.DirectoryId == destinationId &&
+                _files.Any(src =>
+                    fileIds.Contains(src.Id) &&
+                    src.OwnerId == userId &&
+                    src.Name == f.Name),
+            ct);
+        if (hasDuplicates)
+            throw new InvalidOperationException("Files with the same names already exist in destination");
+    }
+
+    public async Task MarkAsDeleted(Guid[] fileIds, Guid userId, CancellationToken ct = default)
+    {
+        await _files
+            .Where(f => f.OwnerId == userId && fileIds.Contains(f.Id))
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(f => f.DeletedAt, _ => DateTime.UtcNow)
+                    .SetProperty(f => f.UpdatedBy, _ => userId),
+                ct);
+    }
+
+    public async Task MoveFilesAsync(
+        Guid[] fileIds,
+        Guid? destinationId,
+        Guid userId,
+        CancellationToken ct)
+    {
+        try
+        {
+            var affected = await _files
+                .Where(f =>
+                    fileIds.Contains(f.Id) &&
+                    f.OwnerId == userId)
+                .ExecuteUpdateAsync(
+                    s => s.SetProperty(f => f.DirectoryId, destinationId),
+                    ct);
+
+            if (affected != fileIds.Length)
+                throw new InvalidOperationException("Some files were not found or not owned by user");
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException(
+                "Files with the same names already exist in destination",
+                ex);
+        }
+    }
+
+    public async Task<IEnumerable<File>> GetFilesByIds(Guid[] fileIds, CancellationToken ct = default)
+    {
+        return await _files
+            .AsNoTracking()
+            .Where(f => fileIds.Contains(f.Id))
+            .ToListAsync(ct);
+    }
+
+    public async Task CopyFilesAsync(
+        Guid[] fileIds,
+        Guid destinationId,
+        Guid userId,
+        CancellationToken ct)
+    {
+        // await using var tx = await context.Database.BeginTransactionAsync(ct);
+
+        try
+        {
+            // 1. Load only what we need
+            var sourceFiles = await _files
+                .Where(f => fileIds.Contains(f.Id) && f.OwnerId == userId)
+                .Select(f => new
+                {
+                    f.Name,
+                    f.MimeType,
+                    f.HasPreview,
+                    f.PreviewGeneratedAt,
+                    f.Tags,
+                    f.PreviewId,
+                    Version = f.CurrentVersion!
+                })
+                .ToListAsync(ct);
+
+            if (sourceFiles.Count != fileIds.Length)
+                throw new InvalidOperationException("Some files were not found or not owned by user");
+
+            // 2. Create new entities in memory
+            var now = DateTime.UtcNow;
+
+            var newFiles = new List<File>(sourceFiles.Count);
+            var newVersions = new List<FileVersion>(sourceFiles.Count);
+
+            foreach (var src in sourceFiles)
+            {
+                if (src.Version is null)
+                    throw new InvalidOperationException("Source file has no current version");
+
+                var fileId = Guid.NewGuid();
+                var versionId = Guid.NewGuid();
+
+                newFiles.Add(new File
+                {
+                    Id = fileId,
+                    Name = src.Name,
+                    MimeType = src.MimeType,
+                    CreatedAt = now,
+                    HasPreview = src.HasPreview,
+                    PreviewGeneratedAt = src.PreviewGeneratedAt,
+                    Tags = src.Tags,
+                    PreviewId = src.PreviewId,
+                    OwnerId = userId,
+                    DirectoryId = destinationId,
+                    CurrentVersionId = versionId,
+                    UpdatedBy = userId
+                });
+
+                newVersions.Add(new FileVersion
+                {
+                    Id = versionId,
+                    FileId = fileId,
+                    ContentHash = src.Version.ContentHash,
+                    Size = src.Version.Size,
+                    VersionNumber = 1,
+                    MimeType = src.Version.MimeType,
+                    CreatedAt = now,
+                    CreatedBy = userId,
+                    ContentObjectId = src.Version.ContentObjectId
+                });
+            }
+
+            // 3. Insert in bulk
+            _files.AddRange(newFiles);
+            _fileVersions.AddRange(newVersions);
+
+            await context.SaveChangesAsync(ct);
+
+            // 4. Update ContentObject ref counts (grouped, set-based)
+            var refCountDeltas = newVersions
+                .GroupBy(v => v.ContentObjectId)
+                .Select(g => new { ContentObjectId = g.Key, Count = g.Count() })
+                .ToList();
+
+            foreach (var delta in refCountDeltas)
+            {
+                await context.ContentObjects
+                    .Where(co => co.Id == delta.ContentObjectId)
+                    .ExecuteUpdateAsync(
+                        s => s.SetProperty(
+                            co => co.RefCount,
+                            co => co.RefCount + delta.Count),
+                        ct);
+            }
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException(
+                "Files with the same names already exist in destination",
+                ex);
+        }
+    }
+
 
     public async Task<File?> FirstOrDefaultAsync(Expression<Func<File, bool>> predicate, CancellationToken ct = default)
     {
@@ -170,7 +336,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     {
         entity.UpdatedAt = DateTime.UtcNow;
         _files.Update(entity);
-        // Note: SaveChanges should be called by the Unit of Work or service layer
     }
 
     public void Remove(File entity)
@@ -185,13 +350,14 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     public void RemoveRange(IEnumerable<File> entities)
     {
         var now = DateTime.UtcNow;
-        foreach (var entity in entities)
+        var enumerable = entities as File[] ?? entities.ToArray();
+        foreach (var entity in enumerable)
         {
             entity.DeletedAt = now;
             entity.UpdatedAt = now;
         }
 
-        _files.UpdateRange(entities);
+        _files.UpdateRange(enumerable);
     }
 
     public async Task<int> CountAsync(Expression<Func<File, bool>>? predicate = null, CancellationToken ct = default)
@@ -226,6 +392,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct);
         return result?.ContentHash;
     }
+
     public async Task<string> GetFileHashAsString(Guid fileId, Guid ownerId, CancellationToken ct = default)
     {
         var result = await _files
@@ -234,24 +401,25 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct);
 
         if (result is null) throw new InvalidOperationException("File hash not found");
-        
+
         return BitConverter.ToString(result.ContentHash)
             .Replace("-", "")
-            .ToLowerInvariant();;
+            .ToLowerInvariant();
+        ;
     }
-    
+
     public async Task<PaginatedResult<FileResult>> GetFilesByDirectoryIdAsync(
         Guid parentDirectoryId,
         Guid userId,
         int currentPage = 1,
         int pageSize = 25,
         SortDirection sortDirection = SortDirection.Asc,
-        SortBy sortBy = SortBy.Name, 
+        SortBy sortBy = SortBy.Name,
         CancellationToken ct = default)
     {
         var baseQuery = context.Files
             .AsNoTracking()
-            .Where(f => f.DirectoryId == parentDirectoryId && f.OwnerId == userId);
+            .Where(f => f.DirectoryId == parentDirectoryId && f.OwnerId == userId && f.DeletedAt == null);
 
         // Apply sorting
         var sortedQuery = sortBy switch
@@ -269,21 +437,21 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         };
 
         var count = await baseQuery.CountAsync(ct);
-        
+
         var itemsTask = sortedQuery
             .Skip((currentPage - 1) * pageSize)
             .Take(pageSize)
             .Select(f => new FileResult(
-                f.Id, 
-                f.Name, 
-                f.MimeType, 
-                f.CreatedAt, 
-                f.UpdatedAt, 
+                f.Id,
+                f.Name,
+                f.MimeType,
+                f.CreatedAt,
+                f.UpdatedAt,
                 f.DeletedAt,
                 new FileVersionDto(
-                    f.CurrentVersion.Id, 
-                    f.CurrentVersion.Size, 
-                    f.CurrentVersion.MimeType, 
+                    f.CurrentVersion.Id,
+                    f.CurrentVersion.Size,
+                    f.CurrentVersion.MimeType,
                     f.CurrentVersion.VersionNumber),
                 f.Tags.Select(t => new TagDto
                 {
@@ -301,7 +469,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 }
             ))
             .ToListAsync(ct);
-        
+
 
         return new PaginatedResult<FileResult>
         {
