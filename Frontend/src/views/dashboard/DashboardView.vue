@@ -3,6 +3,14 @@ import { computed, onMounted } from "vue";
 import { useTabStore } from "@/stores/tab";
 import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
 
+defineShortcuts({
+  meta_shift_q: () => {
+    console.log('triggering tab close')
+    if (tabStore.activeTabId) tabStore.closeTab(tabStore.activeTabId);
+  },
+  meta_shift_n: () => tabStore.createTab(null)
+});
+
 const tabStore = useTabStore();
 
 const items = computed(() =>
@@ -26,7 +34,7 @@ onMounted(() => {
     v-model="tabStore.activeTabId"
     :items="items"
     variant="link"
-    class="w-full"
+    class="w-full p-0"
   >
     <template #list-trailing>
       <UButton
@@ -35,6 +43,7 @@ onMounted(() => {
         variant="ghost"
         color="neutral"
         class="hover:text-primary"
+        :ui="{ body: 'sm:p-0 p-0' }"
       />
     </template>
     <template #content="{ item }">
