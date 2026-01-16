@@ -21,7 +21,7 @@ public class DirectoryService : IDirectoryService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<DirectorySummaryDto> CreateDirectoryAsync(string name, Guid ownerId, Guid? parentId = null, 
+    public async Task<DirectorySummaryDto> CreateDirectoryAsync(string name, Guid ownerId, Guid? parentId = null,
         CancellationToken ct = default)
     {
         ValidateDirectoryName(name);
@@ -65,7 +65,7 @@ public class DirectoryService : IDirectoryService
             await _unitOfWork.Directories.AddAsync(directory, ct);
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitAsync(ct);
-            
+
             return directory.ToSummaryDto();
         }
         catch
@@ -78,49 +78,29 @@ public class DirectoryService : IDirectoryService
     public async Task<Directory> GetDirectoryByIdAsync(Guid id, Guid userId, CancellationToken ct = default)
     {
         var directory = await _unitOfWork.Directories.GetByIdAsync(id, ct);
-        
+
         if (directory == null)
         {
             throw new DirectoryNotFoundException(id);
         }
 
-        if (directory.OwnerId != userId)
-        {
-            throw new UnauthorizedDirectoryAccessException(id, userId);
-        }
-
-        return directory;
+        return directory.OwnerId != userId ? throw new UnauthorizedDirectoryAccessException(id, userId) : directory;
     }
 
-    public async Task<DirectorySummaryDto> GetDirectoryDtoByIdAsync(Guid id, Guid userId, CancellationToken ct = default)
+    public async Task<DirectorySummaryDto> GetDirectoryDtoByIdAsync(Guid id, Guid userId,
+        CancellationToken ct = default)
     {
         var dir = await _unitOfWork.Directories.GetDirectoryMetadataAsync(id, userId, ct);
-        
+
         if (dir is null) throw new DirectoryNotFoundException(id);
-        
+
         return dir.ToSummaryDto();
     }
 
-    public Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query, CancellationToken ct = default)
+    public Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query,
+        CancellationToken ct = default)
     {
         return _unitOfWork.Directories.FindDirectoryAsync(userId, query, ct);
-    }
-
-    public async Task<DirectoryDto> GetDirectoryWithDetailsAsync(Guid id, Guid userId, CancellationToken ct = default)
-    {
-        var directory = await _unitOfWork.Directories.GetByIdWithDetailsAsync(id, ct);
-        
-        if (directory == null)
-        {
-            throw new DirectoryNotFoundException(id);
-        }
-
-        if (directory.OwnerId != userId)
-        {
-            throw new UnauthorizedDirectoryAccessException(id, userId);
-        }
-
-        return directory.ToDto();
     }
 
     public async Task<PaginatedResult<DirectorySummaryDto>> GetPaginatedDirectories(Guid id, Guid userId,
@@ -130,18 +110,21 @@ public class DirectoryService : IDirectoryService
         SortBy sortBy = SortBy.Name,
         CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.GetSubdirectoriesAsync(id, userId, currentPage, pageSize, sortDirection, sortBy, ct );
+        return await _unitOfWork.Directories.GetSubdirectoriesAsync(id, userId, currentPage, pageSize, sortDirection,
+            sortBy, ct);
     }
 
-    public async Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(Guid ownerId, int page = 1, int pageSize = 25,
+    public async Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(Guid ownerId, int page = 1,
+        int pageSize = 25,
         SortDirection sortDirection = SortDirection.Asc,
         SortBy sortBy = SortBy.Name, CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.GetRootDirectoriesAsync(ownerId, page, pageSize, sortBy, sortDirection, ct);
+        return await _unitOfWork.Directories.GetRootDirectoriesAsync(ownerId, page, pageSize, sortBy, sortDirection,
+            ct);
     }
 
 
-    public async Task<IEnumerable<DirectorySummaryDto>> GetUserDirectoriesAsync(Guid userId, Guid? parentId = null, 
+    public async Task<IEnumerable<DirectorySummaryDto>> GetUserDirectoriesAsync(Guid userId, Guid? parentId = null,
         CancellationToken ct = default)
     {
         var dirs = await _unitOfWork.Directories.GetUserDirectories(userId, parentId, ct);
@@ -161,11 +144,11 @@ public class DirectoryService : IDirectoryService
         return dirs.Select(d => d.ToSummaryDto());
     }
 
-    public async Task<IEnumerable<File>> GetDirectoryFilesAsync(Guid directoryId, Guid userId, 
+    public async Task<IEnumerable<File>> GetDirectoryFilesAsync(Guid directoryId, Guid userId,
         bool includeSubdirectories = false, CancellationToken ct = default)
     {
         await VerifyDirectoryAccessAsync(directoryId, userId, ct);
-        
+
         return await _unitOfWork.Directories.GetAllFilesInDirectoryAsync(directoryId, includeSubdirectories, ct);
     }
 
@@ -173,11 +156,11 @@ public class DirectoryService : IDirectoryService
         CancellationToken ct = default)
     {
         await VerifyDirectoryAccessAsync(directoryId, userId, ct);
-        
+
         return await _unitOfWork.Directories.GetDirectoryPathAsync(directoryId, ct);
     }
 
-    public async Task<DirectoryDto> UpdateDirectoryAsync(Guid id, string name, Guid userId, 
+    public async Task<DirectoryDto> UpdateDirectoryAsync(Guid id, string name, Guid userId,
         CancellationToken ct = default)
     {
         ValidateDirectoryName(name);
@@ -186,7 +169,7 @@ public class DirectoryService : IDirectoryService
 
         // Check if another directory with same name exists in same location
         var existingDirectory = await _unitOfWork.Directories.FirstOrDefaultAsync(
-            d => d.Name == name && d.ParentId == directory.ParentId && 
+            d => d.Name == name && d.ParentId == directory.ParentId &&
                  d.OwnerId == userId && d.Id != id && d.DeletedAt == null, ct);
 
         if (existingDirectory != null)
@@ -204,7 +187,7 @@ public class DirectoryService : IDirectoryService
             _unitOfWork.Directories.Update(directory);
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitAsync(ct);
-            
+
             return directory.ToDto();
         }
         catch
@@ -214,54 +197,17 @@ public class DirectoryService : IDirectoryService
         }
     }
 
-    public async Task<DirectorySummaryDto> MoveDirectoryAsync(Guid id, Guid? newParentId, Guid userId, 
+    public async Task MoveDirectoryAsync(Guid[] ids, Guid? newParentId, Guid userId,
         CancellationToken ct = default)
     {
-        var directory = await GetDirectoryByIdAsync(id, userId, ct);
-
-        // Verify new parent directory exists and is accessible
-        if (newParentId.HasValue)
-        {
-            var newParent = await _unitOfWork.Directories.GetByIdAsync(newParentId.Value, ct);
-            if (newParent == null)
-            {
-                throw new DirectoryNotFoundException(newParentId.Value);
-            }
-
-            if (newParent.OwnerId != userId)
-            {
-                throw new UnauthorizedDirectoryAccessException(newParentId.Value, userId);
-            }
-
-            // Check for circular reference
-            if (await WouldCreateCircularReferenceAsync(id, newParentId.Value, ct))
-            {
-                throw new CircularDirectoryReferenceException(id, newParentId.Value);
-            }
-        }
-
-        // Check if directory with same name exists in destination
-        var existingDirectory = await _unitOfWork.Directories.FirstOrDefaultAsync(
-            d => d.Name == directory.Name && d.ParentId == newParentId && 
-                 d.OwnerId == userId && d.Id != id && d.DeletedAt == null, ct);
-
-        if (existingDirectory != null)
-        {
-            throw new DirectoryAlreadyExistsException(directory.Name, newParentId);
-        }
-
-        directory.ParentId = newParentId;
-        directory.UpdatedAt = DateTime.UtcNow;
-        directory.UpdatedBy = userId;
+        if (ids.Length == 0) return;
 
         await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            _unitOfWork.Directories.Update(directory);
+            await _unitOfWork.Directories.MoveDirectories(ids, newParentId, userId, ct);
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitAsync(ct);
-            
-            return directory.ToSummaryDto();
         }
         catch
         {
@@ -293,7 +239,7 @@ public class DirectoryService : IDirectoryService
             // Check if directory has children or files
             var childCount = await _unitOfWork.Directories.CountAsync(
                 d => d.ParentId == id && d.DeletedAt == null, ct);
-            
+
             var fileCount = await _unitOfWork.Files.CountAsync(
                 f => f.DirectoryId == id && f.DeletedAt == null, ct);
 
@@ -310,9 +256,9 @@ public class DirectoryService : IDirectoryService
             if (force)
             {
                 // Recursively delete all subdirectories and files
-                await DeleteDirectoryRecursivelyAsync(id, ct);
+                await DeleteDirectoryRecursivelyAsync(id, userId, ct);
             }
-            
+
             _unitOfWork.Directories.Remove(directory);
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitAsync(ct);
@@ -331,10 +277,11 @@ public class DirectoryService : IDirectoryService
 
     public async Task<bool> DirectoryExistsWithOwnershipAsync(Guid id, Guid ownerId, CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.ExistsAsync(d => d.Id == id && d.DeletedAt == null && d.OwnerId == ownerId, ct);
+        return await _unitOfWork.Directories.ExistsAsync(d => d.Id == id && d.DeletedAt == null && d.OwnerId == ownerId,
+            ct);
     }
 
-    public async Task<bool> HasAccessToDirectoryAsync(Guid directoryId, Guid userId, 
+    public async Task<bool> HasAccessToDirectoryAsync(Guid directoryId, Guid userId,
         CancellationToken ct = default)
     {
         var directory = await _unitOfWork.Directories.GetByIdAsync(directoryId, ct);
@@ -345,7 +292,7 @@ public class DirectoryService : IDirectoryService
     private async Task VerifyDirectoryAccessAsync(Guid directoryId, Guid userId, CancellationToken ct)
     {
         var directory = await _unitOfWork.Directories.GetByIdAsync(directoryId, ct);
-        
+
         if (directory == null)
         {
             throw new DirectoryNotFoundException(directoryId);
@@ -355,7 +302,6 @@ public class DirectoryService : IDirectoryService
         {
             throw new UnauthorizedDirectoryAccessException(directoryId, userId);
         }
-        
     }
 
     private static void ValidateDirectoryName(string name)
@@ -372,51 +318,27 @@ public class DirectoryService : IDirectoryService
 
         if (name.IndexOfAny(InvalidChars) >= 0)
         {
-            throw new InvalidDirectoryNameException(name, 
+            throw new InvalidDirectoryNameException(name,
                 $"Directory name contains invalid characters: {string.Join(", ", InvalidChars)}");
         }
     }
 
-    private async Task<bool> WouldCreateCircularReferenceAsync(Guid directoryId, Guid newParentId, 
-        CancellationToken ct)
-    {
-        var currentId = newParentId;
-        
-        while (currentId != Guid.Empty)
-        {
-            if (currentId == directoryId)
-            {
-                return true;
-            }
-
-            var parent = await _unitOfWork.Directories.GetByIdAsync(currentId, ct);
-            if (parent?.ParentId == null)
-            {
-                break;
-            }
-
-            currentId = parent.ParentId.Value;
-        }
-
-        return false;
-    }
-
-    private async Task DeleteDirectoryRecursivelyAsync(Guid directoryId, CancellationToken ct)
+    private async Task DeleteDirectoryRecursivelyAsync(Guid directoryId, Guid userId, CancellationToken ct = default)
     {
         // Get all subdirectories
         var subdirectories = await _unitOfWork.Directories.FindAsync(
             d => d.ParentId == directoryId && d.DeletedAt == null, ct);
 
         // Recursively delete subdirectories
-        foreach (var subdir in subdirectories)
-        {
-            await DeleteDirectoryRecursivelyAsync(subdir.Id, ct);
-        }
+        foreach (var subdir in subdirectories) await DeleteDirectoryRecursivelyAsync(subdir.Id, userId, ct);
 
         // Delete all files in this directory
         var files = await _unitOfWork.Files.FindAsync(
             f => f.DirectoryId == directoryId && f.DeletedAt == null, ct);
-        
-        _unitOfWork.Files.RemoveRange(files);
+        await _unitOfWork.Files.MarkAsDeleted(files.Select(f => f.Id).ToArray(), userId, ct);
     }
+
+    public async Task CopyDirectoryAsync(Guid directoryId, Guid destinationId, Guid userId,
+        CancellationToken ct = default) =>
+        await _unitOfWork.Directories.CopyDirectory(directoryId, destinationId, userId, ct);
 }

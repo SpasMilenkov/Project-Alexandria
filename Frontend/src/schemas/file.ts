@@ -16,3 +16,20 @@ export const generateSignedUrlSchema = z.object({
 });
 
 export type GenerateSignedUrlSchema = z.infer<typeof generateSignedUrlSchema>;
+
+// Copy files schema
+
+export const copyFilesSchema = z
+  .object({
+    fileIds: z.array(z.guid()).min(1).optional(),
+    directoryIds: z.array(z.guid()).min(1).optional(),
+    destinationId: z.guid(),
+  })
+  .refine(
+    (data) => data.fileIds?.length || data.directoryIds?.length,
+    {
+      message: "Provide at least fileIds or directoryIds",
+    }
+  );
+
+export type CopyFilesSchema = z.infer<typeof copyFilesSchema>;

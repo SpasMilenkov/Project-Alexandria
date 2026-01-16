@@ -18,7 +18,7 @@ export type UpdateDirectorySchema = z.infer<typeof updateDirectorySchema>;
 
 // Move Directory Schema
 export const moveDirectorySchema = z.object({
-  directoryId: z.uuid(),
+  directoryIds: z.array(z.uuid()),
   destinationId: z.uuid().optional(),
 });
 

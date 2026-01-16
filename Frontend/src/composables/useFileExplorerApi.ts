@@ -39,41 +39,64 @@ export const useFileExplorerApi = () => {
     fileName: string;
     forceDownload: boolean;
   }) => {
-    await fileStore.downloadFile(fileData); 
+    await fileStore.downloadFile(fileData);
   };
 
   const fileUpload = async () => {};
 
   const getDirectoryPath = async (id: string) => {
-    const result = await directoryStore.getDirectoryPath(id)
-    if(result.success && result.data)
-      return result.data
-  }
+    const result = await directoryStore.getDirectoryPath(id);
+    if (result.success && result.data) return result.data;
+  };
 
   const getFilePreview = async (id: string) => {
-    const result = await fileStore.getFilePreview(id)
-    console.log(result)
-    if(!fileStore.error) return result
-  }
-  const moveDirectory = async () => {};
+    const result = await fileStore.getFilePreview(id);
+    console.log(result);
+    if (!fileStore.error) return result;
+  };
 
-  const copyDirectory = async () => {};
+  type CopySelectedParams = {
+    destinationId: string | null;
+    selectedDirectories?: string[];
+    selectedFiles?: string[];
+  };
 
-  const openFile = async () => {};
+  const copySelected = async ({
+    destinationId,
+    selectedDirectories,
+    selectedFiles,
+  }: CopySelectedParams) => {
+    if (selectedDirectories) {
+      for (const dirId of selectedDirectories) {
+        await directoryStore.copyDirectory(dirId, destinationId);
+      }
+    }
 
-  const getFileVersions = async (fileId: string) => {};
+    if (selectedFiles) {
+      await fileStore.copyFiles(selectedFiles, destinationId);
+    }
+  };
 
-  const getFileVersionById = async (fileId: string) => {};
+  const moveSelected = async ({
+    destinationId,
+    selectedDirectories,
+    selectedFiles,
+  }: CopySelectedParams) => {
+    if (selectedDirectories) {
+      await directoryStore.moveDirectories(selectedDirectories, destinationId);
+    }
 
-  const createDirectory = async () => {};
+    if (selectedFiles) {
+      await fileStore.moveFiles(selectedFiles, destinationId);
+    }
+  };
+  const deleteDirectory = async (id: string) => {
+    await directoryStore.deleteDirectory(id);
+  };
 
-  const renameDirectory = async () => {};
-
-  const deleteDirectory = async () => {};
-
-  const deleteFile = async () => {};
-
-  const searchParentDirectories = async () => {};
+  const deleteFile = async (ids: string[]) => {
+    await fileStore.deleteFile(ids);
+  };
 
   return {
     getSubDirectories,
@@ -84,5 +107,9 @@ export const useFileExplorerApi = () => {
     fileDownload,
     fileUpload,
     getDirectoryPath,
+    copySelected,
+    moveSelected,
+    deleteFile,
+    deleteDirectory
   };
 };

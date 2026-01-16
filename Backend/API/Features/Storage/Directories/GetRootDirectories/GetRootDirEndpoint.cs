@@ -11,17 +11,17 @@ public class GetRootDirEndpoint(IDirectoryService directoryService) : Endpoint<P
     {
         Get("/directories/root");
         Description(x => x.WithTags("Directories"));
-
     }
 
     public override async Task HandleAsync(PaginationParams req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
-    
+
         var userId = Guid.Parse(userIdString);
-        var content = await directoryService.GetRootDirectoriesAsync(userId, req.Page, req.PageSize, ct: ct);
+        var content = await directoryService.GetRootDirectoriesAsync(userId, req.Page, req.PageSize, req.SortDirection,
+            req.SortBy, ct: ct);
         await Send.OkAsync(content, ct);
     }
-}   
+}

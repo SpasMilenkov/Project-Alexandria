@@ -9,7 +9,6 @@ import {
 import type {
   CreateDirectorySchema,
   UpdateDirectorySchema,
-  MoveDirectorySchema,
   DeleteDirectorySchema,
 } from "@/schemas/directory";
 import type { AxiosError } from "axios";
@@ -22,6 +21,7 @@ export const useDirectoryStore = defineStore(
     const directories = ref<DirectorySummaryDto[]>([]);
     const currentDirectory = ref<DirectoryDto | null>(null);
     const rootDirectories = ref<string[]>([]);
+    const directoriesToCopy = ref<string[]>([]);
     const directoryCache = ref<Record<string, DirectoryDto>>({});
     const isLoading = ref(false);
     const isSearching = ref(false);
@@ -29,7 +29,7 @@ export const useDirectoryStore = defineStore(
     const selectedItems = ref<Set<string>>(new Set());
     const selectionType = ref<"file" | "directory" | "mixed">("mixed");
     const pathList = ref<{ id: string; name: string }[]>([]);
-    const navigationHistory = ref<{ id: string; at: number }[]>([]);
+    const navigationHistory = ref<Array<string | null>>([]);
     // Getters
     const directoryCount = computed(() => directories.value.length);
     const hasCurrentDirectory = computed(() => currentDirectory.value !== null);
@@ -190,19 +190,33 @@ export const useDirectoryStore = defineStore(
     };
 
     // Move directory
-    const moveDirectory = async (data: MoveDirectorySchema) => {
+    const moveDirectories = async (
+      directoryIds: string[],
+      destinationId: string
+    ) => {
       isLoading.value = true;
       error.value = null;
       try {
-        await directoryApi.moveDirectory(data);
-        // Invalidate cache for affected directories
-        delete directoryCache.value[data.directoryId];
-        if (data.destinationId) {
-          delete directoryCache.value[data.destinationId];
-        }
+        await directoryApi.moveDirectories( directoryIds, destinationId );
         return { success: true };
       } catch (err: unknown) {
         const message = handleError(err, "Failed to move directory");
+        return { success: false, error: message };
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const copyDirectory = async (
+      directoryId: string,
+      destinationId: string
+    ) => {
+      isLoading.value = true;
+      error.value = null;
+      try {
+        await directoryApi.copyDirectory(directoryId, destinationId);
+      } catch (err: unknown) {
+        const message = handleError(err, "Failed to copy selected directory");
         return { success: false, error: message };
       } finally {
         isLoading.value = false;
@@ -294,6 +308,7 @@ export const useDirectoryStore = defineStore(
       currentDirectory,
       rootDirectories,
       directoryCache,
+      directoriesToCopy,
       isLoading,
       isSearching,
       error,
@@ -314,7 +329,8 @@ export const useDirectoryStore = defineStore(
       getDirectoryPath,
       searchDirectory,
       updateDirectory,
-      moveDirectory,
+      moveDirectories,
+      copyDirectory,
       deleteDirectory,
       clearError,
       clearCurrentDirectory,

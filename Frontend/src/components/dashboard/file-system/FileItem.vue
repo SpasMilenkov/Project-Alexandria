@@ -86,7 +86,10 @@
               class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 w-full"
             >
               <Icon icon="mdi-file" class="w-4 h-4" />
-              <span class="max-w-46 text-ellipsis max-h-16 wrap-break-word overflow-hidden">{{ data.currentVersion.mimeType }}</span>
+              <span
+                class="max-w-46 text-ellipsis max-h-16 wrap-break-word overflow-hidden"
+                >{{ data.currentVersion.mimeType }}</span
+              >
               <UBadge
                 :label="
                   previewUrl || archivePreview || textPreview
@@ -197,9 +200,7 @@
 
           <!-- PDF Preview -->
           <div
-            v-else-if="
-              pdfPreviewMimes.includes(data.currentVersion.mimeType)
-            "
+            v-else-if="pdfPreviewMimes.includes(data.currentVersion.mimeType)"
             class="relative w-xl h-220 bg-white dark:bg-neutral-900 rounded-lg overflow-hidden"
           >
             <embed
@@ -351,7 +352,9 @@
                     <Icon icon="mdi-scale" class="w-3.5 h-3.5 inline mr-1" />
                     {{ formatFileSize(Number(data.currentVersion.size)) }}
                   </div>
-                  <div class="text-gray-600 dark:text-gray-400 text-ellipsis w-full overflow-hidden">
+                  <div
+                    class="text-gray-600 dark:text-gray-400 text-ellipsis w-full overflow-hidden"
+                  >
                     <Icon
                       icon="mdi-file-document"
                       class="w-3.5 h-3.5 inline mr-1"
@@ -645,17 +648,6 @@ const pdfDocumentMimes = [
 
   // Rich Text
   "application/rtf",
-
-  // Plain / markup text (often converted)
-  "text/plain",
-  "text/markdown",
-  "text/html",
-  "application/xhtml+xml",
-
-  // Structured text
-  "application/xml",
-  "text/xml",
-  "application/json",
 ];
 
 const pdfSpreadsheetMimes = [
@@ -813,9 +805,6 @@ const setFilePreviews = async () => {
   console.log("thumbnailUrl", thumbnailUrl.value);
 };
 
-onMounted(async () => {
-  await setFilePreviews();
-});
 
 const handleDoubleClick = async () => {
   openDrawer.value = true;

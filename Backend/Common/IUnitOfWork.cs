@@ -7,9 +7,12 @@ public interface IUnitOfWork
     IFileRepository Files { get; }
     IPreviewRepository Previews { get; }
     IMediaMetadataRepository MediaMetadata { get; }
-    IRefreshTokenRepository RefreshTokens { get;  }
+    IRefreshTokenRepository RefreshTokens { get; }
     ITagRepository Tags { get; }
     IDirectoryRepository Directories { get; }
+    IFileVersionRepository FileVersions { get; }
+    IContentObjectRepository ContentObjects { get; }
+    IAuditLogRepository AuditLogs { get; }
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);
     public Task RollbackAsync(CancellationToken cancellationToken = default);

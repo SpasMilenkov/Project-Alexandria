@@ -7,6 +7,7 @@ public class MoveDirValidator : Validator<MoveDirRequest>
 {
     public MoveDirValidator()
     {
-        RuleFor(x => x.DirectoryId).NotEmpty();
+        RuleFor(x => x.DirectoryIds).NotEmpty();
+        RuleFor(x => x.DestinationId).NotEmpty();
     }
 }

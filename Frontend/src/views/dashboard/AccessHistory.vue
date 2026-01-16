@@ -7,8 +7,6 @@ import { useAuthStore } from "@/stores/auth";
 import type { TimelineItem } from "@nuxt/ui";
 const activityStore = useActivityStore();
 const authStore = useAuthStore();
-const page = ref(1);
-const pageSize = ref(20);
 const totalItems = ref(0);
 
 const items = computed((): TimelineItem[] =>
@@ -64,7 +62,7 @@ const loadActivity = async () => {
   console.log("userId: ", authStore.user?.id);
   console.log(authStore.user);
   const result = await activityStore.fetchActivity({
-    page:  activityStore.page,
+    page: activityStore.page,
     pageSize: activityStore.pageSize,
     sortBy: "timestamp",
     sortDirection: SortDirection.Desc,
@@ -74,6 +72,11 @@ const loadActivity = async () => {
   if (result.success && result.data) {
     totalItems.value = result.data.totalCount;
   }
+};
+
+const changePage = (pageNumber: number) => {
+  activityStore.page = pageNumber;
+  loadActivity();
 };
 
 onMounted(async () => {
@@ -128,12 +131,18 @@ onMounted(async () => {
         <template #header>
           <div class="flex items-center justify-between">
             <h2 class="text-xl font-semibold">Recent Activity</h2>
-            <UBadge variant="subtle" color="info">{{ activityStore.getTotalCount }}</UBadge>
+            <UBadge variant="subtle" color="info">{{
+              activityStore.getTotalCount
+            }}</UBadge>
           </div>
         </template>
 
         <UTimeline :items="items"> </UTimeline>
-        <UPagination v-model:page="activityStore.page" :total="activityStore.totalCount" />
+        <UPagination
+          v-model:page="activityStore.page"
+          :total="activityStore.totalCount"
+          @update:page="changePage"
+        />
       </UCard>
 
       <!-- Empty State -->

@@ -2,21 +2,55 @@
   <div class="flex flex-col h-full w-full flex-1" @click="handleContainerClick">
     <!-- Toolbar -->
     <div
-      class="flex flex-col gap-2 p-3 border-b border-b-primary md:flex-row md:items-center md:justify-between"
+      class="flex w-full gap-6 md:gap-2 p-3 border-b border-b-primary flex-row items-center justify-between flex-wrap"
     >
-      <!-- Left side - Action buttons -->
-      <div class="flex items-center gap-2 flex-wrap">
-        <UButton color="primary" size="sm" @click="createNewDirectory">
-          <Icon icon="mdi:folder-plus" class="w-4 h-4 md:mr-1" />
-          <span class="hidden sm:inline">New Folder</span>
-        </UButton>
-        <UButton color="primary" size="sm" @click="handleFileUpload">
-          <Icon icon="mdi:upload" class="w-4 h-4 md:mr-1" />
-          <span class="hidden sm:inline">Upload</span>
-        </UButton>
+      <!-- <div class="flex items-center gap-2 flex-wrap"> -->
+      <div class="flex gap-2 justify-between">
+        <div class="flex gap-2">
+          <UButton color="primary" size="sm" @click="createNewDirectory">
+            <Icon icon="mdi:folder-plus" class="w-4 h-4 md:mr-1" />
+            <span class="hidden sm:inline">New Folder</span>
+          </UButton>
+          <UButton color="primary" size="sm" @click="handleFileUpload">
+            <Icon icon="mdi:upload" class="w-4 h-4 md:mr-1" />
+            <span class="hidden sm:inline">Upload</span>
+          </UButton>
+        </div>
 
-        <!-- View mode toggle -->
-        <div class="flex items-center gap-1 ml-auto md:ml-2">
+        <div class="text-sm">
+          <USelectMenu
+            v-model="selectedSortBy"
+            :items="sortByOptions"
+            size="sm"
+            placeholder="Sort by"
+            @update:model-value="handleSorting"
+          >
+            <template #default="{ modelValue }">
+              <Icon icon="mdi:sort" class="w-4 h-4 mr-1" />
+              <!-- TODO: Should probably add a  fallback here in case it is null for some reason -->
+              <span class="hidden sm:inline">{{ modelValue?.label }}</span>
+            </template>
+          </USelectMenu>
+
+          <UButton
+            size="sm"
+            variant="ghost"
+            @click="toggleSortDirection"
+            :aria-label="
+              selectedSortDirection === SortDirection.Asc
+                ? 'Ascending'
+                : 'Descending'
+            "
+          >
+            <Icon
+              :icon="
+                selectedSortDirection === SortDirection.Asc
+                  ? 'mdi:sort-ascending'
+                  : 'mdi:sort-descending'
+              "
+              class="w-4 h-4"
+            />
+          </UButton>
           <UButton
             :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
             size="sm"
@@ -33,32 +67,33 @@
           >
             <Icon icon="mdi:view-list" class="w-4 h-4" />
           </UButton>
+          <!-- <span class="hidden sm:inline">
+          {{ directories.length }} folders, {{ files.length }} files
+        </span>
+        <span class="sm:hidden">
+          {{ directories.length + files.length }} items
+        </span> -->
         </div>
       </div>
 
-      <!-- Right side - Search and info -->
-      <div class="flex items-center gap-2 justify-between md:justify-end">
-        <div class="text-sm opacity-70 order-2 md:order-1">
-          <span class="hidden sm:inline">
-            {{ directories.length }} folders, {{ files.length }} files
-          </span>
-          <span class="sm:hidden">
-            {{ directories.length + files.length }} items
-          </span>
-          <!--
-          <span v-if="selectedItems.size > 0" class="ml-2 font-medium">
-            ({{ selectedItems.size }} selected)
-          </span>
-          -->
-        </div>
-        <div class="order-1 md:order-2">
-          <SearchComponent @navigate="handleNavigate" />
-        </div>
-      </div>
+      <SearchComponent @navigate="handleNavigate" />
     </div>
 
-    <!-- <FilePathBreadCrumbs /> -->
-    <UBreadcrumb :items="breadcrumbs" class="p-4" />
+    <UBreadcrumb :items="breadcrumbs" class="p-4">
+      <template #item="{ item }">
+        <UButton
+          :icon="item.icon"
+          :label="item.label"
+          color="neutral"
+          variant="link"
+          class="p-0.5"
+          @click="handleNavigate(item.key)"
+        />
+      </template>
+      <template #separator>
+        <span class="mx-2 text-muted">/</span>
+      </template>
+    </UBreadcrumb>
 
     <!-- Content Area -->
     <div ref="containerRef" class="flex-1 overflow-auto relative">
@@ -69,37 +104,6 @@
           <div>
             <div class="flex items-center gap-2 ml-2 pb-4">
               <h3 class="font-semibold opacity-70 px-1">Folders</h3>
-
-              <USelectMenu
-                v-model="selectedSortBy"
-                :items="sortByOptions"
-                size="sm"
-                placeholder="Sort by"
-              >
-                <template #default="{ modelValue }">
-                  <Icon icon="mdi:sort" class="w-4 h-4 mr-1" />
-                  <!-- TODO: Should probably add a  fallback here in case it is null for some reason -->
-                  <span class="hidden sm:inline">{{ modelValue?.label }}</span>
-                </template>
-              </USelectMenu>
-
-              <UButton
-                size="sm"
-                variant="ghost"
-                @click="toggleSortDirection"
-                :aria-label="
-                  selectedSortDirection === 'Asc' ? 'Ascending' : 'Descending'
-                "
-              >
-                <Icon
-                  :icon="
-                    selectedSortDirection === 'Asc'
-                      ? 'mdi:sort-ascending'
-                      : 'mdi:sort-descending'
-                  "
-                  class="w-4 h-4"
-                />
-              </UButton>
             </div>
           </div>
           <div class="grid gap-3" :class="gridColumns">
@@ -112,8 +116,10 @@
               @navigate="handleNavigate"
               @open="handleNavigate"
               @rename="handleDirectoryRename"
-              @move="handleDirectoryMove"
+              @move="handleCut"
               @click="handleItemClick($event, dir.id, 'directory')"
+              @copy="handleCopy"
+              @delete="handleDelete"
             />
           </div>
           <UButton
@@ -137,6 +143,9 @@
               :is-selected="isFileSelected(file.fileId)"
               @download="downloadFile(file.fileId, file.fileName)"
               @click="handleItemClick($event, file.fileId, 'file')"
+              @copy="handleCopy"
+              @delete="handleDelete"
+              @move="handleCut"
             />
           </div>
           <UButton
@@ -162,8 +171,13 @@
             :data="dir"
             :view-mode="viewMode"
             :is-selected="isDirectorySelected(dir.id)"
-            @navigate="handleNavigate(dir.id)"
+            @navigate="handleNavigate"
+            @open="handleNavigate"
+            @rename="handleDirectoryRename"
+            @move="handleCut"
             @click="handleItemClick($event, dir.id, 'directory')"
+            @copy="handleCopy"
+            @delete="handleDelete"
           />
           <UButton
             variant="ghost"
@@ -193,6 +207,9 @@
             :is-selected="isFileSelected(file.fileId)"
             @download="downloadFile(file.fileId, file.fileName)"
             @click="handleItemClick($event, file.fileId, 'file')"
+            @copy="handleCopy"
+            @delete="handleDelete"
+            @move="handleCut"
           />
           <UButton
             variant="ghost"
@@ -213,13 +230,19 @@ import DirectoryItem from "./DirectoryItem.vue";
 import { onMounted, ref, computed } from "vue";
 import { Icon } from "@iconify/vue";
 import { OrderBy } from "@/enums/OrderBy";
-import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
-import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
-import MoveDirectoryModal from "./Modals/MoveDirectoryModal.vue";
-import FileUploadModal from "./Modals/FileUploadModal.vue";
 import { useFileExplorer } from "@/composables/useFileExplorer";
 import { useTabStore } from "@/stores/tab";
+import type { BreadcrumbItem } from "@nuxt/ui";
+import { SortDirection } from "@/enums/SortDirection";
+import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
+import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
+import FileUploadModal from "./Modals/FileUploadModal.vue";
+import { useFileStore } from "@/stores/file";
+import { useDirectoryStore } from "@/stores/directory";
+import { useFileExplorerApi } from "@/composables/useFileExplorerApi";
 
+const fileStore = useFileStore();
+const directoryStore = useDirectoryStore();
 const tabStore = useTabStore();
 
 const props = defineProps<{
@@ -237,9 +260,12 @@ const {
   dirPagination,
   pathList,
   lastSelected,
+  selectedDirectories,
+  selectedFiles,
   loadMoreDirs,
   loadMoreFiles,
   navigateTo,
+  refreshDir,
   toggleSelect,
   isDirectorySelected,
   isFileSelected,
@@ -248,6 +274,35 @@ const {
   downloadFile,
   // uploadFile,
 } = useFileExplorer();
+
+const { copySelected, moveSelected, deleteDirectory, deleteFile } =
+  useFileExplorerApi();
+
+let copyMode = true;
+
+defineShortcuts({
+  meta_c: () => {
+    console.log("Ctrl + C is pressed");
+    copyMode = true;
+    handleCopy();
+  },
+  meta_v: () => {
+    console.log("Ctrl + V is pressed");
+
+    if (copyMode) handlePaste();
+    else handleCut();
+  },
+  meta_x: () => {
+    copyMode = false;
+    handleCopy();
+    console.log("Ctrl + X is pressed");
+  },
+  Delete: () => {
+    handleDelete();
+    console.log("Delete has been pressed");
+  },
+});
+
 // Sort options
 const sortByOptions = ref([
   { label: "Name", value: OrderBy.Name },
@@ -256,18 +311,25 @@ const sortByOptions = ref([
 ]);
 
 const selectedSortBy = ref({ label: "Name", value: OrderBy.Name });
-const selectedSortDirection = ref<"Asc" | "Desc">("Asc");
+const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
 
-const toggleSortDirection = () => {
+const toggleSortDirection = async () => {
   selectedSortDirection.value =
-    selectedSortDirection.value === "Asc" ? "Desc" : "Asc";
+    selectedSortDirection.value === SortDirection.Asc
+      ? SortDirection.Desc
+      : SortDirection.Asc;
+
+  filePagination.value.paginationParams.sortDirection =
+    selectedSortDirection.value;
+  dirPagination.value.paginationParams.sortDirection =
+    selectedSortDirection.value;
+  await refreshDir(currentDirId.value);
 };
 
 // Modals
 const overlay = useOverlay();
 const createDirectoryModal = overlay.create(CreateDirectoryModal);
 const updateDirectoryModal = overlay.create(UpdateDirectoryModal);
-const moveDirectoryModal = overlay.create(MoveDirectoryModal);
 const fileUploadModal = overlay.create(FileUploadModal);
 
 const handleContainerClick = (event: MouseEvent) => {
@@ -316,36 +378,52 @@ const handleDirectoryRename = async (directoryId: string) => {
   //   });
 };
 
-const handleDirectoryMove = async (directoryId: string) => {
-  const instance = moveDirectoryModal.open({ directoryId: directoryId });
+const handleCopy = async () => {
+  fileStore.filesToCopy = [...selectedFiles.value];
+  directoryStore.directoriesToCopy = [...selectedDirectories.value];
+  console.log("handling copy");
+  toast.add({
+    title: "Files selected",
+    color: "info",
+    id: "copying",
+  });
+};
 
-  const shouldRefresh = await instance.result;
+const handleDelete = async () => {
+  await deleteFile([...selectedFiles.value]);
 
-  console.log(shouldRefresh);
+  selectedDirectories.value.forEach(async (d) => await deleteDirectory(d));
+  toast.add({
+    title: "Items deleted",
+    color: "info",
+    id: "deleting",
+  });
+  refreshDir(currentDirId.value);
+};
 
-  if (shouldRefresh) {
-    toast.add({
-      title: "Directory moved successfully",
-      color: "success",
-      id: "modal-success",
-    });
+const handleCut = async () => {
+  await moveSelected({
+    destinationId: currentDirId.value,
+    selectedFiles: fileStore.filesToCopy,
+    selectedDirectories: directoryStore.directoriesToCopy,
+  });
+  refreshDir(currentDirId.value);
+};
 
-    // console.log("refreshing");
-    await navigateTo();
-    // if (response.success) {
-    //   directories.value = response.data?.directories ?? [];
-    //   files.value = response.data?.files ?? [];
-    // }
+const handlePaste = async () => {
+  await copySelected({
+    destinationId: currentDirId.value,
+    selectedFiles: fileStore.filesToCopy,
+    selectedDirectories: directoryStore.directoriesToCopy,
+  });
+  refreshDir(currentDirId.value);
+};
 
-    return;
-  }
-  // if (!shouldRefresh && directoryStore.error)
-  //   toast.add({
-  //     title: "Directory failed",
-  //     description: directoryStore.error,
-  //     color: "error",
-  //     id: "modal-error",
-  //   });
+const handleSorting = async () => {
+  filePagination.value.paginationParams.orderBy = selectedSortBy.value.value;
+  dirPagination.value.paginationParams.orderBy = selectedSortBy.value.value;
+
+  await refreshDir(currentDirId.value);
 };
 
 const handleFileUpload = async () => {
@@ -371,11 +449,12 @@ const handleFileUpload = async () => {
 };
 
 const breadcrumbs = computed(() => {
-  const items = [
+  const items: BreadcrumbItem[] = [
     {
       label: "Home",
       to: { name: "dashboard" },
       icon: "i-heroicons-home",
+      key: null,
     },
   ];
 
@@ -384,11 +463,10 @@ const breadcrumbs = computed(() => {
   if (path && path.value.length > 0) {
     const pathItems = path.value.map((segment) => ({
       label: segment.name,
-      to: { name: "dashboard", params: { dirId: segment.id } },
+      key: segment.id,
     }));
     items.push(...pathItems);
   }
-  console.log("path items", items);
   return items;
 });
 

@@ -10,7 +10,7 @@ import { handleError } from "@/utils/helper";
 export const useActivityStore = defineStore("activity", () => {
   const activity: Ref<AuditLogResult[]> = ref([]);
   const page = ref(1)
-  const pageSize = ref (50)
+  const pageSize = ref (10)
   const totalCount = ref(0)
   const isLoading = ref(false);
   const error = ref<string | null>(null);
@@ -19,6 +19,7 @@ export const useActivityStore = defineStore("activity", () => {
   const getPage = computed(() => page.value)
   const getPageSize = computed(() => pageSize.value)
   const getTotalCount = computed(() => totalCount.value)
+  
   const fetchActivity = async (query: AuditLogQuery) => {
     isLoading.value = true;
     console.log(' are wer here even')

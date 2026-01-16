@@ -25,9 +25,6 @@
         </span>
         <span v-else class="text-muted"> Search  </span>
       </template>
-      <!-- <template #item="{ item }">
-        <div @click="handleSelect(item)">{{ item.name }}</div>
-      </template> -->
       <template #trailing>
         <UKbd value="/" />
       </template>

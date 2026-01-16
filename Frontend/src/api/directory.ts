@@ -3,7 +3,6 @@ import apiClient from "./client";
 import type {
   CreateDirectorySchema,
   UpdateDirectorySchema,
-  MoveDirectorySchema,
   DeleteDirectorySchema,
 } from "@/schemas/directory";
 import { SortDirection } from "@/enums/SortDirection";
@@ -203,12 +202,11 @@ export const directoryApi = {
       Object.entries(query).filter(([_, value]) => value != null)
     );
 
-    const response = await apiClient.get<PaginatedResponse<DirectorySummaryDto>>(
-      "/directories/search",
-      {
-        params: cleanParams,
-      }
-    );
+    const response = await apiClient.get<
+      PaginatedResponse<DirectorySummaryDto>
+    >("/directories/search", {
+      params: cleanParams,
+    });
     return response.data;
   },
 
@@ -224,8 +222,21 @@ export const directoryApi = {
   },
 
   // Move directory
-  moveDirectory: async (data: MoveDirectorySchema): Promise<void> => {
-    await apiClient.put("directories/move", data);
+  moveDirectories: async (
+    directoryIds: string[],
+    destinationId: string
+  ): Promise<void> => {
+    await apiClient.put("directories/move", {
+      destinationId,
+      directoryIds
+    });
+  },
+
+  copyDirectory: async (dirId: string, destinationId: string) => {
+    await apiClient.post("directories/copy", {
+      directoryId: dirId,
+      destinationId,
+    });
   },
 
   // Delete directory
