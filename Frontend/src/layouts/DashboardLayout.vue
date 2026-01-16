@@ -44,7 +44,7 @@
         />
       </template>
     </UDashboardSidebar>
-    <UDashboardPanel :ui="{ body: 'sm:p-0' }">
+    <UDashboardPanel :ui="{ body: 'sm:p-0 p-0' }">
       <template #header>
         <UDashboardNavbar :title="pageTitle" toggle-side="right">
           <template #right>
