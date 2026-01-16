@@ -1,6 +1,7 @@
 namespace API.Features.Storage.Files.DeleteFile;
 
-public class DeleteFileRequest
+public sealed class DeleteFileRequest
 {
-    public Guid Id { get; set; }
+    public Guid[] Ids { get; set; }
+    public bool HardDelete { get; set; } = false;
 }

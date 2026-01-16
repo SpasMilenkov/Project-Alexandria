@@ -8,7 +8,7 @@ public class DeleteFileEndpoint(IStorageService storage) : Endpoint<DeleteFileRe
 {
     public override void Configure()
     {
-        Delete("/files/{id}");
+        Delete("/files/");
         Description(x => x.WithTags("Files"));
 
         Summary(s =>
@@ -31,8 +31,7 @@ public class DeleteFileEndpoint(IStorageService storage) : Endpoint<DeleteFileRe
 
         try
         {
-            //TODO: pass a hard delete parameter as well
-            await storage.DeleteFile(req.Id, userId, ct, false);
+            await storage.DeleteFiles(req.Ids, userId, req.HardDelete, ct);
             await Send.OkAsync(new { Message = "File soft deleted successfully" }, ct);
         }
         catch (InvalidOperationException ex)
