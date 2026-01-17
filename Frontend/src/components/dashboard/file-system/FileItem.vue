@@ -380,7 +380,7 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { computed, onMounted, ref } from "vue";
+import { computed, ref } from "vue";
 import type { FileResult } from "@/api/file";
 import type { ContextMenuItem, TreeItem } from "@nuxt/ui";
 import { useSettingsStore } from "@/stores/settings";
@@ -409,7 +409,6 @@ const archivePreview = ref<string | null>(null);
 const textPreview = ref<string | null>(null);
 const previewMimeType = ref<string | null>(null);
 const audioPlayer = ref(null);
-const videoPlayer = ref(null);
 const isAudioPlaying = ref(false);
 const isAudioHovered = ref(false);
 
