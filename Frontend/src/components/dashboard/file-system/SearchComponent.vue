@@ -50,7 +50,7 @@ const searchResults: Ref<DirectorySummaryDto[]> = ref([]);
 const advancedSearchModal = overlay.create(AdvancedSearchModal);
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
-  const result = await instance.result;
+  await instance.result;
   return;
 };
 
