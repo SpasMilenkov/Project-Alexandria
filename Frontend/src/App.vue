@@ -3,7 +3,7 @@ import { useRoute } from "vue-router";
 import { useSettingsStore } from "@/stores/settings";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import DashboardLayout from "@/layouts/DashboardLayout.vue";
-
+import { PiniaColadaDevtools } from "@pinia/colada-devtools";
 const route = useRoute();
 
 // Initialize the settings store immediately
@@ -23,6 +23,7 @@ const layouts = {
     </component>
     <UFooter />
   </UApp>
+  <PiniaColadaDevtools />
 </template>
 
 <style scoped></style>

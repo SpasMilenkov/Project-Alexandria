@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { reactive } from "vue";
-import { useDirectoryStore } from "@/stores/directory";
 import {
   createDirectorySchema,
   type CreateDirectorySchema,
 } from "@/schemas/directory";
 import type { FormSubmitEvent } from "@nuxt/ui";
-
+import { createDirectory } from "@/mutations/directories";
 const props = defineProps<{
   parentId: string | null;
 }>();
 
-const directoryStore = useDirectoryStore();
+
+const { mutateAsync, state: mutationState } = createDirectory();
 
 const emit = defineEmits<{ close: [boolean] }>();
 
@@ -20,11 +20,11 @@ const state = reactive({
   parentId: props.parentId,
 });
 
-const createDirectory = async (
-  event: FormSubmitEvent<CreateDirectorySchema>,
-) => {
-  const response = await directoryStore.createDirectory(event.data);
-  emit("close", response.success);
+const onSubmit = async (event: FormSubmitEvent<CreateDirectorySchema>) => {
+  await mutateAsync(event.data);
+
+  if(!mutationState.value.error)
+    emit("close", true);
 };
 </script>
 
@@ -38,7 +38,7 @@ const createDirectory = async (
         :schema="createDirectorySchema"
         :state="state"
         class="space-y-4 w-full"
-        @submit="createDirectory"
+        @submit="onSubmit"
       >
         <UFormField label="Name" name="name">
           <UInput v-model="state.name" class="w-full" />

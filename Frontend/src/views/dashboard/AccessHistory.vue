@@ -1,24 +1,36 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from "vue";
+import { computed } from "vue";
 import { useActivityStore } from "@/stores/activity";
 import { SortDirection } from "@/enums/SortDirection";
 import { OperationType, EntityType } from "@/api/activity";
 import { useAuthStore } from "@/stores/auth";
 import type { TimelineItem } from "@nuxt/ui";
+import { useQuery } from "@pinia/colada";
+import { personalPaginated } from "@/queries/activities";
+
 const activityStore = useActivityStore();
 const authStore = useAuthStore();
-const totalItems = ref(0);
+
+const { data, refresh, isLoading, error } = useQuery(personalPaginated, () => ({
+  page: activityStore.page,
+  pageSize: activityStore.pageSize,
+  sortBy: "timestamp",
+  sortDirection: SortDirection.Desc,
+  userId: authStore.user?.id,
+}));
 
 const items = computed((): TimelineItem[] =>
-  activityStore.getActivity.map((log) => ({
-    date: new Date(log.timestamp).toLocaleDateString(),
-    value: log.entityId + log.timestamp,
-    icon: getIconForOperation(log.operationType, log.entityTYpe),
-    title:
-      log.description || getDefaultTitle(log.operationType, log.entityTYpe),
-    operationType: log.operationType,
-    entityType: log.entityTYpe,
-  }))
+  !data.value
+    ? []
+    : data.value?.items.map((log) => ({
+        date: new Date(log.timestamp).toLocaleDateString(),
+        value: log.entityId + log.timestamp,
+        icon: getIconForOperation(log.operationType, log.entityTYpe),
+        title:
+          log.description || getDefaultTitle(log.operationType, log.entityTYpe),
+        operationType: log.operationType,
+        entityType: log.entityTYpe,
+      })),
 );
 
 const getIconForOperation = (opType: OperationType, entityType: EntityType) => {
@@ -54,34 +66,10 @@ const getDefaultTitle = (opType: OperationType, entityType: EntityType) => {
   return `${operation} ${entityName}`;
 };
 
-const hasHistory = computed(() => activityStore.getActivity.length > 0);
-const isLoading = computed(() => activityStore.isLoading);
-const error = computed(() => activityStore.error);
-
-const loadActivity = async () => {
-  console.log("userId: ", authStore.user?.id);
-  console.log(authStore.user);
-  const result = await activityStore.fetchActivity({
-    page: activityStore.page,
-    pageSize: activityStore.pageSize,
-    sortBy: "timestamp",
-    sortDirection: SortDirection.Desc,
-    userId: authStore.user?.id,
-  });
-  console.log("requestResult", result);
-  if (result.success && result.data) {
-    totalItems.value = result.data.totalCount;
-  }
-};
-
 const changePage = (pageNumber: number) => {
   activityStore.page = pageNumber;
-  loadActivity();
+  refresh();
 };
-
-onMounted(async () => {
-  await loadActivity();
-});
 </script>
 
 <template>
@@ -98,7 +86,7 @@ onMounted(async () => {
         color="error"
         variant="subtle"
         title="Error loading activity"
-        :description="error"
+        :description="error.message"
         class="mb-6"
       />
 
@@ -108,39 +96,104 @@ onMounted(async () => {
           <div>
             <p class="text-sm opacity-70 mb-1">Total Activities</p>
             <p class="text-2xl font-semibold">
-              {{ isLoading ? "..." : totalItems }}
+              {{ isLoading ? "..." : data?.totalCount }}
             </p>
           </div>
           <UIcon name="i-lucide-activity" class="w-8 h-8 opacity-50" />
         </div>
       </UCard>
 
-      <!-- Loading State -->
-      <UCard v-if="isLoading && !hasHistory">
-        <div class="text-center py-12">
-          <UIcon
-            name="i-lucide-loader-2"
-            class="w-12 h-12 mx-auto mb-4 opacity-50 animate-spin"
-          />
-          <p class="text-sm opacity-70">Loading activity history...</p>
+      <!-- Loading Skeleton State -->
+      <UCard v-if="isLoading">
+        <template #header>
+          <div class="flex items-center justify-between">
+            <USkeleton class="h-7 w-40" />
+            <USkeleton class="h-5 w-12 rounded-full" />
+          </div>
+        </template>
+
+        <!-- Timeline Skeleton -->
+        <div class="space-y-6">
+          <div class="flex gap-4">
+            <div class="flex flex-col items-center">
+              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
+              <div class="w-px h-full bg-gray-200 dark:bg-gray-800 mt-2" />
+            </div>
+            <div class="flex-1 pb-6">
+              <USkeleton class="h-4 w-24 mb-2" />
+              <USkeleton class="h-5 w-64 mb-1" />
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="flex flex-col items-center">
+              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
+              <div class="w-px h-full bg-gray-200 dark:bg-gray-800 mt-2" />
+            </div>
+            <div class="flex-1 pb-6">
+              <USkeleton class="h-4 w-24 mb-2" />
+              <USkeleton class="h-5 w-72 mb-1" />
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="flex flex-col items-center">
+              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
+              <div class="w-px h-full bg-gray-200 dark:bg-gray-800 mt-2" />
+            </div>
+            <div class="flex-1 pb-6">
+              <USkeleton class="h-4 w-24 mb-2" />
+              <USkeleton class="h-5 w-56 mb-1" />
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="flex flex-col items-center">
+              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
+              <div class="w-px h-full bg-gray-200 dark:bg-gray-800 mt-2" />
+            </div>
+            <div class="flex-1 pb-6">
+              <USkeleton class="h-4 w-24 mb-2" />
+              <USkeleton class="h-5 w-64 mb-1" />
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            <div class="flex flex-col items-center">
+              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
+            </div>
+            <div class="flex-1">
+              <USkeleton class="h-4 w-24 mb-2" />
+              <USkeleton class="h-5 w-48 mb-1" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Pagination Skeleton -->
+        <div
+          class="flex justify-center items-center gap-2 mt-6 pt-6 border-t border-gray-200 dark:border-gray-800"
+        >
+          <USkeleton class="h-9 w-9 rounded-md" />
+          <USkeleton class="h-9 w-9 rounded-md" />
+          <USkeleton class="h-9 w-9 rounded-md" />
+          <USkeleton class="h-9 w-9 rounded-md" />
+          <USkeleton class="h-9 w-9 rounded-md" />
         </div>
       </UCard>
 
       <!-- Timeline Section -->
-      <UCard v-else-if="hasHistory">
+      <UCard v-else-if="data">
         <template #header>
           <div class="flex items-center justify-between">
             <h2 class="text-xl font-semibold">Recent Activity</h2>
-            <UBadge variant="subtle" color="info">{{
-              activityStore.getTotalCount
-            }}</UBadge>
+            <UBadge variant="subtle" color="info">{{ data.totalCount }}</UBadge>
           </div>
         </template>
 
-        <UTimeline :items="items"> </UTimeline>
+        <UTimeline :items="items" />
         <UPagination
           v-model:page="activityStore.page"
-          :total="activityStore.totalCount"
+          :total="data.totalCount"
           @update:page="changePage"
         />
       </UCard>

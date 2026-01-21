@@ -100,7 +100,8 @@
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="p-4">
         <!-- Directories Section -->
-        <div v-if="directories.length > 0" class="mb-6 flex flex-col">
+        <GridPlaceholder v-if="areDirectoriesLoading" />
+        <div v-else-if="directoriesList.length > 0" class="mb-6 flex flex-col">
           <div>
             <div class="flex items-center gap-2 ml-2 pb-4">
               <h3 class="font-semibold opacity-70 px-1">Folders</h3>
@@ -108,7 +109,7 @@
           </div>
           <div class="grid gap-3" :class="gridColumns">
             <DirectoryItem
-              v-for="dir in directories"
+              v-for="dir in directoriesList"
               :key="dir.id"
               :data="dir"
               :view-mode="viewMode"
@@ -126,17 +127,18 @@
             variant="ghost"
             label="Show more"
             class="max-w-fit self-end"
-            v-if="dirPagination.hasNext"
+            v-if="directoriesData?.hasNext"
             @click="loadMoreDirs"
           />
         </div>
 
         <!-- Files Section -->
-        <div v-if="files.length > 0" class="mb-6 flex flex-col">
+        <GridPlaceholder v-if="areFilesLoading" />
+        <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col">
           <h3 class="text-sm font-semibold opacity-70 mb-3 px-1">Files</h3>
           <div class="grid gap-3" :class="gridColumns">
             <FileItem
-              v-for="file in files"
+              v-for="file in filesList"
               :key="file.fileId"
               :data="file"
               :view-mode="viewMode"
@@ -152,7 +154,7 @@
             variant="ghost"
             label="Show more"
             class="max-w-fit self-end"
-            v-if="filePagination.hasNext"
+            v-if="filesData?.hasNext"
             @click="loadMoreFiles"
           />
         </div>
@@ -161,12 +163,13 @@
       <!-- List View -->
       <div v-else class="flex flex-col">
         <!-- Directories Section -->
-        <div v-if="directories.length > 0">
+        <ListPlaceholder v-if="directoriesQuery.isLoading" />
+        <div v-else-if="directoriesList.length > 0">
           <h3 class="text-sm font-semibold opacity-70 mb-2 px-4 pt-4">
             Folders
           </h3>
           <DirectoryItem
-            v-for="dir in directories"
+            v-for="dir in directoriesList"
             :key="dir.id"
             :data="dir"
             :view-mode="viewMode"
@@ -183,24 +186,26 @@
             variant="ghost"
             label="Show more"
             class="max-w-fit self-end"
-            v-if="dirPagination.hasNext"
+            v-if="directoriesData?.hasNext"
             @click="loadMoreDirs"
           />
         </div>
 
         <!-- Files Section -->
+        <ListPlaceholder v-if="areFilesLoading" />
+
         <div
-          v-if="files.length > 0"
-          :class="{ 'mt-4': directories.length > 0 }"
+          v-else-if="filesList.length > 0"
+          :class="{ 'mt-4': directoriesData?.items.length ?? 0 > 0 }"
         >
           <h3
             class="text-sm font-semibold opacity-70 mb-2 px-4"
-            :class="{ 'pt-4': directories.length === 0 }"
+            :class="{ 'pt-4': directoriesData?.items.length ?? 0 === 0 }"
           >
             Files
           </h3>
           <FileItem
-            v-for="file in files"
+            v-for="file in filesList"
             :key="file.fileId"
             :data="file"
             :view-mode="viewMode"
@@ -215,7 +220,7 @@
             variant="ghost"
             label="Show more"
             class="max-w-fit self-end"
-            v-if="filePagination.hasNext"
+            v-if="filesData?.hasNext"
             @click="loadMoreFiles"
           />
         </div>
@@ -239,7 +244,12 @@ import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
 import FileUploadModal from "./Modals/FileUploadModal.vue";
 import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
-import { useFileExplorerApi } from "@/composables/useFileExplorerApi";
+import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
+import {
+  copyDirectory,
+  moveDirectories,
+  deleteDirectory,
+} from "@/mutations/directories";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -253,15 +263,17 @@ const toast = useToast();
 
 const {
   currentDirId,
-  directories,
-  files,
+  directoriesQuery,
+  filesQuery,
+  directoriesList,
+  filesList,
   viewMode,
   filePagination,
   dirPagination,
-  pathList,
   lastSelected,
   selectedDirectories,
   selectedFiles,
+  pathQuery,
   loadMoreDirs,
   loadMoreFiles,
   navigateTo,
@@ -275,8 +287,17 @@ const {
   // uploadFile,
 } = useFileExplorer();
 
-const { copySelected, moveSelected, deleteDirectory, deleteFile } =
-  useFileExplorerApi();
+const { mutateAsync: copyFilesMutate } = copyFiles();
+const { mutateAsync: copyDirectoryMutate } = copyDirectory();
+const { mutateAsync: moveFilesMutate } = moveFiles();
+const { mutateAsync: moveDirectoriesMutate } = moveDirectories();
+const { mutateAsync: deleteFilesMutate } = deleteFiles();
+const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
+
+const { data: directoriesData, isLoading: areDirectoriesLoading } =
+  directoriesQuery;
+
+const { data: filesData, isLoading: areFilesLoading } = filesQuery;
 
 let copyMode = true;
 
@@ -313,7 +334,7 @@ const sortByOptions = ref([
 const selectedSortBy = ref({ label: "Name", value: OrderBy.Name });
 const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
 
-const toggleSortDirection = async () => {
+const toggleSortDirection = () => {
   selectedSortDirection.value =
     selectedSortDirection.value === SortDirection.Asc
       ? SortDirection.Desc
@@ -323,7 +344,7 @@ const toggleSortDirection = async () => {
     selectedSortDirection.value;
   dirPagination.value.paginationParams.sortDirection =
     selectedSortDirection.value;
-  await refreshDir(currentDirId.value);
+  refreshDir();
 };
 
 // Modals
@@ -361,21 +382,16 @@ const handleDirectoryRename = async (directoryId: string) => {
     });
 
     console.log("refreshing");
-    await navigateTo(currentDirId.value);
-    // if (response.success) {
-    //   directories.value = response.data?.directories ?? [];
-    //   files.value = response.data?.files ?? [];
-    // }
+    refreshDir();
 
     return;
   }
-  // if (!shouldRefresh && directoryStore.error)
-  //   toast.add({
-  //     title: "Directory update failed",
-  //     description: directoryStore.error,
-  //     color: "error",
-  //     id: "modal-error",
-  //   });
+  if (!shouldRefresh)
+    toast.add({
+      title: "Directory update failed",
+      color: "error",
+      id: "modal-error",
+    });
 };
 
 const handleCopy = async () => {
@@ -390,40 +406,55 @@ const handleCopy = async () => {
 };
 
 const handleDelete = async () => {
-  await deleteFile([...selectedFiles.value]);
-
-  selectedDirectories.value.forEach(async (d) => await deleteDirectory(d));
+  await deleteFilesMutate([...selectedFiles.value]);
+  await Promise.allSettled(
+    [...selectedDirectories.value].map(
+      async (id) =>
+        await deleteDirectoryMutate({ id, options: { force: false } }),
+    ),
+  );
   toast.add({
     title: "Items deleted",
     color: "info",
     id: "deleting",
   });
-  refreshDir(currentDirId.value);
+  refreshDir();
 };
 
 const handleCut = async () => {
-  await moveSelected({
+  await moveFilesMutate({
     destinationId: currentDirId.value,
-    selectedFiles: fileStore.filesToCopy,
-    selectedDirectories: directoryStore.directoriesToCopy,
+    fileIds: fileStore.filesToCopy,
   });
-  refreshDir(currentDirId.value);
+  await moveDirectoriesMutate({
+    destinationId: currentDirId.value,
+    directoryIds: directoryStore.directoriesToCopy,
+  });
+  refreshDir();
 };
 
 const handlePaste = async () => {
-  await copySelected({
+  await copyFilesMutate({
+    fileIds: fileStore.filesToCopy,
     destinationId: currentDirId.value,
-    selectedFiles: fileStore.filesToCopy,
-    selectedDirectories: directoryStore.directoriesToCopy,
   });
-  refreshDir(currentDirId.value);
+  await Promise.all(
+    directoryStore.directoriesToCopy.map(async (dir) => {
+      await copyDirectoryMutate({
+        destinationId: currentDirId.value,
+        directoryId: dir,
+      });
+    }),
+  );
+
+  refreshDir();
 };
 
-const handleSorting = async () => {
+const handleSorting = () => {
   filePagination.value.paginationParams.orderBy = selectedSortBy.value.value;
   dirPagination.value.paginationParams.orderBy = selectedSortBy.value.value;
 
-  await refreshDir(currentDirId.value);
+  refreshDir();
 };
 
 const handleFileUpload = async () => {
@@ -439,13 +470,13 @@ const handleFileUpload = async () => {
 
     return;
   }
-  // if (!shouldRefresh && directoryStore.error)
-  //   toast.add({
-  //     title: "Directory failed",
-  //     description: directoryStore.error,
-  //     color: "error",
-  //     id: "modal-error",
-  //   });
+  if (!shouldRefresh && directoryStore.error)
+    toast.add({
+      title: "Directory failed",
+      description: directoryStore.error,
+      color: "error",
+      id: "modal-error",
+    });
 };
 
 const breadcrumbs = computed(() => {
@@ -459,9 +490,10 @@ const breadcrumbs = computed(() => {
   ];
 
   // Add path segments from store
-  const path = pathList;
-  if (path && path.value.length > 0) {
-    const pathItems = path.value.map((segment) => ({
+  const path = pathQuery.data.value?.pathParts;
+
+  if (path && path.length > 0) {
+    const pathItems = path.map((segment) => ({
       label: segment.name,
       key: segment.id,
     }));
@@ -484,23 +516,22 @@ const createNewDirectory = async () => {
       id: "modal-success",
     });
 
-    await navigateTo(currentDirId.value);
-
+    refreshDir();
     return;
   }
-  // if (!shouldRefresh && directoryStore.error)
-  //   toast.add({
-  //     title: "Directory creation failed",
-  //     description: directoryStore.error,
-  //     color: "error",
-  //     id: "modal-error",
-  //   });
+  if (!shouldRefresh && directoryStore.error)
+    toast.add({
+      title: "Directory creation failed",
+      description: directoryStore.error,
+      color: "error",
+      id: "modal-error",
+    });
 };
 
 const handleItemClick = (
   event: MouseEvent,
   id: string,
-  type: "file" | "directory"
+  type: "file" | "directory",
 ) => {
   const isCtrlOrCmd = event.ctrlKey || event.metaKey;
   const isShift = event.shiftKey;

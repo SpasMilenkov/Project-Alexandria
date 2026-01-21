@@ -1,24 +1,26 @@
-import { type DirectorySummaryDto } from "@/api/directory";
-import type { FileResult } from "@/api/file";
 import { OrderBy } from "@/enums/OrderBy";
 import { SortDirection } from "@/enums/SortDirection";
 import type { PaginationParams } from "@/types/pagination-params";
-import { ref, type Ref } from "vue";
-import { useFileExplorerApi } from "./useFileExplorerApi";
+import { ref, watch, type Ref } from "vue";
 import { useRouter } from "vue-router";
-import { useDirectoryStore } from "@/stores/directory";
+import {
+  directoryPath,
+  rootDirectories,
+  subDirectories,
+} from "@/queries/directories";
+import { rootFiles, subFiles } from "@/queries/files";
+import { useQuery } from "@pinia/colada";
+import type { DirectorySummaryDto } from "@/api/directory";
+import type { FileResult } from "@/api/file";
+import { useFileStore } from "@/stores/file";
 
 export const useFileExplorer = () => {
   const router = useRouter();
-  const directoryStore = useDirectoryStore();
+  const fileStore = useFileStore();
   // STATE
   const currentDirId: Ref<string | null> = ref(null);
   const pathList = ref<{ id: string; name: string }[]>([]);
 
-  //   directories;
-  const directories = ref<DirectorySummaryDto[]>([]);
-  //   files;
-  const files = ref<FileResult[]>([]);
   //   dirPagination;
   const dirPagination: Ref<{
     paginationParams: PaginationParams;
@@ -45,202 +47,108 @@ export const useFileExplorer = () => {
     },
     hasNext: false,
   });
-  //   sort;
-  //   viewMode;
+
   const viewMode: Ref<"grid" | "list"> = ref("grid");
-  //   selection;
   const selectedDirectories: Ref<Set<string>> = ref(new Set<string>());
   const selectedFiles: Ref<Set<string>> = ref(new Set<string>());
   const lastSelected = ref("");
-  //   loading;
-  const isLoading = ref(false);
-  //   error;
-  const error: Ref<string | null> = ref();
+  const directoriesList = ref<DirectorySummaryDto[]>([]);
+  const filesList = ref<FileResult[]>([]);
 
-  const {
-    getRootSubDirectories,
-    getRootSubFiles,
-    getSubDirectories,
-    getSubFiles,
-    fileDownload,
-    getDirectoryPath,
-  } = useFileExplorerApi();
+  const pathQuery = useQuery(directoryPath, () => currentDirId.value);
+
+  const directories = useQuery(() => {
+    const params = dirPagination.value.paginationParams;
+
+    if (!currentDirId.value) {
+      return rootDirectories(params);
+    }
+
+    return subDirectories({
+      id: currentDirId.value,
+      params: params,
+    });
+  });
+
+  const files = useQuery(() => {
+    const params = filePagination.value.paginationParams;
+
+    if (!currentDirId.value) {
+      return rootFiles(params);
+    }
+
+    return subFiles({
+      id: currentDirId.value,
+      params: params,
+    });
+  });
+
+  watch(directories.data, (newData) => {
+    if (!newData?.items) return;
+
+    dirPagination.value.hasNext = newData.hasNext ?? false;
+
+    if (dirPagination.value.paginationParams.page === 1) {
+      // New folder or refresh: Replace the list
+      directoriesList.value = [...newData.items];
+    } else {
+      // Pagination: Append to the list
+      directoriesList.value.push(...newData.items);
+    }
+  });
+
+  watch(files.data, (newData) => {
+    if (!newData?.items) return;
+
+    filePagination.value.hasNext = newData.hasNext ?? false;
+
+    if (filePagination.value.paginationParams.page === 1) {
+      filesList.value = [...newData.items];
+    } else {
+      filesList.value.push(...newData.items);
+    }
+  });
 
   // ACTIONS
 
   const navigateTo = async (dirId?: string | null) => {
-    dirPagination.value = {
-      paginationParams: {
-        page: 1,
-        pageSize: 25,
-        orderBy: OrderBy.Name,
-        sortDirection: SortDirection.Asc,
-      },
-      hasNext: true,
-    };
+    dirPagination.value.paginationParams.page = 1;
+    filePagination.value.paginationParams.page = 1;
 
-    filePagination.value = {
-      paginationParams: {
-        page: 1,
-        pageSize: 25,
-        orderBy: OrderBy.Name,
-        sortDirection: SortDirection.Asc,
-      },
-      hasNext: true,
-    };
+    directoriesList.value = [];
+    filesList.value = [];
 
     currentDirId.value = dirId ?? null;
-    if (!dirId) {
-      router.push({
-        name: "dashboard",
-      });
-      const directoriesResult = await getRootSubDirectories(
-        dirPagination.value.paginationParams
-      );
 
-      if (directoriesResult) {
-        directories.value = directoriesResult.data
-          ?.items as DirectorySummaryDto[];
-        dirPagination.value.hasNext = directoriesResult?.data?.hasNext ?? false;
-      }
-
-      const filesResult = await getRootSubFiles(
-        filePagination.value.paginationParams
-      );
-      if (filesResult) files.value = filesResult.data?.items as FileResult[];
-      filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
-
-      updateDirectoryPath();
-      return;
-    }
-    updateDirectoryPath(dirId);
-
-    const directoriesResult = await getSubDirectories(
-      dirId,
-      dirPagination.value.paginationParams
-    );
-
-    if (directoriesResult) {
-      directories.value = directoriesResult.data
-        ?.items as DirectorySummaryDto[];
-
-      dirPagination.value.hasNext = directoriesResult.data?.hasNext ?? false;
-    }
-
-    const filesResult = await getSubFiles(
-      dirId,
-      filePagination.value.paginationParams
-    );
-    if (filesResult) {
-      files.value = filesResult.data?.items as FileResult[];
-      filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
-    }
     router.push({
       name: "dashboard",
       params: { dirId },
     });
-    directoryStore.navigationHistory.push(currentDirId.value);
   };
 
-  const refreshDir = async (dirId?: string | null) => {
-    if (!dirId) {
-      router.push({
-        name: "dashboard",
-      });
-      const directoriesResult = await getRootSubDirectories(
-        dirPagination.value.paginationParams
-      );
-
-      if (directoriesResult) {
-        directories.value = directoriesResult.data
-          ?.items as DirectorySummaryDto[];
-        dirPagination.value.hasNext = directoriesResult?.data?.hasNext ?? false;
-      }
-
-      const filesResult = await getRootSubFiles(
-        filePagination.value.paginationParams
-      );
-      if (filesResult) files.value = filesResult.data?.items as FileResult[];
-      filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
-
-      updateDirectoryPath();
-      return;
-    }
-    updateDirectoryPath(dirId);
-
-    const directoriesResult = await getSubDirectories(
-      dirId,
-      dirPagination.value.paginationParams
-    );
-
-    if (directoriesResult)
-      directories.value = directoriesResult.data
-        ?.items as DirectorySummaryDto[];
-
-    const filesResult = await getSubFiles(
-      dirId,
-      filePagination.value.paginationParams
-    );
-    if (filesResult) {
-      files.value = filesResult.data?.items as FileResult[];
-      filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
-    }
-    router.push({
-      name: "dashboard",
-      params: { dirId },
-    });
-    directoryStore.navigationHistory.push(currentDirId.value);
-  };
   const loadMoreDirs = async () => {
     if (!dirPagination.value.hasNext) return;
 
     dirPagination.value.paginationParams.page++;
-    if (!currentDirId.value) {
-      const directoriesResult = await getRootSubDirectories(
-        dirPagination.value.paginationParams
-      );
-
-      if (directoriesResult)
-        directories.value.push(
-          ...(directoriesResult.data?.items as DirectorySummaryDto[])
-        );
-
-      return;
-    }
-    const directoriesResult = await getSubDirectories(
-      currentDirId.value,
-      dirPagination.value.paginationParams
-    );
-
-    if (directoriesResult?.success)
-      directories.value.push(
-        ...(directoriesResult.data?.items as DirectorySummaryDto[])
-      );
   };
 
   const loadMoreFiles = async () => {
     if (!filePagination.value.hasNext) return;
-    console.log("loading files");
+
     filePagination.value.paginationParams.page++;
+  };
 
-    if (!currentDirId.value) {
-      const filesResult = await getRootSubFiles(
-        filePagination.value.paginationParams
-      );
-
-      if (filesResult?.success && files.value) {
-        files.value.push(...(filesResult.data?.items as FileResult[]));
-        filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
-      }
-      return;
-    }
-    const filesResult = await getSubFiles(
-      currentDirId.value,
-      filePagination.value.paginationParams
-    );
-    if (filesResult?.success && files.value) {
-      files.value.push(...(filesResult.data?.items as FileResult[]));
-      filePagination.value.hasNext = filesResult?.data?.hasNext ?? false;
+  //Since the endless query are still experimental, subject to change and honestly not very intuitive
+  //I am forced to do the manual refresh and the watcher stupidity, when the api matures I should
+  //use that one instead
+  const refreshDir = () => {
+    if (dirPagination.value.paginationParams.page === 1) {
+      directories.refresh();
+      files.refresh();
+    } else {
+      // Here I could probably do something like a big refetch to avoid having the user click load more 50 times
+      //this is fine as is right now
+      navigateTo(currentDirId.value);
     }
   };
 
@@ -261,11 +169,14 @@ export const useFileExplorer = () => {
 
   const selectRange = (startId: string, endId: string) => {
     const allItems = [
-      ...directories.value.map((d) => ({
+      ...directoriesList.value.map((d) => ({
         id: d.id,
         type: "directory" as const,
       })),
-      ...files.value.map((f) => ({ id: f.fileId, type: "file" as const })),
+      ...filesList.value.map((f) => ({
+        id: f.fileId,
+        type: "file" as const,
+      })),
     ];
 
     const startIndex = allItems.findIndex((item) => item.id === startId);
@@ -286,14 +197,14 @@ export const useFileExplorer = () => {
       {
         file: [] as string[],
         directory: [] as string[],
-      }
+      },
     );
     setSelection(grouped.file, "file");
     setSelection(grouped.directory, "directory");
   };
 
   const downloadFile = async (fileId: string, fileName: string) => {
-    fileDownload({
+    await fileStore.downloadFile({
       id: fileId,
       fileName: fileName,
       forceDownload: true,
@@ -305,14 +216,13 @@ export const useFileExplorer = () => {
     selectedDirectories.value = new Set<string>();
   };
 
-  const updateDirectoryPath = async (id?: string) => {
-    if (!id) return (pathList.value = []);
-    pathList.value = (await getDirectoryPath(id)) ?? [];
-  };
   return {
     currentDirId,
-    directories,
-    files,
+    directoriesQuery: directories,
+    filesQuery: files,
+    pathQuery,
+    directoriesList,
+    filesList,
     viewMode,
     filePagination,
     dirPagination,
@@ -331,6 +241,5 @@ export const useFileExplorer = () => {
     selectRange,
     downloadFile,
     clearSelection,
-    updateDirectoryPath,
   };
 };

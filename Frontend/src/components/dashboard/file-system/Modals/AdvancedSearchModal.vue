@@ -422,13 +422,14 @@ import {
   type DirectorySummaryDto,
 } from "@/api/directory";
 import { useDirectoryStore } from "@/stores/directory";
-import type { FormSubmitEvent, SelectMenuItem } from "@nuxt/ui";
+import type { FormSubmitEvent } from "@nuxt/ui";
 import type { DateValue } from "@internationalized/date";
 import { useRouter } from "vue-router";
 import { OrderBy } from "@/enums/OrderBy";
 import { SortDirection } from "@/enums/SortDirection";
 
 const emit = defineEmits<{ close: [DirectorySearchQuerySchema | false] }>();
+//TODO: Rewrite it with a proper query once I figure out the proper file searching api
 const directoryStore = useDirectoryStore();
 const hasMoreResults = ref(false);
 const isLoadingMore = ref(false);

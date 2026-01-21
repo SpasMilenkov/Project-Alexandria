@@ -2,7 +2,6 @@ import type { SortDirection } from "@/enums/SortDirection";
 import apiClient from "./client";
 import type { PaginatedResponse } from "./directory";
 
-
 export enum OperationType {
   Read = 0,
   Create = 1,
@@ -19,10 +18,10 @@ export enum LogSource {
 }
 
 export enum EntityType {
-    File,
-    Directory,
-    Tag,
-    User,
+  File,
+  Directory,
+  Tag,
+  User,
 }
 
 export interface AuditLogResult {
@@ -40,34 +39,38 @@ export interface AuditLogQuery {
   pageSize: number;
   sortBy: string;
   sortDirection: SortDirection;
-  userId: string;
-  entityId: string;
-  operationType: OperationType;
-  entityType: EntityType;
-  ipAddress: string;
-  before: Date;
-  after: Date;
+
+  userId?: string;
+  entityId?: string;
+  operationType?: OperationType;
+  entityType?: EntityType;
+  ipAddress?: string;
+  before?: Date;
+  after?: Date;
 }
 
 export const activityApi = {
   getUserActivity: async (
-    query: AuditLogQuery
+    query: AuditLogQuery,
   ): Promise<PaginatedResponse<AuditLogResult>> => {
-    const result = await apiClient.get<PaginatedResponse<AuditLogResult>>("/activity/user", {
-      params: {
-        page: query.page,
-        pageSize: query.pageSize,
-        sortBy: query.sortBy,
-        sortDirection: query.sortDirection,
-        userId: query.userId,
-        entityId: query.entityId,
-        operationType: query.operationType,
-        entityType: query.entityType,
-        ipAddress: query.ipAddress,
-        before: query.before,
-        after: query.after,
+    const result = await apiClient.get<PaginatedResponse<AuditLogResult>>(
+      "/activity/user",
+      {
+        params: {
+          page: query.page,
+          pageSize: query.pageSize,
+          sortBy: query.sortBy,
+          sortDirection: query.sortDirection,
+          userId: query.userId,
+          entityId: query.entityId,
+          operationType: query.operationType,
+          entityType: query.entityType,
+          ipAddress: query.ipAddress,
+          before: query.before,
+          after: query.after,
+        },
       },
-    });
-    return result.data
+    );
+    return result.data;
   },
 };
