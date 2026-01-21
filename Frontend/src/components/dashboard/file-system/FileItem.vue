@@ -91,6 +91,12 @@
                 >{{ data.currentVersion.mimeType }}</span
               >
               <UBadge
+                variant="subtle"
+                color="warning"
+                v-if="previewLoading"
+                label="Checking for available preview"
+              />
+              <UBadge
                 :label="
                   previewUrl || archivePreview || textPreview
                     ? 'Preview available'
@@ -108,8 +114,9 @@
         </div>
 
         <!-- File Preview Section (if available) -->
+        <USkeleton v-if="previewLoading" />
         <div
-          v-if="previewUrl || archivePreview || textPreview"
+          v-else-if="previewUrl || archivePreview || textPreview"
           class="bg-neutral-100 dark:bg-neutral-800/50 rounded-lg p-4"
         >
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -384,15 +391,14 @@ import { computed, ref } from "vue";
 import type { FileResult } from "@/api/file";
 import type { ContextMenuItem, TreeItem } from "@nuxt/ui";
 import { useSettingsStore } from "@/stores/settings";
-import { useFileExplorerApi } from "@/composables/useFileExplorerApi";
+import { useQuery } from "@pinia/colada";
+import { getPreview } from "@/queries/files";
 const settingsStore = useSettingsStore();
-
-const { getFilePreview } = useFileExplorerApi();
 
 const iconSize = computed(() =>
   props.viewMode === "grid"
     ? settingsStore.gridIconSize
-    : settingsStore.listIconSize
+    : settingsStore.listIconSize,
 );
 
 const props = defineProps<{
@@ -412,17 +418,22 @@ const audioPlayer = ref(null);
 const isAudioPlaying = ref(false);
 const isAudioHovered = ref(false);
 
-const toggleAudio = () => {
+const toggleAudio = async () => {
   if (audioPlayer.value) {
     if (audioPlayer.value.paused) {
-      audioPlayer.value.play();
+      await audioPlayer.value.play();
       isAudioPlaying.value = true;
     } else {
-      audioPlayer.value.pause();
+      await audioPlayer.value.pause();
       isAudioPlaying.value = false;
     }
   }
 };
+
+const {
+  data: previewData,
+  isLoading: previewLoading,
+} = useQuery(getPreview, () => props.data.fileId);
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
@@ -792,18 +803,17 @@ const parseArchivePreview = () => {
   return [rootNode];
 };
 const setFilePreviews = async () => {
-  const result = await getFilePreview(props.data.fileId);
-  if (result && result.data) {
-    previewUrl.value = result.data.previewUrl;
-    thumbnailUrl.value = result.data.thumbnailUrl;
-    previewMimeType.value = result.data.metaData.mimeType;
-    textPreview.value = result.data.textPreview;
-    archivePreview.value = result.data.archivePreview;
+  // const result = await getFilePreview(props.data.fileId);
+  if (previewData.value) {
+    previewUrl.value = previewData.value.previewUrl;
+    thumbnailUrl.value = previewData.value.thumbnailUrl;
+    previewMimeType.value = previewData.value.metaData.mimeType;
+    textPreview.value = previewData.value.textPreview;
+    archivePreview.value = previewData.value.archivePreview;
   }
   console.log("previewUrl", previewUrl.value);
   console.log("thumbnailUrl", thumbnailUrl.value);
 };
-
 
 const handleDoubleClick = async () => {
   openDrawer.value = true;
