@@ -37,6 +37,7 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@pinia/colada-devtools": "^0.4.1",
     "@playwright/test": "^1.57.0",
     "@tsconfig/node22": "^22.0.5",
     "@types/jsdom": "^21.1.7",
