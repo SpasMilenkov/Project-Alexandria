@@ -95,14 +95,14 @@ export const fileApi = {
           sortBy: paginationParams.orderBy,
           sortDirection: paginationParams.sortDirection,
         },
-      }
+      },
     );
-    return { success: true, data: response.data };
+    return response.data;
   },
 
   getSubFiles: async (
     directoryId: string,
-    paginationParams: PaginationParams
+    paginationParams: PaginationParams,
   ): Promise<PaginatedResponse<FileResult>> => {
     const response = await apiClient.get<PaginatedResponse<FileResult>>(
       `files/directory/${directoryId}`,
@@ -114,7 +114,7 @@ export const fileApi = {
           sortBy: paginationParams.orderBy,
           sortDirection: paginationParams.sortDirection,
         },
-      }
+      },
     );
     return response.data;
   },
@@ -122,11 +122,11 @@ export const fileApi = {
   // Update file metadata
   updateFileMetadata: async (
     id: string,
-    data: UpdateFileMetadataSchema
+    data: UpdateFileMetadataSchema,
   ): Promise<UpdateFileMetadataResponse> => {
     const response = await apiClient.put<UpdateFileMetadataResponse>(
       `/files/${id}/metadata`,
-      data
+      data,
     );
     return response.data;
   },
@@ -142,11 +142,11 @@ export const fileApi = {
 
   // Generate signed URL for file upload/access
   generateSignedUrl: async (
-    data: GenerateSignedUrlSchema
+    data: GenerateSignedUrlSchema,
   ): Promise<GenerateSignedUrlResponse> => {
     const response = await apiClient.post<GenerateSignedUrlResponse>(
       "/files/signed-url",
-      data
+      data,
     );
     return response.data;
   },
@@ -154,12 +154,12 @@ export const fileApi = {
   // Get file preview
   getPreview: async (id: string): Promise<PreviewResultDto> => {
     const response = await apiClient.get<PreviewResultDto>(
-      `/files/${id}/preview`
+      `/files/${id}/preview`,
     );
     return response.data;
   },
 
-  copyFiles: async (fileIds: string[], destinationId: string) =>
+  copyFiles: async (fileIds: string[], destinationId: string | null) =>
     await apiClient.post(`/files/copy`, {
       fileIds,
       destinationId,
@@ -176,13 +176,13 @@ export const fileApi = {
   getThumbnail: async (
     id: string,
     width: number,
-    height: number
+    height: number,
   ): Promise<Blob> => {
     const response = await apiClient.get(
       `/files/${id}/thumbnail/${width}/${height}`,
       {
         responseType: "blob",
-      }
+      },
     );
     return response.data;
   },
