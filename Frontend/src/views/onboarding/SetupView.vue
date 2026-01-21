@@ -14,6 +14,6 @@
 </template>
 <script setup lang="ts">
 import router from "@/router";
-import SimpleSetup from "@/components/setup/SimpleSetup,.vue";
+import SimpleSetup from "@/components/setup/SimpleSetup.vue";
 </script>
 <style scoped></style>
