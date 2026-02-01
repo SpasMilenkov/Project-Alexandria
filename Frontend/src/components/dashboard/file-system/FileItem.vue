@@ -88,7 +88,12 @@
               <Icon icon="mdi-file" class="w-4 h-4" />
               <span
                 class="max-w-46 text-ellipsis max-h-16 wrap-break-word overflow-hidden"
-                >{{ data.currentVersion.mimeType }}</span
+                >{{
+                  getFileTypeReadable(
+                    data.currentVersion.mimeType,
+                    data.fileName,
+                  )
+                }}</span
               >
               <UBadge
                 variant="subtle"
@@ -113,6 +118,61 @@
           </div>
         </div>
 
+        <!-- Tags Section -->
+        <div class="flex flex-col gap-2 w-full">
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            Tags
+          </h4>
+          <USkeleton v-if="fileTagsLoading && openDrawer" class="h-8 w-full" />
+          <div v-else-if="displayTags && displayTags.length > 0">
+            <div class="flex flex-wrap gap-2">
+              <TagBadge
+                v-for="tag in displayTags"
+                :key="tag.id"
+                :tag="tag"
+                :file-id="props.data.fileId"
+              />
+            </div>
+          </div>
+          <div v-else class="text-sm text-gray-500 dark:text-gray-400">
+            No tags yet
+          </div>
+
+          <!-- TODO: Tags that are already on the file should not show up here -->
+          <div class="flex gap-2 w-full">
+            <UButton
+              label="Add tag"
+              @click="showTagSearch = !showTagSearch"
+              variant="outline"
+              size="sm"
+            />
+            <USelectMenu
+              v-if="showTagSearch"
+              :loading="tagsLoading"
+              :items="
+                tagsData?.items.map((t) => ({
+                  label: t.name,
+                  value: t.id,
+                  icon: getIconByValue(t.icon),
+                }))
+              "
+              v-model:search-term="searchQuery"
+              @update:search-term="refreshFileTag()"
+              placeholder="Search for tag"
+              @update:model-value="
+                async (tag) => {
+                  await addTagMutate({
+                    fileId: data.fileId,
+                    data: { tagIds: [tag.value] },
+                  });
+                  showTagSearch = false;
+                  refreshFileTag();
+                }
+              "
+            />
+          </div>
+        </div>
+
         <!-- File Preview Section (if available) -->
         <USkeleton v-if="previewLoading" />
         <div
@@ -125,7 +185,9 @@
 
           <!-- Audio Preview -->
           <div
-            v-if="data.currentVersion.mimeType.startsWith('audio/')"
+            v-if="
+              data.currentVersion.mimeType.startsWith('audio/') && previewUrl
+            "
             class="relative w-full aspect-video bg-black/5 dark:bg-black/20 rounded-lg overflow-hidden"
           >
             <img
@@ -155,7 +217,7 @@
               />
 
               <!-- Audio playing state -->
-              <div v-else class="relative flex items-center justify-center">
+              <div v-else class="relative flex items-center justify-center &">
                 <!-- Animated audio visualizer - shows by default when playing -->
                 <Icon
                   icon="mdi-waveform"
@@ -181,7 +243,9 @@
 
           <!-- Image Preview -->
           <div
-            v-else-if="data.currentVersion.mimeType.startsWith('image/')"
+            v-else-if="
+              data.currentVersion.mimeType.startsWith('image/') && previewUrl
+            "
             class="relative w-full rounded-lg overflow-hidden bg-black/5 dark:bg-black/20"
           >
             <img
@@ -193,7 +257,9 @@
 
           <!-- Video Preview -->
           <div
-            v-else-if="data.currentVersion.mimeType.startsWith('video/')"
+            v-else-if="
+              data.currentVersion.mimeType.startsWith('video/') && previewUrl
+            "
             class="relative w-full aspect-video bg-black rounded-lg overflow-hidden"
           >
             <video
@@ -207,7 +273,11 @@
 
           <!-- PDF Preview -->
           <div
-            v-else-if="pdfPreviewMimes.includes(data.currentVersion.mimeType)"
+            v-else-if="
+              pdfPreviewMimes.includes(data.currentVersion.mimeType) &&
+              archivePreviewItems &&
+              previewUrl
+            "
             class="relative w-xl h-220 bg-white dark:bg-neutral-900 rounded-lg overflow-hidden"
           >
             <embed
@@ -230,25 +300,6 @@
             <p class="max-h-96 overflow-y-auto wrap-break-word">
               {{ textPreview }}
             </p>
-          </div>
-        </div>
-
-        <!-- Tags Section -->
-        <div v-if="data.tags && data.tags.length > 0">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Tags
-          </h4>
-          <div class="flex flex-wrap gap-2">
-            <UBadge
-              v-for="tag in data.tags"
-              :key="tag.id"
-              color="primary"
-              variant="soft"
-              size="md"
-            >
-              <Icon icon="mdi-tag" class="w-3 h-3 mr-1" />
-              {{ tag.name }}
-            </UBadge>
           </div>
         </div>
 
@@ -366,7 +417,12 @@
                       icon="mdi-file-document"
                       class="w-3.5 h-3.5 inline mr-1"
                     />
-                    {{ getFileType(data.currentVersion.mimeType) }}
+                    {{
+                      getFileTypeReadable(
+                        data.currentVersion.mimeType,
+                        data.fileName,
+                      )
+                    }}
                   </div>
                 </div>
               </div>
@@ -393,6 +449,15 @@ import type { ContextMenuItem, TreeItem } from "@nuxt/ui";
 import { useSettingsStore } from "@/stores/settings";
 import { useQuery } from "@pinia/colada";
 import { getPreview } from "@/queries/files";
+import type { TagDto } from "@/api/tag";
+import { addTagToFile } from "@/mutations/tags";
+import type { SearchTagsSchema } from "@/schemas/tag";
+import { searchTag } from "@/queries/tags";
+import { getIconByValue } from "@/utils/icon.utils";
+import { getTagsForFile } from "@/queries/tags";
+import { getFileTypeReadable } from "@/utils/mimetype.utils";
+import { formatDate } from "@/utils/date-formatters";
+
 const settingsStore = useSettingsStore();
 
 const iconSize = computed(() =>
@@ -406,6 +471,7 @@ const props = defineProps<{
   viewMode: "grid" | "list";
   isSelected: boolean;
   selectedCount?: number;
+  tags: TagDto[] | undefined;
 }>();
 
 const openDrawer = ref(false);
@@ -414,26 +480,59 @@ const thumbnailUrl = ref<string | null>(null);
 const archivePreview = ref<string | null>(null);
 const textPreview = ref<string | null>(null);
 const previewMimeType = ref<string | null>(null);
-const audioPlayer = ref(null);
-const isAudioPlaying = ref(false);
-const isAudioHovered = ref(false);
+const audioPlayer = ref<HTMLAudioElement | null>(null);
+const isAudioPlaying = ref<boolean>(false);
+const isAudioHovered = ref<boolean>(false);
 
-const toggleAudio = async () => {
+const toggleAudio = async (): Promise<void> => {
   if (audioPlayer.value) {
     if (audioPlayer.value.paused) {
       await audioPlayer.value.play();
       isAudioPlaying.value = true;
     } else {
-      await audioPlayer.value.pause();
+      audioPlayer.value.pause();
       isAudioPlaying.value = false;
     }
   }
 };
 
+const { data: previewData, isLoading: previewLoading } = useQuery(
+  getPreview,
+  () => props.data.fileId,
+);
+
+const { mutateAsync: addTagMutate } = addTagToFile();
+
+const currentPage = ref(1);
+const pageSize = ref(25);
+const searchQuery = ref("");
+
+// Search filters
+const searchFilters = computed<SearchTagsSchema>(() => ({
+  page: currentPage.value,
+  pageSize: pageSize.value,
+  name: searchQuery.value || undefined,
+}));
+
+// Query
 const {
-  data: previewData,
-  isLoading: previewLoading,
-} = useQuery(getPreview, () => props.data.fileId);
+  data: tagsData,
+  isLoading: tagsLoading,
+  refresh: refreshFileTag,
+} = useQuery(searchTag(searchFilters.value));
+
+const { data: fileTagsData, isLoading: fileTagsLoading } = useQuery({
+  ...getTagsForFile(props.data.fileId),
+  enabled: () => openDrawer.value,
+});
+
+const displayTags = computed(() => {
+  return openDrawer.value && fileTagsData.value
+    ? fileTagsData.value.tags
+    : props.data.tags;
+});
+
+const showTagSearch = ref(false);
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
@@ -698,26 +797,6 @@ const formatFileSize = (bytes: number | undefined): string => {
     unitIndex++;
   }
   return `${size.toFixed(1)} ${units[unitIndex]}`;
-};
-
-const formatDate = (date: string | Date): string => {
-  const d = new Date(date);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-  if (days === 0) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-  if (days < 365) return `${Math.floor(days / 30)} months ago`;
-
-  return d.toLocaleDateString("bg");
-};
-
-const getFileType = (mimeType: string): string => {
-  const parts = mimeType.split("/");
-  return parts[parts.length - 1].toUpperCase();
 };
 
 const handleClick = (event: MouseEvent) => {
