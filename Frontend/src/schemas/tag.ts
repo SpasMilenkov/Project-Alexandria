@@ -2,7 +2,16 @@ import { z } from "zod";
 
 // Create Tag Schema
 export const createTagSchema = z.object({
-  name: z.string().min(1, "Tag name is required"),
+  name: z
+    .string()
+    .min(1, "Tag name is required")
+    .max(255, "Name cannot be longer than 255 symbols"),
+  icon: z.string().min(1, "Tag icon is required"),
+  color: z.string().min(1, "Tag color is required"),
+  description: z
+    .string()
+    .max(255, "name cannot be longer than 255 symbols")
+    .nullish(),
 });
 
 export type CreateTagSchema = z.infer<typeof createTagSchema>;
@@ -10,6 +19,12 @@ export type CreateTagSchema = z.infer<typeof createTagSchema>;
 // Update Tag Schema
 export const updateTagSchema = z.object({
   name: z.string().min(1, "Tag name is required"),
+  icon: z.string().min(1, "Tag icon is required"),
+  color: z.string().min(1, "Tag color is required"),
+  description: z
+    .string()
+    .max(255, "name cannot be longer than 255 symbols")
+    .nullish(),
 });
 
 export type UpdateTagSchema = z.infer<typeof updateTagSchema>;
@@ -40,7 +55,7 @@ export type AddTagsToFileSchema = z.infer<typeof addTagsToFileSchema>;
 
 // Search Files by Tags Schema
 export const searchFilesByTagsSchema = z.object({
-  tagIds: z.array(z.string().uuid()).min(1, "At least one tag ID is required"),
+  tagIds: z.array(z.uuid()).min(1, "At least one tag ID is required"),
   matchType: z.enum(["any", "all", "exact"]).default("any"),
   userId: z.uuid().optional().nullable(),
   page: z.number().int().min(0).default(0),
