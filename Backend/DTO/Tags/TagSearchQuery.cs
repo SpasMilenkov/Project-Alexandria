@@ -9,6 +9,7 @@ public class TagSearchQuery
     public DateTime? CreatedBefore { get; set; }
     public DateTime? UpdatedAfter { get; set; }
     public DateTime? UpdatedBefore { get; set; }
+    public Guid? ExcludeOnFile { get; set; }
     public string? NameContains { get; set; }
     public bool? HasFiles { get; set; }
     public int CurrentPage { get; set; } = 0;

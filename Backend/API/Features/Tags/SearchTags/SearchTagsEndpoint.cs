@@ -44,6 +44,7 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
                 UpdatedAfter = req.UpdatedAfter,
                 UpdatedBefore = req.UpdatedBefore,
                 NameContains = req.NameContains,
+                ExcludeOnFile = req.ExcludeOnFile,
                 HasFiles = req.HasFiles,
                 CurrentPage = req.Page,
                 PageSize = req.PageSize

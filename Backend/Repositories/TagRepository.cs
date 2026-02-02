@@ -138,6 +138,11 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
             tagsQuery = _tags.Include(t => t.Files).Where(t => t.DeletedAt == null);
         }
 
+        if (query.ExcludeOnFile.HasValue)
+        {
+            tagsQuery = tagsQuery.Where(t => !t.Files.Any(f => f.Id == query.ExcludeOnFile));
+        }
+
         // Apply user ID filter
         if (query.UserId.HasValue)
         {
