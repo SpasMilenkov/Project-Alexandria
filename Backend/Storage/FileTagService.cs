@@ -4,7 +4,6 @@ using DTO.Files;
 using DTO.Tags;
 using Microsoft.Extensions.Logging;
 using Models;
-using File = Models.File;
 
 namespace Storage;
 
@@ -12,7 +11,12 @@ public class FileTagService(
     IUnitOfWork unitOfWork,
     ILogger<FileTagService> logger) : IFileTagService
 {
-    public async Task<Tag> CreateAsync(string name, Guid userId, CancellationToken ct = default)
+    public async Task<Tag> CreateAsync(string name,
+        string color,
+        string icon,
+        string? description,
+        Guid userId,
+        CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Tag name cannot be empty", nameof(name));
@@ -32,6 +36,9 @@ public class FileTagService(
             Id = Guid.NewGuid(),
             Name = name.Trim(),
             OwnerId = userId,
+            Icon = icon,
+            Color = color,
+            Description = description,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -40,7 +47,7 @@ public class FileTagService(
             await unitOfWork.BeginTransactionAsync(ct);
             var createdTag = await unitOfWork.Tags.CreateAsync(tag, ct);
             await unitOfWork.CommitAsync(ct);
-            
+
             logger.LogInformation("Tag {TagId} created successfully by user {UserId}", createdTag.Id, userId);
             return createdTag;
         }
@@ -52,75 +59,38 @@ public class FileTagService(
         }
     }
 
-    public async Task<PaginatedResult<Tag>> GetTagsAsync(
-        int currentPage = 0, 
-        int pageSize = 20, 
-        CancellationToken ct = default)
+    public async Task<Tag> UpdateTagAsync(Guid tagId,
+        Guid userId,
+        string? name,
+        string? color,
+        string? icon,
+        string? description, CancellationToken ct = default)
     {
-        if (currentPage < 0)
-            throw new ArgumentException("Page number must be non-negative", nameof(currentPage));
-
-        if (pageSize <= 0 || pageSize > 100)
-            throw new ArgumentException("Page size must be between 1 and 100", nameof(pageSize));
-
-        try
-        {
-            var totalCount = await unitOfWork.Tags.CountAsync(t => t.DeletedAt == null, ct);
-            
-            var tags = await unitOfWork.Tags.FindAsync(
-                t => t.DeletedAt == null, 
-                ct);
-
-            var paginatedTags = tags
-                .OrderByDescending(t => t.CreatedAt)
-                .Skip(currentPage * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            return new PaginatedResult<Tag>
-            {
-                Items = paginatedTags,
-                CurrentPage = currentPage,
-                PageSize = pageSize,
-                TotalCount = totalCount,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-            };
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error retrieving tags");
-            throw;
-        }
-    }
-
-    public async Task<Tag> UpdateTagAsync(
-        Guid tagId,
-        string name, 
-        Guid userId, 
-        CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Tag name cannot be empty", nameof(name));
-
         if (userId == Guid.Empty)
             throw new ArgumentException("User ID cannot be empty", nameof(userId));
 
-        var tag = await unitOfWork.Tags.GetByIdAsync(tagId, ct);
-        
-        if (tag == null || tag.DeletedAt != null)
-            throw new InvalidOperationException($"Tag {tagId} not found");
+        var tag = await unitOfWork.Tags.GetByIdAndUserIdAsync(tagId, userId, ct);
 
-        if (tag.OwnerId != userId)
-            throw new UnauthorizedAccessException("You do not have permission to update this tag");
+        if (tag is null) throw new InvalidOperationException("Tag not found");
 
-        if (tag.Name != name.Trim())
+        if (tag.Name != name?.Trim())
         {
             var existingTag = await unitOfWork.Tags.GetByNameAndUserIdAsync(name, userId, ct);
             if (existingTag != null && existingTag.Id != tagId)
                 throw new InvalidOperationException($"Tag '{name}' already exists for this user");
         }
 
-        tag.Name = name.Trim();
+        if (!string.IsNullOrEmpty(name))
+            tag.Name = name.Trim();
+
+        if (!string.IsNullOrEmpty(color))
+            tag.Color = color.Trim();
+
+        if (!string.IsNullOrEmpty(icon))
+            tag.Icon = icon.Trim();
+
+        //TODO: this might be a little destructive, ensuring the frontend always sends the description here is essential
+        tag.Description = description;
         tag.UpdatedAt = DateTime.UtcNow;
         tag.UpdatedBy = userId;
 
@@ -129,7 +99,7 @@ public class FileTagService(
             await unitOfWork.BeginTransactionAsync(ct);
             var updatedTag = await unitOfWork.Tags.UpdateAsync(tag, ct);
             await unitOfWork.CommitAsync(ct);
-            
+
             logger.LogInformation("Tag {TagId} updated successfully", tagId);
             return updatedTag;
         }
@@ -144,7 +114,7 @@ public class FileTagService(
     public async Task DeleteTagAsync(Guid tagId, Guid userId, CancellationToken ct = default)
     {
         var tag = await unitOfWork.Tags.GetByIdAsync(tagId, ct);
-        
+
         if (tag is not { DeletedAt: null })
             throw new InvalidOperationException($"Tag {tagId} not found");
 
@@ -160,7 +130,7 @@ public class FileTagService(
             unitOfWork.Tags.Update(tag);
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
-            
+
             logger.LogInformation("Tag {TagId} soft-deleted successfully", tagId);
         }
         catch (Exception ex)
@@ -172,16 +142,16 @@ public class FileTagService(
     }
 
     public async Task AddTagsToFileAsync(
-        Guid fileId, 
-        ICollection<Guid> tagIds, 
+        Guid fileId,
+        ICollection<Guid> tagIds,
         Guid userId,
         CancellationToken ct = default)
     {
-        if (tagIds == null || !tagIds.Any())
+        if (tagIds == null || tagIds.Count == 0)
             throw new ArgumentException("Tag IDs cannot be empty", nameof(tagIds));
 
         var file = await unitOfWork.Files.GetByIdAsync(fileId, ct);
-        
+
         if (file == null || file.DeletedAt != null)
             throw new InvalidOperationException($"File {fileId} not found");
 
@@ -192,8 +162,8 @@ public class FileTagService(
             foreach (var tagId in tagIds)
             {
                 var tag = await unitOfWork.Tags.GetByIdAsync(tagId, ct);
-                
-                if (tag == null || tag.DeletedAt != null)
+
+                if (tag is not { DeletedAt: null })
                 {
                     logger.LogWarning("Tag {TagId} not found, skipping", tagId);
                     continue;
@@ -216,7 +186,7 @@ public class FileTagService(
 
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
-            
+
             logger.LogInformation("Added {Count} tags to file {FileId}", tagIds.Count, fileId);
         }
         catch (Exception ex)
@@ -228,18 +198,18 @@ public class FileTagService(
     }
 
     public async Task RemoveTagFromFileAsync(
-        Guid fileId, 
-        Guid tagId, 
+        Guid fileId,
+        Guid tagId,
         Guid userId,
         CancellationToken ct = default)
     {
-        var file = await unitOfWork.Files.GetByIdAsync(fileId, ct);
-        
-        if (file == null || file.DeletedAt != null)
+        var file = await unitOfWork.Files.GetFileEntityWithTagsAsync(fileId, ct);
+
+        if (file is not { DeletedAt: null })
             throw new InvalidOperationException($"File {fileId} not found");
 
         var tag = file.Tags.FirstOrDefault(t => t.Id == tagId);
-        
+
         if (tag == null)
         {
             logger.LogWarning("Tag {TagId} not associated with file {FileId}", tagId, fileId);
@@ -255,7 +225,7 @@ public class FileTagService(
             file.Tags.Remove(tag);
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
-            
+
             logger.LogInformation("Removed tag {TagId} from file {FileId}", tagId, fileId);
         }
         catch (Exception ex)
@@ -266,8 +236,7 @@ public class FileTagService(
         }
     }
 
-    public async Task<PaginatedResult<File>> FindFilesByTagsAsync(
-        FileTagSearchQuery query,
+    public async Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
         CancellationToken ct = default)
     {
         if (query.TagIds == null || !query.TagIds.Any())
@@ -281,16 +250,7 @@ public class FileTagService(
 
         try
         {
-            var (files, totalCount) = await unitOfWork.Files.FindFilesByTagsAsync(query, ct);
-
-            return new PaginatedResult<File>
-            {
-                Items = files.ToList(),
-                CurrentPage = query.CurrentPage,
-                PageSize = query.PageSize,
-                TotalCount = totalCount,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
-            };
+            return await unitOfWork.Files.FindFilesByTagsAsync(query, ct);
         }
         catch (Exception ex)
         {
@@ -299,36 +259,32 @@ public class FileTagService(
         }
     }
 
-    public async Task<ICollection<Tag>> GetTagsForFileAsync(
-        Guid fileId, 
+    public async Task<ICollection<TagDto>> GetTagsForFileAsync(Guid fileId,
         CancellationToken ct = default)
     {
         var file = await unitOfWork.Files.GetFileWithTagsAsync(fileId, ct);
-        
-        if (file == null || file.DeletedAt != null)
+
+        if (file is not { DeletedAt: null })
             throw new InvalidOperationException($"File {fileId} not found");
 
-        return file.Tags
-            .Where(t => t.DeletedAt == null)
-            .OrderBy(t => t.Name)
-            .ToList();
+        return file.Tags;
     }
 
-    public async Task<PaginatedResult<Tag>> FindTagsAsync(
+    public async Task<PaginatedResult<TagDto>> FindTagsAsync(
         TagSearchQuery query,
         CancellationToken ct = default)
     {
         if (query.CurrentPage < 0)
             throw new ArgumentException("Page number must be non-negative", nameof(query.CurrentPage));
 
-        if (query.PageSize <= 0 || query.PageSize > 100)
+        if (query.PageSize is <= 0 or > 100)
             throw new ArgumentException("Page size must be between 1 and 100", nameof(query.PageSize));
 
         try
         {
             var (tags, totalCount) = await unitOfWork.Tags.FindTagsAsync(query, ct);
 
-            return new PaginatedResult<Tag>
+            return new PaginatedResult<TagDto>
             {
                 Items = tags.ToList(),
                 CurrentPage = query.CurrentPage,
