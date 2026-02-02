@@ -18,7 +18,7 @@
           color="neutral"
           class="hover:cursor-pointer"
           v-if="fileId"
-          @click="removeTagMutate({ fileId, tagId: tag.id })"
+          @click="emit('removeTag', props.tag.id)"
         />
       </template>
     </UBadge>
@@ -26,14 +26,13 @@
 </template>
 <script setup lang="ts">
 import type { TagDto } from "@/api/tag";
-import { removeTagFromFile } from "@/mutations/tags";
 import { getIconByValue } from "@/utils/icon.utils";
 
-const { mutate: removeTagMutate } = removeTagFromFile();
-
-defineProps<{
+const props = defineProps<{
   tag: TagDto;
   fileId?: string;
 }>();
+
+const emit = defineEmits(["removeTag"]);
 </script>
 <style scoped></style>
