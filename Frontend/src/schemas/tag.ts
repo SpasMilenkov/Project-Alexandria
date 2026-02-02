@@ -40,6 +40,7 @@ export const searchTagsSchema = z.object({
   updatedBefore: z.iso.datetime().optional().nullable(),
   nameContains: z.string().optional().nullable(),
   hasFiles: z.boolean().optional().nullable(),
+  excludeOnFile: z.uuid().nullish(),
   page: z.number().int().min(0).default(0),
   pageSize: z.number().int().min(1).max(100).default(20),
 });
