@@ -140,6 +140,7 @@
             <FileItem
               v-for="file in filesList"
               :key="file.fileId"
+              :tags="tagsData?.items"
               :data="file"
               :view-mode="viewMode"
               :is-selected="isFileSelected(file.fileId)"
@@ -163,7 +164,7 @@
       <!-- List View -->
       <div v-else class="flex flex-col">
         <!-- Directories Section -->
-        <ListPlaceholder v-if="directoriesQuery.isLoading" />
+        <ListPlaceholder v-if="areDirectoriesLoading" />
         <div v-else-if="directoriesList.length > 0">
           <h3 class="text-sm font-semibold opacity-70 mb-2 px-4 pt-4">
             Folders
@@ -209,6 +210,7 @@
             :key="file.fileId"
             :data="file"
             :view-mode="viewMode"
+            :tags="tagsData?.items"
             :is-selected="isFileSelected(file.fileId)"
             @download="downloadFile(file.fileId, file.fileName)"
             @click="handleItemClick($event, file.fileId, 'file')"
@@ -250,6 +252,9 @@ import {
   moveDirectories,
   deleteDirectory,
 } from "@/mutations/directories";
+import type { SearchTagsSchema } from "@/schemas/tag";
+import { searchTag } from "@/queries/tags";
+import { useQuery } from "@pinia/colada";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -298,6 +303,17 @@ const { data: directoriesData, isLoading: areDirectoriesLoading } =
   directoriesQuery;
 
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
+
+const tagCurrentPage = ref(1);
+const tagPageSize = ref(25);
+
+const searchFilters = computed<SearchTagsSchema>(() => ({
+  page: tagCurrentPage.value,
+  pageSize: tagPageSize.value,
+}));
+
+// Query
+const { data: tagsData } = useQuery(searchTag(searchFilters.value));
 
 let copyMode = true;
 

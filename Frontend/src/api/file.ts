@@ -3,8 +3,9 @@ import type {
   UpdateFileMetadataSchema,
   GenerateSignedUrlSchema,
 } from "@/schemas/file";
-import type { FileSummary, PaginatedResponse } from "./directory";
+import type { PaginatedResponse } from "./directory";
 import type { PaginationParams } from "@/types/pagination-params";
+import type { TagDto } from "./tag";
 
 // Response Types
 export interface UpdateFileMetadataResponse {
@@ -52,15 +53,6 @@ export interface FileVersionDto {
   mimeType: string;
   versionNumber: number;
 }
-
-export interface TagDto {
-  id: string;
-  name: string;
-  userId: string;
-  createdAt: string;
-  updatedAt: string | null;
-}
-
 export interface UserDto {
   id: string;
   name: string;

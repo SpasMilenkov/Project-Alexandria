@@ -11,7 +11,11 @@ public interface IFileRepository : IRepository<File>
     Task<byte[]?> GetFileHash(Guid fileId, Guid ownerId, CancellationToken ct = default);
     Task<string> GetFileHashAsString(Guid fileId, Guid ownerId, CancellationToken ct = default);
     Task<File> UpdateAsync(File file, CancellationToken ct = default);
-    Task<File?> GetFileWithTagsAsync(Guid fileId, CancellationToken ct = default);
+    Task<FileResult?> GetFileWithTagsAsync(Guid fileId, CancellationToken ct = default);
+
+    Task<File?> GetFileEntityWithTagsAsync(
+        Guid fileId,
+        CancellationToken ct = default);
 
     Task<PaginatedResult<FileResult>> GetFilesByDirectoryIdAsync(
         Guid parentDirectoryId,
@@ -24,8 +28,7 @@ public interface IFileRepository : IRepository<File>
 
     Task<FileSummary?> GetFileNameAndMimeType(Guid fileId, CancellationToken ct = default);
 
-    Task<(IEnumerable<File> Files, int TotalCount)> FindFilesByTagsAsync(
-        FileTagSearchQuery query,
+    Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
         CancellationToken ct = default);
 
     Task<File?> GetFileWithPreviewAsync(Guid fileId, CancellationToken ct = default);

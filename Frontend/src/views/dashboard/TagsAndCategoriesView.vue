@@ -1,10 +1,7 @@
 <template>
-  <UEmpty
-    size="xl"
-    icon="i-lucide-tag"
-    title="Tags are coming later"
-    description="Tags and categories will be fully supported later ;)"
-  />
+  <TagsDashboard />
 </template>
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import TagsDashboard from "@/components/dashboard/tags/TagsDashboard.vue";
+</script>
 <style scoped></style>

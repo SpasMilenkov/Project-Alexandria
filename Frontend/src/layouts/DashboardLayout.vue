@@ -48,7 +48,18 @@
       <template #header>
         <UDashboardNavbar :title="pageTitle" toggle-side="right">
           <template #right>
-            <UColorModeButton />
+            <UTooltip text="Show app shortcuts">
+              <UButton
+                icon="material-symbols-light:keyboard-outline-rounded"
+                size="xl"
+                @click="openShortCutsModal"
+                variant="ghost"
+                color="neutral"
+              />
+            </UTooltip>
+            <UTooltip text="Toggle light and dark mode">
+              <UColorModeButton />
+            </UTooltip>
           </template>
         </UDashboardNavbar>
       </template>
@@ -63,8 +74,21 @@
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { useRoute } from "vue-router";
 import { computed } from "vue";
+import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 
 const route = useRoute();
+
+const overlay = useOverlay();
+const shortcutsModal = overlay.create(KeyboardShortcutsModal);
+
+const openShortCutsModal = async () => {
+  const instance = shortcutsModal.open();
+  await instance.result;
+};
+
+defineShortcuts({
+  meta_k: openShortCutsModal,
+});
 
 // Dynamic page title based on route
 const pageTitle = computed(() => {
@@ -121,7 +145,6 @@ const settingsMenuItems: NavigationMenuItem[][] = [
 ];
 
 const handleLogout = () => {
-  // Add your logout logic here
   console.log("Logging out...");
 };
 </script>

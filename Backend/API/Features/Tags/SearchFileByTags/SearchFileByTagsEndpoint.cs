@@ -1,22 +1,23 @@
-using Common;
 using Common.Services;
-using DTO;
+using DTO.Files;
 using DTO.Tags;
 using FastEndpoints;
 using Models.Enumerators;
 
 namespace API.Features.Tags.SearchFileByTags;
 
-public class SearchFilesByTagsEndpoint(IFileTagService tagService) : Endpoint<SearchFilesByTagsRequest, SearchFilesByTagsResponse>
+public class SearchFilesByTagsEndpoint(IFileTagService tagService)
+    : Endpoint<SearchFilesByTagsRequest, PaginatedResult<FileResult>>
 {
     public override void Configure()
     {
         Post("/files/search/tags");
-        
+
         Summary(s =>
         {
             s.Summary = "Search files by tags";
-            s.Description = "Find files matching tag criteria with advanced filtering. Match types: 'any' (OR), 'all' (AND), 'exact' (exactly these tags).";
+            s.Description =
+                "Find files matching tag criteria with advanced filtering. Match types: 'any' (OR), 'all' (AND), 'exact' (exactly these tags).";
             s.Responses[200] = "Files found successfully";
             s.Responses[400] = "Bad request - invalid search parameters";
             s.ExampleRequest = new SearchFilesByTagsRequest
@@ -55,33 +56,8 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService) : Endpoint<Se
             };
 
             var result = await tagService.FindFilesByTagsAsync(query, ct);
-            
-            await Send.OkAsync(new SearchFilesByTagsResponse
-            {
-                Files = result.Items.Select(f => new FileDto
-                {
-                    Id = f.Id,
-                    Name = f.Name,
-                    MimeType = f.MimeType,
-                    // Size = f.Size.ToString(),
-                    CreatedAt = f.CreatedAt,
-                    HasPreview = f.HasPreview,
-                    Tags = f.Tags.Where(t => t.DeletedAt == null).Select(t => new TagDto
-                    {
-                        Id = t.Id,
-                        Name = t.Name,
-                        UserId = t.OwnerId,
-                        CreatedAt = t.CreatedAt,
-                        UpdatedAt = t.UpdatedAt
-                    }).ToList()
-                }).ToList(),
-                CurrentPage = result.CurrentPage,
-                PageSize = result.PageSize,
-                TotalCount = result.TotalCount,
-                TotalPages = result.TotalPages,
-                HasPrevious = result.HasPrevious,
-                HasNext = result.HasNext
-            }, ct);
+
+            await Send.OkAsync(result, ct);
         }
         catch (ArgumentException ex)
         {

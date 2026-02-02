@@ -6,11 +6,15 @@ import type {
   AddTagsToFileSchema,
   SearchFilesByTagsSchema,
 } from "@/schemas/tag";
+import type { PaginatedResponse } from "./directory";
 
 // Response Types
 export interface TagDto {
   id: string;
   name: string;
+  color: string;
+  icon: string;
+  description?: string | null;
   userId: string;
   createdAt: string;
   updatedAt: string | null;
@@ -29,6 +33,9 @@ export interface PaginatedTagsResponse {
 export interface CreateTagResponse {
   id: string;
   name: string;
+  color: string;
+  icon: string;
+  description?: string | null;
   userId: string;
   createdAt: string;
 }
@@ -82,8 +89,8 @@ export const tagApi = {
   getAllTags: async (
     page: number,
     pageSize: number,
-  ): Promise<PaginatedTagsResponse> => {
-    const response = await apiClient.get<PaginatedTagsResponse>("/tags", {
+  ): Promise<PaginatedResponse<TagDto>> => {
+    const response = await apiClient.get<PaginatedResponse<TagDto>>("/tags", {
       params: { page, pageSize },
     });
     return response.data;
@@ -109,8 +116,8 @@ export const tagApi = {
   // Search tags with filters
   searchTags: async (
     filters: SearchTagsSchema,
-  ): Promise<PaginatedTagsResponse> => {
-    const response = await apiClient.post<PaginatedTagsResponse>(
+  ): Promise<PaginatedResponse<TagDto>> => {
+    const response = await apiClient.post<PaginatedResponse<TagDto>>(
       "/tags/search",
       filters,
     );
@@ -145,8 +152,8 @@ export const tagApi = {
   // Search files by tags
   searchFilesByTags: async (
     filters: SearchFilesByTagsSchema,
-  ): Promise<PaginatedFilesResponse> => {
-    const response = await apiClient.post<PaginatedFilesResponse>(
+  ): Promise<PaginatedResponse<TagDto>> => {
+    const response = await apiClient.post<PaginatedResponse<TagDto>>(
       "/files/search/tags",
       filters,
     );

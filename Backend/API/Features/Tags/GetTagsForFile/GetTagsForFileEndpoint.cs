@@ -1,18 +1,16 @@
-using API.Features.Tags.GetAllTags;
-using Common;
 using Common.Services;
-using DTO;
 using DTO.Tags;
 using FastEndpoints;
 
 namespace API.Features.Tags.GetTagsForFile;
 
-public class GetTagsForFileEndpoint(IFileTagService tagService) : Endpoint<GetTagsForFileRequest, GetTagsForFileResponse>
+public class GetTagsForFileEndpoint(IFileTagService tagService)
+    : Endpoint<GetTagsForFileRequest, GetTagsForFileResponse>
 {
     public override void Configure()
     {
         Get("/files/{FileId}/tags");
-        
+
         Summary(s =>
         {
             s.Summary = "Get all tags for a file";
@@ -27,7 +25,7 @@ public class GetTagsForFileEndpoint(IFileTagService tagService) : Endpoint<GetTa
         try
         {
             var tags = await tagService.GetTagsForFileAsync(req.FileId, ct);
-            
+
             await Send.OkAsync(new GetTagsForFileResponse
             {
                 FileId = req.FileId,
@@ -35,7 +33,10 @@ public class GetTagsForFileEndpoint(IFileTagService tagService) : Endpoint<GetTa
                 {
                     Id = t.Id,
                     Name = t.Name,
-                    UserId = t.OwnerId,
+                    UserId = t.UserId,
+                    Color = t.Color,
+                    Description = t.Description,
+                    Icon = t.Icon,
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt
                 }).ToList()

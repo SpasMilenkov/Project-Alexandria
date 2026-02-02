@@ -5,7 +5,6 @@ import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue
 
 defineShortcuts({
   meta_shift_q: () => {
-    console.log("triggering tab close");
     if (tabStore.activeTabId) tabStore.closeTab(tabStore.activeTabId);
   },
   meta_shift_n: () => tabStore.createTab(null),
@@ -70,7 +69,7 @@ onMounted(() => {
         >
           <span class="hidden sm:inline">Press</span>
           <kbd
-            class="ml-1 px-1.5 py-0.5 text-xs font-semibold bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700"
+            class="ml-1 px-1.5 py-0.5 text-xs font-semibold rounded border border-gray-300 dark:border-gray-700"
           >
             ⌘ ⇧ N
           </kbd>

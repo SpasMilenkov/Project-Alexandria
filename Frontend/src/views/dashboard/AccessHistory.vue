@@ -114,7 +114,7 @@ const changePage = (pageNumber: number) => {
 
         <!-- Timeline Skeleton -->
         <div class="space-y-6">
-          <div class="flex gap-4">
+          <div class="flex gap-4" v-for="i in 6" :key="i">
             <div class="flex flex-col items-center">
               <USkeleton class="h-8 w-8 rounded-full shrink-0" />
               <div class="w-px h-full bg-gray-200 dark:bg-gray-800 mt-2" />
@@ -122,49 +122,6 @@ const changePage = (pageNumber: number) => {
             <div class="flex-1 pb-6">
               <USkeleton class="h-4 w-24 mb-2" />
               <USkeleton class="h-5 w-64 mb-1" />
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
-              <div class="w-px h-full bg-gray-200 dark:bg-gray-800 mt-2" />
-            </div>
-            <div class="flex-1 pb-6">
-              <USkeleton class="h-4 w-24 mb-2" />
-              <USkeleton class="h-5 w-72 mb-1" />
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
-              <div class="w-px h-full bg-gray-200 dark:bg-gray-800 mt-2" />
-            </div>
-            <div class="flex-1 pb-6">
-              <USkeleton class="h-4 w-24 mb-2" />
-              <USkeleton class="h-5 w-56 mb-1" />
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
-              <div class="w-px h-full bg-gray-200 dark:bg-gray-800 mt-2" />
-            </div>
-            <div class="flex-1 pb-6">
-              <USkeleton class="h-4 w-24 mb-2" />
-              <USkeleton class="h-5 w-64 mb-1" />
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div class="flex flex-col items-center">
-              <USkeleton class="h-8 w-8 rounded-full shrink-0" />
-            </div>
-            <div class="flex-1">
-              <USkeleton class="h-4 w-24 mb-2" />
-              <USkeleton class="h-5 w-48 mb-1" />
             </div>
           </div>
         </div>
@@ -173,11 +130,7 @@ const changePage = (pageNumber: number) => {
         <div
           class="flex justify-center items-center gap-2 mt-6 pt-6 border-t border-gray-200 dark:border-gray-800"
         >
-          <USkeleton class="h-9 w-9 rounded-md" />
-          <USkeleton class="h-9 w-9 rounded-md" />
-          <USkeleton class="h-9 w-9 rounded-md" />
-          <USkeleton class="h-9 w-9 rounded-md" />
-          <USkeleton class="h-9 w-9 rounded-md" />
+          <USkeleton class="h-9 w-9 rounded-md" v-for="i in 5" :key="i" />
         </div>
       </UCard>
 

@@ -1,88 +1,85 @@
 using System.Linq.Expressions;
-using Common;
 using Common.Repositories;
 using Data.Context;
-using DTO;
 using DTO.Tags;
 using Microsoft.EntityFrameworkCore;
 using Models;
 
 namespace Repositories;
 
-
 public class TagRepository(AlexandriaDbContext context) : ITagRepository
 {
     private readonly DbSet<Tag> _tags = context.Tags;
-    
+
     public async Task<Tag?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         return await _tags.FindAsync(new object[] { id }, ct);
     }
-    
+
     public async Task<Tag?> FirstOrDefaultAsync(Expression<Func<Tag, bool>> predicate, CancellationToken ct = default)
     {
         return await _tags.FirstOrDefaultAsync(predicate, ct);
     }
-    
+
     public async Task<IEnumerable<Tag>> GetAllAsync(CancellationToken ct = default)
     {
         return await _tags.ToListAsync(ct);
     }
-    
+
     public async Task<IEnumerable<Tag>> FindAsync(Expression<Func<Tag, bool>> predicate, CancellationToken ct = default)
     {
         return await _tags.Where(predicate).ToListAsync(ct);
     }
-    
+
     public async Task<Tag> AddAsync(Tag entity, CancellationToken ct = default)
     {
         entity.CreatedAt = DateTime.UtcNow;
         var entry = await _tags.AddAsync(entity, ct);
         return entry.Entity;
     }
-    
+
     public async Task<IEnumerable<Tag>> AddRangeAsync(IEnumerable<Tag> entities, CancellationToken ct = default)
     {
         var tagList = entities.ToList();
         var now = DateTime.UtcNow;
-        
+
         foreach (var entity in tagList)
         {
             entity.CreatedAt = now;
         }
-        
+
         await _tags.AddRangeAsync(tagList, ct);
         return tagList;
     }
-    
+
     public void Update(Tag entity)
     {
         entity.UpdatedAt = DateTime.UtcNow;
         _tags.Update(entity);
     }
-    
+
     public void Remove(Tag entity)
     {
         _tags.Remove(entity);
     }
-    
+
     public void RemoveRange(IEnumerable<Tag> entities)
     {
         _tags.RemoveRange(entities);
     }
-    
+
     public async Task<int> CountAsync(Expression<Func<Tag, bool>>? predicate = null, CancellationToken ct = default)
     {
-        return predicate == null 
-            ? await _tags.CountAsync(ct) 
+        return predicate == null
+            ? await _tags.CountAsync(ct)
             : await _tags.CountAsync(predicate, ct);
     }
-    
+
     public async Task<bool> ExistsAsync(Expression<Func<Tag, bool>> predicate, CancellationToken ct = default)
     {
         return await _tags.AnyAsync(predicate, ct);
     }
-    
+
     public async Task<Tag> CreateAsync(Tag tag, CancellationToken ct = default)
     {
         tag.CreatedAt = DateTime.UtcNow;
@@ -90,7 +87,7 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
         await context.SaveChangesAsync(ct);
         return entry.Entity;
     }
-    
+
     public async Task<Tag> UpdateAsync(Tag tag, CancellationToken ct = default)
     {
         tag.UpdatedAt = DateTime.UtcNow;
@@ -98,28 +95,39 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
         await context.SaveChangesAsync(ct);
         return tag;
     }
-    
+
     // Additional methods specific to Tags
-    public async Task<IEnumerable<Tag>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public async Task<Tag?> GetByIdAndUserIdAsync(Guid tagId, Guid userId, CancellationToken ct = default)
     {
-        return await _tags.Where(t => t.OwnerId == userId).ToListAsync(ct);
+        return await _tags.FirstOrDefaultAsync(t => t.Id == tagId && t.OwnerId == userId && t.DeletedAt == null, ct);
     }
-    
+
     public async Task<Tag?> GetByNameAndUserIdAsync(string name, Guid userId, CancellationToken ct = default)
     {
         return await _tags.FirstOrDefaultAsync(t => t.Name == name && t.OwnerId == userId, ct);
     }
-    
-    public async Task<IEnumerable<Tag>> GetTagsWithFilesAsync(Guid userId, CancellationToken ct = default)
+
+    public async Task<IEnumerable<TagDto>> GetTagsWithFilesAsync(Guid userId, CancellationToken ct = default)
     {
         return await _tags
             .Include(t => t.Files)
             .Where(t => t.OwnerId == userId)
+            .Select(t => new TagDto
+            {
+                Id = t.Id,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                Name = t.Name,
+                Color = t.Color,
+                Icon = t.Icon,
+                Description = t.Description,
+                UserId = t.OwnerId
+            })
             .ToListAsync(ct);
     }
-    
-    public async Task<(IEnumerable<Tag> Tags, int TotalCount)> FindTagsAsync(
-        TagSearchQuery query, 
+
+    public async Task<(IEnumerable<TagDto> Tags, int TotalCount)> FindTagsAsync(
+        TagSearchQuery query,
         CancellationToken ct = default)
     {
         IQueryable<Tag> tagsQuery = _tags.Where(t => t.DeletedAt == null);
@@ -128,6 +136,11 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
         if (query.HasFiles.HasValue)
         {
             tagsQuery = _tags.Include(t => t.Files).Where(t => t.DeletedAt == null);
+        }
+
+        if (query.ExcludeOnFile.HasValue)
+        {
+            tagsQuery = tagsQuery.Where(t => !t.Files.Any(f => f.Id == query.ExcludeOnFile));
         }
 
         // Apply user ID filter
@@ -162,13 +175,13 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
         // Apply update date filters
         if (query.UpdatedAfter.HasValue && query.UpdatedAfter.Value != default)
         {
-            tagsQuery = tagsQuery.Where(t => 
+            tagsQuery = tagsQuery.Where(t =>
                 t.UpdatedAt.HasValue && t.UpdatedAt.Value >= query.UpdatedAfter.Value);
         }
 
         if (query.UpdatedBefore.HasValue && query.UpdatedBefore.Value != default)
         {
-            tagsQuery = tagsQuery.Where(t => 
+            tagsQuery = tagsQuery.Where(t =>
                 t.UpdatedAt.HasValue && t.UpdatedAt.Value <= query.UpdatedBefore.Value);
         }
 
@@ -195,8 +208,19 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
 
         var tags = await tagsQuery
             .OrderByDescending(t => t.CreatedAt)
-            .Skip(query.CurrentPage * query.PageSize)
+            .Skip((query.CurrentPage - 1) * query.PageSize)
             .Take(query.PageSize)
+            .Select(t => new TagDto
+            {
+                Id = t.Id,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                Name = t.Name,
+                Color = t.Color,
+                Icon = t.Icon,
+                Description = t.Description,
+                UserId = t.OwnerId
+            })
             .ToListAsync(ct);
 
         return (tags, totalCount);

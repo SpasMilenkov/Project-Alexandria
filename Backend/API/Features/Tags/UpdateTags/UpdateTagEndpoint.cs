@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Common;
 using Common.Services;
 using FastEndpoints;
 
@@ -10,7 +9,7 @@ public class UpdateTagEndpoint(IFileTagService tagService) : Endpoint<UpdateTagR
     public override void Configure()
     {
         Put("/tags/{TagId}");
-        
+
         Summary(s =>
         {
             s.Summary = "Update a tag";
@@ -24,14 +23,20 @@ public class UpdateTagEndpoint(IFileTagService tagService) : Endpoint<UpdateTagR
 
     public override async Task HandleAsync(UpdateTagRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
         var userId = Guid.Parse(userIdString);
         try
         {
-            var tag = await tagService.UpdateTagAsync(req.TagId, req.Name, userId, ct);
-            
+            var tag = await tagService.UpdateTagAsync(req.TagId,
+                userId,
+                name: req.Name,
+                color: req.Color,
+                icon: req.Icon,
+                description: req.Description,
+                ct);
+
             await Send.OkAsync(new UpdateTagResponse
             {
                 Id = tag.Id,

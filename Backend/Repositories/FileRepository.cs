@@ -6,6 +6,7 @@ using DTO.Tags;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.Enumerators;
+using Repositories.Projections;
 using File = Models.File;
 
 namespace Repositories;
@@ -22,11 +23,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(f => f.Id == id, ct);
     }
 
-    public async Task<(IEnumerable<File> Files, int TotalCount)> FindFilesByTagsAsync(
-        FileTagSearchQuery query,
+    public async Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
         CancellationToken ct = default)
     {
-        IQueryable<File> filesQuery = _files
+        var filesQuery = _files
             .Include(f => f.Tags)
             .Where(f => f.DeletedAt == null);
 
@@ -37,7 +37,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             TagMatchType.Any => filesQuery.Where(f =>
                 f.Tags.Any(t => query.TagIds.Contains(t.Id) && t.DeletedAt == null)),
 
-            // ALL: File has all of the specified tags
+            // ALL: File has all the specified tags
             TagMatchType.All => ApplyAllTagsFilter(filesQuery, query.TagIds),
 
             // EXACT: File has exactly these tags, no more, no less
@@ -54,17 +54,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             filesQuery = filesQuery.Where(f =>
                 f.Tags.Any(t => t.OwnerId == query.UserId.Value && t.DeletedAt == null));
         }
-
-        // Apply file size filters
-        // if (query.MinFileSize.HasValue)
-        // {
-        //     filesQuery = filesQuery.Where(f => f.Size >= query.MinFileSize.Value);
-        // }
-        //
-        // if (query.MaxFileSize.HasValue)
-        // {
-        //     filesQuery = filesQuery.Where(f => f.Size <= query.MaxFileSize.Value);
-        // }
 
         // Apply MIME type filter
         if (!string.IsNullOrWhiteSpace(query.MimeTypePrefix))
@@ -89,9 +78,17 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .OrderByDescending(f => f.CreatedAt)
             .Skip(query.CurrentPage * query.PageSize)
             .Take(query.PageSize)
+            .Select(FileProjections.ToFileResult)
             .ToListAsync(ct);
 
-        return (files, totalCount);
+        return new PaginatedResult<FileResult>
+        {
+            Items = files.ToList(),
+            CurrentPage = query.CurrentPage,
+            PageSize = query.PageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
+        };
     }
 
     private static IQueryable<File> ApplyAllTagsFilter(IQueryable<File> query, ICollection<Guid> tagIds)
@@ -182,8 +179,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         Guid userId,
         CancellationToken ct)
     {
-        // await using var tx = await context.Database.BeginTransactionAsync(ct);
-
         try
         {
             // 1. Load only what we need
@@ -441,33 +436,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         var itemsTask = sortedQuery
             .Skip((currentPage - 1) * pageSize)
             .Take(pageSize)
-            .Select(f => new FileResult(
-                f.Id,
-                f.Name,
-                f.MimeType,
-                f.CreatedAt,
-                f.UpdatedAt,
-                f.DeletedAt,
-                new FileVersionDto(
-                    f.CurrentVersion.Id,
-                    f.CurrentVersion.Size,
-                    f.CurrentVersion.MimeType,
-                    f.CurrentVersion.VersionNumber),
-                f.Tags.Select(t => new TagDto
-                {
-                    Id = t.Id,
-                    CreatedAt = t.CreatedAt,
-                    UpdatedAt = t.UpdatedAt,
-                    Name = t.Name,
-                    UserId = t.OwnerId
-                }).ToList(),
-                new UserDto
-                {
-                    Id = f.OwnerId,
-                    Name = f.Owner.Name,
-                    Email = f.Owner.Email
-                }
-            ))
+            .Select(FileProjections.ToFileResult)
             .ToListAsync(ct);
 
 
@@ -491,7 +460,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         // Update mutable properties
         existingFile.Name = file.Name;
-        // existingFile.Path = file.Path;
         existingFile.HasPreview = file.HasPreview;
         existingFile.PreviewGeneratedAt = file.PreviewGeneratedAt;
         existingFile.UpdatedBy = file.UpdatedBy;
@@ -505,11 +473,25 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return existingFile;
     }
 
-    public async Task<File?> GetFileWithTagsAsync(Guid fileId, CancellationToken ct = default)
+    public async Task<FileResult?> GetFileWithTagsAsync(
+        Guid fileId,
+        CancellationToken ct = default)
     {
-        return await _files.Include(f => f.Tags)
-            .Where(f => f.DeletedAt == null)
-            .FirstOrDefaultAsync(f => f.Id == fileId, ct);
+        return await _files
+            .AsNoTracking()
+            .Where(f => f.Id == fileId && f.DeletedAt == null)
+            .Select(FileProjections.ToFileResult)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<File?> GetFileEntityWithTagsAsync(
+        Guid fileId,
+        CancellationToken ct = default)
+    {
+        return await _files
+            .Include(f => f.Tags)
+            .Where(f => f.Id == fileId && f.DeletedAt == null)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<FileSummary?> GetFileNameAndMimeType(Guid fileId, CancellationToken ct = default)
