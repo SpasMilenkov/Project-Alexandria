@@ -131,6 +131,7 @@
                 :key="tag.id"
                 :tag="tag"
                 :file-id="props.data.fileId"
+                @remove-tag="refreshOnRemove"
               />
             </div>
           </div>
@@ -138,7 +139,6 @@
             No tags yet
           </div>
 
-          <!-- TODO: Tags that are already on the file should not show up here -->
           <div class="flex gap-2 w-full">
             <UButton
               label="Add tag"
@@ -450,7 +450,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useQuery } from "@pinia/colada";
 import { getPreview } from "@/queries/files";
 import type { TagDto } from "@/api/tag";
-import { addTagToFile } from "@/mutations/tags";
+import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import type { SearchTagsSchema } from "@/schemas/tag";
 import { searchTag } from "@/queries/tags";
 import { getIconByValue } from "@/utils/icon.utils";
@@ -511,8 +511,17 @@ const searchQuery = ref("");
 const searchFilters = computed<SearchTagsSchema>(() => ({
   page: currentPage.value,
   pageSize: pageSize.value,
+  excludeOnFile: props.data.fileId,
   name: searchQuery.value || undefined,
 }));
+
+const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
+
+
+const refreshOnRemove = async (id: string) => {
+  await removeTagMutateAsync({ fileId: props.data.fileId, tagId: id });
+  refreshFileTag();
+};
 
 // Query
 const {
