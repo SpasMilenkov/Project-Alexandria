@@ -1,10 +1,8 @@
-using Common;
-using DTO;
 using DTO.Tags;
 
 namespace API.Features.Tags.SearchFileByTags;
 
-public class FileDto
+public sealed class FileDto
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

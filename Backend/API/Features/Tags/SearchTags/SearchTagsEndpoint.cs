@@ -1,21 +1,17 @@
-using API.Features.Tags.GetAllTags;
-using Common;
+using API.Features.Auth.Extensions;
 using Common.Services;
-using DTO;
+using DTO.Files;
 using DTO.Tags;
 using FastEndpoints;
 
 namespace API.Features.Tags.SearchTags;
 
-
-
-
-public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTagsRequest, SearchTagsResponse>
+public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTagsRequest, PaginatedResult<TagDto>>
 {
     public override void Configure()
     {
         Post("/tags/search");
-        
+
         Summary(s =>
         {
             s.Summary = "Advanced tag search";
@@ -34,11 +30,13 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
 
     public override async Task HandleAsync(SearchTagsRequest req, CancellationToken ct)
     {
+        var userId = User.GetUserId();
+
         try
         {
             var query = new TagSearchQuery
             {
-                UserId = req.UserId,
+                UserId = userId,
                 CreatedBy = req.CreatedBy,
                 UpdatedBy = req.UpdatedBy,
                 CreatedAfter = req.CreatedAfter,
@@ -52,24 +50,8 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
             };
 
             var result = await tagService.FindTagsAsync(query, ct);
-            
-            await Send.OkAsync(new SearchTagsResponse
-            {
-                Tags = result.Items.Select(t => new TagDto
-                {
-                    Id = t.Id,
-                    Name = t.Name,
-                    UserId = t.OwnerId,
-                    CreatedAt = t.CreatedAt,
-                    UpdatedAt = t.UpdatedAt
-                }).ToList(),
-                CurrentPage = result.CurrentPage,
-                PageSize = result.PageSize,
-                TotalCount = result.TotalCount,
-                TotalPages = result.TotalPages,
-                HasPrevious = result.HasPrevious,
-                HasNext = result.HasNext
-            }, ct);
+
+            await Send.OkAsync(result, ct);
         }
         catch (ArgumentException ex)
         {

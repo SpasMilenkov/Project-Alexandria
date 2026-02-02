@@ -1,7 +1,10 @@
 namespace API.Features.Tags.UpdateTags;
 
-public class UpdateTagRequest
+public sealed class UpdateTagRequest
 {
     public Guid TagId { get; set; }
-    public required string Name { get; set; }
+    public string? Name { get; set; }
+    public string? Icon { get; set; }
+    public string? Color { get; set; }
+    public string? Description { get; set; }
 }
