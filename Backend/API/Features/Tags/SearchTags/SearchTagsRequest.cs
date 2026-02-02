@@ -2,7 +2,6 @@ namespace API.Features.Tags.SearchTags;
 
 public class SearchTagsRequest
 {
-    public Guid? UserId { get; set; }
     public Guid? CreatedBy { get; set; }
     public Guid? UpdatedBy { get; set; }
     public DateTime? CreatedAfter { get; set; }
