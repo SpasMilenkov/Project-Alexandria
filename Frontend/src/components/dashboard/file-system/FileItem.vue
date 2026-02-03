@@ -275,7 +275,6 @@
           <div
             v-else-if="
               pdfPreviewMimes.includes(data.currentVersion.mimeType) &&
-              archivePreviewItems &&
               previewUrl
             "
             class="relative w-xl h-220 bg-white dark:bg-neutral-900 rounded-lg overflow-hidden"
@@ -891,13 +890,12 @@ const parseArchivePreview = () => {
   return [rootNode];
 };
 const setFilePreviews = async () => {
-  // const result = await getFilePreview(props.data.fileId);
   if (previewData.value) {
     previewUrl.value = previewData.value.previewUrl;
     thumbnailUrl.value = previewData.value.thumbnailUrl;
     previewMimeType.value = previewData.value.metaData.mimeType;
     textPreview.value = previewData.value.textPreview;
-    archivePreview.value = previewData.value.archivePreview;
+    archivePreview.value = previewData.value.archivePreview;  
   }
   console.log("previewUrl", previewUrl.value);
   console.log("thumbnailUrl", thumbnailUrl.value);
