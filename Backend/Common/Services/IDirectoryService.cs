@@ -11,6 +11,9 @@ public interface IDirectoryService
     Task<DirectorySummaryDto> CreateDirectoryAsync(string name, Guid ownerId, Guid? parentId = null,
         CancellationToken ct = default);
 
+    Task<Dictionary<string, Guid?>> CreateDirectorySubTreeAsync(List<string> paths, Guid? parentId, Guid userId,
+        CancellationToken ct = default);
+
     Task<Directory> GetDirectoryByIdAsync(Guid id, Guid userId, CancellationToken ct = default);
     Task<DirectorySummaryDto> GetDirectoryDtoByIdAsync(Guid id, Guid userId, CancellationToken ct = default);
 

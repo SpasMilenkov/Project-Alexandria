@@ -134,11 +134,25 @@ export interface PaginatedResponse<T> {
 export const directoryApi = {
   // Create a new directory
   createDirectory: async (
-    data: CreateDirectorySchema
+    data: CreateDirectorySchema,
   ): Promise<CreateDirectoryResponse> => {
     const response = await apiClient.post<CreateDirectoryResponse>(
       "/directories",
-      data
+      data,
+    );
+    return response.data;
+  },
+
+  uploadDirectory: async (
+    parentId: string | null,
+    paths: string[],
+  ): Promise<Record<string, string | null>> => {
+    const response = await apiClient.post<Record<string, string | null>>(
+      "/directories/create-subtree",
+      {
+        parentId,
+        paths,
+      },
     );
     return response.data;
   },
@@ -152,7 +166,7 @@ export const directoryApi = {
   },
 
   getRooSubDirectories: async (
-    paginationParams: PaginationParams
+    paginationParams: PaginationParams,
   ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
     const response = await apiClient.get<
       PaginatedResponse<DirectorySummaryDto>
@@ -168,7 +182,7 @@ export const directoryApi = {
   },
   getSubDirectories: async (
     directoryId: string,
-    paginationParams: PaginationParams
+    paginationParams: PaginationParams,
   ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
     const response = await apiClient.get<
       PaginatedResponse<DirectorySummaryDto>
@@ -185,7 +199,7 @@ export const directoryApi = {
   },
 
   getDirectoryPath: async (
-    id: string
+    id: string,
   ): Promise<{ pathParts: { id: string; name: string }[] }> => {
     const response = await apiClient.get<{
       pathParts: { id: string; name: string }[];
@@ -195,11 +209,11 @@ export const directoryApi = {
   },
 
   searchDirectory: async (
-    query: SearchDirectoryRequest
+    query: SearchDirectoryRequest,
   ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
     const cleanParams = Object.fromEntries(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      Object.entries(query).filter(([_, value]) => value != null)
+      Object.entries(query).filter(([_, value]) => value != null),
     );
 
     const response = await apiClient.get<
@@ -212,11 +226,11 @@ export const directoryApi = {
 
   // Update directory
   updateDirectory: async (
-    data: UpdateDirectorySchema
+    data: UpdateDirectorySchema,
   ): Promise<UpdateDirectoryResponse> => {
     const response = await apiClient.put<UpdateDirectoryResponse>(
       "/directories",
-      data
+      data,
     );
     return response.data;
   },
@@ -224,11 +238,11 @@ export const directoryApi = {
   // Move directory
   moveDirectories: async (
     directoryIds: string[],
-    destinationId: string
+    destinationId: string,
   ): Promise<void> => {
     await apiClient.put("directories/move", {
       destinationId,
-      directoryIds
+      directoryIds,
     });
   },
 
@@ -242,7 +256,7 @@ export const directoryApi = {
   // Delete directory
   deleteDirectory: async (
     id: string,
-    options: DeleteDirectorySchema
+    options: DeleteDirectorySchema,
   ): Promise<void> => {
     await apiClient.delete(`/directories/${id}`, {
       data: options,

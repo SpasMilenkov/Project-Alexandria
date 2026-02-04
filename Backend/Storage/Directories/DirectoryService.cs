@@ -4,6 +4,8 @@ using DTO.Directories;
 using DTO.Files;
 using Models.Enumerators;
 using Storage.Directories.Exceptions;
+using Storage.Directories.TreeBuilder;
+using Storage.Directories.TreeBuilder.Extensions;
 using DirectoryNotFoundException = Storage.Directories.Exceptions.DirectoryNotFoundException;
 using File = Models.File;
 
@@ -73,6 +75,43 @@ public class DirectoryService : IDirectoryService
             await _unitOfWork.RollbackAsync(ct);
             throw;
         }
+    }
+
+    public async Task<Dictionary<string, Guid?>> CreateDirectorySubTreeAsync(List<string> paths, Guid? parentId,
+        Guid userId, CancellationToken ct = default)
+    {
+        Directory? root = null;
+
+        if (parentId is not null)
+        {
+            root = await _unitOfWork.Directories.GetByIdAsync((Guid)parentId, ct);
+
+            if (root is null) throw new DirectoryNotFoundException((Guid)parentId);
+        }
+
+        var builder = new DirectoryTreeBuilder();
+        var tree = DirectoryTreeBuilder.BuildDirectoryTree(paths, root?.Name ?? "root", root?.Id,
+            isRoot: parentId == null);
+        var fileToParentMapping = DirectoryTreeBuilder.BuildFileToParentMapping(paths, tree);
+
+        // The root dir already exists, we should not insert it and it is always bubbling on top
+        var nodes = builder.GetAllDirectories(tree).Skip(1);
+
+        try
+        {
+            await _unitOfWork.BeginTransactionAsync(ct);
+
+            await _unitOfWork.Directories.AddRangeAsync(nodes.Select(n => n.ToDirectory(userId)), ct);
+            await _unitOfWork.SaveChangesAsync(ct);
+            await _unitOfWork.CommitAsync(ct);
+        }
+        catch (Exception e)
+        {
+            await _unitOfWork.RollbackAsync(ct);
+            throw;
+        }
+
+        return fileToParentMapping;
     }
 
     public async Task<Directory> GetDirectoryByIdAsync(Guid id, Guid userId, CancellationToken ct = default)
