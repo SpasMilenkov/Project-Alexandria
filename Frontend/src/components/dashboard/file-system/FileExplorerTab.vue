@@ -7,13 +7,46 @@
       <!-- <div class="flex items-center gap-2 flex-wrap"> -->
       <div class="flex gap-2 justify-between">
         <div class="flex gap-2">
+          <div class="flex gap-2">
+            <!-- Split Button Group -->
+            <div class="flex border border-primary rounded-md overflow-hidden">
+              <!-- Main Upload Button -->
+              <UButton
+                color="primary"
+                size="sm"
+                class="rounded-none border-r border-primary-600"
+                @click="
+                  handleFileUpload(
+                    selectedUploadType.label as
+                      | 'File'
+                      | 'Directory'
+                      | 'Archive',
+                  )
+                "
+              >
+                <Icon :icon="selectedUploadType.icon" class="w-4 h-4 mr-2" />
+                <span class="hidden sm:inline"
+                  >Upload {{ selectedUploadType.label }}</span
+                >
+                <span class="sm:hidden">Upload</span>
+              </UButton>
+
+              <!-- Dropdown Menu -->
+              <UDropdownMenu :items="uploadOptions" :ui="{ content: 'w-48' }">
+                <UButton
+                  color="primary"
+                  size="sm"
+                  class="rounded-none px-2"
+                  aria-label="Upload options"
+                >
+                  <Icon icon="mdi:chevron-down" class="w-4 h-4" />
+                </UButton>
+              </UDropdownMenu>
+            </div>
+          </div>
           <UButton color="primary" size="sm" @click="createNewDirectory">
             <Icon icon="mdi:folder-plus" class="w-4 h-4 md:mr-1" />
             <span class="hidden sm:inline">New Folder</span>
-          </UButton>
-          <UButton color="primary" size="sm" @click="handleFileUpload">
-            <Icon icon="mdi:upload" class="w-4 h-4 md:mr-1" />
-            <span class="hidden sm:inline">Upload</span>
           </UButton>
         </div>
 
@@ -27,7 +60,6 @@
           >
             <template #default="{ modelValue }">
               <Icon icon="mdi:sort" class="w-4 h-4 mr-1" />
-              <!-- TODO: Should probably add a  fallback here in case it is null for some reason -->
               <span class="hidden sm:inline">{{ modelValue?.label }}</span>
             </template>
           </USelectMenu>
@@ -67,12 +99,6 @@
           >
             <Icon icon="mdi:view-list" class="w-4 h-4" />
           </UButton>
-          <!-- <span class="hidden sm:inline">
-          {{ directories.length }} folders, {{ files.length }} files
-        </span>
-        <span class="sm:hidden">
-          {{ directories.length + files.length }} items
-        </span> -->
         </div>
       </div>
 
@@ -239,11 +265,12 @@ import { Icon } from "@iconify/vue";
 import { OrderBy } from "@/enums/OrderBy";
 import { useFileExplorer } from "@/composables/useFileExplorer";
 import { useTabStore } from "@/stores/tab";
-import type { BreadcrumbItem } from "@nuxt/ui";
+import type { BreadcrumbItem, DropdownMenuItem } from "@nuxt/ui";
 import { SortDirection } from "@/enums/SortDirection";
 import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
 import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
 import FileUploadModal from "./Modals/FileUploadModal.vue";
+import DirectoryUploadModal from "./Modals/DirectoryUploadModal.vue";
 import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
 import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
@@ -289,7 +316,6 @@ const {
   clearSelection,
   selectRange,
   downloadFile,
-  // uploadFile,
 } = useFileExplorer();
 
 const { mutateAsync: copyFilesMutate } = copyFiles();
@@ -347,6 +373,29 @@ const sortByOptions = ref([
   { label: "Date Modified", value: OrderBy.UpdatedAt },
 ]);
 
+const selectedUploadType = ref({
+  label: "File",
+  icon: "mdi:file-outline",
+});
+
+const uploadOptions = ref([
+  {
+    label: "File",
+    icon: "mdi:file-outline",
+    onSelect: () => handleFileUpload("File"),
+  },
+  {
+    label: "Directory",
+    icon: "mdi:folder-outline",
+    onSelect: () => handleFileUpload("Directory"),
+  },
+  {
+    label: "Archive",
+    icon: "formkit:zip",
+    onSelect: () => handleFileUpload("Archive"),
+  },
+] satisfies DropdownMenuItem[]);
+
 const selectedSortBy = ref({ label: "Name", value: OrderBy.Name });
 const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
 
@@ -368,6 +417,7 @@ const overlay = useOverlay();
 const createDirectoryModal = overlay.create(CreateDirectoryModal);
 const updateDirectoryModal = overlay.create(UpdateDirectoryModal);
 const fileUploadModal = overlay.create(FileUploadModal);
+const directoryUploadModal = overlay.create(DirectoryUploadModal);
 
 const handleContainerClick = (event: MouseEvent) => {
   // Check if we clicked on empty space (not on any item buttons)
@@ -473,8 +523,27 @@ const handleSorting = () => {
   refreshDir();
 };
 
-const handleFileUpload = async () => {
-  const instance = fileUploadModal.open();
+const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
+  const option = uploadOptions.value.find((opt) => opt.label === type);
+  if (option) {
+    selectedUploadType.value = { label: option.label, icon: option.icon };
+  }
+
+  let instance;
+
+  switch (type) {
+    case "File":
+      instance = fileUploadModal.open();
+      break;
+    case "Directory":
+      instance = directoryUploadModal.open();
+      break;
+    case "Archive":
+      instance = directoryUploadModal.open();
+      break;
+    default:
+      instance = fileUploadModal.open();
+  }
 
   const shouldRefresh = await instance.result;
 
@@ -488,7 +557,7 @@ const handleFileUpload = async () => {
   }
   if (!shouldRefresh && directoryStore.error)
     toast.add({
-      title: "Directory failed",
+      title: "Upload failed",
       description: directoryStore.error,
       color: "error",
       id: "modal-error",
