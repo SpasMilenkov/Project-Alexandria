@@ -22,7 +22,7 @@ services:
       retries: 3
       start_period: 10s
 
-  # MinIO Object Storage
+  # MinIO Object Storage (maintenance mode)
   minio:
     image: minio/minio:latest
     container_name: alexandria-minio-dev
@@ -46,31 +46,70 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+    profiles:
+      - minio
 
-  # MinIO Client - Initialize buckets and policies
-  minio-init:
-    image: minio/mc:latest
-    container_name: alexandria-minio-init-dev
-    depends_on:
-      minio:
-        condition: service_healthy
+  # Garage Object Storage (default S3-compatible storage)
+  garage:
+    image: dxflrs/garage:v2.2.0
+    container_name: alexandria-garage-dev
+    restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dev_admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dev_password_123}
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set alexandria http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
-      /usr/bin/mc mb alexandria/alexandria-files --ignore-existing;
-      /usr/bin/mc mb alexandria/alexandria-thumbnails --ignore-existing;
-      /usr/bin/mc mb alexandria/alexandria-temp --ignore-existing;
-      /usr/bin/mc mb alexandria/alexandria-dev-testing --ignore-existing;
-      /usr/bin/mc anonymous set download alexandria/alexandria-thumbnails;
-      /usr/bin/mc anonymous set download alexandria/alexandria-dev-testing;
-      /usr/bin/mc ilm add alexandria/alexandria-temp --expiry-days 1;
-      echo 'MinIO DEV initialization completed';
-      "
+      RUST_LOG: garage=info
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+      - garage_meta_data:/var/lib/garage/meta
+      - garage_storage_data:/var/lib/garage/data
+    ports:
+      - "9000:3900" # S3 API (mapped to 9000 for compatibility)
+      - "9001:3903" # Admin API (mapped to 9001 for compatibility)
+      - "3901:3901" # RPC
+      - "3902:3902" # S3 Web (optional)
     networks:
       - alexandria-network
+    healthcheck:
+      test: ["CMD", "garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    profiles:
+      - garage
+      - default
+
+  # RustFS Object Storage (alternative S3-compatible storage)
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: alexandria-rustfs-dev
+    restart: unless-stopped
+    command:
+      - "--address"
+      - ":3900"
+      - "--console-enable"
+      - "--access-key"
+      - "${RUSTFS_ACCESS_KEY:-dev_admin}"
+      - "--secret-key"
+      - "${RUSTFS_SECRET_KEY:-dev_password_123}"
+      - "/data"
+    environment:
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-dev_admin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-dev_password_123}
+      RUSTFS_CONSOLE_ENABLE: "true"
+    volumes:
+      - rustfs_dev_data:/data
+    ports:
+      - "9000:3900" # S3 API (mapped to 9000 for compatibility)
+      - "9001:9001" # Console UI (mapped to 9001 for compatibility)
+    networks:
+      - alexandria-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3900/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    profiles:
+      - rustfs
 
   # RabbitMQ Message Broker
   rabbitmq:
@@ -85,7 +124,7 @@ services:
     volumes:
       - rabbitmq_dev_data:/var/lib/rabbitmq
     ports:
-      - "5672:5672"   # AMQP protocol port
+      - "5672:5672" # AMQP protocol port
       - "15672:15672" # Management UI port
     networks:
       - alexandria-network
@@ -100,6 +139,12 @@ volumes:
   postgres_dev_data:
     driver: local
   minio_dev_data:
+    driver: local
+  garage_meta_data:
+    driver: local
+  garage_storage_data:
+    driver: local
+  rustfs_dev_data:
     driver: local
   rabbitmq_dev_data:
     driver: local
