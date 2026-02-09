@@ -4,8 +4,25 @@ using FastEndpoints;
 
 namespace API.Features.Storage.Files.UpdateFileMetadata;
 
+public class UpdateFileMetadataRequest
+{
+    public Guid Id { get; set; }
+    public string? Name { get; set; }
+    public bool? HasPreview { get; set; }
+}
+
+public class UpdateFileMetadataResponse
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool HasPreview { get; set; }
+    public DateTime? PreviewGeneratedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public Guid UpdatedBy { get; set; }
+}
+
 public class UpdateFileMetadataEndpoint(
-    IStorageService storageService
+    IFileService fileService
 ) : Endpoint<UpdateFileMetadataRequest, UpdateFileMetadataResponse>
 {
     public override void Configure()
@@ -29,12 +46,12 @@ public class UpdateFileMetadataEndpoint(
     {
         try
         {
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                                ?? User.FindFirst("sub")?.Value
                                ?? throw new UnauthorizedAccessException("User ID not found in token");
             var userId = Guid.Parse(userIdString);
 
-            var updatedFile = await storageService.UpdateFileMetadata(
+            var updatedFile = await fileService.UpdateFileMetadata(
                 req.Id,
                 userId,
                 req.Name,
@@ -60,21 +77,4 @@ public class UpdateFileMetadataEndpoint(
             ThrowError($"Update failed: {ex.Message}");
         }
     }
-}
-
-public class UpdateFileMetadataRequest
-{
-    public Guid Id { get; set; }
-    public string? Name { get; set; }
-    public bool? HasPreview { get; set; }
-}
-
-public class UpdateFileMetadataResponse
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public bool HasPreview { get; set; }
-    public DateTime? PreviewGeneratedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public Guid UpdatedBy { get; set; }
 }

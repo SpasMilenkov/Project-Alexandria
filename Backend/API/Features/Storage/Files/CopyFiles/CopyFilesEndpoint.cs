@@ -10,7 +10,7 @@ sealed class CopyFilesRequest
     public Guid DestinationId { get; set; }
 }
 
-sealed class CopyDirectoryEndpoint(IStorageService storageService) : Endpoint<CopyFilesRequest>
+sealed class CopyDirectoryEndpoint(IFileService fileService) : Endpoint<CopyFilesRequest>
 {
     public override void Configure()
     {
@@ -24,7 +24,7 @@ sealed class CopyDirectoryEndpoint(IStorageService storageService) : Endpoint<Co
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
         var userId = Guid.Parse(userIdString);
 
-        await storageService.CopyFilesAsync(req.FileIds, req.DestinationId, userId, ct);
+        await fileService.CopyFilesAsync(req.FileIds, req.DestinationId, userId, ct);
         await Send.OkAsync(cancellation: ct);
     }
 }

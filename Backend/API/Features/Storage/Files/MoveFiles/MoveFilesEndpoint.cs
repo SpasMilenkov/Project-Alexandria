@@ -10,7 +10,7 @@ sealed class MoveFilesRequest
     public Guid? DestinationId { get; set; }
 }
 
-sealed class MoveFilesEndpoint(IStorageService storageService) : Endpoint<MoveFilesRequest>
+sealed class MoveFilesEndpoint(IFileService fileService) : Endpoint<MoveFilesRequest>
 {
     public override void Configure()
     {
@@ -24,7 +24,7 @@ sealed class MoveFilesEndpoint(IStorageService storageService) : Endpoint<MoveFi
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
         var userId = Guid.Parse(userIdString);
 
-        await storageService.MoveFilesAsync(r.FileIds, r.DestinationId, userId, ct);
+        await fileService.MoveFilesAsync(r.FileIds, r.DestinationId, userId, ct);
 
         await Send.OkAsync("File moved successfully", ct);
     }

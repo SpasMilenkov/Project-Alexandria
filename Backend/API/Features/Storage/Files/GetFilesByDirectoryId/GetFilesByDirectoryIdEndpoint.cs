@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Common.Services;
 using DTO.Files;
-using DTO.Search;
 using FastEndpoints;
 using Models.Enumerators;
 
@@ -16,8 +15,8 @@ sealed class GetFilesByDirectoryIdRequest
     public SortDirection SortDirection { get; set; }
 }
 
-
-sealed class GetFilesByDirectoryIdEndpoint(IStorageService storageService) : Endpoint<GetFilesByDirectoryIdRequest, PaginatedResult<FileResult>>
+sealed class GetFilesByDirectoryIdEndpoint(IFileService fileService)
+    : Endpoint<GetFilesByDirectoryIdRequest, PaginatedResult<FileResult>>
 {
     public override void Configure()
     {
@@ -26,11 +25,11 @@ sealed class GetFilesByDirectoryIdEndpoint(IStorageService storageService) : End
 
     public override async Task HandleAsync(GetFilesByDirectoryIdRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
         var userId = Guid.Parse(userIdString);
-        var result = await storageService.GetFilesByDirectoryId(req.DirectoryId, userId, req.Page, req.PageSize,
+        var result = await fileService.GetFilesByDirectoryId(req.DirectoryId, userId, req.Page, req.PageSize,
             req.SortBy, req.SortDirection, ct);
         await Send.OkAsync(result, ct);
     }
