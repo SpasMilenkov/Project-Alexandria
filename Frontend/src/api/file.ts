@@ -53,14 +53,103 @@ export interface FileVersionDto {
   mimeType: string;
   versionNumber: number;
 }
+
 export interface UserDto {
   id: string;
   name: string;
   email: string;
 }
 
+// New upload flow types
+export interface InitializeFileUploadRequest {
+  contentType: string;
+  sha256: string;
+  contentLength: number;
+  directoryId?: string | null;
+}
+
+export interface InitializeFileUploadResponse {
+  uploadId: string;
+  uploadUrl: string;
+}
+
+export interface FinalizeFileUploadRequest {
+  uploadId: string;
+  directoryId?: string | null;
+  fileName: string;
+}
+
+export interface FinalizeFileUploadResponse {
+  success: boolean;
+  fileId?: string;
+}
+
 export const fileApi = {
-  // Upload a file
+  // Initialize file upload - get presigned URL
+  initializeUpload: async (
+    data: InitializeFileUploadRequest,
+  ): Promise<InitializeFileUploadResponse> => {
+    const response = await apiClient.post<InitializeFileUploadResponse>(
+      "/files/init-upload",
+      data,
+    );
+    return response.data;
+  },
+
+  // Upload file directly to S3 using presigned URL
+  uploadToS3: async (
+    presignedUrl: string,
+    file: File,
+    onProgress?: (percent: number) => void,
+  ): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable && onProgress) {
+          const percent = (e.loaded / e.total) * 100;
+          onProgress(percent);
+        }
+      });
+
+      // Handle completion
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+
+      // Handle errors
+      xhr.addEventListener("error", () => {
+        reject(new Error("Network error during upload"));
+      });
+
+      xhr.addEventListener("abort", () => {
+        reject(new Error("Upload aborted"));
+      });
+
+      // Initiate upload
+      xhr.open("PUT", presignedUrl);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream"  );
+      xhr.send(file);
+    });
+  },
+
+  // Finalize upload
+  finalizeUpload: async (
+    data: FinalizeFileUploadRequest,
+  ): Promise<FinalizeFileUploadResponse> => {
+    const response = await apiClient.post<FinalizeFileUploadResponse>(
+      "/files/finalize-upload",
+      data,
+    );
+    return response.data;
+  },
+
+  // Legacy upload method (kept for backwards compatibility if needed)
   uploadFile: async (formData: FormData): Promise<void> => {
     await apiClient.post("/files/upload", formData, {
       headers: {
@@ -70,10 +159,8 @@ export const fileApi = {
   },
 
   // Download a file by ID
-  downloadFile: async (id: string): Promise<Blob> => {
-    const response = await apiClient.get(`/files/${id}`, {
-      responseType: "blob",
-    });
+  downloadFile: async (id: string): Promise<string> => {
+    const response = await apiClient.get<string>(`/files/${id}`);
     return response.data;
   },
 
