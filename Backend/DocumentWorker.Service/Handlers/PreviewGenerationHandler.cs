@@ -4,52 +4,57 @@ using PreviewService.Documents;
 
 namespace DocumentWorker.Service.Handlers;
 
-public class PreviewGenerationHandler(ILogger<PreviewGenerationHandler> logger, IStorageService storage, IPdfPreviewService pdfPreviewService, IUnitOfWork unitOfWork) : IPreviewGenerationHandler
+public class PreviewGenerationHandler(
+    ILogger<PreviewGenerationHandler> logger,
+    IStorageService storage,
+    IFileService fileService,
+    IPdfPreviewService pdfPreviewService,
+    IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
-
     public async Task HandleAsync(string fileId, CancellationToken ct = default)
     {
         var fileIdGuid = Guid.Parse(fileId);
-        var fileData = await storage.GetFileMetadata(fileIdGuid, ct);
+        var fileData = await fileService.GetFileMetadata(fileIdGuid, ct);
         if (fileData is null) throw new InvalidOperationException($"File with that ID: {fileId} does not exist.");
-        var contentHash = Convert.ToHexStringLower( 
+        var contentHash = Convert.ToHexStringLower(
             await unitOfWork.Files.GetFileHash(fileData.Id, fileData.OwnerId, ct)
             ?? throw new InvalidOperationException("File does not have content object hash"));
-    
+
         logger.LogInformation("Processing preview for file: {FileId}", fileId);
-    
+
         // Generate temp path with correct extension based on MIME type
         var extension = GetExtensionFromMimeType(fileData.MimeType);
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
-    
+
         try
         {
             await using (var tempFile = File.Create(tempPath))
             {
                 await storage.StreamFile(fileId, tempFile, ct);
             }
-        
-            logger.LogInformation("File {FileId} downloaded to {TempPath}, size: {Size}", 
+
+            logger.LogInformation("File {FileId} downloaded to {TempPath}, size: {Size}",
                 fileId, tempPath, new FileInfo(tempPath).Length);
-        
+
             var fileCategory = storage.CategorizeFile(fileData.MimeType);
             var previewPath = await pdfPreviewService.GeneratePreviewAsync(tempPath, fileCategory, ct);
-        
+
             if (string.IsNullOrEmpty(previewPath) || !File.Exists(previewPath))
             {
                 throw new InvalidOperationException(
                     $"Preview generation failed. Expected path: {previewPath}, Exists: {File.Exists(previewPath)}");
             }
-        
-            logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}", 
+
+            logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}",
                 previewPath, new FileInfo(previewPath).Length);
-        
+
             await using var previewStream = File.OpenRead(previewPath);
-            
+
             //TODO: Change Guid.Empty when the system account is seeded into the database
-            await storage.UploadPreview("user-previews", $"previews/{contentHash}", "application/pdf", previewStream, originalFileId: fileData.Id, Guid.Empty, ct: ct);
-            await storage.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
-        
+            await storage.UploadPreview("user-previews", $"previews/{contentHash}", "application/pdf", previewStream,
+                originalFileId: fileData.Id, Guid.Empty, ct: ct);
+            await fileService.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
+
             File.Delete(previewPath);
         }
         finally
