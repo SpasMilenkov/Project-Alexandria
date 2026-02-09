@@ -27,6 +27,7 @@ public interface IFileRepository : IRepository<File>
         CancellationToken ct = default);
 
     Task<FileSummary?> GetFileNameAndMimeType(Guid fileId, CancellationToken ct = default);
+    Task<FileMetadata?> GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default);
 
     Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
         CancellationToken ct = default);
@@ -35,6 +36,7 @@ public interface IFileRepository : IRepository<File>
     Task MoveFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
     Task HasDuplicatesAsync(Guid[] fileIds, Guid destinationId, Guid userId, CancellationToken ct = default);
     Task MarkAsDeleted(Guid[] fileIds, Guid userId, CancellationToken ct = default);
+    Task<bool> IsPromoted(Guid fileId, CancellationToken ct = default);
 
     Task CopyFilesAsync(
         Guid[] fileIds,
