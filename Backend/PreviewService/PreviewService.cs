@@ -90,7 +90,7 @@ public class PreviewService(
                         var previewStream =
                             await imagePreviewService.GenerateImagePreview(fileStream, fileData.MimeType);
                         await storageService.UploadPreview(
-                            storageConfig.Value.PreviewBucket ?? "user-previews",
+                            storageConfig.Value.PreviewBucket,
                             $"previews/{fileHash}",
                             fileData.MimeType,
                             previewStream,
