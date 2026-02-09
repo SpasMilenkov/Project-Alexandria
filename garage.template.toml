@@ -1,0 +1,42 @@
+metadata_dir = ""
+data_dir = ""
+
+# Database engine: lmdb (recommended for production) or sqlite (testing only)
+db_engine = ""
+
+# For single-node development, replication_mode can be "none"
+# For production multi-node, use 1, 2, or 3 (number of copies)
+replication_factor  = 1
+
+
+# Compression level (0-19, 0 = no compression, 1 = fast/low, 19 = slow/high)
+compression_level = 2
+
+# RPC configuration
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+# Generate a secure random secret with: openssl rand -hex 32
+# This is just an example
+rpc_secret = ""
+
+# S3 API configuration
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+root_domain = ".s3.garage.localhost"
+
+# S3 Web hosting configuration (optional)
+[s3_web]
+bind_addr = "[::]:3902"
+root_domain = ".web.garage.localhost"
+index = "index.html"
+
+# Admin API configuration
+[admin]
+api_bind_addr = "[::]:3903"
+
+# CRITICAL: Generate secure tokens with: openssl rand -base64 32
+# For dev environment, using fixed values for consistency
+admin_token = ""
+metrics_token = ""

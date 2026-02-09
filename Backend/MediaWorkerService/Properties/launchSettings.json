@@ -1,11 +1,28 @@
 ﻿{
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "VideoAndAudioWorkerService": {
+    "MediaWorker (RustFS)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "environmentVariables": {
-        "DOTNET_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development",
+        "S3Storage__Provider": "RustFS"
+      }
+    },
+    "MediaWorker (MinIO)": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "S3Storage__Provider": "MinIO"
+      }
+    },
+    "MediaWorker (Garage)": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "S3Storage__Provider": "Garage"
       }
     }
   }

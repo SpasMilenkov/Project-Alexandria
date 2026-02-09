@@ -1,19 +1,70 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import apiClient from "@/api/client";
+import { fileApi } from "@/api/file";
 import { useDirectoryStore } from "@/stores/directory";
 import type { SelectMenuItem } from "@nuxt/ui";
-import { createSHA256 } from "hash-wasm";
+import { createBLAKE3 } from "hash-wasm";
+
 const toast = useToast();
 const directoryStore = useDirectoryStore();
 
-interface UploadFileResponse {
-  objectName: string;
-  url: string;
-  versionId: string;
-  size: number;
-  fileId: string;
+// Upload stages
+enum UploadStage {
+  IDLE = "idle",
+  HASHING = "hashing",
+  INITIALIZING = "initializing",
+  UPLOADING = "uploading",
+  FINALIZING = "finalizing",
+  COMPLETE = "complete",
+  ERROR = "error",
+} 
+
+interface StageConfig {
+  label: string;
+  icon: string;
+  progressStart: number;
+  progressEnd: number;
 }
+
+const stageConfig: Record<UploadStage, StageConfig | null> = {
+  [UploadStage.IDLE]: null,
+  [UploadStage.HASHING]: {
+    label: "Calculating hash",
+    icon: "i-lucide-hash",
+    progressStart: 0,
+    progressEnd: 25,
+  },
+  [UploadStage.INITIALIZING]: {
+    label: "Preparing upload",
+    icon: "i-lucide-rocket",
+    progressStart: 25,
+    progressEnd: 30,
+  },
+  [UploadStage.UPLOADING]: {
+    label: "Uploading file",
+    icon: "i-lucide-upload",
+    progressStart: 30,
+    progressEnd: 90,
+  },
+  [UploadStage.FINALIZING]: {
+    label: "Verifying upload",
+    icon: "i-lucide-check-circle",
+    progressStart: 90,
+    progressEnd: 100,
+  },
+  [UploadStage.COMPLETE]: {
+    label: "Complete",
+    icon: "i-lucide-check-circle-2",
+    progressStart: 100,
+    progressEnd: 100,
+  },
+  [UploadStage.ERROR]: {
+    label: "Error",
+    icon: "i-lucide-alert-circle",
+    progressStart: 0,
+    progressEnd: 0,
+  },
+};
 
 const props = defineProps<{
   directoryId?: string;
@@ -21,17 +72,38 @@ const props = defineProps<{
 
 const emit = defineEmits<{ close: [boolean] }>();
 
+// State
 const selectedFile = ref<File | null>(null);
-const uploading = ref(false);
-const uploadProgress = ref(0);
-const uploadResult = ref<UploadFileResponse | null>(null);
+const currentStage = ref<UploadStage>(UploadStage.IDLE);
+const overallProgress = ref(0);
+const stageProgress = ref(0);
+const errorMessage = ref<string | null>(null);
+const uploadId = ref<string | null>(null);
+const fileHash = ref<string | null>(null);
 const selectedDirectoryId = ref<string | null>(props.directoryId || null);
 
 // Parent directory search
 const parentDirectoryOptions = ref<SelectMenuItem[]>([]);
 const isLoadingParentDirs = ref(false);
 
-// Format bytes to human readable
+// Computed properties
+const isUploading = computed(() => {
+  return (
+    currentStage.value !== UploadStage.IDLE &&
+    currentStage.value !== UploadStage.COMPLETE &&
+    currentStage.value !== UploadStage.ERROR
+  );
+});
+
+const canUpload = computed(() => {
+  return selectedFile.value && !isUploading.value;
+});
+
+const canRetry = computed(() => {
+  return currentStage.value === UploadStage.ERROR && selectedFile.value;
+});
+
+// Helper functions
 function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
@@ -41,11 +113,45 @@ function formatBytes(bytes: number, decimals = 2): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
 
+function updateProgress(stage: UploadStage, stagePercent: number) {
+  const config = stageConfig[stage];
+  if (!config) return;
+
+  stageProgress.value = stagePercent;
+  overallProgress.value =
+    config.progressStart +
+    (stagePercent * (config.progressEnd - config.progressStart)) / 100;
+}
+
+function getStageStatus(
+  stage: UploadStage,
+): "pending" | "active" | "complete" | "error" {
+  if (currentStage.value === UploadStage.ERROR) {
+    // All stages before or at error stage should show error
+    const errorIndex = Object.values(UploadStage).indexOf(currentStage.value);
+    const stageIndex = Object.values(UploadStage).indexOf(stage);
+    return stageIndex <= errorIndex ? "error" : "pending";
+  }
+
+  const currentIndex = Object.values(UploadStage).indexOf(currentStage.value);
+  const stageIndex = Object.values(UploadStage).indexOf(stage);
+
+  if (stageIndex < currentIndex) return "complete";
+  if (stageIndex === currentIndex) return "active";
+  return "pending";
+}
+
 // Remove selected file
 function removeFile() {
+  if (isUploading.value) return;
+
   selectedFile.value = null;
-  uploadResult.value = null;
-  uploadProgress.value = 0;
+  currentStage.value = UploadStage.IDLE;
+  overallProgress.value = 0;
+  stageProgress.value = 0;
+  errorMessage.value = null;
+  uploadId.value = null;
+  fileHash.value = null;
 }
 
 // Search for parent directories
@@ -70,7 +176,7 @@ const searchParentDirectory = async (query: string) => {
 
       const selectedId = selectedDirectoryId.value;
       const selectedOption = parentDirectoryOptions.value.find(
-        (o) => o.id === selectedId
+        (o) => o.id === selectedId,
       );
 
       parentDirectoryOptions.value = selectedOption
@@ -82,78 +188,110 @@ const searchParentDirectory = async (query: string) => {
   }
 };
 
-// Check if form is valid
-const canUpload = computed(() => {
-  return selectedFile.value && !uploading.value;
-});
+// Stage 1: Calculate hash
+async function computeHash(): Promise<string> {
+  currentStage.value = UploadStage.HASHING;
+  updateProgress(UploadStage.HASHING, 0);
 
-// Upload file
+  const file = selectedFile.value!;
+  const hasher = await createBLAKE3();
+  hasher.init();
 
-async function uploadFile() {
+  const chunkSize = 16 * 1024 * 1024; // 16MB chunks
+  let offset = 0;
+
+  while (offset < file.size) {
+    const chunk = file.slice(offset, offset + chunkSize);
+    const arrayBuffer = await chunk.arrayBuffer();
+    hasher.update(new Uint8Array(arrayBuffer));
+    offset += chunkSize;
+
+    const hashProgress = Math.round((offset / file.size) * 100);
+    updateProgress(UploadStage.HASHING, hashProgress);
+  }
+
+  const hash = hasher.digest("hex");
+  fileHash.value = hash;
+  return hash;
+}
+
+// Stage 2: Initialize upload
+async function initializeUpload(
+  hash: string,
+): Promise<{ uploadId: string; uploadUrl: string }> {
+  currentStage.value = UploadStage.INITIALIZING;
+  updateProgress(UploadStage.INITIALIZING, 0);
+
+  const file = selectedFile.value!;
+
+  const response = await fileApi.initializeUpload({
+    contentType: file.type || "application/octet-stream",
+    sha256: hash,
+    contentLength: file.size,
+    directoryId: selectedDirectoryId.value,
+  });
+
+  updateProgress(UploadStage.INITIALIZING, 100);
+  uploadId.value = response.uploadId;
+
+  return {
+    uploadId: response.uploadId,
+    uploadUrl: response.uploadUrl,
+  };
+}
+
+// Stage 3: Upload to S3
+async function uploadToS3(uploadUrl: string): Promise<void> {
+  currentStage.value = UploadStage.UPLOADING;
+  updateProgress(UploadStage.UPLOADING, 0);
+
+  const file = selectedFile.value!;
+
+  await fileApi.uploadToS3(uploadUrl, file, (percent) => {
+    updateProgress(UploadStage.UPLOADING, percent);
+  });
+}
+
+// Stage 4: Finalize upload
+async function finalizeUpload(): Promise<void> {
+  currentStage.value = UploadStage.FINALIZING;
+  updateProgress(UploadStage.FINALIZING, 0);
+
+  const file = selectedFile.value!;
+
+  await fileApi.finalizeUpload({
+    uploadId: uploadId.value!,
+    directoryId: selectedDirectoryId.value || undefined,
+    fileName: file.name,
+  });
+
+  updateProgress(UploadStage.FINALIZING, 100);
+  currentStage.value = UploadStage.COMPLETE;
+}
+
+// Main upload orchestration
+async function startUpload() {
   if (!canUpload.value) return;
 
-  uploading.value = true;
-  uploadProgress.value = 0;
-  uploadResult.value = null;
+  errorMessage.value = null;
 
   try {
-    const file = selectedFile.value!;
+    // Stage 1: Hash
+    const hash = await computeHash();
 
-    const hasher = await createSHA256();
-    hasher.init();
+    // Stage 2: Initialize
+    const { uploadUrl } = await initializeUpload(hash);
 
-    // Process file in chunks (memory efficient)
-    const chunkSize = 1024 * 1024; // 1MB chunks
-    let offset = 0;
+    // Stage 3: Upload
+    await uploadToS3(uploadUrl);
 
-    while (offset < file.size) {
-      const chunk = file.slice(offset, offset + chunkSize);
-      const arrayBuffer = await chunk.arrayBuffer();
-      hasher.update(new Uint8Array(arrayBuffer));
-      offset += chunkSize;
+    // Stage 4: Finalize
+    await finalizeUpload();
 
-      // Optional: Show hashing progress
-      const hashProgress = Math.round((offset / file.size) * 50); // 0-50%
-      uploadProgress.value = hashProgress;
-    }
-
-    const fileHash = hasher.digest("hex");
-    console.log("Computed SHA-256:", fileHash);
-
-    const formData = new FormData();
-    formData.append("filename", file.name);
-    formData.append("sha256", fileHash);
-
-    if (selectedDirectoryId.value) {
-      formData.append("directoryId", selectedDirectoryId.value);
-    }
-
-    formData.append("file", file);
-
-    const response = await apiClient.post<UploadFileResponse>(
-      "/files/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            // Upload progress is 50-100%
-            const uploadPct = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            uploadProgress.value = 50 + uploadPct / 2;
-          }
-        },
-      }
-    );
-
-    uploadResult.value = response.data;
-
+    // Success
     toast.add({
       title: "Upload Successful",
-      description: `${file.name} uploaded successfully`,
+      description: `${selectedFile.value!.name} uploaded successfully`,
       color: "success",
     });
 
@@ -161,20 +299,33 @@ async function uploadFile() {
       emit("close", true);
     }, 1000);
   } catch (error: any) {
-    const errorMessage =
+    currentStage.value = UploadStage.ERROR;
+
+    const errorMsg =
       error.response?.data?.message ||
       error.response?.data?.error ||
       error.message ||
       "An unknown error occurred";
 
+    errorMessage.value = errorMsg;
+
     toast.add({
       title: "Upload Failed",
-      description: errorMessage,
+      description: errorMsg,
       color: "error",
     });
-  } finally {
-    uploading.value = false;
   }
+}
+
+// Retry upload
+function retryUpload() {
+  errorMessage.value = null;
+  currentStage.value = UploadStage.IDLE;
+  overallProgress.value = 0;
+  stageProgress.value = 0;
+  uploadId.value = null;
+  fileHash.value = null;
+  startUpload();
 }
 </script>
 
@@ -200,7 +351,7 @@ async function uploadFile() {
           display-key="label"
           searchable
           :debounce="300"
-          :disabled="uploading"
+          :disabled="isUploading"
           class="w-full"
         >
           <template #default="{ modelValue }">
@@ -231,7 +382,7 @@ async function uploadFile() {
           description="Any file type, any size"
           icon="i-lucide-upload"
           class="min-h-48"
-          :disabled="uploading"
+          :disabled="isUploading"
         >
           <template #actions="{ open }">
             <UButton
@@ -261,7 +412,7 @@ async function uploadFile() {
               </div>
             </div>
             <UButton
-              v-if="!uploading"
+              v-if="!isUploading"
               icon="i-lucide-x"
               color="neutral"
               variant="ghost"
@@ -271,22 +422,213 @@ async function uploadFile() {
             />
           </div>
 
-          <!-- Upload Progress -->
-          <div v-if="uploading" class="space-y-2">
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-muted">Uploading...</span>
-              <span class="font-medium">{{ uploadProgress }}%</span>
-            </div>
-            <UProgress :value="uploadProgress" />
-          </div>
-
-          <!-- Upload Success -->
+          <!-- Multi-Stage Progress Indicator -->
           <div
-            v-if="uploadResult"
-            class="flex items-center gap-2 text-sm text-success"
+            v-if="
+              isUploading ||
+              currentStage === UploadStage.COMPLETE ||
+              currentStage === UploadStage.ERROR
+            "
+            class="space-y-4"
           >
-            <UIcon name="i-lucide-check-circle" class="size-4" />
-            <span>Upload completed successfully!</span>
+            <!-- Stage List -->
+            <div class="space-y-3">
+              <!-- Hashing Stage -->
+              <div class="flex items-center gap-3">
+                <div class="shrink-0">
+                  <UIcon
+                    v-if="getStageStatus(UploadStage.HASHING) === 'complete'"
+                    name="i-lucide-check-circle"
+                    class="size-5 text-success"
+                  />
+                  <UIcon
+                    v-else-if="getStageStatus(UploadStage.HASHING) === 'active'"
+                    name="i-lucide-loader-circle"
+                    class="size-5 text-primary animate-spin"
+                  />
+                  <UIcon
+                    v-else-if="getStageStatus(UploadStage.HASHING) === 'error'"
+                    name="i-lucide-x-circle"
+                    class="size-5 text-error"
+                  />
+                  <UIcon
+                    v-else
+                    name="i-lucide-circle"
+                    class="size-5 text-muted"
+                  />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-sm font-medium">Calculating hash</span>
+                    <span
+                      v-if="currentStage === UploadStage.HASHING"
+                      class="text-xs text-muted"
+                    >
+                      {{ Math.round(stageProgress) }}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Initializing Stage -->
+              <div class="flex items-center gap-3">
+                <div class="shrink-0">
+                  <UIcon
+                    v-if="
+                      getStageStatus(UploadStage.INITIALIZING) === 'complete'
+                    "
+                    name="i-lucide-check-circle"
+                    class="size-5 text-success"
+                  />
+                  <UIcon
+                    v-else-if="
+                      getStageStatus(UploadStage.INITIALIZING) === 'active'
+                    "
+                    name="i-lucide-loader-circle"
+                    class="size-5 text-primary animate-spin"
+                  />
+                  <UIcon
+                    v-else-if="
+                      getStageStatus(UploadStage.INITIALIZING) === 'error'
+                    "
+                    name="i-lucide-x-circle"
+                    class="size-5 text-error"
+                  />
+                  <UIcon
+                    v-else
+                    name="i-lucide-circle"
+                    class="size-5 text-muted"
+                  />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm font-medium">Preparing upload</span>
+                </div>
+              </div>
+
+              <!-- Uploading Stage -->
+              <div class="flex items-center gap-3">
+                <div class="shrink-0">
+                  <UIcon
+                    v-if="getStageStatus(UploadStage.UPLOADING) === 'complete'"
+                    name="i-lucide-check-circle"
+                    class="size-5 text-success"
+                  />
+                  <UIcon
+                    v-else-if="
+                      getStageStatus(UploadStage.UPLOADING) === 'active'
+                    "
+                    name="i-lucide-loader-circle"
+                    class="size-5 text-primary animate-spin"
+                  />
+                  <UIcon
+                    v-else-if="
+                      getStageStatus(UploadStage.UPLOADING) === 'error'
+                    "
+                    name="i-lucide-x-circle"
+                    class="size-5 text-error"
+                  />
+                  <UIcon
+                    v-else
+                    name="i-lucide-circle"
+                    class="size-5 text-muted"
+                  />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-sm font-medium">Uploading file</span>
+                    <span
+                      v-if="currentStage === UploadStage.UPLOADING"
+                      class="text-xs text-muted"
+                    >
+                      {{ Math.round(stageProgress) }}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Finalizing Stage -->
+              <div class="flex items-center gap-3">
+                <div class="shrink-0">
+                  <UIcon
+                    v-if="getStageStatus(UploadStage.FINALIZING) === 'complete'"
+                    name="i-lucide-check-circle"
+                    class="size-5 text-success"
+                  />
+                  <UIcon
+                    v-else-if="
+                      getStageStatus(UploadStage.FINALIZING) === 'active'
+                    "
+                    name="i-lucide-loader-circle"
+                    class="size-5 text-primary animate-spin"
+                  />
+                  <UIcon
+                    v-else-if="
+                      getStageStatus(UploadStage.FINALIZING) === 'error'
+                    "
+                    name="i-lucide-x-circle"
+                    class="size-5 text-error"
+                  />
+                  <UIcon
+                    v-else
+                    name="i-lucide-circle"
+                    class="size-5 text-muted"
+                  />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm font-medium">Verifying upload</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Overall Progress Bar -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-muted">
+                  {{
+                    currentStage === UploadStage.COMPLETE
+                      ? "Complete"
+                      : "Overall Progress"
+                  }}
+                </span>
+                <span class="font-medium"
+                  >{{ Math.round(overallProgress) }}%</span
+                >
+              </div>
+              <UProgress
+                :value="overallProgress"
+                :color="
+                  currentStage === UploadStage.ERROR
+                    ? 'error'
+                    : currentStage === UploadStage.COMPLETE
+                      ? 'success'
+                      : 'primary'
+                "
+              />
+            </div>
+
+            <!-- Error Message -->
+            <div
+              v-if="currentStage === UploadStage.ERROR && errorMessage"
+              class="flex items-start gap-2 p-3 bg-error/10 border border-error/20 rounded-lg"
+            >
+              <UIcon
+                name="i-lucide-alert-circle"
+                class="size-5 text-error shrink-0 mt-0.5"
+              />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-error">Upload Failed</p>
+                <p class="text-xs text-error/80 mt-1">{{ errorMessage }}</p>
+              </div>
+            </div>
+
+            <!-- Success Message -->
+            <div
+              v-if="currentStage === UploadStage.COMPLETE"
+              class="flex items-center gap-2 text-sm text-success"
+            >
+              <UIcon name="i-lucide-check-circle" class="size-4" />
+              <span>Upload completed successfully!</span>
+            </div>
           </div>
         </div>
       </div>
@@ -298,16 +640,26 @@ async function uploadFile() {
           color="neutral"
           variant="ghost"
           label="Cancel"
-          :disabled="uploading"
+          :disabled="isUploading"
           @click="emit('close', false)"
         />
-        <UButton
-          label="Upload"
-          icon="i-lucide-upload"
-          :loading="uploading"
-          :disabled="!canUpload"
-          @click="uploadFile"
-        />
+        <div class="flex gap-2">
+          <UButton
+            v-if="canRetry"
+            label="Retry"
+            icon="i-lucide-rotate-ccw"
+            color="neutral"
+            variant="outline"
+            @click="retryUpload"
+          />
+          <UButton
+            v-if="!selectedFile || currentStage === UploadStage.IDLE"
+            label="Upload"
+            icon="i-lucide-upload"
+            :disabled="!canUpload"
+            @click="startUpload"
+          />
+        </div>
       </div>
     </template>
   </UModal>

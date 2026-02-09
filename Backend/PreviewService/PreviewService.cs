@@ -17,6 +17,7 @@ public class PreviewService(
     IPublisherService publisherService,
     IUnitOfWork unitOfWork,
     ITextPreviewService textPreviewService,
+    IFileService fileService,
     IArchivePreviewService archivePreviewService) : IPreviewService
 {
     private static readonly SemaphoreSlim Pool = new(3, 3);
@@ -29,9 +30,18 @@ public class PreviewService(
         var fileData = await unitOfWork.Files.GetByIdAsync(fileId, ct);
         if (fileData is null || fileData.OwnerId != ownerId)
             throw new InvalidOperationException("No file found for preview generation");
+
         if (memoryCache.TryGetValue(fileId, out PreviewResultDto? cachedValue))
             if (cachedValue is not null)
                 return cachedValue;
+
+        if (!await unitOfWork.Files.IsPromoted(fileId, ct))
+        {
+            var unknownFileSummary = new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, false);
+            var noPreviewResult = new PreviewResultDto(unknownFileSummary, null, null, null);
+
+            return noPreviewResult;
+        }
 
         var cachedPreview = await storageService.GetCachedPreview(fileId, ct);
         var cacheOptions = new MemoryCacheEntryOptions
@@ -91,7 +101,7 @@ public class PreviewService(
                             uploadedBy: Guid.Empty,
                             originalFileId: fileData.Id,
                             ct: ct);
-                        await storageService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: Guid.Empty,
+                        await fileService.UpdateFileMetadata(fileId, hasPreview: true, updatedBy: Guid.Empty,
                             ct: ct);
 
                         var previewResult = await storageService.GetCachedPreview(fileId, ct);
@@ -153,7 +163,12 @@ public class PreviewService(
                         return null;
                     case FileCategory.Unknown:
                     default:
-                        throw new ArgumentOutOfRangeException();
+                        var unknownFileSummary = new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, false);
+                        var noPreviewResult = new PreviewResultDto(unknownFileSummary, null, null, null);
+
+                        tcs.SetResult(noPreviewResult);
+
+                        return noPreviewResult;
                 }
             }
             finally

@@ -8,6 +8,7 @@ namespace API.Features.Storage.Files.DownloadFileById;
 
 public class DownloadFileByIdEndpoint(
     IStorageService storageService,
+    IFileService fileService,
     IOptions<S3Config> options
 ) : Endpoint<DownloadFileByIdRequest>
 {
@@ -28,29 +29,23 @@ public class DownloadFileByIdEndpoint(
 
     public override async Task HandleAsync(DownloadFileByIdRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
+
         var userId = Guid.Parse(userIdString);
-        
-        var fileMetadata = await storageService.GetFileMetadata(req.Id, ct);
-        
-    
+
+        var fileMetadata = await fileService.GetUserFileMetadataAsync(req.Id, userId, ct);
+
         if (fileMetadata == null)
         {
             await Send.NotFoundAsync(ct);
             return;
         }
 
-        var bucket = options.Value.UploadBucket;
-        // var objectName = fileMetadata.Path.Replace($"{bucket}/", "");
-
-        HttpContext.Response.ContentType = fileMetadata.MimeType;
-        HttpContext.Response.Headers.Append("Access-Control-Expose-Headers", "Content-Disposition");
-        //TODO: Fetch the length from the current active version
-        // HttpContext.Response.ContentLength = (long)fileMetadata.Size;
-
-        await using var fileStream = await storageService.DownloadFile(req.Id, userId, ct);
-        await fileStream.CopyToAsync(HttpContext.Response.Body, ct);
+        await Send.OkAsync(await storageService.GetFilePresignedUrl(
+            fileMetadata.Id, fileMetadata.ContentHash,
+            fileMetadata.FileName,
+            TimeSpan.FromSeconds(30)), ct);
     }
 }

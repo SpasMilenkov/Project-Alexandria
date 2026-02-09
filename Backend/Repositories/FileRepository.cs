@@ -138,6 +138,13 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 ct);
     }
 
+    public async Task<bool> IsPromoted(Guid fileId, CancellationToken ct = default)
+    {
+        return await _files.Where(f => f.Id == fileId)
+            .Select(f => f.CurrentVersion.ContentObject.IsPromoted)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task MoveFilesAsync(
         Guid[] fileIds,
         Guid? destinationId,
@@ -280,6 +287,21 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return await _files
             .Where(f => f.DeletedAt == null)
             .FirstOrDefaultAsync(predicate, ct);
+    }
+
+    public async Task<FileMetadata?> GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        return await _files
+            .Where(f => f.Id == fileId && f.OwnerId == userId)
+            .Select(f => new FileMetadata
+            {
+                Id = f.Id,
+                MimeTYpe = f.MimeType,
+                FileName = f.Name,
+                ContentHash = f.CurrentVersion.ContentHash,
+                VersionId = f.CurrentVersion.Id
+            })
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<IEnumerable<File>> GetAllAsync(CancellationToken ct = default)

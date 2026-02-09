@@ -22,7 +22,7 @@ public class ContentObjectRepository : IContentObjectRepository
     }
 
     public async Task<ContentObject?> FirstOrDefaultAsync(
-        Expression<Func<ContentObject, bool>> predicate, 
+        Expression<Func<ContentObject, bool>> predicate,
         CancellationToken ct = default)
     {
         return await _dbSet.FirstOrDefaultAsync(predicate, ct);
@@ -32,17 +32,25 @@ public class ContentObjectRepository : IContentObjectRepository
     {
         return await _dbSet.FirstOrDefaultAsync(c => c.Hash == hash);
     }
-    
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        await _dbSet.Where(c => c.Id == id).ExecuteDeleteAsync();
+    }
+
     public async Task<IEnumerable<ContentObject>> GetAllAsync(CancellationToken ct = default)
     {
         return await _dbSet.ToListAsync(ct);
     }
 
     public async Task<IEnumerable<ContentObject>> FindAsync(
-        Expression<Func<ContentObject, bool>> predicate, 
+        Expression<Func<ContentObject, bool>> predicate,
         CancellationToken ct = default)
     {
-        return await _dbSet.Where(predicate).ToListAsync(ct);
+        return await _dbSet
+            .Include(c => c.Upload)
+            .Where(predicate)
+            .ToListAsync(ct);
     }
 
     public async Task<ContentObject> AddAsync(ContentObject entity, CancellationToken ct = default)
@@ -52,13 +60,13 @@ public class ContentObjectRepository : IContentObjectRepository
 
         entity.CreatedAt = DateTime.UtcNow;
         entity.RefCount = 1; // Initialize ref count for new content objects
-        
+
         var entry = await _dbSet.AddAsync(entity, ct);
         return entry.Entity;
     }
 
     public async Task<IEnumerable<ContentObject>> AddRangeAsync(
-        IEnumerable<ContentObject> entities, 
+        IEnumerable<ContentObject> entities,
         CancellationToken ct = default)
     {
         if (entities == null)
@@ -66,7 +74,7 @@ public class ContentObjectRepository : IContentObjectRepository
 
         var contentObjects = entities.ToList();
         var now = DateTime.UtcNow;
-        
+
         foreach (var entity in contentObjects)
         {
             entity.CreatedAt = now;
@@ -104,7 +112,7 @@ public class ContentObjectRepository : IContentObjectRepository
 
         var now = DateTime.UtcNow;
         var contentObjects = entities.ToList();
-        
+
         foreach (var entity in contentObjects)
         {
             entity.DeletedAt = now;
@@ -114,16 +122,16 @@ public class ContentObjectRepository : IContentObjectRepository
     }
 
     public async Task<int> CountAsync(
-        Expression<Func<ContentObject, bool>>? predicate = null, 
+        Expression<Func<ContentObject, bool>>? predicate = null,
         CancellationToken ct = default)
     {
-        return predicate == null 
-            ? await _dbSet.CountAsync(ct) 
+        return predicate == null
+            ? await _dbSet.CountAsync(ct)
             : await _dbSet.CountAsync(predicate, ct);
     }
 
     public async Task<bool> ExistsAsync(
-        Expression<Func<ContentObject, bool>> predicate, 
+        Expression<Func<ContentObject, bool>> predicate,
         CancellationToken ct = default)
     {
         if (predicate == null)
@@ -153,24 +161,24 @@ public class ContentObjectRepository : IContentObjectRepository
         {
             entity.RefCount--;
             entity.UpdatedAt = DateTime.UtcNow;
-            
+
             // Mark as orphaned if ref count reaches zero
             if (entity.RefCount == 0)
             {
                 entity.OrphanedAt = DateTime.UtcNow;
             }
-            
+
             Update(entity);
         }
     }
 
     public async Task<IEnumerable<ContentObject>> GetOrphanedContentObjectsAsync(
-        DateTime olderThan, 
+        DateTime olderThan,
         CancellationToken ct = default)
     {
         return await _dbSet
-            .Where(co => co.RefCount == 0 && 
-                         co.OrphanedAt.HasValue && 
+            .Where(co => co.RefCount == 0 &&
+                         co.OrphanedAt.HasValue &&
                          co.OrphanedAt.Value < olderThan)
             .ToListAsync(ct);
     }

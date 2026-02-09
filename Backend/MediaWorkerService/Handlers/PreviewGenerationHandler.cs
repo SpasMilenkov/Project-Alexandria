@@ -1,63 +1,62 @@
 using Common;
 using Common.Services;
-using Models.Enumerators;
-using PreviewService.Documents;
 using PreviewService.Media;
 
 namespace MediaWorkerService.Handlers;
 
 public class PreviewGenerationHandler(
-    ILogger<PreviewGenerationHandler> logger, 
-    IStorageService storage, 
+    ILogger<PreviewGenerationHandler> logger,
+    IStorageService storage,
+    IFileService fileService,
     IMediaPreviewService mediaPreviewService,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string fileId, CancellationToken ct = default)
     {
         var fileIdGuid = Guid.Parse(fileId);
-        var fileData = await storage.GetFileMetadata(fileIdGuid, ct);
-        if (fileData is null) 
+        var fileData = await fileService.GetFileMetadata(fileIdGuid, ct);
+        if (fileData is null)
             throw new InvalidOperationException($"File with that ID: {fileId} does not exist.");
 
-        var fileHash = Convert.ToHexStringLower( 
-            await unitOfWork.Files.GetFileHash(fileData.Id, fileData.OwnerId, ct) 
+        var fileHash = Convert.ToHexStringLower(
+            await unitOfWork.Files.GetFileHash(fileData.Id, fileData.OwnerId, ct)
             ?? throw new InvalidOperationException("File does not have related content object"));
-    
+
         logger.LogInformation("Processing media preview for file: {FileId}", fileId);
-    
+
         // Generate temp path with correct extension based on MIME type
         var extension = GetExtensionFromMimeType(fileData.MimeType);
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
-    
+
         try
         {
             await using (var tempFile = File.Create(tempPath))
             {
                 await storage.StreamFile(fileId, tempFile, ct);
             }
-        
-            logger.LogInformation("Media file {FileId} downloaded to {TempPath}, size: {Size}", 
+
+            logger.LogInformation("Media file {FileId} downloaded to {TempPath}, size: {Size}",
                 fileId, tempPath, new FileInfo(tempPath).Length);
-        
+
             var fileCategory = storage.CategorizeFile(fileData.MimeType);
-            
+
             // Generate media previews (thumbnail + preview clip)
             var result = await mediaPreviewService.GeneratePreviewAsync(tempPath, fileCategory, ct);
-        
+
             if (result is not { PreviewPath: { Length: > 0 }, ThumbnailPath: { Length: > 0 }, Metadata: not null })
             {
                 throw new InvalidOperationException("Media preview generation failed");
             }
 
-            logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}", 
+            logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}",
                 result.PreviewPath, new FileInfo(result.PreviewPath).Length);
 
             await using var previewStream = File.OpenRead(result.PreviewPath);
             await using var thumbnailStream = File.OpenRead(result.ThumbnailPath);
             await storage.UploadMediaData(previewStream, thumbnailStream, fileHash, fileData.Id, result.Metadata, ct);
-            
+
             //TODO: Change Guid.Empty when the system account is seeded into the database
-            await storage.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
+            await fileService.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
         }
         finally
         {

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Models;
 using File = Models.File;
 using Directory = Models.Directory;
+
 namespace Data.Context;
 
 public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
@@ -15,14 +16,14 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     // Constructor for DI (used at runtime)
     public AlexandriaDbContext(
         DbContextOptions<AlexandriaDbContext> options,
-        IHttpContextAccessor httpContextAccessor) 
+        IHttpContextAccessor httpContextAccessor)
         : base(options)
     {
         _httpContextAccessor = httpContextAccessor;
     }
 
     // Constructor for migrations (when IHttpContextAccessor is not available)
-    public AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options) 
+    public AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
         : base(options)
     {
         _httpContextAccessor = null;
@@ -38,6 +39,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<FileVersion> FileVersions { get; set; }
     public DbSet<ContentObject> ContentObjects { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Upload> Uploads { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,8 +72,9 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         modelBuilder.ApplyConfiguration(new FileVersionConfiguration());
         modelBuilder.ApplyConfiguration(new ContentObjectConfiguration());
         modelBuilder.ApplyConfiguration(new AuditLogConfiguration());
+        modelBuilder.ApplyConfiguration(new UploadConfiguration());
     }
-    
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // Only add interceptor if we have HttpContext (not during migrations)

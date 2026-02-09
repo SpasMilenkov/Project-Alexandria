@@ -4,7 +4,7 @@ using FastEndpoints;
 
 namespace API.Features.Storage.Files.DeleteFile;
 
-public class DeleteFileEndpoint(IStorageService storage) : Endpoint<DeleteFileRequest>
+public class DeleteFileEndpoint(IFileService fileService) : Endpoint<DeleteFileRequest>
 {
     public override void Configure()
     {
@@ -31,7 +31,7 @@ public class DeleteFileEndpoint(IStorageService storage) : Endpoint<DeleteFileRe
 
         try
         {
-            await storage.DeleteFiles(req.Ids, userId, req.HardDelete, ct);
+            await fileService.DeleteFiles(req.Ids, userId, req.HardDelete, ct);
             await Send.OkAsync(new { Message = "File soft deleted successfully" }, ct);
         }
         catch (InvalidOperationException ex)

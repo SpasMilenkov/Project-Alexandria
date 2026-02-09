@@ -344,8 +344,20 @@ namespace Data.Migrations
                         .IsRequired()
                         .HasColumnType("bytea");
 
+                    b.Property<bool>("IsPromoted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastPromotionAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("OrphanedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("PromotedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PromotionAttempts")
+                        .HasColumnType("integer");
 
                     b.Property<int>("RefCount")
                         .HasColumnType("integer");
@@ -362,9 +374,15 @@ namespace Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("UploadId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("UploadId")
                         .IsUnique();
 
                     b.ToTable("ContentObjects", (string)null);
@@ -848,6 +866,66 @@ namespace Data.Migrations
                     b.ToTable("Tags", (string)null);
                 });
 
+            modelBuilder.Entity("Models.Upload", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Hash")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<BigInteger>("Size")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("TempObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Uploads", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Upload_Hash_Length", "octet_length(\"ContentHash\") IN (16, 32, 64)");
+                        });
+                });
+
             modelBuilder.Entity("FileTags", b =>
                 {
                     b.HasOne("Models.File", null)
@@ -912,6 +990,16 @@ namespace Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Models.ContentObject", b =>
+                {
+                    b.HasOne("Models.Upload", "Upload")
+                        .WithOne()
+                        .HasForeignKey("Models.ContentObject", "UploadId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Upload");
                 });
 
             modelBuilder.Entity("Models.Directory", b =>
@@ -1020,6 +1108,17 @@ namespace Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Models.Upload", b =>
+                {
+                    b.HasOne("Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Models.Directory", b =>

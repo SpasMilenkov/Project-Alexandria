@@ -551,7 +551,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
 
   if (shouldRefresh) {
     // Fetch the path first if we have a dirId
-    navigateTo(currentDirId.value);
+    refreshDir();
 
     return;
   }

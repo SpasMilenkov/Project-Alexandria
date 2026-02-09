@@ -1,24 +1,11 @@
 using DTO.Files;
 using Models.Enumerators;
-using File = Models.File;
 using MediaMetadata = DTO.Files.MediaMetadata;
 
 namespace Common.Services;
 
 public interface IStorageService
 {
-    // File Upload
-    Task<UploadResult> UploadFile(string bucketName,
-        string objectName,
-        string contentType,
-        string clientSha256,
-        Stream fileStream,
-        Guid uploadedBy,
-        CancellationToken ct = default,
-        long contentLength = -1L,
-        Guid? directoryId = null,
-        string? originalFileName = null);
-
     public Task<UploadResult> UploadPreview(
         string bucketName,
         string objectName,
@@ -47,37 +34,22 @@ public interface IStorageService
 
     FileCategory CategorizeFile(string mimeType);
 
-    // File Metadata Operations
-    Task<File?> GetFileMetadata(Guid fileId, CancellationToken ct = default);
-    Task<IEnumerable<File>> GetFilesByMimeType(string mimeType, CancellationToken ct = default);
+    Task<string> GetFilePresignedUrl(Guid fileId, byte[] hash, string fileName, TimeSpan expiry);
 
-    // File Operations
-    Task DeleteFiles(Guid[] fileIds, Guid userId, bool hardDelete = false, CancellationToken ct = default);
+    Task<UploadResult> FinalizeFileUpload(
+        string objectName,
+        Guid uploadId,
+        Guid uploadedBy,
+        Guid? directoryId = null,
+        CancellationToken ct = default
+    );
 
-    Task<File> UpdateFileMetadata(
-        Guid fileId,
-        Guid updatedBy,
-        string? newName = null,
-        bool? hasPreview = null,
-        CancellationToken ct = default);
-
-    // Storage Management
-    Task<VersionInfo> GetVersionInfo(string bucketName, string objectName, CancellationToken ct);
-
-    // File Data Management
-    Task<PaginatedResult<FileResult>> GetRootFilesAsync(Guid ownerId, int page = 1, int pageSize = 25,
-        SortBy sortBy = SortBy.Name, SortDirection sortDirection = SortDirection.Asc,
-        CancellationToken ct = default);
-
-    Task<PaginatedResult<FileResult>> GetFilesByDirectoryId(Guid directoryId,
-        Guid ownerId,
-        int page = 1,
-        int pageSize = 25,
-        SortBy sortBy = SortBy.Name,
-        SortDirection sortDirection = SortDirection.Asc,
-        CancellationToken ct = default);
-
-    Task MoveFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
-
-    Task CopyFilesAsync(Guid[] fileIds, Guid destinationId, Guid userId, CancellationToken ct = default);
+    Task<(Guid, string)> InitiateFileUpload(
+        string contentType,
+        string clientHash,
+        Guid userId,
+        long contentLength,
+        Guid? directoryId = null,
+        CancellationToken ct = default
+    );
 }

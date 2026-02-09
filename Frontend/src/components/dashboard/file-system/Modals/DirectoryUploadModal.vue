@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import apiClient from "@/api/client";
 import { directoryApi } from "@/api/directory";
-import { createSHA256 } from "hash-wasm";
+import { fileApi } from "@/api/file";
+import { createBLAKE3 } from "hash-wasm";
 import type { SelectMenuItem } from "@nuxt/ui";
 import { useDirectoryStore } from "@/stores/directory";
 
@@ -12,7 +12,7 @@ const directoryStore = useDirectoryStore();
 interface FileUploadStatus {
   file: File;
   relativePath: string;
-  status: "pending" | "hashing" | "uploading" | "success" | "error";
+  status: "pending" | "uploading" | "success" | "error";
   progress: number;
   error?: string;
   directoryId?: string;
@@ -35,6 +35,7 @@ const parentDirectoryOptions = ref<SelectMenuItem[]>([]);
 const isLoadingParentDirs = ref(false);
 
 const BATCH_SIZE = 5;
+const CHUNK_SIZE = 16 * 1024 * 1024; // 16MB chunks for speed
 
 // Computed stats
 const totalFiles = computed(() => fileStatuses.value.length);
@@ -50,13 +51,23 @@ const successfulFiles = computed(
 const failedFiles = computed(() =>
   fileStatuses.value.filter((f) => f.status === "error"),
 );
+const uploadingFiles = computed(
+  () => fileStatuses.value.filter((f) => f.status === "uploading").length,
+);
 const overallProgress = computed(() => {
   if (totalFiles.value === 0) return 0;
-  return Math.round((completedFiles.value / totalFiles.value) * 100);
+
+  // Calculate weighted progress
+  const totalProgress = fileStatuses.value.reduce((sum, f) => {
+    if (f.status === "success") return sum + 100;
+    if (f.status === "uploading") return sum + f.progress;
+    return sum;
+  }, 0);
+
+  return Math.round(totalProgress / totalFiles.value);
 });
 
 // Format bytes to human readable
-// TODO: if this gets typed out once more I am extracting it in a util
 function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
@@ -111,58 +122,54 @@ const searchParentDirectory = async (query: string) => {
   }
 };
 
-// Upload a single file with hash computation
+// Upload a single file with direct S3 upload
 async function uploadSingleFile(
   fileStatus: FileUploadStatus,
 ): Promise<boolean> {
   try {
     const file = fileStatus.file;
+    fileStatus.status = "uploading";
+    fileStatus.progress = 0;
 
-    fileStatus.status = "hashing";
-    const hasher = await createSHA256();
+    // Stage 1: Hashing (0-25%)
+    const hasher = await createBLAKE3();
     hasher.init();
 
-    const chunkSize = 1024 * 1024; // 1MB chunks
     let offset = 0;
-
     while (offset < file.size) {
-      const chunk = file.slice(offset, offset + chunkSize);
+      const chunk = file.slice(offset, offset + CHUNK_SIZE);
       const arrayBuffer = await chunk.arrayBuffer();
       hasher.update(new Uint8Array(arrayBuffer));
-      offset += chunkSize;
+      offset += CHUNK_SIZE;
 
-      // Hashing progress (0-30%)
-      const hashProgress = Math.round((offset / file.size) * 30);
-      fileStatus.progress = hashProgress;
+      // Hash progress (0-25%)
+      const hashProgress = Math.round((offset / file.size) * 25);
+      fileStatus.progress = Math.min(hashProgress, 25);
     }
 
     const fileHash = hasher.digest("hex");
 
-    // Upload
-    fileStatus.status = "uploading";
-    const formData = new FormData();
-    formData.append("filename", file.name);
-    formData.append("sha256", fileHash);
+    // Stage 2: Initialize upload (25-30%)
+    fileStatus.progress = 25;
+    const { uploadId, uploadUrl } = await fileApi.initializeUpload({
+      contentType: file.type || "application/octet-stream",
+      sha256: fileHash,
+      contentLength: file.size,
+      directoryId: fileStatus.directoryId,
+    });
+    fileStatus.progress = 30;
 
-    if (fileStatus.directoryId) {
-      formData.append("directoryId", fileStatus.directoryId);
-    }
+    // Stage 3: Upload to S3 (30-95%)
+    await fileApi.uploadToS3(uploadUrl, file, (percent) => {
+      fileStatus.progress = 30 + Math.round((percent * 65) / 100);
+    });
 
-    formData.append("file", file);
-
-    await apiClient.post("/files/upload", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total) {
-          // Upload progress (30-100%)
-          const uploadPct = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total,
-          );
-          fileStatus.progress = 30 + Math.round((uploadPct * 70) / 100);
-        }
-      },
+    // Stage 4: Finalize (95-100%)
+    fileStatus.progress = 95;
+    await fileApi.finalizeUpload({
+      uploadId,
+      directoryId: fileStatus.directoryId || undefined,
+      fileName: file.name,
     });
 
     fileStatus.status = "success";
@@ -186,12 +193,14 @@ async function uploadDirectoryStructure() {
   uploading.value = true;
 
   try {
+    // Create directory structure first
     const paths = files.value.map((f) => f.webkitRelativePath);
     const directoryMapping = await directoryApi.uploadDirectory(
       selectedDirectoryId.value,
       paths,
     );
 
+    // Initialize file statuses
     fileStatuses.value = files.value.map((file) => ({
       file,
       relativePath: file.webkitRelativePath,
@@ -200,6 +209,7 @@ async function uploadDirectoryStructure() {
       directoryId: directoryMapping[file.webkitRelativePath] || undefined,
     }));
 
+    // Process files in batches
     const pendingFiles = [...fileStatuses.value];
 
     while (pendingFiles.length > 0) {
@@ -240,25 +250,26 @@ async function uploadDirectoryStructure() {
         "Failed to create directory structure",
       color: "error",
     });
+  } finally {
     uploading.value = false;
   }
-
-  uploading.value = false;
 }
 
-// Retry failed uploads
+// Retry failed uploads (full retry from scratch)
 async function retryFailedUploads() {
   const failed = fileStatuses.value.filter((f) => f.status === "error");
   if (failed.length === 0) return;
 
   uploading.value = true;
 
+  // Reset failed files to pending
   failed.forEach((f) => {
     f.status = "pending";
     f.progress = 0;
     f.error = undefined;
   });
 
+  // Process in batches
   const pendingFiles = [...failed];
 
   while (pendingFiles.length > 0) {
@@ -294,10 +305,8 @@ function getStatusIcon(status: FileUploadStatus["status"]) {
   switch (status) {
     case "pending":
       return "i-lucide-clock";
-    case "hashing":
-      return "i-lucide-hash";
     case "uploading":
-      return "i-lucide-upload";
+      return "i-lucide-loader-circle";
     case "success":
       return "i-lucide-check-circle";
     case "error":
@@ -310,7 +319,6 @@ function getStatusColor(status: FileUploadStatus["status"]) {
   switch (status) {
     case "pending":
       return "text-muted";
-    case "hashing":
     case "uploading":
       return "text-primary";
     case "success":
@@ -441,11 +449,13 @@ function getStatusColor(status: FileUploadStatus["status"]) {
               <p class="text-sm font-medium">Upload Progress</p>
               <p class="text-xs text-muted">
                 {{ completedFiles }} of {{ totalFiles }} files completed
-                <span v-if="successfulFiles > 0" class="text-success">
-                  ({{ successfulFiles }} succeeded</span
+                <span v-if="uploadingFiles > 0" class="text-primary">
+                  ({{ uploadingFiles }} uploading</span
+                ><span v-if="successfulFiles > 0" class="text-success"
+                  >, {{ successfulFiles }} succeeded</span
                 ><span v-if="failedFiles.length > 0" class="text-error"
-                  >, {{ failedFiles.length }} failed)</span
-                >
+                  >, {{ failedFiles.length }} failed</span
+                ><span v-if="uploadingFiles > 0">)</span>
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -488,6 +498,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
                 :class="[
                   'size-4 shrink-0 mt-0.5',
                   getStatusColor(fileStatus.status),
+                  fileStatus.status === 'uploading' ? 'animate-spin' : '',
                 ]"
               />
               <div class="flex-1 min-w-0 space-y-2">
@@ -508,18 +519,10 @@ function getStatusColor(status: FileUploadStatus["status"]) {
                   </span>
                 </div>
 
-                <!-- Individual file progress -->
-                <div
-                  v-if="
-                    fileStatus.status === 'hashing' ||
-                    fileStatus.status === 'uploading'
-                  "
-                  class="space-y-1"
-                >
+                <!-- Individual file progress (only when uploading) -->
+                <div v-if="fileStatus.status === 'uploading'" class="space-y-1">
                   <div class="flex items-center justify-between text-xs">
-                    <span class="text-muted capitalize">{{
-                      fileStatus.status
-                    }}</span>
+                    <span class="text-muted">Uploading</span>
                     <span class="font-medium">{{ fileStatus.progress }}%</span>
                   </div>
                   <UProgress :value="fileStatus.progress" size="xs" />

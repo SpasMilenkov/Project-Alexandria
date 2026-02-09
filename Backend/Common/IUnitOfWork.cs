@@ -13,6 +13,7 @@ public interface IUnitOfWork
     IFileVersionRepository FileVersions { get; }
     IContentObjectRepository ContentObjects { get; }
     IAuditLogRepository AuditLogs { get; }
+    IUploadRepository Uploads { get; }
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);
     public Task RollbackAsync(CancellationToken cancellationToken = default);
