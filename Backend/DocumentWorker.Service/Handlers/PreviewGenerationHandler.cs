@@ -1,5 +1,7 @@
 using Common;
+using Common.Config;
 using Common.Services;
+using Microsoft.Extensions.Options;
 using PreviewService.Documents;
 
 namespace DocumentWorker.Service.Handlers;
@@ -9,6 +11,7 @@ public class PreviewGenerationHandler(
     IStorageService storage,
     IFileService fileService,
     IPdfPreviewService pdfPreviewService,
+    IOptions<S3Config> config,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string fileId, CancellationToken ct = default)
@@ -51,7 +54,8 @@ public class PreviewGenerationHandler(
             await using var previewStream = File.OpenRead(previewPath);
 
             //TODO: Change Guid.Empty when the system account is seeded into the database
-            await storage.UploadPreview("user-previews", $"previews/{contentHash}", "application/pdf", previewStream,
+            await storage.UploadPreview(config.Value.PreviewBucket, $"previews/{contentHash}", "application/pdf",
+                previewStream,
                 originalFileId: fileData.Id, Guid.Empty, ct: ct);
             await fileService.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
 
