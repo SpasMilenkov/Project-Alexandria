@@ -7,23 +7,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Reference Include="AWSSDK.S3">
-        <HintPath>..\..\..\..\.nuget\packages\awssdk.s3\4.0.9.1\lib\net8.0\AWSSDK.S3.dll</HintPath>
-      </Reference>
-      <Reference Include="Minio">
-        <HintPath>..\..\..\..\.nuget\packages\minio\6.0.5\lib\net8.0\Minio.dll</HintPath>
-      </Reference>
-      <Reference Include="Npgsql">
-        <HintPath>..\..\..\..\.nuget\packages\npgsql\9.0.3\lib\net8.0\Npgsql.dll</HintPath>
-      </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\Common\Common.csproj" />
+        <ProjectReference Include="..\Data\Data.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="AWSSDK.S3" Version="4.0.15.2" />
+        <PackageReference Include="AWSSDK.S3" Version="4.0.18.2"/>
+        <PackageReference Include="Blake3" Version="2.2.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.12"/>
       <PackageReference Include="SeekableS3Stream" Version="1.0.3" />
     </ItemGroup>
 
