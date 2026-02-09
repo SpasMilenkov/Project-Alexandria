@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using Common.Services;
 using SharpCompress.Archives;
@@ -19,9 +18,9 @@ public class ArchivePreviewService : IArchivePreviewService
     {
         try
         {
-            using var archive = ArchiveFactory.Open(archiveStream);
+            var archive = await ArchiveFactory.OpenAsyncArchive(archiveStream, cancellationToken: ct);
 
-            var entries = archive.Entries
+            var entries = await archive.EntriesAsync
                 .Where(e => !e.IsDirectory)
                 .Take(200) // limit to first 200 files to prevent large output
                 .Select(e => new
@@ -30,11 +29,11 @@ public class ArchivePreviewService : IArchivePreviewService
                     SizeKB = e.Size / 1024,
                     Modified = e.LastModifiedTime
                 })
-                .ToList();
+                .ToListAsync(ct);
 
             var previewData = new
             {
-                FileCount = archive.Entries.Count(),
+                FileCount = entries.Count(),
                 FileName = fileName,
                 Entries = entries
             };
@@ -45,7 +44,7 @@ public class ArchivePreviewService : IArchivePreviewService
         catch (Exception ex)
         {
             Console.WriteLine("Could not generate archive preview", ex);
-            return (null, null);
+            throw;
         }
     }
 }
