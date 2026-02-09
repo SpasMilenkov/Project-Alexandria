@@ -1,0 +1,132 @@
+---
+title: Project Structure
+description: Understanding Alexandria's codebase organization and architecture.
+---
+
+
+Alexandria follows a monorepo structure with separated frontend, backend, and documentation. The project is organized to support microservices architecture with Docker Compose orchestration.
+
+## Repository Layout
+
+import { FileTree } from '@astrojs/starlight/components';
+
+<FileTree>
+
+- Backend/ ASP.NET Core 9 microservices
+  - API/ Main REST API service
+    - Features/ Feature-based organization
+    - Middlewares/ Custom middleware
+    - Program.cs Entry point
+  - DocumentWorker.Service/ Background worker for document processing
+  - MediaWorkerService/ Background worker for media processing
+  - AuthService/ Authentication logic
+  - SearchService/ Full-text search implementation
+  - PreviewService/ Thumbnail & preview generation
+  - Storage/ File storage & S3 operations
+  - Data/ EF Core context & migrations
+  - Models/ Domain entities
+  - DTO/ Data transfer objects
+  - Repositories/ Data access layer
+  - Common/ Shared utilities
+  - Infrastructure/ Cross-cutting concerns
+- Frontend/ Vue 3 + Vite SPA
+  - src/
+    - views/ Page components
+    - components/ Reusable UI components
+    - stores/ Pinia state management
+    - router/ Vue Router configuration
+    - api/ API client & HTTP layer
+    - composables/ Composition API utilities
+- Docs/ Documentation site
+- docker-compose.yml Production orchestration
+- docker-compose.dev.yml Development with hot reload
+
+</FileTree>
+
+## Architecture Overview
+
+### Backend Services
+
+Alexandria's backend follows a **microservices pattern** with dedicated workers:
+
+- **API Service** — Main HTTP REST API handling requests from the frontend
+- **Document Worker** — Processes document uploads (PDF extraction, format conversion via LibreOffice/Tika)
+- **Media Worker** — Handles media processing (thumbnails, video previews, FFMPEG operations)
+
+These services communicate via **RabbitMQ** message queues for async task processing.
+
+### Frontend Application
+
+The frontend is a **Single Page Application (SPA)** built with:
+
+- **Vue 3** with Composition API
+- **Vite** for fast development and optimized builds
+- **Pinia** for state management
+- **Vue Router** for navigation
+
+### Data Layer
+
+- **PostgreSQL** — Primary database with EF Core ORM
+- **MinIO** — S3-compatible object storage for files
+- **RabbitMQ** — Message broker for background jobs
+
+## Key Directories Explained
+
+### `/Backend/API`
+
+The main API service exposing RESTful endpoints. Uses **feature-based organization** where each feature (Files, Auth, Search, etc.) contains its controllers, services, and logic in dedicated folders.
+
+### `/Backend/DocumentWorker.Service` & `/Backend/MediaWorkerService`
+
+Background workers that consume messages from RabbitMQ queues. These handle CPU-intensive operations like:
+
+- Text extraction from PDFs/DOCX
+- Document format conversion
+- Image thumbnail generation
+- Video preview generation
+
+### `/Backend/Data`
+
+Contains the **EF Core DbContext**, entity configurations, and database migrations. This is where the database schema is defined and managed.
+
+### `/Backend/Models`
+
+Domain entities representing the core data structures:
+
+- `File`, `Directory`, `Tag`
+- `ApplicationUser`, `ApplicationRole`
+- `AuditLog`, `Preview`, `SignedUrl`
+
+### `/Backend/Repositories`
+
+Data access layer implementing the **Repository Pattern**. Each repository handles database operations for specific entities with optimized queries and projections.
+
+### `/Backend/Storage`
+
+Handles all file storage operations through **MinIO** (S3-compatible object storage). Includes upload/download streaming, multipart uploads, and cleanup services.
+
+### `/Frontend/src`
+
+| Directory      | Purpose                                               |
+| -------------- | ----------------------------------------------------- |
+| `views/`       | Full page components (Browse, Upload, Settings, etc.) |
+| `components/`  | Reusable UI components                                |
+| `stores/`      | Pinia stores for global state (auth, files, tags)     |
+| `api/`         | Axios HTTP client with JWT interceptors               |
+| `composables/` | Reusable composition functions                        |
+| `router/`      | Route definitions and navigation guards               |
+
+## Development vs Production
+
+The project includes separate Docker Compose configurations:
+
+- **`docker-compose.dev.yml`** — Development setup with hot reload, exposed ports, and debug configurations
+- **`docker-compose.yml`** — Production-optimized with Nginx reverse proxy and secure defaults
+
+See the [Development Setup](/development/setup/) guide for detailed instructions on running the project locally.
+
+## Next Steps
+
+- [Development Setup](/development/setup/) — Get your local environment running
+- [Backend Architecture](/architecture/backend/) — Deep dive into the API design
+- [Frontend Architecture](/architecture/frontend/) — Understanding the Vue app structure
