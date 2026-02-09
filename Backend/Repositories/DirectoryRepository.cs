@@ -519,6 +519,9 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     CreatedAt = t.CreatedAt,
                     UpdatedAt = t.UpdatedAt,
                     Name = t.Name,
+                    Color = t.Color,
+                    Icon = t.Icon,
+                    Description = t.Description,
                     UserId = t.OwnerId
                 }).ToList(),
                 new UserDto
