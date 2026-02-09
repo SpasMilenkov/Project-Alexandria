@@ -1,0 +1,49 @@
+---
+title: Alexandria
+description: A privacy-first, self-hosted digital library for your documents and media.
+template: splash
+hero:
+  tagline: Your personal digital library. Private, powerful, and completely under your control.
+  image:
+    file: ../../assets/alexandria-logo.webp
+  actions:
+    - text: Get Started
+      link: /getting-started/installation/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/yourusername/alexandria
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why Alexandria?
+
+<CardGrid stagger>
+  <Card title="Privacy First" icon="lock">
+    Your data stays yours. Self-hosted with no third-party tracking or cloud 
+    dependencies. Full GDPR compliance built in.
+  </Card>
+  
+  <Card title="One-Command Deployment" icon="rocket">
+    Get up and running in minutes with Docker Compose. No complex setup or 
+    configuration required.
+  </Card>
+
+  
+  <Card title="Rich File Support" icon="document">
+    Handle documents (PDF, DOCX, Markdown), images, videos, audio, and more. 
+    Built-in preview generation and format conversion.
+  </Card>
+</CardGrid>
+
+<div style="text-align: center; margin-top: 3rem;">
+  <p style="font-size: 1.1rem; opacity: 0.9;">
+    Ready to take control of your digital library?
+  </p>
+  <a href="/getting-started/installation/" style="display: inline-block; margin-top: 1rem; padding: 0.75rem 2rem; background: var(--sl-color-accent); color: white; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">
+    Start Building →
+  </a>
+</div>
