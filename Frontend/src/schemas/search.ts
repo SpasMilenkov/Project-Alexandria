@@ -1,82 +1,121 @@
 import { z } from "zod";
-import type { DateValue } from "@internationalized/date";
 import { SortDirection } from "@/enums/SortDirection";
 import { OrderBy } from "@/enums/OrderBy";
+import { CalendarDate } from "@internationalized/date";
 
-const dateValueSchema = z.custom<DateValue>(
-  (val) => val && typeof val === "object" && "calendar" in val,
-  { message: "Expected DateValue" },
-);
+const dateValueSchema = z.instanceof(CalendarDate);
 
-export const directorySearchQuerySchema = z.object({
-  directoryId: z.nullish(z.guid()),
-  parentDirectoryId: z.guid().optional().nullable(),
-  nameContains: z.string().optional().nullable(),
-  ownerId: z.guid().optional().nullable(),
-  isShared: z.boolean().optional().nullable(),
+const date = new CalendarDate(2022, 2, 22)
 
-  // Accept DateValue and transform to ISO string for API
-  createdAfter: dateValueSchema
-    .transform((d) => d.toString()) // DateValue has a toString() method that returns YYYY-MM-DD
-    .optional()
-    .nullable(),
-  createdBefore: dateValueSchema
-    .transform((d) => d.toString())
-    .optional()
-    .nullable(),
-  updatedAfter: dateValueSchema
-    .transform((d) => d.toString())
-    .optional()
-    .nullable(),
-  deletedAt: dateValueSchema
-    .transform((d) => d.toString())
-    .optional()
-    .nullable(),
+export const baseSearchUiSchema = z.object({
+  // Identity & structure
+  directoryId: z.uuid().nullish(),
+  parentDirectoryId: z.uuid().nullish(),
 
-  hasFiles: z.boolean().optional().nullable(),
-  hasSubdirectories: z.boolean().optional().nullable(),
-  isDeleted: z.boolean().optional().nullable(),
-  isStarred: z.boolean().optional().nullable(),
-  currentPage: z.number().min(0),
-  pageSize: z.number().min(1),
-  sortBy: z.nullish(z.enum(OrderBy)),
-  sortDirection: z.nullish(z.enum(SortDirection)),
+  // Text search
+  nameContains: z.string().nullish(),
+
+  // Ownership & sharing
+  ownerId: z.uuid().nullish(),
+  isShared: z.boolean().default(false),
+
+  // Time filters (UI types)
+  createdAfter: dateValueSchema.nullish(),
+  createdBefore: dateValueSchema.nullish(),
+  updatedAfter: dateValueSchema.nullish(),
+  updatedBefore: dateValueSchema.nullish(),
+  deletedAt: dateValueSchema.nullish(),
+
+  // Flags
+  isDeleted: z.boolean().default(false),
+  isStarred: z.boolean().default(false),
+
+  // Paging & sorting
+  currentPage: z.number().int().min(0).default(0),
+  pageSize: z.number().int().min(1).default(20),
+  sortBy: z.enum(OrderBy).default(OrderBy.Name),
+  sortDirection: z.enum(SortDirection).default(SortDirection.Asc),
 });
 
-export type DirectorySearchQuerySchema = z.infer<
-  typeof directorySearchQuerySchema
->;
+export const fileSearchUiSchema = baseSearchUiSchema.extend({
+  minSize: z.number().int().nullish(),
+  maxSize: z.number().int().nullish(),
+  mimeType: z.string().nullish(),
+  onlyDeleted: z.boolean().default(false),
+});
 
-// export interface SearchDirectoryRequest {
-//   // Identity & structure
-//   directoryId?: string | null;
-//   parentDirectoryId?: string | null;
+export const directorySearchUiSchema = baseSearchUiSchema.extend({
+  hasFiles: z.boolean().default(true),
+  hasSubdirectories: z.boolean().default(true),
+});
 
-//   // Text search
-//   nameContains?: string | null;
+export const unifiedSearchUiSchema = baseSearchUiSchema.extend({
+  mode: z.enum(["files", "directories", "both"]).default("both"),
 
-//   // Ownership & sharing
-//   ownerId?: string | null;
-//   isShared?: boolean | null;
+  // File-only
+  minSize: z.number().int().nullish(),
+  maxSize: z.number().int().nullish(),
+  mimeType: z.string().nullish(),
+  onlyDeleted: z.boolean().default(false),
 
-//   // Time filters (ISO 8601 strings for API calls)
-//   createdAfter?: string | null;
-//   createdBefore?: string | null;
-//   updatedAfter?: string | null;
-//   updatedBefore?: string | null;
-//   deletedAt?: string | null;
+  // Directory-only
+  hasFiles: z.boolean().default(true),
+  hasSubdirectories: z.boolean().default(true),
+});
 
-//   // Contents
-//   hasFiles?: boolean | null;
-//   hasSubdirectories?: boolean | null;
+export const baseSearchApiSchema = baseSearchUiSchema.transform((v) => ({
+  ...v,
+  createdAfter: v.createdAfter?.toString() ?? null,
+  createdBefore: v.createdBefore?.toString() ?? null,
+  updatedAfter: v.updatedAfter?.toString() ?? null,
+  updatedBefore: v.updatedBefore?.toString() ?? null,
+  deletedAt: v.deletedAt?.toString() ?? null,
+}));
 
-//   // Flags
-//   isDeleted?: boolean;
-//   isStarred?: boolean;
+export const fileSearchApiSchema = fileSearchUiSchema.transform((v) => ({
+  ...v,
+  createdAfter: v.createdAfter?.toString() ?? null,
+  createdBefore: v.createdBefore?.toString() ?? null,
+  updatedAfter: v.updatedAfter?.toString() ?? null,
+  updatedBefore: v.updatedBefore?.toString() ?? null,
+  deletedAt: v.deletedAt?.toString() ?? null,
+}));
 
-//   // Paging & sorting
-//   currentPage?: number;
-//   pageSize?: number;
-//   sortBy?: DirectorySortBy;
-//   sortDirection?: SortDirection;
-// }
+export const directorySearchApiSchema = directorySearchUiSchema.transform(
+  (v) => ({
+    ...v,
+    createdAfter: v.createdAfter?.toString() ?? null,
+    createdBefore: v.createdBefore?.toString() ?? null,
+    updatedAfter: v.updatedAfter?.toString() ?? null,
+    updatedBefore: v.updatedBefore?.toString() ?? null,
+    deletedAt: v.deletedAt?.toString() ?? null,
+  }),
+);
+
+export const bothSearchApiSchema = unifiedSearchUiSchema.transform((v) => ({
+  ...v,
+  createdAfter: v.createdAfter?.toString() ?? null,
+  createdBefore: v.createdBefore?.toString() ?? null,
+  updatedAfter: v.updatedAfter?.toString() ?? null,
+  updatedBefore: v.updatedBefore?.toString() ?? null,
+  deletedAt: v.deletedAt?.toString() ?? null,
+}));
+
+export const hybridSearchSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("files"),
+    query: fileSearchApiSchema,
+  }),
+  z.object({
+    mode: z.literal("directories"),
+    query: directorySearchApiSchema,
+  }),
+  z.object({
+    mode: z.literal("both"),
+    query: bothSearchApiSchema,
+  }),
+]);
+
+export type UnifiedSearchUiState = z.infer<typeof unifiedSearchUiSchema>;
+export type FileSearchQuery = z.infer<typeof fileSearchApiSchema>;
+export type DirectorySearchQuery = z.infer<typeof directorySearchApiSchema>;
