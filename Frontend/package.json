@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",
-    "@internationalized/date": "^3.10.1",
+    "@internationalized/date": "3.11.0",
     "@nuxt/ui": "^4.4.0",
     "@pinia/colada": "^0.21.2",
     "@tailwindcss/vite": "^4.1.18",
@@ -63,10 +63,5 @@
     "vitest": "^3.2.4",
     "vue-tsc": "^3.2.4"
   },
-  "pnpm": {
-    "overrides": {
-      "reka-ui": "2.6.1"
-    }
-  },
-  "packageManager": "pnpm@10.28.0+sha512.05df71d1421f21399e053fde567cea34d446fa02c76571441bfc1c7956e98e363088982d940465fd34480d4d90a0668bc12362f8aa88000a64e83d0b0e47be48"
+  "packageManager": "pnpm@10.29.2+sha512.bef43fa759d91fd2da4b319a5a0d13ef7a45bb985a3d7342058470f9d2051a3ba8674e629672654686ef9443ad13a82da2beb9eeb3e0221c87b8154fff9d74b8"
 }
