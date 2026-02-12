@@ -2,6 +2,7 @@ import { ref, computed } from "vue";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { fileApi } from "@/api/file";
 import type { AxiosError } from "axios";
+import type { FileSearchQuery } from "@/schemas/search";
 
 interface FileMetadata {
   id: string;
@@ -29,9 +30,7 @@ export const useFileStore = defineStore("file", () => {
 
   // Getters
   const hasCurrentFile = computed(() => currentFile.value !== null);
-  const isProcessing = computed(
-    () => isUploading.value || isDownloading.value
-  );
+  const isProcessing = computed(() => isUploading.value || isDownloading.value);
 
   // Actions
 
@@ -70,11 +69,9 @@ export const useFileStore = defineStore("file", () => {
     error.value = null;
 
     try {
-      const blob = await fileApi.downloadFile(id);
+      const url = await fileApi.downloadFile(id);
       downloadProgress.value = 100;
-
-      const url = window.URL.createObjectURL(blob);
-
+      console.log(url);
       if (forceDownload) {
         const link = document.createElement("a");
         link.href = url;
@@ -82,12 +79,8 @@ export const useFileStore = defineStore("file", () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
       } else {
         window.open(url, "_blank");
-        setTimeout(() => {
-          window.URL.revokeObjectURL(url);
-        }, 100);
       }
 
       return { success: true };
@@ -97,6 +90,14 @@ export const useFileStore = defineStore("file", () => {
     } finally {
       isDownloading.value = false;
       downloadProgress.value = 0;
+    }
+  };
+  const searchFiles = async (query: FileSearchQuery) => {
+    try {
+      const data = await fileApi.searchFiles(query);
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error, data: null };
     }
   };
 
@@ -135,6 +136,7 @@ export const useFileStore = defineStore("file", () => {
     uploadFile,
     downloadFile,
     clearError,
+    searchFiles
   };
 });
 
