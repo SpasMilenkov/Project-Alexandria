@@ -46,6 +46,7 @@ export const DIRECTORY_QUERY_KEYS = {
     normalizeSearchKey(req),
   ],
 };
+
 export const directoryById = defineQueryOptions(({ id }: { id: string }) => ({
   key: DIRECTORY_QUERY_KEYS.byId(id),
   query: () => directoryApi.getDirectory(id),
@@ -71,7 +72,7 @@ export const directoryPath = defineQueryOptions((id: string) => ({
   key: DIRECTORY_QUERY_KEYS.directoryPath(id),
   query: () => directoryApi.getDirectoryPath(id),
   placeholderData: (prev) => prev,
-  enabled: !!id
+  enabled: !!id,
 }));
 
 export const searchDirectory = defineQueryOptions(
