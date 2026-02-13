@@ -2,14 +2,7 @@ using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 
-namespace API.Features.Storage.FinalizeFileUpload;
-
-// string objectName,
-// string contentType,
-//     Guid uploadedBy,
-// long contentLength,
-//     Guid? directoryId = null,
-// CancellationToken ct = default
+namespace API.Features.Storage.Files.FinalizeFileUpload;
 
 sealed class FinalizeFileUploadRequest
 {
