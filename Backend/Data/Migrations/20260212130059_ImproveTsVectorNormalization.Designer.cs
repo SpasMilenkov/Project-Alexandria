@@ -4,6 +4,7 @@ using System.Numerics;
 using Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using NpgsqlTypes;
 namespace Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260212130059_ImproveTsVectorNormalization")]
+    partial class ImproveTsVectorNormalization
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -412,7 +415,7 @@ namespace Data.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("text")
-                        .HasComputedColumnSql("regexp_replace(\n            lower(\n                regexp_replace(\n                    regexp_replace(\n                        coalesce(\"Name\", ''), \n                        '\\.[^.]*$', ''\n                    ), \n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            ), \n            '\\s+', ' ', 'g'\n        )", true);
+                        .HasComputedColumnSql("regexp_replace(lower(coalesce(\"Name\", '')), '\\s+', ' ', 'g')", true);
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
@@ -485,7 +488,7 @@ namespace Data.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("text")
-                        .HasComputedColumnSql("regexp_replace(\n            lower(\n                regexp_replace(\n                    regexp_replace(\n                        coalesce(\"Name\", ''), \n                        '\\.[^.]*$', ''\n                    ), \n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            ), \n            '\\s+', ' ', 'g'\n        )", true);
+                        .HasComputedColumnSql("regexp_replace(lower(coalesce(\"Name\", '')), '\\s+', ' ', 'g')", true);
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
