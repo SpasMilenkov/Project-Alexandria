@@ -1,10 +1,16 @@
+using NpgsqlTypes;
+
 namespace Models;
 
 public class Directory : IBase
 {
     public Guid Id { get; set; }
+
     public required string Name { get; set; }
+
     // public required bool IsStarred { get; set; }
+    public string NormalizedName { get; set; } = null!;
+    public NpgsqlTsVector SearchVector { get; set; } = null!;
     public Guid? ParentId { get; set; }
     public Directory? Parent { get; set; }
     public List<Directory>? Children { get; set; }
