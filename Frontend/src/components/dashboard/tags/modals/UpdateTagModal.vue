@@ -67,7 +67,7 @@
 
         <UFormField label="Preview">
           <div
-            class="flex flex-wrap items-center justify-center gap-4 p-4 border border-primary/60 rounded-lg"
+            class="flex flex-wrap items-center justify-center gap-4 p-4 border border-primary/60 rounded-lg h-64"
           >
             <div class="flex flex-col-reverse gap-3">
               <TagCard
