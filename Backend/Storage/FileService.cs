@@ -161,6 +161,12 @@ public class FileService(
         );
     }
 
+    public async Task<PaginatedResult<FileResult>> SearchFile(FileSearchQuery query, Guid userId,
+        CancellationToken ct = default)
+    {
+        return await unitOfWork.Files.FindFiles(query, userId, ct);
+    }
+
     public async Task<int> GetFileCount(string? mimeTypeFilter = null, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(mimeTypeFilter)) return await unitOfWork.Files.CountAsync(null, ct);

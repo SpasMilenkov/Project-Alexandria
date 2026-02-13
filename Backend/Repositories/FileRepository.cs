@@ -145,6 +145,163 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<PaginatedResult<FileResult>> FindFiles(FileSearchQuery query, Guid userId,
+        CancellationToken ct = default)
+    {
+        if (query.CurrentPage < 0)
+            throw new ArgumentException("Page number must be non-negative", nameof(query.CurrentPage));
+
+        if (query.PageSize is <= 0 or > 100)
+            throw new ArgumentException("Page size must be between 1 and 100", nameof(query.PageSize));
+
+        IQueryable<File> dbQuery;
+
+        // Check for text search FIRST
+        var isSearching = !string.IsNullOrWhiteSpace(query.NameContains);
+
+        if (isSearching)
+        {
+            var searchTerm = query.NameContains!.Trim().ToLower();
+
+            dbQuery = context.Files.FromSqlInterpolated($@"
+                    SELECT *, 
+                        (similarity(""NormalizedName"", {searchTerm}) * 2.0 + 
+                         ts_rank(""SearchVector"", plainto_tsquery('simple', {searchTerm}))) as search_score
+                    FROM ""Files""
+                    WHERE 
+                        similarity(""NormalizedName"", {searchTerm}) > 0.1
+                        OR
+                        ""SearchVector"" @@ plainto_tsquery('simple', {searchTerm})
+                    ORDER BY 
+                        search_score DESC
+                ");
+        }
+        else
+        {
+            dbQuery = context.Files.AsQueryable();
+        }
+
+        // User ownership filter - always applied
+        dbQuery = dbQuery.Where(f => f.OwnerId == userId);
+
+        // Deletion filters
+        if (query.OnlyDeleted || query.IsDeleted)
+        {
+            dbQuery = dbQuery.Where(f => f.DeletedAt != null);
+        }
+        else
+        {
+            dbQuery = dbQuery.Where(f => f.DeletedAt == null);
+        }
+
+        if (query.DeletedAfter.HasValue)
+        {
+            var dateUtc = DateTime.SpecifyKind(query.DeletedAfter.Value.Date, DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(f => f.CreatedAt >= dateUtc);
+        }
+
+        if (query.DeletedBefore.HasValue)
+        {
+            var nextDayUtc = DateTime.SpecifyKind(query.DeletedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(f => f.CreatedAt < nextDayUtc);
+        }
+
+        // Identity & structure filters
+        if (query.DirectoryId.HasValue)
+        {
+            dbQuery = dbQuery.Where(f => f.Id == query.DirectoryId.Value);
+        }
+
+        if (query.ParentDirectoryId.HasValue)
+        {
+            dbQuery = dbQuery.Where(f => f.DirectoryId == query.ParentDirectoryId.Value);
+        }
+
+        if (query.OwnerId.HasValue)
+        {
+            dbQuery = dbQuery.Where(f => f.OwnerId == query.OwnerId.Value);
+        }
+
+        // File-specific filters
+        if (query.MinSize.HasValue)
+        {
+            dbQuery = dbQuery.Where(f => f.CurrentVersion.Size >= query.MinSize.Value);
+        }
+
+        if (query.MaxSize.HasValue)
+        {
+            dbQuery = dbQuery.Where(f => f.CurrentVersion.Size <= query.MaxSize.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.MimeType))
+        {
+            dbQuery = dbQuery.Where(f => f.MimeType == query.MimeType.Trim());
+        }
+
+        // Time filters
+        if (query.CreatedAfter.HasValue)
+        {
+            var dateUtc = DateTime.SpecifyKind(query.CreatedAfter.Value.Date, DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(f => f.CreatedAt >= dateUtc);
+        }
+
+        if (query.CreatedBefore.HasValue)
+        {
+            var nextDayUtc = DateTime.SpecifyKind(query.CreatedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(f => f.CreatedAt < nextDayUtc);
+        }
+
+        if (query.UpdatedAfter.HasValue)
+        {
+            var dateUtc = DateTime.SpecifyKind(query.UpdatedAfter.Value.Date, DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(f => f.UpdatedAt >= dateUtc);
+        }
+
+        if (query.UpdatedBefore.HasValue)
+        {
+            var nextDayUtc = DateTime.SpecifyKind(query.UpdatedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(f => f.UpdatedAt < nextDayUtc);
+        }
+
+        if (!isSearching)
+        {
+            dbQuery = query.SortBy switch
+            {
+                SortBy.Name => query.SortDirection == SortDirection.Asc
+                    ? dbQuery.OrderBy(f => f.Name)
+                    : dbQuery.OrderByDescending(f => f.Name),
+
+                SortBy.CreatedAt => query.SortDirection == SortDirection.Asc
+                    ? dbQuery.OrderBy(f => f.CreatedAt)
+                    : dbQuery.OrderByDescending(f => f.CreatedAt),
+
+                SortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
+                    ? dbQuery.OrderBy(f => f.UpdatedAt)
+                    : dbQuery.OrderByDescending(f => f.UpdatedAt),
+
+                _ => dbQuery.OrderBy(f => f.Name)
+            };
+        }
+
+        var totalCount = await dbQuery.CountAsync(ct);
+
+        var items = await dbQuery
+            .AsNoTracking()
+            .Skip(query.CurrentPage * query.PageSize)
+            .Take(query.PageSize)
+            .Select(FileProjections.ToFileResult)
+            .ToListAsync(ct);
+
+        return new PaginatedResult<FileResult>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            CurrentPage = query.CurrentPage,
+            PageSize = query.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
+        };
+    }
+
     public async Task MoveFilesAsync(
         Guid[] fileIds,
         Guid? destinationId,

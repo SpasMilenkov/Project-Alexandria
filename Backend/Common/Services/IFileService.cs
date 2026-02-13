@@ -46,5 +46,7 @@ public interface IFileService
         SortDirection sortDirection = SortDirection.Asc,
         CancellationToken ct = default);
 
+    Task<PaginatedResult<FileResult>> SearchFile(FileSearchQuery query, Guid userId, CancellationToken ct = default);
+
     Task<int> GetFileCount(string? mimeTypeFilter = null, CancellationToken ct = default);
 }
