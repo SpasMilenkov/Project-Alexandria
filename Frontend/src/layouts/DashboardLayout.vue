@@ -75,7 +75,10 @@ import type { NavigationMenuItem } from "@nuxt/ui";
 import { useRoute } from "vue-router";
 import { computed } from "vue";
 import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
+import { useAuthStore } from "@/stores/auth";
+import router from "@/router";
 
+const authStore = useAuthStore();
 const route = useRoute();
 
 const overlay = useOverlay();
@@ -144,7 +147,8 @@ const settingsMenuItems: NavigationMenuItem[][] = [
   ],
 ];
 
-const handleLogout = () => {
-  console.log("Logging out...");
+const handleLogout = async () => {
+  await authStore.logout();
+  router.push('/auth')
 };
 </script>

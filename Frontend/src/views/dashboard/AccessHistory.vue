@@ -73,11 +73,31 @@ const changePage = (pageNumber: number) => {
 </script>
 
 <template>
-  <div class="min-h-screen p-6 sm:p-8">
-    <div class="max-w-4xl mx-auto">
-      <!-- Header Section -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold mb-2">Activity History</h1>
+  <div class="min-h-screen px-4 py-6 sm:px-6 lg:px-8 md:py-0">
+    <div class="max-w-6xl mx-auto space-y-6 lg:space-y-8">
+      <div
+        class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"
+      >
+        <div>
+          <h1 class="text-3xl font-bold mb-1">Activity History</h1>
+          <p class="text-sm opacity-70">
+            Review your recent actions across files, folders, tags and more.
+          </p>
+        </div>
+
+        <UCard class="md:w-64 lg:w-72 shrink-0">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs uppercase tracking-wide opacity-70 mb-1">
+                Total activities
+              </p>
+              <p class="text-2xl font-semibold leading-tight">
+                {{ isLoading ? "..." : data?.totalCount }}
+              </p>
+            </div>
+            <UIcon name="i-lucide-activity" class="w-8 h-8 opacity-50" />
+          </div>
+        </UCard>
       </div>
 
       <!-- Error Alert -->
@@ -89,19 +109,6 @@ const changePage = (pageNumber: number) => {
         :description="error.message"
         class="mb-6"
       />
-
-      <!-- Stats Card -->
-      <UCard class="mb-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm opacity-70 mb-1">Total Activities</p>
-            <p class="text-2xl font-semibold">
-              {{ isLoading ? "..." : data?.totalCount }}
-            </p>
-          </div>
-          <UIcon name="i-lucide-activity" class="w-8 h-8 opacity-50" />
-        </div>
-      </UCard>
 
       <!-- Loading Skeleton State -->
       <UCard v-if="isLoading">
@@ -138,27 +145,33 @@ const changePage = (pageNumber: number) => {
       <UCard v-else-if="data">
         <template #header>
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-semibold">Recent Activity</h2>
+            <h2 class="text-xl font-semibold">Recent activity</h2>
             <UBadge variant="subtle" color="info">{{ data.totalCount }}</UBadge>
           </div>
         </template>
 
-        <UTimeline :items="items" />
-        <UPagination
-          v-model:page="activityStore.page"
-          :total="data.totalCount"
-          @update:page="changePage"
-        />
+        <div class="space-y-4">
+          <UTimeline :items="items" />
+          <div
+            class="flex justify-center pt-4 mt-2 border-t border-gray-200 dark:border-gray-800"
+          >
+            <UPagination
+              v-model:page="activityStore.page"
+              :total="data.totalCount"
+              @update:page="changePage"
+            />
+          </div>
+        </div>
       </UCard>
 
       <!-- Empty State -->
       <UCard v-else>
-        <div class="text-center py-12">
+        <div class="max-w-md mx-auto text-center py-16">
           <UIcon
             name="i-lucide-folder-open"
             class="w-12 h-12 mx-auto mb-4 opacity-50"
           />
-          <h3 class="text-lg font-semibold mb-2">No activity history yet</h3>
+          <h3 class="text-xl font-semibold mb-2">No activity history yet</h3>
           <p class="text-sm opacity-70">
             Your activity will appear here as you interact with the system
           </p>

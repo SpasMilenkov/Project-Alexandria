@@ -6,6 +6,7 @@ import type {
 import type { PaginatedResponse } from "./directory";
 import type { PaginationParams } from "@/types/pagination-params";
 import type { TagDto } from "./tag";
+import type { FileSearchQuery } from "@/schemas/search";
 
 // Response Types
 export interface UpdateFileMetadataResponse {
@@ -26,6 +27,7 @@ export interface FileResult {
   fileId: string;
   fileName: string;
   mimeType: string;
+  directoryId: string | null;
   createdAt: string;
   updatedAt: string | null;
   deletedAt: string | null;
@@ -133,7 +135,10 @@ export const fileApi = {
 
       // Initiate upload
       xhr.open("PUT", presignedUrl);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream"  );
+      xhr.setRequestHeader(
+        "Content-Type",
+        file.type || "application/octet-stream",
+      );
       xhr.send(file);
     });
   },
@@ -175,6 +180,15 @@ export const fileApi = {
           sortDirection: paginationParams.sortDirection,
         },
       },
+    );
+    return response.data;
+  },
+  searchFiles: async (
+    query: FileSearchQuery,
+  ): Promise<PaginatedResponse<FileResult>> => {
+    const response = await apiClient.post<PaginatedResponse<FileResult>>(
+      "/files/search",
+      query,
     );
     return response.data;
   },
@@ -244,7 +258,7 @@ export const fileApi = {
       destinationId,
     }),
 
-  moveFiles: async (fileIds: string[], destinationId: string) => {
+  moveFiles: async (fileIds: string[], destinationId: string | null) => {
     await apiClient.post("/files/move", {
       fileIds,
       destinationId,

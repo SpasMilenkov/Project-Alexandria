@@ -1,14 +1,15 @@
+using DTO.Files;
 using FastEndpoints;
 using FluentValidation;
 
-namespace API.Features.Storage.Directories.SearchDirectory;
+namespace API.Features.Storage.Files.SearchFile;
 
-public class SearchDirectoryRequestValidator : Validator<SearchDirectoryRequest>
+public class SearchFileRequestValidator : Validator<FileSearchQuery>
 {
-    public SearchDirectoryRequestValidator()
+    public SearchFileRequestValidator()
     {
         // Pagination validation
-        RuleFor(x => x.Page)
+        RuleFor(x => x.CurrentPage)
             .GreaterThanOrEqualTo(0)
             .WithMessage("Page number must be non-negative");
 
@@ -21,6 +22,28 @@ public class SearchDirectoryRequestValidator : Validator<SearchDirectoryRequest>
             .MaximumLength(200)
             .When(x => !string.IsNullOrWhiteSpace(x.NameContains))
             .WithMessage("Search term cannot exceed 200 characters");
+
+        // File size validation
+        RuleFor(x => x.MinSize)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.MinSize.HasValue)
+            .WithMessage("MinSize must be non-negative");
+
+        RuleFor(x => x.MaxSize)
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.MaxSize.HasValue)
+            .WithMessage("MaxSize must be non-negative");
+
+        RuleFor(x => x)
+            .Must(x => !x.MinSize.HasValue || !x.MaxSize.HasValue || x.MinSize.Value <= x.MaxSize.Value)
+            .WithMessage("MinSize must be less than or equal to MaxSize")
+            .When(x => x.MinSize.HasValue && x.MaxSize.HasValue);
+
+        // MIME type validation
+        RuleFor(x => x.MimeType)
+            .MaximumLength(255)
+            .When(x => !string.IsNullOrWhiteSpace(x.MimeType))
+            .WithMessage("MIME type cannot exceed 255 characters");
 
         // Date range validation - CreatedAt
         RuleFor(x => x)
@@ -72,7 +95,11 @@ public class SearchDirectoryRequestValidator : Validator<SearchDirectoryRequest>
             .Must(x => !(x.IsDeleted && (x.DeletedAfter.HasValue || x.DeletedBefore.HasValue)))
             .WithMessage("Cannot use both IsDeleted=true and specify a deletion range. Use one or the other.");
 
-        // GUIDs validation (optional - only if you want to ensure they're not empty)
+        RuleFor(x => x)
+            .Must(x => !(x.OnlyDeleted && (x.DeletedAfter.HasValue || x.DeletedBefore.HasValue)))
+            .WithMessage("Cannot use both OnlyDeleted=true and specify a deletion range. Use one or the other.");
+
+        // GUIDs validation
         RuleFor(x => x.DirectoryId)
             .NotEqual(Guid.Empty)
             .When(x => x.DirectoryId.HasValue)
@@ -88,7 +115,7 @@ public class SearchDirectoryRequestValidator : Validator<SearchDirectoryRequest>
             .When(x => x.OwnerId.HasValue)
             .WithMessage("OwnerId cannot be an empty GUID");
 
-        // Sort validation (ensure enum is valid)
+        // Sort validation
         RuleFor(x => x.SortBy)
             .IsInEnum()
             .WithMessage("Invalid sort field");

@@ -34,6 +34,13 @@ const shortcutSections: ShortcutSection[] = [
     ],
   },
   {
+    title: "Search",
+    shortcuts: [
+      { keys: ["shift", "k"], description: "Quick search" },
+      { keys: ["shift", "l"], description: "Advanced search" },
+    ],
+  },
+  {
     title: "Tabs",
     shortcuts: [
       {

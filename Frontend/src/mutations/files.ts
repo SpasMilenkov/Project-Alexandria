@@ -17,7 +17,7 @@ export const copyFiles = defineMutation({
     destinationId,
   }: {
     fileIds: string[];
-    destinationId?: string | null;
+    destinationId: string | null;
   }) => fileApi.copyFiles(fileIds, destinationId),
 });
 
@@ -27,6 +27,6 @@ export const moveFiles = defineMutation({
     destinationId,
   }: {
     fileIds: string[];
-    destinationId: string;
+    destinationId: string | null;
   }) => fileApi.moveFiles(fileIds, destinationId),
 });

@@ -20,31 +20,31 @@
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",
-    "@internationalized/date": "^3.10.1",
+    "@internationalized/date": "3.11.0",
     "@nuxt/ui": "^4.4.0",
-    "@pinia/colada": "^0.21.2",
+    "@pinia/colada": "^0.21.4",
     "@tailwindcss/vite": "^4.1.18",
-    "@unhead/vue": "^2.1.2",
-    "@vueuse/core": "^14.2.0",
-    "@vueuse/integrations": "^14.2.0",
-    "axios": "^1.13.4",
+    "@unhead/vue": "^2.1.4",
+    "@vueuse/core": "^14.2.1",
+    "@vueuse/integrations": "^14.2.1",
+    "axios": "^1.13.5",
     "hash-wasm": "^4.12.0",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
-    "sortablejs": "^1.15.6",
+    "sortablejs": "^1.15.7",
     "tailwindcss": "^4.1.18",
-    "vue": "^3.5.27",
+    "vue": "^3.5.28",
     "vue-router": "^4.6.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@pinia/colada-devtools": "^0.4.2",
-    "@playwright/test": "^1.58.1",
+    "@playwright/test": "^1.58.2",
     "@tsconfig/node22": "^22.0.5",
     "@types/jsdom": "^21.1.7",
-    "@types/node": "^22.19.7",
+    "@types/node": "^22.19.11",
     "@vitejs/plugin-vue": "^6.0.4",
-    "@vitest/eslint-plugin": "^1.6.6",
+    "@vitest/eslint-plugin": "^1.6.7",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.6.0",
     "@vue/test-utils": "^2.4.6",
@@ -55,18 +55,13 @@
     "jiti": "^2.6.1",
     "jsdom": "^26.1.0",
     "npm-run-all2": "^8.0.4",
-    "oxlint": "^1.43.0",
+    "oxlint": "^1.47.0",
     "prettier": "3.6.2",
     "typescript": "~5.8.3",
     "vite": "^7.3.1",
-    "vite-plugin-vue-devtools": "^8.0.5",
+    "vite-plugin-vue-devtools": "^8.0.6",
     "vitest": "^3.2.4",
     "vue-tsc": "^3.2.4"
   },
-  "pnpm": {
-    "overrides": {
-      "reka-ui": "2.6.1"
-    }
-  },
-  "packageManager": "pnpm@10.28.0+sha512.05df71d1421f21399e053fde567cea34d446fa02c76571441bfc1c7956e98e363088982d940465fd34480d4d90a0668bc12362f8aa88000a64e83d0b0e47be48"
+  "packageManager": "pnpm@10.29.2+sha512.bef43fa759d91fd2da4b319a5a0d13ef7a45bb985a3d7342058470f9d2051a3ba8674e629672654686ef9443ad13a82da2beb9eeb3e0221c87b8154fff9d74b8"
 }

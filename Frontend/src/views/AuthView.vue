@@ -2,7 +2,7 @@
 import LoginForm from "@/components/LoginForm.vue";
 </script>
 <template>
-  <div class="min-h-screen flex">
+  <div class="min-h-screen flex flex-1">
     <!-- Left Side - Illustration/Branding -->
     <div
       class="hidden lg:flex lg:w-1/2 bg-neutral items-center justify-center p-12 relative overflow-hidden border-r border-r-primary"
@@ -41,7 +41,7 @@ import LoginForm from "@/components/LoginForm.vue";
             class="px-4 py-2 bg-primary/10 backdrop-blur-sm rounded-full border border-primary/20 text-sm"
           >
             Fast Access
-          </div>
+          </div>  
         </div>
       </div>
     </div>

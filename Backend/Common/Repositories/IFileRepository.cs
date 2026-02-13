@@ -38,6 +38,8 @@ public interface IFileRepository : IRepository<File>
     Task MarkAsDeleted(Guid[] fileIds, Guid userId, CancellationToken ct = default);
     Task<bool> IsPromoted(Guid fileId, CancellationToken ct = default);
 
+    Task<PaginatedResult<FileResult>> FindFiles(FileSearchQuery query, Guid userId, CancellationToken ct = default);
+
     Task CopyFilesAsync(
         Guid[] fileIds,
         Guid destinationId,

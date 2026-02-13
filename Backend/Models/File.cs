@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.Numerics;
-using Models.Enumerators;
+using NpgsqlTypes;
 
 namespace Models;
 
@@ -14,6 +13,8 @@ public class File : IBase
     [StringLength(ValidationConstants.StringLengths.MediumString)]
     public required string MimeType { get; init; }
 
+    public NpgsqlTsVector SearchVector { get; set; }
+    public string NormalizedName { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public Guid Id { get; set; }
@@ -28,14 +29,14 @@ public class File : IBase
 
     public ICollection<Tag> Tags { get; set; } = new List<Tag>();
     public ICollection<SignedUrl> SignedUrls { get; set; } = new List<SignedUrl>();
-    
+
     public Guid PreviewId { get; set; }
     public Preview? Preview { get; set; }
     public ApplicationUser? Owner { get; set; }
     public Guid OwnerId { get; set; }
     public Directory? Directory { get; set; }
     public Guid? DirectoryId { get; set; }
-    
+
     public Guid? CurrentVersionId { get; set; }
     public FileVersion CurrentVersion { get; set; } = null!;
 }

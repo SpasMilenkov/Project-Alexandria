@@ -1,4 +1,3 @@
-using Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Models;
@@ -26,12 +25,37 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             .HasColumnType("uuid")
             .IsRequired(false);
 
+        builder.Property(e => e.NormalizedName)
+            .HasComputedColumnSql(
+                @"regexp_replace(
+            lower(
+                regexp_replace(
+                    regexp_replace(
+                        coalesce(""Name"", ''), 
+                        '\.[^.]*$', ''
+                    ), 
+                    '[_\-()[\]]+', ' ', 'g'
+                )
+            ), 
+            '\s+', ' ', 'g'
+        )",
+                stored: true);
+
+        builder.Property(e => e.SearchVector)
+            .HasComputedColumnSql(
+                @"to_tsvector('simple', 
+                regexp_replace(
+                    regexp_replace(coalesce(""Name"", ''), '\.[^.]*$', ''),
+                    '[_\-()[\]]+', ' ', 'g'
+                )
+            )",
+                stored: true);
         // Relations
         builder.HasOne(f => f.Preview)
             .WithOne(p => p.File)
             .HasForeignKey<Preview>(p => p.FileId)
             .OnDelete(DeleteBehavior.Cascade);
-        
+
         builder.HasMany(f => f.Tags)
             .WithMany(t => t.Files)
             .UsingEntity<Dictionary<string, object>>(
@@ -43,15 +67,15 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
                     j.HasKey("FileId", "TagId");
                     j.ToTable("FileTags");
                 });
-        
-        builder.Property(f => f.CurrentVersionId)
+
+        builder.Property(e => e.CurrentVersionId)
             .IsRequired(false);
-        
+
         builder.HasOne(f => f.CurrentVersion)
             .WithMany()
             .HasForeignKey(f => f.CurrentVersionId)
             .OnDelete(DeleteBehavior.Restrict)
-            .IsRequired(false); 
+            .IsRequired(false);
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")
@@ -67,9 +91,13 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
 
         // Indexes for performance
         builder.HasIndex(e => e.CreatedAt);
-        builder.HasIndex(f => f.Name)
+
+        builder.HasIndex(e => e.OwnerId);
+
+        builder.HasIndex(e => e.NormalizedName)
             .HasMethod("gin")
             .HasOperators("gin_trgm_ops");
+
         // Table name
         builder.ToTable("Files");
     }

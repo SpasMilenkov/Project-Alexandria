@@ -1,8 +1,8 @@
 using Models.Enumerators;
 
-namespace API.Features.Storage.Directories.SearchDirectory;
+namespace DTO.Files;
 
-public class SearchDirectoryRequest
+public class FileSearchQuery
 {
     // Identity & structure
     public Guid? DirectoryId { get; set; }
@@ -10,6 +10,11 @@ public class SearchDirectoryRequest
 
     // Text search
     public string? NameContains { get; set; }
+
+    // File specific
+    public long? MinSize { get; set; }
+    public long? MaxSize { get; set; }
+    public string? MimeType { get; set; }
 
     // Ownership & sharing
     public Guid? OwnerId { get; set; }
@@ -24,16 +29,13 @@ public class SearchDirectoryRequest
 
     public DateTime? DeletedAfter { get; set; }
 
-    // Contents
-    public bool? HasFiles { get; set; }
-    public bool? HasSubdirectories { get; set; }
-
     // Flags
     public bool IsDeleted { get; set; } = false;
     public bool IsStarred { get; set; } = false;
+    public bool OnlyDeleted { get; set; } = false;
 
     // Paging & sorting
-    public int Page { get; set; } = 0;
+    public int CurrentPage { get; set; } = 0;
     public int PageSize { get; set; } = 20;
     public SortBy SortBy { get; set; } = SortBy.Name;
     public SortDirection SortDirection { get; set; } = SortDirection.Asc;

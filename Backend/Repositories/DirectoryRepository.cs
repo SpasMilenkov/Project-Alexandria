@@ -3,10 +3,10 @@ using Common.Repositories;
 using Data.Context;
 using DTO.Directories;
 using DTO.Files;
-using DTO.Tags;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.Enumerators;
+using Repositories.Projections;
 using Directory = Models.Directory;
 using File = Models.File;
 
@@ -255,6 +255,25 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             throw new ArgumentException("Page size must be between 1 and 100", nameof(query.PageSize));
 
         var dbQuery = context.Directories.AsQueryable();
+        var isSearching = !string.IsNullOrWhiteSpace(query.NameContains);
+
+        if (isSearching)
+        {
+            var searchTerm = query.NameContains!.Trim().ToLower();
+
+            dbQuery = context.Directories.FromSqlInterpolated($@"
+                    SELECT *, 
+                        (similarity(""NormalizedName"", {searchTerm}) * 2.0 + 
+                         ts_rank(""SearchVector"", plainto_tsquery('simple', {searchTerm}))) as search_score
+                    FROM ""Directories""
+                    WHERE 
+                        similarity(""NormalizedName"", {searchTerm}) > 0.1
+                        OR
+                        ""SearchVector"" @@ plainto_tsquery('simple', {searchTerm})
+                    ORDER BY 
+                        search_score DESC
+                ");
+        }
 
         //When file and directory sharing comes later on this will be optional in combination
         //with the new access policies for Now users have no access to directories of other users
@@ -268,11 +287,16 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             dbQuery = dbQuery.Where(d => d.DeletedAt == null);
         }
 
-        if (query.DeletedAt.HasValue)
+        if (query.DeletedAfter.HasValue)
         {
-            var startOfDay = query.DeletedAt.Value.Date;
-            var endOfDay = startOfDay.AddDays(1);
-            dbQuery = dbQuery.Where(d => d.DeletedAt >= startOfDay && d.DeletedAt < endOfDay);
+            var dateUtc = DateTime.SpecifyKind(query.DeletedAfter.Value.Date, DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(d => d.CreatedAt >= dateUtc);
+        }
+
+        if (query.DeletedBefore.HasValue)
+        {
+            var nextDayUtc = DateTime.SpecifyKind(query.DeletedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(d => d.CreatedAt < nextDayUtc);
         }
 
         if (query.DirectoryId.HasValue)
@@ -290,24 +314,33 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         //     dbQuery = dbQuery.Where(d => d.IsShared == query.IsShared.Value);
         // }
 
-        if (query.CreatedBefore.HasValue)
-        {
-            dbQuery = dbQuery.Where(d => d.CreatedAt <= query.CreatedBefore.Value);
-        }
-
+        // --- Created Filters ---
         if (query.CreatedAfter.HasValue)
         {
-            dbQuery = dbQuery.Where(d => d.CreatedAt >= query.CreatedAfter.Value);
+            // Start of the day (00:00:00) on the selected date
+            var startOfAfterDay = DateTime.SpecifyKind(query.CreatedAfter.Value.Date, DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(d => d.CreatedAt >= startOfAfterDay);
+        }
+
+        if (query.CreatedBefore.HasValue)
+        {
+            // Start of the NEXT day (00:00:00)
+            // This effectively captures everything UP TO 23:59:59 on the 'Before' day
+            var startOfNextDay = DateTime.SpecifyKind(query.CreatedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(d => d.CreatedAt < startOfNextDay);
+        }
+
+        // --- Updated Filters ---
+        if (query.UpdatedAfter.HasValue)
+        {
+            var startOfAfterDay = DateTime.SpecifyKind(query.UpdatedAfter.Value.Date, DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(d => d.UpdatedAt >= startOfAfterDay);
         }
 
         if (query.UpdatedBefore.HasValue)
         {
-            dbQuery = dbQuery.Where(d => d.UpdatedAt <= query.UpdatedBefore.Value);
-        }
-
-        if (query.UpdatedAfter.HasValue)
-        {
-            dbQuery = dbQuery.Where(d => d.UpdatedAt >= query.UpdatedAfter.Value);
+            var startOfNextDay = DateTime.SpecifyKind(query.UpdatedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
+            dbQuery = dbQuery.Where(d => d.UpdatedAt < startOfNextDay);
         }
 
         if (query.HasFiles.HasValue)
@@ -334,21 +367,26 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(query.NameContains))
+        if (!isSearching)
         {
-            var searchTerm = query.NameContains.Trim();
+            dbQuery = query.SortBy switch
+            {
+                SortBy.Name => query.SortDirection == SortDirection.Asc
+                    ? dbQuery.OrderBy(f => f.Name)
+                    : dbQuery.OrderByDescending(f => f.Name),
 
-            // Lower threshold for short strings
-            var similarityThreshold = searchTerm.Length <= 3 ? 0.09 : 0.3;
+                SortBy.CreatedAt => query.SortDirection == SortDirection.Asc
+                    ? dbQuery.OrderBy(f => f.CreatedAt)
+                    : dbQuery.OrderByDescending(f => f.CreatedAt),
 
-            dbQuery = dbQuery
-                .Where(d =>
-                    EF.Functions.ILike(d.Name, $"%{searchTerm}%"))
-                .OrderByDescending(d =>
-                    EF.Functions.ILike(d.Name, $"{searchTerm}%") ? 3 : // Starts with (exact)
-                    EF.Functions.ILike(d.Name, $"%{searchTerm}%") ? 2 : // Contains
-                    EF.Functions.TrigramsSimilarity(d.Name, searchTerm) > similarityThreshold ? 1 : 0); // Fuzzy
+                SortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
+                    ? dbQuery.OrderBy(f => f.UpdatedAt)
+                    : dbQuery.OrderByDescending(f => f.UpdatedAt),
+
+                _ => dbQuery.OrderBy(f => f.Name)
+            };
         }
+
 
         if (query.ParentDirectoryId.HasValue)
         {
@@ -361,23 +399,6 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         // }
 
         var totalCount = await dbQuery.CountAsync(ct);
-
-        dbQuery = query.SortBy switch
-        {
-            SortBy.Name => query.SortDirection == SortDirection.Asc
-                ? dbQuery.OrderBy(d => d.Name)
-                : dbQuery.OrderByDescending(d => d.Name),
-
-            SortBy.CreatedAt => query.SortDirection == SortDirection.Asc
-                ? dbQuery.OrderBy(d => d.CreatedAt)
-                : dbQuery.OrderByDescending(d => d.CreatedAt),
-
-            SortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
-                ? dbQuery.OrderBy(d => d.UpdatedAt)
-                : dbQuery.OrderByDescending(d => d.UpdatedAt),
-
-            _ => dbQuery.OrderBy(d => d.Name)
-        };
 
         var items = await dbQuery
             .AsNoTracking()
@@ -501,36 +522,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         var files = await dbQuery
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(f => new FileResult(
-                f.Id,
-                f.Name,
-                f.MimeType,
-                f.CreatedAt,
-                f.UpdatedAt,
-                f.DeletedAt,
-                new FileVersionDto(
-                    f.CurrentVersion.Id,
-                    f.CurrentVersion.Size,
-                    f.CurrentVersion.MimeType,
-                    f.CurrentVersion.VersionNumber),
-                f.Tags.Select(t => new TagDto
-                {
-                    Id = t.Id,
-                    CreatedAt = t.CreatedAt,
-                    UpdatedAt = t.UpdatedAt,
-                    Name = t.Name,
-                    Color = t.Color,
-                    Icon = t.Icon,
-                    Description = t.Description,
-                    UserId = t.OwnerId
-                }).ToList(),
-                new UserDto
-                {
-                    Id = f.OwnerId,
-                    Name = f.Owner.Name,
-                    Email = f.Owner.Email
-                }
-            ))
+            .Select(FileProjections.ToFileResult)
             .ToListAsync(ct);
 
         return new PaginatedResult<FileResult>

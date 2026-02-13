@@ -1,4 +1,3 @@
-using Common;
 using Common.Services;
 using FastEndpoints;
 
@@ -23,8 +22,8 @@ public class RefreshTokenEndpoint(IAuthService authService, CsrfService csrfServ
         }
 
         var result = await authService.RefreshTokenAsync(refreshToken, ct);
-        
-        if (!result.Succeeded || result.User is null)
+
+        if (!result.Succeeded || result.User is null || result.RefreshToken is null)
         {
             ClearAuthCookies();
             await Send.UnauthorizedAsync(ct);
@@ -32,10 +31,10 @@ public class RefreshTokenEndpoint(IAuthService authService, CsrfService csrfServ
         }
 
         var userId = result.User.Id.ToString();
-        
+
         var newAccessToken = authService.GenerateAccessToken(result.User);
-        var newRefreshToken = await authService.GenerateRefreshTokenAsync(result.User, ct);
-        
+        var newRefreshToken = result.RefreshToken;
+
         var (csrfCookie, csrfHeader) = csrfService.RegenerateToken(userId);
 
         HttpContext.Response.Cookies.Append("access_token", newAccessToken, new CookieOptions
@@ -77,4 +76,3 @@ public class RefreshTokenEndpoint(IAuthService authService, CsrfService csrfServ
         HttpContext.Response.Cookies.Delete("csrf_token");
     }
 }
-

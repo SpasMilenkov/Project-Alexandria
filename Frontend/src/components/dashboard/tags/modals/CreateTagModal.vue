@@ -2,13 +2,12 @@
   <UModal
     :close="{ onClick: () => emit('close', false) }"
     :title="'Create New Tag'"
-    class=""
   >
     <template #body>
       <UForm
         :schema="createTagSchema"
         :state="state"
-        class="space-y-5 w-full"
+        class="space-y-5 w-full "
         @submit="onSubmit"
       >
         <div class="grid grid-cols-2 gap-4">
@@ -64,7 +63,7 @@
 
         <UFormField label="Preview">
           <div
-            class="flex flex-wrap items-center justify-center gap-4 p-4 border border-primary/60 rounded-lg "
+            class="flex flex-wrap items-center justify-center gap-4 p-4 border border-primary/60 rounded-lg h-64"
           >
             <div class="flex flex-col-reverse gap-3">
               <TagCard

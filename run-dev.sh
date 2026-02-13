@@ -53,17 +53,17 @@ tmux send-keys -t "$SESSION_NAME:Frontend" \
   "cd Frontend && pnpm dev" C-m
 
 tmux new-window -t "$SESSION_NAME" -n "API" -c "$PWD"
-sleep 0.2
+sleep 5.0
 tmux send-keys -t "$SESSION_NAME:API" \
   "cd Backend && dotnet run --project API --launch-profile \"$api_profile\"" C-m
 
 tmux new-window -t "$SESSION_NAME" -n "DocumentWorker" -c "$PWD"
-sleep 0.5
+sleep 5.0
 tmux send-keys -t "$SESSION_NAME:DocumentWorker" \
   "cd Backend && dotnet run --project DocumentWorker.Service --launch-profile \"$doc_worker_profile\"" C-m
 
 tmux new-window -t "$SESSION_NAME" -n "MediaWorker" -c "$PWD"
-sleep 0.5
+sleep 5.0
 tmux send-keys -t "$SESSION_NAME:MediaWorker" \
   "cd Backend && dotnet run --project MediaWorkerService --launch-profile \"$media_worker_profile\"" C-m
 

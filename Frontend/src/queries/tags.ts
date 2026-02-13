@@ -54,8 +54,8 @@ export const searchTag = defineQueryOptions((filters: SearchTagsSchema) => ({
 export const getTagsForFile = defineQueryOptions((fileId: string) => ({
   key: TAGS_QUERY_KEYS.getTagsForFile(fileId),
   query: () => tagApi.getTagsForFile(fileId),
-  
   enabled: !!fileId,
+  staleTime: 60000
 }));
 
 export const searchFileByTags = defineQueryOptions(
