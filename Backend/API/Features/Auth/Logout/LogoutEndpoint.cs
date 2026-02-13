@@ -1,4 +1,3 @@
-using Common;
 using Common.Services;
 using FastEndpoints;
 
@@ -6,12 +5,10 @@ namespace API.Features.Auth.Logout;
 
 public class LogoutEndpoint(IAuthService authService) : EndpointWithoutRequest
 {
-
     public override void Configure()
     {
         Post("/auth/logout");
         Version(0);
-
     }
 
     public override async Task HandleAsync(CancellationToken ct)
@@ -22,7 +19,7 @@ public class LogoutEndpoint(IAuthService authService) : EndpointWithoutRequest
         }
 
         HttpContext.Response.Cookies.Delete("access_token");
-        HttpContext.Response.Cookies.Delete("refresh_token");
+        HttpContext.Response.Cookies.Delete("refresh_token", new CookieOptions { Path = "/api/auth/refresh" });
         HttpContext.Response.Cookies.Delete("csrf_token");
 
         await Send.OkAsync(cancellation: ct);
