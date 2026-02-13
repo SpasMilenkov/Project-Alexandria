@@ -20,7 +20,7 @@ export const moveDirectories = defineMutation({
     destinationId,
   }: {
     directoryIds: string[];
-    destinationId: string;
+    destinationId: string | null;
   }) => directoryApi.moveDirectories(directoryIds, destinationId),
 });
 
@@ -30,7 +30,7 @@ export const copyDirectory = defineMutation({
     destinationId,
   }: {
     directoryId: string;
-    destinationId: string;
+    destinationId: string | null;
   }) => directoryApi.copyDirectory(directoryId, destinationId),
 });
 
