@@ -10,17 +10,46 @@
     </template>
   </UHeader>
 
-  <UMain>
+  <UMain class="flex items-center justify-center">
     <RouterView />
   </UMain>
-  <UFooter />
+  <UFooter>
+    <template #left>
+      <div class="flex items-center gap-2">
+        <UIcon name="heroicons:book-open" class="w-5 h-5 text-primary" />
+        <span class="text-sm font-medium text-gray-900 dark:text-white">
+          Alexandria
+        </span>
+      </div>
+    </template>
+
+    <template #default>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        © {{ currentYear }} Alexandria. Built with care.
+      </p>
+    </template>
+
+    <template #right>
+      <div class="flex items-center gap-4">
+        <a
+          href="https://github.com/SpasMilenkov/Project-Alexandria"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-primary transition-colors"
+        >
+          <UIcon name="mdi:github" class="w-5 h-5" />
+        </a>
+      </div>
+    </template>
+  </UFooter>
 </template>
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 
+const currentYear = ref(new Date().getFullYear());
 const authStore = useAuthStore();
 const route = useRoute();
 
