@@ -12,6 +12,7 @@ public static class FileProjections
             f.Id,
             f.Name,
             f.MimeType,
+            f.DirectoryId,
             f.CreatedAt,
             f.UpdatedAt,
             f.DeletedAt,

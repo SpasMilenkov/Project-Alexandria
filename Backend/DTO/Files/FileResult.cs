@@ -1,5 +1,4 @@
 using DTO.Tags;
-using File = Models.File;
 
 namespace DTO.Files;
 
@@ -7,6 +6,7 @@ public record FileResult(
     Guid FileId,
     string FileName,
     string MimeType,
+    Guid? DirectoryId,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
     DateTime? DeletedAt,
