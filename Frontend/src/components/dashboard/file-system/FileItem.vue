@@ -188,55 +188,146 @@
             v-if="
               data.currentVersion.mimeType.startsWith('audio/') && previewUrl
             "
-            class="relative w-full aspect-video bg-black/5 dark:bg-black/20 rounded-lg overflow-hidden"
+            class="relative w-full bg-black/5 dark:bg-black/20 rounded-lg overflow-hidden"
           >
-            <img
-              v-if="thumbnailUrl"
-              :src="thumbnailUrl"
-              alt="Audio thumbnail"
-              class="w-full h-full object-contain"
-            />
-
-            <!-- Play/Pause Overlay -->
-            <div
-              class="absolute inset-0 flex items-center justify-center cursor-pointer transition-all duration-200"
-              :class="
-                isAudioPlaying
-                  ? 'bg-black/30'
-                  : 'bg-black/0 hover:bg-black/40 group'
-              "
-              @click="toggleAudio"
-              @mouseenter="isAudioHovered = true"
-              @mouseleave="isAudioHovered = false"
-            >
-              <!-- Play icon - only visible on hover when not playing -->
-              <Icon
-                v-if="!isAudioPlaying"
-                icon="mdi-play-circle"
-                class="w-16 h-16 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+            <!-- Thumbnail Background -->
+            <div class="relative w-full aspect-video">
+              <img
+                v-if="thumbnailUrl"
+                :src="thumbnailUrl"
+                alt="Audio thumbnail"
+                class="w-full h-full object-cover"
               />
 
-              <!-- Audio playing state -->
-              <div v-else class="relative flex items-center justify-center &">
-                <!-- Animated audio visualizer - shows by default when playing -->
-                <Icon
-                  icon="mdi-waveform"
-                  class="w-16 h-16 text-white animate-pulse transition-opacity duration-200"
-                  :class="isAudioHovered ? 'opacity-0' : 'opacity-100'"
-                />
-                <!-- Pause icon - shows on hover when playing -->
-                <Icon
-                  icon="mdi-pause-circle"
-                  class="w-16 h-16 text-white absolute transition-opacity duration-200"
-                  :class="isAudioHovered ? 'opacity-100' : 'opacity-0'"
-                />
+              <!-- Lighter Overlay with Play/Pause and Equalizer -->
+              <div
+                class="absolute inset-0 flex items-center justify-center cursor-pointer transition-all duration-200"
+                :class="
+                  isAudioPlaying
+                    ? 'bg-black/20'
+                    : 'bg-black/0 hover:bg-black/30'
+                "
+                @click="toggleAudio"
+              >
+                <!-- Play Button (when paused) -->
+                <div
+                  v-if="!isAudioPlaying"
+                  class="flex items-center justify-center w-16 h-16 bg-white/30 backdrop-blur-sm rounded-full hover:bg-white/40 hover:scale-110 transition-all"
+                >
+                  <Icon icon="mdi-play" class="w-10 h-10 text-white ml-1" />
+                </div>
+
+                <!-- Equalizer (when playing) -->
+                <AudioEqualizer v-else />
               </div>
             </div>
 
+            <!-- Compact Audio Controls Bar -->
+            <div
+              class="px-3 py-2 bg-neutral-100 dark:bg-neutral-900/50 backdrop-blur-sm border-t border-neutral-200 dark:border-neutral-800"
+            >
+              <div class="flex items-center gap-2">
+                <!-- Play/Pause Button -->
+                <button
+                  @click.stop="toggleAudio"
+                  class="p-1.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded-full transition-colors shrink-0"
+                >
+                  <Icon
+                    :icon="isAudioPlaying ? 'mdi-pause' : 'mdi-play'"
+                    class="w-4 h-4 text-neutral-700 dark:text-white"
+                  />
+                </button>
+
+                <!-- Time Display -->
+                <span
+                  class="text-xs text-neutral-600 dark:text-white/60 min-w-[35px] shrink-0"
+                >
+                  {{ formatTime(currentTime) }}
+                </span>
+
+                <!-- Progress Bar -->
+                <input
+                  ref="progressBar"
+                  type="range"
+                  min="0"
+                  :max="duration || 100"
+                  :value="currentTime"
+                  @input="seekAudio"
+                  class="flex-1 h-1 bg-neutral-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+                />
+
+                <!-- Duration -->
+                <span
+                  class="text-xs text-neutral-600 dark:text-white/60 min-w-[35px] shrink-0"
+                >
+                  {{ formatTime(duration) }}
+                </span>
+
+                <!-- Volume Control with Vertical Slider -->
+                <UPopover :content="{ side: 'top' }" class="shrink-0">
+                  <button
+                    class="p-1.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <Icon
+                      :icon="
+                        isMuted || volume === 0
+                          ? 'mdi-volume-off'
+                          : volume < 0.5
+                            ? 'mdi-volume-medium'
+                            : 'mdi-volume-high'
+                      "
+                      class="w-4 h-4 text-neutral-700 dark:text-white"
+                    />
+                  </button>
+
+                  <template #content>
+                    <div
+                      class="flex flex-col items-center gap-2 p-3 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800"
+                    >
+                      <!-- Volume percentage display -->
+                      <span
+                        class="text-xs font-medium text-neutral-600 dark:text-white/70"
+                      >
+                        {{ Math.round(volume * 100) }}%
+                      </span>
+
+                      <!-- Vertical slider -->
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        :value="volume"
+                        @input="updateVolume"
+                        @click.stop
+                        orient="vertical"
+                        class="h-24 w-1 bg-neutral-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer [writing-mode:vertical-lr] [direction:rtl] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
+                      />
+
+                      <!-- Mute button -->
+                      <button
+                        @click.stop="toggleMute"
+                        class="p-1 hover:bg-neutral-200 dark:hover:bg-white/10 rounded transition-colors"
+                      >
+                        <Icon
+                          icon="mdi-volume-off"
+                          class="w-3.5 h-3.5 text-neutral-600 dark:text-white/70"
+                        />
+                      </button>
+                    </div>
+                  </template>
+                </UPopover>
+              </div>
+            </div>
+
+            <!-- Hidden Audio Element -->
             <audio
               ref="audioPlayer"
               :src="previewUrl"
-              @ended="isAudioPlaying = false"
+              @timeupdate="updateProgress"
+              @loadedmetadata="onAudioLoaded"
+              @ended="onAudioEnded"
+              @canplay="onAudioReady"
               class="hidden"
             />
           </div>
@@ -442,7 +533,7 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import type { FileResult } from "@/api/file";
 import type { ContextMenuItem, TreeItem } from "@nuxt/ui";
 import { useSettingsStore } from "@/stores/settings";
@@ -456,6 +547,7 @@ import { getIconByValue } from "@/utils/icon.utils";
 import { getTagsForFile } from "@/queries/tags";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { formatDate } from "@/utils/date-formatters";
+import AudioEqualizer from "../AudioEqualizer.vue";
 
 const settingsStore = useSettingsStore();
 
@@ -481,7 +573,10 @@ const textPreview = ref<string | null>(null);
 const previewMimeType = ref<string | null>(null);
 const audioPlayer = ref<HTMLAudioElement | null>(null);
 const isAudioPlaying = ref<boolean>(false);
-const isAudioHovered = ref<boolean>(false);
+const currentTime = ref(0);
+const duration = ref(0);
+const volume = ref(0.2);
+const isMuted = ref(false);
 
 const toggleAudio = async (): Promise<void> => {
   if (audioPlayer.value) {
@@ -493,6 +588,59 @@ const toggleAudio = async (): Promise<void> => {
       isAudioPlaying.value = false;
     }
   }
+};
+
+const onAudioReady = (): void => {
+  if (audioPlayer.value) {
+    audioPlayer.value.volume = volume.value;
+  }
+};
+
+const seekAudio = (event: Event): void => {
+  const target = event.target as HTMLInputElement;
+  if (audioPlayer.value) {
+    audioPlayer.value.currentTime = Number(target.value);
+  }
+};
+
+const updateProgress = (): void => {
+  if (audioPlayer.value) {
+    currentTime.value = audioPlayer.value.currentTime;
+  }
+};
+
+const onAudioLoaded = (): void => {
+  if (audioPlayer.value) {
+    duration.value = audioPlayer.value.duration;
+  }
+};
+
+const onAudioEnded = (): void => {
+  isAudioPlaying.value = false;
+  currentTime.value = 0;
+};
+
+const updateVolume = (event: Event): void => {
+  const target = event.target as HTMLInputElement;
+  volume.value = Number(target.value);
+  if (audioPlayer.value) {
+    audioPlayer.value.volume = volume.value;
+    isMuted.value = volume.value === 0;
+  }
+};
+
+const toggleMute = (): void => {
+  if (audioPlayer.value) {
+    isMuted.value = !isMuted.value;
+    audioPlayer.value.muted = isMuted.value;
+  }
+};
+
+const formatTime = (seconds: number): string => {
+  if (!seconds || !isFinite(seconds)) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
 const { data: previewData, isLoading: previewLoading } = useQuery(
@@ -515,7 +663,6 @@ const searchFilters = computed<SearchTagsSchema>(() => ({
 }));
 
 const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
-
 
 const refreshOnRemove = async (id: string) => {
   await removeTagMutateAsync({ fileId: props.data.fileId, tagId: id });
@@ -895,7 +1042,7 @@ const setFilePreviews = async () => {
     thumbnailUrl.value = previewData.value.thumbnailUrl;
     previewMimeType.value = previewData.value.metaData.mimeType;
     textPreview.value = previewData.value.textPreview;
-    archivePreview.value = previewData.value.archivePreview;  
+    archivePreview.value = previewData.value.archivePreview;
   }
   console.log("previewUrl", previewUrl.value);
   console.log("thumbnailUrl", thumbnailUrl.value);
@@ -906,6 +1053,20 @@ const handleDoubleClick = async () => {
   await setFilePreviews();
   parseArchivePreview();
 };
+
+watch(openDrawer, (isOpen) => {
+  if (!isOpen) {
+    // Stop audio when drawer closes
+    if (audioPlayer.value) {
+      audioPlayer.value.pause();
+      audioPlayer.value.currentTime = 0;
+    }
+
+    // Reset state
+    isAudioPlaying.value = false;
+    currentTime.value = 0;
+  }
+});
 </script>
 
 <style scoped></style>
