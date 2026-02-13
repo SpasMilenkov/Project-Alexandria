@@ -14,7 +14,7 @@
               <UButton
                 color="primary"
                 size="sm"
-                class="rounded-none border-r border-primary-600"
+                class="rounded-none border-r dark:border-black"
                 @click="
                   handleFileUpload(
                     selectedUploadType.label as
@@ -101,8 +101,7 @@
           </UButton>
         </div>
       </div>
-
-      <SearchComponent @navigate="handleNavigate" />
+      <UButton @click="quickSearch" icon="mdi:search" class="h-8 w-8" />
     </div>
 
     <UBreadcrumb :items="breadcrumbs" class="p-4">
@@ -282,6 +281,8 @@ import {
 import type { SearchTagsSchema } from "@/schemas/tag";
 import { searchTag } from "@/queries/tags";
 import { useQuery } from "@pinia/colada";
+import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
+import QuickSearchModal from "./Modals/QuickSearchModal.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -360,6 +361,8 @@ defineShortcuts({
     handleCopy();
     console.log("Ctrl + X is pressed");
   },
+  shift_k: () => quickSearch(),
+  shift_l: () => advancedSearch(),
   Delete: () => {
     handleDelete();
     console.log("Delete has been pressed");
@@ -418,6 +421,27 @@ const createDirectoryModal = overlay.create(CreateDirectoryModal);
 const updateDirectoryModal = overlay.create(UpdateDirectoryModal);
 const fileUploadModal = overlay.create(FileUploadModal);
 const directoryUploadModal = overlay.create(DirectoryUploadModal);
+const advancedSearchModal = overlay.create(AdvancedSearchModal);
+const quickSearchModal = overlay.create(QuickSearchModal);
+
+const advancedSearch = async () => {
+  const instance = advancedSearchModal.open();
+  const result = await instance.result;
+
+  if (result === "close") return;
+  else if (result === "root") handleNavigate(null);
+  else if (typeof result === "string") handleNavigate(result);
+};
+
+const quickSearch = async () => {
+  const instance = quickSearchModal.open();
+  const result = await instance.result;
+
+  if (result === "close") return;
+  else if (result === "root") handleNavigate(null);
+  else if (result === "advanced") advancedSearch();
+  else if (typeof result === "string") handleNavigate(result);
+};
 
 const handleContainerClick = (event: MouseEvent) => {
   // Check if we clicked on empty space (not on any item buttons)
@@ -582,6 +606,7 @@ const breadcrumbs = computed(() => {
       label: segment.name,
       key: segment.id,
     }));
+
     items.push(...pathItems);
   }
   return items;
@@ -636,6 +661,7 @@ const handleItemClick = (
 };
 
 const handleNavigate = (dirId: string | null) => {
+  console.log("navigating to", dirId);
   navigateTo(dirId);
   tabStore.setActiveDir(props.tabId, dirId);
 };
