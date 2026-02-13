@@ -112,6 +112,8 @@ export const useFileExplorer = () => {
   // ACTIONS
 
   const navigateTo = async (dirId?: string | null) => {
+    if(currentDirId.value === dirId) return
+
     dirPagination.value.paginationParams.page = 1;
     filePagination.value.paginationParams.page = 1;
 
