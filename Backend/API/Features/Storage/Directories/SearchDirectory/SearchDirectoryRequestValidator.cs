@@ -24,14 +24,14 @@ public class SearchDirectoryRequestValidator : Validator<SearchDirectoryRequest>
 
         // Date range validation - CreatedAt
         RuleFor(x => x)
-            .Must(x => !x.CreatedAfter.HasValue || !x.CreatedBefore.HasValue || 
+            .Must(x => !x.CreatedAfter.HasValue || !x.CreatedBefore.HasValue ||
                        x.CreatedAfter.Value <= x.CreatedBefore.Value)
             .WithMessage("CreatedAfter must be before or equal to CreatedBefore")
             .When(x => x.CreatedAfter.HasValue && x.CreatedBefore.HasValue);
 
         // Date range validation - UpdatedAt
         RuleFor(x => x)
-            .Must(x => !x.UpdatedAfter.HasValue || !x.UpdatedBefore.HasValue || 
+            .Must(x => !x.UpdatedAfter.HasValue || !x.UpdatedBefore.HasValue ||
                        x.UpdatedAfter.Value <= x.UpdatedBefore.Value)
             .WithMessage("UpdatedAfter must be before or equal to UpdatedBefore")
             .When(x => x.UpdatedAfter.HasValue && x.UpdatedBefore.HasValue);
@@ -57,15 +57,20 @@ public class SearchDirectoryRequestValidator : Validator<SearchDirectoryRequest>
             .When(x => x.UpdatedAfter.HasValue)
             .WithMessage("UpdatedAfter cannot be in the future");
 
-        RuleFor(x => x.DeletedAt)
+        RuleFor(x => x.DeletedBefore)
             .LessThanOrEqualTo(DateTime.UtcNow)
-            .When(x => x.DeletedAt.HasValue)
+            .When(x => x.DeletedBefore.HasValue)
             .WithMessage("DeletedAt cannot be in the future");
 
-        // Logical validation - if searching for deleted items, can't also filter by non-deleted
+        RuleFor(x => x.DeletedAfter)
+            .LessThanOrEqualTo(DateTime.UtcNow)
+            .When(x => x.DeletedAfter.HasValue)
+            .WithMessage("DeletedAt cannot be in the future");
+
+        // Logical validation - deletion filters
         RuleFor(x => x)
-            .Must(x => !(x.IsDeleted && x.DeletedAt.HasValue))
-            .WithMessage("Cannot use both IsDeleted=true and specify a DeletedAt date. Use one or the other.");
+            .Must(x => !(x.IsDeleted && (x.DeletedAfter.HasValue || x.DeletedBefore.HasValue)))
+            .WithMessage("Cannot use both IsDeleted=true and specify a deletion range. Use one or the other.");
 
         // GUIDs validation (optional - only if you want to ensure they're not empty)
         RuleFor(x => x.DirectoryId)

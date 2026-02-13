@@ -20,7 +20,10 @@ public class SearchDirectoryRequest
     public DateTime? CreatedBefore { get; set; }
     public DateTime? UpdatedAfter { get; set; }
     public DateTime? UpdatedBefore { get; set; }
-    public DateTime? DeletedAt { get; set; }
+    public DateTime? DeletedBefore { get; set; }
+
+    public DateTime? DeletedAfter { get; set; }
+
     // Contents
     public bool? HasFiles { get; set; }
     public bool? HasSubdirectories { get; set; }
