@@ -487,9 +487,10 @@ const handleDirectoryRename = async (directoryId: string) => {
 const handleCopy = async () => {
   fileStore.filesToCopy = [...selectedFiles.value];
   directoryStore.directoriesToCopy = [...selectedDirectories.value];
+
   console.log("handling copy");
   toast.add({
-    title: "Files selected",
+    title: "Items selected",
     color: "info",
     id: "copying",
   });
@@ -524,10 +525,13 @@ const handleCut = async () => {
 };
 
 const handlePaste = async () => {
+  if(fileStore.filesToCopy.length > 0)
   await copyFilesMutate({
     fileIds: fileStore.filesToCopy,
     destinationId: currentDirId.value,
   });
+
+  if(directoryStore.directoriesToCopy.length > 0)
   await Promise.all(
     directoryStore.directoriesToCopy.map(async (dir) => {
       await copyDirectoryMutate({
