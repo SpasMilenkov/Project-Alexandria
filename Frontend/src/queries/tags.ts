@@ -49,13 +49,14 @@ export const getAllTags = defineQueryOptions((params: PaginationParams) => ({
 export const searchTag = defineQueryOptions((filters: SearchTagsSchema) => ({
   key: TAGS_QUERY_KEYS.searchTag(filters),
   query: () => tagApi.searchTags(filters),
+  staleTime: 30000,
 }));
 
 export const getTagsForFile = defineQueryOptions((fileId: string) => ({
   key: TAGS_QUERY_KEYS.getTagsForFile(fileId),
   query: () => tagApi.getTagsForFile(fileId),
   enabled: !!fileId,
-  staleTime: 60000
+  staleTime: 60000,
 }));
 
 export const searchFileByTags = defineQueryOptions(
