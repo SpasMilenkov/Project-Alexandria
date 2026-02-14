@@ -217,7 +217,7 @@ export const fileApi = {
     id: string,
     data: UpdateFileMetadataSchema,
   ): Promise<UpdateFileMetadataResponse> => {
-    const response = await apiClient.put<UpdateFileMetadataResponse>(
+    const response = await apiClient.patch<UpdateFileMetadataResponse>(
       `/files/${id}/metadata`,
       data,
     );

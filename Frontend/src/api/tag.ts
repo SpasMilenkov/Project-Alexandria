@@ -101,7 +101,7 @@ export const tagApi = {
     tagId: string,
     data: UpdateTagSchema,
   ): Promise<UpdateTagResponse> => {
-    const response = await apiClient.put<UpdateTagResponse>(
+    const response = await apiClient.patch<UpdateTagResponse>(
       `/tags/${tagId}`,
       data,
     );
