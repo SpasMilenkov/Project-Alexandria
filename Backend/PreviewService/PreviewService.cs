@@ -47,7 +47,7 @@ public class PreviewService(
         var cacheOptions = new MemoryCacheEntryOptions
         {
             Size = 1,
-            SlidingExpiration = TimeSpan.FromMinutes(5)
+            SlidingExpiration = TimeSpan.FromMinutes(2)
         };
         if (cachedPreview is { PreviewUrl: not null })
         {
