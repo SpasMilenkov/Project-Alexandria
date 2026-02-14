@@ -3,7 +3,7 @@ using FastEndpoints;
 
 namespace API.Features.Auth.RefreshToken;
 
-public class RefreshTokenEndpoint(IAuthService authService, CsrfService csrfService)
+public class RefreshTokenEndpoint(IAuthService authService)
     : EndpointWithoutRequest<RefreshResponse>
 {
     public override void Configure()
@@ -35,8 +35,6 @@ public class RefreshTokenEndpoint(IAuthService authService, CsrfService csrfServ
         var newAccessToken = authService.GenerateAccessToken(result.User);
         var newRefreshToken = result.RefreshToken;
 
-        var (csrfCookie, csrfHeader) = csrfService.RegenerateToken(userId);
-
         HttpContext.Response.Cookies.Append("access_token", newAccessToken, new CookieOptions
         {
             HttpOnly = true,
@@ -54,18 +52,9 @@ public class RefreshTokenEndpoint(IAuthService authService, CsrfService csrfServ
             Path = "/api/auth/refresh"
         });
 
-        HttpContext.Response.Cookies.Append("csrf_token", csrfCookie, new CookieOptions
-        {
-            HttpOnly = false,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            MaxAge = TimeSpan.FromHours(1)
-        });
-
         await Send.OkAsync(new RefreshResponse
         {
             Success = true,
-            CsrfToken = csrfHeader
         }, ct);
     }
 
