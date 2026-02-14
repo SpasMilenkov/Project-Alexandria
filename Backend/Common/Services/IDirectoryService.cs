@@ -58,6 +58,6 @@ public interface IDirectoryService
     Task<bool> DirectoryExistsWithOwnershipAsync(Guid id, Guid ownerId, CancellationToken ct = default);
     Task<bool> HasAccessToDirectoryAsync(Guid directoryId, Guid userId, CancellationToken ct = default);
 
-    Task CopyDirectoryAsync(Guid directoryId, Guid destinationId, Guid userId,
+    Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId,
         CancellationToken ct = default);
 }
