@@ -1,0 +1,27 @@
+# Templates/docker-compose/rustfs.yml
+rustfs:
+  image: rustfs/rustfs:latest
+  container_name: alexandria-rustfs-{{ENVIRONMENT}}
+  restart: unless-stopped
+  command:
+    - "--address"
+    - ":3900"
+    - "--console-enable"
+    - "--access-key"
+    - "{{S3_ACCESS_KEY}}"
+    - "--secret-key"
+    - "{{S3_SECRET_KEY}}"
+    - "/data"
+  volumes:
+    - rustfs_data:/data
+  ports:
+    - "{{S3_API_PORT}}:3900"
+    - "{{S3_CONSOLE_PORT}}:9001"
+  networks:
+    - alexandria-network
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:3900/health"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 15s

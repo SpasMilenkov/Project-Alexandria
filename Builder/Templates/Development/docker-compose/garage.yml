@@ -1,0 +1,24 @@
+# Templates/docker-compose/garage.yml
+garage:
+  image: dxflrs/garage:v2.2.0
+  container_name: alexandria-garage-{{ENVIRONMENT}}
+  restart: unless-stopped
+  environment:
+    RUST_LOG: garage=info
+  volumes:
+    - ./garage.toml:/etc/garage.toml
+    - garage_meta:/var/lib/garage/meta
+    - garage_data:/var/lib/garage/data
+  ports:
+    - "{{S3_API_PORT}}:3900"
+    - "{{S3_CONSOLE_PORT}}:3903"
+    - "{{GARAGE_RPC_PORT}}:3901"
+    - "{{GARAGE_WEB_PORT}}:3902"
+  networks:
+    - alexandria-network
+  healthcheck:
+    test: ["CMD", "garage", "status"]
+    interval: 10s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
