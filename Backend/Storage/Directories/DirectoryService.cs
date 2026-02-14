@@ -377,7 +377,7 @@ public class DirectoryService : IDirectoryService
         await _unitOfWork.Files.MarkAsDeleted(files.Select(f => f.Id).ToArray(), userId, ct);
     }
 
-    public async Task CopyDirectoryAsync(Guid directoryId, Guid destinationId, Guid userId,
+    public async Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId,
         CancellationToken ct = default) =>
         await _unitOfWork.Directories.CopyDirectory(directoryId, destinationId, userId, ct);
 }
