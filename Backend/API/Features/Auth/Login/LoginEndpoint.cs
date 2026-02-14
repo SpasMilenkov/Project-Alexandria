@@ -1,4 +1,3 @@
-using Common;
 using Common.Services;
 using DTO;
 using DTO.Files;
@@ -13,12 +12,11 @@ namespace API.Features.Auth.Login;
 public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
 {
     private readonly IAuthService _authService;
-    private readonly CsrfService _csrfService;
     private readonly IAuditService _auditService;
-    public LoginEndpoint(IAuthService authService, CsrfService csrfService, IAuditService auditService)
+
+    public LoginEndpoint(IAuthService authService, IAuditService auditService)
     {
         _authService = authService;
-        _csrfService = csrfService;
         _auditService = auditService;
     }
 
@@ -32,21 +30,18 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
 
     public override async Task HandleAsync(LoginRequest req, CancellationToken ct)
     {
-        
         var result = await _authService.AuthenticateAsync(req.Email, req.Password);
-        
+
         if (!result.Succeeded || result.User is null)
         {
             await Send.UnauthorizedAsync(ct);
             return;
         }
-    
+
         var userId = result.User.Id.ToString();
-        
+
         var accessToken = _authService.GenerateAccessToken(result.User);
         var refreshToken = await _authService.GenerateRefreshTokenAsync(result.User, ct);
-        
-        var (csrfCookie, csrfHeader) = _csrfService.GenerateToken(userId);
 
         HttpContext.Response.Cookies.Append("access_token", accessToken, new CookieOptions
         {
@@ -65,35 +60,26 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
             Path = "/api/auth/refresh"
         });
 
-        HttpContext.Response.Cookies.Append("csrf_token", csrfCookie, new CookieOptions
-        {
-            HttpOnly = false,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            MaxAge = TimeSpan.FromHours(1)
-        });
-
         await _auditService.Log(
             new AuditLogDto(
                 OperationType.Login,
                 EntityType.User,
                 result.User.Id,
                 result.User.Id,
-                $"User logged in.", 
+                $"User logged in.",
                 null,
                 HttpContext.Connection.RemoteIpAddress?.ToString() ?? ""
-                    ));
-        
+            ));
+
         await Send.OkAsync(new LoginResponse
         {
             Success = true,
-            User = new UserDto 
-            { 
-                Id = result.User.Id, 
+            User = new UserDto
+            {
+                Id = result.User.Id,
                 Email = result.User.Email ?? throw new InvalidOperationException(),
                 Name = result.User.UserName ?? throw new InvalidOperationException()
             },
-            CsrfToken = csrfHeader
         }, ct);
     }
 }

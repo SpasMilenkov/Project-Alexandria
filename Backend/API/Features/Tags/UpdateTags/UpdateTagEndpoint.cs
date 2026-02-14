@@ -8,7 +8,7 @@ public class UpdateTagEndpoint(IFileTagService tagService) : Endpoint<UpdateTagR
 {
     public override void Configure()
     {
-        Put("/tags/{TagId}");
+        Patch("/tags/{TagId}");
 
         Summary(s =>
         {

@@ -4,7 +4,7 @@ using FastEndpoints;
 
 namespace API.Features.Storage.Files.FinalizeFileUpload;
 
-sealed class FinalizeFileUploadRequest
+internal sealed class FinalizeFileUploadRequest
 {
     public Guid UploadId { get; set; }
     public Guid? DirectoryId { get; set; }

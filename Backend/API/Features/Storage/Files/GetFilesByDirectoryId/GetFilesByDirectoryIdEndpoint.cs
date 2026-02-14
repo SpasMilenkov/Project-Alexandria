@@ -2,6 +2,8 @@ using System.Security.Claims;
 using Common.Services;
 using DTO.Files;
 using FastEndpoints;
+using FluentValidation;
+using Models;
 using Models.Enumerators;
 
 namespace API.Features.Storage.Files.GetFilesByDirectoryId;
@@ -13,6 +15,25 @@ sealed class GetFilesByDirectoryIdRequest
     public int PageSize { get; set; }
     public SortBy SortBy { get; set; }
     public SortDirection SortDirection { get; set; }
+}
+
+sealed class GetFilesByDirectoryIdRequestValidator : Validator<GetFilesByDirectoryIdRequest>
+{
+    public GetFilesByDirectoryIdRequestValidator()
+    {
+        RuleFor(x => x.Page)
+            .GreaterThanOrEqualTo(1);
+
+        RuleFor(x => x.PageSize)
+            .GreaterThan(0)
+            .LessThanOrEqualTo(ValidationConstants.PaginationConstants.MaxPageSize);
+
+        RuleFor(x => x.SortBy)
+            .IsInEnum();
+
+        RuleFor(x => x.SortDirection)
+            .IsInEnum();
+    }
 }
 
 sealed class GetFilesByDirectoryIdEndpoint(IFileService fileService)

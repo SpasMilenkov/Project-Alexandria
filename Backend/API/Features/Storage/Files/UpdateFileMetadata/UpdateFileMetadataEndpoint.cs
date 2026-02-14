@@ -1,17 +1,44 @@
 using System.Security.Claims;
 using Common.Services;
 using FastEndpoints;
+using FluentValidation;
+using Models;
 
 namespace API.Features.Storage.Files.UpdateFileMetadata;
 
-public class UpdateFileMetadataRequest
+sealed class UpdateFileMetadataRequest
 {
     public Guid Id { get; set; }
     public string? Name { get; set; }
     public bool? HasPreview { get; set; }
 }
 
-public class UpdateFileMetadataResponse
+sealed class UpdateFileMetadataRequestValidator : Validator<UpdateFileMetadataRequest>
+{
+    public UpdateFileMetadataRequestValidator()
+    {
+        RuleFor(x => x.Id)
+            .NotEmpty()
+            .WithMessage("File ID cannot be empty.");
+
+        RuleFor(x => x)
+            .Must(HaveAtLeastOnePropertyToUpdate)
+            .WithMessage("At least one field must be provided to update.");
+
+        When(x => x.Name is not null, () =>
+        {
+            RuleFor(x => x.Name!)
+                .NotEmpty()
+                .MaximumLength(ValidationConstants.StringLengths.MediumString)
+                .WithMessage("Name must be between 1 and 255 characters.");
+        });
+    }
+
+    private static bool HaveAtLeastOnePropertyToUpdate(UpdateFileMetadataRequest x)
+        => x.Name is not null || x.HasPreview is not null;
+}
+
+sealed class UpdateFileMetadataResponse
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -21,13 +48,13 @@ public class UpdateFileMetadataResponse
     public Guid UpdatedBy { get; set; }
 }
 
-public class UpdateFileMetadataEndpoint(
+sealed class UpdateFileMetadataEndpoint(
     IFileService fileService
 ) : Endpoint<UpdateFileMetadataRequest, UpdateFileMetadataResponse>
 {
     public override void Configure()
     {
-        Put("/files/{id}/metadata");
+        Patch("/files/{id}/metadata");
         AllowAnonymous();
         Description(x => x.WithTags("Files"));
 

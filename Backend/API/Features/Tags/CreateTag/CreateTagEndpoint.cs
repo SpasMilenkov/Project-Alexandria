@@ -1,8 +1,9 @@
 using System.Security.Claims;
+using API.Features.Tags.CrteateTag;
 using Common.Services;
 using FastEndpoints;
 
-namespace API.Features.Tags.CrteateTag;
+namespace API.Features.Tags.CreateTag;
 
 public class CreateTagEndpoint(IFileTagService tagService) : Endpoint<CreateTagRequest, CreateTagResponse>
 {

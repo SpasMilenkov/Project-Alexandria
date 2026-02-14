@@ -4,10 +4,10 @@ using FastEndpoints;
 
 namespace API.Features.Storage.Directories.CopyDirectory;
 
-sealed class CopyDirectoryRequest
+public sealed class CopyDirectoryRequest
 {
     public Guid DirectoryId { get; set; }
-    public Guid DestinationId { get; set; }
+    public Guid? DestinationId { get; set; }
 }
 
 sealed class CopyDirectoryEndpoint(IDirectoryService directoryService) : Endpoint<CopyDirectoryRequest>

@@ -17,29 +17,29 @@ public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<G
             s.Description = "Autodetects filetype and generates appropriate preview with predefined sizes. " +
                             "If the preview exits it will be fetched from an already cached source," +
                             " if there is no preview it will be generated on the fly which may consume larger amount of resources" +
-                            " and take a while."; 
+                            " and take a while.";
         });
-        
+        ResponseCache(120);
     }
-    
+
     public override async Task HandleAsync(GetPreviewByIdRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
         var userId = Guid.Parse(userIdString);
-        
+
         var preview = await previewService.GetPreviewUrl(req.Id, userId, ct);
-    
+
         try
         {
             if (preview is null)
             {
                 return;
             }
+
             // Stream file from storage
             await Send.OkAsync(preview, ct);
-
         }
         catch (Exception e)
         {
