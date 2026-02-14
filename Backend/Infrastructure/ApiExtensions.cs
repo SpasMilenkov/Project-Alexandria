@@ -22,6 +22,7 @@ public static class ApiExtensions
                     s.Version = "v0";
                 };
             });
+        services.AddResponseCaching();
         services.AddHealthChecks();
         services.AddCors(c =>
         {
@@ -43,6 +44,7 @@ public static class ApiExtensions
         return services;
     }
 
+    //TODO: Confirm I don't do any more file streaming via the API and remove this.
     public static void ConfigureKestrelMaxRequestSize(this ConfigureWebHostBuilder webHost)
     {
         webHost.ConfigureKestrel(o =>
