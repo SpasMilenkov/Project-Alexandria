@@ -48,12 +48,12 @@ bld.WebHost.ConfigureKestrelMaxRequestSize();
 
 var app = bld.Build();
 
+app.UseResponseCaching();
 app.UseCors("AllowOrigin");
 
 app.UseMiddleware<JwtFromCookieMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
-// app.UseMiddleware<CsrfMiddleware>();
 
 app.UseFastEndpoints(c =>
     {
@@ -65,5 +65,4 @@ app.UseFastEndpoints(c =>
 ).UseSwaggerGen();
 app.MapHealthChecks("/health");
 
-// await app.SetupS3BucketAsync();
 await app.RunAsync();

@@ -577,7 +577,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         return newName;
     }
 
-    public async Task CopyDirectory(Guid directoryId, Guid destinationId, Guid userId, CancellationToken ct = default)
+    public async Task CopyDirectory(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default)
     {
         var dir = await context.Directories.Where(d => d.Id == directoryId && d.OwnerId == userId)
             .FirstOrDefaultAsync(ct);
@@ -593,7 +593,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .ToHashSetAsync(ct);
 
 
-        var directories = await context.Directories.FromSql(
+        var directories = await context.Directories.FromSqlInterpolated(
                 $"""
                  WITH RECURSIVE RecursiveDirs AS (
                      SELECT d.*, ARRAY[d."Id"] AS path
@@ -611,6 +611,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                  SELECT
                      "Id",
                      "Name",
+                     "NormalizedName",
+                     "SearchVector",    
                      "ParentId",
                      "CreatedAt",
                      "UpdatedAt",
@@ -639,7 +641,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     {
                         f.CurrentVersion.ContentObjectId,
                         f.CurrentVersion.Size,
-                        f.CurrentVersion.MimeType
+                        f.CurrentVersion.MimeType,
+                        f.CurrentVersion.ContentHash
                     }
                 })
                 .ToListAsync(ct);
@@ -686,6 +689,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                 Id = versionId,
                 FileId = fileId,
                 ContentObjectId = f.Version.ContentObjectId,
+                ContentHash = f.Version.ContentHash,
                 Size = f.Version.Size,
                 MimeType = f.Version.MimeType,
                 VersionNumber = 1,
@@ -751,16 +755,16 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                                                                    )
                                                                    UPDATE "Directories"
                                                                    SET
-                                                                       "ParentId" = {destinationId},
+                                                                       "ParentId" = {destinationId}::uuid,
                                                                        "UpdatedAt" = NOW(),
                                                                        "UpdatedBy" = {userId}
                                                                    WHERE "Id" = ANY({ids})
                                                                      AND "OwnerId" = {userId}
                                                                      AND "DeletedAt" IS NULL
                                                                      AND (
-                                                                         {destinationId} IS NULL
+                                                                         {destinationId}::uuid IS NULL
                                                                          OR 
-                                                                         NOT EXISTS (SELECT 1 FROM subtree WHERE "Id" = {destinationId})
+                                                                         NOT EXISTS (SELECT 1 FROM subtree WHERE "Id" = {destinationId}::uuid)
                                                                      )
                                                                    """, ct);
 

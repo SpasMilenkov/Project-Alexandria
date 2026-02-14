@@ -4,7 +4,7 @@ using FastEndpoints;
 
 namespace API.Features.Storage.Directories.CreateDirectoryTree;
 
-sealed class CreateDirectoryTreeRequest
+public sealed class CreateDirectoryTreeRequest
 {
     public Guid? ParentId { get; set; }
     public List<string> Paths { get; set; } = [];

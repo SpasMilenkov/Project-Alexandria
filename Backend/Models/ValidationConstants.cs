@@ -17,6 +17,11 @@ public static class ValidationConstants
         public const long MaxFileSize = long.MaxValue;
     }
 
+    public static class PaginationConstants
+    {
+        public const int MaxPageSize = 100;
+    }
+
     public static class ErrorMessages
     {
         public const string FileSizeRange = "File size must be non-negative";

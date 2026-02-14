@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Common.Services;
 using FastEndpoints;
+using FluentValidation;
 
 namespace API.Features.Storage.Files.MoveFiles;
 
@@ -8,6 +9,25 @@ sealed class MoveFilesRequest
 {
     public Guid[] FileIds { get; set; }
     public Guid? DestinationId { get; set; }
+}
+
+sealed class MoveFilesRequestValidator : Validator<MoveFilesRequest>
+{
+    public MoveFilesRequestValidator()
+    {
+        RuleFor(x => x.FileIds)
+            .NotNull()
+            .NotEmpty()
+            .WithMessage("At least one file must be specified.");
+
+        RuleForEach(x => x.FileIds)
+            .NotEmpty()
+            .WithMessage("File ID cannot be empty.");
+
+        RuleFor(x => x.FileIds)
+            .Must(ids => ids.Distinct().Count() == ids.Length)
+            .WithMessage("File IDs must be unique.");
+    }
 }
 
 sealed class MoveFilesEndpoint(IFileService fileService) : Endpoint<MoveFilesRequest>

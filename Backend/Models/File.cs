@@ -13,7 +13,7 @@ public class File : IBase
     [StringLength(ValidationConstants.StringLengths.MediumString)]
     public required string MimeType { get; init; }
 
-    public NpgsqlTsVector SearchVector { get; set; }
+    public NpgsqlTsVector SearchVector { get; set; } = null!;
     public string NormalizedName { get; set; }
     public DateTime CreatedAt { get; set; }
 
