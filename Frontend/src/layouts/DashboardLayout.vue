@@ -24,12 +24,13 @@
           :items="mainMenuItems"
           orientation="vertical"
         />
+
+        <StorageInfoWidget class="mt-auto" />
         <!-- Bottom Navigation (Settings) -->
         <UNavigationMenu
           :collapsed="collapsed"
           :items="settingsMenuItems"
           orientation="vertical"
-          class="mt-auto"
         />
       </template>
       <template #footer="{ collapsed }">
@@ -77,6 +78,7 @@ import { computed } from "vue";
 import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 import { useAuthStore } from "@/stores/auth";
 import router from "@/router";
+import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
 
 const authStore = useAuthStore();
 const route = useRoute();
@@ -120,6 +122,11 @@ const mainMenuItems: NavigationMenuItem[][] = [
           icon: "i-heroicons-clock",
           to: "/access-history",
         },
+        {
+          label: "Trash",
+          icon: "i-heroicons-trash",
+          to: "/dashboard/trash",
+        },
       ],
     },
   ],
@@ -133,9 +140,9 @@ const settingsMenuItems: NavigationMenuItem[][] = [
       defaultOpen: false,
       children: [
         {
-          label: "Look and Feel",
-          icon: "i-heroicons-paint-brush",
-          to: "/appearance",
+          label: "Settings",
+          icon: "i-heroicons-cog-6-tooth",
+          to: "/settings",
         },
         {
           label: "My Account",
@@ -149,6 +156,6 @@ const settingsMenuItems: NavigationMenuItem[][] = [
 
 const handleLogout = async () => {
   await authStore.logout();
-  router.push('/auth')
+  router.push("/auth");
 };
 </script>
