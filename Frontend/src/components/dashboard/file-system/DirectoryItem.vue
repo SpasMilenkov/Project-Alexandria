@@ -8,7 +8,7 @@
   >
     <!-- Grid View -->
     <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems">
-      <div class="relative group" tabindex="0">
+      <div class="relative group" tabindex="0" @contextmenu="handleClick">
         <button
           type="button"
           class="w-full flex flex-col items-center gap-2 p-4 rounded-lg transition-colors cursor-pointer"
@@ -20,7 +20,12 @@
           @click="handleClick"
           @dblclick="handleDoubleClick"
         >
-          <Icon icon="mdi:folder" :width="iconSize" :height="iconSize" class="shrink-0" />
+          <Icon
+            icon="mdi:folder"
+            :width="iconSize"
+            :height="iconSize"
+            class="shrink-0"
+          />
           <span
             class="text-sm text-center line-clamp-2 w-full wrap-break-word font-medium"
           >
@@ -44,7 +49,12 @@
           @click="handleClick"
           @dblclick="handleDoubleClick"
         >
-          <Icon icon="mdi:folder" :width="iconSize" :height="iconSize" class="shrink-0" />
+          <Icon
+            icon="mdi:folder"
+            :width="iconSize"
+            :height="iconSize"
+            class="shrink-0"
+          />
           <span class="flex-1 truncate font-medium">{{ data.name }}</span>
           <Icon icon="mdi:chevron-right" class="w-4 h-4 shrink-0" />
         </button>
@@ -230,9 +240,13 @@ import { ref, computed } from "vue";
 import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
 
-const settingsStore = useSettingsStore()
+const settingsStore = useSettingsStore();
 
-const iconSize = computed(() => (props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize))
+const iconSize = computed(() =>
+  props.viewMode === "grid"
+    ? settingsStore.gridIconSize
+    : settingsStore.listIconSize,
+);
 
 const props = defineProps<{
   data: DirectorySummaryDto;
@@ -362,7 +376,6 @@ const canDownload = (): boolean => {
 const canDelete = (): boolean => {
   return true;
 };
-
 
 const handleClick = (event: MouseEvent) => {
   if (!props.isSelected && event.button === 2) {
