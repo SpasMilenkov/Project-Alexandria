@@ -24,6 +24,7 @@ public static class ApiExtensions
             });
         services.AddResponseCaching();
         services.AddHealthChecks();
+        //TODO: Move this to the config
         services.AddCors(c =>
         {
             c.AddPolicy("AllowOrigin",

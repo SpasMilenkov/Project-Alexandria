@@ -146,6 +146,7 @@
               @click="handleItemClick($event, dir.id, 'directory')"
               @copy="handleCopy"
               @delete="handleDelete"
+              @contextmenu="handleItemClick($event, dir.id, 'directory')"
             />
           </div>
           <UButton
@@ -159,7 +160,7 @@
 
         <!-- Files Section -->
         <GridPlaceholder v-if="areFilesLoading" />
-        <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col">
+        <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
           <h3 class="text-sm font-semibold opacity-70 mb-3 px-1">Files</h3>
           <div class="grid gap-3" :class="gridColumns">
             <FileItem
@@ -174,6 +175,7 @@
               @copy="handleCopy"
               @delete="handleDelete"
               @move="handleCut"
+              @contextmenu="handleItemClick($event, dir.id, 'directory')"
             />
           </div>
           <UButton
@@ -272,6 +274,7 @@ import FileUploadModal from "./Modals/FileUploadModal.vue";
 import DirectoryUploadModal from "./Modals/DirectoryUploadModal.vue";
 import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
+import { useSettingsStore } from "@/stores/settings";
 import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
 import {
   copyDirectory,
@@ -283,9 +286,11 @@ import { searchTag } from "@/queries/tags";
 import { useQuery } from "@pinia/colada";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import QuickSearchModal from "./Modals/QuickSearchModal.vue";
+import ConfirmModal from "./Modals/ConfirmModal.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
+const settingsStore = useSettingsStore();
 const tabStore = useTabStore();
 
 const props = defineProps<{
@@ -324,7 +329,8 @@ const { mutateAsync: copyDirectoryMutate } = copyDirectory();
 const { mutateAsync: moveFilesMutate } = moveFiles();
 const { mutateAsync: moveDirectoriesMutate } = moveDirectories();
 const { mutateAsync: deleteFilesMutate } = deleteFiles();
-const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
+const { mutateAsync: deleteDirectoryMutate, error: DeleteDirectoryError } =
+  deleteDirectory();
 
 const { data: directoriesData, isLoading: areDirectoriesLoading } =
   directoriesQuery;
@@ -423,6 +429,7 @@ const fileUploadModal = overlay.create(FileUploadModal);
 const directoryUploadModal = overlay.create(DirectoryUploadModal);
 const advancedSearchModal = overlay.create(AdvancedSearchModal);
 const quickSearchModal = overlay.create(QuickSearchModal);
+const confirmModal = overlay.create(ConfirmModal);
 
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
@@ -497,18 +504,66 @@ const handleCopy = async () => {
 };
 
 const handleDelete = async () => {
-  await deleteFilesMutate([...selectedFiles.value]);
-  await Promise.allSettled(
-    [...selectedDirectories.value].map(
-      async (id) =>
-        await deleteDirectoryMutate({ id, options: { force: false } }),
-    ),
-  );
+  if (selectedFiles.value.size > 0) {
+    await deleteFilesMutate({ ids: [...selectedFiles.value] });
+  }
+
+  if (selectedDirectories.value.size > 0) {
+    const dirIds = Array.from(selectedDirectories.value);
+
+    const results = await Promise.allSettled(
+      dirIds.map((id) =>
+        deleteDirectoryMutate({ id, options: { force: false } }),
+      ),
+    );
+
+    const failedDirs = results
+      .map((result, index) => ({ result, id: dirIds[index] }))
+      .filter(
+        (x) =>
+          x.result.status === "rejected" &&
+          x.result.reason?.response?.status === 409,
+      )
+      .map((x) => x.id);
+
+    if (failedDirs.length > 0) {
+      // Check if user has disabled delete confirmations
+      const shouldSkipConfirmation = settingsStore.skipDeleteConfirmation;
+
+      if (shouldSkipConfirmation) {
+        // Skip confirmation and proceed with force delete
+        await Promise.all(
+          failedDirs.map((id) =>
+            deleteDirectoryMutate({ id, options: { force: true } }),
+          ),
+        );
+      } else {
+        // Show confirmation modal
+        const instance = confirmModal.open({
+          title: "Confirm deletion",
+          message: `Selected directories are not empty. Are you sure you want to proceed?`,
+          dangerMode: true,
+          confirmIcon: "mdi-trash",
+        });
+
+        const confirmed = await instance.result;
+        if (confirmed) {
+          await Promise.all(
+            failedDirs.map((id) =>
+              deleteDirectoryMutate({ id, options: { force: true } }),
+            ),
+          );
+        }
+      }
+    }
+  }
+
   toast.add({
     title: "Items deleted",
     color: "info",
     id: "deleting",
   });
+
   refreshDir();
 };
 
@@ -525,21 +580,21 @@ const handleCut = async () => {
 };
 
 const handlePaste = async () => {
-  if(fileStore.filesToCopy.length > 0)
-  await copyFilesMutate({
-    fileIds: fileStore.filesToCopy,
-    destinationId: currentDirId.value,
-  });
+  if (fileStore.filesToCopy.length > 0)
+    await copyFilesMutate({
+      fileIds: fileStore.filesToCopy,
+      destinationId: currentDirId.value,
+    });
 
-  if(directoryStore.directoriesToCopy.length > 0)
-  await Promise.all(
-    directoryStore.directoriesToCopy.map(async (dir) => {
-      await copyDirectoryMutate({
-        destinationId: currentDirId.value,
-        directoryId: dir,
-      });
-    }),
-  );
+  if (directoryStore.directoriesToCopy.length > 0)
+    await Promise.all(
+      directoryStore.directoriesToCopy.map(async (dir) => {
+        await copyDirectoryMutate({
+          destinationId: currentDirId.value,
+          directoryId: dir,
+        });
+      }),
+    );
 
   refreshDir();
 };
@@ -649,6 +704,23 @@ const handleItemClick = (
 ) => {
   const isCtrlOrCmd = event.ctrlKey || event.metaKey;
   const isShift = event.shiftKey;
+  const isRightClick = event.button === 2;
+  console.log("does this eve nfire?");
+  console.log("event button", event.button);
+  // For right-click: only select if not already selected, preserve existing selection
+  if (isRightClick) {
+    console.log("entering the IF");
+    if (!isFileSelected(id) && !isDirectorySelected(id)) {
+      console.log("entering the second if");
+      // Not selected, so select it (keep others selected too)
+      toggleSelect(id, type);
+      lastSelected.value = id;
+      console.log(selectedDirectories.value);
+    }
+    // If already selected, do nothing - keep current selection
+    return;
+  }
+
   if (isShift && lastSelected.value) {
     // Range selection
     selectRange(lastSelected.value, id);
@@ -660,6 +732,7 @@ const handleItemClick = (
     // Single selection (clear others)
     clearSelection();
     toggleSelect(id, type);
+    console.log("Single selection triggerd here ", id);
     lastSelected.value = id;
   }
 };

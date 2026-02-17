@@ -67,12 +67,7 @@ public class SearchDirectoryRequestValidator : Validator<SearchDirectoryRequest>
             .When(x => x.DeletedAfter.HasValue)
             .WithMessage("DeletedAt cannot be in the future");
 
-        // Logical validation - deletion filters
-        RuleFor(x => x)
-            .Must(x => !(x.IsDeleted && (x.DeletedAfter.HasValue || x.DeletedBefore.HasValue)))
-            .WithMessage("Cannot use both IsDeleted=true and specify a deletion range. Use one or the other.");
-
-        // GUIDs validation (optional - only if you want to ensure they're not empty)
+        // GUIDs validation
         RuleFor(x => x.DirectoryId)
             .NotEqual(Guid.Empty)
             .When(x => x.DirectoryId.HasValue)

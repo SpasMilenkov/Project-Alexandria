@@ -17,7 +17,7 @@ enum UploadStage {
   FINALIZING = "finalizing",
   COMPLETE = "complete",
   ERROR = "error",
-} 
+}
 
 interface StageConfig {
   label: string;
@@ -226,7 +226,7 @@ async function initializeUpload(
 
   const response = await fileApi.initializeUpload({
     contentType: file.type || "application/octet-stream",
-    sha256: hash,
+    hash: hash,
     contentLength: file.size,
     directoryId: selectedDirectoryId.value,
   });

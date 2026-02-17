@@ -1,13 +1,4 @@
-import AuthView from "@/views/AuthView.vue";
-import Dashboard from "@/views/dashboard/DashboardView.vue";
-import SetupView from "@/views/onboarding/SetupView.vue";
-import WelcomeView from "@/views/onboarding/WelcomeView.vue";
-import SettingsView from "@/views/dashboard/AppearanceSettingsView.vue";
 import { createRouter, createWebHistory } from "vue-router";
-import AccessHistory from "@/views/dashboard/AccessHistory.vue";
-import TagsAndCategoriesView from "@/views/dashboard/TagsAndCategoriesView.vue";
-import MyAccount from "@/views/dashboard/MyAccount.vue";
-import IndexView from "@/views/IndexView.vue";
 import { useAuthStore } from "@/stores/auth";
 
 const router = createRouter({
@@ -16,67 +7,72 @@ const router = createRouter({
     {
       path: "/",
       name: "index",
-      component: IndexView,
+      component: () => import("@/views/IndexView.vue"),
       meta: { layout: "default", requiresAuth: false },
     },
     {
       path: "/auth",
       name: "auth",
-      component: AuthView,
+      component: () => import("@/views/AuthView.vue"),
       meta: { layout: "default", requiresAuth: false, guestOnly: true },
     },
     {
       name: "dashboard",
       path: "/dashboard/:dirId?",
-      component: Dashboard,
+      component: () => import("@/views/dashboard/DashboardView.vue"),
       meta: { layout: "dashboard", requiresAuth: true },
       props: true,
     },
     {
-      name: "appearance",
-      path: "/appearance",
+      path: "/settings",
+      name: "settings",
+      component: () => import("@/views/dashboard/SettingsView.vue"),
       meta: { layout: "dashboard", requiresAuth: true },
-      component: SettingsView,
+    },
+    {
+      path: "/account",
+      name: "account",
+      component: () => import("@/views/dashboard/MyAccount.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
+    },
+    {
+      path: "/dashboard/tags",
+      name: "tags",
+      component: () => import("@/views/dashboard/TagsAndCategoriesView.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
+    },
+    {
+      path: "/access-history",
+      name: "access-history",
+      component: () => import("@/views/dashboard/AccessHistory.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
+    },
+    {
+      path: "/dashboard/trash",
+      name: "trash",
+      component: () => import("@/views/dashboard/DeletedItems.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
+    },
+    {
+      path: "/my-storage",
+      name: "my-storage",
+      component: () => import("@/views/dashboard/MyStorage.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
     },
     {
       path: "/initial-greeting",
       name: "initial-greeting",
-      component: WelcomeView,
+      component: () => import("@/views/onboarding/WelcomeView.vue"),
       meta: { layout: "default", requiresAuth: false },
     },
     {
       path: "/setup",
       name: "setup",
-      component: SetupView,
+      component: () => import("@/views/onboarding/SetupView.vue"),
       meta: { layout: "default", requiresAuth: false },
-    },
-    {
-      path: "/settings/appearance",
-      name: "settings-appearance",
-      meta: { layout: "dashboard", requiresAuth: true },
-      component: SettingsView,
-    },
-    {
-      path: "/account",
-      name: "account",
-      meta: { layout: "dashboard", requiresAuth: true },
-      component: MyAccount,
-    },
-    {
-      path: "/dashboard/tags",
-      name: "tags",
-      meta: { layout: "dashboard", requiresAuth: true },
-      component: TagsAndCategoriesView,
-    },
-    {
-      path: "/access-history",
-      name: "access-history",
-      meta: { layout: "dashboard", requiresAuth: true },
-      component: AccessHistory,
     },
   ],
 });
-
 // Navigation Guard
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
@@ -89,12 +85,10 @@ router.beforeEach((to, from, next) => {
       path: "/auth",
       query: { redirect: to.fullPath }, // Save the intended destination
     });
-  }
-  else if (guestOnly && isAuthenticated) {
+  } else if (guestOnly && isAuthenticated) {
     const redirectPath = to.query.redirect as string;
     next(redirectPath || "/dashboard");
-  }
-  else {
+  } else {
     next();
   }
 });

@@ -60,4 +60,6 @@ public interface IDirectoryService
 
     Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId,
         CancellationToken ct = default);
+    
+    Task<int> RestoreDirectories(Guid[] directoryIds, Guid userId, CancellationToken ct = default);
 }

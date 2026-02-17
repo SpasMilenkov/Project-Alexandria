@@ -153,7 +153,7 @@ async function uploadSingleFile(
     fileStatus.progress = 25;
     const { uploadId, uploadUrl } = await fileApi.initializeUpload({
       contentType: file.type || "application/octet-stream",
-      sha256: fileHash,
+      hash: fileHash,
       contentLength: file.size,
       directoryId: fileStatus.directoryId,
     });

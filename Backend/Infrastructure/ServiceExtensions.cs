@@ -44,6 +44,7 @@ public static class ServiceExtensions
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUploadRepository, UploadRepository>();
         services.AddScoped<IFileService, FileService>();
+        services.AddHttpClient<MetricsService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

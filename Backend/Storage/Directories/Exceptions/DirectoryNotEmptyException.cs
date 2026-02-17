@@ -1,14 +1,7 @@
 namespace Storage.Directories.Exceptions;
 
-public class DirectoryNotEmptyException : Exception
+public class DirectoryNotEmptyException(Guid directoryId, int itemCount) : Exception($"Directory with ID '{directoryId}' contains {itemCount} item(s) and cannot be deleted.")
 {
-    public Guid DirectoryId { get; }
-    public int ItemCount { get; }
-    
-    public DirectoryNotEmptyException(Guid directoryId, int itemCount) 
-        : base($"Directory with ID '{directoryId}' contains {itemCount} item(s) and cannot be deleted.")
-    {
-        DirectoryId = directoryId;
-        ItemCount = itemCount;
-    }
+    public Guid DirectoryId { get; } = directoryId;
+    public int ItemCount { get; } = itemCount;
 }

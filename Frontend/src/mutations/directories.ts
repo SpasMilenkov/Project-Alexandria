@@ -43,3 +43,8 @@ export const deleteDirectory = defineMutation({
     options: DeleteDirectorySchema;
   }) => directoryApi.deleteDirectory(id, options),
 });
+
+export const restoreDirectories = defineMutation({
+  mutation: (directoryIds: string[]) =>
+    directoryApi.restoreDirectories(directoryIds),
+});

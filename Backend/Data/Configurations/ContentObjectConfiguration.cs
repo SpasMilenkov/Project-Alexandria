@@ -37,7 +37,11 @@ public class ContentObjectConfiguration : IEntityTypeConfiguration<ContentObject
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(e => e.Hash).IsUnique();
+        builder.HasIndex(e => e.Hash)
+            .IsUnique()
+            .HasFilter("\"OrphanedAt\" IS NULL")
+            .HasDatabaseName("ix_contentobjects_hash_active");
+
 
         builder.ToTable("ContentObjects");
     }

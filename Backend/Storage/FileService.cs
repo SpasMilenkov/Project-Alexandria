@@ -56,8 +56,11 @@ public class FileService(
         try
         {
             await unitOfWork.Files.MarkAsDeleted(fileIds, userId, ct);
+
             if (hardDelete)
                 await unitOfWork.FileVersions.DeleteFileVersions(fileIds, userId, ct);
+            else
+                await unitOfWork.FileVersions.SoftDeleteFileVersions(fileIds, userId, ct);
 
             await unitOfWork.CommitAsync(ct);
         }
@@ -172,5 +175,24 @@ public class FileService(
         if (string.IsNullOrEmpty(mimeTypeFilter)) return await unitOfWork.Files.CountAsync(null, ct);
 
         return await unitOfWork.Files.CountAsync(f => f.MimeType == mimeTypeFilter, ct);
+    }
+
+    public async Task<int> RestoreFiles(Guid[] fileIds, Guid userId, CancellationToken ct = default)
+    {
+        await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            var restoredFiles = await unitOfWork.Files.RestoreFiles(fileIds, userId, ct);
+            await unitOfWork.FileVersions.RestoreFileVersions(fileIds, userId, ct);
+
+            await unitOfWork.CommitAsync(ct);
+
+            return restoredFiles;
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(ct);
+            throw;
+        }
     }
 }

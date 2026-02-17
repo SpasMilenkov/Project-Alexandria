@@ -83,7 +83,8 @@ onMounted(() => {
     v-model="tabStore.activeTabId"
     :items="items"
     variant="link"
-    class="w-full p-0"
+    class="w-full flex-1 flex flex-col"
+    :ui="{ content: 'flex flex-1'}"
   >
     <template #list-trailing>
       <UButton

@@ -1,6 +1,7 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
+using Storage.Directories.Exceptions;
 
 namespace API.Features.Storage.Directories.DeleteDir;
 
@@ -14,12 +15,22 @@ public class DeleteDirEndpoint(IDirectoryService dirService) : Endpoint<DeleteDi
 
     public override async Task HandleAsync(DeleteDirRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+        var userId = User.GetUserId();
 
-        var userId = Guid.Parse(userIdString);
-        await dirService.DeleteDirectoryAsync(req.Id, userId, req.HardDelete, ct);
-        await Send.OkAsync(cancellation: ct);
+        try
+        {
+            await dirService.DeleteDirectoryAsync(req.Id, userId, req.Force, ct);
+            await Send.OkAsync(cancellation: ct);
+
+        }
+        catch (DirectoryNotEmptyException)
+        {
+            await Send.ResultAsync(
+                    Results.Conflict(new
+                    {
+                        error = "DIRECTORY_NOT_EMPTY",
+                        message = "The directory is not empty. Delete its contents first or use hard delete."
+                    }));
+        }
     }
 }

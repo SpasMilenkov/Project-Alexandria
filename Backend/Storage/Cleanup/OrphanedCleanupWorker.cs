@@ -62,20 +62,31 @@ public class OrphanedCleanupWorker : BackgroundService
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         var cutoffTime = DateTime.UtcNow - _orphanedRetention;
+        var now = DateTime.UtcNow;
 
         _logger.LogInformation(
             "Scanning for orphaned content objects (orphaned before {CutoffTime})",
             cutoffTime);
 
+
+        var markedCount = await unitOfWork.ContentObjects.MarkOrphaned(now, ct);
+        if (markedCount > 0)
+            _logger.LogInformation("Marked {Count} ContentObjects as orphaned", markedCount);
+
+        var clearedCount = await unitOfWork.ContentObjects.ClearOrphaned(now, ct);
+
+        if (clearedCount > 0)
+            _logger.LogInformation("Cleared orphan status from {Count} ContentObjects", clearedCount);
+
         // Find orphaned ContentObjects ready for deletion
         var orphanedObjects = await unitOfWork.ContentObjects
             .FindAsync(co =>
-                    co.RefCount == 0 &&
                     co.OrphanedAt != null &&
                     co.OrphanedAt < cutoffTime &&
                     co.IsPromoted && // Only delete promoted objects
                     co.DeletedAt == null, // Not already deleted
                 ct);
+
 
         if (!orphanedObjects.Any())
         {

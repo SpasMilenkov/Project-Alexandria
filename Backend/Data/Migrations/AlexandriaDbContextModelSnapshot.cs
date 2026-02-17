@@ -360,9 +360,6 @@ namespace Data.Migrations
                     b.Property<int>("PromotionAttempts")
                         .HasColumnType("integer");
 
-                    b.Property<int>("RefCount")
-                        .HasColumnType("integer");
-
                     b.Property<string>("StorageKey")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -381,7 +378,9 @@ namespace Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Hash")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_contentobjects_hash_active")
+                        .HasFilter("\"OrphanedAt\" IS NULL");
 
                     b.HasIndex("UploadId")
                         .IsUnique();
@@ -577,9 +576,10 @@ namespace Data.Migrations
 
                     b.HasIndex("ContentHash");
 
-                    b.HasIndex("ContentObjectId");
-
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ContentObjectId", "DeletedAt")
+                        .HasDatabaseName("ix_fileversions_contentobjectid_deletedat");
 
                     b.ToTable("FileVersions", (string)null);
                 });

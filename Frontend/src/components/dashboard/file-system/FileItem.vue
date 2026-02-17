@@ -5,6 +5,7 @@
     direction="right"
     v-model:open="openDrawer"
     :ui="{ container: 'md:max-w-[40rem]' }"
+    :handle-only="true"
   >
     <!-- Grid View -->
     <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems">
@@ -54,7 +55,7 @@
             class="shrink-0"
           />
           <span class="flex-1 truncate">{{ data.fileName }}</span>
-          <span class="text-xs opacity-70 shrink-0 min-w-[60px] text-right">
+          <span class="text-xs opacity-70 shrink-0 min-w-15 text-right">
             {{ formatFileSize(Number(data.currentVersion.size)) }}
           </span>
         </button>
@@ -240,7 +241,7 @@
 
                 <!-- Time Display -->
                 <span
-                  class="text-xs text-neutral-600 dark:text-white/60 min-w-[35px] shrink-0"
+                  class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0"
                 >
                   {{ formatTime(currentTime) }}
                 </span>
@@ -258,7 +259,7 @@
 
                 <!-- Duration -->
                 <span
-                  class="text-xs text-neutral-600 dark:text-white/60 min-w-[35px] shrink-0"
+                  class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0"
                 >
                   {{ formatTime(duration) }}
                 </span>
@@ -548,6 +549,7 @@ import { getTagsForFile } from "@/queries/tags";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { formatDate } from "@/utils/date-formatters";
 import AudioEqualizer from "../AudioEqualizer.vue";
+import { getFileIcon } from "@/utils/icon.utils";
 
 const settingsStore = useSettingsStore();
 
@@ -707,22 +709,6 @@ const contextMenuItems = computed(() => {
 
   // Single-select actions
   if (!isMultiSelect) {
-    if (canPreview()) {
-      items.push([
-        {
-          label: "Open",
-          icon: "i-mdi-open-in-new",
-          onSelect: () => emit("open", props.data.fileId),
-        },
-        {
-          label: "Preview",
-          icon: "i-mdi-eye",
-          onSelect: () => emit("preview", props.data.fileId),
-          disabled: !canPreview(),
-        },
-      ]);
-    }
-
     items.push([
       {
         label: "Download",
@@ -813,11 +799,6 @@ const contextMenuItems = computed(() => {
 });
 
 // Permission check stubs
-const canPreview = (): boolean => {
-  // TODO: Implement preview capability check based on file type
-  return true;
-};
-
 const canRename = (): boolean => {
   // TODO: Implement permission check
   return true;
@@ -847,58 +828,6 @@ const canDelete = (): boolean => {
   // TODO: Implement permission check
   return true;
 };
-
-const getFileIcon = (fileName: string): string => {
-  const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
-  const iconMap: Record<string, string> = {
-    // Documents
-    pdf: "mdi:file-pdf-box",
-    doc: "mdi:file-word",
-    docx: "mdi:file-word",
-    txt: "mdi:file-document-outline",
-    // Spreadsheets
-    xls: "mdi:file-excel",
-    xlsx: "mdi:file-excel",
-    csv: "mdi:file-delimited-outline",
-    // Presentations
-    ppt: "mdi:file-powerpoint",
-    pptx: "mdi:file-powerpoint",
-    // Images
-    jpg: "mdi:file-image",
-    jpeg: "mdi:file-image",
-    png: "mdi:file-image",
-    gif: "mdi:file-image",
-    svg: "mdi:file-image",
-    webp: "mdi:file-image",
-    // Videos
-    mp4: "mdi:file-video",
-    avi: "mdi:file-video",
-    mov: "mdi:file-video",
-    mkv: "mdi:file-video",
-    // Audio
-    mp3: "mdi:file-music",
-    wav: "mdi:file-music",
-    flac: "mdi:file-music",
-    // Archives
-    zip: "mdi:folder-zip",
-    rar: "mdi:folder-zip",
-    "7z": "mdi:folder-zip",
-    tar: "mdi:folder-zip",
-    // Code
-    js: "mdi:language-javascript",
-    ts: "mdi:language-typescript",
-    vue: "mdi:vuejs",
-    jsx: "mdi:react",
-    tsx: "mdi:react",
-    py: "mdi:language-python",
-    java: "mdi:language-java",
-    html: "mdi:language-html5",
-    css: "mdi:language-css3",
-    json: "mdi:code-json",
-  };
-  return iconMap[extension] ?? "mdi:file-outline";
-};
-
 const pdfDocumentMimes = [
   // PDF itself
   "application/pdf",
@@ -978,7 +907,7 @@ interface ArchiveData {
 const archivePreviewItems = computed(() => parseArchivePreview());
 
 const parseArchivePreview = () => {
-  if (!archivePreview.value) return null;
+  if (!archivePreview.value) return undefined;
 
   const tree: ArchiveData = JSON.parse(archivePreview.value);
   const rootNode: TreeItem = {

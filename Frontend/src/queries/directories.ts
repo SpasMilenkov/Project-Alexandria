@@ -12,6 +12,8 @@ const normalizeSearchKey = (req: SearchDirectoryRequest) => ({
   isStarred: req.isStarred ?? null,
   hasFiles: req.hasFiles ?? null,
   hasSubdirectories: req.hasSubdirectories ?? null,
+  deletedAfter: req.deletedAfter ?? null,
+  deletedBefore: req.deletedBefore ?? null,
   page: req.page ?? 1,
   pageSize: req.pageSize ?? 20,
   sortBy: req.sortBy ?? "createdAt",

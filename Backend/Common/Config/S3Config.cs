@@ -67,7 +67,9 @@ public class S3Config
             Region = provider?.Region ?? Region,
             ForcePathStyle = provider?.ForcePathStyle ?? true,
             UseAccelerateEndpoint = provider?.UseAccelerateEndpoint ?? false,
-            UseDualstackEndpoint = provider?.UseDualstackEndpoint ?? false
+            UseDualstackEndpoint = provider?.UseDualstackEndpoint ?? false,
+            MetricsToken = provider?.MetricsToken,
+            MetricsUrl = provider?.MetricsUrl
         };
     }
 
@@ -117,4 +119,6 @@ public class ProviderSettings
     public bool ForcePathStyle { get; set; } = true;
     public bool UseAccelerateEndpoint { get; set; } = false;
     public bool UseDualstackEndpoint { get; set; } = false;
+    public string? MetricsUrl { get; set; }
+    public string? MetricsToken { get; set; }
 }
