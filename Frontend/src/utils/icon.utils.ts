@@ -56,3 +56,55 @@ const iconMap: Record<IconValue, IconName> = iconOptions.reduce(
 export function getIconByValue(value: IconValue): IconName {
   return iconMap[value];
 }
+
+
+export const getFileIcon = (fileName: string): string => {
+  const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
+  const iconMap: Record<string, string> = {
+    // Documents
+    pdf: "mdi:file-pdf-box",
+    doc: "mdi:file-word",
+    docx: "mdi:file-word",
+    txt: "mdi:file-document-outline",
+    // Spreadsheets
+    xls: "mdi:file-excel",
+    xlsx: "mdi:file-excel",
+    csv: "mdi:file-delimited-outline",
+    // Presentations
+    ppt: "mdi:file-powerpoint",
+    pptx: "mdi:file-powerpoint",
+    // Images
+    jpg: "mdi:file-image",
+    jpeg: "mdi:file-image",
+    png: "mdi:file-image",
+    gif: "mdi:file-image",
+    svg: "mdi:file-image",
+    webp: "mdi:file-image",
+    // Videos
+    mp4: "mdi:file-video",
+    avi: "mdi:file-video",
+    mov: "mdi:file-video",
+    mkv: "mdi:file-video",
+    // Audio
+    mp3: "mdi:file-music",
+    wav: "mdi:file-music",
+    flac: "mdi:file-music",
+    // Archives
+    zip: "mdi:folder-zip",
+    rar: "mdi:folder-zip",
+    "7z": "mdi:folder-zip",
+    tar: "mdi:folder-zip",
+    // Code
+    js: "mdi:language-javascript",
+    ts: "mdi:language-typescript",
+    vue: "mdi:vuejs",
+    jsx: "mdi:react",
+    tsx: "mdi:react",
+    py: "mdi:language-python",
+    java: "mdi:language-java",
+    html: "mdi:language-html5",
+    css: "mdi:language-css3",
+    json: "mdi:code-json",
+  };
+  return iconMap[extension] ?? "mdi:file-outline";
+};
