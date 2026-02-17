@@ -5,6 +5,7 @@ export interface UserSettings {
   accentColor: string;
   gridIconSize: number;
   listIconSize: number;
+  skipDeleteConfirmation: boolean;
 }
 
 // Available Tailwind/Nuxt UI colors
@@ -33,15 +34,26 @@ export type ColorName = (typeof AVAILABLE_COLORS)[number]["name"];
 const DEFAULT_ACCENT_COLOR = "orange";
 const DEFAULT_GRID_ICON_SIZE = 48;
 const DEFAULT_LIST_ICON_SIZE = 20;
+const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
+const DEFAULT_UI_STATE = {
+  isAppearanceSectionOpen: true,
+  isBehaviorSectionOpen: true,
+};
 
 export const useSettingsStore = defineStore(
   "settings",
   () => {
-
     // State
     const accentColor = ref<string>(DEFAULT_ACCENT_COLOR);
     const gridIconSize = ref(DEFAULT_GRID_ICON_SIZE);
     const listIconSize = ref(DEFAULT_LIST_ICON_SIZE);
+    const skipDeleteConfirmation = ref(DEFAULT_SKIP_DELETE_CONFIRMATION);
+
+    // UI State (for collapsible sections)
+    const isAppearanceSectionOpen = ref(
+      DEFAULT_UI_STATE.isAppearanceSectionOpen,
+    );
+    const isBehaviorSectionOpen = ref(DEFAULT_UI_STATE.isBehaviorSectionOpen);
 
     // Get RGB value for a color name
     const getColorRGB = (colorName: string): string => {
@@ -69,7 +81,7 @@ export const useSettingsStore = defineStore(
       () => {
         applyTheme();
       },
-      { immediate: true }
+      { immediate: true },
     );
 
     // Getters
@@ -78,7 +90,8 @@ export const useSettingsStore = defineStore(
         accentColor: accentColor.value,
         gridIconSize: gridIconSize.value,
         listIconSize: listIconSize.value,
-      })
+        skipDeleteConfirmation: skipDeleteConfirmation.value,
+      }),
     );
 
     const getColorRGBValue = computed(() => getColorRGB(accentColor.value));
@@ -98,6 +111,10 @@ export const useSettingsStore = defineStore(
       listIconSize.value = Math.max(12, Math.min(64, newSize));
     };
 
+    const setSkipDeleteConfirmation = (value: boolean) => {
+      skipDeleteConfirmation.value = value;
+    };
+
     const updateSettings = (settings: Partial<UserSettings>) => {
       if (settings.accentColor !== undefined) {
         setAccentColor(settings.accentColor);
@@ -108,12 +125,39 @@ export const useSettingsStore = defineStore(
       if (settings.listIconSize !== undefined) {
         setGridIconSize(settings.listIconSize);
       }
+      if (settings.skipDeleteConfirmation !== undefined) {
+        setSkipDeleteConfirmation(settings.skipDeleteConfirmation);
+      }
     };
 
     const resetSettings = () => {
       accentColor.value = DEFAULT_ACCENT_COLOR;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
+      skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
+    };
+
+    const resetAppearanceSettings = () => {
+      accentColor.value = DEFAULT_ACCENT_COLOR;
+      gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
+      listIconSize.value = DEFAULT_LIST_ICON_SIZE;
+    };
+
+    const resetBehaviorSettings = () => {
+      skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
+    };
+
+    const setAppearanceSectionOpen = (value: boolean) => {
+      isAppearanceSectionOpen.value = value;
+    };
+
+    const setBehaviorSectionOpen = (value: boolean) => {
+      isBehaviorSectionOpen.value = value;
+    };
+
+    const resetUIState = () => {
+      isAppearanceSectionOpen.value = DEFAULT_UI_STATE.isAppearanceSectionOpen;
+      isBehaviorSectionOpen.value = DEFAULT_UI_STATE.isBehaviorSectionOpen;
     };
 
     return {
@@ -121,6 +165,10 @@ export const useSettingsStore = defineStore(
       accentColor,
       gridIconSize,
       listIconSize,
+      skipDeleteConfirmation,
+      // UI State
+      isAppearanceSectionOpen,
+      isBehaviorSectionOpen,
       // Getters
       getSettings,
       getColorRGBValue,
@@ -130,11 +178,18 @@ export const useSettingsStore = defineStore(
       setAccentColor,
       setGridIconSize,
       setListIconSize,
+      setSkipDeleteConfirmation,
       updateSettings,
       resetSettings,
+      resetAppearanceSettings,
+      resetBehaviorSettings,
+      // UI Actions
+      setAppearanceSectionOpen,
+      setBehaviorSectionOpen,
+      resetUIState,
     };
   },
-  { persist: true }
+  { persist: true },
 );
 
 if (import.meta.hot) {
