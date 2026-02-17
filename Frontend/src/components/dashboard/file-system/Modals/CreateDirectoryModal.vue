@@ -10,7 +10,6 @@ const props = defineProps<{
   parentId: string | null;
 }>();
 
-
 const { mutateAsync, state: mutationState } = createDirectory();
 
 const emit = defineEmits<{ close: [boolean] }>();
@@ -23,8 +22,7 @@ const state = reactive({
 const onSubmit = async (event: FormSubmitEvent<CreateDirectorySchema>) => {
   await mutateAsync(event.data);
 
-  if(!mutationState.value.error)
-    emit("close", true);
+  if (!mutationState.value.error) emit("close", true);
 };
 </script>
 
