@@ -65,7 +65,7 @@ export interface UserDto {
 // New upload flow types
 export interface InitializeFileUploadRequest {
   contentType: string;
-  sha256: string;
+  hash: string;
   contentLength: number;
   directoryId?: string | null;
 }
@@ -225,10 +225,11 @@ export const fileApi = {
   },
 
   // Delete a file (soft delete)
-  deleteFiles: async (ids: string[]): Promise<void> => {
+  deleteFiles: async (ids: string[], hardDelete?: boolean): Promise<void> => {
     await apiClient.delete(`/files/`, {
       data: {
         ids,
+        hardDelete: hardDelete ?? false
       },
     });
   },
@@ -263,6 +264,14 @@ export const fileApi = {
       fileIds,
       destinationId,
     });
+  },
+
+  restoreFiles: async (fileIds: string[]): Promise<number> => {
+    const result = await apiClient.post<number>("/files/restore", {
+      fileIds,
+    });
+
+    return result.data;
   },
 
   // Get file thumbnail with specific dimensions

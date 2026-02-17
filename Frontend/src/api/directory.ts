@@ -98,6 +98,8 @@ export interface SearchDirectoryRequest {
   updatedAfter?: string | null;
   updatedBefore?: string | null;
   deletedAt?: string | null;
+  deletedAfter?: string | null;
+  deletedBefore?: string | null;
 
   // Contents
   hasFiles?: boolean | null;
@@ -261,5 +263,13 @@ export const directoryApi = {
     await apiClient.delete(`/directories/${id}`, {
       data: options,
     });
+  },
+
+  restoreDirectories: async (directoryIds: string[]) => {
+    const result = await apiClient.post("directories/restore", {
+      directoryIds,
+    });
+
+    return result.data;
   },
 };

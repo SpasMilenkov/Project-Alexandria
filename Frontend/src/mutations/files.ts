@@ -8,7 +8,8 @@ export const updateFileMetadata = defineMutation(() => ({
 }));
 
 export const deleteFiles = defineMutation({
-  mutation: (ids: string[]) => fileApi.deleteFiles(ids),
+  mutation: ({ ids, hardDelete }: { ids: string[]; hardDelete?: boolean }) =>
+    fileApi.deleteFiles(ids, hardDelete),
 });
 
 export const copyFiles = defineMutation({
@@ -29,4 +30,8 @@ export const moveFiles = defineMutation({
     fileIds: string[];
     destinationId: string | null;
   }) => fileApi.moveFiles(fileIds, destinationId),
+});
+
+export const restoreFiles = defineMutation({
+  mutation: (fileIds: string[]) => fileApi.restoreFiles(fileIds),
 });
