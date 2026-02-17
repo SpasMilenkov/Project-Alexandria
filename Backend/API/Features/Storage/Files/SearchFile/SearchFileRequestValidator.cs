@@ -90,15 +90,6 @@ public class SearchFileRequestValidator : Validator<FileSearchQuery>
             .When(x => x.DeletedAfter.HasValue)
             .WithMessage("DeletedAt cannot be in the future");
 
-        // Logical validation - deletion filters
-        RuleFor(x => x)
-            .Must(x => !(x.IsDeleted && (x.DeletedAfter.HasValue || x.DeletedBefore.HasValue)))
-            .WithMessage("Cannot use both IsDeleted=true and specify a deletion range. Use one or the other.");
-
-        RuleFor(x => x)
-            .Must(x => !(x.OnlyDeleted && (x.DeletedAfter.HasValue || x.DeletedBefore.HasValue)))
-            .WithMessage("Cannot use both OnlyDeleted=true and specify a deletion range. Use one or the other.");
-
         // GUIDs validation
         RuleFor(x => x.DirectoryId)
             .NotEqual(Guid.Empty)
