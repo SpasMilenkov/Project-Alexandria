@@ -5,7 +5,6 @@ public class ContentObject : IBase
     public Guid Id { get; set; }
     public required byte[] Hash { get; set; } = [];
     public required string StorageKey { get; set; }
-    public int RefCount { get; set; }
     public bool IsPromoted { get; set; } = false;
     public DateTime? PromotedAt { get; set; }
     public int PromotionAttempts { get; set; } = 0;

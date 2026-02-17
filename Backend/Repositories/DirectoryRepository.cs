@@ -262,15 +262,15 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             var searchTerm = query.NameContains!.Trim().ToLower();
 
             dbQuery = context.Directories.FromSqlInterpolated($@"
-                    SELECT *, 
-                        (similarity(""NormalizedName"", {searchTerm}) * 2.0 + 
+                    SELECT *,
+                        (similarity(""NormalizedName"", {searchTerm}) * 2.0 +
                          ts_rank(""SearchVector"", plainto_tsquery('simple', {searchTerm}))) as search_score
                     FROM ""Directories""
-                    WHERE 
+                    WHERE
                         similarity(""NormalizedName"", {searchTerm}) > 0.1
                         OR
                         ""SearchVector"" @@ plainto_tsquery('simple', {searchTerm})
-                    ORDER BY 
+                    ORDER BY
                         search_score DESC
                 ");
         }
@@ -612,7 +612,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                      "Id",
                      "Name",
                      "NormalizedName",
-                     "SearchVector",    
+                     "SearchVector",
                      "ParentId",
                      "CreatedAt",
                      "UpdatedAt",
@@ -707,28 +707,12 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
 
         await context.SaveChangesAsync(ct);
 
-        var refCountDeltas = newVersions
-            .GroupBy(v => v.ContentObjectId)
-            .Select(g => new { ContentObjectId = g.Key, Count = g.Count() })
-            .ToList();
-
-        foreach (var delta in refCountDeltas)
-        {
-            await context.ContentObjects
-                .Where(co => co.Id == delta.ContentObjectId)
-                .ExecuteUpdateAsync(
-                    s => s.SetProperty(
-                        co => co.RefCount,
-                        co => co.RefCount + delta.Count),
-                    ct);
-        }
-
         await tx.CommitAsync(ct);
     }
 
     public async Task MoveDirectories(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default)
     {
-        // 1. Validation: Only run if moving to a specific folder. 
+        // 1. Validation: Only run if moving to a specific folder.
         // If destinationId is null, we skip this as 'Root' always exists.
         if (destinationId.HasValue)
         {
@@ -738,7 +722,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         }
 
         // 2. The Unified Query
-        var rowsAffected = await context.Database.ExecuteSqlAsync($"""
+        var rowsAffected = await context.Database.ExecuteSqlInterpolatedAsync($"""
                                                                    WITH RECURSIVE subtree AS (
                                                                        SELECT "Id"
                                                                        FROM "Directories"
@@ -763,12 +747,78 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                                                                      AND "DeletedAt" IS NULL
                                                                      AND (
                                                                          {destinationId}::uuid IS NULL
-                                                                         OR 
+                                                                         OR
                                                                          NOT EXISTS (SELECT 1 FROM subtree WHERE "Id" = {destinationId}::uuid)
                                                                      )
                                                                    """, ct);
 
         if (rowsAffected == 0)
             throw new InvalidOperationException("Move failed: Directories not found or circular reference detected.");
+    }
+
+    public async Task<int> RestoreDirectories(
+        Guid[] ids,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var rowsAffected = await context.Database.ExecuteSqlInterpolatedAsync($"""
+            WITH RECURSIVE subtree AS (
+                -- Root directories (must be within 30 days)
+                SELECT "Id"
+                FROM "Directories"
+                WHERE "Id" = ANY({ids})
+                  AND "OwnerId" = {userId}
+                  AND "DeletedAt" IS NOT NULL
+                  AND "DeletedAt" > NOW() - INTERVAL '30 days'
+                UNION ALL
+                -- All children recursively (also within 30 days)
+                SELECT d."Id"
+                FROM "Directories" d
+                JOIN subtree s ON d."ParentId" = s."Id"
+                WHERE d."DeletedAt" IS NOT NULL
+                  AND d."DeletedAt" > NOW() - INTERVAL '30 days'
+            ),
+            restored_directories AS (
+                UPDATE "Directories"
+                SET
+                    "DeletedAt" = NULL,
+                    "UpdatedAt" = NOW(),
+                    "UpdatedBy" = {userId}
+                WHERE "Id" IN (SELECT "Id" FROM subtree)
+                RETURNING "Id"
+            ),
+            restored_files AS (
+                UPDATE "Files"
+                SET
+                    "DeletedAt" = NULL,
+                    "UpdatedAt" = NOW(),
+                    "UpdatedBy" = {userId}
+                WHERE "DirectoryId" IN (SELECT "Id" FROM subtree)
+                  AND "OwnerId" = {userId}
+                  AND "DeletedAt" IS NOT NULL
+                  AND "DeletedAt" > NOW() - INTERVAL '30 days'
+                RETURNING "Id"
+            ),
+            restored_versions AS (
+                UPDATE "FileVersions"
+                SET
+                    "DeletedAt" = NULL,
+                    "UpdatedAt" = NOW(),
+                    "UpdatedBy" = {userId}
+                WHERE "FileId" IN (SELECT "Id" FROM restored_files)
+                  AND "DeletedAt" IS NOT NULL
+                  AND "DeletedAt" > NOW() - INTERVAL '30 days'
+                RETURNING "Id"
+            )
+            SELECT
+                (SELECT COUNT(*) FROM restored_directories) +
+                (SELECT COUNT(*) FROM restored_files) +
+                (SELECT COUNT(*) FROM restored_versions)
+            """, ct);
+
+        if (rowsAffected == 0)
+            throw new InvalidOperationException("Restore failed or nothing to restore.");
+
+        return rowsAffected;
     }
 }

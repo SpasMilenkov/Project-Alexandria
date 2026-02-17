@@ -49,4 +49,5 @@ public interface IFileService
     Task<PaginatedResult<FileResult>> SearchFile(FileSearchQuery query, Guid userId, CancellationToken ct = default);
 
     Task<int> GetFileCount(string? mimeTypeFilter = null, CancellationToken ct = default);
+    Task<int> RestoreFiles(Guid[] fileIds, Guid userId, CancellationToken ct = default);
 }

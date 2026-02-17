@@ -6,15 +6,9 @@ using Models;
 
 namespace Repositories;
 
-public class ContentObjectRepository : IContentObjectRepository
+public class ContentObjectRepository(AlexandriaDbContext context) : IContentObjectRepository
 {
-    private readonly DbSet<ContentObject> _dbSet;
-
-    public ContentObjectRepository(AlexandriaDbContext context)
-    {
-        var context1 = context ?? throw new ArgumentNullException(nameof(context));
-        _dbSet = context1.Set<ContentObject>();
-    }
+    private readonly DbSet<ContentObject> _dbSet = context.Set<ContentObject>();
 
     public async Task<ContentObject?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -28,9 +22,14 @@ public class ContentObjectRepository : IContentObjectRepository
         return await _dbSet.FirstOrDefaultAsync(predicate, ct);
     }
 
-    public async Task<ContentObject?> HashExists(byte[] hash)
+    public async Task<ContentObject?> HashExists(byte[] hash, CancellationToken ct = default)
     {
-        return await _dbSet.FirstOrDefaultAsync(c => c.Hash == hash);
+        return await _dbSet
+             .FirstOrDefaultAsync(co =>
+                 co.Hash == hash &&
+                 co.OrphanedAt == null &&
+                 co.DeletedAt == null,
+                 ct);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -59,7 +58,6 @@ public class ContentObjectRepository : IContentObjectRepository
             throw new ArgumentNullException(nameof(entity));
 
         entity.CreatedAt = DateTime.UtcNow;
-        entity.RefCount = 1; // Initialize ref count for new content objects
 
         var entry = await _dbSet.AddAsync(entity, ct);
         return entry.Entity;
@@ -78,8 +76,6 @@ public class ContentObjectRepository : IContentObjectRepository
         foreach (var entity in contentObjects)
         {
             entity.CreatedAt = now;
-            if (entity.RefCount == 0)
-                entity.RefCount = 1;
         }
 
         await _dbSet.AddRangeAsync(contentObjects, ct);
@@ -92,7 +88,6 @@ public class ContentObjectRepository : IContentObjectRepository
             throw new ArgumentNullException(nameof(entity));
 
         entity.UpdatedAt = DateTime.UtcNow;
-        entity.RefCount = entity.RefCount;
         _dbSet.Update(entity);
     }
 
@@ -140,55 +135,31 @@ public class ContentObjectRepository : IContentObjectRepository
         return await _dbSet.AnyAsync(predicate, ct);
     }
 
-    // Additional methods specific to ContentObject management
-
-    public async Task IncrementRefCountAsync(Guid id, CancellationToken ct = default)
-    {
-        var entity = await GetByIdAsync(id, ct);
-        if (entity != null)
-        {
-            entity.RefCount++;
-            entity.UpdatedAt = DateTime.UtcNow;
-            entity.OrphanedAt = null; // Clear orphaned status when ref count increases
-            Update(entity);
-        }
-    }
-
-    public async Task DecrementRefCountAsync(Guid id, CancellationToken ct = default)
-    {
-        var entity = await GetByIdAsync(id, ct);
-        if (entity != null && entity.RefCount > 0)
-        {
-            entity.RefCount--;
-            entity.UpdatedAt = DateTime.UtcNow;
-
-            // Mark as orphaned if ref count reaches zero
-            if (entity.RefCount == 0)
-            {
-                entity.OrphanedAt = DateTime.UtcNow;
-            }
-
-            Update(entity);
-        }
-    }
-
-    public async Task<IEnumerable<ContentObject>> GetOrphanedContentObjectsAsync(
-        DateTime olderThan,
-        CancellationToken ct = default)
+    public async Task<int> MarkOrphaned(DateTime dateTime, CancellationToken ct = default)
     {
         return await _dbSet
-            .Where(co => co.RefCount == 0 &&
-                         co.OrphanedAt.HasValue &&
-                         co.OrphanedAt.Value < olderThan)
-            .ToListAsync(ct);
+                .Where(co =>
+                    co.OrphanedAt == null &&
+                    co.DeletedAt == null &&
+                    !context.FileVersions.Any(fv =>
+                        fv.ContentObjectId == co.Id &&
+                        fv.DeletedAt == null))
+                .ExecuteUpdateAsync(
+                    s => s.SetProperty(co => co.OrphanedAt, _ => dateTime),
+                    ct);
     }
 
-    public async Task<ContentObject?> GetByHashAsync(byte[] hash, CancellationToken ct = default)
+    public async Task<int> ClearOrphaned(DateTime dateTime, CancellationToken ct = default)
     {
-        if (hash == null || hash.Length == 0)
-            throw new ArgumentException("Hash cannot be null or empty", nameof(hash));
-
         return await _dbSet
-            .FirstOrDefaultAsync(co => co.Hash.SequenceEqual(hash), ct);
+                .Where(co =>
+                    co.OrphanedAt != null &&
+                    co.DeletedAt == null &&
+                    context.FileVersions.Any(fv =>
+                        fv.ContentObjectId == co.Id &&
+                        fv.DeletedAt == null))
+                .ExecuteUpdateAsync(
+                    s => s.SetProperty(co => co.OrphanedAt, _ => (DateTime?)null),
+                    ct);
     }
 }

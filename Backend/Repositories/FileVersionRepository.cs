@@ -138,83 +138,49 @@ public class FileVersionRepository : IFileVersionRepository
         return await _dbSet.AnyAsync(predicate, ct);
     }
 
-    public async Task<int> DeleteAllVersionsOfAFile(Guid fileId, CancellationToken ct = default)
-    {
-        // Load all versions that need to be deleted
-        var versions = await _context.FileVersions
-            .Where(v => v.FileId == fileId)
-            .ToListAsync(ct);
-
-        // Get content object IDs and their reference counts
-        var contentRefCounts = versions
-            .GroupBy(v => v.ContentObjectId)
-            .Select(g => new { ContentObjectId = g.Key, Count = g.Count() })
-            .ToList();
-
-        // Load all affected content objects
-        var contentObjectIds = contentRefCounts.Select(c => c.ContentObjectId).ToList();
-        var contentObjects = await _context.ContentObjects
-            .Where(c => contentObjectIds.Contains(c.Id))
-            .ToListAsync(ct);
-
-        // Decrement ref counts
-        foreach (var item in contentRefCounts)
-        {
-            var contentObject = contentObjects.FirstOrDefault(c => c.Id == item.ContentObjectId);
-            if (contentObject == null) continue;
-            contentObject.RefCount -= item.Count;
-
-            if (contentObject.RefCount == 0)
-            {
-                contentObject.OrphanedAt = DateTime.UtcNow;
-            }
-        }
-
-        // Soft delete all versions
-        foreach (var version in versions)
-        {
-            version.DeletedAt = DateTime.UtcNow;
-        }
-
-        return versions.Count;
-    }
-
     public async Task<int> DeleteFileVersions(Guid[] fileIds, Guid ownerId, CancellationToken ct = default)
     {
-        var refDeltas = await _context.FileVersions
-            .Where(v => fileIds.Contains(v.FileId) && v.File.OwnerId == ownerId)
-            .GroupBy(v => v.ContentObjectId)
-            .Select(g => new
-            {
-                ContentObjectId = g.Key,
-                Delta = g.Count()
-            })
-            .ToListAsync(ct);
-
-        var deletedCount = await _context.FileVersions
+        return await _context.FileVersions
             .Where(v => fileIds.Contains(v.FileId) && v.File.OwnerId == ownerId)
             .ExecuteUpdateAsync(
                 s => s.SetProperty(v => v.DeletedAt, _ => DateTime.UtcNow),
                 ct);
+    }
 
+    public async Task<int> SoftDeleteFileVersions(Guid[] fileIds, Guid ownerId, CancellationToken ct = default)
+    {
+        return await _context.FileVersions
+            .Where(v => fileIds.Contains(v.FileId) && v.File.OwnerId == ownerId && v.DeletedAt == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(v => v.DeletedAt, _ => DateTime.UtcNow),
+                ct);
+    }
+
+
+    public async Task<int> RestoreFileVersions(
+        Guid[] fileIds,
+        Guid ownerId,
+        CancellationToken ct = default)
+    {
+        var thresholdDate = DateTime.UtcNow.AddDays(-30);
+
+        var versions = await _context.FileVersions
+            .Where(v =>
+                fileIds.Contains(v.FileId) &&
+                v.File.OwnerId == ownerId &&
+                v.DeletedAt != null &&
+                v.DeletedAt > thresholdDate)
+            .ToListAsync(ct);
 
         var now = DateTime.UtcNow;
 
-        foreach (var item in refDeltas)
+        foreach (var version in versions)
         {
-            await _context.ContentObjects
-                .Where(c => c.Id == item.ContentObjectId)
-                .ExecuteUpdateAsync(
-                    s => s
-                        .SetProperty(c => c.RefCount, c => c.RefCount - item.Delta)
-                        .SetProperty(
-                            c => c.OrphanedAt,
-                            c => c.RefCount - item.Delta == 0 && c.OrphanedAt == null
-                                ? now
-                                : c.OrphanedAt),
-                    ct);
+            version.DeletedAt = null;
+            version.UpdatedAt = now;
+            version.UpdatedBy = ownerId;
         }
 
-        return deletedCount;
+        return versions.Count;
     }
 }

@@ -17,6 +17,7 @@ using Models;
 using Models.Enumerators;
 using MediaMetadata = DTO.Files.MediaMetadata;
 using FileEntity = Models.File;
+using DTO.Metrics;
 
 namespace Storage;
 
@@ -741,10 +742,6 @@ public class S3Service(
         var tmp = config.Value.TempBucket;
         var tempObjectKey = Guid.NewGuid().ToString();
 
-        logger.LogInformation(
-            "Starting file upload: Bucket={BucketName}, Object={ObjectName}, ContentType={ContentType}, Size={ContentLength}",
-            tmp, tempObjectKey, contentType, contentLength);
-
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
@@ -877,15 +874,10 @@ public class S3Service(
 
             if (contentObject is null)
             {
-                logger.LogInformation(
-                    "Creating new content object: {Hash}",
-                    serverHash);
-
                 contentObject = new ContentObject
                 {
                     Hash = computedHash,
                     StorageKey = $"content/{serverHash}",
-                    RefCount = 1,
                     UpdatedBy = uploadedBy,
                     IsPromoted = false,
                     PromotionAttempts = 0,
@@ -893,11 +885,6 @@ public class S3Service(
                 };
 
                 await unitOfWork.ContentObjects.AddAsync(contentObject, ct);
-            }
-            else
-            {
-                contentObject.RefCount++;
-                unitOfWork.ContentObjects.Update(contentObject);
             }
 
             // =====================================================
@@ -1050,5 +1037,19 @@ public class S3Service(
         };
 
         return await s3.GetPreSignedURLAsync(request);
+    }
+
+    public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
+    {
+        var trashSize = await unitOfWork.Files.GetDeletedSize(userId, ct);
+        var sizeByMimeType = await unitOfWork.Files.GetSizeByType(userId, ct);
+        var oldFiles = await unitOfWork.Files.GetOldFiles(userId, ct);
+
+        return new StorageBreakdown
+        {
+            OldFiles = oldFiles,
+            SizeByType = sizeByMimeType,
+            TrashSize = trashSize
+        };
     }
 }

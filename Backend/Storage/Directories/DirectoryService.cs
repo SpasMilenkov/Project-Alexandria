@@ -105,7 +105,7 @@ public class DirectoryService : IDirectoryService
             await _unitOfWork.SaveChangesAsync(ct);
             await _unitOfWork.CommitAsync(ct);
         }
-        catch (Exception e)
+        catch
         {
             await _unitOfWork.RollbackAsync(ct);
             throw;
@@ -380,4 +380,9 @@ public class DirectoryService : IDirectoryService
     public async Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId,
         CancellationToken ct = default) =>
         await _unitOfWork.Directories.CopyDirectory(directoryId, destinationId, userId, ct);
+
+    public async Task<int> RestoreDirectories(Guid[] directoryIds, Guid userId, CancellationToken ct = default)
+    {
+        return await _unitOfWork.Directories.RestoreDirectories(directoryIds, userId, ct);
+    }
 }

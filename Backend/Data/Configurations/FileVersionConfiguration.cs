@@ -13,14 +13,14 @@ public class FileVersionConfiguration : IEntityTypeConfiguration<FileVersion>
             .HasMaxLength(ValidationConstants.StringLengths.ShortString)
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
             .IsRequired();
-        
+
         builder.Property(e => e.ContentHash)
             .IsRequired()
             .HasColumnType("bytea")
             .IsRequired();
 
         builder.HasKey(e => e.Id);
-        
+
         // BigInteger for file size - using numeric for PostgreSQL
         builder.Property(e => e.Size)
             .HasColumnType("numeric(20,0)")
@@ -28,7 +28,7 @@ public class FileVersionConfiguration : IEntityTypeConfiguration<FileVersion>
 
         builder.Property(e => e.VersionNumber)
             .IsRequired();
-        
+
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")
@@ -46,11 +46,13 @@ public class FileVersionConfiguration : IEntityTypeConfiguration<FileVersion>
         builder.HasOne(e => e.File)
             .WithOne(f => f.CurrentVersion)
             .HasForeignKey<File>(f => f.CurrentVersionId);
-        
+
         // Indexes for performance
         builder.HasIndex(e => e.CreatedAt);
         builder.HasIndex(e => e.ContentHash);
-        
+        // Every orphan detection query hits (ContentObjectId, DeletedAt) together
+        builder.HasIndex(e => new { e.ContentObjectId, e.DeletedAt })
+            .HasDatabaseName("ix_fileversions_contentobjectid_deletedat");
         builder.ToTable("FileVersions");
     }
 }

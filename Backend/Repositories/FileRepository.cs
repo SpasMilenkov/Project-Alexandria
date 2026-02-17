@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Common.Repositories;
 using Data.Context;
 using DTO.Files;
+using DTO.Metrics;
 using DTO.Tags;
 using Microsoft.EntityFrameworkCore;
 using Models;
@@ -164,15 +165,15 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             var searchTerm = query.NameContains!.Trim().ToLower();
 
             dbQuery = context.Files.FromSqlInterpolated($@"
-                    SELECT *, 
-                        (similarity(""NormalizedName"", {searchTerm}) * 2.0 + 
+                    SELECT *,
+                        (similarity(""NormalizedName"", {searchTerm}) * 2.0 +
                          ts_rank(""SearchVector"", plainto_tsquery('simple', {searchTerm}))) as search_score
                     FROM ""Files""
-                    WHERE 
+                    WHERE
                         similarity(""NormalizedName"", {searchTerm}) > 0.1
                         OR
                         ""SearchVector"" @@ plainto_tsquery('simple', {searchTerm})
-                    ORDER BY 
+                    ORDER BY
                         search_score DESC
                 ");
         }
@@ -418,17 +419,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 .GroupBy(v => v.ContentObjectId)
                 .Select(g => new { ContentObjectId = g.Key, Count = g.Count() })
                 .ToList();
-
-            foreach (var delta in refCountDeltas)
-            {
-                await context.ContentObjects
-                    .Where(co => co.Id == delta.ContentObjectId)
-                    .ExecuteUpdateAsync(
-                        s => s.SetProperty(
-                            co => co.RefCount,
-                            co => co.RefCount + delta.Count),
-                        ct);
-            }
         }
         catch (DbUpdateException ex)
         {
@@ -679,5 +669,65 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .Where(f => f.Id == fileId)
             .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview))
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<long> GetDeletedSize(Guid userId, CancellationToken ct = default)
+    {
+        return await context.FileVersions
+        .Where(v => _files
+            .Where(f => f.OwnerId == userId && f.DeletedAt != null)
+            .Select(f => f.Id)
+            .Contains(v.FileId))
+        .SumAsync(v => v.Size, ct);
+    }
+
+    public async Task<IEnumerable<FileSummary>> GetOldFiles(Guid userId, CancellationToken ct = default)
+    {
+        return await _files.Where(f => f.OwnerId == userId && f.DeletedAt != null && f.DeletedAt < DateTime.UtcNow.AddDays(-30))
+        .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview))
+        .ToListAsync(ct);
+    }
+
+    public Task<Dictionary<string, long>> GetSizeByType(
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        return context.Files
+            .Where(f => f.OwnerId == userId && f.DeletedAt == null)
+            .Join(
+                context.FileVersions,
+                f => f.Id,
+                v => v.FileId,
+                (f, v) => new { f.MimeType, v.Size }
+            )
+            .GroupBy(x => x.MimeType)
+            .Select(g => new
+            {
+                MimeType = g.Key,
+                TotalSize = g.Sum(x => x.Size)
+            })
+            .ToDictionaryAsync(x => x.MimeType, x => x.TotalSize, ct);
+    }
+
+    public async Task<int> RestoreFiles(Guid[] fileIds, Guid userId, CancellationToken ct = default)
+    {
+        var thresholdDate = DateTime.UtcNow.AddDays(-30);
+
+        var files = await _files
+            .Where(f =>
+                fileIds.Contains(f.Id) &&
+                f.OwnerId == userId &&
+                f.DeletedAt != null &&
+                f.DeletedAt > thresholdDate)
+            .ToListAsync(ct);
+
+        foreach (var file in files)
+        {
+            file.DeletedAt = null;
+            file.UpdatedBy = userId;
+            file.UpdatedAt = DateTime.UtcNow;
+        }
+
+        return files.Count;
     }
 }

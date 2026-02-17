@@ -1,4 +1,5 @@
 using DTO.Files;
+using DTO.Metrics;
 using Models.Enumerators;
 using MediaMetadata = DTO.Files.MediaMetadata;
 
@@ -52,4 +53,6 @@ public interface IStorageService
         Guid? directoryId = null,
         CancellationToken ct = default
     );
+
+    Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default);
 }

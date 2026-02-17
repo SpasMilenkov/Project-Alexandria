@@ -47,4 +47,5 @@ public interface IDirectoryRepository : IRepository<Directory>
     Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, CancellationToken ct = default);
     Task CopyDirectory(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default);
     Task MoveDirectories(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default);
+    Task<int> RestoreDirectories(Guid[] ids, Guid userId, CancellationToken ct = default);
 }
