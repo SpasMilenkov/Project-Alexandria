@@ -17,22 +17,70 @@
           class="size-5 text-primary mx-auto"
         />
       </template>
-      <template #default="{ collapsed }">
-        <!-- Main Navigation -->
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="mainMenuItems"
-          orientation="vertical"
-        />
 
-        <StorageInfoWidget class="mt-auto" />
-        <!-- Bottom Navigation (Settings) -->
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="settingsMenuItems"
-          orientation="vertical"
-        />
+      <template #default="{ collapsed }">
+        <!-- ── Desktop navigation (tree style) ──────────────────── -->
+        <div class="hidden sm:flex sm:flex-col sm:flex-1">
+          <UNavigationMenu
+            :collapsed="collapsed"
+            :items="mainMenuItems"
+            orientation="vertical"
+          />
+          <StorageInfoWidget class="mt-auto" />
+          <UNavigationMenu
+            :collapsed="collapsed"
+            :items="settingsMenuItems"
+            orientation="vertical"
+          />
+        </div>
+
+        <!-- ── Mobile navigation (large touch targets) ───────────── -->
+        <div class="flex flex-col flex-1 sm:hidden overflow-y-auto">
+          <!-- Section: Library -->
+          <div class="px-3 pt-5 pb-1">
+            <p
+              class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1"
+            >
+              Your Library
+            </p>
+          </div>
+          <nav class="flex flex-col gap-0.5 px-3">
+            <MobileNavItem
+              v-for="item in mobileMainItems"
+              :key="item.to"
+              :icon="item.icon"
+              :label="item.label"
+              :to="item.to"
+              :active="route.path === item.to"
+            />
+          </nav>
+
+          <!-- Section: Settings -->
+          <div class="px-3 pt-6 pb-1">
+            <p
+              class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1"
+            >
+              Account
+            </p>
+          </div>
+          <nav class="flex flex-col gap-0.5 px-3">
+            <MobileNavItem
+              v-for="item in mobileSettingsItems"
+              :key="item.to"
+              :icon="item.icon"
+              :label="item.label"
+              :to="item.to"
+              :active="route.path === item.to"
+            />
+          </nav>
+
+          <!-- Storage widget -->
+          <div class="mt-auto px-3 pb-3 pt-4">
+            <StorageInfoWidget />
+          </div>
+        </div>
       </template>
+
       <template #footer="{ collapsed }">
         <UButton
           :label="collapsed ? undefined : 'Log out'"
@@ -45,6 +93,7 @@
         />
       </template>
     </UDashboardSidebar>
+
     <UDashboardPanel :ui="{ body: 'sm:p-0 p-0' }">
       <template #header>
         <UDashboardNavbar :title="pageTitle" toggle-side="right">
@@ -79,6 +128,7 @@ import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.v
 import { useAuthStore } from "@/stores/auth";
 import router from "@/router";
 import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
+import MobileNavItem from "@/components/dashboard/MobileNavItem.vue";
 
 const authStore = useAuthStore();
 const route = useRoute();
@@ -95,10 +145,11 @@ defineShortcuts({
   meta_k: openShortCutsModal,
 });
 
-// Dynamic page title based on route
 const pageTitle = computed(() => {
   return (route.meta.title as string) || "Dashboard";
 });
+
+//Desktop navigation trees
 
 const mainMenuItems: NavigationMenuItem[][] = [
   [
@@ -152,6 +203,24 @@ const settingsMenuItems: NavigationMenuItem[][] = [
       ],
     },
   ],
+];
+
+// Mobile flat item lists (same routes, no nesting)
+
+const mobileMainItems = [
+  { label: "File Explorer", icon: "i-heroicons-folder", to: "/dashboard" },
+  {
+    label: "Tags and Categories",
+    icon: "i-heroicons-tag",
+    to: "/dashboard/tags",
+  },
+  { label: "Access History", icon: "i-heroicons-clock", to: "/access-history" },
+  { label: "Trash", icon: "i-heroicons-trash", to: "/dashboard/trash" },
+];
+
+const mobileSettingsItems = [
+  { label: "Settings", icon: "i-heroicons-cog-6-tooth", to: "/settings" },
+  { label: "My Account", icon: "i-heroicons-user-circle", to: "/account" },
 ];
 
 const handleLogout = async () => {

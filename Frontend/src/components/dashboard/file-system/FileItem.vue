@@ -10,55 +10,83 @@
     <!-- Grid View -->
     <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems">
       <div class="relative group" tabindex="0">
-        <button
-          type="button"
-          class="w-full flex flex-col items-center gap-2 p-4 rounded-lg transition-colors cursor-pointer"
-          :class="[
-            isSelected
-              ? 'bg-primary/20 ring-2 ring-primary'
-              : 'hover:bg-primary/40 dark:hover:bg-primary/35',
-          ]"
-          @click="handleClick"
-          @dblclick="handleDoubleClick"
+        <UTooltip
+          :delay-duration="600"
+          :content="{ side: 'bottom', align: 'center' }"
+          :ui="{
+            content:
+              'ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto',
+          }"
         >
-          <Icon
-            :icon="getFileIcon(data.fileName)"
-            :width="iconSize"
-            :height="iconSize"
-            class="shrink-0"
-          />
-          <span class="text-sm text-center line-clamp-2 w-full wrap-break-word">
-            {{ data.fileName }}
-          </span>
-        </button>
+          <button
+            type="button"
+            class="w-full flex flex-col items-center gap-2 p-4 rounded-lg transition-colors cursor-pointer"
+            :class="[
+              isSelected
+                ? 'bg-primary/20 ring-2 ring-primary'
+                : 'hover:bg-primary/40 dark:hover:bg-primary/35',
+            ]"
+            @click="handleClick"
+            @dblclick="handleDoubleClick"
+          >
+            <Icon
+              :icon="getFileIcon(data.fileName)"
+              :width="iconSize"
+              :height="iconSize"
+              class="shrink-0"
+            />
+            <span
+              class="text-sm text-center line-clamp-2 w-full wrap-break-word"
+            >
+              {{ data.fileName }}
+            </span>
+          </button>
+
+          <template #content>
+            <FileTooltipCard :data="data" />
+          </template>
+        </UTooltip>
       </div>
     </UContextMenu>
 
     <!-- List View -->
     <UContextMenu v-else :items="contextMenuItems">
       <div class="relative group" tabindex="0">
-        <button
-          type="button"
-          class="w-full flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer text-left border-b last:border-b-0"
-          :class="[
-            isSelected
-              ? 'bg-primary/20 ring-2 ring-primary'
-              : 'hover:bg-primary/40 dark:hover:bg-primary/35',
-          ]"
-          @click="handleClick"
-          @dblclick="handleDoubleClick"
+        <UTooltip
+          :delay-duration="600"
+          :content="{ side: 'top', align: 'center' }"
+          :ui="{
+            content:
+              'z-50 ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto',
+          }"
         >
-          <Icon
-            :icon="getFileIcon(data.fileName)"
-            :width="iconSize"
-            :height="iconSize"
-            class="shrink-0"
-          />
-          <span class="flex-1 truncate">{{ data.fileName }}</span>
-          <span class="text-xs opacity-70 shrink-0 min-w-15 text-right">
-            {{ formatFileSize(Number(data.currentVersion.size)) }}
-          </span>
-        </button>
+          <button
+            type="button"
+            class="w-full flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer text-left border-b last:border-b-0"
+            :class="[
+              isSelected
+                ? 'bg-primary/20 ring-2 ring-primary'
+                : 'hover:bg-primary/40 dark:hover:bg-primary/35',
+            ]"
+            @click="handleClick"
+            @dblclick="handleDoubleClick"
+          >
+            <Icon
+              :icon="getFileIcon(data.fileName)"
+              :width="iconSize"
+              :height="iconSize"
+              class="shrink-0"
+            />
+            <span class="flex-1 truncate">{{ data.fileName }}</span>
+            <span class="text-xs opacity-70 shrink-0 min-w-15 text-right">
+              {{ formatFileSize(Number(data.currentVersion.size)) }}
+            </span>
+          </button>
+
+          <template #content>
+            <FileTooltipCard :data="data" />
+          </template>
+        </UTooltip>
       </div>
     </UContextMenu>
 
@@ -68,7 +96,6 @@
         <div
           class="flex items-center gap-4 p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
         >
-          <!-- File Icon -->
           <div
             class="p-4 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg shadow-sm"
           >
@@ -78,7 +105,6 @@
             />
           </div>
 
-          <!-- File Info -->
           <div class="flex-1 min-w-0">
             <h3 class="font-semibold text-lg truncate mb-1">
               {{ data.fileName }}
@@ -120,61 +146,83 @@
         </div>
 
         <!-- Tags Section -->
-        <div class="flex flex-col gap-2 w-full">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+        <div class="flex flex-col gap-3">
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
             Tags
           </h4>
-          <USkeleton v-if="fileTagsLoading && openDrawer" class="h-8 w-full" />
-          <div v-else-if="displayTags && displayTags.length > 0">
-            <div class="flex flex-wrap gap-2">
-              <TagBadge
-                v-for="tag in displayTags"
-                :key="tag.id"
-                :tag="tag"
-                :file-id="props.data.fileId"
-                @remove-tag="refreshOnRemove"
-              />
-            </div>
-          </div>
-          <div v-else class="text-sm text-gray-500 dark:text-gray-400">
-            No tags yet
-          </div>
 
-          <div class="flex gap-2 w-full">
-            <UButton
-              label="Add tag"
-              @click="showTagSearch = !showTagSearch"
-              variant="outline"
-              size="sm"
+          <USkeleton
+            v-if="fileTagsLoading && openDrawer"
+            class="h-8 w-48 rounded-full"
+          />
+
+          <div v-else class="flex flex-wrap items-center gap-1.5">
+            <!-- Existing tags -->
+            <TagBadge
+              v-for="tag in displayTags"
+              :key="tag.id"
+              :tag="tag"
+              :file-id="props.data.fileId"
+              @remove-tag="refreshOnRemove"
             />
-            <USelectMenu
-              v-if="showTagSearch"
-              :loading="tagsLoading"
-              :items="
-                tagsData?.items.map((t) => ({
-                  label: t.name,
-                  value: t.id,
-                  icon: getIconByValue(t.icon),
-                }))
-              "
-              v-model:search-term="searchQuery"
-              @update:search-term="refreshFileTag()"
-              placeholder="Search for tag"
-              @update:model-value="
-                async (tag) => {
-                  await addTagMutate({
-                    fileId: data.fileId,
-                    data: { tagIds: [tag.value] },
-                  });
-                  showTagSearch = false;
-                  refreshFileTag();
-                }
-              "
-            />
+
+            <!-- Empty state label (only when no tags and popover is closed) -->
+            <span
+              v-if="!displayTags?.length && !showTagSearch"
+              class="text-xs text-gray-400 dark:text-gray-500 italic mr-1"
+            >
+              No tags
+            </span>
+
+            <!-- Inline add trigger + popover -->
+            <UPopover
+              v-model:open="showTagSearch"
+              :content="{ side: 'bottom', align: 'start' }"
+            >
+              <UButton
+                label="Add tag"
+                icon="i-mdi-plus"
+                size="xs"
+                variant="outline"
+                color="neutral"
+                class="rounded-full"
+              />
+
+              <template #content>
+                <div class="p-2 w-56">
+                  <USelectMenu
+                    :loading="tagsLoading"
+                    :items="
+                      tagsData?.items.map((t) => ({
+                        label: t.name,
+                        value: t.id,
+                        icon: getIconByValue(t.icon),
+                      }))
+                    "
+                    v-model:search-term="searchQuery"
+                    @update:search-term="refreshFileTag()"
+                    placeholder="Search tags…"
+                    autofocus
+                    @update:model-value="
+                      async (tag) => {
+                        await addTagMutate({
+                          fileId: data.fileId,
+                          data: { tagIds: [tag.value] },
+                        });
+                        showTagSearch = false;
+                        searchQuery = '';
+                        refreshFileTag();
+                      }
+                    "
+                    class="w-full"
+                  />
+                </div>
+              </template>
+            </UPopover>
           </div>
         </div>
 
-        <!-- File Preview Section (if available) -->
+        <!-- File Preview Section -->
         <USkeleton v-if="previewLoading" />
         <div
           v-else-if="previewUrl || archivePreview || textPreview"
@@ -191,7 +239,6 @@
             "
             class="relative w-full bg-black/5 dark:bg-black/20 rounded-lg overflow-hidden"
           >
-            <!-- Thumbnail Background -->
             <div class="relative w-full aspect-video">
               <img
                 v-if="thumbnailUrl"
@@ -199,8 +246,6 @@
                 alt="Audio thumbnail"
                 class="w-full h-full object-cover"
               />
-
-              <!-- Lighter Overlay with Play/Pause and Equalizer -->
               <div
                 class="absolute inset-0 flex items-center justify-center cursor-pointer transition-all duration-200"
                 :class="
@@ -210,25 +255,20 @@
                 "
                 @click="toggleAudio"
               >
-                <!-- Play Button (when paused) -->
                 <div
                   v-if="!isAudioPlaying"
                   class="flex items-center justify-center w-16 h-16 bg-white/30 backdrop-blur-sm rounded-full hover:bg-white/40 hover:scale-110 transition-all"
                 >
                   <Icon icon="mdi-play" class="w-10 h-10 text-white ml-1" />
                 </div>
-
-                <!-- Equalizer (when playing) -->
                 <AudioEqualizer v-else />
               </div>
             </div>
 
-            <!-- Compact Audio Controls Bar -->
             <div
               class="px-3 py-2 bg-neutral-100 dark:bg-neutral-900/50 backdrop-blur-sm border-t border-neutral-200 dark:border-neutral-800"
             >
               <div class="flex items-center gap-2">
-                <!-- Play/Pause Button -->
                 <button
                   @click.stop="toggleAudio"
                   class="p-1.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded-full transition-colors shrink-0"
@@ -238,15 +278,11 @@
                     class="w-4 h-4 text-neutral-700 dark:text-white"
                   />
                 </button>
-
-                <!-- Time Display -->
                 <span
                   class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0"
                 >
                   {{ formatTime(currentTime) }}
                 </span>
-
-                <!-- Progress Bar -->
                 <input
                   ref="progressBar"
                   type="range"
@@ -256,15 +292,11 @@
                   @input="seekAudio"
                   class="flex-1 h-1 bg-neutral-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
                 />
-
-                <!-- Duration -->
                 <span
                   class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0"
                 >
                   {{ formatTime(duration) }}
                 </span>
-
-                <!-- Volume Control with Vertical Slider -->
                 <UPopover :content="{ side: 'top' }" class="shrink-0">
                   <button
                     class="p-1.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded-full transition-colors"
@@ -280,19 +312,15 @@
                       class="w-4 h-4 text-neutral-700 dark:text-white"
                     />
                   </button>
-
                   <template #content>
                     <div
                       class="flex flex-col items-center gap-2 p-3 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800"
                     >
-                      <!-- Volume percentage display -->
                       <span
                         class="text-xs font-medium text-neutral-600 dark:text-white/70"
                       >
                         {{ Math.round(volume * 100) }}%
                       </span>
-
-                      <!-- Vertical slider -->
                       <input
                         type="range"
                         min="0"
@@ -304,8 +332,6 @@
                         orient="vertical"
                         class="h-24 w-1 bg-neutral-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer [writing-mode:vertical-lr] [direction:rtl] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
                       />
-
-                      <!-- Mute button -->
                       <button
                         @click.stop="toggleMute"
                         class="p-1 hover:bg-neutral-200 dark:hover:bg-white/10 rounded transition-colors"
@@ -321,7 +347,6 @@
               </div>
             </div>
 
-            <!-- Hidden Audio Element -->
             <audio
               ref="audioPlayer"
               :src="previewUrl"
@@ -403,7 +428,7 @@
             <div
               class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
             >
-              <Icon icon="mdi-scale" class="w-10 h-10 text-gray-500 mt-0.5" />
+              <UIcon name="i-heroicons-scale" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div>
                 <div class="text-xs mb-0.5">Size</div>
                 <div class="font-medium">
@@ -415,7 +440,8 @@
             <div
               class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
             >
-              <Icon icon="mdi-counter" class="w-10 h-10 text-gray-500 mt-0.5" />
+              <UIcon
+                name="i-heroicons-archive-box" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
                   Version
@@ -449,7 +475,6 @@
               <span class="font-semibold">Owner</span>
             </div>
           </template>
-
           <div class="flex items-center gap-3">
             <UAvatar :alt="data.owner.name" size="lg" />
             <div>
@@ -477,9 +502,7 @@
               </UBadge>
             </div>
           </template>
-
           <div class="space-y-3">
-            <!-- Current Version -->
             <div
               class="flex items-start gap-3 p-3 border border-primary/20 bg-primary/5 rounded-lg"
             >
@@ -550,6 +573,7 @@ import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { formatDate } from "@/utils/date-formatters";
 import AudioEqualizer from "../AudioEqualizer.vue";
 import { getFileIcon } from "@/utils/icon.utils";
+import FileTooltipCard from "./FileTooltipCard.vue";
 
 const settingsStore = useSettingsStore();
 
@@ -656,7 +680,6 @@ const currentPage = ref(1);
 const pageSize = ref(25);
 const searchQuery = ref("");
 
-// Search filters
 const searchFilters = computed<SearchTagsSchema>(() => ({
   page: currentPage.value,
   pageSize: pageSize.value,
@@ -671,7 +694,6 @@ const refreshOnRemove = async (id: string) => {
   refreshFileTag();
 };
 
-// Query
 const {
   data: tagsData,
   isLoading: tagsLoading,
@@ -707,7 +729,6 @@ const contextMenuItems = computed(() => {
   const isMultiSelect = (props.selectedCount ?? 0) > 1;
   const items: ContextMenuItem[] = [];
 
-  // Single-select actions
   if (!isMultiSelect) {
     items.push([
       {
@@ -723,7 +744,6 @@ const contextMenuItems = computed(() => {
         disabled: !canRename(),
       },
     ]);
-
     items.push([
       {
         label: "Move",
@@ -744,7 +764,6 @@ const contextMenuItems = computed(() => {
         disabled: !canShare(),
       },
     ]);
-
     items.push([
       {
         label: "Delete",
@@ -754,7 +773,6 @@ const contextMenuItems = computed(() => {
       },
     ]);
   } else {
-    // Multi-select actions
     items.push([
       {
         label: `Download ${props.selectedCount} items`,
@@ -763,7 +781,6 @@ const contextMenuItems = computed(() => {
         disabled: !canDownload(),
       },
     ]);
-
     items.push([
       {
         label: `Move ${props.selectedCount} items`,
@@ -784,7 +801,6 @@ const contextMenuItems = computed(() => {
         disabled: !canShare(),
       },
     ]);
-
     items.push([
       {
         label: `Delete ${props.selectedCount} items`,
@@ -798,70 +814,32 @@ const contextMenuItems = computed(() => {
   return items;
 });
 
-// Permission check stubs
-const canRename = (): boolean => {
-  // TODO: Implement permission check
-  return true;
-};
+const canRename = (): boolean => true;
+const canMove = (): boolean => true;
+const canCopy = (): boolean => true;
+const canDownload = (): boolean => true;
+const canShare = (): boolean => true;
+const canDelete = (): boolean => true;
 
-const canMove = (): boolean => {
-  // TODO: Implement permission check
-  return true;
-};
-
-const canCopy = (): boolean => {
-  // TODO: Implement permission check
-  return true;
-};
-
-const canDownload = (): boolean => {
-  // TODO: Implement permission check
-  return true;
-};
-
-const canShare = (): boolean => {
-  // TODO: Implement permission check
-  return true;
-};
-
-const canDelete = (): boolean => {
-  // TODO: Implement permission check
-  return true;
-};
 const pdfDocumentMimes = [
-  // PDF itself
   "application/pdf",
-
-  // Microsoft Word
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-
-  // OpenDocument Text
   "application/vnd.oasis.opendocument.text",
-
-  // Rich Text
   "application/rtf",
 ];
 
 const pdfSpreadsheetMimes = [
-  // Microsoft Excel
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-
-  // OpenDocument Spreadsheet
   "application/vnd.oasis.opendocument.spreadsheet",
-
-  // CSV / TSV
   "text/csv",
   "text/tab-separated-values",
 ];
 
 const pdfPresentationMimes = [
-  // Microsoft PowerPoint
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-
-  // OpenDocument Presentation
   "application/vnd.oasis.opendocument.presentation",
 ];
 
@@ -884,7 +862,6 @@ const formatFileSize = (bytes: number | undefined): string => {
 };
 
 const handleClick = (event: MouseEvent) => {
-  // Select item if not selected when right-clicking
   if (!props.isSelected && event.button === 2) {
     emit("click", event);
     return;
@@ -917,7 +894,6 @@ const parseArchivePreview = () => {
     icon: "mdi-folder",
   };
 
-  // Cache nodes by their full path for O(1) access
   const pathCache = new Map<string, TreeItem>();
   pathCache.set("", rootNode);
 
@@ -926,23 +902,14 @@ const parseArchivePreview = () => {
     let currentPath = "";
     let parentNode = rootNode;
 
-    // Build folder structure
     for (let i = 0; i < pathParts.length - 1; i++) {
       const part = pathParts[i];
       const newPath = currentPath ? `${currentPath}/${part}` : part;
-
       let folder = pathCache.get(newPath);
 
       if (!folder) {
-        folder = {
-          label: part,
-          children: [],
-          icon: "mdi-folder",
-        };
-
-        if (!parentNode.children) {
-          parentNode.children = [];
-        }
+        folder = { label: part, children: [], icon: "mdi-folder" };
+        if (!parentNode.children) parentNode.children = [];
         parentNode.children.push(folder);
         pathCache.set(newPath, folder);
       }
@@ -951,20 +918,14 @@ const parseArchivePreview = () => {
       currentPath = newPath;
     }
 
-    // Add the file
-    if (!parentNode.children) {
-      parentNode.children = [];
-    }
-
+    if (!parentNode.children) parentNode.children = [];
     const fileName = pathParts[pathParts.length - 1];
-    parentNode.children.push({
-      label: fileName,
-      icon: "mdi-file",
-    });
+    parentNode.children.push({ label: fileName, icon: "mdi-file" });
   });
 
   return [rootNode];
 };
+
 const setFilePreviews = async () => {
   if (previewData.value) {
     previewUrl.value = previewData.value.previewUrl;
@@ -973,8 +934,6 @@ const setFilePreviews = async () => {
     textPreview.value = previewData.value.textPreview;
     archivePreview.value = previewData.value.archivePreview;
   }
-  console.log("previewUrl", previewUrl.value);
-  console.log("thumbnailUrl", thumbnailUrl.value);
 };
 
 const handleDoubleClick = async () => {
@@ -985,16 +944,17 @@ const handleDoubleClick = async () => {
 
 watch(openDrawer, (isOpen) => {
   if (!isOpen) {
-    // Stop audio when drawer closes
     if (audioPlayer.value) {
       audioPlayer.value.pause();
       audioPlayer.value.currentTime = 0;
     }
-
-    // Reset state
     isAudioPlaying.value = false;
     currentTime.value = 0;
   }
+});
+
+watch(showTagSearch, (open) => {
+  if (!open) searchQuery.value = "";
 });
 </script>
 

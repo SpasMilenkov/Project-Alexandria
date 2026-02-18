@@ -1,245 +1,5 @@
 import { formatBytes } from "./size.utils";
 
-/**
- * Maps MIME types to human-readable file type names
- * Falls back to file extension if MIME type is not recognized
- */
-export const getFileTypeReadable = (
-  mimeType: string,
-  fileName?: string,
-): string => {
-  // MIME type to readable name mapping
-  const mimeTypeMap: Record<string, string> = {
-    // Documents
-    "application/pdf": "PDF Document",
-    "application/msword": "Word Document",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-      "Word Document",
-    "application/vnd.oasis.opendocument.text": "Text Document",
-    "application/rtf": "Rich Text Document",
-    "text/plain": "Text File",
-    "text/markdown": "Markdown Document",
-
-    // Spreadsheets
-    "application/vnd.ms-excel": "Spreadsheet",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-      "Spreadsheet",
-    "application/vnd.oasis.opendocument.spreadsheet": "Spreadsheet",
-    "text/csv": "CSV File",
-    "text/tab-separated-values": "TSV File",
-
-    // Presentations
-    "application/vnd.ms-powerpoint": "Presentation",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-      "Presentation",
-    "application/vnd.oasis.opendocument.presentation": "Presentation",
-
-    // Images
-    "image/jpeg": "JPEG Image",
-    "image/jpg": "JPEG Image",
-    "image/png": "PNG Image",
-    "image/gif": "GIF Image",
-    "image/webp": "WebP Image",
-    "image/svg+xml": "SVG Image",
-    "image/bmp": "Bitmap Image",
-    "image/tiff": "TIFF Image",
-    "image/x-icon": "Icon File",
-    "image/heic": "HEIC Image",
-    "image/heif": "HEIF Image",
-
-    // Videos
-    "video/mp4": "MP4 Video",
-    "video/mpeg": "MPEG Video",
-    "video/quicktime": "QuickTime Video",
-    "video/x-msvideo": "AVI Video",
-    "video/x-matroska": "MKV Video",
-    "video/webm": "WebM Video",
-    "video/x-flv": "Flash Video",
-    "video/3gpp": "3GP Video",
-
-    // Audio
-    "audio/mpeg": "MP3 Audio",
-    "audio/mp3": "MP3 Audio",
-    "audio/mp4": "MP4 Audio",
-    "audio/wav": "WAV Audio",
-    "audio/x-wav": "WAV Audio",
-    "audio/flac": "FLAC Audio",
-    "audio/ogg": "OGG Audio",
-    "audio/webm": "WebM Audio",
-    "audio/aac": "AAC Audio",
-    "audio/x-m4a": "M4A Audio",
-
-    // Archives
-    "application/zip": "ZIP Archive",
-    "application/x-zip-compressed": "ZIP Archive",
-    "application/x-rar-compressed": "RAR Archive",
-    "application/x-7z-compressed": "7-Zip Archive",
-    "application/x-tar": "TAR Archive",
-    "application/gzip": "GZIP Archive",
-    "application/x-bzip2": "BZIP2 Archive",
-    "application/x-xz": "XZ Archive",
-
-    // Code & Development / Text
-    "text/javascript": "JavaScript File",
-    "application/javascript": "JavaScript File",
-    "text/typescript": "TypeScript File",
-    "application/typescript": "TypeScript File",
-    "text/html": "HTML Document",
-    "text/css": "CSS Stylesheet",
-    "application/json": "JSON File",
-    "application/xml": "XML File",
-    "text/xml": "XML File",
-    "application/x-yaml": "YAML File",
-    "text/yaml": "YAML File",
-    "text/x-python": "Python Script",
-    "application/x-python-code": "Python Script",
-    "text/x-java-source": "Java Source File",
-    "text/x-c": "C Source File",
-    "text/x-c++": "C++ Source File",
-    "text/x-csharp": "C# Source File",
-    "application/x-sh": "Shell Script",
-    "application/x-php": "PHP Script",
-    "text/x-ruby": "Ruby Script",
-    "text/x-go": "Go Source File",
-    "text/x-rust": "Rust Source File",
-
-    // Fonts
-    "font/ttf": "TrueType Font",
-    "font/otf": "OpenType Font",
-    "font/woff": "WOFF Font",
-    "font/woff2": "WOFF2 Font",
-
-    // Other common types
-    "application/octet-stream": "Binary File",
-    "application/x-executable": "Executable File",
-    "application/x-msdownload": "Windows Executable",
-    "application/vnd.android.package-archive": "Android Package",
-    "application/x-debian-package": "Debian Package",
-  };
-
-  // Check if we have a direct match
-  if (mimeTypeMap[mimeType]) {
-    return mimeTypeMap[mimeType];
-  }
-
-  // Try to extract category from MIME type
-  const [category, subtype] = mimeType.split("/");
-
-  // Pattern-based matching for common document types
-  if (subtype) {
-    const lowerSubtype = subtype.toLowerCase();
-
-    // Check for document-related patterns
-    if (
-      lowerSubtype.includes("wordprocessing") ||
-      lowerSubtype.includes("document")
-    ) {
-      return "Document";
-    }
-
-    // Check for spreadsheet-related patterns
-    if (
-      lowerSubtype.includes("spreadsheet") ||
-      lowerSubtype.includes("excel") ||
-      lowerSubtype.includes("sheet")
-    ) {
-      return "Spreadsheet";
-    }
-
-    // Check for presentation-related patterns
-    if (
-      lowerSubtype.includes("presentation") ||
-      lowerSubtype.includes("powerpoint") ||
-      lowerSubtype.includes("slides")
-    ) {
-      return "Presentation";
-    }
-
-    // Check for PDF-related patterns
-    if (lowerSubtype.includes("pdf")) {
-      return "PDF Document";
-    }
-
-    // Check for archive-related patterns
-    if (
-      lowerSubtype.includes("zip") ||
-      lowerSubtype.includes("compressed") ||
-      lowerSubtype.includes("archive") ||
-      lowerSubtype.includes("tar") ||
-      lowerSubtype.includes("rar") ||
-      lowerSubtype.includes("gzip")
-    ) {
-      return "Archive";
-    }
-
-    // Check for code/script patterns
-    if (
-      lowerSubtype.includes("script") ||
-      lowerSubtype.includes("javascript") ||
-      lowerSubtype.includes("typescript") ||
-      lowerSubtype.includes("python") ||
-      lowerSubtype.includes("java")
-    ) {
-      return "Code File";
-    }
-
-    // Check for image format patterns
-    if (
-      lowerSubtype.includes("image") ||
-      lowerSubtype.includes("jpeg") ||
-      lowerSubtype.includes("png") ||
-      lowerSubtype.includes("gif")
-    ) {
-      return "Image File";
-    }
-
-    // Check for video patterns
-    if (
-      lowerSubtype.includes("video") ||
-      lowerSubtype.includes("movie") ||
-      lowerSubtype.includes("film")
-    ) {
-      return "Video File";
-    }
-
-    // Check for audio patterns
-    if (
-      lowerSubtype.includes("audio") ||
-      lowerSubtype.includes("sound") ||
-      lowerSubtype.includes("music")
-    ) {
-      return "Audio File";
-    }
-  }
-
-  // Generic category fallbacks
-  if (category === "image") return "Image File";
-  if (category === "video") return "Video File";
-  if (category === "audio") return "Audio File";
-  if (category === "text") return "Text File";
-  if (category === "font") return "Font File";
-
-  // If we have a filename, try to get extension
-  if (fileName) {
-    const extension = fileName.split(".").pop()?.toUpperCase();
-    if (extension && extension !== fileName.toUpperCase()) {
-      return `${extension} File`;
-    }
-  }
-
-  // Last resort: format the subtype nicely
-  if (subtype) {
-    const formatted = subtype
-      .split(/[-._+]/)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-    return `${formatted} File`;
-  }
-
-  // Ultimate fallback
-  return "File";
-};
-
 export type FileGroup =
   | "Documents"
   | "Spreadsheets"
@@ -256,145 +16,294 @@ export type FileGroup =
   | "Binary"
   | "Uncategorized";
 
+interface MimeMeta {
+  group: FileGroup;
+  label: string;
+}
+
+/**
+ * Single source of truth for MIME type metadata.
+ * Both `getFileTypeReadable` and `groupMimeSizeRecord` derive from this.
+ */
+const MIME_META: Record<string, MimeMeta> = {
+  // Documents
+  "application/pdf": { group: "Documents", label: "PDF Document" },
+  "application/msword": { group: "Documents", label: "Word Document" },
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+    group: "Documents",
+    label: "Word Document",
+  },
+  "application/vnd.oasis.opendocument.text": {
+    group: "Documents",
+    label: "Text Document",
+  },
+  "application/rtf": { group: "Documents", label: "Rich Text Document" },
+  "text/markdown": { group: "Documents", label: "Markdown Document" },
+
+  // Spreadsheets
+  "application/vnd.ms-excel": { group: "Spreadsheets", label: "Spreadsheet" },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+    group: "Spreadsheets",
+    label: "Spreadsheet",
+  },
+  "application/vnd.oasis.opendocument.spreadsheet": {
+    group: "Spreadsheets",
+    label: "Spreadsheet",
+  },
+  "text/csv": { group: "Spreadsheets", label: "CSV File" },
+  "text/tab-separated-values": { group: "Spreadsheets", label: "TSV File" },
+
+  // Presentations
+  "application/vnd.ms-powerpoint": {
+    group: "Presentations",
+    label: "Presentation",
+  },
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
+    group: "Presentations",
+    label: "Presentation",
+  },
+  "application/vnd.oasis.opendocument.presentation": {
+    group: "Presentations",
+    label: "Presentation",
+  },
+
+  // Images
+  "image/jpeg": { group: "Images", label: "JPEG Image" },
+  "image/jpg": { group: "Images", label: "JPEG Image" },
+  "image/png": { group: "Images", label: "PNG Image" },
+  "image/gif": { group: "Images", label: "GIF Image" },
+  "image/webp": { group: "Images", label: "WebP Image" },
+  "image/svg+xml": { group: "Images", label: "SVG Image" },
+  "image/bmp": { group: "Images", label: "Bitmap Image" },
+  "image/tiff": { group: "Images", label: "TIFF Image" },
+  "image/x-icon": { group: "Images", label: "Icon File" },
+  "image/heic": { group: "Images", label: "HEIC Image" },
+  "image/heif": { group: "Images", label: "HEIF Image" },
+
+  // Videos
+  "video/mp4": { group: "Videos", label: "MP4 Video" },
+  "video/mpeg": { group: "Videos", label: "MPEG Video" },
+  "video/quicktime": { group: "Videos", label: "QuickTime Video" },
+  "video/x-msvideo": { group: "Videos", label: "AVI Video" },
+  "video/x-matroska": { group: "Videos", label: "MKV Video" },
+  "video/webm": { group: "Videos", label: "WebM Video" },
+  "video/x-flv": { group: "Videos", label: "Flash Video" },
+  "video/3gpp": { group: "Videos", label: "3GP Video" },
+
+  // Audio
+  "audio/mpeg": { group: "Audio", label: "MP3 Audio" },
+  "audio/mp3": { group: "Audio", label: "MP3 Audio" },
+  "audio/mp4": { group: "Audio", label: "MP4 Audio" },
+  "audio/wav": { group: "Audio", label: "WAV Audio" },
+  "audio/x-wav": { group: "Audio", label: "WAV Audio" },
+  "audio/flac": { group: "Audio", label: "FLAC Audio" },
+  "audio/ogg": { group: "Audio", label: "OGG Audio" },
+  "audio/webm": { group: "Audio", label: "WebM Audio" },
+  "audio/aac": { group: "Audio", label: "AAC Audio" },
+  "audio/x-m4a": { group: "Audio", label: "M4A Audio" },
+
+  // Archives
+  "application/zip": { group: "Archives", label: "ZIP Archive" },
+  "application/x-zip-compressed": { group: "Archives", label: "ZIP Archive" },
+  "application/x-rar-compressed": { group: "Archives", label: "RAR Archive" },
+  "application/x-7z-compressed": { group: "Archives", label: "7-Zip Archive" },
+  "application/x-tar": { group: "Archives", label: "TAR Archive" },
+  "application/gzip": { group: "Archives", label: "GZIP Archive" },
+  "application/x-bzip2": { group: "Archives", label: "BZIP2 Archive" },
+  "application/x-xz": { group: "Archives", label: "XZ Archive" },
+
+  // Code & Development
+  "text/javascript": { group: "Code", label: "JavaScript File" },
+  "application/javascript": { group: "Code", label: "JavaScript File" },
+  "text/typescript": { group: "Code", label: "TypeScript File" },
+  "application/typescript": { group: "Code", label: "TypeScript File" },
+  "text/html": { group: "Code", label: "HTML Document" },
+  "text/css": { group: "Code", label: "CSS Stylesheet" },
+  "application/json": { group: "Code", label: "JSON File" },
+  "application/xml": { group: "Code", label: "XML File" },
+  "text/xml": { group: "Code", label: "XML File" },
+  "application/x-yaml": { group: "Code", label: "YAML File" },
+  "text/yaml": { group: "Code", label: "YAML File" },
+  "text/x-python": { group: "Code", label: "Python Script" },
+  "application/x-python-code": { group: "Code", label: "Python Script" },
+  "text/x-java-source": { group: "Code", label: "Java Source File" },
+  "text/x-c": { group: "Code", label: "C Source File" },
+  "text/x-c++": { group: "Code", label: "C++ Source File" },
+  "text/x-csharp": { group: "Code", label: "C# Source File" },
+  "application/x-sh": { group: "Code", label: "Shell Script" },
+  "application/x-php": { group: "Code", label: "PHP Script" },
+  "text/x-ruby": { group: "Code", label: "Ruby Script" },
+  "text/x-go": { group: "Code", label: "Go Source File" },
+  "text/x-rust": { group: "Code", label: "Rust Source File" },
+
+  // Fonts
+  "font/ttf": { group: "Fonts", label: "TrueType Font" },
+  "font/otf": { group: "Fonts", label: "OpenType Font" },
+  "font/woff": { group: "Fonts", label: "WOFF Font" },
+  "font/woff2": { group: "Fonts", label: "WOFF2 Font" },
+
+  // Executables
+  "application/x-executable": {
+    group: "Executables",
+    label: "Executable File",
+  },
+  "application/x-msdownload": {
+    group: "Executables",
+    label: "Windows Executable",
+  },
+
+  // Packages
+  "application/vnd.android.package-archive": {
+    group: "Packages",
+    label: "Android Package",
+  },
+  "application/x-debian-package": {
+    group: "Packages",
+    label: "Debian Package",
+  },
+
+  // Text
+  "text/plain": { group: "Text", label: "Text File" },
+
+  // Binary
+  "application/octet-stream": { group: "Binary", label: "Binary File" },
+};
+
+// ─── Fallback helpers ────────────────────────────────────────────────────────
+
+function groupFromMimeType(mimeType: string): FileGroup {
+  const [category, subtype = ""] = mimeType.split("/");
+  const sub = subtype.toLowerCase();
+
+  if (category === "image") return "Images";
+  if (category === "video") return "Videos";
+  if (category === "audio") return "Audio";
+  if (category === "font") return "Fonts";
+  if (category === "text") {
+    if (
+      sub.includes("script") ||
+      sub.includes("javascript") ||
+      sub.includes("typescript") ||
+      sub.includes("python") ||
+      sub.includes("java") ||
+      sub.includes("html") ||
+      sub.includes("css")
+    )
+      return "Code";
+    return "Text";
+  }
+  if (
+    sub.includes("wordprocessing") ||
+    sub.includes("document") ||
+    sub.includes("pdf")
+  )
+    return "Documents";
+  if (
+    sub.includes("spreadsheet") ||
+    sub.includes("excel") ||
+    sub.includes("sheet")
+  )
+    return "Spreadsheets";
+  if (sub.includes("presentation") || sub.includes("powerpoint"))
+    return "Presentations";
+  if (
+    sub.includes("zip") ||
+    sub.includes("compressed") ||
+    sub.includes("archive") ||
+    sub.includes("tar") ||
+    sub.includes("rar") ||
+    sub.includes("gzip")
+  )
+    return "Archives";
+  if (
+    sub.includes("script") ||
+    sub.includes("json") ||
+    sub.includes("yaml") ||
+    sub.includes("xml")
+  )
+    return "Code";
+
+  return "Uncategorized";
+}
+
+function labelFromMimeType(mimeType: string, fileName?: string): string {
+  const [, subtype = ""] = mimeType.split("/");
+  const group = groupFromMimeType(mimeType);
+
+  // For well-known groups, a generic label is fine
+  const genericLabels: Partial<Record<FileGroup, string>> = {
+    Images: "Image File",
+    Videos: "Video File",
+    Audio: "Audio File",
+    Text: "Text File",
+    Fonts: "Font File",
+    Documents: "Document",
+    Spreadsheets: "Spreadsheet",
+    Presentations: "Presentation",
+    Archives: "Archive",
+    Code: "Code File",
+  };
+  if (genericLabels[group]) return genericLabels[group]!;
+
+  // Try the file extension
+  if (fileName) {
+    const ext = fileName.split(".").pop()?.toUpperCase();
+    if (ext && ext !== fileName.toUpperCase()) return `${ext} File`;
+  }
+
+  // Format the subtype as a last resort
+  return (
+    subtype
+      .split(/[-._+]/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ") + " File"
+  );
+}
+
+/**
+ * Returns a human-readable label for a MIME type.
+ * Falls back to file extension or formatted subtype when unknown.
+ */
+export const getFileTypeReadable = (
+  mimeType: string,
+  fileName?: string,
+): string =>
+  MIME_META[mimeType]?.label ?? labelFromMimeType(mimeType, fileName);
+
 export interface GroupedMimeSizeResult {
   categories: FileGroup[];
   size: number[];
   formattedSize: string[];
 }
 
+/**
+ * Aggregates a `{ mimeType: bytes }` record into named file-type groups.
+ * Only groups with at least one byte are included in the result.
+ */
 export const groupMimeSizeRecord = (
   sizeByMimeType: Record<string, number>,
 ): GroupedMimeSizeResult => {
-  const sizeMap: Record<FileGroup, number> = {
-    Documents: 0,
-    Spreadsheets: 0,
-    Presentations: 0,
-    Images: 0,
-    Videos: 0,
-    Audio: 0,
-    Archives: 0,
-    Code: 0,
-    Fonts: 0,
-    Executables: 0,
-    Packages: 0,
-    Text: 0,
-    Binary: 0,
-    Uncategorized: 0,
-  };
+  const sizeMap = {} as Record<FileGroup, number>;
 
-  const mimeGroupMap: Record<string, FileGroup> = {
-    "application/pdf": "Documents",
-    "application/msword": "Documents",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-      "Documents",
-    "application/vnd.oasis.opendocument.text": "Documents",
-    "application/rtf": "Documents",
-    "text/markdown": "Documents",
-
-    "application/vnd.ms-excel": "Spreadsheets",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-      "Spreadsheets",
-    "application/vnd.oasis.opendocument.spreadsheet": "Spreadsheets",
-    "text/csv": "Spreadsheets",
-    "text/tab-separated-values": "Spreadsheets",
-
-    "application/vnd.ms-powerpoint": "Presentations",
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-      "Presentations",
-    "application/vnd.oasis.opendocument.presentation": "Presentations",
-
-    "image/jpeg": "Images",
-    "image/png": "Images",
-    "image/gif": "Images",
-    "image/webp": "Images",
-    "image/svg+xml": "Images",
-    "image/bmp": "Images",
-    "image/tiff": "Images",
-    "image/heic": "Images",
-    "image/heif": "Images",
-    "image/x-icon": "Images",
-
-    "video/mp4": "Videos",
-    "video/mpeg": "Videos",
-    "video/quicktime": "Videos",
-    "video/x-msvideo": "Videos",
-    "video/x-matroska": "Videos",
-    "video/webm": "Videos",
-    "video/x-flv": "Videos",
-    "video/3gpp": "Videos",
-
-    "audio/mpeg": "Audio",
-    "audio/mp3": "Audio",
-    "audio/mp4": "Audio",
-    "audio/wav": "Audio",
-    "audio/x-wav": "Audio",
-    "audio/flac": "Audio",
-    "audio/ogg": "Audio",
-    "audio/webm": "Audio",
-    "audio/aac": "Audio",
-    "audio/x-m4a": "Audio",
-
-    "application/zip": "Archives",
-    "application/x-zip-compressed": "Archives",
-    "application/x-rar-compressed": "Archives",
-    "application/x-7z-compressed": "Archives",
-    "application/x-tar": "Archives",
-    "application/gzip": "Archives",
-    "application/x-bzip2": "Archives",
-    "application/x-xz": "Archives",
-
-    "text/javascript": "Code",
-    "application/javascript": "Code",
-    "text/typescript": "Code",
-    "application/typescript": "Code",
-    "application/json": "Code",
-    "application/xml": "Code",
-    "text/xml": "Code",
-    "application/x-yaml": "Code",
-    "text/yaml": "Code",
-    "text/x-python": "Code",
-    "text/html": "Code",
-    "text/css": "Code",
-
-    "font/ttf": "Fonts",
-    "font/otf": "Fonts",
-    "font/woff": "Fonts",
-    "font/woff2": "Fonts",
-
-    "application/octet-stream": "Binary",
-    "text/plain": "Text",
-  };
-
-  // Aggregate sizes
-  for (const [mimeType, size] of Object.entries(sizeByMimeType)) {
-    const group =
-      mimeGroupMap[mimeType] ??
-      (mimeType.startsWith("image/")
-        ? "Images"
-        : mimeType.startsWith("video/")
-          ? "Videos"
-          : mimeType.startsWith("audio/")
-            ? "Audio"
-            : mimeType.startsWith("text/")
-              ? "Text"
-              : "Uncategorized");
-
-    sizeMap[group] += size;
+  for (const [mimeType, bytes] of Object.entries(sizeByMimeType)) {
+    const group = MIME_META[mimeType]?.group ?? groupFromMimeType(mimeType);
+    sizeMap[group] = (sizeMap[group] ?? 0) + bytes;
   }
 
   const categories: FileGroup[] = [];
   const size: number[] = [];
   const formattedSize: string[] = [];
 
-  (Object.keys(sizeMap) as FileGroup[]).forEach((group) => {
-    const totalBytes = sizeMap[group];
-
+  for (const [group, totalBytes] of Object.entries(sizeMap) as [
+    FileGroup,
+    number,
+  ][]) {
     if (totalBytes > 0) {
       categories.push(group);
       size.push(totalBytes);
       formattedSize.push(formatBytes(totalBytes));
     }
-  });
+  }
 
   return { categories, size, formattedSize };
 };

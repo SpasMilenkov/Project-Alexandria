@@ -31,11 +31,6 @@ const fields: AuthFormField[] = [
 ];
 
 async function onSubmit(payload: FormSubmitEvent<LoginSchema>) {
-  console.log("Submitted", payload);
-  toast.add({
-    title: "Submitted",
-    description: "Login Request successfully submitted",
-  });
   await authStore.login(payload.data);
 
   if (authStore.error) {

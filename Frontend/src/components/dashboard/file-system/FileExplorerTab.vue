@@ -4,7 +4,6 @@
     <div
       class="flex w-full gap-6 md:gap-2 p-3 border-b border-b-primary flex-row items-center justify-between flex-wrap"
     >
-      <!-- <div class="flex items-center gap-2 flex-wrap"> -->
       <div class="flex gap-2 justify-between">
         <div class="flex gap-2">
           <div class="flex gap-2">
@@ -122,6 +121,47 @@
 
     <!-- Content Area -->
     <div ref="containerRef" class="flex-1 overflow-auto relative">
+      <!-- Drop Zone Overlay  -->
+      <Transition name="dropzone">
+        <div
+          v-if="isOverDropZone"
+          class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+          aria-hidden="true"
+        >
+          <!-- Soft backdrop with primary tint -->
+          <div class="absolute inset-0 bg-background/60 backdrop-blur-[2px]" />
+          <div class="absolute inset-0 bg-primary/5 pulse-tint" />
+
+          <!-- Dashed border inset -->
+          <div
+            class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
+          />
+
+          <!-- Center card -->
+          <div
+            class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-background/80 shadow-sm"
+          >
+            <!-- Breathing ring + icon -->
+            <div class="relative flex items-center justify-center">
+              <span
+                class="breathe absolute rounded-full border border-primary/20"
+              />
+              <div class="relative z-10 p-3 rounded-full bg-primary/8">
+                <Icon :icon="dropIcon" class="w-8 h-8 text-primary/70" />
+              </div>
+            </div>
+
+            <div class="text-center space-y-0.5">
+              <p class="font-medium text-base text-primary/80 tracking-tight">
+                {{ dropLabel }}
+              </p>
+              <p class="text-xs text-muted">Release to upload</p>
+            </div>
+          </div>
+        </div>
+      </Transition>
+      <!-- ─────────────────────────────────────────────────────────────────── -->
+
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="p-4">
         <!-- Directories Section -->
@@ -175,7 +215,7 @@
               @copy="handleCopy"
               @delete="handleDelete"
               @move="handleCut"
-              @contextmenu="handleItemClick($event, dir.id, 'directory')"
+              @contextmenu="handleItemClick($event, file.fileId, 'file')"
             />
           </div>
           <UButton
@@ -287,6 +327,7 @@ import { useQuery } from "@pinia/colada";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import QuickSearchModal from "./Modals/QuickSearchModal.vue";
 import ConfirmModal from "./Modals/ConfirmModal.vue";
+import { useDropZone } from "@vueuse/core";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -329,8 +370,7 @@ const { mutateAsync: copyDirectoryMutate } = copyDirectory();
 const { mutateAsync: moveFilesMutate } = moveFiles();
 const { mutateAsync: moveDirectoriesMutate } = moveDirectories();
 const { mutateAsync: deleteFilesMutate } = deleteFiles();
-const { mutateAsync: deleteDirectoryMutate, error: DeleteDirectoryError } =
-  deleteDirectory();
+const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
 
 const { data: directoriesData, isLoading: areDirectoriesLoading } =
   directoriesQuery;
@@ -345,34 +385,184 @@ const searchFilters = computed<SearchTagsSchema>(() => ({
   pageSize: tagPageSize.value,
 }));
 
-// Query
 const { data: tagsData } = useQuery(searchTag(searchFilters.value));
+
+/**
+ * Inspects DataTransfer items at drag-time to give a contextual hint.
+ * Full directory detection (webkitGetAsEntry) only works reliably on `drop`,
+ * so during hover we peek at the item count as a proxy.
+ */
+const containerRef = ref<HTMLElement | null>(null);
+
+// Tracks whether we *think* a directory is being dragged so the overlay
+// can show a contextual icon/label even before the drop resolves.
+const dragHasDirectory = ref(false);
+
+const dropIcon = computed(() =>
+  dragHasDirectory.value
+    ? "mdi:folder-upload-outline"
+    : "mdi:cloud-upload-outline",
+);
+const dropLabel = computed(() =>
+  dragHasDirectory.value ? "Drop folder here" : "Drop files here",
+);
+
+const { isOverDropZone } = useDropZone(containerRef, {
+  /**
+   * `onEnter` fires with the raw DragEvent — we can peek at item kinds
+   * to speculatively decide if a directory is incoming. Not 100% reliable
+   * (browsers may hide the entry type for security), but good enough for UX.
+   */
+  onEnter(_files, event) {
+    const items = Array.from(event.dataTransfer?.items ?? []);
+    dragHasDirectory.value = items.some((item) => {
+      // webkitGetAsEntry is readable at dragenter (unlike File objects)
+      const entry = (item as DataTransferItem).webkitGetAsEntry?.();
+      return entry?.isDirectory ?? false;
+    });
+  },
+
+  onLeave() {
+    dragHasDirectory.value = false;
+  },
+
+  /**
+   * On drop we re-inspect with full fidelity and open the right modal.
+   *
+   * We deliberately ignore the `_files` argument from vueuse here.
+   * dataTransfer.files flattens the tree — directories appear as a single
+   * 0-byte File entry and their contents are never exposed. We must walk the
+   * tree ourselves via the FileSystem API.
+   */
+  async onDrop(_files, event) {
+    dragHasDirectory.value = false;
+
+    const items = Array.from(event.dataTransfer?.items ?? []);
+    if (items.length === 0) return;
+
+    const entries = items
+      .map((item) => item.webkitGetAsEntry?.())
+      .filter((e): e is FileSystemEntry => e !== null && e !== undefined);
+
+    if (entries.length === 0) return;
+
+    const hasDirectory = entries.some((e) => e.isDirectory);
+
+    let instance;
+    if (hasDirectory) {
+      // Recursively unwrap every entry so we get the real files + their paths
+      const allFiles = (
+        await Promise.all(entries.map((e) => readEntryRecursive(e)))
+      ).flat();
+
+      instance = directoryUploadModal.open({
+        directoryId: currentDirId.value ?? undefined,
+        directoryName: currentDirName.value,
+        droppedFiles: allFiles,
+      });
+    } else {
+      // Flat file drop — vueuse's _files is fine here since there's no tree
+      instance = fileUploadModal.open({
+        directoryId: currentDirId.value ?? undefined,
+        directoryName: currentDirName.value,
+        droppedFile: (_files ?? [])[0] ?? undefined,
+      });
+    }
+
+    const shouldRefresh = await instance.result;
+    if (shouldRefresh && settingsStore.toastLevel === "all") {
+      refreshDir();
+      toast.add({
+        title: "Upload complete",
+        color: "success",
+        id: "dropzone-upload-success",
+      });
+    }
+  },
+});
+
+// FileSystem API helpers
+
+export interface DroppedFile {
+  file: File;
+  /** Mirrors webkitRelativePath — e.g. "myFolder/src/index.ts" */
+  relativePath: string;
+}
+
+/**
+ * Recursively reads a FileSystemEntry and returns all leaf files with their
+ * relative paths. `path` accumulates the directory prefix as we recurse.
+ */
+async function readEntryRecursive(
+  entry: FileSystemEntry,
+  path = "",
+): Promise<DroppedFile[]> {
+  if (entry.isFile) {
+    return new Promise((resolve, reject) => {
+      (entry as FileSystemFileEntry).file(
+        (file) => resolve([{ file, relativePath: path + file.name }]),
+        reject,
+      );
+    });
+  }
+
+  if (entry.isDirectory) {
+    const dirEntry = entry as FileSystemDirectoryEntry;
+    const children = await readAllEntries(dirEntry.createReader());
+    const nested = await Promise.all(
+      children.map((child) =>
+        readEntryRecursive(child, `${path}${entry.name}/`),
+      ),
+    );
+    return nested.flat();
+  }
+
+  return [];
+}
+
+/**
+ * readEntries only guarantees up to 100 results per call — loop until the
+ * batch comes back empty to ensure we collect every entry in large directories.
+ */
+function readAllEntries(
+  reader: FileSystemDirectoryReader,
+): Promise<FileSystemEntry[]> {
+  return new Promise((resolve, reject) => {
+    const collected: FileSystemEntry[] = [];
+
+    const readBatch = () => {
+      reader.readEntries((batch) => {
+        if (batch.length === 0) {
+          resolve(collected);
+        } else {
+          collected.push(...batch);
+          readBatch(); // keep reading until empty batch
+        }
+      }, reject);
+    };
+
+    readBatch();
+  });
+}
 
 let copyMode = true;
 
 defineShortcuts({
   meta_c: () => {
-    console.log("Ctrl + C is pressed");
     copyMode = true;
     handleCopy();
   },
   meta_v: () => {
-    console.log("Ctrl + V is pressed");
-
     if (copyMode) handlePaste();
     else handleCut();
   },
   meta_x: () => {
     copyMode = false;
     handleCopy();
-    console.log("Ctrl + X is pressed");
   },
   shift_k: () => quickSearch(),
   shift_l: () => advancedSearch(),
-  Delete: () => {
-    handleDelete();
-    console.log("Delete has been pressed");
-  },
+  Delete: () => handleDelete(),
 });
 
 // Sort options
@@ -451,7 +641,6 @@ const quickSearch = async () => {
 };
 
 const handleContainerClick = (event: MouseEvent) => {
-  // Check if we clicked on empty space (not on any item buttons)
   const target = event.target as HTMLElement;
   if (!target.closest("button")) {
     clearSelection();
@@ -463,27 +652,19 @@ const gridColumns = computed(() => {
 });
 
 const handleDirectoryRename = async (directoryId: string) => {
-  const instance = updateDirectoryModal.open({
-    directoryId: directoryId,
-  });
-
+  const instance = updateDirectoryModal.open({ directoryId });
   const shouldRefresh = await instance.result;
 
-  console.log(shouldRefresh);
-
-  if (shouldRefresh) {
+  if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({
       title: "Directory updated successfully",
       color: "success",
       id: "modal-success",
     });
-
-    console.log("refreshing");
     refreshDir();
-
     return;
   }
-  if (!shouldRefresh)
+  if (!shouldRefresh && settingsStore.toastLevel !== "silent")
     toast.add({
       title: "Directory update failed",
       color: "error",
@@ -494,13 +675,8 @@ const handleDirectoryRename = async (directoryId: string) => {
 const handleCopy = async () => {
   fileStore.filesToCopy = [...selectedFiles.value];
   directoryStore.directoriesToCopy = [...selectedDirectories.value];
-
-  console.log("handling copy");
-  toast.add({
-    title: "Items selected",
-    color: "info",
-    id: "copying",
-  });
+  if (settingsStore.toastLevel === "all")
+    toast.add({ title: "Items selected", color: "info", id: "copying" });
 };
 
 const handleDelete = async () => {
@@ -527,21 +703,17 @@ const handleDelete = async () => {
       .map((x) => x.id);
 
     if (failedDirs.length > 0) {
-      // Check if user has disabled delete confirmations
-      const shouldSkipConfirmation = settingsStore.skipDeleteConfirmation;
-
-      if (shouldSkipConfirmation) {
-        // Skip confirmation and proceed with force delete
+      if (settingsStore.skipDeleteConfirmation) {
         await Promise.all(
           failedDirs.map((id) =>
             deleteDirectoryMutate({ id, options: { force: true } }),
           ),
         );
       } else {
-        // Show confirmation modal
         const instance = confirmModal.open({
           title: "Confirm deletion",
-          message: `Selected directories are not empty. Are you sure you want to proceed?`,
+          message:
+            "Selected directories are not empty. Are you sure you want to proceed?",
           dangerMode: true,
           confirmIcon: "mdi-trash",
         });
@@ -557,13 +729,8 @@ const handleDelete = async () => {
       }
     }
   }
-
-  toast.add({
-    title: "Items deleted",
-    color: "info",
-    id: "deleting",
-  });
-
+  if (settingsStore.toastLevel === "all")
+    toast.add({ title: "Items deleted", color: "info", id: "deleting" });
   refreshDir();
 };
 
@@ -602,9 +769,17 @@ const handlePaste = async () => {
 const handleSorting = () => {
   filePagination.value.paginationParams.orderBy = selectedSortBy.value.value;
   dirPagination.value.paginationParams.orderBy = selectedSortBy.value.value;
-
   refreshDir();
 };
+
+/**
+ * TODO: This is messy, I should add a track for the current dir name in th composable to make this task simpler and less fragile
+ */
+const currentDirName = computed<string | undefined>(() => {
+  if (!currentDirId.value) return undefined;
+  const parts = pathQuery.data.value?.pathParts;
+  return parts?.[parts.length - 1]?.name;
+});
 
 const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   const option = uploadOptions.value.find((opt) => opt.label === type);
@@ -612,33 +787,38 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
     selectedUploadType.value = { label: option.label, icon: option.icon };
   }
 
+  const uploadProps = {
+    directoryId: currentDirId.value ?? undefined,
+    directoryName: currentDirName.value,
+  };
+
   let instance;
 
   switch (type) {
     case "File":
-      instance = fileUploadModal.open();
+      instance = fileUploadModal.open(uploadProps);
       break;
     case "Directory":
-      instance = directoryUploadModal.open();
+      instance = directoryUploadModal.open(uploadProps);
       break;
     case "Archive":
-      instance = directoryUploadModal.open();
+      instance = directoryUploadModal.open(uploadProps);
       break;
     default:
-      instance = fileUploadModal.open();
+      instance = fileUploadModal.open(uploadProps);
   }
 
   const shouldRefresh = await instance.result;
 
-  console.log(shouldRefresh);
-
   if (shouldRefresh) {
-    // Fetch the path first if we have a dirId
     refreshDir();
-
     return;
   }
-  if (!shouldRefresh && directoryStore.error)
+  if (
+    !shouldRefresh &&
+    directoryStore.error &&
+    settingsStore.toastLevel !== "silent"
+  )
     toast.add({
       title: "Upload failed",
       description: directoryStore.error,
@@ -657,7 +837,6 @@ const breadcrumbs = computed(() => {
     },
   ];
 
-  // Add path segments from store
   const path = pathQuery.data.value?.pathParts;
 
   if (path && path.length > 0) {
@@ -665,7 +844,6 @@ const breadcrumbs = computed(() => {
       label: segment.name,
       key: segment.id,
     }));
-
     items.push(...pathItems);
   }
   return items;
@@ -677,18 +855,16 @@ const createNewDirectory = async () => {
   });
 
   const shouldRefresh = await instance.result;
-  console.log(shouldRefresh);
-  if (shouldRefresh) {
+  if (shouldRefresh && settingsStore.toastLevel === 'all') {
     toast.add({
       title: "Directory creation successful",
       color: "success",
       id: "modal-success",
     });
-
     refreshDir();
     return;
   }
-  if (!shouldRefresh && directoryStore.error)
+  if (!shouldRefresh && directoryStore.error  && settingsStore.toastLevel !== 'silent')
     toast.add({
       title: "Directory creation failed",
       description: directoryStore.error,
@@ -705,40 +881,28 @@ const handleItemClick = (
   const isCtrlOrCmd = event.ctrlKey || event.metaKey;
   const isShift = event.shiftKey;
   const isRightClick = event.button === 2;
-  console.log("does this eve nfire?");
-  console.log("event button", event.button);
-  // For right-click: only select if not already selected, preserve existing selection
+
   if (isRightClick) {
-    console.log("entering the IF");
     if (!isFileSelected(id) && !isDirectorySelected(id)) {
-      console.log("entering the second if");
-      // Not selected, so select it (keep others selected too)
       toggleSelect(id, type);
       lastSelected.value = id;
-      console.log(selectedDirectories.value);
     }
-    // If already selected, do nothing - keep current selection
     return;
   }
 
   if (isShift && lastSelected.value) {
-    // Range selection
     selectRange(lastSelected.value, id);
   } else if (isCtrlOrCmd) {
-    // Toggle selection
     toggleSelect(id, type);
     lastSelected.value = id;
   } else {
-    // Single selection (clear others)
     clearSelection();
     toggleSelect(id, type);
-    console.log("Single selection triggerd here ", id);
     lastSelected.value = id;
   }
 };
 
 const handleNavigate = (dirId: string | null) => {
-  console.log("navigating to", dirId);
   navigateTo(dirId);
   tabStore.setActiveDir(props.tabId, dirId);
 };
@@ -749,4 +913,65 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped></style>
+<style scoped>
+/* Breathing ring */
+.breathe {
+  width: 4rem;
+  height: 4rem;
+  animation: breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.15;
+  }
+}
+
+/* Tint pulse */
+.pulse-tint {
+  animation: pulse-tint 3s ease-in-out infinite;
+}
+
+@keyframes pulse-tint {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Border pulse */
+.pulse-border {
+  animation: pulse-border 3s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+/* Overlay transition  */
+.dropzone-enter-active {
+  transition: opacity 0.2s ease;
+}
+.dropzone-leave-active {
+  transition: opacity 0.15s ease;
+}
+.dropzone-enter-from,
+.dropzone-leave-to {
+  opacity: 0;
+}
+</style>

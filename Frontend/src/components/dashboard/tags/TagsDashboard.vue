@@ -185,7 +185,9 @@ import TagListItem from "./TagListItem.vue";
 import CreateTagModal from "./modals/CreateTagModal.vue";
 import UpdateTagModal from "./modals/UpdateTagModal.vue";
 import type { TagDto } from "@/api/tag";
+import { useSettingsStore } from "@/stores/settings";
 
+const settingsStore = useSettingsStore();
 const toast = useToast();
 const overlay = useOverlay();
 
@@ -245,7 +247,7 @@ const handleCreateTag = async () => {
   const instance = createTagModal.open();
   const shouldRefresh = await instance.result;
 
-  if (shouldRefresh) {
+  if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({
       title: "Tag created successfully",
       color: "success",
@@ -259,7 +261,7 @@ const handleEditTag = async (tag: TagDto) => {
   const instance = updateTagModal.open({ tag });
   const shouldRefresh = await instance.result;
 
-  if (shouldRefresh) {
+  if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({
       title: "Tag updated successfully",
       color: "success",
@@ -272,19 +274,21 @@ const handleEditTag = async (tag: TagDto) => {
 const handleDeleteTag = async (tagId: string) => {
   try {
     await deleteTagMutate(tagId);
-    toast.add({
-      title: "Tag deleted successfully",
-      color: "success",
-      id: "tag-deleted",
-    });
+    if (settingsStore.toastLevel === "all")
+      toast.add({
+        title: "Tag deleted successfully",
+        color: "success",
+        id: "tag-deleted",
+      });
     selectedTags.value.delete(tagId);
     refetch();
   } catch {
-    toast.add({
-      title: "Failed to delete tag",
-      color: "error",
-      id: "tag-delete-error",
-    });
+    if (settingsStore.toastLevel !== "silent")
+      toast.add({
+        title: "Failed to delete tag",
+        color: "error",
+        id: "tag-delete-error",
+      });
   }
 };
 
@@ -295,19 +299,21 @@ const handleBulkDelete = async () => {
     await Promise.all(
       Array.from(selectedTags.value).map((tagId) => deleteTagMutate(tagId)),
     );
-    toast.add({
-      title: `Deleted ${selectedTags.value.size} tags`,
-      color: "success",
-      id: "bulk-delete",
-    });
+    if (settingsStore.toastLevel === "all")
+      toast.add({
+        title: `Deleted ${selectedTags.value.size} tags`,
+        color: "success",
+        id: "bulk-delete",
+      });
     selectedTags.value.clear();
     refetch();
   } catch {
-    toast.add({
-      title: "Failed to delete some tags",
-      color: "error",
-      id: "bulk-delete-error",
-    });
+    if (settingsStore.toastLevel !== "silent")
+      toast.add({
+        title: "Failed to delete some tags",
+        color: "error",
+        id: "bulk-delete-error",
+      });
   }
 };
 
@@ -409,5 +415,4 @@ watch(
 );
 </script>
 
-<style scoped>
-</style>
+<style scoped></style>

@@ -5,7 +5,9 @@
       class="flex w-full gap-2 p-4 border-b border-gray-200 dark:border-gray-800 items-center justify-between"
     >
       <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-trash-2" class="w-6 h-6" />
+        <div class="p-2 rounded-lg border border-dashed opacity-80 mt-0.5">
+          <UIcon name="i-lucide-trash-2" class="w-6 h-6" />
+        </div>
         <h1 class="text-2xl font-bold">Deleted Items</h1>
         <UBadge v-if="totalCount > 0" color="gray" variant="subtle">
           {{ totalCount }}
@@ -30,10 +32,12 @@
       <UInput
         v-model="searchQuery"
         placeholder="Search deleted items by name..."
-        icon="i-lucide-search"
         class="w-full"
         @keyup.enter="handleSearch"
       >
+        <template #leading>
+          <UIcon name="i-lucide-search" />
+        </template>
         <template #trailing>
           <UButton
             v-if="searchQuery"
@@ -246,10 +250,12 @@ import { OrderBy } from "@/enums/OrderBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { restoreFiles } from "@/mutations/files";
 import { restoreDirectories } from "@/mutations/directories";
+import { useSettingsStore } from "@/stores/settings";
 
 // Stores and composables
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 
 const {
@@ -263,7 +269,6 @@ const {
   error: restoreDirectoriesError,
   isLoading: restoreDirectoriesIsLoading,
 } = restoreDirectories();
-
 
 // State
 const isLoading = ref(false);
@@ -318,9 +323,7 @@ const isAllFilesSelected = computed(() => {
 // Aggregate mutation loading state — used to disable interactive elements
 // while any mutation is in flight to prevent double-submits or conflicting ops.
 const isMutating = computed(
-  () =>
-    restoreFilesLoading.value ||
-    restoreDirectoriesIsLoading.value
+  () => restoreFilesLoading.value || restoreDirectoriesIsLoading.value,
 );
 
 // Methods
@@ -445,11 +448,12 @@ const fetchDeletedItems = async () => {
         : 0);
   } catch (error) {
     console.error("Error fetching deleted items:", error);
-    toast.add({
-      title: "Error",
-      description: "Failed to load deleted items. Please try again.",
-      color: "error",
-    });
+    if (settingsStore.toastLevel !== "silent")
+      toast.add({
+        title: "Error",
+        description: "Failed to load deleted items. Please try again.",
+        color: "error",
+      });
   } finally {
     isLoading.value = false;
   }
@@ -480,12 +484,13 @@ const refreshData = () => {
 const handleItemClick = () => {};
 
 const handleNavigate = (_directoryId: string) => {
-  toast.add({
-    title: "Info",
-    description:
-      "This item is deleted. Restore it first to navigate to its location.",
-    color: "info",
-  });
+  if (settingsStore.toastLevel === "all")
+    toast.add({
+      title: "Info",
+      description:
+        "This item is deleted. Restore it first to navigate to its location.",
+      color: "info",
+    });
 };
 
 const restoreSelectedFiles = async () => {

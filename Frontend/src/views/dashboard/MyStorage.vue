@@ -1,16 +1,22 @@
 <template>
-  <div class="flex flex-col h-full w-full flex-1">
+  <div class="flex flex-col h-full w-full flex-1 bg-[var(--ui-bg)]">
     <!-- Header -->
     <div
-      class="flex w-full gap-2 p-4 border-b border-gray-200 dark:border-gray-800 items-center justify-between"
+      class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between"
     >
-      <div class="flex items-center gap-2">
-        <UIcon name="mdi:chart-pie" class="w-6 h-6" />
-        <h1 class="text-2xl font-bold">Storage Management</h1>
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-lg border border-dashed opacity-50">
+          <UIcon name="mdi:chart-pie" class="w-4 h-4" />
+        </div>
+        <div>
+          <h1 class="text-lg font-semibold tracking-tight">Storage</h1>
+          <p class="text-xs opacity-90">Manage and inspect your usage</p>
+        </div>
       </div>
       <UButton
         variant="ghost"
         size="sm"
+        class="opacity-60 hover:opacity-100"
         @click="
           () => {
             refreshStorageData();
@@ -18,124 +24,168 @@
           }
         "
       >
-        <UIcon name="mdi:refresh" class="w-4 h-4 mr-2" />
+        <UIcon name="mdi:refresh" class="w-3.5 h-3.5 mr-1.5" />
         Refresh
       </UButton>
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-auto p-4">
-      <div class="max-w-7xl mx-auto space-y-6">
+    <div class="flex-1 overflow-auto">
+      <div class="max-w-7xl mx-auto px-6 py-8 space-y-8">
         <!-- Storage Overview Widget -->
         <StorageInfoWidget :defaultState="true" />
 
+        <!-- Breakdown Chart -->
         <StorageBreakdownDiagram
           v-if="sizeByCategory"
           :labels="sizeByCategory.categories"
           :data="sizeByCategory.size"
-          :colors="categoryColors"
           :formatted-size="sizeByCategory.formattedSize"
         />
 
-        <!-- Loading State -->
+        <!-- Loading -->
         <div
           v-if="myStorageIsLoading"
-          class="flex items-center justify-center py-12"
+          class="flex items-center justify-center py-20 opacity-80"
         >
-          <UIcon name="mdi:loading" class="w-8 h-8 animate-spin opacity-50" />
+          <UIcon name="mdi:loading" class="w-6 h-6 animate-spin" />
         </div>
 
-        <!-- Error State -->
-        <div v-else-if="myStorageError" class="text-center py-12">
-          <UIcon
-            name="mdi:alert-circle"
-            class="w-12 h-12 mx-auto mb-4 opacity-50"
-          />
-          <p class="text-sm opacity-70">Failed to load storage breakdown</p>
+        <!-- Error -->
+        <div
+          v-else-if="myStorageError"
+          class="text-center py-16 opacity-90 space-y-2"
+        >
+          <UIcon name="mdi:alert-circle-outline" class="w-10 h-10 mx-auto" />
+          <p class="text-sm">Failed to load storage data</p>
         </div>
 
-        <!-- Trash & Old Files Section -->
-        <div v-else-if="myStorageData" class="space-y-6">
-          <!-- Trash Size Card -->
-          <UCard>
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="p-3 rounded-lg border">
-                  <UIcon name="mdi:delete" class="w-6 h-6" />
+        <template v-else-if="myStorageData">
+          <!-- Stat row: Trash + quick stats -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <UCard :ui="{ body: 'p-5' }">
+              <div class="flex items-start justify-between">
+                <div class="space-y-1">
+                  <p
+                    class="text-xs uppercase tracking-widest opacity-90 font-medium"
+                  >
+                    Trash
+                  </p>
+                  <p class="text-2xl font-semibold tabular-nums leading-none">
+                    {{ formatBytes(myStorageData.trashSize) }}
+                  </p>
+                  <p class="text-xs opacity-90">Awaiting cleanup</p>
                 </div>
-                <div>
-                  <h3 class="font-semibold">Trash</h3>
-                  <p class="text-sm opacity-70">File size in trash bin</p>
+                <div
+                  class="p-2 rounded-lg border border-dashed opacity-90 mt-0.5"
+                >
+                  <UIcon name="mdi:delete-outline" class="w-4 h-4" />
                 </div>
               </div>
-              <div class="text-right">
-                <p class="text-2xl font-bold">
-                  {{ formatBytes(myStorageData.trashSize) }}
-                </p>
-                <p class="text-xs opacity-70">Total size</p>
+            </UCard>
+
+            <UCard :ui="{ body: 'p-5' }">
+              <div class="flex items-start justify-between">
+                <div class="space-y-1">
+                  <p
+                    class="text-xs uppercase tracking-widest opacity-90 font-medium"
+                  >
+                    Old Files
+                  </p>
+                  <p class="text-2xl font-semibold tabular-nums leading-none">
+                    {{ myStorageData.oldFiles.length }}
+                  </p>
+                  <p class="text-xs opacity-90">Not accessed recently</p>
+                </div>
+                <div
+                  class="p-2 rounded-lg border border-dashed opacity-80 mt-0.5"
+                >
+                  <UIcon name="mdi:clock-outline" class="w-4 h-4" />
+                </div>
               </div>
-            </div>
-          </UCard>
+            </UCard>
+
+            <UCard :ui="{ body: 'p-5' }">
+              <div class="flex items-start justify-between">
+                <div class="space-y-1">
+                  <p
+                    class="text-xs uppercase tracking-widest opacity-90 font-medium"
+                  >
+                    File Types
+                  </p>
+                  <p class="text-2xl font-semibold tabular-nums leading-none">
+                    {{ sizeByCategory?.categories.length ?? "—" }}
+                  </p>
+                  <p class="text-xs opacity-90">Distinct categories</p>
+                </div>
+                <div
+                  class="p-2 rounded-lg border border-dashed opacity-80 mt-0.5"
+                >
+                  <UIcon name="mdi:shape-outline" class="w-4 h-4" />
+                </div>
+              </div>
+            </UCard>
+          </div>
 
           <!-- Old Files Section -->
           <div v-if="myStorageData.oldFiles.length > 0">
-            <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center gap-2">
-                <UIcon name="mdi:clock-outline" class="w-5 h-5 opacity-70" />
-                <h3 class="font-semibold opacity-70">Old Files</h3>
-                <UBadge color="gray" variant="subtle">
-                  {{ myStorageData.oldFiles.length }}
-                </UBadge>
+            <div class="flex items-center gap-3 mb-5">
+              <div class="h-px flex-1 border-t border-dashed opacity-20" />
+              <div
+                class="flex items-center gap-2 text-xs opacity-90 uppercase tracking-widest font-medium"
+              >
+                <UIcon name="mdi:clock-outline" class="w-3.5 h-3.5" />
+                Old Files
+                <span class="normal-case tracking-normal font-normal opacity-70"
+                  >({{ myStorageData.oldFiles.length }})</span
+                >
               </div>
+              <div class="h-px flex-1 border-t border-dashed opacity-20" />
             </div>
 
-            <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              <UCard
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div
                 v-for="file in myStorageData.oldFiles"
                 :key="file.id"
-                class="hover:border-primary transition-colors cursor-pointer"
+                class="group flex items-start gap-3 p-4 rounded-lg border border-dashed hover:border-solid hover:border-primary/40 transition-all cursor-pointer bg-black/1 dark:bg-white/1 hover:bg-black/3 dark:hover:bg-white/3"
               >
-                <div class="flex items-start gap-3">
-                  <div class="p-2 rounded border shrink-0">
-                    <UIcon :name="getFileIcon(file.fileName)" class="w-5 h-5" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-medium truncate" :title="file.fileName">
-                      {{ file.fileName }}
-                    </p>
-                    <div class="flex items-center gap-2 mt-1">
-                      <p class="text-xs opacity-70">
-                        {{ getFileTypeReadable(file.mimeType) }}
-                      </p>
-                      <UBadge
-                        v-if="file.hasPreview"
-                        color="primary"
-                        variant="subtle"
-                        size="xs"
-                      >
-                        Preview
-                      </UBadge>
-                    </div>
+                <div
+                  class="p-2 rounded-md border opacity-50 group-hover:opacity-80 transition-opacity shrink-0"
+                >
+                  <UIcon :name="getFileIcon(file.fileName)" class="w-4 h-4" />
+                </div>
+                <div class="flex-1 min-w-0 space-y-1">
+                  <p
+                    class="text-sm font-medium truncate leading-snug"
+                    :title="file.fileName"
+                  >
+                    {{ file.fileName }}
+                  </p>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs opacity-90">{{
+                      getFileTypeReadable(file.mimeType)
+                    }}</span>
+                    <span
+                      v-if="file.hasPreview"
+                      class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border opacity-50 font-medium"
+                    >
+                      Preview
+                    </span>
                   </div>
                 </div>
-              </UCard>
+              </div>
             </div>
           </div>
 
-          <!-- Empty State for Old Files -->
-          <UCard v-else>
-            <div class="text-center py-8">
-              <UIcon
-                name="mdi:check-circle"
-                class="w-12 h-12 mx-auto mb-3 opacity-50"
-              />
-              <p class="font-medium">No old files</p>
-              <p class="text-sm opacity-70 mt-1">
-                All your files are up to date
-              </p>
+          <!-- Empty state for old files -->
+          <div v-else class="text-center py-16 space-y-3 opacity-90">
+            <UIcon name="mdi:check-circle-outline" class="w-10 h-10 mx-auto" />
+            <div>
+              <p class="font-medium text-sm">No old files</p>
+              <p class="text-xs mt-0.5">Everything looks tidy</p>
             </div>
-          </UCard>
-        </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -160,39 +210,9 @@ const {
   error: myStorageError,
 } = useQuery(myStorage);
 
-const categoryColors = [
-  "rgb(255, 99, 132)", // Soft Red
-  "rgb(54, 162, 235)", // Blue
-  "rgb(255, 205, 86)", // Yellow
-  "rgb(75, 192, 192)", // Teal
-  "rgb(153, 102, 255)", // Purple
-  "rgb(255, 159, 64)", // Orange
-  "rgb(199, 199, 199)", // Light Gray
-  "rgb(83, 102, 255)", // Indigo
-  "rgb(255, 99, 255)", // Pink
-  "rgb(99, 255, 132)", // Mint Green
-  "rgb(255, 140, 0)", // Dark Orange
-  "rgb(0, 204, 150)", // Emerald
-  "rgb(120, 120, 120)", // Neutral Gray
-  "rgb(180, 70, 200)", // Violet
-];
-
 const sizeByCategory = computed(() => {
   if (myStorageData.value)
     return groupMimeSizeRecord(myStorageData.value.sizeByType);
-
   return null;
 });
-
-//TODO:
-// Add proper grouping by mimetype (since mimetypes vary I should do the grouping, I might have a helper for that)
-// Add proper spread in the pie diagram
-// Add an event for to properly expand tree menu items when the proper category is selected on the pie chart
-// Add better display for old files
-// Figure out why the old files check picks up recent files
-// Find better colors for the diagram
-// Add a query that fetches the full file item if the user decides to click on that
-// Add a Trash can page where the user can see all the deleted files
-// Add a query that only selects files that have been deleted (it should be paginated and filtered, I don't have such thing on the backend yet (or maybe I do, I can reuse the search query
-// and add the deleted only flag
 </script>
