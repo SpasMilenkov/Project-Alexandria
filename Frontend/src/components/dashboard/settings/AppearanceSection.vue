@@ -120,8 +120,8 @@ const exampleDir = {
                 </h3>
                 <UButton
                   label="Reset"
-                  color="gray"
-                  variant="ghost"
+                  color="error"
+                  variant="outline"
                   size="xs"
                   @click="handleResetAppearance"
                 />
@@ -304,7 +304,7 @@ const exampleDir = {
                     <div
                       :class="[
                         'max-h-40',
-                        viewMode === 'list' ? '' : 'max-w-40',
+                        viewMode === 'list' ? 'min-h-12' : 'max-w-40',
                       ]"
                     >
                       <DirectoryItem
