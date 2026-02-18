@@ -470,7 +470,7 @@ const { isOverDropZone } = useDropZone(containerRef, {
     }
 
     const shouldRefresh = await instance.result;
-    if (shouldRefresh) {
+    if (shouldRefresh && settingsStore.toastLevel === "all") {
       refreshDir();
       toast.add({
         title: "Upload complete",
@@ -655,7 +655,7 @@ const handleDirectoryRename = async (directoryId: string) => {
   const instance = updateDirectoryModal.open({ directoryId });
   const shouldRefresh = await instance.result;
 
-  if (shouldRefresh) {
+  if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({
       title: "Directory updated successfully",
       color: "success",
@@ -664,7 +664,7 @@ const handleDirectoryRename = async (directoryId: string) => {
     refreshDir();
     return;
   }
-  if (!shouldRefresh)
+  if (!shouldRefresh && settingsStore.toastLevel !== "silent")
     toast.add({
       title: "Directory update failed",
       color: "error",
@@ -675,7 +675,8 @@ const handleDirectoryRename = async (directoryId: string) => {
 const handleCopy = async () => {
   fileStore.filesToCopy = [...selectedFiles.value];
   directoryStore.directoriesToCopy = [...selectedDirectories.value];
-  toast.add({ title: "Items selected", color: "info", id: "copying" });
+  if (settingsStore.toastLevel === "all")
+    toast.add({ title: "Items selected", color: "info", id: "copying" });
 };
 
 const handleDelete = async () => {
@@ -728,8 +729,8 @@ const handleDelete = async () => {
       }
     }
   }
-
-  toast.add({ title: "Items deleted", color: "info", id: "deleting" });
+  if (settingsStore.toastLevel === "all")
+    toast.add({ title: "Items deleted", color: "info", id: "deleting" });
   refreshDir();
 };
 
@@ -813,7 +814,11 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
     refreshDir();
     return;
   }
-  if (!shouldRefresh && directoryStore.error)
+  if (
+    !shouldRefresh &&
+    directoryStore.error &&
+    settingsStore.toastLevel !== "silent"
+  )
     toast.add({
       title: "Upload failed",
       description: directoryStore.error,
@@ -850,7 +855,7 @@ const createNewDirectory = async () => {
   });
 
   const shouldRefresh = await instance.result;
-  if (shouldRefresh) {
+  if (shouldRefresh && settingsStore.toastLevel === 'all') {
     toast.add({
       title: "Directory creation successful",
       color: "success",
@@ -859,7 +864,7 @@ const createNewDirectory = async () => {
     refreshDir();
     return;
   }
-  if (!shouldRefresh && directoryStore.error)
+  if (!shouldRefresh && directoryStore.error  && settingsStore.toastLevel !== 'silent')
     toast.add({
       title: "Directory creation failed",
       description: directoryStore.error,

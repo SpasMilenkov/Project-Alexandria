@@ -250,10 +250,12 @@ import { OrderBy } from "@/enums/OrderBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { restoreFiles } from "@/mutations/files";
 import { restoreDirectories } from "@/mutations/directories";
+import { useSettingsStore } from "@/stores/settings";
 
 // Stores and composables
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 
 const {
@@ -446,11 +448,12 @@ const fetchDeletedItems = async () => {
         : 0);
   } catch (error) {
     console.error("Error fetching deleted items:", error);
-    toast.add({
-      title: "Error",
-      description: "Failed to load deleted items. Please try again.",
-      color: "error",
-    });
+    if (settingsStore.toastLevel !== "silent")
+      toast.add({
+        title: "Error",
+        description: "Failed to load deleted items. Please try again.",
+        color: "error",
+      });
   } finally {
     isLoading.value = false;
   }
@@ -481,12 +484,13 @@ const refreshData = () => {
 const handleItemClick = () => {};
 
 const handleNavigate = (_directoryId: string) => {
-  toast.add({
-    title: "Info",
-    description:
-      "This item is deleted. Restore it first to navigate to its location.",
-    color: "info",
-  });
+  if (settingsStore.toastLevel === "all")
+    toast.add({
+      title: "Info",
+      description:
+        "This item is deleted. Restore it first to navigate to its location.",
+      color: "info",
+    });
 };
 
 const restoreSelectedFiles = async () => {
