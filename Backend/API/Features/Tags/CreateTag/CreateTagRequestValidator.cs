@@ -16,11 +16,7 @@ public class CreateTagRequestValidator : Validator<CreateTagRequest>
 
         RuleFor(x => x.Color)
             .NotEmpty()
-            .WithMessage("Tag color cannot be empty.")
-            .MaximumLength(7)
-            .WithMessage("Tag color must be a valid 7-character hex color (e.g. #A1B2C3).")
-            .Matches("^#[0-9a-fA-F]{6}$")
-            .WithMessage("Tag color must be a valid hex color in the format #RRGGBB.");
+            .WithMessage("Tag color cannot be empty.");
 
         RuleFor(x => x.Icon)
             .NotEmpty()
