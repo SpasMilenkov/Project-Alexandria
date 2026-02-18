@@ -40,6 +40,38 @@ const DEFAULT_UI_STATE = {
   isBehaviorSectionOpen: true,
 };
 
+export interface UserSettings {
+  accentColor: string;
+  gridIconSize: number;
+  listIconSize: number;
+  skipDeleteConfirmation: boolean;
+  toastLevel: ToastLevel;
+}
+
+export type ToastLevel = "all" | "errors-only" | "silent";
+
+export const TOAST_LEVELS = [
+  {
+    value: "all",
+    label: "Tell me everything",
+    description: "Success, errors, info — the full play-by-play",
+    icon: "mdi:bell-ring",
+  },
+  {
+    value: "errors-only",
+    label: "Only when it hurts",
+    description: "Stay quiet unless something actually goes wrong",
+    icon: "mdi:bell-alert",
+  },
+  {
+    value: "silent",
+    label: "Zen mode",
+    description:
+      "No notifications at all. You didn't see anything (by design this will not disable notifications for critical operations such as login, uploads and file restoration)",
+    icon: "mdi:bell-off",
+  },
+] as const;
+
 export const useSettingsStore = defineStore(
   "settings",
   () => {
@@ -54,6 +86,8 @@ export const useSettingsStore = defineStore(
       DEFAULT_UI_STATE.isAppearanceSectionOpen,
     );
     const isBehaviorSectionOpen = ref(DEFAULT_UI_STATE.isBehaviorSectionOpen);
+    const DEFAULT_TOAST_LEVEL: ToastLevel = "all";
+    const toastLevel = ref<ToastLevel>(DEFAULT_TOAST_LEVEL);
 
     // Get RGB value for a color name
     const getColorRGB = (colorName: string): string => {
@@ -63,7 +97,9 @@ export const useSettingsStore = defineStore(
         AVAILABLE_COLORS.find((c) => c.name === DEFAULT_ACCENT_COLOR)!.value
       );
     };
-
+    const setToastLevel = (level: ToastLevel) => {
+      toastLevel.value = level;
+    };
     // Apply theme by updating CSS variables
     const applyTheme = () => {
       if (typeof document === "undefined") return;
@@ -128,6 +164,9 @@ export const useSettingsStore = defineStore(
       if (settings.skipDeleteConfirmation !== undefined) {
         setSkipDeleteConfirmation(settings.skipDeleteConfirmation);
       }
+      if (settings.toastLevel !== undefined) {
+        setToastLevel(settings.toastLevel);
+      }
     };
 
     const resetSettings = () => {
@@ -145,6 +184,7 @@ export const useSettingsStore = defineStore(
 
     const resetBehaviorSettings = () => {
       skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
+      toastLevel.value = DEFAULT_TOAST_LEVEL; // 👈
     };
 
     const setAppearanceSectionOpen = (value: boolean) => {
@@ -166,6 +206,7 @@ export const useSettingsStore = defineStore(
       gridIconSize,
       listIconSize,
       skipDeleteConfirmation,
+      toastLevel,
       // UI State
       isAppearanceSectionOpen,
       isBehaviorSectionOpen,
@@ -183,6 +224,7 @@ export const useSettingsStore = defineStore(
       resetSettings,
       resetAppearanceSettings,
       resetBehaviorSettings,
+      setToastLevel,
       // UI Actions
       setAppearanceSectionOpen,
       setBehaviorSectionOpen,
