@@ -18,24 +18,51 @@ interface FileUploadStatus {
   directoryId?: string;
 }
 
+/**
+ * Unified shape used for both drag-dropped files (where webkitRelativePath
+ * is not set by the browser) and native input files (where we derive the
+ * path from webkitRelativePath ourselves in onChange).
+ */
+interface FileEntry {
+  file: File;
+  relativePath: string;
+}
+
 const props = defineProps<{
   directoryId?: string;
+  /**
+   * Human-readable name for directoryId. When provided the select menu shows
+   * this label immediately without needing a search round-trip.
+   */
+  directoryName?: string;
+  /**
+   * Pre-seeded from a drag-and-drop. The FileExplorer has already recursively
+   * walked the FileSystem API tree and resolved real File objects + paths,
+   * so we can use them directly without any further unwrapping.
+   */
+  droppedFiles?: FileEntry[];
 }>();
 
 const emit = defineEmits<{ close: [boolean] }>();
 
-const files = ref<File[]>([]);
+// Seed from drop if provided, otherwise start empty
+const files = ref<FileEntry[]>(props.droppedFiles ?? []);
 const fileStatuses = ref<FileUploadStatus[]>([]);
 const uploading = ref(false);
 const showDetailedProgress = ref(false);
 const selectedDirectoryId = ref<string | null>(props.directoryId || null);
 
-// Parent directory search
-const parentDirectoryOptions = ref<SelectMenuItem[]>([]);
+// Parent directory search — pre-seed with the active directory so the select
+// menu renders its label immediately rather than showing the raw UUID.
+const parentDirectoryOptions = ref<SelectMenuItem[]>(
+  props.directoryId && props.directoryName
+    ? [{ label: props.directoryName, id: props.directoryId }]
+    : [],
+);
 const isLoadingParentDirs = ref(false);
 
 const BATCH_SIZE = 5;
-const CHUNK_SIZE = 16 * 1024 * 1024; // 16MB chunks for speed
+const CHUNK_SIZE = 16 * 1024 * 1024;
 
 // Computed stats
 const totalFiles = computed(() => fileStatuses.value.length);
@@ -57,7 +84,6 @@ const uploadingFiles = computed(
 const overallProgress = computed(() => {
   if (totalFiles.value === 0) return 0;
 
-  // Calculate weighted progress
   const totalProgress = fileStatuses.value.reduce((sum, f) => {
     if (f.status === "success") return sum + 100;
     if (f.status === "uploading") return sum + f.progress;
@@ -67,7 +93,6 @@ const overallProgress = computed(() => {
   return Math.round(totalProgress / totalFiles.value);
 });
 
-// Format bytes to human readable
 function formatBytes(bytes: number, decimals = 2): string {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
@@ -80,7 +105,11 @@ function formatBytes(bytes: number, decimals = 2): string {
 const onChange = (e: Event) => {
   const input = e.target as HTMLInputElement;
   if (!input.files) return;
-  files.value = Array.from(input.files);
+  // Native <input webkitdirectory> sets webkitRelativePath correctly
+  files.value = Array.from(input.files).map((f) => ({
+    file: f,
+    relativePath: f.webkitRelativePath || f.name,
+  }));
   fileStatuses.value = [];
 };
 
@@ -90,9 +119,7 @@ const clearFiles = () => {
 };
 
 const searchParentDirectory = async (query: string) => {
-  if (!query.trim()) {
-    return;
-  }
+  if (!query.trim()) return;
 
   isLoadingParentDirs.value = true;
   try {
@@ -122,7 +149,6 @@ const searchParentDirectory = async (query: string) => {
   }
 };
 
-// Upload a single file with direct S3 upload
 async function uploadSingleFile(
   fileStatus: FileUploadStatus,
 ): Promise<boolean> {
@@ -131,7 +157,6 @@ async function uploadSingleFile(
     fileStatus.status = "uploading";
     fileStatus.progress = 0;
 
-    // Stage 1: Hashing (0-25%)
     const hasher = await createBLAKE3();
     hasher.init();
 
@@ -142,14 +167,12 @@ async function uploadSingleFile(
       hasher.update(new Uint8Array(arrayBuffer));
       offset += CHUNK_SIZE;
 
-      // Hash progress (0-25%)
       const hashProgress = Math.round((offset / file.size) * 25);
       fileStatus.progress = Math.min(hashProgress, 25);
     }
 
     const fileHash = hasher.digest("hex");
 
-    // Stage 2: Initialize upload (25-30%)
     fileStatus.progress = 25;
     const { uploadId, uploadUrl } = await fileApi.initializeUpload({
       contentType: file.type || "application/octet-stream",
@@ -159,12 +182,10 @@ async function uploadSingleFile(
     });
     fileStatus.progress = 30;
 
-    // Stage 3: Upload to S3 (30-95%)
     await fileApi.uploadToS3(uploadUrl, file, (percent) => {
       fileStatus.progress = 30 + Math.round((percent * 65) / 100);
     });
 
-    // Stage 4: Finalize (95-100%)
     fileStatus.progress = 95;
     await fileApi.finalizeUpload({
       uploadId,
@@ -186,30 +207,27 @@ async function uploadSingleFile(
   }
 }
 
-// Upload directory structure with batch processing
 async function uploadDirectoryStructure() {
   if (files.value.length === 0) return;
 
   uploading.value = true;
 
   try {
-    // Create directory structure first
-    const paths = files.value.map((f) => f.webkitRelativePath);
+    // Pass the already-resolved relative paths to the API
+    const paths = files.value.map((f) => f.relativePath);
     const directoryMapping = await directoryApi.uploadDirectory(
       selectedDirectoryId.value,
       paths,
     );
 
-    // Initialize file statuses
-    fileStatuses.value = files.value.map((file) => ({
+    fileStatuses.value = files.value.map(({ file, relativePath }) => ({
       file,
-      relativePath: file.webkitRelativePath,
+      relativePath,
       status: "pending" as const,
       progress: 0,
-      directoryId: directoryMapping[file.webkitRelativePath] || undefined,
+      directoryId: directoryMapping[relativePath] || undefined,
     }));
 
-    // Process files in batches
     const pendingFiles = [...fileStatuses.value];
 
     while (pendingFiles.length > 0) {
@@ -255,21 +273,18 @@ async function uploadDirectoryStructure() {
   }
 }
 
-// Retry failed uploads (full retry from scratch)
 async function retryFailedUploads() {
   const failed = fileStatuses.value.filter((f) => f.status === "error");
   if (failed.length === 0) return;
 
   uploading.value = true;
 
-  // Reset failed files to pending
   failed.forEach((f) => {
     f.status = "pending";
     f.progress = 0;
     f.error = undefined;
   });
 
-  // Process in batches
   const pendingFiles = [...failed];
 
   while (pendingFiles.length > 0) {
@@ -300,7 +315,6 @@ async function retryFailedUploads() {
   uploading.value = false;
 }
 
-// Get status icon
 function getStatusIcon(status: FileUploadStatus["status"]) {
   switch (status) {
     case "pending":
@@ -314,7 +328,6 @@ function getStatusIcon(status: FileUploadStatus["status"]) {
   }
 }
 
-// Get status color
 function getStatusColor(status: FileUploadStatus["status"]) {
   switch (status) {
     case "pending":
@@ -366,9 +379,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
                   parentDirectoryOptions.find((i) => i.id === modelValue)?.label
                 }}
               </span>
-              <span v-else class="text-muted">
-                Root directory (no parent)
-              </span>
+              <span v-else class="text-muted">Root directory (no parent)</span>
             </div>
           </template>
         </USelectMenu>
@@ -377,7 +388,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
         </p>
       </div>
 
-      <!-- Directory Upload Area -->
+      <!-- Directory Upload Area — only shown when no files are loaded yet -->
       <div
         v-if="files.length === 0"
         class="border-2 border-dashed rounded-lg p-8 text-center space-y-4"
@@ -421,20 +432,21 @@ function getStatusColor(status: FileUploadStatus["status"]) {
             variant="ghost"
             color="neutral"
             @click="clearFiles"
+            :disabled="uploading"
           />
         </div>
         <div class="border rounded-lg max-h-64 overflow-y-auto">
           <div
-            v-for="(file, index) in files"
+            v-for="(entry, index) in files"
             :key="index"
-            class="flex items-center gap-3 px-4 py-2 border-b last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            class="flex items-center gap-3 px-4 py-2 border-b last:border-b-0"
           >
             <UIcon name="i-lucide-file" class="size-4 text-muted shrink-0" />
             <span class="text-sm truncate flex-1">
-              {{ file.webkitRelativePath }}
+              {{ entry.relativePath }}
             </span>
             <span class="text-xs text-muted shrink-0">
-              {{ formatBytes(file.size) }}
+              {{ formatBytes(entry.file.size) }}
             </span>
           </div>
         </div>
@@ -442,7 +454,6 @@ function getStatusColor(status: FileUploadStatus["status"]) {
 
       <!-- Upload Progress Section -->
       <div v-if="fileStatuses.length > 0" class="space-y-4">
-        <!-- Overall Progress -->
         <div class="border rounded-lg p-4 space-y-3">
           <div class="flex items-center justify-between">
             <div class="space-y-1">
@@ -519,7 +530,6 @@ function getStatusColor(status: FileUploadStatus["status"]) {
                   </span>
                 </div>
 
-                <!-- Individual file progress (only when uploading) -->
                 <div v-if="fileStatus.status === 'uploading'" class="space-y-1">
                   <div class="flex items-center justify-between text-xs">
                     <span class="text-muted">Uploading</span>

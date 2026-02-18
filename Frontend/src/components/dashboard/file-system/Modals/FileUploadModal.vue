@@ -68,12 +68,22 @@ const stageConfig: Record<UploadStage, StageConfig | null> = {
 
 const props = defineProps<{
   directoryId?: string;
+  /**
+   * Human-readable name for directoryId. When provided the select menu shows
+   * this label immediately without needing a search round-trip.
+   */
+  directoryName?: string;
+  /**
+   * Pre-seeded from a drag-and-drop. When provided the modal skips the
+   * file-picker and goes straight to the ready-to-upload state.
+   */
+  droppedFile?: File;
 }>();
 
 const emit = defineEmits<{ close: [boolean] }>();
 
-// State
-const selectedFile = ref<File | null>(null);
+// State — seed selectedFile from the drop if one was provided
+const selectedFile = ref<File | null>(props.droppedFile ?? null);
 const currentStage = ref<UploadStage>(UploadStage.IDLE);
 const overallProgress = ref(0);
 const stageProgress = ref(0);
@@ -82,8 +92,13 @@ const uploadId = ref<string | null>(null);
 const fileHash = ref<string | null>(null);
 const selectedDirectoryId = ref<string | null>(props.directoryId || null);
 
-// Parent directory search
-const parentDirectoryOptions = ref<SelectMenuItem[]>([]);
+// Parent directory search — pre-seed with the active directory so the select
+// menu renders its label immediately rather than showing the raw UUID.
+const parentDirectoryOptions = ref<SelectMenuItem[]>(
+  props.directoryId && props.directoryName
+    ? [{ label: props.directoryName, id: props.directoryId }]
+    : [],
+);
 const isLoadingParentDirs = ref(false);
 
 // Computed properties
@@ -127,7 +142,6 @@ function getStageStatus(
   stage: UploadStage,
 ): "pending" | "active" | "complete" | "error" {
   if (currentStage.value === UploadStage.ERROR) {
-    // All stages before or at error stage should show error
     const errorIndex = Object.values(UploadStage).indexOf(currentStage.value);
     const stageIndex = Object.values(UploadStage).indexOf(stage);
     return stageIndex <= errorIndex ? "error" : "pending";
@@ -141,7 +155,6 @@ function getStageStatus(
   return "pending";
 }
 
-// Remove selected file
 function removeFile() {
   if (isUploading.value) return;
 
@@ -154,11 +167,8 @@ function removeFile() {
   fileHash.value = null;
 }
 
-// Search for parent directories
 const searchParentDirectory = async (query: string) => {
-  if (!query.trim()) {
-    return;
-  }
+  if (!query.trim()) return;
 
   isLoadingParentDirs.value = true;
   try {
@@ -188,7 +198,6 @@ const searchParentDirectory = async (query: string) => {
   }
 };
 
-// Stage 1: Calculate hash
 async function computeHash(): Promise<string> {
   currentStage.value = UploadStage.HASHING;
   updateProgress(UploadStage.HASHING, 0);
@@ -197,7 +206,7 @@ async function computeHash(): Promise<string> {
   const hasher = await createBLAKE3();
   hasher.init();
 
-  const chunkSize = 16 * 1024 * 1024; // 16MB chunks
+  const chunkSize = 16 * 1024 * 1024;
   let offset = 0;
 
   while (offset < file.size) {
@@ -215,7 +224,6 @@ async function computeHash(): Promise<string> {
   return hash;
 }
 
-// Stage 2: Initialize upload
 async function initializeUpload(
   hash: string,
 ): Promise<{ uploadId: string; uploadUrl: string }> {
@@ -240,7 +248,6 @@ async function initializeUpload(
   };
 }
 
-// Stage 3: Upload to S3
 async function uploadToS3(uploadUrl: string): Promise<void> {
   currentStage.value = UploadStage.UPLOADING;
   updateProgress(UploadStage.UPLOADING, 0);
@@ -252,7 +259,6 @@ async function uploadToS3(uploadUrl: string): Promise<void> {
   });
 }
 
-// Stage 4: Finalize upload
 async function finalizeUpload(): Promise<void> {
   currentStage.value = UploadStage.FINALIZING;
   updateProgress(UploadStage.FINALIZING, 0);
@@ -269,26 +275,17 @@ async function finalizeUpload(): Promise<void> {
   currentStage.value = UploadStage.COMPLETE;
 }
 
-// Main upload orchestration
 async function startUpload() {
   if (!canUpload.value) return;
 
   errorMessage.value = null;
 
   try {
-    // Stage 1: Hash
     const hash = await computeHash();
-
-    // Stage 2: Initialize
     const { uploadUrl } = await initializeUpload(hash);
-
-    // Stage 3: Upload
     await uploadToS3(uploadUrl);
-
-    // Stage 4: Finalize
     await finalizeUpload();
 
-    // Success
     toast.add({
       title: "Upload Successful",
       description: `${selectedFile.value!.name} uploaded successfully`,
@@ -317,7 +314,6 @@ async function startUpload() {
   }
 }
 
-// Retry upload
 function retryUpload() {
   errorMessage.value = null;
   currentStage.value = UploadStage.IDLE;
@@ -362,9 +358,7 @@ function retryUpload() {
                   parentDirectoryOptions.find((i) => i.id === modelValue)?.label
                 }}
               </span>
-              <span v-else class="text-muted">
-                Root directory (no parent)
-              </span>
+              <span v-else class="text-muted">Root directory (no parent)</span>
             </div>
           </template>
         </USelectMenu>
@@ -403,9 +397,7 @@ function retryUpload() {
                 <UIcon name="i-lucide-file" class="size-10 text-primary" />
               </div>
               <div class="flex-1 min-w-0">
-                <p class="font-medium truncate">
-                  {{ selectedFile.name }}
-                </p>
+                <p class="font-medium truncate">{{ selectedFile.name }}</p>
                 <p class="text-sm text-muted">
                   {{ formatBytes(selectedFile.size) }}
                 </p>
@@ -431,7 +423,6 @@ function retryUpload() {
             "
             class="space-y-4"
           >
-            <!-- Stage List -->
             <div class="space-y-3">
               <!-- Hashing Stage -->
               <div class="flex items-center gap-3">
