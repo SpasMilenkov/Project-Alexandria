@@ -1,4 +1,5 @@
 using Data.Context;
+using Data.Seeders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ public static class DatabaseExtensions
     {
         var connStr = config.GetConnectionString("AlexandriaPostgres");
         services.AddDbContext<AlexandriaDbContext>(opt => opt.UseNpgsql(connStr));
+        services.AddScoped<AdminSeeder>();
         return services;
     }
 }
