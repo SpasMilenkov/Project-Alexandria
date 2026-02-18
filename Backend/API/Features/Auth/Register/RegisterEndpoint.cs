@@ -1,5 +1,4 @@
 using FastEndpoints;
-using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Models;
 
@@ -23,7 +22,6 @@ public class RegisterEndpoint : Endpoint<RegisterRequest, RegisterResponse>
     {
         Post("/auth/register");
         AllowAnonymous();
-        // Add rate limiting if available
         Throttle(5, 60); // 5 requests per 60 seconds per IP
         Version(0);
     }
@@ -65,10 +63,10 @@ public class RegisterEndpoint : Endpoint<RegisterRequest, RegisterResponse>
             var errors = new Dictionary<string, List<string>>();
             foreach (var error in result.Errors)
             {
-                var key = error.Code.Contains("Password") ? "Password" : 
-                         error.Code.Contains("Email") ? "Email" : 
+                var key = error.Code.Contains("Password") ? "Password" :
+                         error.Code.Contains("Email") ? "Email" :
                          error.Code.Contains("UserName") ? "UserName" : "General";
-                
+
                 if (!errors.ContainsKey(key))
                 {
                     errors[key] = new List<string>();
@@ -86,14 +84,21 @@ public class RegisterEndpoint : Endpoint<RegisterRequest, RegisterResponse>
         }
 
         // Add default role
-        try
+        var roleResult = await _userManager.AddToRoleAsync(user, Common.Seeding.Roles.User);
+        if (!roleResult.Succeeded)
         {
-            await _userManager.AddToRoleAsync(user, "User");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to add default role to user {UserId}", user.Id);
-            // Continue anyway - user is created
+            // Roll back the user creation since the account is incomplete
+            await _userManager.DeleteAsync(user);
+
+            await Send.ResponseAsync(new RegisterResponse
+            {
+                Success = false,
+                Message = "Registration failed during role assignment",
+                Errors = roleResult.Errors.ToDictionary(
+                    e => e.Code,
+                    e => new List<string> { e.Description })
+            }, statusCode: 500, cancellation: ct);
+            return;
         }
 
         _logger.LogInformation("New user registered: {Email}", user.Email);
