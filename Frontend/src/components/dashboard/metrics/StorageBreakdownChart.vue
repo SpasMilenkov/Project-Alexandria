@@ -205,7 +205,6 @@ const chartOptions = computed(
         callbacks: {
           label: (context) => {
             const index = context.dataIndex;
-            const label = props.labels[index];
             const formatted = props.formattedSize[index];
             const pct =
               total.value > 0
