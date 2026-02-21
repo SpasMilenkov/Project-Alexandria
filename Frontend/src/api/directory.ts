@@ -1,4 +1,4 @@
-import { OrderBy } from "@/enums/OrderBy";
+import { SortBy } from "@/enums/SortBy";
 import apiClient from "./client";
 import type {
   CreateDirectorySchema,
@@ -112,7 +112,7 @@ export interface SearchDirectoryRequest {
   // Paging & sorting
   page?: number;
   pageSize?: number;
-  sortBy?: OrderBy;
+  sortBy?: SortBy;
   sortDirection?: SortDirection;
 }
 
@@ -176,7 +176,7 @@ export const directoryApi = {
       params: {
         page: paginationParams.page,
         pageSize: paginationParams.pageSize,
-        sortBy: paginationParams.orderBy,
+        sortBy: paginationParams.SortBy,
         sortDirection: paginationParams.sortDirection,
       },
     });
@@ -193,7 +193,7 @@ export const directoryApi = {
         directoryId,
         page: paginationParams.page,
         pageSize: paginationParams.pageSize,
-        sortBy: paginationParams.orderBy,
+        sortBy: paginationParams.SortBy,
         sortDirection: paginationParams.sortDirection,
       },
     });

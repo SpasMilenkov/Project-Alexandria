@@ -56,7 +56,7 @@
         <!-- Main Content: Form + Results -->
         <div class="flex-1 overflow-hidden flex flex-col lg:flex-row">
           <div
-            class="w-full lg:w-[530px] xl:w-[600px] lg:min-w-[550px] border-b lg:border-b-0 lg:border-r border-default overflow-y-auto"
+            class="w-full lg:w-132.5 xl:w-150 lg:min-w-137.5 border-b lg:border-b-0 lg:border-r border-default overflow-y-auto"
           >
             <div class="p-4 sm:p-6 space-y-5">
               <!-- Section: General -->
@@ -644,7 +644,7 @@
 <script setup lang="ts">
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
-import { OrderBy } from "@/enums/OrderBy";
+import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { searchDirectory } from "@/queries/directories";
 import {
@@ -730,9 +730,9 @@ const switchMode = (mode: "both" | "files" | "directories") => {
 
 // Options
 const sortByOptions = [
-  { label: "Name", value: OrderBy.Name },
-  { label: "Created Date", value: OrderBy.CreatedAt },
-  { label: "Updated Date", value: OrderBy.UpdatedAt },
+  { label: "Name", value: SortBy.Name },
+  { label: "Created Date", value: SortBy.CreatedAt },
+  { label: "Updated Date", value: SortBy.UpdatedAt },
 ];
 
 const sortDirectionOptions = [

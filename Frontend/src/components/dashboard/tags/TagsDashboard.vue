@@ -220,7 +220,7 @@ const pageSize = ref(25);
 const searchFilters = computed<SearchTagsSchema>(() => ({
   page: currentPage.value,
   pageSize: pageSize.value,
-  orderBy: selectedSortBy.value.value,
+  SortBy: selectedSortBy.value.value,
   sortDirection: sortDirection.value,
   name: searchQuery.value || undefined,
 }));

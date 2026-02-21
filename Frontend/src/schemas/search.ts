@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SortDirection } from "@/enums/SortDirection";
-import { OrderBy } from "@/enums/OrderBy";
+import { SortBy } from "@/enums/SortBy";
 import { CalendarDate, today, getLocalTimeZone } from "@internationalized/date";
 const dateValueSchema = z.instanceof(CalendarDate);
 
@@ -40,7 +40,7 @@ export const baseSearchUiSchema = z
     // Paging & sorting
     currentPage: z.number().int().min(0).default(0),
     pageSize: z.number().int().min(1).default(20),
-    sortBy: z.enum(OrderBy).default(OrderBy.Name),
+    sortBy: z.enum(SortBy).default(SortBy.Name),
     sortDirection: z.enum(SortDirection).default(SortDirection.Asc),
   })
   .refine(

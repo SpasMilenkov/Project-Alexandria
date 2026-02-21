@@ -1,4 +1,4 @@
-import { OrderBy } from "@/enums/OrderBy";
+import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import type { PaginationParams } from "@/types/pagination-params";
 import { ref, watch, type Ref } from "vue";
@@ -29,7 +29,7 @@ export const useFileExplorer = () => {
     paginationParams: {
       page: 1,
       pageSize: 25,
-      orderBy: OrderBy.Name,
+      SortBy: SortBy.Name,
       sortDirection: SortDirection.Asc,
     },
     hasNext: false,
@@ -42,7 +42,7 @@ export const useFileExplorer = () => {
     paginationParams: {
       page: 1,
       pageSize: 25,
-      orderBy: OrderBy.Name,
+      SortBy: SortBy.Name,
       sortDirection: SortDirection.Asc,
     },
     hasNext: false,

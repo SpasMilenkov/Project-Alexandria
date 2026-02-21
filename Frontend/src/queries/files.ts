@@ -13,7 +13,7 @@ export const FILES_QUERY_KEYS = {
       params.page,
       params.pageSize,
       params.sortDirection,
-      params.orderBy,
+      params.SortBy,
     ] as const,
   signedUrl: (id: string) => [...FILES_QUERY_KEYS.root, "signed-url", id],
   rootFiles: (params: PaginationParams) => [
@@ -22,7 +22,7 @@ export const FILES_QUERY_KEYS = {
     params.page,
     params.pageSize,
     params.sortDirection,
-    params.orderBy,
+    params.SortBy,
   ],
   searchFiles: (query: FileSearchQuery) => [
     ...FILES_QUERY_KEYS.root,
