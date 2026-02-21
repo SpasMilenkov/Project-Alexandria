@@ -1,42 +1,129 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { useSettingsStore } from "@/stores/settings";
+import { computed, ref, watch } from "vue";
+import {
+  useSettingsStore,
+  MAX_BACKGROUND_IMAGE_BYTES,
+} from "@/stores/settings";
+import { useTheme } from "@/composables/useTheme";
 import { Icon } from "@iconify/vue";
 
 const settingsStore = useSettingsStore();
+
+// isDark comes from useTheme's useDark() — same singleton instance as the
+// composable that drives the DOM, so the preview and the page are always in sync.
+const { isDark } = useTheme();
 
 const viewMode = ref<"grid" | "list">("grid");
 
 const selectedColor = computed({
   get: () => settingsStore.accentColor,
-  set: (value: string) => settingsStore.setAccentColor(value),
+  set: (v: string) => settingsStore.setAccentColor(v),
+});
+
+const selectedBackground = computed({
+  get: () => settingsStore.backgroundColor,
+  set: (v: string) => settingsStore.setBackgroundColor(v),
+});
+
+const imageOpacity = computed({
+  get: () => settingsStore.backgroundImageOpacity,
+  set: (v: number) => settingsStore.setBackgroundImageOpacity(v),
 });
 
 const gridIconSize = computed({
   get: () => settingsStore.gridIconSize,
-  set: (value: number) => settingsStore.setGridIconSize(value),
+  set: (v: number) => settingsStore.setGridIconSize(v),
 });
 
 const listIconSize = computed({
   get: () => settingsStore.listIconSize,
-  set: (value: number) => settingsStore.setListIconSize(value),
+  set: (v: number) => settingsStore.setListIconSize(v),
 });
 
 const isOpen = computed({
   get: () => settingsStore.isAppearanceSectionOpen,
-  set: (value: boolean) => settingsStore.setAppearanceSectionOpen(value),
+  set: (v: boolean) => settingsStore.setAppearanceSectionOpen(v),
 });
 
 const colorOptions = settingsStore.AVAILABLE_COLORS.map((color) => ({
   label: color.name.charAt(0).toUpperCase() + color.name.slice(1),
   value: color.name,
-  color: `rgb(${color.value})`,
 }));
 
-const handleResetAppearance = () => {
-  settingsStore.resetAppearanceSettings();
+// Filter presets to only show mode-appropriate options
+const visibleBackgrounds = computed(() =>
+  settingsStore.AVAILABLE_BACKGROUNDS.filter((bg) => {
+    if (bg.mode === "both") return true;
+    return isDark.value ? bg.mode === "dark" : bg.mode === "light";
+  }),
+);
+
+// Nudge to "system" when the user switches modes and the current preset
+// no longer belongs to that mode. The theme itself re-applies automatically
+// via watchEffect in useTheme — no manual applyTheme() call needed here.
+watch(isDark, (dark) => {
+  const current = settingsStore.AVAILABLE_BACKGROUNDS.find(
+    (b) => b.name === settingsStore.backgroundColor,
+  );
+  if (!current || current.mode === "both") return;
+  if (dark && current.mode === "light")
+    settingsStore.setBackgroundColor("system");
+  if (!dark && current.mode === "dark")
+    settingsStore.setBackgroundColor("system");
+});
+
+const swatchFor = (bg: (typeof settingsStore.AVAILABLE_BACKGROUNDS)[number]) =>
+  isDark.value ? bg.darkSwatch : bg.lightSwatch;
+
+const modeLabel = computed(() => (isDark.value ? "dark" : "light"));
+
+// ── Image upload ────────────────────────────────────────────────────────────
+const imageError = ref<string | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+const triggerFileInput = () => fileInputRef.value?.click();
+
+const handleFileChange = (event: Event) => {
+  imageError.value = null;
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    imageError.value = "Please upload an image file.";
+    return;
+  }
+  if (file.size > MAX_BACKGROUND_IMAGE_BYTES) {
+    imageError.value = `Image is too large. Maximum size is ${MAX_BACKGROUND_IMAGE_BYTES / 1024 / 1024} MB.`;
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = e.target?.result;
+    if (typeof result === "string") settingsStore.setBackgroundImage(result);
+  };
+  reader.readAsDataURL(file);
+
+  // Reset input so re-selecting the same file triggers onChange again
+  if (fileInputRef.value) fileInputRef.value.value = "";
 };
 
+const clearImage = () => {
+  imageError.value = null;
+  settingsStore.clearBackgroundImage();
+};
+
+// Derive a short filename from the stored data URL for display
+const imageName = computed(() => {
+  if (!settingsStore.backgroundImage) return null;
+  const mime = settingsStore.backgroundImage.split(";")[0].replace("data:", "");
+  const ext = mime.split("/")[1] ?? "image";
+  return `custom-background.${ext}`;
+});
+
+
+
+// Preview data
 const exampleFile = {
   fileId: "file-123e4567-e89b-12d3-a456-426614174000",
   fileName: "project-specification.pdf",
@@ -67,11 +154,7 @@ const exampleFile = {
       updatedAt: "2025-01-15T10:30:00.000Z",
     },
   ],
-  owner: {
-    id: "user-1",
-    name: "Jane Doe",
-    email: "jane.doe@example.com",
-  },
+  owner: { id: "user-1", name: "Jane Doe", email: "jane.doe@example.com" },
 };
 
 const exampleDir = {
@@ -89,8 +172,8 @@ const exampleDir = {
 </script>
 
 <template>
-  <UCard class="overflow-hidden" :ui="{body: 'p-2 sm:p-2'}">
-    <UCollapsible v-model:open="isOpen" >
+  <UCard class="overflow-hidden" :ui="{ body: 'p-2 sm:p-2' }">
+    <UCollapsible v-model:open="isOpen">
       <UButton
         variant="ghost"
         color="neutral"
@@ -107,10 +190,9 @@ const exampleDir = {
       </UButton>
 
       <template #content>
-        <div class="pt-4  px-2 space-y-6">
-          <!-- Responsive Grid: Visual Settings + Preview -->
+        <div class="pt-4 px-2 space-y-6">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Left Column: Visual Settings -->
+            <!-- ── Left: Controls ─────────────────────────────────────────── -->
             <div class="space-y-6">
               <div class="flex items-center justify-between">
                 <h3
@@ -123,11 +205,11 @@ const exampleDir = {
                   color="error"
                   variant="outline"
                   size="xs"
-                  @click="handleResetAppearance"
+                  @click="settingsStore.resetAppearanceSettings()"
                 />
               </div>
 
-              <!-- Accent Color Selection -->
+              <!-- Accent color -->
               <UFormField
                 label="Accent Color"
                 description="Choose your preferred theme color"
@@ -145,30 +227,29 @@ const exampleDir = {
                 </USelectMenu>
               </UFormField>
 
-              <!-- Color Preview Grid -->
+              <!-- Color swatches -->
               <div class="grid grid-cols-5 sm:grid-cols-6 gap-3">
                 <button
                   v-for="color in settingsStore.AVAILABLE_COLORS"
                   :key="color.name"
                   @click="selectedColor = color.name"
                   :class="[
-                    'h-12 rounded-lg transition-all relative group',
+                    'h-10 rounded-md transition-all relative',
                     selectedColor === color.name
-                      ? 'ring-2 ring-offset-2 ring-gray-900 dark:ring-white scale-105'
-                      : 'hover:scale-105',
+                      ? 'ring-2 ring-offset-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
+                      : 'hover:scale-105 hover:shadow-sm',
                   ]"
                   :style="{ backgroundColor: `rgb(${color.value})` }"
                   :title="
                     color.name.charAt(0).toUpperCase() + color.name.slice(1)
                   "
                 >
-                  <!-- Checkmark for selected color -->
                   <span
                     v-if="selectedColor === color.name"
                     class="absolute inset-0 flex items-center justify-center text-white"
                   >
                     <svg
-                      class="w-6 h-6"
+                      class="w-5 h-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -184,24 +265,231 @@ const exampleDir = {
                 </button>
               </div>
 
-              <!-- Icon Size -->
+              <!-- Background preset tiles -->
+              <UFormField label="Background Color">
+                <template #description>
+                  Showing
+                  <span class="font-medium text-gray-700 dark:text-gray-300"
+                    >{{ modeLabel }}-mode</span
+                  >
+                  backgrounds — switch modes to see the other set
+                </template>
+
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-1">
+                  <button
+                    v-for="bg in visibleBackgrounds"
+                    :key="bg.name"
+                    @click="selectedBackground = bg.name"
+                    :title="bg.description"
+                    :disabled="settingsStore.hasBackgroundImage"
+                    :class="[
+                      'flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-all text-xs',
+                      settingsStore.hasBackgroundImage
+                        ? 'opacity-40 cursor-not-allowed'
+                        : selectedBackground === bg.name
+                          ? 'border-primary ring-1 ring-primary shadow-sm scale-[1.03]'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-sm',
+                    ]"
+                  >
+                    <span
+                      class="w-full h-8 rounded border border-gray-200 dark:border-gray-600 relative block"
+                      :style="
+                        bg.name !== 'system'
+                          ? { backgroundColor: swatchFor(bg) }
+                          : {}
+                      "
+                      :class="
+                        bg.name === 'system'
+                          ? isDark
+                            ? 'bg-zinc-900'
+                            : 'bg-white'
+                          : ''
+                      "
+                    >
+                      <span
+                        v-if="
+                          !settingsStore.hasBackgroundImage &&
+                          selectedBackground === bg.name
+                        "
+                        class="absolute inset-0 flex items-center justify-center"
+                      >
+                        <svg
+                          class="w-4 h-4 drop-shadow"
+                          :class="isDark ? 'text-white' : 'text-gray-700'"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="3"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      </span>
+                      <span
+                        v-if="bg.mode === 'both' && bg.name !== 'system'"
+                        class="absolute bottom-0.5 right-0.5 text-[9px] leading-none bg-black/20 text-white rounded px-0.5"
+                        >☀︎ ☾</span
+                      >
+                    </span>
+                    <span
+                      class="font-medium text-gray-700 dark:text-gray-300 leading-tight"
+                      >{{ bg.label }}</span
+                    >
+                    <span
+                      class="text-gray-400 dark:text-gray-500 leading-tight text-center line-clamp-1"
+                      >{{ bg.description }}</span
+                    >
+                  </button>
+                </div>
+              </UFormField>
+
+              <!-- ── Background image ────────────────────────────────────── -->
+              <UFormField
+                label="Background Image"
+                description="Adds a custom image behind the app, blended with the color overlay above. Max 2 MB."
+              >
+                <!-- Hidden native input -->
+                <input
+                  ref="fileInputRef"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleFileChange"
+                />
+
+                <div class="space-y-3 mt-1">
+                  <!-- Upload / replace / clear row -->
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <UButton
+                      :label="
+                        settingsStore.hasBackgroundImage
+                          ? 'Replace image'
+                          : 'Upload image'
+                      "
+                      :icon="
+                        settingsStore.hasBackgroundImage
+                          ? 'i-lucide-image-up'
+                          : 'i-lucide-upload'
+                      "
+                      color="neutral"
+                      variant="outline"
+                      size="sm"
+                      @click="triggerFileInput"
+                    />
+                    <UButton
+                      v-if="settingsStore.hasBackgroundImage"
+                      label="Remove"
+                      icon="i-lucide-x"
+                      color="error"
+                      variant="ghost"
+                      size="sm"
+                      @click="clearImage"
+                    />
+
+                    <!-- Current image filename chip -->
+                    <span
+                      v-if="imageName"
+                      class="inline-flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-neutral-800 rounded-full px-2.5 py-1 truncate max-w-50"
+                      :title="imageName"
+                    >
+                      <Icon icon="mdi:image" class="w-3.5 h-3.5 shrink-0" />
+                      {{ imageName }}
+                    </span>
+                  </div>
+
+                  <!-- Error -->
+                  <p
+                    v-if="imageError"
+                    class="text-xs text-red-500 flex items-center gap-1"
+                  >
+                    <Icon
+                      icon="mdi:alert-circle"
+                      class="w-3.5 h-3.5 shrink-0"
+                    />
+                    {{ imageError }}
+                  </p>
+
+                  <!-- Opacity slider — only shown when an image is loaded -->
+                  <Transition
+                    enter-active-class="transition-all duration-200 ease-out"
+                    enter-from-class="opacity-0 -translate-y-1"
+                    enter-to-class="opacity-100 translate-y-0"
+                    leave-active-class="transition-all duration-150 ease-in"
+                    leave-from-class="opacity-100 translate-y-0"
+                    leave-to-class="opacity-0 -translate-y-1"
+                  >
+                    <div
+                      v-if="settingsStore.hasBackgroundImage"
+                      class="space-y-1.5 pt-1"
+                    >
+                      <div class="flex items-center justify-between">
+                        <label
+                          class="text-xs font-medium text-gray-600 dark:text-gray-400"
+                        >
+                          Image visibility
+                        </label>
+                        <span
+                          class="text-xs tabular-nums text-gray-500 dark:text-gray-400"
+                        >
+                          {{ Math.round(imageOpacity * 100) }}%
+                        </span>
+                      </div>
+
+                      <!-- Slider rendered as a native range for reactivity; styled with Tailwind -->
+                      <div class="relative flex items-center gap-2">
+                        <Icon
+                          icon="mdi:image-outline"
+                          class="w-3.5 h-3.5 text-gray-400 shrink-0"
+                        />
+                        <input
+                          type="range"
+                          :min="0.1"
+                          :max="0.65"
+                          :step="0.05"
+                          :value="imageOpacity"
+                          @input="
+                            imageOpacity = parseFloat(
+                              ($event.target as HTMLInputElement).value,
+                            )
+                          "
+                          class="w-full accent-primary h-1.5 rounded-full cursor-pointer"
+                        />
+                        <Icon
+                          icon="mdi:image"
+                          class="w-4 h-4 text-gray-500 shrink-0"
+                        />
+                      </div>
+
+                      <p
+                        class="text-[11px] text-gray-400 dark:text-gray-500 leading-snug"
+                      >
+                        Capped at 65% to keep text readable. The color overlay
+                        above blends with the image.
+                      </p>
+                    </div>
+                  </Transition>
+                </div>
+              </UFormField>
+
+              <!-- Icon sizes -->
               <UFormField
                 label="Grid Icon Size"
                 description="Adjust the size of the file explorer grid icons"
               >
-                <div class="space-y-4">
-                  <div class="flex items-center gap-4">
-                    <UInput
-                      type="number"
-                      v-model.number="gridIconSize"
-                      :min="12"
-                      :max="64"
-                      class="w-24"
-                    />
-                    <span class="text-sm text-gray-600 dark:text-gray-400"
-                      >{{ gridIconSize }}px</span
-                    >
-                  </div>
+                <div class="flex items-center gap-4">
+                  <UInput
+                    type="number"
+                    v-model.number="gridIconSize"
+                    :min="12"
+                    :max="64"
+                    class="w-24"
+                  />
+                  <span class="text-sm text-gray-600 dark:text-gray-400"
+                    >{{ gridIconSize }}px</span
+                  >
                 </div>
               </UFormField>
 
@@ -209,110 +497,79 @@ const exampleDir = {
                 label="List Icon Size"
                 description="Adjust the size of the file explorer list icons"
               >
-                <div class="space-y-4">
-                  <div class="flex items-center gap-4">
-                    <UInput
-                      type="number"
-                      v-model.number="listIconSize"
-                      :min="12"
-                      :max="64"
-                      class="w-24"
-                    />
-                    <span class="text-sm text-gray-600 dark:text-gray-400"
-                      >{{ listIconSize }}px</span
-                    >
-                  </div>
+                <div class="flex items-center gap-4">
+                  <UInput
+                    type="number"
+                    v-model.number="listIconSize"
+                    :min="12"
+                    :max="64"
+                    class="w-24"
+                  />
+                  <span class="text-sm text-gray-600 dark:text-gray-400"
+                    >{{ listIconSize }}px</span
+                  >
                 </div>
               </UFormField>
             </div>
 
-            <!-- Right Column: Preview -->
-            <div class="space-y-6">
+            <!-- ── Right: Preview ──────────────────────────────────────────── -->
+            <div class="space-y-4">
               <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">
                 Preview
               </h3>
-
-              <div class="space-y-4">
-                <p class="text-sm text-gray-600 dark:text-gray-400">
-                  See how your theme looks with different components
-                </p>
-
-                <h4 class="text-sm font-semibold">Colors</h4>
-                <div class="flex flex-wrap gap-2">
-                  <UButton color="primary" label="Primary Button" />
-                  <UButton color="primary" variant="outline" label="Outline" />
-                  <UButton color="primary" variant="soft" label="Soft" />
-                  <UButton color="primary" variant="ghost" label="Ghost" />
-                </div>
-
-                <div class="flex flex-wrap gap-2">
-                  <UBadge color="primary" label="Badge" />
-                  <UBadge
-                    color="primary"
-                    variant="subtle"
-                    label="Subtle Badge"
-                  />
-                </div>
-
-                <UAlert
-                  color="primary"
-                  title="Preview Alert"
-                  description="This is how alerts will look with your selected color"
-                />
-
-                <div class="space-y-4">
-                  <h4 class="text-sm font-semibold">Icon size</h4>
-
-                  <div class="flex items-center gap-1 ml-auto md:ml-2">
+              <!-- Icon size preview -->
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <h4
+                    class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide"
+                  >
+                    Icon size
+                  </h4>
+                  <div class="flex gap-1">
                     <UButton
                       :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
-                      size="sm"
+                      size="xs"
                       @click="viewMode = 'grid'"
                       aria-label="Grid view"
                     >
-                      <Icon icon="mdi:view-grid" class="w-4 h-4" />
+                      <Icon icon="mdi:view-grid" class="w-3.5 h-3.5" />
                     </UButton>
                     <UButton
                       :variant="viewMode === 'list' ? 'solid' : 'ghost'"
-                      size="sm"
+                      size="xs"
                       @click="viewMode = 'list'"
                       aria-label="List view"
                     >
-                      <Icon icon="mdi:view-list" class="w-4 h-4" />
+                      <Icon icon="mdi:view-list" class="w-3.5 h-3.5" />
                     </UButton>
                   </div>
-
+                </div>
+                <div
+                  :class="[
+                    'flex gap-2',
+                    viewMode === 'list' ? 'flex-col' : 'flex-row',
+                  ]"
+                >
+                  <div
+                    :class="[viewMode === 'list' ? '' : 'max-w-40', 'max-h-40']"
+                  >
+                    <FileItem
+                      :data="exampleFile"
+                      :is-selected="false"
+                      :view-mode="viewMode"
+                    />
+                  </div>
                   <div
                     :class="[
-                      'flex gap-2',
-                      viewMode === 'list' ? 'flex-col' : 'flex-row',
+                      viewMode === 'list' ? 'min-h-12' : 'max-w-40',
+                      'max-h-40',
                     ]"
                   >
-                    <div
-                      :class="[
-                        'max-h-40',
-                        viewMode === 'list' ? '' : 'max-w-40',
-                      ]"
-                    >
-                      <FileItem
-                        :data="exampleFile"
-                        :is-selected="false"
-                        :view-mode="viewMode"
-                      />
-                    </div>
-
-                    <div
-                      :class="[
-                        'max-h-40',
-                        viewMode === 'list' ? 'min-h-12' : 'max-w-40',
-                      ]"
-                    >
-                      <DirectoryItem
-                        :data="exampleDir"
-                        :is-selected="true"
-                        :view-mode="viewMode"
-                      />
-                    </div>
+                    <DirectoryItem
+                      :data="exampleDir"
+                      :is-selected="true"
+                      :view-mode="viewMode"
+                    />
                   </div>
                 </div>
               </div>
