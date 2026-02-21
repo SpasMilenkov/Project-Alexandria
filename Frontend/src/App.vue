@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
-import { useSettingsStore } from "@/stores/settings";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import DashboardLayout from "@/layouts/DashboardLayout.vue";
 import { PiniaColadaDevtools } from "@pinia/colada-devtools";
+import { useTheme } from "./composables/useTheme";
 const route = useRoute();
 
 // Initialize the settings store immediately
 // This will trigger the theme application via the store's watchers
-const settingsStore = useSettingsStore();
-
+useTheme();
 const layouts = {
   default: DefaultLayout,
   dashboard: DashboardLayout,
