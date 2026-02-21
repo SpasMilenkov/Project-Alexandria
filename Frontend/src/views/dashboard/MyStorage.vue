@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full w-full flex-1 bg-[var(--ui-bg)]">
+  <div class="flex flex-col h-full w-full flex-1 ">
     <!-- Header -->
     <div
       class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between"
@@ -16,7 +16,6 @@
       <UButton
         variant="ghost"
         size="sm"
-        class="opacity-60 hover:opacity-100"
         @click="
           () => {
             refreshStorageData();

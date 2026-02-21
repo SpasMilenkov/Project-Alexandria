@@ -246,7 +246,7 @@ import FileItem from "@/components/dashboard/file-system/FileItem.vue";
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
 import { today, getLocalTimeZone } from "@internationalized/date";
-import { OrderBy } from "@/enums/OrderBy";
+import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { restoreFiles } from "@/mutations/files";
 import { restoreDirectories } from "@/mutations/directories";
@@ -289,7 +289,7 @@ const daysFilterOptions = [
   { label: "Last 30 days", value: 30 },
 ];
 
-const sortBy = ref(OrderBy.UpdatedAt);
+const sortBy = ref(SortBy.UpdatedAt);
 const sortDirection = ref(SortDirection.Desc);
 
 // Computed
