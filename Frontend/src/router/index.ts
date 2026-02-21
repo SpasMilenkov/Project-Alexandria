@@ -71,6 +71,18 @@ const router = createRouter({
       component: () => import("@/views/onboarding/SetupView.vue"),
       meta: { layout: "default", requiresAuth: false },
     },
+    {
+      path: "/dashboard/admin",
+      name: "admin-dashboard",
+      component: () => import("@/views/dashboard/admin/AdminDashboard.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
+    },
+    {
+      path: "/dashboard/admin/user-registry",
+      name: "user-registry",
+      component: () => import("@/views/dashboard/admin/UserRegistry.vue"),
+      meta: { layout: "dashboard", requiredAuth: true },
+    },
   ],
 });
 // Navigation Guard
