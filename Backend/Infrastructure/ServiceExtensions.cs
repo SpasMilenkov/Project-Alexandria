@@ -12,6 +12,7 @@ using Storage;
 using Storage.Cleanup;
 using Storage.Directories;
 using Storage.Promotions;
+using User.Service;
 
 namespace Infrastructure;
 
@@ -46,6 +47,8 @@ public static class ServiceExtensions
         services.AddScoped<IFileService, FileService>();
         services.AddHttpClient<MetricsService>();
         services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddSingleton<PromotionQueueService>();

@@ -16,6 +16,7 @@ public sealed class UnitOfWork(
     IContentObjectRepository contentObjects,
     IAuditLogRepository auditLogs,
     IUploadRepository uploads,
+    IUserRepository users,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -28,6 +29,7 @@ public sealed class UnitOfWork(
     public IContentObjectRepository ContentObjects { get; } = contentObjects;
     public IAuditLogRepository AuditLogs { get; } = auditLogs;
     public IUploadRepository Uploads { get; } = uploads;
+    public IUserRepository Users { get; } = users;
     private IDbContextTransaction? _transaction;
     private bool _disposed;
 
