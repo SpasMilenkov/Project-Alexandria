@@ -50,4 +50,6 @@ public interface IFileService
 
     Task<int> GetFileCount(string? mimeTypeFilter = null, CancellationToken ct = default);
     Task<int> RestoreFiles(Guid[] fileIds, Guid userId, CancellationToken ct = default);
+    Task<int> GetFileCountPerUser(Guid userId, bool deletedOnly, CancellationToken ct = default);
+    Task<long> GetFileSizePerUser(Guid userId, bool deletedOnly, CancellationToken ct = default);
 }

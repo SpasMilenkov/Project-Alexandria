@@ -2,7 +2,6 @@ using System.Linq.Expressions;
 using Common.Repositories;
 using Data.Context;
 using DTO.Files;
-using DTO.Metrics;
 using DTO.Tags;
 using Microsoft.EntityFrameworkCore;
 using Models;
@@ -729,5 +728,23 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         }
 
         return files.Count;
+    }
+
+    public async Task<int> GetFileCountPerUser(Guid userId, bool deletedOnly, CancellationToken ct = default)
+    {
+        var query = _files.Where(f => f.OwnerId == userId);
+
+        if (deletedOnly)
+            query = query.Where(f => f.DeletedAt != null);
+
+        return await query.CountAsync(ct);
+    }
+
+    public async Task<long> GetStorageUsagePerUser(Guid userId, bool onlyDeleted, CancellationToken ct = default)
+    {
+        return await _fileVersions
+            .Where(v => v.File.OwnerId == userId)
+            .Where(v => onlyDeleted ? v.File.DeletedAt != null : v.File.DeletedAt == null)
+            .SumAsync(v => v.Size, ct);
     }
 }

@@ -1,5 +1,4 @@
 using DTO.Files;
-using DTO.Metrics;
 using DTO.Tags;
 using Models.Enumerators;
 using File = Models.File;
@@ -50,4 +49,6 @@ public interface IFileRepository : IRepository<File>
     Task<IEnumerable<FileSummary>> GetOldFiles(Guid userId, CancellationToken ct = default);
     Task<Dictionary<string, long>> GetSizeByType(Guid userId, CancellationToken ct = default);
     Task<int> RestoreFiles(Guid[] fileIds, Guid userId, CancellationToken ct = default);
+    Task<int> GetFileCountPerUser(Guid userId, bool deletedOnly, CancellationToken ct = default);
+    Task<long> GetStorageUsagePerUser(Guid userId, bool onlyDeleted, CancellationToken ct = default);
 }

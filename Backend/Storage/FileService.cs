@@ -195,4 +195,14 @@ public class FileService(
             throw;
         }
     }
+
+    public async Task<int> GetFileCountPerUser(Guid userId, bool deletedOnly, CancellationToken ct = default)
+    {
+        return await unitOfWork.Files.GetFileCountPerUser(userId, deletedOnly, ct);
+    }
+
+    public async Task<long> GetFileSizePerUser(Guid userId, bool deletedOnly, CancellationToken ct = default)
+    {
+        return await unitOfWork.Files.GetStorageUsagePerUser(userId, deletedOnly, ct);
+    }
 }
