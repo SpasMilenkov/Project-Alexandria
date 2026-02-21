@@ -31,6 +31,7 @@
             :collapsed="collapsed"
             :items="settingsMenuItems"
             orientation="vertical"
+            class="mt-2"
           />
         </div>
 
@@ -188,19 +189,12 @@ const settingsMenuItems: NavigationMenuItem[][] = [
     {
       label: "Settings",
       icon: "i-heroicons-cog-6-tooth",
-      defaultOpen: false,
-      children: [
-        {
-          label: "Settings",
-          icon: "i-heroicons-cog-6-tooth",
-          to: "/settings",
-        },
-        {
-          label: "My Account",
-          icon: "i-heroicons-user-circle",
-          to: "/account",
-        },
-      ],
+      to: "/settings",
+    },
+    {
+      label: "My Account",
+      icon: "i-heroicons-user-circle",
+      to: "/account",
     },
   ],
 ];
