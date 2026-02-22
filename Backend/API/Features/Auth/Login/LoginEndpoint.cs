@@ -80,6 +80,7 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
                 Email = result.User.Email ?? throw new InvalidOperationException(),
                 Name = result.User.UserName ?? throw new InvalidOperationException()
             },
+            UserRoles = result.UserRoles
         }, ct);
     }
 }

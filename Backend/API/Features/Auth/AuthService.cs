@@ -21,18 +21,20 @@ public class AuthService(
         var user = await userManager.FindByEmailAsync(email);
 
         if (user is not { DeletedAt: null })
-        {
             return AuthResult.Failed();
-        }
 
         var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
 
         if (!result.Succeeded)
-        {
             return AuthResult.Failed();
-        }
 
-        return AuthResult.SetSuccess(user);
+        var authResult = AuthResult.SetSuccess(user);
+
+        var roles = await userManager.GetRolesAsync(user);
+
+        authResult.UserRoles = roles;
+
+        return authResult;
     }
 
     public async Task<AuthResult> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
@@ -51,7 +53,6 @@ public class AuthService(
             storedToken.IsRevoked = true;
             storedToken.RevokedAt = DateTime.UtcNow;
             unitOfWork.RefreshTokens.Update(storedToken);
-
             var newRefreshToken = new Models.RefreshToken
             {
                 Token = Convert.ToBase64String(
