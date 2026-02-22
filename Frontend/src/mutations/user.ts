@@ -7,7 +7,7 @@ import { authApi } from "@/api/auth";
 export const useCreateUser = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({
-    mutation: (data: CreateUserSchema) => authApi.register(data),
+    mutation: (data: CreateUserSchema) => userApi.createUser(data),
     onSuccess() {
       queryCache.invalidateQueries({ key: USER_QUERY_KEYS.root });
     },
