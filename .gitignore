@@ -11,3 +11,9 @@ node_modules
 .sonarqube
 obj
 certs
+**bin
+**debug
+**idea
+**/Folder.DotSettings.user
+prometheus.yml
+!/grafana/provisioning/datasources/prometheus.yml
