@@ -9,6 +9,7 @@ using Repositories;
 using Storage;
 using Storage.Directories;
 using Storage.Promotions;
+using User.Service;
 
 namespace Infrastructure.DocumentWorker;
 
@@ -38,6 +39,8 @@ public static class ServiceExtensions
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUploadRepository, UploadRepository>();
         services.AddScoped<IFileService, FileService>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddSingleton<PromotionQueueService>();

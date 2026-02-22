@@ -5,7 +5,7 @@ using Infrastructure.DocumentWorker;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services
-    .AddDatabase(builder.Configuration)
+    .AddWorkerDatabase(builder.Configuration)
     .AddS3Storage(builder.Configuration)
     .AddRabbitMqConsumer(builder.Configuration)
     .AddSWorkerServices();
