@@ -2,6 +2,7 @@ using API.Extensions;
 using API.Features.Auth.Extensions;
 using API.Middlewares;
 using Infrastructure;
+using Infrastructure.DocumentWorker;
 
 var bld = WebApplication.CreateBuilder();
 
