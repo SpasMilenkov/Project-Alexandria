@@ -112,7 +112,7 @@
         />
       </div>
 
-      <!-- ── Row 2: secondary controls (mobile only) ────────────────────────── -->
+      <!-- Row 2: secondary controls (mobile only)  -->
       <div class="flex md:hidden items-center gap-1 px-3 pb-2">
         <USelectMenu
           v-model="selectedSortBy"
@@ -263,7 +263,6 @@
           </div>
         </div>
       </Transition>
-      <!-- ─────────────────────────────────────────────────────────────────── -->
 
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="p-4">

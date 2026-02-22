@@ -112,7 +112,7 @@ const readableDate = computed(() => formatDate(props.data.createdAt));
 </script>
 
 <style scoped>
-/* ── Card shell ─────────────────────────────────────────────────── */
+/* Card shell */
 .tooltip-card {
   min-width: 220px;
   max-width: 280px;
@@ -122,7 +122,7 @@ const readableDate = computed(() => formatDate(props.data.createdAt));
   gap: 0.625rem;
 }
 
-/* ── Header ─────────────────────────────────────────────────────── */
+/* Header */
 .tooltip-card__header {
   display: flex;
   align-items: center;
@@ -172,14 +172,14 @@ const readableDate = computed(() => formatDate(props.data.createdAt));
   text-overflow: ellipsis;
 }
 
-/* ── Divider ─────────────────────────────────────────────────────── */
+/*  Divider */
 .tooltip-card__divider {
   height: 1px;
   background: var(--ui-border);
   margin: 0 -0.125rem;
 }
 
-/* ── Meta list ───────────────────────────────────────────────────── */
+/* Meta list */
 .tooltip-card__meta {
   display: flex;
   flex-direction: column;
@@ -217,7 +217,7 @@ const readableDate = computed(() => formatDate(props.data.createdAt));
   max-width: 130px;
 }
 
-/* ── Tags ────────────────────────────────────────────────────────── */
+/* Tags */
 .tooltip-card__tags {
   display: flex;
   flex-wrap: wrap;

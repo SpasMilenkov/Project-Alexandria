@@ -5,7 +5,7 @@
     :close="false"
     :overlay="true"
   >
-    <!-- ── Header ── -->
+    <!-- Header -->
     <template #header>
       <div
         class="relative w-full overflow-hidden rounded-t-xl px-6 pt-6 pb-5 bg-linear-to-br from-primary/10 via-primary/5 to-transparent border-b border-default"
@@ -76,7 +76,7 @@
       </div>
     </template>
 
-    <!-- ── Body ── -->
+    <!-- Body -->
     <template #body>
       <!--
         One UForm per step. This sidesteps all cross-step validation bleed
@@ -279,7 +279,7 @@
       </UForm>
     </template>
 
-    <!-- ── Footer ── -->
+    <!-- Footer -->
     <template #footer>
       <div class="flex items-center justify-between w-full gap-2">
         <UButton
@@ -488,7 +488,6 @@ async function advanceStep() {
 
 //  Final submit
 function handleFinalSubmit(event: { data: Pick<CreateUserSchema, "role"> }) {
-  // Merge the validated role with the rest of the already-validated state.
   emit("submit", { ...state, role: event.data.role });
 }
 </script>

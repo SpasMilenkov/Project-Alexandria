@@ -54,7 +54,7 @@ import type { UserDetailsDto } from "@/types/user";
 import UserExpandedRow from "@/components/dashboard/users/UserExpandedRow.vue";
 import { formatDate } from "@/utils/date-formatters";
 
-// ── Props & emits ─────────────────────────────────────────────────────────────
+// Props & emits
 
 defineProps<{
   data: UserDetailsDto[];
@@ -70,13 +70,13 @@ const emit = defineEmits<{
   "clear-filters": [];
 }>();
 
-// ── Resolved components (needed for render functions) ─────────────────────────
+// Resolved components (needed for render functions)
 
 const UButton = resolveComponent("UButton");
 const UBadge = resolveComponent("UBadge");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
 
-// ── Cell helpers ──────────────────────────────────────────────────────────────
+// Cell helpers
 
 function statusLabel(user: UserDetailsDto) {
   if (user.deletedAt) return "Deleted";
@@ -124,7 +124,7 @@ function rowActions(user: UserDetailsDto) {
   ];
 }
 
-// ── Column definitions ────────────────────────────────────────────────────────
+// Column definitions
 
 const columns: TableColumn<UserDetailsDto>[] = [
   {

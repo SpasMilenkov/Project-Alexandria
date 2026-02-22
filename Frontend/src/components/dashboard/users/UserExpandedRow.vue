@@ -1,6 +1,6 @@
 <template>
   <div class="px-5 py-5 bg-elevated/40 border-t border-default">
-    <!-- ── Account overview cards ──────────────────────────────────────── -->
+    <!-- Account overview cards -->
     <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 mb-5">
       <!-- Internal ID -->
       <div
@@ -241,7 +241,7 @@
       </div>
     </div>
 
-    <!-- ── Action strip ────────────────────────────────────────────────── -->
+    <!-- Action strip -->
     <div
       class="flex flex-wrap items-center gap-2 pt-3.5 border-t border-default"
     >

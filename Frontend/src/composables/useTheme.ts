@@ -39,13 +39,13 @@ export function useTheme() {
 
     const root = document.documentElement;
 
-    // ── Accent color ─────────────────────────────────────────────────────
+    // Accent color
     root.style.setProperty(
       "--ui-primary",
       `rgb(${resolveAccentRGB(store.accentColor)})`,
     );
 
-    // ── Background ───────────────────────────────────────────────────────
+    // Background
     const preset =
       AVAILABLE_BACKGROUNDS.find((b) => b.name === store.backgroundColor) ??
       AVAILABLE_BACKGROUNDS[0];

@@ -77,7 +77,7 @@ const swatchFor = (bg: (typeof settingsStore.AVAILABLE_BACKGROUNDS)[number]) =>
 
 const modeLabel = computed(() => (isDark.value ? "dark" : "light"));
 
-// ── Image upload ────────────────────────────────────────────────────────────
+// Image upload
 const imageError = ref<string | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
@@ -192,7 +192,7 @@ const exampleDir = {
       <template #content>
         <div class="pt-4 px-2 space-y-6">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- ── Left: Controls ─────────────────────────────────────────── -->
+            <!-- Left: Controls -->
             <div class="space-y-6">
               <div class="flex items-center justify-between">
                 <h3
@@ -346,7 +346,7 @@ const exampleDir = {
                 </div>
               </UFormField>
 
-              <!-- ── Background image ────────────────────────────────────── -->
+              <!-- Background image -->
               <UFormField
                 label="Background Image"
                 description="Adds a custom image behind the app, blended with the color overlay above. Max 2 MB."
@@ -512,7 +512,7 @@ const exampleDir = {
               </UFormField>
             </div>
 
-            <!-- ── Right: Preview ──────────────────────────────────────────── -->
+            <!-- Right: Preview -->
             <div class="space-y-4">
               <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">
                 Preview
