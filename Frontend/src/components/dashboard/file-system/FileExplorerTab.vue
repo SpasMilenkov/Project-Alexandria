@@ -824,11 +824,16 @@ const handleDelete = async () => {
         );
       } else {
         const instance = confirmModal.open({
-          title: "Confirm deletion",
-          message:
-            "Selected directories are not empty. Are you sure you want to proceed?",
+          title: "Delete directories?",
+          description: `${failedDirs.length} ${failedDirs.length === 1 ? "directory" : "directories"} still contain files and will be deleted.`,
           dangerMode: true,
-          confirmIcon: "mdi-trash",
+          confirmLabel: "Delete anyway",
+          confirmIcon: "i-lucide-trash-2",
+          alert: {
+            title: "All sub items wiill also be deleted",
+            color: "warning",
+            icon: "i-lucide-triangle-alert",
+          },
         });
 
         const confirmed = await instance.result;
