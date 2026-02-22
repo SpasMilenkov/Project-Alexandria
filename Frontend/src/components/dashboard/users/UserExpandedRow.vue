@@ -9,7 +9,7 @@
         <div class="flex items-center gap-1.5">
           <UIcon
             name="i-lucide-fingerprint"
-            class="size-3.5 text-muted flex-shrink-0"
+            class="size-3.5 text-muted shrink-0"
           />
           <span
             class="text-[10px] font-semibold uppercase tracking-wider text-muted"
@@ -23,7 +23,7 @@
           >
             <UIcon
               name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help flex-shrink-0"
+              class="size-3 text-muted/50 cursor-help shrink-0"
             />
           </UTooltip>
         </div>
@@ -41,7 +41,7 @@
         <div class="flex items-center gap-1.5">
           <UIcon
             name="i-lucide-pencil-line"
-            class="size-3.5 text-muted flex-shrink-0"
+            class="size-3.5 text-muted shrink-0"
           />
           <span
             class="text-[10px] font-semibold uppercase tracking-wider text-muted"
@@ -55,7 +55,7 @@
           >
             <UIcon
               name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help flex-shrink-0"
+              class="size-3 text-muted/50 cursor-help shrink-0"
             />
           </UTooltip>
         </div>
@@ -81,7 +81,7 @@
         <div class="flex items-center gap-1.5">
           <UIcon
             :name="user.isLockedOut ? 'i-lucide-lock' : 'i-lucide-lock-open'"
-            class="size-3.5 flex-shrink-0"
+            class="size-3.5 shrink-0"
             :class="user.isLockedOut ? 'text-warning' : 'text-muted'"
           />
           <span
@@ -96,7 +96,7 @@
           >
             <UIcon
               name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help flex-shrink-0"
+              class="size-3 text-muted/50 cursor-help shrink-0"
             />
           </UTooltip>
         </div>
@@ -129,7 +129,7 @@
             :name="
               user.deletedAt ? 'i-lucide-trash-2' : 'i-lucide-shield-check'
             "
-            class="size-3.5 flex-shrink-0"
+            class="size-3.5 shrink-0"
             :class="user.deletedAt ? 'text-error' : 'text-muted'"
           />
           <span
@@ -144,7 +144,7 @@
           >
             <UIcon
               name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help flex-shrink-0"
+              class="size-3 text-muted/50 cursor-help shrink-0"
             />
           </UTooltip>
         </div>
@@ -165,10 +165,7 @@
         class="rounded-lg border border-default bg-white/50 dark:bg-white/5 px-3.5 py-3 flex flex-col gap-1"
       >
         <div class="flex items-center gap-1.5">
-          <UIcon
-            name="i-lucide-files"
-            class="size-3.5 text-muted flex-shrink-0"
-          />
+          <UIcon name="i-lucide-files" class="size-3.5 text-muted shrink-0" />
           <span
             class="text-[10px] font-semibold uppercase tracking-wider text-muted"
           >
@@ -181,7 +178,7 @@
           >
             <UIcon
               name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help flex-shrink-0"
+              class="size-3 text-muted/50 cursor-help shrink-0"
             />
           </UTooltip>
         </div>
