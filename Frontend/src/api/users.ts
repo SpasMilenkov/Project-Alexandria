@@ -2,8 +2,17 @@ import type { UpdateUserDto, UserDetailsDto, UserQueryDto } from "@/types/user";
 import apiClient from "./client";
 
 import type { PaginatedResponse } from "./directory";
+import type { CreateUserSchema } from "@/schemas/user";
 
 export const userApi = {
+  createUser: async (query: CreateUserSchema) => {
+    const result = await apiClient.post<UserDetailsDto>("/users", {
+      ...query,
+    });
+
+    return result.data;
+  },
+
   getUsers: async (
     query: UserQueryDto,
   ): Promise<PaginatedResponse<UserDetailsDto>> => {

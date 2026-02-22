@@ -40,7 +40,7 @@ type UserDateField =
   | "lockedOutAfter"
   | "lockedOutBefore";
 
-// ─── Query / Search Schema (UI) ───────────────────────────────────────────────
+// Query / Search Schema (UI)
 
 export const userQueryUiSchema = z
   .object({
@@ -139,7 +139,7 @@ export const userQueryUiSchema = z
     }
   });
 
-// ─── Query / Search Schema (API — serialized dates) ───────────────────────────
+// Query / Search Schema (API — serialized dates)
 
 export const userQueryApiSchema = userQueryUiSchema.transform((v) => ({
   ...v,
@@ -153,7 +153,7 @@ export const userQueryApiSchema = userQueryUiSchema.transform((v) => ({
   lockedOutBefore: v.lockedOutBefore?.toString() ?? null,
 }));
 
-// ─── Update User Schema ───────────────────────────────────────────────────────
+// Update User Schema
 
 export const updateUserSchema = z.object({
   userName: z
@@ -172,7 +172,7 @@ export const updateUserSchema = z.object({
   role: z.nativeEnum(UserRole).nullish(),
 });
 
-// ─── Restrict User Schema ─────────────────────────────────────────────────────
+// Restrict User Schema
 
 export const restrictUserSchema = z.object({
   userId: z.uuid("User ID is required"),
@@ -184,7 +184,7 @@ export const restrictUserSchema = z.object({
     ),
 });
 
-// ─── Delete Users Schema ──────────────────────────────────────────────────────
+// Delete Users Schema
 
 export const deleteUsersSchema = z.object({
   userIds: z
@@ -197,7 +197,7 @@ export const deleteUsersSchema = z.object({
     ),
 });
 
-// ─── Inferred Types ───────────────────────────────────────────────────────────
+// Inferred Types
 
 export type UserQueryUiState = z.infer<typeof userQueryUiSchema>;
 export type UserQueryApiState = z.infer<typeof userQueryApiSchema>;
