@@ -2,13 +2,10 @@
   <div class="flex flex-col min-h-screen px-6 py-10 font-garamond">
     <!-- Header -->
     <header class="max-w-7xl mx-auto w-full text-center mb-8">
-      <p class="text-[0.65rem] uppercase tracking-[0.25em] opacity-90 mb-2">
-        Administration Console
-      </p>
       <h1
         class="font-playfair text-5xl font-bold tracking-tight leading-none mb-2"
       >
-        The Registry
+        Administration Console
       </h1>
       <p class="text-base italic">
         System management &amp; operational oversight
@@ -41,7 +38,7 @@
         as="RouterLink"
         @click="router.push(section.route)"
         :ui="{
-          root: 'nav-card group relative overflow-hidden rounded-sm border border-black/8 dark:border-white/8 bg-black/2 dark:bg-white/2 hover:bg-black/4 dark:hover:bg-white/4 transition-all duration-200 no-underline text-inherit cursor-pointer',
+          root: 'nav-card group relative overflow-hidden rounded-sm border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm hover:bg-white/75 dark:hover:bg-white/10 transition-all duration-200 no-underline text-inherit cursor-pointer',
           body: 'flex flex-col gap-4 p-5',
         }"
       >
