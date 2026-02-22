@@ -48,7 +48,6 @@ public class PromotionScannerWorker : BackgroundService
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var promotionService = scope.ServiceProvider.GetRequiredService<IPromotionService>();
 
-        // Find unpromoted content objects
         var unpromotedObjects = await unitOfWork.ContentObjects
             .FindAsync(co =>
                     !co.IsPromoted &&

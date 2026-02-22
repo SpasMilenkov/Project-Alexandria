@@ -1,7 +1,7 @@
 using System.Threading.Channels;
 using Common.Queues;
 
-namespace Storage;
+namespace Storage.Promotions;
 
 public class PromotionQueueService : IPromotionQueue
 {
@@ -9,7 +9,6 @@ public class PromotionQueueService : IPromotionQueue
 
     public PromotionQueueService()
     {
-        // Unbounded channel - if this grows too large, consider bounded with backpressure
         _channel = Channel.CreateUnbounded<(Guid, string)>(new UnboundedChannelOptions
         {
             SingleReader = false, // Multiple workers can read if needed
