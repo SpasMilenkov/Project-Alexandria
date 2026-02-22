@@ -1,5 +1,7 @@
 using Common;
+using Common.Exceptions;
 using Common.Services;
+using DTO.Extensions;
 using DTO.Files;
 using DTO.Users;
 using Microsoft.AspNetCore.Identity;
@@ -88,5 +90,50 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
         if (!result.Succeeded)
             throw new InvalidOperationException(
                 string.Join(", ", result.Errors.Select(e => e.Description)));
+    }
+
+    public async Task<UserDetailsDto> CreateUser(string userName, string email, string password, UserRole userRole, CancellationToken ct = default)
+    {
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+        {
+            throw new UserCreationException("User with this email already exists", new()
+            {
+                ["Email"] = ["Email is already registered"]
+            });
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = userName,
+            Email = email,
+            EmailConfirmed = false,
+            CreatedAt = DateTime.UtcNow,
+            Name = userName
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        if (!result.Succeeded)
+        {
+            var errors = result.Errors
+                .GroupBy(e => e.Code.Contains("Password") ? "Password" :
+                             e.Code.Contains("Email") ? "Email" :
+                             e.Code.Contains("UserName") ? "UserName" : "General")
+                .ToDictionary(g => g.Key, g => g.Select(e => e.Description).ToList());
+
+            throw new UserCreationException("Registration failed", errors);
+        }
+
+        var roleResult = await userManager.AddToRoleAsync(user, userRole == UserRole.Admin ? Common.Seeding.Roles.Admin : Common.Seeding.Roles.User);
+
+        if (!roleResult.Succeeded)
+        {
+            await userManager.DeleteAsync(user);
+
+            throw new UserCreationException("Registration failed during role assignment",
+                roleResult.Errors.ToDictionary(e => e.Code, e => new List<string> { e.Description }));
+        }
+
+        return user.ToDto();
     }
 }
