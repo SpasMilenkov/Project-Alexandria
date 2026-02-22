@@ -24,6 +24,7 @@
         <ProjectReference Include="..\PreviewService\PreviewService.csproj" />
         <ProjectReference Include="..\Repositories\Repositories.csproj" />
         <ProjectReference Include="..\Storage\Storage.csproj" />
+        <ProjectReference Include="..\User.Service\User.Service.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,17 +1,16 @@
 <template>
   <div
-    class="border border-gray-200 dark:border-neutral-800 rounded-lg overflow-hidden"
+    class="border border-gray-200/70 dark:border-gray-700/70 rounded-lg overflow-hidden bg-white/60 dark:bg-white/5 backdrop-blur-sm"
   >
     <!-- Collapsible Header -->
     <button
       @click="isExpanded = !isExpanded"
-      class="w-full p-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+      class="w-full p-3 flex items-center justify-between hover:bg-black/4 dark:hover:bg-white/5 transition-colors"
     >
       <div class="flex items-center gap-2">
         <UIcon name="mdi:harddisk" class="w-5 h-5" />
         <span class="font-medium">Storage</span>
       </div>
-
       <div class="flex items-center gap-3">
         <div v-if="!isLoading && data" class="text-sm font-semibold">
           {{ Math.round(data.dataUsagePercentage) }}%
@@ -34,7 +33,7 @@
       leave-to-class="max-h-0"
     >
       <div v-show="isExpanded" class="overflow-hidden">
-        <div class="border-t border-gray-200 dark:border-neutral-800">
+        <div class="border-t border-gray-200/70 dark:border-gray-700/70">
           <!-- Body -->
           <div class="px-3 py-4">
             <div v-if="isLoading" class="flex items-center justify-center py-8">
@@ -50,7 +49,7 @@
               <!-- Progress Bar -->
               <div class="space-y-2">
                 <div
-                  class="h-2 bg-gray-200 dark:bg-neutral-800 rounded-full overflow-hidden"
+                  class="h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden"
                 >
                   <div
                     class="h-full bg-primary transition-all duration-300 rounded-full"
@@ -71,7 +70,7 @@
           <!-- Footer -->
           <div
             v-if="data"
-            class="border-t border-gray-200 dark:border-neutral-800 p-2"
+            class="border-t border-gray-200/70 dark:border-gray-700/70 p-2"
           >
             <UButton
               variant="ghost"
@@ -96,11 +95,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
-
 const props = defineProps<{ defaultState?: boolean }>();
-
 const { data, isLoading, error } = useQuery(storageInfo);
 const isExpanded = ref(props.defaultState ?? false);
 </script>
-
-<style scoped></style>

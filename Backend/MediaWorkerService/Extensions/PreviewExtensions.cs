@@ -35,7 +35,8 @@ public static class PreviewExtensions
         services.AddScoped<IUploadRepository, UploadRepository>();
         services.AddScoped<IFileService, FileService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-
+        services.AddScoped<IUserRepository, UserRepository>();
+        
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>
             sp.GetRequiredService<PromotionQueueService>());

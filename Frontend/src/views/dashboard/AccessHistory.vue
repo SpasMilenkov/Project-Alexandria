@@ -18,8 +18,6 @@ const { data, refresh, isLoading, error } = useQuery(personalPaginated, () => ({
   userId: authStore.user?.id,
 }));
 
-// ─── Icon helpers ─────────────────────────────────────────────────────────────
-
 const getIconForOperation = (opType: OperationType, entityType: EntityType) => {
   if (entityType === EntityType.Directory) return "i-lucide-folder";
   if (entityType === EntityType.File) return "i-lucide-file";
@@ -48,8 +46,6 @@ const getDefaultTitle = (opType: OperationType, entityType: EntityType) => {
   return `${operation} ${entityName}`;
 };
 
-// ─── Color coding by operation type ──────────────────────────────────────────
-
 type OpColor = "success" | "error" | "warning" | "info" | "neutral";
 
 const opColor = (opType: OperationType): OpColor => {
@@ -71,8 +67,6 @@ const opColor = (opType: OperationType): OpColor => {
 
 const opLabel = (opType: OperationType): string =>
   OperationType[opType] ?? "Unknown";
-
-// ─── Formatted log rows ───────────────────────────────────────────────────────
 
 const rows = computed(() =>
   !data.value
@@ -98,8 +92,6 @@ const rows = computed(() =>
       })),
 );
 
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
 const changePage = (pageNumber: number) => {
   activityStore.page = pageNumber;
   refresh();
@@ -107,7 +99,7 @@ const changePage = (pageNumber: number) => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full w-full flex-1 bg-[var(--ui-bg)]">
+  <div class="flex flex-col h-full w-full flex-1">
     <!-- Header -->
     <div
       class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between"
@@ -125,9 +117,7 @@ const changePage = (pageNumber: number) => {
       </div>
       <!-- Total badge -->
       <div class="text-right" v-if="data">
-        <p class="text-xs uppercase tracking-widest font-medium">
-          Total
-        </p>
+        <p class="text-xs uppercase tracking-widest font-medium">Total</p>
         <p class="text-sm font-semibold tabular-nums">{{ data.totalCount }}</p>
       </div>
     </div>
@@ -176,7 +166,7 @@ const changePage = (pageNumber: number) => {
             >
               <!-- Icon dot -->
               <div
-                class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 shrink-0 bg-[var(--ui-bg)] transition-colors"
+                class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 shrink-0 transition-colors"
                 :class="[
                   row.operationType === OperationType.Delete
                     ? 'border-rose-400/50 text-rose-500 dark:text-rose-400'
@@ -202,9 +192,7 @@ const changePage = (pageNumber: number) => {
                   <p class="text-sm font-medium leading-snug truncate">
                     {{ row.title }}
                   </p>
-                  <p
-                    class="text-xs tabular-nums whitespace-nowrap shrink-0"
-                  >
+                  <p class="text-xs tabular-nums whitespace-nowrap shrink-0">
                     {{ row.date }} · {{ row.time }}
                   </p>
                 </div>

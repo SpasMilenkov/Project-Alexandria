@@ -169,7 +169,7 @@ const MIME_META: Record<string, MimeMeta> = {
   "application/octet-stream": { group: "Binary", label: "Binary File" },
 };
 
-// ─── Fallback helpers ────────────────────────────────────────────────────────
+// Fallback helpers
 
 function groupFromMimeType(mimeType: string): FileGroup {
   const [category, subtype = ""] = mimeType.split("/");

@@ -1,5 +1,5 @@
 import type { DirectorySummaryDto, FileSummary } from "@/api/directory";
-import type { OrderBy } from "@/enums/OrderBy";
+import type { SortBy } from "@/enums/SortBy";
 import type { SortDirection } from "@/enums/SortDirection";
 
 export interface ExplorerState {
@@ -9,11 +9,11 @@ export interface ExplorerState {
   files: FileSummary[];
   currentDirectoryPage: number;
   totalSubDirectories: number;
-  sortDirsBy: OrderBy;
+  sortDirsBy: SortBy;
   sortDirsDirection: SortDirection;
   currentFilePage: number;
   totalSubFiles: number;
-  sortFilesBy: OrderBy;
+  sortFilesBy: SortBy;
   sortFilesDirection: SortDirection;
   viewMode: "grid" | "list";
 }

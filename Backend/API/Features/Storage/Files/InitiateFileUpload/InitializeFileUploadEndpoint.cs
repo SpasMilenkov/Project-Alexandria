@@ -34,10 +34,6 @@ sealed class InitializeFileUploadRequestValidator : Validator<InitializeFileUplo
             .Matches("^[a-fA-F0-9]+$")
             .WithMessage("Hash must be a valid 64-character hexadecimal string.");
 
-        RuleFor(x => x.ContentLength)
-            .GreaterThan(0)
-            .LessThanOrEqualTo(100 * 1024 * 1024) // 100MB example limit
-            .WithMessage("File size exceeds the allowed limit.");
 
         RuleFor(x => x.DirectoryId)
             .NotEqual(Guid.Empty)

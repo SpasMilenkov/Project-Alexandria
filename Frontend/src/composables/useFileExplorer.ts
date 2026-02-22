@@ -1,7 +1,7 @@
-import { OrderBy } from "@/enums/OrderBy";
+import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import type { PaginationParams } from "@/types/pagination-params";
-import { ref, watch, type Ref } from "vue";
+import { computed, ref, watch, type Ref } from "vue";
 import { useRouter } from "vue-router";
 import {
   directoryPath,
@@ -29,7 +29,7 @@ export const useFileExplorer = () => {
     paginationParams: {
       page: 1,
       pageSize: 25,
-      orderBy: OrderBy.Name,
+      SortBy: SortBy.Name,
       sortDirection: SortDirection.Asc,
     },
     hasNext: false,
@@ -42,11 +42,19 @@ export const useFileExplorer = () => {
     paginationParams: {
       page: 1,
       pageSize: 25,
-      orderBy: OrderBy.Name,
+      SortBy: SortBy.Name,
       sortDirection: SortDirection.Asc,
     },
     hasNext: false,
   });
+
+  const navigationHistory = ref<(string | null)[]>([null]);
+  const historyIndex = ref(0);
+
+  const canGoBack = computed(() => historyIndex.value > 0);
+  const canGoForward = computed(
+    () => historyIndex.value < navigationHistory.value.length - 1,
+  );
 
   const viewMode: Ref<"grid" | "list"> = ref("grid");
   const selectedDirectories: Ref<Set<string>> = ref(new Set<string>());
@@ -111,21 +119,39 @@ export const useFileExplorer = () => {
 
   // ACTIONS
 
-  const navigateTo = async (dirId?: string | null) => {
-    if(currentDirId.value === dirId) return
+  const navigateTo = async (dirId?: string | null, skipHistory = false) => {
+    const target = dirId ?? null;
+    if (currentDirId.value === target) return;
+
+    if (!skipHistory) {
+      // Chop off any forward history before pushing
+      navigationHistory.value = navigationHistory.value.slice(
+        0,
+        historyIndex.value + 1,
+      );
+      navigationHistory.value.push(target);
+      historyIndex.value = navigationHistory.value.length - 1;
+    }
 
     dirPagination.value.paginationParams.page = 1;
     filePagination.value.paginationParams.page = 1;
-
     directoriesList.value = [];
     filesList.value = [];
+    currentDirId.value = target;
 
-    currentDirId.value = dirId ?? null;
+    router.push({ name: "dashboard", params: { dirId: target } });
+  };
 
-    router.push({
-      name: "dashboard",
-      params: { dirId },
-    });
+  const navigateBack = () => {
+    if (!canGoBack.value) return;
+    historyIndex.value--;
+    navigateTo(navigationHistory.value[historyIndex.value], true);
+  };
+
+  const navigateForward = () => {
+    if (!canGoForward.value) return;
+    historyIndex.value++;
+    navigateTo(navigationHistory.value[historyIndex.value], true);
   };
 
   const loadMoreDirs = async () => {
@@ -233,6 +259,10 @@ export const useFileExplorer = () => {
     selectedFiles,
     selectedDirectories,
     navigateTo,
+    canGoBack,
+    canGoForward,
+    navigateBack,
+    navigateForward,
     refreshDir,
     loadMoreDirs,
     loadMoreFiles,

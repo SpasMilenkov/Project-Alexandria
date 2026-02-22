@@ -44,7 +44,6 @@ public class PromotionQueueWorker : BackgroundService
                     ex,
                     "Error processing promotion for ContentObject {ContentObjectId}",
                     contentObjectId);
-                // Continue processing other items
             }
         }
 

@@ -1,10 +1,10 @@
 import apiClient from "./client";
-import type { LoginSchema, RegisterSchema } from "@/schemas/auth";
+import type { LoginSchema } from "@/schemas/auth";
 
 export interface AuthResponse {
-  success: boolean,
-  csrfToke: string,
+  success: boolean;
   user: { id: string; email: string; name: string };
+  userRoles: string[];
 }
 
 export const authApi = {
@@ -12,15 +12,7 @@ export const authApi = {
     console.log("sending login request from api layer");
     const response = await apiClient.post<AuthResponse>(
       "/auth/login",
-      credentials
-    );
-    return response.data;
-  },
-
-  register: async (userData: RegisterSchema): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>(
-      "/auth/register",
-      userData
+      credentials,
     );
     return response.data;
   },

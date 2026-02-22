@@ -45,7 +45,6 @@ public class PromotionService : IPromotionService
                 return false;
             }
 
-            // Already promoted, skip
             if (contentObject.IsPromoted)
             {
                 _logger.LogDebug(
@@ -54,12 +53,10 @@ public class PromotionService : IPromotionService
                 return true;
             }
 
-            // Update attempt tracking
             contentObject.PromotionAttempts++;
             contentObject.LastPromotionAttemptAt = DateTime.UtcNow;
 
             _unitOfWork.ContentObjects.Update(contentObject);
-            // await _unitOfWork.CommitAsync(ct);
             await _unitOfWork.SaveChangesAsync(ct);
 
 
@@ -67,7 +64,6 @@ public class PromotionService : IPromotionService
                 "Attempting to promote ContentObject {ContentObjectId} (attempt: {Attempt})",
                 contentObjectId, contentObject.PromotionAttempts);
 
-            // Promote from temp to permanent storage
             try
             {
                 await _s3.CopyObjectAsync(new CopyObjectRequest
@@ -89,15 +85,12 @@ public class PromotionService : IPromotionService
                 _logger.LogInformation(
                     "ContentObject {ContentObjectId} already exists in permanent storage",
                     contentObjectId);
-                // Object already exists, that's fine
             }
 
-            // Mark as promoted
             contentObject.IsPromoted = true;
             contentObject.PromotedAt = DateTime.UtcNow;
 
             _unitOfWork.ContentObjects.Update(contentObject);
-            // await _unitOfWork.CommitAsync(ct);
 
             await _unitOfWork.SaveChangesAsync(ct);
 
@@ -133,7 +126,7 @@ public class PromotionService : IPromotionService
             "ALERT: ContentObject {ContentObjectId} failed promotion after {Attempts} attempts!",
             contentObjectId, attempts);
 
-        // throw new NotImplementedException("Alerting not yet implemented");
-        return Task.CompletedTask;
+        throw new NotImplementedException("Alerting not yet implemented");
+        // return Task.CompletedTask;
     }
 }

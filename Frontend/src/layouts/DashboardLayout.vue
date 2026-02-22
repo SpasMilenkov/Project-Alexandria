@@ -19,22 +19,33 @@
       </template>
 
       <template #default="{ collapsed }">
-        <!-- ── Desktop navigation (tree style) ──────────────────── -->
+        <!-- Desktop navigation -->
         <div class="hidden sm:flex sm:flex-col sm:flex-1">
           <UNavigationMenu
             :collapsed="collapsed"
             :items="mainMenuItems"
             orientation="vertical"
           />
+
+          <!-- Admin section, only visible to admins -->
+          <template v-if="authStore.isAdmin">
+            <UNavigationMenu
+              :collapsed="collapsed"
+              :items="adminMenuItems"
+              orientation="vertical"
+            />
+          </template>
+
           <StorageInfoWidget class="mt-auto" />
           <UNavigationMenu
             :collapsed="collapsed"
             :items="settingsMenuItems"
             orientation="vertical"
+            class="mt-2"
           />
         </div>
 
-        <!-- ── Mobile navigation (large touch targets) ───────────── -->
+        <!-- Mobile navigation (large touch targets) -->
         <div class="flex flex-col flex-1 sm:hidden overflow-y-auto">
           <!-- Section: Library -->
           <div class="px-3 pt-5 pb-1">
@@ -54,6 +65,26 @@
               :active="route.path === item.to"
             />
           </nav>
+
+          <template v-if="authStore.isAdmin">
+            <div class="px-3 pt-6 pb-1">
+              <p
+                class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1"
+              >
+                Admin
+              </p>
+            </div>
+            <nav class="flex flex-col gap-0.5 px-3">
+              <MobileNavItem
+                v-for="item in mobileAdminItems"
+                :key="item.to"
+                :icon="item.icon"
+                :label="item.label"
+                :to="item.to"
+                :active="route.path === item.to"
+              />
+            </nav>
+          </template>
 
           <!-- Section: Settings -->
           <div class="px-3 pt-6 pb-1">
@@ -183,24 +214,52 @@ const mainMenuItems: NavigationMenuItem[][] = [
   ],
 ];
 
+const adminMenuItems = computed<NavigationMenuItem[][]>(() => [
+  [
+    {
+      label: "Admin",
+      icon: "i-heroicons-shield-check",
+      defaultOpen: true,
+      children: [
+        {
+          label: "Admin Dashboard",
+          icon: "i-heroicons-chart-bar",
+          to: "/dashboard/admin",
+        },
+        {
+          label: "User Registry",
+          icon: "i-heroicons-users",
+          to: "/dashboard/admin/user-registry",
+        },
+      ],
+    },
+  ],
+]);
+
+const mobileAdminItems = [
+  {
+    label: "Admin Dashboard",
+    icon: "i-heroicons-chart-bar",
+    to: "/dashboard/admin",
+  },
+  {
+    label: "User Registry",
+    icon: "i-heroicons-users",
+    to: "/dashboard/admin/user-registry",
+  },
+];
+
 const settingsMenuItems: NavigationMenuItem[][] = [
   [
     {
       label: "Settings",
       icon: "i-heroicons-cog-6-tooth",
-      defaultOpen: false,
-      children: [
-        {
-          label: "Settings",
-          icon: "i-heroicons-cog-6-tooth",
-          to: "/settings",
-        },
-        {
-          label: "My Account",
-          icon: "i-heroicons-user-circle",
-          to: "/account",
-        },
-      ],
+      to: "/settings",
+    },
+    {
+      label: "My Account",
+      icon: "i-heroicons-user-circle",
+      to: "/account",
     },
   ],
 ];

@@ -1,9 +1,9 @@
-import type { OrderBy } from "@/enums/OrderBy";
+import type { SortBy } from "@/enums/SortBy";
 import type { SortDirection } from "@/enums/SortDirection";
 
 export interface PaginationParams {
   page: number;
   pageSize: number;
-  orderBy: OrderBy;
+  SortBy: SortBy;
   sortDirection: SortDirection;
 }

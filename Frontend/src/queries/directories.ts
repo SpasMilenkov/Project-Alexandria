@@ -30,7 +30,7 @@ export const DIRECTORY_QUERY_KEYS = {
       id ?? null,
       params.page ?? 1,
       params.pageSize ?? 20,
-      params.orderBy ?? "name",
+      params.SortBy ?? "name",
       params.sortDirection ?? "asc",
     ] as const,
   rootDirectories: (params: PaginationParams) => [
@@ -38,7 +38,7 @@ export const DIRECTORY_QUERY_KEYS = {
     "root-sub-directories",
     params.page ?? 1,
     params.pageSize ?? 20,
-    params.orderBy ?? "name",
+    params.SortBy ?? "name",
     params.sortDirection ?? "asc",
   ],
   directoryPath: (id: string) => [...DIRECTORY_QUERY_KEYS.root, "path", id],

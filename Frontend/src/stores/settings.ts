@@ -1,14 +1,6 @@
 import { defineStore, acceptHMRUpdate } from "pinia";
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 
-export interface UserSettings {
-  accentColor: string;
-  gridIconSize: number;
-  listIconSize: number;
-  skipDeleteConfirmation: boolean;
-}
-
-// Available Tailwind/Nuxt UI colors
 export const AVAILABLE_COLORS = [
   { name: "red", value: "239 68 68" },
   { name: "orange", value: "249 115 22" },
@@ -31,22 +23,111 @@ export const AVAILABLE_COLORS = [
 
 export type ColorName = (typeof AVAILABLE_COLORS)[number]["name"];
 
-const DEFAULT_ACCENT_COLOR = "orange";
-const DEFAULT_GRID_ICON_SIZE = 48;
-const DEFAULT_LIST_ICON_SIZE = 20;
-const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
-const DEFAULT_UI_STATE = {
-  isAppearanceSectionOpen: true,
-  isBehaviorSectionOpen: true,
-};
-
-export interface UserSettings {
-  accentColor: string;
-  gridIconSize: number;
-  listIconSize: number;
-  skipDeleteConfirmation: boolean;
-  toastLevel: ToastLevel;
+export interface BackgroundPreset {
+  name: string;
+  label: string;
+  description: string;
+  mode: "light" | "dark" | "both";
+  lightValue: string;
+  darkValue: string;
+  lightSwatch: string;
+  darkSwatch: string;
 }
+
+export const AVAILABLE_BACKGROUNDS: BackgroundPreset[] = [
+  {
+    name: "system",
+    label: "Default",
+    description: "Your theme's default background",
+    mode: "both",
+    lightValue: "",
+    darkValue: "",
+    lightSwatch: "#ffffff",
+    darkSwatch: "#09090b",
+  },
+  {
+    name: "parchment",
+    label: "Parchment",
+    description: "Warm aged paper",
+    mode: "light",
+    lightValue: "#faf7f0",
+    darkValue: "#1c1814",
+    lightSwatch: "#faf7f0",
+    darkSwatch: "#1c1814",
+  },
+  {
+    name: "cream",
+    label: "Cream",
+    description: "Soft off-white",
+    mode: "light",
+    lightValue: "#fdfcf8",
+    darkValue: "#1a1a14",
+    lightSwatch: "#fdfcf8",
+    darkSwatch: "#1a1a14",
+  },
+  {
+    name: "newsprint",
+    label: "Newsprint",
+    description: "Classic grey newsprint",
+    mode: "light",
+    lightValue: "#efece4",
+    darkValue: "#141210",
+    lightSwatch: "#efece4",
+    darkSwatch: "#141210",
+  },
+  {
+    name: "linen",
+    label: "Linen",
+    description: "Natural fabric tone",
+    mode: "light",
+    lightValue: "#f8f4ed",
+    darkValue: "#1e1b16",
+    lightSwatch: "#f8f4ed",
+    darkSwatch: "#1e1b16",
+  },
+  {
+    name: "midnight",
+    label: "Midnight",
+    description: "Deep cool black",
+    mode: "dark",
+    lightValue: "#f0f2f5",
+    darkValue: "#08090d",
+    lightSwatch: "#f0f2f5",
+    darkSwatch: "#08090d",
+  },
+  {
+    name: "charcoal",
+    label: "Charcoal",
+    description: "Warm dark grey",
+    mode: "dark",
+    lightValue: "#f2f2f0",
+    darkValue: "#111110",
+    lightSwatch: "#f2f2f0",
+    darkSwatch: "#111110",
+  },
+  {
+    name: "ink",
+    label: "Ink",
+    description: "Desaturated navy — like quality book covers",
+    mode: "dark",
+    lightValue: "#f0f2f6",
+    darkValue: "#0b0d14",
+    lightSwatch: "#f0f2f6",
+    darkSwatch: "#0b0d14",
+  },
+  {
+    name: "cool",
+    label: "Cool",
+    description: "Clean slate",
+    mode: "both",
+    lightValue: "#f4f6f9",
+    darkValue: "#0f1117",
+    lightSwatch: "#f4f6f9",
+    darkSwatch: "#0f1117",
+  },
+];
+
+export type BackgroundName = string;
 
 export type ToastLevel = "all" | "errors-only" | "silent";
 
@@ -67,132 +148,154 @@ export const TOAST_LEVELS = [
     value: "silent",
     label: "Zen mode",
     description:
-      "No notifications at all. You didn't see anything (by design this will not disable notifications for critical operations such as login, uploads and file restoration)",
+      "No notifications at all. (Critical operations such as login, uploads and file restoration are always shown.)",
     icon: "mdi:bell-off",
   },
 ] as const;
 
+export interface UserSettings {
+  accentColor: string;
+  backgroundColor: string;
+  backgroundImage: string | null;
+  backgroundImageOpacity: number;
+  gridIconSize: number;
+  listIconSize: number;
+  skipDeleteConfirmation: boolean;
+  toastLevel: ToastLevel;
+}
+
+const DEFAULT_ACCENT_COLOR = "amber";
+const DEFAULT_BACKGROUND = "parchment";
+const DEFAULT_BACKGROUND_IMAGE = null;
+const DEFAULT_BACKGROUND_IMAGE_OPACITY = 0.35;
+const DEFAULT_GRID_ICON_SIZE = 48;
+const DEFAULT_LIST_ICON_SIZE = 20;
+const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
+const DEFAULT_TOAST_LEVEL: ToastLevel = "all";
+const DEFAULT_UI_STATE = {
+  isAppearanceSectionOpen: true,
+  isBehaviorSectionOpen: true,
+};
+
+/** Maximum allowed file size for a background image (2 MB in bytes) */
+export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024;
+
 export const useSettingsStore = defineStore(
   "settings",
   () => {
-    // State
     const accentColor = ref<string>(DEFAULT_ACCENT_COLOR);
+    const backgroundColor = ref<string>(DEFAULT_BACKGROUND);
+    const backgroundImage = ref<string | null>(DEFAULT_BACKGROUND_IMAGE);
+    const backgroundImageOpacity = ref<number>(
+      DEFAULT_BACKGROUND_IMAGE_OPACITY,
+    );
     const gridIconSize = ref(DEFAULT_GRID_ICON_SIZE);
     const listIconSize = ref(DEFAULT_LIST_ICON_SIZE);
     const skipDeleteConfirmation = ref(DEFAULT_SKIP_DELETE_CONFIRMATION);
-
-    // UI State (for collapsible sections)
+    const toastLevel = ref<ToastLevel>(DEFAULT_TOAST_LEVEL);
     const isAppearanceSectionOpen = ref(
       DEFAULT_UI_STATE.isAppearanceSectionOpen,
     );
     const isBehaviorSectionOpen = ref(DEFAULT_UI_STATE.isBehaviorSectionOpen);
-    const DEFAULT_TOAST_LEVEL: ToastLevel = "all";
-    const toastLevel = ref<ToastLevel>(DEFAULT_TOAST_LEVEL);
-
-    // Get RGB value for a color name
-    const getColorRGB = (colorName: string): string => {
-      const color = AVAILABLE_COLORS.find((c) => c.name === colorName);
-      return (
-        color?.value ||
-        AVAILABLE_COLORS.find((c) => c.name === DEFAULT_ACCENT_COLOR)!.value
-      );
-    };
-    const setToastLevel = (level: ToastLevel) => {
-      toastLevel.value = level;
-    };
-    // Apply theme by updating CSS variables
-    const applyTheme = () => {
-      if (typeof document === "undefined") return;
-
-      const root = document.documentElement;
-      const rgb = getColorRGB(accentColor.value);
-
-      // Nuxt UI uses these CSS variables for the primary color
-      // Format: RGB values without 'rgb()' wrapper (e.g., "59 130 246")
-      root.style.setProperty("--ui-primary", `rgb(${rgb})`);
-    };
-    // Watch for changes and apply/save
-    watch(
-      accentColor,
-      () => {
-        applyTheme();
-      },
-      { immediate: true },
-    );
 
     // Getters
     const getSettings = computed(
       (): UserSettings => ({
         accentColor: accentColor.value,
+        backgroundColor: backgroundColor.value,
+        backgroundImage: backgroundImage.value,
+        backgroundImageOpacity: backgroundImageOpacity.value,
         gridIconSize: gridIconSize.value,
         listIconSize: listIconSize.value,
         skipDeleteConfirmation: skipDeleteConfirmation.value,
+        toastLevel: toastLevel.value,
       }),
     );
 
-    const getColorRGBValue = computed(() => getColorRGB(accentColor.value));
+    const getCurrentBackgroundPreset = computed(
+      () =>
+        AVAILABLE_BACKGROUNDS.find((b) => b.name === backgroundColor.value) ??
+        AVAILABLE_BACKGROUNDS[0],
+    );
+    const hasBackgroundImage = computed(() => !!backgroundImage.value);
 
     // Actions
-    const setAccentColor = (newColor: string) => {
-      if (AVAILABLE_COLORS.some((c) => c.name === newColor)) {
-        accentColor.value = newColor;
-      }
+    const setAccentColor = (v: string) => {
+      if (AVAILABLE_COLORS.some((c) => c.name === v)) accentColor.value = v;
     };
-
-    const setGridIconSize = (newSize: number) => {
-      gridIconSize.value = Math.max(12, Math.min(64, newSize));
+    const setBackgroundColor = (v: string) => {
+      if (AVAILABLE_BACKGROUNDS.some((b) => b.name === v))
+        backgroundColor.value = v;
     };
-
-    const setListIconSize = (newSize: number) => {
-      listIconSize.value = Math.max(12, Math.min(64, newSize));
+    const setBackgroundImage = (v: string | null) => {
+      backgroundImage.value = v;
     };
-
-    const setSkipDeleteConfirmation = (value: boolean) => {
-      skipDeleteConfirmation.value = value;
+    const setBackgroundImageOpacity = (v: number) => {
+      backgroundImageOpacity.value = Math.min(0.65, Math.max(0.1, v));
+    };
+    const clearBackgroundImage = () => {
+      backgroundImage.value = null;
+    };
+    const setGridIconSize = (v: number) => {
+      gridIconSize.value = Math.max(12, Math.min(64, v));
+    };
+    const setListIconSize = (v: number) => {
+      listIconSize.value = Math.max(12, Math.min(64, v));
+    };
+    const setSkipDeleteConfirmation = (v: boolean) => {
+      skipDeleteConfirmation.value = v;
+    };
+    const setToastLevel = (v: ToastLevel) => {
+      toastLevel.value = v;
+    };
+    const setAppearanceSectionOpen = (v: boolean) => {
+      isAppearanceSectionOpen.value = v;
+    };
+    const setBehaviorSectionOpen = (v: boolean) => {
+      isBehaviorSectionOpen.value = v;
     };
 
     const updateSettings = (settings: Partial<UserSettings>) => {
-      if (settings.accentColor !== undefined) {
+      if (settings.accentColor !== undefined)
         setAccentColor(settings.accentColor);
-      }
-      if (settings.gridIconSize !== undefined) {
+      if (settings.backgroundColor !== undefined)
+        setBackgroundColor(settings.backgroundColor);
+      if (settings.backgroundImage !== undefined)
+        setBackgroundImage(settings.backgroundImage);
+      if (settings.backgroundImageOpacity !== undefined)
+        setBackgroundImageOpacity(settings.backgroundImageOpacity);
+      if (settings.gridIconSize !== undefined)
         setGridIconSize(settings.gridIconSize);
-      }
-      if (settings.listIconSize !== undefined) {
-        setGridIconSize(settings.listIconSize);
-      }
-      if (settings.skipDeleteConfirmation !== undefined) {
+      if (settings.listIconSize !== undefined)
+        setListIconSize(settings.listIconSize);
+      if (settings.skipDeleteConfirmation !== undefined)
         setSkipDeleteConfirmation(settings.skipDeleteConfirmation);
-      }
-      if (settings.toastLevel !== undefined) {
-        setToastLevel(settings.toastLevel);
-      }
+      if (settings.toastLevel !== undefined) setToastLevel(settings.toastLevel);
     };
 
     const resetSettings = () => {
       accentColor.value = DEFAULT_ACCENT_COLOR;
+      backgroundColor.value = DEFAULT_BACKGROUND;
+      backgroundImage.value = DEFAULT_BACKGROUND_IMAGE;
+      backgroundImageOpacity.value = DEFAULT_BACKGROUND_IMAGE_OPACITY;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
       skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
+      toastLevel.value = DEFAULT_TOAST_LEVEL;
     };
 
     const resetAppearanceSettings = () => {
       accentColor.value = DEFAULT_ACCENT_COLOR;
+      backgroundColor.value = DEFAULT_BACKGROUND;
+      backgroundImage.value = DEFAULT_BACKGROUND_IMAGE;
+      backgroundImageOpacity.value = DEFAULT_BACKGROUND_IMAGE_OPACITY;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
     };
 
     const resetBehaviorSettings = () => {
       skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
-      toastLevel.value = DEFAULT_TOAST_LEVEL; // 👈
-    };
-
-    const setAppearanceSectionOpen = (value: boolean) => {
-      isAppearanceSectionOpen.value = value;
-    };
-
-    const setBehaviorSectionOpen = (value: boolean) => {
-      isBehaviorSectionOpen.value = value;
+      toastLevel.value = DEFAULT_TOAST_LEVEL;
     };
 
     const resetUIState = () => {
@@ -201,31 +304,34 @@ export const useSettingsStore = defineStore(
     };
 
     return {
-      // State
       accentColor,
+      backgroundColor,
+      backgroundImage,
+      backgroundImageOpacity,
       gridIconSize,
       listIconSize,
       skipDeleteConfirmation,
       toastLevel,
-      // UI State
       isAppearanceSectionOpen,
       isBehaviorSectionOpen,
-      // Getters
       getSettings,
-      getColorRGBValue,
-      // Constants
+      getCurrentBackgroundPreset,
+      hasBackgroundImage,
       AVAILABLE_COLORS,
-      // Actions
+      AVAILABLE_BACKGROUNDS,
       setAccentColor,
+      setBackgroundColor,
+      setBackgroundImage,
+      setBackgroundImageOpacity,
+      clearBackgroundImage,
       setGridIconSize,
       setListIconSize,
       setSkipDeleteConfirmation,
+      setToastLevel,
       updateSettings,
       resetSettings,
       resetAppearanceSettings,
       resetBehaviorSettings,
-      setToastLevel,
-      // UI Actions
       setAppearanceSectionOpen,
       setBehaviorSectionOpen,
       resetUIState,

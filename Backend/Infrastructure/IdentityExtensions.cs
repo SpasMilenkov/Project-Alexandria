@@ -9,7 +9,6 @@ public static class IdentityExtensions
 {
     public static IServiceCollection AddAuthAndIdentity(this IServiceCollection services)
     {
-        // services.AddAuthorization();
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
             {
                 options.Password.RequireDigit = true;

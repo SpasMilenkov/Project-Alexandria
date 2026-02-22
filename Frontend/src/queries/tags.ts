@@ -21,7 +21,7 @@ export const TAGS_QUERY_KEYS = {
     ...TAGS_QUERY_KEYS.root,
     params.page,
     params.pageSize,
-    params.orderBy,
+    params.SortBy,
     params.sortDirection,
   ],
   searchTag: (filters: SearchTagsSchema) => [

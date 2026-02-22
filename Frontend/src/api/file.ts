@@ -176,7 +176,7 @@ export const fileApi = {
         params: {
           page: paginationParams.page,
           pageSize: paginationParams.pageSize,
-          sortBy: paginationParams.orderBy,
+          sortBy: paginationParams.SortBy,
           sortDirection: paginationParams.sortDirection,
         },
       },
@@ -204,7 +204,7 @@ export const fileApi = {
           directoryId,
           page: paginationParams.page,
           pageSize: paginationParams.pageSize,
-          sortBy: paginationParams.orderBy,
+          sortBy: paginationParams.SortBy,
           sortDirection: paginationParams.sortDirection,
         },
       },

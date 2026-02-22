@@ -13,15 +13,51 @@
           <p class="text-xs opacity-90 uppercase tracking-widest font-medium">
             Total
           </p>
-          <p class="text-sm font-semibold tabular-nums">{{ totalFormatted }}</p>
+          <p class="text-sm font-semibold tabular-nums">
+            {{ isEmpty ? "0 B" : totalFormatted }}
+          </p>
         </div>
       </div>
     </template>
 
+    <!-- Empty state -->
     <div
+      v-if="isEmpty"
+      class="flex flex-col items-center justify-center gap-4 py-12 px-6 text-center"
+    >
+      <div class="relative w-24 h-24 shrink-0">
+        <svg viewBox="0 0 96 96" class="w-full h-full" aria-hidden="true">
+          <circle
+            cx="48"
+            cy="48"
+            r="36"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="10"
+            stroke-dasharray="6 5"
+            stroke-linecap="round"
+            class="opacity-10"
+          />
+          <circle cx="48" cy="48" r="22" class="fill-current opacity-0" />
+        </svg>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <UIcon name="mdi:folder-open-outline" class="w-7 h-7 opacity-20" />
+        </div>
+      </div>
+
+      <div class="space-y-1 max-w-xs">
+        <p class="text-sm font-medium opacity-60">No files tracked yet</p>
+        <p class="text-xs opacity-40 leading-relaxed">
+          Once files are added, your storage breakdown by type will appear here.
+        </p>
+      </div>
+    </div>
+
+    <!-- Normal state -->
+    <div
+      v-else
       class="flex flex-col md:flex-row gap-0 divide-y md:divide-y-0 md:divide-x divide-dashed opacity-divide"
     >
-      <!-- Donut chart -->
       <div class="flex items-center justify-center p-6 md:w-72 shrink-0">
         <div class="relative w-52 h-52">
           <Doughnut
@@ -30,7 +66,6 @@
             :data="chartData"
             class="w-full h-full"
           />
-          <!-- Center label -->
           <div
             class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
           >
@@ -119,10 +154,6 @@ const props = defineProps<{
 const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 
-// Cohesive muted palette — one entry per FileGroup (14 total), ordered to
-// maximise contrast between visually adjacent slices.
-// Groups: Documents, Spreadsheets, Presentations, Images, Videos, Audio,
-//         Archives, Code, Fonts, Executables, Packages, Text, Binary, Uncategorized
 const palette = [
   "#C17B5C", // terracotta      — Documents
   "#5B7FA6", // slate blue      — Spreadsheets
@@ -142,6 +173,8 @@ const palette = [
 
 const total = computed(() => props.data.reduce((s, v) => s + v, 0));
 
+const isEmpty = computed(() => props.data.length === 0 || total.value === 0);
+
 const breakdown = computed(() =>
   props.labels
     .map((label, i) => ({
@@ -158,8 +191,6 @@ const topCategory = computed(
 );
 
 const totalFormatted = computed(() => {
-  if (!props.formattedSize.length) return "—";
-  // Re-use the last formattedSize entry logic — just sum bytes and reformat
   const bytes = total.value;
   const units = ["B", "KB", "MB", "GB", "TB"];
   let size = bytes;
@@ -177,7 +208,7 @@ const chartData = computed(
     datasets: [
       {
         data: props.data,
-        backgroundColor: palette.map((c, i) => (i < props.data.length ? c : c)),
+        backgroundColor: palette.map((c) => c),
         borderWidth: 2,
         borderColor: isDark.value ? "#1a1a1a" : "#f8f7f4",
         hoverBorderColor: isDark.value ? "#2a2a2a" : "#ffffff",
@@ -205,7 +236,6 @@ const chartOptions = computed(
         callbacks: {
           label: (context) => {
             const index = context.dataIndex;
-            const label = props.labels[index];
             const formatted = props.formattedSize[index];
             const pct =
               total.value > 0

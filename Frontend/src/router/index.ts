@@ -71,23 +71,32 @@ const router = createRouter({
       component: () => import("@/views/onboarding/SetupView.vue"),
       meta: { layout: "default", requiresAuth: false },
     },
+    {
+      path: "/dashboard/admin",
+      name: "admin-dashboard",
+      component: () => import("@/views/dashboard/admin/AdminDashboard.vue"),
+      meta: { layout: "dashboard", requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: "/dashboard/admin/user-registry",
+      name: "user-registry",
+      component: () => import("@/views/dashboard/admin/UserRegistry.vue"),
+      meta: { layout: "dashboard", requiresAuth: true, requiresAdmin: true },
+    },
   ],
 });
 // Navigation Guard
+
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
-  const requiresAuth = to.meta.requiresAuth;
-  const guestOnly = to.meta.guestOnly;
-  const isAuthenticated = authStore.isAuthenticated;
+  const { isAuthenticated, isAdmin } = authStore;
 
-  if (requiresAuth && !isAuthenticated) {
-    next({
-      path: "/auth",
-      query: { redirect: to.fullPath }, // Save the intended destination
-    });
-  } else if (guestOnly && isAuthenticated) {
-    const redirectPath = to.query.redirect as string;
-    next(redirectPath || "/dashboard");
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    next({ path: "/auth", query: { redirect: to.fullPath } });
+  } else if (to.meta.guestOnly && isAuthenticated) {
+    next((to.query.redirect as string) || "/dashboard");
+  } else if (to.meta.requiresAdmin && !isAdmin) {
+    next({ path: "/dashboard" });
   } else {
     next();
   }

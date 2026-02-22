@@ -1,55 +1,53 @@
 <template>
   <div class="flex flex-col h-full w-full flex-1" @click="handleContainerClick">
     <!-- Toolbar -->
-    <div
-      class="flex w-full gap-6 md:gap-2 p-3 border-b border-b-primary flex-row items-center justify-between flex-wrap"
-    >
-      <div class="flex gap-2 justify-between">
-        <div class="flex gap-2">
-          <div class="flex gap-2">
-            <!-- Split Button Group -->
-            <div class="flex border border-primary rounded-md overflow-hidden">
-              <!-- Main Upload Button -->
-              <UButton
-                color="primary"
-                size="sm"
-                class="rounded-none border-r dark:border-black"
-                @click="
-                  handleFileUpload(
-                    selectedUploadType.label as
-                      | 'File'
-                      | 'Directory'
-                      | 'Archive',
-                  )
-                "
-              >
-                <Icon :icon="selectedUploadType.icon" class="w-4 h-4 mr-2" />
-                <span class="hidden sm:inline"
-                  >Upload {{ selectedUploadType.label }}</span
-                >
-                <span class="sm:hidden">Upload</span>
-              </UButton>
-
-              <!-- Dropdown Menu -->
-              <UDropdownMenu :items="uploadOptions" :ui="{ content: 'w-48' }">
-                <UButton
-                  color="primary"
-                  size="sm"
-                  class="rounded-none px-2"
-                  aria-label="Upload options"
-                >
-                  <Icon icon="mdi:chevron-down" class="w-4 h-4" />
-                </UButton>
-              </UDropdownMenu>
-            </div>
-          </div>
-          <UButton color="primary" size="sm" @click="createNewDirectory">
-            <Icon icon="mdi:folder-plus" class="w-4 h-4 md:mr-1" />
-            <span class="hidden sm:inline">New Folder</span>
+    <div class="flex flex-col w-full border-b border-b-primary">
+      <div class="flex items-center gap-2 p-3 w-full">
+        <div
+          class="flex border border-primary rounded-md overflow-hidden shrink-0"
+        >
+          <UButton
+            color="primary"
+            size="sm"
+            class="rounded-none border-r dark:border-black"
+            @click="
+              handleFileUpload(
+                selectedUploadType.label as 'File' | 'Directory' | 'Archive',
+              )
+            "
+          >
+            <Icon :icon="selectedUploadType.icon" class="w-4 h-4 md:mr-2" />
+            <span class="hidden md:inline"
+              >Upload {{ selectedUploadType.label }}</span
+            >
+            <span class="md:hidden">Upload</span>
           </UButton>
+          <UDropdownMenu :items="uploadOptions" :ui="{ content: 'w-48' }">
+            <UButton
+              color="primary"
+              size="sm"
+              class="rounded-none px-2"
+              aria-label="Upload options"
+            >
+              <Icon icon="mdi:chevron-down" class="w-4 h-4" />
+            </UButton>
+          </UDropdownMenu>
         </div>
 
-        <div class="text-sm">
+        <!-- New folder -->
+        <UButton
+          color="primary"
+          size="sm"
+          class="shrink-0"
+          @click="createNewDirectory"
+        >
+          <Icon icon="mdi:folder-plus" class="w-4 h-4 md:mr-1" />
+          <span class="hidden md:inline">New Folder</span>
+        </UButton>
+
+        <div class="flex-1" />
+
+        <div class="hidden md:flex items-center gap-1">
           <USelectMenu
             v-model="selectedSortBy"
             :items="sortByOptions"
@@ -59,7 +57,7 @@
           >
             <template #default="{ modelValue }">
               <Icon icon="mdi:sort" class="w-4 h-4 mr-1" />
-              <span class="hidden sm:inline">{{ modelValue?.label }}</span>
+              <span>{{ modelValue?.label }}</span>
             </template>
           </USelectMenu>
 
@@ -82,6 +80,9 @@
               class="w-4 h-4"
             />
           </UButton>
+
+          <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+
           <UButton
             :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
             size="sm"
@@ -99,25 +100,127 @@
             <Icon icon="mdi:view-list" class="w-4 h-4" />
           </UButton>
         </div>
+
+        <!-- Search — always visible, right-most -->
+        <UButton
+          @click="quickSearch"
+          icon="mdi:magnify"
+          size="sm"
+          variant="ghost"
+          class="shrink-0"
+          aria-label="Search"
+        />
       </div>
-      <UButton @click="quickSearch" icon="mdi:search" class="h-8 w-8" />
+
+      <!-- Row 2: secondary controls (mobile only)  -->
+      <div class="flex md:hidden items-center gap-1 px-3 pb-2">
+        <USelectMenu
+          v-model="selectedSortBy"
+          :items="sortByOptions"
+          size="sm"
+          placeholder="Sort by"
+          class="flex-1 min-w-0"
+          @update:model-value="handleSorting"
+        >
+          <template #default="{ modelValue }">
+            <Icon icon="mdi:sort" class="w-4 h-4 mr-1 shrink-0" />
+            <span class="truncate">{{ modelValue?.label }}</span>
+          </template>
+        </USelectMenu>
+
+        <UButton
+          size="sm"
+          variant="ghost"
+          @click="toggleSortDirection"
+          :aria-label="
+            selectedSortDirection === SortDirection.Asc
+              ? 'Ascending'
+              : 'Descending'
+          "
+        >
+          <Icon
+            :icon="
+              selectedSortDirection === SortDirection.Asc
+                ? 'mdi:sort-ascending'
+                : 'mdi:sort-descending'
+            "
+            class="w-4 h-4"
+          />
+        </UButton>
+
+        <!-- Thin divider -->
+        <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
+
+        <!-- View toggle as a compact pill on mobile -->
+        <div
+          class="flex rounded-md overflow-hidden border border-gray-200 dark:border-gray-700"
+        >
+          <UButton
+            :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
+            size="sm"
+            class="rounded-none"
+            @click="viewMode = 'grid'"
+            aria-label="Grid view"
+          >
+            <Icon icon="mdi:view-grid" class="w-4 h-4" />
+          </UButton>
+          <UButton
+            :variant="viewMode === 'list' ? 'solid' : 'ghost'"
+            size="sm"
+            class="rounded-none border-l border-gray-200 dark:border-gray-700"
+            @click="viewMode = 'list'"
+            aria-label="List view"
+          >
+            <Icon icon="mdi:view-list" class="w-4 h-4" />
+          </UButton>
+        </div>
+      </div>
     </div>
 
-    <UBreadcrumb :items="breadcrumbs" class="p-4">
-      <template #item="{ item }">
-        <UButton
-          :icon="item.icon"
-          :label="item.label"
-          color="neutral"
-          variant="link"
-          class="p-0.5"
-          @click="handleNavigate(item.key)"
-        />
-      </template>
-      <template #separator>
-        <span class="mx-2 text-muted">/</span>
-      </template>
-    </UBreadcrumb>
+    <div class="flex items-center gap-1 px-4 py-2">
+      <UButton
+        size="sm"
+        variant="ghost"
+        :disabled="!canGoBack"
+        :class="!canGoBack ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'"
+        :title="canGoBack ? 'Go back' : 'No previous location'"
+        @click="navigateBack()"
+        aria-label="Back"
+      >
+        <Icon icon="mdi:arrow-left" class="w-4 h-4" />
+      </UButton>
+      <UButton
+        size="sm"
+        variant="ghost"
+        :disabled="!canGoForward"
+        :class="
+          !canGoForward ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+        "
+        :title="canGoForward ? 'Go forward' : 'No next location'"
+        @click="navigateForward()"
+        aria-label="Forward"
+      >
+        <Icon icon="mdi:arrow-right" class="w-4 h-4" />
+      </UButton>
+
+      <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
+
+      <UBreadcrumb :items="breadcrumbs">
+        <template #item="{ item }">
+          <UButton
+            :icon="item.icon"
+            :label="item.label"
+            color="neutral"
+            variant="link"
+            class="p-0.5"
+            @click="handleNavigate(item.key)"
+          />
+        </template>
+        <template #separator>
+          <span class="mx-2 text-muted">/</span>
+        </template>
+      </UBreadcrumb>
+    </div>
 
     <!-- Content Area -->
     <div ref="containerRef" class="flex-1 overflow-auto relative">
@@ -160,7 +263,6 @@
           </div>
         </div>
       </Transition>
-      <!-- ─────────────────────────────────────────────────────────────────── -->
 
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="p-4">
@@ -301,9 +403,9 @@
 <script setup lang="ts">
 import FileItem from "./FileItem.vue";
 import DirectoryItem from "./DirectoryItem.vue";
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, onUnmounted } from "vue";
 import { Icon } from "@iconify/vue";
-import { OrderBy } from "@/enums/OrderBy";
+import { SortBy } from "@/enums/SortBy";
 import { useFileExplorer } from "@/composables/useFileExplorer";
 import { useTabStore } from "@/stores/tab";
 import type { BreadcrumbItem, DropdownMenuItem } from "@nuxt/ui";
@@ -326,7 +428,7 @@ import { searchTag } from "@/queries/tags";
 import { useQuery } from "@pinia/colada";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import QuickSearchModal from "./Modals/QuickSearchModal.vue";
-import ConfirmModal from "./Modals/ConfirmModal.vue";
+import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useDropZone } from "@vueuse/core";
 
 const fileStore = useFileStore();
@@ -356,6 +458,10 @@ const {
   loadMoreDirs,
   loadMoreFiles,
   navigateTo,
+  canGoBack,
+  canGoForward,
+  navigateBack,
+  navigateForward,
   refreshDir,
   toggleSelect,
   isDirectorySelected,
@@ -563,13 +669,19 @@ defineShortcuts({
   shift_k: () => quickSearch(),
   shift_l: () => advancedSearch(),
   Delete: () => handleDelete(),
+  alt_arrowleft: () => {
+    if (canGoBack.value) navigateBack();
+  },
+  alt_arrowright: () => {
+    if (canGoForward.value) navigateForward();
+  },
 });
 
 // Sort options
 const sortByOptions = ref([
-  { label: "Name", value: OrderBy.Name },
-  { label: "Date Created", value: OrderBy.CreatedAt },
-  { label: "Date Modified", value: OrderBy.UpdatedAt },
+  { label: "Name", value: SortBy.Name },
+  { label: "Date Created", value: SortBy.CreatedAt },
+  { label: "Date Modified", value: SortBy.UpdatedAt },
 ]);
 
 const selectedUploadType = ref({
@@ -595,7 +707,7 @@ const uploadOptions = ref([
   },
 ] satisfies DropdownMenuItem[]);
 
-const selectedSortBy = ref({ label: "Name", value: OrderBy.Name });
+const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
 const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
 
 const toggleSortDirection = () => {
@@ -711,11 +823,16 @@ const handleDelete = async () => {
         );
       } else {
         const instance = confirmModal.open({
-          title: "Confirm deletion",
-          message:
-            "Selected directories are not empty. Are you sure you want to proceed?",
+          title: "Delete directories?",
+          description: `${failedDirs.length} ${failedDirs.length === 1 ? "directory" : "directories"} still contain files and will be deleted.`,
           dangerMode: true,
-          confirmIcon: "mdi-trash",
+          confirmLabel: "Delete anyway",
+          confirmIcon: "i-lucide-trash-2",
+          alert: {
+            title: "All sub items wiill also be deleted",
+            color: "warning",
+            icon: "i-lucide-triangle-alert",
+          },
         });
 
         const confirmed = await instance.result;
@@ -767,8 +884,8 @@ const handlePaste = async () => {
 };
 
 const handleSorting = () => {
-  filePagination.value.paginationParams.orderBy = selectedSortBy.value.value;
-  dirPagination.value.paginationParams.orderBy = selectedSortBy.value.value;
+  filePagination.value.paginationParams.SortBy = selectedSortBy.value.value;
+  dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
   refreshDir();
 };
 
@@ -855,7 +972,7 @@ const createNewDirectory = async () => {
   });
 
   const shouldRefresh = await instance.result;
-  if (shouldRefresh && settingsStore.toastLevel === 'all') {
+  if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({
       title: "Directory creation successful",
       color: "success",
@@ -864,7 +981,11 @@ const createNewDirectory = async () => {
     refreshDir();
     return;
   }
-  if (!shouldRefresh && directoryStore.error  && settingsStore.toastLevel !== 'silent')
+  if (
+    !shouldRefresh &&
+    directoryStore.error &&
+    settingsStore.toastLevel !== "silent"
+  )
     toast.add({
       title: "Directory creation failed",
       description: directoryStore.error,
@@ -907,9 +1028,25 @@ const handleNavigate = (dirId: string | null) => {
   tabStore.setActiveDir(props.tabId, dirId);
 };
 
+const handleMouseNavigate = (event: MouseEvent) => {
+  // Button 3 = back, Button 4 = forward (side buttons)
+  if (event.button !== 3 && event.button !== 4) return;
+
+  event.preventDefault(); // prevent browser's own back/forward
+  event.stopPropagation();
+
+  if (event.button === 3 && canGoBack.value) navigateBack();
+  if (event.button === 4 && canGoForward.value) navigateForward();
+};
+
 onMounted(async () => {
+  containerRef.value?.addEventListener("mousedown", handleMouseNavigate);
   const tab = tabStore.getTab(props.tabId);
   navigateTo(tab?.activeDirId);
+});
+
+onUnmounted(() => {
+  containerRef.value?.removeEventListener("mousedown", handleMouseNavigate);
 });
 </script>
 
