@@ -9,7 +9,6 @@ public class GetStorageMetricsEndpoint(MetricsService metricsService):  Endpoint
     public override void Configure()
     {
         Get("/storage/available");
-        AllowAnonymous(); // or add [Authorize] if needed
         Summary(s =>
         {
             s.Summary = "Get available storage from Garage";
