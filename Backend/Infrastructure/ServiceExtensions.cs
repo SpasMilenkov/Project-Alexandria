@@ -62,6 +62,10 @@ public static class ServiceExtensions
         services.AddHostedService<TempCleanupWorker>();
         services.AddHostedService<OrphanedCleanupWorker>();
 
+        services.AddHttpClient("worker-health")
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
+            .SetHandlerLifetime(TimeSpan.FromMinutes(5));
+
         services.AddResourceMonitoring();
         return services;
     }
