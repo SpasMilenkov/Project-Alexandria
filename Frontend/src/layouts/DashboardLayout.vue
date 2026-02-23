@@ -231,6 +231,11 @@ const adminMenuItems = computed<NavigationMenuItem[][]>(() => [
           icon: "i-heroicons-users",
           to: "/dashboard/admin/user-registry",
         },
+        {
+          label: "System Vitals",
+          icon: "material-symbols:vitals",
+          to: "/dashboard/admin/service-status",
+        },
       ],
     },
   ],

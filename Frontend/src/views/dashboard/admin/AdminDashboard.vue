@@ -169,7 +169,7 @@ const sections = [
   },
   {
     id: "status",
-    route: "/admin/status",
+    route: "/dashboard/admin/service-status",
     chapter: "Chapter IV",
     title: "System Vitals",
     description:
