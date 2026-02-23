@@ -11,7 +11,7 @@
     by="id"
     @update:model-value="$emit('update:selected', $event)"
   >
-    <!-- ══ Expanded row ══════════════════════════════════════════════════ -->
+    <!-- Expanded row -->
     <template #expanded="{ row }">
       <UserExpandedRow
         :user="row.original"
@@ -21,7 +21,7 @@
       />
     </template>
 
-    <!-- ══ Empty state ══════════════════════════════════════════════════ -->
+    <!-- Empty state -->
     <template #empty>
       <div
         class="flex flex-col items-center justify-center py-20 text-center px-4"

@@ -83,6 +83,12 @@ const router = createRouter({
       component: () => import("@/views/dashboard/admin/UserRegistry.vue"),
       meta: { layout: "dashboard", requiresAuth: true, requiresAdmin: true },
     },
+    {
+      path: "/dashboard/admin/service-status",
+      name: "service-status", 
+      component: () => import("@/views/dashboard/admin/ServiceStatus.vue"),
+      meta: { layout: "dashboard", requiresAuth: true, requiresAdmin: true },
+    },
   ],
 });
 // Navigation Guard

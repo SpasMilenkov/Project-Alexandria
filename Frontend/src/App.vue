@@ -6,8 +6,6 @@ import { PiniaColadaDevtools } from "@pinia/colada-devtools";
 import { useTheme } from "./composables/useTheme";
 const route = useRoute();
 
-// Initialize the settings store immediately
-// This will trigger the theme application via the store's watchers
 useTheme();
 const layouts = {
   default: DefaultLayout,

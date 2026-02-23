@@ -465,7 +465,7 @@
             </div>
           </div>
 
-          <!-- ═══════════════ RIGHT PANEL: Results ═══════════════ -->
+          <!-- RIGHT PANEL: Results -->
           <div class="flex-1 flex flex-col overflow-hidden min-h-0">
             <!-- Results Header -->
             <div

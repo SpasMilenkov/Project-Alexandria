@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
+import { visualizer } from "rollup-plugin-visualizer";
 
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
@@ -15,13 +16,14 @@ export default defineConfig({
         colors: {
           primary: "orange",
           secondary: "orange-700",
-          neutral: "neutral"         
-      },
+          neutral: "neutral",
+        },
         container: {
           base: "w-full max-w-(--ui-container) mx-auto px-4 sm:px-6 lg:px-8",
         },
       },
     }),
+    visualizer(),
   ],
   resolve: {
     alias: {

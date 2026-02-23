@@ -17,7 +17,63 @@ export interface StorageBreakdown {
   oldFiles: FileSummary[];
 }
 
+export type HealthStatus = "Healthy" | "Degraded" | "Unhealthy";
+
+export interface HealthCheckEntry {
+  name: string;
+  status: HealthStatus;
+  description: string | null;
+  duration: number; // ms
+  tags: string[];
+  error: string | null;
+  data: Record<string, unknown>;
+}
+
+export interface HealthSummary {
+  healthy: number;
+  degraded: number;
+  unhealthy: number;
+}
+
+export interface ServerStatusResponse {
+  status: HealthStatus;
+  checkedAt: string; // ISO 8601
+  duration: number; // ms
+  summary: HealthSummary;
+  checks: HealthCheckEntry[];
+}
+
+export interface ProcessInfo {
+  cpuTimeSeconds: number;
+  workingSetMb: number;
+  gcTotalMemoryMb: number;
+  memoryLimitMb: number;
+  memoryUsagePercent: number;
+  threadCount: number;
+  uptime: string; // "hh:mm:ss"
+  gen0Collections: number;
+  gen1Collections: number;
+  gen2Collections: number;
+}
+
+export interface ServerResourcesResponse {
+  process: ProcessInfo;
+  checkedAt: string;
+}
+
 export const statusApi = {
+  getServerStatus: async (): Promise<ServerStatusResponse> => {
+    const result = await apiClient.get<ServerStatusResponse>("/monitoring");
+    return result.data;
+  },
+
+  getServerResources: async (): Promise<ServerResourcesResponse> => {
+    const result = await apiClient.get<ServerResourcesResponse>(
+      "/monitoring/resources",
+    );
+    return result.data;
+  },
+
   getStorageMetrics: async (): Promise<StorageInfo> => {
     const result = await apiClient.get<StorageInfo>("/storage/available");
     return result.data;
