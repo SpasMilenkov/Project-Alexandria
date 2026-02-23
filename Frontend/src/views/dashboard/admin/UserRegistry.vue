@@ -112,7 +112,7 @@
     >
       <div
         v-if="isFilterPanelOpen"
-        class="rounded-xl border border-default bg-white/70 dark:bg-white/5 backdrop-blur-sm overflow-hidden"
+        class="rounded-xl border border-default bg-white/70 dark:bg-white/5 backdrop-blur-sm overflow-hidden max-h-[40vh] overflow-y-auto shrink-0"
       >
         <UForm
           ref="filterForm"
@@ -275,7 +275,6 @@
             <UCollapsible v-model:open="isDateRangesOpen">
               <div
                 class="px-5 py-3 flex items-center justify-between cursor-pointer select-none hover:bg-elevated/30 transition-colors"
-                @click="isDateRangesOpen = !isDateRangesOpen"
               >
                 <p
                   class="text-xs font-semibold uppercase tracking-wider text-muted flex items-center gap-1.5"
@@ -292,58 +291,333 @@
                   class="size-4 text-muted transition-transform duration-200"
                 />
               </div>
+
               <template #content>
-                <div
-                  class="px-5 pb-5 pt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-4"
-                >
-                  <UFormField label="Created after" name="createdAfter">
-                    <!-- @vue-ignore --><UInputDate
-                      v-model="uiState.createdAfter"
-                      class="w-full"
-                    />
-                  </UFormField>
-                  <UFormField label="Created before" name="createdBefore">
-                    <!-- @vue-ignore --><UInputDate
-                      v-model="uiState.createdBefore"
-                      class="w-full"
-                    />
-                  </UFormField>
-                  <UFormField label="Updated after" name="updatedAfter">
-                    <!-- @vue-ignore --><UInputDate
-                      v-model="uiState.updatedAfter"
-                      class="w-full"
-                    />
-                  </UFormField>
-                  <UFormField label="Updated before" name="updatedBefore">
-                    <!-- @vue-ignore --><UInputDate
-                      v-model="uiState.updatedBefore"
-                      class="w-full"
-                    />
-                  </UFormField>
-                  <UFormField label="Deleted after" name="deletedAfter">
-                    <!-- @vue-ignore --><UInputDate
-                      v-model="uiState.deletedAfter"
-                      class="w-full"
-                    />
-                  </UFormField>
-                  <UFormField label="Deleted before" name="deletedBefore">
-                    <!-- @vue-ignore --><UInputDate
-                      v-model="uiState.deletedBefore"
-                      class="w-full"
-                    />
-                  </UFormField>
-                  <UFormField label="Locked out after" name="lockedOutAfter">
-                    <!-- @vue-ignore --><UInputDate
-                      v-model="uiState.lockedOutAfter"
-                      class="w-full"
-                    />
-                  </UFormField>
-                  <UFormField label="Locked out before" name="lockedOutBefore">
-                    <!-- @vue-ignore --><UInputDate
-                      v-model="uiState.lockedOutBefore"
-                      class="w-full"
-                    />
-                  </UFormField>
+                <div class="px-5 pb-5 pt-2 space-y-4">
+                  <!-- Created -->
+                  <div>
+                    <p
+                      class="text-xs text-muted font-medium mb-2 flex items-center gap-1"
+                    >
+                      <UIcon name="i-lucide-calendar-plus" class="size-3" />
+                      Created
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <UFormField
+                        label="After"
+                        name="createdAfter"
+                        class="w-full"
+                      >
+                        <!-- @vue-ignore -->
+                        <UInputDate
+                          ref="createdAfter"
+                          v-model="uiState.createdAfter"
+                          class="w-full"
+                        >
+                          <template #trailing>
+                            <UPopover
+                              :reference="createdAfter?.inputsRef[3]?.$el"
+                            >
+                              <UButton
+                                color="neutral"
+                                variant="link"
+                                size="sm"
+                                icon="i-lucide-calendar"
+                                aria-label="Pick date"
+                                class="px-0"
+                              />
+                              <template #content>
+                                <!-- @vue-ignore -->
+                                <UCalendar
+                                  v-model="uiState.createdAfter"
+                                  class="p-2"
+                                />
+                              </template>
+                            </UPopover>
+                          </template>
+                        </UInputDate>
+                      </UFormField>
+                      <UFormField
+                        label="Before"
+                        name="createdBefore"
+                        class="w-full"
+                      >
+                        <!-- @vue-ignore -->
+                        <UInputDate
+                          ref="createdBefore"
+                          v-model="uiState.createdBefore"
+                          class="w-full"
+                        >
+                          <template #trailing>
+                            <UPopover
+                              :reference="createdBefore?.inputsRef[3]?.$el"
+                            >
+                              <UButton
+                                color="neutral"
+                                variant="link"
+                                size="sm"
+                                icon="i-lucide-calendar"
+                                aria-label="Pick date"
+                                class="px-0"
+                              />
+                              <template #content>
+                                <!-- @vue-ignore -->
+                                <UCalendar
+                                  v-model="uiState.createdBefore"
+                                  class="p-2"
+                                />
+                              </template>
+                            </UPopover>
+                          </template>
+                        </UInputDate>
+                      </UFormField>
+                    </div>
+                  </div>
+
+                  <USeparator />
+
+                  <!-- Updated -->
+                  <div>
+                    <p
+                      class="text-xs text-muted font-medium mb-2 flex items-center gap-1"
+                    >
+                      <UIcon name="i-lucide-calendar-clock" class="size-3" />
+                      Updated
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <UFormField
+                        label="After"
+                        name="updatedAfter"
+                        class="w-full"
+                      >
+                        <!-- @vue-ignore -->
+                        <UInputDate
+                          ref="updatedAfter"
+                          v-model="uiState.updatedAfter"
+                          class="w-full"
+                        >
+                          <template #trailing>
+                            <UPopover
+                              :reference="updatedAfter?.inputsRef[3]?.$el"
+                            >
+                              <UButton
+                                color="neutral"
+                                variant="link"
+                                size="sm"
+                                icon="i-lucide-calendar"
+                                aria-label="Pick date"
+                                class="px-0"
+                              />
+                              <template #content>
+                                <!-- @vue-ignore -->
+                                <UCalendar
+                                  v-model="uiState.updatedAfter"
+                                  class="p-2"
+                                />
+                              </template>
+                            </UPopover>
+                          </template>
+                        </UInputDate>
+                      </UFormField>
+                      <UFormField
+                        label="Before"
+                        name="updatedBefore"
+                        class="w-full"
+                      >
+                        <!-- @vue-ignore -->
+                        <UInputDate
+                          ref="updatedBefore"
+                          v-model="uiState.updatedBefore"
+                          class="w-full"
+                        >
+                          <template #trailing>
+                            <UPopover
+                              :reference="updatedBefore?.inputsRef[3]?.$el"
+                            >
+                              <UButton
+                                color="neutral"
+                                variant="link"
+                                size="sm"
+                                icon="i-lucide-calendar"
+                                aria-label="Pick date"
+                                class="px-0"
+                              />
+                              <template #content>
+                                <!-- @vue-ignore -->
+                                <UCalendar
+                                  v-model="uiState.updatedBefore"
+                                  class="p-2"
+                                />
+                              </template>
+                            </UPopover>
+                          </template>
+                        </UInputDate>
+                      </UFormField>
+                    </div>
+                  </div>
+
+                  <USeparator />
+
+                  <!-- Deleted -->
+                  <div>
+                    <p
+                      class="text-xs text-muted font-medium mb-2 flex items-center gap-1"
+                    >
+                      <UIcon name="i-lucide-calendar-x" class="size-3" />
+                      Deleted
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <UFormField
+                        label="After"
+                        name="deletedAfter"
+                        class="w-full"
+                      >
+                        <!-- @vue-ignore -->
+                        <UInputDate
+                          ref="deletedAfter"
+                          v-model="uiState.deletedAfter"
+                          class="w-full"
+                        >
+                          <template #trailing>
+                            <UPopover
+                              :reference="deletedAfter?.inputsRef[3]?.$el"
+                            >
+                              <UButton
+                                color="neutral"
+                                variant="link"
+                                size="sm"
+                                icon="i-lucide-calendar"
+                                aria-label="Pick date"
+                                class="px-0"
+                              />
+                              <template #content>
+                                <!-- @vue-ignore -->
+                                <UCalendar
+                                  v-model="uiState.deletedAfter"
+                                  class="p-2"
+                                />
+                              </template>
+                            </UPopover>
+                          </template>
+                        </UInputDate>
+                      </UFormField>
+                      <UFormField
+                        label="Before"
+                        name="deletedBefore"
+                        class="w-full"
+                      >
+                        <!-- @vue-ignore -->
+                        <UInputDate
+                          ref="deletedBefore"
+                          v-model="uiState.deletedBefore"
+                          class="w-full"
+                        >
+                          <template #trailing>
+                            <UPopover
+                              :reference="deletedBefore?.inputsRef[3]?.$el"
+                            >
+                              <UButton
+                                color="neutral"
+                                variant="link"
+                                size="sm"
+                                icon="i-lucide-calendar"
+                                aria-label="Pick date"
+                                class="px-0"
+                              />
+                              <template #content>
+                                <!-- @vue-ignore -->
+                                <UCalendar
+                                  v-model="uiState.deletedBefore"
+                                  class="p-2"
+                                />
+                              </template>
+                            </UPopover>
+                          </template>
+                        </UInputDate>
+                      </UFormField>
+                    </div>
+                  </div>
+
+                  <USeparator />
+
+                  <!-- Locked out -->
+                  <div>
+                    <p
+                      class="text-xs text-muted font-medium mb-2 flex items-center gap-1"
+                    >
+                      <UIcon name="i-lucide-lock" class="size-3" /> Locked out
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <UFormField
+                        label="After"
+                        name="lockedOutAfter"
+                        class="w-full"
+                      >
+                        <!-- @vue-ignore -->
+                        <UInputDate
+                          ref="lockedOutAfter"
+                          v-model="uiState.lockedOutAfter"
+                          class="w-full"
+                        >
+                          <template #trailing>
+                            <UPopover
+                              :reference="lockedOutAfter?.inputsRef[3]?.$el"
+                            >
+                              <UButton
+                                color="neutral"
+                                variant="link"
+                                size="sm"
+                                icon="i-lucide-calendar"
+                                aria-label="Pick date"
+                                class="px-0"
+                              />
+                              <template #content>
+                                <!-- @vue-ignore -->
+                                <UCalendar
+                                  v-model="uiState.lockedOutAfter"
+                                  class="p-2"
+                                />
+                              </template>
+                            </UPopover>
+                          </template>
+                        </UInputDate>
+                      </UFormField>
+                      <UFormField
+                        label="Before"
+                        name="lockedOutBefore"
+                        class="w-full"
+                      >
+                        <!-- @vue-ignore -->
+                        <UInputDate
+                          ref="lockedOutBefore"
+                          v-model="uiState.lockedOutBefore"
+                          class="w-full"
+                        >
+                          <template #trailing>
+                            <UPopover
+                              :reference="lockedOutBefore?.inputsRef[3]?.$el"
+                            >
+                              <UButton
+                                color="neutral"
+                                variant="link"
+                                size="sm"
+                                icon="i-lucide-calendar"
+                                aria-label="Pick date"
+                                class="px-0"
+                              />
+                              <template #content>
+                                <!-- @vue-ignore -->
+                                <UCalendar
+                                  v-model="uiState.lockedOutBefore"
+                                  class="p-2"
+                                />
+                              </template>
+                            </UPopover>
+                          </template>
+                        </UInputDate>
+                      </UFormField>
+                    </div>
+                  </div>
                 </div>
               </template>
             </UCollapsible>
@@ -352,9 +626,9 @@
       </div>
     </Transition>
 
-    <!-- ══════════════════════════ TABLE ══════════════════════════ -->
+    <!-- TABLE  -->
     <div
-      class="flex-1 min-h-0 rounded-xl border border-default overflow-hidden bg-white/60 dark:bg-white/5 backdrop-blur-sm"
+      class="flex-1 min-h-0 rounded-xl border border-default overflow-x-hidden bg-white/60 dark:bg-white/5 backdrop-blur-sm"
     >
       <UsersTable
         v-model:selected="selectedUserIds"
@@ -367,7 +641,7 @@
       />
     </div>
 
-    <!-- ══════════════════════════ PAGINATION ══════════════════════════ -->
+    <!-- PAGINATION -->
     <div
       v-if="data && data.totalCount > uiState.pageSize"
       class="flex items-center justify-between"
@@ -383,7 +657,7 @@
       />
     </div>
 
-    <!-- ══════════════════════════ MODALS ══════════════════════════ -->
+    <!-- MODALS -->
     <CreateUserModal
       :open="activeModal.type === 'create'"
       @close="closeModal"
@@ -417,7 +691,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed } from "vue";
+import { reactive, ref, computed, shallowRef } from "vue";
 import { useQuery } from "@pinia/colada";
 import { userQueryUiSchema, userQueryApiSchema } from "@/schemas/user";
 import { UserRole } from "@/enums/UserRole";
@@ -447,7 +721,14 @@ import {
 const toast = useToast();
 
 // Filter state
-
+const createdAfter = shallowRef();
+const createdBefore = shallowRef();
+const updatedAfter = shallowRef();
+const updatedBefore = shallowRef();
+const deletedAfter = shallowRef();
+const deletedBefore = shallowRef();
+const lockedOutAfter = shallowRef();
+const lockedOutBefore = shallowRef();
 const uiState = reactive(userQueryUiSchema.parse({}));
 const apiState = ref(userQueryApiSchema.parse(uiState));
 const isFilterPanelOpen = ref(false);
