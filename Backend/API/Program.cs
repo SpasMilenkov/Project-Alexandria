@@ -2,7 +2,6 @@ using API.Extensions;
 using API.Features.Auth.Extensions;
 using API.Middlewares;
 using Infrastructure;
-using Infrastructure.DocumentWorker;
 
 var bld = WebApplication.CreateBuilder();
 
@@ -16,6 +15,7 @@ bld.Services
     .AddRabbitMqAsync(bld.Configuration)
     .AddApiServices()
     .AddServices()
+    .AddHealthMonitoring(bld.Configuration)
     .AddAuthServices();
 
 bld.WebHost.ConfigureKestrelMaxRequestSize();
