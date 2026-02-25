@@ -6,7 +6,8 @@ export interface AppearanceSettings {
   accentColor: string;
   backgroundColor: string;
   backgroundImageKey: string | null;
-  backgroundImageUpdatedAt: string | null; // ISO 8601
+  // ISO 8601
+  backgroundImageUpdatedAt: string | null;
   backgroundImageOpacity: number;
   gridIconSize: number;
   listIconSize: number;
@@ -34,19 +35,48 @@ const toastLevelToServer: Record<ToastLevel, string> = {
   silent: "Silent",
 };
 
-
-
-function mapBehaviorFromServer(raw: any): BehaviorSettings {
-  return {
-    skipDeleteConfirmation: raw.skipDeleteConfirmation,
-    toastLevel: toastLevelFromServer[raw.toastLevel] ?? "all",
-  };
-}
+const mapBehaviorFromServer = (raw: any): BehaviorSettings => ({
+  skipDeleteConfirmation: raw.skipDeleteConfirmation,
+  toastLevel: toastLevelFromServer[raw.toastLevel] ?? "all",
+});
 
 export const settingsApi = {
+  confirmBackgroundImageUpload: async (
+    objectKey: string,
+  ): Promise<AppearanceSettings> => {
+    const result = await apiClient.put<AppearanceSettings>(
+      "/settings/appearance/background-image/confirm",
+      { objectKey },
+    );
+    return result.data;
+  },
+
+  deleteBackgroundImage: async (): Promise<void> => {
+    await apiClient.delete("/settings/appearance/background-image");
+  },
+
   getAppearance: async (): Promise<AppearanceSettings> => {
     const result = await apiClient.get<AppearanceSettings>(
       "/settings/appearance",
+    );
+    return result.data;
+  },
+
+  getBackgroundImageUrl: async (): Promise<string> => {
+    const result = await apiClient.get<{ url: string }>(
+      "/settings/appearance/background-image-url",
+    );
+    return result.data.url;
+  },
+
+  getBehavior: async (): Promise<BehaviorSettings> => {
+    const result = await apiClient.get("/settings/behavior");
+    return mapBehaviorFromServer(result.data);
+  },
+
+  requestBackgroundImageUpload: async (): Promise<RequestUploadResponse> => {
+    const result = await apiClient.post<RequestUploadResponse>(
+      "/settings/appearance/background-image",
     );
     return result.data;
   },
@@ -61,11 +91,6 @@ export const settingsApi = {
     return result.data;
   },
 
-  getBehavior: async (): Promise<BehaviorSettings> => {
-    const result = await apiClient.get("/settings/behavior");
-    return mapBehaviorFromServer(result.data);
-  },
-
   updateBehavior: async (
     payload: BehaviorSettings,
   ): Promise<BehaviorSettings> => {
@@ -76,39 +101,11 @@ export const settingsApi = {
     return mapBehaviorFromServer(result.data);
   },
 
-  requestBackgroundImageUpload: async (): Promise<RequestUploadResponse> => {
-    const result = await apiClient.post<RequestUploadResponse>(
-      "/settings/appearance/background-image",
-    );
-    return result.data;
-  },
-
-  confirmBackgroundImageUpload: async (
-    objectKey: string,
-  ): Promise<AppearanceSettings> => {
-    const result = await apiClient.put<AppearanceSettings>(
-      "/settings/appearance/background-image/confirm",
-      { objectKey },
-    );
-    return result.data;
-  },
-
-  getBackgroundImageUrl: async (): Promise<string> => {
-    const result = await apiClient.get<{ url: string }>(
-      "/settings/appearance/background-image-url",
-    );
-    return result.data.url;
-  },
-
-  deleteBackgroundImage: async (): Promise<void> => {
-    await apiClient.delete("/settings/appearance/background-image");
-  },
-
   uploadToS3: async (uploadUrl: string, file: File): Promise<void> => {
     await fetch(uploadUrl, {
-      method: "PUT",
       body: file,
       headers: { "Content-Type": file.type },
+      method: "PUT",
     });
   },
 };
