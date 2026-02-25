@@ -40,6 +40,8 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<ContentObject> ContentObjects { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<Upload> Uploads { get; set; }
+    public DbSet<UserSettings> UserSettings { get; set; }
+    public DbSet<AdminSettings> AdminSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -73,7 +75,9 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         modelBuilder.ApplyConfiguration(new ContentObjectConfiguration());
         modelBuilder.ApplyConfiguration(new AuditLogConfiguration());
         modelBuilder.ApplyConfiguration(new UploadConfiguration());
-    }
+        modelBuilder.ApplyConfiguration(new UserSettingsConfiguration());
+        modelBuilder.ApplyConfiguration(new AdminSettingsConfiguration());
+    }   
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
