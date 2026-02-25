@@ -46,6 +46,11 @@ public class S3Config
     public string TempBucket { get; set; } = "alexandria-temp";
 
     /// <summary>
+    /// Bucket for storing background images, cors is enabled
+    /// </summary>
+    public string ImagesBucket { get; set; } = default!; // user images — CORS enabled
+
+    /// <summary>
     /// Provider-specific settings
     /// </summary>
     public Dictionary<string, ProviderSettings> ProviderSettings { get; set; } = new();

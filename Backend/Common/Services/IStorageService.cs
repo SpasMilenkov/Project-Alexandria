@@ -55,4 +55,7 @@ public interface IStorageService
     );
 
     Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default);
+    Task<string> GenerateBackgroundImageGetUrl(string objectKey, TimeSpan expiry);
+    Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default);
+    Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry);
 }
