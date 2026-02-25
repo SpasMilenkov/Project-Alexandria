@@ -38,3 +38,6 @@ components.d.ts
 
 # SonarQube
 .scannerwork
+
+# Service worker Dev
+dev-dist/

@@ -1,3 +1,4 @@
+import type { AppearanceSettings, BehaviorSettings } from "@/api/settings";
 import { defineStore, acceptHMRUpdate } from "pinia";
 import { computed, ref } from "vue";
 
@@ -156,14 +157,14 @@ export const TOAST_LEVELS = [
 export interface UserSettings {
   accentColor: string;
   backgroundColor: string;
-  backgroundImage: string | null;
+  backgroundImageKey: string | null;
+  backgroundImageUpdatedAt: string | null;
   backgroundImageOpacity: number;
   gridIconSize: number;
   listIconSize: number;
   skipDeleteConfirmation: boolean;
   toastLevel: ToastLevel;
 }
-
 const DEFAULT_ACCENT_COLOR = "amber";
 const DEFAULT_BACKGROUND = "parchment";
 const DEFAULT_BACKGROUND_IMAGE = null;
@@ -177,7 +178,6 @@ const DEFAULT_UI_STATE = {
   isBehaviorSectionOpen: true,
 };
 
-/** Maximum allowed file size for a background image (2 MB in bytes) */
 export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024;
 
 export const useSettingsStore = defineStore(
@@ -185,7 +185,9 @@ export const useSettingsStore = defineStore(
   () => {
     const accentColor = ref<string>(DEFAULT_ACCENT_COLOR);
     const backgroundColor = ref<string>(DEFAULT_BACKGROUND);
-    const backgroundImage = ref<string | null>(DEFAULT_BACKGROUND_IMAGE);
+    const backgroundImageKey = ref<string | null>(null);
+    const backgroundImageUpdatedAt = ref<string | null>(null);
+    const backgroundImage = ref<string | null>(null); // runtime only — SW URL
     const backgroundImageOpacity = ref<number>(
       DEFAULT_BACKGROUND_IMAGE_OPACITY,
     );
@@ -203,7 +205,8 @@ export const useSettingsStore = defineStore(
       (): UserSettings => ({
         accentColor: accentColor.value,
         backgroundColor: backgroundColor.value,
-        backgroundImage: backgroundImage.value,
+        backgroundImageKey: backgroundImageKey.value,
+        backgroundImageUpdatedAt: backgroundImageUpdatedAt.value,
         backgroundImageOpacity: backgroundImageOpacity.value,
         gridIconSize: gridIconSize.value,
         listIconSize: listIconSize.value,
@@ -235,6 +238,8 @@ export const useSettingsStore = defineStore(
     };
     const clearBackgroundImage = () => {
       backgroundImage.value = null;
+      backgroundImageKey.value = null;
+      backgroundImageUpdatedAt.value = null;
     };
     const setGridIconSize = (v: number) => {
       gridIconSize.value = Math.max(12, Math.min(64, v));
@@ -255,13 +260,33 @@ export const useSettingsStore = defineStore(
       isBehaviorSectionOpen.value = v;
     };
 
+    const syncAppearanceFromServer = (appearance: AppearanceSettings) => {
+      setAccentColor(appearance.accentColor);
+      setBackgroundColor(appearance.backgroundColor);
+      backgroundImageKey.value = appearance.backgroundImageKey;
+      backgroundImageUpdatedAt.value = appearance.backgroundImageUpdatedAt;
+      setBackgroundImageOpacity(appearance.backgroundImageOpacity);
+      setGridIconSize(appearance.gridIconSize);
+      setListIconSize(appearance.listIconSize);
+    };
+
+    const syncBehaviorFromServer = (behavior: BehaviorSettings) => {
+      setSkipDeleteConfirmation(behavior.skipDeleteConfirmation);
+      setToastLevel(behavior.toastLevel);
+    };
+
+    const syncFromServer = (
+      appearance: AppearanceSettings,
+      behavior: BehaviorSettings,
+    ) => {
+      syncAppearanceFromServer(appearance);
+      syncBehaviorFromServer(behavior);
+    };
     const updateSettings = (settings: Partial<UserSettings>) => {
       if (settings.accentColor !== undefined)
         setAccentColor(settings.accentColor);
       if (settings.backgroundColor !== undefined)
         setBackgroundColor(settings.backgroundColor);
-      if (settings.backgroundImage !== undefined)
-        setBackgroundImage(settings.backgroundImage);
       if (settings.backgroundImageOpacity !== undefined)
         setBackgroundImageOpacity(settings.backgroundImageOpacity);
       if (settings.gridIconSize !== undefined)
@@ -328,6 +353,11 @@ export const useSettingsStore = defineStore(
       setListIconSize,
       setSkipDeleteConfirmation,
       setToastLevel,
+      syncFromServer,
+      syncBehaviorFromServer,
+      syncAppearanceFromServer,
+      backgroundImageKey,
+      backgroundImageUpdatedAt,
       updateSettings,
       resetSettings,
       resetAppearanceSettings,
@@ -337,7 +367,23 @@ export const useSettingsStore = defineStore(
       resetUIState,
     };
   },
-  { persist: true },
+  {
+    persist: {
+      pick: [
+        "accentColor",
+        "backgroundColor",
+        "backgroundImageKey",
+        "backgroundImageUpdatedAt",
+        "backgroundImageOpacity",
+        "gridIconSize",
+        "listIconSize",
+        "skipDeleteConfirmation",
+        "toastLevel",
+        "isAppearanceSectionOpen",
+        "isBehaviorSectionOpen",
+      ],
+    },
+  },
 );
 
 if (import.meta.hot) {

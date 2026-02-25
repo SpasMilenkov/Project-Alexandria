@@ -6,7 +6,7 @@ set -e
 # Example: ./run-dev.sh --s3-provider Garage
 
 SESSION_NAME="dev-session"
-S3_PROVIDER="MinIO"
+S3_PROVIDER="Garage"
 
 
 while [[ $# -gt 0 ]]; do
@@ -53,7 +53,7 @@ tmux send-keys -t "$SESSION_NAME:Frontend" \
   "cd Frontend && pnpm dev" C-m
 
 tmux new-window -t "$SESSION_NAME" -n "API" -c "$PWD"
-sleep 5.0
+sleep 0.2
 tmux send-keys -t "$SESSION_NAME:API" \
   "cd Backend && dotnet run --project API --launch-profile \"$api_profile\"" C-m
 

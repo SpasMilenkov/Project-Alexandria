@@ -53,6 +53,7 @@ public class S3Service(
         }
     }
 
+
     private async Task<(FileEntity file, FileVersion fileVersion)> CreateFileWithVersionAsync(string fileName,
         Guid? directoryId,
         string contentType,
@@ -765,7 +766,7 @@ public class S3Service(
             await unitOfWork.Uploads.AddAsync(upload, ct);
             await unitOfWork.CommitAsync(ct);
 
-            return (upload.Id, await GenerateUploadUrl(tempObjectKey, contentType, TimeSpan.FromSeconds(60)));
+            return (upload.Id, await GenerateUploadUrl($"content/{tempObjectKey}", contentType, TimeSpan.FromSeconds(60)));
         }
         catch (Exception ex)
         {
@@ -1029,13 +1030,45 @@ public class S3Service(
         var request = new GetPreSignedUrlRequest
         {
             BucketName = config.Value.TempBucket,
-            Key = $"content/{objectKey}",
+            Key = $"{objectKey}",
             Verb = HttpVerb.PUT,
             Expires = DateTime.UtcNow.Add(expiry),
             Protocol = Protocol.HTTP,
             ContentType = contentType,
         };
 
+        return await s3.GetPreSignedURLAsync(request);
+    }
+
+    public async Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry)
+    {
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = config.Value.ImagesBucket,
+            Key = $"{objectKey}",
+            Verb = HttpVerb.PUT,
+            Expires = DateTime.UtcNow.Add(expiry),
+            Protocol = Protocol.HTTP,
+        };
+
+        return await s3.GetPreSignedURLAsync(request);
+    }
+
+    public async Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default)
+    {
+        await s3.DeleteObjectAsync(config.Value.ImagesBucket, $"{objectKey}", ct);
+    }
+
+    public async Task<string> GenerateBackgroundImageGetUrl(string objectKey, TimeSpan expiry)
+    {
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = config.Value.ImagesBucket,
+            Key = $"{objectKey}",
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.Add(expiry),
+            Protocol = Protocol.HTTP,
+        };
         return await s3.GetPreSignedURLAsync(request);
     }
 

@@ -160,6 +160,9 @@ import { useAuthStore } from "@/stores/auth";
 import router from "@/router";
 import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
 import MobileNavItem from "@/components/dashboard/MobileNavItem.vue";
+import { useSettingsSync } from "@/composables/useSettingsSync";
+
+useSettingsSync();
 
 const authStore = useAuthStore();
 const route = useRoute();

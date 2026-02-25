@@ -40,6 +40,8 @@ public static class ServiceExtensions
         services.AddScoped<IUploadRepository, UploadRepository>();
         services.AddScoped<IFileService, FileService>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
+        services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
         
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

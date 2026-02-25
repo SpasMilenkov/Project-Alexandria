@@ -32,7 +32,7 @@ fi
 RUSTFS_ACCESS_KEY="${RUSTFS_ACCESS_KEY}"
 RUSTFS_SECRET_KEY="${RUSTFS_SECRET_KEY}"
 
-BUCKETS=("alexandria-files" "alexandria-previews" "alexandria-temp")
+BUCKETS=("alexandria-files" "alexandria-previews" "alexandria-temp" "alexandria-images")
 PUBLIC_BUCKETS=("alexandria-previews")  # Only previews are public
 
 # Colors for output

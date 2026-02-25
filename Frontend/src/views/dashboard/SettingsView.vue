@@ -12,7 +12,7 @@ const handleResetAll = () => {
 
 <template>
   <div class="w-full h-full overflow-y-auto">
-    <div class=" mx-auto p-6 space-y-6">
+    <div class="mx-auto p-6 space-y-6">
       <!-- Header -->
       <div
         class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
