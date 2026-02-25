@@ -27,7 +27,6 @@ export function useBackgroundImageSync() {
     key: string | null,
     updatedAt: string | null,
   ): Promise<void> {
-    // No image configured — ensure runtime ref is clear
     if (!key || !updatedAt) {
       store.backgroundImage = null;
       return;

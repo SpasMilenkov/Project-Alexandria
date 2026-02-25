@@ -5,41 +5,43 @@ import {
   MAX_BACKGROUND_IMAGE_BYTES,
 } from "@/stores/settings";
 import { useTheme } from "@/composables/useTheme";
+import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
+import { useSettingsSync } from "@/composables/useSettingsSync";
 import { Icon } from "@iconify/vue";
+import { useDebounceFn } from "@vueuse/core";
 
 const settingsStore = useSettingsStore();
-
-// isDark comes from useTheme's useDark() — same singleton instance as the
-// composable that drives the DOM, so the preview and the page are always in sync.
 const { isDark } = useTheme();
+const { uploadBackgroundImage, deleteBackgroundImage } =
+  useBackgroundImageSync();
+const { saveAppearance } = useSettingsSync();
 
 const viewMode = ref<"grid" | "list">("grid");
+const imageError = ref<string | null>(null);
+const isUploading = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
+//  Computed store bindings
 const selectedColor = computed({
   get: () => settingsStore.accentColor,
   set: (v: string) => settingsStore.setAccentColor(v),
 });
-
 const selectedBackground = computed({
   get: () => settingsStore.backgroundColor,
   set: (v: string) => settingsStore.setBackgroundColor(v),
 });
-
 const imageOpacity = computed({
   get: () => settingsStore.backgroundImageOpacity,
   set: (v: number) => settingsStore.setBackgroundImageOpacity(v),
 });
-
 const gridIconSize = computed({
   get: () => settingsStore.gridIconSize,
   set: (v: number) => settingsStore.setGridIconSize(v),
 });
-
 const listIconSize = computed({
   get: () => settingsStore.listIconSize,
   set: (v: number) => settingsStore.setListIconSize(v),
 });
-
 const isOpen = computed({
   get: () => settingsStore.isAppearanceSectionOpen,
   set: (v: boolean) => settingsStore.setAppearanceSectionOpen(v),
@@ -50,7 +52,30 @@ const colorOptions = settingsStore.AVAILABLE_COLORS.map((color) => ({
   value: color.name,
 }));
 
-// Filter presets to only show mode-appropriate options
+const persistAppearance = useDebounceFn(async () => {
+  await saveAppearance({
+    accentColor: settingsStore.accentColor,
+    backgroundColor: settingsStore.backgroundColor,
+    backgroundImageKey: settingsStore.backgroundImageKey,
+    backgroundImageUpdatedAt: settingsStore.backgroundImageUpdatedAt,
+    backgroundImageOpacity: settingsStore.backgroundImageOpacity,
+    gridIconSize: settingsStore.gridIconSize,
+    listIconSize: settingsStore.listIconSize,
+  });
+}, 600);
+
+// Watch every field that should trigger a save
+watch(
+  () => [
+    settingsStore.accentColor,
+    settingsStore.backgroundColor,
+    settingsStore.backgroundImageOpacity,
+    settingsStore.gridIconSize,
+    settingsStore.listIconSize,
+  ],
+  persistAppearance,
+);
+
 const visibleBackgrounds = computed(() =>
   settingsStore.AVAILABLE_BACKGROUNDS.filter((bg) => {
     if (bg.mode === "both") return true;
@@ -58,9 +83,6 @@ const visibleBackgrounds = computed(() =>
   }),
 );
 
-// Nudge to "system" when the user switches modes and the current preset
-// no longer belongs to that mode. The theme itself re-applies automatically
-// via watchEffect in useTheme — no manual applyTheme() call needed here.
 watch(isDark, (dark) => {
   const current = settingsStore.AVAILABLE_BACKGROUNDS.find(
     (b) => b.name === settingsStore.backgroundColor,
@@ -77,13 +99,10 @@ const swatchFor = (bg: (typeof settingsStore.AVAILABLE_BACKGROUNDS)[number]) =>
 
 const modeLabel = computed(() => (isDark.value ? "dark" : "light"));
 
-// Image upload
-const imageError = ref<string | null>(null);
-const fileInputRef = ref<HTMLInputElement | null>(null);
-
+// Image upload — S3 flow 
 const triggerFileInput = () => fileInputRef.value?.click();
 
-const handleFileChange = (event: Event) => {
+const handleFileChange = async (event: Event) => {
   imageError.value = null;
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
@@ -97,33 +116,32 @@ const handleFileChange = (event: Event) => {
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const result = e.target?.result;
-    if (typeof result === "string") settingsStore.setBackgroundImage(result);
-  };
-  reader.readAsDataURL(file);
-
-  // Reset input so re-selecting the same file triggers onChange again
-  if (fileInputRef.value) fileInputRef.value.value = "";
+  try {
+    isUploading.value = true;
+    // request presigned URL → upload to S3 → confirm → seed SW cache
+    await uploadBackgroundImage(file);
+  } catch (err) {
+    imageError.value = "Upload failed. Please try again.";
+    console.error(err);
+  } finally {
+    isUploading.value = false;
+    if (fileInputRef.value) fileInputRef.value.value = "";
+  }
 };
 
-const clearImage = () => {
+const clearImage = async () => {
   imageError.value = null;
-  settingsStore.clearBackgroundImage();
+  await deleteBackgroundImage();
+  // persist the cleared key to server
+  await persistAppearance();
 };
 
-// Derive a short filename from the stored data URL for display
+// Derive a display name from the S3 key e.g. "background_images/user-id" → "user-id"
 const imageName = computed(() => {
-  if (!settingsStore.backgroundImage) return null;
-  const mime = settingsStore.backgroundImage.split(";")[0].replace("data:", "");
-  const ext = mime.split("/")[1] ?? "image";
-  return `custom-background.${ext}`;
+  if (!settingsStore.backgroundImageKey) return null;
+  return settingsStore.backgroundImageKey.split("/").pop() ?? "background";
 });
 
-
-
-// Preview data
 const exampleFile = {
   fileId: "file-123e4567-e89b-12d3-a456-426614174000",
   fileName: "project-specification.pdf",
@@ -374,6 +392,8 @@ const exampleDir = {
                           ? 'i-lucide-image-up'
                           : 'i-lucide-upload'
                       "
+                      :loading="isUploading"
+                      :disabled="isUploading"
                       color="neutral"
                       variant="outline"
                       size="sm"

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { useSettingsStore, TOAST_LEVELS } from "@/stores/settings";
+import { useSettingsSync } from "@/composables/useSettingsSync";
 import type { ToastLevel } from "@/stores/settings";
 import { Icon } from "@iconify/vue";
+import { useDebounceFn } from "@vueuse/core";
 
 const settingsStore = useSettingsStore();
+const { saveBehavior } = useSettingsSync();
 
 const skipDeleteConfirmation = computed({
   get: () => settingsStore.skipDeleteConfirmation,
@@ -21,8 +24,21 @@ const isOpen = computed({
   set: (value: boolean) => settingsStore.setBehaviorSectionOpen(value),
 });
 
-const handleResetBehavior = () => {
+const persistBehavior = useDebounceFn(async () => {
+  await saveBehavior({
+    skipDeleteConfirmation: settingsStore.skipDeleteConfirmation,
+    toastLevel: settingsStore.toastLevel,
+  });
+}, 600);
+
+watch(
+  () => [settingsStore.skipDeleteConfirmation, settingsStore.toastLevel],
+  persistBehavior,
+);
+
+const handleResetBehavior = async () => {
   settingsStore.resetBehaviorSettings();
+  // reset fires the watcher which debounces the save — no manual call needed
 };
 </script>
 
