@@ -1,7 +1,6 @@
 /// <reference lib="webworker" />
 
-// No `declare const self` — the reference directive above handles it
-// and the separate tsconfig ensures no DOM lib conflict
+declare const self: ServiceWorkerGlobalScope;
 
 const CACHE_NAME = "bg-image-v1";
 const INTERCEPT_PATH = "/sw/background-image";
