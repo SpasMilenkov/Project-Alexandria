@@ -15,6 +15,9 @@ public interface IUnitOfWork
     IAuditLogRepository AuditLogs { get; }
     IUploadRepository Uploads { get; }
     IUserRepository Users { get; }
+    IUserSettingsRepository UserSettings { get; }
+    IAdminSettingsRepository AdminSettings { get; }
+
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);
     public Task RollbackAsync(CancellationToken cancellationToken = default);
