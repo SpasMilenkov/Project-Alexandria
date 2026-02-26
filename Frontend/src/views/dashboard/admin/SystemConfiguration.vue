@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import {
-  resetUploadPolicy,
-  updateUploadPolicy,
-} from "@/mutations/adminSettings";
+import { resetUploadPolicy, updateUploadPolicy } from "@/mutations/adminSettings";
 import { Icon } from "@iconify/vue";
 import { uploadPolicy } from "@/queries/adminSettings";
 import { useDebounceFn } from "@vueuse/core";
@@ -52,9 +49,7 @@ watch(isSaving, (saving) => {
       <div class="mb-8">
         <div class="flex items-center gap-3 mb-1">
           <Icon icon="mdi:shield-crown-outline" class="w-6 h-6 text-primary" />
-          <h1
-            class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50"
-          >
+          <h1 class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50">
             Admin Dashboard
           </h1>
         </div>
@@ -74,15 +69,13 @@ watch(isSaving, (saving) => {
           <Icon icon="mdi:clock-outline" class="w-4 h-4 text-primary" />
         </template>
         <template #title>
-          <span class="font-medium text-gray-700 dark:text-gray-300"
-            >More settings on the way</span
-          >
+          <span class="font-medium text-gray-700 dark:text-gray-300">More settings on the way</span>
         </template>
         <template #description>
           <span class="text-gray-500 dark:text-gray-400">
-            Global admin settings are still being built out. Additional controls
-            for session management, storage quotas, authentication policies, and
-            audit logging will appear here in upcoming releases.
+            Global admin settings are still being built out. Additional controls for session
+            management, storage quotas, authentication policies, and audit logging will appear here
+            in upcoming releases.
           </span>
         </template>
       </UAlert>
@@ -98,15 +91,11 @@ watch(isSaving, (saving) => {
             class="flex items-center justify-between px-6 py-5 border-b border-gray-200/50 dark:border-gray-700/50"
           >
             <div class="flex items-center gap-3">
-              <div
-                class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"
-              >
+              <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Icon icon="mdi:upload-outline" class="w-4 h-4 text-primary" />
               </div>
               <div>
-                <h2
-                  class="text-sm font-semibold text-gray-800 dark:text-gray-200"
-                >
+                <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">
                   Upload Policy
                 </h2>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -148,10 +137,7 @@ watch(isSaving, (saving) => {
 
           <!-- Loading state -->
           <div v-if="isLoading" class="px-6 py-10 flex justify-center">
-            <Icon
-              icon="mdi:loading"
-              class="w-6 h-6 text-primary animate-spin"
-            />
+            <Icon icon="mdi:loading" class="w-6 h-6 text-primary animate-spin" />
           </div>
 
           <!-- Error state -->
@@ -164,10 +150,7 @@ watch(isSaving, (saving) => {
           </div>
 
           <!-- Settings -->
-          <div
-            v-else
-            class="divide-y divide-gray-200/50 dark:divide-gray-700/50"
-          >
+          <div v-else class="divide-y divide-gray-200/50 dark:divide-gray-700/50">
             <!-- Setting: Skip client validation -->
             <div class="px-6 py-5 flex items-start justify-between gap-6">
               <UFormField
@@ -175,7 +158,7 @@ watch(isSaving, (saving) => {
                 description="Bypass client-side file validation checks when the upload originates from a trusted source. Use with caution — only enable if trusted sources are strictly enforced server-side."
                 class="flex-1"
               />
-              <USwitch  
+              <USwitch
                 v-model="localPolicy.skipClientValidationForTrustedUploads"
                 color="primary"
                 size="md"
@@ -191,7 +174,7 @@ watch(isSaving, (saving) => {
                 description="If an identical file (by content hash) already exists in storage, skip the upload and return the existing reference. Reduces redundant storage and speeds up repeat uploads."
                 class="flex-1"
               />
-              <USwitch  
+              <USwitch
                 v-model="localPolicy.skipUploadOnHashMatch"
                 color="primary"
                 size="md"
@@ -222,9 +205,7 @@ watch(isSaving, (saving) => {
               <p class="text-sm font-medium text-gray-500 dark:text-gray-500">
                 {{ section }}
               </p>
-              <p class="text-xs text-gray-400 dark:text-gray-600 mt-0.5">
-                Coming soon
-              </p>
+              <p class="text-xs text-gray-400 dark:text-gray-600 mt-0.5">Coming soon</p>
             </div>
           </div>
         </div>

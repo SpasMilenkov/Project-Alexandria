@@ -23,7 +23,7 @@
         <span v-if="modelValue">
           {{ searchResults.find((i) => i.id === modelValue)?.name }}
         </span>
-        <span v-else class="text-muted"> Search  </span>
+        <span v-else class="text-muted"> Search </span>
       </template>
       <template #trailing>
         <UKbd value="/" />
@@ -34,14 +34,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type Ref } from "vue";
-import type {
-  DirectorySummaryDto,
-  SearchDirectoryRequest,
-} from "@/api/directory";
+import { type Ref, ref } from "vue";
+import type { DirectorySummaryDto, SearchDirectoryRequest } from "@/api/directory";
 import { useDirectoryStore } from "@/stores/directory";
 import { useDebounceFn } from "@vueuse/core";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
+import { logger } from "@/utils/logger";
 
 const overlay = useOverlay();
 const selectMenu = ref(null);
@@ -59,8 +57,8 @@ defineShortcuts({
 });
 
 const emit = defineEmits<{
-  navigate: [directoryId: string]
-}>()
+  navigate: [directoryId: string];
+}>();
 const directoryStore = useDirectoryStore();
 const searchTerm = ref("");
 const selectedItem: Ref<string | null> = ref(null);
@@ -76,7 +74,7 @@ const search = useDebounceFn(async () => {
   };
   const response = await directoryStore.searchDirectory(query);
   if (response.success && response.data) {
-    console.log(response.data);
+    logger.log(response.data);
 
     items.value = response.data.items;
     searchResults.value = response.data.items;
@@ -85,8 +83,8 @@ const search = useDebounceFn(async () => {
 
 const handleSelect = (id: string | null) => {
   if (id) {
-    emit("navigate", id)
-    selectedItem.value = null
+    emit("navigate", id);
+    selectedItem.value = null;
   }
 };
 </script>

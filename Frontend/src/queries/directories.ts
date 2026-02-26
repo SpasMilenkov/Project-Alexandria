@@ -1,28 +1,44 @@
 import { defineQueryOptions } from "@pinia/colada";
-import { directoryApi, type SearchDirectoryRequest } from "@/api/directory";
+
 import type { PaginationParams } from "@/types/pagination-params";
 
+import { type SearchDirectoryRequest, directoryApi } from "@/api/directory";
+
 const normalizeSearchKey = (req: SearchDirectoryRequest) => ({
-  directoryId: req.directoryId ?? null,
-  parentDirectoryId: req.parentDirectoryId ?? null,
-  nameContains: req.nameContains ?? null,
-  ownerId: req.ownerId ?? null,
-  isShared: req.isShared ?? null,
-  isDeleted: req.isDeleted ?? null,
-  isStarred: req.isStarred ?? null,
-  hasFiles: req.hasFiles ?? null,
-  hasSubdirectories: req.hasSubdirectories ?? null,
   deletedAfter: req.deletedAfter ?? null,
   deletedBefore: req.deletedBefore ?? null,
+  directoryId: req.directoryId ?? null,
+  hasFiles: req.hasFiles ?? null,
+  hasSubdirectories: req.hasSubdirectories ?? null,
+  isDeleted: req.isDeleted ?? null,
+  isShared: req.isShared ?? null,
+  isStarred: req.isStarred ?? null,
+  nameContains: req.nameContains ?? null,
+  ownerId: req.ownerId ?? null,
   page: req.page ?? 1,
   pageSize: req.pageSize ?? 20,
+  parentDirectoryId: req.parentDirectoryId ?? null,
   sortBy: req.sortBy ?? "createdAt",
   sortDirection: req.sortDirection ?? "desc",
 });
 
 export const DIRECTORY_QUERY_KEYS = {
-  root: ["directories"] as const,
   byId: (id: string) => [...DIRECTORY_QUERY_KEYS.root, "by-id", id] as const,
+  directoryPath: (id: string) => [...DIRECTORY_QUERY_KEYS.root, "path", id],
+  root: ["directories"] as const,
+  rootDirectories: (params: PaginationParams) => [
+    ...DIRECTORY_QUERY_KEYS.root,
+    "root-sub-directories",
+    params.page ?? 1,
+    params.pageSize ?? 20,
+    params.SortBy ?? "name",
+    params.sortDirection ?? "asc",
+  ],
+  searchDirectory: (req: SearchDirectoryRequest) => [
+    ...DIRECTORY_QUERY_KEYS.root,
+    "search",
+    normalizeSearchKey(req),
+  ],
   subDirectories: ({ id, params }: { id: string; params: PaginationParams }) =>
     [
       ...DIRECTORY_QUERY_KEYS.root,
@@ -33,20 +49,6 @@ export const DIRECTORY_QUERY_KEYS = {
       params.SortBy ?? "name",
       params.sortDirection ?? "asc",
     ] as const,
-  rootDirectories: (params: PaginationParams) => [
-    ...DIRECTORY_QUERY_KEYS.root,
-    "root-sub-directories",
-    params.page ?? 1,
-    params.pageSize ?? 20,
-    params.SortBy ?? "name",
-    params.sortDirection ?? "asc",
-  ],
-  directoryPath: (id: string) => [...DIRECTORY_QUERY_KEYS.root, "path", id],
-  searchDirectory: (req: SearchDirectoryRequest) => [
-    ...DIRECTORY_QUERY_KEYS.root,
-    "search",
-    normalizeSearchKey(req),
-  ],
 };
 
 export const directoryById = defineQueryOptions(({ id }: { id: string }) => ({
@@ -57,29 +59,25 @@ export const directoryById = defineQueryOptions(({ id }: { id: string }) => ({
 export const subDirectories = defineQueryOptions(
   ({ id, params }: { id: string; params: PaginationParams }) => ({
     key: DIRECTORY_QUERY_KEYS.subDirectories({ id, params }),
+    placeholderData: (prev) => prev,
     query: () => directoryApi.getSubDirectories(id, params),
-    placeholderData: (prev) => prev,
   }),
 );
 
-export const rootDirectories = defineQueryOptions(
-  (params: PaginationParams) => ({
-    key: DIRECTORY_QUERY_KEYS.rootDirectories(params),
-    query: () => directoryApi.getRooSubDirectories(params),
-    placeholderData: (prev) => prev,
-  }),
-);
-
-export const directoryPath = defineQueryOptions((id: string) => ({
-  key: DIRECTORY_QUERY_KEYS.directoryPath(id),
-  query: () => directoryApi.getDirectoryPath(id),
+export const rootDirectories = defineQueryOptions((params: PaginationParams) => ({
+  key: DIRECTORY_QUERY_KEYS.rootDirectories(params),
   placeholderData: (prev) => prev,
-  enabled: !!id,
+  query: () => directoryApi.getRooSubDirectories(params),
 }));
 
-export const searchDirectory = defineQueryOptions(
-  (req: SearchDirectoryRequest) => ({
-    key: DIRECTORY_QUERY_KEYS.searchDirectory(req),
-    query: () => directoryApi.searchDirectory(req),
-  }),
-);
+export const directoryPath = defineQueryOptions((id: string) => ({
+  enabled: Boolean(id),
+  key: DIRECTORY_QUERY_KEYS.directoryPath(id),
+  placeholderData: (prev) => prev,
+  query: () => directoryApi.getDirectoryPath(id),
+}));
+
+export const searchDirectory = defineQueryOptions((req: SearchDirectoryRequest) => ({
+  key: DIRECTORY_QUERY_KEYS.searchDirectory(req),
+  query: () => directoryApi.searchDirectory(req),
+}));

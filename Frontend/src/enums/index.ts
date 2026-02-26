@@ -1,5 +1,5 @@
-import { SortBy } from "./SortBy";
-import { SortDirection } from "./SortDirection";
-import { UserRole } from "./UserRole";
+import type { SortBy } from "./SortBy";
+import type { SortDirection } from "./SortDirection";
+import type { UserRole } from "./UserRole";
 
 export type { SortBy, SortDirection, UserRole };

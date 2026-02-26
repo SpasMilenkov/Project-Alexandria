@@ -19,9 +19,7 @@
             :disabled="selectedTags.size === 0"
           >
             <Icon icon="mdi:delete" class="w-4 h-4 md:mr-1" />
-            <span class="hidden sm:inline"
-              >Delete Selected ({{ selectedTags.size }})</span
-            >
+            <span class="hidden sm:inline">Delete Selected ({{ selectedTags.size }})</span>
           </UButton>
         </div>
 
@@ -46,11 +44,7 @@
             :aria-label="sortDirection === 'asc' ? 'Ascending' : 'Descending'"
           >
             <Icon
-              :icon="
-                sortDirection === 'asc'
-                  ? 'mdi:sort-ascending'
-                  : 'mdi:sort-descending'
-              "
+              :icon="sortDirection === 'asc' ? 'mdi:sort-ascending' : 'mdi:sort-descending'"
               class="w-4 h-4"
             />
           </UButton>
@@ -90,18 +84,12 @@
     <div class="px-4 py-2 border-b border-b-primary">
       <div class="flex items-center gap-4 text-sm opacity-70">
         <span>{{ tagsData?.totalCount || 0 }} total tags</span>
-        <span v-if="selectedTags.size > 0"
-          >{{ selectedTags.size }} selected</span
-        >
+        <span v-if="selectedTags.size > 0">{{ selectedTags.size }} selected</span>
       </div>
     </div>
 
     <!-- Content Area -->
-    <div
-      ref="containerRef"
-      class="flex-1 overflow-auto relative"
-      @click="handleContainerClick"
-    >
+    <div ref="containerRef" class="flex-1 overflow-auto relative" @click="handleContainerClick">
       <!-- Loading State -->
       <div v-if="isLoading" class="p-4">
         <div v-if="viewMode === 'grid'" class="grid gap-3" :class="gridColumns">
@@ -120,11 +108,7 @@
         <Icon icon="mdi:tag-off" class="w-16 h-16 opacity-40 mb-4" />
         <h3 class="text-lg font-semibold mb-2">No tags found</h3>
         <p class="opacity-70 mb-4">
-          {{
-            searchQuery
-              ? "Try a different search term"
-              : "Create your first tag to get started"
-          }}
+          {{ searchQuery ? "Try a different search term" : "Create your first tag to get started" }}
         </p>
         <UButton v-if="!searchQuery" color="primary" @click="handleCreateTag">
           <Icon icon="mdi:tag-plus" class="w-4 h-4 mr-2" />
@@ -174,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { searchTag } from "@/queries/tags";
@@ -218,19 +202,15 @@ const pageSize = ref(25);
 
 // Search filters
 const searchFilters = computed<SearchTagsSchema>(() => ({
+  SortBy: selectedSortBy.value.value,
+  name: searchQuery.value || undefined,
   page: currentPage.value,
   pageSize: pageSize.value,
-  SortBy: selectedSortBy.value.value,
   sortDirection: sortDirection.value,
-  name: searchQuery.value || undefined,
 }));
 
 // Query
-const {
-  data: tagsData,
-  isLoading,
-  refetch,
-} = useQuery(searchTag(searchFilters.value));
+const { data: tagsData, isLoading, refetch } = useQuery(searchTag(searchFilters.value));
 
 const tagsList = computed(() => tagsData.value?.items || []);
 
@@ -238,9 +218,9 @@ const tagsList = computed(() => tagsData.value?.items || []);
 const { mutateAsync: deleteTagMutate } = deleteTag();
 
 // Grid columns
-const gridColumns = computed(() => {
-  return "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
-});
+const gridColumns = computed(
+  () => "grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4",
+);
 
 // Handlers
 const handleCreateTag = async () => {
@@ -249,9 +229,9 @@ const handleCreateTag = async () => {
 
   if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({
-      title: "Tag created successfully",
       color: "success",
       id: "tag-created",
+      title: "Tag created successfully",
     });
     refetch();
   }
@@ -263,9 +243,9 @@ const handleEditTag = async (tag: TagDto) => {
 
   if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({
-      title: "Tag updated successfully",
       color: "success",
       id: "tag-updated",
+      title: "Tag updated successfully",
     });
     refetch();
   }
@@ -274,46 +254,50 @@ const handleEditTag = async (tag: TagDto) => {
 const handleDeleteTag = async (tagId: string) => {
   try {
     await deleteTagMutate(tagId);
-    if (settingsStore.toastLevel === "all")
+    if (settingsStore.toastLevel === "all") {
       toast.add({
-        title: "Tag deleted successfully",
         color: "success",
         id: "tag-deleted",
+        title: "Tag deleted successfully",
       });
+    }
     selectedTags.value.delete(tagId);
     refetch();
   } catch {
-    if (settingsStore.toastLevel !== "silent")
+    if (settingsStore.toastLevel !== "silent") {
       toast.add({
-        title: "Failed to delete tag",
         color: "error",
         id: "tag-delete-error",
+        title: "Failed to delete tag",
       });
+    }
   }
 };
 
 const handleBulkDelete = async () => {
-  if (selectedTags.value.size === 0) return;
+  if (selectedTags.value.size === 0) {
+    return;
+  }
 
   try {
-    await Promise.all(
-      Array.from(selectedTags.value).map((tagId) => deleteTagMutate(tagId)),
-    );
-    if (settingsStore.toastLevel === "all")
+    await Promise.all(Array.from(selectedTags.value).map((tagId) => deleteTagMutate(tagId)));
+    if (settingsStore.toastLevel === "all") {
       toast.add({
-        title: `Deleted ${selectedTags.value.size} tags`,
         color: "success",
         id: "bulk-delete",
+        title: `Deleted ${selectedTags.value.size} tags`,
       });
+    }
     selectedTags.value.clear();
     refetch();
   } catch {
-    if (settingsStore.toastLevel !== "silent")
+    if (settingsStore.toastLevel !== "silent") {
       toast.add({
-        title: "Failed to delete some tags",
         color: "error",
         id: "bulk-delete-error",
+        title: "Failed to delete some tags",
       });
+    }
   }
 };
 
@@ -350,10 +334,11 @@ const selectRange = (startId: string, endId: string) => {
   const startIndex = tagsList.value.findIndex((t) => t.id === startId);
   const endIndex = tagsList.value.findIndex((t) => t.id === endId);
 
-  if (startIndex === -1 || endIndex === -1) return;
+  if (startIndex === -1 || endIndex === -1) {
+    return;
+  }
 
-  const [from, to] =
-    startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
+  const [from, to] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
 
   for (let i = from; i <= to; i++) {
     selectedTags.value.add(tagsList.value[i].id);
@@ -391,17 +376,17 @@ const loadMore = () => {
 
 // Keyboard shortcuts
 defineShortcuts({
-  meta_a: (event) => {
-    event.preventDefault();
-    tagsList.value.forEach((tag) => selectedTags.value.add(tag.id));
-  },
-  escape: () => {
-    clearSelection();
-  },
   Delete: () => {
     if (selectedTags.value.size > 0) {
       handleBulkDelete();
     }
+  },
+  escape: () => {
+    clearSelection();
+  },
+  meta_a: (event) => {
+    event.preventDefault();
+    tagsList.value.forEach((tag) => selectedTags.value.add(tag.id));
   },
 });
 

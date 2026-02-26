@@ -41,9 +41,7 @@ const mapBehaviorFromServer = (raw: any): BehaviorSettings => ({
 });
 
 export const settingsApi = {
-  confirmBackgroundImageUpload: async (
-    objectKey: string,
-  ): Promise<AppearanceSettings> => {
+  confirmBackgroundImageUpload: async (objectKey: string): Promise<AppearanceSettings> => {
     const result = await apiClient.put<AppearanceSettings>(
       "/settings/appearance/background-image/confirm",
       { objectKey },
@@ -56,9 +54,7 @@ export const settingsApi = {
   },
 
   getAppearance: async (): Promise<AppearanceSettings> => {
-    const result = await apiClient.get<AppearanceSettings>(
-      "/settings/appearance",
-    );
+    const result = await apiClient.get<AppearanceSettings>("/settings/appearance");
     return result.data;
   },
 
@@ -81,19 +77,12 @@ export const settingsApi = {
     return result.data;
   },
 
-  updateAppearance: async (
-    payload: AppearanceSettings,
-  ): Promise<AppearanceSettings> => {
-    const result = await apiClient.put<AppearanceSettings>(
-      "/settings/appearance",
-      payload,
-    );
+  updateAppearance: async (payload: AppearanceSettings): Promise<AppearanceSettings> => {
+    const result = await apiClient.put<AppearanceSettings>("/settings/appearance", payload);
     return result.data;
   },
 
-  updateBehavior: async (
-    payload: BehaviorSettings,
-  ): Promise<BehaviorSettings> => {
+  updateBehavior: async (payload: BehaviorSettings): Promise<BehaviorSettings> => {
     const result = await apiClient.put("/settings/behavior", {
       ...payload,
       toastLevel: toastLevelToServer[payload.toastLevel],

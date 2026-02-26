@@ -1,5 +1,8 @@
-import apiClient from "./client";
 import type { LoginSchema } from "@/schemas/auth";
+
+import { logger } from "@/utils/logger";
+
+import apiClient from "./client";
 
 export interface AuthResponse {
   success: boolean;
@@ -8,12 +11,14 @@ export interface AuthResponse {
 }
 
 export const authApi = {
+  getProfile: async (): Promise<AuthResponse> => {
+    const response = await apiClient.get<AuthResponse>("/auth/profile");
+    return response.data;
+  },
+
   login: async (credentials: LoginSchema): Promise<AuthResponse> => {
-    console.log("sending login request from api layer");
-    const response = await apiClient.post<AuthResponse>(
-      "/auth/login",
-      credentials,
-    );
+    logger.log("sending login request from api layer");
+    const response = await apiClient.post<AuthResponse>("/auth/login", credentials);
     return response.data;
   },
 
@@ -23,11 +28,6 @@ export const authApi = {
 
   refreshToken: async (): Promise<{ token: string }> => {
     const response = await apiClient.post<{ token: string }>("/auth/refresh");
-    return response.data;
-  },
-
-  getProfile: async (): Promise<AuthResponse> => {
-    const response = await apiClient.get<AuthResponse>("/auth/profile");
     return response.data;
   },
 };

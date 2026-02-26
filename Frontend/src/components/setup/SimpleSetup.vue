@@ -11,22 +11,22 @@ import RegistrationForm from "./RegistrationForm.vue";
 
 const items: StepperItem[] = [
   {
-    value: "Registration",
-    title: "Registration",
     description: "Create a system account",
     icon: "i-lucide-user",
+    title: "Registration",
+    value: "Registration",
   },
   {
-    value: "Configuration",
-    title: "Configure ",
     description: "Select your features",
     icon: "i-lucide-library-big",
+    title: "Configure ",
+    value: "Configuration",
   },
   {
-    value: "Finalization",
-    title: "Finalize",
     description: "Finalize your configuration",
     icon: "i-lucide-book-check",
+    title: "Finalize",
+    value: "Finalization",
   },
 ];
 </script>

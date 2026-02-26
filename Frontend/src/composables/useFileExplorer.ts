@@ -1,17 +1,15 @@
-import { SortBy } from "@/enums/SortBy";
-import { SortDirection } from "@/enums/SortDirection";
-import type { PaginationParams } from "@/types/pagination-params";
-import { computed, ref, watch, type Ref } from "vue";
-import { useRouter } from "vue-router";
-import {
-  directoryPath,
-  rootDirectories,
-  subDirectories,
-} from "@/queries/directories";
-import { rootFiles, subFiles } from "@/queries/files";
 import { useQuery } from "@pinia/colada";
+import { type Ref, computed, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
+import type { PaginationParams } from "@/types/pagination-params";
+
+import { SortBy } from "@/enums/SortBy";
+import { SortDirection } from "@/enums/SortDirection";
+import { directoryPath, rootDirectories, subDirectories } from "@/queries/directories";
+import { rootFiles, subFiles } from "@/queries/files";
 import { useFileStore } from "@/stores/file";
 
 export const useFileExplorer = () => {
@@ -21,40 +19,38 @@ export const useFileExplorer = () => {
   const currentDirId: Ref<string | null> = ref(null);
   const pathList = ref<{ id: string; name: string }[]>([]);
 
-  //   dirPagination;
+  //   DirPagination;
   const dirPagination: Ref<{
     paginationParams: PaginationParams;
     hasNext: boolean;
   }> = ref({
+    hasNext: false,
     paginationParams: {
+      SortBy: SortBy.Name,
       page: 1,
       pageSize: 25,
-      SortBy: SortBy.Name,
       sortDirection: SortDirection.Asc,
     },
-    hasNext: false,
   });
-  //   filePagination;
+  //   FilePagination;
   const filePagination: Ref<{
     paginationParams: PaginationParams;
     hasNext: boolean;
   }> = ref({
+    hasNext: false,
     paginationParams: {
+      SortBy: SortBy.Name,
       page: 1,
       pageSize: 25,
-      SortBy: SortBy.Name,
       sortDirection: SortDirection.Asc,
     },
-    hasNext: false,
   });
 
   const navigationHistory = ref<(string | null)[]>([null]);
   const historyIndex = ref(0);
 
   const canGoBack = computed(() => historyIndex.value > 0);
-  const canGoForward = computed(
-    () => historyIndex.value < navigationHistory.value.length - 1,
-  );
+  const canGoForward = computed(() => historyIndex.value < navigationHistory.value.length - 1);
 
   const viewMode: Ref<"grid" | "list"> = ref("grid");
   const selectedDirectories: Ref<Set<string>> = ref(new Set<string>());
@@ -92,7 +88,9 @@ export const useFileExplorer = () => {
   });
 
   watch(directories.data, (newData) => {
-    if (!newData?.items) return;
+    if (!newData?.items) {
+      return;
+    }
 
     dirPagination.value.hasNext = newData.hasNext ?? false;
 
@@ -106,7 +104,9 @@ export const useFileExplorer = () => {
   });
 
   watch(files.data, (newData) => {
-    if (!newData?.items) return;
+    if (!newData?.items) {
+      return;
+    }
 
     filePagination.value.hasNext = newData.hasNext ?? false;
 
@@ -121,14 +121,13 @@ export const useFileExplorer = () => {
 
   const navigateTo = async (dirId?: string | null, skipHistory = false) => {
     const target = dirId ?? null;
-    if (currentDirId.value === target) return;
+    if (currentDirId.value === target) {
+      return;
+    }
 
     if (!skipHistory) {
       // Chop off any forward history before pushing
-      navigationHistory.value = navigationHistory.value.slice(
-        0,
-        historyIndex.value + 1,
-      );
+      navigationHistory.value = navigationHistory.value.slice(0, historyIndex.value + 1);
       navigationHistory.value.push(target);
       historyIndex.value = navigationHistory.value.length - 1;
     }
@@ -143,48 +142,53 @@ export const useFileExplorer = () => {
   };
 
   const navigateBack = () => {
-    if (!canGoBack.value) return;
+    if (!canGoBack.value) {
+      return;
+    }
     historyIndex.value--;
     navigateTo(navigationHistory.value[historyIndex.value], true);
   };
 
   const navigateForward = () => {
-    if (!canGoForward.value) return;
+    if (!canGoForward.value) {
+      return;
+    }
     historyIndex.value++;
     navigateTo(navigationHistory.value[historyIndex.value], true);
   };
 
   const loadMoreDirs = async () => {
-    if (!dirPagination.value.hasNext) return;
+    if (!dirPagination.value.hasNext) {
+      return;
+    }
 
     dirPagination.value.paginationParams.page++;
   };
 
   const loadMoreFiles = async () => {
-    if (!filePagination.value.hasNext) return;
+    if (!filePagination.value.hasNext) {
+      return;
+    }
 
     filePagination.value.paginationParams.page++;
   };
 
   //Since the endless query are still experimental, subject to change and honestly not very intuitive
   //I am forced to do the manual refresh and the watcher stupidity, when the api matures I should
-  //use that one instead
+  //Use that one instead
   const refreshDir = () => {
     if (dirPagination.value.paginationParams.page === 1) {
       directories.refresh();
       files.refresh();
     } else {
       // Here I could probably do something like a big refetch to avoid having the user click load more 50 times
-      //this is fine as is right now
+      //This is fine as is right now
       navigateTo(currentDirId.value);
     }
   };
 
-  const toggleSelect = (id: string, type: "file" | "directory") => {
-    return type === "file"
-      ? selectedFiles.value.add(id)
-      : selectedDirectories.value.add(id);
-  };
+  const toggleSelect = (id: string, type: "file" | "directory") =>
+    type === "file" ? selectedFiles.value.add(id) : selectedDirectories.value.add(id);
 
   const setSelection = (ids: string[], type: "file" | "directory") =>
     type === "file"
@@ -210,10 +214,11 @@ export const useFileExplorer = () => {
     const startIndex = allItems.findIndex((item) => item.id === startId);
     const endIndex = allItems.findIndex((item) => item.id === endId);
 
-    if (startIndex === -1 || endIndex === -1) return;
+    if (startIndex === -1 || endIndex === -1) {
+      return;
+    }
 
-    const [from, to] =
-      startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
+    const [from, to] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
 
     const idsToSelect = allItems.slice(from, to + 1);
 
@@ -223,8 +228,8 @@ export const useFileExplorer = () => {
         return acc;
       },
       {
-        file: [] as string[],
         directory: [] as string[],
+        file: [] as string[],
       },
     );
     setSelection(grouped.file, "file");
@@ -233,9 +238,9 @@ export const useFileExplorer = () => {
 
   const downloadFile = async (fileId: string, fileName: string) => {
     await fileStore.downloadFile({
-      id: fileId,
       fileName: fileName,
       forceDownload: true,
+      id: fileId,
     });
   };
 
@@ -245,33 +250,33 @@ export const useFileExplorer = () => {
   };
 
   return {
-    currentDirId,
-    directoriesQuery: directories,
-    filesQuery: files,
-    pathQuery,
-    directoriesList,
-    filesList,
-    viewMode,
-    filePagination,
-    dirPagination,
-    pathList,
-    lastSelected,
-    selectedFiles,
-    selectedDirectories,
-    navigateTo,
     canGoBack,
     canGoForward,
-    navigateBack,
-    navigateForward,
-    refreshDir,
+    clearSelection,
+    currentDirId,
+    dirPagination,
+    directoriesList,
+    directoriesQuery: directories,
+    downloadFile,
+    filePagination,
+    filesList,
+    filesQuery: files,
+    isDirectorySelected,
+    isFileSelected,
+    lastSelected,
     loadMoreDirs,
     loadMoreFiles,
-    toggleSelect,
-    isFileSelected,
-    isDirectorySelected,
-    setSelection,
+    navigateBack,
+    navigateForward,
+    navigateTo,
+    pathList,
+    pathQuery,
+    refreshDir,
     selectRange,
-    downloadFile,
-    clearSelection,
+    selectedDirectories,
+    selectedFiles,
+    setSelection,
+    toggleSelect,
+    viewMode,
   };
 };

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { FormSubmitEvent, AuthFormField } from "@nuxt/ui";
-import { loginSchema, type LoginSchema } from "@/schemas/auth";
+import type { AuthFormField, FormSubmitEvent } from "@nuxt/ui";
+import { type LoginSchema, loginSchema } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 
@@ -10,22 +10,22 @@ const router = useRouter();
 
 const fields: AuthFormField[] = [
   {
-    name: "email",
-    type: "email",
     label: "Email",
+    name: "email",
     placeholder: "Enter your email",
     required: true,
+    type: "email",
   },
   {
-    name: "password",
     label: "Password",
-    type: "password",
+    name: "password",
     placeholder: "Enter your password",
     required: true,
+    type: "password",
   },
   {
-    name: "remember",
     label: "Remember me",
+    name: "remember",
     type: "checkbox",
   },
 ];
@@ -35,8 +35,8 @@ async function onSubmit(payload: FormSubmitEvent<LoginSchema>) {
 
   if (authStore.error) {
     toast.add({
-      title: "Error trying to log in",
       description: authStore.error,
+      title: "Error trying to log in",
     });
     return;
   }

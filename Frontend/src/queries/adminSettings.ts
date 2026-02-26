@@ -1,5 +1,6 @@
-import { adminSettingsApi } from "@/api/adminSettings";
 import { defineQueryOptions } from "@pinia/colada";
+
+import { adminSettingsApi } from "@/api/adminSettings";
 
 export const ADMIN_SETTINGS_QUERY_KEYS = {
   root: ["admin-settings"] as const,

@@ -35,7 +35,7 @@
     "vue": {
       "scriptSetup": true
     }
-  },    
+  },
 
   "env": {
     "builtin": true

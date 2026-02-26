@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { reactive } from "vue";
-import {
-  createDirectorySchema,
-  type CreateDirectorySchema,
-} from "@/schemas/directory";
+import { type CreateDirectorySchema, createDirectorySchema } from "@/schemas/directory";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import { createDirectory } from "@/mutations/directories";
 const props = defineProps<{
@@ -22,15 +19,14 @@ const state = reactive({
 const onSubmit = async (event: FormSubmitEvent<CreateDirectorySchema>) => {
   await mutateAsync(event.data);
 
-  if (!mutationState.value.error) emit("close", true);
+  if (!mutationState.value.error) {
+    emit("close", true);
+  }
 };
 </script>
 
 <template>
-  <UModal
-    :close="{ onClick: () => emit('close', false) }"
-    :title="`Create new directory`"
-  >
+  <UModal :close="{ onClick: () => emit('close', false) }" :title="`Create new directory`">
     <template #body>
       <UForm
         :schema="createDirectorySchema"
@@ -43,11 +39,7 @@ const onSubmit = async (event: FormSubmitEvent<CreateDirectorySchema>) => {
         </UFormField>
 
         <div class="flex gap-2 w-full justify-end">
-          <UButton
-            color="neutral"
-            label="Close"
-            @click="emit('close', false)"
-          />
+          <UButton color="neutral" label="Close" @click="emit('close', false)" />
           <UButton type="submit"> Submit </UButton>
         </div>
       </UForm>

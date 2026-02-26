@@ -15,12 +15,7 @@
       </div>
       <div class="flex items-center gap-2">
         <USelect v-model="daysFilter" :items="daysFilterOptions" class="w-40" />
-        <UButton
-          variant="ghost"
-          size="sm"
-          @click="refreshData"
-          :loading="isLoading"
-        >
+        <UButton variant="ghost" size="sm" @click="refreshData" :loading="isLoading">
           <UIcon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" />
           Refresh
         </UButton>
@@ -53,14 +48,8 @@
     <!-- Content -->
     <div class="flex-1 overflow-auto p-4">
       <!-- Loading State -->
-      <div
-        v-if="isLoading"
-        class="flex flex-col items-center justify-center py-20"
-      >
-        <UIcon
-          name="i-lucide-loader-circle"
-          class="size-8 animate-spin text-muted mb-3"
-        />
+      <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+        <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-muted mb-3" />
         <p class="text-sm text-muted">Loading deleted items...</p>
       </div>
 
@@ -85,9 +74,7 @@
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-folder" class="size-4 text-muted" />
-              <h4
-                class="text-xs font-semibold uppercase tracking-wider text-muted"
-              >
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-muted">
                 Directories ({{ directoryResults.length }})
               </h4>
             </div>
@@ -122,8 +109,7 @@
               <UCheckbox
                 :model-value="selectedDirectories.has(dir.id)"
                 @update:model-value="
-                  (checked: boolean) =>
-                    toggleDirectorySelection(dir.id, checked)
+                  (checked: boolean) => toggleDirectorySelection(dir.id, checked)
                 "
                 size="sm"
                 :disabled="isMutating"
@@ -145,9 +131,7 @@
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-file" class="size-4 text-muted" />
-              <h4
-                class="text-xs font-semibold uppercase tracking-wider text-muted"
-              >
+              <h4 class="text-xs font-semibold uppercase tracking-wider text-muted">
                 Files ({{ fileResults.length }})
               </h4>
             </div>
@@ -182,8 +166,7 @@
               <UCheckbox
                 :model-value="selectedFiles.has(file.fileId)"
                 @update:model-value="
-                  (checked: boolean) =>
-                    toggleFileSelection(file.fileId, checked)
+                  (checked: boolean) => toggleFileSelection(file.fileId, checked)
                 "
                 size="sm"
                 :disabled="isMutating"
@@ -207,8 +190,7 @@
         >
           <p class="text-sm text-muted">
             Showing {{ (currentPage - 1) * pageSize + 1 }} -
-            {{ Math.min(currentPage * pageSize, totalCount) }} of
-            {{ totalCount }} items
+            {{ Math.min(currentPage * pageSize, totalCount) }} of {{ totalCount }} items
           </p>
           <div class="flex items-center gap-2">
             <UButton
@@ -219,9 +201,7 @@
               :disabled="currentPage <= 1 || isMutating"
               @click="goToPage(currentPage - 1)"
             />
-            <span class="text-sm text-muted">
-              Page {{ currentPage }} of {{ totalPages }}
-            </span>
+            <span class="text-sm text-muted"> Page {{ currentPage }} of {{ totalPages }} </span>
             <UButton
               size="sm"
               color="neutral"
@@ -238,19 +218,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
 import DirectoryItem from "@/components/dashboard/file-system/DirectoryItem.vue";
 import FileItem from "@/components/dashboard/file-system/FileItem.vue";
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
-import { today, getLocalTimeZone } from "@internationalized/date";
+import { getLocalTimeZone, today } from "@internationalized/date";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { restoreFiles } from "@/mutations/files";
 import { restoreDirectories } from "@/mutations/directories";
 import { useSettingsStore } from "@/stores/settings";
+import { logger } from "@/utils/logger";
 
 // Stores and composables
 const fileStore = useFileStore();
@@ -306,25 +287,19 @@ const emptyStateMessage = computed(() => {
   return `No items have been deleted in the last ${daysFilter.value} days.`;
 });
 
-const isAllDirectoriesSelected = computed(() => {
-  return (
+const isAllDirectoriesSelected = computed(
+  () =>
     directoryResults.value.length > 0 &&
-    selectedDirectories.value.size === directoryResults.value.length
-  );
-});
+    selectedDirectories.value.size === directoryResults.value.length,
+);
 
-const isAllFilesSelected = computed(() => {
-  return (
-    fileResults.value.length > 0 &&
-    selectedFiles.value.size === fileResults.value.length
-  );
-});
+const isAllFilesSelected = computed(
+  () => fileResults.value.length > 0 && selectedFiles.value.size === fileResults.value.length,
+);
 
 // Aggregate mutation loading state — used to disable interactive elements
-// while any mutation is in flight to prevent double-submits or conflicting ops.
-const isMutating = computed(
-  () => restoreFilesLoading.value || restoreDirectoriesIsLoading.value,
-);
+// While any mutation is in flight to prevent double-submits or conflicting ops.
+const isMutating = computed(() => restoreFilesLoading.value || restoreDirectoriesIsLoading.value);
 
 // Methods
 const calculateDeletedAfterDate = (): string => {
@@ -355,9 +330,7 @@ const toggleFileSelection = (id: string, checked: boolean) => {
 
 const toggleSelectAllDirectories = (checked: boolean) => {
   if (checked) {
-    selectedDirectories.value = new Set(
-      directoryResults.value.map((d) => d.id),
-    );
+    selectedDirectories.value = new Set(directoryResults.value.map((d) => d.id));
   } else {
     selectedDirectories.value = new Set();
   }
@@ -381,48 +354,48 @@ const fetchDeletedItems = async () => {
 
     // Fetch files
     const filesResult = await fileStore.searchFiles({
-      nameContains: searchQuery.value || null,
-      isDeleted: true,
-      deletedAfter,
-      currentPage: currentPage.value - 1,
-      pageSize: pageSize.value,
-      sortBy: sortBy.value,
-      sortDirection: sortDirection.value,
-      minSize: null,
-      maxSize: null,
-      mimeType: null,
-      onlyDeleted: true,
-      directoryId: null,
-      parentDirectoryId: null,
-      ownerId: null,
-      isShared: false,
-      isStarred: false,
       createdAfter: null,
       createdBefore: null,
+      currentPage: currentPage.value - 1,
+      deletedAfter,
+      deletedBefore: null,
+      directoryId: null,
+      isDeleted: true,
+      isShared: false,
+      isStarred: false,
+      maxSize: null,
+      mimeType: null,
+      minSize: null,
+      nameContains: searchQuery.value || null,
+      onlyDeleted: true,
+      ownerId: null,
+      pageSize: pageSize.value,
+      parentDirectoryId: null,
+      sortBy: sortBy.value,
+      sortDirection: sortDirection.value,
       updatedAfter: null,
       updatedBefore: null,
-      deletedBefore: null,
     });
 
     // Fetch directories
     const directoriesResult = await directoryStore.searchDirectory({
-      nameContains: searchQuery.value || null,
-      isDeleted: true,
-      deletedAfter,
-      deletedBefore: null,
-      page: currentPage.value - 1,
-      pageSize: pageSize.value,
-      sortBy: sortBy.value,
-      sortDirection: sortDirection.value,
-      directoryId: null,
-      parentDirectoryId: null,
-      ownerId: null,
-      isShared: null,
-      isStarred: undefined,
-      hasFiles: null,
-      hasSubdirectories: null,
       createdAfter: null,
       createdBefore: null,
+      deletedAfter,
+      deletedBefore: null,
+      directoryId: null,
+      hasFiles: null,
+      hasSubdirectories: null,
+      isDeleted: true,
+      isShared: null,
+      isStarred: undefined,
+      nameContains: searchQuery.value || null,
+      ownerId: null,
+      page: currentPage.value - 1,
+      pageSize: pageSize.value,
+      parentDirectoryId: null,
+      sortBy: sortBy.value,
+      sortDirection: sortDirection.value,
       updatedAfter: null,
       updatedBefore: null,
     });
@@ -440,20 +413,17 @@ const fetchDeletedItems = async () => {
     }
 
     totalCount.value =
-      (filesResult.success && filesResult.data
-        ? filesResult.data.totalCount
-        : 0) +
-      (directoriesResult.success && directoriesResult.data
-        ? directoriesResult.data.totalCount
-        : 0);
+      (filesResult.success && filesResult.data ? filesResult.data.totalCount : 0) +
+      (directoriesResult.success && directoriesResult.data ? directoriesResult.data.totalCount : 0);
   } catch (error) {
-    console.error("Error fetching deleted items:", error);
-    if (settingsStore.toastLevel !== "silent")
+    logger.error("Error fetching deleted items:", error);
+    if (settingsStore.toastLevel !== "silent") {
       toast.add({
-        title: "Error",
-        description: "Failed to load deleted items. Please try again.",
         color: "error",
+        description: "Failed to load deleted items. Please try again.",
+        title: "Error",
       });
+    }
   } finally {
     isLoading.value = false;
   }
@@ -484,23 +454,27 @@ const refreshData = () => {
 const handleItemClick = () => {};
 
 const handleNavigate = (_directoryId: string) => {
-  if (settingsStore.toastLevel === "all")
+  if (settingsStore.toastLevel === "all") {
     toast.add({
-      title: "Info",
-      description:
-        "This item is deleted. Restore it first to navigate to its location.",
       color: "info",
+      description: "This item is deleted. Restore it first to navigate to its location.",
+      title: "Info",
     });
+  }
 };
 
 const restoreSelectedFiles = async () => {
-  if (selectedFiles.value.size === 0) return;
+  if (selectedFiles.value.size === 0) {
+    return;
+  }
   const filesToRestore = Array.from(selectedFiles.value);
   restoreFilesMutate(filesToRestore);
 };
 
 const restoreSelectedDirectories = async () => {
-  if (selectedDirectories.value.size === 0) return;
+  if (selectedDirectories.value.size === 0) {
+    return;
+  }
   const dirsToRestore = Array.from(selectedDirectories.value);
   restoreDirectoriesMutate(dirsToRestore);
 };
@@ -519,9 +493,9 @@ watch([sortBy, sortDirection], () => {
 watch(restoreFilesError, (err) => {
   if (err) {
     toast.add({
-      title: "Restore Failed",
-      description: "Failed to restore the selected files. Please try again.",
       color: "error",
+      description: "Failed to restore the selected files. Please try again.",
+      title: "Restore Failed",
     });
   }
 });
@@ -529,20 +503,23 @@ watch(restoreFilesError, (err) => {
 watch(restoreDirectoriesError, (err) => {
   if (err) {
     toast.add({
-      title: "Restore Failed",
-      description:
-        "Failed to restore the selected directories. Please try again.",
       color: "error",
+      description: "Failed to restore the selected directories. Please try again.",
+      title: "Restore Failed",
     });
   }
 });
 
 watch(restoreFilesLoading, (loading) => {
-  if (!loading && !restoreFilesError.value) fetchDeletedItems();
+  if (!loading && !restoreFilesError.value) {
+    fetchDeletedItems();
+  }
 });
 
 watch(restoreDirectoriesIsLoading, (loading) => {
-  if (!loading && !restoreDirectoriesError.value) fetchDeletedItems();
+  if (!loading && !restoreDirectoriesError.value) {
+    fetchDeletedItems();
+  }
 });
 
 onMounted(() => {

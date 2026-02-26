@@ -1,7 +1,8 @@
+import { CalendarDate, getLocalTimeZone, today } from "@internationalized/date";
 import { z } from "zod";
-import { SortDirection } from "@/enums/SortDirection";
+
 import { SortBy } from "@/enums/SortBy";
-import { CalendarDate, today, getLocalTimeZone } from "@internationalized/date";
+import { SortDirection } from "@/enums/SortDirection";
 const dateValueSchema = z.instanceof(CalendarDate);
 
 type DateField =
@@ -12,6 +13,7 @@ type DateField =
   | "deletedAfter"
   | "deletedBefore";
 
+//oxlint-disable sort-keys
 export const baseSearchUiSchema = z
   .object({
     // Identity & structure
@@ -99,9 +101,9 @@ export const baseSearchUiSchema = z
   });
 
 export const fileSearchUiSchema = baseSearchUiSchema.extend({
-  minSize: z.number().int().nullish(),
   maxSize: z.number().int().nullish(),
   mimeType: z.string().nullish(),
+  minSize: z.number().int().nullish(),
   onlyDeleted: z.boolean().default(false),
 });
 
@@ -128,42 +130,40 @@ export const baseSearchApiSchema = baseSearchUiSchema.transform((v) => ({
   ...v,
   createdAfter: v.createdAfter?.toString() ?? null,
   createdBefore: v.createdBefore?.toString() ?? null,
+  deletedAfter: v.deletedAfter?.toString() ?? null,
+  deletedBefore: v.deletedBefore?.toString() ?? null,
   updatedAfter: v.updatedAfter?.toString() ?? null,
   updatedBefore: v.updatedBefore?.toString() ?? null,
-  deletedBefore: v.deletedBefore?.toString() ?? null,
-  deletedAfter: v.deletedAfter?.toString() ?? null,
 }));
 
 export const fileSearchApiSchema = fileSearchUiSchema.transform((v) => ({
   ...v,
   createdAfter: v.createdAfter?.toString() ?? null,
   createdBefore: v.createdBefore?.toString() ?? null,
+  deletedAfter: v.deletedAfter?.toString() ?? null,
+  deletedBefore: v.deletedBefore?.toString() ?? null,
   updatedAfter: v.updatedAfter?.toString() ?? null,
   updatedBefore: v.updatedBefore?.toString() ?? null,
-  deletedBefore: v.deletedBefore?.toString() ?? null,
-  deletedAfter: v.deletedAfter?.toString() ?? null,
 }));
 
-export const directorySearchApiSchema = directorySearchUiSchema.transform(
-  (v) => ({
-    ...v,
-    createdAfter: v.createdAfter?.toString() ?? null,
-    createdBefore: v.createdBefore?.toString() ?? null,
-    updatedAfter: v.updatedAfter?.toString() ?? null,
-    updatedBefore: v.updatedBefore?.toString() ?? null,
-    deletedBefore: v.deletedBefore?.toString() ?? null,
-    deletedAfter: v.deletedAfter?.toString() ?? null,
-  }),
-);
+export const directorySearchApiSchema = directorySearchUiSchema.transform((v) => ({
+  ...v,
+  createdAfter: v.createdAfter?.toString() ?? null,
+  createdBefore: v.createdBefore?.toString() ?? null,
+  deletedAfter: v.deletedAfter?.toString() ?? null,
+  deletedBefore: v.deletedBefore?.toString() ?? null,
+  updatedAfter: v.updatedAfter?.toString() ?? null,
+  updatedBefore: v.updatedBefore?.toString() ?? null,
+}));
 
 export const bothSearchApiSchema = unifiedSearchUiSchema.transform((v) => ({
   ...v,
   createdAfter: v.createdAfter?.toString() ?? null,
   createdBefore: v.createdBefore?.toString() ?? null,
+  deletedAfter: v.deletedAfter?.toString() ?? null,
+  deletedBefore: v.deletedBefore?.toString() ?? null,
   updatedAfter: v.updatedAfter?.toString() ?? null,
   updatedBefore: v.updatedBefore?.toString() ?? null,
-  deletedBefore: v.deletedBefore?.toString() ?? null,
-  deletedAfter: v.deletedAfter?.toString() ?? null,
 }));
 
 export const hybridSearchSchema = z.discriminatedUnion("mode", [

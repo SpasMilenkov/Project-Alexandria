@@ -8,8 +8,8 @@ const route = useRoute();
 
 useTheme();
 const layouts = {
-  default: DefaultLayout,
   dashboard: DashboardLayout,
+  default: DefaultLayout,
 };
 </script>
 

@@ -1,15 +1,7 @@
 <template>
-  <UModal
-    :close="{ onClick: () => emit('close', false) }"
-    :title="'Create New Tag'"
-  >
+  <UModal :close="{ onClick: () => emit('close', false) }" :title="'Create New Tag'">
     <template #body>
-      <UForm
-        :schema="createTagSchema"
-        :state="state"
-        class="space-y-5 w-full "
-        @submit="onSubmit"
-      >
+      <UForm :schema="createTagSchema" :state="state" class="space-y-5 w-full" @submit="onSubmit">
         <div class="grid grid-cols-2 gap-4">
           <UFormField label="Tag Name" name="name" required>
             <UInput
@@ -86,15 +78,8 @@
         </UFormField>
 
         <div class="flex gap-2 w-full justify-end pt-2">
-          <UButton
-            color="neutral"
-            label="Cancel"
-            variant="ghost"
-            @click="emit('close', false)"
-          />
-          <UButton type="submit" :loading="isLoading" icon="i-heroicons-plus">
-            Create Tag
-          </UButton>
+          <UButton color="neutral" label="Cancel" variant="ghost" @click="emit('close', false)" />
+          <UButton type="submit" :loading="isLoading" icon="i-heroicons-plus"> Create Tag</UButton>
         </div>
       </UForm>
     </template>
@@ -104,24 +89,24 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import { Icon } from "@iconify/vue";
-import { useSettingsStore } from "@/stores/settings"; // Imported to access colors
-import { createTagSchema, type CreateTagSchema } from "@/schemas/tag";
+import { useSettingsStore } from "@/stores/settings";
+import { type CreateTagSchema, createTagSchema } from "@/schemas/tag";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import { createTag } from "@/mutations/tags";
 import TagCard from "../TagCard.vue";
 import type { TagDto } from "@/api/tag";
-import { iconOptions, getIconByValue } from "@/utils/icon.utils";
+import { getIconByValue, iconOptions } from "@/utils/icon.utils";
 import TagBadge from "../TagBadge.vue";
 
-const settingsStore = useSettingsStore(); // Initialize store
+const settingsStore = useSettingsStore();
 const { mutateAsync, state: mutationState, isLoading } = createTag();
 const emit = defineEmits<{ close: [boolean] }>();
 
 const state = reactive<CreateTagSchema>({
-  name: "",
-  color: `rgb(${settingsStore.AVAILABLE_COLORS[0]?.value})` || "",
-  icon: "",
+  color: `rgb(${settingsStore.AVAILABLE_COLORS[0]?.value || ""})`,
   description: null,
+  icon: "",
+  name: "",
 });
 
 const onSubmit = async (event: FormSubmitEvent<CreateTagSchema>) => {
@@ -132,13 +117,13 @@ const onSubmit = async (event: FormSubmitEvent<CreateTagSchema>) => {
 };
 
 const exampleTag = computed<TagDto>(() => ({
+  color: state.color,
+  createdAt: new Date().toISOString(),
+  icon: getIconByValue(state.icon) || "mdi:tag",
   id: "preview-tag",
   name: state.name || "Example Tag",
-  icon: getIconByValue(state.icon) || "mdi:tag",
-  color: state.color,
-  userId: "current-user",
-  createdAt: new Date().toISOString(),
   updatedAt: null,
+  userId: "current-user",
 }));
 
 const isSelected = ref(false);

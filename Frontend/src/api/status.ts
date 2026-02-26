@@ -1,5 +1,6 @@
-import apiClient from "./client";
 import type { FileSummary } from "./directory";
+
+import apiClient from "./client";
 
 export interface StorageInfo {
   dataAvailableBytes: number;
@@ -23,7 +24,7 @@ export interface HealthCheckEntry {
   name: string;
   status: HealthStatus;
   description: string | null;
-  duration: number; // ms
+  duration: number; // Ms
   tags: string[];
   error: string | null;
   data: Record<string, unknown>;
@@ -38,7 +39,7 @@ export interface HealthSummary {
 export interface ServerStatusResponse {
   status: HealthStatus;
   checkedAt: string; // ISO 8601
-  duration: number; // ms
+  duration: number; // Ms
   summary: HealthSummary;
   checks: HealthCheckEntry[];
 }
@@ -62,25 +63,23 @@ export interface ServerResourcesResponse {
 }
 
 export const statusApi = {
+  getMyStorage: async (): Promise<StorageBreakdown> => {
+    const result = await apiClient.get<StorageBreakdown>("/storage/my-storage");
+    return result.data;
+  },
+
+  getServerResources: async (): Promise<ServerResourcesResponse> => {
+    const result = await apiClient.get<ServerResourcesResponse>("/monitoring/resources");
+    return result.data;
+  },
+
   getServerStatus: async (): Promise<ServerStatusResponse> => {
     const result = await apiClient.get<ServerStatusResponse>("/monitoring");
     return result.data;
   },
 
-  getServerResources: async (): Promise<ServerResourcesResponse> => {
-    const result = await apiClient.get<ServerResourcesResponse>(
-      "/monitoring/resources",
-    );
-    return result.data;
-  },
-
   getStorageMetrics: async (): Promise<StorageInfo> => {
     const result = await apiClient.get<StorageInfo>("/storage/available");
-    return result.data;
-  },
-
-  getMyStorage: async (): Promise<StorageBreakdown> => {
-    const result = await apiClient.get<StorageBreakdown>("/storage/my-storage");
     return result.data;
   },
 };

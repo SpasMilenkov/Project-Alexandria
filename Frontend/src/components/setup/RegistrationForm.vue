@@ -13,10 +13,11 @@
   </div>
 </template>
 <script setup lang="ts">
-import type { FormSubmitEvent, AuthFormField } from "@nuxt/ui";
-import { registerSchema, type RegisterSchema } from "@/schemas/auth";
+import type { AuthFormField, FormSubmitEvent } from "@nuxt/ui";
+import { type RegisterSchema, registerSchema } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
+import { logger } from "@/utils/logger";
 
 const toast = useToast();
 const authStore = useAuthStore();
@@ -24,47 +25,47 @@ const router = useRouter();
 
 const fields: AuthFormField[] = [
   {
-    name: "email",
-    type: "email",
     label: "Email",
+    name: "email",
     placeholder: "Enter your email",
     required: true,
+    type: "email",
   },
   {
-    name: "name",
     label: "Username",
-    type: "password",
+    name: "name",
     placeholder: "Enter your username",
     required: true,
+    type: "password",
   },
   {
-    name: "password",
     label: "Password",
-    type: "password",
+    name: "password",
     placeholder: "Enter your password",
     required: true,
+    type: "password",
   },
   {
-    name: "confirm-password",
     label: "Confirm password",
-    type: "password",
+    name: "confirm-password",
     placeholder: "Confirm your password",
     required: true,
+    type: "password",
   },
 ];
 
 async function onSubmit(payload: FormSubmitEvent<RegisterSchema>) {
-  console.log("Submitted", payload);
+  logger.log("Submitted", payload);
   toast.add({
-    title: "Submitted",
     description: "Login Request successfully submitted",
+    title: "Submitted",
   });
   await authStore.register(payload.data);
 
   if (authStore.error) {
     toast.add({
-      title: "Error trying to log in",
       description: authStore.error,
+      title: "Error trying to log in",
     });
     return;
   }

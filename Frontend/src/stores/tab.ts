@@ -1,6 +1,9 @@
-import type { ExplorerTab } from "@/types/explorer-tab";
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { ref } from "vue";
+
+import type { ExplorerTab } from "@/types/explorer-tab";
+
+import { logger } from "@/utils/logger";
 
 export const useTabStore = defineStore(
   "tab",
@@ -9,17 +12,17 @@ export const useTabStore = defineStore(
     const activeTabId = ref<string | null>(null);
 
     const createTab = (activeDirId: string | null) => {
-      console.log("CREATING TAB");
+      logger.log("CREATING TAB");
       const id = crypto.randomUUID();
 
       tabs.value.push({
+        activeDirId,
         id,
         title: "New Tab",
-        activeDirId,
       });
 
       activeTabId.value = id;
-      console.log(activeTabId.value);
+      logger.log(activeTabId.value);
     };
 
     const closeTab = (tabId: string) => {
@@ -27,14 +30,11 @@ export const useTabStore = defineStore(
       tabs.value = tabs.value.filter((t) => t.id !== tabId);
 
       if (activeTabId.value === tabId) {
-        activeTabId.value =
-          tabs.value[idx - 1]?.id ?? tabs.value[0]?.id ?? null;
+        activeTabId.value = tabs.value[idx - 1]?.id ?? tabs.value[0]?.id ?? null;
       }
     };
 
-    const getTab = (tabId: string) => {
-      return tabs.value.find((t) => t.id === tabId);
-    };
+    const getTab = (tabId: string) => tabs.value.find((t) => t.id === tabId);
 
     const setActiveDir = (tabId: string, dirId: string | null) => {
       const tab = tabs.value.find((t) => t.id === tabId);
@@ -44,17 +44,17 @@ export const useTabStore = defineStore(
     };
 
     return {
-      tabs,
       activeTabId,
-      createTab,
       closeTab,
+      createTab,
       getTab,
       setActiveDir,
+      tabs,
     };
   },
   {
     persist: true,
-  }
+  },
 );
 
 if (import.meta.hot) {

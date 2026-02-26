@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 const emit = defineEmits<{ close: [] }>();
 
 interface Shortcut {
@@ -16,43 +16,43 @@ interface ShortcutSection {
 
 const shortcutSections: ShortcutSection[] = [
   {
-    id: "file-explorer",
-    title: "File Explorer",
     icon: "mdi:folder-outline",
+    id: "file-explorer",
     shortcuts: [
-      { keys: ["meta", "C"], description: "Copy selected files/folders" },
-      { keys: ["meta", "X"], description: "Cut selected files/folders" },
-      { keys: ["meta", "V"], description: "Paste copied/cut items" },
-      { keys: ["Delete"], description: "Delete selected items" },
+      { description: "Copy selected files/folders", keys: ["meta", "C"] },
+      { description: "Cut selected files/folders", keys: ["meta", "X"] },
+      { description: "Paste copied/cut items", keys: ["meta", "V"] },
+      { description: "Delete selected items", keys: ["Delete"] },
     ],
+    title: "File Explorer",
   },
   {
-    id: "search",
-    title: "Search",
     icon: "mdi:magnify",
+    id: "search",
     shortcuts: [
-      { keys: ["shift", "K"], description: "Quick search" },
-      { keys: ["shift", "L"], description: "Advanced search" },
+      { description: "Quick search", keys: ["shift", "K"] },
+      { description: "Advanced search", keys: ["shift", "L"] },
     ],
+    title: "Search",
   },
   {
-    id: "tabs",
-    title: "Tabs",
     icon: "mdi:tab",
+    id: "tabs",
     shortcuts: [
-      { keys: ["meta", "shift", "N"], description: "Create new tab" },
-      { keys: ["meta", "shift", "Q"], description: "Close active tab" },
+      { description: "Create new tab", keys: ["meta", "shift", "N"] },
+      { description: "Close active tab", keys: ["meta", "shift", "Q"] },
     ],
+    title: "Tabs",
   },
   {
-    id: "tags",
-    title: "Tags",
     icon: "mdi:tag-outline",
+    id: "tags",
     shortcuts: [
-      { keys: ["meta", "A"], description: "Select all tags" },
-      { keys: ["Escape"], description: "Clear selection" },
-      { keys: ["Delete"], description: "Delete selected tags" },
+      { description: "Select all tags", keys: ["meta", "A"] },
+      { description: "Clear selection", keys: ["Escape"] },
+      { description: "Delete selected tags", keys: ["Delete"] },
     ],
+    title: "Tags",
   },
 ];
 
@@ -61,7 +61,9 @@ const activeSection = ref(shortcutSections[0].id);
 
 const filteredSections = computed(() => {
   const q = query.value.trim().toLowerCase();
-  if (!q) return shortcutSections;
+  if (!q) {
+    return shortcutSections;
+  }
   return shortcutSections
     .map((section) => ({
       ...section,
@@ -97,7 +99,9 @@ onMounted(() => {
 
   shortcutSections.forEach((s) => {
     const el = document.getElementById(`section-${s.id}`);
-    if (el) observer.observe(el);
+    if (el) {
+      observer.observe(el);
+    }
   });
 
   onUnmounted(() => observer.disconnect());
@@ -119,9 +123,7 @@ onMounted(() => {
           <Icon icon="mdi:keyboard-outline" class="w-5 h-5 text-primary" />
         </div>
         <div class="flex-1 min-w-0">
-          <h2 class="text-base font-semibold text-highlighted leading-tight">
-            Keyboard Shortcuts
-          </h2>
+          <h2 class="text-base font-semibold text-highlighted leading-tight">Keyboard Shortcuts</h2>
           <p class="text-xs text-muted mt-0.5">
             {{ shortcutSections.reduce((a, s) => a + s.shortcuts.length, 0) }}
             shortcuts across {{ shortcutSections.length }} categories
@@ -152,9 +154,7 @@ onMounted(() => {
             v-if="!isFiltering"
             class="w-52 shrink-0 border-r border-gray-200/70 dark:border-gray-700/70 bg-white/30 dark:bg-white/3 backdrop-blur-sm flex flex-col gap-1 p-3 overflow-y-auto"
           >
-            <p
-              class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1"
-            >
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
               Categories
             </p>
             <button
@@ -171,18 +171,12 @@ onMounted(() => {
               <Icon
                 :icon="section.icon"
                 class="w-4 h-4 shrink-0"
-                :class="
-                  activeSection === section.id ? 'text-primary' : 'text-muted'
-                "
+                :class="activeSection === section.id ? 'text-primary' : 'text-muted'"
               />
               {{ section.title }}
               <span
                 class="ml-auto text-[11px] font-normal tabular-nums"
-                :class="
-                  activeSection === section.id
-                    ? 'text-primary/70'
-                    : 'text-muted'
-                "
+                :class="activeSection === section.id ? 'text-primary/70' : 'text-muted'"
               >
                 {{ section.shortcuts.length }}
               </span>
@@ -197,10 +191,7 @@ onMounted(() => {
             v-if="filteredSections.length === 0"
             class="flex flex-col items-center justify-center h-48 gap-3"
           >
-            <Icon
-              icon="mdi:keyboard-off-outline"
-              class="w-10 h-10 text-muted opacity-40"
-            />
+            <Icon icon="mdi:keyboard-off-outline" class="w-10 h-10 text-muted opacity-40" />
             <p class="text-sm text-muted">
               No shortcuts match
               <span class="font-medium text-highlighted">"{{ query }}"</span>
@@ -222,9 +213,7 @@ onMounted(() => {
               <h3 class="text-sm font-semibold text-highlighted">
                 {{ section.title }}
               </h3>
-              <div
-                class="flex-1 h-px bg-gray-200/70 dark:bg-gray-700/50 ml-1"
-              />
+              <div class="flex-1 h-px bg-gray-200/70 dark:bg-gray-700/50 ml-1" />
             </div>
 
             <!-- Shortcut rows -->
@@ -235,14 +224,10 @@ onMounted(() => {
                 v-for="(shortcut, i) in section.shortcuts"
                 :key="i"
                 class="flex items-center justify-between gap-6 px-5 py-3.5 transition-colors hover:bg-primary/5"
-                :class="
-                  i > 0 && 'border-t border-gray-100/80 dark:border-gray-700/40'
-                "
+                :class="i > 0 && 'border-t border-gray-100/80 dark:border-gray-700/40'"
               >
                 <!-- Description -->
-                <span class="text-sm text-default">{{
-                  shortcut.description
-                }}</span>
+                <span class="text-sm text-default">{{ shortcut.description }}</span>
 
                 <!-- Key combo -->
                 <div class="flex items-center gap-1 shrink-0">

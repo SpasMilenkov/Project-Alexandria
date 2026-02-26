@@ -1,5 +1,5 @@
 import pluginVitest from "@vitest/eslint-plugin";
-import {defineConfigWithVueTs} from "@vue/eslint-config-typescript";
+import { defineConfigWithVueTs } from "@vue/eslint-config-typescript";
 import pluginPlaywright from "eslint-plugin-playwright";
 
 export default defineConfigWithVueTs(

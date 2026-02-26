@@ -20,15 +20,8 @@
           @click="handleClick"
           @dblclick="handleDoubleClick"
         >
-          <Icon
-            icon="mdi:folder"
-            :width="iconSize"
-            :height="iconSize"
-            class="shrink-0"
-          />
-          <span
-            class="text-sm text-center line-clamp-2 w-full wrap-break-word font-medium"
-          >
+          <Icon icon="mdi:folder" :width="iconSize" :height="iconSize" class="shrink-0" />
+          <span class="text-sm text-center line-clamp-2 w-full wrap-break-word font-medium">
             {{ data.name }}
           </span>
         </button>
@@ -49,12 +42,7 @@
           @click="handleClick"
           @dblclick="handleDoubleClick"
         >
-          <Icon
-            icon="mdi:folder"
-            :width="iconSize"
-            :height="iconSize"
-            class="shrink-0"
-          />
+          <Icon icon="mdi:folder" :width="iconSize" :height="iconSize" class="shrink-0" />
           <span class="flex-1 truncate font-medium">{{ data.name }}</span>
           <Icon icon="mdi:chevron-right" class="w-4 h-4 shrink-0" />
         </button>
@@ -64,9 +52,7 @@
     <template #body>
       <div class="flex flex-col gap-6 p-1">
         <!-- Folder Preview/Icon Section -->
-        <div
-          class="flex items-center gap-4 p-6 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
-        >
+        <div class="flex items-center gap-4 p-6 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
           <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
             <Icon icon="mdi:folder" class="w-16 h-16 text-primary" />
           </div>
@@ -74,9 +60,7 @@
             <h3 class="font-semibold text-lg truncate mb-1">
               {{ data.name }}
             </h3>
-            <div
-              class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
-            >
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Icon icon="mdi:folder-open" class="w-4 h-4" />
               <span>Directory</span>
             </div>
@@ -85,35 +69,22 @@
 
         <!-- Directory Details Grid -->
         <div>
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Details
-          </h4>
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Details</h4>
           <div class="grid grid-cols-2 gap-4">
-            <div
-              class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
-            >
-              <Icon
-                icon="mdi:clock-outline"
-                class="w-10 h-10 text-gray-500 mt-0.5"
-              />
+            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+              <Icon icon="mdi:clock-outline" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                  Created
-                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Created</div>
                 <div class="font-medium">
                   {{ formatDate(data.createdAt) }}
                 </div>
               </div>
             </div>
 
-            <div
-              class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
-            >
+            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
               <Icon icon="mdi:update" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                  Modified
-                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Modified</div>
                 <div class="font-medium">
                   {{ formatDate(data.updatedAt) }}
                 </div>
@@ -123,14 +94,9 @@
             <div
               class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg col-span-2"
             >
-              <Icon
-                icon="mdi:identifier"
-                class="w-10 h-10 text-gray-500 mt-0.5"
-              />
+              <Icon icon="mdi:identifier" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div class="min-w-0 flex-1">
-                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                  Directory ID
-                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Directory ID</div>
                 <div class="font-mono text-sm truncate">{{ data.id }}</div>
               </div>
             </div>
@@ -139,10 +105,7 @@
               v-if="data.parentId"
               class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg col-span-2"
             >
-              <Icon
-                icon="mdi:folder-arrow-up"
-                class="w-10 h-10 text-gray-500 mt-0.5"
-              />
+              <Icon icon="mdi:folder-arrow-up" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div class="min-w-0 flex-1">
                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
                   Parent Directory ID
@@ -197,22 +160,10 @@
             >
               Open
             </UButton>
-            <UButton
-              icon="i-mdi-pencil"
-              color="gray"
-              variant="soft"
-              block
-              @click="handleRename"
-            >
+            <UButton icon="i-mdi-pencil" color="gray" variant="soft" block @click="handleRename">
               Rename
             </UButton>
-            <UButton
-              icon="i-mdi-folder-move"
-              color="gray"
-              variant="soft"
-              block
-              @click="handleMove"
-            >
+            <UButton icon="i-mdi-folder-move" color="gray" variant="soft" block @click="handleMove">
               Move
             </UButton>
             <UButton
@@ -235,7 +186,7 @@
 import type { DirectorySummaryDto } from "@/api/directory";
 import { Icon } from "@iconify/vue";
 import type { ContextMenuItem } from "@nuxt/ui";
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
 
 import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
@@ -243,9 +194,7 @@ import { formatDate } from "@/utils/date-formatters";
 const settingsStore = useSettingsStore();
 
 const iconSize = computed(() =>
-  props.viewMode === "grid"
-    ? settingsStore.gridIconSize
-    : settingsStore.listIconSize,
+  props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
 );
 
 const props = defineProps<{
@@ -276,79 +225,79 @@ const contextMenuItems = computed(() => {
   if (!isMultiSelect) {
     items.push([
       {
-        label: "Open",
         icon: "i-mdi-folder-open",
+        label: "Open",
         onSelect: () => emit("open", props.data.id),
       },
     ]);
 
     items.push([
       {
-        label: "Rename",
-        icon: "i-mdi-pencil",
-        onSelect: () => emit("rename", props.data.id),
         disabled: !canRename(),
+        icon: "i-mdi-pencil",
+        label: "Rename",
+        onSelect: () => emit("rename", props.data.id),
       },
     ]);
 
     items.push([
       {
-        label: "Move",
-        icon: "i-mdi-folder-move",
-        onSelect: () => emit("move", props.data.id),
         disabled: !canMove(),
+        icon: "i-mdi-folder-move",
+        label: "Move",
+        onSelect: () => emit("move", props.data.id),
       },
       {
-        label: "Copy",
-        icon: "i-mdi-content-copy",
-        onSelect: () => emit("copy", [props.data.id]),
         disabled: !canCopy(),
+        icon: "i-mdi-content-copy",
+        label: "Copy",
+        onSelect: () => emit("copy", [props.data.id]),
       },
       {
-        label: "Download",
-        icon: "i-mdi-download",
-        onSelect: () => emit("download", [props.data.id]),
         disabled: !canDownload(),
+        icon: "i-mdi-download",
+        label: "Download",
+        onSelect: () => emit("download", [props.data.id]),
       },
     ]);
 
     items.push([
       {
-        label: "Delete",
-        icon: "i-mdi-delete",
-        onSelect: () => emit("delete", [props.data.id]),
         disabled: !canDelete(),
+        icon: "i-mdi-delete",
+        label: "Delete",
+        onSelect: () => emit("delete", [props.data.id]),
       },
     ]);
   } else {
     // Multi-select actions
     items.push([
       {
-        label: `Move ${props.selectedCount} items`,
-        icon: "i-mdi-folder-move",
-        onSelect: () => emit("move", props.data.id),
         disabled: !canMove(),
+        icon: "i-mdi-folder-move",
+        label: `Move ${props.selectedCount} items`,
+        onSelect: () => emit("move", props.data.id),
       },
       {
-        label: `Copy ${props.selectedCount} items`,
-        icon: "i-mdi-content-copy",
-        onSelect: () => emit("copy", []),
         disabled: !canCopy(),
+        icon: "i-mdi-content-copy",
+        label: `Copy ${props.selectedCount} items`,
+        onSelect: () => emit("copy", []),
       },
       {
-        label: `Download ${props.selectedCount} items`,
-        icon: "i-mdi-download",
-        onSelect: () => emit("download", []),
         disabled: !canDownload(),
+        icon: "i-mdi-download",
+        label: `Download ${props.selectedCount} items`,
+        onSelect: () => emit("download", []),
       },
     ]);
 
     items.push([
       {
-        label: `Delete ${props.selectedCount} items`,
-        icon: "i-mdi-delete",
-        onSelect: () => emit("delete", []),
         disabled: !canDelete(),
+        icon: "i-mdi-delete",
+        label: `Delete ${props.selectedCount} items`,
+        onSelect: () => emit("delete", []),
       },
     ]);
   }
@@ -357,25 +306,15 @@ const contextMenuItems = computed(() => {
 });
 
 // Permission check stubs
-const canRename = (): boolean => {
-  return true;
-};
+const canRename = (): boolean => true;
 
-const canMove = (): boolean => {
-  return true;
-};
+const canMove = (): boolean => true;
 
-const canCopy = (): boolean => {
-  return true;
-};
+const canCopy = (): boolean => true;
 
-const canDownload = (): boolean => {
-  return true;
-};
+const canDownload = (): boolean => true;
 
-const canDelete = (): boolean => {
-  return true;
-};
+const canDelete = (): boolean => true;
 
 const handleClick = (event: MouseEvent) => {
   if (!props.isSelected && event.button === 2) {

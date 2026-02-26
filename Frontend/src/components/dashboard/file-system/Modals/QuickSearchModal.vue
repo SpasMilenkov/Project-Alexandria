@@ -37,21 +37,13 @@
         <!-- Results Body (scrollable) -->
         <div class="flex-1 overflow-y-auto">
           <!-- Loading State -->
-          <div
-            v-if="isSearching"
-            class="flex flex-col items-center justify-center py-15"
-          >
-            <UIcon
-              name="i-lucide-loader-circle"
-              class="size-8 animate-spin text-muted mb-3"
-            />
+          <div v-if="isSearching" class="flex flex-col items-center justify-center py-15">
+            <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-muted mb-3" />
             <p class="text-sm text-muted">Searching...</p>
           </div>
           <!-- No Results State -->
           <div
-            v-else-if="
-              directoryResults.length === 0 && fileResults.length === 0
-            "
+            v-else-if="directoryResults.length === 0 && fileResults.length === 0"
             class="flex flex-col items-center justify-center py-15 text-center h-full"
           />
 
@@ -61,9 +53,7 @@
             <div v-if="directoryResults.length > 0">
               <div class="flex items-center gap-2 mb-3 px-4">
                 <UIcon name="i-lucide-folder" class="size-4 text-muted" />
-                <h4
-                  class="text-xs font-semibold uppercase tracking-wider text-muted"
-                >
+                <h4 class="text-xs font-semibold uppercase tracking-wider text-muted">
                   Directories ({{ directoryResults.length }})
                 </h4>
               </div>
@@ -84,9 +74,7 @@
             <div v-if="fileResults.length > 0">
               <div class="flex items-center gap-2 mb-3 px-4">
                 <UIcon name="i-lucide-file" class="size-4 text-muted" />
-                <h4
-                  class="text-xs font-semibold uppercase tracking-wider text-muted"
-                >
+                <h4 class="text-xs font-semibold uppercase tracking-wider text-muted">
                   Files ({{ fileResults.length }})
                 </h4>
               </div>
@@ -121,13 +109,14 @@ import { reactive, ref } from "vue";
 import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
 import { useDebounceFn } from "@vueuse/core";
+import { logger } from "@/utils/logger";
 
 const directoryStore = useDirectoryStore();
 const fileStore = useFileStore();
 
 const fileResults = ref<FileResult[]>([]);
 const directoryResults = ref<DirectorySummaryDto[]>([]);
-const emit = defineEmits<{ close: [ string | 'root' | 'advanced' | 'close'] }>()
+const emit = defineEmits<{ close: [string | "root" | "advanced" | "close"] }>();
 const createSearchState = () => unifiedSearchUiSchema.parse({});
 
 const state = reactive(createSearchState());
@@ -154,13 +143,13 @@ const handleSubmit = useDebounceFn(async () => {
       directoryResults.value = result.data?.items ?? [];
     }
   } catch (error) {
-    console.error(error);
+    logger.error(error);
   } finally {
     isSearching.value = false;
   }
 }, 200);
 
-const handleNavigate = (id: string | null) => emit("close", id ?? 'root');
+const handleNavigate = (id: string | null) => emit("close", id ?? "root");
 </script>
 
 <style scoped></style>

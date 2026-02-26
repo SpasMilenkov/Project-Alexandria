@@ -1,8 +1,12 @@
-import { ref, computed } from "vue";
-import { acceptHMRUpdate, defineStore } from "pinia";
-import { authApi } from "@/api/auth";
-import type { LoginSchema } from "@/schemas/auth";
 import type { AxiosError } from "axios";
+
+import { acceptHMRUpdate, defineStore } from "pinia";
+import { computed, ref } from "vue";
+
+import type { LoginSchema } from "@/schemas/auth";
+
+import { authApi } from "@/api/auth";
+import { logger } from "@/utils/logger";
 
 export const useAuthStore = defineStore(
   "auth",
@@ -14,7 +18,7 @@ export const useAuthStore = defineStore(
     const error = ref<string | null>(null);
 
     // Getters
-    const isAuthenticated = computed(() => !!user.value);
+    const isAuthenticated = computed(() => Boolean(user.value));
     const isAdmin = computed(() => roles.value.includes("Admin"));
 
     // Actions
@@ -29,15 +33,13 @@ export const useAuthStore = defineStore(
       } catch (err: unknown) {
         let message = "Login failed";
         if (err instanceof Error) {
-          message = err.message;
+          ({ message } = err);
         }
         if ((err as AxiosError)?.response?.data) {
-          message =
-            (err as AxiosError<{ message: string }>).response?.data?.message ??
-            message;
+          message = (err as AxiosError<{ message: string }>).response?.data?.message ?? message;
         }
         error.value = message;
-        return { success: false, error: message };
+        return { error: message, success: false };
       } finally {
         isLoading.value = false;
       }
@@ -47,7 +49,7 @@ export const useAuthStore = defineStore(
       try {
         await authApi.logout();
       } catch (error) {
-        console.error("Logout error:", error);
+        logger.error("Logout error:", error);
       } finally {
         user.value = null;
         roles.value = [];

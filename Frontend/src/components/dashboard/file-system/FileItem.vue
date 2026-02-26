@@ -35,9 +35,7 @@
               :height="iconSize"
               class="shrink-0"
             />
-            <span
-              class="text-sm text-center line-clamp-2 w-full wrap-break-word"
-            >
+            <span class="text-sm text-center line-clamp-2 w-full wrap-break-word">
               {{ data.fileName }}
             </span>
           </button>
@@ -93,35 +91,20 @@
     <template #body>
       <div class="flex flex-col gap-6 p-1">
         <!-- File Header Section -->
-        <div
-          class="flex items-center gap-4 p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
-        >
-          <div
-            class="p-4 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg shadow-sm"
-          >
-            <Icon
-              :icon="getFileIcon(data.fileName)"
-              class="w-16 h-16 text-primary"
-            />
+        <div class="flex items-center gap-4 p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg">
+          <div class="p-4 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg shadow-sm">
+            <Icon :icon="getFileIcon(data.fileName)" class="w-16 h-16 text-primary" />
           </div>
 
           <div class="flex-1 min-w-0">
             <h3 class="font-semibold text-lg truncate mb-1">
               {{ data.fileName }}
             </h3>
-            <div
-              class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 w-full"
-            >
+            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 w-full">
               <Icon icon="mdi-file" class="w-4 h-4" />
-              <span
-                class="max-w-46 text-ellipsis max-h-16 wrap-break-word overflow-hidden"
-                >{{
-                  getFileTypeReadable(
-                    data.currentVersion.mimeType,
-                    data.fileName,
-                  )
-                }}</span
-              >
+              <span class="max-w-46 text-ellipsis max-h-16 wrap-break-word overflow-hidden">{{
+                getFileTypeReadable(data.currentVersion.mimeType, data.fileName)
+              }}</span>
               <UBadge
                 variant="subtle"
                 color="warning"
@@ -134,11 +117,7 @@
                     ? 'Preview available'
                     : 'Preview not available'
                 "
-                :color="
-                  previewUrl || archivePreview || textPreview
-                    ? 'success'
-                    : 'error'
-                "
+                :color="previewUrl || archivePreview || textPreview ? 'success' : 'error'"
                 variant="subtle"
               />
             </div>
@@ -147,14 +126,9 @@
 
         <!-- Tags Section -->
         <div class="flex flex-col gap-3">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Tags
-          </h4>
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags</h4>
 
-          <USkeleton
-            v-if="fileTagsLoading && openDrawer"
-            class="h-8 w-48 rounded-full"
-          />
+          <USkeleton v-if="fileTagsLoading && openDrawer" class="h-8 w-48 rounded-full" />
 
           <div v-else class="flex flex-wrap items-center gap-1.5">
             <!-- Existing tags -->
@@ -175,10 +149,7 @@
             </span>
 
             <!-- Inline add trigger + popover -->
-            <UPopover
-              v-model:open="showTagSearch"
-              :content="{ side: 'bottom', align: 'start' }"
-            >
+            <UPopover v-model:open="showTagSearch" :content="{ side: 'bottom', align: 'start' }">
               <UButton
                 label="Add tag"
                 icon="i-mdi-plus"
@@ -228,15 +199,11 @@
           v-else-if="previewUrl || archivePreview || textPreview"
           class="bg-neutral-100 dark:bg-neutral-800/50 rounded-lg p-4"
         >
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Preview
-          </h4>
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Preview</h4>
 
           <!-- Audio Preview -->
           <div
-            v-if="
-              data.currentVersion.mimeType.startsWith('audio/') && previewUrl
-            "
+            v-if="data.currentVersion.mimeType.startsWith('audio/') && previewUrl"
             class="relative w-full bg-black/5 dark:bg-black/20 rounded-lg overflow-hidden"
           >
             <div class="relative w-full aspect-video">
@@ -248,11 +215,7 @@
               />
               <div
                 class="absolute inset-0 flex items-center justify-center cursor-pointer transition-all duration-200"
-                :class="
-                  isAudioPlaying
-                    ? 'bg-black/20'
-                    : 'bg-black/0 hover:bg-black/30'
-                "
+                :class="isAudioPlaying ? 'bg-black/20' : 'bg-black/0 hover:bg-black/30'"
                 @click="toggleAudio"
               >
                 <div
@@ -278,9 +241,7 @@
                     class="w-4 h-4 text-neutral-700 dark:text-white"
                   />
                 </button>
-                <span
-                  class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0"
-                >
+                <span class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0">
                   {{ formatTime(currentTime) }}
                 </span>
                 <input
@@ -292,9 +253,7 @@
                   @input="seekAudio"
                   class="flex-1 h-1 bg-neutral-300 dark:bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:hover:scale-125 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
                 />
-                <span
-                  class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0"
-                >
+                <span class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0">
                   {{ formatTime(duration) }}
                 </span>
                 <UPopover :content="{ side: 'top' }" class="shrink-0">
@@ -316,9 +275,7 @@
                     <div
                       class="flex flex-col items-center gap-2 p-3 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800"
                     >
-                      <span
-                        class="text-xs font-medium text-neutral-600 dark:text-white/70"
-                      >
+                      <span class="text-xs font-medium text-neutral-600 dark:text-white/70">
                         {{ Math.round(volume * 100) }}%
                       </span>
                       <input
@@ -360,9 +317,7 @@
 
           <!-- Image Preview -->
           <div
-            v-else-if="
-              data.currentVersion.mimeType.startsWith('image/') && previewUrl
-            "
+            v-else-if="data.currentVersion.mimeType.startsWith('image/') && previewUrl"
             class="relative w-full rounded-lg overflow-hidden bg-black/5 dark:bg-black/20"
           >
             <img
@@ -374,33 +329,20 @@
 
           <!-- Video Preview -->
           <div
-            v-else-if="
-              data.currentVersion.mimeType.startsWith('video/') && previewUrl
-            "
+            v-else-if="data.currentVersion.mimeType.startsWith('video/') && previewUrl"
             class="relative w-full aspect-video bg-black rounded-lg overflow-hidden"
           >
-            <video
-              ref="videoPlayer"
-              class="w-full h-full object-contain"
-              controls
-            >
+            <video ref="videoPlayer" class="w-full h-full object-contain" controls>
               <source :src="previewUrl" type="video/mp4" />
             </video>
           </div>
 
           <!-- PDF Preview -->
           <div
-            v-else-if="
-              pdfPreviewMimes.includes(data.currentVersion.mimeType) &&
-              previewUrl
-            "
+            v-else-if="pdfPreviewMimes.includes(data.currentVersion.mimeType) && previewUrl"
             class="relative w-xl h-220 bg-white dark:bg-neutral-900 rounded-lg overflow-hidden"
           >
-            <embed
-              :src="previewUrl"
-              type="application/pdf"
-              class="w-full h-full"
-            />
+            <embed :src="previewUrl" type="application/pdf" class="w-full h-full" />
           </div>
 
           <!-- Archive Preview -->
@@ -421,9 +363,7 @@
 
         <!-- File Details Grid -->
         <div>
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Details
-          </h4>
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Details</h4>
           <div class="grid grid-cols-2 gap-4">
             <div
               class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
@@ -440,25 +380,17 @@
             <div
               class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
             >
-              <UIcon
-                name="i-heroicons-archive-box" class="w-10 h-10 text-gray-500 mt-0.5" />
+              <UIcon name="i-heroicons-archive-box" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                  Version
-                </div>
-                <div class="font-medium">
-                  v{{ data.currentVersion.versionNumber }}
-                </div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Version</div>
+                <div class="font-medium">v{{ data.currentVersion.versionNumber }}</div>
               </div>
             </div>
 
             <div
               class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg col-span-2"
             >
-              <Icon
-                icon="mdi-identifier"
-                class="w-10 h-10 text-gray-500 mt-0.5"
-              />
+              <Icon icon="mdi-identifier" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div class="min-w-0 flex-1">
                 <div class="text-xs mb-0.5">File ID</div>
                 <div class="font-mono text-sm truncate">{{ data.fileId }}</div>
@@ -506,18 +438,11 @@
             <div
               class="flex items-start gap-3 p-3 border border-primary/20 bg-primary/5 rounded-lg"
             >
-              <Icon
-                icon="mdi-check-circle"
-                class="w-5 h-5 text-primary mt-0.5"
-              />
+              <Icon icon="mdi-check-circle" class="w-5 h-5 text-primary mt-0.5" />
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-2">
-                  <span class="font-medium"
-                    >Version {{ data.currentVersion.versionNumber }}</span
-                  >
-                  <UBadge color="primary" variant="solid" size="xs"
-                    >Current</UBadge
-                  >
+                  <span class="font-medium">Version {{ data.currentVersion.versionNumber }}</span>
+                  <UBadge color="primary" variant="solid" size="xs">Current</UBadge>
                 </div>
                 <div class="grid grid-cols-2 gap-2 text-sm">
                   <div>
@@ -527,26 +452,12 @@
                   <div
                     class="text-gray-600 dark:text-gray-400 text-ellipsis w-full overflow-hidden"
                   >
-                    <Icon
-                      icon="mdi-file-document"
-                      class="w-3.5 h-3.5 inline mr-1"
-                    />
-                    {{
-                      getFileTypeReadable(
-                        data.currentVersion.mimeType,
-                        data.fileName,
-                      )
-                    }}
+                    <Icon icon="mdi-file-document" class="w-3.5 h-3.5 inline mr-1" />
+                    {{ getFileTypeReadable(data.currentVersion.mimeType, data.fileName) }}
                   </div>
                 </div>
               </div>
-              <UButton
-                icon="i-mdi-download"
-                size="xs"
-                color="primary"
-                variant="ghost"
-                square
-              />
+              <UButton icon="i-mdi-download" size="xs" color="primary" variant="ghost" square />
             </div>
           </div>
         </UCard>
@@ -578,9 +489,7 @@ import FileTooltipCard from "./FileTooltipCard.vue";
 const settingsStore = useSettingsStore();
 
 const iconSize = computed(() =>
-  props.viewMode === "grid"
-    ? settingsStore.gridIconSize
-    : settingsStore.listIconSize,
+  props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
 );
 
 const props = defineProps<{
@@ -663,7 +572,9 @@ const toggleMute = (): void => {
 };
 
 const formatTime = (seconds: number): string => {
-  if (!seconds || !isFinite(seconds)) return "0:00";
+  if (!seconds || !isFinite(seconds)) {
+    return "0:00";
+  }
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -681,10 +592,10 @@ const pageSize = ref(25);
 const searchQuery = ref("");
 
 const searchFilters = computed<SearchTagsSchema>(() => ({
-  page: currentPage.value,
-  pageSize: pageSize.value,
   excludeOnFile: props.data.fileId,
   name: searchQuery.value || undefined,
+  page: currentPage.value,
+  pageSize: pageSize.value,
 }));
 
 const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
@@ -705,11 +616,9 @@ const { data: fileTagsData, isLoading: fileTagsLoading } = useQuery({
   enabled: () => openDrawer.value,
 });
 
-const displayTags = computed(() => {
-  return openDrawer.value && fileTagsData.value
-    ? fileTagsData.value.tags
-    : props.data.tags;
-});
+const displayTags = computed(() =>
+  openDrawer.value && fileTagsData.value ? fileTagsData.value.tags : props.data.tags,
+);
 
 const showTagSearch = ref(false);
 
@@ -732,81 +641,81 @@ const contextMenuItems = computed(() => {
   if (!isMultiSelect) {
     items.push([
       {
-        label: "Download",
-        icon: "i-mdi-download",
-        onSelect: () => emit("download", [props.data.fileId]),
         disabled: !canDownload(),
+        icon: "i-mdi-download",
+        label: "Download",
+        onSelect: () => emit("download", [props.data.fileId]),
       },
       {
-        label: "Rename",
-        icon: "i-mdi-pencil",
-        onSelect: () => emit("rename", props.data.fileId),
         disabled: !canRename(),
+        icon: "i-mdi-pencil",
+        label: "Rename",
+        onSelect: () => emit("rename", props.data.fileId),
       },
     ]);
     items.push([
       {
-        label: "Move",
-        icon: "i-mdi-folder-move",
-        onSelect: () => emit("move", [props.data.fileId]),
         disabled: !canMove(),
+        icon: "i-mdi-folder-move",
+        label: "Move",
+        onSelect: () => emit("move", [props.data.fileId]),
       },
       {
-        label: "Copy",
-        icon: "i-mdi-content-copy",
-        onSelect: () => emit("copy", [props.data.fileId]),
         disabled: !canCopy(),
+        icon: "i-mdi-content-copy",
+        label: "Copy",
+        onSelect: () => emit("copy", [props.data.fileId]),
       },
       {
-        label: "Share",
-        icon: "i-mdi-share-variant",
-        onSelect: () => emit("share", [props.data.fileId]),
         disabled: !canShare(),
+        icon: "i-mdi-share-variant",
+        label: "Share",
+        onSelect: () => emit("share", [props.data.fileId]),
       },
     ]);
     items.push([
       {
-        label: "Delete",
-        icon: "i-mdi-delete",
-        onSelect: () => emit("delete", [props.data.fileId]),
         disabled: !canDelete(),
+        icon: "i-mdi-delete",
+        label: "Delete",
+        onSelect: () => emit("delete", [props.data.fileId]),
       },
     ]);
   } else {
     items.push([
       {
-        label: `Download ${props.selectedCount} items`,
-        icon: "i-mdi-download",
-        onSelect: () => emit("download", []),
         disabled: !canDownload(),
+        icon: "i-mdi-download",
+        label: `Download ${props.selectedCount} items`,
+        onSelect: () => emit("download", []),
       },
     ]);
     items.push([
       {
-        label: `Move ${props.selectedCount} items`,
-        icon: "i-mdi-folder-move",
-        onSelect: () => emit("move", []),
         disabled: !canMove(),
+        icon: "i-mdi-folder-move",
+        label: `Move ${props.selectedCount} items`,
+        onSelect: () => emit("move", []),
       },
       {
-        label: `Copy ${props.selectedCount} items`,
-        icon: "i-mdi-content-copy",
-        onSelect: () => emit("copy", []),
         disabled: !canCopy(),
+        icon: "i-mdi-content-copy",
+        label: `Copy ${props.selectedCount} items`,
+        onSelect: () => emit("copy", []),
       },
       {
-        label: `Share ${props.selectedCount} items`,
-        icon: "i-mdi-share-variant",
-        onSelect: () => emit("share", []),
         disabled: !canShare(),
+        icon: "i-mdi-share-variant",
+        label: `Share ${props.selectedCount} items`,
+        onSelect: () => emit("share", []),
       },
     ]);
     items.push([
       {
-        label: `Delete ${props.selectedCount} items`,
-        icon: "i-mdi-delete",
-        onSelect: () => emit("delete", []),
         disabled: !canDelete(),
+        icon: "i-mdi-delete",
+        label: `Delete ${props.selectedCount} items`,
+        onSelect: () => emit("delete", []),
       },
     ]);
   }
@@ -843,14 +752,12 @@ const pdfPresentationMimes = [
   "application/vnd.oasis.opendocument.presentation",
 ];
 
-const pdfPreviewMimes = [
-  ...pdfDocumentMimes,
-  ...pdfSpreadsheetMimes,
-  ...pdfPresentationMimes,
-];
+const pdfPreviewMimes = [...pdfDocumentMimes, ...pdfSpreadsheetMimes, ...pdfPresentationMimes];
 
 const formatFileSize = (bytes: number | undefined): string => {
-  if (!bytes) return "";
+  if (!bytes) {
+    return "";
+  }
   const units = ["B", "KB", "MB", "GB", "TB"];
   let size = bytes;
   let unitIndex = 0;
@@ -884,14 +791,16 @@ interface ArchiveData {
 const archivePreviewItems = computed(() => parseArchivePreview());
 
 const parseArchivePreview = () => {
-  if (!archivePreview.value) return undefined;
+  if (!archivePreview.value) {
+    return undefined;
+  }
 
   const tree: ArchiveData = JSON.parse(archivePreview.value);
   const rootNode: TreeItem = {
-    label: tree.FileName,
     children: [],
     defaultExpanded: true,
     icon: "mdi-folder",
+    label: tree.FileName,
   };
 
   const pathCache = new Map<string, TreeItem>();
@@ -908,8 +817,10 @@ const parseArchivePreview = () => {
       let folder = pathCache.get(newPath);
 
       if (!folder) {
-        folder = { label: part, children: [], icon: "mdi-folder" };
-        if (!parentNode.children) parentNode.children = [];
+        folder = { children: [], icon: "mdi-folder", label: part };
+        if (!parentNode.children) {
+          parentNode.children = [];
+        }
         parentNode.children.push(folder);
         pathCache.set(newPath, folder);
       }
@@ -918,9 +829,11 @@ const parseArchivePreview = () => {
       currentPath = newPath;
     }
 
-    if (!parentNode.children) parentNode.children = [];
+    if (!parentNode.children) {
+      parentNode.children = [];
+    }
     const fileName = pathParts[pathParts.length - 1];
-    parentNode.children.push({ label: fileName, icon: "mdi-file" });
+    parentNode.children.push({ icon: "mdi-file", label: fileName });
   });
 
   return [rootNode];
@@ -954,7 +867,9 @@ watch(openDrawer, (isOpen) => {
 });
 
 watch(showTagSearch, (open) => {
-  if (!open) searchQuery.value = "";
+  if (!open) {
+    searchQuery.value = "";
+  }
 });
 </script>
 

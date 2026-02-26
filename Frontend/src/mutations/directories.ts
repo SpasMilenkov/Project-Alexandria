@@ -1,10 +1,12 @@
-import { directoryApi } from "@/api/directory";
+import { defineMutation } from "@pinia/colada";
+
 import type {
   CreateDirectorySchema,
   DeleteDirectorySchema,
   UpdateDirectorySchema,
 } from "@/schemas/directory";
-import { defineMutation } from "@pinia/colada";
+
+import { directoryApi } from "@/api/directory";
 
 export const createDirectory = defineMutation({
   mutation: (data: CreateDirectorySchema) => directoryApi.createDirectory(data),
@@ -35,16 +37,10 @@ export const copyDirectory = defineMutation({
 });
 
 export const deleteDirectory = defineMutation({
-  mutation: ({
-    id,
-    options = { force: false },
-  }: {
-    id: string;
-    options: DeleteDirectorySchema;
-  }) => directoryApi.deleteDirectory(id, options),
+  mutation: ({ id, options = { force: false } }: { id: string; options: DeleteDirectorySchema }) =>
+    directoryApi.deleteDirectory(id, options),
 });
 
 export const restoreDirectories = defineMutation({
-  mutation: (directoryIds: string[]) =>
-    directoryApi.restoreDirectories(directoryIds),
+  mutation: (directoryIds: string[]) => directoryApi.restoreDirectories(directoryIds),
 });

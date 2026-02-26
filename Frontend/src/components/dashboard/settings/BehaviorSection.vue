@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
-import { useSettingsStore, TOAST_LEVELS } from "@/stores/settings";
+import { TOAST_LEVELS, useSettingsStore } from "@/stores/settings";
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import type { ToastLevel } from "@/stores/settings";
 import { Icon } from "@iconify/vue";
@@ -31,14 +31,11 @@ const persistBehavior = useDebounceFn(async () => {
   });
 }, 600);
 
-watch(
-  () => [settingsStore.skipDeleteConfirmation, settingsStore.toastLevel],
-  persistBehavior,
-);
+watch(() => [settingsStore.skipDeleteConfirmation, settingsStore.toastLevel], persistBehavior);
 
 const handleResetBehavior = async () => {
   settingsStore.resetBehaviorSettings();
-  // reset fires the watcher which debounces the save — no manual call needed
+  // Reset fires the watcher which debounces the save — no manual call needed
 };
 </script>
 
@@ -50,9 +47,7 @@ const handleResetBehavior = async () => {
         color="neutral"
         block
         class="justify-between"
-        :trailing-icon="
-          isOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'
-        "
+        :trailing-icon="isOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
       >
         <div class="flex items-center gap-2">
           <Icon icon="mdi:cog" class="w-5 h-5 text-primary" />
@@ -77,14 +72,9 @@ const handleResetBehavior = async () => {
             <!-- Skip delete confirmation -->
             <div class="flex items-start justify-between gap-4">
               <div class="flex flex-col gap-1">
-                <span class="text-sm font-medium"
-                  >Skip delete confirmation</span
-                >
-                <span
-                  class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed"
-                >
-                  When enabled, non-empty directories will be deleted without
-                  prompting
+                <span class="text-sm font-medium">Skip delete confirmation</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                  When enabled, non-empty directories will be deleted without prompting
                 </span>
               </div>
               <USwitch v-model="skipDeleteConfirmation" size="lg" />
@@ -96,9 +86,7 @@ const handleResetBehavior = async () => {
             <div class="flex flex-col gap-3">
               <div class="flex flex-col gap-1">
                 <span class="text-sm font-medium">Notification chatter</span>
-                <span
-                  class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed"
-                >
+                <span class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                   How much do you want to hear from us?
                 </span>
               </div>
@@ -126,9 +114,7 @@ const handleResetBehavior = async () => {
                     "
                   />
                   <div class="flex flex-col gap-0.5 min-w-0">
-                    <span class="text-sm font-medium leading-none">{{
-                      level.label
-                    }}</span>
+                    <span class="text-sm font-medium leading-none">{{ level.label }}</span>
                     <span class="text-xs text-gray-500 dark:text-gray-400">{{
                       level.description
                     }}</span>
@@ -144,8 +130,7 @@ const handleResetBehavior = async () => {
           </div>
 
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Disabling confirmations can lead to accidental data loss. Use with
-            caution.
+            Disabling confirmations can lead to accidental data loss. Use with caution.
           </p>
         </div>
       </template>

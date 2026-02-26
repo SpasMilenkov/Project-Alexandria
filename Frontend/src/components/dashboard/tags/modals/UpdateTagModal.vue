@@ -1,12 +1,7 @@
 <template>
   <UModal :close="{ onClick: () => emit('close', false) }" :title="'Edit Tag'">
     <template #body>
-      <UForm
-        :schema="updateTagSchema"
-        :state="state"
-        class="space-y-5 w-full"
-        @submit="onSubmit"
-      >
+      <UForm :schema="updateTagSchema" :state="state" class="space-y-5 w-full" @submit="onSubmit">
         <div class="grid grid-cols-2 gap-4">
           <UFormField label="Tag Name" name="name" required>
             <UInput
@@ -75,7 +70,7 @@
                 @click="isPreviewSelected = !isPreviewSelected"
                 :tag="exampleTag"
               />
-              <TagBadge :tag="exampleTag"/>
+              <TagBadge :tag="exampleTag" />
             </div>
           </div>
         </UFormField>
@@ -89,17 +84,8 @@
         </UFormField>
 
         <div class="flex gap-2 w-full justify-end pt-2">
-          <UButton
-            color="neutral"
-            label="Cancel"
-            variant="ghost"
-            @click="emit('close', false)"
-          />
-          <UButton
-            type="submit"
-            :loading="mutationLoading"
-            icon="i-heroicons-check"
-          >
+          <UButton color="neutral" label="Cancel" variant="ghost" @click="emit('close', false)" />
+          <UButton type="submit" :loading="mutationLoading" icon="i-heroicons-check">
             Update Tag
           </UButton>
         </div>
@@ -109,14 +95,14 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import { Icon } from "@iconify/vue";
 import { useSettingsStore } from "@/stores/settings";
-import { updateTagSchema, type UpdateTagSchema } from "@/schemas/tag";
+import { type UpdateTagSchema, updateTagSchema } from "@/schemas/tag";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import { updateTag } from "@/mutations/tags";
 import TagCard from "../TagCard.vue";
-import { iconOptions, getIconByValue } from "@/utils/icon.utils";
+import { getIconByValue, iconOptions } from "@/utils/icon.utils";
 import type { TagDto } from "@/api/tag";
 import TagBadge from "../TagBadge.vue";
 
@@ -127,36 +113,32 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [boolean] }>();
 const settingsStore = useSettingsStore();
 
-const {
-  mutateAsync,
-  state: mutationState,
-  isLoading: mutationLoading,
-} = updateTag();
+const { mutateAsync, state: mutationState, isLoading: mutationLoading } = updateTag();
 
 const state = reactive<UpdateTagSchema>({
-  name: props.tag.name,
-  icon: props.tag.icon,
   color: props.tag.color,
   description: props.tag.description,
+  icon: props.tag.icon,
+  name: props.tag.name,
 });
 
 const isPreviewSelected = ref(false);
 
 const exampleTag = computed(() => ({
+  color: state.color,
+  createdAt: new Date().toISOString(),
+  description: state.description,
+  icon: getIconByValue(state.icon),
   id: props.tag.id,
   name: state.name,
-  icon: getIconByValue(state.icon),
-  color: state.color,
-  description: state.description,
-  userId: props.tag.userId,
-  createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  userId: props.tag.userId,
 }));
 
 const onSubmit = async (event: FormSubmitEvent<UpdateTagSchema>) => {
   await mutateAsync({
-    tagId: props.tag.id,
     data: event.data,
+    tagId: props.tag.id,
   });
   if (!mutationState.value.error) {
     emit("close", true);

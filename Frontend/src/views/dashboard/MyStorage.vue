@@ -1,9 +1,7 @@
 <template>
-  <div class="flex flex-col h-full w-full flex-1 ">
+  <div class="flex flex-col h-full w-full flex-1">
     <!-- Header -->
-    <div
-      class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between"
-    >
+    <div class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-lg border border-dashed opacity-50">
           <UIcon name="mdi:chart-pie" class="w-4 h-4" />
@@ -43,18 +41,12 @@
         />
 
         <!-- Loading -->
-        <div
-          v-if="myStorageIsLoading"
-          class="flex items-center justify-center py-20 opacity-80"
-        >
+        <div v-if="myStorageIsLoading" class="flex items-center justify-center py-20 opacity-80">
           <UIcon name="mdi:loading" class="w-6 h-6 animate-spin" />
         </div>
 
         <!-- Error -->
-        <div
-          v-else-if="myStorageError"
-          class="text-center py-16 opacity-90 space-y-2"
-        >
+        <div v-else-if="myStorageError" class="text-center py-16 opacity-90 space-y-2">
           <UIcon name="mdi:alert-circle-outline" class="w-10 h-10 mx-auto" />
           <p class="text-sm">Failed to load storage data</p>
         </div>
@@ -65,19 +57,13 @@
             <UCard :ui="{ body: 'p-5' }">
               <div class="flex items-start justify-between">
                 <div class="space-y-1">
-                  <p
-                    class="text-xs uppercase tracking-widest opacity-90 font-medium"
-                  >
-                    Trash
-                  </p>
+                  <p class="text-xs uppercase tracking-widest opacity-90 font-medium">Trash</p>
                   <p class="text-2xl font-semibold tabular-nums leading-none">
                     {{ formatBytes(myStorageData.trashSize) }}
                   </p>
                   <p class="text-xs opacity-90">Awaiting cleanup</p>
                 </div>
-                <div
-                  class="p-2 rounded-lg border border-dashed opacity-90 mt-0.5"
-                >
+                <div class="p-2 rounded-lg border border-dashed opacity-90 mt-0.5">
                   <UIcon name="mdi:delete-outline" class="w-4 h-4" />
                 </div>
               </div>
@@ -86,19 +72,13 @@
             <UCard :ui="{ body: 'p-5' }">
               <div class="flex items-start justify-between">
                 <div class="space-y-1">
-                  <p
-                    class="text-xs uppercase tracking-widest opacity-90 font-medium"
-                  >
-                    Old Files
-                  </p>
+                  <p class="text-xs uppercase tracking-widest opacity-90 font-medium">Old Files</p>
                   <p class="text-2xl font-semibold tabular-nums leading-none">
                     {{ myStorageData.oldFiles.length }}
                   </p>
                   <p class="text-xs opacity-90">Not accessed recently</p>
                 </div>
-                <div
-                  class="p-2 rounded-lg border border-dashed opacity-80 mt-0.5"
-                >
+                <div class="p-2 rounded-lg border border-dashed opacity-80 mt-0.5">
                   <UIcon name="mdi:clock-outline" class="w-4 h-4" />
                 </div>
               </div>
@@ -107,19 +87,13 @@
             <UCard :ui="{ body: 'p-5' }">
               <div class="flex items-start justify-between">
                 <div class="space-y-1">
-                  <p
-                    class="text-xs uppercase tracking-widest opacity-90 font-medium"
-                  >
-                    File Types
-                  </p>
+                  <p class="text-xs uppercase tracking-widest opacity-90 font-medium">File Types</p>
                   <p class="text-2xl font-semibold tabular-nums leading-none">
                     {{ sizeByCategory?.categories.length ?? "—" }}
                   </p>
                   <p class="text-xs opacity-90">Distinct categories</p>
                 </div>
-                <div
-                  class="p-2 rounded-lg border border-dashed opacity-80 mt-0.5"
-                >
+                <div class="p-2 rounded-lg border border-dashed opacity-80 mt-0.5">
                   <UIcon name="mdi:shape-outline" class="w-4 h-4" />
                 </div>
               </div>
@@ -154,16 +128,11 @@
                   <UIcon :name="getFileIcon(file.fileName)" class="w-4 h-4" />
                 </div>
                 <div class="flex-1 min-w-0 space-y-1">
-                  <p
-                    class="text-sm font-medium truncate leading-snug"
-                    :title="file.fileName"
-                  >
+                  <p class="text-sm font-medium truncate leading-snug" :title="file.fileName">
                     {{ file.fileName }}
                   </p>
                   <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="text-xs opacity-90">{{
-                      getFileTypeReadable(file.mimeType)
-                    }}</span>
+                    <span class="text-xs opacity-90">{{ getFileTypeReadable(file.mimeType) }}</span>
                     <span
                       v-if="file.hasPreview"
                       class="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border opacity-50 font-medium"
@@ -192,7 +161,7 @@
 
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
-import { storageInfo, myStorage } from "@/queries/status";
+import { myStorage, storageInfo } from "@/queries/status";
 import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
 import StorageBreakdownDiagram from "@/components/dashboard/metrics/StorageBreakdownChart.vue";
 import { groupMimeSizeRecord } from "@/utils/mimetype.utils";
@@ -210,8 +179,9 @@ const {
 } = useQuery(myStorage);
 
 const sizeByCategory = computed(() => {
-  if (myStorageData.value)
+  if (myStorageData.value) {
     return groupMimeSizeRecord(myStorageData.value.sizeByType);
+  }
   return null;
 });
 </script>

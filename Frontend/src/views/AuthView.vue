@@ -9,12 +9,8 @@ import LoginForm from "@/components/LoginForm.vue";
     >
       <!-- Decorative Elements - Centered circles -->
       <div class="absolute inset-0 flex items-center justify-center opacity-10">
-        <div
-          class="w-[500px] h-[500px] border-2 border-neutral rounded-full absolute"
-        ></div>
-        <div
-          class="w-[600px] h-[600px] border-2 border-neutral rounded-full absolute"
-        ></div>
+        <div class="w-125 h-125 border-2 border-neutral rounded-full absolute"></div>
+        <div class="w-150 h-150 border-2 border-neutral rounded-full absolute"></div>
       </div>
 
       <!-- Grid Pattern -->
@@ -23,9 +19,7 @@ import LoginForm from "@/components/LoginForm.vue";
       ></div>
 
       <!-- Content - Centered -->
-      <div
-        class="max-w-md text-center relative z-10 flex flex-col items-center justify-center"
-      >
+      <div class="max-w-md text-center relative z-10 flex flex-col items-center justify-center">
         <h1 class="text-4xl font-bold mb-4">Welcome to Alexandria</h1>
         <p class="dark:text-primary-300 text-primary-500 text-lg">
           Your all in one solution for lazy file hosting
@@ -41,7 +35,7 @@ import LoginForm from "@/components/LoginForm.vue";
             class="px-4 py-2 bg-primary/10 backdrop-blur-sm rounded-full border border-primary/20 text-sm"
           >
             Fast Access
-          </div>  
+          </div>
         </div>
       </div>
     </div>

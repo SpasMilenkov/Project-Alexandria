@@ -37,10 +37,7 @@
           <!-- Body -->
           <div class="px-3 py-4">
             <div v-if="isLoading" class="flex items-center justify-center py-8">
-              <UIcon
-                name="mdi:loading"
-                class="w-6 h-6 animate-spin opacity-50"
-              />
+              <UIcon name="mdi:loading" class="w-6 h-6 animate-spin opacity-50" />
             </div>
             <div v-else-if="error" class="text-sm opacity-70">
               Failed to load storage information
@@ -48,9 +45,7 @@
             <div v-else-if="data" class="space-y-4">
               <!-- Progress Bar -->
               <div class="space-y-2">
-                <div
-                  class="h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden"
-                >
+                <div class="h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
                   <div
                     class="h-full bg-primary transition-all duration-300 rounded-full"
                     :style="{ width: `${data.dataUsagePercentage}%` }"
@@ -58,9 +53,7 @@
                 </div>
                 <!-- Storage Details -->
                 <div class="flex justify-between text-sm opacity-70">
-                  <span
-                    >{{ data.dataAvailableGB.toFixed(2) }} GB available</span
-                  >
+                  <span>{{ data.dataAvailableGB.toFixed(2) }} GB available</span>
                   <span>{{ data.dataTotalGB.toFixed(2) }} GB total</span>
                 </div>
               </div>
@@ -68,10 +61,7 @@
           </div>
 
           <!-- Footer -->
-          <div
-            v-if="data"
-            class="border-t border-gray-200/70 dark:border-gray-700/70 p-2"
-          >
+          <div v-if="data" class="border-t border-gray-200/70 dark:border-gray-700/70 p-2">
             <UButton
               variant="ghost"
               size="sm"

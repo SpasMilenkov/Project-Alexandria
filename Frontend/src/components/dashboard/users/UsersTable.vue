@@ -23,16 +23,12 @@
 
     <!-- Empty state -->
     <template #empty>
-      <div
-        class="flex flex-col items-center justify-center py-20 text-center px-4"
-      >
+      <div class="flex flex-col items-center justify-center py-20 text-center px-4">
         <div class="rounded-full p-5 mb-4 bg-elevated border border-default">
           <UIcon name="i-lucide-users" class="size-9 text-muted" />
         </div>
         <p class="text-sm font-medium text-default mb-1">No users found</p>
-        <p class="text-xs text-muted max-w-xs mb-4">
-          No accounts match your current filters.
-        </p>
+        <p class="text-xs text-muted max-w-xs mb-4">No accounts match your current filters.</p>
         <UButton
           size="sm"
           color="neutral"
@@ -79,23 +75,35 @@ const UDropdownMenu = resolveComponent("UDropdownMenu");
 // Cell helpers
 
 function statusLabel(user: UserDetailsDto) {
-  if (user.deletedAt) return "Deleted";
-  if (user.isLockedOut) return "Locked";
+  if (user.deletedAt) {
+    return "Deleted";
+  }
+  if (user.isLockedOut) {
+    return "Locked";
+  }
   return "Active";
 }
 
 function statusColor(user: UserDetailsDto): "error" | "warning" | "success" {
-  if (user.deletedAt) return "error";
-  if (user.isLockedOut) return "warning";
+  if (user.deletedAt) {
+    return "error";
+  }
+  if (user.isLockedOut) {
+    return "warning";
+  }
   return "success";
 }
 
 function avatarBg(user: UserDetailsDto) {
-  if (user.deletedAt)
+  if (user.deletedAt) {
     return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400";
-  if (user.isLockedOut)
+  }
+  if (user.isLockedOut) {
     return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
-  if (user.role === UserRole.Admin) return "bg-primary/15 text-primary";
+  }
+  if (user.role === UserRole.Admin) {
+    return "bg-primary/15 text-primary";
+  }
   return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
 }
 
@@ -103,21 +111,21 @@ function rowActions(user: UserDetailsDto) {
   return [
     [
       {
-        label: "Edit",
         icon: "i-lucide-pencil",
+        label: "Edit",
         onSelect: () => emit("edit", user),
       },
       {
-        label: user.isLockedOut ? "Remove restriction" : "Restrict",
         icon: user.isLockedOut ? "i-lucide-lock-open" : "i-lucide-lock",
+        label: user.isLockedOut ? "Remove restriction" : "Restrict",
         onSelect: () => emit("restrict", user),
       },
     ],
     [
       {
-        label: "Delete",
-        icon: "i-lucide-trash-2",
         class: "text-error",
+        icon: "i-lucide-trash-2",
+        label: "Delete",
         onSelect: () => emit("delete", [user.id]),
       },
     ],
@@ -128,27 +136,23 @@ function rowActions(user: UserDetailsDto) {
 
 const columns: TableColumn<UserDetailsDto>[] = [
   {
-    id: "expand",
-    header: "",
     cell: ({ row }) =>
       h(UButton, {
-        color: "neutral",
-        variant: "ghost",
-        size: "xs",
-        icon: row.getIsExpanded()
-          ? "i-lucide-chevron-down"
-          : "i-lucide-chevron-right",
         "aria-label": row.getIsExpanded() ? "Collapse row" : "Expand row",
+        color: "neutral",
+        icon: row.getIsExpanded() ? "i-lucide-chevron-down" : "i-lucide-chevron-right",
         onClick: (e: MouseEvent) => {
           e.stopPropagation();
           row.toggleExpanded();
         },
+        size: "xs",
+        variant: "ghost",
       }),
-    meta: { class: { th: "w-10", td: "w-10" } },
+    header: "",
+    id: "expand",
+    meta: { class: { td: "w-10", th: "w-10" } },
   },
   {
-    id: "user",
-    header: "User",
     cell: ({ row }) =>
       h("div", { class: "flex items-center gap-2.5 min-w-0" }, [
         h(
@@ -166,83 +170,72 @@ const columns: TableColumn<UserDetailsDto>[] = [
             },
             row.original.userName,
           ),
-          h(
-            "p",
-            { class: "text-xs text-muted truncate leading-tight" },
-            row.original.email,
-          ),
+          h("p", { class: "text-xs text-muted truncate leading-tight" }, row.original.email),
         ]),
       ]),
-    meta: { class: { th: "min-w-52", td: "min-w-52" } },
+    header: "User",
+    id: "user",
+    meta: { class: { td: "min-w-52", th: "min-w-52" } },
   },
   {
-    id: "role",
-    header: "Role",
     cell: ({ row }) =>
       h(
         UBadge,
         {
           color: row.original.role === UserRole.Admin ? "primary" : "neutral",
-          variant: "subtle",
           size: "sm",
+          variant: "subtle",
         },
         () => (row.original.role === UserRole.Admin ? "Admin" : "User"),
       ),
-    meta: { class: { th: "w-24", td: "w-24" } },
+    header: "Role",
+    id: "role",
+    meta: { class: { td: "w-24", th: "w-24" } },
   },
   {
-    id: "status",
-    header: "Status",
     cell: ({ row }) =>
-      h(
-        UBadge,
-        { color: statusColor(row.original), variant: "subtle", size: "sm" },
-        () => statusLabel(row.original),
+      h(UBadge, { color: statusColor(row.original), size: "sm", variant: "subtle" }, () =>
+        statusLabel(row.original),
       ),
-    meta: { class: { th: "w-28", td: "w-28" } },
+    header: "Status",
+    id: "status",
+    meta: { class: { td: "w-28", th: "w-28" } },
   },
   {
     accessorKey: "createdAt",
-    header: "Created",
     cell: ({ row }) =>
-      h(
-        "span",
-        { class: "text-sm text-muted tabular-nums" },
-        formatDate(row.original.createdAt),
-      ),
-    meta: { class: { th: "w-32", td: "w-32" } },
+      h("span", { class: "text-sm text-muted tabular-nums" }, formatDate(row.original.createdAt)),
+    header: "Created",
+    meta: { class: { td: "w-32", th: "w-32" } },
   },
   {
-    id: "actions",
-    header: "",
     cell: ({ row }) =>
       h("div", { class: "flex items-center justify-end gap-1" }, [
         h(UButton, {
-          color: "neutral",
-          variant: "ghost",
-          size: "xs",
-          icon: "i-lucide-pencil",
           "aria-label": "Edit user",
+          color: "neutral",
+          icon: "i-lucide-pencil",
           onClick: (e: MouseEvent) => {
             e.stopPropagation();
             emit("edit", row.original);
           },
+          size: "xs",
+          variant: "ghost",
         }),
-        h(
-          UDropdownMenu,
-          { items: rowActions(row.original), ui: { content: "min-w-40" } },
-          () =>
-            h(UButton, {
-              color: "neutral",
-              variant: "ghost",
-              size: "xs",
-              icon: "i-lucide-ellipsis-vertical",
-              "aria-label": "More actions",
-              onClick: (e: MouseEvent) => e.stopPropagation(),
-            }),
+        h(UDropdownMenu, { items: rowActions(row.original), ui: { content: "min-w-40" } }, () =>
+          h(UButton, {
+            "aria-label": "More actions",
+            color: "neutral",
+            icon: "i-lucide-ellipsis-vertical",
+            onClick: (e: MouseEvent) => e.stopPropagation(),
+            size: "xs",
+            variant: "ghost",
+          }),
         ),
       ]),
-    meta: { class: { th: "w-20 text-right", td: "w-20" } },
+    header: "",
+    id: "actions",
+    meta: { class: { td: "w-20", th: "w-20 text-right" } },
   },
 ];
 </script>

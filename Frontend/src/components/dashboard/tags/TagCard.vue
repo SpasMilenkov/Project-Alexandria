@@ -2,7 +2,7 @@
   <div
     draggable
     data-tag-item
-    class="relative group cursor-pointer rounded-xl border p-6 transition-all duration-300 "
+    class="relative group cursor-pointer rounded-xl border p-6 transition-all duration-300"
     :class="[
       isSelected
         ? 'bg-primary/10 border-primary ring-2 ring-primary shadow-lg'
@@ -33,12 +33,7 @@
       class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
     >
       <UDropdownMenu :items="menuItems" @click.stop>
-        <UButton
-          icon="i-heroicons-ellipsis-vertical"
-          size="sm"
-          variant="ghost"
-          color="gray"
-        />
+        <UButton icon="i-heroicons-ellipsis-vertical" size="sm" variant="ghost" color="gray" />
       </UDropdownMenu>
     </div>
 
@@ -49,10 +44,7 @@
         <div
           class="tag-icon-bg w-16 h-16 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
         >
-          <Icon
-            :icon="getIconByValue(tag.icon) || 'mdi:tag'"
-            class="tag-icon w-8 h-8"
-          />
+          <Icon :icon="getIconByValue(tag.icon) || 'mdi:tag'" class="tag-icon w-8 h-8" />
         </div>
       </div>
 
@@ -73,17 +65,13 @@
 
         <!-- Tag Metadata -->
         <div class="space-y-1.5">
-          <div
-            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
-          >
+          <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <Icon icon="mdi:calendar" class="w-4 h-4" />
             <span>Created {{ formatDate(tag.createdAt) }}</span>
           </div>
 
           <!-- Tag Color Preview -->
-          <div
-            class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
-          >
+          <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <Icon icon="mdi:palette" class="w-4 h-4" />
             <span>Color:</span>
             <div
@@ -100,9 +88,7 @@
     <div
       class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 max-h-0 group-hover:max-h-20 overflow-hidden"
     >
-      <div
-        class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
-      >
+      <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
         <div class="flex items-center gap-1">
           <Icon icon="mdi:clock-outline" class="w-3.5 h-3.5" />
           <span>{{ formatDateTime(tag.createdAt) }}</span>
@@ -142,30 +128,28 @@ const emit = defineEmits<{
 const menuItems = computed(() => [
   [
     {
-      label: "Edit",
       icon: "i-heroicons-pencil",
+      label: "Edit",
       onSelect: () => emit("edit", props.tag),
     },
   ],
   [
     {
-      label: "Delete",
       icon: "i-heroicons-trash",
+      label: "Delete",
       onSelect: () => emit("delete", props.tag.id),
     },
   ],
 ]);
 
-
-
 const formatDateTime = (dateString: string) => {
   const date = new Date(dateString);
   return date.toLocaleDateString("en-US", {
-    month: "short",
     day: "numeric",
-    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 };
 </script>

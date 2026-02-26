@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import { useActivityStore } from "@/stores/activity";
 import { SortDirection } from "@/enums/SortDirection";
-import { OperationType, EntityType } from "@/api/activity";
+import { EntityType, OperationType } from "@/api/activity";
 import { useAuthStore } from "@/stores/auth";
 import { useQuery } from "@pinia/colada";
 import { personalPaginated } from "@/queries/activities";
@@ -19,10 +19,18 @@ const { data, refresh, isLoading, error } = useQuery(personalPaginated, () => ({
 }));
 
 const getIconForOperation = (opType: OperationType, entityType: EntityType) => {
-  if (entityType === EntityType.Directory) return "i-lucide-folder";
-  if (entityType === EntityType.File) return "i-lucide-file";
-  if (entityType === EntityType.Tag) return "i-lucide-tag";
-  if (entityType === EntityType.User) return "i-lucide-user";
+  if (entityType === EntityType.Directory) {
+    return "i-lucide-folder";
+  }
+  if (entityType === EntityType.File) {
+    return "i-lucide-file";
+  }
+  if (entityType === EntityType.Tag) {
+    return "i-lucide-tag";
+  }
+  if (entityType === EntityType.User) {
+    return "i-lucide-user";
+  }
 
   switch (opType) {
     case OperationType.Create:
@@ -65,30 +73,28 @@ const opColor = (opType: OperationType): OpColor => {
   }
 };
 
-const opLabel = (opType: OperationType): string =>
-  OperationType[opType] ?? "Unknown";
+const opLabel = (opType: OperationType): string => OperationType[opType] ?? "Unknown";
 
 const rows = computed(() =>
   !data.value
     ? []
     : data.value.items.map((log) => ({
-        key: log.entityId + log.timestamp,
-        icon: getIconForOperation(log.operationType, log.entityTYpe),
-        title:
-          log.description || getDefaultTitle(log.operationType, log.entityTYpe),
+        color: opColor(log.operationType),
         date: new Date(log.timestamp).toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "short",
           day: "numeric",
+          month: "short",
+          year: "numeric",
         }),
+        entityType: log.entityTYpe,
+        icon: getIconForOperation(log.operationType, log.entityTYpe),
+        key: log.entityId + log.timestamp,
+        opLabel: opLabel(log.operationType),
+        operationType: log.operationType,
         time: new Date(log.timestamp).toLocaleTimeString(undefined, {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        operationType: log.operationType,
-        entityType: log.entityTYpe,
-        color: opColor(log.operationType),
-        opLabel: opLabel(log.operationType),
+        title: log.description || getDefaultTitle(log.operationType, log.entityTYpe),
       })),
 );
 
@@ -101,18 +107,14 @@ const changePage = (pageNumber: number) => {
 <template>
   <div class="flex flex-col h-full w-full flex-1">
     <!-- Header -->
-    <div
-      class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between"
-    >
+    <div class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-lg border border-dashed opacity-50">
           <UIcon name="i-lucide-activity" class="w-4 h-4" />
         </div>
         <div>
           <h1 class="text-lg font-semibold tracking-tight">Activity</h1>
-          <p class="text-xs opacity-90">
-            Your recent actions across the system
-          </p>
+          <p class="text-xs opacity-90">Your recent actions across the system</p>
         </div>
       </div>
       <!-- Total badge -->
@@ -137,11 +139,7 @@ const changePage = (pageNumber: number) => {
 
         <!-- Loading skeleton -->
         <div v-if="isLoading" class="space-y-1">
-          <div
-            v-for="i in 10"
-            :key="i"
-            class="flex items-center gap-4 px-4 py-4"
-          >
+          <div v-for="i in 10" :key="i" class="flex items-center gap-4 px-4 py-4">
             <USkeleton class="w-9 h-9 rounded-full shrink-0" />
             <div class="flex-1 space-y-2">
               <USkeleton class="h-4 w-72" />
@@ -226,9 +224,7 @@ const changePage = (pageNumber: number) => {
           <UIcon name="i-lucide-folder-open" class="w-12 h-12 mx-auto" />
           <div>
             <p class="font-medium">No activity yet</p>
-            <p class="text-sm mt-1">
-              Actions will appear here as you use the system
-            </p>
+            <p class="text-sm mt-1">Actions will appear here as you use the system</p>
           </div>
         </div>
       </div>

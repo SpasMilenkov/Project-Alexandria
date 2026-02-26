@@ -34,10 +34,7 @@
 
       <div class="tooltip-card__meta-row">
         <dt>
-          <UIcon
-            name="i-heroicons-archive-box"
-            class="tooltip-card__meta-icon"
-          />
+          <UIcon name="i-heroicons-archive-box" class="tooltip-card__meta-icon" />
           Version
         </dt>
         <dd>v{{ data.currentVersion.versionNumber }}</dd>
@@ -56,22 +53,11 @@
     <template v-if="data.tags && data.tags.length > 0">
       <div class="tooltip-card__divider" />
       <div class="tooltip-card__tags">
-        <span
-          v-for="tag in data.tags.slice(0, 4)"
-          :key="tag.id"
-          class="tooltip-card__tag"
-        >
-          <Icon
-            v-if="tag.icon"
-            :icon="getIconByValue(tag.icon)"
-            class="size-3"
-          />
+        <span v-for="tag in data.tags.slice(0, 4)" :key="tag.id" class="tooltip-card__tag">
+          <Icon v-if="tag.icon" :icon="getIconByValue(tag.icon)" class="size-3" />
           {{ tag.name }}
         </span>
-        <span
-          v-if="data.tags.length > 4"
-          class="tooltip-card__tag tooltip-card__tag--overflow"
-        >
+        <span v-if="data.tags.length > 4" class="tooltip-card__tag tooltip-card__tag--overflow">
           +{{ data.tags.length - 4 }}
         </span>
       </div>
@@ -97,7 +83,9 @@ const readableType = computed(() =>
 
 const readableSize = computed(() => {
   const bytes = Number(props.data.currentVersion.size);
-  if (!bytes) return "—";
+  if (!bytes) {
+    return "—";
+  }
   const units = ["B", "KB", "MB", "GB", "TB"];
   let size = bytes;
   let i = 0;
