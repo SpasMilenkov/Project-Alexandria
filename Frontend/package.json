@@ -3,9 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": "^20.19.0 || >=22.12.0"
-  },
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
@@ -16,7 +13,8 @@
     "type-check": "vue-tsc --build",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "format": "prettier --write src/"
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",
@@ -47,7 +45,6 @@
     "@types/node": "^22.19.11",
     "@vitejs/plugin-vue": "^6.0.4",
     "@vitest/eslint-plugin": "^1.6.9",
-    "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.7.0",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.7.0",
@@ -57,8 +54,8 @@
     "jiti": "^2.6.1",
     "jsdom": "^26.1.0",
     "npm-run-all2": "^8.0.4",
+    "oxfmt": "^0.35.0",
     "oxlint": "^1.49.0",
-    "prettier": "3.6.2",
     "rollup-plugin-visualizer": "^7.0.0",
     "typescript": "~5.8.3",
     "vite": "^7.3.1",
@@ -66,6 +63,9 @@
     "vite-plugin-vue-devtools": "^8.0.6",
     "vitest": "^3.2.4",
     "vue-tsc": "^3.2.5"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   },
   "packageManager": "pnpm@10.29.2+sha512.bef43fa759d91fd2da4b319a5a0d13ef7a45bb985a3d7342058470f9d2051a3ba8674e629672654686ef9443ad13a82da2beb9eeb3e0221c87b8154fff9d74b8"
 }
