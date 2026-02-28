@@ -1,0 +1,76 @@
+using System.Net;
+using System.Net.Http.Json;
+using AwesomeAssertions;
+using Data.Context;
+using Microsoft.Extensions.DependencyInjection;
+using Test.Common.Fixtures;
+using Xunit;
+
+namespace Test.Integration.FullStack.Files;
+
+public class RestoreFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixture)
+{
+    private const string Route = "/api/files/restore";
+
+    [Fact]
+    public async Task RestoreDeletedFile_Returns1_AndClearsDeletedAt()
+    {
+        var file = await SeedFileWithVersionAsync(fb => fb.WithDeletedAt(DateTime.UtcNow));
+        var req = new RestoreFilesRequest { FileIds = [file.Id] };
+
+        var response = await Auth.PostAsJsonAsync(Route, req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var count = await response.Content.ReadFromJsonAsync<int>();
+        count.Should().Be(1);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
+        var restoredFile = await db.Files.FindAsync(file.Id);
+        restoredFile!.DeletedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RestoreAlreadyActiveFile_Returns0()
+    {
+        var file = await SeedFileWithVersionAsync(); // not deleted
+        var req = new RestoreFilesRequest { FileIds = [file.Id] };
+
+        var response = await Auth.PostAsJsonAsync(Route, req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var count = await response.Content.ReadFromJsonAsync<int>();
+        count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Unauthenticated_Returns401()
+    {
+        var req = new RestoreFilesRequest { FileIds = [Guid.NewGuid()] };
+
+        var response = await Anon.PostAsJsonAsync(Route, req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task EmptyFileIds_Returns400()
+    {
+        var req = new RestoreFilesRequest { FileIds = [] };
+
+        var response = await Auth.PostAsJsonAsync(Route, req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task DuplicateFileIds_Returns400()
+    {
+        var id = Guid.NewGuid();
+        var req = new RestoreFilesRequest { FileIds = [id, id] };
+
+        var response = await Auth.PostAsJsonAsync(Route, req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+}

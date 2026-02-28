@@ -1,0 +1,57 @@
+using System.Net;
+using System.Net.Http.Json;
+using API.Features.Storage.Directories.MoveDir;
+using AwesomeAssertions;
+using Data.Context;
+using Microsoft.Extensions.DependencyInjection;
+using Test.Common.Fixtures;
+using Xunit;
+
+namespace Test.Integration.FullStack.Directories;
+
+public class MoveDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(fixture)
+{
+    private const string Route = "/api/directories/move";
+
+    [Fact]
+    public async Task MoveToNewParent_UpdatesParentId()
+    {
+        var dir = await SeedDirectoryAsync();
+        var dest = await SeedDirectoryAsync();
+        var req = new MoveDirRequest { DirectoryIds = [dir.Id], DestinationId = dest.Id };
+
+        var response = await Auth.PutAsJsonAsync(Route, req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
+        var moved = await db.Directories.FindAsync(dir.Id);
+        moved!.ParentId.Should().Be(dest.Id);
+    }
+
+    [Fact]
+    public async Task MoveToRoot_SetsParentIdNull()
+    {
+        var parent = await SeedDirectoryAsync();
+        var dir = await SeedDirectoryAsync(parentId: parent.Id);
+        var req = new MoveDirRequest { DirectoryIds = [dir.Id], DestinationId = null };
+
+        var response = await Auth.PutAsJsonAsync(Route, req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
+        var moved = await db.Directories.FindAsync(dir.Id);
+        moved!.ParentId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Unauthenticated_Returns401()
+    {
+        var req = new MoveDirRequest { DirectoryIds = [Guid.NewGuid()] };
+
+        var response = await Anon.PutAsJsonAsync(Route, req);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+}
