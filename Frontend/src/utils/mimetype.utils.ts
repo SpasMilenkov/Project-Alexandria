@@ -202,10 +202,20 @@ const groupFromMimeType = (mimeType: string): FileGroup => {
     }
     return "Text";
   }
-  if (sub.includes("wordprocessing") || sub.includes("document") || sub.includes("pdf")) {
+  if (
+    sub.includes("wordprocessing") ||
+    sub.includes("pdf") ||
+    (sub.includes("document") &&
+      !sub.includes("spreadsheet") &&
+      !sub.includes("presentation"))
+  ) {
     return "Documents";
   }
-  if (sub.includes("spreadsheet") || sub.includes("excel") || sub.includes("sheet")) {
+  if (
+    sub.includes("spreadsheet") ||
+    sub.includes("excel") ||
+    sub.includes("sheet")
+  ) {
     return "Spreadsheets";
   }
   if (sub.includes("presentation") || sub.includes("powerpoint")) {
@@ -275,7 +285,10 @@ const labelFromMimeType = (mimeType: string, fileName?: string): string => {
  * Returns a human-readable label for a MIME type.
  * Falls back to file extension or formatted subtype when unknown.
  */
-export const getFileTypeReadable = (mimeType: string, fileName?: string): string =>
+export const getFileTypeReadable = (
+  mimeType: string,
+  fileName?: string,
+): string =>
   MIME_META[mimeType]?.label ?? labelFromMimeType(mimeType, fileName);
 
 export interface GroupedMimeSizeResult {
@@ -302,7 +315,10 @@ export const groupMimeSizeRecord = (
   const size: number[] = [];
   const formattedSize: string[] = [];
 
-  for (const [group, totalBytes] of Object.entries(sizeMap) as [FileGroup, number][]) {
+  for (const [group, totalBytes] of Object.entries(sizeMap) as [
+    FileGroup,
+    number,
+  ][]) {
     if (totalBytes > 0) {
       categories.push(group);
       size.push(totalBytes);
