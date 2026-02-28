@@ -36,7 +36,9 @@ public static class PreviewExtensions
         services.AddScoped<IFileService, FileService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
-        
+        services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
+        services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
+
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>
             sp.GetRequiredService<PromotionQueueService>());
