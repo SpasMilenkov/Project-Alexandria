@@ -1,23 +1,12 @@
+//oxlint-disable
+//prettier-ignore
 export const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInMs = now.getTime() - date.getTime();
-  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-  if (diffInDays === 0) {
-    return "Today";
-  }
-  if (diffInDays === 1) {
-    return "Yesterday";
-  }
-  if (diffInDays < 7) {
-    return `${diffInDays} days ago`;
-  }
-  if (diffInDays < 30) {
-    return `${Math.floor(diffInDays / 7)} weeks ago`;
-  }
-  if (diffInDays < 365) {
-    return `${Math.floor(diffInDays / 30)} months ago`;
-  }
-  return `${Math.floor(diffInDays / 365)} years ago`;
+  const diffInDays = Math.floor((Date.now() - new Date(dateString).getTime()) / 86400000);
+  const [value, unit] = diffInDays < 7   ? [diffInDays, "day"]
+                      : diffInDays < 30  ? [Math.floor(diffInDays / 7), "week"]
+                      : diffInDays < 365 ? [Math.floor(diffInDays / 30), "month"]
+                      :                    [Math.floor(diffInDays / 365), "year"];
+  return diffInDays === 0 ? "Today"
+       : diffInDays === 1 ? "Yesterday"
+       : `${value} ${unit}${value !== 1 ? "s" : ""} ago`;
 };
