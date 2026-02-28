@@ -6,7 +6,7 @@ using Models;
 
 namespace API.Features.Storage.Files.UpdateFileMetadata;
 
-sealed class UpdateFileMetadataRequest
+internal sealed class UpdateFileMetadataRequest
 {
     public Guid Id { get; set; }
     public string? Name { get; set; }
@@ -38,7 +38,7 @@ sealed class UpdateFileMetadataRequestValidator : Validator<UpdateFileMetadataRe
         => x.Name is not null || x.HasPreview is not null;
 }
 
-sealed class UpdateFileMetadataResponse
+internal sealed class UpdateFileMetadataResponse
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

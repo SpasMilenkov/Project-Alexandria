@@ -5,7 +5,7 @@ using FluentValidation;
 
 namespace API.Features.Storage.Files.MoveFiles;
 
-sealed class MoveFilesRequest
+internal sealed class MoveFilesRequest
 {
     public Guid[] FileIds { get; set; }
     public Guid? DestinationId { get; set; }
