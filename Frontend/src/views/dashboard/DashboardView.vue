@@ -2,28 +2,31 @@
 import { computed, onMounted } from "vue";
 import { useTabStore } from "@/stores/tab";
 import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
+import { logger } from "@/utils/logger";
 
 defineShortcuts({
-  meta_shift_q: () => {
-    if (tabStore.activeTabId) tabStore.closeTab(tabStore.activeTabId);
-  },
   meta_shift_n: () => tabStore.createTab(null),
+  meta_shift_q: () => {
+    if (tabStore.activeTabId) {
+      tabStore.closeTab(tabStore.activeTabId);
+    }
+  },
 });
 
 const tabStore = useTabStore();
 
 const items = computed(() =>
   tabStore.tabs.map((tab) => ({
-    value: tab.id,
-    label: tab.title,
     icon: "i-heroicons-folder",
+    label: tab.title,
+    value: tab.id,
   })),
 );
 
 const hasNoTabs = computed(() => tabStore.tabs.length === 0);
 
 onMounted(() => {
-  console.log(tabStore.tabs.values);
+  logger.log(tabStore.tabs.values);
   if (tabStore.tabs.length === 0) {
     tabStore.createTab(null);
   }
@@ -31,10 +34,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div
-    v-if="hasNoTabs"
-    class="flex items-center justify-center min-h-[400px] w-full"
-  >
+  <div v-if="hasNoTabs" class="flex items-center justify-center min-h-100 w-full">
     <div class="text-center space-y-4 max-w-md px-4">
       <div
         class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2"
@@ -43,9 +43,7 @@ onMounted(() => {
       </div>
 
       <div class="space-y-2">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-          No tabs open
-        </h3>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">No tabs open</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400">
           Create a new tab to start exploring your files and folders.
         </p>
@@ -61,12 +59,7 @@ onMounted(() => {
           Create New Tab
         </UButton>
 
-        <UButton
-          icon="i-heroicons-command-line"
-          variant="outline"
-          color="neutral"
-          size="md"
-        >
+        <UButton icon="i-heroicons-command-line" variant="outline" color="neutral" size="md">
           <span class="hidden sm:inline">Press</span>
           <kbd
             class="ml-1 px-1.5 py-0.5 text-xs font-semibold rounded border border-gray-300 dark:border-gray-700"
@@ -84,7 +77,7 @@ onMounted(() => {
     :items="items"
     variant="link"
     class="w-full flex-1 flex flex-col"
-    :ui="{ content: 'flex flex-1'}"
+    :ui="{ content: 'flex flex-1' }"
   >
     <template #list-trailing>
       <UButton

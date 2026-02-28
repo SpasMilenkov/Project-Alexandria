@@ -21,6 +21,7 @@ interface MimeMeta {
   label: string;
 }
 
+//oxlint-disable sort-keys
 /**
  * Single source of truth for MIME type metadata.
  * Both `getFileTypeReadable` and `groupMimeSizeRecord` derive from this.
@@ -171,14 +172,22 @@ const MIME_META: Record<string, MimeMeta> = {
 
 // Fallback helpers
 
-function groupFromMimeType(mimeType: string): FileGroup {
+const groupFromMimeType = (mimeType: string): FileGroup => {
   const [category, subtype = ""] = mimeType.split("/");
   const sub = subtype.toLowerCase();
 
-  if (category === "image") return "Images";
-  if (category === "video") return "Videos";
-  if (category === "audio") return "Audio";
-  if (category === "font") return "Fonts";
+  if (category === "image") {
+    return "Images";
+  }
+  if (category === "video") {
+    return "Videos";
+  }
+  if (category === "audio") {
+    return "Audio";
+  }
+  if (category === "font") {
+    return "Fonts";
+  }
   if (category === "text") {
     if (
       sub.includes("script") ||
@@ -188,24 +197,30 @@ function groupFromMimeType(mimeType: string): FileGroup {
       sub.includes("java") ||
       sub.includes("html") ||
       sub.includes("css")
-    )
+    ) {
       return "Code";
+    }
     return "Text";
   }
   if (
     sub.includes("wordprocessing") ||
-    sub.includes("document") ||
-    sub.includes("pdf")
-  )
+    sub.includes("pdf") ||
+    (sub.includes("document") &&
+      !sub.includes("spreadsheet") &&
+      !sub.includes("presentation"))
+  ) {
     return "Documents";
+  }
   if (
     sub.includes("spreadsheet") ||
     sub.includes("excel") ||
     sub.includes("sheet")
-  )
+  ) {
     return "Spreadsheets";
-  if (sub.includes("presentation") || sub.includes("powerpoint"))
+  }
+  if (sub.includes("presentation") || sub.includes("powerpoint")) {
     return "Presentations";
+  }
   if (
     sub.includes("zip") ||
     sub.includes("compressed") ||
@@ -213,42 +228,48 @@ function groupFromMimeType(mimeType: string): FileGroup {
     sub.includes("tar") ||
     sub.includes("rar") ||
     sub.includes("gzip")
-  )
+  ) {
     return "Archives";
+  }
   if (
     sub.includes("script") ||
     sub.includes("json") ||
     sub.includes("yaml") ||
     sub.includes("xml")
-  )
+  ) {
     return "Code";
+  }
 
   return "Uncategorized";
-}
+};
 
-function labelFromMimeType(mimeType: string, fileName?: string): string {
+const labelFromMimeType = (mimeType: string, fileName?: string): string => {
   const [, subtype = ""] = mimeType.split("/");
   const group = groupFromMimeType(mimeType);
 
   // For well-known groups, a generic label is fine
   const genericLabels: Partial<Record<FileGroup, string>> = {
-    Images: "Image File",
-    Videos: "Video File",
-    Audio: "Audio File",
-    Text: "Text File",
-    Fonts: "Font File",
-    Documents: "Document",
-    Spreadsheets: "Spreadsheet",
-    Presentations: "Presentation",
     Archives: "Archive",
+    Audio: "Audio File",
     Code: "Code File",
+    Documents: "Document",
+    Fonts: "Font File",
+    Images: "Image File",
+    Presentations: "Presentation",
+    Spreadsheets: "Spreadsheet",
+    Text: "Text File",
+    Videos: "Video File",
   };
-  if (genericLabels[group]) return genericLabels[group]!;
+  if (genericLabels[group]) {
+    return genericLabels[group]!;
+  }
 
   // Try the file extension
   if (fileName) {
     const ext = fileName.split(".").pop()?.toUpperCase();
-    if (ext && ext !== fileName.toUpperCase()) return `${ext} File`;
+    if (ext && ext !== fileName.toUpperCase()) {
+      return `${ext} File`;
+    }
   }
 
   // Format the subtype as a last resort
@@ -258,7 +279,7 @@ function labelFromMimeType(mimeType: string, fileName?: string): string {
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ") + " File"
   );
-}
+};
 
 /**
  * Returns a human-readable label for a MIME type.
@@ -305,5 +326,5 @@ export const groupMimeSizeRecord = (
     }
   }
 
-  return { categories, size, formattedSize };
+  return { categories, formattedSize, size };
 };

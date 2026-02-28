@@ -1,12 +1,11 @@
-import apiClient from "./client";
-import type {
-  UpdateFileMetadataSchema,
-  GenerateSignedUrlSchema,
-} from "@/schemas/file";
-import type { PaginatedResponse } from "./directory";
-import type { PaginationParams } from "@/types/pagination-params";
-import type { TagDto } from "./tag";
+import type { GenerateSignedUrlSchema, UpdateFileMetadataSchema } from "@/schemas/file";
 import type { FileSearchQuery } from "@/schemas/search";
+import type { PaginationParams } from "@/types/pagination-params";
+
+import type { PaginatedResponse } from "./directory";
+import type { TagDto } from "./tag";
+
+import apiClient from "./client";
 
 // Response Types
 export interface UpdateFileMetadataResponse {
@@ -91,10 +90,7 @@ export const fileApi = {
   initializeUpload: async (
     data: InitializeFileUploadRequest,
   ): Promise<InitializeFileUploadResponse> => {
-    const response = await apiClient.post<InitializeFileUploadResponse>(
-      "/files/init-upload",
-      data,
-    );
+    const response = await apiClient.post<InitializeFileUploadResponse>("/files/init-upload", data);
     return response.data;
   },
 
@@ -103,8 +99,8 @@ export const fileApi = {
     presignedUrl: string,
     file: File,
     onProgress?: (percent: number) => void,
-  ): Promise<void> => {
-    return new Promise((resolve, reject) => {
+  ): Promise<void> =>
+    new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
       // Track upload progress
@@ -135,18 +131,12 @@ export const fileApi = {
 
       // Initiate upload
       xhr.open("PUT", presignedUrl);
-      xhr.setRequestHeader(
-        "Content-Type",
-        file.type || "application/octet-stream",
-      );
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
       xhr.send(file);
-    });
-  },
+    }),
 
   // Finalize upload
-  finalizeUpload: async (
-    data: FinalizeFileUploadRequest,
-  ): Promise<FinalizeFileUploadResponse> => {
+  finalizeUpload: async (data: FinalizeFileUploadRequest): Promise<FinalizeFileUploadResponse> => {
     const response = await apiClient.post<FinalizeFileUploadResponse>(
       "/files/finalize-upload",
       data,
@@ -170,26 +160,18 @@ export const fileApi = {
   },
 
   getRootFiles: async (paginationParams: PaginationParams) => {
-    const response = await apiClient.get<PaginatedResponse<FileResult>>(
-      "/files/root",
-      {
-        params: {
-          page: paginationParams.page,
-          pageSize: paginationParams.pageSize,
-          sortBy: paginationParams.SortBy,
-          sortDirection: paginationParams.sortDirection,
-        },
+    const response = await apiClient.get<PaginatedResponse<FileResult>>("/files/root", {
+      params: {
+        page: paginationParams.page,
+        pageSize: paginationParams.pageSize,
+        sortBy: paginationParams.SortBy,
+        sortDirection: paginationParams.sortDirection,
       },
-    );
+    });
     return response.data;
   },
-  searchFiles: async (
-    query: FileSearchQuery,
-  ): Promise<PaginatedResponse<FileResult>> => {
-    const response = await apiClient.post<PaginatedResponse<FileResult>>(
-      "/files/search",
-      query,
-    );
+  searchFiles: async (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {
+    const response = await apiClient.post<PaginatedResponse<FileResult>>("/files/search", query);
     return response.data;
   },
 
@@ -228,41 +210,34 @@ export const fileApi = {
   deleteFiles: async (ids: string[], hardDelete?: boolean): Promise<void> => {
     await apiClient.delete(`/files/`, {
       data: {
+        hardDelete: hardDelete ?? false,
         ids,
-        hardDelete: hardDelete ?? false
       },
     });
   },
 
   // Generate signed URL for file upload/access
-  generateSignedUrl: async (
-    data: GenerateSignedUrlSchema,
-  ): Promise<GenerateSignedUrlResponse> => {
-    const response = await apiClient.post<GenerateSignedUrlResponse>(
-      "/files/signed-url",
-      data,
-    );
+  generateSignedUrl: async (data: GenerateSignedUrlSchema): Promise<GenerateSignedUrlResponse> => {
+    const response = await apiClient.post<GenerateSignedUrlResponse>("/files/signed-url", data);
     return response.data;
   },
 
   // Get file preview
   getPreview: async (id: string): Promise<PreviewResultDto> => {
-    const response = await apiClient.get<PreviewResultDto>(
-      `/files/${id}/preview`,
-    );
+    const response = await apiClient.get<PreviewResultDto>(`/files/${id}/preview`);
     return response.data;
   },
 
   copyFiles: async (fileIds: string[], destinationId: string | null) =>
     await apiClient.post(`/files/copy`, {
-      fileIds,
       destinationId,
+      fileIds,
     }),
 
   moveFiles: async (fileIds: string[], destinationId: string | null) => {
     await apiClient.post("/files/move", {
-      fileIds,
       destinationId,
+      fileIds,
     });
   },
 
@@ -275,17 +250,10 @@ export const fileApi = {
   },
 
   // Get file thumbnail with specific dimensions
-  getThumbnail: async (
-    id: string,
-    width: number,
-    height: number,
-  ): Promise<Blob> => {
-    const response = await apiClient.get(
-      `/files/${id}/thumbnail/${width}/${height}`,
-      {
-        responseType: "blob",
-      },
-    );
+  getThumbnail: async (id: string, width: number, height: number): Promise<Blob> => {
+    const response = await apiClient.get(`/files/${id}/thumbnail/${width}/${height}`, {
+      responseType: "blob",
+    });
     return response.data;
   },
 };

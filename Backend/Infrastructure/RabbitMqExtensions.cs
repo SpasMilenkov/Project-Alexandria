@@ -1,4 +1,3 @@
-using Common;
 using Common.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,7 +11,6 @@ public static class RabbitMqExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Register ConnectionFactory as singleton
         var factory = new ConnectionFactory
         {
             HostName = configuration["RabbitMQ:HostName"] ?? "localhost",
@@ -27,13 +25,15 @@ public static class RabbitMqExtensions
 
         services.AddSingleton<IConnectionFactory>(factory);
 
-        var connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
-        services.AddSingleton<IConnection>(connection);
-    
-        // Register channel pool
-        services.AddSingleton<IChannelPool>(sp => 
+        services.AddSingleton<IConnection>(sp =>
+            sp.GetRequiredService<IConnectionFactory>()
+                .CreateConnectionAsync()
+                .GetAwaiter()
+                .GetResult());
+
+        services.AddSingleton<IChannelPool>(sp =>
             new ChannelPool(
-                sp.GetRequiredService<IConnection>(), 
+                sp.GetRequiredService<IConnection>(),
                 maxSize: configuration.GetValue<int>("RabbitMQ:ChannelPoolSize", 10)
             ));
 
@@ -41,4 +41,3 @@ public static class RabbitMqExtensions
         return services;
     }
 }
-

@@ -2,4 +2,4 @@ using System.Numerics;
 
 namespace DTO.Files;
 
-public record FileVersionDto(Guid Id, BigInteger Size, string MimeType, int VersionNumber);
+public record FileVersionDto(Guid Id, long Size, string MimeType, int VersionNumber);

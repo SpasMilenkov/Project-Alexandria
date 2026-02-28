@@ -1,3 +1,5 @@
+import { defineMutation, useQueryCache } from "@pinia/colada";
+
 import { tagApi } from "@/api/tag";
 import { TAGS_QUERY_KEYS } from "@/queries/tags";
 import {
@@ -5,7 +7,6 @@ import {
   type CreateTagSchema,
   type UpdateTagSchema,
 } from "@/schemas/tag";
-import { defineMutation, useQueryCache } from "@pinia/colada";
 
 export const createTag = defineMutation({
   mutation: (data: CreateTagSchema) => tagApi.createTag(data),
@@ -20,7 +21,6 @@ export const deleteTag = defineMutation({
   mutation: (tagId: string) => tagApi.deleteTag(tagId),
 });
 
-//TODO: invalidate the query that fetches tags for this specific file
 export const addTagToFile = defineMutation({
   mutation: ({ fileId, data }: { fileId: string; data: AddTagsToFileSchema }) =>
     tagApi.addTagsToFile(fileId, data),
@@ -28,10 +28,11 @@ export const addTagToFile = defineMutation({
   onSettled(data) {
     const queryCache = useQueryCache();
 
-    if (data?.fileId)
+    if (data?.fileId) {
       queryCache.invalidateQueries({
         key: TAGS_QUERY_KEYS.getTagsForFile(data?.fileId),
       });
+    }
   },
 });
 
@@ -41,10 +42,11 @@ export const removeTagFromFile = defineMutation({
 
   onSettled(_data, _error, vars) {
     const queryCache = useQueryCache();
-    
-    if (vars?.fileId)
+
+    if (vars?.fileId) {
       queryCache.invalidateQueries({
         key: TAGS_QUERY_KEYS.getTagsForFile(vars?.fileId),
       });
+    }
   },
 });

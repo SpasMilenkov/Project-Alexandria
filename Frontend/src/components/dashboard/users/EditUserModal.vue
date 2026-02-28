@@ -73,13 +73,13 @@ const form = ref();
 
 // Local form state — the parent has no idea this exists
 const state = reactive<UpdateUserSchema>({
-  userName: null,
   email: null,
   role: null,
+  userName: null,
 });
 
 // Whenever the parent swaps in a different user (or opens the modal),
-// re-sync the local state so the fields are pre-filled correctly.
+// Re-sync the local state so the fields are pre-filled correctly.
 watch(
   () => props.user,
   (user) => {

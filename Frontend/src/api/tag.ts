@@ -1,12 +1,14 @@
-import apiClient from "./client";
 import type {
-  CreateTagSchema,
-  UpdateTagSchema,
-  SearchTagsSchema,
   AddTagsToFileSchema,
+  CreateTagSchema,
   SearchFilesByTagsSchema,
+  SearchTagsSchema,
+  UpdateTagSchema,
 } from "@/schemas/tag";
+
 import type { PaginatedResponse } from "./directory";
+
+import apiClient from "./client";
 
 // Response Types
 export interface TagDto {
@@ -86,10 +88,7 @@ export const tagApi = {
   },
 
   // Get all tags with pagination
-  getAllTags: async (
-    page: number,
-    pageSize: number,
-  ): Promise<PaginatedResponse<TagDto>> => {
+  getAllTags: async (page: number, pageSize: number): Promise<PaginatedResponse<TagDto>> => {
     const response = await apiClient.get<PaginatedResponse<TagDto>>("/tags", {
       params: { page, pageSize },
     });
@@ -97,14 +96,8 @@ export const tagApi = {
   },
 
   // Update a tag
-  updateTag: async (
-    tagId: string,
-    data: UpdateTagSchema,
-  ): Promise<UpdateTagResponse> => {
-    const response = await apiClient.patch<UpdateTagResponse>(
-      `/tags/${tagId}`,
-      data,
-    );
+  updateTag: async (tagId: string, data: UpdateTagSchema): Promise<UpdateTagResponse> => {
+    const response = await apiClient.patch<UpdateTagResponse>(`/tags/${tagId}`, data);
     return response.data;
   },
 
@@ -114,33 +107,20 @@ export const tagApi = {
   },
 
   // Search tags with filters
-  searchTags: async (
-    filters: SearchTagsSchema,
-  ): Promise<PaginatedResponse<TagDto>> => {
-    const response = await apiClient.post<PaginatedResponse<TagDto>>(
-      "/tags/search",
-      filters,
-    );
+  searchTags: async (filters: SearchTagsSchema): Promise<PaginatedResponse<TagDto>> => {
+    const response = await apiClient.post<PaginatedResponse<TagDto>>("/tags/search", filters);
     return response.data;
   },
 
   // Get all tags for a file
   getTagsForFile: async (fileId: string): Promise<FileTagsResponse> => {
-    const response = await apiClient.get<FileTagsResponse>(
-      `/files/${fileId}/tags`,
-    );
+    const response = await apiClient.get<FileTagsResponse>(`/files/${fileId}/tags`);
     return response.data;
   },
 
   // Add tags to a file
-  addTagsToFile: async (
-    fileId: string,
-    data: AddTagsToFileSchema,
-  ): Promise<AddTagsResponse> => {
-    const response = await apiClient.post<AddTagsResponse>(
-      `/files/${fileId}/tags`,
-      data,
-    );
+  addTagsToFile: async (fileId: string, data: AddTagsToFileSchema): Promise<AddTagsResponse> => {
+    const response = await apiClient.post<AddTagsResponse>(`/files/${fileId}/tags`, data);
     return response.data;
   },
 
@@ -153,10 +133,7 @@ export const tagApi = {
   searchFilesByTags: async (
     filters: SearchFilesByTagsSchema,
   ): Promise<PaginatedResponse<TagDto>> => {
-    const response = await apiClient.post<PaginatedResponse<TagDto>>(
-      "/files/search/tags",
-      filters,
-    );
+    const response = await apiClient.post<PaginatedResponse<TagDto>>("/files/search/tags", filters);
     return response.data;
   },
 };

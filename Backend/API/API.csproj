@@ -25,6 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Test.Integration" />
+    <InternalsVisibleTo Include="Test.Common" />
+  </ItemGroup>
+  
+  <ItemGroup>
     <Content Include="..\..\docker-compose.dev.yml">
       <Link>docker-compose.dev.yml</Link>
     </Content>

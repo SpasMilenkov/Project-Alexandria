@@ -1,0 +1,101 @@
+using System.Net;
+using System.Net.Http.Json;
+using AwesomeAssertions;
+using DTO.Files;
+using Test.Common.Builders;
+using Test.Common.Fixtures;
+using Xunit;
+
+namespace Test.Integration.FullStack.Files;
+
+public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixture)
+{
+    private const string Route = "/api/files/search";
+
+    [Fact]
+    public async Task EmptyDb_ReturnsEmptyPage()
+    {
+        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery());
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        body!.Items.Count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task OwnFiles_AreReturned()
+    {
+        await SeedFileWithVersionAsync();
+        await SeedFileWithVersionAsync();
+
+        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery());
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        body!.TotalCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task OtherUsersFiles_AreNotReturned()
+    {
+        var (_, otherId) = await CreateOtherUserAsync();
+        await SeedFileWithVersionAsync(fb => fb.WithOwner(otherId));
+
+        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery());
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        body!.TotalCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task NameContains_FiltersCorrectly()
+    {
+        await SeedFileWithVersionAsync(fb => fb.WithName("report.txt"));
+        await SeedFileWithVersionAsync(fb => fb.WithName("photo.jpg"));
+
+        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery { NameContains = "report" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        body!.TotalCount.Should().Be(1);
+        body.Items.Should().ContainSingle(f => f.FileName == "report.txt");
+    }
+
+    [Fact]
+    public async Task OnlyDeleted_ShowsDeletedFiles()
+    {
+        await SeedFileWithVersionAsync(fb => fb.WithDeletedAt(DateTime.UtcNow));
+        await SeedFileWithVersionAsync(); // active file
+
+        var activeResponse = await Auth.PostAsJsonAsync(Route, new FileSearchQuery { IsDeleted = false });
+        var activeBody = await activeResponse.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        activeBody!.TotalCount.Should().Be(1);
+
+        var deletedResponse = await Auth.PostAsJsonAsync(Route, new FileSearchQuery { OnlyDeleted = true });
+        var deletedBody = await deletedResponse.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        deletedBody!.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Unauthenticated_Returns401()
+    {
+        var response = await Anon.PostAsJsonAsync(Route, new FileSearchQuery());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Pagination_Works()
+    {
+        for (var i = 0; i < 5; i++)
+            await SeedFileWithVersionAsync();
+
+        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery { PageSize = 2, CurrentPage = 0 });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        body!.TotalCount.Should().Be(5);
+        body.Items.Count.Should().Be(2);
+    }
+}

@@ -1,10 +1,9 @@
-import { ref } from "vue";
-import { acceptHMRUpdate, defineStore } from "pinia";
-import {
-  directoryApi,
-  type SearchDirectoryRequest,
-} from "@/api/directory";
 import type { AxiosError } from "axios";
+
+import { acceptHMRUpdate, defineStore } from "pinia";
+import { ref } from "vue";
+
+import { type SearchDirectoryRequest, directoryApi } from "@/api/directory";
 
 export const useDirectoryStore = defineStore(
   "directory",
@@ -21,10 +20,10 @@ export const useDirectoryStore = defineStore(
       try {
         const response = await directoryApi.searchDirectory(req);
 
-        return { success: true, data: response };
+        return { data: response, success: true };
       } catch (err: unknown) {
         const message = handleError(err, "Failed to find directory");
-        return { success: false, error: message };
+        return { error: message, success: false };
       } finally {
         isSearching.value = false;
       }
@@ -34,12 +33,10 @@ export const useDirectoryStore = defineStore(
     const handleError = (err: unknown, defaultMessage: string): string => {
       let message = defaultMessage;
       if (err instanceof Error) {
-        message = err.message;
+        ({ message } = err);
       }
       if ((err as AxiosError)?.response?.data) {
-        message =
-          (err as AxiosError<{ message: string }>).response?.data?.message ??
-          message;
+        message = (err as AxiosError<{ message: string }>).response?.data?.message ?? message;
       }
       error.value = message;
       return message;
@@ -60,7 +57,7 @@ export const useDirectoryStore = defineStore(
       clearError,
     };
   },
-  { persist: true }
+  { persist: true },
 );
 
 if (import.meta.hot) {

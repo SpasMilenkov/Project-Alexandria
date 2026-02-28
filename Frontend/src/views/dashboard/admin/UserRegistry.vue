@@ -4,9 +4,7 @@
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="text-xl font-semibold text-default">User Registry</h1>
-        <p class="text-sm text-muted mt-0.5">
-          Manage accounts, roles, and access restrictions.
-        </p>
+        <p class="text-sm text-muted mt-0.5">Manage accounts, roles, and access restrictions.</p>
       </div>
 
       <div class="flex items-center gap-2">
@@ -56,10 +54,7 @@
         />
       </UTooltip>
 
-      <UTooltip
-        text="Include soft-deleted accounts in results"
-        :delay-duration="300"
-      >
+      <UTooltip text="Include soft-deleted accounts in results" :delay-duration="300">
         <UButton
           size="xs"
           :color="uiState.showDeleted ? 'error' : 'neutral'"
@@ -83,9 +78,7 @@
 
       <div class="ml-auto flex items-center gap-2">
         <span v-if="!isLoading && data" class="text-xs text-muted">
-          {{ data.totalCount.toLocaleString() }} user{{
-            data.totalCount !== 1 ? "s" : ""
-          }}
+          {{ data.totalCount.toLocaleString() }} user{{ data.totalCount !== 1 ? "s" : "" }}
         </span>
         <USeparator orientation="vertical" class="h-5" />
         <UTooltip text="Toggle advanced filters" :delay-duration="300">
@@ -114,18 +107,11 @@
         v-if="isFilterPanelOpen"
         class="rounded-xl border border-default bg-white/70 dark:bg-white/5 backdrop-blur-sm overflow-hidden max-h-[40vh] overflow-y-auto shrink-0"
       >
-        <UForm
-          ref="filterForm"
-          :schema="userQueryUiSchema"
-          :state="uiState"
-          @submit="applyFilters"
-        >
+        <UForm ref="filterForm" :schema="userQueryUiSchema" :state="uiState" @submit="applyFilters">
           <div
             class="flex items-center justify-between px-5 py-3 border-b border-default bg-elevated/30"
           >
-            <span class="text-sm font-semibold text-default"
-              >Advanced Filters</span
-            >
+            <span class="text-sm font-semibold text-default">Advanced Filters</span>
             <div class="flex items-center gap-2">
               <UButton
                 type="button"
@@ -176,10 +162,7 @@
                 <UFormField label="Role" name="role">
                   <USelect
                     v-model="uiState.role"
-                    :items="[
-                      { label: 'Any role', value: null },
-                      ...roleOptions,
-                    ]"
+                    :items="[{ label: 'Any role', value: null }, ...roleOptions]"
                     class="w-full"
                   />
                 </UFormField>
@@ -204,10 +187,7 @@
                   text="'Include deleted' and 'Deleted only' are mutually exclusive."
                   :delay-duration="200"
                 >
-                  <UIcon
-                    name="i-lucide-info"
-                    class="size-3 text-muted/60 cursor-help"
-                  />
+                  <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
                 </UTooltip>
               </p>
               <div class="flex flex-wrap gap-6">
@@ -248,11 +228,7 @@
               </p>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <UFormField label="Sort by" name="sortBy">
-                  <USelect
-                    v-model="uiState.sortBy"
-                    :items="sortByOptions"
-                    class="w-full"
-                  />
+                  <USelect v-model="uiState.sortBy" :items="sortByOptions" class="w-full" />
                 </UFormField>
                 <UFormField label="Direction" name="sortDirection">
                   <USelect
@@ -262,11 +238,7 @@
                   />
                 </UFormField>
                 <UFormField label="Page size" name="pageSize">
-                  <USelect
-                    v-model="uiState.pageSize"
-                    :items="pageSizeOptions"
-                    class="w-full"
-                  />
+                  <USelect v-model="uiState.pageSize" :items="pageSizeOptions" class="w-full" />
                 </UFormField>
               </div>
             </div>
@@ -283,11 +255,7 @@
                   Date ranges
                 </p>
                 <UIcon
-                  :name="
-                    isDateRangesOpen
-                      ? 'i-lucide-chevron-up'
-                      : 'i-lucide-chevron-down'
-                  "
+                  :name="isDateRangesOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
                   class="size-4 text-muted transition-transform duration-200"
                 />
               </div>
@@ -296,18 +264,12 @@
                 <div class="px-5 pb-5 pt-2 space-y-4">
                   <!-- Created -->
                   <div>
-                    <p
-                      class="text-xs text-muted font-medium mb-2 flex items-center gap-1"
-                    >
+                    <p class="text-xs text-muted font-medium mb-2 flex items-center gap-1">
                       <UIcon name="i-lucide-calendar-plus" class="size-3" />
                       Created
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UFormField
-                        label="After"
-                        name="createdAfter"
-                        class="w-full"
-                      >
+                      <UFormField label="After" name="createdAfter" class="w-full">
                         <!-- @vue-ignore -->
                         <UInputDate
                           ref="createdAfter"
@@ -315,9 +277,7 @@
                           class="w-full"
                         >
                           <template #trailing>
-                            <UPopover
-                              :reference="createdAfter?.inputsRef[3]?.$el"
-                            >
+                            <UPopover :reference="createdAfter?.inputsRef[3]?.$el">
                               <UButton
                                 color="neutral"
                                 variant="link"
@@ -328,20 +288,13 @@
                               />
                               <template #content>
                                 <!-- @vue-ignore -->
-                                <UCalendar
-                                  v-model="uiState.createdAfter"
-                                  class="p-2"
-                                />
+                                <UCalendar v-model="uiState.createdAfter" class="p-2" />
                               </template>
                             </UPopover>
                           </template>
                         </UInputDate>
                       </UFormField>
-                      <UFormField
-                        label="Before"
-                        name="createdBefore"
-                        class="w-full"
-                      >
+                      <UFormField label="Before" name="createdBefore" class="w-full">
                         <!-- @vue-ignore -->
                         <UInputDate
                           ref="createdBefore"
@@ -349,9 +302,7 @@
                           class="w-full"
                         >
                           <template #trailing>
-                            <UPopover
-                              :reference="createdBefore?.inputsRef[3]?.$el"
-                            >
+                            <UPopover :reference="createdBefore?.inputsRef[3]?.$el">
                               <UButton
                                 color="neutral"
                                 variant="link"
@@ -362,10 +313,7 @@
                               />
                               <template #content>
                                 <!-- @vue-ignore -->
-                                <UCalendar
-                                  v-model="uiState.createdBefore"
-                                  class="p-2"
-                                />
+                                <UCalendar v-model="uiState.createdBefore" class="p-2" />
                               </template>
                             </UPopover>
                           </template>
@@ -378,18 +326,12 @@
 
                   <!-- Updated -->
                   <div>
-                    <p
-                      class="text-xs text-muted font-medium mb-2 flex items-center gap-1"
-                    >
+                    <p class="text-xs text-muted font-medium mb-2 flex items-center gap-1">
                       <UIcon name="i-lucide-calendar-clock" class="size-3" />
                       Updated
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UFormField
-                        label="After"
-                        name="updatedAfter"
-                        class="w-full"
-                      >
+                      <UFormField label="After" name="updatedAfter" class="w-full">
                         <!-- @vue-ignore -->
                         <UInputDate
                           ref="updatedAfter"
@@ -397,9 +339,7 @@
                           class="w-full"
                         >
                           <template #trailing>
-                            <UPopover
-                              :reference="updatedAfter?.inputsRef[3]?.$el"
-                            >
+                            <UPopover :reference="updatedAfter?.inputsRef[3]?.$el">
                               <UButton
                                 color="neutral"
                                 variant="link"
@@ -410,20 +350,13 @@
                               />
                               <template #content>
                                 <!-- @vue-ignore -->
-                                <UCalendar
-                                  v-model="uiState.updatedAfter"
-                                  class="p-2"
-                                />
+                                <UCalendar v-model="uiState.updatedAfter" class="p-2" />
                               </template>
                             </UPopover>
                           </template>
                         </UInputDate>
                       </UFormField>
-                      <UFormField
-                        label="Before"
-                        name="updatedBefore"
-                        class="w-full"
-                      >
+                      <UFormField label="Before" name="updatedBefore" class="w-full">
                         <!-- @vue-ignore -->
                         <UInputDate
                           ref="updatedBefore"
@@ -431,9 +364,7 @@
                           class="w-full"
                         >
                           <template #trailing>
-                            <UPopover
-                              :reference="updatedBefore?.inputsRef[3]?.$el"
-                            >
+                            <UPopover :reference="updatedBefore?.inputsRef[3]?.$el">
                               <UButton
                                 color="neutral"
                                 variant="link"
@@ -444,10 +375,7 @@
                               />
                               <template #content>
                                 <!-- @vue-ignore -->
-                                <UCalendar
-                                  v-model="uiState.updatedBefore"
-                                  class="p-2"
-                                />
+                                <UCalendar v-model="uiState.updatedBefore" class="p-2" />
                               </template>
                             </UPopover>
                           </template>
@@ -460,18 +388,12 @@
 
                   <!-- Deleted -->
                   <div>
-                    <p
-                      class="text-xs text-muted font-medium mb-2 flex items-center gap-1"
-                    >
+                    <p class="text-xs text-muted font-medium mb-2 flex items-center gap-1">
                       <UIcon name="i-lucide-calendar-x" class="size-3" />
                       Deleted
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UFormField
-                        label="After"
-                        name="deletedAfter"
-                        class="w-full"
-                      >
+                      <UFormField label="After" name="deletedAfter" class="w-full">
                         <!-- @vue-ignore -->
                         <UInputDate
                           ref="deletedAfter"
@@ -479,9 +401,7 @@
                           class="w-full"
                         >
                           <template #trailing>
-                            <UPopover
-                              :reference="deletedAfter?.inputsRef[3]?.$el"
-                            >
+                            <UPopover :reference="deletedAfter?.inputsRef[3]?.$el">
                               <UButton
                                 color="neutral"
                                 variant="link"
@@ -492,20 +412,13 @@
                               />
                               <template #content>
                                 <!-- @vue-ignore -->
-                                <UCalendar
-                                  v-model="uiState.deletedAfter"
-                                  class="p-2"
-                                />
+                                <UCalendar v-model="uiState.deletedAfter" class="p-2" />
                               </template>
                             </UPopover>
                           </template>
                         </UInputDate>
                       </UFormField>
-                      <UFormField
-                        label="Before"
-                        name="deletedBefore"
-                        class="w-full"
-                      >
+                      <UFormField label="Before" name="deletedBefore" class="w-full">
                         <!-- @vue-ignore -->
                         <UInputDate
                           ref="deletedBefore"
@@ -513,9 +426,7 @@
                           class="w-full"
                         >
                           <template #trailing>
-                            <UPopover
-                              :reference="deletedBefore?.inputsRef[3]?.$el"
-                            >
+                            <UPopover :reference="deletedBefore?.inputsRef[3]?.$el">
                               <UButton
                                 color="neutral"
                                 variant="link"
@@ -526,10 +437,7 @@
                               />
                               <template #content>
                                 <!-- @vue-ignore -->
-                                <UCalendar
-                                  v-model="uiState.deletedBefore"
-                                  class="p-2"
-                                />
+                                <UCalendar v-model="uiState.deletedBefore" class="p-2" />
                               </template>
                             </UPopover>
                           </template>
@@ -542,17 +450,11 @@
 
                   <!-- Locked out -->
                   <div>
-                    <p
-                      class="text-xs text-muted font-medium mb-2 flex items-center gap-1"
-                    >
+                    <p class="text-xs text-muted font-medium mb-2 flex items-center gap-1">
                       <UIcon name="i-lucide-lock" class="size-3" /> Locked out
                     </p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UFormField
-                        label="After"
-                        name="lockedOutAfter"
-                        class="w-full"
-                      >
+                      <UFormField label="After" name="lockedOutAfter" class="w-full">
                         <!-- @vue-ignore -->
                         <UInputDate
                           ref="lockedOutAfter"
@@ -560,9 +462,7 @@
                           class="w-full"
                         >
                           <template #trailing>
-                            <UPopover
-                              :reference="lockedOutAfter?.inputsRef[3]?.$el"
-                            >
+                            <UPopover :reference="lockedOutAfter?.inputsRef[3]?.$el">
                               <UButton
                                 color="neutral"
                                 variant="link"
@@ -573,20 +473,13 @@
                               />
                               <template #content>
                                 <!-- @vue-ignore -->
-                                <UCalendar
-                                  v-model="uiState.lockedOutAfter"
-                                  class="p-2"
-                                />
+                                <UCalendar v-model="uiState.lockedOutAfter" class="p-2" />
                               </template>
                             </UPopover>
                           </template>
                         </UInputDate>
                       </UFormField>
-                      <UFormField
-                        label="Before"
-                        name="lockedOutBefore"
-                        class="w-full"
-                      >
+                      <UFormField label="Before" name="lockedOutBefore" class="w-full">
                         <!-- @vue-ignore -->
                         <UInputDate
                           ref="lockedOutBefore"
@@ -594,9 +487,7 @@
                           class="w-full"
                         >
                           <template #trailing>
-                            <UPopover
-                              :reference="lockedOutBefore?.inputsRef[3]?.$el"
-                            >
+                            <UPopover :reference="lockedOutBefore?.inputsRef[3]?.$el">
                               <UButton
                                 color="neutral"
                                 variant="link"
@@ -607,10 +498,7 @@
                               />
                               <template #content>
                                 <!-- @vue-ignore -->
-                                <UCalendar
-                                  v-model="uiState.lockedOutBefore"
-                                  class="p-2"
-                                />
+                                <UCalendar v-model="uiState.lockedOutBefore" class="p-2" />
                               </template>
                             </UPopover>
                           </template>
@@ -646,9 +534,7 @@
       v-if="data && data.totalCount > uiState.pageSize"
       class="flex items-center justify-between"
     >
-      <span class="text-xs text-muted"
-        >Page {{ uiState.page + 1 }} of {{ totalPages }}</span
-      >
+      <span class="text-xs text-muted">Page {{ uiState.page + 1 }} of {{ totalPages }}</span>
       <UPagination
         v-model:page="currentPage"
         :total="data.totalCount"
@@ -691,19 +577,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, shallowRef } from "vue";
+import { computed, reactive, ref, shallowRef } from "vue";
 import { useQuery } from "@pinia/colada";
-import { userQueryUiSchema, userQueryApiSchema } from "@/schemas/user";
+import { userQueryApiSchema, userQueryUiSchema } from "@/schemas/user";
 import { UserRole } from "@/enums/UserRole";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { userApi } from "@/api/users";
 import type { UserDetailsDto } from "@/types/user";
-import type {
-  UpdateUserSchema,
-  RestrictUserSchema,
-  CreateUserSchema,
-} from "@/schemas/user";
+import type { CreateUserSchema, RestrictUserSchema, UpdateUserSchema } from "@/schemas/user";
 import { USER_QUERY_KEYS } from "@/queries/user";
 import { useDebounceFn } from "@vueuse/core";
 import UsersTable from "@/components/dashboard/users/UsersTable.vue";
@@ -711,12 +593,7 @@ import EditUserModal from "@/components/dashboard/users/EditUserModal.vue";
 import RestrictUserModal from "@/components/dashboard/users/RestrictUserModal.vue";
 import DeleteUsersModal from "@/components/dashboard/users/DeleteUserModal.vue";
 import CreateUserModal from "@/components/dashboard/users/CreateUserModal.vue";
-import {
-  useUpdateUser,
-  useRestrictUser,
-  useDeleteUsers,
-  useCreateUser,
-} from "@/mutations/user";
+import { useCreateUser, useDeleteUsers, useRestrictUser, useUpdateUser } from "@/mutations/user";
 
 const toast = useToast();
 
@@ -752,23 +629,26 @@ function applyFilters() {
 function clearFilters() {
   const defaults = userQueryUiSchema.parse({});
   (Object.keys(uiState) as (keyof typeof uiState)[]).forEach((key) => {
-    (uiState as Record<string, unknown>)[key] = (
-      defaults as Record<string, unknown>
-    )[key];
+    (uiState as Record<string, unknown>)[key] = (defaults as Record<string, unknown>)[key];
   });
   commitQuery();
 }
 
 function toggleQuick(kind: "locked" | "deleted" | "deletedOnly") {
-  if (kind === "locked")
+  if (kind === "locked") {
     uiState.isLockedOut = uiState.isLockedOut === true ? null : true;
+  }
   if (kind === "deleted") {
     uiState.showDeleted = !uiState.showDeleted;
-    if (uiState.showDeleted) uiState.showDeletedOnly = false;
+    if (uiState.showDeleted) {
+      uiState.showDeletedOnly = false;
+    }
   }
   if (kind === "deletedOnly") {
     uiState.showDeletedOnly = !uiState.showDeletedOnly;
-    if (uiState.showDeletedOnly) uiState.showDeleted = false;
+    if (uiState.showDeletedOnly) {
+      uiState.showDeleted = false;
+    }
   }
   uiState.page = 0;
   commitQuery();
@@ -801,12 +681,9 @@ const selectedUserIds = ref<string[]>([]);
 // Mutations
 
 const { mutateAsync: createUserMutation } = useCreateUser();
-const { mutateAsync: updateUserMutation, isLoading: isUpdating } =
-  useUpdateUser();
-const { mutateAsync: restrictUserMutation, isLoading: isRestricting } =
-  useRestrictUser();
-const { mutateAsync: deleteUsersMutation, isLoading: isDeleting } =
-  useDeleteUsers();
+const { mutateAsync: updateUserMutation, isLoading: isUpdating } = useUpdateUser();
+const { mutateAsync: restrictUserMutation, isLoading: isRestricting } = useRestrictUser();
+const { mutateAsync: deleteUsersMutation, isLoading: isDeleting } = useDeleteUsers();
 
 // Modal state
 
@@ -821,12 +698,9 @@ const activeModal = ref<ModalState>({ type: "none" });
 
 const closeModal = () => (activeModal.value = { type: "none" });
 const openCreate = () => (activeModal.value = { type: "create" });
-const openEdit = (user: UserDetailsDto) =>
-  (activeModal.value = { type: "edit", user });
-const openRestrict = (user: UserDetailsDto) =>
-  (activeModal.value = { type: "restrict", user });
-const openDelete = (ids: string[]) =>
-  (activeModal.value = { type: "delete", ids });
+const openEdit = (user: UserDetailsDto) => (activeModal.value = { type: "edit", user });
+const openRestrict = (user: UserDetailsDto) => (activeModal.value = { type: "restrict", user });
+const openDelete = (ids: string[]) => (activeModal.value = { ids, type: "delete" });
 
 // Submit handlers
 
@@ -834,72 +708,76 @@ async function submitCreate(data: CreateUserSchema) {
   try {
     await createUserMutation(data);
     toast.add({
-      title: "Account created",
-      description: `@${data.userName} has been added and will receive an invitation.`,
       color: "success",
+      description: `@${data.userName} has been added and will receive an invitation.`,
       icon: "i-lucide-user-check",
+      title: "Account created",
     });
     closeModal();
   } catch {
     toast.add({
-      title: "Could not create account",
-      description: "Please check the details and try again.",
       color: "error",
+      description: "Please check the details and try again.",
       icon: "i-lucide-x-circle",
+      title: "Could not create account",
     });
   }
 }
 
 async function submitEdit(data: UpdateUserSchema) {
-  if (activeModal.value.type !== "edit") return;
+  if (activeModal.value.type !== "edit") {
+    return;
+  }
   try {
-    await updateUserMutation({ userId: activeModal.value.user.id, data });
+    await updateUserMutation({ data, userId: activeModal.value.user.id });
     toast.add({
-      title: "User updated",
       color: "success",
       icon: "i-lucide-check-circle",
+      title: "User updated",
     });
     closeModal();
   } catch {
     toast.add({
-      title: "Update failed",
       color: "error",
       icon: "i-lucide-x-circle",
+      title: "Update failed",
     });
   }
 }
 
 async function submitRestrict(data: RestrictUserSchema | { userId: string }) {
-  if (activeModal.value.type !== "restrict") return;
+  if (activeModal.value.type !== "restrict") {
+    return;
+  }
   try {
     const lockoutEndDate =
-      "lockoutEndDate" in data
-        ? data.lockoutEndDate.toString()
-        : new Date(0).toISOString();
-    await restrictUserMutation({ userId: data.userId, lockoutEndDate });
+      "lockoutEndDate" in data ? data.lockoutEndDate.toString() : new Date(0).toISOString();
+    await restrictUserMutation({ lockoutEndDate, userId: data.userId });
     toast.add({
-      title: "Restriction updated",
       color: "warning",
       icon: "i-lucide-lock",
+      title: "Restriction updated",
     });
     closeModal();
   } catch {
     toast.add({
-      title: "Restriction failed",
       color: "error",
       icon: "i-lucide-x-circle",
+      title: "Restriction failed",
     });
   }
 }
 
 async function submitDelete() {
-  if (activeModal.value.type !== "delete") return;
+  if (activeModal.value.type !== "delete") {
+    return;
+  }
   try {
     await deleteUsersMutation(activeModal.value.ids);
     toast.add({
-      title: `${activeModal.value.ids.length} user(s) deleted`,
       color: "success",
       icon: "i-lucide-check-circle",
+      title: `${activeModal.value.ids.length} user(s) deleted`,
     });
     selectedUserIds.value = selectedUserIds.value.filter(
       (id) => !activeModal.value.ids.includes(id),
@@ -907,9 +785,9 @@ async function submitDelete() {
     closeModal();
   } catch {
     toast.add({
-      title: "Delete failed",
       color: "error",
       icon: "i-lucide-x-circle",
+      title: "Delete failed",
     });
   }
 }
@@ -918,16 +796,16 @@ async function submitDelete() {
 
 const roleOptions = [
   {
+    description: "Standard access.",
+    icon: "i-lucide-user",
     label: "User",
     value: UserRole.User,
-    icon: "i-lucide-user",
-    description: "Standard access.",
   },
   {
+    description: "Full access.",
+    icon: "i-lucide-shield-check",
     label: "Administrator",
     value: UserRole.Admin,
-    icon: "i-lucide-shield-check",
-    description: "Full access.",
   },
 ];
 

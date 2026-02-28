@@ -8,8 +8,7 @@
     :loading="loading"
     :alert="{
       title: `Delete ${ids.length} user${ids.length !== 1 ? 's' : ''}?`,
-      description:
-        'Accounts will be soft-deleted. Admins can restore them later.',
+      description: 'Accounts will be soft-deleted. Admins can restore them later.',
     }"
     @confirm="emit('confirm')"
     @close="emit('close', $event)"

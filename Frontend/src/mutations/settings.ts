@@ -1,9 +1,9 @@
-// mutations/settings.ts
-import { settingsApi } from "@/api/settings";
-import { type AppearanceSettings, type BehaviorSettings } from "@/api/settings";
+import { defineMutation, useQueryCache } from "@pinia/colada";
+
+// Mutations/settings.ts
+import { type AppearanceSettings, type BehaviorSettings, settingsApi } from "@/api/settings";
 import { SETTINGS_QUERY_KEYS } from "@/queries/settings";
 import { useSettingsStore } from "@/stores/settings";
-import { defineMutation, useQueryCache } from "@pinia/colada";
 
 export const updateAppearance = defineMutation({
   mutation: (data: AppearanceSettings) => settingsApi.updateAppearance(data),
@@ -13,7 +13,9 @@ export const updateAppearance = defineMutation({
 
     queryCache.invalidateQueries({ key: SETTINGS_QUERY_KEYS.appearance() });
 
-    if (data) settingsStore.syncFromServer(data, settingsStore.getSettings);
+    if (data) {
+      settingsStore.syncFromServer(data, settingsStore.getSettings);
+    }
   },
 });
 
@@ -25,6 +27,8 @@ export const updateBehavior = defineMutation({
 
     queryCache.invalidateQueries({ key: SETTINGS_QUERY_KEYS.behavior() });
 
-    if (data) settingsStore.syncFromServer(settingsStore.getSettings, data);
+    if (data) {
+      settingsStore.syncFromServer(settingsStore.getSettings, data);
+    }
   },
 });

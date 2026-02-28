@@ -2,14 +2,10 @@
   <div class="flex flex-col min-h-screen px-6 py-10 font-garamond">
     <!-- Header -->
     <header class="max-w-7xl mx-auto w-full text-center mb-8">
-      <h1
-        class="font-playfair text-5xl font-bold tracking-tight leading-none mb-2"
-      >
+      <h1 class="font-playfair text-5xl font-bold tracking-tight leading-none mb-2">
         Administration Console
       </h1>
-      <p class="text-base italic">
-        System management &amp; operational oversight
-      </p>
+      <p class="text-base italic">System management &amp; operational oversight</p>
 
       <div class="flex items-center justify-center gap-3 mt-4">
         <UBadge
@@ -18,10 +14,7 @@
           :color="statusColor"
           class="rounded-full gap-1.5 opacity-70"
         >
-          <span
-            class="w-1.5 h-1.5 rounded-full"
-            :class="`bg-${statusColor}-500`"
-          />
+          <span class="w-1.5 h-1.5 rounded-full" :class="`bg-${statusColor}-500`" />
           {{ systemStatus }}
         </UBadge>
         <time class="text-xs italic opacity-90">{{ currentDate }}</time>
@@ -29,9 +22,7 @@
     </header>
 
     <!-- Navigation Grid -->
-    <main
-      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full"
-    >
+    <main class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full">
       <UCard
         v-for="section in sections"
         :key="section.id"
@@ -84,10 +75,7 @@
         <!-- Footer -->
         <USeparator :ui="{ root: 'border-dashed opacity-40' }" />
         <div class="flex items-center gap-1">
-          <span
-            v-for="(tag, i) in section.tags"
-            :key="tag"
-            class="text-[0.62rem] italic opacity-85"
+          <span v-for="(tag, i) in section.tags" :key="tag" class="text-[0.62rem] italic opacity-85"
             >{{ tag }}{{ i < section.tags.length - 1 ? " ·" : "" }}</span
           >
           <UIcon
@@ -108,28 +96,34 @@ const router = useRouter();
 
 const currentDate = computed(() =>
   new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
     weekday: "long",
     year: "numeric",
-    month: "long",
-    day: "numeric",
   }),
 );
 
-const systemStatus = ref<"All Systems Nominal" | "Degraded" | "Outage">(
-  "All Systems Nominal",
-);
+const systemStatus = ref<"All Systems Nominal" | "Degraded" | "Outage">("All Systems Nominal");
 
 const statusColor = computed(() => {
-  if (systemStatus.value === "All Systems Nominal") return "success";
-  if (systemStatus.value === "Degraded") return "warning";
+  if (systemStatus.value === "All Systems Nominal") {
+    return "success";
+  }
+  if (systemStatus.value === "Degraded") {
+    return "warning";
+  }
   return "error";
 });
 
 type BadgeType = "neutral" | "live" | "warn";
 
 const badgeColor = (type: BadgeType) => {
-  if (type === "live") return "success";
-  if (type === "warn") return "error";
+  if (type === "live") {
+    return "success";
+  }
+  if (type === "warn") {
+    return "error";
+  }
   return "neutral";
 };
 
@@ -159,8 +153,7 @@ const sections = [
   {
     badges: [{ label: "Filterable", type: "neutral" as BadgeType }],
     chapter: "Chapter III",
-    description:
-      "Browse and filter the full audit trail by user, event type, and time range.",
+    description: "Browse and filter the full audit trail by user, event type, and time range.",
     icon: "mdi:book-open-page-variant-outline",
     id: "logs",
     route: "/admin/logs",
@@ -185,8 +178,7 @@ const sections = [
   {
     badges: [{ label: "Sessions", type: "live" as BadgeType }],
     chapter: "Chapter V",
-    description:
-      "Visualise session origins, geographic distribution, and active login sessions.",
+    description: "Visualise session origins, geographic distribution, and active login sessions.",
     icon: "mdi:map-marker-radius-outline",
     id: "clients",
     route: "/admin/clients",

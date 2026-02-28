@@ -1,10 +1,10 @@
 import "./assets/main.css";
-
-import { createApp } from "vue";
-import { createPinia } from "pinia";
 import ui from "@nuxt/ui/vue-plugin";
-import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { PiniaColada } from "@pinia/colada";
+import { createPinia } from "pinia";
+import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
+import { createApp } from "vue";
+
 import App from "./App.vue";
 import router from "./router";
 
@@ -15,11 +15,11 @@ pinia.use(piniaPluginPersistedstate);
 
 app.use(pinia);
 app.use(PiniaColada, {
+  mutationOptions: {},
+  plugins: [],
   queryOptions: {
     staleTime: 0,
   },
-  mutationOptions: {},
-  plugins: [],
 });
 
 app.use(router);

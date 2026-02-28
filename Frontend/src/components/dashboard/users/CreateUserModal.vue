@@ -25,12 +25,8 @@
             <UIcon name="i-lucide-user-plus" class="size-5 text-primary" />
           </div>
           <div>
-            <h2 class="text-base font-semibold text-default leading-tight">
-              Create new account
-            </h2>
-            <p class="text-xs text-muted mt-0.5">
-              The user will receive an invitation email.
-            </p>
+            <h2 class="text-base font-semibold text-default leading-tight">Create new account</h2>
+            <p class="text-xs text-muted mt-0.5">The user will receive an invitation email.</p>
           </div>
         </div>
 
@@ -57,11 +53,7 @@
                       : 'bg-transparent border-muted/40 text-muted/40'
                 "
               >
-                <UIcon
-                  v-if="currentStep > i"
-                  name="i-lucide-check"
-                  class="size-2.5"
-                />
+                <UIcon v-if="currentStep > i" name="i-lucide-check" class="size-2.5" />
                 <span v-else>{{ i + 1 }}</span>
               </div>
               <span class="hidden sm:inline">{{ step.label }}</span>
@@ -126,11 +118,7 @@
         class="space-y-4 py-2"
         @submit.prevent
       >
-        <UFormField
-          label="Password"
-          name="password"
-          description="At least 8 characters."
-        >
+        <UFormField label="Password" name="password" description="At least 8 characters.">
           <UInput
             v-model="state.password"
             :type="showPassword ? 'text' : 'password'"
@@ -147,9 +135,7 @@
             :type="showConfirmPassword ? 'text' : 'password'"
             placeholder="••••••••"
             icon="i-lucide-lock-keyhole"
-            :trailing-icon="
-              showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'
-            "
+            :trailing-icon="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
             class="w-full"
             @click-trailing="showConfirmPassword = !showConfirmPassword"
           />
@@ -184,11 +170,7 @@
         class="space-y-4 py-2"
         @submit="handleFinalSubmit"
       >
-        <UFormField
-          label="Role"
-          name="role"
-          description="Controls what the user can see and do."
-        >
+        <UFormField label="Role" name="role" description="Controls what the user can see and do.">
           <div class="grid grid-cols-2 gap-3 mt-1">
             <button
               v-for="option in ROLE_OPTIONS"
@@ -223,9 +205,7 @@
               <div
                 class="absolute top-3 right-3 w-4 h-4 rounded-full border-2 transition-all duration-150 flex items-center justify-center"
                 :class="
-                  state.role === option.value
-                    ? 'border-primary bg-primary'
-                    : 'border-muted/40'
+                  state.role === option.value ? 'border-primary bg-primary' : 'border-muted/40'
                 "
               >
                 <UIcon
@@ -261,9 +241,7 @@
               {{ state.userName?.charAt(0)?.toUpperCase() ?? "?" }}
             </div>
             <div class="min-w-0">
-              <p class="text-sm font-medium text-default truncate">
-                @{{ state.userName }}
-              </p>
+              <p class="text-sm font-medium text-default truncate">@{{ state.userName }}</p>
               <p class="text-xs text-muted truncate">{{ state.email }}</p>
             </div>
             <UBadge
@@ -334,7 +312,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { z } from "zod";
 import type { CreateUserSchema } from "@/schemas/user";
 import { UserRole } from "@/enums/UserRole";
@@ -349,7 +327,7 @@ const emit = defineEmits<{
   submit: [data: CreateUserSchema];
 }>();
 
-// Steps 
+// Steps
 
 const STEPS: { label: string; next?: string }[] = [
   { label: "Identity", next: "Set password" },
@@ -359,37 +337,34 @@ const STEPS: { label: string; next?: string }[] = [
 
 const ROLE_OPTIONS = [
   {
+    description: "Standard access — browse and manage own content.",
+    icon: "i-lucide-user",
     label: "User",
     value: UserRole.User,
-    icon: "i-lucide-user",
-    description: "Standard access — browse and manage own content.",
   },
   {
+    description: "Full access — manage users, settings, and all content.",
+    icon: "i-lucide-shield-check",
     label: "Administrator",
     value: UserRole.Admin,
-    icon: "i-lucide-shield-check",
-    description: "Full access — manage users, settings, and all content.",
   },
 ];
 
 // Per-step schemas
 
 const step0Schema = z.object({
+  email: z.email("Invalid email address"),
   userName: z
     .string()
     .min(2, "Must be at least 2 characters")
     .max(50, "Max 50 characters")
-    .regex(
-      /^[a-zA-Z0-9_.\-]+$/,
-      "Only letters, numbers, underscores, dots, and hyphens",
-    ),
-  email: z.email("Invalid email address"),
+    .regex(/^[a-zA-Z0-9_.-]+$/, "Only letters, numbers, underscores, dots, and hyphens"),
 });
 
 const step1Schema = z
   .object({
-    password: z.string().min(8, "Must be at least 8 characters"),
     confirmPassword: z.string(),
+    password: z.string().min(8, "Must be at least 8 characters"),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: "Passwords don't match",
@@ -400,7 +375,7 @@ const step2Schema = z.object({
   role: z.enum(UserRole).default(UserRole.User),
 });
 
-//  Local state 
+//  Local state
 
 const formStep0 = ref();
 const formStep1 = ref();
@@ -411,24 +386,26 @@ const showPassword = ref(false);
 const showConfirmPassword = ref(false);
 
 const state = reactive<CreateUserSchema>({
-  userName: "",
+  confirmPassword: "",
   email: "",
   password: "",
-  confirmPassword: "",
   role: UserRole.User,
+  userName: "",
 });
 
 // Reset every time the modal opens.
 watch(
   () => props.open,
   (isOpen) => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      return;
+    }
     Object.assign(state, {
-      userName: "",
+      confirmPassword: "",
       email: "",
       password: "",
-      confirmPassword: "",
       role: UserRole.User,
+      userName: "",
     });
     currentStep.value = 0;
     showPassword.value = false;
@@ -441,27 +418,35 @@ watch(
 const passwordStrength = computed(() => {
   const p = state.password;
   let score = 0;
-  if (p.length >= 8) score++;
-  if (p.length >= 12) score++;
-  if (/[A-Z]/.test(p) && /[0-9]/.test(p)) score++;
-  if (/[^A-Za-z0-9]/.test(p)) score++;
+  if (p.length >= 8) {
+    score++;
+  }
+  if (p.length >= 12) {
+    score++;
+  }
+  if (/[A-Z]/.test(p) && /[0-9]/.test(p)) {
+    score++;
+  }
+  if (/[^A-Za-z0-9]/.test(p)) {
+    score++;
+  }
 
   const levels = [
-    { label: "Too weak", color: "bg-red-400", textColor: "text-red-500" },
-    { label: "Weak", color: "bg-orange-400", textColor: "text-orange-500" },
+    { color: "bg-red-400", label: "Too weak", textColor: "text-red-500" },
+    { color: "bg-orange-400", label: "Weak", textColor: "text-orange-500" },
     {
-      label: "Fair",
       color: "bg-yellow-400",
+      label: "Fair",
       textColor: "text-yellow-600 dark:text-yellow-400",
     },
     {
-      label: "Strong",
       color: "bg-emerald-400",
+      label: "Strong",
       textColor: "text-emerald-600 dark:text-emerald-400",
     },
     {
-      label: "Very strong",
       color: "bg-emerald-500",
+      label: "Very strong",
       textColor: "text-emerald-600 dark:text-emerald-400",
     },
   ];
@@ -469,12 +454,16 @@ const passwordStrength = computed(() => {
   return { score: Math.max(score, 1), ...levels[Math.max(score - 1, 0)] };
 });
 
-// Step navigation 
+// Step navigation
 
 const currentForm = computed(() => {
-  if (currentStep.value === 0) return formStep0.value;
-  if (currentStep.value === 1) return formStep1.value;
-  return null; // step 2 submits directly
+  if (currentStep.value === 0) {
+    return formStep0.value;
+  }
+  if (currentStep.value === 1) {
+    return formStep1.value;
+  }
+  return null; // Step 2 submits directly
 });
 
 async function advanceStep() {

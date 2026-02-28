@@ -1,8 +1,9 @@
-import { userApi } from "@/api/users";
 import { defineMutation, useMutation, useQueryCache } from "@pinia/colada";
+
 import type { CreateUserSchema, UpdateUserSchema } from "@/schemas/user";
+
+import { userApi } from "@/api/users";
 import { USER_QUERY_KEYS } from "@/queries/user";
-import { authApi } from "@/api/auth";
 
 export const useCreateUser = defineMutation(() => {
   const queryCache = useQueryCache();
@@ -28,13 +29,8 @@ export const useUpdateUser = defineMutation(() => {
 export const useRestrictUser = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({
-    mutation: ({
-      userId,
-      lockoutEndDate,
-    }: {
-      userId: string;
-      lockoutEndDate: string;
-    }) => userApi.restrictUser(userId, lockoutEndDate),
+    mutation: ({ userId, lockoutEndDate }: { userId: string; lockoutEndDate: string }) =>
+      userApi.restrictUser(userId, lockoutEndDate),
     onSuccess() {
       queryCache.invalidateQueries({ key: USER_QUERY_KEYS.root });
     },

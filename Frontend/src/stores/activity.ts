@@ -1,6 +1,7 @@
-import { defineStore, acceptHMRUpdate } from "pinia";
+import { acceptHMRUpdate, defineStore } from "pinia";
+import { type Ref, computed, ref } from "vue";
+
 import { type AuditLogResult } from "@/api/activity";
-import { computed, ref, type Ref } from "vue";
 
 export const useActivityStore = defineStore("activity", () => {
   const activity: Ref<AuditLogResult[]> = ref([]);

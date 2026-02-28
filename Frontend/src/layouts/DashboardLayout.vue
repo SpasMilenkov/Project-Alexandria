@@ -11,21 +11,13 @@
     >
       <template #header="{ collapsed }">
         <LogoComponent v-if="!collapsed" class="h-5 w-auto shrink-0" />
-        <UIcon
-          v-else
-          name="i-heroicons-home"
-          class="size-5 text-primary mx-auto"
-        />
+        <UIcon v-else name="i-heroicons-home" class="size-5 text-primary mx-auto" />
       </template>
 
       <template #default="{ collapsed }">
         <!-- Desktop navigation -->
         <div class="hidden sm:flex sm:flex-col sm:flex-1">
-          <UNavigationMenu
-            :collapsed="collapsed"
-            :items="mainMenuItems"
-            orientation="vertical"
-          />
+          <UNavigationMenu :collapsed="collapsed" :items="mainMenuItems" orientation="vertical" />
 
           <!-- Admin section, only visible to admins -->
           <template v-if="authStore.isAdmin">
@@ -49,9 +41,7 @@
         <div class="flex flex-col flex-1 sm:hidden overflow-y-auto">
           <!-- Section: Library -->
           <div class="px-3 pt-5 pb-1">
-            <p
-              class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1"
-            >
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
               Your Library
             </p>
           </div>
@@ -68,9 +58,7 @@
 
           <template v-if="authStore.isAdmin">
             <div class="px-3 pt-6 pb-1">
-              <p
-                class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1"
-              >
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
                 Admin
               </p>
             </div>
@@ -88,9 +76,7 @@
 
           <!-- Section: Settings -->
           <div class="px-3 pt-6 pb-1">
-            <p
-              class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1"
-            >
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
               Account
             </p>
           </div>
@@ -179,40 +165,38 @@ defineShortcuts({
   meta_k: openShortCutsModal,
 });
 
-const pageTitle = computed(() => {
-  return (route.meta.title as string) || "Dashboard";
-});
+const pageTitle = computed(() => (route.meta.title as string) || "Dashboard");
 
 //Desktop navigation trees
 
 const mainMenuItems: NavigationMenuItem[][] = [
   [
     {
-      label: "Your Library",
-      icon: "i-heroicons-book-open",
-      defaultOpen: true,
       children: [
         {
-          label: "File Explorer",
           icon: "i-heroicons-folder",
+          label: "File Explorer",
           to: "/dashboard",
         },
         {
-          label: "Tags and Categories",
           icon: "i-heroicons-tag",
+          label: "Tags and Categories",
           to: "/dashboard/tags",
         },
         {
-          label: "Access History",
           icon: "i-heroicons-clock",
+          label: "Access History",
           to: "/access-history",
         },
         {
-          label: "Trash",
           icon: "i-heroicons-trash",
+          label: "Trash",
           to: "/dashboard/trash",
         },
       ],
+      defaultOpen: true,
+      icon: "i-heroicons-book-open",
+      label: "Your Library",
     },
   ],
 ];
@@ -220,39 +204,39 @@ const mainMenuItems: NavigationMenuItem[][] = [
 const adminMenuItems = computed<NavigationMenuItem[][]>(() => [
   [
     {
-      label: "Admin",
-      icon: "i-heroicons-shield-check",
-      defaultOpen: true,
       children: [
         {
-          label: "Admin Dashboard",
           icon: "i-heroicons-chart-bar",
+          label: "Admin Dashboard",
           to: "/dashboard/admin",
         },
         {
-          label: "User Registry",
           icon: "i-heroicons-users",
+          label: "User Registry",
           to: "/dashboard/admin/user-registry",
         },
         {
-          label: "System Vitals",
           icon: "material-symbols:vitals",
+          label: "System Vitals",
           to: "/dashboard/admin/service-status",
         },
       ],
+      defaultOpen: true,
+      icon: "i-heroicons-shield-check",
+      label: "Admin",
     },
   ],
 ]);
 
 const mobileAdminItems = [
   {
-    label: "Admin Dashboard",
     icon: "i-heroicons-chart-bar",
+    label: "Admin Dashboard",
     to: "/dashboard/admin",
   },
   {
-    label: "User Registry",
     icon: "i-heroicons-users",
+    label: "User Registry",
     to: "/dashboard/admin/user-registry",
   },
 ];
@@ -260,13 +244,13 @@ const mobileAdminItems = [
 const settingsMenuItems: NavigationMenuItem[][] = [
   [
     {
-      label: "Settings",
       icon: "i-heroicons-cog-6-tooth",
+      label: "Settings",
       to: "/settings",
     },
     {
-      label: "My Account",
       icon: "i-heroicons-user-circle",
+      label: "My Account",
       to: "/account",
     },
   ],
@@ -275,19 +259,19 @@ const settingsMenuItems: NavigationMenuItem[][] = [
 // Mobile flat item lists (same routes, no nesting)
 
 const mobileMainItems = [
-  { label: "File Explorer", icon: "i-heroicons-folder", to: "/dashboard" },
+  { icon: "i-heroicons-folder", label: "File Explorer", to: "/dashboard" },
   {
-    label: "Tags and Categories",
     icon: "i-heroicons-tag",
+    label: "Tags and Categories",
     to: "/dashboard/tags",
   },
-  { label: "Access History", icon: "i-heroicons-clock", to: "/access-history" },
-  { label: "Trash", icon: "i-heroicons-trash", to: "/dashboard/trash" },
+  { icon: "i-heroicons-clock", label: "Access History", to: "/access-history" },
+  { icon: "i-heroicons-trash", label: "Trash", to: "/dashboard/trash" },
 ];
 
 const mobileSettingsItems = [
-  { label: "Settings", icon: "i-heroicons-cog-6-tooth", to: "/settings" },
-  { label: "My Account", icon: "i-heroicons-user-circle", to: "/account" },
+  { icon: "i-heroicons-cog-6-tooth", label: "Settings", to: "/settings" },
+  { icon: "i-heroicons-user-circle", label: "My Account", to: "/account" },
 ];
 
 const handleLogout = async () => {

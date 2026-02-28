@@ -11,8 +11,24 @@
   },
 
   "rules": {
-    "no-console": "warn",
-    "no-debugger": "error"
+    "no-console": "error",
+    "no-debugger": "error",
+    "no-magic-numbers": "off",
+    "new-cap": "off",
+    "id-length": "off",
+    "eslint/sort-imports": [
+      "warn",
+      {
+        "ignoreDeclarationSort": true,
+        "ignoreMemberSort": false
+      }
+    ],
+    "max-lines": [
+      "warn",
+      {
+        "max": 500
+      }
+    ]
   },
 
   "settings": {

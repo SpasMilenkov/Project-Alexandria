@@ -1,6 +1,5 @@
 import type { SortBy, SortDirection, UserRole } from "@/enums";
 
-
 export interface UserDetailsDto {
   id: string;
   userName: string;
@@ -12,7 +11,6 @@ export interface UserDetailsDto {
   updatedAt: string | null;
   deletedAt: string | null;
 }
-
 
 export interface UpdateUserDto {
   userName?: string | null;

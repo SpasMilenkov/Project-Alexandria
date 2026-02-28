@@ -3,6 +3,7 @@
   "compilerOptions": {
     "lib": ["webworker", "webworker.iterable", "es2020"],
     "target": "es2020",
+    "skipLibCheck": true
   },
-  "include": ["src/bg-image-sw.ts"],
+  "include": ["src/bg-image-sw.ts"]
 }

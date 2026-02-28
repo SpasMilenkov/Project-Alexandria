@@ -1,21 +1,12 @@
-import { fileApi } from "@/api/file";
+import { defineQueryOptions } from "@pinia/colada";
+
 import type { FileSearchQuery } from "@/schemas/search";
 import type { PaginationParams } from "@/types/pagination-params";
-import { defineQueryOptions } from "@pinia/colada";
+
+import { fileApi } from "@/api/file";
 
 export const FILES_QUERY_KEYS = {
   root: ["files"] as const,
-  subFiles: ({ id, params }: { id: string; params: PaginationParams }) =>
-    [
-      ...FILES_QUERY_KEYS.root,
-      "sub-files",
-      id,
-      params.page,
-      params.pageSize,
-      params.sortDirection,
-      params.SortBy,
-    ] as const,
-  signedUrl: (id: string) => [...FILES_QUERY_KEYS.root, "signed-url", id],
   rootFiles: (params: PaginationParams) => [
     ...FILES_QUERY_KEYS.root,
     "root-sub-files",
@@ -36,13 +27,24 @@ export const FILES_QUERY_KEYS = {
     query.sortBy,
     query.pageSize,
   ],
+  signedUrl: (id: string) => [...FILES_QUERY_KEYS.root, "signed-url", id],
+  subFiles: ({ id, params }: { id: string; params: PaginationParams }) =>
+    [
+      ...FILES_QUERY_KEYS.root,
+      "sub-files",
+      id,
+      params.page,
+      params.pageSize,
+      params.sortDirection,
+      params.SortBy,
+    ] as const,
 };
 
 export const subFiles = defineQueryOptions(
   ({ id, params }: { id: string; params: PaginationParams }) => ({
     key: FILES_QUERY_KEYS.subFiles({ id, params }),
-    query: () => fileApi.getSubFiles(id, params),
     placeholderData: (prev) => prev,
+    query: () => fileApi.getSubFiles(id, params),
   }),
 );
 
@@ -55,8 +57,8 @@ export const getPreview = defineQueryOptions((id: string) => ({
 
 export const rootFiles = defineQueryOptions((params: PaginationParams) => ({
   key: FILES_QUERY_KEYS.rootFiles(params),
-  query: () => fileApi.getRootFiles(params),
   placeholderData: (prev) => prev,
+  query: () => fileApi.getRootFiles(params),
 }));
 
 export const searchFile = defineQueryOptions((query: FileSearchQuery) => ({

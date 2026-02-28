@@ -1,12 +1,13 @@
-import { SortBy } from "@/enums/SortBy";
-import apiClient from "./client";
+import type { SortBy } from "@/enums/SortBy";
+import type { SortDirection } from "@/enums/SortDirection";
 import type {
   CreateDirectorySchema,
-  UpdateDirectorySchema,
   DeleteDirectorySchema,
+  UpdateDirectorySchema,
 } from "@/schemas/directory";
-import { SortDirection } from "@/enums/SortDirection";
 import type { PaginationParams } from "@/types/pagination-params";
+
+import apiClient from "./client";
 
 // Response Types
 export interface UserDto {
@@ -68,13 +69,13 @@ export interface ListRootDirectoriesResponse {
   directories: string[];
 }
 
-// export enum DirectorySortBy {
+// Export enum DirectorySortBy {
 //   Name = 0,
 //   CreatedAt = 1,
 //   UpdatedAt = 2,
 // }
 
-// export enum SortDirection {
+// Export enum SortDirection {
 //   Asc = 0,
 //   Desc = 1,
 // }
@@ -135,13 +136,8 @@ export interface PaginatedResponse<T> {
 
 export const directoryApi = {
   // Create a new directory
-  createDirectory: async (
-    data: CreateDirectorySchema,
-  ): Promise<CreateDirectoryResponse> => {
-    const response = await apiClient.post<CreateDirectoryResponse>(
-      "/directories",
-      data,
-    );
+  createDirectory: async (data: CreateDirectorySchema): Promise<CreateDirectoryResponse> => {
+    const response = await apiClient.post<CreateDirectoryResponse>("/directories", data);
     return response.data;
   },
 
@@ -170,39 +166,39 @@ export const directoryApi = {
   getRooSubDirectories: async (
     paginationParams: PaginationParams,
   ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
-    const response = await apiClient.get<
-      PaginatedResponse<DirectorySummaryDto>
-    >("/directories/root", {
-      params: {
-        page: paginationParams.page,
-        pageSize: paginationParams.pageSize,
-        sortBy: paginationParams.SortBy,
-        sortDirection: paginationParams.sortDirection,
+    const response = await apiClient.get<PaginatedResponse<DirectorySummaryDto>>(
+      "/directories/root",
+      {
+        params: {
+          page: paginationParams.page,
+          pageSize: paginationParams.pageSize,
+          sortBy: paginationParams.SortBy,
+          sortDirection: paginationParams.sortDirection,
+        },
       },
-    });
+    );
     return response.data;
   },
   getSubDirectories: async (
     directoryId: string,
     paginationParams: PaginationParams,
   ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
-    const response = await apiClient.get<
-      PaginatedResponse<DirectorySummaryDto>
-    >("/directories/sub", {
-      params: {
-        directoryId,
-        page: paginationParams.page,
-        pageSize: paginationParams.pageSize,
-        sortBy: paginationParams.SortBy,
-        sortDirection: paginationParams.sortDirection,
+    const response = await apiClient.get<PaginatedResponse<DirectorySummaryDto>>(
+      "/directories/sub",
+      {
+        params: {
+          directoryId,
+          page: paginationParams.page,
+          pageSize: paginationParams.pageSize,
+          sortBy: paginationParams.SortBy,
+          sortDirection: paginationParams.sortDirection,
+        },
       },
-    });
+    );
     return response.data;
   },
 
-  getDirectoryPath: async (
-    id: string,
-  ): Promise<{ pathParts: { id: string; name: string }[] }> => {
+  getDirectoryPath: async (id: string): Promise<{ pathParts: { id: string; name: string }[] }> => {
     const response = await apiClient.get<{
       pathParts: { id: string; name: string }[];
     }>(`/directories/path/${id}`);
@@ -218,30 +214,23 @@ export const directoryApi = {
       Object.entries(query).filter(([_, value]) => value != null),
     );
 
-    const response = await apiClient.get<
-      PaginatedResponse<DirectorySummaryDto>
-    >("/directories/search", {
-      params: cleanParams,
-    });
-    return response.data;
-  },
-
-  // Update directory
-  updateDirectory: async (
-    data: UpdateDirectorySchema,
-  ): Promise<UpdateDirectoryResponse> => {
-    const response = await apiClient.put<UpdateDirectoryResponse>(
-      "/directories",
-      data,
+    const response = await apiClient.get<PaginatedResponse<DirectorySummaryDto>>(
+      "/directories/search",
+      {
+        params: cleanParams,
+      },
     );
     return response.data;
   },
 
+  // Update directory
+  updateDirectory: async (data: UpdateDirectorySchema): Promise<UpdateDirectoryResponse> => {
+    const response = await apiClient.put<UpdateDirectoryResponse>("/directories", data);
+    return response.data;
+  },
+
   // Move directory
-  moveDirectories: async (
-    directoryIds: string[],
-    destinationId: string | null,
-  ): Promise<void> => {
+  moveDirectories: async (directoryIds: string[], destinationId: string | null): Promise<void> => {
     await apiClient.put("directories/move", {
       destinationId,
       directoryIds,
@@ -250,16 +239,13 @@ export const directoryApi = {
 
   copyDirectory: async (dirId: string, destinationId: string | null) => {
     await apiClient.post("directories/copy", {
-      directoryId: dirId,
       destinationId,
+      directoryId: dirId,
     });
   },
 
   // Delete directory
-  deleteDirectory: async (
-    id: string,
-    options: DeleteDirectorySchema,
-  ): Promise<void> => {
+  deleteDirectory: async (id: string, options: DeleteDirectorySchema): Promise<void> => {
     await apiClient.delete(`/directories/${id}`, {
       data: options,
     });

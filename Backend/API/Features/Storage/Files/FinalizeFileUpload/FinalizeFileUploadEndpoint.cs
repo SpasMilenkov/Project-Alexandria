@@ -11,7 +11,7 @@ internal sealed class FinalizeFileUploadRequest
     public required string FileName { get; set; }
 }
 
-sealed class FinalizeFileUploadResponse
+internal sealed class FinalizeFileUploadResponse
 {
 }
 

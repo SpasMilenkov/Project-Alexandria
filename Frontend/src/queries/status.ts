@@ -1,12 +1,13 @@
-import { statusApi } from "@/api/status";
 import { defineQueryOptions } from "@pinia/colada";
 
+import { statusApi } from "@/api/status";
+
 export const STATUS_QUERY_KEYS = {
-  root: ["status"] as const,
   availableStorage: () => [...STATUS_QUERY_KEYS.root, "storage-info"],
   myStorage: () => [...STATUS_QUERY_KEYS.root, "my-storage"],
-  serverStatus: () => [...STATUS_QUERY_KEYS.root, "server-status"],
+  root: ["status"] as const,
   serverResourceUsage: () => [...STATUS_QUERY_KEYS.root, "server-resources"],
+  serverStatus: () => [...STATUS_QUERY_KEYS.root, "server-status"],
 };
 
 export const serverStatus = defineQueryOptions(() => ({

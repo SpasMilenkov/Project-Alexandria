@@ -1,45 +1,45 @@
-export type IconOption = {
+export interface IconOption {
   label: string;
   value: string;
   icon: string;
-};
+}
 
 export const iconOptions: IconOption[] = [
-  { label: "Tag", value: "tag", icon: "heroicons:tag" },
-  { label: "Bookmark", value: "bookmark", icon: "heroicons:bookmark" },
-  { label: "Folder", value: "folder", icon: "heroicons:folder" },
-  { label: "Document", value: "document", icon: "heroicons:document-text" },
-  { label: "Star", value: "star", icon: "heroicons:star" },
-  { label: "Heart", value: "heart", icon: "heroicons:heart" },
-  { label: "Flag", value: "flag", icon: "heroicons:flag" },
-  { label: "Check", value: "check", icon: "heroicons:check-circle" },
-  { label: "Alert", value: "alert", icon: "heroicons:exclamation-triangle" },
-  { label: "User", value: "user", icon: "heroicons:user" },
-  { label: "Group", value: "group", icon: "heroicons:users" },
-  { label: "Settings", value: "settings", icon: "heroicons:cog-6-tooth" },
-  { label: "Work", value: "work", icon: "heroicons:briefcase" },
-  { label: "Home", value: "home", icon: "heroicons:home" },
-  { label: "Calendar", value: "calendar", icon: "heroicons:calendar" },
-  { label: "Clock", value: "clock", icon: "heroicons:clock" },
-  { label: "Search", value: "search", icon: "heroicons:magnifying-glass" },
-  { label: "Plus", value: "plus", icon: "heroicons:plus-circle" },
-  { label: "Minus", value: "minus", icon: "heroicons:minus-circle" },
-  { label: "Trash", value: "trash", icon: "heroicons:trash" },
-  { label: "Edit", value: "edit", icon: "heroicons:pencil-square" },
-  { label: "Link", value: "link", icon: "heroicons:link" },
-  { label: "Lock", value: "lock", icon: "heroicons:lock-closed" },
-  { label: "Unlock", value: "unlock", icon: "heroicons:lock-open" },
-  { label: "Download", value: "download", icon: "heroicons:arrow-down-tray" },
-  { label: "Upload", value: "upload", icon: "heroicons:arrow-up-tray" },
-  { label: "Bell", value: "bell", icon: "heroicons:bell" },
+  { icon: "heroicons:tag", label: "Tag", value: "tag" },
+  { icon: "heroicons:bookmark", label: "Bookmark", value: "bookmark" },
+  { icon: "heroicons:folder", label: "Folder", value: "folder" },
+  { icon: "heroicons:document-text", label: "Document", value: "document" },
+  { icon: "heroicons:star", label: "Star", value: "star" },
+  { icon: "heroicons:heart", label: "Heart", value: "heart" },
+  { icon: "heroicons:flag", label: "Flag", value: "flag" },
+  { icon: "heroicons:check-circle", label: "Check", value: "check" },
+  { icon: "heroicons:exclamation-triangle", label: "Alert", value: "alert" },
+  { icon: "heroicons:user", label: "User", value: "user" },
+  { icon: "heroicons:users", label: "Group", value: "group" },
+  { icon: "heroicons:cog-6-tooth", label: "Settings", value: "settings" },
+  { icon: "heroicons:briefcase", label: "Work", value: "work" },
+  { icon: "heroicons:home", label: "Home", value: "home" },
+  { icon: "heroicons:calendar", label: "Calendar", value: "calendar" },
+  { icon: "heroicons:clock", label: "Clock", value: "clock" },
+  { icon: "heroicons:magnifying-glass", label: "Search", value: "search" },
+  { icon: "heroicons:plus-circle", label: "Plus", value: "plus" },
+  { icon: "heroicons:minus-circle", label: "Minus", value: "minus" },
+  { icon: "heroicons:trash", label: "Trash", value: "trash" },
+  { icon: "heroicons:pencil-square", label: "Edit", value: "edit" },
+  { icon: "heroicons:link", label: "Link", value: "link" },
+  { icon: "heroicons:lock-closed", label: "Lock", value: "lock" },
+  { icon: "heroicons:lock-open", label: "Unlock", value: "unlock" },
+  { icon: "heroicons:arrow-down-tray", label: "Download", value: "download" },
+  { icon: "heroicons:arrow-up-tray", label: "Upload", value: "upload" },
+  { icon: "heroicons:bell", label: "Bell", value: "bell" },
   {
+    icon: "heroicons:chat-bubble-left-right",
     label: "Message",
     value: "message",
-    icon: "heroicons:chat-bubble-left-right",
   },
-  { label: "Image", value: "image", icon: "heroicons:photo" },
-  { label: "Video", value: "video", icon: "heroicons:video-camera" },
-  { label: "Location", value: "location", icon: "heroicons:map-pin" },
+  { icon: "heroicons:photo", label: "Image", value: "image" },
+  { icon: "heroicons:video-camera", label: "Video", value: "video" },
+  { icon: "heroicons:map-pin", label: "Location", value: "location" },
 ] as const;
 
 type IconValue = (typeof iconOptions)[number]["value"];
@@ -53,14 +53,12 @@ const iconMap: Record<IconValue, IconName> = iconOptions.reduce(
   {} as Record<IconValue, IconName>,
 );
 
-export function getIconByValue(value: IconValue): IconName {
-  return iconMap[value];
-}
+export const getIconByValue = (value: IconValue): IconName => iconMap[value];
 
-
+//oxlint-disable sort-keys
 export const getFileIcon = (fileName: string): string => {
   const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
-  const iconMap: Record<string, string> = {
+  const fileIconMap: Record<string, string> = {
     // Documents
     pdf: "mdi:file-pdf-box",
     doc: "mdi:file-word",
@@ -106,5 +104,5 @@ export const getFileIcon = (fileName: string): string => {
     css: "mdi:language-css3",
     json: "mdi:code-json",
   };
-  return iconMap[extension] ?? "mdi:file-outline";
+  return fileIconMap[extension] ?? "mdi:file-outline";
 };

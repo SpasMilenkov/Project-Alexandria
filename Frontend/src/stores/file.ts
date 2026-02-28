@@ -1,8 +1,12 @@
-import { ref, computed } from "vue";
-import { acceptHMRUpdate, defineStore } from "pinia";
-import { fileApi } from "@/api/file";
 import type { AxiosError } from "axios";
+
+import { acceptHMRUpdate, defineStore } from "pinia";
+import { computed, ref } from "vue";
+
 import type { FileSearchQuery } from "@/schemas/search";
+
+import { fileApi } from "@/api/file";
+import { logger } from "@/utils/logger";
 
 interface FileMetadata {
   id: string;
@@ -12,11 +16,12 @@ interface FileMetadata {
   updatedAt: string | null;
   updatedBy: string | null;
 }
-type DownloadFileParams = {
+
+interface DownloadFileParams {
   id: string;
   fileName?: string;
   forceDownload?: boolean;
-};
+}
 
 export const useFileStore = defineStore("file", () => {
   // State
@@ -51,7 +56,7 @@ export const useFileStore = defineStore("file", () => {
       return { success: true };
     } catch (err: unknown) {
       const message = handleError(err, "Failed to upload file");
-      return { success: false, error: message };
+      return { error: message, success: false };
     } finally {
       isUploading.value = false;
       uploadProgress.value = 0;
@@ -59,11 +64,7 @@ export const useFileStore = defineStore("file", () => {
   };
 
   // Download a file
-  const downloadFile = async ({
-    id,
-    fileName,
-    forceDownload = false,
-  }: DownloadFileParams) => {
+  const downloadFile = async ({ id, fileName, forceDownload = false }: DownloadFileParams) => {
     isDownloading.value = true;
     downloadProgress.value = 0;
     error.value = null;
@@ -71,7 +72,7 @@ export const useFileStore = defineStore("file", () => {
     try {
       const url = await fileApi.downloadFile(id);
       downloadProgress.value = 100;
-      console.log(url);
+      logger.log(url);
       if (forceDownload) {
         const link = document.createElement("a");
         link.href = url;
@@ -86,7 +87,7 @@ export const useFileStore = defineStore("file", () => {
       return { success: true };
     } catch (err: unknown) {
       const message = handleError(err, "Failed to download file");
-      return { success: false, error: message };
+      return { error: message, success: false };
     } finally {
       isDownloading.value = false;
       downloadProgress.value = 0;
@@ -95,9 +96,9 @@ export const useFileStore = defineStore("file", () => {
   const searchFiles = async (query: FileSearchQuery) => {
     try {
       const data = await fileApi.searchFiles(query);
-      return { success: true, data };
+      return { data, success: true };
     } catch (error) {
-      return { success: false, error, data: null };
+      return { data: null, error, success: false };
     }
   };
 
@@ -105,12 +106,10 @@ export const useFileStore = defineStore("file", () => {
   const handleError = (err: unknown, defaultMessage: string): string => {
     let message = defaultMessage;
     if (err instanceof Error) {
-      message = err.message;
+      ({ message } = err);
     }
     if ((err as AxiosError)?.response?.data) {
-      message =
-        (err as AxiosError<{ message: string }>).response?.data?.message ??
-        message;
+      message = (err as AxiosError<{ message: string }>).response?.data?.message ?? message;
     }
     error.value = message;
     return message;
@@ -136,7 +135,7 @@ export const useFileStore = defineStore("file", () => {
     uploadFile,
     downloadFile,
     clearError,
-    searchFiles
+    searchFiles,
   };
 });
 

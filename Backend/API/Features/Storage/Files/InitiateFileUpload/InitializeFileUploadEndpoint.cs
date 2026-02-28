@@ -5,7 +5,7 @@ using FluentValidation;
 
 namespace API.Features.Storage.Files.InitiateFileUpload;
 
-sealed class InitializeFileUploadRequest
+internal sealed class InitializeFileUploadRequest
 {
     public required string ContentType { get; set; }
     public required string Hash { get; set; }
@@ -13,7 +13,7 @@ sealed class InitializeFileUploadRequest
     public Guid? DirectoryId { get; set; }
 }
 
-sealed class InitializeFileUploadResponse
+internal sealed class InitializeFileUploadResponse
 {
     public Guid UploadId { get; set; }
     public required string UploadUrl { get; set; }

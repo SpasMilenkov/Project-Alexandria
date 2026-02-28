@@ -1,5 +1,6 @@
-import { type UploadPolicy, adminSettingsApi } from "@/api/adminSettings";
 import { defineMutation, useQueryCache } from "@pinia/colada";
+
+import { type UploadPolicy, adminSettingsApi } from "@/api/adminSettings";
 import { ADMIN_SETTINGS_QUERY_KEYS } from "@/queries/adminSettings";
 
 export const updateUploadPolicy = defineMutation({

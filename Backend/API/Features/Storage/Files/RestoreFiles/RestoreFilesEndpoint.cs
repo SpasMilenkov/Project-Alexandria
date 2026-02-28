@@ -3,7 +3,7 @@ using Common.Services;
 using FastEndpoints;
 using FluentValidation;
 
-sealed class RestoreFilesRequest
+internal sealed class RestoreFilesRequest
 {
     public required Guid[] FileIds { get; set; }
 }

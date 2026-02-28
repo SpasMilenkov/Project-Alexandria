@@ -62,14 +62,14 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
-  open: false,
-  title: "Confirm",
-  confirmLabel: "Confirm",
   cancelLabel: "Cancel",
-  confirmIcon: "i-lucide-check",
   confirmColor: "primary",
+  confirmIcon: "i-lucide-check",
+  confirmLabel: "Confirm",
   dangerMode: false,
   loading: false,
+  open: false,
+  title: "Confirm",
 });
 
 // 'confirm' = the action button was clicked (submit the inner form or proceed)

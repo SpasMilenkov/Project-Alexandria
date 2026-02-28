@@ -2,12 +2,8 @@
   <ConfirmModal
     :open="open"
     :title="user?.isLockedOut ? 'Remove Restriction' : 'Restrict Account'"
-    :description="
-      user ? `@${user.userName} will be locked until the chosen date` : ''
-    "
-    :confirm-label="
-      user?.isLockedOut ? 'Remove restriction' : 'Apply restriction'
-    "
+    :description="user ? `@${user.userName} will be locked until the chosen date` : ''"
+    :confirm-label="user?.isLockedOut ? 'Remove restriction' : 'Apply restriction'"
     :confirm-icon="user?.isLockedOut ? 'i-lucide-lock-open' : 'i-lucide-lock'"
     confirm-color="warning"
     :loading="loading"
@@ -62,8 +58,8 @@ const form = ref();
 
 // Local form state — reset whenever a new user is loaded
 const state = reactive<RestrictUserSchema>({
-  userId: "",
   lockoutEndDate: null,
+  userId: "",
 });
 
 watch(
@@ -73,7 +69,7 @@ watch(
     state.lockoutEndDate = null;
 
     // If the account is already locked, there's no date picker —
-    // clicking confirm just emits the userId for the unlock call.
+    // Clicking confirm just emits the userId for the unlock call.
     if (user?.isLockedOut) {
       form.value = {
         submit: () => emit("submit", { userId: user.id }),

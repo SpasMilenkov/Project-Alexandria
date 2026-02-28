@@ -17,9 +17,7 @@
     <template #left>
       <div class="flex items-center gap-2">
         <UIcon name="heroicons:book-open" class="w-5 h-5 text-primary" />
-        <span class="text-sm font-medium text-gray-900 dark:text-white">
-          Alexandria
-        </span>
+        <span class="text-sm font-medium text-gray-900 dark:text-white"> Alexandria </span>
       </div>
     </template>
 
@@ -56,17 +54,18 @@ const route = useRoute();
 const items = computed<NavigationMenuItem[]>(() => {
   const itemArray = [
     {
+      active: route.path.startsWith("/auth"),
       label: "Log in",
       to: "/auth",
-      active: route.path.startsWith("/auth"),
     },
   ];
-  if (authStore.isAuthenticated)
+  if (authStore.isAuthenticated) {
     itemArray.push({
+      active: route.path.startsWith("/dashboard"),
       label: "Dashboard",
       to: "/dashboard",
-      active: route.path.startsWith("/dashboard"),
     });
+  }
   return itemArray;
 });
 </script>

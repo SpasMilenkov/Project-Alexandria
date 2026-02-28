@@ -10,9 +10,7 @@
           <p class="text-xs opacity-90 mt-0.5">Usage by file type</p>
         </div>
         <div class="ml-auto text-right">
-          <p class="text-xs opacity-90 uppercase tracking-widest font-medium">
-            Total
-          </p>
+          <p class="text-xs opacity-90 uppercase tracking-widest font-medium">Total</p>
           <p class="text-sm font-semibold tabular-nums">
             {{ isEmpty ? "0 B" : totalFormatted }}
           </p>
@@ -72,10 +70,9 @@
             <span class="text-2xl font-semibold tabular-nums leading-none">{{
               topCategory.size
             }}</span>
-            <span
-              class="text-xs opacity-90 mt-1 max-w-16 text-center leading-tight"
-              >{{ topCategory.label }}</span
-            >
+            <span class="text-xs opacity-90 mt-1 max-w-16 text-center leading-tight">{{
+              topCategory.label
+            }}</span>
           </div>
         </div>
       </div>
@@ -94,15 +91,11 @@
           />
 
           <!-- Label -->
-          <span class="text-sm flex-1 truncate opacity-80">{{
-            item.label
-          }}</span>
+          <span class="text-sm flex-1 truncate opacity-80">{{ item.label }}</span>
 
           <!-- Bar -->
           <div class="hidden sm:flex items-center gap-2 w-28">
-            <div
-              class="flex-1 h-1 rounded-full bg-black/8 dark:bg-white/8 overflow-hidden"
-            >
+            <div class="flex-1 h-1 rounded-full bg-black/8 dark:bg-white/8 overflow-hidden">
               <div
                 class="h-full rounded-full transition-all duration-500"
                 :style="{
@@ -112,15 +105,11 @@
                 }"
               />
             </div>
-            <span class="text-xs opacity-90 w-8 text-right tabular-nums"
-              >{{ item.pct }}%</span
-            >
+            <span class="text-xs opacity-90 w-8 text-right tabular-nums">{{ item.pct }}%</span>
           </div>
 
           <!-- Size -->
-          <span
-            class="text-xs font-medium tabular-nums opacity-60 w-16 text-right shrink-0"
-          >
+          <span class="text-xs font-medium tabular-nums opacity-60 w-16 text-right shrink-0">
             {{ item.size }}
           </span>
         </div>
@@ -133,13 +122,13 @@
 import { Doughnut } from "vue-chartjs";
 import { useColorMode } from "@vueuse/core";
 import {
-  Chart as ChartJS,
-  Title,
-  Tooltip,
-  Legend,
   ArcElement,
   type ChartData,
+  Chart as ChartJS,
   type ChartOptions,
+  Legend,
+  Title,
+  Tooltip,
 } from "chart.js";
 import { computed } from "vue";
 
@@ -155,20 +144,20 @@ const colorMode = useColorMode();
 const isDark = computed(() => colorMode.value === "dark");
 
 const palette = [
-  "#C17B5C", // terracotta      — Documents
-  "#5B7FA6", // slate blue      — Spreadsheets
-  "#7A9E87", // sage green      — Presentations
-  "#C9A84C", // warm amber      — Images
-  "#8E6B9E", // dusty purple    — Videos
-  "#5F8A8B", // teal slate      — Audio
-  "#B56B6B", // muted rose      — Archives
-  "#6B8F71", // moss            — Code
-  "#A07850", // warm brown      — Fonts
-  "#607D8B", // blue grey       — Executables
-  "#9C7B6E", // warm taupe      — Packages
-  "#7B9EA6", // cool sky        — Text
-  "#8A8A72", // warm olive grey — Binary
-  "#A89880", // linen tan       — Uncategorized
+  "#C17B5C", // Terracotta      — Documents
+  "#5B7FA6", // Slate blue      — Spreadsheets
+  "#7A9E87", // Sage green      — Presentations
+  "#C9A84C", // Warm amber      — Images
+  "#8E6B9E", // Dusty purple    — Videos
+  "#5F8A8B", // Teal slate      — Audio
+  "#B56B6B", // Muted rose      — Archives
+  "#6B8F71", // Moss            — Code
+  "#A07850", // Warm brown      — Fonts
+  "#607D8B", // Blue grey       — Executables
+  "#9C7B6E", // Warm taupe      — Packages
+  "#7B9EA6", // Cool sky        — Text
+  "#8A8A72", // Warm olive grey — Binary
+  "#A89880", // Linen tan       — Uncategorized
 ];
 
 const total = computed(() => props.data.reduce((s, v) => s + v, 0));
@@ -179,16 +168,13 @@ const breakdown = computed(() =>
   props.labels
     .map((label, i) => ({
       label,
+      pct: total.value > 0 ? Math.round((props.data[i] / total.value) * 100) : 0,
       size: props.formattedSize[i],
-      pct:
-        total.value > 0 ? Math.round((props.data[i] / total.value) * 100) : 0,
     }))
     .sort((a, b) => b.pct - a.pct),
 );
 
-const topCategory = computed(
-  () => breakdown.value[0] ?? { label: "—", size: "—" },
-);
+const topCategory = computed(() => breakdown.value[0] ?? { label: "—", size: "—" });
 
 const totalFormatted = computed(() => {
   const bytes = total.value;
@@ -204,49 +190,46 @@ const totalFormatted = computed(() => {
 
 const chartData = computed(
   (): ChartData<"doughnut"> => ({
-    labels: props.labels,
     datasets: [
       {
-        data: props.data,
         backgroundColor: palette.map((c) => c),
-        borderWidth: 2,
         borderColor: isDark.value ? "#1a1a1a" : "#f8f7f4",
+        borderWidth: 2,
+        data: props.data,
         hoverBorderColor: isDark.value ? "#2a2a2a" : "#ffffff",
         hoverOffset: 4,
       },
     ],
+    labels: props.labels,
   }),
 );
 
 const chartOptions = computed(
   (): ChartOptions<"doughnut"> => ({
-    responsive: true,
-    maintainAspectRatio: false,
     cutout: "72%",
+    maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: {
         backgroundColor: isDark.value ? "#1e1e1e" : "#ffffff",
+        bodyColor: isDark.value ? "#999" : "#666",
         borderColor: isDark.value ? "#333" : "#e5e5e5",
         borderWidth: 1,
-        titleColor: isDark.value ? "#e0ddd8" : "#1a1a1a",
-        bodyColor: isDark.value ? "#999" : "#666",
-        padding: 10,
-        cornerRadius: 6,
         callbacks: {
           label: (context) => {
             const index = context.dataIndex;
             const formatted = props.formattedSize[index];
-            const pct =
-              total.value > 0
-                ? Math.round((props.data[index] / total.value) * 100)
-                : 0;
+            const pct = total.value > 0 ? Math.round((props.data[index] / total.value) * 100) : 0;
             return `  ${formatted}  ·  ${pct}%`;
           },
           title: (items) => `  ${items[0].label}`,
         },
+        cornerRadius: 6,
+        padding: 10,
+        titleColor: isDark.value ? "#e0ddd8" : "#1a1a1a",
       },
     },
+    responsive: true,
   }),
 );
 </script>

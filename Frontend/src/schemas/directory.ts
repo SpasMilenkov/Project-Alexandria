@@ -10,16 +10,16 @@ export type CreateDirectorySchema = z.infer<typeof createDirectorySchema>;
 
 // Update Directory Schema
 export const updateDirectorySchema = z.object({
-  name: z.string().min(1, "Directory name is required"),
   directoryId: z.uuid(),
+  name: z.string().min(1, "Directory name is required"),
 });
 
 export type UpdateDirectorySchema = z.infer<typeof updateDirectorySchema>;
 
 // Move Directory Schema
 export const moveDirectorySchema = z.object({
-  directoryIds: z.array(z.uuid()),
   destinationId: z.uuid().optional(),
+  directoryIds: z.array(z.uuid()),
 });
 
 export type MoveDirectorySchema = z.infer<typeof moveDirectorySchema>;

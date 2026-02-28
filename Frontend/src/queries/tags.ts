@@ -1,22 +1,23 @@
-import { tagApi } from "@/api/tag";
+import { defineQueryOptions } from "@pinia/colada";
+
 import type { SearchFilesByTagsSchema, SearchTagsSchema } from "@/schemas/tag";
 import type { PaginationParams } from "@/types/pagination-params";
-import { defineQueryOptions } from "@pinia/colada";
+
+import { tagApi } from "@/api/tag";
 
 const normalizeFilters = (filters: SearchTagsSchema) => {
   const { page, pageSize, ...rest } = filters;
 
   return {
-    page,
-    pageSize,
     filters: Object.fromEntries(
       Object.entries(rest).filter(([_, v]) => v !== undefined && v !== null),
     ),
+    page,
+    pageSize,
   };
 };
 
 export const TAGS_QUERY_KEYS = {
-  root: ["tags"] as const,
   getAllTags: (params: PaginationParams) => [
     ...TAGS_QUERY_KEYS.root,
     params.page,
@@ -24,19 +25,16 @@ export const TAGS_QUERY_KEYS = {
     params.SortBy,
     params.sortDirection,
   ],
-  searchTag: (filters: SearchTagsSchema) => [
-    ...TAGS_QUERY_KEYS.root,
-    "search",
-    normalizeFilters(filters),
-  ],
-  getTagsForFile: (fileId: string) => [
-    ...TAGS_QUERY_KEYS.root,
-    "tags-for-file",
-    fileId,
-  ],
+  getTagsForFile: (fileId: string) => [...TAGS_QUERY_KEYS.root, "tags-for-file", fileId],
+  root: ["tags"] as const,
   searchFileByTags: (filters: SearchFilesByTagsSchema) => [
     ...TAGS_QUERY_KEYS.root,
     "file-by-tags",
+    normalizeFilters(filters),
+  ],
+  searchTag: (filters: SearchTagsSchema) => [
+    ...TAGS_QUERY_KEYS.root,
+    "search",
     normalizeFilters(filters),
   ],
 };
@@ -53,15 +51,13 @@ export const searchTag = defineQueryOptions((filters: SearchTagsSchema) => ({
 }));
 
 export const getTagsForFile = defineQueryOptions((fileId: string) => ({
+  enabled: Boolean(fileId),
   key: TAGS_QUERY_KEYS.getTagsForFile(fileId),
   query: () => tagApi.getTagsForFile(fileId),
-  enabled: !!fileId,
   staleTime: 60000,
 }));
 
-export const searchFileByTags = defineQueryOptions(
-  (filters: SearchFilesByTagsSchema) => ({
-    key: TAGS_QUERY_KEYS.searchFileByTags(filters),
-    query: () => tagApi.searchFilesByTags(filters),
-  }),
-);
+export const searchFileByTags = defineQueryOptions((filters: SearchFilesByTagsSchema) => ({
+  key: TAGS_QUERY_KEYS.searchFileByTags(filters),
+  query: () => tagApi.searchFilesByTags(filters),
+}));

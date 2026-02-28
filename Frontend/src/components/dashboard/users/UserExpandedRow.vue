@@ -7,13 +7,8 @@
         class="rounded-lg border border-default bg-white/50 dark:bg-white/5 px-3.5 py-3 flex flex-col gap-1 min-w-0"
       >
         <div class="flex items-center gap-1.5">
-          <UIcon
-            name="i-lucide-fingerprint"
-            class="size-3.5 text-muted shrink-0"
-          />
-          <span
-            class="text-[10px] font-semibold uppercase tracking-wider text-muted"
-          >
+          <UIcon name="i-lucide-fingerprint" class="size-3.5 text-muted shrink-0" />
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Account ID
           </span>
           <UTooltip
@@ -21,15 +16,10 @@
             :delay-duration="200"
             class="ml-auto"
           >
-            <UIcon
-              name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help shrink-0"
-            />
+            <UIcon name="i-lucide-info" class="size-3 text-muted/50 cursor-help shrink-0" />
           </UTooltip>
         </div>
-        <p
-          class="font-mono text-[11px] text-default break-all select-all leading-snug"
-        >
+        <p class="font-mono text-[11px] text-default break-all select-all leading-snug">
           {{ user.id }}
         </p>
       </div>
@@ -39,13 +29,8 @@
         class="rounded-lg border border-default bg-white/50 dark:bg-white/5 px-3.5 py-3 flex flex-col gap-1"
       >
         <div class="flex items-center gap-1.5">
-          <UIcon
-            name="i-lucide-pencil-line"
-            class="size-3.5 text-muted shrink-0"
-          />
-          <span
-            class="text-[10px] font-semibold uppercase tracking-wider text-muted"
-          >
+          <UIcon name="i-lucide-pencil-line" class="size-3.5 text-muted shrink-0" />
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Last modified
           </span>
           <UTooltip
@@ -53,10 +38,7 @@
             :delay-duration="200"
             class="ml-auto"
           >
-            <UIcon
-              name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help shrink-0"
-            />
+            <UIcon name="i-lucide-info" class="size-3 text-muted/50 cursor-help shrink-0" />
           </UTooltip>
         </div>
         <template v-if="user.updatedAt">
@@ -84,9 +66,7 @@
             class="size-3.5 shrink-0"
             :class="user.isLockedOut ? 'text-warning' : 'text-muted'"
           />
-          <span
-            class="text-[10px] font-semibold uppercase tracking-wider text-muted"
-          >
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Access restriction
           </span>
           <UTooltip
@@ -94,10 +74,7 @@
             :delay-duration="200"
             class="ml-auto"
           >
-            <UIcon
-              name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help shrink-0"
-            />
+            <UIcon name="i-lucide-info" class="size-3 text-muted/50 cursor-help shrink-0" />
           </UTooltip>
         </div>
         <template v-if="user.isLockedOut && user.lockedOutStarted">
@@ -106,9 +83,7 @@
           </p>
         </template>
         <template v-else-if="user.isLockedOut">
-          <p class="text-sm font-medium text-warning leading-tight">
-            Currently restricted
-          </p>
+          <p class="text-sm font-medium text-warning leading-tight">Currently restricted</p>
         </template>
         <template v-else>
           <p class="text-xs text-muted italic">No active restriction</p>
@@ -126,15 +101,11 @@
       >
         <div class="flex items-center gap-1.5">
           <UIcon
-            :name="
-              user.deletedAt ? 'i-lucide-trash-2' : 'i-lucide-shield-check'
-            "
+            :name="user.deletedAt ? 'i-lucide-trash-2' : 'i-lucide-shield-check'"
             class="size-3.5 shrink-0"
             :class="user.deletedAt ? 'text-error' : 'text-muted'"
           />
-          <span
-            class="text-[10px] font-semibold uppercase tracking-wider text-muted"
-          >
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Account standing
           </span>
           <UTooltip
@@ -142,10 +113,7 @@
             :delay-duration="200"
             class="ml-auto"
           >
-            <UIcon
-              name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help shrink-0"
-            />
+            <UIcon name="i-lucide-info" class="size-3 text-muted/50 cursor-help shrink-0" />
           </UTooltip>
         </div>
         <template v-if="user.deletedAt">
@@ -154,9 +122,7 @@
           </p>
         </template>
         <template v-else>
-          <p class="text-xs text-success italic font-medium">
-            Account is active
-          </p>
+          <p class="text-xs text-success italic font-medium">Account is active</p>
         </template>
       </div>
 
@@ -166,20 +132,13 @@
       >
         <div class="flex items-center gap-1.5">
           <UIcon name="i-lucide-files" class="size-3.5 text-muted shrink-0" />
-          <span
-            class="text-[10px] font-semibold uppercase tracking-wider text-muted"
-          >
-            Files
-          </span>
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-muted"> Files </span>
           <UTooltip
             text="Total number of files owned by this account, including files in all folders."
             :delay-duration="200"
             class="ml-auto"
           >
-            <UIcon
-              name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help shrink-0"
-            />
+            <UIcon name="i-lucide-info" class="size-3 text-muted/50 cursor-help shrink-0" />
           </UTooltip>
         </div>
         <template v-if="isFileCountLoading">
@@ -189,9 +148,7 @@
           <p class="text-xs text-error italic">Failed to load</p>
         </template>
         <template v-else>
-          <p
-            class="text-sm font-medium text-default leading-tight tabular-nums"
-          >
+          <p class="text-sm font-medium text-default leading-tight tabular-nums">
             {{ fileCount?.toLocaleString() ?? "—" }}
             <span class="text-xs font-normal text-muted">
               {{ fileCount === 1 ? "file" : "files" }}
@@ -205,13 +162,8 @@
         class="rounded-lg border border-default bg-white/50 dark:bg-white/5 px-3.5 py-3 flex flex-col gap-1"
       >
         <div class="flex items-center gap-1.5">
-          <UIcon
-            name="i-lucide-hard-drive"
-            class="size-3.5 text-muted flex-shrink-0"
-          />
-          <span
-            class="text-[10px] font-semibold uppercase tracking-wider text-muted"
-          >
+          <UIcon name="i-lucide-hard-drive" class="size-3.5 text-muted flex-shrink-0" />
+          <span class="text-[10px] font-semibold uppercase tracking-wider text-muted">
             Storage used
           </span>
           <UTooltip
@@ -219,10 +171,7 @@
             :delay-duration="200"
             class="ml-auto"
           >
-            <UIcon
-              name="i-lucide-info"
-              class="size-3 text-muted/50 cursor-help flex-shrink-0"
-            />
+            <UIcon name="i-lucide-info" class="size-3 text-muted/50 cursor-help flex-shrink-0" />
           </UTooltip>
         </div>
         <template v-if="isStorageLoading">
@@ -232,9 +181,7 @@
           <p class="text-xs text-error italic">Failed to load</p>
         </template>
         <template v-else>
-          <p
-            class="text-sm font-medium text-default leading-tight tabular-nums"
-          >
+          <p class="text-sm font-medium text-default leading-tight tabular-nums">
             {{ storage !== undefined ? formatBytes(storage) : "—" }}
           </p>
         </template>
@@ -242,13 +189,8 @@
     </div>
 
     <!-- Action strip -->
-    <div
-      class="flex flex-wrap items-center gap-2 pt-3.5 border-t border-default"
-    >
-      <UTooltip
-        text="Edit this user's name, email, or role"
-        :delay-duration="200"
-      >
+    <div class="flex flex-wrap items-center gap-2 pt-3.5 border-t border-default">
+      <UTooltip text="Edit this user's name, email, or role" :delay-duration="200">
         <UButton
           size="xs"
           color="neutral"
@@ -303,8 +245,7 @@
       </UTooltip>
 
       <span v-else class="text-xs text-muted italic ml-1">
-        This account has been deleted — restore it by contacting a system
-        administrator.
+        This account has been deleted — restore it by contacting a system administrator.
       </span>
     </div>
   </div>
@@ -331,11 +272,11 @@ const {
   data: fileCount,
   isLoading: isFileCountLoading,
   error: fileCountError,
-} = useQuery(getUserCount({ userId: props.user.id, deletedOnly: false }));
+} = useQuery(getUserCount({ deletedOnly: false, userId: props.user.id }));
 
 const {
   data: storage,
   isLoading: isStorageLoading,
   error: storageError,
-} = useQuery(getUserStorage({ userId: props.user.id, deletedOnly: false }));
+} = useQuery(getUserStorage({ deletedOnly: false, userId: props.user.id }));
 </script>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { computed, ref } from "vue";
 import { directoryApi } from "@/api/directory";
 import { fileApi } from "@/api/file";
 import { createBLAKE3 } from "hash-wasm";
@@ -53,10 +53,10 @@ const showDetailedProgress = ref(false);
 const selectedDirectoryId = ref<string | null>(props.directoryId || null);
 
 // Parent directory search — pre-seed with the active directory so the select
-// menu renders its label immediately rather than showing the raw UUID.
+// Menu renders its label immediately rather than showing the raw UUID.
 const parentDirectoryOptions = ref<SelectMenuItem[]>(
   props.directoryId && props.directoryName
-    ? [{ label: props.directoryName, id: props.directoryId }]
+    ? [{ id: props.directoryId, label: props.directoryName }]
     : [],
 );
 const isLoadingParentDirs = ref(false);
@@ -67,26 +67,27 @@ const CHUNK_SIZE = 16 * 1024 * 1024;
 // Computed stats
 const totalFiles = computed(() => fileStatuses.value.length);
 const completedFiles = computed(
-  () =>
-    fileStatuses.value.filter(
-      (f) => f.status === "success" || f.status === "error",
-    ).length,
+  () => fileStatuses.value.filter((f) => f.status === "success" || f.status === "error").length,
 );
 const successfulFiles = computed(
   () => fileStatuses.value.filter((f) => f.status === "success").length,
 );
-const failedFiles = computed(() =>
-  fileStatuses.value.filter((f) => f.status === "error"),
-);
+const failedFiles = computed(() => fileStatuses.value.filter((f) => f.status === "error"));
 const uploadingFiles = computed(
   () => fileStatuses.value.filter((f) => f.status === "uploading").length,
 );
 const overallProgress = computed(() => {
-  if (totalFiles.value === 0) return 0;
+  if (totalFiles.value === 0) {
+    return 0;
+  }
 
   const totalProgress = fileStatuses.value.reduce((sum, f) => {
-    if (f.status === "success") return sum + 100;
-    if (f.status === "uploading") return sum + f.progress;
+    if (f.status === "success") {
+      return sum + 100;
+    }
+    if (f.status === "uploading") {
+      return sum + f.progress;
+    }
     return sum;
   }, 0);
 
@@ -94,17 +95,21 @@ const overallProgress = computed(() => {
 });
 
 function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) {
+    return "0 Bytes";
+  }
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  return parseFloat((bytes / k ** i).toFixed(dm)) + " " + sizes[i];
 }
 
 const onChange = (e: Event) => {
   const input = e.target as HTMLInputElement;
-  if (!input.files) return;
+  if (!input.files) {
+    return;
+  }
   // Native <input webkitdirectory> sets webkitRelativePath correctly
   files.value = Array.from(input.files).map((f) => ({
     file: f,
@@ -119,26 +124,26 @@ const clearFiles = () => {
 };
 
 const searchParentDirectory = async (query: string) => {
-  if (!query.trim()) return;
+  if (!query.trim()) {
+    return;
+  }
 
   isLoadingParentDirs.value = true;
   try {
     const response = await directoryStore.searchDirectory({
+      isDeleted: false,
       nameContains: query,
       pageSize: 20,
-      isDeleted: false,
     });
 
     if (response.success && response.data) {
       const newOptions = response.data.items.map((d) => ({
-        label: d.name,
         id: d.id,
+        label: d.name,
       }));
 
       const selectedId = selectedDirectoryId.value;
-      const selectedOption = parentDirectoryOptions.value.find(
-        (o) => o.id === selectedId,
-      );
+      const selectedOption = parentDirectoryOptions.value.find((o) => o.id === selectedId);
 
       parentDirectoryOptions.value = selectedOption
         ? [selectedOption, ...newOptions.filter((o) => o.id !== selectedId)]
@@ -149,11 +154,9 @@ const searchParentDirectory = async (query: string) => {
   }
 };
 
-async function uploadSingleFile(
-  fileStatus: FileUploadStatus,
-): Promise<boolean> {
+async function uploadSingleFile(fileStatus: FileUploadStatus): Promise<boolean> {
   try {
-    const file = fileStatus.file;
+    const { file } = fileStatus;
     fileStatus.status = "uploading";
     fileStatus.progress = 0;
 
@@ -175,10 +178,10 @@ async function uploadSingleFile(
 
     fileStatus.progress = 25;
     const { uploadId, uploadUrl } = await fileApi.initializeUpload({
-      contentType: file.type || "application/octet-stream",
-      hash: fileHash,
       contentLength: file.size,
+      contentType: file.type || "application/octet-stream",
       directoryId: fileStatus.directoryId,
+      hash: fileHash,
     });
     fileStatus.progress = 30;
 
@@ -188,9 +191,9 @@ async function uploadSingleFile(
 
     fileStatus.progress = 95;
     await fileApi.finalizeUpload({
-      uploadId,
       directoryId: fileStatus.directoryId || undefined,
       fileName: file.name,
+      uploadId,
     });
 
     fileStatus.status = "success";
@@ -208,33 +211,30 @@ async function uploadSingleFile(
 }
 
 async function uploadDirectoryStructure() {
-  if (files.value.length === 0) return;
+  if (files.value.length === 0) {
+    return;
+  }
 
   uploading.value = true;
 
   try {
     // Pass the already-resolved relative paths to the API
     const paths = files.value.map((f) => f.relativePath);
-    const directoryMapping = await directoryApi.uploadDirectory(
-      selectedDirectoryId.value,
-      paths,
-    );
+    const directoryMapping = await directoryApi.uploadDirectory(selectedDirectoryId.value, paths);
 
     fileStatuses.value = files.value.map(({ file, relativePath }) => ({
+      directoryId: directoryMapping[relativePath] || undefined,
       file,
+      progress: 0,
       relativePath,
       status: "pending" as const,
-      progress: 0,
-      directoryId: directoryMapping[relativePath] || undefined,
     }));
 
     const pendingFiles = [...fileStatuses.value];
 
     while (pendingFiles.length > 0) {
       const batch = pendingFiles.splice(0, BATCH_SIZE);
-      await Promise.all(
-        batch.map((fileStatus) => uploadSingleFile(fileStatus)),
-      );
+      await Promise.all(batch.map((fileStatus) => uploadSingleFile(fileStatus)));
     }
 
     const failed = failedFiles.value.length;
@@ -242,11 +242,9 @@ async function uploadDirectoryStructure() {
 
     if (failed === 0) {
       toast.add({
-        title: "Upload Complete",
-        description: `Successfully uploaded ${success} ${
-          success === 1 ? "file" : "files"
-        }`,
         color: "success",
+        description: `Successfully uploaded ${success} ${success === 1 ? "file" : "files"}`,
+        title: "Upload Complete",
       });
 
       setTimeout(() => {
@@ -254,19 +252,17 @@ async function uploadDirectoryStructure() {
       }, 1000);
     } else {
       toast.add({
-        title: "Upload Finished with Errors",
-        description: `${success} succeeded, ${failed} failed`,
         color: "warning",
+        description: `${success} succeeded, ${failed} failed`,
+        title: "Upload Finished with Errors",
       });
     }
   } catch (error: any) {
     toast.add({
-      title: "Directory Structure Creation Failed",
-      description:
-        error.response?.data?.message ||
-        error.message ||
-        "Failed to create directory structure",
       color: "error",
+      description:
+        error.response?.data?.message || error.message || "Failed to create directory structure",
+      title: "Directory Structure Creation Failed",
     });
   } finally {
     uploading.value = false;
@@ -275,7 +271,9 @@ async function uploadDirectoryStructure() {
 
 async function retryFailedUploads() {
   const failed = fileStatuses.value.filter((f) => f.status === "error");
-  if (failed.length === 0) return;
+  if (failed.length === 0) {
+    return;
+  }
 
   uploading.value = true;
 
@@ -292,23 +290,19 @@ async function retryFailedUploads() {
     await Promise.all(batch.map((fileStatus) => uploadSingleFile(fileStatus)));
   }
 
-  const stillFailed = fileStatuses.value.filter(
-    (f) => f.status === "error",
-  ).length;
+  const stillFailed = fileStatuses.value.filter((f) => f.status === "error").length;
 
   if (stillFailed === 0) {
     toast.add({
-      title: "Retry Successful",
-      description: "All failed uploads completed successfully",
       color: "success",
+      description: "All failed uploads completed successfully",
+      title: "Retry Successful",
     });
   } else {
     toast.add({
-      title: "Retry Complete",
-      description: `${stillFailed} ${
-        stillFailed === 1 ? "file" : "files"
-      } still failed`,
       color: "warning",
+      description: `${stillFailed} ${stillFailed === 1 ? "file" : "files"} still failed`,
+      title: "Retry Complete",
     });
   }
 
@@ -349,15 +343,11 @@ function getStatusColor(status: FileUploadStatus["status"]) {
     :ui="{ body: 'space-y-6', width: 'max-w-4xl' }"
   >
     <template #body>
-      <p class="text-sm text-muted">
-        Select a folder to upload all its files and subdirectories
-      </p>
+      <p class="text-sm text-muted">Select a folder to upload all its files and subdirectories</p>
 
       <!-- Parent Directory Selection -->
       <div class="space-y-2">
-        <label class="block text-sm font-medium">
-          Upload to Directory (Optional)
-        </label>
+        <label class="block text-sm font-medium"> Upload to Directory (Optional) </label>
         <USelectMenu
           v-model="selectedDirectoryId"
           :items="parentDirectoryOptions"
@@ -375,17 +365,13 @@ function getStatusColor(status: FileUploadStatus["status"]) {
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-folder" class="size-4 text-muted" />
               <span v-if="modelValue">
-                {{
-                  parentDirectoryOptions.find((i) => i.id === modelValue)?.label
-                }}
+                {{ parentDirectoryOptions.find((i) => i.id === modelValue)?.label }}
               </span>
               <span v-else class="text-muted">Root directory (no parent)</span>
             </div>
           </template>
         </USelectMenu>
-        <p class="text-xs text-muted">
-          Leave empty to upload to the root directory
-        </p>
+        <p class="text-xs text-muted">Leave empty to upload to the root directory</p>
       </div>
 
       <!-- Directory Upload Area — only shown when no files are loaded yet -->
@@ -416,10 +402,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
       </div>
 
       <!-- Files Preview (Before Upload) -->
-      <div
-        v-if="files.length > 0 && fileStatuses.length === 0"
-        class="space-y-3"
-      >
+      <div v-if="files.length > 0 && fileStatuses.length === 0" class="space-y-3">
         <div class="flex items-center justify-between">
           <p class="text-sm font-medium">
             {{ files.length }}
@@ -473,9 +456,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
               <UButton
                 v-if="!uploading && fileStatuses.length > 0"
                 :label="showDetailedProgress ? 'Hide Details' : 'Show Details'"
-                :icon="
-                  showDetailedProgress ? 'i-lucide-chevron-up' : 'i-lucide-list'
-                "
+                :icon="showDetailedProgress ? 'i-lucide-chevron-up' : 'i-lucide-list'"
                 size="xs"
                 variant="ghost"
                 color="neutral"
@@ -494,10 +475,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
         </div>
 
         <!-- Detailed Progress List -->
-        <div
-          v-if="showDetailedProgress"
-          class="border rounded-lg max-h-96 overflow-y-auto"
-        >
+        <div v-if="showDetailedProgress" class="border rounded-lg max-h-96 overflow-y-auto">
           <div
             v-for="(fileStatus, index) in fileStatuses"
             :key="index"
@@ -518,10 +496,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
                     <p class="text-sm truncate">
                       {{ fileStatus.relativePath }}
                     </p>
-                    <p
-                      v-if="fileStatus.error"
-                      class="text-xs text-error mt-0.5"
-                    >
+                    <p v-if="fileStatus.error" class="text-xs text-error mt-0.5">
                       {{ fileStatus.error }}
                     </p>
                   </div>
@@ -552,8 +527,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
             <div class="flex-1">
               <p class="text-sm font-medium">
                 {{ failedFiles.length }}
-                {{ failedFiles.length === 1 ? "file" : "files" }} failed to
-                upload
+                {{ failedFiles.length === 1 ? "file" : "files" }} failed to upload
               </p>
               <p class="text-xs text-muted mt-1">
                 Review the details above and retry failed uploads

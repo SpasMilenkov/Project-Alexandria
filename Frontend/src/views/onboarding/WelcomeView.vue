@@ -24,30 +24,19 @@
           </div>
 
           <div class="space-y-4">
-            <h1
-              class="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white"
-            >
+            <h1 class="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white">
               Welcome to Alexandria
             </h1>
-            <p class="text-xl text-gray-600 dark:text-gray-400">
-              Your personal digital library
-            </p>
+            <p class="text-xl text-gray-600 dark:text-gray-400">Your personal digital library</p>
           </div>
 
           <div class="text-sm text-gray-500 dark:text-gray-500">
             Project initialized by
-            <span class="text-orange-600 dark:text-orange-500 font-medium"
-              >Spas Milenkov</span
-            >
+            <span class="text-orange-600 dark:text-orange-500 font-medium">Spas Milenkov</span>
           </div>
 
           <div class="pt-6">
-            <UButton
-              @click="showGreeting = false"
-              size="xl"
-              color="primary"
-              variant="solid"
-            >
+            <UButton @click="showGreeting = false" size="xl" color="primary" variant="solid">
               Begin Your Initial Setup
               <template #trailing>
                 <Icon icon="heroicons:arrow-right" class="w-5 h-5" />
@@ -56,18 +45,9 @@
           </div>
         </section>
 
-        <section
-          v-else
-          key="configuration"
-          class="max-w-7xl mx-auto space-y-10"
-        >
+        <section v-else key="configuration" class="max-w-7xl mx-auto space-y-10">
           <div class="space-y-6">
-            <UButton
-              @click="showGreeting = true"
-              variant="ghost"
-              color="gray"
-              size="sm"
-            >
+            <UButton @click="showGreeting = true" variant="ghost" color="gray" size="sm">
               <template #leading>
                 <Icon icon="heroicons:arrow-left" class="w-4 h-4" />
               </template>
@@ -94,9 +74,7 @@
               <template #header>
                 <div class="space-y-4">
                   <div class="flex items-center justify-between">
-                    <div
-                      class="bg-orange-100 dark:bg-orange-950 p-3 rounded-xl"
-                    >
+                    <div class="bg-orange-100 dark:bg-orange-950 p-3 rounded-xl">
                       <Icon
                         icon="heroicons:sparkles"
                         class="w-6 h-6 text-orange-600 dark:text-orange-500"
@@ -111,12 +89,11 @@
               </template>
 
               <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
-                The standard configuration offers a preconfigured out-of-the-box
-                experience aimed at users with little to no technical knowledge.
-                If you choose to proceed with this installation you will only
-                have to select the features important to you based on the
-                resources available on the machine where Alexandria would be
-                running. Simple as that.
+                The standard configuration offers a preconfigured out-of-the-box experience aimed at
+                users with little to no technical knowledge. If you choose to proceed with this
+                installation you will only have to select the features important to you based on the
+                resources available on the machine where Alexandria would be running. Simple as
+                that.
               </p>
 
               <div class="space-y-3">
@@ -181,9 +158,7 @@
                         class="w-6 h-6 text-gray-600 dark:text-gray-400"
                       />
                     </div>
-                    <UBadge color="gray" variant="subtle"
-                      >For Power Users</UBadge
-                    >
+                    <UBadge color="gray" variant="subtle">For Power Users</UBadge>
                   </div>
                   <h3 class="text-2xl font-bold text-gray-900 dark:text-white">
                     Advanced Configuration
@@ -192,14 +167,12 @@
               </template>
 
               <p class="text-gray-700 dark:text-gray-300 leading-relaxed">
-                The advanced configuration is aimed at more tech-savvy users who
-                know what they are doing and want to customize their Alexandria
-                deployments. For example some of you may not want to run
-                Alexandria's default file management system and want to setup an
-                alternative file hosting or streaming services like Plex or
-                Nextcloud, or you may not want to default to MinIO and want to
-                instead use Garage for your S3 storage. If your intents fall in
-                this category this is the setup you should choose!
+                The advanced configuration is aimed at more tech-savvy users who know what they are
+                doing and want to customize their Alexandria deployments. For example some of you
+                may not want to run Alexandria's default file management system and want to setup an
+                alternative file hosting or streaming services like Plex or Nextcloud, or you may
+                not want to default to MinIO and want to instead use Garage for your S3 storage. If
+                your intents fall in this category this is the setup you should choose!
               </p>
 
               <div class="space-y-3">
@@ -256,8 +229,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
 import { Icon } from "@iconify/vue";
+import { ref } from "vue";
 import router from "@/router";
 const showGreeting = ref(true);
 </script>

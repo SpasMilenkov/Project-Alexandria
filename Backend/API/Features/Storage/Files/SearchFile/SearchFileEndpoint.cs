@@ -10,7 +10,6 @@ sealed class SearchFileEndpoint(IFileService fileService) : Endpoint<FileSearchQ
     public override void Configure()
     {
         Post("/files/search");
-        AllowAnonymous();
     }
 
     public override async Task HandleAsync(FileSearchQuery req, CancellationToken ct)

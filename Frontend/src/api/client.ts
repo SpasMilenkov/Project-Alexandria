@@ -2,10 +2,10 @@ import axios, { type AxiosInstance } from "axios";
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
-  timeout: 1000000,
   headers: {
     "Content-Type": "application/json",
   },
+  timeout: 1000000,
   withCredentials: true,
 });
 
@@ -28,7 +28,7 @@ apiClient.interceptors.response.use(
         // Handle failed refresh (e.g., log out user, redirect to login)
         // Clear tokens and redirect
         localStorage.removeItem("token");
-        // window.location.href = '/login';
+        // Window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }

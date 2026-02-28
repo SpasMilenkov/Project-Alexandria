@@ -1,19 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import {
-  useSettingsStore,
-  MAX_BACKGROUND_IMAGE_BYTES,
-} from "@/stores/settings";
+import { MAX_BACKGROUND_IMAGE_BYTES, useSettingsStore } from "@/stores/settings";
 import { useTheme } from "@/composables/useTheme";
 import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
+import { logger } from "@/utils/logger";
 
 const settingsStore = useSettingsStore();
 const { isDark } = useTheme();
-const { uploadBackgroundImage, deleteBackgroundImage } =
-  useBackgroundImageSync();
+const { uploadBackgroundImage, deleteBackgroundImage } = useBackgroundImageSync();
 const { saveAppearance } = useSettingsSync();
 
 const viewMode = ref<"grid" | "list">("grid");
@@ -57,8 +54,8 @@ const persistAppearance = useDebounceFn(async () => {
     accentColor: settingsStore.accentColor,
     backgroundColor: settingsStore.backgroundColor,
     backgroundImageKey: settingsStore.backgroundImageKey,
-    backgroundImageUpdatedAt: settingsStore.backgroundImageUpdatedAt,
     backgroundImageOpacity: settingsStore.backgroundImageOpacity,
+    backgroundImageUpdatedAt: settingsStore.backgroundImageUpdatedAt,
     gridIconSize: settingsStore.gridIconSize,
     listIconSize: settingsStore.listIconSize,
   });
@@ -78,7 +75,9 @@ watch(
 
 const visibleBackgrounds = computed(() =>
   settingsStore.AVAILABLE_BACKGROUNDS.filter((bg) => {
-    if (bg.mode === "both") return true;
+    if (bg.mode === "both") {
+      return true;
+    }
     return isDark.value ? bg.mode === "dark" : bg.mode === "light";
   }),
 );
@@ -87,11 +86,15 @@ watch(isDark, (dark) => {
   const current = settingsStore.AVAILABLE_BACKGROUNDS.find(
     (b) => b.name === settingsStore.backgroundColor,
   );
-  if (!current || current.mode === "both") return;
-  if (dark && current.mode === "light")
+  if (!current || current.mode === "both") {
+    return;
+  }
+  if (dark && current.mode === "light") {
     settingsStore.setBackgroundColor("system");
-  if (!dark && current.mode === "dark")
+  }
+  if (!dark && current.mode === "dark") {
     settingsStore.setBackgroundColor("system");
+  }
 });
 
 const swatchFor = (bg: (typeof settingsStore.AVAILABLE_BACKGROUNDS)[number]) =>
@@ -99,13 +102,15 @@ const swatchFor = (bg: (typeof settingsStore.AVAILABLE_BACKGROUNDS)[number]) =>
 
 const modeLabel = computed(() => (isDark.value ? "dark" : "light"));
 
-// Image upload — S3 flow 
+// Image upload — S3 flow
 const triggerFileInput = () => fileInputRef.value?.click();
 
 const handleFileChange = async (event: Event) => {
   imageError.value = null;
   const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file) return;
+  if (!file) {
+    return;
+  }
 
   if (!file.type.startsWith("image/")) {
     imageError.value = "Please upload an image file.";
@@ -118,74 +123,78 @@ const handleFileChange = async (event: Event) => {
 
   try {
     isUploading.value = true;
-    // request presigned URL → upload to S3 → confirm → seed SW cache
+    // Request presigned URL → upload to S3 → confirm → seed SW cache
     await uploadBackgroundImage(file);
   } catch (err) {
     imageError.value = "Upload failed. Please try again.";
-    console.error(err);
+    logger.error(err);
   } finally {
     isUploading.value = false;
-    if (fileInputRef.value) fileInputRef.value.value = "";
+    if (fileInputRef.value) {
+      fileInputRef.value.value = "";
+    }
   }
 };
 
 const clearImage = async () => {
   imageError.value = null;
   await deleteBackgroundImage();
-  // persist the cleared key to server
+  // Persist the cleared key to server
   await persistAppearance();
 };
 
 // Derive a display name from the S3 key e.g. "background_images/user-id" → "user-id"
 const imageName = computed(() => {
-  if (!settingsStore.backgroundImageKey) return null;
+  if (!settingsStore.backgroundImageKey) {
+    return null;
+  }
   return settingsStore.backgroundImageKey.split("/").pop() ?? "background";
 });
 
 const exampleFile = {
+  createdAt: "2025-01-10T09:15:30.000Z",
+  currentVersion: {
+    id: "version-1",
+    mimeType: "application/pdf",
+    size: "1048576",
+    versionNumber: 3,
+  },
+  deletedAt: null,
+  directoryId: null,
   fileId: "file-123e4567-e89b-12d3-a456-426614174000",
   fileName: "project-specification.pdf",
   mimeType: "application/pdf",
-  directoryId: null,
-  createdAt: "2025-01-10T09:15:30.000Z",
-  updatedAt: "2025-02-01T14:42:10.000Z",
-  deletedAt: null,
-  currentVersion: {
-    id: "version-1",
-    size: "1048576",
-    mimeType: "application/pdf",
-    versionNumber: 3,
-  },
+  owner: { email: "jane.doe@example.com", id: "user-1", name: "Jane Doe" },
   tags: [
     {
+      createdAt: "2025-01-10T09:20:00.000Z",
       id: "tag-1",
       name: "documentation",
-      userId: "user-1",
-      createdAt: "2025-01-10T09:20:00.000Z",
       updatedAt: null,
+      userId: "user-1",
     },
     {
+      createdAt: "2025-01-11T08:00:00.000Z",
       id: "tag-2",
       name: "important",
-      userId: "user-1",
-      createdAt: "2025-01-11T08:00:00.000Z",
       updatedAt: "2025-01-15T10:30:00.000Z",
+      userId: "user-1",
     },
   ],
-  owner: { id: "user-1", name: "Jane Doe", email: "jane.doe@example.com" },
+  updatedAt: "2025-02-01T14:42:10.000Z",
 };
 
 const exampleDir = {
+  createdAt: "2024-12-01T08:00:00.000Z",
   id: "dir-987e6543-e21b-65d3-a456-426614174999",
   name: "Project Documents",
-  parentId: "dir-root",
-  createdAt: "2024-12-01T08:00:00.000Z",
-  updatedAt: "2025-01-20T16:45:00.000Z",
   ownerUserDto: {
+    email: "jane.doe@example.com",
     id: "user-1",
     name: "Jane Doe",
-    email: "jane.doe@example.com",
   },
+  parentId: "dir-root",
+  updatedAt: "2025-01-20T16:45:00.000Z",
 };
 </script>
 
@@ -197,9 +206,7 @@ const exampleDir = {
         color="neutral"
         block
         class="justify-between"
-        :trailing-icon="
-          isOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'
-        "
+        :trailing-icon="isOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
       >
         <div class="flex items-center gap-2">
           <Icon icon="mdi:palette" class="w-5 h-5 text-primary" />
@@ -213,9 +220,7 @@ const exampleDir = {
             <!-- Left: Controls -->
             <div class="space-y-6">
               <div class="flex items-center justify-between">
-                <h3
-                  class="text-sm font-medium text-gray-500 dark:text-gray-400"
-                >
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">
                   Visual Settings
                 </h3>
                 <UButton
@@ -228,10 +233,7 @@ const exampleDir = {
               </div>
 
               <!-- Accent color -->
-              <UFormField
-                label="Accent Color"
-                description="Choose your preferred theme color"
-              >
+              <UFormField label="Accent Color" description="Choose your preferred theme color">
                 <USelectMenu
                   v-model="selectedColor"
                   :items="colorOptions"
@@ -258,20 +260,13 @@ const exampleDir = {
                       : 'hover:scale-105 hover:shadow-sm',
                   ]"
                   :style="{ backgroundColor: `rgb(${color.value})` }"
-                  :title="
-                    color.name.charAt(0).toUpperCase() + color.name.slice(1)
-                  "
+                  :title="color.name.charAt(0).toUpperCase() + color.name.slice(1)"
                 >
                   <span
                     v-if="selectedColor === color.name"
                     class="absolute inset-0 flex items-center justify-center text-white"
                   >
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
@@ -311,24 +306,11 @@ const exampleDir = {
                   >
                     <span
                       class="w-full h-8 rounded border border-gray-200 dark:border-gray-600 relative block"
-                      :style="
-                        bg.name !== 'system'
-                          ? { backgroundColor: swatchFor(bg) }
-                          : {}
-                      "
-                      :class="
-                        bg.name === 'system'
-                          ? isDark
-                            ? 'bg-zinc-900'
-                            : 'bg-white'
-                          : ''
-                      "
+                      :style="bg.name !== 'system' ? { backgroundColor: swatchFor(bg) } : {}"
+                      :class="bg.name === 'system' ? (isDark ? 'bg-zinc-900' : 'bg-white') : ''"
                     >
                       <span
-                        v-if="
-                          !settingsStore.hasBackgroundImage &&
-                          selectedBackground === bg.name
-                        "
+                        v-if="!settingsStore.hasBackgroundImage && selectedBackground === bg.name"
                         class="absolute inset-0 flex items-center justify-center"
                       >
                         <svg
@@ -352,10 +334,9 @@ const exampleDir = {
                         >☀︎ ☾</span
                       >
                     </span>
-                    <span
-                      class="font-medium text-gray-700 dark:text-gray-300 leading-tight"
-                      >{{ bg.label }}</span
-                    >
+                    <span class="font-medium text-gray-700 dark:text-gray-300 leading-tight">{{
+                      bg.label
+                    }}</span>
                     <span
                       class="text-gray-400 dark:text-gray-500 leading-tight text-center line-clamp-1"
                       >{{ bg.description }}</span
@@ -382,15 +363,9 @@ const exampleDir = {
                   <!-- Upload / replace / clear row -->
                   <div class="flex items-center gap-2 flex-wrap">
                     <UButton
-                      :label="
-                        settingsStore.hasBackgroundImage
-                          ? 'Replace image'
-                          : 'Upload image'
-                      "
+                      :label="settingsStore.hasBackgroundImage ? 'Replace image' : 'Upload image'"
                       :icon="
-                        settingsStore.hasBackgroundImage
-                          ? 'i-lucide-image-up'
-                          : 'i-lucide-upload'
+                        settingsStore.hasBackgroundImage ? 'i-lucide-image-up' : 'i-lucide-upload'
                       "
                       :loading="isUploading"
                       :disabled="isUploading"
@@ -421,14 +396,8 @@ const exampleDir = {
                   </div>
 
                   <!-- Error -->
-                  <p
-                    v-if="imageError"
-                    class="text-xs text-red-500 flex items-center gap-1"
-                  >
-                    <Icon
-                      icon="mdi:alert-circle"
-                      class="w-3.5 h-3.5 shrink-0"
-                    />
+                  <p v-if="imageError" class="text-xs text-red-500 flex items-center gap-1">
+                    <Icon icon="mdi:alert-circle" class="w-3.5 h-3.5 shrink-0" />
                     {{ imageError }}
                   </p>
 
@@ -441,29 +410,19 @@ const exampleDir = {
                     leave-from-class="opacity-100 translate-y-0"
                     leave-to-class="opacity-0 -translate-y-1"
                   >
-                    <div
-                      v-if="settingsStore.hasBackgroundImage"
-                      class="space-y-1.5 pt-1"
-                    >
+                    <div v-if="settingsStore.hasBackgroundImage" class="space-y-1.5 pt-1">
                       <div class="flex items-center justify-between">
-                        <label
-                          class="text-xs font-medium text-gray-600 dark:text-gray-400"
-                        >
+                        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">
                           Image visibility
                         </label>
-                        <span
-                          class="text-xs tabular-nums text-gray-500 dark:text-gray-400"
-                        >
+                        <span class="text-xs tabular-nums text-gray-500 dark:text-gray-400">
                           {{ Math.round(imageOpacity * 100) }}%
                         </span>
                       </div>
 
                       <!-- Slider rendered as a native range for reactivity; styled with Tailwind -->
                       <div class="relative flex items-center gap-2">
-                        <Icon
-                          icon="mdi:image-outline"
-                          class="w-3.5 h-3.5 text-gray-400 shrink-0"
-                        />
+                        <Icon icon="mdi:image-outline" class="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         <input
                           type="range"
                           :min="0.1"
@@ -471,23 +430,16 @@ const exampleDir = {
                           :step="0.05"
                           :value="imageOpacity"
                           @input="
-                            imageOpacity = parseFloat(
-                              ($event.target as HTMLInputElement).value,
-                            )
+                            imageOpacity = parseFloat(($event.target as HTMLInputElement).value)
                           "
                           class="w-full accent-primary h-1.5 rounded-full cursor-pointer"
                         />
-                        <Icon
-                          icon="mdi:image"
-                          class="w-4 h-4 text-gray-500 shrink-0"
-                        />
+                        <Icon icon="mdi:image" class="w-4 h-4 text-gray-500 shrink-0" />
                       </div>
 
-                      <p
-                        class="text-[11px] text-gray-400 dark:text-gray-500 leading-snug"
-                      >
-                        Capped at 65% to keep text readable. The color overlay
-                        above blends with the image.
+                      <p class="text-[11px] text-gray-400 dark:text-gray-500 leading-snug">
+                        Capped at 65% to keep text readable. The color overlay above blends with the
+                        image.
                       </p>
                     </div>
                   </Transition>
@@ -507,9 +459,7 @@ const exampleDir = {
                     :max="64"
                     class="w-24"
                   />
-                  <span class="text-sm text-gray-600 dark:text-gray-400"
-                    >{{ gridIconSize }}px</span
-                  >
+                  <span class="text-sm text-gray-600 dark:text-gray-400">{{ gridIconSize }}px</span>
                 </div>
               </UFormField>
 
@@ -525,18 +475,14 @@ const exampleDir = {
                     :max="64"
                     class="w-24"
                   />
-                  <span class="text-sm text-gray-600 dark:text-gray-400"
-                    >{{ listIconSize }}px</span
-                  >
+                  <span class="text-sm text-gray-600 dark:text-gray-400">{{ listIconSize }}px</span>
                 </div>
               </UFormField>
             </div>
 
             <!-- Right: Preview -->
             <div class="space-y-4">
-              <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Preview
-              </h3>
+              <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Preview</h3>
               <!-- Icon size preview -->
               <div class="space-y-2">
                 <div class="flex items-center justify-between">
@@ -564,32 +510,12 @@ const exampleDir = {
                     </UButton>
                   </div>
                 </div>
-                <div
-                  :class="[
-                    'flex gap-2',
-                    viewMode === 'list' ? 'flex-col' : 'flex-row',
-                  ]"
-                >
-                  <div
-                    :class="[viewMode === 'list' ? '' : 'max-w-40', 'max-h-40']"
-                  >
-                    <FileItem
-                      :data="exampleFile"
-                      :is-selected="false"
-                      :view-mode="viewMode"
-                    />
+                <div :class="['flex gap-2', viewMode === 'list' ? 'flex-col' : 'flex-row']">
+                  <div :class="[viewMode === 'list' ? '' : 'max-w-40', 'max-h-40']">
+                    <FileItem :data="exampleFile" :is-selected="false" :view-mode="viewMode" />
                   </div>
-                  <div
-                    :class="[
-                      viewMode === 'list' ? 'min-h-12' : 'max-w-40',
-                      'max-h-40',
-                    ]"
-                  >
-                    <DirectoryItem
-                      :data="exampleDir"
-                      :is-selected="true"
-                      :view-mode="viewMode"
-                    />
+                  <div :class="[viewMode === 'list' ? 'min-h-12' : 'max-w-40', 'max-h-40']">
+                    <DirectoryItem :data="exampleDir" :is-selected="true" :view-mode="viewMode" />
                   </div>
                 </div>
               </div>

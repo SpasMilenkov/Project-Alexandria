@@ -33,3 +33,7 @@ app.UseAlexandriaEndpoints();
 app.MapHealthChecks("/health");
 
 await app.RunAsync();
+
+public partial class Program
+{
+}

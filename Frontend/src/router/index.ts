@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+
 import { useAuthStore } from "@/stores/auth";
 
 const router = createRouter({
@@ -90,8 +91,7 @@ const router = createRouter({
       path: "/dashboard/admin/service-status",
     },
     {
-      component: () =>
-        import("@/views/dashboard/admin/SystemConfiguration.vue"),
+      component: () => import("@/views/dashboard/admin/SystemConfiguration.vue"),
       meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
       name: "system-configuration",
       path: "/dashboard/admin/system-configuration",
