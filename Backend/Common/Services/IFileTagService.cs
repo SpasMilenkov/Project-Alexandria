@@ -88,11 +88,12 @@ public interface IFileTagService
     /// <summary>
     /// Gets all tags associated with a specific file.
     /// </summary>
+    /// <param name="userId"></param>
     /// <param name="fileId">The ID of the file</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Collection of tags for the file</returns>
     /// <exception cref="InvalidOperationException">If file not found</exception>
-    Task<ICollection<TagDto>> GetTagsForFileAsync(Guid fileId, CancellationToken ct = default);
+    Task<ICollection<TagDto>> GetTagsForFileAsync(Guid userId, Guid fileId, CancellationToken ct = default);
 
     /// <summary>
     /// Finds tags based on various criteria with pagination support.

@@ -16,7 +16,7 @@ public interface IDirectoryRepository : IRepository<Directory>
     Task<IEnumerable<Directory>> GetUserDirectories(Guid ownerId, Guid? parentId = null,
         CancellationToken ct = default);
 
-    Task<List<Directory>> GetSubDirectories(Guid directoryId, CancellationToken ct);
+    Task<List<Directory>> GetSubDirectories(Guid directoryId, CancellationToken ct = default);
 
     Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(
         Guid ownerId,
@@ -42,7 +42,7 @@ public interface IDirectoryRepository : IRepository<Directory>
         CancellationToken ct = default);
 
     Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query,
-        CancellationToken ct);
+        CancellationToken ct = default);
 
     Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, CancellationToken ct = default);
     Task CopyDirectory(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default);
