@@ -14,10 +14,10 @@ public class DownloadFileByIdTests(AlexandriaFixture fixture) : FullStackTestBas
     {
         var file = await SeedFileWithVersionAsync();
 
-        var response = await Auth.GetAsync($"/api/files/{file.Id}");
+        var response = await Auth.GetAsync($"/api/files/{file.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         body.Should().NotBeNullOrEmpty();
     }
 
@@ -26,7 +26,7 @@ public class DownloadFileByIdTests(AlexandriaFixture fixture) : FullStackTestBas
     {
         var file = await SeedFileWithVersionAsync();
 
-        var response = await Anon.GetAsync($"/api/files/{file.Id}");
+        var response = await Anon.GetAsync($"/api/files/{file.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -37,7 +37,7 @@ public class DownloadFileByIdTests(AlexandriaFixture fixture) : FullStackTestBas
         var (_, otherId) = await CreateOtherUserAsync();
         var file = await SeedFileWithVersionAsync(fb => fb.WithOwner(otherId));
 
-        var response = await Auth.GetAsync($"/api/files/{file.Id}");
+        var response = await Auth.GetAsync($"/api/files/{file.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -45,7 +45,7 @@ public class DownloadFileByIdTests(AlexandriaFixture fixture) : FullStackTestBas
     [Fact]
     public async Task NonExistentFile_Returns404()
     {
-        var response = await Auth.GetAsync($"/api/files/{Guid.NewGuid()}");
+        var response = await Auth.GetAsync($"/api/files/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

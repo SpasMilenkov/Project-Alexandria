@@ -18,15 +18,15 @@ public class RestoreFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fi
         var file = await SeedFileWithVersionAsync(fb => fb.WithDeletedAt(DateTime.UtcNow));
         var req = new RestoreFilesRequest { FileIds = [file.Id] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var count = await response.Content.ReadFromJsonAsync<int>();
+        var count = await response.Content.ReadFromJsonAsync<int>(cancellationToken: TestContext.Current.CancellationToken);
         count.Should().Be(1);
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var restoredFile = await db.Files.FindAsync(file.Id);
+        var restoredFile = await db.Files.FindAsync(new object?[] { file.Id }, TestContext.Current.CancellationToken);
         restoredFile!.DeletedAt.Should().BeNull();
     }
 
@@ -36,10 +36,10 @@ public class RestoreFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fi
         var file = await SeedFileWithVersionAsync(); // not deleted
         var req = new RestoreFilesRequest { FileIds = [file.Id] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var count = await response.Content.ReadFromJsonAsync<int>();
+        var count = await response.Content.ReadFromJsonAsync<int>(cancellationToken: TestContext.Current.CancellationToken);
         count.Should().Be(0);
     }
 
@@ -48,7 +48,7 @@ public class RestoreFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fi
     {
         var req = new RestoreFilesRequest { FileIds = [Guid.NewGuid()] };
 
-        var response = await Anon.PostAsJsonAsync(Route, req);
+        var response = await Anon.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -58,7 +58,7 @@ public class RestoreFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fi
     {
         var req = new RestoreFilesRequest { FileIds = [] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -69,7 +69,7 @@ public class RestoreFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fi
         var id = Guid.NewGuid();
         var req = new RestoreFilesRequest { FileIds = [id, id] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

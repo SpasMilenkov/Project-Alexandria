@@ -16,10 +16,10 @@ public class CreateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     {
         var req = new CreateDirRequest { Name = "docs", ParentId = null };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<CreateDirResult>();
+        var body = await response.Content.ReadFromJsonAsync<CreateDirResult>(cancellationToken: TestContext.Current.CancellationToken);
         body!.Directory.Name.Should().Be("docs");
         body.Directory.ParentId.Should().BeNull();
     }
@@ -30,10 +30,10 @@ public class CreateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         var parent = await SeedDirectoryAsync();
         var req = new CreateDirRequest { Name = "sub", ParentId = parent.Id };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<CreateDirResult>();
+        var body = await response.Content.ReadFromJsonAsync<CreateDirResult>(cancellationToken: TestContext.Current.CancellationToken);
         body!.Directory.ParentId.Should().Be(parent.Id);
     }
 
@@ -42,7 +42,7 @@ public class CreateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     {
         var req = new CreateDirRequest { Name = "secret", ParentId = null };
 
-        var response = await Anon.PostAsJsonAsync(Route, req);
+        var response = await Anon.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -52,7 +52,7 @@ public class CreateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     {
         var req = new CreateDirRequest { Name = "", ParentId = null };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -61,9 +61,9 @@ public class CreateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     public async Task DuplicateNameInSameParent_Returns4xx()
     {
         var req = new CreateDirRequest { Name = "shared-name", ParentId = null };
-        await Auth.PostAsJsonAsync(Route, req);
+        await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }

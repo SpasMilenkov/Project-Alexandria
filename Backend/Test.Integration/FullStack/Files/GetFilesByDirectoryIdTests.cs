@@ -20,10 +20,10 @@ public class GetFilesByDirectoryIdTests(AlexandriaFixture fixture) : FullStackTe
         await SeedFileWithVersionAsync(fb => fb.WithDirectory(dir.Id));
         await SeedFileWithVersionAsync(fb => fb.WithDirectory(dir.Id));
 
-        var response = await Auth.GetAsync(Route(dir.Id));
+        var response = await Auth.GetAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.TotalCount.Should().Be(2);
     }
 
@@ -34,10 +34,10 @@ public class GetFilesByDirectoryIdTests(AlexandriaFixture fixture) : FullStackTe
         var dir2 = await SeedDirectoryAsync();
         await SeedFileWithVersionAsync(fb => fb.WithDirectory(dir2.Id));
 
-        var response = await Auth.GetAsync(Route(dir1.Id));
+        var response = await Auth.GetAsync(Route(dir1.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.TotalCount.Should().Be(0);
     }
 
@@ -46,17 +46,17 @@ public class GetFilesByDirectoryIdTests(AlexandriaFixture fixture) : FullStackTe
     {
         var dir = await SeedDirectoryAsync();
 
-        var response = await Auth.GetAsync(Route(dir.Id));
+        var response = await Auth.GetAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.Items.Count.Should().Be(0);
     }
 
     [Fact]
     public async Task Unauthenticated_Returns401()
     {
-        var response = await Anon.GetAsync(Route(Guid.NewGuid()));
+        var response = await Anon.GetAsync(Route(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -69,10 +69,10 @@ public class GetFilesByDirectoryIdTests(AlexandriaFixture fixture) : FullStackTe
             await SeedFileWithVersionAsync(fb => fb.WithDirectory(dir.Id));
 
         var route = $"/api/files/directory/{dir.Id}?page=1&pageSize=2&sortBy={SortBy.Name}&sortDirection={SortDirection.Asc}";
-        var response = await Auth.GetAsync(route);
+        var response = await Auth.GetAsync(route, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.TotalCount.Should().Be(5);
         body.Items.Count.Should().Be(2);
     }

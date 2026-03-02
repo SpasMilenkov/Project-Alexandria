@@ -21,14 +21,14 @@ public class CopyFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
         var destDir = await SeedDirectoryAsync();
         var req = new CopyFilesRequest { FileIds = [file.Id], DestinationId = destDir.Id };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var fileCount = await db.Files.CountAsync(f => f.OwnerId == UserId);
+        var fileCount = await db.Files.CountAsync(f => f.OwnerId == UserId, cancellationToken: TestContext.Current.CancellationToken);
         fileCount.Should().Be(2); // original + copy
-        var copy = await db.Files.FirstOrDefaultAsync(f => f.OwnerId == UserId && f.DirectoryId == destDir.Id);
+        var copy = await db.Files.FirstOrDefaultAsync(f => f.OwnerId == UserId && f.DirectoryId == destDir.Id, cancellationToken: TestContext.Current.CancellationToken);
         copy.Should().NotBeNull();
     }
 
@@ -37,7 +37,7 @@ public class CopyFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
     {
         var req = new CopyFilesRequest { FileIds = [Guid.NewGuid()], DestinationId = Guid.NewGuid() };
 
-        var response = await Anon.PostAsJsonAsync(Route, req);
+        var response = await Anon.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -47,7 +47,7 @@ public class CopyFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
     {
         var req = new CopyFilesRequest { FileIds = [], DestinationId = Guid.NewGuid() };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -58,7 +58,7 @@ public class CopyFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
         var id = Guid.NewGuid();
         var req = new CopyFilesRequest { FileIds = [id, id], DestinationId = Guid.NewGuid() };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

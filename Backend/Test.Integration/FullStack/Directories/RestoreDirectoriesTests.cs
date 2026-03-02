@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using API.Features.Storage.Directories.RestoreDirectories;
 using AwesomeAssertions;
 using Data.Context;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,15 +19,15 @@ public class RestoreDirectoriesTests(AlexandriaFixture fixture) : FullStackTestB
         var dir = await SeedDirectoryAsync(configure: b => b.WithDeletedAt(DateTime.UtcNow));
         var req = new RestoreDirectoriesRequest { DirectoryIds = [dir.Id] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var count = await response.Content.ReadFromJsonAsync<int>();
+        var count = await response.Content.ReadFromJsonAsync<int>(cancellationToken: TestContext.Current.CancellationToken);
         count.Should().Be(1);
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var restored = await db.Directories.FindAsync(dir.Id);
+        var restored = await db.Directories.FindAsync(new object?[] { dir.Id }, TestContext.Current.CancellationToken);
         restored!.DeletedAt.Should().BeNull();
     }
 
@@ -36,10 +37,10 @@ public class RestoreDirectoriesTests(AlexandriaFixture fixture) : FullStackTestB
         var dir = await SeedDirectoryAsync(); // not deleted
         var req = new RestoreDirectoriesRequest { DirectoryIds = [dir.Id] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var count = await response.Content.ReadFromJsonAsync<int>();
+        var count = await response.Content.ReadFromJsonAsync<int>(cancellationToken: TestContext.Current.CancellationToken);
         count.Should().Be(0);
     }
 
@@ -48,7 +49,7 @@ public class RestoreDirectoriesTests(AlexandriaFixture fixture) : FullStackTestB
     {
         var req = new RestoreDirectoriesRequest { DirectoryIds = [Guid.NewGuid()] };
 
-        var response = await Anon.PostAsJsonAsync(Route, req);
+        var response = await Anon.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -58,7 +59,7 @@ public class RestoreDirectoriesTests(AlexandriaFixture fixture) : FullStackTestB
     {
         var req = new RestoreDirectoriesRequest { DirectoryIds = [] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -69,7 +70,7 @@ public class RestoreDirectoriesTests(AlexandriaFixture fixture) : FullStackTestB
         var id = Guid.NewGuid();
         var req = new RestoreDirectoriesRequest { DirectoryIds = [id, id] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

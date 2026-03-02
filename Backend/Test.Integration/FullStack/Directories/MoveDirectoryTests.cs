@@ -20,12 +20,12 @@ public class MoveDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(f
         var dest = await SeedDirectoryAsync();
         var req = new MoveDirRequest { DirectoryIds = [dir.Id], DestinationId = dest.Id };
 
-        var response = await Auth.PutAsJsonAsync(Route, req);
+        var response = await Auth.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var moved = await db.Directories.FindAsync(dir.Id);
+        var moved = await db.Directories.FindAsync(new object?[] { dir.Id }, TestContext.Current.CancellationToken);
         moved!.ParentId.Should().Be(dest.Id);
     }
 
@@ -36,12 +36,12 @@ public class MoveDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(f
         var dir = await SeedDirectoryAsync(parentId: parent.Id);
         var req = new MoveDirRequest { DirectoryIds = [dir.Id], DestinationId = null };
 
-        var response = await Auth.PutAsJsonAsync(Route, req);
+        var response = await Auth.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var moved = await db.Directories.FindAsync(dir.Id);
+        var moved = await db.Directories.FindAsync(new object?[] { dir.Id }, TestContext.Current.CancellationToken);
         moved!.ParentId.Should().BeNull();
     }
 
@@ -50,7 +50,7 @@ public class MoveDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(f
     {
         var req = new MoveDirRequest { DirectoryIds = [Guid.NewGuid()] };
 
-        var response = await Anon.PutAsJsonAsync(Route, req);
+        var response = await Anon.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

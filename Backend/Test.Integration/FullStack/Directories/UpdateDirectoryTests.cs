@@ -17,10 +17,10 @@ public class UpdateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         var dir = await SeedDirectoryAsync();
         var req = new UpdateDirRequest { DirectoryId = dir.Id, Name = "renamed-dir" };
 
-        var response = await Auth.PutAsJsonAsync(Route, req);
+        var response = await Auth.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<UpdateDirResponse>();
+        var body = await response.Content.ReadFromJsonAsync<UpdateDirResponse>(cancellationToken: TestContext.Current.CancellationToken);
         body!.Directory.Name.Should().Be("renamed-dir");
     }
 
@@ -30,7 +30,7 @@ public class UpdateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         var dir = await SeedDirectoryAsync();
         var req = new UpdateDirRequest { DirectoryId = dir.Id, Name = "new-name" };
 
-        var response = await Anon.PutAsJsonAsync(Route, req);
+        var response = await Anon.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -42,7 +42,7 @@ public class UpdateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         var dir = await SeedDirectoryAsync(configure: b => b.WithOwner(otherId));
         var req = new UpdateDirRequest { DirectoryId = dir.Id, Name = "hacked" };
 
-        var response = await Auth.PutAsJsonAsync(Route, req);
+        var response = await Auth.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }
@@ -52,7 +52,7 @@ public class UpdateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     {
         var req = new UpdateDirRequest { DirectoryId = Guid.NewGuid(), Name = "ghost" };
 
-        var response = await Auth.PutAsJsonAsync(Route, req);
+        var response = await Auth.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }
@@ -63,7 +63,7 @@ public class UpdateDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         var dir = await SeedDirectoryAsync();
         var req = new UpdateDirRequest { DirectoryId = dir.Id, Name = "" };
 
-        var response = await Auth.PutAsJsonAsync(Route, req);
+        var response = await Auth.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

@@ -21,12 +21,12 @@ public class MoveFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
         var dir = await SeedDirectoryAsync();
         var req = new MoveFilesRequest { FileIds = [file.Id], DestinationId = dir.Id };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var movedFile = await db.Files.FindAsync(file.Id);
+        var movedFile = await db.Files.FindAsync(new object?[] { file.Id }, TestContext.Current.CancellationToken);
         movedFile!.DirectoryId.Should().Be(dir.Id);
     }
 
@@ -37,12 +37,12 @@ public class MoveFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
         var file = await SeedFileWithVersionAsync(fb => fb.WithDirectory(dir.Id));
         var req = new MoveFilesRequest { FileIds = [file.Id], DestinationId = null };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var movedFile = await db.Files.FindAsync(file.Id);
+        var movedFile = await db.Files.FindAsync(new object?[] { file.Id }, TestContext.Current.CancellationToken);
         movedFile!.DirectoryId.Should().BeNull();
     }
 
@@ -51,7 +51,7 @@ public class MoveFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
     {
         var req = new MoveFilesRequest { FileIds = [Guid.NewGuid()] };
 
-        var response = await Anon.PostAsJsonAsync(Route, req);
+        var response = await Anon.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -61,7 +61,7 @@ public class MoveFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
     {
         var req = new MoveFilesRequest { FileIds = [] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -72,7 +72,7 @@ public class MoveFilesTests(AlexandriaFixture fixture) : FullStackTestBase(fixtu
         var id = Guid.NewGuid();
         var req = new MoveFilesRequest { FileIds = [id, id] };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }

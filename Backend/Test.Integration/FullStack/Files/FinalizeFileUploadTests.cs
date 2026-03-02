@@ -26,15 +26,15 @@ public class FinalizeFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             Hash = Convert.ToHexString(new byte[32]),
             ContentLength = 13L
         };
-        var initResponse = await Auth.PostAsJsonAsync(InitRoute, initReq);
+        var initResponse = await Auth.PostAsJsonAsync(InitRoute, initReq, cancellationToken: TestContext.Current.CancellationToken);
         initResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var initBody = await initResponse.Content.ReadFromJsonAsync<InitializeFileUploadResponse>();
+        var initBody = await initResponse.Content.ReadFromJsonAsync<InitializeFileUploadResponse>(cancellationToken: TestContext.Current.CancellationToken);
         initBody.Should().NotBeNull();
 
         // PUT bytes to the S3 upload URL
         var bytes = "hello, world!"u8.ToArray();
         using var putContent = new ByteArrayContent(bytes);
-        var putResponse = await new HttpClient().PutAsync(initBody!.UploadUrl, putContent);
+        var putResponse = await new HttpClient().PutAsync(initBody!.UploadUrl, putContent, TestContext.Current.CancellationToken);
         putResponse.IsSuccessStatusCode.Should().BeTrue();
 
         // Now finalize
@@ -43,7 +43,7 @@ public class FinalizeFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             UploadId = initBody.UploadId,
             FileName = "hello.txt"
         };
-        var response = await Auth.PostAsJsonAsync(FinalizeRoute, finalizeReq);
+        var response = await Auth.PostAsJsonAsync(FinalizeRoute, finalizeReq, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -51,7 +51,7 @@ public class FinalizeFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
         var fileExists = await db.Files
-            .AnyAsync(f => f.OwnerId == UserId && f.Name == "hello.txt");
+            .AnyAsync(f => f.OwnerId == UserId && f.Name == "hello.txt", cancellationToken: TestContext.Current.CancellationToken);
         fileExists.Should().BeTrue();
     }
 
@@ -67,7 +67,7 @@ public class FinalizeFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             FileName = "test.txt"
         };
 
-        var response = await Anon.PostAsJsonAsync(FinalizeRoute, req);
+        var response = await Anon.PostAsJsonAsync(FinalizeRoute, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }
@@ -81,7 +81,7 @@ public class FinalizeFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             FileName = "ghost.txt"
         };
 
-        var response = await Auth.PostAsJsonAsync(FinalizeRoute, req);
+        var response = await Auth.PostAsJsonAsync(FinalizeRoute, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }
