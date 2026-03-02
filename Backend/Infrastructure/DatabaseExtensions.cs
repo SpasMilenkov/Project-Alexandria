@@ -10,8 +10,11 @@ public static class DatabaseExtensions
 {
     public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration config)
     {
-        var connStr = config.GetConnectionString("AlexandriaPostgres");
-        services.AddDbContext<AlexandriaDbContext>(opt => opt.UseNpgsql(connStr));
+        services.AddDbContext<AlexandriaDbContext>((sp, opt) =>
+        {
+            var configuration = sp.GetRequiredService<IConfiguration>();
+            opt.UseNpgsql(configuration.GetConnectionString("AlexandriaPostgres"));
+        });
         services.AddScoped<AdminSeeder>();
         return services;
     }
