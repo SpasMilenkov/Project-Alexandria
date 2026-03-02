@@ -27,6 +27,8 @@ public class PreviewGenerationHandler(
         // Generate temp path with correct extension based on MIME type
         var extension = GetExtensionFromMimeType(fileData.MimeType);
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
+        string? previewPath = null;
+        string? thumbnailPath = null;
 
         try
         {
@@ -47,12 +49,15 @@ public class PreviewGenerationHandler(
             {
                 throw new InvalidOperationException("Media preview generation failed");
             }
-
+            
+            previewPath = result.PreviewPath;
+            thumbnailPath = result.ThumbnailPath;
+            
             logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}",
                 result.PreviewPath, new FileInfo(result.PreviewPath).Length);
 
-            await using var previewStream = File.OpenRead(result.PreviewPath);
-            await using var thumbnailStream = File.OpenRead(result.ThumbnailPath);
+            await using var previewStream = File.OpenRead(previewPath);
+            await using var thumbnailStream = File.OpenRead(thumbnailPath);
             await storage.UploadMediaData(previewStream, thumbnailStream, fileHash, fileData.Id, result.Metadata, ct);
 
             //TODO: Change Guid.Empty when the system account is seeded into the database
@@ -62,6 +67,8 @@ public class PreviewGenerationHandler(
         {
             if (File.Exists(tempPath))
                 File.Delete(tempPath);
+            if (previewPath != null && File.Exists(previewPath)) File.Delete(previewPath);
+            if (thumbnailPath != null && File.Exists(thumbnailPath)) File.Delete(thumbnailPath);
         }
     }
 
@@ -69,7 +76,7 @@ public class PreviewGenerationHandler(
     /// <summary>
     /// Maps MIME types to their corresponding file extensions for media files
     /// </summary>
-    private string GetExtensionFromMimeType(string mimeType)
+    private static string GetExtensionFromMimeType(string mimeType)
     {
         if (string.IsNullOrWhiteSpace(mimeType))
             return ".bin";
