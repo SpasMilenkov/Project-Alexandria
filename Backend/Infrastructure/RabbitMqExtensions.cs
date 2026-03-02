@@ -11,19 +11,21 @@ public static class RabbitMqExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var factory = new ConnectionFactory
+        services.AddSingleton<IConnectionFactory>(sp =>
         {
-            HostName = configuration["RabbitMQ:HostName"] ?? "localhost",
-            Port = configuration.GetValue<int>("RabbitMQ:Port", 5672),
-            UserName = configuration["RabbitMQ:UserName"] ?? "guest",
-            Password = configuration["RabbitMQ:Password"] ?? "guest",
-            VirtualHost = configuration["RabbitMQ:VirtualHost"] ?? "/",
-            AutomaticRecoveryEnabled = true,
-            NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
-            RequestedHeartbeat = TimeSpan.FromSeconds(60)
-        };
-
-        services.AddSingleton<IConnectionFactory>(factory);
+            var config = sp.GetRequiredService<IConfiguration>();
+            return new ConnectionFactory
+            {
+                HostName = config["RabbitMQ:HostName"] ?? "localhost",
+                Port = config.GetValue<int>("RabbitMQ:Port", 5672),
+                UserName = config["RabbitMQ:UserName"] ?? "guest",
+                Password = config["RabbitMQ:Password"] ?? "guest",
+                VirtualHost = config["RabbitMQ:VirtualHost"] ?? "/",
+                AutomaticRecoveryEnabled = true,
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
+                RequestedHeartbeat = TimeSpan.FromSeconds(60)
+            };
+        });
 
         services.AddSingleton<IConnection>(sp =>
             sp.GetRequiredService<IConnectionFactory>()
@@ -32,10 +34,13 @@ public static class RabbitMqExtensions
                 .GetResult());
 
         services.AddSingleton<IChannelPool>(sp =>
-            new ChannelPool(
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            return new ChannelPool(
                 sp.GetRequiredService<IConnection>(),
-                maxSize: configuration.GetValue<int>("RabbitMQ:ChannelPoolSize", 10)
-            ));
+                maxSize: config.GetValue<int>("RabbitMQ:ChannelPoolSize", 10)
+            );
+        });
 
         services.AddSingleton<IPublisherService, PublisherService>();
         return services;
