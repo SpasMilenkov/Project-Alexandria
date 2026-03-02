@@ -4,5 +4,5 @@ namespace API.Features.Storage.Directories.GetDir;
 
 public class GetDirResult
 {
-    public DirectorySummaryDto Directory { get; set; }
+    public required DirectorySummaryDto Directory { get; set; }
 }

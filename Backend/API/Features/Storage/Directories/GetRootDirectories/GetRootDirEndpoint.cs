@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using DTO.Search;
 using FastEndpoints;
@@ -11,15 +11,13 @@ public class GetRootDirEndpoint(IDirectoryService directoryService) : Endpoint<P
     {
         Get("/directories/root");
         Description(x => x.WithTags("Directories"));
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(PaginationParams req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
+        var userId = User.GetUserId();
 
-        var userId = Guid.Parse(userIdString);
         var content = await directoryService.GetRootDirectoriesAsync(userId, req.Page, req.PageSize, req.SortDirection,
             req.SortBy, ct: ct);
         await Send.OkAsync(content, ct);

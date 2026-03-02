@@ -11,7 +11,7 @@ namespace Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
-            
+
             migrationBuilder.CreateIndex(
                 name: "IX_Files_Name",
                 table: "Files",
@@ -31,7 +31,7 @@ namespace Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.Sql("DROP EXTENSION IF EXISTS pg_trgm;");
-            
+
             migrationBuilder.DropIndex(
                 name: "IX_Files_Name",
                 table: "Files");

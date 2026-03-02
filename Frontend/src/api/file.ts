@@ -171,7 +171,13 @@ export const fileApi = {
     return response.data;
   },
   searchFiles: async (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {
-    const response = await apiClient.post<PaginatedResponse<FileResult>>("/files/search", query);
+    const cleanQuery = Object.fromEntries(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      Object.entries(query).filter(([_, value]) => value != null),
+    );
+    const response = await apiClient.get<PaginatedResponse<FileResult>>("/files/search", {
+      params: cleanQuery,
+    });
     return response.data;
   },
 

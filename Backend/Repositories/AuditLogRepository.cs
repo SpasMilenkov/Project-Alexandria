@@ -51,7 +51,7 @@ public class AuditLogRepository(AlexandriaDbContext context) : IAuditLogReposito
         {
             dbQuery = dbQuery.Where(a => a.IpAddress == query.IpAddress);
         }
-        
+
         dbQuery = query.SortBy switch
         {
             "timestamp" => query.SortDirection == SortDirection.Asc
@@ -64,11 +64,11 @@ public class AuditLogRepository(AlexandriaDbContext context) : IAuditLogReposito
 
             _ => dbQuery.OrderBy(d => d.Timestamp)
         };
-        
+
         var count = await dbQuery.CountAsync(cancellationToken: ct);
-        
+
         var items = await dbQuery
-            .Skip((query.Page-1) * query.PageSize)
+            .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
             .Select(a => new AuditLogResult
             {
@@ -80,9 +80,9 @@ public class AuditLogRepository(AlexandriaDbContext context) : IAuditLogReposito
                 Timestamp = a.Timestamp,
                 LogSource = a.Source
             })
-            .ToListAsync(cancellationToken:ct);
+            .ToListAsync(cancellationToken: ct);
 
-        
+
         return new PaginatedResult<AuditLogResult>
         {
             CurrentPage = query.Page,

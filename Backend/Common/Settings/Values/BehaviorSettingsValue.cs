@@ -6,9 +6,3 @@ public class BehaviorSettingsValue
     public ToastLevel ToastLevel { get; set; } = ToastLevel.All;
 }
 
-public enum ToastLevel
-{
-    All,
-    ErrorsOnly,
-    Silent
-}

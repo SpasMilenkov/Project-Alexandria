@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using API.Features.Storage.Files.DeleteFile;
 using AwesomeAssertions;
 using Data.Context;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Test.Common.Fixtures;
 using Xunit;
@@ -44,7 +43,7 @@ public class DeleteFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var deletedFile = await db.Files.FindAsync(file.Id);
+        var deletedFile = await db.Files.FindAsync(new object?[] { file.Id }, TestContext.Current.CancellationToken);
         deletedFile!.DeletedAt.Should().NotBeNull();
     }
 
@@ -77,6 +76,6 @@ public class DeleteFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
 
         var response = await DeleteFilesAsync(Auth, req);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

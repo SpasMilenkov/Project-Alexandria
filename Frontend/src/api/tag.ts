@@ -79,7 +79,6 @@ export interface PaginatedFilesResponse {
   hasPrevious: boolean;
   hasNext: boolean;
 }
-
 export const tagApi = {
   // Create a new tag
   createTag: async (data: CreateTagSchema): Promise<CreateTagResponse> => {
@@ -107,8 +106,10 @@ export const tagApi = {
   },
 
   // Search tags with filters
-  searchTags: async (filters: SearchTagsSchema): Promise<PaginatedResponse<TagDto>> => {
-    const response = await apiClient.post<PaginatedResponse<TagDto>>("/tags/search", filters);
+  searchTags: async (query: SearchTagsSchema): Promise<PaginatedResponse<TagDto>> => {
+    const response = await apiClient.get<PaginatedResponse<TagDto>>("/tags/search", {
+      params: query,
+    });
     return response.data;
   },
 
@@ -130,10 +131,10 @@ export const tagApi = {
   },
 
   // Search files by tags
-  searchFilesByTags: async (
-    filters: SearchFilesByTagsSchema,
-  ): Promise<PaginatedResponse<TagDto>> => {
-    const response = await apiClient.post<PaginatedResponse<TagDto>>("/files/search/tags", filters);
+  searchFilesByTags: async (query: SearchFilesByTagsSchema): Promise<PaginatedResponse<TagDto>> => {
+    const response = await apiClient.get<PaginatedResponse<TagDto>>("/files/search/tags", {
+      params: query,
+    });
     return response.data;
   },
 };

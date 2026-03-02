@@ -3,6 +3,8 @@ using Common.Services;
 using FastEndpoints;
 using Models.Enumerators;
 
+namespace API.Features.Users.CreateUser;
+
 sealed class CreateUserRequest
 {
     public required string Username { get; set; }
@@ -23,7 +25,7 @@ sealed class CreateUserEndpoint(IUserManagementService userManagementService) : 
     {
         try
         {
-            var user = await userManagementService.CreateUser(
+            await userManagementService.CreateUser(
                 req.Username, req.Email, req.Password, req.Role, ct);
 
             await Send.OkAsync(cancellation: ct);

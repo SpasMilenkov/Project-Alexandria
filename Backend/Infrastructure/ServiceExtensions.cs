@@ -4,7 +4,6 @@ using Common.Repositories;
 using Common.Services;
 using Data;
 using Microsoft.Extensions.DependencyInjection;
-using PreviewService;
 using PreviewService.Archives;
 using PreviewService.Text;
 using Repositories;
@@ -36,7 +35,6 @@ public static class ServiceExtensions
         services.AddScoped<IArchivePreviewService, ArchivePreviewService>();
         services.AddScoped<ITextPreviewService, TextPreviewService>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
-        services.AddScoped<IImagePreviewService, ImagePreviewService>();
         services.AddScoped<IPreviewService, PreviewService.PreviewService>();
         services.AddScoped<IFileTagService, FileTagService>();
         services.AddScoped<IDirectoryRepository, DirectoryRepository>();

@@ -230,7 +230,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
     }
 
     public async Task<IEnumerable<Directory>> GetUserDirectories(Guid ownerId,
-        Guid? parentId,
+        Guid? parentId = null,
         CancellationToken ct = default)
     {
         return await context.Directories
@@ -246,13 +246,11 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
     }
 
     public async Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query,
-        CancellationToken ct)
+        CancellationToken ct = default)
     {
-        if (query.CurrentPage < 0)
-            throw new ArgumentException("Page number must be non-negative", nameof(query.CurrentPage));
-
-        if (query.PageSize is <= 0 or > 100)
-            throw new ArgumentException("Page size must be between 1 and 100", nameof(query.PageSize));
+        ArgumentOutOfRangeException.ThrowIfNegative(query.CurrentPage);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(query.PageSize);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(query.PageSize, 100);
 
         var dbQuery = context.Directories.AsQueryable();
         var isSearching = !string.IsNullOrWhiteSpace(query.NameContains);
@@ -308,11 +306,6 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         {
             dbQuery = dbQuery.Where(d => d.OwnerId == query.OwnerId.Value);
         }
-
-        // if (query.IsShared.HasValue)
-        // {
-        //     dbQuery = dbQuery.Where(d => d.IsShared == query.IsShared.Value);
-        // }
 
         // --- Created Filters ---
         if (query.CreatedAfter.HasValue)
@@ -392,11 +385,6 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         {
             dbQuery = dbQuery.Where(d => d.ParentId == query.ParentDirectoryId.Value);
         }
-
-        // if (query.IsStarred)
-        // {
-        //     dbQuery = dbQuery.Where(d => d.IsStarred == true);
-        // }
 
         var totalCount = await dbQuery.CountAsync(ct);
 
@@ -561,7 +549,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         return pathParts;
     }
 
-    private string ResolveNameDuplicate(HashSet<string> names, string directoryName)
+    private static string ResolveNameDuplicate(HashSet<string> names, string directoryName)
     {
         var newName = directoryName + "Copy";
 

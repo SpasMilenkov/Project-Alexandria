@@ -21,7 +21,7 @@ using DTO.Metrics;
 
 namespace Storage;
 
-public class S3Service(
+public partial class S3Service(
     IAmazonS3 s3,
     IUnitOfWork unitOfWork,
     IOptions<S3Config> config,
@@ -38,17 +38,15 @@ public class S3Service(
         try
         {
             await s3.DeleteObjectAsync(bucket, key, ct);
-            logger.LogDebug("Cleaned up temp object: {Bucket}/{Key}", bucket, key);
+            LogTempObjectCleaned(logger, bucket, key);
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            // Object already deleted or never existed
-            logger.LogDebug("Temp object not found (already deleted): {Bucket}/{Key}", bucket, key);
+            LogTempObjectNotFound(logger, bucket, key);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
-                "Failed to cleanup temp object: {Bucket}/{Key}", bucket, key);
+            LogTempObjectCleanupFailed(logger, ex, bucket, key);
             // Don't throw - cleanup is best-effort
         }
     }
@@ -63,7 +61,7 @@ public class S3Service(
         Guid contentObjectId,
         CancellationToken ct)
     {
-        logger.LogInformation("Creating new file record: Name={FileName}", fileName);
+        LogCreatingFileRecord(logger, fileName);
 
         var fileEntity = new FileEntity
         {
@@ -113,20 +111,17 @@ public class S3Service(
         Stream fileStream,
         Guid originalFileId,
         Guid uploadedBy,
-        long contentLength,
+        long contentLength = -1,
         string? originalFileName = null,
         CancellationToken ct = default)
     {
-        logger.LogInformation(
-            "Starting preview upload: Bucket={BucketName}, Object={ObjectName}, OriginalFileId={OriginalFileId}",
-            bucketName, objectName, originalFileId);
+        LogStartingPreviewUpload(logger, bucketName, objectName, originalFileId);
 
         await unitOfWork.BeginTransactionAsync(ct);
 
         try
         {
             var filePath = $"{bucketName}/{objectName}";
-
 
             await s3.PutObjectAsync(new PutObjectRequest
             {
@@ -138,16 +133,13 @@ public class S3Service(
                 DisableDefaultChecksumValidation = true,
             }, ct);
 
-
             var existingFile = await unitOfWork.Previews.FirstOrDefaultAsync(f => f.Path == filePath, ct);
 
             Preview savedFile;
 
             if (existingFile != null)
             {
-                logger.LogInformation(
-                    "Updating existing preview record: PreviewId={PreviewId}, Path={Path}",
-                    existingFile.Id, filePath);
+                LogUpdatingExistingPreview(logger, existingFile.Id, filePath);
 
                 existingFile.Name = originalFileName ?? existingFile.Name;
                 existingFile.Size = new BigInteger();
@@ -157,9 +149,7 @@ public class S3Service(
             }
             else
             {
-                logger.LogInformation(
-                    "Creating new preview record: Path={Path}, OriginalFileId={OriginalFileId}",
-                    filePath, originalFileId);
+                LogCreatingNewPreview(logger, filePath, originalFileId);
 
                 var fileEntity = new Preview
                 {
@@ -177,9 +167,7 @@ public class S3Service(
 
             await unitOfWork.CommitAsync(ct);
 
-            logger.LogInformation(
-                "Preview upload completed successfully: PreviewId={PreviewId}, Size={Size}",
-                savedFile.Id, contentLength);
+            LogPreviewUploadCompleted(logger, savedFile.Id, contentLength);
 
             return new UploadResult(
                 objectName,
@@ -189,29 +177,21 @@ public class S3Service(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Preview upload failed: Bucket={BucketName}, Object={ObjectName}, OriginalFileId={OriginalFileId}",
-                bucketName, objectName, originalFileId);
+            LogPreviewUploadFailed(logger, ex, bucketName, objectName, originalFileId);
 
             await unitOfWork.RollbackAsync(ct);
 
             try
             {
-                logger.LogWarning(
-                    "Attempting cleanup: Deleting preview from storage: Bucket={BucketName}, Object={ObjectName}",
-                    bucketName, objectName);
+                LogAttemptingPreviewCleanup(logger, bucketName, objectName);
 
                 await s3.DeleteObjectAsync(bucketName, objectName, ct);
 
-                logger.LogInformation(
-                    "Cleanup successful: Preview deleted from storage: Bucket={BucketName}, Object={ObjectName}",
-                    bucketName, objectName);
+                LogPreviewCleanupSuccessful(logger, bucketName, objectName);
             }
             catch (Exception cleanupEx)
             {
-                logger.LogError(cleanupEx,
-                    "Failed to cleanup preview after upload failure: Bucket={BucketName}, Object={ObjectName}",
-                    bucketName, objectName);
+                LogPreviewCleanupFailed(logger, cleanupEx, bucketName, objectName);
             }
 
             throw new InvalidOperationException($"Upload failed: {ex.Message}", ex);
@@ -265,9 +245,7 @@ public class S3Service(
         var previewKey = $"previews/{objectName}";
         var thumbnailKey = $"thumbnails/{fileId}.jpg";
 
-        logger.LogInformation(
-            "Starting media data upload: FileId={FileId}, PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}",
-            fileId, previewKey, thumbnailKey);
+        LogStartingMediaDataUpload(logger, fileId, previewKey, thumbnailKey);
 
         await unitOfWork.BeginTransactionAsync(ct);
 
@@ -277,16 +255,14 @@ public class S3Service(
 
             if (!originalFileExists)
             {
-                logger.LogError(
-                    "Original file not found for media data upload: FileId={FileId}",
-                    fileId);
+                LogOriginalFileNotFoundForMedia(logger, fileId);
                 throw new InvalidOperationException($"Original file with ID {fileId} not found");
             }
 
             if (previewStream.CanSeek) previewStream.Position = 0;
             if (thumbnailStream.CanSeek) thumbnailStream.Position = 0;
 
-            logger.LogDebug("Uploading preview video: PreviewKey={PreviewKey}", previewKey);
+            LogUploadingPreviewVideo(logger, previewKey);
 
             // Preview upload
             await s3.PutObjectAsync(new PutObjectRequest
@@ -303,7 +279,7 @@ public class S3Service(
             if (thumbnailStream.CanSeek)
                 thumbnailStream.Position = 0;
 
-            logger.LogDebug("Uploading thumbnail: ThumbnailKey={ThumbnailKey}", thumbnailKey);
+            LogUploadingThumbnail(logger, thumbnailKey);
 
             // Thumbnail upload
             await s3.PutObjectAsync(new PutObjectRequest
@@ -320,11 +296,8 @@ public class S3Service(
 
             if (existingMetadata != null)
             {
-                logger.LogInformation(
-                    "Updating existing media metadata: MetadataId={MetadataId}, FileId={FileId}",
-                    existingMetadata.Id, fileId);
+                LogUpdatingMediaMetadata(logger, existingMetadata.Id, fileId);
 
-                // Update existing metadata
                 existingMetadata.Duration = metadataDto.Duration;
                 existingMetadata.BitrateMbps = metadataDto.BitrateMbps;
                 existingMetadata.FormatName = metadataDto.FormatName;
@@ -345,9 +318,7 @@ public class S3Service(
             }
             else
             {
-                logger.LogInformation(
-                    "Creating new media metadata record: FileId={FileId}",
-                    fileId);
+                LogCreatingMediaMetadata(logger, fileId);
 
                 var mediaMetadata = metadataDto.ToEntity(fileId, $"{bucketName}/{thumbnailKey}");
                 mediaMetadata.ThumbnailPath = thumbnailKey;
@@ -358,9 +329,7 @@ public class S3Service(
 
             if (existingPreview != null)
             {
-                logger.LogDebug(
-                    "Updating existing preview record: PreviewId={PreviewId}",
-                    existingPreview.Id);
+                LogUpdatingPreviewRecord(logger, existingPreview.Id);
 
                 existingPreview.Size = new BigInteger(previewStream.Length);
                 // existingPreview.UpdatedBy = "System";
@@ -369,9 +338,7 @@ public class S3Service(
             }
             else
             {
-                logger.LogDebug(
-                    "Creating new preview record for media: FileId={FileId}",
-                    fileId);
+                LogCreatingPreviewForMedia(logger, fileId);
 
                 var fileEntity = new Preview
                 {
@@ -389,36 +356,26 @@ public class S3Service(
 
             await unitOfWork.CommitAsync(ct);
 
-            logger.LogInformation(
-                "Media data upload completed successfully: FileId={FileId}, PreviewSize={PreviewSize}",
-                fileId, previewStream.Length);
+            LogMediaDataUploadCompleted(logger, fileId, previewStream.Length);
         }
         catch (Exception e)
         {
-            logger.LogError(e,
-                "Failed to upload media data: FileId={FileId}, PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}",
-                fileId, previewKey, thumbnailKey);
+            LogMediaDataUploadFailed(logger, e, fileId, previewKey, thumbnailKey);
 
             await unitOfWork.RollbackAsync(ct);
 
             try
             {
-                logger.LogWarning(
-                    "Attempting cleanup of media data: PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}",
-                    previewKey, thumbnailKey);
+                LogAttemptingMediaDataCleanup(logger, previewKey, thumbnailKey);
 
                 await s3.DeleteObjectAsync(bucketName, previewKey, ct);
                 await s3.DeleteObjectAsync(bucketName, thumbnailKey, ct);
 
-                logger.LogInformation(
-                    "Media data cleanup successful: PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}",
-                    previewKey, thumbnailKey);
+                LogMediaDataCleanupSuccessful(logger, previewKey, thumbnailKey);
             }
             catch (Exception cleanupEx)
             {
-                logger.LogError(cleanupEx,
-                    "Failed to clean up media data after upload failure: PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}",
-                    previewKey, thumbnailKey);
+                LogMediaDataCleanupFailed(logger, cleanupEx, previewKey, thumbnailKey);
             }
 
             throw;
@@ -485,15 +442,15 @@ public class S3Service(
         };
     }
 
-    public async Task<PreviewResultDto?> GetCachedPreview(Guid id, CancellationToken ct = default)
+    public async Task<PreviewResultDto?> GetCachedPreview(Guid id, CancellationToken ct)
     {
-        logger.LogDebug("Retrieving cached preview: FileId={FileId}", id);
+        LogRetrievingCachedPreview(logger, id);
 
         var fileData = await unitOfWork.Files.GetFileWithPreviewAsync(id, ct);
 
         if (fileData is null or { HasPreview: false })
         {
-            logger.LogDebug("No preview available for file: FileId={FileId}", id);
+            LogNoPreviewAvailable(logger, id);
             return null;
         }
 
@@ -501,9 +458,7 @@ public class S3Service(
         if (currentVersion is null) throw new InvalidOperationException("File does not have a current version");
         var category = CategorizeFile(fileData.MimeType);
 
-        logger.LogDebug(
-            "File categorized as {Category} for preview: FileId={FileId}, MimeType={MimeType}",
-            category, id, fileData.MimeType);
+        LogFileCategorized(logger, category, id, fileData.MimeType);
 
         try
         {
@@ -540,9 +495,7 @@ public class S3Service(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Failed to retrieve cached preview: FileId={FileId}, Category={Category}",
-                id, category);
+            LogFailedToRetrieveCachedPreview(logger, ex, id, category);
             throw;
         }
     }
@@ -595,9 +548,7 @@ public class S3Service(
         if (await unitOfWork.Files.IsPromoted(fileId)) return await s3.GetPreSignedURLAsync(request);
 
         var upload =
-            await unitOfWork.Uploads.FirstOrDefaultAsync(u => u.Hash == hash && u.Status == UploadStatus.Finished);
-        if (upload is null) throw new InvalidObjectStateException();
-
+            await unitOfWork.Uploads.FirstOrDefaultAsync(u => u.Hash == hash && u.Status == UploadStatus.Finished) ?? throw new InvalidOperationException("Upload hasn't finished yet");
         request.BucketName = config.Value.TempBucket;
         request.Key = $"content/{upload.TempObjectKey}";
 
@@ -610,92 +561,74 @@ public class S3Service(
 
         if (!fileExists)
         {
-            logger.LogWarning(
-                "File not found in database during download: Id={fileId}",
-                fileId);
+            LogFileNotFoundForDownload(logger, fileId);
             throw new InvalidOperationException($"File {fileId} not found in database.");
         }
 
         var hashString = await unitOfWork.Files.GetFileHashAsString(fileId, userId, ct);
+        var objectName = $"content/{hashString}";
         try
         {
-            var response = await s3.GetObjectAsync(config.Value.UploadBucket, $"content/{hashString}", ct);
+            var response = await s3.GetObjectAsync(config.Value.UploadBucket, objectName, ct);
 
-            logger.LogInformation(
-                "File download stream acquired: Bucket={BucketName}, Object={ObjectName}, Size={ContentLength}",
-                config.Value.UploadBucket, $"content/{hashString}", response.ContentLength);
+            LogFileDownloadStreamAcquired(logger, config.Value.UploadBucket, objectName, response.ContentLength);
 
             return response.ResponseStream;
         }
         catch (AmazonS3Exception ex)
         {
-            logger.LogError(ex,
-                "S3 error during file download: Bucket={BucketName}, Object={ObjectName}, StatusCode={StatusCode}",
-                config.Value.UploadBucket, $"content/{hashString}", ex.StatusCode);
+            LogS3ErrorDuringDownload(logger, ex, config.Value.UploadBucket, objectName, ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Failed to download file: Bucket={BucketName}, Object={ObjectName}",
-                config.Value.UploadBucket, $"content/{hashString}");
+            LogFailedToDownloadFile(logger, ex, config.Value.UploadBucket, objectName);
             throw;
         }
     }
 
-    public async Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct)
+    public async Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default)
     {
         var fileExists = await unitOfWork.Files.ExistsAsync(f => f.Id == fileId && f.OwnerId == userId, ct);
 
         if (!fileExists)
         {
-            logger.LogWarning(
-                "File not found in database during download: Id={fileId}",
-                fileId);
+            LogFileNotFoundForDownload(logger, fileId);
             throw new InvalidOperationException($"File {fileId} not found in database.");
         }
 
         var hashString = await unitOfWork.Files.GetFileHashAsString(fileId, userId, ct);
+        var objectName = $"content/{hashString}";
         try
         {
-            var stream =
-                new SeekableS3Stream(s3, config.Value.UploadBucket, $"content/{hashString}", 128 * 1024, 12);
+            var stream = new SeekableS3Stream(s3, config.Value.UploadBucket, objectName, 128 * 1024, 12);
 
-            logger.LogInformation(
-                "File download stream acquired: Bucket={BucketName}, Object={ObjectName}, Size={ContentLength}",
-                config.Value.UploadBucket, $"content/{hashString}", stream.Length);
+            LogFileDownloadStreamAcquired(logger, config.Value.UploadBucket, objectName, stream.Length);
 
             return stream;
         }
         catch (AmazonS3Exception ex)
         {
-            logger.LogError(ex,
-                "S3 error during file download: Bucket={BucketName}, Object={ObjectName}, StatusCode={StatusCode}",
-                config.Value.UploadBucket, $"content/{hashString}", ex.StatusCode);
+            LogS3ErrorDuringDownload(logger, ex, config.Value.UploadBucket, objectName, ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Failed to download file: Bucket={BucketName}, Object={ObjectName}",
-                config.Value.UploadBucket, $"content/{hashString}");
+            LogFailedToDownloadFile(logger, ex, config.Value.UploadBucket, objectName);
             throw;
         }
     }
 
     public async Task StreamFile(string fileId, Stream destination, CancellationToken ct)
     {
-        logger.LogInformation(
-            "Streaming file to destination: FileId={FileId}",
-            fileId);
+        LogStreamingFileToDestination(logger, fileId);
+
         var id = Guid.Parse(fileId);
         var fileData = await unitOfWork.Files.GetByIdAsync(id, ct);
 
         if (fileData is null)
         {
-            logger.LogWarning(
-                "File not found for streaming: FileId={FileId}",
-                fileId);
+            LogFileNotFoundForStreaming(logger, fileId);
             throw new InvalidOperationException($"File with ID: {fileId} not found.");
         }
 
@@ -704,28 +637,20 @@ public class S3Service(
         {
             using var response = await s3.GetObjectAsync(config.Value.UploadBucket, $"content/{hash}", ct);
 
-            logger.LogDebug(
-                "Streaming file content: FileId={FileId}, Name={FileName}, Size={ContentLength}",
-                fileId, fileData.Name, response.ContentLength);
+            LogStreamingFileContent(logger, fileId, fileData.Name, response.ContentLength);
 
             await response.ResponseStream.CopyToAsync(destination, 81920, ct);
 
-            logger.LogInformation(
-                "File streaming completed: FileId={FileId}, Name={FileName}",
-                fileId, fileData.Name);
+            LogFileStreamingCompleted(logger, fileId, fileData.Name);
         }
         catch (AmazonS3Exception ex)
         {
-            logger.LogError(ex,
-                "S3 error during file streaming: FileId={FileId}, Name={FileName}, StatusCode={StatusCode}",
-                fileId, fileData.Name, ex.StatusCode);
+            LogS3ErrorDuringStreaming(logger, ex, fileId, fileData.Name, ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "Failed to stream file: FileId={FileId}, Name={FileName}",
-                fileId, fileData.Name);
+            LogFailedToStreamFile(logger, ex, fileId, fileData.Name);
             throw;
         }
     }
@@ -747,10 +672,7 @@ public class S3Service(
         try
         {
             await fileService.FolderWithOwnershipExists(directoryId, userId, ct);
-            /*
-             *  TODO: Here instead of doing this I can implement the proof of knowledge with a merkle tree
-                in the future this can save the bandwidth of the user with true deduplication
-             */
+
             var upload = new Upload
             {
                 Id = Guid.NewGuid(),
@@ -770,9 +692,7 @@ public class S3Service(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                "File upload failed: Bucket={BucketName}, Object={ObjectName}, Error={ErrorMessage}",
-                tmp, tempObjectKey, ex.Message);
+            LogFileUploadInitiateFailed(logger, ex, tmp, tempObjectKey, ex.Message);
 
             await unitOfWork.RollbackAsync(ct);
             await CleanupTempObjectAsync(tmp, tempObjectKey, ct);
@@ -843,22 +763,18 @@ public class S3Service(
             // =====================================================
             // 3. Validate SHA256 against Upload entity
             // =====================================================
-            if (!CryptographicOperations.FixedTimeEquals(
-                    computedHash,
-                    upload.Hash))
+            if (!CryptographicOperations.FixedTimeEquals(computedHash, upload.Hash))
             {
                 await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
 
                 upload.Status = UploadStatus.Interrupted;
                 upload.FinishedAt = DateTime.UtcNow;
 
-                throw new InvalidOperationException(
-                    "SHA256 mismatch between upload and server");
+                throw new InvalidOperationException("SHA256 mismatch between upload and server");
             }
 
             upload.Status = UploadStatus.Finished;
             upload.FinishedAt = DateTime.UtcNow;
-
 
             // =====================================================
             // 4. Prepare hash string
@@ -870,8 +786,7 @@ public class S3Service(
             // =====================================================
             // 5. Deduplication: check content object
             // =====================================================
-            var contentObject =
-                await unitOfWork.ContentObjects.HashExists(computedHash);
+            var contentObject = await unitOfWork.ContentObjects.HashExists(computedHash);
 
             if (contentObject is null)
             {
@@ -891,13 +806,12 @@ public class S3Service(
             // =====================================================
             // 6. Create / update file record
             // =====================================================
-            var file =
-                await unitOfWork.Files.FirstOrDefaultAsync(
-                    f =>
-                        f.Name == objectName &&
-                        f.DirectoryId == directoryId &&
-                        f.OwnerId == uploadedBy,
-                    ct);
+            var file = await unitOfWork.Files.FirstOrDefaultAsync(
+                f =>
+                    f.Name == objectName &&
+                    f.DirectoryId == directoryId &&
+                    f.OwnerId == uploadedBy,
+                ct);
 
             if (file is null)
             {
@@ -925,10 +839,8 @@ public class S3Service(
             // =====================================================
             // 7. Create new version
             // =====================================================
-            var currentVersion =
-                await unitOfWork.FileVersions.GetByIdAsync(
-                    file.CurrentVersionId ?? Guid.Empty,
-                    ct);
+            var currentVersion = await unitOfWork.FileVersions.GetByIdAsync(
+                file.CurrentVersionId ?? Guid.Empty, ct);
 
             if (currentVersion is null)
                 throw new InvalidOperationException("Current version missing");
@@ -954,10 +866,7 @@ public class S3Service(
 
             await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
 
-            logger.LogInformation(
-                "Upload finalized: FileId={FileId}, Size={Size}",
-                file.Id,
-                computedSize);
+            LogUploadFinalized(logger, file.Id, computedSize);
 
             return new UploadResult(
                 objectName,
@@ -967,20 +876,13 @@ public class S3Service(
         }
         catch (Exception ex)
         {
-            logger.LogError(
-                ex,
-                "Finalize upload failed: {Object}",
-                objectName);
+            LogFinalizeUploadFailed(logger, ex, objectName);
 
             await unitOfWork.RollbackAsync(ct);
 
-            await CleanupTempObjectAsync(
-                tmp,
-                objectName,
-                ct);
+            await CleanupTempObjectAsync(tmp, objectName, ct);
 
-            throw new InvalidOperationException(
-                $"Upload failed: {ex.Message}", ex);
+            throw new InvalidOperationException($"Upload failed: {ex.Message}", ex);
         }
     }
 
@@ -1017,7 +919,6 @@ public class S3Service(
                 throw new InvalidOperationException("File too large");
         }
 
-        // 32 bytes by default (matches your DB constraint)
         Hash hash = hasher.Finalize();
         byte[] hashBytes = hash.AsSpan().ToArray();
 

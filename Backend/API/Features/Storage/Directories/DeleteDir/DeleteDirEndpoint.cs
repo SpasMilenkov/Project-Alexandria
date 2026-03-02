@@ -11,6 +11,7 @@ public class DeleteDirEndpoint(IDirectoryService dirService) : Endpoint<DeleteDi
     {
         Delete("/directories/{id}");
         Description(x => x.WithTags("Directories"));
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(DeleteDirRequest req, CancellationToken ct)

@@ -10,6 +10,7 @@ sealed class StorageBreakdownEndpoint(IStorageService storageService) : Endpoint
     public override void Configure()
     {
         Get("/storage/my-storage");
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

@@ -1,15 +1,14 @@
 using FastEndpoints;
 using FluentValidation;
 
-namespace API.Features.Settings.Behavior.UpdateBehavior
+namespace API.Features.Settings.Behavior.UpdateBehavior;
+
+public class UpdateBehaviorValidator : Validator<UpdateBehaviorRequest>
 {
-    public class UpdateBehaviorValidator : Validator<UpdateBehaviorRequest>
+    public UpdateBehaviorValidator()
     {
-        public UpdateBehaviorValidator()
-        {
-            RuleFor(x => x.ToastLevel)
-                .IsInEnum()
-                .WithMessage("Invalid toast level.");
-        }
+        RuleFor(x => x.ToastLevel)
+            .IsInEnum()
+            .WithMessage("Invalid toast level.");
     }
 }

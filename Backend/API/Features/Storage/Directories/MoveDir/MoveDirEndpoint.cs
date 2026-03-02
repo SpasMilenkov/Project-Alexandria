@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 
@@ -8,17 +8,14 @@ public class MoveDirEndpoint(IDirectoryService dirService) : Endpoint<MoveDirReq
 {
     public override void Configure()
     {
-        Put("/directories/move");
+        Post("/directories/move");
         Description(x => x.WithTags("Directories"));
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(MoveDirRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
         await dirService.MoveDirectoryAsync(req.DirectoryIds, req.DestinationId, userId, ct);
 
         await Send.OkAsync(cancellation: ct);

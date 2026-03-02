@@ -17,12 +17,12 @@ sealed class GetUserActivityEndpoint(IAuditService auditService) : Endpoint<Audi
 
     public override async Task HandleAsync(AuditLogQuery req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                            ?? User.FindFirst("sub")?.Value
                            ?? throw new UnauthorizedAccessException("User ID not found in token");
         var userId = Guid.Parse(userIdString);
-        
-        
+
+
         await Send.OkAsync(await auditService.GetLogs(req, userId, ct), ct);
     }
 }

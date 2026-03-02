@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using DTO.Files;
 using FastEndpoints;
@@ -42,14 +42,13 @@ sealed class GetFilesByDirectoryIdEndpoint(IFileService fileService)
     public override void Configure()
     {
         Get("/files/directory/{directoryId}");
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(GetFilesByDirectoryIdRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
+
         var result = await fileService.GetFilesByDirectoryId(req.DirectoryId, userId, req.Page, req.PageSize,
             req.SortBy, req.SortDirection, ct);
         await Send.OkAsync(result, ct);

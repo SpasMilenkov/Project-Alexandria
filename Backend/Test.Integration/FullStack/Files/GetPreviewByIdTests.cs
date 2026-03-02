@@ -16,7 +16,7 @@ public class GetPreviewByIdTests(AlexandriaFixture fixture) : FullStackTestBase(
         // exits early with a 200 and an empty body.
         var file = await SeedFileWithVersionAsync(fb => fb.WithHasPreview(false));
 
-        var response = await Auth.GetAsync(Route(file.Id));
+        var response = await Auth.GetAsync(Route(file.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -26,7 +26,7 @@ public class GetPreviewByIdTests(AlexandriaFixture fixture) : FullStackTestBase(
     {
         // The preview service returns null for unknown files; the endpoint exits early
         // with a 200 and no body.
-        var response = await Auth.GetAsync(Route(Guid.NewGuid()));
+        var response = await Auth.GetAsync(Route(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -36,7 +36,7 @@ public class GetPreviewByIdTests(AlexandriaFixture fixture) : FullStackTestBase(
     {
         var file = await SeedFileWithVersionAsync();
 
-        var response = await Anon.GetAsync(Route(file.Id));
+        var response = await Anon.GetAsync(Route(file.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

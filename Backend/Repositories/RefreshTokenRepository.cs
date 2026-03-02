@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using Common;
 using Common.Repositories;
 using Data.Context;
 using Microsoft.EntityFrameworkCore;
@@ -69,11 +68,7 @@ public class RefreshTokenRepository(AlexandriaDbContext context) : IRefreshToken
 
     public async Task<RefreshToken> UpdateAsync(RefreshToken entity, CancellationToken ct = default)
     {
-        var existingToken = await GetByIdAsync(entity.Id, ct);
-        if (existingToken == null)
-        {
-            throw new InvalidOperationException($"RefreshToken with ID {entity.Id} not found or has been deleted.");
-        }
+        var existingToken = await GetByIdAsync(entity.Id, ct) ?? throw new InvalidOperationException($"RefreshToken with ID {entity.Id} not found or has been deleted.");
 
         // Update mutable properties
         existingToken.IsRevoked = entity.IsRevoked;

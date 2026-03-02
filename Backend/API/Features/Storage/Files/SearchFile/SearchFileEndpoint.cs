@@ -5,11 +5,12 @@ using FastEndpoints;
 
 namespace API.Features.Storage.Files.SearchFile;
 
-sealed class SearchFileEndpoint(IFileService fileService) : Endpoint<FileSearchQuery, PaginatedResult<FileResult>>
+internal sealed class SearchFileEndpoint(IFileService fileService) : Endpoint<FileSearchQuery, PaginatedResult<FileResult>>
 {
     public override void Configure()
     {
-        Post("/files/search");
+        Get("/files/search");
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(FileSearchQuery req, CancellationToken ct)

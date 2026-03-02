@@ -13,15 +13,9 @@ namespace Storage.Directories;
 
 using Directory = Models.Directory;
 
-public class DirectoryService : IDirectoryService
+public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private static readonly char[] InvalidChars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
-
-    public DirectoryService(IUnitOfWork unitOfWork)
-    {
-        _unitOfWork = unitOfWork;
-    }
+    private static readonly System.Buffers.SearchValues<char> s_invalidChars = System.Buffers.SearchValues.Create("/\\:*?\"<>|");
 
     public async Task<DirectorySummaryDto> CreateDirectoryAsync(string name, Guid ownerId, Guid? parentId = null,
         CancellationToken ct = default)
@@ -29,7 +23,7 @@ public class DirectoryService : IDirectoryService
         ValidateDirectoryName(name);
 
         // Check if directory with same name exists in same location
-        var existingDirectory = await _unitOfWork.Directories.FirstOrDefaultAsync(
+        var existingDirectory = await unitOfWork.Directories.FirstOrDefaultAsync(
             d => d.Name == name && d.ParentId == parentId && d.OwnerId == ownerId && d.DeletedAt == null, ct);
 
         if (existingDirectory != null)
@@ -40,11 +34,7 @@ public class DirectoryService : IDirectoryService
         // Verify parent directory exists and user has access
         if (parentId.HasValue)
         {
-            var parentDirectory = await _unitOfWork.Directories.GetByIdAsync(parentId.Value, ct);
-            if (parentDirectory == null)
-            {
-                throw new DirectoryNotFoundException(parentId.Value);
-            }
+            var parentDirectory = await unitOfWork.Directories.GetByIdAsync(parentId.Value, ct) ?? throw new DirectoryNotFoundException(parentId.Value);
 
             if (parentDirectory.OwnerId != ownerId)
             {
@@ -61,18 +51,18 @@ public class DirectoryService : IDirectoryService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _unitOfWork.BeginTransactionAsync(ct);
+        await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            await _unitOfWork.Directories.AddAsync(directory, ct);
-            await _unitOfWork.SaveChangesAsync(ct);
-            await _unitOfWork.CommitAsync(ct);
+            await unitOfWork.Directories.AddAsync(directory, ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitAsync(ct);
 
             return directory.ToSummaryDto();
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(ct);
+            await unitOfWork.RollbackAsync(ct);
             throw;
         }
     }
@@ -84,30 +74,29 @@ public class DirectoryService : IDirectoryService
 
         if (parentId is not null)
         {
-            root = await _unitOfWork.Directories.GetByIdAsync((Guid)parentId, ct);
+            root = await unitOfWork.Directories.GetByIdAsync((Guid)parentId, ct);
 
             if (root is null) throw new DirectoryNotFoundException((Guid)parentId);
         }
 
-        var builder = new DirectoryTreeBuilder();
         var tree = DirectoryTreeBuilder.BuildDirectoryTree(paths, root?.Name ?? "root", root?.Id,
             isRoot: parentId == null);
         var fileToParentMapping = DirectoryTreeBuilder.BuildFileToParentMapping(paths, tree);
 
         // The root dir already exists, we should not insert it and it is always bubbling on top
-        var nodes = builder.GetAllDirectories(tree).Skip(1);
+        var nodes = DirectoryTreeBuilder.GetAllDirectories(tree).Skip(1);
 
         try
         {
-            await _unitOfWork.BeginTransactionAsync(ct);
+            await unitOfWork.BeginTransactionAsync(ct);
 
-            await _unitOfWork.Directories.AddRangeAsync(nodes.Select(n => n.ToDirectory(userId)), ct);
-            await _unitOfWork.SaveChangesAsync(ct);
-            await _unitOfWork.CommitAsync(ct);
+            await unitOfWork.Directories.AddRangeAsync(nodes.Select(n => n.ToDirectory(userId)), ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitAsync(ct);
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(ct);
+            await unitOfWork.RollbackAsync(ct);
             throw;
         }
 
@@ -116,12 +105,7 @@ public class DirectoryService : IDirectoryService
 
     public async Task<Directory> GetDirectoryByIdAsync(Guid id, Guid userId, CancellationToken ct = default)
     {
-        var directory = await _unitOfWork.Directories.GetByIdAsync(id, ct);
-
-        if (directory == null)
-        {
-            throw new DirectoryNotFoundException(id);
-        }
+        var directory = await unitOfWork.Directories.GetByIdAsync(id, ct) ?? throw new DirectoryNotFoundException(id);
 
         return directory.OwnerId != userId ? throw new UnauthorizedDirectoryAccessException(id, userId) : directory;
     }
@@ -129,9 +113,7 @@ public class DirectoryService : IDirectoryService
     public async Task<DirectorySummaryDto> GetDirectoryDtoByIdAsync(Guid id, Guid userId,
         CancellationToken ct = default)
     {
-        var dir = await _unitOfWork.Directories.GetDirectoryMetadataAsync(id, userId, ct);
-
-        if (dir is null) throw new DirectoryNotFoundException(id);
+        var dir = await unitOfWork.Directories.GetDirectoryMetadataAsync(id, userId, ct) ?? throw new DirectoryNotFoundException(id);
 
         return dir.ToSummaryDto();
     }
@@ -139,7 +121,7 @@ public class DirectoryService : IDirectoryService
     public Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query,
         CancellationToken ct = default)
     {
-        return _unitOfWork.Directories.FindDirectoryAsync(userId, query, ct);
+        return unitOfWork.Directories.FindDirectoryAsync(userId, query, ct);
     }
 
     public async Task<PaginatedResult<DirectorySummaryDto>> GetPaginatedDirectories(Guid id, Guid userId,
@@ -149,7 +131,7 @@ public class DirectoryService : IDirectoryService
         SortBy sortBy = SortBy.Name,
         CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.GetSubdirectoriesAsync(id, userId, currentPage, pageSize, sortDirection,
+        return await unitOfWork.Directories.GetSubdirectoriesAsync(id, userId, currentPage, pageSize, sortDirection,
             sortBy, ct);
     }
 
@@ -158,7 +140,7 @@ public class DirectoryService : IDirectoryService
         SortDirection sortDirection = SortDirection.Asc,
         SortBy sortBy = SortBy.Name, CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.GetRootDirectoriesAsync(ownerId, page, pageSize, sortBy, sortDirection,
+        return await unitOfWork.Directories.GetRootDirectoriesAsync(ownerId, page, pageSize, sortBy, sortDirection,
             ct);
     }
 
@@ -166,7 +148,7 @@ public class DirectoryService : IDirectoryService
     public async Task<IEnumerable<DirectorySummaryDto>> GetUserDirectoriesAsync(Guid userId, Guid? parentId = null,
         CancellationToken ct = default)
     {
-        var dirs = await _unitOfWork.Directories.GetUserDirectories(userId, parentId, ct);
+        var dirs = await unitOfWork.Directories.GetUserDirectories(userId, parentId, ct);
         return dirs.Select(d => d.ToSummaryDto());
     }
 
@@ -178,7 +160,7 @@ public class DirectoryService : IDirectoryService
         CancellationToken ct = default)
     {
         await VerifyDirectoryAccessAsync(directoryId, userId, ct);
-        var dirs = await _unitOfWork.Directories.GetSubDirectories(directoryId, ct);
+        var dirs = await unitOfWork.Directories.GetSubDirectories(directoryId, ct);
 
         return dirs.Select(d => d.ToSummaryDto());
     }
@@ -188,7 +170,7 @@ public class DirectoryService : IDirectoryService
     {
         await VerifyDirectoryAccessAsync(directoryId, userId, ct);
 
-        return await _unitOfWork.Directories.GetAllFilesInDirectoryAsync(directoryId, includeSubdirectories, ct);
+        return await unitOfWork.Directories.GetAllFilesInDirectoryAsync(directoryId, includeSubdirectories, ct);
     }
 
     public async Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, Guid userId,
@@ -196,7 +178,7 @@ public class DirectoryService : IDirectoryService
     {
         await VerifyDirectoryAccessAsync(directoryId, userId, ct);
 
-        return await _unitOfWork.Directories.GetDirectoryPathAsync(directoryId, ct);
+        return await unitOfWork.Directories.GetDirectoryPathAsync(directoryId, ct);
     }
 
     public async Task<DirectoryDto> UpdateDirectoryAsync(Guid id, string name, Guid userId,
@@ -207,7 +189,7 @@ public class DirectoryService : IDirectoryService
         var directory = await GetDirectoryByIdAsync(id, userId, ct);
 
         // Check if another directory with same name exists in same location
-        var existingDirectory = await _unitOfWork.Directories.FirstOrDefaultAsync(
+        var existingDirectory = await unitOfWork.Directories.FirstOrDefaultAsync(
             d => d.Name == name && d.ParentId == directory.ParentId &&
                  d.OwnerId == userId && d.Id != id && d.DeletedAt == null, ct);
 
@@ -220,18 +202,18 @@ public class DirectoryService : IDirectoryService
         directory.UpdatedAt = DateTime.UtcNow;
         directory.UpdatedBy = userId;
 
-        await _unitOfWork.BeginTransactionAsync(ct);
+        await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            _unitOfWork.Directories.Update(directory);
-            await _unitOfWork.SaveChangesAsync(ct);
-            await _unitOfWork.CommitAsync(ct);
+            unitOfWork.Directories.Update(directory);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitAsync(ct);
 
             return directory.ToDto();
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(ct);
+            await unitOfWork.RollbackAsync(ct);
             throw;
         }
     }
@@ -241,16 +223,16 @@ public class DirectoryService : IDirectoryService
     {
         if (ids.Length == 0) return;
 
-        await _unitOfWork.BeginTransactionAsync(ct);
+        await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            await _unitOfWork.Directories.MoveDirectories(ids, newParentId, userId, ct);
-            await _unitOfWork.SaveChangesAsync(ct);
-            await _unitOfWork.CommitAsync(ct);
+            await unitOfWork.Directories.MoveDirectories(ids, newParentId, userId, ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitAsync(ct);
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(ct);
+            await unitOfWork.RollbackAsync(ct);
             throw;
         }
     }
@@ -276,10 +258,10 @@ public class DirectoryService : IDirectoryService
         if (!force)
         {
             // Check if directory has children or files
-            var childCount = await _unitOfWork.Directories.CountAsync(
+            var childCount = await unitOfWork.Directories.CountAsync(
                 d => d.ParentId == id && d.DeletedAt == null, ct);
 
-            var fileCount = await _unitOfWork.Files.CountAsync(
+            var fileCount = await unitOfWork.Files.CountAsync(
                 f => f.DirectoryId == id && f.DeletedAt == null, ct);
 
             var totalItems = childCount + fileCount;
@@ -289,7 +271,7 @@ public class DirectoryService : IDirectoryService
             }
         }
 
-        await _unitOfWork.BeginTransactionAsync(ct);
+        await unitOfWork.BeginTransactionAsync(ct);
         try
         {
             if (force)
@@ -298,44 +280,39 @@ public class DirectoryService : IDirectoryService
                 await DeleteDirectoryRecursivelyAsync(id, userId, ct);
             }
 
-            _unitOfWork.Directories.Remove(directory);
-            await _unitOfWork.SaveChangesAsync(ct);
-            await _unitOfWork.CommitAsync(ct);
+            unitOfWork.Directories.Remove(directory);
+            await unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.CommitAsync(ct);
         }
         catch
         {
-            await _unitOfWork.RollbackAsync(ct);
+            await unitOfWork.RollbackAsync(ct);
             throw;
         }
     }
 
     public async Task<bool> DirectoryExistsAsync(Guid id, CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.ExistsAsync(d => d.Id == id && d.DeletedAt == null, ct);
+        return await unitOfWork.Directories.ExistsAsync(d => d.Id == id && d.DeletedAt == null, ct);
     }
 
     public async Task<bool> DirectoryExistsWithOwnershipAsync(Guid id, Guid ownerId, CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.ExistsAsync(d => d.Id == id && d.DeletedAt == null && d.OwnerId == ownerId,
+        return await unitOfWork.Directories.ExistsAsync(d => d.Id == id && d.DeletedAt == null && d.OwnerId == ownerId,
             ct);
     }
 
     public async Task<bool> HasAccessToDirectoryAsync(Guid directoryId, Guid userId,
         CancellationToken ct = default)
     {
-        var directory = await _unitOfWork.Directories.GetByIdAsync(directoryId, ct);
+        var directory = await unitOfWork.Directories.GetByIdAsync(directoryId, ct);
         return directory != null && directory.OwnerId == userId;
     }
 
     // Private helper methods
     private async Task VerifyDirectoryAccessAsync(Guid directoryId, Guid userId, CancellationToken ct)
     {
-        var directory = await _unitOfWork.Directories.GetByIdAsync(directoryId, ct);
-
-        if (directory == null)
-        {
-            throw new DirectoryNotFoundException(directoryId);
-        }
+        var directory = await unitOfWork.Directories.GetByIdAsync(directoryId, ct) ?? throw new DirectoryNotFoundException(directoryId);
 
         if (directory.OwnerId != userId)
         {
@@ -355,34 +332,34 @@ public class DirectoryService : IDirectoryService
             throw new InvalidDirectoryNameException(name, "Directory name cannot exceed 255 characters.");
         }
 
-        if (name.IndexOfAny(InvalidChars) >= 0)
+        if (name.AsSpan().IndexOfAny(s_invalidChars) >= 0)
         {
             throw new InvalidDirectoryNameException(name,
-                $"Directory name contains invalid characters: {string.Join(", ", InvalidChars)}");
+                $"Directory name contains invalid characters: {string.Join(", ", s_invalidChars)}");
         }
     }
 
     private async Task DeleteDirectoryRecursivelyAsync(Guid directoryId, Guid userId, CancellationToken ct = default)
     {
         // Get all subdirectories
-        var subdirectories = await _unitOfWork.Directories.FindAsync(
+        var subdirectories = await unitOfWork.Directories.FindAsync(
             d => d.ParentId == directoryId && d.DeletedAt == null, ct);
 
         // Recursively delete subdirectories
         foreach (var subdir in subdirectories) await DeleteDirectoryRecursivelyAsync(subdir.Id, userId, ct);
 
         // Delete all files in this directory
-        var files = await _unitOfWork.Files.FindAsync(
+        var files = await unitOfWork.Files.FindAsync(
             f => f.DirectoryId == directoryId && f.DeletedAt == null, ct);
-        await _unitOfWork.Files.MarkAsDeleted(files.Select(f => f.Id).ToArray(), userId, ct);
+        await unitOfWork.Files.MarkAsDeleted(files.Select(f => f.Id).ToArray(), userId, ct);
     }
 
     public async Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId,
         CancellationToken ct = default) =>
-        await _unitOfWork.Directories.CopyDirectory(directoryId, destinationId, userId, ct);
+        await unitOfWork.Directories.CopyDirectory(directoryId, destinationId, userId, ct);
 
     public async Task<int> RestoreDirectories(Guid[] directoryIds, Guid userId, CancellationToken ct = default)
     {
-        return await _unitOfWork.Directories.RestoreDirectories(directoryIds, userId, ct);
+        return await unitOfWork.Directories.RestoreDirectories(directoryIds, userId, ct);
     }
 }

@@ -14,7 +14,7 @@ public class File : IBase
     public required string MimeType { get; init; }
 
     public NpgsqlTsVector SearchVector { get; set; } = null!;
-    public string NormalizedName { get; set; }
+    public string NormalizedName { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
 
     public Guid Id { get; set; }
@@ -32,7 +32,7 @@ public class File : IBase
 
     public Guid PreviewId { get; set; }
     public Preview? Preview { get; set; }
-    public ApplicationUser? Owner { get; set; }
+    public ApplicationUser Owner { get; set; } = null!;
     public Guid OwnerId { get; set; }
     public Directory? Directory { get; set; }
     public Guid? DirectoryId { get; set; }

@@ -1,4 +1,4 @@
-namespace API.Features.Tags.CrteateTag;
+namespace API.Features.Tags.CreateTag;
 
 public class CreateTagResponse
 {

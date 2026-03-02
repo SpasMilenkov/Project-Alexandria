@@ -1,3 +1,4 @@
+using API.Features.Auth.Extensions;
 using Common.Services;
 using DTO.Files;
 using DTO.Tags;
@@ -11,7 +12,7 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService)
 {
     public override void Configure()
     {
-        Post("/files/search/tags");
+        Get("/files/search/tags");
 
         Summary(s =>
         {
@@ -28,10 +29,13 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService)
                 PageSize = 20
             };
         });
+        Policies(Common.Auth.Policies.RequireUser);
+
     }
 
     public override async Task HandleAsync(SearchFilesByTagsRequest req, CancellationToken ct)
     {
+        var userId = User.GetUserId();
         try
         {
             var matchType = req.MatchType.ToLowerInvariant() switch
@@ -45,7 +49,7 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService)
             {
                 TagIds = req.TagIds,
                 MatchType = matchType,
-                UserId = req.UserId,
+                UserId = userId,
                 CurrentPage = req.Page,
                 PageSize = req.PageSize,
                 MinFileSize = req.MinFileSize,

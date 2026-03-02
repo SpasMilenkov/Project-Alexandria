@@ -48,6 +48,7 @@ sealed class InitializeFileUploadEndpoint(IStorageService s3Service)
     public override void Configure()
     {
         Post("files/init-upload");
+        Policies(Common.Auth.Policies.CanUpload);
     }
 
     public override async Task HandleAsync(InitializeFileUploadRequest req, CancellationToken ct)
@@ -60,6 +61,7 @@ sealed class InitializeFileUploadEndpoint(IStorageService s3Service)
             userId,
             req.ContentLength,
             req.DirectoryId, ct);
+
         await Send.OkAsync(
             new InitializeFileUploadResponse
             {

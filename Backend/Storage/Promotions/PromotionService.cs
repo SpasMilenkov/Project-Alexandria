@@ -9,25 +9,12 @@ using Microsoft.Extensions.Options;
 
 namespace Storage.Promotions;
 
-public class PromotionService : IPromotionService
+public class PromotionService(
+    IUnitOfWork unitOfWork,
+    IAmazonS3 s3,
+    IOptions<S3Config> config,
+    ILogger<PromotionService> logger) : IPromotionService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IAmazonS3 _s3;
-    private readonly IOptions<S3Config> _config;
-    private readonly ILogger<PromotionService> _logger;
-
-    public PromotionService(
-        IUnitOfWork unitOfWork,
-        IAmazonS3 s3,
-        IOptions<S3Config> config,
-        ILogger<PromotionService> logger)
-    {
-        _unitOfWork = unitOfWork;
-        _s3 = s3;
-        _config = config;
-        _logger = logger;
-    }
-
     public async Task<bool> TryPromoteContentObjectAsync(
         Guid contentObjectId,
         string tempObjectKey,
@@ -35,11 +22,11 @@ public class PromotionService : IPromotionService
     {
         try
         {
-            var contentObject = await _unitOfWork.ContentObjects.GetByIdAsync(contentObjectId, ct);
+            var contentObject = await unitOfWork.ContentObjects.GetByIdAsync(contentObjectId, ct);
 
             if (contentObject is null)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "ContentObject {ContentObjectId} not found for promotion",
                     contentObjectId);
                 return false;
@@ -47,7 +34,7 @@ public class PromotionService : IPromotionService
 
             if (contentObject.IsPromoted)
             {
-                _logger.LogDebug(
+                logger.LogDebug(
                     "ContentObject {ContentObjectId} already promoted",
                     contentObjectId);
                 return true;
@@ -56,46 +43,46 @@ public class PromotionService : IPromotionService
             contentObject.PromotionAttempts++;
             contentObject.LastPromotionAttemptAt = DateTime.UtcNow;
 
-            _unitOfWork.ContentObjects.Update(contentObject);
-            await _unitOfWork.SaveChangesAsync(ct);
+            unitOfWork.ContentObjects.Update(contentObject);
+            await unitOfWork.SaveChangesAsync(ct);
 
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Attempting to promote ContentObject {ContentObjectId} (attempt: {Attempt})",
                 contentObjectId, contentObject.PromotionAttempts);
 
             try
             {
-                await _s3.CopyObjectAsync(new CopyObjectRequest
+                await s3.CopyObjectAsync(new CopyObjectRequest
                 {
-                    SourceBucket = _config.Value.TempBucket,
+                    SourceBucket = config.Value.TempBucket,
                     SourceKey = $"content/{tempObjectKey}",
-                    DestinationBucket = _config.Value.UploadBucket,
+                    DestinationBucket = config.Value.UploadBucket,
                     DestinationKey = contentObject.StorageKey,
                     IfNoneMatch = "*" // Idempotent: only copy if doesn't exist
                 }, ct);
 
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Successfully copied ContentObject {ContentObjectId} to permanent storage",
                     contentObjectId);
             }
             catch (AmazonS3Exception ex)
                 when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
             {
-                _logger.LogInformation(
-                    "ContentObject {ContentObjectId} already exists in permanent storage",
-                    contentObjectId);
+                logger.LogInformation(
+                    "ContentObject {ContentObjectId} already exists in permanent storage{Exception}",
+                    contentObjectId, ex);
             }
 
             contentObject.IsPromoted = true;
             contentObject.PromotedAt = DateTime.UtcNow;
 
-            _unitOfWork.ContentObjects.Update(contentObject);
+            unitOfWork.ContentObjects.Update(contentObject);
 
-            await _unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
 
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Successfully promoted ContentObject {ContentObjectId}",
                 contentObjectId);
 
@@ -103,13 +90,13 @@ public class PromotionService : IPromotionService
         }
         catch (Exception ex)
         {
-            _logger.LogError(
+            logger.LogError(
                 ex,
                 "Failed to promote ContentObject {ContentObjectId}: {ErrorMessage}",
                 contentObjectId, ex.Message);
 
             // Check if we've exceeded retry limit
-            var contentObject = await _unitOfWork.ContentObjects.GetByIdAsync(contentObjectId, ct);
+            var contentObject = await unitOfWork.ContentObjects.GetByIdAsync(contentObjectId, ct);
             if (contentObject?.PromotionAttempts >= 10)
             {
                 await AlertPromotionFailureAsync(contentObjectId, contentObject.PromotionAttempts);
@@ -122,11 +109,10 @@ public class PromotionService : IPromotionService
     private Task AlertPromotionFailureAsync(Guid contentObjectId, int attempts)
     {
         // TODO: Implement alerting (email, Slack, PagerDuty, etc.)
-        _logger.LogCritical(
+        logger.LogCritical(
             "ALERT: ContentObject {ContentObjectId} failed promotion after {Attempts} attempts!",
             contentObjectId, attempts);
 
         throw new NotImplementedException("Alerting not yet implemented");
-        // return Task.CompletedTask;
     }
 }

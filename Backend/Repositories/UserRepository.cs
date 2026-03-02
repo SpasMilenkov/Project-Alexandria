@@ -70,7 +70,6 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
 
     public void Remove(ApplicationUser entity)
     {
-        // Soft delete — if you ever need hard delete, call userManager.DeleteAsync explicitly in the service
         var now = DateTime.UtcNow;
         entity.DeletedAt = now;
         entity.UpdatedAt = now;

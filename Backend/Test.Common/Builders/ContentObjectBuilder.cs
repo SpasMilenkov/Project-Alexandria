@@ -12,7 +12,7 @@ public class ContentObjectBuilder
     private string? _storageKey = null; // derived from hash lazily in Build()
     private bool _isPromoted = false;
     private DateTime? _promotedAt = null;
-    private int _promotionAttempts = 0;
+    private readonly int _promotionAttempts = 0;
     private DateTime? _lastPromotionAttemptAt = null;
     private DateTime? _orphanedAt = null;
     private Guid? _uploadId = null;

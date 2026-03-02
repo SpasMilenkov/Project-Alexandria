@@ -11,7 +11,7 @@ namespace Repositories;
 public class PreviewRepository(AlexandriaDbContext context) : IPreviewRepository
 {
     private readonly DbSet<Preview> _previews = context.Previews;
-    
+
     public async Task<Preview?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         return await _previews.FindAsync(new object[] { id }, ct);
@@ -43,12 +43,12 @@ public class PreviewRepository(AlexandriaDbContext context) : IPreviewRepository
     {
         var previewList = entities.ToList();
         var now = DateTime.UtcNow;
-        
+
         foreach (var entity in previewList)
         {
             entity.CreatedAt = now;
         }
-        
+
         await _previews.AddRangeAsync(previewList, ct);
         return previewList;
     }
@@ -71,8 +71,8 @@ public class PreviewRepository(AlexandriaDbContext context) : IPreviewRepository
 
     public async Task<int> CountAsync(Expression<Func<Preview, bool>>? predicate = null, CancellationToken ct = default)
     {
-        return predicate == null 
-            ? await _previews.CountAsync(ct) 
+        return predicate == null
+            ? await _previews.CountAsync(ct)
             : await _previews.CountAsync(predicate, ct);
     }
 

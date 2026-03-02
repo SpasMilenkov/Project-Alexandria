@@ -32,12 +32,12 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(a => a.Description)
             .HasMaxLength(ValidationConstants.StringLengths.LongString)
             .IsRequired();
-        
+
         builder.Property(a => a.Source)
             .HasConversion<string>()
             .HasMaxLength(ValidationConstants.StringLengths.ShortString)
             .IsRequired();
-        
+
         builder.Property(a => a.IpAddress)
             .HasMaxLength(45); // IPv6 max length
 

@@ -21,10 +21,10 @@ public class GetSubdirectoriesTests(AlexandriaFixture fixture) : FullStackTestBa
         await SeedDirectoryAsync(parentId: parent.Id);
         await SeedDirectoryAsync(parentId: parent.Id);
 
-        var response = await Auth.GetAsync(Route(parent.Id));
+        var response = await Auth.GetAsync(Route(parent.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.TotalCount.Should().Be(2);
     }
 
@@ -33,17 +33,17 @@ public class GetSubdirectoriesTests(AlexandriaFixture fixture) : FullStackTestBa
     {
         var dir = await SeedDirectoryAsync();
 
-        var response = await Auth.GetAsync(Route(dir.Id));
+        var response = await Auth.GetAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.Items.Count.Should().Be(0);
     }
 
     [Fact]
     public async Task Unauthenticated_Returns401()
     {
-        var response = await Anon.GetAsync(Route(Guid.NewGuid()));
+        var response = await Anon.GetAsync(Route(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

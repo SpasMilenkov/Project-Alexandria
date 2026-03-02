@@ -5,31 +5,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Storage.Promotions;
 
-public class PromotionQueueWorker : BackgroundService
+public class PromotionQueueWorker(
+    IServiceProvider serviceProvider,
+    PromotionQueueService queue,
+    ILogger<PromotionQueueWorker> logger) : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly PromotionQueueService _queue;
-    private readonly ILogger<PromotionQueueWorker> _logger;
-
-    public PromotionQueueWorker(
-        IServiceProvider serviceProvider,
-        PromotionQueueService queue,
-        ILogger<PromotionQueueWorker> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _queue = queue;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("PromotionQueueWorker started");
+        logger.LogInformation("PromotionQueueWorker started");
 
-        await foreach (var (contentObjectId, tempObjectKey) in _queue.Reader.ReadAllAsync(stoppingToken))
+        await foreach (var (contentObjectId, tempObjectKey) in queue.Reader.ReadAllAsync(stoppingToken))
         {
             try
             {
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = serviceProvider.CreateScope();
                 var promotionService = scope.ServiceProvider
                     .GetRequiredService<IPromotionService>();
 
@@ -40,13 +30,13 @@ public class PromotionQueueWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(
+                logger.LogError(
                     ex,
                     "Error processing promotion for ContentObject {ContentObjectId}",
                     contentObjectId);
             }
         }
 
-        _logger.LogInformation("PromotionQueueWorker stopped");
+        logger.LogInformation("PromotionQueueWorker stopped");
     }
 }

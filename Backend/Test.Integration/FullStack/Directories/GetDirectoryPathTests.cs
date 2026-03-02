@@ -16,10 +16,10 @@ public class GetDirectoryPathTests(AlexandriaFixture fixture) : FullStackTestBas
     {
         var dir = await SeedDirectoryAsync();
 
-        var response = await Auth.GetAsync(Route(dir.Id));
+        var response = await Auth.GetAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<GetDirectoryPathResponse>();
+        var body = await response.Content.ReadFromJsonAsync<GetDirectoryPathResponse>(cancellationToken: TestContext.Current.CancellationToken);
         body!.PathParts.Should().HaveCount(1);
         body.PathParts[0].Id.Should().Be(dir.Id);
         body.PathParts[0].Name.Should().Be(dir.Name);
@@ -32,10 +32,10 @@ public class GetDirectoryPathTests(AlexandriaFixture fixture) : FullStackTestBas
         var parent = await SeedDirectoryAsync(parentId: grandparent.Id);
         var child = await SeedDirectoryAsync(parentId: parent.Id);
 
-        var response = await Auth.GetAsync(Route(child.Id));
+        var response = await Auth.GetAsync(Route(child.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<GetDirectoryPathResponse>();
+        var body = await response.Content.ReadFromJsonAsync<GetDirectoryPathResponse>(cancellationToken: TestContext.Current.CancellationToken);
         body!.PathParts.Should().HaveCount(3);
         body.PathParts[0].Id.Should().Be(grandparent.Id);
         body.PathParts[1].Id.Should().Be(parent.Id);
@@ -47,7 +47,7 @@ public class GetDirectoryPathTests(AlexandriaFixture fixture) : FullStackTestBas
     {
         var dir = await SeedDirectoryAsync();
 
-        var response = await Anon.GetAsync(Route(dir.Id));
+        var response = await Anon.GetAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

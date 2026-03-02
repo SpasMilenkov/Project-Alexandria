@@ -9,16 +9,16 @@ public class FFprobeStream
 {
     [JsonPropertyName("codec_name")]
     public string? CodecName { get; set; }
-    
+
     [JsonPropertyName("codec_type")]
     public string? CodecType { get; set; }
-    
+
     [JsonPropertyName("width")]
     public int Width { get; set; }
-    
+
     [JsonPropertyName("height")]
     public int Height { get; set; }
-    
+
     [JsonPropertyName("disposition")]
     public FFprobeDisposition? Disposition { get; set; }
 }

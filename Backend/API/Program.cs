@@ -22,7 +22,10 @@ bld.WebHost.ConfigureKestrelMaxRequestSize();
 
 var app = bld.Build();
 
-await app.InitializeDatabaseAsync();
+if (!app.Configuration.GetValue<bool>("SkipDatabaseInit"))
+{
+    await app.InitializeDatabaseAsync();
+}
 
 app.UseResponseCaching();
 app.UseCors("AllowOrigin");

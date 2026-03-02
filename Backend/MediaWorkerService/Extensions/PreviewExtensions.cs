@@ -3,6 +3,8 @@ using Common.Queues;
 using Common.Repositories;
 using Common.Services;
 using Data;
+using MediaWorkerService.Handlers;
+using PreviewService;
 using PreviewService.Media;
 using Repositories;
 using Storage;
@@ -38,6 +40,9 @@ public static class PreviewExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
+        services.AddScoped<ImagePreviewGenerationHandler>();
+        services.AddScoped<MediaPreviewGenerationHandler>();
+        services.AddScoped<IImagePreviewService, ImagePreviewService>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

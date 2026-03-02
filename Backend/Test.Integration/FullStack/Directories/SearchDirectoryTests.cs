@@ -16,10 +16,10 @@ public class SearchDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     [Fact]
     public async Task NoDirectories_ReturnsEmpty()
     {
-        var response = await Auth.GetAsync(BaseRoute);
+        var response = await Auth.GetAsync(BaseRoute, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.Items.Count.Should().Be(0);
     }
 
@@ -29,10 +29,10 @@ public class SearchDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         await SeedDirectoryAsync(configure: b => b.WithName("photos-2024"));
         await SeedDirectoryAsync(configure: b => b.WithName("documents"));
 
-        var response = await Auth.GetAsync($"{BaseRoute}?nameContains=photos");
+        var response = await Auth.GetAsync($"{BaseRoute}?nameContains=photos", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.TotalCount.Should().Be(1);
         body.Items.Should().ContainSingle(d => d.Name == "photos-2024");
     }
@@ -44,10 +44,10 @@ public class SearchDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         await SeedDirectoryAsync(); // own
         await SeedDirectoryAsync(configure: b => b.WithOwner(otherId)); // other user's
 
-        var response = await Auth.GetAsync(BaseRoute);
+        var response = await Auth.GetAsync(BaseRoute, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>();
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(cancellationToken: TestContext.Current.CancellationToken);
         body!.TotalCount.Should().Be(1);
     }
 
@@ -57,19 +57,19 @@ public class SearchDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         await SeedDirectoryAsync(configure: b => b.WithDeletedAt(DateTime.UtcNow)); // deleted
         await SeedDirectoryAsync(); // active
 
-        var activeResponse = await Auth.GetAsync($"{BaseRoute}?isDeleted=false");
-        var activeBody = await activeResponse.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>();
+        var activeResponse = await Auth.GetAsync($"{BaseRoute}?isDeleted=false", TestContext.Current.CancellationToken);
+        var activeBody = await activeResponse.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(cancellationToken: TestContext.Current.CancellationToken);
         activeBody!.TotalCount.Should().Be(1);
 
-        var deletedResponse = await Auth.GetAsync($"{BaseRoute}?isDeleted=true");
-        var deletedBody = await deletedResponse.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>();
+        var deletedResponse = await Auth.GetAsync($"{BaseRoute}?isDeleted=true", TestContext.Current.CancellationToken);
+        var deletedBody = await deletedResponse.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(cancellationToken: TestContext.Current.CancellationToken);
         deletedBody!.TotalCount.Should().Be(1);
     }
 
     [Fact]
     public async Task Unauthenticated_Returns401()
     {
-        var response = await Anon.GetAsync(BaseRoute);
+        var response = await Anon.GetAsync(BaseRoute, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

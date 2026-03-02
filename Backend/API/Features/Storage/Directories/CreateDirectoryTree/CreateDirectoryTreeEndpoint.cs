@@ -16,6 +16,7 @@ sealed class CreateDirectoryTreeEndpoint(IDirectoryService directoryService)
     public override void Configure()
     {
         Post("directories/create-subtree");
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(CreateDirectoryTreeRequest req, CancellationToken ct)

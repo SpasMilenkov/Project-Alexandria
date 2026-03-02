@@ -2,7 +2,7 @@ using DTO.Files;
 
 namespace DTO.Directories;
 
-public record DirectoryDto(    
+public record DirectoryDto(
     Guid Id,
     string Name,
     Guid ParentId,

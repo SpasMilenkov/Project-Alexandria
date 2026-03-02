@@ -1,10 +1,10 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 
 namespace API.Features.Storage.Directories.CreateDir;
 
-public class CreateDirEndpoint(IDirectoryService dirService): Endpoint<CreateDirRequest, CreateDirResult>
+public class CreateDirEndpoint(IDirectoryService dirService) : Endpoint<CreateDirRequest, CreateDirResult>
 {
 
     public override void Configure()
@@ -24,18 +24,17 @@ public class CreateDirEndpoint(IDirectoryService dirService): Endpoint<CreateDir
             };
         });
         Description(x => x.WithTags("Directories"));
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(CreateDirRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
+
         var dir = await dirService.CreateDirectoryAsync(req.Name, userId, req.ParentId, ct);
-        await Send.OkAsync( new CreateDirResult
+        await Send.OkAsync(new CreateDirResult
         {
             Directory = dir
-        } ,cancellation:ct);
+        }, cancellation: ct);
     }
 }

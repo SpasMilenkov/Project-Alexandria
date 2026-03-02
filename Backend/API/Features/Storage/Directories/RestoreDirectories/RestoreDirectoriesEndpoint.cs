@@ -3,6 +3,8 @@ using Common.Services;
 using FastEndpoints;
 using FluentValidation;
 
+namespace API.Features.Storage.Directories.RestoreDirectories;
+
 internal sealed class RestoreDirectoriesRequest
 {
     public required Guid[] DirectoryIds { get; set; }
@@ -32,6 +34,7 @@ sealed class RestoreDirectoriesEndpoint(IDirectoryService directoryService) : En
     public override void Configure()
     {
         Post("directories/restore");
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(RestoreDirectoriesRequest req, CancellationToken ct)

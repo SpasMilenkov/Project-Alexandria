@@ -17,10 +17,10 @@ public class GetDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(fi
     {
         var dir = await SeedDirectoryAsync();
 
-        var response = await Auth.GetAsync(Route(dir.Id));
+        var response = await Auth.GetAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<GetDirResult>();
+        var body = await response.Content.ReadFromJsonAsync<GetDirResult>(cancellationToken: TestContext.Current.CancellationToken);
         body!.Directory.Id.Should().Be(dir.Id);
         body.Directory.Name.Should().Be(dir.Name);
     }
@@ -30,7 +30,7 @@ public class GetDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(fi
     {
         var dir = await SeedDirectoryAsync();
 
-        var response = await Anon.GetAsync(Route(dir.Id));
+        var response = await Anon.GetAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -41,7 +41,7 @@ public class GetDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(fi
         var (_, otherId) = await CreateOtherUserAsync();
         var dir = await SeedDirectoryAsync(configure: b => b.WithOwner(otherId));
 
-        var response = await Auth.GetAsync(Route(dir.Id));
+        var response = await Auth.GetAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }
@@ -49,7 +49,7 @@ public class GetDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(fi
     [Fact]
     public async Task NonExistentDirectory_Returns4xx()
     {
-        var response = await Auth.GetAsync(Route(Guid.NewGuid()));
+        var response = await Auth.GetAsync(Route(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }

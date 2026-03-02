@@ -1,6 +1,6 @@
 namespace Storage.Directories.TreeBuilder;
 
-public class DirectoryTreeBuilder
+public static class DirectoryTreeBuilder
 {
     public static DirectoryNode BuildDirectoryTree(List<string> paths, string rootName, Guid? rootId,
         bool isRoot = false)
@@ -60,7 +60,7 @@ public class DirectoryTreeBuilder
         return fileToParentGuid;
     }
 
-    public List<DirectoryNode> GetAllDirectories(DirectoryNode root)
+    public static List<DirectoryNode> GetAllDirectories(DirectoryNode root)
     {
         var directories = new List<DirectoryNode>();
         CollectDirectories(root, directories);

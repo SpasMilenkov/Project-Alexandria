@@ -18,10 +18,10 @@ public class UpdateFileMetadataTests(AlexandriaFixture fixture) : FullStackTestB
         var file = await SeedFileWithVersionAsync();
         var req = new UpdateFileMetadataRequest { Id = file.Id, Name = "new-name.txt" };
 
-        var response = await Auth.PatchAsJsonAsync(Route(file.Id), req);
+        var response = await Auth.PatchAsJsonAsync(Route(file.Id), req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<UpdateFileMetadataResponse>();
+        var body = await response.Content.ReadFromJsonAsync<UpdateFileMetadataResponse>(cancellationToken: TestContext.Current.CancellationToken);
         body!.Name.Should().Be("new-name.txt");
     }
 
@@ -31,7 +31,7 @@ public class UpdateFileMetadataTests(AlexandriaFixture fixture) : FullStackTestB
         var file = await SeedFileWithVersionAsync();
         var req = new UpdateFileMetadataRequest { Id = file.Id };
 
-        var response = await Auth.PatchAsJsonAsync(Route(file.Id), req);
+        var response = await Auth.PatchAsJsonAsync(Route(file.Id), req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -42,7 +42,7 @@ public class UpdateFileMetadataTests(AlexandriaFixture fixture) : FullStackTestB
         var file = await SeedFileWithVersionAsync();
         var req = new UpdateFileMetadataRequest { Id = file.Id, Name = new string('a', 256) };
 
-        var response = await Auth.PatchAsJsonAsync(Route(file.Id), req);
+        var response = await Auth.PatchAsJsonAsync(Route(file.Id), req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -52,7 +52,7 @@ public class UpdateFileMetadataTests(AlexandriaFixture fixture) : FullStackTestB
     {
         var req = new UpdateFileMetadataRequest { Id = Guid.NewGuid(), Name = "name.txt" };
 
-        var response = await Auth.PatchAsJsonAsync(Route(Guid.NewGuid()), req);
+        var response = await Auth.PatchAsJsonAsync(Route(Guid.NewGuid()), req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -65,7 +65,7 @@ public class UpdateFileMetadataTests(AlexandriaFixture fixture) : FullStackTestB
         var file = await SeedFileWithVersionAsync();
         var req = new UpdateFileMetadataRequest { Id = file.Id, Name = "anon.txt" };
 
-        var response = await Anon.PatchAsJsonAsync(Route(file.Id), req);
+        var response = await Anon.PatchAsJsonAsync(Route(file.Id), req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }
@@ -79,7 +79,7 @@ public class UpdateFileMetadataTests(AlexandriaFixture fixture) : FullStackTestB
         var (otherClient, _) = await CreateOtherUserAsync();
         var req = new UpdateFileMetadataRequest { Id = file.Id, Name = "hacked.txt" };
 
-        var response = await otherClient.PatchAsJsonAsync(Route(file.Id), req);
+        var response = await otherClient.PatchAsJsonAsync(Route(file.Id), req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }

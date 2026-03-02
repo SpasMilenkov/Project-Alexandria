@@ -11,9 +11,8 @@ public class UpdateBehaviorRequest
     public ToastLevel ToastLevel { get; set; }
 }
 
-public class UpdateBehaviorEndpoint : Endpoint<UpdateBehaviorRequest, GetBehaviorResponse>
+public class UpdateBehaviorEndpoint(IUserSettingsService settingsService) : Endpoint<UpdateBehaviorRequest, GetBehaviorResponse>
 {
-    public IUserSettingsService SettingsService { get; set; } = default!;
 
     public override void Configure()
     {
@@ -24,13 +23,13 @@ public class UpdateBehaviorEndpoint : Endpoint<UpdateBehaviorRequest, GetBehavio
     {
         var userId = User.GetUserId();
 
-        await SettingsService.SetBehaviorAsync(userId, new BehaviorSettingsValue
+        await settingsService.SetBehaviorAsync(userId, new BehaviorSettingsValue
         {
             SkipDeleteConfirmation = req.SkipDeleteConfirmation,
             ToastLevel = req.ToastLevel,
         }, userId, ct);
 
-        var saved = await SettingsService.GetBehaviorAsync(userId, ct);
+        var saved = await settingsService.GetBehaviorAsync(userId, ct);
 
         await Send.OkAsync(new GetBehaviorResponse
         {

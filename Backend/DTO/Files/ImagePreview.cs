@@ -1,5 +1,5 @@
 using File = Models.File;
 
-namespace Common.Services;
+namespace DTO.Files;
 
 public record ImagePreview(MemoryStream ImageStream, File Metadata);

@@ -11,7 +11,7 @@ public interface IFileRepository : IRepository<File>
     Task<byte[]?> GetFileHash(Guid fileId, Guid ownerId, CancellationToken ct = default);
     Task<string> GetFileHashAsString(Guid fileId, Guid ownerId, CancellationToken ct = default);
     Task<File> UpdateAsync(File file, CancellationToken ct = default);
-    Task<FileResult?> GetFileWithTagsAsync(Guid fileId, CancellationToken ct = default);
+    Task<FileResult?> GetFileWithTagsAsync(Guid userId, Guid fileId, CancellationToken ct = default);
 
     Task<File?> GetFileEntityWithTagsAsync(
         Guid fileId,

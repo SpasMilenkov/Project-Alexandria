@@ -126,5 +126,8 @@ public class AlexandriaFixture : IAsyncLifetime
         // Workers don't exist in the test environment
         ["HealthChecks:Workers:0:Enabled"] = "false",
         ["HealthChecks:Workers:1:Enabled"] = "false",
+
+        // Skip database initialization — the fixture already runs migrations
+        ["SkipDatabaseInit"] = "true",
     };
 }

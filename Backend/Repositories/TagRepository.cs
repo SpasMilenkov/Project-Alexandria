@@ -97,7 +97,7 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
     }
 
     // Additional methods specific to Tags
-    public async Task<Tag?> GetByIdAndUserIdAsync(Guid tagId, Guid userId, CancellationToken ct = default)
+    public async Task<Tag?> GetByIdAndUserIdAsync(Guid userId, Guid tagId, CancellationToken ct = default)
     {
         return await _tags.FirstOrDefaultAsync(t => t.Id == tagId && t.OwnerId == userId && t.DeletedAt == null, ct);
     }

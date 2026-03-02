@@ -42,7 +42,7 @@ public static class ServiceExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
-        
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddSingleton<PromotionQueueService>();

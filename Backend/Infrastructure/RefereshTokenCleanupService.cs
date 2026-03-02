@@ -48,7 +48,7 @@ public partial class RefreshTokenCleanupService(
         var cutoffDate = DateTime.UtcNow.AddDays(-30);
 
         var expiredTokens = await dbContext.RefreshTokens
-            .Where(rt => rt.ExpiresAt < DateTime.UtcNow || 
+            .Where(rt => rt.ExpiresAt < DateTime.UtcNow ||
                         (rt.IsRevoked && rt.RevokedAt < cutoffDate))
             .ToListAsync();
 

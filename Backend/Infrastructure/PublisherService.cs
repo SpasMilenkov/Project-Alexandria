@@ -16,7 +16,7 @@ public class PublisherService(IChannelPool channelPool) : IPublisherService
             durable: true,
             autoDelete: false,
             arguments: null);
-    
+
         try
         {
             await channel.BasicPublishAsync(

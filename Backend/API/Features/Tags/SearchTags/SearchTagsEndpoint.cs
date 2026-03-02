@@ -10,7 +10,7 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
 {
     public override void Configure()
     {
-        Post("/tags/search");
+        Get("/tags/search");
 
         Summary(s =>
         {
@@ -26,6 +26,8 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
                 PageSize = 20
             };
         });
+        Policies(Common.Auth.Policies.RequireUser);
+
     }
 
     public override async Task HandleAsync(SearchTagsRequest req, CancellationToken ct)

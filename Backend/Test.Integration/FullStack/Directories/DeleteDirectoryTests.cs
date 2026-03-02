@@ -17,12 +17,12 @@ public class DeleteDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     {
         var dir = await SeedDirectoryAsync();
 
-        var response = await Auth.DeleteAsync(Route(dir.Id));
+        var response = await Auth.DeleteAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var deleted = await db.Directories.FindAsync(dir.Id);
+        var deleted = await db.Directories.FindAsync(new object?[] { dir.Id }, TestContext.Current.CancellationToken);
         deleted!.DeletedAt.Should().NotBeNull();
     }
 
@@ -32,7 +32,7 @@ public class DeleteDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         var parent = await SeedDirectoryAsync();
         await SeedDirectoryAsync(parentId: parent.Id); // child
 
-        var response = await Auth.DeleteAsync(Route(parent.Id, force: false));
+        var response = await Auth.DeleteAsync(Route(parent.Id, force: false), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -43,13 +43,13 @@ public class DeleteDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
         var parent = await SeedDirectoryAsync();
         var child = await SeedDirectoryAsync(parentId: parent.Id);
 
-        var response = await Auth.DeleteAsync(Route(parent.Id, force: true));
+        var response = await Auth.DeleteAsync(Route(parent.Id, force: true), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
-        var deletedParent = await db.Directories.FindAsync(parent.Id);
-        var deletedChild = await db.Directories.FindAsync(child.Id);
+        var deletedParent = await db.Directories.FindAsync(new object?[] { parent.Id }, TestContext.Current.CancellationToken);
+        var deletedChild = await db.Directories.FindAsync(new object?[] { child.Id }, TestContext.Current.CancellationToken);
         deletedParent!.DeletedAt.Should().NotBeNull();
         deletedChild!.DeletedAt.Should().NotBeNull();
     }
@@ -59,7 +59,7 @@ public class DeleteDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     {
         var dir = await SeedDirectoryAsync();
 
-        var response = await Anon.DeleteAsync(Route(dir.Id));
+        var response = await Anon.DeleteAsync(Route(dir.Id), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -67,7 +67,7 @@ public class DeleteDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
     [Fact]
     public async Task NonExistentDirectory_Returns4xx()
     {
-        var response = await Auth.DeleteAsync(Route(Guid.NewGuid()));
+        var response = await Auth.DeleteAsync(Route(Guid.NewGuid()), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().NotBe(HttpStatusCode.OK);
     }

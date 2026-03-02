@@ -1,9 +1,12 @@
+using API.Features.Auth.Extensions;
 using Common.Services;
 using DTO.Tags;
 using FastEndpoints;
 
 namespace API.Features.Tags.GetTagsForFile;
 
+
+//TODO THIS SHOULD USE THE USER ID TO VALIDATE OWNERSHIP, ALL TAG ENDPOINTS AND SERVICES NEED TO DO THIS 
 public class GetTagsForFileEndpoint(IFileTagService tagService)
     : Endpoint<GetTagsForFileRequest, GetTagsForFileResponse>
 {
@@ -18,13 +21,17 @@ public class GetTagsForFileEndpoint(IFileTagService tagService)
             s.Responses[200] = "Tags retrieved successfully";
             s.Responses[404] = "File not found";
         });
+        Policies(Common.Auth.Policies.RequireUser);
+
     }
 
     public override async Task HandleAsync(GetTagsForFileRequest req, CancellationToken ct)
     {
+
+        var userId = User.GetUserId();
         try
         {
-            var tags = await tagService.GetTagsForFileAsync(req.FileId, ct);
+            var tags = await tagService.GetTagsForFileAsync(userId, req.FileId, ct);
 
             await Send.OkAsync(new GetTagsForFileResponse
             {

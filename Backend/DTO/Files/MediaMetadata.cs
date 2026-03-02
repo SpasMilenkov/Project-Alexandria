@@ -10,7 +10,7 @@ public class MediaMetadata
     public long FileSize { get; set; }
     public double BitrateMbps { get; set; }
     public string? FormatName { get; set; }
-    
+
     // Stream information
     public string? VideoCodec { get; set; }
     public string? AudioCodec { get; set; }
@@ -19,7 +19,7 @@ public class MediaMetadata
     public bool HasVideo { get; set; }
     public bool HasAudio { get; set; }
     public bool HasEmbeddedArtwork { get; set; }
-    
+
     // Audio metadata tags (ID3, etc.)
     public string? Title { get; set; }
     public string? Artist { get; set; }

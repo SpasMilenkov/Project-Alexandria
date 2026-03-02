@@ -55,7 +55,7 @@ public class PdfPreviewService() : IPdfPreviewService
     {
         var outputDir = Path.GetTempPath();
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}.pdf");
-        
+
         await ConvertToPdfWithLibreOffice(inputPath, outputDir, ct);
 
         if (!File.Exists(expectedOutput))
@@ -72,7 +72,7 @@ public class PdfPreviewService() : IPdfPreviewService
     {
         var outputDir = Path.GetTempPath();
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}.pdf");
-        
+
         await ConvertToPdfWithLibreOffice(inputPath, outputDir, ct);
 
         if (!File.Exists(expectedOutput))
@@ -103,7 +103,7 @@ public class PdfPreviewService() : IPdfPreviewService
                 if (usedRange != null)
                 {
                     var maxRow = Math.Min(20, usedRange.RowCount());
-                    
+
                     // Delete rows beyond the first 20
                     if (usedRange.RowCount() > maxRow)
                     {
@@ -113,7 +113,7 @@ public class PdfPreviewService() : IPdfPreviewService
 
                 workbook.SaveAs(tempExcelPath);
             }, ct);
-            
+
             await ConvertToPdfWithLibreOffice(tempExcelPath, outputDir, ct);
 
             if (!File.Exists(expectedOutput))

@@ -2,11 +2,11 @@ using DTO.Files;
 
 namespace DTO.Extensions;
 
-public static class MediaMetadataExtensions 
+public static class MediaMetadataExtensions
 {
     public static Models.MediaMetadata ToEntity(
-        this MediaMetadata dto, 
-        Guid fileId, 
+        this MediaMetadata dto,
+        Guid fileId,
         string? thumbnailPath = null)
     {
         return new Models.MediaMetadata

@@ -7,23 +7,15 @@ using Models;
 
 namespace Storage.Promotions;
 
-public class PromotionScannerWorker : BackgroundService
+public class PromotionScannerWorker(
+    IServiceProvider serviceProvider,
+    ILogger<PromotionScannerWorker> logger) : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<PromotionScannerWorker> _logger;
     private readonly TimeSpan _scanInterval = TimeSpan.FromMinutes(2);
-
-    public PromotionScannerWorker(
-        IServiceProvider serviceProvider,
-        ILogger<PromotionScannerWorker> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("PromotionScannerWorker started");
+        logger.LogInformation("PromotionScannerWorker started");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -33,18 +25,18 @@ public class PromotionScannerWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during promotion scan");
+                logger.LogError(ex, "Error during promotion scan");
             }
 
             await Task.Delay(_scanInterval, stoppingToken);
         }
 
-        _logger.LogInformation("PromotionScannerWorker stopped");
+        logger.LogInformation("PromotionScannerWorker stopped");
     }
 
     private async Task ScanAndPromoteAsync(CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var promotionService = scope.ServiceProvider.GetRequiredService<IPromotionService>();
 
@@ -54,14 +46,14 @@ public class PromotionScannerWorker : BackgroundService
                     co.PromotionAttempts < 10, // Don't retry failed ones
                 ct);
 
-        var contentObjects = unpromotedObjects as ContentObject[] ?? unpromotedObjects.ToArray();
-        if (!contentObjects.Any())
+        var contentObjects = unpromotedObjects as ContentObject[] ?? [.. unpromotedObjects];
+        if (contentObjects.Length == 0)
         {
-            _logger.LogDebug("No unpromoted content objects found");
+            logger.LogDebug("No unpromoted content objects found");
             return;
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Found {Count} unpromoted content objects, attempting promotion",
             contentObjects.Count());
 

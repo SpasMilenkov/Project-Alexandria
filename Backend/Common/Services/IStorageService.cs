@@ -24,7 +24,7 @@ public interface IStorageService
 
     // File Download
     Task<Stream> DownloadFile(Guid fileId, Guid ownerId, CancellationToken ct);
-    Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct);
+    Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default);
 
     Task StreamFile(
         string fileId,

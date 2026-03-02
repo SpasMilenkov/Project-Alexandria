@@ -18,6 +18,6 @@ public class DirectoryNode
         Name = name;
         FullPath = fullPath;
         ParentId = parentId;
-        Children = new Dictionary<string, DirectoryNode>();
+        Children = [];
     }
 }

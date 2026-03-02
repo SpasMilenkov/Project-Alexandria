@@ -12,39 +12,49 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PreviewService;
 
-public class ImagePreviewService(): IImagePreviewService
+public class ImagePreviewService() : IImagePreviewService
 {
-    public async Task<Stream> GenerateImagePreview(Stream imageToPreview,  string? format, int width = 1280, int height = 720)
+    public async Task<Stream> GenerateImagePreview(Stream imageToPreview, string? format, int width = 1280, int height = 720)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(height);
-        ArgumentOutOfRangeException.ThrowIfNegative(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+
         var stream = new MemoryStream();
         using var image = await Image.LoadAsync(imageToPreview);
         try
         {
-
-            image.Mutate(x => x.Resize(width, height, KnownResamplers.Welch));
-
-            if (format is null && image.Metadata.DecodedImageFormat is not null)
-                await image.SaveAsync(stream, image.Metadata.DecodedImageFormat);
-            else
+            if (image.Width > width || image.Height > height)
             {
-                var encoder = GetEncoder(format);
-                await image.SaveAsync(stream, encoder);
+                image.Mutate(x => x.Resize(new ResizeOptions
+                {
+                    Size = new Size(width, height),
+                    Mode = ResizeMode.Max,
+                    Sampler = KnownResamplers.Welch
+                }));
             }
 
-            stream.Position = 0;
+            var encoder = format is not null
+                ? GetEncoder(format)
+                : image.Metadata.DecodedImageFormat is not null
+                    ? null
+                    : GetEncoder(null);
 
+            if (encoder is not null)
+                await image.SaveAsync(stream, encoder);
+            else
+                await image.SaveAsync(stream, image.Metadata.DecodedImageFormat!);
+
+            stream.Position = 0;
             return stream;
         }
-        catch (Exception e)
+        catch
         {
             await stream.DisposeAsync();
             throw;
         }
     }
-    
-    private static IImageEncoder GetEncoder(string format)
+
+    private static IImageEncoder GetEncoder(string? format)
     {
         return format switch
         {

@@ -17,15 +17,15 @@ public class Worker(
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         logger.LogInformation("RabbitMQ Worker starting...");
-    
+
         _channel = await connection.CreateChannelAsync(cancellationToken: ct);
 
         var exchangeName = "content-exchange";
         var routingKey = "media.#";
         var prefetchCount = configuration.GetValue<ushort>("RabbitMQ:Consumer:PrefetchCount", 10);
-    
+
         await _channel.BasicQosAsync(0, prefetchCount, false, ct);
-    
+
         await _channel.ExchangeDeclareAsync(
             exchange: exchangeName,
             type: ExchangeType.Topic,
@@ -34,53 +34,47 @@ public class Worker(
             cancellationToken: ct);
 
         var queueDeclareResult = await _channel.QueueDeclareAsync(
-            // queue: queueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
             arguments: null,
             cancellationToken: ct);
-        
+
         string queueName = queueDeclareResult.QueueName;
 
-        
+
         await _channel.QueueBindAsync(
             queue: queueName,
             exchange: exchangeName,
             routingKey: routingKey,
             arguments: null,
             cancellationToken: ct);
-
+        await _channel.QueueBindAsync(queue: queueName, exchange: exchangeName,
+            routingKey: "image.#", cancellationToken: ct);
         var consumer = new AsyncEventingBasicConsumer(_channel);
-        
+
         consumer.ReceivedAsync += async (sender, eventArgs) =>
         {
             try
             {
                 using var scope = serviceProvider.CreateScope();
-                var messageHandler = scope.ServiceProvider.GetRequiredService<IPreviewGenerationHandler>();
-                
-                var body = eventArgs.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-                
-                logger.LogInformation("Received message: {Message}", message);
-                
-                // Process message
-                await messageHandler.HandleAsync(message, ct);
-                
-                // Acknowledge message
+
+                // Use eventArgs.RoutingKey, not the outer binding variable
+                IPreviewGenerationHandler handler = eventArgs.RoutingKey.StartsWith("image.")
+                    ? scope.ServiceProvider.GetRequiredService<ImagePreviewGenerationHandler>()
+                    : scope.ServiceProvider.GetRequiredService<MediaPreviewGenerationHandler>();
+
+                var message = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
+                logger.LogInformation("Received message: {Message} with routing key: {RoutingKey}",
+                    message, eventArgs.RoutingKey);
+
+                await handler.HandleAsync(message, ct);
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error processing message");
-                
-                // Reject and requeue (or send to DLQ)
-                await _channel.BasicNackAsync(
-                    eventArgs.DeliveryTag, 
-                    false, 
-                    requeue: false,
-                    ct);
+                await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: false, ct);
             }
         };
 
@@ -99,13 +93,13 @@ public class Worker(
     public override async Task StopAsync(CancellationToken ct)
     {
         logger.LogInformation("RabbitMQ Worker stopping...");
-        
+
         if (_channel != null)
         {
             await _channel.CloseAsync(ct);
             await _channel.DisposeAsync();
         }
-        
+
         await base.StopAsync(ct);
     }
 }

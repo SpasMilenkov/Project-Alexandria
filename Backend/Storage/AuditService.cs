@@ -6,7 +6,7 @@ using DTO.Files;
 
 namespace Storage;
 
-public class AuditService(IUnitOfWork unitOfWork): IAuditService
+public class AuditService(IUnitOfWork unitOfWork) : IAuditService
 {
     //Todo: Add a Cron job that runs periodically to clean up old audit logs
     //via delete range
@@ -27,5 +27,5 @@ public class AuditService(IUnitOfWork unitOfWork): IAuditService
             "has administration permissions");
         return await unitOfWork.AuditLogs.FetchAuditLogAsync(query, ct);
     }
-    
+
 }

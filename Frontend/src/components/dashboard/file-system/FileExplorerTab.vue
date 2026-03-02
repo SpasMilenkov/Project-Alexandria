@@ -397,6 +397,7 @@ import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import QuickSearchModal from "./Modals/QuickSearchModal.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useDropZone } from "@vueuse/core";
+import { logger } from "@/utils/logger";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -815,14 +816,18 @@ const handleDelete = async () => {
 };
 
 const handleCut = async () => {
-  await moveFilesMutate({
-    destinationId: currentDirId.value,
-    fileIds: fileStore.filesToCopy,
-  });
-  await moveDirectoriesMutate({
-    destinationId: currentDirId.value,
-    directoryIds: directoryStore.directoriesToCopy,
-  });
+  if (fileStore.filesToCopy.length > 0) {
+    await moveFilesMutate({
+      destinationId: currentDirId.value,
+      fileIds: fileStore.filesToCopy,
+    });
+  }
+  if (directoryStore.directoriesToCopy.length > 0) {
+    await moveDirectoriesMutate({
+      destinationId: currentDirId.value,
+      directoryIds: directoryStore.directoriesToCopy,
+    });
+  }
   refreshDir();
 };
 

@@ -11,23 +11,22 @@ internal sealed class FinalizeFileUploadRequest
     public required string FileName { get; set; }
 }
 
-internal sealed class FinalizeFileUploadResponse
-{
-}
-
 sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage)
-    : Endpoint<FinalizeFileUploadRequest, FinalizeFileUploadResponse>
+    : Endpoint<FinalizeFileUploadRequest>
 {
     public override void Configure()
     {
         Post("files/finalize-upload");
-        AllowAnonymous();
+        Policies(Common.Auth.Policies.CanUpload);
     }
 
     public override async Task HandleAsync(FinalizeFileUploadRequest req, CancellationToken ct)
     {
         var userId = User.GetUserId();
+
         await s3Storage.FinalizeFileUpload(req.FileName, uploadId: req.UploadId, uploadedBy: userId,
             directoryId: req.DirectoryId, ct);
+
+        await Send.OkAsync(cancellation: ct);
     }
 }

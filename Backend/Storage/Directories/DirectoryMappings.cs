@@ -19,14 +19,14 @@ public static class DirectoryMappings
             CreatedAt: dir.CreatedAt,
             UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
             OwnerUserDto: dir.Owner?.ToUserDto() ?? new UserDto(),
-            Files: dir.Files?.Select(f => f.ToFileSummary()).ToList() ?? new List<FileSummary>(),
-            Directories: dir.Children?.Select(c => c.ToSummaryDto()).ToList() ?? new List<DirectorySummaryDto>()
+            Files: dir.Files?.Select(f => f.ToFileSummary()).ToList() ?? [],
+            Directories: dir.Children?.Select(c => c.ToSummaryDto()).ToList() ?? []
         );
     }
 
     public static DirectorySummaryDto ToSummaryDto(this Directory dir)
     {
-        if (dir == null) throw new ArgumentNullException(nameof(dir));
+        ArgumentNullException.ThrowIfNull(dir);
 
         return new DirectorySummaryDto(
             Id: dir.Id,
@@ -40,7 +40,7 @@ public static class DirectoryMappings
 
     public static UserDto ToUserDto(this ApplicationUser user)
     {
-        if (user == null) throw new ArgumentNullException(nameof(user));
+        ArgumentNullException.ThrowIfNull(user);
 
         return new UserDto
         {
@@ -52,14 +52,14 @@ public static class DirectoryMappings
 
     public static FileSummary ToFileSummary(this File file)
     {
-        if (file == null) throw new ArgumentNullException(nameof(file));
+
+        ArgumentNullException.ThrowIfNull(file);
 
         return new FileSummary(
             Id: file.Id,
             FileName: file.Name,
             MimeType: file.MimeType,
             HasPreview: file.HasPreview
-            // Path: file.Path
         );
     }
 }

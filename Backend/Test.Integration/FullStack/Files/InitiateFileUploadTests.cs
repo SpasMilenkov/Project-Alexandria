@@ -21,10 +21,10 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             ContentLength = 1024L
         };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<InitializeFileUploadResponse>();
+        var body = await response.Content.ReadFromJsonAsync<InitializeFileUploadResponse>(cancellationToken: TestContext.Current.CancellationToken);
         body.Should().NotBeNull();
         body!.UploadId.Should().NotBeEmpty();
         body.UploadUrl.Should().StartWith("http");
@@ -42,7 +42,7 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             DirectoryId = dir.Id
         };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -57,7 +57,7 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             ContentLength = 1024L
         };
 
-        var response = await Anon.PostAsJsonAsync(Route, req);
+        var response = await Anon.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -72,7 +72,7 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             ContentLength = 1024L
         };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -87,7 +87,7 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             ContentLength = 1024L
         };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -102,7 +102,7 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             ContentLength = 1024L
         };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -118,7 +118,7 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             DirectoryId = Guid.Empty
         };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -134,7 +134,7 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
             DirectoryId = null
         };
 
-        var response = await Auth.PostAsJsonAsync(Route, req);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
