@@ -12,7 +12,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
 
     public async Task<ContentObject?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await _dbSet.FindAsync(new object[] { id }, ct);
+        return await _dbSet.FindAsync([id], ct);
     }
 
     public async Task<ContentObject?> FirstOrDefaultAsync(
@@ -34,7 +34,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        await _dbSet.Where(c => c.Id == id).ExecuteDeleteAsync();
+        await _dbSet.Where(c => c.Id == id).ExecuteDeleteAsync(ct);
     }
 
     public async Task<IEnumerable<ContentObject>> GetAllAsync(CancellationToken ct = default)
@@ -54,8 +54,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
 
     public async Task<ContentObject> AddAsync(ContentObject entity, CancellationToken ct = default)
     {
-        if (entity == null)
-            throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         entity.CreatedAt = DateTime.UtcNow;
 
@@ -67,8 +66,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
         IEnumerable<ContentObject> entities,
         CancellationToken ct = default)
     {
-        if (entities == null)
-            throw new ArgumentNullException(nameof(entities));
+        ArgumentNullException.ThrowIfNull(entities);
 
         var contentObjects = entities.ToList();
         var now = DateTime.UtcNow;
@@ -84,8 +82,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
 
     public void Update(ContentObject entity)
     {
-        if (entity == null)
-            throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         entity.UpdatedAt = DateTime.UtcNow;
         _dbSet.Update(entity);
@@ -93,8 +90,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
 
     public void Remove(ContentObject entity)
     {
-        if (entity == null)
-            throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         entity.DeletedAt = DateTime.UtcNow;
         _dbSet.Update(entity);
@@ -102,9 +98,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
 
     public void RemoveRange(IEnumerable<ContentObject> entities)
     {
-        if (entities == null)
-            throw new ArgumentNullException(nameof(entities));
-
+        ArgumentNullException.ThrowIfNull(entities);
         var now = DateTime.UtcNow;
         var contentObjects = entities.ToList();
 
@@ -129,13 +123,12 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
         Expression<Func<ContentObject, bool>> predicate,
         CancellationToken ct = default)
     {
-        if (predicate == null)
-            throw new ArgumentNullException(nameof(predicate));
+        ArgumentNullException.ThrowIfNull(predicate);
 
         return await _dbSet.AnyAsync(predicate, ct);
     }
 
-    public async Task<int> MarkOrphaned(DateTime dateTime, CancellationToken ct = default)
+    public async Task<int> MarkOrphaned(DateTime time, CancellationToken ct = default)
     {
         return await _dbSet
                 .Where(co =>
@@ -145,11 +138,11 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
                         fv.ContentObjectId == co.Id &&
                         fv.DeletedAt == null))
                 .ExecuteUpdateAsync(
-                    s => s.SetProperty(co => co.OrphanedAt, _ => dateTime),
+                    s => s.SetProperty(co => co.OrphanedAt, _ => time),
                     ct);
     }
 
-    public async Task<int> ClearOrphaned(DateTime dateTime, CancellationToken ct = default)
+    public async Task<int> ClearOrphaned(DateTime time, CancellationToken ct = default)
     {
         return await _dbSet
                 .Where(co =>

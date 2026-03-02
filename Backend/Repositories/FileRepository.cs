@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Linq.Expressions;
 using Common.Repositories;
 using Data.Context;
@@ -45,7 +46,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 f.Tags.Count(t => t.DeletedAt == null) == query.TagIds.Count &&
                 f.Tags.Count(t => query.TagIds.Contains(t.Id) && t.DeletedAt == null) == query.TagIds.Count),
 
-            _ => throw new ArgumentException("Invalid match type", nameof(query.MatchType))
+            _ => throw new UnreachableException($"Unhandled match type: {query.MatchType}")
         };
 
         // Apply user filter - files that have at least one tag from this user
@@ -148,11 +149,9 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     public async Task<PaginatedResult<FileResult>> FindFiles(FileSearchQuery query, Guid userId,
         CancellationToken ct = default)
     {
-        if (query.CurrentPage < 0)
-            throw new ArgumentException("Page number must be non-negative", nameof(query.CurrentPage));
-
-        if (query.PageSize is <= 0 or > 100)
-            throw new ArgumentException("Page size must be between 1 and 100", nameof(query.PageSize));
+        ArgumentOutOfRangeException.ThrowIfNegative(query.CurrentPage);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(query.PageSize, 0 );
+        ArgumentOutOfRangeException.ThrowIfGreaterThan( query.PageSize, 100);
 
         IQueryable<File> dbQuery;
 
@@ -306,7 +305,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         Guid[] fileIds,
         Guid? destinationId,
         Guid userId,
-        CancellationToken ct)
+        CancellationToken ct = default)
     {
         try
         {
@@ -414,8 +413,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             await context.SaveChangesAsync(ct);
 
             // 4. Update ContentObject ref counts (grouped, set-based)
-            var refCountDeltas = newVersions
-                .GroupBy(v => v.ContentObjectId)
+            _ = newVersions.GroupBy(v => v.ContentObjectId)
                 .Select(g => new { ContentObjectId = g.Key, Count = g.Count() })
                 .ToList();
         }
@@ -503,11 +501,9 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
     public void Remove(File entity)
     {
-        // Implement soft delete
         entity.DeletedAt = DateTime.UtcNow;
         entity.UpdatedAt = DateTime.UtcNow;
         _files.Update(entity);
-        // Note: SaveChanges should be called by the Unit of Work or service layer
     }
 
     public void RemoveRange(IEnumerable<File> entities)
@@ -561,14 +557,9 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         var result = await _files
             .AsNoTracking()
             .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
-            .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct);
+            .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct) ?? throw new InvalidOperationException("File hash not found");
 
-        if (result is null) throw new InvalidOperationException("File hash not found");
-
-        return BitConverter.ToString(result.ContentHash)
-            .Replace("-", "")
-            .ToLowerInvariant();
-        ;
+        return Convert.ToHexStringLower(result.ContentHash);
     }
 
     public async Task<PaginatedResult<FileResult>> GetFilesByDirectoryIdAsync(
@@ -620,11 +611,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
     public async Task<File> UpdateAsync(File file, CancellationToken ct = default)
     {
-        var existingFile = await GetByIdAsync(file.Id, ct);
-        if (existingFile == null)
-        {
-            throw new InvalidOperationException($"File with ID {file.Id} not found or has been deleted.");
-        }
+        var existingFile = await GetByIdAsync(file.Id, ct) ?? throw new InvalidOperationException($"File with ID {file.Id} not found or has been deleted.");
 
         // Update mutable properties
         existingFile.Name = file.Name;
@@ -641,13 +628,12 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return existingFile;
     }
 
-    public async Task<FileResult?> GetFileWithTagsAsync(
-        Guid fileId,
+    public async Task<FileResult?> GetFileWithTagsAsync(Guid userId, Guid fileId,
         CancellationToken ct = default)
     {
         return await _files
             .AsNoTracking()
-            .Where(f => f.Id == fileId && f.DeletedAt == null)
+            .Where(f => f.OwnerId == userId && f.Id == fileId && f.DeletedAt == null)
             .Select(FileProjections.ToFileResult)
             .FirstOrDefaultAsync(ct);
     }

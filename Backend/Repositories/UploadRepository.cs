@@ -78,11 +78,9 @@ public class UploadRepository(AlexandriaDbContext context) : IUploadRepository
 
     public void Remove(Upload entity)
     {
-        // Implement soft delete
         entity.DeletedAt = DateTime.UtcNow;
         entity.UpdatedAt = DateTime.UtcNow;
         _uploads.Update(entity);
-        // Note: SaveChanges should be called by the Unit of Work or service layer
     }
 
     public void RemoveRange(IEnumerable<Upload> entities)

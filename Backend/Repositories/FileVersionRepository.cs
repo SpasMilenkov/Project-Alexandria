@@ -57,8 +57,7 @@ public class FileVersionRepository : IFileVersionRepository
 
     public async Task<FileVersion> AddAsync(FileVersion entity, CancellationToken ct = default)
     {
-        if (entity == null)
-            throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         entity.CreatedAt = DateTime.UtcNow;
 
@@ -70,8 +69,7 @@ public class FileVersionRepository : IFileVersionRepository
         IEnumerable<FileVersion> entities,
         CancellationToken ct = default)
     {
-        if (entities == null)
-            throw new ArgumentNullException(nameof(entities));
+        ArgumentNullException.ThrowIfNull(entities);
 
         var fileVersions = entities.ToList();
         var now = DateTime.UtcNow;
@@ -87,8 +85,7 @@ public class FileVersionRepository : IFileVersionRepository
 
     public void Update(FileVersion entity)
     {
-        if (entity == null)
-            throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         entity.UpdatedAt = DateTime.UtcNow;
         _dbSet.Update(entity);
@@ -96,8 +93,7 @@ public class FileVersionRepository : IFileVersionRepository
 
     public void Remove(FileVersion entity)
     {
-        if (entity == null)
-            throw new ArgumentNullException(nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         entity.DeletedAt = DateTime.UtcNow;
         _dbSet.Update(entity);
@@ -105,8 +101,7 @@ public class FileVersionRepository : IFileVersionRepository
 
     public void RemoveRange(IEnumerable<FileVersion> entities)
     {
-        if (entities == null)
-            throw new ArgumentNullException(nameof(entities));
+        ArgumentNullException.ThrowIfNull(entities);
 
         var now = DateTime.UtcNow;
         var fileVersions = entities.ToList();
@@ -132,8 +127,7 @@ public class FileVersionRepository : IFileVersionRepository
         Expression<Func<FileVersion, bool>> predicate,
         CancellationToken ct = default)
     {
-        if (predicate == null)
-            throw new ArgumentNullException(nameof(predicate));
+        ArgumentNullException.ThrowIfNull(predicate);
 
         return await _dbSet.AnyAsync(predicate, ct);
     }
