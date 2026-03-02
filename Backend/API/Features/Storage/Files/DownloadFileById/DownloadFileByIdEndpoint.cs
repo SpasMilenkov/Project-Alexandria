@@ -1,15 +1,12 @@
 using API.Features.Auth.Extensions;
-using Common.Config;
 using Common.Services;
 using FastEndpoints;
-using Microsoft.Extensions.Options;
 
 namespace API.Features.Storage.Files.DownloadFileById;
 
 public class DownloadFileByIdEndpoint(
     IStorageService storageService,
-    IFileService fileService,
-    IOptions<S3Config> options
+    IFileService fileService
 ) : Endpoint<DownloadFileByIdRequest>
 {
     public override void Configure()
