@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
@@ -9,7 +8,7 @@ public class UpdateDirEndpoint(IDirectoryService dirService) : Endpoint<UpdateDi
 {
     public override void Configure()
     {
-        Put("/directories");
+        Patch("/directories/{directoryId}");
         Description(x => x.WithTags("Directories"));
         Policies(Common.Auth.Policies.RequireUser);
     }
