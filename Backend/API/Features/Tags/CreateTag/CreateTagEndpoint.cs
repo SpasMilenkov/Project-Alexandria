@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using API.Features.Tags.CrteateTag;
 using Common.Services;
 using FastEndpoints;
@@ -26,15 +26,12 @@ public class CreateTagEndpoint(IFileTagService tagService) : Endpoint<CreateTagR
                 Description = "This is an example of a tag description"
             };
         });
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(CreateTagRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
 
         try
         {

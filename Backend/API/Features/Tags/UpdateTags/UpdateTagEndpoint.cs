@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 
@@ -19,14 +20,14 @@ public class UpdateTagEndpoint(IFileTagService tagService) : Endpoint<UpdateTagR
             s.Responses[401] = "Unauthorized - user doesn't own this tag";
             s.Responses[404] = "Tag not found";
         });
+        Policies(Common.Auth.Policies.RequireUser);
+
     }
 
     public override async Task HandleAsync(UpdateTagRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
+
         try
         {
             var tag = await tagService.UpdateTagAsync(req.TagId,

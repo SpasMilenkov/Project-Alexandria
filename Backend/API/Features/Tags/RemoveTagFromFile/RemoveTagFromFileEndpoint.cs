@@ -1,5 +1,4 @@
-using System.Security.Claims;
-using Common;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 
@@ -10,7 +9,7 @@ public class RemoveTagFromFileEndpoint(IFileTagService tagService) : Endpoint<Re
     public override void Configure()
     {
         Delete("/files/{FileId}/tags/{TagId}");
-        
+
         Summary(s =>
         {
             s.Summary = "Remove a tag from a file";
@@ -19,15 +18,13 @@ public class RemoveTagFromFileEndpoint(IFileTagService tagService) : Endpoint<Re
             s.Responses[401] = "Unauthorized - user doesn't own this tag";
             s.Responses[404] = "File not found";
         });
+        Policies(Common.Auth.Policies.RequireUser);
+
     }
 
     public override async Task HandleAsync(RemoveTagFromFileRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-    
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
 
         try
         {

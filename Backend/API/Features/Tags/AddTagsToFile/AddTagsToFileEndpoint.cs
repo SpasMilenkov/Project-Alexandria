@@ -1,12 +1,8 @@
-using System.Security.Claims;
-using Common;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 
 namespace API.Features.Tags.AddTagsToFile;
-
-
-
 
 public class AddTagsToFileEndpoint(IFileTagService tagService) : Endpoint<AddTagsToFileRequest, AddTagsToFileResponse>
 {
@@ -20,26 +16,23 @@ public class AddTagsToFileEndpoint(IFileTagService tagService) : Endpoint<AddTag
             s.Responses[200] = "Tags added successfully";
             s.Responses[400] = "Bad request - invalid data";
             s.Responses[404] = "File not found";
-            s.ExampleRequest = new AddTagsToFileRequest 
-            { 
-                FileId = Guid.NewGuid(), 
-                TagIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() } 
+            s.ExampleRequest = new AddTagsToFileRequest
+            {
+                FileId = Guid.NewGuid(),
+                TagIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid() }
             };
         });
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(AddTagsToFileRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-    
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
 
         try
         {
             await tagService.AddTagsToFileAsync(req.FileId, req.TagIds, userId, ct);
-            
+
             await Send.OkAsync(new AddTagsToFileResponse
             {
                 FileId = req.FileId,

@@ -1,17 +1,15 @@
-using System.Security.Claims;
-using Common;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 
 namespace API.Features.Tags.DeleteTag;
-
 
 public class DeleteTagEndpoint(IFileTagService tagService) : Endpoint<DeleteTagRequest>
 {
     public override void Configure()
     {
         Delete("/tags/{TagId}");
-        
+
         Summary(s =>
         {
             s.Summary = "Delete a tag";
@@ -20,15 +18,12 @@ public class DeleteTagEndpoint(IFileTagService tagService) : Endpoint<DeleteTagR
             s.Responses[401] = "Unauthorized - user doesn't own this tag";
             s.Responses[404] = "Tag not found";
         });
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(DeleteTagRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-    
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
 
         try
         {
