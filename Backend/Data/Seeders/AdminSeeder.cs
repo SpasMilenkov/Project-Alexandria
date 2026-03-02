@@ -14,11 +14,11 @@ public class AdminSeeder(
 {
     public async Task SeedAsync(CancellationToken ct = default)
     {
-        await SeedRolesAsync(ct);
-        await SeedAdminUserAsync(ct);
+        await SeedRolesAsync();
+        await SeedAdminUserAsync();
     }
 
-    private async Task SeedRolesAsync(CancellationToken ct)
+    private async Task SeedRolesAsync()
     {
         string[] roles = [Roles.Admin, Roles.User];
 
@@ -42,7 +42,7 @@ public class AdminSeeder(
         }
     }
 
-    private async Task SeedAdminUserAsync(CancellationToken ct)
+    private async Task SeedAdminUserAsync()
     {
         var adminEmail = configuration.GetValue<string>("Admin:Email") ?? throw new InvalidOperationException("Configuration misses admin email");
         var existing = await userManager.FindByEmailAsync(adminEmail);

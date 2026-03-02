@@ -19,7 +19,7 @@ public class FakeStorageService : IStorageService
     {
         if (!_store.TryGetValue(bucket, out var bucketStore))
         {
-            bucketStore = new Dictionary<string, byte[]>();
+            bucketStore = [];
             _store[bucket] = bucketStore;
         }
         bucketStore[key] = bytes;
@@ -99,7 +99,7 @@ public class FakeStorageService : IStorageService
         throw new InvalidOperationException($"File not found: {fileId}");
     }
 
-    public Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct)
+    public Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default)
         => DownloadFile(fileId, userId, ct);
 
     public async Task StreamFile(string fileId, Stream destination, CancellationToken ct)

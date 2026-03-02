@@ -2,7 +2,7 @@ using Common.Repositories;
 
 namespace Common;
 
-public interface IUnitOfWork
+public interface IUnitOfWork : IDisposable
 {
     IFileRepository Files { get; }
     IPreviewRepository Previews { get; }
@@ -22,6 +22,5 @@ public interface IUnitOfWork
     public Task CommitAsync(CancellationToken cancellationToken = default);
     public Task RollbackAsync(CancellationToken cancellationToken = default);
     public Task SaveChangesAsync(CancellationToken cancellationToken = default);
-    public void Dispose();
     public ValueTask DisposeAsync();
 }

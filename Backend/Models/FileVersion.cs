@@ -16,14 +16,14 @@ public class FileVersion : IBase
 
     //Presentation data
     public required string MimeType { get; set; }
-    
+
     // Lifecycle
     public DateTime CreatedAt { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
-    
+
     // Relations
     public Guid ContentObjectId { get; set; }
     public ContentObject ContentObject { get; set; } = null!;

@@ -12,9 +12,9 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PreviewService;
 
-public class ImagePreviewService(): IImagePreviewService
+public class ImagePreviewService() : IImagePreviewService
 {
-    public async Task<Stream> GenerateImagePreview(Stream imageToPreview,  string? format, int width = 1280, int height = 720)
+    public async Task<Stream> GenerateImagePreview(Stream imageToPreview, string? format, int width = 1280, int height = 720)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(height);
         ArgumentOutOfRangeException.ThrowIfNegative(width);
@@ -43,7 +43,7 @@ public class ImagePreviewService(): IImagePreviewService
             throw;
         }
     }
-    
+
     private static IImageEncoder GetEncoder(string format)
     {
         return format switch

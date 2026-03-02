@@ -8,7 +8,6 @@ public class Directory : IBase
 
     public required string Name { get; set; }
 
-    // public required bool IsStarred { get; set; }
     public string NormalizedName { get; set; } = null!;
     public NpgsqlTsVector SearchVector { get; set; } = null!;
     public Guid? ParentId { get; set; }
@@ -19,6 +18,6 @@ public class Directory : IBase
     public DateTime? DeletedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
     public List<File>? Files { get; set; }
-    public ApplicationUser? Owner { get; set; }
+    public ApplicationUser Owner { get; set; } = null!;
     public Guid OwnerId { get; set; }
 }

@@ -12,7 +12,7 @@ public class BigIntegerJsonConverter : JsonConverter<BigInteger>
         {
             return new BigInteger(reader.GetInt64());
         }
-        
+
         if (reader.TokenType == JsonTokenType.String)
         {
             var stringValue = reader.GetString();
@@ -21,7 +21,7 @@ public class BigIntegerJsonConverter : JsonConverter<BigInteger>
                 return result;
             }
         }
-        
+
         throw new JsonException($"Cannot convert {reader.TokenType} to BigInteger");
     }
 

@@ -17,15 +17,15 @@ public class Worker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("RabbitMQ Worker starting...");
-    
+
         _channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
         var exchangeName = "content-exchange";
         var routingKey = "document.#";
         var prefetchCount = configuration.GetValue<ushort>("RabbitMQ:Consumer:PrefetchCount", 10);
-    
+
         await _channel.BasicQosAsync(0, prefetchCount, false, stoppingToken);
-    
+
         await _channel.ExchangeDeclareAsync(
             exchange: exchangeName,
             type: ExchangeType.Topic,
@@ -40,10 +40,10 @@ public class Worker(
             autoDelete: false,
             arguments: null,
             cancellationToken: stoppingToken);
-        
+
         string queueName = queueDeclareResult.QueueName;
 
-        
+
         await _channel.QueueBindAsync(
             queue: queueName,
             exchange: exchangeName,
@@ -52,33 +52,33 @@ public class Worker(
             cancellationToken: stoppingToken);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
-        
+
         consumer.ReceivedAsync += async (sender, eventArgs) =>
         {
             try
             {
                 using var scope = serviceProvider.CreateScope();
                 var messageHandler = scope.ServiceProvider.GetRequiredService<IPreviewGenerationHandler>();
-                
+
                 var body = eventArgs.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
-                
+
                 logger.LogInformation("Received message: {Message}", message);
-                
+
                 // Process message
                 await messageHandler.HandleAsync(message);
-                
+
                 // Acknowledge message
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error processing message");
-                
+
                 // Reject and requeue (or send to DLQ)
                 await _channel.BasicNackAsync(
-                    eventArgs.DeliveryTag, 
-                    false, 
+                    eventArgs.DeliveryTag,
+                    false,
                     requeue: false,
                     stoppingToken);
             }
@@ -99,13 +99,13 @@ public class Worker(
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation("RabbitMQ Worker stopping...");
-        
+
         if (_channel != null)
         {
             await _channel.CloseAsync(cancellationToken);
             await _channel.DisposeAsync();
         }
-        
+
         await base.StopAsync(cancellationToken);
     }
 }

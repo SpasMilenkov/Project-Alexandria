@@ -17,14 +17,14 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
     /// Main entry point - routes to appropriate preview generation method based on file type
     /// </summary>
     public async Task<MediaPreviewResult?> GeneratePreviewAsync(
-        string inputPath, 
-        FileCategory fileCategory, 
+        string inputPath,
+        FileCategory fileCategory,
         CancellationToken ct)
     {
         try
         {
             var metadata = await AnalyzeMediaAsync(inputPath, ct);
-            
+
             return fileCategory switch
             {
                 FileCategory.Video => await GenerateVideoPreviewAsync(inputPath, metadata, ct),
@@ -89,8 +89,8 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
             Height = videoStream?.Height ?? 0,
             HasVideo = videoStream != null,
             HasAudio = audioStream != null,
-            HasEmbeddedArtwork = probeData.Streams?.Any(s => 
-                s.CodecType == "video" && 
+            HasEmbeddedArtwork = probeData.Streams?.Any(s =>
+                s.CodecType == "video" &&
                 (s.Disposition?.AttachedPic ?? 0) == 1) ?? false,
             // Audio metadata
             Title = tags?.GetValueOrDefault("title"),
@@ -105,8 +105,8 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
     /// Generates thumbnail and preview clip for video files
     /// </summary>
     private async Task<MediaPreviewResult> GenerateVideoPreviewAsync(
-        string inputPath, 
-        MediaMetadata metadata, 
+        string inputPath,
+        MediaMetadata metadata,
         CancellationToken ct)
     {
         var outputDir = Path.GetTempPath();
@@ -135,8 +135,8 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
     /// Tries to extract embedded album artwork first, falls back to waveform if none exists
     /// </summary>
     private async Task<MediaPreviewResult> GenerateAudioPreviewAsync(
-        string inputPath, 
-        MediaMetadata metadata, 
+        string inputPath,
+        MediaMetadata metadata,
         CancellationToken ct)
     {
         var outputDir = Path.GetTempPath();
@@ -145,7 +145,7 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         var previewPath = Path.Combine(outputDir, $"{baseName}_preview.mp3");
 
         var hasArtwork = await TryExtractAlbumArtworkAsync(inputPath, thumbnailPath, ct);
-        
+
         if (!hasArtwork)
         {
             logger.LogInformation("No embedded artwork found, generating waveform for {InputPath}", inputPath);
@@ -172,9 +172,9 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
     /// Extracts a single frame as thumbnail from video
     /// </summary>
     private async Task GenerateThumbnailAsync(
-        string inputPath, 
-        string outputPath, 
-        double timeSeconds, 
+        string inputPath,
+        string outputPath,
+        double timeSeconds,
         CancellationToken ct)
     {
         var psi = new ProcessStartInfo
@@ -208,8 +208,8 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
     /// Returns true if artwork was successfully extracted, false otherwise
     /// </summary>
     private async Task<bool> TryExtractAlbumArtworkAsync(
-        string inputPath, 
-        string outputPath, 
+        string inputPath,
+        string outputPath,
         CancellationToken ct)
     {
         try
@@ -245,13 +245,13 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to extract album artwork from {InputPath}", inputPath);
-            
+
             // Clean up any partial file
             if (File.Exists(outputPath))
             {
                 try { File.Delete(outputPath); } catch { /* ignore */ }
             }
-            
+
             return false;
         }
     }
@@ -260,8 +260,8 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
     /// Generates a waveform visualization for audio files
     /// </summary>
     private async Task GenerateWaveformAsync(
-        string inputPath, 
-        string outputPath, 
+        string inputPath,
+        string outputPath,
         CancellationToken ct)
     {
         var psi = new ProcessStartInfo
@@ -294,9 +294,9 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
     /// Extracts first N seconds of video as preview clip
     /// </summary>
     private async Task GenerateVideoClipAsync(
-        string inputPath, 
-        string outputPath, 
-        double durationSeconds, 
+        string inputPath,
+        string outputPath,
+        double durationSeconds,
         CancellationToken ct)
     {
         var psi = new ProcessStartInfo
@@ -324,14 +324,14 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         if (!File.Exists(outputPath))
             throw new Exception($"Video clip not created: {outputPath}");
     }
-    
+
     /// <summary>
     /// Extracts first N seconds of audio as preview clip
     /// </summary>
     private async Task GenerateAudioClipAsync(
-        string inputPath, 
-        string outputPath, 
-        double durationSeconds, 
+        string inputPath,
+        string outputPath,
+        double durationSeconds,
         CancellationToken ct)
     {
         var psi = new ProcessStartInfo
@@ -367,7 +367,7 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
     /// </summary>
     private async Task OptimizeForStreamingAsync(string videoPath, CancellationToken ct)
     {
-        // Check if already optimized 
+        // Check if already optimized
         if (videoPath.Contains("_preview.mp4"))
         {
             // Already optimized during generation with faststart flag

@@ -17,7 +17,7 @@ public class ChannelPool(IConnection connection, int maxSize = 10) : IChannelPoo
         {
             if (channel.IsOpen)
                 return channel;
-            
+
             // Channel is closed, dispose and create new one
             channel.Dispose();
         }

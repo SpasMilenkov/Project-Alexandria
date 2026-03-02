@@ -7,7 +7,7 @@ using File = Models.File;
 
 namespace Storage;
 
-public class FileService(
+public partial class FileService(
     IUnitOfWork unitOfWork,
     IDirectoryService dirService,
     ILogger<FileService> logger) : IFileService

@@ -9,7 +9,7 @@ public class RefreshToken : IBase
     public DateTime ExpiresAt { get; set; }
     public bool IsRevoked { get; set; }
     public DateTime? RevokedAt { get; set; }
-    
+
     // IBase properties
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

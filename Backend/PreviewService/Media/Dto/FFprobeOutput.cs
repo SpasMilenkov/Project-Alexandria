@@ -9,7 +9,7 @@ public class FFprobeOutput
 {
     [JsonPropertyName("streams")]
     public List<FFprobeStream>? Streams { get; set; }
-    
+
     [JsonPropertyName("format")]
     public FFprobeFormat? Format { get; set; }
 }

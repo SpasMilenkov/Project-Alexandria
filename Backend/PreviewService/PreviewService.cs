@@ -22,7 +22,7 @@ public class PreviewService(
 {
     private static readonly SemaphoreSlim Pool = new(3, 3);
 
-    private static readonly Dictionary<Guid, Task<PreviewResultDto>> OngoingTasks = new();
+    private static readonly Dictionary<Guid, Task<PreviewResultDto>> OngoingTasks = [];
     private static readonly SemaphoreSlim TaskDictionaryLock = new(1, 1);
 
     public async Task<PreviewResultDto?> GetPreviewUrl(Guid fileId, Guid ownerId, CancellationToken ct)
@@ -31,9 +31,7 @@ public class PreviewService(
         if (fileData is null || fileData.OwnerId != ownerId)
             throw new InvalidOperationException("No file found for preview generation");
 
-        if (memoryCache.TryGetValue(fileId, out PreviewResultDto? cachedValue))
-            if (cachedValue is not null)
-                return cachedValue;
+        if (memoryCache.TryGetValue(fileId, out PreviewResultDto? cachedValue) && cachedValue is not null) return cachedValue;
 
         if (!await unitOfWork.Files.IsPromoted(fileId, ct))
         {
@@ -60,7 +58,7 @@ public class PreviewService(
 
         if (OngoingTasks.TryGetValue(fileId, out var existingTask))
         {
-            // Another request is already processing this file so we are going to wait for that one 
+            // Another request is already processing this file so we are going to wait for that one
             TaskDictionaryLock.Release();
             var result = await existingTask;
             return result;
@@ -120,35 +118,35 @@ public class PreviewService(
                         await publisherService.Publish(documentBody, $"document.{fileData.MimeType.Split('/')[1]}");
                         return null;
                     case FileCategory.Archive:
-                    {
-                        await using var seekableArchiveStream =
-                            await storageService.DownloadStreamableFile(fileId, fileData.OwnerId, ct);
+                        {
+                            await using var seekableArchiveStream =
+                                await storageService.DownloadStreamableFile(fileId, fileData.OwnerId, ct);
 
-                        var archivePreview =
-                            await archivePreviewService.GenerateArchivePreviewAsync(seekableArchiveStream,
-                                fileData.Name, ct);
+                            var archivePreview =
+                                await archivePreviewService.GenerateArchivePreviewAsync(seekableArchiveStream,
+                                    fileData.Name, ct);
 
-                        var archivePreviewSummary = new FileSummary(fileData.Id, fileData.Name + ".json",
-                            "application/json", true);
+                            var archivePreviewSummary = new FileSummary(fileData.Id, fileData.Name + ".json",
+                                "application/json", true);
 
-                        var archivePreviewResult = new PreviewResultDto(archivePreviewSummary, null, null, null,
-                            archivePreview.data);
-                        // var archiveResultTuple = (archivePreview.data, archivePreviewSummary);
-                        memoryCache.Set(fileId, archivePreviewResult, cacheOptions);
+                            var archivePreviewResult = new PreviewResultDto(archivePreviewSummary, null, null, null,
+                                archivePreview.data);
+                            // var archiveResultTuple = (archivePreview.data, archivePreviewSummary);
+                            memoryCache.Set(fileId, archivePreviewResult, cacheOptions);
 
-                        tcs.SetResult(archivePreviewResult);
+                            tcs.SetResult(archivePreviewResult);
 
-                        return archivePreviewResult;
-                    }
+                            return archivePreviewResult;
+                        }
 
                     case FileCategory.Text:
-                        var textPreview =
+                        var (data, mimeType) =
                             await textPreviewService.GenerateTextPreviewAsync(fileStream, fileData.Name, 524288, ct);
 
                         var textPreviewSummary =
-                            new FileSummary(fileData.Id, fileData.Name, textPreview.mimeType, true);
+                            new FileSummary(fileData.Id, fileData.Name, mimeType, true);
 
-                        var textPreviewResult = new PreviewResultDto(textPreviewSummary, null, null, textPreview.data);
+                        var textPreviewResult = new PreviewResultDto(textPreviewSummary, null, null, data);
 
                         // memoryCache.Set(fileId, textPreviewResult, cacheOptions);
 
@@ -161,7 +159,6 @@ public class PreviewService(
                         var mediaBody = Encoding.UTF8.GetBytes(fileId.ToString());
                         await publisherService.Publish(mediaBody, $"media.{fileData.MimeType.Split('/')[1]}");
                         return null;
-                    case FileCategory.Unknown:
                     default:
                         var unknownFileSummary = new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, false);
                         var noPreviewResult = new PreviewResultDto(unknownFileSummary, null, null, null);

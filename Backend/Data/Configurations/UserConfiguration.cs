@@ -12,7 +12,7 @@ public class UserConfiguration : IEntityTypeConfiguration<ApplicationUser>
             .HasMaxLength(ValidationConstants.StringLengths.MediumString)
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
             .IsRequired();
-        
+
         builder.Property(e => e.UpdatedBy)
             .HasColumnType("uuid")
             .IsRequired(false);

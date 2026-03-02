@@ -12,7 +12,7 @@ public class UploadBuilder
     private string _tempObjectKey = $"temp/{Guid.NewGuid()}";
     private BigInteger _size = BigInteger.Zero;
     private string _mimeType = "text/plain";
-    private DateTime _createdAt = DateTime.UtcNow;
+    private readonly DateTime _createdAt = DateTime.UtcNow;
     private Guid _userId = Guid.NewGuid();
     private DateTime? _finishedAt = null;
 

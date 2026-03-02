@@ -1,7 +1,5 @@
 using Common.Config;
-using Common.Services;
 using DTO.Metrics;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace Storage;
@@ -11,12 +9,12 @@ public class MetricsService(HttpClient httpClient, IOptions<S3Config> config)
     public async Task<StorageInfo> GetStorageInfoAsync()
     {
         var providerSettings = config.Value.ProviderSettings["Garage"];
-        
+
         var request = new HttpRequestMessage(HttpMethod.Get, providerSettings.MetricsUrl);
-        
+
         if (!string.IsNullOrEmpty(providerSettings.MetricsToken))
         {
-            request.Headers.Authorization = 
+            request.Headers.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", providerSettings.MetricsToken);
         }
 
@@ -34,28 +32,28 @@ public class MetricsService(HttpClient httpClient, IOptions<S3Config> config)
         var tasks = nodes.Select(async node =>
         {
             var request = new HttpRequestMessage(HttpMethod.Get, node);
-            
+
             if (!string.IsNullOrEmpty(providerSettings.MetricsToken))
             {
-                request.Headers.Authorization = 
+                request.Headers.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", providerSettings.MetricsToken);
             }
-            
+
             var response = await httpClient.SendAsync(request);
             var text = await response.Content.ReadAsStringAsync();
             return ParseStorageMetrics(text);
         });
 
-        return (await Task.WhenAll(tasks)).ToList();
+        return [.. await Task.WhenAll(tasks)];
     }
 
-    private StorageInfo ParseStorageMetrics(string metricsText)
+    private static StorageInfo ParseStorageMetrics(string metricsText)
     {
         var storageInfo = new StorageInfo();
-        
+
         foreach (var line in metricsText.Split('\n'))
         {
-            if (line.StartsWith("#") || string.IsNullOrWhiteSpace(line))
+            if (line.StartsWith('#') || string.IsNullOrWhiteSpace(line))
                 continue;
 
             if (line.StartsWith("garage_local_disk_avail"))
@@ -77,7 +75,7 @@ public class MetricsService(HttpClient httpClient, IOptions<S3Config> config)
         return storageInfo;
     }
 
-    private long ExtractValue(string line)
+    private static long ExtractValue(string line)
     {
         var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length > 0 && long.TryParse(parts[^1], out var value))

@@ -341,7 +341,7 @@ namespace Data.Migrations
                         EXECUTE FUNCTION audit_users_changes();
                 "
             );
-            
+
             migrationBuilder.Sql(
                 @"
                 ALTER TABLE ""AuditLogs"" SET (autovacuum_enabled = true);                

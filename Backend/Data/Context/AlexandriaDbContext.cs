@@ -77,7 +77,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         modelBuilder.ApplyConfiguration(new UploadConfiguration());
         modelBuilder.ApplyConfiguration(new UserSettingsConfiguration());
         modelBuilder.ApplyConfiguration(new AdminSettingsConfiguration());
-    }   
+    }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

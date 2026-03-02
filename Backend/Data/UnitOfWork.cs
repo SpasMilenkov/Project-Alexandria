@@ -108,7 +108,6 @@ public sealed class UnitOfWork(
     {
         await DisposeAsyncCore();
         Dispose(false);
-        GC.SuppressFinalize(this);
     }
 
     private void Dispose(bool disposing)
