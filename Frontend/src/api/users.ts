@@ -55,10 +55,7 @@ export const userApi = {
   },
 
   updateUser: async (userId: string, payload: UpdateUserDto): Promise<UserDetailsDto> => {
-    const result = await apiClient.patch<UserDetailsDto>("/users", {
-      payload,
-      userId,
-    });
+    const result = await apiClient.patch<UserDetailsDto>(`/users/${userId}`, { payload });
     return result.data;
   },
 };

@@ -231,7 +231,7 @@ export const directoryApi = {
 
   // Move directory
   moveDirectories: async (directoryIds: string[], destinationId: string | null): Promise<void> => {
-    await apiClient.put("directories/move", {
+    await apiClient.post("directories/move", {
       destinationId,
       directoryIds,
     });

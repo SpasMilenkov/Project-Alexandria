@@ -8,7 +8,7 @@ public class MoveDirEndpoint(IDirectoryService dirService) : Endpoint<MoveDirReq
 {
     public override void Configure()
     {
-        Put("/directories/move");
+        Post("/directories/move");
         Description(x => x.WithTags("Directories"));
         Policies(Common.Auth.Policies.RequireUser);
     }
