@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 using FluentValidation;
@@ -7,7 +7,7 @@ namespace API.Features.Storage.Files.MoveFiles;
 
 internal sealed class MoveFilesRequest
 {
-    public Guid[] FileIds { get; set; }
+    public required Guid[] FileIds { get; set; }
     public Guid? DestinationId { get; set; }
 }
 
@@ -35,14 +35,12 @@ sealed class MoveFilesEndpoint(IFileService fileService) : Endpoint<MoveFilesReq
     public override void Configure()
     {
         Post("files/move");
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(MoveFilesRequest r, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
 
         await fileService.MoveFilesAsync(r.FileIds, r.DestinationId, userId, ct);
 

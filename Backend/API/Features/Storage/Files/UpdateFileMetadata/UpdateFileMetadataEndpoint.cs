@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 using FluentValidation;
@@ -55,7 +55,7 @@ sealed class UpdateFileMetadataEndpoint(
     public override void Configure()
     {
         Patch("/files/{id}/metadata");
-        AllowAnonymous();
+        Policies(Common.Auth.Policies.RequireUser);
         Description(x => x.WithTags("Files"));
 
         Summary(s =>
@@ -73,10 +73,7 @@ sealed class UpdateFileMetadataEndpoint(
     {
         try
         {
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? User.FindFirst("sub")?.Value
-                               ?? throw new UnauthorizedAccessException("User ID not found in token");
-            var userId = Guid.Parse(userIdString);
+            var userId = User.GetUserId();
 
             var updatedFile = await fileService.UpdateFileMetadata(
                 req.Id,

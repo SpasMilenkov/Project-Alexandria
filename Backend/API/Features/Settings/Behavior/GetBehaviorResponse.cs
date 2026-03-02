@@ -1,10 +1,9 @@
 using Common.Settings.Values;
 
-namespace API.Features.Settings.Behavior
+namespace API.Features.Settings.Behavior;
+
+public class GetBehaviorResponse
 {
-    public class GetBehaviorResponse
-    {
-        public bool SkipDeleteConfirmation { get; set; }
-        public ToastLevel ToastLevel { get; set; }
-    }
+    public bool SkipDeleteConfirmation { get; set; }
+    public ToastLevel ToastLevel { get; set; }
 }

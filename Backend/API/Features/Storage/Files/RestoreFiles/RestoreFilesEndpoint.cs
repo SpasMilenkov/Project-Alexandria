@@ -16,7 +16,7 @@ sealed class RestoreFilesRequestValidator : Validator<RestoreFilesRequest>
             .NotNull()
             .NotEmpty()
             .WithMessage("At least one file must be specified.");
-            
+
         RuleForEach(x => x.FileIds)
             .NotEmpty()
             .WithMessage("File ID cannot be empty.");

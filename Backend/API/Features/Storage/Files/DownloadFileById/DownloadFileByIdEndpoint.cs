@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Config;
 using Common.Services;
 using FastEndpoints;
@@ -25,15 +25,14 @@ public class DownloadFileByIdEndpoint(
             s.Responses[404] = "File not found";
             s.Responses[500] = "Internal server error";
         });
+
+        Policies(Common.Auth.Policies.RequireUser);
+
     }
 
     public override async Task HandleAsync(DownloadFileByIdRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
 
         var fileMetadata = await fileService.GetUserFileMetadataAsync(req.Id, userId, ct);
 

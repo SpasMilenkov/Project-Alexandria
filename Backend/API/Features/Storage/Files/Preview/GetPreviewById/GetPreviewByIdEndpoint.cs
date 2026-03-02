@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using DTO.Files;
 using FastEndpoints;
@@ -19,26 +19,19 @@ public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<G
                             " if there is no preview it will be generated on the fly which may consume larger amount of resources" +
                             " and take a while.";
         });
-        ResponseCache(120);
+        ResponseCache(60);
     }
 
     public override async Task HandleAsync(GetPreviewByIdRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
 
         var preview = await previewService.GetPreviewUrl(req.Id, userId, ct);
 
         try
         {
-            if (preview is null)
-            {
-                return;
-            }
+            if (preview is null) return;
 
-            // Stream file from storage
             await Send.OkAsync(preview, ct);
         }
         catch (Exception e)

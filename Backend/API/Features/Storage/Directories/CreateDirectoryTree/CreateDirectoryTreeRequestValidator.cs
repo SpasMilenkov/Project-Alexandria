@@ -26,7 +26,7 @@ public class CreateDirectoryTreeRequestValidator
 
     private bool BeValidRelativePath(string path)
     {
-        if (path.StartsWith("/"))
+        if (path.StartsWith('/'))
             return false;
 
         if (path.Contains(".."))

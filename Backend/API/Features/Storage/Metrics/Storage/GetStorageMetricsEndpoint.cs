@@ -4,7 +4,7 @@ using Storage;
 
 namespace API.Features.Storage.Metrics.Storage;
 
-public class GetStorageMetricsEndpoint(MetricsService metricsService):  EndpointWithoutRequest<StorageInfo>
+public class GetStorageMetricsEndpoint(MetricsService metricsService) : EndpointWithoutRequest<StorageInfo>
 {
     public override void Configure()
     {
@@ -16,6 +16,7 @@ public class GetStorageMetricsEndpoint(MetricsService metricsService):  Endpoint
             s.Response<StorageInfo>(200, "Storage information retrieved successfully");
             s.Response(500, "Internal server error");
         });
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

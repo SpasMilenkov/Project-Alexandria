@@ -1,7 +1,8 @@
 using API.Features.Auth.Extensions;
-using API.Features.Settings.Behavior;
 using Common.Services;
 using FastEndpoints;
+
+namespace API.Features.Settings.Behavior.GetBehavior;
 
 public class GetBehaviorEndpoint : EndpointWithoutRequest<GetBehaviorResponse>
 {

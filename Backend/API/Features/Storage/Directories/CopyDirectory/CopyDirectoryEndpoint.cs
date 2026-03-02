@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using FastEndpoints;
 
@@ -15,15 +15,12 @@ sealed class CopyDirectoryEndpoint(IDirectoryService directoryService) : Endpoin
     public override void Configure()
     {
         Post("/directories/copy");
-        AllowAnonymous();
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(CopyDirectoryRequest req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-        var userId = Guid.Parse(userIdString);
+        var userId = User.GetUserId();
 
         await directoryService.CopyDirectoryAsync(req.DirectoryId, req.DestinationId, userId, ct);
         await Send.OkAsync(cancellation: ct);

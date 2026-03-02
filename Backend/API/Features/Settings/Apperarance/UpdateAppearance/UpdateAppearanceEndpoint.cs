@@ -1,5 +1,4 @@
 using API.Features.Auth.Extensions;
-using API.Features.Settings.Apperarance.API.Features.Settings.Appearance;
 using Common.Services;
 using Common.Settings.Values;
 using FastEndpoints;
@@ -17,9 +16,8 @@ public class UpdateAppearanceRequest
     public int ListIconSize { get; set; }
 }
 
-public class UpdateAppearanceEndpoint : Endpoint<UpdateAppearanceRequest, GetAppearanceResponse>
+public class UpdateAppearanceEndpoint(IUserSettingsService settingsService) : Endpoint<UpdateAppearanceRequest, GetAppearanceResponse>
 {
-    public IUserSettingsService SettingsService { get; set; } = default!;
 
     public override void Configure()
     {
@@ -30,7 +28,7 @@ public class UpdateAppearanceEndpoint : Endpoint<UpdateAppearanceRequest, GetApp
     {
         var userId = User.GetUserId();
 
-        await SettingsService.SetAppearanceAsync(userId, new AppearanceSettingsValue
+        await settingsService.SetAppearanceAsync(userId, new AppearanceSettingsValue
         {
             AccentColor = req.AccentColor,
             BackgroundColor = req.BackgroundColor,
@@ -43,7 +41,7 @@ public class UpdateAppearanceEndpoint : Endpoint<UpdateAppearanceRequest, GetApp
 
 
 
-        var saved = await SettingsService.GetAppearanceAsync(userId, ct);
+        var saved = await settingsService.GetAppearanceAsync(userId, ct);
         await Send.OkAsync(GetAppearanceResponse.FromValue(saved), ct);
 
     }
