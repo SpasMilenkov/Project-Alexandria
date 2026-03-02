@@ -14,7 +14,7 @@ sealed class UpdateUserEndpoint(IUserManagementService userManagementService) : 
 {
     public override void Configure()
     {
-        Patch("/users");
+        Patch("/users/{userId}");
         Policies(Common.Auth.Policies.RequireAdmin);
     }
 
