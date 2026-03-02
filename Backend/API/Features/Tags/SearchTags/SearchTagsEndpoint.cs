@@ -10,7 +10,7 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
 {
     public override void Configure()
     {
-        Post("/tags/search");
+        Get("/tags/search");
 
         Summary(s =>
         {

@@ -9,7 +9,7 @@ internal sealed class SearchFileEndpoint(IFileService fileService) : Endpoint<Fi
 {
     public override void Configure()
     {
-        Post("/files/search");
+        Get("/files/search");
         Policies(Common.Auth.Policies.RequireUser);
     }
 

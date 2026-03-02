@@ -12,7 +12,7 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService)
 {
     public override void Configure()
     {
-        Post("/files/search/tags");
+        Get("/files/search/tags");
 
         Summary(s =>
         {
