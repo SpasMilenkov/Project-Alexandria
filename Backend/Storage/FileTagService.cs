@@ -7,7 +7,7 @@ using Models;
 
 namespace Storage;
 
-public class FileTagService(
+public partial class FileTagService(
     IUnitOfWork unitOfWork,
     ILogger<FileTagService> logger) : IFileTagService
 {
@@ -27,7 +27,7 @@ public class FileTagService(
         var existingTag = await unitOfWork.Tags.GetByNameAndUserIdAsync(name, userId, ct);
         if (existingTag != null)
         {
-            logger.LogWarning("Tag {TagName} already exists for user {UserId}", name, userId);
+            LogTagAlreadyExists(logger, name, userId);
             throw new InvalidOperationException($"Tag '{name}' already exists for this user");
         }
 
@@ -48,13 +48,13 @@ public class FileTagService(
             var createdTag = await unitOfWork.Tags.CreateAsync(tag, ct);
             await unitOfWork.CommitAsync(ct);
 
-            logger.LogInformation("Tag {TagId} created successfully by user {UserId}", createdTag.Id, userId);
+            LogTagCreated(logger, createdTag.Id, userId);
             return createdTag;
         }
         catch (Exception ex)
         {
             await unitOfWork.RollbackAsync(ct);
-            logger.LogError(ex, "Error creating tag {TagName} for user {UserId}", name, userId);
+            LogTagCreationFailed(logger, ex, name, userId);
             throw;
         }
     }
@@ -69,9 +69,8 @@ public class FileTagService(
         if (userId == Guid.Empty)
             throw new ArgumentException("User ID cannot be empty", nameof(userId));
 
-        var tag = await unitOfWork.Tags.GetByIdAndUserIdAsync(tagId, userId, ct);
-
-        if (tag is null) throw new InvalidOperationException("Tag not found");
+        var tag = await unitOfWork.Tags.GetByIdAndUserIdAsync(userId, tagId, ct)
+                  ?? throw new InvalidOperationException("Tag not found");
 
         if (tag.Name != name?.Trim())
         {
@@ -100,13 +99,13 @@ public class FileTagService(
             var updatedTag = await unitOfWork.Tags.UpdateAsync(tag, ct);
             await unitOfWork.CommitAsync(ct);
 
-            logger.LogInformation("Tag {TagId} updated successfully", tagId);
+            LogTagUpdated(logger, tagId);
             return updatedTag;
         }
         catch (Exception ex)
         {
             await unitOfWork.RollbackAsync(ct);
-            logger.LogError(ex, "Error updating tag {TagId}", tagId);
+            LogTagUpdateFailed(logger, ex, tagId);
             throw;
         }
     }
@@ -131,12 +130,12 @@ public class FileTagService(
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 
-            logger.LogInformation("Tag {TagId} soft-deleted successfully", tagId);
+            LogTagDeleted(logger, tagId);
         }
         catch (Exception ex)
         {
             await unitOfWork.RollbackAsync(ct);
-            logger.LogError(ex, "Error deleting tag {TagId}", tagId);
+            LogTagDeletionFailed(logger, ex, tagId);
             throw;
         }
     }
@@ -165,19 +164,19 @@ public class FileTagService(
 
                 if (tag is not { DeletedAt: null })
                 {
-                    logger.LogWarning("Tag {TagId} not found, skipping", tagId);
+                    LogTagNotFoundSkipping(logger, tagId);
                     continue;
                 }
 
                 if (tag.OwnerId != userId)
                 {
-                    logger.LogWarning("User {UserId} does not own tag {TagId}, skipping", userId, tagId);
+                    LogTagOwnershipMismatchSkipping(logger, userId, tagId);
                     continue;
                 }
 
                 if (file.Tags.Any(t => t.Id == tagId))
                 {
-                    logger.LogDebug("File {FileId} already has tag {TagId}, skipping", fileId, tagId);
+                    LogFileAlreadyHasTagSkipping(logger, fileId, tagId);
                     continue;
                 }
 
@@ -187,12 +186,12 @@ public class FileTagService(
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 
-            logger.LogInformation("Added {Count} tags to file {FileId}", tagIds.Count, fileId);
+            LogTagsAddedToFile(logger, tagIds.Count, fileId);
         }
         catch (Exception ex)
         {
             await unitOfWork.RollbackAsync(ct);
-            logger.LogError(ex, "Error adding tags to file {FileId}", fileId);
+            LogAddTagsToFileFailed(logger, ex, fileId);
             throw;
         }
     }
@@ -212,7 +211,7 @@ public class FileTagService(
 
         if (tag == null)
         {
-            logger.LogWarning("Tag {TagId} not associated with file {FileId}", tagId, fileId);
+            LogTagNotAssociatedWithFile(logger, tagId, fileId);
             return;
         }
 
@@ -226,12 +225,12 @@ public class FileTagService(
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 
-            logger.LogInformation("Removed tag {TagId} from file {FileId}", tagId, fileId);
+            LogTagRemovedFromFile(logger, tagId, fileId);
         }
         catch (Exception ex)
         {
             await unitOfWork.RollbackAsync(ct);
-            logger.LogError(ex, "Error removing tag {TagId} from file {FileId}", tagId, fileId);
+            LogRemoveTagFromFileFailed(logger, ex, tagId, fileId);
             throw;
         }
     }
@@ -240,13 +239,13 @@ public class FileTagService(
         CancellationToken ct = default)
     {
         if (query.TagIds == null || !query.TagIds.Any())
-            throw new ArgumentException("At least one tag ID must be provided", nameof(query.TagIds));
+            throw new ArgumentException("At least one tag ID must be provided");
 
         if (query.CurrentPage < 0)
-            throw new ArgumentException("Page number must be non-negative", nameof(query.CurrentPage));
+            throw new ArgumentException("Page number must be non-negative");
 
         if (query.PageSize <= 0 || query.PageSize > 100)
-            throw new ArgumentException("Page size must be between 1 and 100", nameof(query.PageSize));
+            throw new ArgumentException("Page size must be between 1 and 100");
 
         try
         {
@@ -254,15 +253,15 @@ public class FileTagService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error finding files by tags");
+            LogFindFilesByTagsFailed(logger, ex);
             throw;
         }
     }
 
-    public async Task<ICollection<TagDto>> GetTagsForFileAsync(Guid fileId,
+    public async Task<ICollection<TagDto>> GetTagsForFileAsync(Guid userId, Guid fileId,
         CancellationToken ct = default)
     {
-        var file = await unitOfWork.Files.GetFileWithTagsAsync(fileId, ct);
+        var file = await unitOfWork.Files.GetFileWithTagsAsync(userId, fileId, ct);
 
         if (file is not { DeletedAt: null })
             throw new InvalidOperationException($"File {fileId} not found");
@@ -275,10 +274,10 @@ public class FileTagService(
         CancellationToken ct = default)
     {
         if (query.CurrentPage < 0)
-            throw new ArgumentException("Page number must be non-negative", nameof(query.CurrentPage));
+            throw new ArgumentException("Page number must be non-negative");
 
         if (query.PageSize is <= 0 or > 100)
-            throw new ArgumentException("Page size must be between 1 and 100", nameof(query.PageSize));
+            throw new ArgumentException("Page size must be between 1 and 100");
 
         try
         {
@@ -286,7 +285,7 @@ public class FileTagService(
 
             return new PaginatedResult<TagDto>
             {
-                Items = tags.ToList(),
+                Items = [.. tags],
                 CurrentPage = query.CurrentPage,
                 PageSize = query.PageSize,
                 TotalCount = totalCount,
@@ -295,7 +294,7 @@ public class FileTagService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error finding tags with criteria");
+            LogFindTagsFailed(logger, ex);
             throw;
         }
     }
