@@ -34,7 +34,6 @@ public class Worker(
             cancellationToken: ct);
 
         var queueDeclareResult = await _channel.QueueDeclareAsync(
-            // queue: queueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -50,7 +49,8 @@ public class Worker(
             routingKey: routingKey,
             arguments: null,
             cancellationToken: ct);
-
+        await _channel.QueueBindAsync(queue: queueName, exchange: exchangeName,
+            routingKey: "image.#", cancellationToken: ct);
         var consumer = new AsyncEventingBasicConsumer(_channel);
 
         consumer.ReceivedAsync += async (sender, eventArgs) =>
@@ -58,29 +58,23 @@ public class Worker(
             try
             {
                 using var scope = serviceProvider.CreateScope();
-                var messageHandler = scope.ServiceProvider.GetRequiredService<IPreviewGenerationHandler>();
 
-                var body = eventArgs.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
+                // Use eventArgs.RoutingKey, not the outer binding variable
+                IPreviewGenerationHandler handler = eventArgs.RoutingKey.StartsWith("image.")
+                    ? scope.ServiceProvider.GetRequiredService<ImagePreviewGenerationHandler>()
+                    : scope.ServiceProvider.GetRequiredService<MediaPreviewGenerationHandler>();
 
-                logger.LogInformation("Received message: {Message}", message);
+                var message = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
+                logger.LogInformation("Received message: {Message} with routing key: {RoutingKey}",
+                    message, eventArgs.RoutingKey);
 
-                // Process message
-                await messageHandler.HandleAsync(message, ct);
-
-                // Acknowledge message
+                await handler.HandleAsync(message, ct);
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error processing message");
-
-                // Reject and requeue (or send to DLQ)
-                await _channel.BasicNackAsync(
-                    eventArgs.DeliveryTag,
-                    false,
-                    requeue: false,
-                    ct);
+                await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: false, ct);
             }
         };
 

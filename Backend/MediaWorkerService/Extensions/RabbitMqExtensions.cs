@@ -27,7 +27,6 @@ public static class RabbitMqExtensions
         var connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
         services.AddSingleton<IConnection>(connection);
 
-        services.AddScoped<IPreviewGenerationHandler, PreviewGenerationHandler>();
 
         return services;
     }
