@@ -14,7 +14,7 @@ public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
     [Fact]
     public async Task EmptyDb_ReturnsEmptyPage()
     {
-        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery(), cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Auth.GetAsync($"{Route}?pageSize=10&currentPage=0", cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
@@ -27,7 +27,7 @@ public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
         await SeedFileWithVersionAsync();
         await SeedFileWithVersionAsync();
 
-        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery(), cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Auth.GetAsync($"{Route}?pageSize=10&currentPage=0", cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
@@ -40,7 +40,7 @@ public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
         var (_, otherId) = await CreateOtherUserAsync();
         await SeedFileWithVersionAsync(fb => fb.WithOwner(otherId));
 
-        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery(), cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Auth.GetAsync($"{Route}?pageSize=10&currentPage=0", cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
@@ -53,7 +53,7 @@ public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
         await SeedFileWithVersionAsync(fb => fb.WithName("report.txt"));
         await SeedFileWithVersionAsync(fb => fb.WithName("photo.jpg"));
 
-        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery { NameContains = "report" }, cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Auth.GetAsync($"{Route}?nameContains=report&pageSize=10&currentPage=0", cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
@@ -67,11 +67,11 @@ public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
         await SeedFileWithVersionAsync(fb => fb.WithDeletedAt(DateTime.UtcNow));
         await SeedFileWithVersionAsync(); // active file
 
-        var activeResponse = await Auth.PostAsJsonAsync(Route, new FileSearchQuery { IsDeleted = false }, cancellationToken: TestContext.Current.CancellationToken);
+        var activeResponse = await Auth.GetAsync($"{Route}?isDeleted=false&pageSize=10&currentPage=0", cancellationToken: TestContext.Current.CancellationToken);
         var activeBody = await activeResponse.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
         activeBody!.TotalCount.Should().Be(1);
 
-        var deletedResponse = await Auth.PostAsJsonAsync(Route, new FileSearchQuery { OnlyDeleted = true }, cancellationToken: TestContext.Current.CancellationToken);
+        var deletedResponse = await Auth.GetAsync($"{Route}?onlyDeleted=true&pageSize=10&currentPage=0", cancellationToken: TestContext.Current.CancellationToken);
         var deletedBody = await deletedResponse.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);
         deletedBody!.TotalCount.Should().Be(1);
     }
@@ -79,7 +79,7 @@ public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
     [Fact]
     public async Task Unauthenticated_Returns401()
     {
-        var response = await Anon.PostAsJsonAsync(Route, new FileSearchQuery(), cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Anon.GetAsync($"{Route}?pageSize=10&currentPage=0", cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -90,7 +90,7 @@ public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
         for (var i = 0; i < 5; i++)
             await SeedFileWithVersionAsync();
 
-        var response = await Auth.PostAsJsonAsync(Route, new FileSearchQuery { PageSize = 2, CurrentPage = 0 }, cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Auth.GetAsync($"{Route}?pageSize=2&currentPage=0", cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<PaginatedResult<FileResult>>(cancellationToken: TestContext.Current.CancellationToken);

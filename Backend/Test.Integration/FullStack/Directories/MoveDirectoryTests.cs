@@ -20,7 +20,7 @@ public class MoveDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(f
         var dest = await SeedDirectoryAsync();
         var req = new MoveDirRequest { DirectoryIds = [dir.Id], DestinationId = dest.Id };
 
-        var response = await Auth.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
@@ -36,7 +36,7 @@ public class MoveDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(f
         var dir = await SeedDirectoryAsync(parentId: parent.Id);
         var req = new MoveDirRequest { DirectoryIds = [dir.Id], DestinationId = null };
 
-        var response = await Auth.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Auth.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         using var scope = Factory.Services.CreateScope();
@@ -50,7 +50,7 @@ public class MoveDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase(f
     {
         var req = new MoveDirRequest { DirectoryIds = [Guid.NewGuid()] };
 
-        var response = await Anon.PutAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
+        var response = await Anon.PostAsJsonAsync(Route, req, cancellationToken: TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
