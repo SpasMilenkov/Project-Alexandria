@@ -1,0 +1,34 @@
+  document-worker:
+    build:
+      context: .
+      dockerfile: Backend/DocumentWorker.Service/Dockerfile
+    container_name: alexandria-document-worker
+    restart: always
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=5432;Database=alexandria;Username=alexandria_user;Password={{DB_PASSWORD}}"
+      S3Storage__AccessKey: {{GARAGE_S3_ACCESS_KEY}}
+      S3Storage__SecretKey: {{GARAGE_S3_SECRET_KEY}}
+      RabbitMQ__UserName: {{RABBITMQ_USER}}
+      RabbitMQ__Password: {{RABBITMQ_PASSWORD}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+    networks:
+      - alexandria-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M

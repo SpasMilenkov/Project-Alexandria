@@ -1,0 +1,19 @@
+  frontend:
+    build:
+      context: .
+      dockerfile: Frontend/Dockerfile
+    container_name: alexandria-frontend
+    restart: always
+    ports:
+      - "{{FRONTEND_PORT}}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - alexandria-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M

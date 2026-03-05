@@ -1,0 +1,24 @@
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: alexandria-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: {{RABBITMQ_USER}}
+      RABBITMQ_DEFAULT_PASS: {{RABBITMQ_PASSWORD}}
+      RABBITMQ_DEFAULT_VHOST: {{RABBITMQ_VHOST}}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - alexandria-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M

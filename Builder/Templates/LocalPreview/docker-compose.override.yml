@@ -1,0 +1,7 @@
+services:
+  postgres:
+    ports:
+      - "{{POSTGRES_PORT}}:5432"
+  rabbitmq:
+    ports:
+      - "{{RABBITMQ_MANAGEMENT_PORT}}:15672"

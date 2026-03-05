@@ -1,0 +1,40 @@
+  api:
+    build:
+      context: .
+      dockerfile: Backend/API/Dockerfile
+    container_name: alexandria-api
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=5432;Database=alexandria;Username=alexandria_user;Password={{DB_PASSWORD}}"
+      S3Storage__AccessKey: {{GARAGE_S3_ACCESS_KEY}}
+      S3Storage__SecretKey: {{GARAGE_S3_SECRET_KEY}}
+      RabbitMQ__UserName: {{RABBITMQ_USER}}
+      RabbitMQ__Password: {{RABBITMQ_PASSWORD}}
+      Jwt__Secret: {{JWT_SECRET}}
+      Jwt__Issuer: {{JWT_ISSUER}}
+      Jwt__Audience: {{JWT_AUDIENCE}}
+      Csrf__SecretKey: {{CSRF_SECRET}}
+      Cors__AllowedOrigins: {{CORS_ALLOWED_ORIGINS}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+    networks:
+      - alexandria-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M

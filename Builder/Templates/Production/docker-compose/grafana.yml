@@ -1,0 +1,20 @@
+  grafana:
+    image: grafana/grafana:latest
+    container_name: alexandria-grafana
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: {{GRAFANA_ADMIN_PASSWORD}}
+    ports:
+      - "{{GRAFANA_PORT}}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - alexandria-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
