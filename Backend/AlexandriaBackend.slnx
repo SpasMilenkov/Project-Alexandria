@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/Data/">
+    <Project Path="Data/Data.csproj" />
+    <Project Path="Models/Models.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Test.Common/Test.Common.csproj" />
+    <Project Path="Test.Integration/Test.Integration.csproj" />
+    <Project Path="Test.Unit/Test.Unit.csproj" />
+  </Folder>
+  <Folder Name="/Workers/">
+    <Project Path="DocumentWorker.Service/DocumentWorker.Service.csproj" />
+    <Project Path="MediaTranscodingWorker/MediaTranscodingWorker.csproj" />
+    <Project Path="MediaWorkerService/MediaWorkerService.csproj" />
+  </Folder>
+  <Project Path="API/API.csproj" />
+  <Project Path="Common/Common.csproj" />
+  <Project Path="DTO/DTO.csproj" />
+  <Project Path="Infrastructure/Infrastructure.csproj" />
+  <Project Path="PreviewService/PreviewService.csproj" />
+  <Project Path="Repositories/Repositories.csproj" />
+  <Project Path="Storage/Storage.csproj" />
+</Solution>
