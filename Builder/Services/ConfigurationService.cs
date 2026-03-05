@@ -1,4 +1,3 @@
-// Services/ConfigurationService.cs
 using Builder.Models;
 using Environment = Builder.Models.Environment;
 
@@ -6,8 +5,13 @@ namespace Builder.Services;
 
 public interface IConfigurationService
 {
-    InstallationConfig CreateConfiguration(Environment env, S3Provider provider);
+    InstallationConfig CreateConfiguration(Environment env, FeatureSelection features, Dictionary<string, string> credentials, Dictionary<string, int> ports);
     string GenerateDockerCompose(InstallationConfig config);
+    string GenerateComposeOverride(InstallationConfig config);
+    string GenerateEnvFile(InstallationConfig config);
+    string GenerateGarageConfig(InstallationConfig config);
+    string GeneratePrometheusConfig();
+    void WriteAllConfigFiles(InstallationConfig config, string outputPath);
     void SaveConfiguration(InstallationConfig config, string path);
     InstallationConfig? LoadConfiguration(string path);
 }
@@ -15,172 +19,142 @@ public interface IConfigurationService
 public class ConfigurationService : IConfigurationService
 {
     private readonly ITemplateService _templateService;
-    
-    private readonly Dictionary<string, int> _defaultPorts = new()
-    {
-        { "postgres", 5432 },
-        { "s3_api", 9000 },
-        { "s3_console", 9001 },
-        { "rabbitmq", 5672 },
-        { "rabbitmq_management", 15672 },
-        { "garage_rpc", 3901 },
-        { "garage_web", 3902 }
-    };
 
     public ConfigurationService(ITemplateService templateService)
     {
         _templateService = templateService;
     }
 
-    public InstallationConfig CreateConfiguration(Environment env, S3Provider provider)
+    public InstallationConfig CreateConfiguration(
+        Environment env,
+        FeatureSelection features,
+        Dictionary<string, string> credentials,
+        Dictionary<string, int> ports)
     {
-        var config = new InstallationConfig
+        return new InstallationConfig
         {
             Environment = env,
-            S3Provider = provider,
-            Ports = new Dictionary<string, int>(_defaultPorts),
-            Credentials = GenerateCredentials()
+            S3Provider = S3Provider.Garage,
+            Features = features,
+            Credentials = credentials,
+            Ports = ports,
+            InstalledAt = DateTime.UtcNow
         };
-        
-        return config;
     }
 
     public string GenerateDockerCompose(InstallationConfig config)
     {
-        // Load templates
         var baseTemplate = _templateService.LoadTemplate("docker-compose/base.yml");
-        var postgresTemplate = _templateService.LoadTemplate("docker-compose/postgres.yml");
-        var rabbitmqTemplate = _templateService.LoadTemplate("docker-compose/rabbitmq.yml");
-        
-        // Load S3 provider template
-        var s3Template = config.S3Provider switch
+        var tokens = BuildTokenDictionary(config);
+
+        // Always-included services
+        var serviceTemplates = new List<string>
         {
-            S3Provider.Garage => _templateService.LoadTemplate("docker-compose/garage.yml"),
-            S3Provider.MinIO => _templateService.LoadTemplate("docker-compose/minio.yml"),
-            S3Provider.RustFS => _templateService.LoadTemplate("docker-compose/rustfs.yml"),
-            _ => throw new ArgumentException("Invalid S3 provider")
+            "docker-compose/postgres.yml",
+            "docker-compose/garage.yml",
+            "docker-compose/garage-init.yml",
+            "docker-compose/rabbitmq.yml",
+            "docker-compose/api.yml",
+            "docker-compose/document-worker.yml",
+            "docker-compose/frontend.yml",
+            "docker-compose/postgres-backup.yml",
         };
 
-        // Build tokens dictionary
-        var tokens = new Dictionary<string, string>
-        {
-            { "ENVIRONMENT", config.Environment.ToString().ToLower() },
-            { "POSTGRES_PORT", config.Ports["postgres"].ToString() },
-            { "S3_API_PORT", config.Ports["s3_api"].ToString() },
-            { "S3_CONSOLE_PORT", config.Ports["s3_console"].ToString() },
-            { "RABBITMQ_PORT", config.Ports["rabbitmq"].ToString() },
-            { "RABBITMQ_MANAGEMENT_PORT", config.Ports["rabbitmq_management"].ToString() },
-            { "DB_PASSWORD", config.Credentials["db_password"] },
-            { "S3_ACCESS_KEY", config.Credentials["s3_access_key"] },
-            { "S3_SECRET_KEY", config.Credentials["s3_secret_key"] },
-            { "RABBITMQ_USER", config.Credentials["rabbitmq_user"] },
-            { "RABBITMQ_PASSWORD", config.Credentials["rabbitmq_password"] }
-        };
+        // Optional services
+        if (config.Features.MediaProcessing)
+            serviceTemplates.Add("docker-compose/media-worker.yml");
 
-        // Add Garage-specific ports if needed
-        if (config.S3Provider == S3Provider.Garage)
+        if (config.Features.Monitoring)
         {
-            tokens.Add("GARAGE_RPC_PORT", config.Ports["garage_rpc"].ToString());
-            tokens.Add("GARAGE_WEB_PORT", config.Ports["garage_web"].ToString());
+            serviceTemplates.Add("docker-compose/prometheus.yml");
+            serviceTemplates.Add("docker-compose/grafana.yml");
         }
 
-        // Replace tokens in each service template
-        var postgresService = _templateService.ReplaceTokens(postgresTemplate, tokens);
-        var s3Service = _templateService.ReplaceTokens(s3Template, tokens);
-        var rabbitmqService = _templateService.ReplaceTokens(rabbitmqTemplate, tokens);
+        // Load and process each service template
+        var services = new List<string>();
+        foreach (var templatePath in serviceTemplates)
+        {
+            var template = _templateService.LoadTemplate(templatePath);
+            services.Add(_templateService.ReplaceTokens(template, tokens));
+        }
 
-        // Combine services
-        var allServices = string.Join("\n", postgresService, s3Service, rabbitmqService);
-
-        // Generate volumes section
+        var allServices = string.Join("\n\n", services);
         var volumes = GenerateVolumes(config);
 
-        // Replace in base template
-        tokens.Clear();
-        tokens.Add("SERVICES", allServices);
-        tokens.Add("VOLUMES", volumes);
+        tokens["SERVICES"] = allServices;
+        tokens["VOLUMES"] = volumes;
 
-        var finalCompose = _templateService.ReplaceTokens(baseTemplate, tokens);
-        
-        return finalCompose;
+        return _templateService.ReplaceTokens(baseTemplate, tokens);
     }
 
-    private string GenerateVolumes(InstallationConfig config)
+    public string GenerateComposeOverride(InstallationConfig config)
     {
-        var volumes = new List<string>
-        {
-            "  postgres_data:",
-            "    driver: local"
-        };
+        var localPreviewTemplates = new TemplateService("LocalPreview");
+        var template = localPreviewTemplates.LoadTemplate("docker-compose.override.yml");
+        var tokens = BuildTokenDictionary(config);
+        return localPreviewTemplates.ReplaceTokens(template, tokens);
+    }
 
-        switch (config.S3Provider)
+    public string GenerateEnvFile(InstallationConfig config)
+    {
+        var template = _templateService.LoadTemplate("Config/env.template");
+        var tokens = BuildTokenDictionary(config);
+        return _templateService.ReplaceTokens(template, tokens);
+    }
+
+    public string GenerateGarageConfig(InstallationConfig config)
+    {
+        var template = _templateService.LoadTemplate("Config/garage.prod.toml.template");
+        var tokens = BuildTokenDictionary(config);
+        return _templateService.ReplaceTokens(template, tokens);
+    }
+
+    public string GeneratePrometheusConfig()
+    {
+        return _templateService.LoadTemplate("Config/prometheus.yml.template");
+    }
+
+    public void WriteAllConfigFiles(InstallationConfig config, string outputPath)
+    {
+        // docker-compose.yml
+        var composeContent = GenerateDockerCompose(config);
+        File.WriteAllText(Path.Combine(outputPath, "docker-compose.yml"), composeContent);
+
+        // .env
+        var envContent = GenerateEnvFile(config);
+        File.WriteAllText(Path.Combine(outputPath, ".env"), envContent);
+
+        // garage.prod.toml
+        var garageConfig = GenerateGarageConfig(config);
+        File.WriteAllText(Path.Combine(outputPath, "garage.prod.toml"), garageConfig);
+
+        // backups directory
+        var backupsDir = Path.Combine(outputPath, "backups");
+        if (!Directory.Exists(backupsDir))
+            Directory.CreateDirectory(backupsDir);
+
+        // prometheus.yml (if monitoring enabled)
+        if (config.Features.Monitoring)
         {
-            case S3Provider.Garage:
-                volumes.AddRange(new[]
-                {
-                    "  garage_meta:",
-                    "    driver: local",
-                    "  garage_data:",
-                    "    driver: local"
-                });
-                break;
-            case S3Provider.MinIO:
-                volumes.AddRange(new[]
-                {
-                    "  minio_data:",
-                    "    driver: local"
-                });
-                break;
-            case S3Provider.RustFS:
-                volumes.AddRange(new[]
-                {
-                    "  rustfs_data:",
-                    "    driver: local"
-                });
-                break;
+            var prometheusConfig = GeneratePrometheusConfig();
+            File.WriteAllText(Path.Combine(outputPath, "prometheus.yml"), prometheusConfig);
         }
 
-        volumes.AddRange(new[]
+        // docker-compose.override.yml (Local Preview only — exposes debug ports)
+        if (config.Environment == Environment.LocalPreview)
         {
-            "  rabbitmq_data:",
-            "    driver: local"
-        });
+            var overrideContent = GenerateComposeOverride(config);
+            File.WriteAllText(Path.Combine(outputPath, "docker-compose.override.yml"), overrideContent);
+        }
 
-        return string.Join("\n", volumes);
-    }
-
-    private Dictionary<string, string> GenerateCredentials()
-    {
-        return new Dictionary<string, string>
-        {
-            { "db_password", GenerateSecurePassword() },
-            { "s3_access_key", GenerateAccessKey() },
-            { "s3_secret_key", GenerateSecurePassword() },
-            { "rabbitmq_user", "admin" },
-            { "rabbitmq_password", GenerateSecurePassword() }
-        };
-    }
-
-    private string GenerateSecurePassword()
-    {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-        var random = new Random();
-        return new string(Enumerable.Repeat(chars, 24)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
-    }
-
-    private string GenerateAccessKey()
-    {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        var random = new Random();
-        return new string(Enumerable.Repeat(chars, 20)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
+        // alexandria-config.json
+        SaveConfiguration(config, outputPath);
     }
 
     public void SaveConfiguration(InstallationConfig config, string path)
     {
         var json = System.Text.Json.JsonSerializer.Serialize(
-            config, 
+            config,
             AlexandriaJsonContext.Default.InstallationConfig
         );
         File.WriteAllText(Path.Combine(path, "alexandria-config.json"), json);
@@ -188,10 +162,56 @@ public class ConfigurationService : IConfigurationService
 
     public InstallationConfig? LoadConfiguration(string path)
     {
-        var json = File.ReadAllText(Path.Combine(path, "alexandria-config.json"));
+        var configPath = Path.Combine(path, "alexandria-config.json");
+        if (!File.Exists(configPath)) return null;
+
+        var json = File.ReadAllText(configPath);
         return System.Text.Json.JsonSerializer.Deserialize(
-            json, 
+            json,
             AlexandriaJsonContext.Default.InstallationConfig
         );
+    }
+
+    private Dictionary<string, string> BuildTokenDictionary(InstallationConfig config)
+    {
+        var tokens = new Dictionary<string, string>(config.Credentials);
+
+        // Add port tokens
+        foreach (var (key, value) in config.Ports)
+        {
+            tokens[key] = value.ToString();
+        }
+
+        // Add environment
+        tokens["ENVIRONMENT"] = config.Environment.ToString().ToLowerInvariant();
+
+        return tokens;
+    }
+
+    private string GenerateVolumes(InstallationConfig config)
+    {
+        var volumes = new List<string>
+        {
+            "  postgres_data:",
+            "    driver: local",
+            "  garage_meta_data:",
+            "    driver: local",
+            "  garage_storage_data:",
+            "    driver: local",
+            "  rabbitmq_data:",
+            "    driver: local",
+        };
+
+        if (config.Features.Monitoring)
+        {
+            volumes.AddRange([
+                "  prometheus_data:",
+                "    driver: local",
+                "  grafana_data:",
+                "    driver: local",
+            ]);
+        }
+
+        return string.Join("\n", volumes);
     }
 }
