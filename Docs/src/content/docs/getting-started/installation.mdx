@@ -1,0 +1,239 @@
+---
+title: Installation
+description: Deploy Alexandria in production or preview it locally using the interactive TUI installer.
+---
+
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+The Alexandria installer is an interactive TUI that guides you through deploying the entire stack. It handles feature selection, system validation, credential generation, port conflict resolution, and Docker Compose orchestration — all in one command.
+
+<Aside type="tip">
+  **TL;DR**: Download the installer binary, run it, pick your deployment mode, answer a few prompts, and the installer handles the rest. No manual config editing required.
+</Aside>
+
+## Prerequisites
+
+Before running the installer, ensure your system meets these requirements:
+
+- **Docker** with **Docker Compose** (v2)
+- **Git** — required for production deployments only
+- **2+ CPU cores** — single-core systems will experience degraded performance
+- **4 GB RAM** recommended (2 GB absolute minimum for the base stack)
+- **10 GB free disk space**
+
+<Aside type="caution">
+  The installer checks all prerequisites automatically and will guide you through installing anything that's missing.
+</Aside>
+
+## Deployment Modes
+
+The installer offers three modes:
+
+| Mode | Who it's for | Git required | Debug ports exposed |
+|------|-------------|-------------|-------------------|
+| **Production deploy** | Deploying to a server or VM | Yes | No |
+| **Local preview** | Testing the full stack on your dev machine | No | Yes (PostgreSQL, RabbitMQ Management) |
+| **Development** | Active development with hot reload | No | N/A — uses `docker-compose.dev.yml` directly |
+
+Selecting **Development** exits the installer with instructions to use the dev compose file manually. See the [Development Setup](/guides/set-up-development-environment/) guide for that workflow.
+
+## Running the Installer
+
+<Steps>
+
+1. **Download the installer**
+
+   The installer is an AOT-compiled binary — no .NET runtime needed on the target machine.
+
+   <Tabs>
+     <TabItem label="Linux">
+       ```bash
+       curl -LO https://github.com/SpasMilenkov/Project-Alexandria/releases/latest/download/alexandria-installer-linux-x64
+       ```
+     </TabItem>
+
+     <TabItem label="macOS">
+       ```bash
+       curl -LO https://github.com/SpasMilenkov/Project-Alexandria/releases/latest/download/alexandria-installer-osx-x64
+       ```
+     </TabItem>
+
+     <TabItem label="Windows">
+       ```powershell
+       Invoke-WebRequest -Uri https://github.com/SpasMilenkov/Project-Alexandria/releases/latest/download/alexandria-installer-win-x64.exe -OutFile alexandria-installer.exe
+       ```
+     </TabItem>
+   </Tabs>
+
+2. **Make it executable** (Linux and macOS only)
+
+   ```bash
+   chmod +x alexandria-installer-*
+   ```
+
+3. **Run the installer**
+
+   ```bash
+   ./alexandria-installer-linux-x64
+   ```
+
+   The TUI will launch and guide you through each step.
+
+</Steps>
+
+## Installer Walkthrough
+
+### Feature Selection
+
+After choosing your deployment mode, the installer asks which optional features to enable:
+
+| Option | Default | Notes |
+|--------|---------|-------|
+| Media processing | Yes | Adds the media-worker service for audio/video transcoding. Requires ~1 GB extra RAM and 4 CPU cores recommended. |
+| Monitoring | No | Adds Prometheus + Grafana dashboards. Requires ~512 MB extra RAM. |
+| Frontend port | 80 (prod) / 3000 (preview) | The port Nginx serves the frontend on. Any value 1–65535. |
+| Grafana port | 3000 or 3001 | Shown only when monitoring is enabled. Defaults to 3001 if the frontend is on 3000. |
+| PostgreSQL port | 5432 | Local preview only — exposes the database to your host machine. |
+| RabbitMQ Management port | 15672 | Local preview only — exposes the RabbitMQ management UI. |
+
+### System Check
+
+The installer validates your environment:
+
+| Check | Minimum | Blocks installation? |
+|-------|---------|---------------------|
+| Docker installed | Required | Yes |
+| Docker daemon running | Required | Yes |
+| Docker Compose installed | Required | Yes |
+| Git installed | Required | Production only |
+| CPU cores | 2 | No (warning only) |
+| RAM | 2048 MB base | Yes in production if below 50% of calculated minimum |
+| Disk space | 10 GB free | No (warning only) |
+
+RAM requirements scale with your feature choices:
+
+| Configuration | Minimum RAM |
+|--------------|-------------|
+| Base stack (no optional features) | 2560 MB |
+| + Media processing | 3584 MB |
+| + Monitoring | 3072 MB |
+| + Both | 4096 MB |
+
+<Aside type="caution">
+  In production mode, the installer will hard-block if your system's RAM is below 50% of the calculated minimum. In local preview mode, it only shows a warning.
+</Aside>
+
+### Port Resolution
+
+The installer checks each port against your system's active TCP listeners. If a port is already in use, you'll see:
+
+- **Auto-remap** — the installer finds the next available port automatically
+- **Choose manually** — enter a specific port for each conflicted service
+- **Cancel** — abort the installation
+
+Auto-remap searches `defaultPort+1` through `defaultPort+99` first, then falls back to the ephemeral range (49152–65535). For the frontend on port 80, it first tries the common alternatives: 8080, 3000, 8888.
+
+### Config Summary
+
+Before proceeding, the installer shows a summary of your configuration and generates all credentials using a cryptographically secure random number generator. Credentials are shown partially masked during install — the full values are written to `alexandria-config.json` after a successful deployment.
+
+You must explicitly confirm before the installer proceeds.
+
+### Install Path
+
+<Tabs>
+  <TabItem label="Production">
+    The installer prompts for an install directory, defaulting to `~/alexandria`. If a previous installation is detected (`alexandria-config.json` exists), you'll be warned that configuration files will be overwritten while data volumes are preserved.
+  </TabItem>
+
+  <TabItem label="Local Preview">
+    The installer auto-detects the repository root by searching for `Backend/`, `Frontend/`, and `docker-compose.template.yml` markers. It shows the detected path and asks for confirmation. You can override with a custom path if needed.
+  </TabItem>
+</Tabs>
+
+### Deployment
+
+The installer executes these steps with live progress indicators:
+
+1. **Generates configuration** — writes `docker-compose.yml`, `.env`, `garage.prod.toml`, and optional files to the install path
+2. **Clones repository** (production only) — either detects the local repo or clones from GitHub
+3. **Builds Docker images** — runs `docker compose build` with streaming output
+4. **Starts services** — runs `docker compose up -d`
+5. **Runs health checks** — waits up to 5 minutes for all containers to report healthy
+
+<Aside type="caution">
+  The first build can take several minutes depending on your internet connection and machine specs. Do not interrupt the process.
+</Aside>
+
+If the build or startup fails, the installer offers to show container logs or abort.
+
+### Success
+
+On success, you'll see:
+
+- Access URLs for all services (frontend, Grafana, and debug ports if in local preview mode)
+- Full unmasked credentials for all services
+- Any ports that were remapped from their defaults
+- The path to `alexandria-config.json`
+- Quick-reference commands for managing the stack
+
+## Post-Install Commands
+
+From your install directory:
+
+| Command | Purpose |
+|---------|---------|
+| `docker compose logs -f` | Stream logs from all services |
+| `docker compose ps` | Check container status |
+| `docker compose restart` | Restart all services |
+| `docker compose down` | Stop and remove containers (data volumes preserved) |
+| `docker compose down -v` | Stop containers **and delete all data volumes** |
+
+<Aside type="caution">
+  `docker compose down` preserves your data volumes. Only use the `-v` flag if you want a complete data wipe.
+</Aside>
+
+## Troubleshooting
+
+### Health checks timed out
+
+Services may still be starting. Check their status:
+
+```bash
+docker compose ps
+docker compose logs api
+docker compose logs frontend
+```
+
+The API and worker services depend on PostgreSQL and RabbitMQ being ready. If those are still initializing, the dependent services will retry automatically.
+
+### Port conflicts not resolved
+
+If the installer's port detection missed a conflict (e.g., a service started after the check), find what's using the port and either stop it or re-run the installer with a different port:
+
+```bash
+# Linux / macOS
+lsof -i :80
+
+# Windows
+netstat -ano | findstr :80
+```
+
+### Build failed
+
+The installer offers "Show logs" when a build fails. You can also check manually:
+
+```bash
+docker compose logs
+```
+
+Common causes: insufficient disk space, Docker daemon out of memory, or network issues pulling base images.
+
+### Existing installation detected
+
+If you re-run the installer in a directory with an existing `alexandria-config.json`, it will warn you. Configuration files are overwritten but **data volumes are preserved** — your documents and database are safe.
+
+## Next Steps
+
+- [Installer Configuration Reference](/reference/installer-configuration/) — understand every generated file, credential, and port
+- [Development Setup](/guides/set-up-development-environment/) — set up a hot-reload development environment

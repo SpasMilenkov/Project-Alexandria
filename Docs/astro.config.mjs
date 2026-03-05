@@ -6,14 +6,20 @@ import starlight from '@astrojs/starlight';
 export default defineConfig({
 	integrations: [
 		starlight({
-			title: 'My Docs',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' }],
+			title: 'Alexandria',
+			customCss: ['./src/styles/custom.css'],
+			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/SpasMilenkov/Project-Alexandria' }],
 			sidebar: [
+				{
+					label: 'Getting Started',
+					items: [
+						{ label: 'Installation', slug: 'getting-started/installation' },
+					],
+				},
 				{
 					label: 'Guides',
 					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Example Guide', slug: 'guides/example' },
+						{ label: 'Development Setup', slug: 'guides/set-up-development-environment' },
 					],
 				},
 				{

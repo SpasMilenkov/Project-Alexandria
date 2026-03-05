@@ -1,0 +1,29 @@
+  garage-init:
+    image: dxflrs/garage:v2.2.0
+    container_name: alexandria-garage-init
+    depends_on:
+      garage:
+        condition: service_healthy
+    networks:
+      - alexandria-network
+    entrypoint: >
+      /bin/sh -c "
+      NODE_ID=$$(garage node id 2>/dev/null | head -1 | cut -d'@' -f1);
+      garage layout assign -z dc1 -c 1G $$NODE_ID;
+      garage layout apply --version 1 2>/dev/null || true;
+
+      garage bucket create alexandria-files 2>/dev/null || true;
+      garage bucket create alexandria-previews 2>/dev/null || true;
+      garage bucket create alexandria-temp 2>/dev/null || true;
+
+      garage key create alexandria-app-key 2>/dev/null || true;
+
+      garage bucket allow --read --write --owner alexandria-files --key alexandria-app-key;
+      garage bucket allow --read --write --owner alexandria-previews --key alexandria-app-key;
+      garage bucket allow --read --write --owner alexandria-temp --key alexandria-app-key;
+
+      echo '=== Garage initialization complete ===';
+      garage key info alexandria-app-key;
+      "
+    volumes:
+      - ./garage.prod.toml:/etc/garage.toml:ro

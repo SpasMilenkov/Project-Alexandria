@@ -1,0 +1,10 @@
+# Templates/docker-compose/base.yml
+services:
+  {{SERVICES}}
+
+volumes:
+  {{VOLUMES}}
+
+networks:
+  alexandria-network:
+    driver: bridge

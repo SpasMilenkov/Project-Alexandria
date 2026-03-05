@@ -1,0 +1,19 @@
+  postgres-backup:
+    image: postgres:16-alpine
+    container_name: alexandria-postgres-backup
+    depends_on:
+      - postgres
+    environment:
+      PGPASSWORD: {{DB_PASSWORD}}
+    volumes:
+      - ./backups:/backups
+    networks:
+      - alexandria-network
+    entrypoint: >
+      /bin/sh -c "
+      while true; do
+        pg_dump -h postgres -U alexandria_user -d alexandria -f /backups/alexandria_$$(date +%Y%m%d_%H%M%S).sql;
+        find /backups -name '*.sql' -mtime +7 -delete;
+        sleep 86400;
+      done
+      "
