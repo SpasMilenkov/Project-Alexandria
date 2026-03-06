@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Common.Services;
 using DTO.Files;
 using DTO.Metrics;
@@ -22,6 +23,7 @@ public class FakeStorageService : IStorageService
             bucketStore = [];
             _store[bucket] = bucketStore;
         }
+
         bucketStore[key] = bytes;
     }
 
@@ -54,11 +56,12 @@ public class FakeStorageService : IStorageService
             bucket = new Dictionary<string, byte[]>();
             _store[bucketName] = bucket;
         }
+
         bucket[objectName] = bytes;
 
         UploadedObjects.Add((bucketName, objectName, bytes));
 
-        var checksum = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        var checksum = Convert.ToHexString(SHA256.HashData(bytes));
         return Task.FromResult(new UploadResult(objectName, checksum, bytes.Length, originalFileId));
     }
 
@@ -67,7 +70,7 @@ public class FakeStorageService : IStorageService
         Stream thumbnailStream,
         string objectName,
         Guid fileId,
-        DTO.Files.MediaMetadata metadataDto,
+        MediaMetadata metadataDto,
         CancellationToken ct = default)
     {
         const string bucket = "alexandria-previews";
@@ -109,6 +112,7 @@ public class FakeStorageService : IStorageService
             await destination.WriteAsync(bytes, ct);
             return;
         }
+
         throw new InvalidOperationException($"File not found: {fileId}");
     }
 
@@ -160,4 +164,9 @@ public class FakeStorageService : IStorageService
 
     public Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry)
         => Task.FromResult($"http://fake-s3/upload/{objectKey}");
+
+    public Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
 }
