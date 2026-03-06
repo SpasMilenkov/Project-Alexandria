@@ -14,7 +14,7 @@ public class ArchivePreviewService : IArchivePreviewService
     public async Task<(string? data, string mimeType)> GenerateArchivePreviewAsync(
         Stream archiveStream,
         string fileName,
-        CancellationToken ct)
+        CancellationToken ct = default)
     {
         try
         {

@@ -25,4 +25,4 @@ var host = builder.Build();
 
 host.MapHealthChecks("/health");
 
-host.Run();
+await host.RunAsync();

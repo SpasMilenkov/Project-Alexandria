@@ -11,13 +11,13 @@ using Common.Services;
 using Cppl.Utilities.AWS;
 using DTO.Extensions;
 using DTO.Files;
+using DTO.Metrics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Models;
 using Models.Enumerators;
 using MediaMetadata = DTO.Files.MediaMetadata;
 using FileEntity = Models.File;
-using DTO.Metrics;
 
 namespace Storage;
 
@@ -548,7 +548,8 @@ public partial class S3Service(
         if (await unitOfWork.Files.IsPromoted(fileId)) return await s3.GetPreSignedURLAsync(request);
 
         var upload =
-            await unitOfWork.Uploads.FirstOrDefaultAsync(u => u.Hash == hash && u.Status == UploadStatus.Finished) ?? throw new InvalidOperationException("Upload hasn't finished yet");
+            await unitOfWork.Uploads.FirstOrDefaultAsync(u => u.Hash == hash && u.Status == UploadStatus.Finished) ??
+            throw new InvalidOperationException("Upload hasn't finished yet");
         request.BucketName = config.Value.TempBucket;
         request.Key = $"content/{upload.TempObjectKey}";
 
@@ -688,7 +689,8 @@ public partial class S3Service(
             await unitOfWork.Uploads.AddAsync(upload, ct);
             await unitOfWork.CommitAsync(ct);
 
-            return (upload.Id, await GenerateUploadUrl($"content/{tempObjectKey}", contentType, TimeSpan.FromSeconds(60)));
+            return (upload.Id,
+                await GenerateUploadUrl($"content/{tempObjectKey}", contentType, TimeSpan.FromSeconds(60)));
         }
         catch (Exception ex)
         {
@@ -985,5 +987,26 @@ public partial class S3Service(
             SizeByType = sizeByMimeType,
             TrashSize = trashSize
         };
+    }
+
+    public async Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default)
+    {
+        var hash = await unitOfWork.FileVersions.GetContentHashByVersionId(fileVersionId, ownerId, ct) ??
+                   throw new InvalidOperationException("Version not found");
+
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = config.Value.UploadBucket,
+            Key = $"content/{Convert.ToHexStringLower(hash)}",
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.AddMinutes(10),
+            Protocol = Protocol.HTTP,
+            ResponseHeaderOverrides = new ResponseHeaderOverrides
+            {
+                ContentDisposition = $"attachment; filename=\"Placeholder\""
+            }
+        };
+
+        return await s3.GetPreSignedURLAsync(request);
     }
 }

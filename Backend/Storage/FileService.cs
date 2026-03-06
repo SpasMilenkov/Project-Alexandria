@@ -44,12 +44,6 @@ public partial class FileService(
         GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default) =>
         await unitOfWork.Files.GetUserFileMetadataAsync(fileId, userId, ct);
 
-    public async Task<FileSummary?> GetFileSummary(Guid fieldId, CancellationToken ct = default) =>
-        await unitOfWork.Files.GetFileNameAndMimeType(fieldId, ct);
-
-    public async Task<IEnumerable<File>> GetFilesByMimeType(string mimeType, CancellationToken ct = default) =>
-        await unitOfWork.Files.FindAsync(f => f.MimeType == mimeType, ct);
-
     public async Task DeleteFiles(Guid[] fileIds, Guid userId, bool hardDelete = false, CancellationToken ct = default)
     {
         await unitOfWork.BeginTransactionAsync(ct);
@@ -151,7 +145,7 @@ public partial class FileService(
         CancellationToken ct = default)
     {
         var directoryExists =
-            await unitOfWork.Directories.ExistsAsync(d => d.Id == directoryId && d.OwnerId == ownerId);
+            await unitOfWork.Directories.ExistsAsync(d => d.Id == directoryId && d.OwnerId == ownerId, ct);
 
         if (!directoryExists) throw new Directories.Exceptions.DirectoryNotFoundException(directoryId);
 
@@ -204,5 +198,69 @@ public partial class FileService(
     public async Task<long> GetFileSizePerUser(Guid userId, bool deletedOnly, CancellationToken ct = default)
     {
         return await unitOfWork.Files.GetStorageUsagePerUser(userId, deletedOnly, ct);
+    }
+
+    public async Task<PaginatedResult<FileVersionDto>> GetVersionsForFile(Guid fileId, Guid userId, int page = 1,
+        int pageSize = 10, CancellationToken ct = default)
+    {
+        return await unitOfWork.FileVersions.GetVersionsForFile(fileId: fileId, ownerId: userId, page: page,
+            pageSize: pageSize, ct);
+    }
+
+    public async Task ChangeActiveVersion(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        await unitOfWork.Files.ChangeActiveVersion(versionId, fileId, userId, ct);
+    }
+
+    public async Task RemoveFileVersion(Guid fileVersionId, Guid userId, CancellationToken ct = default)
+    {
+        await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            var version =
+                await unitOfWork.FileVersions.FirstOrDefaultAsync(
+                    f => f.Id == fileVersionId && f.File.OwnerId == userId, ct) ??
+                throw new InvalidOperationException("File version not found");
+
+            var versionCount = await unitOfWork.FileVersions
+                .CountAsync(f => f.FileId == version.FileId && f.DeletedAt == null, ct);
+
+            if (versionCount == 1)
+            {
+                unitOfWork.Files.Remove(version.File);
+
+                await unitOfWork.FileVersions.SoftDeleteFileVersions(version.File.Id, userId, ct);
+
+                await unitOfWork.CommitAsync(ct);
+                return;
+            }
+
+            if (version.File.CurrentVersionId == fileVersionId)
+            {
+                var mostRecent = await unitOfWork.FileVersions.GetSecondMostRecent(version.FileId, userId, ct) ??
+                                 throw new InvalidOperationException("No active version available");
+
+                var file = await unitOfWork.Files.GetByIdAsync(version.FileId, ct) ??
+                           throw new InvalidOperationException("File for version not found");
+
+                file.CurrentVersionId = mostRecent.Id;
+                await unitOfWork.Files.UpdateAsync(file, ct);
+            }
+
+            unitOfWork.FileVersions.Remove(version);
+
+            await unitOfWork.CommitAsync(ct);
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task<FileResult> GetFileWithOwnershipById(Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        return await unitOfWork.Files.GetFileWithOwnershipById(fileId: fileId, userId: userId, ct) ??
+               throw new InvalidOperationException("File with ID not found");
     }
 }

@@ -58,4 +58,5 @@ public interface IStorageService
     Task<string> GenerateBackgroundImageGetUrl(string objectKey, TimeSpan expiry);
     Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default);
     Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry);
+    Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default);
 }

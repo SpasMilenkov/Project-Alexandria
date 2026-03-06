@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Common.Repositories;
 using Data.Context;
+using DTO.Files;
 using Microsoft.EntityFrameworkCore;
 using Models;
 
@@ -176,5 +177,56 @@ public class FileVersionRepository : IFileVersionRepository
         }
 
         return versions.Count;
+    }
+
+    public async Task<PaginatedResult<FileVersionDto>> GetVersionsForFile(Guid fileId, Guid ownerId, int page = 1,
+        int pageSize = 10, CancellationToken ct = default)
+    {
+        var baseQuery = _dbSet.Where(f => f.FileId == fileId && f.File.OwnerId == ownerId &&
+                                          (f.DeletedAt == null || f.DeletedAt >= DateTime.UtcNow.AddDays(-30)));
+
+        var totalCount = await baseQuery.CountAsync(ct);
+        var items = await baseQuery
+            .OrderByDescending(f => f.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(f =>
+                new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt != null))
+            .ToListAsync(ct);
+
+        return new PaginatedResult<FileVersionDto>
+        {
+            CurrentPage = page,
+            Items = items,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        };
+    }
+
+    public async Task<int> SoftDeleteFileVersions(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    {
+        return await _context.FileVersions
+            .Where(v => v.FileId == fileId && v.File.OwnerId == ownerId && v.DeletedAt == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(v => v.DeletedAt, _ => DateTime.UtcNow),
+                ct);
+    }
+
+    public async Task<byte[]?> GetContentHashByVersionId(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        return await _dbSet.Where(f => f.Id == versionId && f.File.OwnerId == userId).Select(f => f.ContentHash)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<FileVersionDto?> GetSecondMostRecent(Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .Where(f => f.FileId == fileId && f.File.OwnerId == userId && f.DeletedAt == null)
+            .OrderByDescending(f => f.CreatedAt)
+            .Skip(1)
+            .Select(f =>
+                new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt == null))
+            .FirstOrDefaultAsync(ct);
     }
 }

@@ -31,19 +31,19 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             lower(
                 regexp_replace(
                     regexp_replace(
-                        coalesce(""Name"", ''), 
+                        coalesce(""Name"", ''),
                         '\.[^.]*$', ''
-                    ), 
+                    ),
                     '[_\-()[\]]+', ' ', 'g'
                 )
-            ), 
+            ),
             '\s+', ' ', 'g'
         )",
                 stored: true);
 
         builder.Property(e => e.SearchVector)
             .HasComputedColumnSql(
-                @"to_tsvector('simple', 
+                @"to_tsvector('simple',
                 regexp_replace(
                     regexp_replace(coalesce(""Name"", ''), '\.[^.]*$', ''),
                     '[_\-()[\]]+', ' ', 'g'
@@ -76,6 +76,14 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             .HasForeignKey(f => f.CurrentVersionId)
             .OnDelete(DeleteBehavior.Restrict)
             .IsRequired(false);
+
+        // FileConfiguration
+        builder.HasOne(f => f.CurrentVersion)
+            .WithMany()
+            .HasForeignKey(f => f.CurrentVersionId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")

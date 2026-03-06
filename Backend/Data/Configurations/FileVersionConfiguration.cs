@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Models;
-using File = Models.File;
 
 namespace Data.Configurations;
 
@@ -44,8 +43,10 @@ public class FileVersionConfiguration : IEntityTypeConfiguration<FileVersion>
 
         //Relations
         builder.HasOne(e => e.File)
-            .WithOne(f => f.CurrentVersion)
-            .HasForeignKey<File>(f => f.CurrentVersionId);
+            .WithMany(f => f.Versions)
+            .HasForeignKey(e => e.FileId)
+            .OnDelete(DeleteBehavior.Cascade);
+
 
         // Indexes for performance
         builder.HasIndex(e => e.CreatedAt);

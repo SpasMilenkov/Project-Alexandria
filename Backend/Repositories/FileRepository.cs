@@ -77,14 +77,14 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         var files = await filesQuery
             .OrderByDescending(f => f.CreatedAt)
-            .Skip(query.CurrentPage * query.PageSize)
             .Take(query.PageSize)
+            .Skip(query.CurrentPage * query.PageSize)
             .Select(FileProjections.ToFileResult)
             .ToListAsync(ct);
 
         return new PaginatedResult<FileResult>
         {
-            Items = files.ToList(),
+            Items = [.. files],
             CurrentPage = query.CurrentPage,
             PageSize = query.PageSize,
             TotalCount = totalCount,
@@ -150,8 +150,8 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         CancellationToken ct = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(query.CurrentPage);
-        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(query.PageSize, 0 );
-        ArgumentOutOfRangeException.ThrowIfGreaterThan( query.PageSize, 100);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(query.PageSize, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(query.PageSize, 100);
 
         IQueryable<File> dbQuery;
 
@@ -555,9 +555,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     public async Task<string> GetFileHashAsString(Guid fileId, Guid ownerId, CancellationToken ct = default)
     {
         var result = await _files
-            .AsNoTracking()
-            .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
-            .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct) ?? throw new InvalidOperationException("File hash not found");
+                         .AsNoTracking()
+                         .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
+                         .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct) ??
+                     throw new InvalidOperationException("File hash not found");
 
         return Convert.ToHexStringLower(result.ContentHash);
     }
@@ -611,7 +612,9 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
     public async Task<File> UpdateAsync(File file, CancellationToken ct = default)
     {
-        var existingFile = await GetByIdAsync(file.Id, ct) ?? throw new InvalidOperationException($"File with ID {file.Id} not found or has been deleted.");
+        var existingFile = await GetByIdAsync(file.Id, ct) ??
+                           throw new InvalidOperationException(
+                               $"File with ID {file.Id} not found or has been deleted.");
 
         // Update mutable properties
         existingFile.Name = file.Name;
@@ -659,18 +662,19 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     public async Task<long> GetDeletedSize(Guid userId, CancellationToken ct = default)
     {
         return await context.FileVersions
-        .Where(v => _files
-            .Where(f => f.OwnerId == userId && f.DeletedAt != null)
-            .Select(f => f.Id)
-            .Contains(v.FileId))
-        .SumAsync(v => v.Size, ct);
+            .Where(v => _files
+                .Where(f => f.OwnerId == userId && f.DeletedAt != null)
+                .Select(f => f.Id)
+                .Contains(v.FileId))
+            .SumAsync(v => v.Size, ct);
     }
 
     public async Task<IEnumerable<FileSummary>> GetOldFiles(Guid userId, CancellationToken ct = default)
     {
-        return await _files.Where(f => f.OwnerId == userId && f.DeletedAt != null && f.DeletedAt < DateTime.UtcNow.AddDays(-30))
-        .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview))
-        .ToListAsync(ct);
+        return await _files.Where(f =>
+                f.OwnerId == userId && f.DeletedAt != null && f.DeletedAt < DateTime.UtcNow.AddDays(-30))
+            .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview))
+            .ToListAsync(ct);
     }
 
     public Task<Dictionary<string, long>> GetSizeByType(
@@ -732,5 +736,21 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .Where(v => v.File.OwnerId == userId)
             .Where(v => onlyDeleted ? v.File.DeletedAt != null : v.File.DeletedAt == null)
             .SumAsync(v => v.Size, ct);
+    }
+
+    public async Task ChangeActiveVersion(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        _ = await _files.FirstOrDefaultAsync(
+                f => f.Id == fileId && f.OwnerId == userId && f.Versions.Any(v => v.Id == versionId), ct) ??
+            throw new InvalidOperationException("File with version not found");
+        await _files
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.CurrentVersionId, versionId), ct);
+    }
+
+    public async Task<FileResult?> GetFileWithOwnershipById(Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        return await _files.Where(f => f.Id == fileId && f.OwnerId == userId).Select(FileProjections.ToFileResult)
+            .FirstOrDefaultAsync(ct);
     }
 }
