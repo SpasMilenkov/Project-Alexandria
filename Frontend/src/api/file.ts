@@ -53,6 +53,7 @@ export interface FileVersionDto {
   size: string; // BigInteger serialized as string
   mimeType: string;
   versionNumber: number;
+  isDeleted: boolean;
 }
 
 export interface UserDto {
@@ -86,54 +87,46 @@ export interface FinalizeFileUploadResponse {
 }
 
 export const fileApi = {
-  // Initialize file upload - get presigned URL
-  initializeUpload: async (
-    data: InitializeFileUploadRequest,
-  ): Promise<InitializeFileUploadResponse> => {
-    const response = await apiClient.post<InitializeFileUploadResponse>("/files/init-upload", data);
+  changeFileVersion: async ({
+    fileId,
+    versionId,
+  }: {
+    fileId: string;
+    versionId: string;
+  }): Promise<void> => {
+    await apiClient.patch("files/versions", { fileId, versionId });
+  },
+
+  copyFiles: async (fileIds: string[], destinationId: string | null) =>
+    await apiClient.post(`/files/copy`, {
+      destinationId,
+      fileIds,
+    }),
+
+  deleteFileVersion: async (id: string): Promise<void> => {
+    await apiClient.delete(`/files/versions/${id}`);
+  },
+
+  // Delete a file (soft delete)
+  deleteFiles: async (ids: string[], hardDelete?: boolean): Promise<void> => {
+    await apiClient.delete(`/files/`, {
+      data: {
+        hardDelete: hardDelete ?? false,
+        ids,
+      },
+    });
+  },
+
+  // Download a file by ID
+  downloadFile: async (id: string): Promise<string> => {
+    const response = await apiClient.get<string>(`/files/download/${id}`);
     return response.data;
   },
 
-  // Upload file directly to S3 using presigned URL
-  uploadToS3: async (
-    presignedUrl: string,
-    file: File,
-    onProgress?: (percent: number) => void,
-  ): Promise<void> =>
-    new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-
-      // Track upload progress
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable && onProgress) {
-          const percent = (e.loaded / e.total) * 100;
-          onProgress(percent);
-        }
-      });
-
-      // Handle completion
-      xhr.addEventListener("load", () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      });
-
-      // Handle errors
-      xhr.addEventListener("error", () => {
-        reject(new Error("Network error during upload"));
-      });
-
-      xhr.addEventListener("abort", () => {
-        reject(new Error("Upload aborted"));
-      });
-
-      // Initiate upload
-      xhr.open("PUT", presignedUrl);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-      xhr.send(file);
-    }),
+  downloadFileVersion: async (id: string): Promise<string> => {
+    const response = await apiClient.get<string>(`files/versions/${id}`);
+    return response.data;
+  },
 
   // Finalize upload
   finalizeUpload: async (data: FinalizeFileUploadRequest): Promise<FinalizeFileUploadResponse> => {
@@ -144,18 +137,20 @@ export const fileApi = {
     return response.data;
   },
 
-  // Legacy upload method (kept for backwards compatibility if needed)
-  uploadFile: async (formData: FormData): Promise<void> => {
-    await apiClient.post("/files/upload", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+  // Generate signed URL for file upload/access
+  generateSignedUrl: async (data: GenerateSignedUrlSchema): Promise<GenerateSignedUrlResponse> => {
+    const response = await apiClient.post<GenerateSignedUrlResponse>("/files/signed-url", data);
+    return response.data;
   },
 
-  // Download a file by ID
-  downloadFile: async (id: string): Promise<string> => {
-    const response = await apiClient.get<string>(`/files/${id}`);
+  getFile: async (id: string): Promise<FileResult> => {
+    const response = await apiClient.get<FileResult>(`/files/${id}`);
+    return response.data;
+  },
+
+  // Get file preview
+  getPreview: async (id: string): Promise<PreviewResultDto> => {
+    const response = await apiClient.get<PreviewResultDto>(`/files/${id}/preview`);
     return response.data;
   },
 
@@ -167,16 +162,6 @@ export const fileApi = {
         sortBy: paginationParams.SortBy,
         sortDirection: paginationParams.sortDirection,
       },
-    });
-    return response.data;
-  },
-  searchFiles: async (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {
-    const cleanQuery = Object.fromEntries(
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      Object.entries(query).filter(([_, value]) => value != null),
-    );
-    const response = await apiClient.get<PaginatedResponse<FileResult>>("/files/search", {
-      params: cleanQuery,
     });
     return response.data;
   },
@@ -200,45 +185,36 @@ export const fileApi = {
     return response.data;
   },
 
-  // Update file metadata
-  updateFileMetadata: async (
-    id: string,
-    data: UpdateFileMetadataSchema,
-  ): Promise<UpdateFileMetadataResponse> => {
-    const response = await apiClient.patch<UpdateFileMetadataResponse>(
-      `/files/${id}/metadata`,
-      data,
-    );
-    return response.data;
-  },
-
-  // Delete a file (soft delete)
-  deleteFiles: async (ids: string[], hardDelete?: boolean): Promise<void> => {
-    await apiClient.delete(`/files/`, {
-      data: {
-        hardDelete: hardDelete ?? false,
-        ids,
-      },
+  // Get file thumbnail with specific dimensions
+  getThumbnail: async (id: string, width: number, height: number): Promise<Blob> => {
+    const response = await apiClient.get(`/files/${id}/thumbnail/${width}/${height}`, {
+      responseType: "blob",
     });
-  },
-
-  // Generate signed URL for file upload/access
-  generateSignedUrl: async (data: GenerateSignedUrlSchema): Promise<GenerateSignedUrlResponse> => {
-    const response = await apiClient.post<GenerateSignedUrlResponse>("/files/signed-url", data);
     return response.data;
   },
 
-  // Get file preview
-  getPreview: async (id: string): Promise<PreviewResultDto> => {
-    const response = await apiClient.get<PreviewResultDto>(`/files/${id}/preview`);
-    return response.data;
+  getVersionsForFile: async ({
+    id,
+    page,
+    pageSize,
+  }: {
+    id: string;
+    page: number;
+    pageSize: number;
+  }): Promise<PaginatedResponse<FileVersionDto>> => {
+    const result = await apiClient.get<PaginatedResponse<FileVersionDto>>("/files/versions", {
+      params: { fileId: id, page, pageSize },
+    });
+    return result.data;
   },
 
-  copyFiles: async (fileIds: string[], destinationId: string | null) =>
-    await apiClient.post(`/files/copy`, {
-      destinationId,
-      fileIds,
-    }),
+  // Initialize file upload - get presigned URL
+  initializeUpload: async (
+    data: InitializeFileUploadRequest,
+  ): Promise<InitializeFileUploadResponse> => {
+    const response = await apiClient.post<InitializeFileUploadResponse>("/files/init-upload", data);
+    return response.data;
+  },
 
   moveFiles: async (fileIds: string[], destinationId: string | null) => {
     await apiClient.post("/files/move", {
@@ -251,15 +227,75 @@ export const fileApi = {
     const result = await apiClient.post<number>("/files/restore", {
       fileIds,
     });
-
     return result.data;
   },
 
-  // Get file thumbnail with specific dimensions
-  getThumbnail: async (id: string, width: number, height: number): Promise<Blob> => {
-    const response = await apiClient.get(`/files/${id}/thumbnail/${width}/${height}`, {
-      responseType: "blob",
+  searchFiles: async (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {
+    const cleanQuery = Object.fromEntries(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      Object.entries(query).filter(([_, value]) => value != null),
+    );
+    const response = await apiClient.get<PaginatedResponse<FileResult>>("/files/search", {
+      params: cleanQuery,
     });
     return response.data;
   },
+
+  // Update file metadata
+  updateFileMetadata: async (
+    id: string,
+    data: UpdateFileMetadataSchema,
+  ): Promise<UpdateFileMetadataResponse> => {
+    const response = await apiClient.patch<UpdateFileMetadataResponse>(
+      `/files/${id}/metadata`,
+      data,
+    );
+    return response.data;
+  },
+
+  // Legacy upload method (kept for backwards compatibility if needed)
+  uploadFile: async (formData: FormData): Promise<void> => {
+    await apiClient.post("/files/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+  },
+
+  // Upload file directly to S3 using presigned URL
+  uploadToS3: (
+    presignedUrl: string,
+    file: File,
+    onProgress?: (percent: number) => void,
+  ): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable && onProgress) {
+          const percent = (e.loaded / e.total) * 100;
+          onProgress(percent);
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new Error("Network error during upload"));
+      });
+
+      xhr.addEventListener("abort", () => {
+        reject(new Error("Upload aborted"));
+      });
+
+      xhr.open("PUT", presignedUrl);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.send(file);
+    }),
 };

@@ -1,6 +1,7 @@
-import { defineMutation } from "@pinia/colada";
+import { defineMutation, useQueryCache } from "@pinia/colada";
 
 import { fileApi } from "@/api/file";
+import { FILES_QUERY_KEYS } from "@/queries/files";
 import { type UpdateFileMetadataSchema } from "@/schemas/file";
 
 export const updateFileMetadata = defineMutation(() => ({
@@ -25,4 +26,25 @@ export const moveFiles = defineMutation({
 
 export const restoreFiles = defineMutation({
   mutation: (fileIds: string[]) => fileApi.restoreFiles(fileIds),
+});
+
+export const deleteVersion = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return {
+    mutation: ({ versionId }: { versionId: string }) => fileApi.deleteFileVersion(versionId),
+    onSettled(_: any, __: any, { fileId }: { fileId: string }) {
+      queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.getFile(fileId) });
+    },
+  };
+});
+
+export const changeActiveVersion = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return {
+    mutation: ({ fileId, versionId }: { fileId: string; versionId: string }) =>
+      fileApi.changeFileVersion({ fileId, versionId }),
+    onSettled(_: any, __: any, { fileId }: { fileId: string }) {
+      queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.getFile(fileId) });
+    },
+  };
 });

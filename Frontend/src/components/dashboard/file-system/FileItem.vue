@@ -1,7 +1,7 @@
 <template>
   <UDrawer
-    :title="data.fileName"
-    :description="'Created ' + formatDate(data.createdAt)"
+    :title="detail.fileName"
+    :description="'Created ' + formatDate(detail.createdAt)"
     direction="right"
     v-model:open="openDrawer"
     :ui="{ container: 'md:max-w-[40rem]' }"
@@ -30,18 +30,18 @@
             @dblclick="handleDoubleClick"
           >
             <Icon
-              :icon="getFileIcon(data.fileName)"
+              :icon="getFileIcon(props.data.fileName)"
               :width="iconSize"
               :height="iconSize"
               class="shrink-0"
             />
             <span class="text-sm text-center line-clamp-2 w-full wrap-break-word">
-              {{ data.fileName }}
+              {{ props.data.fileName }}
             </span>
           </button>
 
           <template #content>
-            <FileTooltipCard :data="data" />
+            <FileTooltipCard :data="props.data" />
           </template>
         </UTooltip>
       </div>
@@ -70,19 +70,19 @@
             @dblclick="handleDoubleClick"
           >
             <Icon
-              :icon="getFileIcon(data.fileName)"
+              :icon="getFileIcon(props.data.fileName)"
               :width="iconSize"
               :height="iconSize"
               class="shrink-0"
             />
-            <span class="flex-1 truncate">{{ data.fileName }}</span>
+            <span class="flex-1 truncate">{{ props.data.fileName }}</span>
             <span class="text-xs opacity-70 shrink-0 min-w-15 text-right">
-              {{ formatFileSize(Number(data.currentVersion.size)) }}
+              {{ formatFileSize(Number(props.data.currentVersion.size)) }}
             </span>
           </button>
 
           <template #content>
-            <FileTooltipCard :data="data" />
+            <FileTooltipCard :data="props.data" />
           </template>
         </UTooltip>
       </div>
@@ -93,17 +93,17 @@
         <!-- File Header Section -->
         <div class="flex items-center gap-4 p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg">
           <div class="p-4 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg shadow-sm">
-            <Icon :icon="getFileIcon(data.fileName)" class="w-16 h-16 text-primary" />
+            <Icon :icon="getFileIcon(detail.fileName)" class="w-16 h-16 text-primary" />
           </div>
 
           <div class="flex-1 min-w-0">
             <h3 class="font-semibold text-lg truncate mb-1">
-              {{ data.fileName }}
+              {{ detail.fileName }}
             </h3>
             <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 w-full">
               <Icon icon="mdi-file" class="w-4 h-4" />
               <span class="max-w-46 text-ellipsis max-h-16 wrap-break-word overflow-hidden">{{
-                getFileTypeReadable(data.currentVersion.mimeType, data.fileName)
+                getFileTypeReadable(detail.currentVersion.mimeType, detail.fileName)
               }}</span>
               <UBadge
                 variant="subtle"
@@ -131,7 +131,6 @@
           <USkeleton v-if="fileTagsLoading && openDrawer" class="h-8 w-48 rounded-full" />
 
           <div v-else class="flex flex-wrap items-center gap-1.5">
-            <!-- Existing tags -->
             <TagBadge
               v-for="tag in displayTags"
               :key="tag.id"
@@ -140,7 +139,6 @@
               @remove-tag="refreshOnRemove"
             />
 
-            <!-- Empty state label (only when no tags and popover is closed) -->
             <span
               v-if="!displayTags?.length && !showTagSearch"
               class="text-xs text-gray-400 dark:text-gray-500 italic mr-1"
@@ -148,7 +146,6 @@
               No tags
             </span>
 
-            <!-- Inline add trigger + popover -->
             <UPopover v-model:open="showTagSearch" :content="{ side: 'bottom', align: 'start' }">
               <UButton
                 label="Add tag"
@@ -177,7 +174,7 @@
                     @update:model-value="
                       async (tag) => {
                         await addTagMutate({
-                          fileId: data.fileId,
+                          fileId: props.data.fileId,
                           data: { tagIds: [tag.value] },
                         });
                         showTagSearch = false;
@@ -203,7 +200,7 @@
 
           <!-- Audio Preview -->
           <div
-            v-if="data.currentVersion.mimeType.startsWith('audio/') && previewUrl"
+            v-if="detail.currentVersion.mimeType.startsWith('audio/') && previewUrl"
             class="relative w-full bg-black/5 dark:bg-black/20 rounded-lg overflow-hidden"
           >
             <div class="relative w-full aspect-video">
@@ -317,19 +314,19 @@
 
           <!-- Image Preview -->
           <div
-            v-else-if="data.currentVersion.mimeType.startsWith('image/') && previewUrl"
+            v-else-if="detail.currentVersion.mimeType.startsWith('image/') && previewUrl"
             class="relative w-full rounded-lg overflow-hidden bg-black/5 dark:bg-black/20"
           >
             <img
               :src="previewUrl"
-              :alt="data.fileName"
+              :alt="detail.fileName"
               class="w-full h-auto max-h-96 object-contain mx-auto"
             />
           </div>
 
           <!-- Video Preview -->
           <div
-            v-else-if="data.currentVersion.mimeType.startsWith('video/') && previewUrl"
+            v-else-if="detail.currentVersion.mimeType.startsWith('video/') && previewUrl"
             class="relative w-full aspect-video bg-black rounded-lg overflow-hidden"
           >
             <video ref="videoPlayer" class="w-full h-full object-contain" controls>
@@ -339,7 +336,7 @@
 
           <!-- PDF Preview -->
           <div
-            v-else-if="pdfPreviewMimes.includes(data.currentVersion.mimeType) && previewUrl"
+            v-else-if="pdfPreviewMimes.includes(detail.currentVersion.mimeType) && previewUrl"
             class="relative w-xl h-220 bg-white dark:bg-neutral-900 rounded-lg overflow-hidden"
           >
             <embed :src="previewUrl" type="application/pdf" class="w-full h-full" />
@@ -372,7 +369,7 @@
               <div>
                 <div class="text-xs mb-0.5">Size</div>
                 <div class="font-medium">
-                  {{ formatFileSize(Number(data.currentVersion.size)) }}
+                  {{ formatFileSize(Number(detail.currentVersion.size)) }}
                 </div>
               </div>
             </div>
@@ -383,7 +380,7 @@
               <UIcon name="i-heroicons-archive-box" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Version</div>
-                <div class="font-medium">v{{ data.currentVersion.versionNumber }}</div>
+                <div class="font-medium">v{{ detail.currentVersion.versionNumber }}</div>
               </div>
             </div>
 
@@ -393,7 +390,9 @@
               <Icon icon="mdi-identifier" class="w-10 h-10 text-gray-500 mt-0.5" />
               <div class="min-w-0 flex-1">
                 <div class="text-xs mb-0.5">File ID</div>
-                <div class="font-mono text-sm truncate">{{ data.fileId }}</div>
+                <div class="font-mono text-sm truncate">
+                  {{ detail.fileId }}
+                </div>
               </div>
             </div>
           </div>
@@ -408,12 +407,12 @@
             </div>
           </template>
           <div class="flex items-center gap-3">
-            <UAvatar :alt="data.owner.name" size="lg" />
+            <UAvatar :alt="detail.owner.name" size="lg" />
             <div>
-              <div class="font-medium">{{ data.owner.name }}</div>
+              <div class="font-medium">{{ detail.owner.name }}</div>
               <div class="text-sm flex items-center gap-1.5 mt-0.5">
                 <Icon color="primary" icon="mdi-email" class="w-4 h-4" />
-                {{ data.owner.email }}
+                {{ detail.owner.email }}
               </div>
             </div>
           </div>
@@ -428,37 +427,167 @@
                 <span class="font-semibold">Version History</span>
               </div>
               <UBadge color="primary" variant="soft">
-                {{ data.currentVersion.versionNumber }} version{{
-                  data.currentVersion.versionNumber > 1 ? "s" : ""
-                }}
+                {{ versionsData?.totalCount ?? 0 }}
+                version{{ (versionsData?.totalCount ?? 0) !== 1 ? "s" : "" }}
               </UBadge>
             </div>
           </template>
-          <div class="space-y-3">
+
+          <!-- Loading skeleton -->
+          <div v-if="versionsLoading" class="space-y-3">
+            <USkeleton v-for="i in 3" :key="i" class="h-16 w-full rounded-lg" />
+          </div>
+
+          <!-- Version list -->
+          <div v-else-if="versionsData?.items?.length" class="space-y-2">
             <div
-              class="flex items-start gap-3 p-3 border border-primary/20 bg-primary/5 rounded-lg"
+              v-for="version in versionsData.items"
+              :key="version.id"
+              class="flex items-start gap-3 p-3 rounded-lg border transition-colors"
+              :class="
+                version.isDeleted
+                  ? 'border-error/30 bg-error/5 opacity-60'
+                  : version.versionNumber === detail.currentVersion.versionNumber
+                    ? 'border-primary/30 bg-primary/5'
+                    : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/30'
+              "
             >
-              <Icon icon="mdi-check-circle" class="w-5 h-5 text-primary mt-0.5" />
-              <div class="flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="font-medium">Version {{ data.currentVersion.versionNumber }}</span>
-                  <UBadge color="primary" variant="solid" size="xs">Current</UBadge>
+              <Icon
+                :icon="
+                  version.isDeleted
+                    ? 'mdi-delete-clock'
+                    : version.versionNumber === detail.currentVersion.versionNumber
+                      ? 'mdi-check-circle'
+                      : 'mdi-clock-outline'
+                "
+                class="w-5 h-5 mt-0.5 shrink-0"
+                :class="
+                  version.isDeleted
+                    ? 'text-error'
+                    : version.versionNumber === detail.currentVersion.versionNumber
+                      ? 'text-primary'
+                      : 'text-neutral-400 dark:text-neutral-500'
+                "
+              />
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1.5">
+                  <span class="font-medium text-sm">Version {{ version.versionNumber }}</span>
+                  <UBadge
+                    v-if="version.isDeleted"
+                    color="error"
+                    variant="subtle"
+                    size="xs"
+                    label="Deleted"
+                  />
+                  <UBadge
+                    v-else-if="version.versionNumber === detail.currentVersion.versionNumber"
+                    color="primary"
+                    variant="solid"
+                    size="xs"
+                    label="Current"
+                  />
                 </div>
-                <div class="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <Icon icon="mdi-scale" class="w-3.5 h-3.5 inline mr-1" />
-                    {{ formatFileSize(Number(data.currentVersion.size)) }}
+
+                <div
+                  class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400"
+                >
+                  <div class="flex items-center gap-1">
+                    <Icon icon="mdi-scale" class="w-3.5 h-3.5 shrink-0" />
+                    <span>{{ formatFileSize(Number(version.size)) }}</span>
                   </div>
-                  <div
-                    class="text-gray-600 dark:text-gray-400 text-ellipsis w-full overflow-hidden"
-                  >
-                    <Icon icon="mdi-file-document" class="w-3.5 h-3.5 inline mr-1" />
-                    {{ getFileTypeReadable(data.currentVersion.mimeType, data.fileName) }}
+                  <div class="flex items-center gap-1 truncate">
+                    <Icon icon="mdi-file-document" class="w-3.5 h-3.5 shrink-0" />
+                    <span class="truncate">{{
+                      getFileTypeReadable(version.mimeType, detail.fileName)
+                    }}</span>
                   </div>
                 </div>
               </div>
-              <UButton icon="i-mdi-download" size="xs" color="primary" variant="ghost" square />
+
+              <div class="flex items-center gap-1 shrink-0">
+                <UButton
+                  icon="i-mdi-download"
+                  size="xs"
+                  :color="
+                    version.versionNumber === detail.currentVersion.versionNumber
+                      ? 'primary'
+                      : 'neutral'
+                  "
+                  variant="ghost"
+                  square
+                  :disabled="version.isDeleted"
+                  :title="`Download version ${version.versionNumber}`"
+                  @click="handleDownloadVersion(version.id)"
+                />
+                <UButton
+                  icon="i-mdi-delete-outline"
+                  size="xs"
+                  color="error"
+                  variant="ghost"
+                  square
+                  :loading="deletingVersionId === version.id"
+                  :disabled="deletingVersionId !== null || version.isDeleted"
+                  :title="`Delete version ${version.versionNumber}`"
+                  @click="handleDeleteVersion(version.id)"
+                />
+                <UButton
+                  v-if="
+                    !version.isDeleted &&
+                    version.versionNumber !== detail.currentVersion.versionNumber
+                  "
+                  icon="i-mdi-check-circle-outline"
+                  size="xs"
+                  color="primary"
+                  variant="ghost"
+                  square
+                  :loading="changingActiveVersionId === version.id"
+                  :disabled="changingActiveVersionId !== null || deletingVersionId !== null"
+                  :title="`Set version ${version.versionNumber} as active`"
+                  @click="handleChangeActiveVersion(version.id)"
+                />
+              </div>
             </div>
+
+            <!-- Pagination -->
+            <div
+              v-if="versionsData.totalCount > versionsPageSize"
+              class="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700"
+            >
+              <span class="text-xs text-neutral-500 dark:text-neutral-400">
+                Showing {{ versionsData.items.length }} of {{ versionsData.totalCount }} versions
+              </span>
+              <div class="flex items-center gap-1">
+                <UButton
+                  icon="i-mdi-chevron-left"
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  square
+                  :disabled="versionsPage <= 1"
+                  @click="versionsPage--"
+                />
+                <span class="text-xs px-1">{{ versionsPage }}</span>
+                <UButton
+                  icon="i-mdi-chevron-right"
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  square
+                  :disabled="versionsPage * versionsPageSize >= versionsData.totalCount"
+                  @click="versionsPage++"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div
+            v-else
+            class="flex flex-col items-center gap-2 py-4 text-neutral-400 dark:text-neutral-500"
+          >
+            <Icon icon="mdi-history" class="w-8 h-8" />
+            <span class="text-sm">No version history available</span>
           </div>
         </UCard>
       </div>
@@ -467,30 +596,25 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
-import { computed, ref, watch } from "vue";
-import type { FileResult } from "@/api/file";
-import type { ContextMenuItem, TreeItem } from "@nuxt/ui";
-import { useSettingsStore } from "@/stores/settings";
-import { useQuery } from "@pinia/colada";
-import { getPreview } from "@/queries/files";
+import { type FileResult, fileApi } from "@/api/file";
 import type { TagDto } from "@/api/tag";
+import { changeActiveVersion, deleteVersion } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
+import { getFile, getPreview, getVersionsForFile, FILES_QUERY_KEYS } from "@/queries/files";
+import { getTagsForFile, searchTag } from "@/queries/tags";
 import type { SearchTagsSchema } from "@/schemas/tag";
-import { searchTag } from "@/queries/tags";
-import { getIconByValue } from "@/utils/icon.utils";
-import { getTagsForFile } from "@/queries/tags";
-import { getFileTypeReadable } from "@/utils/mimetype.utils";
+import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
+import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
+import { getFileTypeReadable } from "@/utils/mimetype.utils";
+import { Icon } from "@iconify/vue";
+import type { ContextMenuItem, TreeItem } from "@nuxt/ui";
+import { useMutation, useQuery } from "@pinia/colada";
+import { computed, ref, watch } from "vue";
 import AudioEqualizer from "../AudioEqualizer.vue";
-import { getFileIcon } from "@/utils/icon.utils";
 import FileTooltipCard from "./FileTooltipCard.vue";
 
 const settingsStore = useSettingsStore();
-
-const iconSize = computed(() =>
-  props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
-);
 
 const props = defineProps<{
   data: FileResult;
@@ -499,6 +623,10 @@ const props = defineProps<{
   selectedCount?: number;
   tags: TagDto[] | undefined;
 }>();
+
+const iconSize = computed(() =>
+  props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
+);
 
 const openDrawer = ref(false);
 const previewUrl = ref<string | null>(null);
@@ -513,72 +641,38 @@ const duration = ref(0);
 const volume = ref(0.2);
 const isMuted = ref(false);
 
-const toggleAudio = async (): Promise<void> => {
-  if (audioPlayer.value) {
-    if (audioPlayer.value.paused) {
-      await audioPlayer.value.play();
-      isAudioPlaying.value = true;
-    } else {
-      audioPlayer.value.pause();
-      isAudioPlaying.value = false;
-    }
-  }
-};
+//     File detail query
+// Seeded with list data so the drawer never shows empty on first open.
+// Invalidated by version mutations, so it re-fetches automatically after changes.
 
-const onAudioReady = (): void => {
-  if (audioPlayer.value) {
-    audioPlayer.value.volume = volume.value;
-  }
-};
+const { data: fileDetail, refresh: refreshDetail } = useQuery({
+  ...getFile(props.data.fileId),
+  enabled: () => openDrawer.value,
+  placeholderData: () => props.data,
+});
+const detail = computed(() => fileDetail.value ?? props.data);
 
-const seekAudio = (event: Event): void => {
-  const target = event.target as HTMLInputElement;
-  if (audioPlayer.value) {
-    audioPlayer.value.currentTime = Number(target.value);
-  }
-};
+//     Versions query
+// Reactive to page changes and re-fetches when the drawer opens.
 
-const updateProgress = (): void => {
-  if (audioPlayer.value) {
-    currentTime.value = audioPlayer.value.currentTime;
-  }
-};
+const versionsPage = ref(1);
+const versionsPageSize = ref(10);
 
-const onAudioLoaded = (): void => {
-  if (audioPlayer.value) {
-    duration.value = audioPlayer.value.duration;
-  }
-};
+const versionsQueryParams = computed(() => ({
+  id: props.data.fileId,
+  page: versionsPage.value,
+  pageSize: versionsPageSize.value,
+}));
 
-const onAudioEnded = (): void => {
-  isAudioPlaying.value = false;
-  currentTime.value = 0;
-};
-
-const updateVolume = (event: Event): void => {
-  const target = event.target as HTMLInputElement;
-  volume.value = Number(target.value);
-  if (audioPlayer.value) {
-    audioPlayer.value.volume = volume.value;
-    isMuted.value = volume.value === 0;
-  }
-};
-
-const toggleMute = (): void => {
-  if (audioPlayer.value) {
-    isMuted.value = !isMuted.value;
-    audioPlayer.value.muted = isMuted.value;
-  }
-};
-
-const formatTime = (seconds: number): string => {
-  if (!seconds || !isFinite(seconds)) {
-    return "0:00";
-  }
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
+const {
+  data: versionsData,
+  isLoading: versionsLoading,
+  refresh: refreshVersions,
+} = useQuery({
+  key: () => FILES_QUERY_KEYS.versionsForFile(versionsQueryParams.value),
+  query: () => fileApi.getVersionsForFile(versionsQueryParams.value),
+  enabled: () => openDrawer.value,
+});
 
 const { data: previewData, isLoading: previewLoading } = useQuery(
   getPreview,
@@ -586,6 +680,7 @@ const { data: previewData, isLoading: previewLoading } = useQuery(
 );
 
 const { mutateAsync: addTagMutate } = addTagToFile();
+const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
 
 const currentPage = ref(1);
 const pageSize = ref(25);
@@ -597,13 +692,6 @@ const searchFilters = computed<SearchTagsSchema>(() => ({
   page: currentPage.value,
   pageSize: pageSize.value,
 }));
-
-const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
-
-const refreshOnRemove = async (id: string) => {
-  await removeTagMutateAsync({ fileId: props.data.fileId, tagId: id });
-  refreshFileTag();
-};
 
 const {
   data: tagsData,
@@ -617,10 +705,53 @@ const { data: fileTagsData, isLoading: fileTagsLoading } = useQuery({
 });
 
 const displayTags = computed(() =>
-  openDrawer.value && fileTagsData.value ? fileTagsData.value.tags : props.data.tags,
+  openDrawer.value && fileDetail.value ? fileDetail.value.tags : props.data.tags,
 );
 
 const showTagSearch = ref(false);
+
+const refreshOnRemove = async (id: string) => {
+  await removeTagMutateAsync({ fileId: props.data.fileId, tagId: id });
+  refreshFileTag();
+};
+
+const { mutation: deleteVersionMutate } = deleteVersion();
+const deletingVersionId = ref<string | null>(null);
+
+const handleDownloadVersion = async (versionId: string) => {
+  const url = await fileApi.downloadFileVersion(versionId);
+  window.open(url, "_blank");
+};
+
+const handleDeleteVersion = async (versionId: string) => {
+  deletingVersionId.value = versionId;
+  try {
+    await deleteVersionMutate({ versionId, fileId: props.data.fileId });
+    if (versionId === props.data.currentVersion.id) {
+      openDrawer.value = false;
+      emit("delete", [props.data.fileId]);
+    } else {
+      await Promise.all([refreshDetail(), refreshVersions()]);
+    }
+  } finally {
+    deletingVersionId.value = null;
+  }
+};
+
+const { mutation: changeActiveVersionMutate } = changeActiveVersion();
+const changingActiveVersionId = ref<string | null>(null);
+
+const handleChangeActiveVersion = async (versionId: string) => {
+  changingActiveVersionId.value = versionId;
+  try {
+    await changeActiveVersionMutate({ fileId: props.data.fileId, versionId });
+    await Promise.all([refreshDetail(), refreshVersions()]);
+  } finally {
+    changingActiveVersionId.value = null;
+  }
+};
+
+// Emits & context menu
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
@@ -730,6 +861,8 @@ const canDownload = (): boolean => true;
 const canShare = (): boolean => true;
 const canDelete = (): boolean => true;
 
+//     MIME helpers
+
 const pdfDocumentMimes = [
   "application/pdf",
   "application/msword",
@@ -754,10 +887,10 @@ const pdfPresentationMimes = [
 
 const pdfPreviewMimes = [...pdfDocumentMimes, ...pdfSpreadsheetMimes, ...pdfPresentationMimes];
 
+//Formatters
+
 const formatFileSize = (bytes: number | undefined): string => {
-  if (!bytes) {
-    return "";
-  }
+  if (!bytes) return "";
   const units = ["B", "KB", "MB", "GB", "TB"];
   let size = bytes;
   let unitIndex = 0;
@@ -768,13 +901,66 @@ const formatFileSize = (bytes: number | undefined): string => {
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 };
 
-const handleClick = (event: MouseEvent) => {
-  if (!props.isSelected && event.button === 2) {
-    emit("click", event);
-    return;
-  }
-  emit("click", event);
+const formatTime = (seconds: number): string => {
+  if (!seconds || !isFinite(seconds)) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
+
+//     Audio player
+
+const toggleAudio = async (): Promise<void> => {
+  if (audioPlayer.value) {
+    if (audioPlayer.value.paused) {
+      await audioPlayer.value.play();
+      isAudioPlaying.value = true;
+    } else {
+      audioPlayer.value.pause();
+      isAudioPlaying.value = false;
+    }
+  }
+};
+
+const onAudioReady = (): void => {
+  if (audioPlayer.value) audioPlayer.value.volume = volume.value;
+};
+
+const seekAudio = (event: Event): void => {
+  const target = event.target as HTMLInputElement;
+  if (audioPlayer.value) audioPlayer.value.currentTime = Number(target.value);
+};
+
+const updateProgress = (): void => {
+  if (audioPlayer.value) currentTime.value = audioPlayer.value.currentTime;
+};
+
+const onAudioLoaded = (): void => {
+  if (audioPlayer.value) duration.value = audioPlayer.value.duration;
+};
+
+const onAudioEnded = (): void => {
+  isAudioPlaying.value = false;
+  currentTime.value = 0;
+};
+
+const updateVolume = (event: Event): void => {
+  const target = event.target as HTMLInputElement;
+  volume.value = Number(target.value);
+  if (audioPlayer.value) {
+    audioPlayer.value.volume = volume.value;
+    isMuted.value = volume.value === 0;
+  }
+};
+
+const toggleMute = (): void => {
+  if (audioPlayer.value) {
+    isMuted.value = !isMuted.value;
+    audioPlayer.value.muted = isMuted.value;
+  }
+};
+
+//     Archive preview
 
 interface ArchiveEntry {
   Key: string;
@@ -791,9 +977,7 @@ interface ArchiveData {
 const archivePreviewItems = computed(() => parseArchivePreview());
 
 const parseArchivePreview = () => {
-  if (!archivePreview.value) {
-    return undefined;
-  }
+  if (!archivePreview.value) return undefined;
 
   const tree: ArchiveData = JSON.parse(archivePreview.value);
   const rootNode: TreeItem = {
@@ -818,9 +1002,7 @@ const parseArchivePreview = () => {
 
       if (!folder) {
         folder = { children: [], icon: "mdi-folder", label: part };
-        if (!parentNode.children) {
-          parentNode.children = [];
-        }
+        if (!parentNode.children) parentNode.children = [];
         parentNode.children.push(folder);
         pathCache.set(newPath, folder);
       }
@@ -829,15 +1011,15 @@ const parseArchivePreview = () => {
       currentPath = newPath;
     }
 
-    if (!parentNode.children) {
-      parentNode.children = [];
-    }
+    if (!parentNode.children) parentNode.children = [];
     const fileName = pathParts[pathParts.length - 1];
     parentNode.children.push({ icon: "mdi-file", label: fileName });
   });
 
   return [rootNode];
 };
+
+//     Preview hydration
 
 const setFilePreviews = async () => {
   if (previewData.value) {
@@ -849,11 +1031,19 @@ const setFilePreviews = async () => {
   }
 };
 
+//     Interaction handlers
+
+const handleClick = (event: MouseEvent) => {
+  emit("click", event);
+};
+
 const handleDoubleClick = async () => {
   openDrawer.value = true;
   await setFilePreviews();
   parseArchivePreview();
 };
+
+//     Watchers
 
 watch(openDrawer, (isOpen) => {
   if (!isOpen) {
@@ -867,9 +1057,7 @@ watch(openDrawer, (isOpen) => {
 });
 
 watch(showTagSearch, (open) => {
-  if (!open) {
-    searchQuery.value = "";
-  }
+  if (!open) searchQuery.value = "";
 });
 </script>
 
