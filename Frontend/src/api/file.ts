@@ -263,15 +263,6 @@ export const fileApi = {
     return response.data;
   },
 
-  // Legacy upload method (kept for backwards compatibility if needed)
-  uploadFile: async (formData: FormData): Promise<void> => {
-    await apiClient.post("/files/upload", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-  },
-
   // Upload file directly to S3 using presigned URL
   uploadToS3: (
     presignedUrl: string,
