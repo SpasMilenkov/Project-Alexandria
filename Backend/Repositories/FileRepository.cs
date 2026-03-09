@@ -743,7 +743,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         _ = await _files.FirstOrDefaultAsync(
                 f => f.Id == fileId && f.OwnerId == userId && f.Versions.Any(v => v.Id == versionId), ct) ??
             throw new InvalidOperationException("File with version not found");
-        await _files
+        await _files.Where(f => f.Id == fileId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(f => f.CurrentVersionId, versionId), ct);
     }
@@ -752,5 +752,13 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     {
         return await _files.Where(f => f.Id == fileId && f.OwnerId == userId).Select(FileProjections.ToFileResult)
             .FirstOrDefaultAsync(ct);
+    }
+    public async Task UpdateCurrentVersion(Guid fileId, Guid versionId, CancellationToken ct = default)
+    {
+        await _files
+            .Where(f => f.Id == fileId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(f => f.CurrentVersionId, versionId)
+                .SetProperty(f => f.UpdatedAt, DateTime.UtcNow), ct);
     }
 }

@@ -142,16 +142,6 @@ public class FileVersionRepository : IFileVersionRepository
                 ct);
     }
 
-    public async Task<int> SoftDeleteFileVersions(Guid[] fileIds, Guid ownerId, CancellationToken ct = default)
-    {
-        return await _context.FileVersions
-            .Where(v => fileIds.Contains(v.FileId) && v.File.OwnerId == ownerId && v.DeletedAt == null)
-            .ExecuteUpdateAsync(
-                s => s.SetProperty(v => v.DeletedAt, _ => DateTime.UtcNow),
-                ct);
-    }
-
-
     public async Task<int> RestoreFileVersions(
         Guid[] fileIds,
         Guid ownerId,
@@ -204,6 +194,16 @@ public class FileVersionRepository : IFileVersionRepository
         };
     }
 
+
+    public async Task<int> SoftDeleteFileVersions(Guid[] fileIds, Guid ownerId, CancellationToken ct = default)
+    {
+        return await _context.FileVersions
+            .Where(v => fileIds.Contains(v.FileId) && v.File.OwnerId == ownerId && v.DeletedAt == null)
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(v => v.DeletedAt, _ => DateTime.UtcNow),
+                ct);
+    }
+
     public async Task<int> SoftDeleteFileVersions(Guid fileId, Guid ownerId, CancellationToken ct = default)
     {
         return await _context.FileVersions
@@ -219,14 +219,62 @@ public class FileVersionRepository : IFileVersionRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<FileVersionDto?> GetSecondMostRecent(Guid fileId, Guid userId, CancellationToken ct = default)
+    public async Task<FileVersionDto?> GetMostRecent(Guid fileId, Guid userId, CancellationToken ct = default)
     {
         return await _dbSet
             .Where(f => f.FileId == fileId && f.File.OwnerId == userId && f.DeletedAt == null)
             .OrderByDescending(f => f.CreatedAt)
-            .Skip(1)
-            .Select(f =>
-                new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt == null))
+            .Select(f => new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt == null))
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task RestoreFileVersion(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        // Restore the version
+        var updated = await _dbSet
+            .Where(v => v.Id == versionId && v.File.OwnerId == userId && v.DeletedAt != null)
+            .ExecuteUpdateAsync(v => v
+                .SetProperty(v => v.UpdatedAt, DateTime.UtcNow)
+                .SetProperty(v => v.DeletedAt, (DateTime?)null), ct);
+
+        if (updated == 0)
+            throw new InvalidOperationException("Version not found or not eligible for restore");
+
+        // Get the file ID and its current state
+        var version = await _dbSet
+            .Where(v => v.Id == versionId)
+            .Select(v => new { v.FileId, FileDeletedAt = v.File.DeletedAt })
+            .FirstAsync(ct);
+
+        // Always set this version as active
+        await _context.Files
+            .Where(f => f.Id == version.FileId)
+            .ExecuteUpdateAsync(f => f
+                .SetProperty(f => f.CurrentVersionId, versionId)
+                .SetProperty(f => f.UpdatedAt, DateTime.UtcNow), ct);
+
+        // If the file itself was soft-deleted, restore it too
+        if (version.FileDeletedAt != null)
+        {
+            await _context.Files
+                .Where(f => f.Id == version.FileId)
+                .ExecuteUpdateAsync(f => f
+                    .SetProperty(f => f.DeletedAt, (DateTime?)null), ct);
+        }
+
+    }
+
+    public async Task RemoveAsync(Guid versionId, Guid ownerId, CancellationToken ct = default)
+    {
+        await _dbSet
+            .Where(v => v.Id == versionId && v.File.OwnerId == ownerId)
+            .ExecuteUpdateAsync(v => v
+                .SetProperty(v => v.DeletedAt, DateTime.UtcNow)
+                .SetProperty(v => v.UpdatedAt, DateTime.UtcNow), ct);
+    }
+
+    public async Task<VersionDownloadInfo?> GetVersionDownloadInfo(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        return await _dbSet.Where(v => v.Id == versionId && v.File.OwnerId == userId).Select(v => new VersionDownloadInfo(v.File.Name, v.File.MimeType, v.VersionNumber, v.ContentHash)).FirstOrDefaultAsync(ct);
     }
 }

@@ -222,32 +222,31 @@ public partial class FileService(
                     f => f.Id == fileVersionId && f.File.OwnerId == userId, ct) ??
                 throw new InvalidOperationException("File version not found");
 
-            var versionCount = await unitOfWork.FileVersions
-                .CountAsync(f => f.FileId == version.FileId && f.DeletedAt == null, ct);
+            var fileId = version.FileId;
+            var currentVersionId = version.File.CurrentVersionId;
 
-            if (versionCount == 1)
+            await unitOfWork.FileVersions.RemoveAsync(fileVersionId, userId, ct);
+
+            var remainingCount = await unitOfWork.FileVersions
+                .CountAsync(f => f.FileId == fileId && f.DeletedAt == null, ct);
+
+            if (remainingCount == 0)
             {
-                unitOfWork.Files.Remove(version.File);
+                var file = await unitOfWork.Files.GetByIdAsync(fileId, ct) ??
+                           throw new InvalidOperationException("File not found");
 
-                await unitOfWork.FileVersions.SoftDeleteFileVersions(version.File.Id, userId, ct);
-
+                unitOfWork.Files.Remove(file);
                 await unitOfWork.CommitAsync(ct);
                 return;
             }
 
-            if (version.File.CurrentVersionId == fileVersionId)
+            if (currentVersionId == fileVersionId)
             {
-                var mostRecent = await unitOfWork.FileVersions.GetSecondMostRecent(version.FileId, userId, ct) ??
+                var mostRecent = await unitOfWork.FileVersions.GetMostRecent(fileId, userId, ct) ??
                                  throw new InvalidOperationException("No active version available");
 
-                var file = await unitOfWork.Files.GetByIdAsync(version.FileId, ct) ??
-                           throw new InvalidOperationException("File for version not found");
-
-                file.CurrentVersionId = mostRecent.Id;
-                await unitOfWork.Files.UpdateAsync(file, ct);
+                await unitOfWork.Files.UpdateCurrentVersion(fileId, mostRecent.Id, ct);
             }
-
-            unitOfWork.FileVersions.Remove(version);
 
             await unitOfWork.CommitAsync(ct);
         }
@@ -257,10 +256,24 @@ public partial class FileService(
             throw;
         }
     }
-
     public async Task<FileResult> GetFileWithOwnershipById(Guid fileId, Guid userId, CancellationToken ct = default)
     {
         return await unitOfWork.Files.GetFileWithOwnershipById(fileId: fileId, userId: userId, ct) ??
                throw new InvalidOperationException("File with ID not found");
+    }
+
+    public async Task RestoreFileVersion(Guid fileVersionId, Guid userId, CancellationToken ct = default)
+    {
+        await unitOfWork.BeginTransactionAsync(ct);
+        try
+        {
+            await unitOfWork.FileVersions.RestoreFileVersion(fileVersionId, userId, ct);
+            await unitOfWork.CommitAsync(ct);
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(ct);
+            throw;
+        }
     }
 }

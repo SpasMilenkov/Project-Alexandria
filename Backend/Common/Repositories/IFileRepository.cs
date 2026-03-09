@@ -54,4 +54,5 @@ public interface IFileRepository : IRepository<File>
     Task<long> GetStorageUsagePerUser(Guid userId, bool onlyDeleted, CancellationToken ct = default);
     Task ChangeActiveVersion(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
     Task<FileResult?> GetFileWithOwnershipById(Guid fileId, Guid userId, CancellationToken ct = default);
+    Task UpdateCurrentVersion(Guid fileId, Guid versionId, CancellationToken ct = default);
 }

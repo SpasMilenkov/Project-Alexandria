@@ -14,5 +14,8 @@ public interface IFileVersionRepository : IRepository<FileVersion>
         CancellationToken ct = default);
 
     Task<byte[]?> GetContentHashByVersionId(Guid versionId, Guid userId, CancellationToken ct = default);
-    Task<FileVersionDto?> GetSecondMostRecent(Guid fileId, Guid userId, CancellationToken ct = default);
+    Task<FileVersionDto?> GetMostRecent(Guid fileId, Guid userId, CancellationToken ct = default);
+    Task RestoreFileVersion(Guid versionId, Guid userId, CancellationToken ct = default);
+    Task RemoveAsync(Guid versionId, Guid ownerId, CancellationToken ct = default);
+    Task<VersionDownloadInfo?> GetVersionDownloadInfo(Guid versionId, Guid userId, CancellationToken ct = default);
 }

@@ -54,4 +54,5 @@ public interface IFileService
 
     Task ChangeActiveVersion(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
     Task RemoveFileVersion(Guid fileVersionId, Guid userId, CancellationToken ct = default);
+    Task RestoreFileVersion(Guid fileVersionId, Guid userId, CancellationToken ct = default);
 }
