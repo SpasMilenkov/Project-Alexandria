@@ -10,7 +10,6 @@
   </Folder>
   <Folder Name="/Workers/">
     <Project Path="DocumentWorker.Service/DocumentWorker.Service.csproj" />
-    <Project Path="MediaTranscodingWorker/MediaTranscodingWorker.csproj" />
     <Project Path="MediaWorkerService/MediaWorkerService.csproj" />
   </Folder>
   <Project Path="API/API.csproj" />

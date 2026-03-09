@@ -6,6 +6,7 @@ import type { PaginationParams } from "@/types/pagination-params";
 import { fileApi } from "@/api/file";
 
 export const FILES_QUERY_KEYS = {
+  getFile: (id: string) => [...FILES_QUERY_KEYS.root, "file", id],
   root: ["files"] as const,
   rootFiles: (params: PaginationParams) => [
     ...FILES_QUERY_KEYS.root,
@@ -38,6 +39,14 @@ export const FILES_QUERY_KEYS = {
       params.sortDirection,
       params.SortBy,
     ] as const,
+  versionSignedUrl: (id: string) => [...FILES_QUERY_KEYS.root, "version-signed-url", id],
+  versionsForFile: ({ id, page, pageSize }: { id: string; page: number; pageSize: number }) => [
+    ...FILES_QUERY_KEYS.root,
+    "versions-for-file",
+    id,
+    page,
+    pageSize,
+  ],
 };
 
 export const subFiles = defineQueryOptions(
@@ -64,4 +73,21 @@ export const rootFiles = defineQueryOptions((params: PaginationParams) => ({
 export const searchFile = defineQueryOptions((query: FileSearchQuery) => ({
   key: FILES_QUERY_KEYS.searchFiles(query),
   query: () => fileApi.searchFiles(query),
+}));
+
+export const getVersionsForFile = defineQueryOptions(
+  (query: { id: string; page: number; pageSize: number }) => ({
+    key: FILES_QUERY_KEYS.versionsForFile(query),
+    query: () => fileApi.getVersionsForFile(query),
+  }),
+);
+
+export const getVersionDownloadUrl = defineQueryOptions((id: string) => ({
+  key: FILES_QUERY_KEYS.versionSignedUrl(id),
+  query: () => fileApi.downloadFileVersion(id),
+}));
+
+export const getFile = defineQueryOptions((id: string) => ({
+  key: FILES_QUERY_KEYS.getFile(id),
+  query: () => fileApi.getFile(id),
 }));

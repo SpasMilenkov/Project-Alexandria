@@ -177,6 +177,7 @@
                 :tags="file.tags"
                 view-mode="list"
                 @click="handleItemClick"
+                @file-restored="refreshData"
                 class="flex-1"
               />
             </div>

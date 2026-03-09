@@ -45,10 +45,14 @@ public interface IFileRepository : IRepository<File>
         Guid destinationId,
         Guid userId,
         CancellationToken ct);
+
     Task<long> GetDeletedSize(Guid userId, CancellationToken ct = default);
     Task<IEnumerable<FileSummary>> GetOldFiles(Guid userId, CancellationToken ct = default);
     Task<Dictionary<string, long>> GetSizeByType(Guid userId, CancellationToken ct = default);
     Task<int> RestoreFiles(Guid[] fileIds, Guid userId, CancellationToken ct = default);
     Task<int> GetFileCountPerUser(Guid userId, bool deletedOnly, CancellationToken ct = default);
     Task<long> GetStorageUsagePerUser(Guid userId, bool onlyDeleted, CancellationToken ct = default);
+    Task ChangeActiveVersion(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
+    Task<FileResult?> GetFileWithOwnershipById(Guid fileId, Guid userId, CancellationToken ct = default);
+    Task UpdateCurrentVersion(Guid fileId, Guid versionId, CancellationToken ct = default);
 }

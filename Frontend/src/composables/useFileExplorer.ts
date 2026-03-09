@@ -1,6 +1,5 @@
 import { useQuery } from "@pinia/colada";
 import { type Ref, computed, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
@@ -11,9 +10,9 @@ import { SortDirection } from "@/enums/SortDirection";
 import { directoryPath, rootDirectories, subDirectories } from "@/queries/directories";
 import { rootFiles, subFiles } from "@/queries/files";
 import { useFileStore } from "@/stores/file";
+import { logger } from "@/utils/logger";
 
 export const useFileExplorer = () => {
-  const router = useRouter();
   const fileStore = useFileStore();
   // STATE
   const currentDirId: Ref<string | null> = ref(null);
@@ -137,8 +136,6 @@ export const useFileExplorer = () => {
     directoriesList.value = [];
     filesList.value = [];
     currentDirId.value = target;
-
-    router.push({ name: "dashboard", params: { dirId: target } });
   };
 
   const navigateBack = () => {
@@ -177,6 +174,7 @@ export const useFileExplorer = () => {
   //I am forced to do the manual refresh and the watcher stupidity, when the api matures I should
   //Use that one instead
   const refreshDir = () => {
+    logger.log("Refreshing directory");
     if (dirPagination.value.paginationParams.page === 1) {
       directories.refresh();
       files.refresh();

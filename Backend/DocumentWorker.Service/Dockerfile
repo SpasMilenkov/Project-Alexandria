@@ -1,5 +1,5 @@
 ﻿# ===== BASE IMAGE =====
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 
 #   Third Party tools used
@@ -20,10 +20,20 @@ ENV HOME=/tmp \
     PATH="$PATH:/usr/lib/libreoffice/program"
 
 # ===== BUILD IMAGE =====
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+# Copy all transitive csproj dependencies for layer caching
 COPY ["DocumentWorker.Service/DocumentWorker.Service.csproj", "DocumentWorker.Service/"]
+COPY ["Infrastructure/Infrastructure.csproj", "Infrastructure/"]
+COPY ["PreviewService/PreviewService.csproj", "PreviewService/"]
+COPY ["Common/Common.csproj", "Common/"]
+COPY ["Data/Data.csproj", "Data/"]
+COPY ["Models/Models.csproj", "Models/"]
+COPY ["Repositories/Repositories.csproj", "Repositories/"]
+COPY ["Storage/Storage.csproj", "Storage/"]
+COPY ["User.Service/User.Service.csproj", "User.Service/"]
+COPY ["DTO/DTO.csproj", "DTO/"]
 RUN dotnet restore "DocumentWorker.Service/DocumentWorker.Service.csproj"
 COPY . .
 WORKDIR "/src/DocumentWorker.Service"

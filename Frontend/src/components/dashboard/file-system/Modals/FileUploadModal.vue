@@ -4,6 +4,7 @@ import { fileApi } from "@/api/file";
 import { useDirectoryStore } from "@/stores/directory";
 import type { SelectMenuItem } from "@nuxt/ui";
 import { createBLAKE3 } from "hash-wasm";
+import { formatBytes } from "@/utils/size.utils";
 
 const toast = useToast();
 const directoryStore = useDirectoryStore();
@@ -114,16 +115,6 @@ const canUpload = computed(() => selectedFile.value && !isUploading.value);
 const canRetry = computed(() => currentStage.value === UploadStage.ERROR && selectedFile.value);
 
 // Helper functions
-function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) {
-    return "0 Bytes";
-  }
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / k ** i).toFixed(dm)) + " " + sizes[i];
-}
 
 function updateProgress(stage: UploadStage, stagePercent: number) {
   const config = stageConfig[stage];

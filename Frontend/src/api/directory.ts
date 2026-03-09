@@ -134,6 +134,7 @@ export interface PaginatedResponse<T> {
   hasNext: boolean;
 }
 
+// oxlint-disable-next-line sort-keys
 export const directoryApi = {
   // Create a new directory
   createDirectory: async (data: CreateDirectorySchema): Promise<CreateDirectoryResponse> => {
@@ -211,7 +212,7 @@ export const directoryApi = {
   ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
     const cleanParams = Object.fromEntries(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      Object.entries(query).filter(([_, value]) => value != null),
+      Object.entries(query).filter(([_, value]) => value !== null),
     );
 
     const response = await apiClient.get<PaginatedResponse<DirectorySummaryDto>>(

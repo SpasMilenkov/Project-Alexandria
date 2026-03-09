@@ -16,6 +16,9 @@
     "no-magic-numbers": "off",
     "new-cap": "off",
     "id-length": "off",
+    "curly": "allow",
+    "capitalized-comments": "allow",
+    "no-ternary": "allow",
     "eslint/sort-imports": [
       "warn",
       {

@@ -11,7 +11,7 @@ public class DownloadFileByIdEndpoint(
 {
     public override void Configure()
     {
-        Get("/files/{id}");
+        Get("/files/download/{id}");
         Description(x => x.WithTags("Files"));
 
         Summary(s =>
@@ -24,7 +24,6 @@ public class DownloadFileByIdEndpoint(
         });
 
         Policies(Common.Auth.Policies.RequireUser);
-
     }
 
     public override async Task HandleAsync(DownloadFileByIdRequest req, CancellationToken ct)
