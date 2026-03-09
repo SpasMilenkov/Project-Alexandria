@@ -238,7 +238,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .ToListAsync(cancellationToken: ct);
     }
 
-    public Task<List<Directory>> GetSubDirectories(Guid directoryId, CancellationToken ct)
+    public Task<List<Directory>> GetSubDirectories(Guid directoryId, CancellationToken ct = default)
     {
         return context.Directories
             .Where(d => d.ParentId == directoryId && d.DeletedAt == null)
