@@ -31,7 +31,8 @@ export const restoreFiles = defineMutation({
 export const deleteVersion = defineMutation(() => {
   const queryCache = useQueryCache();
   return {
-    mutation: ({ versionId }: { versionId: string }) => fileApi.deleteFileVersion(versionId),
+    mutation: ({ fileId: _fileId, versionId }: { fileId: string; versionId: string }) =>
+      fileApi.deleteFileVersion(versionId),
     onSettled(_: any, __: any, { fileId }: { fileId: string }) {
       queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.getFile(fileId) });
     },
@@ -45,6 +46,20 @@ export const changeActiveVersion = defineMutation(() => {
       fileApi.changeFileVersion({ fileId, versionId }),
     onSettled(_: any, __: any, { fileId }: { fileId: string }) {
       queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.getFile(fileId) });
+    },
+  };
+});
+
+export const restoreFileVersion = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return {
+    mutation: ({ fileId: _fileId, versionId }: { fileId: string; versionId: string }) =>
+      fileApi.restoreVersion(versionId),
+    onSettled(_: any, __: any, { fileId }: { fileId: string }) {
+      queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.getFile(fileId) });
+      queryCache.invalidateQueries({
+        key: FILES_QUERY_KEYS.versionsForFile({ id: fileId, page: 1, pageSize: 10 }),
+      });
     },
   };
 });

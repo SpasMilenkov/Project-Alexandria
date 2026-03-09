@@ -2,6 +2,8 @@ import type { GenerateSignedUrlSchema, UpdateFileMetadataSchema } from "@/schema
 import type { FileSearchQuery } from "@/schemas/search";
 import type { PaginationParams } from "@/types/pagination-params";
 
+import { logger } from "@/utils/logger";
+
 import type { PaginatedResponse } from "./directory";
 import type { TagDto } from "./tag";
 
@@ -50,7 +52,7 @@ export interface PreviewResultDto {
 
 export interface FileVersionDto {
   id: string;
-  size: string; // BigInteger serialized as string
+  size: string;
   mimeType: string;
   versionNumber: number;
   isDeleted: boolean;
@@ -144,6 +146,8 @@ export const fileApi = {
   },
 
   getFile: async (id: string): Promise<FileResult> => {
+    logger.log("fetching file with id", id);
+
     const response = await apiClient.get<FileResult>(`/files/${id}`);
     return response.data;
   },
@@ -202,6 +206,8 @@ export const fileApi = {
     page: number;
     pageSize: number;
   }): Promise<PaginatedResponse<FileVersionDto>> => {
+    logger.log("searching for versions for file with id", id);
+
     const result = await apiClient.get<PaginatedResponse<FileVersionDto>>("/files/versions", {
       params: { fileId: id, page, pageSize },
     });
@@ -228,6 +234,10 @@ export const fileApi = {
       fileIds,
     });
     return result.data;
+  },
+
+  restoreVersion: async (id: string) => {
+    await apiClient.patch(`/files/versions/restore/${id}`, {});
   },
 
   searchFiles: async (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {
