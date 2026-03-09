@@ -991,19 +991,19 @@ public partial class S3Service(
 
     public async Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default)
     {
-        var hash = await unitOfWork.FileVersions.GetContentHashByVersionId(fileVersionId, ownerId, ct) ??
-                   throw new InvalidOperationException("Version not found");
+        var downloadInfo = await unitOfWork.FileVersions.GetVersionDownloadInfo(versionId: fileVersionId, userId: ownerId, ct) ??
+                    throw new InvalidOperationException("Version not found");
 
         var request = new GetPreSignedUrlRequest
         {
             BucketName = config.Value.UploadBucket,
-            Key = $"content/{Convert.ToHexStringLower(hash)}",
+            Key = $"content/{Convert.ToHexStringLower(downloadInfo.Hash)}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.AddMinutes(10),
             Protocol = Protocol.HTTP,
             ResponseHeaderOverrides = new ResponseHeaderOverrides
             {
-                ContentDisposition = $"attachment; filename=\"Placeholder\""
+                ContentDisposition = $"attachment; filename=\"{downloadInfo.FileName}\""
             }
         };
 
