@@ -34,6 +34,31 @@
 
         <div class="flex-1" />
 
+        <div
+          class="hidden md:flex items-center gap-1.5 text-xs text-muted select-none"
+          aria-live="polite"
+        >
+
+          <Transition name="throbber">
+            <BlocksSpinner
+              v-if="isBackgroundLoading"
+              :size="14"
+              aria-label="Refreshing"
+              class="opacity-50"
+            />
+          </Transition>
+
+          <Transition name="fade-status">
+            <span
+              v-if="lastRefreshedLabel && !isBackgroundLoading"
+              class="opacity-50 tabular-nums"
+              :title="lastRefreshedAt?.toLocaleTimeString()"
+            >
+              {{ lastRefreshedLabel }}
+            </span>
+          </Transition>
+        </div>
+
         <div class="hidden md:flex items-center gap-1">
           <USelectMenu
             v-model="selectedSortBy"
@@ -95,8 +120,17 @@
         />
       </div>
 
-      <!-- Row 2: secondary controls (mobile only)  -->
       <div class="flex md:hidden items-center gap-1 px-3 pb-2">
+        
+          <Transition name="throbber">
+          <BlocksSpinner
+            v-if="isBackgroundLoading"
+            :size="14"
+            aria-label="Refreshing"
+            class="opacity-50 mr-1 shrink-0"
+          />
+        </Transition>
+
         <USelectMenu
           v-model="selectedSortBy"
           :items="sortByOptions"
@@ -127,10 +161,8 @@
           />
         </UButton>
 
-        <!-- Thin divider -->
         <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
 
-        <!-- View toggle as a compact pill on mobile -->
         <div class="flex rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
           <UButton
             :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
@@ -199,38 +231,29 @@
 
     <!-- Content Area -->
     <div ref="containerRef" class="flex-1 overflow-auto relative">
-      <!-- Drop Zone Overlay  -->
+      <!-- Drop Zone Overlay -->
       <Transition name="dropzone">
         <div
           v-if="isOverDropZone"
           class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
           aria-hidden="true"
         >
-          <!-- Soft backdrop with primary tint -->
           <div class="absolute inset-0 bg-background/60 backdrop-blur-[2px]" />
           <div class="absolute inset-0 bg-primary/5 pulse-tint" />
-
-          <!-- Dashed border inset -->
           <div
             class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
           />
-
-          <!-- Center card -->
           <div
             class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-background/80 shadow-sm"
           >
-            <!-- Breathing ring + icon -->
             <div class="relative flex items-center justify-center">
               <span class="breathe absolute rounded-full border border-primary/20" />
               <div class="relative z-10 p-3 rounded-full bg-primary/8">
                 <Icon :icon="dropIcon" class="w-8 h-8 text-primary/70" />
               </div>
             </div>
-
             <div class="text-center space-y-0.5">
-              <p class="font-medium text-base text-primary/80 tracking-tight">
-                {{ dropLabel }}
-              </p>
+              <p class="font-medium text-base text-primary/80 tracking-tight">{{ dropLabel }}</p>
               <p class="text-xs text-muted">Release to upload</p>
             </div>
           </div>
@@ -239,8 +262,8 @@
 
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="p-4">
-        <!-- Directories Section -->
-        <GridPlaceholder v-if="areDirectoriesLoading" />
+        <!-- Show skeleton only on true initial load (no data yet) -->
+        <GridPlaceholder v-if="showDirSkeleton" />
         <div v-else-if="directoriesList.length > 0" class="mb-6 flex flex-col">
           <div>
             <div class="flex items-center gap-2 ml-2 pb-4">
@@ -273,8 +296,7 @@
           />
         </div>
 
-        <!-- Files Section -->
-        <GridPlaceholder v-if="areFilesLoading" />
+        <GridPlaceholder v-if="showFileSkeleton" />
         <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
           <h3 class="text-sm font-semibold opacity-70 mb-3 px-1">Files</h3>
           <div class="grid gap-3" :class="gridColumns">
@@ -291,6 +313,7 @@
               @delete="handleDelete"
               @move="handleCut"
               @contextmenu="handleItemClick($event, file.fileId, 'file')"
+              @file-trashed="refreshDir"
             />
           </div>
           <UButton
@@ -305,8 +328,7 @@
 
       <!-- List View -->
       <div v-else class="flex flex-col">
-        <!-- Directories Section -->
-        <ListPlaceholder v-if="areDirectoriesLoading" />
+        <ListPlaceholder v-if="showDirSkeleton" />
         <div v-else-if="directoriesList.length > 0">
           <h3 class="text-sm font-semibold opacity-70 mb-2 px-4 pt-4">Folders</h3>
           <DirectoryItem
@@ -332,9 +354,7 @@
           />
         </div>
 
-        <!-- Files Section -->
-        <ListPlaceholder v-if="areFilesLoading" />
-
+        <ListPlaceholder v-if="showFileSkeleton" />
         <div
           v-else-if="filesList.length > 0"
           :class="{ 'mt-4': directoriesData?.items.length ?? 0 > 0 }"
@@ -357,6 +377,7 @@
             @copy="handleCopy"
             @delete="handleDelete"
             @move="handleCut"
+            @file-trashed="refreshDir"
           />
           <UButton
             variant="ghost"
@@ -374,7 +395,7 @@
 <script setup lang="ts">
 import FileItem from "./FileItem.vue";
 import DirectoryItem from "./DirectoryItem.vue";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { Icon } from "@iconify/vue";
 import { SortBy } from "@/enums/SortBy";
 import { useFileExplorer } from "@/composables/useFileExplorer";
@@ -397,7 +418,7 @@ import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import QuickSearchModal from "./Modals/QuickSearchModal.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useDropZone } from "@vueuse/core";
-import { logger } from "@/utils/logger";
+import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -447,9 +468,70 @@ const { mutateAsync: deleteFilesMutate } = deleteFiles();
 const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
 
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
-
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
 
+// Initial-load tracking
+// True until the *first* successful data fetch for this tab instance.
+// Skeletons only render while this is true.
+const dirHasLoaded = ref(false);
+const fileHasLoaded = ref(false);
+
+watch(
+  directoriesData,
+  (val) => {
+    if (val !== undefined) dirHasLoaded.value = true;
+  },
+  { immediate: true },
+);
+
+watch(
+  filesData,
+  (val) => {
+    if (val !== undefined) fileHasLoaded.value = true;
+  },
+  { immediate: true },
+);
+
+// Show skeleton only when loading AND data has never arrived yet
+const showDirSkeleton = computed(() => areDirectoriesLoading.value && !dirHasLoaded.value);
+const showFileSkeleton = computed(() => areFilesLoading.value && !fileHasLoaded.value);
+
+// Background loading: loading but already have data → throbber, not skeleton
+const isBackgroundLoading = computed(
+  () =>
+    (areDirectoriesLoading.value && dirHasLoaded.value) ||
+    (areFilesLoading.value && fileHasLoaded.value),
+);
+
+// Last-refreshed timer
+const lastRefreshedAt = ref<Date | null>(null);
+const lastRefreshedLabel = ref<string>("");
+let labelTimer: ReturnType<typeof setInterval> | null = null;
+
+const formatRelative = (date: Date): string => {
+  const secs = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (secs < 5) return "just now";
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ago`;
+};
+
+const startLabelTimer = (date: Date) => {
+  if (labelTimer) clearInterval(labelTimer);
+  lastRefreshedAt.value = date;
+  lastRefreshedLabel.value = formatRelative(date);
+  labelTimer = setInterval(() => {
+    lastRefreshedLabel.value = formatRelative(date);
+  }, 10_000);
+};
+
+// Record time when a background refresh completes (loading → false, data exists)
+watch(areDirectoriesLoading, (loading) => {
+  if (!loading && dirHasLoaded.value) startLabelTimer(new Date());
+});
+
+// Tag query
 const tagCurrentPage = ref(1);
 const tagPageSize = ref(25);
 
@@ -460,15 +542,8 @@ const searchFilters = computed<SearchTagsSchema>(() => ({
 
 const { data: tagsData } = useQuery(searchTag(searchFilters.value));
 
-/**
- * Inspects DataTransfer items at drag-time to give a contextual hint.
- * Full directory detection (webkitGetAsEntry) only works reliably on `drop`,
- * so during hover we peek at the item count as a proxy.
- */
+// Drop zone
 const containerRef = ref<HTMLElement | null>(null);
-
-// Tracks whether we *think* a directory is being dragged so the overlay
-// Can show a contextual icon/label even before the drop resolves.
 const dragHasDirectory = ref(false);
 
 const dropIcon = computed(() =>
@@ -477,15 +552,9 @@ const dropIcon = computed(() =>
 const dropLabel = computed(() => (dragHasDirectory.value ? "Drop folder here" : "Drop files here"));
 
 const { isOverDropZone } = useDropZone(containerRef, {
-  /**
-   * `onEnter` fires with the raw DragEvent — we can peek at item kinds
-   * to speculatively decide if a directory is incoming. Not 100% reliable
-   * (browsers may hide the entry type for security), but good enough for UX.
-   */
   onEnter(_files, event) {
     const items = Array.from(event.dataTransfer?.items ?? []);
     dragHasDirectory.value = items.some((item) => {
-      // WebkitGetAsEntry is readable at dragenter (unlike File objects)
       const entry = (item as DataTransferItem).webkitGetAsEntry?.();
       return entry?.isDirectory ?? false;
     });
@@ -495,44 +564,29 @@ const { isOverDropZone } = useDropZone(containerRef, {
     dragHasDirectory.value = false;
   },
 
-  /**
-   * On drop we re-inspect with full fidelity and open the right modal.
-   *
-   * We deliberately ignore the `_files` argument from vueuse here.
-   * dataTransfer.files flattens the tree — directories appear as a single
-   * 0-byte File entry and their contents are never exposed. We must walk the
-   * tree ourselves via the FileSystem API.
-   */
   async onDrop(_files, event) {
     dragHasDirectory.value = false;
 
     const items = Array.from(event.dataTransfer?.items ?? []);
-    if (items.length === 0) {
-      return;
-    }
+    if (items.length === 0) return;
 
     const entries = items
       .map((item) => item.webkitGetAsEntry?.())
       .filter((e): e is FileSystemEntry => e !== null && e !== undefined);
 
-    if (entries.length === 0) {
-      return;
-    }
+    if (entries.length === 0) return;
 
     const hasDirectory = entries.some((e) => e.isDirectory);
 
     let instance;
     if (hasDirectory) {
-      // Recursively unwrap every entry so we get the real files + their paths
       const allFiles = (await Promise.all(entries.map((e) => readEntryRecursive(e)))).flat();
-
       instance = directoryUploadModal.open({
         directoryId: currentDirId.value ?? undefined,
         directoryName: currentDirName.value,
         droppedFiles: allFiles,
       });
     } else {
-      // Flat file drop — vueuse's _files is fine here since there's no tree
       instance = fileUploadModal.open({
         directoryId: currentDirId.value ?? undefined,
         directoryName: currentDirName.value,
@@ -553,17 +607,11 @@ const { isOverDropZone } = useDropZone(containerRef, {
 });
 
 // FileSystem API helpers
-
 export interface DroppedFile {
   file: File;
-  /** Mirrors webkitRelativePath — e.g. "myFolder/src/index.ts" */
   relativePath: string;
 }
 
-/**
- * Recursively reads a FileSystemEntry and returns all leaf files with their
- * relative paths. `path` accumulates the directory prefix as we recurse.
- */
 async function readEntryRecursive(entry: FileSystemEntry, path = ""): Promise<DroppedFile[]> {
   if (entry.isFile) {
     return new Promise((resolve, reject) => {
@@ -586,42 +634,32 @@ async function readEntryRecursive(entry: FileSystemEntry, path = ""): Promise<Dr
   return [];
 }
 
-/**
- * ReadEntries only guarantees up to 100 results per call — loop until the
- * batch comes back empty to ensure we collect every entry in large directories.
- */
 function readAllEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
   return new Promise((resolve, reject) => {
     const collected: FileSystemEntry[] = [];
-
     const readBatch = () => {
       reader.readEntries((batch) => {
-        if (batch.length === 0) {
-          resolve(collected);
-        } else {
+        if (batch.length === 0) resolve(collected);
+        else {
           collected.push(...batch);
-          readBatch(); // Keep reading until empty batch
+          readBatch();
         }
       }, reject);
     };
-
     readBatch();
   });
 }
 
+// Shortcuts
 let copyMode = true;
 
 defineShortcuts({
   Delete: () => handleDelete(),
   alt_arrowleft: () => {
-    if (canGoBack.value) {
-      navigateBack();
-    }
+    if (canGoBack.value) navigateBack();
   },
   alt_arrowright: () => {
-    if (canGoForward.value) {
-      navigateForward();
-    }
+    if (canGoForward.value) navigateForward();
   },
   "meta_/": () => quickSearch(),
   meta_c: () => {
@@ -629,11 +667,8 @@ defineShortcuts({
     handleCopy();
   },
   meta_v: () => {
-    if (copyMode) {
-      handlePaste();
-    } else {
-      handleCut();
-    }
+    if (copyMode) handlePaste();
+    else handleCut();
   },
   meta_x: () => {
     copyMode = false;
@@ -643,34 +678,19 @@ defineShortcuts({
   shift_l: () => advancedSearch(),
 });
 
-// Sort options
+// Sort
 const sortByOptions = ref([
   { label: "Name", value: SortBy.Name },
   { label: "Date Created", value: SortBy.CreatedAt },
   { label: "Date Modified", value: SortBy.UpdatedAt },
 ]);
 
-const selectedUploadType = ref({
-  icon: "mdi:file-outline",
-  label: "File",
-});
+const selectedUploadType = ref({ icon: "mdi:file-outline", label: "File" });
 
 const uploadOptions = ref([
-  {
-    icon: "mdi:file-outline",
-    label: "File",
-    onSelect: () => handleFileUpload("File"),
-  },
-  {
-    icon: "mdi:folder-outline",
-    label: "Directory",
-    onSelect: () => handleFileUpload("Directory"),
-  },
-  {
-    icon: "formkit:zip",
-    label: "Archive",
-    onSelect: () => handleFileUpload("Archive"),
-  },
+  { icon: "mdi:file-outline", label: "File", onSelect: () => handleFileUpload("File") },
+  { icon: "mdi:folder-outline", label: "Directory", onSelect: () => handleFileUpload("Directory") },
+  { icon: "formkit:zip", label: "Archive", onSelect: () => handleFileUpload("Archive") },
 ] satisfies DropdownMenuItem[]);
 
 const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
@@ -698,36 +718,23 @@ const confirmModal = overlay.create(ConfirmModal);
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
   const result = await instance.result;
-
-  if (result === "close") {
-    return;
-  } else if (result === "root") {
-    handleNavigate(null);
-  } else if (typeof result === "string") {
-    handleNavigate(result);
-  }
+  if (result === "close") return;
+  else if (result === "root") handleNavigate(null);
+  else if (typeof result === "string") handleNavigate(result);
 };
 
 const quickSearch = async () => {
   const instance = quickSearchModal.open();
   const result = await instance.result;
-
-  if (result === "close") {
-    return;
-  } else if (result === "root") {
-    handleNavigate(null);
-  } else if (result === "advanced") {
-    advancedSearch();
-  } else if (typeof result === "string") {
-    handleNavigate(result);
-  }
+  if (result === "close") return;
+  else if (result === "root") handleNavigate(null);
+  else if (result === "advanced") advancedSearch();
+  else if (typeof result === "string") handleNavigate(result);
 };
 
 const handleContainerClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
-  if (!target.closest("button")) {
-    clearSelection();
-  }
+  if (!target.closest("button")) clearSelection();
 };
 
 const gridColumns = computed(
@@ -737,22 +744,13 @@ const gridColumns = computed(
 const handleDirectoryRename = async (directoryId: string) => {
   const instance = updateDirectoryModal.open({ directoryId });
   const shouldRefresh = await instance.result;
-
   if (shouldRefresh && settingsStore.toastLevel === "all") {
-    toast.add({
-      color: "success",
-      id: "modal-success",
-      title: "Directory updated successfully",
-    });
+    toast.add({ color: "success", id: "modal-success", title: "Directory updated successfully" });
     refreshDir();
     return;
   }
   if (!shouldRefresh && settingsStore.toastLevel !== "silent") {
-    toast.add({
-      color: "error",
-      id: "modal-error",
-      title: "Directory update failed",
-    });
+    toast.add({ color: "error", id: "modal-error", title: "Directory update failed" });
   }
 };
 
@@ -791,7 +789,7 @@ const handleDelete = async () => {
           alert: {
             color: "warning",
             icon: "i-lucide-triangle-alert",
-            title: "All sub items wiill also be deleted",
+            title: "All sub items will also be deleted",
           },
           confirmIcon: "i-lucide-trash-2",
           confirmLabel: "Delete anyway",
@@ -817,10 +815,7 @@ const handleDelete = async () => {
 
 const handleCut = async () => {
   if (fileStore.filesToCopy.length > 0) {
-    await moveFilesMutate({
-      destinationId: currentDirId.value,
-      fileIds: fileStore.filesToCopy,
-    });
+    await moveFilesMutate({ destinationId: currentDirId.value, fileIds: fileStore.filesToCopy });
   }
   if (directoryStore.directoriesToCopy.length > 0) {
     await moveDirectoriesMutate({
@@ -833,19 +828,13 @@ const handleCut = async () => {
 
 const handlePaste = async () => {
   if (fileStore.filesToCopy.length > 0) {
-    await copyFilesMutate({
-      destinationId: currentDirId.value,
-      fileIds: fileStore.filesToCopy,
-    });
+    await copyFilesMutate({ destinationId: currentDirId.value, fileIds: fileStore.filesToCopy });
   }
 
   if (directoryStore.directoriesToCopy.length > 0) {
     await Promise.all(
       directoryStore.directoriesToCopy.map(async (dir) => {
-        await copyDirectoryMutate({
-          destinationId: currentDirId.value,
-          directoryId: dir,
-        });
+        await copyDirectoryMutate({ destinationId: currentDirId.value, directoryId: dir });
       }),
     );
   }
@@ -859,22 +848,15 @@ const handleSorting = () => {
   refreshDir();
 };
 
-/**
- * TODO: This is messy, I should add a track for the current dir name in th composable to make this task simpler and less fragile
- */
 const currentDirName = computed<string | undefined>(() => {
-  if (!currentDirId.value) {
-    return undefined;
-  }
+  if (!currentDirId.value) return undefined;
   const parts = pathQuery.data.value?.pathParts;
   return parts?.[parts.length - 1]?.name;
 });
 
 const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   const option = uploadOptions.value.find((opt) => opt.label === type);
-  if (option) {
-    selectedUploadType.value = { icon: option.icon, label: option.label };
-  }
+  if (option) selectedUploadType.value = { icon: option.icon, label: option.label };
 
   const uploadProps = {
     directoryId: currentDirId.value ?? undefined,
@@ -882,7 +864,6 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   };
 
   let instance;
-
   switch (type) {
     case "File":
       instance = fileUploadModal.open(uploadProps);
@@ -898,7 +879,6 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   }
 
   const shouldRefresh = await instance.result;
-
   if (shouldRefresh) {
     refreshDir();
     return;
@@ -915,38 +895,22 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
 
 const breadcrumbs = computed(() => {
   const items: BreadcrumbItem[] = [
-    {
-      icon: "i-heroicons-home",
-      key: null,
-      label: "Home",
-      to: { name: "dashboard" },
-    },
+    { icon: "i-heroicons-home", key: null, label: "Home", to: { name: "dashboard" } },
   ];
 
   const path = pathQuery.data.value?.pathParts;
-
   if (path && path.length > 0) {
-    const pathItems = path.map((segment) => ({
-      key: segment.id,
-      label: segment.name,
-    }));
-    items.push(...pathItems);
+    items.push(...path.map((segment) => ({ key: segment.id, label: segment.name })));
   }
   return items;
 });
 
 const createNewDirectory = async () => {
-  const instance = createDirectoryModal.open({
-    parentId: currentDirId.value,
-  });
+  const instance = createDirectoryModal.open({ parentId: currentDirId.value });
 
   const shouldRefresh = await instance.result;
   if (shouldRefresh && settingsStore.toastLevel === "all") {
-    toast.add({
-      color: "success",
-      id: "modal-success",
-      title: "Directory creation successful",
-    });
+    toast.add({ color: "success", id: "modal-success", title: "Directory creation successful" });
     refreshDir();
     return;
   }
@@ -986,25 +950,23 @@ const handleItemClick = (event: MouseEvent, id: string, type: "file" | "director
 };
 
 const handleNavigate = (dirId: string | null) => {
+  // When navigating to a new directory, reset the "has loaded" flags so
+  // skeletons appear for the new location's first fetch.
+  dirHasLoaded.value = false;
+  fileHasLoaded.value = false;
+
   navigateTo(dirId);
   tabStore.setActiveDir(props.tabId, dirId);
 };
 
 const handleMouseNavigate = (event: MouseEvent) => {
-  // Button 3 = back, Button 4 = forward (side buttons)
-  if (event.button !== 3 && event.button !== 4) {
-    return;
-  }
+  if (event.button !== 3 && event.button !== 4) return;
 
-  event.preventDefault(); // Prevent browser's own back/forward
+  event.preventDefault();
   event.stopPropagation();
 
-  if (event.button === 3 && canGoBack.value) {
-    navigateBack();
-  }
-  if (event.button === 4 && canGoForward.value) {
-    navigateForward();
-  }
+  if (event.button === 3 && canGoBack.value) navigateBack();
+  if (event.button === 4 && canGoForward.value) navigateForward();
 };
 
 onMounted(async () => {
@@ -1015,11 +977,35 @@ onMounted(async () => {
 
 onUnmounted(() => {
   containerRef.value?.removeEventListener("mousedown", handleMouseNavigate);
+  if (labelTimer) clearInterval(labelTimer);
 });
 </script>
 
 <style scoped>
-/* Breathing ring */
+/* Throbber transition */
+.throbber-enter-active,
+.throbber-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.throbber-enter-from,
+.throbber-leave-to {
+  opacity: 0;
+  transform: scale(0.7);
+}
+
+/* Status label transition */
+.fade-status-enter-active,
+.fade-status-leave-active {
+  transition: opacity 0.35s ease;
+}
+.fade-status-enter-from,
+.fade-status-leave-to {
+  opacity: 0;
+}
+
+/* Drop zone animations */
 .breathe {
   width: 4rem;
   height: 4rem;
@@ -1038,7 +1024,6 @@ onUnmounted(() => {
   }
 }
 
-/* Tint pulse */
 .pulse-tint {
   animation: pulse-tint 3s ease-in-out infinite;
 }
@@ -1053,7 +1038,6 @@ onUnmounted(() => {
   }
 }
 
-/* Border pulse */
 .pulse-border {
   animation: pulse-border 3s ease-in-out infinite;
 }
@@ -1068,7 +1052,6 @@ onUnmounted(() => {
   }
 }
 
-/* Overlay transition  */
 .dropzone-enter-active {
   transition: opacity 0.2s ease;
 }
