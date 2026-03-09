@@ -5,6 +5,7 @@ import { fileApi } from "@/api/file";
 import { createBLAKE3 } from "hash-wasm";
 import type { SelectMenuItem } from "@nuxt/ui";
 import { useDirectoryStore } from "@/stores/directory";
+import { formatBytes } from "@/utils/size.utils";
 
 const toast = useToast();
 const directoryStore = useDirectoryStore();
@@ -94,17 +95,6 @@ const overallProgress = computed(() => {
   return Math.round(totalProgress / totalFiles.value);
 });
 
-function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) {
-    return "0 Bytes";
-  }
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / k ** i).toFixed(dm)) + " " + sizes[i];
-}
-
 const onChange = (e: Event) => {
   const input = e.target as HTMLInputElement;
   if (!input.files) {
@@ -154,7 +144,7 @@ const searchParentDirectory = async (query: string) => {
   }
 };
 
-async function uploadSingleFile(fileStatus: FileUploadStatus): Promise<boolean> {
+const uploadSingleFile = async (fileStatus: FileUploadStatus): Promise<boolean> => {
   try {
     const { file } = fileStatus;
     fileStatus.status = "uploading";
@@ -208,9 +198,9 @@ async function uploadSingleFile(fileStatus: FileUploadStatus): Promise<boolean> 
       "Unknown error";
     return false;
   }
-}
+};
 
-async function uploadDirectoryStructure() {
+const uploadDirectoryStructure = async () => {
   if (files.value.length === 0) {
     return;
   }
@@ -267,7 +257,7 @@ async function uploadDirectoryStructure() {
   } finally {
     uploading.value = false;
   }
-}
+};
 
 async function retryFailedUploads() {
   const failed = fileStatuses.value.filter((f) => f.status === "error");
@@ -309,7 +299,7 @@ async function retryFailedUploads() {
   uploading.value = false;
 }
 
-function getStatusIcon(status: FileUploadStatus["status"]) {
+const getStatusIcon = (status: FileUploadStatus["status"]) => {
   switch (status) {
     case "pending":
       return "i-lucide-clock";
@@ -320,9 +310,9 @@ function getStatusIcon(status: FileUploadStatus["status"]) {
     case "error":
       return "i-lucide-x-circle";
   }
-}
+};
 
-function getStatusColor(status: FileUploadStatus["status"]) {
+const getStatusColor = (status: FileUploadStatus["status"]) => {
   switch (status) {
     case "pending":
       return "text-muted";
@@ -333,7 +323,7 @@ function getStatusColor(status: FileUploadStatus["status"]) {
     case "error":
       return "text-error";
   }
-}
+};
 </script>
 
 <template>
