@@ -95,6 +95,7 @@ const serwist = new Serwist({
       handler: new NetworkFirst(),
       matcher: ({ url }) => url.pathname.startsWith("/api/"),
     },
+    ...defaultCache,
   ],
   skipWaiting: true,
 });
