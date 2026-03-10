@@ -7,6 +7,7 @@ import { createApp } from "vue";
 
 import App from "./App.vue";
 import router from "./router";
+import { logger } from "./utils/logger";
 
 const app = createApp(App);
 
@@ -26,3 +27,12 @@ app.use(router);
 app.use(ui);
 
 app.mount("#app");
+
+if ("serviceWorker" in navigator) {
+  const { getSerwist } = await import("virtual:serwist");
+  const serwist = await getSerwist();
+  serwist?.addEventListener("installed", () => {
+    logger.log("Serwist installed!");
+  });
+  void serwist?.register();
+}
