@@ -1,10 +1,9 @@
 import ui from "@nuxt/ui/vite";
+import { serwist } from "@serwist/vite";
 import vue from "@vitejs/plugin-vue";
 import { URL, fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
-import { VitePWA } from "vite-plugin-pwa";
 import vueDevTools from "vite-plugin-vue-devtools";
-
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -22,17 +21,15 @@ export default defineConfig({
         },
       },
     }),
-    VitePWA({
+    serwist({
       devOptions: {
-        enabled: true,
-        type: "module",
+        bundle: true,
       },
-      filename: "bg-image-sw.ts",
-      injectManifest: {
-        injectionPoint: undefined,
-      },
-      srcDir: "src",
-      strategies: "injectManifest",
+      globDirectory: "dist",
+      injectionPoint: "self.__SW_MANIFEST",
+      rollupFormat: "iife",
+      swDest: "sw.js",
+      swSrc: "src/sw.ts",
     }),
   ],
   resolve: {

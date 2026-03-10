@@ -1,7 +1,14 @@
 /// <reference lib="webworker" />
+import { defaultCache } from "@serwist/vite/worker";
+import { NetworkFirst, type PrecacheEntry, Serwist, type SerwistGlobalConfig } from "serwist";
 
 declare const self: ServiceWorkerGlobalScope;
 
+declare global {
+  interface WorkerGlobalScope extends SerwistGlobalConfig {
+    __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
+  }
+}
 const CACHE_NAME = "bg-image-v1";
 const INTERCEPT_PATH = "/sw/background-image";
 
@@ -13,7 +20,7 @@ self.addEventListener("fetch", (event: FetchEvent) => {
   event.respondWith(serveFromCache(url));
 });
 
-async function serveFromCache(url: URL): Promise<Response> {
+const serveFromCache = async (url: URL): Promise<Response> => {
   const timestamp = url.searchParams.get("t");
   if (!timestamp) {
     return new Response("Missing timestamp", { status: 400 });
@@ -26,7 +33,7 @@ async function serveFromCache(url: URL): Promise<Response> {
   }
 
   return new Response("Not cached", { status: 404 });
-}
+};
 
 self.addEventListener("message", (event: ExtendableMessageEvent) => {
   const { type } = event.data ?? {};
@@ -41,14 +48,14 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
   }
 });
 
-async function handleCheck(event: ExtendableMessageEvent) {
+const handleCheck = async (event: ExtendableMessageEvent) => {
   const { timestamp } = event.data;
   const cache = await caches.open(CACHE_NAME);
   const hit = await cache.match(buildCacheKey(timestamp));
   event.ports[0].postMessage({ cached: Boolean(hit) });
-}
+};
 
-async function handleFetchAndCache(event: ExtendableMessageEvent) {
+const handleFetchAndCache = async (event: ExtendableMessageEvent) => {
   const { presignedUrl, timestamp } = event.data;
   try {
     const cache = await caches.open(CACHE_NAME);
@@ -68,15 +75,29 @@ async function handleFetchAndCache(event: ExtendableMessageEvent) {
       success: false,
     });
   }
-}
+};
 
-async function handleEvict(event: ExtendableMessageEvent) {
+const handleEvict = async (event: ExtendableMessageEvent) => {
   const cache = await caches.open(CACHE_NAME);
   const keys = await cache.keys();
   await Promise.all(keys.map((k) => cache.delete(k)));
   event.ports[0]?.postMessage({ evicted: true });
-}
+};
 
-function buildCacheKey(timestamp: string): string {
-  return `${INTERCEPT_PATH}?t=${timestamp}`;
-}
+const buildCacheKey = (timestamp: string): string => `${INTERCEPT_PATH}?t=${timestamp}`;
+
+const serwist = new Serwist({
+  clientsClaim: true,
+  navigationPreload: true,
+  precacheEntries: self.__SW_MANIFEST,
+  runtimeCaching: [
+    {
+      handler: new NetworkFirst(),
+      matcher: ({ url }) => url.pathname.startsWith("/api/"),
+    },
+    ...defaultCache,
+  ],
+  skipWaiting: true,
+});
+
+serwist.addEventListeners();
