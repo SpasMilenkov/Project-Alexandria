@@ -115,6 +115,7 @@
       <template #header>
         <UDashboardNavbar :title="pageTitle" toggle-side="right">
           <template #right>
+            <OnlineStatusIndicator />
             <UTooltip text="Show app shortcuts">
               <UButton
                 icon="material-symbols-light:keyboard-outline-rounded"
