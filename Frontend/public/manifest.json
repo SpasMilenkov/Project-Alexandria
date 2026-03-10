@@ -14,8 +14,8 @@
     },
     { "src": "/icons/android/launchericon-512x512.png", "sizes": "512x512", "type": "image/png" }
   ],
-  "theme_color": "#FFFFFF",
-  "background_color": "#FFFFFF",
+  "theme_color": "#fffbeb",
+  "background_color": "#fffbeb",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any"
