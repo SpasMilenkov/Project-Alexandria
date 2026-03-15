@@ -3,6 +3,7 @@ import type { AuthFormField, FormSubmitEvent } from "@nuxt/ui";
 import { type LoginSchema, loginSchema } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
+import { OnboardingStep } from "@/enums";
 
 const toast = useToast();
 const authStore = useAuthStore();
@@ -30,7 +31,7 @@ const fields: AuthFormField[] = [
   },
 ];
 
-async function onSubmit(payload: FormSubmitEvent<LoginSchema>) {
+const onSubmit = async (payload: FormSubmitEvent<LoginSchema>) => {
   await authStore.login(payload.data);
 
   if (authStore.error) {
@@ -40,8 +41,21 @@ async function onSubmit(payload: FormSubmitEvent<LoginSchema>) {
     });
     return;
   }
-  router.push("/dashboard");
-}
+  switch (authStore.user?.onboardingStep) {
+    case OnboardingStep.SetPassword:
+      router.push("/onboarding/set-password");
+      break;
+    case OnboardingStep.CompleteProfile:
+      router.push("/onboarding/setup-profile");
+      break;
+    case OnboardingStep.Tour:
+      router.push("/onboarding/tour");
+      break;
+    case OnboardingStep.Done:
+      router.push("/dashboard");
+      break;
+  }
+};
 </script>
 
 <template>
