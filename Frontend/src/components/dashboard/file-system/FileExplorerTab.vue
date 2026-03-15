@@ -2,21 +2,23 @@
   <div class="flex flex-col h-full w-full flex-1" @click="handleContainerClick">
     <!-- Toolbar -->
     <div class="flex flex-col w-full border-b border-b-primary">
-      <div class="flex items-center gap-2 p-3 w-full">
+      <!-- Desktop toolbar -->
+      <div class="hidden md:flex items-center gap-2 p-3 w-full">
+        <!-- Upload split button -->
         <div class="flex border border-primary rounded-md overflow-hidden shrink-0">
           <UButton
             color="primary"
             size="sm"
-            class="rounded-none border-r dark:border-black"
+            class="rounded-none border-r border-primary/40"
             @click="handleFileUpload(selectedUploadType.label as 'File' | 'Directory' | 'Archive')"
           >
-            <Icon :icon="selectedUploadType.icon" class="w-4 h-4 md:mr-2" />
-            <span class="hidden md:inline">Upload {{ selectedUploadType.label }}</span>
-            <span class="md:hidden">Upload</span>
+            <Icon :icon="selectedUploadType.icon" class="w-4 h-4 mr-2" />
+            Upload {{ selectedUploadType.label }}
           </UButton>
           <UDropdownMenu :items="uploadOptions" :ui="{ content: 'w-48' }">
             <UButton
               color="primary"
+              variant="ghost"
               size="sm"
               class="rounded-none px-2"
               aria-label="Upload options"
@@ -26,49 +28,31 @@
           </UDropdownMenu>
         </div>
 
-        <!-- New folder -->
-        <UButton color="primary" size="sm" class="shrink-0" @click="createNewDirectory">
-          <Icon icon="mdi:folder-plus" class="w-4 h-4 md:mr-1" />
-          <span class="hidden md:inline">New Folder</span>
+        <!-- New Folder — secondary -->
+        <UButton
+          variant="outline"
+          color="neutral"
+          size="sm"
+          class="shrink-0"
+          @click="createNewDirectory"
+        >
+          <Icon icon="mdi:folder-plus" class="w-4 h-4 mr-1" />
+          New Folder
         </UButton>
 
-        <div class="flex-1" />
+        <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
 
-        <div
-          class="hidden md:flex items-center gap-1.5 text-xs text-muted select-none"
-          aria-live="polite"
-        >
-
-          <Transition name="throbber">
-            <BlocksSpinner
-              v-if="isBackgroundLoading"
-              :size="14"
-              aria-label="Refreshing"
-              class="opacity-50"
-            />
-          </Transition>
-
-          <Transition name="fade-status">
-            <span
-              v-if="lastRefreshedLabel && !isBackgroundLoading"
-              class="opacity-50 tabular-nums"
-              :title="lastRefreshedAt?.toLocaleTimeString()"
-            >
-              {{ lastRefreshedLabel }}
-            </span>
-          </Transition>
-        </div>
-
-        <div class="hidden md:flex items-center gap-1">
+        <!-- Sort + direction + view toggles cluster -->
+        <div class="flex items-center gap-1 shrink-0">
           <USelectMenu
             v-model="selectedSortBy"
             :items="sortByOptions"
             size="sm"
             placeholder="Sort by"
+            class="min-w-37"
             @update:model-value="handleSorting"
           >
             <template #default="{ modelValue }">
-              <Icon icon="mdi:sort" class="w-4 h-4 mr-1" />
               <span>{{ modelValue?.label }}</span>
             </template>
           </USelectMenu>
@@ -76,8 +60,14 @@
           <UButton
             size="sm"
             variant="ghost"
-            @click="toggleSortDirection"
+            color="neutral"
+            :title="
+              selectedSortDirection === SortDirection.Asc
+                ? 'Switch to descending'
+                : 'Switch to ascending'
+            "
             :aria-label="selectedSortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
+            @click="toggleSortDirection"
           >
             <Icon
               :icon="
@@ -89,123 +79,207 @@
             />
           </UButton>
 
-          <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1" />
+          <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
 
           <UButton
             :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
+            color="neutral"
             size="sm"
-            @click="viewMode = 'grid'"
             aria-label="Grid view"
+            @click="viewMode = 'grid'"
           >
             <Icon icon="mdi:view-grid" class="w-4 h-4" />
           </UButton>
           <UButton
             :variant="viewMode === 'list' ? 'solid' : 'ghost'"
+            color="neutral"
             size="sm"
-            @click="viewMode = 'list'"
             aria-label="List view"
+            @click="viewMode = 'list'"
           >
             <Icon icon="mdi:view-list" class="w-4 h-4" />
           </UButton>
         </div>
 
-        <!-- Search — always visible, right-most -->
+        <div class="flex-1" />
+
+        <!-- Throbber + last-refreshed label -->
+        <div class="flex items-center gap-1.5 text-xs select-none" aria-live="polite">
+          <Transition name="throbber">
+            <BlocksSpinner
+              v-if="isBackgroundLoading"
+              :size="14"
+              aria-label="Refreshing"
+              class="opacity-40"
+            />
+          </Transition>
+          <Transition name="fade-status">
+            <span
+              v-if="lastRefreshedLabel && !isBackgroundLoading"
+              class="opacity-40 tabular-nums"
+              :title="lastRefreshedAt?.toLocaleTimeString()"
+            >
+              {{ lastRefreshedLabel }}
+            </span>
+          </Transition>
+        </div>
+
+        <!-- Search -->
         <UButton
-          @click="quickSearch"
-          icon="mdi:magnify"
-          size="sm"
           variant="ghost"
+          color="neutral"
+          size="sm"
           class="shrink-0"
           aria-label="Search"
-        />
+          title="Quick search (⌘/)"
+          @click="quickSearch"
+        >
+          <Icon icon="mdi:magnify" class="w-4 h-4" />
+        </UButton>
       </div>
 
-      <div class="flex md:hidden items-center gap-1 px-3 pb-2">
-        
-          <Transition name="throbber">
-          <BlocksSpinner
-            v-if="isBackgroundLoading"
-            :size="14"
-            aria-label="Refreshing"
-            class="opacity-50 mr-1 shrink-0"
-          />
-        </Transition>
-
-        <USelectMenu
-          v-model="selectedSortBy"
-          :items="sortByOptions"
-          size="sm"
-          placeholder="Sort by"
-          class="flex-1 min-w-0"
-          @update:model-value="handleSorting"
-        >
-          <template #default="{ modelValue }">
-            <Icon icon="mdi:sort" class="w-4 h-4 mr-1 shrink-0" />
-            <span class="truncate">{{ modelValue?.label }}</span>
-          </template>
-        </USelectMenu>
-
+      <!-- Mobile toolbar — 3 controls only -->
+      <div class="flex md:hidden items-center gap-2 px-3 py-2 w-full">
+        <!-- Upload — opens action sheet -->
         <UButton
+          color="primary"
           size="sm"
-          variant="ghost"
-          @click="toggleSortDirection"
-          :aria-label="selectedSortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
+          class="shrink-0"
+          aria-label="Upload"
+          @click="isMobileUploadSheetOpen = true"
         >
-          <Icon
-            :icon="
-              selectedSortDirection === SortDirection.Asc
-                ? 'mdi:sort-ascending'
-                : 'mdi:sort-descending'
-            "
-            class="w-4 h-4"
-          />
+          <Icon icon="mdi:upload" class="w-4 h-4 mr-1.5" />
+          Upload
         </UButton>
 
-        <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
+        <!-- Search — promoted, large enough to tap comfortably -->
+        <UButton
+          variant="outline"
+          color="neutral"
+          size="sm"
+          class="shrink-0"
+          aria-label="Search files"
+          @click="quickSearch"
+        >
+          <Icon icon="mdi:magnify" class="w-4 h-4 mr-1.5" />
+          Search
+        </UButton>
 
-        <div class="flex rounded-md overflow-hidden border border-gray-200 dark:border-gray-700">
-          <UButton
-            :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
-            size="sm"
-            class="rounded-none"
-            @click="viewMode = 'grid'"
-            aria-label="Grid view"
-          >
-            <Icon icon="mdi:view-grid" class="w-4 h-4" />
+        <div class="flex-1" />
+
+        <!-- Overflow menu — sort, view, new folder -->
+        <UDropdownMenu :items="mobileOverflowItems" :ui="{ content: 'w-52' }">
+          <UButton variant="ghost" color="neutral" size="sm" aria-label="More options">
+            <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
           </UButton>
-          <UButton
-            :variant="viewMode === 'list' ? 'solid' : 'ghost'"
-            size="sm"
-            class="rounded-none border-l border-gray-200 dark:border-gray-700"
-            @click="viewMode = 'list'"
-            aria-label="List view"
-          >
-            <Icon icon="mdi:view-list" class="w-4 h-4" />
-          </UButton>
-        </div>
+        </UDropdownMenu>
       </div>
     </div>
 
-    <div class="flex items-center gap-1 px-4 py-2">
+    <!-- Upload action drawer (mobile) -->
+    <UDrawer
+      v-model:open="isMobileUploadSheetOpen"
+      direction="bottom"
+      class="md:hidden"
+      :ui="{
+        content:
+          'rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70',
+      }"
+    >
+      <template #content>
+        <!-- Header -->
+        <div class="px-4 pt-2 pb-3">
+          <p class="text-xs font-medium uppercase tracking-widest text-gray-400 dark:text-gray-600">
+            Upload to {{ currentDirName ?? "Home" }}
+          </p>
+        </div>
+
+        <!-- Options -->
+        <ul
+          class="px-2 space-y-1"
+          :style="{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }"
+        >
+          <li>
+            <button
+              class="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl min-h-14 transition-colors text-left hover:bg-gray-100/60 dark:hover:bg-gray-800/60 text-gray-800 dark:text-gray-100"
+              @click="mobileUpload('File')"
+            >
+              <div
+                class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0"
+              >
+                <Icon icon="mdi:file-outline" class="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p class="text-sm font-medium">File</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  Upload one or more files
+                </p>
+              </div>
+            </button>
+          </li>
+          <li>
+            <button
+              class="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl min-h-14 transition-colors text-left hover:bg-gray-100/60 dark:hover:bg-gray-800/60 text-gray-800 dark:text-gray-100"
+              @click="mobileUpload('Directory')"
+            >
+              <div
+                class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0"
+              >
+                <Icon icon="mdi:folder-outline" class="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p class="text-sm font-medium">Folder</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  Upload an entire folder
+                </p>
+              </div>
+            </button>
+          </li>
+          <li>
+            <button
+              class="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl min-h-14 transition-colors text-left hover:bg-gray-100/60 dark:hover:bg-gray-800/60 text-gray-800 dark:text-gray-100"
+              @click="mobileUpload('Archive')"
+            >
+              <div
+                class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0"
+              >
+                <Icon icon="formkit:zip" class="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p class="text-sm font-medium">Archive</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                  Upload and extract a zip
+                </p>
+              </div>
+            </button>
+          </li>
+        </ul>
+      </template>
+    </UDrawer>
+
+    <!-- Breadcrumb row -->
+    <div class="flex items-center gap-1 px-4 py-1.5">
       <UButton
-        size="sm"
+        size="xs"
         variant="ghost"
+        color="neutral"
         :disabled="!canGoBack"
         :class="!canGoBack ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'"
         :title="canGoBack ? 'Go back' : 'No previous location'"
-        @click="navigateBack()"
         aria-label="Back"
+        @click="navigateBack()"
       >
         <Icon icon="mdi:arrow-left" class="w-4 h-4" />
       </UButton>
       <UButton
-        size="sm"
+        size="xs"
         variant="ghost"
+        color="neutral"
         :disabled="!canGoForward"
         :class="!canGoForward ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'"
         :title="canGoForward ? 'Go forward' : 'No next location'"
-        @click="navigateForward()"
         aria-label="Forward"
+        @click="navigateForward()"
       >
         <Icon icon="mdi:arrow-right" class="w-4 h-4" />
       </UButton>
@@ -213,21 +287,38 @@
       <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
 
       <UBreadcrumb :items="breadcrumbs">
-        <template #item="{ item }">
+        <template #item="{ item, index }">
           <UButton
             :icon="item.icon"
             :label="item.label"
             color="neutral"
             variant="link"
-            class="p-0.5"
+            class="p-0.5 text-sm"
+            :class="
+              index === breadcrumbs.length - 1
+                ? 'font-medium text-gray-700 dark:text-gray-200'
+                : 'font-normal text-gray-400 dark:text-gray-500'
+            "
             @click="handleNavigate(item.key)"
           />
         </template>
         <template #separator>
-          <span class="mx-2 text-muted">/</span>
+          <span class="mx-1 text-gray-300 dark:text-gray-600">/</span>
         </template>
       </UBreadcrumb>
     </div>
+
+    <!-- Background refresh indicator (mobile) -->
+    <Transition name="fade-status">
+      <div
+        v-if="isBackgroundLoading"
+        class="flex md:hidden items-center gap-1.5 px-4 py-1 text-xs text-gray-400 dark:text-gray-500 select-none"
+        aria-live="polite"
+      >
+        <BlocksSpinner :size="11" aria-label="Refreshing" class="opacity-50" />
+        <span class="opacity-50">Refreshing…</span>
+      </div>
+    </Transition>
 
     <!-- Content Area -->
     <div ref="containerRef" class="flex-1 overflow-auto relative">
@@ -238,7 +329,7 @@
           class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
           aria-hidden="true"
         >
-          <div class="absolute inset-0 bg-background/60 backdrop-blur-[2px]" />
+          <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" />
           <div class="absolute inset-0 bg-primary/5 pulse-tint" />
           <div
             class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
@@ -262,14 +353,11 @@
 
       <!-- Grid View -->
       <div v-if="viewMode === 'grid'" class="p-4">
-        <!-- Show skeleton only on true initial load (no data yet) -->
         <GridPlaceholder v-if="showDirSkeleton" />
-        <div v-else-if="directoriesList.length > 0" class="mb-6 flex flex-col">
-          <div>
-            <div class="flex items-center gap-2 ml-2 pb-4">
-              <h3 class="font-semibold opacity-70 px-1">Folders</h3>
-            </div>
-          </div>
+        <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
+          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
+            Folders
+          </h3>
           <div class="grid gap-3" :class="gridColumns">
             <DirectoryItem
               v-for="dir in directoriesList"
@@ -287,18 +375,27 @@
               @contextmenu="handleItemClick($event, dir.id, 'directory')"
             />
           </div>
-          <UButton
-            variant="ghost"
-            label="Show more"
-            class="max-w-fit self-end"
+          <!-- Show more folders -->
+          <div
             v-if="directoriesData?.hasNext"
-            @click="loadMoreDirs"
-          />
+            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+          >
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              label="Show more folders"
+              class="w-full"
+              @click="loadMoreDirs"
+            />
+          </div>
         </div>
 
         <GridPlaceholder v-if="showFileSkeleton" />
         <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
-          <h3 class="text-sm font-semibold opacity-70 mb-3 px-1">Files</h3>
+          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2 pt-2">
+            Files
+          </h3>
           <div class="grid gap-3" :class="gridColumns">
             <FileItem
               v-for="file in filesList"
@@ -316,21 +413,33 @@
               @file-trashed="refreshDir"
             />
           </div>
-          <UButton
-            variant="ghost"
-            label="Show more"
-            class="max-w-fit self-end"
+          <!-- Show more files -->
+          <div
             v-if="filesData?.hasNext"
-            @click="loadMoreFiles"
-          />
+            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+          >
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              label="Show more files"
+              class="w-full"
+              @click="loadMoreFiles"
+            />
+          </div>
         </div>
       </div>
 
       <!-- List View -->
       <div v-else class="flex flex-col">
         <ListPlaceholder v-if="showDirSkeleton" />
-        <div v-else-if="directoriesList.length > 0">
-          <h3 class="text-sm font-semibold opacity-70 mb-2 px-4 pt-4">Folders</h3>
+        <div
+          v-else-if="directoriesList.length > 0"
+          class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
+        >
+          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2">
+            Folders
+          </h3>
           <DirectoryItem
             v-for="dir in directoriesList"
             :key="dir.id"
@@ -345,23 +454,31 @@
             @copy="handleCopy"
             @delete="handleDelete"
           />
-          <UButton
-            variant="ghost"
-            label="Show more"
-            class="max-w-fit self-end"
+          <!-- Show more folders -->
+          <div
             v-if="directoriesData?.hasNext"
-            @click="loadMoreDirs"
-          />
+            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
+          >
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              label="Show more folders"
+              class="w-full"
+              @click="loadMoreDirs"
+            />
+          </div>
         </div>
 
         <ListPlaceholder v-if="showFileSkeleton" />
         <div
           v-else-if="filesList.length > 0"
-          :class="{ 'mt-4': directoriesData?.items.length ?? 0 > 0 }"
+          class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
+          :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
         >
           <h3
-            class="text-sm font-semibold opacity-70 mb-2 px-4"
-            :class="{ 'pt-4': directoriesData?.items.length ?? 0 === 0 }"
+            class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pb-2"
+            :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
           >
             Files
           </h3>
@@ -379,13 +496,20 @@
             @move="handleCut"
             @file-trashed="refreshDir"
           />
-          <UButton
-            variant="ghost"
-            label="Show more"
-            class="max-w-fit self-end"
+          <!-- Show more files -->
+          <div
             v-if="filesData?.hasNext"
-            @click="loadMoreFiles"
-          />
+            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
+          >
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              label="Show more files"
+              class="w-full"
+              @click="loadMoreFiles"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -470,9 +594,7 @@ const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
 
-// Initial-load tracking
-// True until the *first* successful data fetch for this tab instance.
-// Skeletons only render while this is true.
+// Initial-load skeleton tracking
 const dirHasLoaded = ref(false);
 const fileHasLoaded = ref(false);
 
@@ -483,7 +605,6 @@ watch(
   },
   { immediate: true },
 );
-
 watch(
   filesData,
   (val) => {
@@ -492,11 +613,8 @@ watch(
   { immediate: true },
 );
 
-// Show skeleton only when loading AND data has never arrived yet
 const showDirSkeleton = computed(() => areDirectoriesLoading.value && !dirHasLoaded.value);
 const showFileSkeleton = computed(() => areFilesLoading.value && !fileHasLoaded.value);
-
-// Background loading: loading but already have data → throbber, not skeleton
 const isBackgroundLoading = computed(
   () =>
     (areDirectoriesLoading.value && dirHasLoaded.value) ||
@@ -526,20 +644,32 @@ const startLabelTimer = (date: Date) => {
   }, 10_000);
 };
 
-// Record time when a background refresh completes (loading → false, data exists)
 watch(areDirectoriesLoading, (loading) => {
   if (!loading && dirHasLoaded.value) startLabelTimer(new Date());
 });
 
+// Tab title sync
+const currentDirName = computed<string | undefined>(() => {
+  if (!currentDirId.value) return undefined;
+  const parts = pathQuery.data.value?.pathParts;
+  return parts?.[parts.length - 1]?.name;
+});
+
+watch(
+  currentDirName,
+  (name) => {
+    tabStore.updateTabTitle(props.tabId, name ?? "Home");
+  },
+  { immediate: true },
+);
+
 // Tag query
 const tagCurrentPage = ref(1);
 const tagPageSize = ref(25);
-
 const searchFilters = computed<SearchTagsSchema>(() => ({
   page: tagCurrentPage.value,
   pageSize: tagPageSize.value,
 }));
-
 const { data: tagsData } = useQuery(searchTag(searchFilters.value));
 
 // Drop zone
@@ -552,21 +682,8 @@ const dropIcon = computed(() =>
 const dropLabel = computed(() => (dragHasDirectory.value ? "Drop folder here" : "Drop files here"));
 
 const { isOverDropZone } = useDropZone(containerRef, {
-  onEnter(_files, event) {
-    const items = Array.from(event.dataTransfer?.items ?? []);
-    dragHasDirectory.value = items.some((item) => {
-      const entry = (item as DataTransferItem).webkitGetAsEntry?.();
-      return entry?.isDirectory ?? false;
-    });
-  },
-
-  onLeave() {
-    dragHasDirectory.value = false;
-  },
-
   async onDrop(_files, event) {
     dragHasDirectory.value = false;
-
     const items = Array.from(event.dataTransfer?.items ?? []);
     if (items.length === 0) return;
 
@@ -575,7 +692,6 @@ const { isOverDropZone } = useDropZone(containerRef, {
       .filter((e): e is FileSystemEntry => e !== null && e !== undefined);
 
     if (entries.length === 0) return;
-
     const hasDirectory = entries.some((e) => e.isDirectory);
 
     let instance;
@@ -597,22 +713,27 @@ const { isOverDropZone } = useDropZone(containerRef, {
     const shouldRefresh = await instance.result;
     if (shouldRefresh && settingsStore.toastLevel === "all") {
       refreshDir();
-      toast.add({
-        color: "success",
-        id: "dropzone-upload-success",
-        title: "Upload complete",
-      });
+      toast.add({ color: "success", id: "dropzone-upload-success", title: "Upload complete" });
     }
+  },
+  onEnter(_files, event) {
+    const items = Array.from(event.dataTransfer?.items ?? []);
+    dragHasDirectory.value = items.some((item) => {
+      const entry = (item as DataTransferItem).webkitGetAsEntry?.();
+      return entry?.isDirectory ?? false;
+    });
+  },
+  onLeave() {
+    dragHasDirectory.value = false;
   },
 });
 
-// FileSystem API helpers
 export interface DroppedFile {
   file: File;
   relativePath: string;
 }
 
-async function readEntryRecursive(entry: FileSystemEntry, path = ""): Promise<DroppedFile[]> {
+const readEntryRecursive = async (entry: FileSystemEntry, path = ""): Promise<DroppedFile[]> => {
   if (entry.isFile) {
     return new Promise((resolve, reject) => {
       (entry as FileSystemFileEntry).file(
@@ -621,7 +742,6 @@ async function readEntryRecursive(entry: FileSystemEntry, path = ""): Promise<Dr
       );
     });
   }
-
   if (entry.isDirectory) {
     const dirEntry = entry as FileSystemDirectoryEntry;
     const children = await readAllEntries(dirEntry.createReader());
@@ -630,12 +750,11 @@ async function readEntryRecursive(entry: FileSystemEntry, path = ""): Promise<Dr
     );
     return nested.flat();
   }
-
   return [];
-}
+};
 
-function readAllEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
-  return new Promise((resolve, reject) => {
+const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
+  new Promise((resolve, reject) => {
     const collected: FileSystemEntry[] = [];
     const readBatch = () => {
       reader.readEntries((batch) => {
@@ -648,7 +767,6 @@ function readAllEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEn
     };
     readBatch();
   });
-}
 
 // Shortcuts
 let copyMode = true;
@@ -678,12 +796,15 @@ defineShortcuts({
   shift_l: () => advancedSearch(),
 });
 
-// Sort
+// Sort & upload state (declared first — referenced by mobileOverflowItems)
 const sortByOptions = ref([
   { label: "Name", value: SortBy.Name },
   { label: "Date Created", value: SortBy.CreatedAt },
   { label: "Date Modified", value: SortBy.UpdatedAt },
 ]);
+
+const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
+const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
 
 const selectedUploadType = ref({ icon: "mdi:file-outline", label: "File" });
 
@@ -693,17 +814,80 @@ const uploadOptions = ref([
   { icon: "formkit:zip", label: "Archive", onSelect: () => handleFileUpload("Archive") },
 ] satisfies DropdownMenuItem[]);
 
-const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
-const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
-
 const toggleSortDirection = () => {
   selectedSortDirection.value =
     selectedSortDirection.value === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
-
   filePagination.value.paginationParams.sortDirection = selectedSortDirection.value;
   dirPagination.value.paginationParams.sortDirection = selectedSortDirection.value;
   refreshDir();
 };
+
+const handleSorting = () => {
+  filePagination.value.paginationParams.SortBy = selectedSortBy.value.value;
+  dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
+  refreshDir();
+};
+
+// Mobile upload action sheet
+const isMobileUploadSheetOpen = ref(false);
+
+const mobileUpload = (type: "File" | "Directory" | "Archive") => {
+  isMobileUploadSheetOpen.value = false;
+  handleFileUpload(type);
+};
+
+// Mobile overflow menu
+// computed so that checkmarks, direction label and view toggle label stay reactive
+const mobileOverflowItems = computed(() => [
+  { label: "Sort by", type: "label" as const },
+  {
+    icon: selectedSortBy.value.value === SortBy.Name ? "mdi:check" : "",
+    label: "Name",
+    onSelect: () => {
+      selectedSortBy.value = sortByOptions.value[0];
+      handleSorting();
+    },
+  },
+  {
+    icon: selectedSortBy.value.value === SortBy.CreatedAt ? "mdi:check" : "",
+    label: "Date Created",
+    onSelect: () => {
+      selectedSortBy.value = sortByOptions.value[1];
+      handleSorting();
+    },
+  },
+  {
+    icon: selectedSortBy.value.value === SortBy.UpdatedAt ? "mdi:check" : "",
+    label: "Date Modified",
+    onSelect: () => {
+      selectedSortBy.value = sortByOptions.value[2];
+      handleSorting();
+    },
+  },
+  { type: "separator" as const },
+  {
+    icon:
+      selectedSortDirection.value === SortDirection.Asc
+        ? "mdi:sort-ascending"
+        : "mdi:sort-descending",
+    label: selectedSortDirection.value === SortDirection.Asc ? "Ascending" : "Descending",
+    onSelect: () => toggleSortDirection(),
+  },
+  { type: "separator" as const },
+  {
+    icon: viewMode.value === "grid" ? "mdi:view-list" : "mdi:view-grid",
+    label: viewMode.value === "grid" ? "Switch to List view" : "Switch to Grid view",
+    onSelect: () => {
+      viewMode.value = viewMode.value === "grid" ? "list" : "grid";
+    },
+  },
+  { type: "separator" as const },
+  {
+    icon: "mdi:folder-plus",
+    label: "New Folder",
+    onSelect: () => createNewDirectory(),
+  },
+]);
 
 // Modals
 const overlay = useOverlay();
@@ -732,6 +916,7 @@ const quickSearch = async () => {
   else if (typeof result === "string") handleNavigate(result);
 };
 
+// Interaction handlers
 const handleContainerClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
   if (!target.closest("button")) clearSelection();
@@ -754,7 +939,7 @@ const handleDirectoryRename = async (directoryId: string) => {
   }
 };
 
-const handleCopy = async () => {
+const handleCopy = () => {
   fileStore.filesToCopy = [...selectedFiles.value];
   directoryStore.directoriesToCopy = [...selectedDirectories.value];
   if (settingsStore.toastLevel === "all") {
@@ -769,7 +954,6 @@ const handleDelete = async () => {
 
   if (selectedDirectories.value.size > 0) {
     const dirIds = Array.from(selectedDirectories.value);
-
     const results = await Promise.allSettled(
       dirIds.map((id) => deleteDirectoryMutate({ id, options: { force: false } })),
     );
@@ -797,7 +981,6 @@ const handleDelete = async () => {
           description: `${failedDirs.length} ${failedDirs.length === 1 ? "directory" : "directories"} still contain files and will be deleted.`,
           title: "Delete directories?",
         });
-
         const confirmed = await instance.result;
         if (confirmed) {
           await Promise.all(
@@ -807,6 +990,7 @@ const handleDelete = async () => {
       }
     }
   }
+
   if (settingsStore.toastLevel === "all") {
     toast.add({ color: "info", id: "deleting", title: "Items deleted" });
   }
@@ -830,7 +1014,6 @@ const handlePaste = async () => {
   if (fileStore.filesToCopy.length > 0) {
     await copyFilesMutate({ destinationId: currentDirId.value, fileIds: fileStore.filesToCopy });
   }
-
   if (directoryStore.directoriesToCopy.length > 0) {
     await Promise.all(
       directoryStore.directoriesToCopy.map(async (dir) => {
@@ -838,21 +1021,8 @@ const handlePaste = async () => {
       }),
     );
   }
-
   refreshDir();
 };
-
-const handleSorting = () => {
-  filePagination.value.paginationParams.SortBy = selectedSortBy.value.value;
-  dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
-  refreshDir();
-};
-
-const currentDirName = computed<string | undefined>(() => {
-  if (!currentDirId.value) return undefined;
-  const parts = pathQuery.data.value?.pathParts;
-  return parts?.[parts.length - 1]?.name;
-});
 
 const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   const option = uploadOptions.value.find((opt) => opt.label === type);
@@ -897,7 +1067,6 @@ const breadcrumbs = computed(() => {
   const items: BreadcrumbItem[] = [
     { icon: "i-heroicons-home", key: null, label: "Home", to: { name: "dashboard" } },
   ];
-
   const path = pathQuery.data.value?.pathParts;
   if (path && path.length > 0) {
     items.push(...path.map((segment) => ({ key: segment.id, label: segment.name })));
@@ -907,7 +1076,6 @@ const breadcrumbs = computed(() => {
 
 const createNewDirectory = async () => {
   const instance = createDirectoryModal.open({ parentId: currentDirId.value });
-
   const shouldRefresh = await instance.result;
   if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({ color: "success", id: "modal-success", title: "Directory creation successful" });
@@ -950,26 +1118,21 @@ const handleItemClick = (event: MouseEvent, id: string, type: "file" | "director
 };
 
 const handleNavigate = (dirId: string | null) => {
-  // When navigating to a new directory, reset the "has loaded" flags so
-  // skeletons appear for the new location's first fetch.
   dirHasLoaded.value = false;
   fileHasLoaded.value = false;
-
   navigateTo(dirId);
   tabStore.setActiveDir(props.tabId, dirId);
 };
 
 const handleMouseNavigate = (event: MouseEvent) => {
   if (event.button !== 3 && event.button !== 4) return;
-
   event.preventDefault();
   event.stopPropagation();
-
   if (event.button === 3 && canGoBack.value) navigateBack();
   if (event.button === 4 && canGoForward.value) navigateForward();
 };
 
-onMounted(async () => {
+onMounted(() => {
   containerRef.value?.addEventListener("mousedown", handleMouseNavigate);
   const tab = tabStore.getTab(props.tabId);
   navigateTo(tab?.activeDirId);
@@ -982,7 +1145,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Throbber transition */
 .throbber-enter-active,
 .throbber-leave-active {
   transition:
@@ -995,7 +1157,6 @@ onUnmounted(() => {
   transform: scale(0.7);
 }
 
-/* Status label transition */
 .fade-status-enter-active,
 .fade-status-leave-active {
   transition: opacity 0.35s ease;
@@ -1005,7 +1166,6 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-/* Drop zone animations */
 .breathe {
   width: 4rem;
   height: 4rem;
