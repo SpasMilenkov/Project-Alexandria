@@ -1,7 +1,8 @@
 import { defineMutation, useMutation, useQueryCache } from "@pinia/colada";
 
-import type { CreateUserSchema, UpdateUserSchema } from "@/schemas/user";
+import type { ChangePasswordSchema, CreateUserSchema, UpdateUserSchema } from "@/schemas/user";
 
+import { authApi } from "@/api/auth";
 import { userApi } from "@/api/users";
 import { USER_QUERY_KEYS } from "@/queries/user";
 
@@ -43,6 +44,36 @@ export const useDeleteUsers = defineMutation(() => {
     mutation: (userIds: string[]) => userApi.deleteUsers(userIds),
     onSuccess() {
       queryCache.invalidateQueries({ key: USER_QUERY_KEYS.root });
+    },
+  });
+});
+
+export const changeInitialPassword = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return useMutation({
+    mutation: (payload: ChangePasswordSchema) => authApi.changeInitialPassword(payload),
+    onSuccess() {
+      queryCache.invalidateQueries({ key: USER_QUERY_KEYS.getOnboardingStep() });
+    },
+  });
+});
+
+export const setupProfile = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return useMutation({
+    mutation: () => userApi.setupProfile(),
+    onSuccess() {
+      queryCache.invalidateQueries({ key: USER_QUERY_KEYS.getOnboardingStep() });
+    },
+  });
+});
+
+export const finishTour = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return useMutation({
+    mutation: () => userApi.finishTour(),
+    onSuccess() {
+      queryCache.invalidateQueries({ key: USER_QUERY_KEYS.getOnboardingStep() });
     },
   });
 });

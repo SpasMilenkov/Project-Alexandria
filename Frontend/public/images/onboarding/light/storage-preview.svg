@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 340" width="520" height="340">
+
+  <rect width="520" height="340" rx="10" fill="#f4f4f4" />
+
+  <!-- SIDEBAR -->
+  <rect x="12" y="12" width="110" height="316" rx="7" fill="#ebebeb" stroke="#ddd" stroke-width="1" />
+  <rect x="20" y="22" width="22" height="22" rx="5" fill="#e07b30" />
+  <rect x="48" y="27" width="52" height="8" rx="4" fill="#ccc" />
+
+  <circle cx="26" cy="70" r="3" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="36" y="67" width="48" height="4" rx="2" fill="#bbb" />
+  <circle cx="26" cy="88" r="3" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="36" y="85" width="60" height="4" rx="2" fill="#bbb" />
+  <circle cx="26" cy="106" r="3" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="36" y="103" width="52" height="4" rx="2" fill="#bbb" />
+  <circle cx="26" cy="124" r="3" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="36" y="121" width="24" height="4" rx="2" fill="#bbb" />
+
+  <!-- Storage widget active -->
+  <rect x="18" y="272" width="96" height="36" rx="5" fill="#fde8d8" stroke="#e07b30" stroke-width="0.8" />
+  <rect x="24" y="280" width="56" height="4" rx="2" fill="#e8c9b0" />
+  <rect x="24" y="280" width="47" height="4" rx="2" fill="#e07b30" opacity="0.8" />
+  <rect x="24" y="288" width="30" height="3" rx="1" fill="#e07b30" opacity="0.4" />
+
+  <!-- MAIN -->
+  <rect x="130" y="12" width="378" height="316" rx="7" fill="#ffffff" stroke="#e8e8e8" stroke-width="1" />
+
+  <!-- Page header -->
+  <rect x="130" y="12" width="378" height="40" rx="5" fill="#ffffff" />
+  <circle cx="152" cy="32" r="10" fill="none" stroke="#ccc" stroke-width="1" />
+  <circle cx="152" cy="32" r="3.5" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="168" y="26" width="36" height="5" rx="2" fill="#444" />
+  <rect x="168" y="35" width="68" height="3" rx="2" fill="#bbb" />
+  <rect x="462" y="28" width="36" height="8" rx="2" fill="none" stroke="#e07b30" stroke-width="0.8" />
+  <rect x="466" y="31" width="24" height="3" rx="1" fill="#e07b30" opacity="0.7" />
+  <line x1="130" y1="54" x2="508" y2="54" stroke="#eee" stroke-width="0.7" />
+
+  <!-- STORAGE BAR CARD -->
+  <rect x="130" y="60" width="378" height="68" rx="6" fill="#ffffff" stroke="#e8e8e8" stroke-width="0.8" />
+  <rect x="144" y="72" width="30" height="4" rx="2" fill="#888" />
+  <rect x="420" y="70" width="28" height="8" rx="3" fill="#f0f0f0" stroke="#ddd" stroke-width="0.7" />
+  <rect x="422" y="72" width="18" height="4" rx="2" fill="#aaa" />
+  <!-- Progress track -->
+  <rect x="144" y="84" width="350" height="8" rx="4" fill="#eee" />
+  <!-- Progress fill 84% -->
+  <rect x="144" y="84" width="294" height="8" rx="4" fill="#e07b30" />
+  <rect x="144" y="98" width="50" height="3" rx="1" fill="#bbb" />
+  <rect x="424" y="98" width="70" height="3" rx="1" fill="#bbb" />
+  <rect x="144" y="108" width="60" height="12" rx="3" fill="#f0f0f0" stroke="#ddd" stroke-width="0.7" />
+  <rect x="150" y="112" width="40" height="3" rx="1" fill="#aaa" />
+
+  <!-- BREAKDOWN CARD -->
+  <rect x="130" y="136" width="378" height="148" rx="6" fill="#ffffff" stroke="#e8e8e8" stroke-width="0.8" />
+  <circle cx="152" cy="152" r="8" fill="none" stroke="#ccc" stroke-width="1" />
+  <circle cx="152" cy="152" r="3.5" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="166" y="148" width="70" height="5" rx="2" fill="#444" />
+  <rect x="166" y="157" width="52" height="3" rx="2" fill="#bbb" />
+  <rect x="430" y="146" width="36" height="5" rx="2" fill="#bbb" />
+  <rect x="440" y="155" width="26" height="6" rx="2" fill="#888" />
+  <line x1="210" y1="168" x2="210" y2="278" stroke="#eee" stroke-width="0.7" stroke-dasharray="3 2" />
+
+  <!-- DONUT — r=30, circumference=188.5 -->
+  <circle cx="172" cy="222" r="30" fill="none" stroke="#e07b30" stroke-width="11" stroke-dasharray="69.7 118.8" stroke-dashoffset="-47.1" />
+  <circle cx="172" cy="222" r="30" fill="none" stroke="#6366f1" stroke-width="11" stroke-dasharray="41.5 147" stroke-dashoffset="-116.8" />
+  <circle cx="172" cy="222" r="30" fill="none" stroke="#22c55e" stroke-width="11" stroke-dasharray="28.3 160.2" stroke-dashoffset="-158.3" />
+  <circle cx="172" cy="222" r="30" fill="none" stroke="#eab308" stroke-width="11" stroke-dasharray="22.6 165.9" stroke-dashoffset="-186.6" />
+  <circle cx="172" cy="222" r="30" fill="none" stroke="#a855f7" stroke-width="11" stroke-dasharray="18.85 169.65" stroke-dashoffset="-209.2" />
+  <circle cx="172" cy="222" r="30" fill="none" stroke="#06b6d4" stroke-width="11" stroke-dasharray="7.5 181" stroke-dashoffset="-228.1" />
+  <circle cx="172" cy="222" r="21" fill="#ffffff" />
+  <rect x="155" y="218" width="34" height="5" rx="2" fill="#444" />
+  <rect x="159" y="227" width="26" height="3" rx="2" fill="#aaa" />
+
+  <!-- LEGEND -->
+  <circle cx="222" cy="180" r="3" fill="#e07b30" /><rect x="230" y="177" width="38" height="4" rx="2" fill="#888" /><rect x="370" y="177" width="30" height="4" rx="2" fill="#bbb" /><rect x="408" y="177" width="28" height="4" rx="2" fill="#aaa" />
+  <circle cx="222" cy="196" r="3" fill="#6366f1" /><rect x="230" y="193" width="28" height="4" rx="2" fill="#888" /><rect x="370" y="193" width="22" height="4" rx="2" fill="#bbb" /><rect x="408" y="193" width="28" height="4" rx="2" fill="#aaa" />
+  <circle cx="222" cy="212" r="3" fill="#22c55e" /><rect x="230" y="209" width="22" height="4" rx="2" fill="#888" /><rect x="370" y="209" width="16" height="4" rx="2" fill="#bbb" /><rect x="408" y="209" width="28" height="4" rx="2" fill="#aaa" />
+  <circle cx="222" cy="228" r="3" fill="#eab308" /><rect x="230" y="225" width="28" height="4" rx="2" fill="#888" /><rect x="370" y="225" width="14" height="4" rx="2" fill="#bbb" /><rect x="408" y="225" width="28" height="4" rx="2" fill="#aaa" />
+  <circle cx="222" cy="244" r="3" fill="#a855f7" /><rect x="230" y="241" width="30" height="4" rx="2" fill="#888" /><rect x="370" y="241" width="12" height="4" rx="2" fill="#bbb" /><rect x="408" y="241" width="28" height="4" rx="2" fill="#aaa" />
+  <circle cx="222" cy="260" r="3" fill="#06b6d4" /><rect x="230" y="257" width="22" height="4" rx="2" fill="#888" /><rect x="370" y="257" width="8" height="4" rx="2" fill="#bbb" /><rect x="408" y="257" width="34" height="4" rx="2" fill="#aaa" />
+  <circle cx="222" cy="276" r="3" fill="#f97316" /><rect x="230" y="273" width="18" height="4" rx="2" fill="#888" /><rect x="408" y="273" width="38" height="4" rx="2" fill="#aaa" />
+
+  <!-- BOTTOM STAT CARDS -->
+  <rect x="130" y="292" width="114" height="40" rx="5" fill="#ffffff" stroke="#e8e8e8" stroke-width="0.8" />
+  <rect x="140" y="299" width="36" height="3" rx="1" fill="#bbb" />
+  <rect x="140" y="306" width="44" height="6" rx="2" fill="#555" />
+  <rect x="140" y="316" width="52" height="3" rx="1" fill="#bbb" />
+  <rect x="220" y="297" width="16" height="16" rx="4" fill="#f0f0f0" stroke="#ddd" stroke-width="0.7" />
+
+  <rect x="252" y="292" width="114" height="40" rx="5" fill="#ffffff" stroke="#e8e8e8" stroke-width="0.8" />
+  <rect x="262" y="299" width="36" height="3" rx="1" fill="#bbb" />
+  <rect x="262" y="306" width="18" height="6" rx="2" fill="#555" />
+  <rect x="262" y="316" width="62" height="3" rx="1" fill="#bbb" />
+  <rect x="342" y="297" width="16" height="16" rx="4" fill="#f0f0f0" stroke="#ddd" stroke-width="0.7" />
+
+  <rect x="374" y="292" width="114" height="40" rx="5" fill="#ffffff" stroke="#e8e8e8" stroke-width="0.8" />
+  <rect x="384" y="299" width="36" height="3" rx="1" fill="#bbb" />
+  <rect x="384" y="306" width="14" height="6" rx="2" fill="#555" />
+  <rect x="384" y="316" width="56" height="3" rx="1" fill="#bbb" />
+  <rect x="464" y="297" width="16" height="16" rx="4" fill="#f0f0f0" stroke="#ddd" stroke-width="0.7" />
+
+</svg>

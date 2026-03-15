@@ -61,7 +61,7 @@ export const getPreview = defineQueryOptions((id: string) => ({
   key: FILES_QUERY_KEYS.signedUrl(id),
   query: () => fileApi.getPreview(id),
   refetchOnMount: true,
-  staleTime: 60000,
+  staleTime: 30000,
 }));
 
 export const rootFiles = defineQueryOptions((params: PaginationParams) => ({

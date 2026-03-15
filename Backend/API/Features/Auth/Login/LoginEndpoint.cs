@@ -38,8 +38,6 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
             return;
         }
 
-        var userId = result.User.Id.ToString();
-
         var accessToken = _authService.GenerateAccessToken(result.User);
         var refreshToken = await _authService.GenerateRefreshTokenAsync(result.User, ct);
 
@@ -80,7 +78,8 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
                 Email = result.User.Email ?? throw new InvalidOperationException(),
                 Name = result.User.UserName ?? throw new InvalidOperationException()
             },
-            UserRoles = result.UserRoles
+            UserRoles = result.UserRoles,
+            OnboardingStep = result.User.OnboardinStep
         }, ct);
     }
 }

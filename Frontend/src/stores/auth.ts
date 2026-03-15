@@ -5,21 +5,20 @@ import { computed, ref } from "vue";
 
 import type { LoginSchema } from "@/schemas/auth";
 
-import { authApi } from "@/api/auth";
+import { type AuthResponse, authApi } from "@/api/auth";
 import { logger } from "@/utils/logger";
 
 export const useAuthStore = defineStore(
   "auth",
   () => {
     // State
-    const user = ref<{ id: string; email: string; name: string } | null>(null);
-    const roles = ref<string[]>([]);
+    const user = ref<AuthResponse | null>(null);
     const isLoading = ref(false);
     const error = ref<string | null>(null);
 
     // Getters
     const isAuthenticated = computed(() => Boolean(user.value));
-    const isAdmin = computed(() => roles.value.includes("Admin"));
+    const isAdmin = computed(() => user.value?.userRoles?.includes("Admin") ?? false);
 
     // Actions
     const login = async (credentials: LoginSchema) => {
@@ -27,8 +26,8 @@ export const useAuthStore = defineStore(
       error.value = null;
       try {
         const response = await authApi.login(credentials);
-        user.value = response.user;
-        roles.value = response.userRoles ?? [];
+        user.value = response;
+
         return { success: true };
       } catch (err: unknown) {
         let message = "Login failed";
@@ -48,11 +47,10 @@ export const useAuthStore = defineStore(
     const logout = async () => {
       try {
         await authApi.logout();
-      } catch (error) {
-        logger.error("Logout error:", error);
+      } catch (err: unknown) {
+        logger.error("Logout error:", err);
       } finally {
         user.value = null;
-        roles.value = [];
       }
     };
 
@@ -63,7 +61,6 @@ export const useAuthStore = defineStore(
     return {
       // State
       user,
-      roles,
       isLoading,
       error,
       // Getters

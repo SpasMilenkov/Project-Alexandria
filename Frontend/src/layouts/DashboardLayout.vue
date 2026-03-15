@@ -103,7 +103,7 @@
           :label="collapsed ? undefined : 'Log out'"
           icon="i-heroicons-arrow-right-on-rectangle"
           color="error"
-          variant="soft"
+          variant="outline"
           block
           :square="collapsed"
           @click="handleLogout"
@@ -148,8 +148,12 @@ import router from "@/router";
 import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
 import MobileNavItem from "@/components/dashboard/MobileNavItem.vue";
 import { useSettingsSync } from "@/composables/useSettingsSync";
+import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
+import { OnboardingStep } from "@/enums";
 
 useSettingsSync();
+
+useOnboardingGuard(OnboardingStep.Done);
 
 const authStore = useAuthStore();
 const route = useRoute();

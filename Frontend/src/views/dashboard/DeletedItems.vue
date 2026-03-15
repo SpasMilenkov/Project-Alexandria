@@ -2,217 +2,250 @@
   <div class="flex flex-col h-full w-full">
     <!-- Header -->
     <div
-      class="flex w-full gap-2 p-4 border-b border-gray-200 dark:border-gray-800 items-center justify-between"
+      class="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-200/70 dark:border-gray-700/70"
     >
-      <div class="flex items-center gap-2">
-        <div class="p-2 rounded-lg border border-dashed opacity-80 mt-0.5">
-          <UIcon name="i-lucide-trash-2" class="w-6 h-6" />
-        </div>
-        <h1 class="text-2xl font-bold">Deleted Items</h1>
-        <UBadge v-if="totalCount > 0" color="gray" variant="subtle">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <UIcon name="i-lucide-trash-2" class="w-5 h-5 text-muted shrink-0" />
+        <h1 class="text-xl font-semibold truncate">Deleted Items</h1>
+        <UBadge v-if="totalCount > 0" color="neutral" variant="subtle" size="sm">
           {{ totalCount }}
         </UBadge>
       </div>
-      <div class="flex items-center gap-2">
-        <USelect v-model="daysFilter" :items="daysFilterOptions" class="w-40" />
-        <UButton variant="ghost" size="sm" @click="refreshData" :loading="isLoading">
-          <UIcon name="i-lucide-refresh-cw" class="w-4 h-4 mr-2" />
-          Refresh
-        </UButton>
-      </div>
-    </div>
 
-    <!-- Search Bar -->
-    <div class="p-4 border-b border-gray-200 dark:border-gray-800">
-      <UInput
-        v-model="searchQuery"
-        placeholder="Search deleted items by name..."
-        class="w-full"
-        @keyup.enter="handleSearch"
-      >
-        <template #leading>
-          <UIcon name="i-lucide-search" />
-        </template>
-        <template #trailing>
+      <!-- Controls: day filter + icon-only refresh -->
+      <div class="flex items-center gap-2 shrink-0">
+        <USelect v-model="daysFilter" :items="daysFilterOptions" size="sm" class="w-36" />
+        <UTooltip text="Refresh">
           <UButton
-            v-if="searchQuery"
             variant="ghost"
-            size="xs"
-            icon="i-lucide-x"
-            @click="clearSearch"
+            color="neutral"
+            size="sm"
+            icon="i-lucide-refresh-cw"
+            :loading="isLoading"
+            @click="refreshData"
           />
-        </template>
-      </UInput>
+        </UTooltip>
+      </div>
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-auto p-4">
-      <!-- Loading State -->
-      <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-        <UIcon name="i-lucide-loader-circle" class="size-8 animate-spin text-muted mb-3" />
-        <p class="text-sm text-muted">Loading deleted items...</p>
-      </div>
-
-      <!-- Empty State -->
-      <div
-        v-else-if="!hasResults"
-        class="flex flex-col items-center justify-center py-20 text-center px-4"
-      >
-        <div class="rounded-full p-5 mb-4 bg-elevated border border-default">
-          <UIcon name="i-lucide-trash-2" class="size-10 text-muted" />
-        </div>
-        <h4 class="text-sm font-medium mb-1">No Deleted Items</h4>
-        <p class="text-xs text-muted max-w-xs">
-          {{ emptyStateMessage }}
-        </p>
-      </div>
-
-      <!-- Results -->
-      <div v-else class="space-y-6">
-        <!-- Deleted Directories -->
-        <div v-if="directoryResults.length > 0">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-folder" class="size-4 text-muted" />
-              <h4 class="text-xs font-semibold uppercase tracking-wider text-muted">
-                Directories ({{ directoryResults.length }})
-              </h4>
-            </div>
-            <div class="flex items-center gap-2">
-              <UCheckbox
-                :model-value="isAllDirectoriesSelected"
-                @update:model-value="toggleSelectAllDirectories"
-                label="Select all"
-                size="sm"
-                :disabled="isMutating"
-              />
-              <UButton
-                v-if="selectedDirectories.size > 0"
-                size="xs"
-                color="primary"
-                variant="soft"
-                icon="i-lucide-rotate-ccw"
-                :loading="restoreDirectoriesIsLoading"
-                :disabled="isMutating"
-                @click="restoreSelectedDirectories"
-              >
-                Restore ({{ selectedDirectories.size }})
-              </UButton>
-            </div>
-          </div>
-          <div class="space-y-1.5">
-            <div
-              v-for="dir in directoryResults"
-              :key="dir.id"
-              class="flex items-center gap-2 p-2 rounded-lg"
-            >
-              <UCheckbox
-                :model-value="selectedDirectories.has(dir.id)"
-                @update:model-value="
-                  (checked: boolean) => toggleDirectorySelection(dir.id, checked)
-                "
-                size="sm"
-                :disabled="isMutating"
-              />
-              <DirectoryItem
-                :data="dir"
-                view-mode="list"
-                :is-selected="false"
-                @click="handleItemClick"
-                @navigate="handleNavigate"
-                class="flex-1"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Deleted Files -->
-        <div v-if="fileResults.length > 0">
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-file" class="size-4 text-muted" />
-              <h4 class="text-xs font-semibold uppercase tracking-wider text-muted">
-                Files ({{ fileResults.length }})
-              </h4>
-            </div>
-            <div class="flex items-center gap-2">
-              <UCheckbox
-                :model-value="isAllFilesSelected"
-                @update:model-value="toggleSelectAllFiles"
-                label="Select all"
-                size="sm"
-                :disabled="isMutating"
-              />
-              <UButton
-                v-if="selectedFiles.size > 0"
-                size="xs"
-                color="primary"
-                variant="soft"
-                icon="i-lucide-rotate-ccw"
-                :loading="restoreFilesLoading"
-                :disabled="isMutating"
-                @click="restoreSelectedFiles"
-              >
-                Restore ({{ selectedFiles.size }})
-              </UButton>
-            </div>
-          </div>
-          <div class="space-y-1.5">
-            <div
-              v-for="file in fileResults"
-              :key="file.fileId"
-              class="flex items-center gap-2 p-2 rounded-lg"
-            >
-              <UCheckbox
-                :model-value="selectedFiles.has(file.fileId)"
-                @update:model-value="
-                  (checked: boolean) => toggleFileSelection(file.fileId, checked)
-                "
-                size="sm"
-                :disabled="isMutating"
-              />
-              <FileItem
-                :data="file"
-                :is-selected="false"
-                :tags="file.tags"
-                view-mode="list"
-                @click="handleItemClick"
-                @file-restored="refreshData"
-                class="flex-1"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Pagination -->
-        <div
-          v-if="totalPages > 1"
-          class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800"
+    <div class="flex-1 overflow-auto">
+      <div class="px-6 py-5 space-y-4">
+        <!-- Search bar — full-width, prominent -->
+        <UInput
+          v-model="searchQuery"
+          placeholder="Search deleted items by name..."
+          size="lg"
+          class="w-full"
+          @keyup.enter="handleSearch"
         >
-          <p class="text-sm text-muted">
-            Showing {{ (currentPage - 1) * pageSize + 1 }} -
-            {{ Math.min(currentPage * pageSize, totalCount) }} of {{ totalCount }} items
-          </p>
-          <div class="flex items-center gap-2">
+          <template #leading>
+            <UIcon name="i-lucide-search" class="w-4 h-4 text-muted" />
+          </template>
+          <template #trailing>
             <UButton
-              size="sm"
-              color="neutral"
+              v-if="searchQuery"
               variant="ghost"
-              icon="i-lucide-chevron-left"
-              :disabled="currentPage <= 1 || isMutating"
-              @click="goToPage(currentPage - 1)"
-            />
-            <span class="text-sm text-muted"> Page {{ currentPage }} of {{ totalPages }} </span>
-            <UButton
-              size="sm"
               color="neutral"
-              variant="ghost"
-              icon="i-lucide-chevron-right"
-              :disabled="currentPage >= totalPages || isMutating"
-              @click="goToPage(currentPage + 1)"
+              size="xs"
+              icon="i-lucide-x"
+              @click="clearSearch"
             />
+          </template>
+        </UInput>
+
+        <!-- Loading state -->
+        <div v-if="isLoading" class="flex flex-col items-center justify-center py-20 gap-3">
+          <UIcon name="i-lucide-loader-circle" class="w-7 h-7 animate-spin text-muted" />
+          <p class="text-sm text-muted">Loading deleted items…</p>
+        </div>
+
+        <!-- Empty state -->
+        <div
+          v-else-if="!hasResults"
+          class="flex flex-col items-center justify-center py-20 text-center gap-3"
+        >
+          <UIcon name="i-lucide-trash-2" class="w-12 h-12 text-muted" />
+          <div class="space-y-1">
+            <p class="text-sm font-medium">No Deleted Items</p>
+            <p class="text-xs text-muted max-w-xs">{{ emptyStateMessage }}</p>
           </div>
         </div>
+
+        <!-- Results -->
+        <template v-else>
+          <!-- Deleted Directories -->
+          <section v-if="directoryResults.length > 0">
+            <!-- Section header -->
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="flex items-center gap-1.5">
+                <UIcon name="i-lucide-folder" class="w-4 h-4 text-muted" />
+                <span class="text-xs font-semibold uppercase tracking-widest text-muted">
+                  Directories ({{ directoryResults.length }})
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <UCheckbox
+                  :model-value="isAllDirectoriesSelected"
+                  @update:model-value="toggleSelectAllDirectories"
+                  label="Select all"
+                  size="sm"
+                  :disabled="isMutating"
+                />
+                <Transition
+                  enter-active-class="transition-all duration-200 ease-out"
+                  leave-active-class="transition-all duration-150 ease-in"
+                  enter-from-class="opacity-0 scale-95"
+                  leave-to-class="opacity-0 scale-95"
+                >
+                  <UButton
+                    v-if="selectedDirectories.size > 0"
+                    size="xs"
+                    color="primary"
+                    variant="soft"
+                    icon="i-lucide-rotate-ccw"
+                    :loading="restoreDirectoriesIsLoading"
+                    :disabled="isMutating"
+                    @click="restoreSelectedDirectories"
+                  >
+                    Restore ({{ selectedDirectories.size }})
+                  </UButton>
+                </Transition>
+              </div>
+            </div>
+
+            <!-- Rows -->
+            <div
+              class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden bg-white/60 dark:bg-white/5 backdrop-blur-sm divide-y divide-gray-100/50 dark:divide-gray-800/50"
+            >
+              <div
+                v-for="dir in directoryResults"
+                :key="dir.id"
+                class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/60 dark:hover:bg-white/5 transition-colors"
+              >
+                <UCheckbox
+                  :model-value="selectedDirectories.has(dir.id)"
+                  @update:model-value="
+                    (checked: boolean) => toggleDirectorySelection(dir.id, checked)
+                  "
+                  size="sm"
+                  :disabled="isMutating"
+                />
+                <DirectoryItem
+                  :data="dir"
+                  view-mode="list"
+                  :is-selected="false"
+                  @click="handleItemClick"
+                  @navigate="handleNavigate"
+                  class="flex-1 min-w-0"
+                />
+              </div>
+            </div>
+          </section>
+
+          <!-- Deleted Files -->
+          <section v-if="fileResults.length > 0">
+            <!-- Section header -->
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div class="flex items-center gap-1.5">
+                <UIcon name="i-lucide-file" class="w-4 h-4 text-muted" />
+                <span class="text-xs font-semibold uppercase tracking-widest text-muted">
+                  Files ({{ fileResults.length }})
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <UCheckbox
+                  :model-value="isAllFilesSelected"
+                  @update:model-value="toggleSelectAllFiles"
+                  label="Select all"
+                  size="sm"
+                  :disabled="isMutating"
+                />
+                <Transition
+                  enter-active-class="transition-all duration-200 ease-out"
+                  leave-active-class="transition-all duration-150 ease-in"
+                  enter-from-class="opacity-0 scale-95"
+                  leave-to-class="opacity-0 scale-95"
+                >
+                  <UButton
+                    v-if="selectedFiles.size > 0"
+                    size="xs"
+                    color="primary"
+                    variant="soft"
+                    icon="i-lucide-rotate-ccw"
+                    :loading="restoreFilesLoading"
+                    :disabled="isMutating"
+                    @click="restoreSelectedFiles"
+                  >
+                    Restore ({{ selectedFiles.size }})
+                  </UButton>
+                </Transition>
+              </div>
+            </div>
+
+            <!-- Rows -->
+            <div
+              class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden bg-white/60 dark:bg-white/5 backdrop-blur-sm divide-y divide-gray-100/50 dark:divide-gray-800/50"
+            >
+              <div
+                v-for="file in fileResults"
+                :key="file.fileId"
+                class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/60 dark:hover:bg-white/5 transition-colors"
+              >
+                <UCheckbox
+                  :model-value="selectedFiles.has(file.fileId)"
+                  @update:model-value="
+                    (checked: boolean) => toggleFileSelection(file.fileId, checked)
+                  "
+                  size="sm"
+                  :disabled="isMutating"
+                />
+                <FileItem
+                  :data="file"
+                  :is-selected="false"
+                  :tags="file.tags"
+                  view-mode="list"
+                  @click="handleItemClick"
+                  @file-restored="refreshData"
+                  class="flex-1 min-w-0"
+                />
+              </div>
+            </div>
+          </section>
+
+          <!-- Pagination -->
+          <div v-if="totalPages > 1" class="flex items-center justify-between pt-2">
+            <!-- Count — hidden on mobile -->
+            <p class="hidden md:block text-xs text-muted tabular-nums">
+              Showing {{ (currentPage - 1) * pageSize + 1 }}–{{
+                Math.min(currentPage * pageSize, totalCount)
+              }}
+              of {{ totalCount }} items
+            </p>
+            <!-- Prev / page indicator / next — centered on mobile -->
+            <div class="flex items-center gap-2 mx-auto md:mx-0">
+              <UButton
+                size="sm"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-chevron-left"
+                :disabled="currentPage <= 1 || isMutating"
+                @click="goToPage(currentPage - 1)"
+              />
+              <span class="text-xs text-muted tabular-nums min-w-[5rem] text-center">
+                Page {{ currentPage }} of {{ totalPages }}
+              </span>
+              <UButton
+                size="sm"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-chevron-right"
+                :disabled="currentPage >= totalPages || isMutating"
+                @click="goToPage(currentPage + 1)"
+              />
+            </div>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -298,8 +331,6 @@ const isAllFilesSelected = computed(
   () => fileResults.value.length > 0 && selectedFiles.value.size === fileResults.value.length,
 );
 
-// Aggregate mutation loading state — used to disable interactive elements
-// While any mutation is in flight to prevent double-submits or conflicting ops.
 const isMutating = computed(() => restoreFilesLoading.value || restoreDirectoriesIsLoading.value);
 
 // Methods
@@ -311,38 +342,26 @@ const calculateDeletedAfterDate = (): string => {
 
 const toggleDirectorySelection = (id: string, checked: boolean) => {
   const newSet = new Set(selectedDirectories.value);
-  if (checked) {
-    newSet.add(id);
-  } else {
-    newSet.delete(id);
-  }
+  if (checked) newSet.add(id);
+  else newSet.delete(id);
   selectedDirectories.value = newSet;
 };
 
 const toggleFileSelection = (id: string, checked: boolean) => {
   const newSet = new Set(selectedFiles.value);
-  if (checked) {
-    newSet.add(id);
-  } else {
-    newSet.delete(id);
-  }
+  if (checked) newSet.add(id);
+  else newSet.delete(id);
   selectedFiles.value = newSet;
 };
 
 const toggleSelectAllDirectories = (checked: boolean) => {
-  if (checked) {
-    selectedDirectories.value = new Set(directoryResults.value.map((d) => d.id));
-  } else {
-    selectedDirectories.value = new Set();
-  }
+  selectedDirectories.value = checked
+    ? new Set(directoryResults.value.map((d) => d.id))
+    : new Set();
 };
 
 const toggleSelectAllFiles = (checked: boolean) => {
-  if (checked) {
-    selectedFiles.value = new Set(fileResults.value.map((f) => f.fileId));
-  } else {
-    selectedFiles.value = new Set();
-  }
+  selectedFiles.value = checked ? new Set(fileResults.value.map((f) => f.fileId)) : new Set();
 };
 
 const fetchDeletedItems = async () => {
@@ -353,65 +372,56 @@ const fetchDeletedItems = async () => {
   try {
     const deletedAfter = calculateDeletedAfterDate();
 
-    // Fetch files
-    const filesResult = await fileStore.searchFiles({
-      createdAfter: null,
-      createdBefore: null,
-      currentPage: currentPage.value - 1,
-      deletedAfter,
-      deletedBefore: null,
-      directoryId: null,
-      isDeleted: true,
-      isShared: false,
-      isStarred: false,
-      maxSize: null,
-      mimeType: null,
-      minSize: null,
-      nameContains: searchQuery.value || null,
-      onlyDeleted: true,
-      ownerId: null,
-      pageSize: pageSize.value,
-      parentDirectoryId: null,
-      sortBy: sortBy.value,
-      sortDirection: sortDirection.value,
-      updatedAfter: null,
-      updatedBefore: null,
-    });
+    const [filesResult, directoriesResult] = await Promise.all([
+      fileStore.searchFiles({
+        createdAfter: null,
+        createdBefore: null,
+        currentPage: currentPage.value - 1,
+        deletedAfter,
+        deletedBefore: null,
+        directoryId: null,
+        isDeleted: true,
+        isShared: false,
+        isStarred: false,
+        maxSize: null,
+        mimeType: null,
+        minSize: null,
+        nameContains: searchQuery.value || null,
+        onlyDeleted: true,
+        ownerId: null,
+        pageSize: pageSize.value,
+        parentDirectoryId: null,
+        sortBy: sortBy.value,
+        sortDirection: sortDirection.value,
+        updatedAfter: null,
+        updatedBefore: null,
+      }),
+      directoryStore.searchDirectory({
+        createdAfter: null,
+        createdBefore: null,
+        deletedAfter,
+        deletedBefore: null,
+        directoryId: null,
+        hasFiles: null,
+        hasSubdirectories: null,
+        isDeleted: true,
+        isShared: null,
+        isStarred: undefined,
+        nameContains: searchQuery.value || null,
+        ownerId: null,
+        page: currentPage.value - 1,
+        pageSize: pageSize.value,
+        parentDirectoryId: null,
+        sortBy: sortBy.value,
+        sortDirection: sortDirection.value,
+        updatedAfter: null,
+        updatedBefore: null,
+      }),
+    ]);
 
-    // Fetch directories
-    const directoriesResult = await directoryStore.searchDirectory({
-      createdAfter: null,
-      createdBefore: null,
-      deletedAfter,
-      deletedBefore: null,
-      directoryId: null,
-      hasFiles: null,
-      hasSubdirectories: null,
-      isDeleted: true,
-      isShared: null,
-      isStarred: undefined,
-      nameContains: searchQuery.value || null,
-      ownerId: null,
-      page: currentPage.value - 1,
-      pageSize: pageSize.value,
-      parentDirectoryId: null,
-      sortBy: sortBy.value,
-      sortDirection: sortDirection.value,
-      updatedAfter: null,
-      updatedBefore: null,
-    });
-
-    if (filesResult.success && filesResult.data) {
-      fileResults.value = filesResult.data.items;
-    } else {
-      fileResults.value = [];
-    }
-
-    if (directoriesResult.success && directoriesResult.data) {
-      directoryResults.value = directoriesResult.data.items;
-    } else {
-      directoryResults.value = [];
-    }
+    fileResults.value = filesResult.success && filesResult.data ? filesResult.data.items : [];
+    directoryResults.value =
+      directoriesResult.success && directoriesResult.data ? directoriesResult.data.items : [];
 
     totalCount.value =
       (filesResult.success && filesResult.data ? filesResult.data.totalCount : 0) +
@@ -434,26 +444,19 @@ const handleSearch = () => {
   currentPage.value = 1;
   fetchDeletedItems();
 };
-
 const clearSearch = () => {
   searchQuery.value = "";
   currentPage.value = 1;
   fetchDeletedItems();
 };
-
 const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page;
     fetchDeletedItems();
   }
 };
-
-const refreshData = () => {
-  fetchDeletedItems();
-};
-
+const refreshData = () => fetchDeletedItems();
 const handleItemClick = () => {};
-
 const handleNavigate = (_directoryId: string) => {
   if (settingsStore.toastLevel === "all") {
     toast.add({
@@ -465,19 +468,13 @@ const handleNavigate = (_directoryId: string) => {
 };
 
 const restoreSelectedFiles = async () => {
-  if (selectedFiles.value.size === 0) {
-    return;
-  }
-  const filesToRestore = Array.from(selectedFiles.value);
-  restoreFilesMutate(filesToRestore);
+  if (selectedFiles.value.size === 0) return;
+  restoreFilesMutate(Array.from(selectedFiles.value));
 };
 
 const restoreSelectedDirectories = async () => {
-  if (selectedDirectories.value.size === 0) {
-    return;
-  }
-  const dirsToRestore = Array.from(selectedDirectories.value);
-  restoreDirectoriesMutate(dirsToRestore);
+  if (selectedDirectories.value.size === 0) return;
+  restoreDirectoriesMutate(Array.from(selectedDirectories.value));
 };
 
 // Watchers
@@ -485,47 +482,35 @@ watch(daysFilter, () => {
   currentPage.value = 1;
   fetchDeletedItems();
 });
-
 watch([sortBy, sortDirection], () => {
   currentPage.value = 1;
   fetchDeletedItems();
 });
 
 watch(restoreFilesError, (err) => {
-  if (err) {
+  if (err)
     toast.add({
       color: "error",
       description: "Failed to restore the selected files. Please try again.",
       title: "Restore Failed",
     });
-  }
 });
-
 watch(restoreDirectoriesError, (err) => {
-  if (err) {
+  if (err)
     toast.add({
       color: "error",
       description: "Failed to restore the selected directories. Please try again.",
       title: "Restore Failed",
     });
-  }
 });
-
 watch(restoreFilesLoading, (loading) => {
-  if (!loading && !restoreFilesError.value) {
-    fetchDeletedItems();
-  }
+  if (!loading && !restoreFilesError.value) fetchDeletedItems();
 });
-
 watch(restoreDirectoriesIsLoading, (loading) => {
-  if (!loading && !restoreDirectoriesError.value) {
-    fetchDeletedItems();
-  }
+  if (!loading && !restoreDirectoriesError.value) fetchDeletedItems();
 });
 
-onMounted(() => {
-  fetchDeletedItems();
-});
+onMounted(() => fetchDeletedItems());
 </script>
 
 <style scoped></style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { MAX_BACKGROUND_IMAGE_BYTES, useSettingsStore } from "@/stores/settings";
 import { useTheme } from "@/composables/useTheme";
 import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
@@ -14,11 +14,15 @@ const { uploadBackgroundImage, deleteBackgroundImage } = useBackgroundImageSync(
 const { saveAppearance } = useSettingsSync();
 
 const viewMode = ref<"grid" | "list">("grid");
+onMounted(() => {
+  if (window.innerWidth < 640) viewMode.value = "list";
+});
+
 const imageError = ref<string | null>(null);
 const isUploading = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
-//  Computed store bindings
+// Computed store bindings
 const selectedColor = computed({
   get: () => settingsStore.accentColor,
   set: (v: string) => settingsStore.setAccentColor(v),
@@ -49,6 +53,11 @@ const colorOptions = settingsStore.AVAILABLE_COLORS.map((color) => ({
   value: color.name,
 }));
 
+const selectedColorLabel = computed(() => {
+  const found = settingsStore.AVAILABLE_COLORS.find((c) => c.name === selectedColor.value);
+  return found ? found.name.charAt(0).toUpperCase() + found.name.slice(1) : null;
+});
+
 const persistAppearance = useDebounceFn(async () => {
   await saveAppearance({
     accentColor: settingsStore.accentColor,
@@ -61,7 +70,6 @@ const persistAppearance = useDebounceFn(async () => {
   });
 }, 600);
 
-// Watch every field that should trigger a save
 watch(
   () => [
     settingsStore.accentColor,
@@ -75,9 +83,7 @@ watch(
 
 const visibleBackgrounds = computed(() =>
   settingsStore.AVAILABLE_BACKGROUNDS.filter((bg) => {
-    if (bg.mode === "both") {
-      return true;
-    }
+    if (bg.mode === "both") return true;
     return isDark.value ? bg.mode === "dark" : bg.mode === "light";
   }),
 );
@@ -86,15 +92,9 @@ watch(isDark, (dark) => {
   const current = settingsStore.AVAILABLE_BACKGROUNDS.find(
     (b) => b.name === settingsStore.backgroundColor,
   );
-  if (!current || current.mode === "both") {
-    return;
-  }
-  if (dark && current.mode === "light") {
-    settingsStore.setBackgroundColor("system");
-  }
-  if (!dark && current.mode === "dark") {
-    settingsStore.setBackgroundColor("system");
-  }
+  if (!current || current.mode === "both") return;
+  if (dark && current.mode === "light") settingsStore.setBackgroundColor("system");
+  if (!dark && current.mode === "dark") settingsStore.setBackgroundColor("system");
 });
 
 const swatchFor = (bg: (typeof settingsStore.AVAILABLE_BACKGROUNDS)[number]) =>
@@ -108,9 +108,7 @@ const triggerFileInput = () => fileInputRef.value?.click();
 const handleFileChange = async (event: Event) => {
   imageError.value = null;
   const file = (event.target as HTMLInputElement).files?.[0];
-  if (!file) {
-    return;
-  }
+  if (!file) return;
 
   if (!file.type.startsWith("image/")) {
     imageError.value = "Please upload an image file.";
@@ -123,31 +121,24 @@ const handleFileChange = async (event: Event) => {
 
   try {
     isUploading.value = true;
-    // Request presigned URL → upload to S3 → confirm → seed SW cache
     await uploadBackgroundImage(file);
   } catch (err) {
     imageError.value = "Upload failed. Please try again.";
     logger.error(err);
   } finally {
     isUploading.value = false;
-    if (fileInputRef.value) {
-      fileInputRef.value.value = "";
-    }
+    if (fileInputRef.value) fileInputRef.value.value = "";
   }
 };
 
 const clearImage = async () => {
   imageError.value = null;
   await deleteBackgroundImage();
-  // Persist the cleared key to server
   await persistAppearance();
 };
 
-// Derive a display name from the S3 key e.g. "background_images/user-id" → "user-id"
 const imageName = computed(() => {
-  if (!settingsStore.backgroundImageKey) {
-    return null;
-  }
+  if (!settingsStore.backgroundImageKey) return null;
   return settingsStore.backgroundImageKey.split("/").pop() ?? "background";
 });
 
@@ -209,7 +200,7 @@ const exampleDir = {
         :trailing-icon="isOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
       >
         <div class="flex items-center gap-2">
-          <Icon icon="mdi:palette" class="w-5 h-5 text-primary" />
+          <Icon icon="mdi:palette-outline" class="w-5 h-5 text-muted" />
           <h2 class="text-lg font-semibold">Appearance</h2>
         </div>
       </UButton>
@@ -247,16 +238,65 @@ const exampleDir = {
                 </USelectMenu>
               </UFormField>
 
-              <!-- Color swatches -->
-              <div class="grid grid-cols-5 sm:grid-cols-6 gap-3">
+              <!-- Accent color swatches -->
+
+              <div class="sm:hidden">
+                <div class="flex p-2 overflow-x-auto gap-3 pb-2 -mx-1 px-1">
+                  <button
+                    v-for="color in settingsStore.AVAILABLE_COLORS"
+                    :key="color.name"
+                    @click="selectedColor = color.name"
+                    class="flex-none w-12 h-12 rounded-full transition-all relative"
+                    :class="
+                      selectedColor === color.name
+                        ? 'ring-2 ring-primary ring-offset-2 scale-105 shadow-md'
+                        : 'hover:scale-105 hover:shadow-sm'
+                    "
+                    :style="{ backgroundColor: `rgb(${color.value})` }"
+                    :title="color.name.charAt(0).toUpperCase() + color.name.slice(1)"
+                  >
+                    <span
+                      v-if="selectedColor === color.name"
+                      class="absolute inset-0 flex items-center justify-center text-white"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="3"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                </div>
+                <!-- Selected color name — fades in/out on change -->
+                <Transition
+                  enter-active-class="transition-all duration-200 ease-out"
+                  enter-from-class="opacity-0 translate-y-1"
+                  enter-to-class="opacity-100 translate-y-0"
+                  leave-active-class="transition-all duration-150 ease-in"
+                  leave-from-class="opacity-100 translate-y-0"
+                  leave-to-class="opacity-0 translate-y-1"
+                >
+                  <p
+                    v-if="selectedColorLabel"
+                    class="text-xs text-center text-gray-500 dark:text-gray-400 mt-1"
+                  >
+                    {{ selectedColorLabel }}
+                  </p>
+                </Transition>
+              </div>
+
+              <div class="hidden sm:grid grid-cols-5 sm:grid-cols-6 gap-3">
                 <button
                   v-for="color in settingsStore.AVAILABLE_COLORS"
                   :key="color.name"
                   @click="selectedColor = color.name"
+                  class="h-10 rounded-md transition-all relative"
                   :class="[
-                    'h-10 rounded-md transition-all relative',
                     selectedColor === color.name
-                      ? 'ring-2 ring-offset-2 ring-gray-900 dark:ring-white scale-105 shadow-md'
+                      ? 'ring-2 ring-primary ring-offset-2 scale-105 shadow-md'
                       : 'hover:scale-105 hover:shadow-sm',
                   ]"
                   :style="{ backgroundColor: `rgb(${color.value})` }"
@@ -350,7 +390,6 @@ const exampleDir = {
                 label="Background Image"
                 description="Adds a custom image behind the app, blended with the color overlay above. Max 2 MB."
               >
-                <!-- Hidden native input -->
                 <input
                   ref="fileInputRef"
                   type="file"
@@ -360,7 +399,6 @@ const exampleDir = {
                 />
 
                 <div class="space-y-3 mt-1">
-                  <!-- Upload / replace / clear row -->
                   <div class="flex items-center gap-2 flex-wrap">
                     <UButton
                       :label="settingsStore.hasBackgroundImage ? 'Replace image' : 'Upload image'"
@@ -384,24 +422,21 @@ const exampleDir = {
                       @click="clearImage"
                     />
 
-                    <!-- Current image filename chip -->
                     <span
                       v-if="imageName"
                       class="inline-flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-neutral-800 rounded-full px-2.5 py-1 truncate max-w-50"
                       :title="imageName"
                     >
-                      <Icon icon="mdi:image" class="w-3.5 h-3.5 shrink-0" />
+                      <Icon icon="mdi:image-outline" class="w-3.5 h-3.5 shrink-0" />
                       {{ imageName }}
                     </span>
                   </div>
 
-                  <!-- Error -->
                   <p v-if="imageError" class="text-xs text-red-500 flex items-center gap-1">
-                    <Icon icon="mdi:alert-circle" class="w-3.5 h-3.5 shrink-0" />
+                    <Icon icon="mdi:alert-circle-outline" class="w-3.5 h-3.5 shrink-0" />
                     {{ imageError }}
                   </p>
 
-                  <!-- Opacity slider — only shown when an image is loaded -->
                   <Transition
                     enter-active-class="transition-all duration-200 ease-out"
                     enter-from-class="opacity-0 -translate-y-1"
@@ -420,7 +455,6 @@ const exampleDir = {
                         </span>
                       </div>
 
-                      <!-- Slider rendered as a native range for reactivity; styled with Tailwind -->
                       <div class="relative flex items-center gap-2">
                         <Icon icon="mdi:image-outline" class="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         <input
@@ -434,7 +468,7 @@ const exampleDir = {
                           "
                           class="w-full accent-primary h-1.5 rounded-full cursor-pointer"
                         />
-                        <Icon icon="mdi:image" class="w-4 h-4 text-gray-500 shrink-0" />
+                        <Icon icon="mdi:image-outline" class="w-4 h-4 text-gray-500 shrink-0" />
                       </div>
 
                       <p class="text-[11px] text-gray-400 dark:text-gray-500 leading-snug">
@@ -483,7 +517,6 @@ const exampleDir = {
             <!-- Right: Preview -->
             <div class="space-y-4">
               <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Preview</h3>
-              <!-- Icon size preview -->
               <div class="space-y-2">
                 <div class="flex items-center justify-between">
                   <h4
@@ -493,28 +526,46 @@ const exampleDir = {
                   </h4>
                   <div class="flex gap-1">
                     <UButton
-                      :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
+                      variant="ghost"
+                      color="neutral"
                       size="xs"
+                      :class="viewMode === 'grid' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
                       @click="viewMode = 'grid'"
                       aria-label="Grid view"
                     >
-                      <Icon icon="mdi:view-grid" class="w-3.5 h-3.5" />
+                      <Icon icon="mdi:view-grid-outline" class="w-3.5 h-3.5" />
                     </UButton>
                     <UButton
-                      :variant="viewMode === 'list' ? 'solid' : 'ghost'"
+                      variant="ghost"
+                      color="neutral"
                       size="xs"
+                      :class="viewMode === 'list' ? 'bg-neutral-100 dark:bg-neutral-800' : ''"
                       @click="viewMode = 'list'"
                       aria-label="List view"
                     >
-                      <Icon icon="mdi:view-list" class="w-3.5 h-3.5" />
+                      <Icon icon="mdi:view-list-outline" class="w-3.5 h-3.5" />
                     </UButton>
                   </div>
                 </div>
-                <div :class="['flex gap-2', viewMode === 'list' ? 'flex-col' : 'flex-row']">
-                  <div :class="[viewMode === 'list' ? '' : 'max-w-40', 'max-h-40']">
+
+                <div
+                  class="p-2"
+                  :class="[
+                    'flex gap-2 overflow-x-auto',
+                    viewMode === 'list' ? 'flex-col' : 'flex-row',
+                  ]"
+                >
+                  <div
+                    :class="[viewMode === 'list' ? '' : 'max-w-40 min-w-36', 'max-h-40 shrink-0']"
+                  >
                     <FileItem :data="exampleFile" :is-selected="false" :view-mode="viewMode" />
                   </div>
-                  <div :class="[viewMode === 'list' ? 'min-h-12' : 'max-w-40', 'max-h-40']">
+                  <div
+                    :class="[
+                      viewMode === 'list' ? 'min-h-12' : 'max-w-40 min-w-36',
+                      'max-h-40 shrink-0',
+                    ]"
+                  >
                     <DirectoryItem :data="exampleDir" :is-selected="true" :view-mode="viewMode" />
                   </div>
                 </div>

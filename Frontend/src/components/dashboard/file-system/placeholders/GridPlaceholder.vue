@@ -60,7 +60,7 @@ withDefaults(
 </script>
 
 <style scoped>
-/* ─── Shimmer keyframe ─────────────────────────────────────────── */
+/* Shimmer keyframe */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -81,7 +81,7 @@ withDefaults(
   }
 }
 
-/* ─── Shared shimmer surface ───────────────────────────────────── */
+/* Shared shimmer surface */
 .skeleton-block {
   background: linear-gradient(
     90deg,
@@ -103,7 +103,7 @@ withDefaults(
   background-size: 200% 100%;
 }
 
-/* ─── Card wrapper ─────────────────────────────────────────────── */
+/* Card wrapper */
 .skeleton-card {
   animation:
     fade-in 0.3s ease both,

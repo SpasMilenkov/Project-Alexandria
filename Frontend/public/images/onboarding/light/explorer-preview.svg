@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 340" width="520" height="340">
+
+  <rect width="520" height="340" rx="10" fill="#f4f4f4" />
+
+  <!-- SIDEBAR -->
+  <rect x="12" y="12" width="110" height="316" rx="7" fill="#ebebeb" stroke="#ddd" stroke-width="1" />
+  <rect x="20" y="22" width="22" height="22" rx="5" fill="#e07b30" />
+  <rect x="48" y="27" width="52" height="8" rx="4" fill="#ccc" />
+
+  <!-- Active nav -->
+  <rect x="18" y="56" width="96" height="18" rx="4" fill="#fde8d8" stroke="#e07b30" stroke-width="0.8" />
+  <rect x="24" y="61" width="8" height="8" rx="1" fill="#e07b30" />
+  <rect x="36" y="63" width="40" height="4" rx="2" fill="#e07b30" opacity="0.7" />
+
+  <!-- Other nav items -->
+  <circle cx="26" cy="88" r="3" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="36" y="85" width="50" height="4" rx="2" fill="#bbb" />
+  <circle cx="26" cy="106" r="3" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="36" y="103" width="44" height="4" rx="2" fill="#bbb" />
+  <circle cx="26" cy="124" r="3" fill="none" stroke="#aaa" stroke-width="1" />
+  <rect x="36" y="121" width="28" height="4" rx="2" fill="#bbb" />
+
+  <!-- Storage bar -->
+  <rect x="18" y="282" width="96" height="32" rx="5" fill="#e2e2e2" stroke="#ccc" stroke-width="0.8" />
+  <rect x="24" y="290" width="56" height="4" rx="2" fill="#ccc" />
+  <rect x="24" y="290" width="47" height="4" rx="2" fill="#e07b30" opacity="0.7" />
+  <rect x="24" y="298" width="30" height="3" rx="1" fill="#bbb" />
+
+  <!-- MAIN AREA -->
+  <rect x="130" y="12" width="378" height="316" rx="7" fill="#ffffff" stroke="#e8e8e8" stroke-width="1" />
+
+  <!-- Top bar -->
+  <rect x="130" y="12" width="378" height="30" rx="5" fill="#ffffff" />
+  <rect x="140" y="20" width="40" height="5" rx="2" fill="#bbb" />
+
+  <!-- Tab strip -->
+  <rect x="130" y="46" width="378" height="22" fill="#f9f9f9" />
+  <rect x="140" y="50" width="55" height="14" rx="4" fill="#ffffff" stroke="#e0e0e0" stroke-width="0.8" />
+  <rect x="148" y="55" width="28" height="4" rx="2" fill="#999" />
+
+  <!-- Toolbar -->
+  <rect x="130" y="72" width="378" height="28" fill="#ffffff" />
+  <line x1="130" y1="100" x2="508" y2="100" stroke="#e07b30" stroke-width="0.8" opacity="0.5" />
+  <rect x="140" y="78" width="65" height="16" rx="4" fill="#e07b30" />
+  <rect x="148" y="83" width="36" height="4" rx="2" fill="#fff" opacity="0.8" />
+  <rect x="212" y="78" width="60" height="16" rx="4" fill="#fff5ee" stroke="#e07b30" stroke-width="0.8" />
+  <rect x="220" y="83" width="32" height="4" rx="2" fill="#e07b30" opacity="0.7" />
+  <rect x="450" y="80" width="14" height="12" rx="2" fill="#e07b30" opacity="0.9" />
+  <rect x="468" y="80" width="14" height="12" rx="2" fill="#e8e8e8" />
+
+  <!-- Breadcrumb -->
+  <rect x="140" y="108" width="6" height="6" rx="1" fill="#bbb" />
+  <rect x="152" y="110" width="22" height="3" rx="1" fill="#ccc" />
+
+  <!-- FOLDERS -->
+  <rect x="140" y="126" width="30" height="4" rx="2" fill="#aaa" />
+
+  <path d="M148,148 Q148,144 152,144 L162,144 Q165,144 166,146 L178,146 Q181,146 181,149 L181,168 Q181,170 179,170 L148,170 Q146,170 146,168 Z" fill="none" stroke="#555" stroke-width="1.5" />
+  <rect x="148" y="174" width="30" height="3" rx="1" fill="#aaa" />
+  <path d="M218,148 Q218,144 222,144 L232,144 Q235,144 236,146 L248,146 Q251,146 251,149 L251,168 Q251,170 249,170 L218,170 Q216,170 216,168 Z" fill="none" stroke="#555" stroke-width="1.5" />
+  <rect x="218" y="174" width="26" height="3" rx="1" fill="#aaa" />
+  <path d="M288,148 Q288,144 292,144 L302,144 Q305,144 306,146 L318,146 Q321,146 321,149 L321,168 Q321,170 319,170 L288,170 Q286,170 286,168 Z" fill="none" stroke="#555" stroke-width="1.5" />
+  <rect x="288" y="174" width="22" height="3" rx="1" fill="#aaa" />
+  <path d="M358,148 Q358,144 362,144 L372,144 Q375,144 376,146 L388,146 Q391,146 391,149 L391,168 Q391,170 389,170 L358,170 Q356,170 356,168 Z" fill="none" stroke="#555" stroke-width="1.5" />
+  <rect x="358" y="174" width="34" height="3" rx="1" fill="#aaa" />
+
+  <!-- FILES -->
+  <rect x="140" y="195" width="22" height="4" rx="2" fill="#aaa" />
+
+  <!-- File 1 - audio -->
+  <path d="M148,212 L158,212 L164,218 L164,236 L148,236 Z" fill="none" stroke="#555" stroke-width="1.3" />
+  <path d="M158,212 L158,218 L164,218" fill="none" stroke="#555" stroke-width="1.3" />
+  <text x="152" y="230" font-size="8" fill="#888">♪</text>
+  <rect x="141" y="240" width="30" height="3" rx="1" fill="#bbb" />
+  <rect x="141" y="245" width="22" height="3" rx="1" fill="#bbb" />
+
+  <!-- File 2 -->
+  <path d="M208,212 L218,212 L224,218 L224,236 L208,236 Z" fill="none" stroke="#555" stroke-width="1.3" />
+  <path d="M218,212 L218,218 L224,218" fill="none" stroke="#555" stroke-width="1.3" />
+  <rect x="211" y="240" width="28" height="3" rx="1" fill="#bbb" />
+
+  <!-- File 3 - image -->
+  <path d="M268,212 L278,212 L284,218 L284,236 L268,236 Z" fill="none" stroke="#555" stroke-width="1.3" />
+  <path d="M278,212 L278,218 L284,218" fill="none" stroke="#555" stroke-width="1.3" />
+  <circle cx="273" cy="224" r="2.5" fill="none" stroke="#888" stroke-width="0.8" />
+  <path d="M268,232 L274,226 L280,230 L284,227 L284,236 L268,236 Z" fill="#ccc" opacity="0.6" />
+  <rect x="270" y="240" width="24" height="3" rx="1" fill="#bbb" />
+
+  <!-- File 4 - text -->
+  <path d="M328,212 L338,212 L344,218 L344,236 L328,236 Z" fill="none" stroke="#555" stroke-width="1.3" />
+  <path d="M338,212 L338,218 L344,218" fill="none" stroke="#555" stroke-width="1.3" />
+  <rect x="332" y="222" width="8" height="2" rx="1" fill="#999" />
+  <rect x="332" y="226" width="10" height="2" rx="1" fill="#999" />
+  <rect x="332" y="230" width="6" height="2" rx="1" fill="#999" />
+  <rect x="330" y="240" width="26" height="3" rx="1" fill="#bbb" />
+
+  <!-- File 5 - image -->
+  <path d="M388,212 L398,212 L404,218 L404,236 L388,236 Z" fill="none" stroke="#555" stroke-width="1.3" />
+  <path d="M398,212 L398,218 L404,218" fill="none" stroke="#555" stroke-width="1.3" />
+  <circle cx="393" cy="224" r="2.5" fill="none" stroke="#888" stroke-width="0.8" />
+  <path d="M388,232 L394,226 L400,230 L404,227 L404,236 L388,236 Z" fill="#ccc" opacity="0.6" />
+  <rect x="382" y="240" width="36" height="3" rx="1" fill="#bbb" />
+  <rect x="382" y="245" width="28" height="3" rx="1" fill="#bbb" />
+
+  <!-- File 6 - PDF -->
+  <path d="M448,212 L458,212 L464,218 L464,236 L448,236 Z" fill="none" stroke="#e07b30" stroke-width="1.3" />
+  <path d="M458,212 L458,218 L464,218" fill="none" stroke="#e07b30" stroke-width="1.3" />
+  <text x="450" y="229" font-size="6" fill="#e07b30" font-weight="bold">PDF</text>
+  <rect x="442" y="240" width="36" height="3" rx="1" fill="#bbb" />
+
+</svg>

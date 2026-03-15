@@ -2,9 +2,13 @@
   <UDrawer
     :title="detail.fileName"
     :description="'Created ' + formatDate(detail.createdAt)"
-    direction="right"
+    :direction="isMobile ? 'bottom' : 'right'"
     v-model:open="openDrawer"
-    :ui="{ container: 'md:max-w-[40rem] lg:min-w-[40rem]' }"
+    :ui="
+      isMobile
+        ? { container: 'h-[85vh] rounded-t-2xl' }
+        : { container: 'md:max-w-[40rem] lg:min-w-[40rem]' }
+    "
     :handle-only="true"
   >
     <!-- Grid View -->
@@ -91,20 +95,33 @@
     <template #body>
       <div class="flex flex-col gap-6 p-1">
         <!-- File Header Section -->
-        <div class="flex items-center gap-4 p-6 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg">
-          <div class="p-4 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg shadow-sm">
-            <Icon :icon="getFileIcon(detail.fileName)" class="w-16 h-16 text-primary" />
+        <div
+          class="flex items-center gap-3 p-4 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
+          :class="isMobile ? 'gap-3 p-3' : 'gap-4 p-6'"
+        >
+          <div
+            class="bg-neutral-100 dark:bg-neutral-800/50 rounded-lg shadow-sm shrink-0"
+            :class="isMobile ? 'p-2' : 'p-4'"
+          >
+            <Icon
+              :icon="getFileIcon(detail.fileName)"
+              class="text-primary"
+              :class="isMobile ? 'w-10 h-10' : 'w-16 h-16'"
+            />
           </div>
 
           <div class="flex-1 min-w-0">
-            <h3 class="font-semibold text-lg truncate mb-1">
+            <h3 class="font-semibold truncate mb-1" :class="isMobile ? 'text-base' : 'text-lg'">
               {{ detail.fileName }}
             </h3>
             <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 w-full">
-              <Icon icon="mdi-file" class="w-4 h-4" />
-              <span class="max-w-46 text-ellipsis max-h-16 wrap-break-word overflow-hidden">{{
-                getFileTypeReadable(detail.currentVersion.mimeType, detail.fileName)
-              }}</span>
+              <Icon icon="mdi-file" class="w-4 h-4 shrink-0" />
+              <span
+                class="text-ellipsis overflow-hidden"
+                :class="isMobile ? 'line-clamp-1' : 'max-w-46 max-h-16 wrap-break-word'"
+              >
+                {{ getFileTypeReadable(detail.currentVersion.mimeType, detail.fileName) }}
+              </span>
             </div>
           </div>
         </div>
@@ -115,18 +132,23 @@
 
           <USkeleton v-if="fileTagsLoading && openDrawer" class="h-8 w-48 rounded-full" />
 
-          <div v-else class="flex flex-wrap items-center gap-1.5">
+          <div
+            v-else
+            class="flex items-center gap-1.5"
+            :class="isMobile ? 'flex-nowrap overflow-x-auto pb-1' : 'flex-wrap'"
+          >
             <TagBadge
               v-for="tag in displayTags"
               :key="tag.id"
               :tag="tag"
               :file-id="props.data.fileId"
+              class="shrink-0"
               @remove-tag="refreshOnRemove"
             />
 
             <span
               v-if="!displayTags?.length && !showTagSearch"
-              class="text-xs text-gray-400 dark:text-gray-500 italic mr-1"
+              class="text-xs text-gray-400 dark:text-gray-500 italic mr-1 shrink-0"
             >
               No tags
             </span>
@@ -138,7 +160,7 @@
                 size="xs"
                 variant="outline"
                 color="neutral"
-                class="rounded-full"
+                class="rounded-full shrink-0"
               />
 
               <template #content>
@@ -185,14 +207,14 @@
         <!-- File Details Grid -->
         <div>
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Details</h4>
-          <div class="grid grid-cols-2 gap-4">
+          <div class="grid gap-4" :class="isMobile ? 'grid-cols-1' : 'grid-cols-2'">
             <div
               class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
             >
-              <UIcon name="i-heroicons-scale" class="w-10 h-10 text-gray-500 mt-0.5" />
+              <UIcon name="i-heroicons-scale" class="w-8 h-8 text-gray-500 mt-0.5 shrink-0" />
               <div>
-                <div class="text-xs mb-0.5">Size</div>
-                <div class="font-medium">
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Size</div>
+                <div class="font-medium text-sm">
                   {{ formatFileSize(Number(detail.currentVersion.size)) }}
                 </div>
               </div>
@@ -201,19 +223,20 @@
             <div
               class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
             >
-              <UIcon name="i-heroicons-archive-box" class="w-10 h-10 text-gray-500 mt-0.5" />
+              <UIcon name="i-heroicons-archive-box" class="w-8 h-8 text-gray-500 mt-0.5 shrink-0" />
               <div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Version</div>
-                <div class="font-medium">v{{ detail.currentVersion.versionNumber }}</div>
+                <div class="font-medium text-sm">v{{ detail.currentVersion.versionNumber }}</div>
               </div>
             </div>
 
             <div
-              class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg col-span-2"
+              class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
+              :class="isMobile ? '' : 'col-span-2'"
             >
-              <Icon icon="mdi-identifier" class="w-10 h-10 text-gray-500 mt-0.5" />
+              <Icon icon="mdi-identifier" class="w-8 h-8 text-gray-500 mt-0.5 shrink-0" />
               <div class="min-w-0 flex-1">
-                <div class="text-xs mb-0.5">File ID</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">File ID</div>
                 <div class="font-mono text-sm truncate">
                   {{ detail.fileId }}
                 </div>
@@ -223,20 +246,22 @@
         </div>
 
         <!-- Owner Section -->
-        <UCard>
+        <UCard :ui="isMobile ? { body: 'p-3' } : {}">
           <template #header>
-            <div class="flex items-center gap-2">
-              <Icon icon="mdi-account" class="w-8 h-8 text-primary" />
-              <span class="font-semibold">Owner</span>
+            <div class="flex items-center gap-2" :class="isMobile ? 'p-3 pb-0' : ''">
+              <Icon icon="mdi-account" class="w-5 h-5 text-primary" />
+              <span class="font-semibold text-sm">Owner</span>
             </div>
           </template>
           <div class="flex items-center gap-3">
-            <UAvatar :alt="detail.owner.name" size="lg" />
+            <UAvatar :alt="detail.owner.name" :size="isMobile ? 'md' : 'lg'" />
             <div>
-              <div class="font-medium">{{ detail.owner.name }}</div>
-              <div class="text-sm flex items-center gap-1.5 mt-0.5">
-                <Icon color="primary" icon="mdi-email" class="w-4 h-4" />
-                {{ detail.owner.email }}
+              <div class="font-medium text-sm">{{ detail.owner.name }}</div>
+              <div
+                class="text-sm flex items-center gap-1.5 mt-0.5 text-gray-600 dark:text-gray-400"
+              >
+                <Icon icon="mdi-email" class="w-4 h-4 text-primary shrink-0" />
+                <span class="truncate">{{ detail.owner.email }}</span>
               </div>
             </div>
           </div>
@@ -269,13 +294,15 @@ import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { Icon } from "@iconify/vue";
 import type { ContextMenuItem } from "@nuxt/ui";
 import { useQuery } from "@pinia/colada";
+import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import FilePreview from "./FilePreview.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
-import { logger } from "@/utils/logger";
-
 const settingsStore = useSettingsStore();
+
+const breakpoints = useBreakpoints(breakpointsTailwind);
+const isMobile = breakpoints.smaller("md");
 
 const props = defineProps<{
   data: FileResult;
@@ -333,6 +360,7 @@ const refreshOnRemove = async (id: string) => {
   await removeTagMutateAsync({ fileId: props.data.fileId, tagId: id });
   refreshFileTag();
 };
+
 // Emits & context menu
 
 const emit = defineEmits<{

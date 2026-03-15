@@ -61,18 +61,6 @@ const router = createRouter({
       path: "/my-storage",
     },
     {
-      component: () => import("@/views/onboarding/WelcomeView.vue"),
-      meta: { layout: "default", requiresAuth: false },
-      name: "initial-greeting",
-      path: "/initial-greeting",
-    },
-    {
-      component: () => import("@/views/onboarding/SetupView.vue"),
-      meta: { layout: "default", requiresAuth: false },
-      name: "setup",
-      path: "/setup",
-    },
-    {
       component: () => import("@/views/dashboard/admin/AdminDashboard.vue"),
       meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
       name: "admin-dashboard",
@@ -96,10 +84,28 @@ const router = createRouter({
       name: "system-configuration",
       path: "/dashboard/admin/system-configuration",
     },
+    {
+      component: () => import("@/views/onboarding/SetPasswordView.vue"),
+      meta: { layout: "onboarding", requiresAdmin: false, requiresAuth: true },
+      name: "set-password",
+      path: "/onboarding/set-password",
+    },
+    {
+      component: () => import("@/views/onboarding/SetupProfileView.vue"),
+      meta: { layout: "onboarding", requiresAdmin: false, requiresAuth: true },
+      name: "setup-profile",
+      path: "/onboarding/setup-profile",
+    },
+    {
+      component: () => import("@/views/onboarding/TourView.vue"),
+      meta: { layout: "onboarding", requiresAdmin: false, requiresAuth: true },
+      name: "tour",
+      path: "/onboarding/tour",
+    },
   ],
 });
-// Navigation Guard
 
+// Navigation Guard
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   const { isAuthenticated, isAdmin } = authStore;

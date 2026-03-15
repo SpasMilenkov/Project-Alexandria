@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useOnlineStatus } from "@/composables/composables/useOnlineStatus";
+import { useOnlineStatus } from "@/composables/useOnlineStatus";
 const { isOnline } = useOnlineStatus();
 </script>
 

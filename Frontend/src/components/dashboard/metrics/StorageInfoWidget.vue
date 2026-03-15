@@ -1,6 +1,6 @@
 <template>
   <div
-    class="border border-gray-200/70 dark:border-gray-700/70 rounded-lg overflow-hidden bg-white/60 dark:bg-white/5 backdrop-blur-sm"
+    class="border border-gray-300/70 dark:border-gray-700/70 rounded-lg overflow-hidden bg-neutral/60 dark:bg-neutral/5 backdrop-blur-sm"
   >
     <!-- Collapsible Header -->
     <button
@@ -85,7 +85,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
-const props = defineProps<{ defaultState?: boolean }>();
+const { defaultState } = defineProps<{ defaultState?: boolean }>();
 const { data, isLoading, error } = useQuery(storageInfo);
-const isExpanded = ref(props.defaultState ?? false);
+const isExpanded = ref(defaultState ?? false);
 </script>

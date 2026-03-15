@@ -1,5 +1,5 @@
 <template>
-  <UModal :close="{ onClick: () => emit('close', false) }" :title="'Edit Tag'">
+  <UModal :close="{ onClick: () => emit('close', false) }" title="Edit Tag">
     <template #body>
       <UForm :schema="updateTagSchema" :state="state" class="space-y-5 w-full" @submit="onSubmit">
         <div class="grid grid-cols-2 gap-4">
@@ -8,7 +8,7 @@
               v-model="state.name"
               class="w-full"
               placeholder="Enter tag name"
-              icon="i-heroicons-tag"
+              icon="i-lucide-tag"
             />
           </UFormField>
 
@@ -28,7 +28,7 @@
                 <Icon
                   v-if="modelValue"
                   :icon="getIconByValue(modelValue as string) || 'mdi:tag'"
-                  class="w-5 h-5 text-gray-500"
+                  class="w-5 h-5 text-muted"
                 />
               </template>
             </USelectMenu>
@@ -36,17 +36,17 @@
         </div>
 
         <UFormField label="Color" name="color" required>
-          <div class="grid grid-cols-8 sm:grid-cols-10 gap-2 p-1">
+          <div class="flex flex-wrap gap-2 p-1">
             <button
               v-for="color in settingsStore.AVAILABLE_COLORS"
               :key="color.name"
               type="button"
               @click="state.color = `rgb(${color.value})`"
               :class="[
-                'w-6 h-6 sm:w-8 sm:h-8 rounded-full transition-all relative flex items-center justify-center',
+                'w-7 h-7 sm:w-8 sm:h-8 rounded-full transition-all relative flex items-center justify-center',
                 state.color === `rgb(${color.value})`
-                  ? 'ring-2 ring-offset-2 ring-gray-900 dark:ring-white scale-110'
-                  : 'hover:scale-110 ring-1 ring-gray-200 dark:ring-gray-700',
+                  ? 'ring-2 ring-primary ring-offset-2 scale-105'
+                  : 'hover:scale-110 ring-1 ring-gray-200/70 dark:ring-gray-700/70',
               ]"
               :style="{ backgroundColor: `rgb(${color.value})` }"
               :title="color.name.charAt(0).toUpperCase() + color.name.slice(1)"
@@ -54,7 +54,7 @@
               <Icon
                 v-if="state.color === `rgb(${color.value})`"
                 icon="heroicons:check-16-solid"
-                class="text-white w-4 h-4 sm:w-5 sm:h-5 drop-shadow-md"
+                class="text-white w-4 h-4 drop-shadow-md"
               />
             </button>
           </div>
@@ -62,15 +62,22 @@
 
         <UFormField label="Preview">
           <div
-            class="flex flex-wrap items-center justify-center gap-4 p-4 border border-primary/60 rounded-lg h-full"
+            class="flex items-center justify-center p-6 border border-gray-200/70 dark:border-gray-700/70 rounded-lg bg-gray-50/40 dark:bg-white/5"
           >
-            <div class="flex flex-col-reverse gap-3">
-              <TagCard
-                :is-selected="isPreviewSelected"
-                @click="isPreviewSelected = !isPreviewSelected"
-                :tag="exampleTag"
-              />
-              <TagBadge :tag="exampleTag" />
+            <div class="flex flex-col gap-4 w-full max-w-xs">
+              <div>
+                <p class="text-xs text-muted mb-2">Card</p>
+                <TagCard
+                  :is-selected="isPreviewSelected"
+                  :tag="exampleTag"
+                  :preview="true"
+                  @click="isPreviewSelected = !isPreviewSelected"
+                />
+              </div>
+              <div>
+                <p class="text-xs text-muted mb-2">Badge</p>
+                <TagBadge :tag="exampleTag" />
+              </div>
             </div>
           </div>
         </UFormField>
@@ -85,7 +92,7 @@
 
         <div class="flex gap-2 w-full justify-end pt-2">
           <UButton color="neutral" label="Cancel" variant="ghost" @click="emit('close', false)" />
-          <UButton type="submit" :loading="mutationLoading" icon="i-heroicons-check">
+          <UButton type="submit" :loading="mutationLoading" icon="i-lucide-check">
             Update Tag
           </UButton>
         </div>
@@ -106,13 +113,10 @@ import { getIconByValue, iconOptions } from "@/utils/icon.utils";
 import type { TagDto } from "@/api/tag";
 import TagBadge from "../TagBadge.vue";
 
-const props = defineProps<{
-  tag: TagDto;
-}>();
-
+const props = defineProps<{ tag: TagDto }>();
 const emit = defineEmits<{ close: [boolean] }>();
-const settingsStore = useSettingsStore();
 
+const settingsStore = useSettingsStore();
 const { mutateAsync, state: mutationState, isLoading: mutationLoading } = updateTag();
 
 const state = reactive<UpdateTagSchema>({
@@ -136,10 +140,7 @@ const exampleTag = computed(() => ({
 }));
 
 const onSubmit = async (event: FormSubmitEvent<UpdateTagSchema>) => {
-  await mutateAsync({
-    data: event.data,
-    tagId: props.tag.id,
-  });
+  await mutateAsync({ data: event.data, tagId: props.tag.id });
   if (!mutationState.value.error) {
     emit("close", true);
   }

@@ -33,7 +33,8 @@ public class AuthService(
         var roles = await userManager.GetRolesAsync(user);
 
         authResult.UserRoles = roles;
-
+        authResult.OnboardingStep = user.OnboardinStep;
+        
         return authResult;
     }
 
@@ -132,5 +133,21 @@ public class AuthService(
     public async Task RevokeAllUserTokensAsync(Guid userId, CancellationToken ct = default)
     {
         await unitOfWork.RefreshTokens.RevokeUserTokensAsync(userId, ct);
+    }
+
+    public async Task ChangeInitialPassword(Guid userId, string oldPassword, string newPassword, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString()) ?? throw new InvalidOperationException("User does not exist");
+
+        if (user.OnboardinStep != Models.Enumerators.OnboardingStep.SetPassword) throw new InvalidOperationException("Initial password already changed");
+        
+        var result = await signInManager.CheckPasswordSignInAsync(user, oldPassword, lockoutOnFailure: false);
+
+            if (!result.Succeeded) throw new InvalidOperationException("Initial password does not match");
+
+        await userManager.ChangePasswordAsync(user, oldPassword, newPassword);
+
+        user.OnboardinStep = Models.Enumerators.OnboardingStep.CompleteProfile  ;
+        await userManager.UpdateAsync(user);
     }
 }

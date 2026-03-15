@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 340" width="520" height="340">
+
+  <rect width="520" height="340" rx="10" fill="#1a1a1a" />
+
+  <!-- SIDEBAR -->
+  <rect x="12" y="12" width="110" height="316" rx="7" fill="#222" stroke="#333" stroke-width="1" />
+  <rect x="20" y="22" width="22" height="22" rx="5" fill="#e07b30" />
+  <rect x="48" y="27" width="52" height="8" rx="4" fill="#444" />
+  <circle cx="26" cy="70" r="3" fill="none" stroke="#666" stroke-width="1" />
+  <rect x="36" y="67" width="48" height="4" rx="2" fill="#555" />
+  <rect x="18" y="82" width="96" height="16" rx="4" fill="#2e2010" stroke="#e07b30" stroke-width="0.8" />
+  <circle cx="26" cy="90" r="3" fill="none" stroke="#e07b30" stroke-width="1" />
+  <rect x="36" y="87" width="60" height="4" rx="2" fill="#e07b30" opacity="0.85" />
+  <circle cx="26" cy="110" r="3" fill="none" stroke="#666" stroke-width="1" />
+  <rect x="36" y="107" width="44" height="4" rx="2" fill="#555" />
+  <circle cx="26" cy="130" r="3" fill="none" stroke="#666" stroke-width="1" />
+  <rect x="36" y="127" width="24" height="4" rx="2" fill="#555" />
+  <rect x="18" y="282" width="96" height="32" rx="5" fill="#1e1e1e" stroke="#333" stroke-width="0.8" />
+  <rect x="24" y="290" width="56" height="4" rx="2" fill="#333" />
+  <rect x="24" y="290" width="47" height="4" rx="2" fill="#e07b30" opacity="0.7" />
+  <rect x="24" y="298" width="30" height="3" rx="1" fill="#444" />
+
+  <!-- MAIN -->
+  <rect x="130" y="12" width="378" height="30" rx="5" fill="#1e1e1e" />
+  <rect x="140" y="20" width="40" height="5" rx="2" fill="#999" />
+  <rect x="130" y="46" width="378" height="28" fill="#1e1e1e" />
+  <rect x="140" y="52" width="58" height="16" rx="4" fill="#e07b30" />
+  <rect x="148" y="57" width="32" height="4" rx="2" fill="#fff" opacity="0.75" />
+  <rect x="206" y="54" width="36" height="12" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="210" y="58" width="20" height="3" rx="1" fill="#666" />
+  <rect x="248" y="54" width="14" height="12" rx="2" fill="#e07b30" opacity="0.9" />
+  <rect x="266" y="54" width="14" height="12" rx="2" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="380" y="52" width="118" height="16" rx="8" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="392" y="58" width="50" height="3" rx="1" fill="#555" />
+  <line x1="130" y1="78" x2="508" y2="78" stroke="#e07b30" stroke-width="0.8" opacity="0.6" />
+  <rect x="140" y="84" width="44" height="4" rx="2" fill="#666" />
+
+  <!-- CARD 1 -->
+  <rect x="140" y="96" width="168" height="96" rx="7" fill="#222" stroke="#555" stroke-width="0.8" />
+  <rect x="152" y="110" width="32" height="32" rx="6" fill="#5a1a1a" />
+  <path d="M160,118 L175,118 L180,126 L175,134 L160,134 Z" fill="none" stroke="#ef4444" stroke-width="1.4" />
+  <circle cx="163" cy="122" r="1.5" fill="#ef4444" />
+  <rect x="192" y="112" width="50" height="5" rx="2" fill="#ccc" />
+  <rect x="192" y="122" width="70" height="3" rx="1" fill="#555" />
+  <circle cx="192" cy="135" r="4" fill="#ef4444" />
+  <rect x="200" y="132" width="36" height="3" rx="1" fill="#555" />
+  <line x1="152" y1="152" x2="296" y2="152" stroke="#333" stroke-width="0.7" />
+  <rect x="152" y="158" width="50" height="3" rx="1" fill="#555" />
+  <rect x="232" y="158" width="40" height="3" rx="1" fill="#555" />
+
+  <!-- CARD 2 -->
+  <rect x="318" y="96" width="168" height="96" rx="7" fill="#222" stroke="#555" stroke-width="0.8" />
+  <rect x="330" y="110" width="32" height="32" rx="6" fill="#0f3535" />
+  <path d="M338,116 L346,116 L350,120 L350,136 L338,136 Z" fill="none" stroke="#06b6d4" stroke-width="1.3" />
+  <path d="M346,116 L346,120 L350,120" fill="none" stroke="#06b6d4" stroke-width="1.3" />
+  <rect x="370" y="112" width="58" height="5" rx="2" fill="#ccc" />
+  <rect x="370" y="122" width="70" height="3" rx="1" fill="#555" />
+  <circle cx="370" cy="135" r="4" fill="#06b6d4" />
+  <rect x="378" y="132" width="36" height="3" rx="1" fill="#555" />
+  <line x1="330" y1="152" x2="474" y2="152" stroke="#333" stroke-width="0.7" />
+  <rect x="330" y="158" width="50" height="3" rx="1" fill="#555" />
+
+</svg>
