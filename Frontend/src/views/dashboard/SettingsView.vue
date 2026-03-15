@@ -4,7 +4,6 @@ import AppearanceSection from "@/components/dashboard/settings/AppearanceSection
 import BehaviorSection from "@/components/dashboard/settings/BehaviorSection.vue";
 
 const settingsStore = useSettingsStore();
-
 const handleResetAll = () => {
   settingsStore.resetSettings();
 };
@@ -12,7 +11,7 @@ const handleResetAll = () => {
 
 <template>
   <div class="w-full h-full overflow-y-auto">
-    <div class="mx-auto p-6 space-y-6">
+    <div class="max-w-7xl mx-auto p-6 space-y-6">
       <!-- Header -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div class="space-y-2">
@@ -24,7 +23,7 @@ const handleResetAll = () => {
         <UButton
           label="Reset all settings"
           color="error"
-          variant="soft"
+          variant="outline"
           icon="i-heroicons-arrow-path"
           @click="handleResetAll"
         />
@@ -35,9 +34,6 @@ const handleResetAll = () => {
         <AppearanceSection />
         <BehaviorSection />
       </div>
-
-      <!-- Footer note -->
-      <p class="text-sm text-gray-500 text-center">All settings are saved automatically</p>
     </div>
   </div>
 </template>

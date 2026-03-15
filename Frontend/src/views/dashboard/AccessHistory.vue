@@ -15,66 +15,60 @@ const { data, refresh, isLoading, error } = useQuery(personalPaginated, () => ({
   pageSize: activityStore.pageSize,
   sortBy: "timestamp",
   sortDirection: SortDirection.Desc,
-  userId: authStore.user?.id,
+  // What am I doing here???
+  userId: authStore.user?.user.id,
 }));
 
-const getIconForOperation = (opType: OperationType, entityType: EntityType) => {
-  if (entityType === EntityType.Directory) {
-    return "i-lucide-folder";
-  }
-  if (entityType === EntityType.File) {
-    return "i-lucide-file";
-  }
-  if (entityType === EntityType.Tag) {
-    return "i-lucide-tag";
-  }
-  if (entityType === EntityType.User) {
-    return "i-lucide-user";
-  }
+// Icon styles lookup
+const FALLBACK_ICON_STYLE =
+  "border-gray-300/60 text-gray-400 dark:border-gray-600/60 dark:text-gray-500";
 
-  switch (opType) {
-    case OperationType.Create:
-      return "i-lucide-plus-circle";
-    case OperationType.Update:
-      return "i-lucide-edit";
-    case OperationType.Delete:
-      return "i-lucide-trash-2";
-    case OperationType.Login:
-      return "i-lucide-log-in";
-    case OperationType.Logout:
-      return "i-lucide-log-out";
-    default:
-      return "i-lucide-eye";
-  }
+const OP_ICON_STYLES: Partial<Record<OperationType, string>> = {
+  [OperationType.Create]: "border-emerald-400/50 text-emerald-600 dark:text-emerald-400",
+  [OperationType.Delete]: "border-rose-400/50 text-rose-500 dark:text-rose-400",
+  [OperationType.Update]: "border-amber-400/50 text-amber-500 dark:text-amber-400",
+  [OperationType.Login]: "border-sky-400/50 text-sky-500 dark:text-sky-400",
+  [OperationType.Logout]: "border-sky-400/50 text-sky-500 dark:text-sky-400",
 };
 
-const getDefaultTitle = (opType: OperationType, entityType: EntityType) => {
-  const entityName = EntityType[entityType].toLowerCase();
-  const operation = OperationType[opType].toLowerCase();
-  return `${operation} ${entityName}`;
-};
+const opIconStyle = (op: OperationType): string => OP_ICON_STYLES[op] ?? FALLBACK_ICON_STYLE;
 
+// Badge color
 type OpColor = "success" | "error" | "warning" | "info" | "neutral";
 
-const opColor = (opType: OperationType): OpColor => {
-  switch (opType) {
-    case OperationType.Create:
-      return "success";
-    case OperationType.Delete:
-      return "error";
-    case OperationType.Update:
-      return "warning";
-    case OperationType.Login:
-      return "info";
-    case OperationType.Logout:
-      return "neutral";
-    default:
-      return "neutral";
-  }
+const OP_COLORS: Partial<Record<OperationType, OpColor>> = {
+  [OperationType.Create]: "success",
+  [OperationType.Delete]: "error",
+  [OperationType.Update]: "warning",
+  [OperationType.Login]: "info",
+  [OperationType.Logout]: "neutral",
 };
 
-const opLabel = (opType: OperationType): string => OperationType[opType] ?? "Unknown";
+const opColor = (op: OperationType): OpColor => OP_COLORS[op] ?? "neutral";
 
+// Icon
+const ENTITY_ICONS: Partial<Record<EntityType, string>> = {
+  [EntityType.Directory]: "i-lucide-folder",
+  [EntityType.File]: "i-lucide-file",
+  [EntityType.Tag]: "i-lucide-tag",
+  [EntityType.User]: "i-lucide-user",
+};
+
+const OP_ICONS: Partial<Record<OperationType, string>> = {
+  [OperationType.Create]: "i-lucide-plus-circle",
+  [OperationType.Update]: "i-lucide-edit",
+  [OperationType.Delete]: "i-lucide-trash-2",
+  [OperationType.Login]: "i-lucide-log-in",
+  [OperationType.Logout]: "i-lucide-log-out",
+};
+
+const getIcon = (op: OperationType, entity: EntityType): string =>
+  ENTITY_ICONS[entity] ?? OP_ICONS[op] ?? "i-lucide-eye";
+
+const getDefaultTitle = (op: OperationType, entity: EntityType): string =>
+  `${OperationType[op].toLowerCase()} ${EntityType[entity].toLowerCase()}`;
+
+// Rows
 const rows = computed(() =>
   !data.value
     ? []
@@ -85,10 +79,10 @@ const rows = computed(() =>
           month: "short",
           year: "numeric",
         }),
-        entityType: log.entityTYpe,
-        icon: getIconForOperation(log.operationType, log.entityTYpe),
+        icon: getIcon(log.operationType, log.entityTYpe),
+        iconStyle: opIconStyle(log.operationType),
         key: log.entityId + log.timestamp,
-        opLabel: opLabel(log.operationType),
+        opLabel: OperationType[log.operationType] ?? "Unknown",
         operationType: log.operationType,
         time: new Date(log.timestamp).toLocaleTimeString(undefined, {
           hour: "2-digit",
@@ -107,26 +101,21 @@ const changePage = (pageNumber: number) => {
 <template>
   <div class="flex flex-col h-full w-full flex-1">
     <!-- Header -->
-    <div class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="p-2 rounded-lg border border-dashed opacity-50">
-          <UIcon name="i-lucide-activity" class="w-4 h-4" />
-        </div>
-        <div>
-          <h1 class="text-lg font-semibold tracking-tight">Activity</h1>
-          <p class="text-xs opacity-90">Your recent actions across the system</p>
-        </div>
-      </div>
-      <!-- Total badge -->
-      <div class="text-right" v-if="data">
-        <p class="text-xs uppercase tracking-widest font-medium">Total</p>
-        <p class="text-sm font-semibold tabular-nums">{{ data.totalCount }}</p>
+    <div
+      class="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-200/70 dark:border-gray-700/70"
+    >
+      <div class="flex items-center gap-2.5 min-w-0">
+        <UIcon name="i-lucide-activity" class="w-5 h-5 text-muted shrink-0" />
+        <h1 class="text-xl font-semibold truncate">Activity</h1>
+        <UBadge v-if="data" color="neutral" variant="subtle" size="sm">
+          {{ data.totalCount }}
+        </UBadge>
       </div>
     </div>
 
     <!-- Content -->
     <div class="flex-1 overflow-auto">
-      <div class="w-full max-w-5xl mx-auto px-4 sm:px-8 py-6">
+      <div class="px-6 py-5 space-y-4">
         <!-- Error -->
         <UAlert
           v-if="error"
@@ -134,7 +123,6 @@ const changePage = (pageNumber: number) => {
           variant="subtle"
           title="Failed to load activity"
           :description="error.message"
-          class="mb-6"
         />
 
         <!-- Loading skeleton -->
@@ -150,61 +138,46 @@ const changePage = (pageNumber: number) => {
         </div>
 
         <!-- Log list -->
-        <div v-else-if="rows.length > 0">
-          <div class="relative">
-            <!-- Vertical spine -->
-            <div
-              class="absolute left-[1.55rem] top-0 bottom-0 w-px border-l border-dashed opacity-10 pointer-events-none"
-            />
+        <div v-else-if="rows.length > 0" class="relative">
+          <!-- Vertical spine -->
+          <div
+            class="absolute left-[1.55rem] top-0 bottom-0 w-px border-l border-dashed border-gray-300/40 dark:border-gray-600/40 pointer-events-none"
+          />
 
+          <!-- Rows -->
+          <div class="divide-y divide-gray-100/50 dark:divide-gray-800/50">
             <div
               v-for="row in rows"
               :key="row.key"
-              class="relative flex items-center gap-5 group py-1"
+              class="relative flex items-center gap-4 py-3 hover:bg-neutral-300/60 dark:hover:bg-white/5 transition-colors rounded-lg px-1"
             >
               <!-- Icon dot -->
               <div
-                class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 shrink-0 transition-colors"
-                :class="[
-                  row.operationType === OperationType.Delete
-                    ? 'border-rose-400/50 text-rose-500 dark:text-rose-400'
-                    : row.operationType === OperationType.Create
-                      ? 'border-emerald-400/50 text-emerald-600 dark:text-emerald-400'
-                      : row.operationType === OperationType.Update
-                        ? 'border-amber-400/50 text-amber-500 dark:text-amber-400'
-                        : row.operationType === OperationType.Login ||
-                            row.operationType === OperationType.Logout
-                          ? 'border-sky-400/50 text-sky-500 dark:text-sky-400'
-                          : 'border-dashed border-current opacity-80',
-                ]"
+                class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 shrink-0 transition-colors bg-neutral-50 dark:bg-gray-950"
+                :class="row.iconStyle"
               >
                 <UIcon :name="row.icon" class="w-4 h-4" />
               </div>
 
-              <!-- Row content -->
-              <div
-                class="flex-1 flex items-center justify-between gap-6 py-3.5 border-b border-dashed opacity-90 group-last:border-0"
-              >
-                <!-- Title + date -->
-                <div class="min-w-0 flex items-baseline gap-4">
-                  <p class="text-sm font-medium leading-snug truncate">
-                    {{ row.title }}
-                  </p>
-                  <p class="text-xs tabular-nums whitespace-nowrap shrink-0">
-                    {{ row.date }} · {{ row.time }}
-                  </p>
-                </div>
+              <!-- Title -->
+              <p class="flex-1 min-w-0 text-sm font-medium leading-snug truncate">
+                {{ row.title }}
+              </p>
 
-                <!-- Badge -->
-                <UBadge
-                  :color="row.color"
-                  variant="subtle"
-                  size="sm"
-                  class="shrink-0 capitalize font-medium"
-                >
-                  {{ row.opLabel }}
-                </UBadge>
-              </div>
+              <!-- Timestamp — own right-aligned column, never inline -->
+              <p class="shrink-0 text-xs text-muted tabular-nums whitespace-nowrap hidden sm:block">
+                {{ row.date }} · {{ row.time }}
+              </p>
+
+              <!-- Badge -->
+              <UBadge
+                :color="row.color"
+                variant="subtle"
+                size="sm"
+                class="shrink-0 capitalize font-medium"
+              >
+                {{ row.opLabel }}
+              </UBadge>
             </div>
           </div>
 
@@ -220,11 +193,11 @@ const changePage = (pageNumber: number) => {
         </div>
 
         <!-- Empty state -->
-        <div v-else class="text-center py-24 space-y-3 opacity-35">
-          <UIcon name="i-lucide-folder-open" class="w-12 h-12 mx-auto" />
-          <div>
-            <p class="font-medium">No activity yet</p>
-            <p class="text-sm mt-1">Actions will appear here as you use the system</p>
+        <div v-else class="flex flex-col items-center justify-center py-24 text-center gap-3">
+          <UIcon name="i-lucide-folder-open" class="w-12 h-12 text-muted" />
+          <div class="space-y-1">
+            <p class="text-sm font-medium">No activity yet</p>
+            <p class="text-xs text-muted">Actions will appear here as you use the system</p>
           </div>
         </div>
       </div>
