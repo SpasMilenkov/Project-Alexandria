@@ -285,7 +285,7 @@ const tourFeatures: TourFeature[] = [
     image: "storage-preview.svg",
     tips: [
       "Restore a file to its original location in one click",
-      "Permanently delete individual files or empty the whole Trash",
+      "Files are automatically permanently deleted after 30 days of being in the trash",
       "Storage usage updates live as you upload and delete files",
     ],
     title: "Storage & Trash",
