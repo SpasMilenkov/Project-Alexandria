@@ -19,4 +19,5 @@
   <Project Path="PreviewService/PreviewService.csproj" />
   <Project Path="Repositories/Repositories.csproj" />
   <Project Path="Storage/Storage.csproj" />
+  <Project Path="User.Service/User.Service.csproj" />
 </Solution>
