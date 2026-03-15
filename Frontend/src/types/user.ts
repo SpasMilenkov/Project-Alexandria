@@ -38,3 +38,9 @@ export interface UserQueryDto {
   lockedOutBefore?: string | null;
   lockedOutAfter?: string | null;
 }
+
+export interface UserProfile {
+  username: string;
+  email: string;
+  createdAt: Date;
+}
