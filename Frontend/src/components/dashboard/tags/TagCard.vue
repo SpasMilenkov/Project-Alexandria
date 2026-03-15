@@ -2,17 +2,19 @@
   <div
     draggable
     data-tag-item
-    class="relative group cursor-pointer rounded-xl border p-6 transition-all duration-300"
+    class="relative group cursor-pointer rounded-xl border p-5 transition-all duration-300"
     :class="[
       isSelected
         ? 'bg-primary/10 border-primary ring-2 ring-primary shadow-lg'
-        : ' border-gray-200 dark:border-gray-700 hover:border-primary/60 hover:shadow-xl hover:-translate-y-0.5',
+        : preview
+          ? 'border-gray-300/70 dark:border-gray-700/70'
+          : 'border-gray-300/70 dark:border-gray-700/70 hover:border-primary/60 hover:shadow-xl hover:-translate-y-0.5',
     ]"
-    :style="{ '--tag-color': props.tag.color }"
-    @click="$emit('click', $event)"
+    :style="{ '--tag-color': tag.color }"
+    @click="!preview && $emit('click', $event)"
   >
-    <!-- Selection Indicator -->
-    <transition
+    <!-- Selection indicator -->
+    <Transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="scale-0 opacity-0"
       enter-to-class="scale-100 opacity-100"
@@ -26,84 +28,65 @@
       >
         <Icon icon="mdi:check" class="w-4 h-4 text-white" />
       </div>
-    </transition>
+    </Transition>
 
-    <!-- Actions Menu -->
+    <!-- Actions menu — hidden in preview mode -->
     <div
+      v-if="!preview"
       class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+      @click.stop
     >
-      <UDropdownMenu :items="menuItems" @click.stop>
-        <UButton icon="i-heroicons-ellipsis-vertical" size="sm" variant="ghost" color="gray" />
+      <UDropdownMenu :items="menuItems">
+        <UButton icon="i-lucide-ellipsis-vertical" size="sm" variant="ghost" color="neutral" />
       </UDropdownMenu>
     </div>
 
-    <!-- Main Content -->
-    <div class="items-start gap-4 xs:flex-col md:flex">
-      <!-- Tag Icon -->
+    <!-- Main content -->
+    <div class="flex items-start gap-4">
+      <!-- Tag icon -->
       <div class="shrink-0">
         <div
-          class="tag-icon-bg w-16 h-16 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
+          class="tag-icon-bg w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110"
         >
-          <Icon :icon="getIconByValue(tag.icon) || 'mdi:tag'" class="tag-icon w-8 h-8" />
+          <Icon :icon="getIconByValue(tag.icon) || 'mdi:tag'" class="tag-icon w-7 h-7" />
         </div>
       </div>
 
-      <!-- Tag Details -->
-      <div class="flex-1 min-w-0">
-        <!-- Tag Name -->
+      <!-- Tag details -->
+      <div class="flex-1 min-w-0 pt-0.5">
         <h3
-          class="font-semibold text-lg mb-2 truncate"
+          class="font-semibold text-base truncate transition-colors"
           :class="
             isSelected
               ? 'text-primary'
-              : 'text-gray-900 dark:text-gray-100 group-hover:text-primary transition-colors'
+              : 'text-gray-900 dark:text-gray-100 group-hover:text-primary'
           "
           :title="tag.name"
         >
           {{ tag.name }}
         </h3>
 
-        <!-- Tag Metadata -->
-        <div class="space-y-1.5">
-          <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Icon icon="mdi:calendar" class="w-4 h-4" />
-            <span>Created {{ formatDate(tag.createdAt) }}</span>
-          </div>
+        <div class="flex items-center gap-2 mt-2 text-xs text-muted">
+          <UIcon name="i-lucide-calendar" class="w-3.5 h-3.5 shrink-0" />
+          <span>{{ formatDate(tag.createdAt) }}</span>
+        </div>
 
-          <!-- Tag Color Preview -->
-          <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Icon icon="mdi:palette" class="w-4 h-4" />
-            <span>Color:</span>
-            <div
-              class="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600"
-              :style="{ backgroundColor: tag.color }"
-            ></div>
-            <span class="font-mono text-xs">{{ tag.color }}</span>
-          </div>
+        <!-- Color — swatch only, no raw value shown -->
+        <div class="flex items-center gap-2 mt-1.5 text-xs text-muted">
+          <UIcon name="i-lucide-palette" class="w-3.5 h-3.5 shrink-0" />
+          <div
+            class="w-3.5 h-3.5 rounded-full border border-gray-200/70 dark:border-gray-700/70"
+            :style="{ backgroundColor: tag.color }"
+          />
         </div>
       </div>
     </div>
 
-    <!-- Bottom Section - Appears on Hover -->
+    <!-- Hover gradient overlay — hidden in preview mode -->
     <div
-      class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 opacity-0 group-hover:opacity-100 transition-all duration-300 max-h-0 group-hover:max-h-20 overflow-hidden"
-    >
-      <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-        <div class="flex items-center gap-1">
-          <Icon icon="mdi:clock-outline" class="w-3.5 h-3.5" />
-          <span>{{ formatDateTime(tag.createdAt) }}</span>
-        </div>
-        <div class="flex items-center gap-1">
-          <Icon icon="mdi:identifier" class="w-3.5 h-3.5" />
-          <span class="font-mono">{{ tag.id.slice(0, 8) }}...</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Hover Gradient Effect -->
-    <div
+      v-if="!preview"
       class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none tag-gradient"
-    ></div>
+    />
   </div>
 </template>
 
@@ -117,48 +100,34 @@ import { formatDate } from "@/utils/date-formatters";
 const props = defineProps<{
   tag: TagDto;
   isSelected: boolean;
+  preview?: boolean;
 }>();
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
-  edit: [tagId: TagDto];
+  edit: [tag: TagDto];
   delete: [tagId: string];
 }>();
 
 const menuItems = computed(() => [
   [
     {
-      icon: "i-heroicons-pencil",
+      icon: "i-lucide-pencil",
       label: "Edit",
       onSelect: () => emit("edit", props.tag),
     },
   ],
   [
     {
-      icon: "i-heroicons-trash",
+      icon: "i-lucide-trash-2",
       label: "Delete",
       onSelect: () => emit("delete", props.tag.id),
     },
   ],
 ]);
-
-const formatDateTime = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
 </script>
 
 <style scoped>
-.tag-card {
-  --tag-color: #000000;
-}
-
 .tag-icon-bg {
   background-color: color-mix(in srgb, var(--tag-color) 15%, transparent);
 }
