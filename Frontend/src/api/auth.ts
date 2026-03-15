@@ -1,4 +1,6 @@
+import type { OnboardingStep } from "@/enums";
 import type { LoginSchema } from "@/schemas/auth";
+import type { ChangePasswordSchema } from "@/schemas/user";
 
 import { logger } from "@/utils/logger";
 
@@ -8,9 +10,14 @@ export interface AuthResponse {
   success: boolean;
   user: { id: string; email: string; name: string };
   userRoles: string[];
+  onboardingStep: OnboardingStep;
 }
 
 export const authApi = {
+  changeInitialPassword: async (payload: ChangePasswordSchema) => {
+    await apiClient.patch("/auth/change-initial-password", payload);
+  },
+
   getProfile: async (): Promise<AuthResponse> => {
     const response = await apiClient.get<AuthResponse>("/auth/profile");
     return response.data;
