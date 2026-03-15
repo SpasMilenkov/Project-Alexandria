@@ -5,28 +5,30 @@ import { logger } from "@/utils/logger";
 type SWMessage = Record<string, unknown>;
 
 // Send a message to the SW and await the response via MessageChannel
-function swMessage(sw: ServiceWorker, data: SWMessage): Promise<SWMessage> {
-  return new Promise((resolve, reject) => {
+const swMessage = (sw: ServiceWorker, data: SWMessage): Promise<SWMessage> =>
+  new Promise((resolve, reject) => {
     const channel = new MessageChannel();
     channel.port1.onmessage = (e) => resolve(e.data);
     channel.port1.onmessageerror = () => reject(new Error("SW message error"));
     sw.postMessage(data, [channel.port2]);
   });
-}
 
-async function getActiveSW(): Promise<ServiceWorker | null> {
+const getActiveSW = async (): Promise<ServiceWorker | null> => {
   if (!("serviceWorker" in navigator)) {
     return null;
   }
   const reg = await navigator.serviceWorker.getRegistration("/");
   return reg?.active ?? null;
-}
+};
 
-export function useBackgroundImageSync() {
+export const useBackgroundImageSync = () => {
   const store = useSettingsStore();
 
   // Called by useSettingsSync after server data arrives
-  async function syncBackgroundImage(key: string | null, updatedAt: string | null): Promise<void> {
+  const syncBackgroundImage = async (
+    key: string | null,
+    updatedAt: string | null,
+  ): Promise<void> => {
     if (!key || !updatedAt) {
       store.backgroundImage = null;
       return;
@@ -63,18 +65,18 @@ export function useBackgroundImageSync() {
     // SW now has it — point the store at the intercept URL
     // UseTheme picks this up reactively and sets it as CSS background
     store.backgroundImage = `/sw/background-image?t=${encodeURIComponent(updatedAt)}`;
-  }
+  };
 
   // Full upload flow: request URL → upload to S3 → confirm → sync
-  async function uploadBackgroundImage(file: File): Promise<void> {
+  const uploadBackgroundImage = async (file: File): Promise<void> => {
     const { uploadUrl, objectKey } = await settingsApi.requestBackgroundImageUpload();
     await settingsApi.uploadToS3(uploadUrl, file);
     const saved = await settingsApi.confirmBackgroundImageUpload(objectKey);
     store.syncFromServer(saved, store.getSettings);
     await syncBackgroundImage(saved.backgroundImageKey, saved.backgroundImageUpdatedAt);
-  }
+  };
 
-  async function deleteBackgroundImage(): Promise<void> {
+  const deleteBackgroundImage = async (): Promise<void> => {
     await settingsApi.deleteBackgroundImage();
 
     const sw = await getActiveSW();
@@ -83,7 +85,7 @@ export function useBackgroundImageSync() {
     }
 
     store.clearBackgroundImage();
-  }
+  };
 
   return { deleteBackgroundImage, syncBackgroundImage, uploadBackgroundImage };
-}
+};
