@@ -14,4 +14,5 @@ public interface IAuthService
      * I want it to require some additional auth step before implementing it
      */
     Task RevokeAllUserTokensAsync(Guid userId, CancellationToken ct = default);
+    Task ChangeInitialPassword(Guid userId, string oldPassword, string newPassword, CancellationToken ct = default);
 }

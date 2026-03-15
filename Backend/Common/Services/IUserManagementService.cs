@@ -11,4 +11,8 @@ public interface IUserManagementService
     Task DeleteUsers(Guid[] userIds, CancellationToken ct = default);
     Task<UserDetailsDto> UpdateUser(Guid userId, UpdateUserDto dto, CancellationToken ct = default);
     Task RestrictUser(Guid userId, DateTime restrictionEndDate, CancellationToken ct = default);
+    Task<UserProfileDto> GetUserProfile(Guid userId, CancellationToken ct = default);
+    Task SetupProfile(Guid userId, CancellationToken ct = default);
+    Task FinishTour(Guid userId, CancellationToken ct = default);
+    Task<OnboardingStep?> GetOnboardingStep(Guid userId, CancellationToken ct);
 }

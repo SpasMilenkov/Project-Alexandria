@@ -217,4 +217,20 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
         }
         context.Users.UpdateRange(entities);
     }
+
+    public async Task<UserProfileDto?> GetUserProfile(Guid userId, CancellationToken ct)
+    {
+        return await context.Users.Where(u => u.Id == userId && u.DeletedAt == null).Select(u => new UserProfileDto(u.UserName, u.Email, u.CreatedAt)).FirstOrDefaultAsync(ct);
+    }
+
+    public async Task SetupProfile(Guid userId, CancellationToken ct = default)
+    {
+        await context.Users.Where(u => u.Id == userId && u.DeletedAt == null).ExecuteUpdateAsync(u => u.SetProperty(u => u.OnboardinStep, OnboardingStep.Tour), ct);
+    }
+
+    public async Task<OnboardingStep?> GetOnboardingStatus(Guid userId, CancellationToken ct)
+    {
+        var result = await context.Users.Where(u => userId == u.Id && u.DeletedAt == null).Select(u => u.OnboardinStep).FirstOrDefaultAsync(ct);
+        return result;
+    }
 }

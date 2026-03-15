@@ -136,4 +136,38 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
 
         return user.ToDto();
     }
+
+    public async Task<UserProfileDto> GetUserProfile(Guid userId, CancellationToken ct = default)
+    {
+        return await unitOfWork.Users.GetUserProfile(userId, ct) ?? throw new InvalidOperationException("User not found exception");
+    }
+
+    public async Task SetupProfile(Guid userId, CancellationToken ct = default)
+    {
+        await unitOfWork.Users.SetupProfile(userId, ct);
+    }
+
+    public async Task FinishTour(Guid userId, CancellationToken ct = default)
+    {
+        try
+        {
+            await unitOfWork.BeginTransactionAsync(ct);
+
+            var user = await unitOfWork.Users.GetByIdAsync(userId, ct) ?? throw new InvalidOperationException("User not found exception");
+
+            user.OnboardinStep = OnboardingStep.Done;
+            unitOfWork.Users.Update(user);
+
+            await unitOfWork.CommitAsync(ct);
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(ct);
+        }
+    }
+
+    public async Task<OnboardingStep?> GetOnboardingStep(Guid userId, CancellationToken ct)
+    {
+        return await unitOfWork.Users.GetOnboardingStatus(userId, ct);
+    }
 }
