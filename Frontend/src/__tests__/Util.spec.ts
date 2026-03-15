@@ -5,7 +5,7 @@ import { getIconByValue, getFileIcon } from "@/utils/icon.utils";
 import { getFileTypeReadable, groupMimeSizeRecord } from "@/utils/mimetype.utils";
 import { formatBytes } from "@/utils/size.utils";
 
-// ─── formatDate ───────────────────────────────────────────────────────────────
+// formatDate
 
 describe("formatDate", () => {
   // Pin "now" so tests don't drift depending on when they run
@@ -49,7 +49,7 @@ describe("formatDate", () => {
   });
 });
 
-// ─── formatBytes ─────────────────────────────────────────────────────────────
+// formatBytes
 
 describe("formatBytes", () => {
   it('returns "0 Bytes" for 0', () => {
@@ -88,7 +88,7 @@ describe("formatBytes", () => {
   });
 });
 
-// ─── getIconByValue ───────────────────────────────────────────────────────────
+// getIconByValue
 
 describe("getIconByValue", () => {
   it("returns the correct heroicons string for known values", () => {
@@ -105,7 +105,7 @@ describe("getIconByValue", () => {
   });
 });
 
-// ─── getFileIcon ──────────────────────────────────────────────────────────────
+// getFileIcon
 
 describe("getFileIcon", () => {
   it("returns the PDF icon for .pdf files", () => {
@@ -147,7 +147,7 @@ describe("getFileIcon", () => {
   });
 });
 
-// ─── getFileTypeReadable ──────────────────────────────────────────────────────
+// getFileTypeReadable
 
 describe("getFileTypeReadable", () => {
   it("returns the exact label for known MIME types", () => {
@@ -182,7 +182,7 @@ describe("getFileTypeReadable", () => {
   });
 });
 
-// ─── groupMimeSizeRecord ──────────────────────────────────────────────────────
+// groupMimeSizeRecord
 
 describe("groupMimeSizeRecord", () => {
   it("returns empty arrays for an empty input", () => {

@@ -8,7 +8,7 @@ import type { FileResult } from "@/api/file";
 
 import { useFileExplorer } from "@/composables/useFileExplorer";
 
-// ─── Mocks ───────────────────────────────────────────────────────────────────
+// Mocks
 
 const mockRouterPush = vi.fn();
 vi.mock("vue-router", () => ({
@@ -39,7 +39,7 @@ vi.mock("@/queries/files", () => ({
   subFiles: vi.fn(),
 }));
 
-// ─── Test helpers ─────────────────────────────────────────────────────────────
+// Test helpers
 
 /**
  * Run a composable inside a real Vue + Pinia app so that reactivity,
@@ -85,7 +85,7 @@ const makeFile = (fileId: string): FileResult => ({
   owner: { id: "owner", name: "Owner", email: "owner@test.com" },
 });
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+// Tests
 
 describe("useFileExplorer", () => {
   let mockDirData: Ref<{
@@ -110,7 +110,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── toggleSelect ─────────────────────────────────────────────────────────
+  // toggleSelect
 
   describe("toggleSelect", () => {
     it("adds a file id to selectedFiles", () => {
@@ -138,7 +138,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── setSelection ─────────────────────────────────────────────────────────
+  // setSelection
 
   describe("setSelection", () => {
     it("replaces selectedFiles entirely (does not merge)", () => {
@@ -172,7 +172,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── isFileSelected / isDirectorySelected ─────────────────────────────────
+  // isFileSelected / isDirectorySelected
 
   describe("isFileSelected / isDirectorySelected", () => {
     it("returns true for a selected file", () => {
@@ -198,7 +198,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── clearSelection ───────────────────────────────────────────────────────
+  // clearSelection
 
   describe("clearSelection", () => {
     it("empties both selectedFiles and selectedDirectories", async () => {
@@ -225,7 +225,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── selectRange ──────────────────────────────────────────────────────────
+  // selectRange
 
   describe("selectRange", () => {
     it("selects a contiguous range of directories in order", () => {
@@ -330,7 +330,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── directories watcher ──────────────────────────────────────────────────
+  // directories watcher
 
   describe("directories watcher", () => {
     it("replaces directoriesList when page is 1", async () => {
@@ -411,7 +411,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── files watcher ────────────────────────────────────────────────────────
+  // files watcher
 
   describe("files watcher", () => {
     it("replaces filesList when page is 1", async () => {
@@ -464,7 +464,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── loadMoreDirs ─────────────────────────────────────────────────────────
+  // loadMoreDirs
 
   describe("loadMoreDirs", () => {
     it("increments the directory page when hasNext is true", async () => {
@@ -488,7 +488,7 @@ describe("useFileExplorer", () => {
     });
   });
 
-  // ── loadMoreFiles ─────────────────────────────────────────────────────────
+  // loadMoreFiles
 
   describe("loadMoreFiles", () => {
     it("increments the file page when hasNext is true", async () => {

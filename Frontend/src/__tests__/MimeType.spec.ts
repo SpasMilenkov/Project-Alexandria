@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import { getFileTypeReadable, groupMimeSizeRecord } from "@/utils/mimetype.utils";
 
-// ─── Documents ────────────────────────────────────────────────────────────────
+// Documents
 
 describe("getFileTypeReadable – Documents", () => {
   it("handles legacy Word .doc format", () => {
@@ -49,7 +49,7 @@ describe("getFileTypeReadable – Documents", () => {
   });
 });
 
-// ─── Spreadsheets ─────────────────────────────────────────────────────────────
+// Spreadsheets
 
 describe("getFileTypeReadable – Spreadsheets", () => {
   it("handles legacy Excel .xls format", () => {
@@ -99,7 +99,7 @@ describe("getFileTypeReadable – Spreadsheets", () => {
   });
 });
 
-// ─── Presentations ────────────────────────────────────────────────────────────
+// Presentations
 
 describe("getFileTypeReadable – Presentations", () => {
   it("handles legacy PowerPoint .ppt format", () => {
@@ -143,7 +143,7 @@ describe("getFileTypeReadable – Presentations", () => {
   });
 });
 
-// ─── groupMimeSizeRecord cross-group aggregation ──────────────────────────────
+// groupMimeSizeRecord cross-group aggregation
 
 describe("groupMimeSizeRecord – cross-office aggregation", () => {
   it("correctly splits .doc, .xlsx and .pptx into three separate groups", () => {
