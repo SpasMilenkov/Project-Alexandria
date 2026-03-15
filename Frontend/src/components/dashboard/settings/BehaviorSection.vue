@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
-import { TOAST_LEVELS, useSettingsStore } from "@/stores/settings";
+import { TOAST_LEVELS, type ToastLevel, useSettingsStore } from "@/stores/settings";
 import { useSettingsSync } from "@/composables/useSettingsSync";
-import type { ToastLevel } from "@/stores/settings";
 import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
 
@@ -50,7 +49,7 @@ const handleResetBehavior = async () => {
         :trailing-icon="isOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
       >
         <div class="flex items-center gap-2">
-          <Icon icon="mdi:cog" class="w-5 h-5 text-primary" />
+          <Icon icon="mdi:cog-outline" class="w-5 h-5 text-muted" />
           <h2 class="text-lg font-semibold">Behavior</h2>
         </div>
       </UButton>
@@ -119,6 +118,7 @@ const handleResetBehavior = async () => {
                       level.description
                     }}</span>
                   </div>
+                  <!-- mdi:check-circle stays filled — it marks an active/selected state, which is correct -->
                   <Icon
                     v-if="toastLevel === level.value"
                     icon="mdi:check-circle"
