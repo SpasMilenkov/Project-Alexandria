@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 340" width="520" height="340">
+
+  <rect width="520" height="340" rx="10" fill="#1a1a1a" />
+
+  <!-- SIDEBAR -->
+  <rect x="12" y="12" width="110" height="316" rx="7" fill="#222" stroke="#333" stroke-width="1" />
+  <rect x="20" y="22" width="22" height="22" rx="5" fill="#e07b30" />
+  <rect x="48" y="27" width="52" height="8" rx="4" fill="#444" />
+  <circle cx="26" cy="70" r="3" fill="none" stroke="#666" stroke-width="1" />
+  <rect x="36" y="67" width="48" height="4" rx="2" fill="#555" />
+  <circle cx="26" cy="88" r="3" fill="none" stroke="#666" stroke-width="1" />
+  <rect x="36" y="85" width="60" height="4" rx="2" fill="#555" />
+  <rect x="18" y="100" width="96" height="16" rx="4" fill="#2e2010" stroke="#e07b30" stroke-width="0.8" />
+  <circle cx="26" cy="108" r="3" fill="none" stroke="#e07b30" stroke-width="1" />
+  <rect x="36" y="105" width="56" height="4" rx="2" fill="#e07b30" opacity="0.85" />
+  <circle cx="26" cy="126" r="3" fill="none" stroke="#666" stroke-width="1" />
+  <rect x="36" y="123" width="24" height="4" rx="2" fill="#555" />
+  <rect x="18" y="282" width="96" height="32" rx="5" fill="#1e1e1e" stroke="#333" stroke-width="0.8" />
+  <rect x="24" y="290" width="56" height="4" rx="2" fill="#333" />
+  <rect x="24" y="290" width="47" height="4" rx="2" fill="#e07b30" opacity="0.7" />
+  <rect x="24" y="298" width="30" height="3" rx="1" fill="#444" />
+
+  <!-- MAIN -->
+  <rect x="130" y="12" width="378" height="50" rx="5" fill="#1e1e1e" />
+  <circle cx="152" cy="37" r="10" fill="none" stroke="#555" stroke-width="1" />
+  <path d="M147,37 Q150,31 153,37 Q156,43 159,37" fill="none" stroke="#888" stroke-width="1.2" />
+  <rect x="168" y="30" width="44" height="6" rx="3" fill="#ccc" />
+  <rect x="168" y="40" width="80" height="3" rx="1" fill="#555" />
+  <rect x="460" y="24" width="36" height="20" rx="3" fill="#1a1a1a" />
+  <rect x="463" y="27" width="30" height="4" rx="2" fill="#666" />
+  <rect x="466" y="34" width="24" height="5" rx="2" fill="#aaa" />
+  <line x1="130" y1="64" x2="508" y2="64" stroke="#333" stroke-width="0.7" />
+
+  <!-- ACTIVITY ROWS -->
+  <!-- Row 1 — Login -->
+  <circle cx="152" cy="82" r="9" fill="none" stroke="#06b6d4" stroke-width="1.4" />
+  <path d="M148,82 L154,82 M151,79 L154,82 L151,85" fill="none" stroke="#06b6d4" stroke-width="1.2" />
+  <rect x="168" y="79" width="80" height="4" rx="2" fill="#888" />
+  <rect x="256" y="79" width="55" height="4" rx="2" fill="#555" />
+  <rect x="466" y="77" width="32" height="10" rx="3" fill="#1a3a2a" stroke="#22c55e" stroke-width="0.7" />
+  <rect x="470" y="80" width="20" height="3" rx="1" fill="#22c55e" opacity="0.8" />
+  <line x1="140" y1="96" x2="500" y2="96" stroke="#2a2a2a" stroke-width="0.6" stroke-dasharray="3 3" />
+
+  <!-- Rows 2–7 — Create -->
+  <circle cx="152" cy="110" r="9" fill="none" stroke="#22c55e" stroke-width="1.4" />
+  <circle cx="152" cy="110" r="3" fill="none" stroke="#22c55e" stroke-width="1" />
+  <rect x="168" y="107" width="100" height="4" rx="2" fill="#888" />
+  <rect x="276" y="107" width="55" height="4" rx="2" fill="#555" />
+  <rect x="466" y="105" width="32" height="10" rx="3" fill="#1a3a2a" stroke="#22c55e" stroke-width="0.7" />
+  <rect x="470" y="108" width="20" height="3" rx="1" fill="#22c55e" opacity="0.8" />
+  <line x1="140" y1="124" x2="500" y2="124" stroke="#2a2a2a" stroke-width="0.6" stroke-dasharray="3 3" />
+
+  <circle cx="152" cy="138" r="9" fill="none" stroke="#22c55e" stroke-width="1.4" />
+  <circle cx="152" cy="138" r="3" fill="none" stroke="#22c55e" stroke-width="1" />
+  <rect x="168" y="135" width="85" height="4" rx="2" fill="#888" />
+  <rect x="261" y="135" width="55" height="4" rx="2" fill="#555" />
+  <rect x="466" y="133" width="32" height="10" rx="3" fill="#1a3a2a" stroke="#22c55e" stroke-width="0.7" />
+  <rect x="470" y="136" width="20" height="3" rx="1" fill="#22c55e" opacity="0.8" />
+  <line x1="140" y1="152" x2="500" y2="152" stroke="#2a2a2a" stroke-width="0.6" stroke-dasharray="3 3" />
+
+  <circle cx="152" cy="166" r="9" fill="none" stroke="#22c55e" stroke-width="1.4" />
+  <circle cx="152" cy="166" r="3" fill="none" stroke="#22c55e" stroke-width="1" />
+  <rect x="168" y="163" width="110" height="4" rx="2" fill="#888" />
+  <rect x="286" y="163" width="55" height="4" rx="2" fill="#555" />
+  <rect x="466" y="161" width="32" height="10" rx="3" fill="#1a3a2a" stroke="#22c55e" stroke-width="0.7" />
+  <rect x="470" y="164" width="20" height="3" rx="1" fill="#22c55e" opacity="0.8" />
+  <line x1="140" y1="180" x2="500" y2="180" stroke="#2a2a2a" stroke-width="0.6" stroke-dasharray="3 3" />
+
+  <circle cx="152" cy="194" r="9" fill="none" stroke="#22c55e" stroke-width="1.4" />
+  <circle cx="152" cy="194" r="3" fill="none" stroke="#22c55e" stroke-width="1" />
+  <rect x="168" y="191" width="95" height="4" rx="2" fill="#888" />
+  <rect x="271" y="191" width="55" height="4" rx="2" fill="#555" />
+  <rect x="466" y="189" width="32" height="10" rx="3" fill="#1a3a2a" stroke="#22c55e" stroke-width="0.7" />
+  <rect x="470" y="192" width="20" height="3" rx="1" fill="#22c55e" opacity="0.8" />
+  <line x1="140" y1="208" x2="500" y2="208" stroke="#2a2a2a" stroke-width="0.6" stroke-dasharray="3 3" />
+
+  <circle cx="152" cy="222" r="9" fill="none" stroke="#22c55e" stroke-width="1.4" />
+  <circle cx="152" cy="222" r="3" fill="none" stroke="#22c55e" stroke-width="1" />
+  <rect x="168" y="219" width="88" height="4" rx="2" fill="#888" />
+  <rect x="264" y="219" width="55" height="4" rx="2" fill="#555" />
+  <rect x="466" y="217" width="32" height="10" rx="3" fill="#1a3a2a" stroke="#22c55e" stroke-width="0.7" />
+  <rect x="470" y="220" width="20" height="3" rx="1" fill="#22c55e" opacity="0.8" />
+  <line x1="140" y1="236" x2="500" y2="236" stroke="#2a2a2a" stroke-width="0.6" stroke-dasharray="3 3" />
+
+  <circle cx="152" cy="250" r="9" fill="none" stroke="#22c55e" stroke-width="1.4" />
+  <circle cx="152" cy="250" r="3" fill="none" stroke="#22c55e" stroke-width="1" />
+  <rect x="168" y="247" width="105" height="4" rx="2" fill="#888" />
+  <rect x="281" y="247" width="55" height="4" rx="2" fill="#555" />
+  <rect x="466" y="245" width="32" height="10" rx="3" fill="#1a3a2a" stroke="#22c55e" stroke-width="0.7" />
+  <rect x="470" y="248" width="20" height="3" rx="1" fill="#22c55e" opacity="0.8" />
+
+  <!-- PAGINATION -->
+  <rect x="310" y="278" width="14" height="14" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="328" y="278" width="14" height="14" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="346" y="278" width="14" height="14" rx="3" fill="#e07b30" />
+  <rect x="364" y="278" width="14" height="14" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="382" y="278" width="14" height="14" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="400" y="278" width="14" height="14" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="418" y="278" width="14" height="14" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+  <rect x="436" y="278" width="14" height="14" rx="3" fill="#2a2a2a" stroke="#444" stroke-width="0.7" />
+
+</svg>
