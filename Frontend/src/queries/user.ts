@@ -18,6 +18,8 @@ const normalizeUserFilters = (filters: UserQueryApiState) => {
 };
 
 export const USER_QUERY_KEYS = {
+  getOnboardingStep: () => [...USER_QUERY_KEYS.root, "onboarding-step"],
+  getProfile: () => [...USER_QUERY_KEYS.root, "profile"],
   getUserCount: ({ userId, deletedOnly }: { userId: string; deletedOnly: boolean }) => [
     ...USER_QUERY_KEYS.root,
     "file-count",
@@ -37,6 +39,18 @@ export const USER_QUERY_KEYS = {
   ],
   root: ["users"] as const,
 };
+
+export const getOnboardingStep = defineQueryOptions(() => ({
+  key: USER_QUERY_KEYS.getOnboardingStep(),
+  query: () => userApi.getOnboardingStep(),
+  staleTime: 60_000,
+}));
+
+export const getProfile = defineQueryOptions(() => ({
+  key: USER_QUERY_KEYS.getProfile(),
+  query: () => userApi.getUserProfile(),
+  staleTime: 30_000,
+}));
 
 export const getUsers = defineQueryOptions((filters: UserQueryApiState) => ({
   key: USER_QUERY_KEYS.getUsers(filters),
