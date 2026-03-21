@@ -35,7 +35,7 @@ const onSubmit = async (event: FormSubmitEvent<CreateDirectorySchema>) => {
         @submit="onSubmit"
       >
         <UFormField label="Name" name="name">
-          <UInput v-model="state.name" class="w-full" />
+          <UInput v-model="state.name" class="w-full" autofocus />
         </UFormField>
 
         <div class="flex gap-2 w-full justify-end">
