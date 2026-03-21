@@ -28,4 +28,8 @@ public class AuditService(IUnitOfWork unitOfWork) : IAuditService
         return await unitOfWork.AuditLogs.FetchAuditLogAsync(query, ct);
     }
 
+    public async Task<ActivityStatisticsOverview> GetActivityOverview(Guid userId, ActivityQuery query, CancellationToken ct = default)
+    {
+        return await unitOfWork.AuditLogs.GetOverviewAsync(userId, query, ct);
+    }
 }
