@@ -35,6 +35,9 @@ importers:
       '@vueuse/integrations':
         specifier: ^14.2.1
         version: 14.2.1(axios@1.13.6)(fuse.js@7.1.0)(sortablejs@1.15.7)(vue@3.5.29(typescript@5.8.3))
+      '@zip.js/zip.js':
+        specifier: 2.6.40
+        version: 2.6.40
       axios:
         specifier: ^1.13.6
         version: 1.13.6
@@ -1782,6 +1785,10 @@ packages:
     resolution: {integrity: sha512-shTJncjV9JTI4oVNyF1FQonetYAiTBd+Qj7cY89SWbXSkx7gyhrgtEdF2ZAVWS1S3SHlaROO6F2IesJxQEkZBw==}
     peerDependencies:
       vue: ^3.5.0
+
+  '@zip.js/zip.js@2.6.40':
+    resolution: {integrity: sha512-S23j3nNwrxnlNFViXV+JIJEosbB1CrntsIB8Zdsok9pWionK+2X09cJvFhvL1okkjp5Dv9wJp449rQ7IYh+snw==}
+    engines: {deno: '>=1.0.0', node: '>=16.5.0'}
 
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
@@ -5592,6 +5599,8 @@ snapshots:
   '@vueuse/shared@14.2.1(vue@3.5.29(typescript@5.8.3))':
     dependencies:
       vue: 3.5.29(typescript@5.8.3)
+
+  '@zip.js/zip.js@2.6.40': {}
 
   abbrev@2.0.0: {}
 
