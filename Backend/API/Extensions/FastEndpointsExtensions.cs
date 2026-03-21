@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Common.Auth;
 using FastEndpoints;
 using FastEndpoints.Swagger;
@@ -16,7 +17,6 @@ public static class FastEndpointsExtensions
             c.Endpoints.RoutePrefix = "api";
             c.Versioning.PrependToRoute = true;
             c.Serializer.Options.Converters.Add(new BigIntegerJsonConverter());
-
             c.Endpoints.Configurator = ep =>
             {
                 ep.AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
