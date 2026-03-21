@@ -32,6 +32,7 @@
             ]"
             @click="handleClick"
             @dblclick="handleDoubleClick"
+            @contextmenu="emit('contextmenu', $event)"
           >
             <Icon
               :icon="getFileIcon(props.data.fileName)"
@@ -72,6 +73,7 @@
             ]"
             @click="handleClick"
             @dblclick="handleDoubleClick"
+            @contextmenu="emit('contextmenu', $event)"
           >
             <Icon
               :icon="getFileIcon(props.data.fileName)"
@@ -375,6 +377,7 @@ const emit = defineEmits<{
   share: [fileIds: string[]];
   "file-trashed": [fileId: string];
   "file-restored": [];
+  contextmenu: [fileId: PointerEvent];
 }>();
 
 watch(

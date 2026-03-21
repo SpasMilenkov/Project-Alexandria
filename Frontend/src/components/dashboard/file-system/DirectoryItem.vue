@@ -19,6 +19,7 @@
           ]"
           @click="handleClick"
           @dblclick="handleDoubleClick"
+          @contextmenu="emit('contextmenu', $event)"
         >
           <Icon icon="mdi:folder" :width="iconSize" :height="iconSize" class="shrink-0" />
           <span class="text-sm text-center line-clamp-2 w-full wrap-break-word font-medium">
@@ -41,6 +42,7 @@
           ]"
           @click="handleClick"
           @dblclick="handleDoubleClick"
+          @contextmenu="emit('contextmenu', $event)"
         >
           <Icon icon="mdi:folder" :width="iconSize" :height="iconSize" class="shrink-0" />
           <span class="flex-1 truncate font-medium">{{ data.name }}</span>
@@ -213,6 +215,7 @@ const emit = defineEmits<{
   move: [directoryIds: string];
   copy: [directoryIds: string[]];
   download: [directoryIds: string[]];
+  contextmenu: [event: PointerEvent];
 }>();
 
 const openDrawer = ref(false);
