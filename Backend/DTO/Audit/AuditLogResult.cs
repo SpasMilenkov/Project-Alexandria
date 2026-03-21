@@ -4,11 +4,14 @@ namespace DTO.Audit;
 
 public sealed class AuditLogResult
 {
-    public OperationType OperationType { get; set; }
-    public EntityType EntityType { get; set; }
-    public Guid UserId { get; set; }
-    public Guid EntityId { get; set; }
-    public string? Description { get; set; }
-    public DateTimeOffset Timestamp { get; set; }
-    public LogSource LogSource { get; set; }
+    public required OperationType OperationType { get; set; }
+    public required EntityType EntityType { get; set; }
+    public required Guid UserId { get; set; }
+    public required Guid EntityId { get; set; }
+    public required AuditEventCode EventCode { get; set; }
+    public string? FallbackDescription { get; set; }
+    public string? IpAddress { get; set; }
+    public string? Metadata { get; set; }
+    public required DateTimeOffset Timestamp { get; set; }
+    public required LogSource LogSource { get; set; }
 }
