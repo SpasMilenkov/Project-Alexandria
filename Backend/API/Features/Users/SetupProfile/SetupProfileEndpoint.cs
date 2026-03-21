@@ -12,7 +12,7 @@ sealed class SetupProfileEndpoint(IUserManagementService userManagementService) 
         Policies(Common.Auth.Policies.RequireUser);
     }
 
-    public override async Task HandleAsync( CancellationToken ct)
+    public override async Task HandleAsync(CancellationToken ct)
     {
         var userId = User.GetUserId();
 
