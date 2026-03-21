@@ -1,4 +1,7 @@
+import { useQueryCache } from "@pinia/colada";
+
 import { settingsApi } from "@/api/settings";
+import { SETTINGS_QUERY_KEYS } from "@/queries/settings";
 import { useSettingsStore } from "@/stores/settings";
 import { logger } from "@/utils/logger";
 
@@ -23,7 +26,7 @@ const getActiveSW = async (): Promise<ServiceWorker | null> => {
 
 export const useBackgroundImageSync = () => {
   const store = useSettingsStore();
-
+  const queryCache = useQueryCache();
   // Called by useSettingsSync after server data arrives
   const syncBackgroundImage = async (
     key: string | null,
@@ -73,6 +76,8 @@ export const useBackgroundImageSync = () => {
     await settingsApi.uploadToS3(uploadUrl, file);
     const saved = await settingsApi.confirmBackgroundImageUpload(objectKey);
     store.syncFromServer(saved, store.getSettings);
+    queryCache.invalidateQueries({ key: SETTINGS_QUERY_KEYS.appearance() });
+
     await syncBackgroundImage(saved.backgroundImageKey, saved.backgroundImageUpdatedAt);
   };
 
