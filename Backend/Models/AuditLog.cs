@@ -2,29 +2,26 @@ using Models.Enumerators;
 
 namespace Models;
 
+
 public class AuditLog
 {
     public Guid Id { get; set; }
     public required OperationType OperationType { get; set; }
-
     public Guid? UserId { get; set; }
-
-    public required EntityType EntityType { get; set; } // "File", "Directory", "User"
+    public required EntityType EntityType { get; set; }
     public Guid? EntityId { get; set; }
 
-    public required string Description { get; set; }
-    // "File 'Report.pdf' renamed to 'Report_v2.pdf'"
+    // Replaces hardcoded Description — frontend resolves this to a string
+    public required AuditEventCode EventCode { get; set; }
 
     public string? MetadataJson { get; set; }
-    // Optional structured data (before/after names, IP, etc.)
+
+    // Kept for trigger-originated logs that came in before enrichment,
+    // or as a human-readable fallback for external DB changes
+    public string? FallbackDescription { get; set; }
 
     public DateTimeOffset Timestamp { get; set; }
-
     public string? IpAddress { get; set; }
-
-    public LogSource Source { get; set; }  // API or Trigger
-
-    // NEW: For trigger-created logs pending enrichment
+    public LogSource Source { get; set; }
     public bool IsEnriched { get; set; }
-
 }
