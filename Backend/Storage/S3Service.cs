@@ -94,18 +94,6 @@ public partial class S3Service(
         return (newFile, fileVersion);
     }
 
-    private async Task<UploadResult> CleanupAndReturnResultAsync(
-        string tmpBucket, string objectName, string serverHash,
-        long size, Guid fileId, CancellationToken ct)
-    {
-        await s3.DeleteObjectAsync(tmpBucket, objectName, ct);
-        return new UploadResult(
-            objectName,
-            serverHash,
-            size,
-            fileId);
-    }
-
     public async Task<UploadResult> UploadPreview(
         string bucketName,
         string objectName,
@@ -841,16 +829,16 @@ public partial class S3Service(
                     Convert.FromHexString(serverHash),
                     contentObject.Id,
                     ct);
-
                 await unitOfWork.CommitAsync(ct);
 
-                return await CleanupAndReturnResultAsync(
-                    tmp,
-                    upload.TempObjectKey,
-                    serverHash,
-                    computedSize,
-                    result.file.Id,
-                    ct);
+                await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
+
+                return new UploadResult(
+                    ObjectName: objectName,
+                    Checksum: serverHash,
+                    Size: computedSize,
+                    FileId: result.file.Id
+                );
             }
 
             // =====================================================
