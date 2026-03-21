@@ -226,7 +226,10 @@ export const directoryApi = {
 
   // Update directory
   updateDirectory: async (data: UpdateDirectorySchema): Promise<UpdateDirectoryResponse> => {
-    const response = await apiClient.put<UpdateDirectoryResponse>("/directories", data);
+    const response = await apiClient.patch<UpdateDirectoryResponse>(
+      `/directories/${data.directoryId}`,
+      data,
+    );
     return response.data;
   },
 
