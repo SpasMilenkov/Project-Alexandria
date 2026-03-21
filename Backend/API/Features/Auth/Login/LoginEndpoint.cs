@@ -1,5 +1,6 @@
 using Common.Services;
 using DTO;
+using DTO.Audit;
 using DTO.Files;
 using FastEndpoints;
 using Models.Enumerators;
@@ -64,7 +65,7 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
                 EntityType.User,
                 result.User.Id,
                 result.User.Id,
-                $"User logged in.",
+                AuditEventCode.UserLogin,
                 null,
                 HttpContext.Connection.RemoteIpAddress?.ToString() ?? ""
             ));
