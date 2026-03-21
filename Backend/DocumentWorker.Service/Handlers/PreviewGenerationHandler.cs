@@ -53,11 +53,10 @@ public class PreviewGenerationHandler(
 
             await using var previewStream = File.OpenRead(previewPath);
 
-            //TODO: Change Guid.Empty when the system account is seeded into the database
             await storage.UploadPreview(config.Value.PreviewBucket, $"previews/{contentHash}", "application/pdf",
                 previewStream,
-                originalFileId: fileData.Id, Guid.Empty, ct: ct);
-            await fileService.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
+                originalFileId: fileData.Id, SystemConfig.SystemId, ct: ct);
+            await fileService.UpdateFileMetadata(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
 
             File.Delete(previewPath);
         }
