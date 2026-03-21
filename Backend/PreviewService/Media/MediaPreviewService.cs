@@ -54,10 +54,7 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
             CreateNoWindow = true
         };
 
-        using var process = Process.Start(psi);
-        if (process == null)
-            throw new Exception("Failed to start ffprobe process");
-
+        using var process = Process.Start(psi) ?? throw new Exception("Failed to start ffprobe process");
         var output = await process.StandardOutput.ReadToEndAsync(ct);
         await process.WaitForExitAsync(ct);
 
