@@ -31,7 +31,9 @@
       {
         "max": 500
       }
-    ]
+    ],
+    "max-statements": ["warn", { "max": 20, "ignoreTopLevelFunctions": true }],
+    "max-lines-per-function": ["warn", {"skipBlankLines": true, "skipComments": true, "max": 100}]
   },
 
   "settings": {

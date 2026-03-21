@@ -19,7 +19,7 @@ export const useOnboardingGuard = (requiredStep: OnboardingStep) => {
 
   watch(isLoading, (loading) => {
     if (loading || error.value || data.value === undefined || data.value === null) return;
-    
+
     if (data.value !== requiredStep) {
       logger.log(data.value);
       router.replace({ name: STEP_ROUTES[data.value] });

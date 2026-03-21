@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Models;
 using Common.Seeding;
 using Microsoft.Extensions.Configuration;
+using Common.Config;
 
 namespace Data.Seeders;
 
@@ -16,6 +17,7 @@ public class AdminSeeder(
     {
         await SeedRolesAsync();
         await SeedAdminUserAsync();
+        await SeedSystemUserAsync();
     }
 
     private async Task SeedRolesAsync()
@@ -79,5 +81,39 @@ public class AdminSeeder(
         }
 
         logger.LogInformation("Admin user seeded successfully.");
+    }
+
+    private async Task SeedSystemUserAsync()
+    {
+
+        logger.LogInformation("Creating system account");
+
+        var exists = await userManager.FindByIdAsync(SystemConfig.SystemId.ToString());
+
+        if (exists is not null)
+        {
+            logger.LogInformation("System user already exists");
+            return;
+        }
+
+        var system = new ApplicationUser
+        {
+            Name = SystemConfig.SystemAccountName,
+            UserName = SystemConfig.SystemAccountName,
+            Id = SystemConfig.SystemId,
+            Email = SystemConfig.SystemEmail,
+            EmailConfirmed = true,
+        };
+
+        var result = await userManager.CreateAsync(system);
+
+        if (!result.Succeeded)
+        {
+            logger.LogError("Failed to seed system account: {Errors}",
+                string.Join(", ", result.Errors.Select(e => e.Description)));
+            return;
+        }
+
+        logger.LogInformation("System user created successfully");
     }
 }

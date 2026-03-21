@@ -8,7 +8,7 @@ namespace API.Features.Storage.Files.CopyFiles;
 internal sealed class CopyFilesRequest
 {
     public required Guid[] FileIds { get; set; }
-    public Guid DestinationId { get; set; }
+    public Guid? DestinationId { get; set; }
 }
 
 sealed class CopyFilesRequestValidator : Validator<CopyFilesRequest>

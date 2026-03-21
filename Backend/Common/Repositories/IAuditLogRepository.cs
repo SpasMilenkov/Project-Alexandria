@@ -15,5 +15,5 @@ public interface IAuditLogRepository
     /// </summary>
     /// <param name="ct">Cancellation token</param>
     Task DeleteRangeAsync(CancellationToken ct = default);
-
+    Task<ActivityStatisticsOverview> GetOverviewAsync(Guid userId, ActivityQuery query, CancellationToken ct = default);
 }

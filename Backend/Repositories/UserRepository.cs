@@ -218,7 +218,7 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
         context.Users.UpdateRange(entities);
     }
 
-    public async Task<UserProfileDto?> GetUserProfile(Guid userId, CancellationToken ct)
+    public async Task<UserProfileDto?> GetUserProfile(Guid userId, CancellationToken ct = default)
     {
         return await context.Users.Where(u => u.Id == userId && u.DeletedAt == null).Select(u => new UserProfileDto(u.UserName, u.Email, u.CreatedAt)).FirstOrDefaultAsync(ct);
     }

@@ -152,7 +152,6 @@
           Upload
         </UButton>
 
-        <!-- Search — promoted, large enough to tap comfortably -->
         <UButton
           variant="outline"
           color="neutral"
@@ -167,7 +166,6 @@
 
         <div class="flex-1" />
 
-        <!-- Overflow menu — sort, view, new folder -->
         <UDropdownMenu :items="mobileOverflowItems" :ui="{ content: 'w-52' }">
           <UButton variant="ghost" color="neutral" size="sm" aria-label="More options">
             <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
@@ -176,25 +174,22 @@
       </div>
     </div>
 
-    <!-- Upload action drawer (mobile) -->
+    <!-- mobile upload drawer -->
     <UDrawer
       v-model:open="isMobileUploadSheetOpen"
       direction="bottom"
       class="md:hidden"
       :ui="{
-        content:
-          'rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70',
+        content: 'rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70',
       }"
     >
       <template #content>
-        <!-- Header -->
         <div class="px-4 pt-2 pb-3">
           <p class="text-xs font-medium uppercase tracking-widest text-gray-400 dark:text-gray-600">
             Upload to {{ currentDirName ?? "Home" }}
           </p>
         </div>
 
-        <!-- Options -->
         <ul
           class="px-2 space-y-1"
           :style="{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }"
@@ -257,7 +252,7 @@
       </template>
     </UDrawer>
 
-    <!-- Breadcrumb row -->
+    <!-- breadcrumb row -->
     <div class="flex items-center gap-1 px-4 py-1.5">
       <UButton
         size="xs"
@@ -286,29 +281,10 @@
 
       <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
 
-      <UBreadcrumb :items="breadcrumbs">
-        <template #item="{ item, index }">
-          <UButton
-            :icon="item.icon"
-            :label="item.label"
-            color="neutral"
-            variant="link"
-            class="p-0.5 text-sm"
-            :class="
-              index === breadcrumbs.length - 1
-                ? 'font-medium text-gray-700 dark:text-gray-200'
-                : 'font-normal text-gray-400 dark:text-gray-500'
-            "
-            @click="handleNavigate(item.key)"
-          />
-        </template>
-        <template #separator>
-          <span class="mx-1 text-gray-300 dark:text-gray-600">/</span>
-        </template>
-      </UBreadcrumb>
+      <BreadcrumbNavigation :items="breadcrumbs" @navigate="handleNavigate" />
     </div>
 
-    <!-- Background refresh indicator (mobile) -->
+    <!-- mobile background refresh indicator -->
     <Transition name="fade-status">
       <div
         v-if="isBackgroundLoading"
@@ -320,9 +296,9 @@
       </div>
     </Transition>
 
-    <!-- Content Area -->
+    <!-- content area -->
     <div ref="containerRef" class="flex-1 overflow-auto relative">
-      <!-- Drop Zone Overlay -->
+      <!-- drop zone overlay -->
       <Transition name="dropzone">
         <div
           v-if="isOverDropZone"
@@ -335,7 +311,7 @@
             class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
           />
           <div
-            class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-background/80 shadow-sm"
+            class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-white/60 dark:bg-white/5 shadow-sm"
           >
             <div class="relative flex items-center justify-center">
               <span class="breathe absolute rounded-full border border-primary/20" />
@@ -351,7 +327,7 @@
         </div>
       </Transition>
 
-      <!-- Grid View -->
+      <!-- grid view -->
       <div v-if="viewMode === 'grid'" class="p-4">
         <GridPlaceholder v-if="showDirSkeleton" />
         <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
@@ -375,7 +351,6 @@
               @contextmenu="handleItemClick($event, dir.id, 'directory')"
             />
           </div>
-          <!-- Show more folders -->
           <div
             v-if="directoriesData?.hasNext"
             class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
@@ -413,7 +388,6 @@
               @file-trashed="refreshDir"
             />
           </div>
-          <!-- Show more files -->
           <div
             v-if="filesData?.hasNext"
             class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
@@ -430,7 +404,7 @@
         </div>
       </div>
 
-      <!-- List View -->
+      <!-- list view -->
       <div v-else class="flex flex-col">
         <ListPlaceholder v-if="showDirSkeleton" />
         <div
@@ -453,8 +427,8 @@
             @click="handleItemClick($event, dir.id, 'directory')"
             @copy="handleCopy"
             @delete="handleDelete"
+            @contextmenu="handleItemClick($event, dir.id, 'directory')"
           />
-          <!-- Show more folders -->
           <div
             v-if="directoriesData?.hasNext"
             class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
@@ -495,8 +469,8 @@
             @delete="handleDelete"
             @move="handleCut"
             @file-trashed="refreshDir"
+            @contextmenu="handleItemClick($event, file.fileId, 'file')"
           />
-          <!-- Show more files -->
           <div
             v-if="filesData?.hasNext"
             class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
@@ -530,6 +504,7 @@ import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
 import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
 import FileUploadModal from "./Modals/FileUploadModal.vue";
 import DirectoryUploadModal from "./Modals/DirectoryUploadModal.vue";
+import ArchiveUploadModal from "./Modals/ArchiveUploadModal.vue";
 import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
 import { useSettingsStore } from "@/stores/settings";
@@ -543,15 +518,15 @@ import QuickSearchModal from "./Modals/QuickSearchModal.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useDropZone } from "@vueuse/core";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
+import { logger } from "@/utils/logger";
+import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
 const settingsStore = useSettingsStore();
 const tabStore = useTabStore();
 
-const props = defineProps<{
-  tabId: string;
-}>();
+const props = defineProps<{ tabId: string }>();
 
 const toast = useToast();
 
@@ -594,7 +569,8 @@ const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
 
-// Initial-load skeleton tracking
+// skeleton tracking
+
 const dirHasLoaded = ref(false);
 const fileHasLoaded = ref(false);
 
@@ -615,13 +591,15 @@ watch(
 
 const showDirSkeleton = computed(() => areDirectoriesLoading.value && !dirHasLoaded.value);
 const showFileSkeleton = computed(() => areFilesLoading.value && !fileHasLoaded.value);
+
 const isBackgroundLoading = computed(
   () =>
     (areDirectoriesLoading.value && dirHasLoaded.value) ||
     (areFilesLoading.value && fileHasLoaded.value),
 );
 
-// Last-refreshed timer
+// last-refreshed timer
+
 const lastRefreshedAt = ref<Date | null>(null);
 const lastRefreshedLabel = ref<string>("");
 let labelTimer: ReturnType<typeof setInterval> | null = null;
@@ -648,7 +626,8 @@ watch(areDirectoriesLoading, (loading) => {
   if (!loading && dirHasLoaded.value) startLabelTimer(new Date());
 });
 
-// Tab title sync
+// tab title sync
+
 const currentDirName = computed<string | undefined>(() => {
   if (!currentDirId.value) return undefined;
   const parts = pathQuery.data.value?.pathParts;
@@ -663,7 +642,8 @@ watch(
   { immediate: true },
 );
 
-// Tag query
+// tags
+
 const tagCurrentPage = ref(1);
 const tagPageSize = ref(25);
 const searchFilters = computed<SearchTagsSchema>(() => ({
@@ -672,7 +652,8 @@ const searchFilters = computed<SearchTagsSchema>(() => ({
 }));
 const { data: tagsData } = useQuery(searchTag(searchFilters.value));
 
-// Drop zone
+// drop zone
+
 const containerRef = ref<HTMLElement | null>(null);
 const dragHasDirectory = ref(false);
 
@@ -692,9 +673,10 @@ const { isOverDropZone } = useDropZone(containerRef, {
       .filter((e): e is FileSystemEntry => e !== null && e !== undefined);
 
     if (entries.length === 0) return;
-    const hasDirectory = entries.some((e) => e.isDirectory);
 
+    const hasDirectory = entries.some((e) => e.isDirectory);
     let instance;
+
     if (hasDirectory) {
       const allFiles = (await Promise.all(entries.map((e) => readEntryRecursive(e)))).flat();
       instance = directoryUploadModal.open({
@@ -703,10 +685,11 @@ const { isOverDropZone } = useDropZone(containerRef, {
         droppedFiles: allFiles,
       });
     } else {
+      // pass all dropped files to the modal
       instance = fileUploadModal.open({
         directoryId: currentDirId.value ?? undefined,
         directoryName: currentDirName.value,
-        droppedFile: (_files ?? [])[0] ?? undefined,
+        droppedFiles: _files ?? [],
       });
     }
 
@@ -768,7 +751,8 @@ const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEn
     readBatch();
   });
 
-// Shortcuts
+// keyboard shortcuts
+
 let copyMode = true;
 
 defineShortcuts({
@@ -796,7 +780,8 @@ defineShortcuts({
   shift_l: () => advancedSearch(),
 });
 
-// Sort & upload state (declared first — referenced by mobileOverflowItems)
+// sort & upload state
+
 const sortByOptions = ref([
   { label: "Name", value: SortBy.Name },
   { label: "Date Created", value: SortBy.CreatedAt },
@@ -805,7 +790,6 @@ const sortByOptions = ref([
 
 const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
 const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
-
 const selectedUploadType = ref({ icon: "mdi:file-outline", label: "File" });
 
 const uploadOptions = ref([
@@ -828,7 +812,8 @@ const handleSorting = () => {
   refreshDir();
 };
 
-// Mobile upload action sheet
+// mobile upload sheet
+
 const isMobileUploadSheetOpen = ref(false);
 
 const mobileUpload = (type: "File" | "Directory" | "Archive") => {
@@ -836,8 +821,6 @@ const mobileUpload = (type: "File" | "Directory" | "Archive") => {
   handleFileUpload(type);
 };
 
-// Mobile overflow menu
-// computed so that checkmarks, direction label and view toggle label stay reactive
 const mobileOverflowItems = computed(() => [
   { label: "Sort by", type: "label" as const },
   {
@@ -882,19 +865,17 @@ const mobileOverflowItems = computed(() => [
     },
   },
   { type: "separator" as const },
-  {
-    icon: "mdi:folder-plus",
-    label: "New Folder",
-    onSelect: () => createNewDirectory(),
-  },
+  { icon: "mdi:folder-plus", label: "New Folder", onSelect: () => createNewDirectory() },
 ]);
 
-// Modals
+// modals
+
 const overlay = useOverlay();
 const createDirectoryModal = overlay.create(CreateDirectoryModal);
 const updateDirectoryModal = overlay.create(UpdateDirectoryModal);
 const fileUploadModal = overlay.create(FileUploadModal);
 const directoryUploadModal = overlay.create(DirectoryUploadModal);
+const archiveUploadModal = overlay.create(ArchiveUploadModal);
 const advancedSearchModal = overlay.create(AdvancedSearchModal);
 const quickSearchModal = overlay.create(QuickSearchModal);
 const confirmModal = overlay.create(ConfirmModal);
@@ -916,7 +897,8 @@ const quickSearch = async () => {
   else if (typeof result === "string") handleNavigate(result);
 };
 
-// Interaction handlers
+// interaction handlers
+
 const handleContainerClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
   if (!target.closest("button")) clearSelection();
@@ -1042,7 +1024,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
       instance = directoryUploadModal.open(uploadProps);
       break;
     case "Archive":
-      instance = directoryUploadModal.open(uploadProps);
+      instance = archiveUploadModal.open(uploadProps);
       break;
     default:
       instance = fileUploadModal.open(uploadProps);
@@ -1099,6 +1081,7 @@ const handleItemClick = (event: MouseEvent, id: string, type: "file" | "director
 
   if (isRightClick) {
     if (!isFileSelected(id) && !isDirectorySelected(id)) {
+      clearSelection();
       toggleSelect(id, type);
       lastSelected.value = id;
     }
@@ -1135,6 +1118,7 @@ const handleMouseNavigate = (event: MouseEvent) => {
 onMounted(() => {
   containerRef.value?.addEventListener("mousedown", handleMouseNavigate);
   const tab = tabStore.getTab(props.tabId);
+  logger.log("active dir id",tab?.activeDirId)
   navigateTo(tab?.activeDirId);
 });
 

@@ -2,6 +2,7 @@ using API.Extensions;
 using API.Features.Auth.Extensions;
 using API.Middlewares;
 using Infrastructure;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var bld = WebApplication.CreateBuilder();
 
@@ -33,6 +34,12 @@ app.UseMiddleware<JwtFromCookieMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAlexandriaEndpoints();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.MapHealthChecks("/health");
 
 await app.RunAsync();

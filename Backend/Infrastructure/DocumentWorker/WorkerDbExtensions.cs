@@ -1,3 +1,4 @@
+using Common.Audit;
 using Data.Context;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,8 @@ public static class WorkerDbExtensions
 {
     public static IServiceCollection AddWorkerDatabase(this IServiceCollection services, IConfiguration config)
     {
+        services.AddScoped<AuditContext>();
+
         var connStr = config.GetConnectionString("AlexandriaPostgres");
         services.AddDbContext<AlexandriaDbContext>(opt => opt.UseNpgsql(connStr));
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>

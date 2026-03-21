@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Common;
+using Common.Config;
 using Common.Services;
 using DTO;
 using FastEndpoints.Security;
@@ -20,7 +21,7 @@ public class AuthService(
     {
         var user = await userManager.FindByEmailAsync(email);
 
-        if (user is not { DeletedAt: null })
+        if (user is not { DeletedAt: null } || user.Id == SystemConfig.SystemId)
             return AuthResult.Failed();
 
         var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
@@ -34,7 +35,7 @@ public class AuthService(
 
         authResult.UserRoles = roles;
         authResult.OnboardingStep = user.OnboardinStep;
-        
+
         return authResult;
     }
 
@@ -140,14 +141,14 @@ public class AuthService(
         var user = await userManager.FindByIdAsync(userId.ToString()) ?? throw new InvalidOperationException("User does not exist");
 
         if (user.OnboardinStep != Models.Enumerators.OnboardingStep.SetPassword) throw new InvalidOperationException("Initial password already changed");
-        
+
         var result = await signInManager.CheckPasswordSignInAsync(user, oldPassword, lockoutOnFailure: false);
 
-            if (!result.Succeeded) throw new InvalidOperationException("Initial password does not match");
+        if (!result.Succeeded) throw new InvalidOperationException("Initial password does not match");
 
         await userManager.ChangePasswordAsync(user, oldPassword, newPassword);
 
-        user.OnboardinStep = Models.Enumerators.OnboardingStep.CompleteProfile  ;
+        user.OnboardinStep = Models.Enumerators.OnboardingStep.CompleteProfile;
         await userManager.UpdateAsync(user);
     }
 }

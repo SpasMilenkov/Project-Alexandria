@@ -1,4 +1,5 @@
 using Common;
+using Common.Config;
 using Common.Services;
 using PreviewService.Media;
 
@@ -60,8 +61,7 @@ public class MediaPreviewGenerationHandler(
             await using var thumbnailStream = File.OpenRead(thumbnailPath);
             await storage.UploadMediaData(previewStream, thumbnailStream, fileHash, fileData.Id, result.Metadata, ct);
 
-            //TODO: Change Guid.Empty when the system account is seeded into the database
-            await fileService.UpdateFileMetadata(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
+            await fileService.UpdateFileMetadata(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
         }
         finally
         {

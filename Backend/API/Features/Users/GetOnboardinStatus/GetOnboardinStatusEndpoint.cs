@@ -28,7 +28,7 @@ internal sealed class GetOnboardingStatusEndpoint(IUserManagementService userMan
             await Send.NotFoundAsync(cancellation: ct);
             return;
         }
-        
+
         await Send.OkAsync(new GetOnboardingStatusResponse { OnboardingStep = step ?? OnboardingStep.Tour }, cancellation: ct);
     }
 }

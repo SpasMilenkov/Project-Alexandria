@@ -320,11 +320,6 @@ namespace Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
                     b.Property<Guid?>("EntityId")
                         .HasColumnType("uuid");
 
@@ -332,6 +327,15 @@ namespace Data.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("EventCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("FallbackDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
@@ -341,7 +345,7 @@ namespace Data.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("MetadataJson")
-                        .HasColumnType("json");
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("OperationType")
                         .IsRequired()
@@ -360,6 +364,8 @@ namespace Data.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EventCode");
 
                     b.HasIndex("Timestamp");
 

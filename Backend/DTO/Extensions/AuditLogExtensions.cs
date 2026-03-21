@@ -1,3 +1,4 @@
+using DTO.Audit;
 using Models;
 using Models.Enumerators;
 
@@ -13,7 +14,7 @@ public static class AuditLogExtensions
             UserId = dto.UserId,
             EntityType = dto.EntityType,
             EntityId = dto.EntityId,
-            Description = dto.Description,
+            EventCode = dto.EventCode,
             MetadataJson = dto.MetadataJson,
             Timestamp = DateTimeOffset.UtcNow,
             IpAddress = dto.IpAddress,

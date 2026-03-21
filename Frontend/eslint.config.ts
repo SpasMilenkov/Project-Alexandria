@@ -1,17 +1,14 @@
 import pluginVitest from "@vitest/eslint-plugin";
-import { defineConfigWithVueTs } from "@vue/eslint-config-typescript";
 import pluginPlaywright from "eslint-plugin-playwright";
 
-export default defineConfigWithVueTs(
-  {
-    ignores: ["**/*.vue", "**/*.ts", "**/*.tsx"],
-  },
+export default [
   {
     ...pluginVitest.configs.recommended,
-    files: ["src/**/__tests__/*"],
+    files: ["src/**/__tests__/**/*"],
+    lint: "eslint --no-warn-ignored",
   },
   {
     ...pluginPlaywright.configs["flat/recommended"],
     files: ["e2e/**/*.{test,spec}.{js,ts,jsx,tsx}"],
   },
-);
+];

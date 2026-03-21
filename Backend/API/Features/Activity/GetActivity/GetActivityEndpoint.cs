@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using API.Features.Auth.Extensions;
 using Common.Services;
 using DTO;
 using DTO.Audit;
@@ -13,15 +13,12 @@ sealed class GetUserActivityEndpoint(IAuditService auditService) : Endpoint<Audi
     public override void Configure()
     {
         Get($"activity/user");
+        Policies(Common.Auth.Policies.RequireUser);
     }
 
     public override async Task HandleAsync(AuditLogQuery req, CancellationToken ct)
     {
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                           ?? User.FindFirst("sub")?.Value
-                           ?? throw new UnauthorizedAccessException("User ID not found in token");
-        var userId = Guid.Parse(userIdString);
-
+        var userId = User.GetUserId();
 
         await Send.OkAsync(await auditService.GetLogs(req, userId, ct), ct);
     }

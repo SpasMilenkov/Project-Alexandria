@@ -10,7 +10,7 @@ public interface IFileService
     Task FolderWithOwnershipExists(Guid? directoryId, Guid ownerId, CancellationToken ct = default);
     Task MoveFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
 
-    Task CopyFilesAsync(Guid[] fileIds, Guid destinationId, Guid userId, CancellationToken ct = default);
+    Task CopyFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
 
     Task<File?> GetFileMetadata(Guid fileId, CancellationToken ct = default);
 

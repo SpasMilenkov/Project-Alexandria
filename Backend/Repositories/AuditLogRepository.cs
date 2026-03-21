@@ -76,7 +76,10 @@ public class AuditLogRepository(AlexandriaDbContext context) : IAuditLogReposito
                 EntityType = a.EntityType,
                 UserId = a.UserId ?? Guid.Empty,
                 EntityId = a.EntityId ?? Guid.Empty,
-                Description = a.Description,
+                EventCode = a.EventCode,
+                FallbackDescription = a.FallbackDescription,
+                Metadata = a.MetadataJson,
+                IpAddress = a.IpAddress,
                 Timestamp = a.Timestamp,
                 LogSource = a.Source
             })
@@ -98,5 +101,35 @@ public class AuditLogRepository(AlexandriaDbContext context) : IAuditLogReposito
         await _dbSet
             .Where(a => a.Timestamp <= DateTimeOffset.UtcNow.AddYears(-2))
             .ExecuteDeleteAsync(cancellationToken: ct);
+    }
+
+    public async Task<ActivityStatisticsOverview> GetOverviewAsync(Guid userId, ActivityQuery query, CancellationToken ct = default)
+    {
+
+        var dbQuery = _dbSet.Where(a => a.UserId == userId && a.Timestamp <= query.EndDate.ToUniversalTime() && a.Timestamp >= query.StartDate.ToUniversalTime() &&
+            (a.OperationType == OperationType.Create
+                || a.OperationType == OperationType.Read
+                || a.OperationType == OperationType.Update
+                || a.OperationType == OperationType.Delete));
+
+        var data = await dbQuery
+        .Select(a => new { OperationType = a.OperationType, Timestamp = a.Timestamp }).ToListAsync(ct);
+
+        var totalCount = await dbQuery.CountAsync(ct);
+
+        var activityPerDay = data
+        .GroupBy(a => a.Timestamp.DayOfYear)
+        .OrderBy(g => g.Key)
+        .ToDictionary(g => g.Key, g => new ActivitySummary
+        {
+            TotalOperations = g.Count(),
+            CountPerOperation = g.GroupBy(a => a.OperationType).ToDictionary(og => og.Key, og => og.Count())
+        });
+
+        return new ActivityStatisticsOverview
+        {
+            TotalActivity = totalCount,
+            ActivityPerDay = activityPerDay
+        };
     }
 }

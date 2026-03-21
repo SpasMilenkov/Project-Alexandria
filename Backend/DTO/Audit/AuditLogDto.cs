@@ -1,11 +1,11 @@
 using Models.Enumerators;
 
-namespace DTO;
+namespace DTO.Audit;
 
 public record AuditLogDto(OperationType OperationType,
     EntityType EntityType,
     Guid UserId,
     Guid EntityId,
-    string Description,
+    AuditEventCode EventCode,
     string? MetadataJson = null,
     string IpAddress = "");

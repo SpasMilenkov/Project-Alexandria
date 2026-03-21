@@ -1,3 +1,4 @@
+using Common.Audit;
 using Data.Context;
 using Data.Seeders;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,8 @@ public static class DatabaseExtensions
 {
     public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration config)
     {
+        services.AddScoped<AuditContext>();
+
         services.AddDbContext<AlexandriaDbContext>((sp, opt) =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();

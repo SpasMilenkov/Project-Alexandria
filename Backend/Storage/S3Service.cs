@@ -18,6 +18,7 @@ using Models;
 using Models.Enumerators;
 using MediaMetadata = DTO.Files.MediaMetadata;
 using FileEntity = Models.File;
+using Common.Audit;
 
 namespace Storage;
 
@@ -27,7 +28,8 @@ public partial class S3Service(
     IOptions<S3Config> config,
     ILogger<S3Service> logger,
     IPromotionQueue promotionQueue,
-    IFileService fileService)
+    IFileService fileService,
+    AuditContext auditContext)
     : IStorageService
 {
     /// <summary>
@@ -117,7 +119,11 @@ public partial class S3Service(
     {
         LogStartingPreviewUpload(logger, bucketName, objectName, originalFileId);
 
+        auditContext.RunAsSystem();
+
         await unitOfWork.BeginTransactionAsync(ct);
+
+        var file = await unitOfWork.Files.GetByIdAsync(originalFileId, ct) ?? throw new InvalidOperationException("File for preview not found");
 
         try
         {
@@ -163,6 +169,12 @@ public partial class S3Service(
                 };
 
                 savedFile = await unitOfWork.Previews.CreateAsync(fileEntity, ct);
+            }
+
+            if (file.PreviewId != savedFile.Id)
+            {
+                file.PreviewId = savedFile.Id;
+                unitOfWork.Files.Update(file);
             }
 
             await unitOfWork.CommitAsync(ct);
@@ -247,17 +259,14 @@ public partial class S3Service(
 
         LogStartingMediaDataUpload(logger, fileId, previewKey, thumbnailKey);
 
+        auditContext.RunAsSystem();
+
         await unitOfWork.BeginTransactionAsync(ct);
 
         try
         {
-            var originalFileExists = await unitOfWork.Files.ExistsAsync(f => f.Id == fileId, ct);
+            var file = await unitOfWork.Files.GetByIdAsync(fileId, ct) ?? throw new InvalidOperationException("File for preview not found");
 
-            if (!originalFileExists)
-            {
-                LogOriginalFileNotFoundForMedia(logger, fileId);
-                throw new InvalidOperationException($"Original file with ID {fileId} not found");
-            }
 
             if (previewStream.CanSeek) previewStream.Position = 0;
             if (thumbnailStream.CanSeek) thumbnailStream.Position = 0;
@@ -293,7 +302,7 @@ public partial class S3Service(
 
 
             var existingMetadata = await unitOfWork.MediaMetadata.FirstOrDefaultAsync(f => f.FileId == fileId, ct);
-
+            Preview savedPreview;
             if (existingMetadata != null)
             {
                 LogUpdatingMediaMetadata(logger, existingMetadata.Id, fileId);
@@ -312,7 +321,7 @@ public partial class S3Service(
                 existingMetadata.Album = metadataDto.Album;
                 existingMetadata.Year = metadataDto.Year;
                 existingMetadata.Genre = metadataDto.Genre;
-                // existingMetadata.UpdatedBy = "System";
+                existingMetadata.UpdatedBy = SystemConfig.SystemId;
 
                 await unitOfWork.MediaMetadata.UpdateAsync(existingMetadata, ct);
             }
@@ -332,28 +341,34 @@ public partial class S3Service(
                 LogUpdatingPreviewRecord(logger, existingPreview.Id);
 
                 existingPreview.Size = new BigInteger(previewStream.Length);
-                // existingPreview.UpdatedBy = "System";
+                existingPreview.UpdatedBy = SystemConfig.SystemId;
 
-                await unitOfWork.Previews.UpdateAsync(existingPreview, ct);
+                savedPreview = await unitOfWork.Previews.UpdateAsync(existingPreview, ct);
             }
             else
             {
                 LogCreatingPreviewForMedia(logger, fileId);
 
-                var fileEntity = new Preview
+                var preview = new Preview
                 {
                     Id = Guid.NewGuid(),
                     Name = previewKey,
                     Path = filePath,
                     MimeType = metadataDto.FormatName ?? "mp4",
                     Size = new BigInteger(previewStream.Length),
-                    // UpdatedBy = "System",
+                    UpdatedBy = SystemConfig.SystemId,
                     FileId = fileId
                 };
 
-                await unitOfWork.Previews.CreateAsync(fileEntity, ct);
+                savedPreview = await unitOfWork.Previews.CreateAsync(preview, ct);
+
             }
 
+            if (savedPreview is not null && file.PreviewId != savedPreview.Id)
+            {
+                file.PreviewId = savedPreview.Id;
+                unitOfWork.Files.Update(file);
+            }
             await unitOfWork.CommitAsync(ct);
 
             LogMediaDataUploadCompleted(logger, fileId, previewStream.Length);

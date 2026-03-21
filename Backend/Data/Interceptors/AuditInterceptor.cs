@@ -1,12 +1,14 @@
 using System.Data.Common;
 using System.Security.Claims;
+using Common.Audit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Data.Interceptors;
 
-// The interceptor sets variables before EVERY SaveChanges
-public class AuditInterceptor(IHttpContextAccessor httpContextAccessor)
+public class AuditInterceptor(
+    IHttpContextAccessor httpContextAccessor,
+    AuditContext auditContext)
     : DbTransactionInterceptor
 {
     public override async ValueTask<DbTransaction> TransactionStartedAsync(
@@ -15,25 +17,40 @@ public class AuditInterceptor(IHttpContextAccessor httpContextAccessor)
         DbTransaction result,
         CancellationToken cancellationToken = default)
     {
-        await SetTransactionContextAsync(connection);
+        await SetSessionContextAsync(connection, cancellationToken);
         return await base.TransactionStartedAsync(connection, eventData, result, cancellationToken);
     }
 
-    private async Task SetTransactionContextAsync(DbConnection connection)
+    private async Task SetSessionContextAsync(DbConnection connection, CancellationToken cancellationToken)
     {
-        var httpContext = httpContextAccessor.HttpContext;
+        string? userId = null;
+        string ipAddress = "";
 
-        var userId = httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                     ?? httpContext?.User?.FindFirst("sub")?.Value
-                     ?? Guid.Empty.ToString();
+        if (auditContext.UserId.HasValue)
+        {
+            userId = auditContext.UserId.Value.ToString();
+        }
+        else
+        {
+            var httpContext = httpContextAccessor.HttpContext;
 
-        var ipAddress = httpContext?.Connection?.RemoteIpAddress?.ToString() ?? "";
+            userId = httpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? httpContext?.User?.FindFirst("sub")?.Value;
+
+            var forwarded = httpContext?.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            ipAddress = forwarded?.Split(',').FirstOrDefault()?.Trim()
+                        ?? httpContext?.Request.Headers["X-Real-IP"].FirstOrDefault()
+                        ?? httpContext?.Connection?.RemoteIpAddress?.ToString()
+                        ?? "";
+        }
+
+        if (userId is null) return;
 
         using var cmd = connection.CreateCommand();
         cmd.CommandText = @"
-        SELECT set_config('app.current_user_id', @userId, true);
-        SELECT set_config('app.current_ip', @ipAddress, true);
-    ";
+            SELECT set_config('app.current_user_id', @userId, true);
+            SELECT set_config('app.current_ip', @ipAddress, true);
+        ";
 
         var userIdParam = cmd.CreateParameter();
         userIdParam.ParameterName = "@userId";
@@ -45,6 +62,6 @@ public class AuditInterceptor(IHttpContextAccessor httpContextAccessor)
         ipParam.Value = ipAddress;
         cmd.Parameters.Add(ipParam);
 
-        await cmd.ExecuteNonQueryAsync();
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 }

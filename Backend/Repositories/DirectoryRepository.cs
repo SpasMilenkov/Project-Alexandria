@@ -567,19 +567,16 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
 
     public async Task CopyDirectory(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default)
     {
-        var dir = await context.Directories.Where(d => d.Id == directoryId && d.OwnerId == userId)
+        var dir = await context.Directories
+            .Where(d => d.Id == directoryId && d.OwnerId == userId)
             .FirstOrDefaultAsync(ct);
 
         if (dir is null) throw new DirectoryNotFoundException();
 
         var existingDirNames = await context.Directories
-            .Where(d =>
-                d.ParentId == destinationId &&
-                d.OwnerId == userId &&
-                d.DeletedAt == null)
+            .Where(d => d.ParentId == destinationId && d.OwnerId == userId && d.DeletedAt == null)
             .Select(d => d.Name)
             .ToHashSetAsync(ct);
-
 
         var directories = await context.Directories.FromSqlInterpolated(
                 $"""
@@ -597,47 +594,36 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                      WHERE NOT d."Id" = ANY(rd.path)
                  )
                  SELECT
-                     "Id",
-                     "Name",
-                     "NormalizedName",
-                     "SearchVector",
-                     "ParentId",
-                     "CreatedAt",
-                     "UpdatedAt",
-                     "DeletedAt",
-                     "UpdatedBy",
-                     "OwnerId"
+                     "Id", "Name", "NormalizedName", "SearchVector",
+                     "ParentId", "CreatedAt", "UpdatedAt", "DeletedAt",
+                     "UpdatedBy", "OwnerId"
                  FROM RecursiveDirs;
-
                  """)
             .AsNoTracking()
             .ToListAsync(ct);
 
         var dirIds = directories.Select(d => d.Id).ToList();
 
-        var files =
-            await context.Files
-                .Where(f => f.DirectoryId != null && dirIds.Contains(f.DirectoryId ?? Guid.Empty) &&
-                            f.OwnerId == userId)
-                .Select(f => new
+        var files = await context.Files
+            .Where(f => f.DirectoryId != null && dirIds.Contains(f.DirectoryId ?? Guid.Empty) && f.OwnerId == userId)
+            .Select(f => new
+            {
+                f.Id,
+                f.Name,
+                f.MimeType,
+                f.DirectoryId,
+                Version = new
                 {
-                    f.Id,
-                    f.Name,
-                    f.MimeType,
-                    f.DirectoryId,
-                    Version = new
-                    {
-                        f.CurrentVersion.ContentObjectId,
-                        f.CurrentVersion.Size,
-                        f.CurrentVersion.MimeType,
-                        f.CurrentVersion.ContentHash
-                    }
-                })
-                .ToListAsync(ct);
+                    f.CurrentVersion.ContentObjectId,
+                    f.CurrentVersion.Size,
+                    f.CurrentVersion.MimeType,
+                    f.CurrentVersion.ContentHash
+                }
+            })
+            .ToListAsync(ct);
 
         var dirMap = directories.ToDictionary(d => d.Id, _ => Guid.NewGuid());
         var now = DateTime.UtcNow;
-
 
         var newDirectories = directories.Select(d => new Directory
         {
@@ -647,11 +633,10 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                 : d.Name,
             ParentId = d.Id == directoryId
                 ? destinationId
-                : dirMap[d.ParentId.Value],
+                : dirMap[d.ParentId!.Value],
             CreatedAt = now,
             OwnerId = userId
         }).ToList();
-
 
         var newFiles = new List<File>();
         var newVersions = new List<FileVersion>();
@@ -665,11 +650,11 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             {
                 Id = fileId,
                 Name = f.Name,
+                MimeType = f.MimeType,
                 DirectoryId = dirMap[f.DirectoryId!.Value],
                 OwnerId = userId,
                 CreatedAt = now,
-                CurrentVersionId = versionId,
-                MimeType = f.MimeType
+                CurrentVersionId = null // ← set after versions are inserted
             });
 
             newVersions.Add(new FileVersion
@@ -686,16 +671,38 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             });
         }
 
-        await using var tx = await context.Database.BeginTransactionAsync(ct);
+        var existingTransaction = context.Database.CurrentTransaction;
+        await using var tx = existingTransaction is null
+            ? await context.Database.BeginTransactionAsync(ct)
+            : null;
 
-        context.Directories.AddRange(newDirectories);
-        await context.SaveChangesAsync(ct);
-        context.Files.AddRange(newFiles);
-        context.FileVersions.AddRange(newVersions);
+        try
+        {
+            // 1. Insert directories
+            context.Directories.AddRange(newDirectories);
+            await context.SaveChangesAsync(ct);
 
-        await context.SaveChangesAsync(ct);
+            // 2. Insert files (CurrentVersionId = null) + versions — no circular dependency
+            context.Files.AddRange(newFiles);
+            context.FileVersions.AddRange(newVersions);
+            await context.SaveChangesAsync(ct);
 
-        await tx.CommitAsync(ct);
+            // 3. Wire up CurrentVersionId and update
+            var versionLookup = newVersions.ToDictionary(v => v.FileId, v => v.Id);
+            foreach (var file in newFiles)
+                file.CurrentVersionId = versionLookup[file.Id];
+
+            await context.SaveChangesAsync(ct);
+
+            if (tx is not null)
+                await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            if (tx is not null)
+                await tx.RollbackAsync(ct);
+            throw;
+        }
     }
 
     public async Task MoveDirectories(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default)
