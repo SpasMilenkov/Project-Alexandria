@@ -118,6 +118,7 @@
             <OnlineStatusIndicator />
             <UTooltip text="Show app shortcuts">
               <UButton
+                class="md:block hidden"
                 icon="material-symbols-light:keyboard-outline-rounded"
                 size="xl"
                 @click="openShortCutsModal"
