@@ -6,20 +6,23 @@ using Microsoft.EntityFrameworkCore;
 using Models;
 using File = Models.File;
 using Directory = Models.Directory;
+using Common.Audit;
 
 namespace Data.Context;
 
 public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
     private readonly IHttpContextAccessor? _httpContextAccessor;
-
+    private readonly AuditContext? _auditContext;
     // Constructor for DI (used at runtime)
     public AlexandriaDbContext(
         DbContextOptions<AlexandriaDbContext> options,
+        AuditContext auditContext,
         IHttpContextAccessor httpContextAccessor)
         : base(options)
     {
         _httpContextAccessor = httpContextAccessor;
+        _auditContext = auditContext;
     }
 
     // Constructor for migrations (when IHttpContextAccessor is not available)
@@ -27,6 +30,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         : base(options)
     {
         _httpContextAccessor = null;
+        _auditContext = null;
     }
 
     public DbSet<File> Files { get; set; }
@@ -84,7 +88,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         // Only add interceptor if we have HttpContext (not during migrations)
         if (_httpContextAccessor != null)
         {
-            optionsBuilder.AddInterceptors(new AuditInterceptor(_httpContextAccessor));
+            optionsBuilder.AddInterceptors(new AuditInterceptor(_httpContextAccessor, _auditContext));
         }
     }
 }
