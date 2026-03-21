@@ -27,7 +27,7 @@ public partial class FileService(
         await unitOfWork.Files.MoveFilesAsync(fileIds, destinationId, userId, ct);
     }
 
-    public async Task CopyFilesAsync(Guid[] fileIds, Guid destinationId, Guid userId, CancellationToken ct = default)
+    public async Task CopyFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default)
     {
         await unitOfWork.BeginTransactionAsync(ct);
         await FolderWithOwnershipExists(destinationId, userId, ct);

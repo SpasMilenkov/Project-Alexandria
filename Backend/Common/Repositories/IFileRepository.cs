@@ -42,7 +42,7 @@ public interface IFileRepository : IRepository<File>
 
     Task CopyFilesAsync(
         Guid[] fileIds,
-        Guid destinationId,
+        Guid? destinationId,
         Guid userId,
         CancellationToken ct);
 
