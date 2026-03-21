@@ -164,14 +164,22 @@ const total = computed(() => props.data.reduce((s, v) => s + v, 0));
 
 const isEmpty = computed(() => props.data.length === 0 || total.value === 0);
 
-const breakdown = computed(() =>
+const sortedItems = computed(() =>
   props.labels
     .map((label, i) => ({
+      bytes: props.data[i],
       label,
-      pct: total.value > 0 ? Math.round((props.data[i] / total.value) * 100) : 0,
       size: props.formattedSize[i],
     }))
-    .sort((a, b) => b.pct - a.pct),
+    .sort((a, b) => b.bytes - a.bytes),
+);
+
+const breakdown = computed(() =>
+  sortedItems.value.map((item) => ({
+    label: item.label,
+    pct: total.value > 0 ? Math.round((item.bytes / total.value) * 100) : 0,
+    size: item.size,
+  })),
 );
 
 const topCategory = computed(() => breakdown.value[0] ?? { label: "—", size: "—" });
@@ -195,12 +203,12 @@ const chartData = computed(
         backgroundColor: palette.map((c) => c),
         borderColor: isDark.value ? "#1a1a1a" : "#f8f7f4",
         borderWidth: 2,
-        data: props.data,
+        data: sortedItems.value.map((item) => item.bytes),
         hoverBorderColor: isDark.value ? "#2a2a2a" : "#ffffff",
         hoverOffset: 4,
       },
     ],
-    labels: props.labels,
+    labels: sortedItems.value.map((item) => item.label),
   }),
 );
 
@@ -217,10 +225,9 @@ const chartOptions = computed(
         borderWidth: 1,
         callbacks: {
           label: (context) => {
-            const index = context.dataIndex;
-            const formatted = props.formattedSize[index];
-            const pct = total.value > 0 ? Math.round((props.data[index] / total.value) * 100) : 0;
-            return `  ${formatted}  ·  ${pct}%`;
+            const item = sortedItems.value[context.dataIndex];
+            const pct = total.value > 0 ? Math.round((item.bytes / total.value) * 100) : 0;
+            return `  ${item.size}  ·  ${pct}%`;
           },
           title: (items) => `  ${items[0].label}`,
         },
