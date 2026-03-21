@@ -2,7 +2,7 @@
   <div
     draggable
     data-tag-item
-    class="relative group cursor-pointer rounded-xl border p-5 transition-all duration-300"
+    class="relative group cursor-pointer rounded-xl border p-5 transition-all duration-300 backdrop-blur-sm"
     :class="[
       isSelected
         ? 'bg-primary/10 border-primary ring-2 ring-primary shadow-lg'
