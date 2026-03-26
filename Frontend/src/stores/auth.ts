@@ -54,6 +54,10 @@ export const useAuthStore = defineStore(
       }
     };
 
+    const clearSession = () => {
+      user.value = null;
+    };
+
     const clearError = () => {
       error.value = null;
     };
@@ -70,6 +74,7 @@ export const useAuthStore = defineStore(
       login,
       logout,
       clearError,
+      clearSession,
     };
   },
   {
