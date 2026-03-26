@@ -16,7 +16,7 @@
 
       <template #default="{ collapsed }">
         <!-- Desktop navigation -->
-        <div class="hidden sm:flex sm:flex-col sm:flex-1">
+        <div class="hidden lg:flex lg:flex-col lg:flex-1">
           <UNavigationMenu :collapsed="collapsed" :items="mainMenuItems" orientation="vertical" />
 
           <!-- Admin section, only visible to admins -->
@@ -38,7 +38,7 @@
         </div>
 
         <!-- Mobile navigation (large touch targets) -->
-        <div class="flex flex-col flex-1 sm:hidden overflow-y-auto">
+        <div class="flex flex-col flex-1 lg:hidden overflow-y-auto">
           <!-- Section: Library -->
           <div class="px-3 pt-5 pb-1">
             <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
