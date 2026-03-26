@@ -467,12 +467,12 @@ const handleNavigate = (_directoryId: string) => {
   }
 };
 
-const restoreSelectedFiles = async () => {
+const restoreSelectedFiles = () => {
   if (selectedFiles.value.size === 0) return;
   restoreFilesMutate(Array.from(selectedFiles.value));
 };
 
-const restoreSelectedDirectories = async () => {
+const restoreSelectedDirectories = () => {
   if (selectedDirectories.value.size === 0) return;
   restoreDirectoriesMutate(Array.from(selectedDirectories.value));
 };
