@@ -20,8 +20,6 @@
               searchable
               class="w-full"
               searchable-placeholder="Search icons..."
-              option-attribute="label"
-              value-attribute="value"
               placeholder="Select an icon"
             >
               <template #leading="{ modelValue }">
@@ -110,6 +108,7 @@ import TagCard from "../TagCard.vue";
 import type { TagDto } from "@/api/tag";
 import { getIconByValue, iconOptions } from "@/utils/icon.utils";
 import TagBadge from "../TagBadge.vue";
+import { logger } from "@/utils/logger";
 
 const settingsStore = useSettingsStore();
 const { mutateAsync, state: mutationState, isLoading } = createTag();
@@ -132,7 +131,7 @@ const onSubmit = async (event: FormSubmitEvent<CreateTagSchema>) => {
 const exampleTag = computed<TagDto>(() => ({
   color: state.color,
   createdAt: new Date().toISOString(),
-  icon: getIconByValue(state.icon) || "mdi:tag",
+  icon: state.icon || "tag",
   id: "preview-tag",
   name: state.name || "Example Tag",
   updatedAt: null,
