@@ -12,10 +12,10 @@ const isLoading = computed(() => status.value === "pending");
 const isError = computed(() => status.value === "error");
 const isFetching = computed(() => asyncStatus.value === "loading");
 
-function handleRefresh() {
+const handleRefresh = () => {
   refresh();
   refreshResources();
-}
+};
 
 const overall = computed(() => data.value?.status ?? null);
 
@@ -83,17 +83,14 @@ const sortedChecks = computed<HealthCheckEntry[]>(() => {
   return [...data.value.checks].sort((a, b) => order[a.status] - order[b.status]);
 });
 
-function formatMs(ms: number) {
-  return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${ms.toFixed(0)} ms`;
-}
+const formatMs = (ms: number) =>
+  ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${ms.toFixed(0)} ms`;
 
-function formatName(name: string) {
-  return name.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ");
-}
+const formatName = (name: string) => name.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ");
 
 const proc = computed(() => resources.value?.process ?? null);
 
-function formatUptime(raw: string): string {
+const formatUptime = (raw: string): string => {
   let days = 0,
     hours = 0,
     minutes = 0;
@@ -116,9 +113,9 @@ function formatUptime(raw: string): string {
     pieces.push(`${minutes}m`);
   }
   return pieces.length ? pieces.join(" ") : "just started";
-}
+};
 
-function memoryColor(pct: number) {
+const memoryColor = (pct: number) => {
   if (pct < 60) {
     return {
       bar: "bg-emerald-500",
@@ -141,7 +138,7 @@ function memoryColor(pct: number) {
     ring: "ring-red-400/40",
     text: "text-red-600 dark:text-red-400",
   };
-}
+};
 
 const memPct = computed(() => Math.min(proc.value?.memoryUsagePercent ?? 0, 100));
 const memColor = computed(() => memoryColor(memPct.value));
@@ -149,16 +146,15 @@ const memLabel = computed(() =>
   memPct.value < 60 ? "Comfortable" : memPct.value < 80 ? "Getting full" : "Nearly full",
 );
 
-function formatMb(mb: number) {
-  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
-}
-function formatCpuTime(s: number) {
-  return s < 60
+const formatMb = (mb: number) =>
+  mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
+
+const formatCpuTime = (s: number) =>
+  s < 60
     ? `${s.toFixed(1)}s`
     : s < 3600
       ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`
       : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
-}
 </script>
 
 <template>
@@ -509,7 +505,7 @@ function formatCpuTime(s: number) {
                 class="flex flex-col divide-y divide-gray-200/60 dark:divide-gray-700/60 rounded-xl border border-gray-200/70 dark:border-gray-700/70 overflow-hidden flex-1"
               >
                 <div
-                  class="flex items-center justify-between px-4 py-3 bg-white/40 dark:bg-white/[0.02]"
+                  class="flex items-center justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -525,7 +521,7 @@ function formatCpuTime(s: number) {
                   </span>
                 </div>
                 <div
-                  class="flex items-center justify-between px-4 py-3 bg-white/40 dark:bg-white/[0.02]"
+                  class="flex items-center justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
@@ -541,7 +537,7 @@ function formatCpuTime(s: number) {
                   </span>
                 </div>
                 <div
-                  class="flex items-center justify-between px-4 py-3 bg-white/40 dark:bg-white/[0.02]"
+                  class="flex items-center justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-red-500 shrink-0" />
@@ -575,7 +571,7 @@ function formatCpuTime(s: number) {
               >
                 <!-- Uptime -->
                 <div
-                  class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/[0.02]"
+                  class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-1.5">
                     <Icon icon="mdi:timer-sand" class="w-3.5 h-3.5 text-primary shrink-0" />
@@ -599,7 +595,7 @@ function formatCpuTime(s: number) {
                 </div>
                 <!-- CPU Time -->
                 <div
-                  class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/[0.02]"
+                  class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-1.5">
                     <Icon icon="mdi:cpu-64-bit" class="w-3.5 h-3.5 text-primary shrink-0" />
@@ -622,7 +618,7 @@ function formatCpuTime(s: number) {
                 </div>
                 <!-- Threads -->
                 <div
-                  class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/[0.02]"
+                  class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-1.5">
                     <Icon icon="mdi:source-branch" class="w-3.5 h-3.5 text-primary shrink-0" />

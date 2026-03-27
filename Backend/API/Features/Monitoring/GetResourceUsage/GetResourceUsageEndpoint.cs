@@ -5,8 +5,6 @@ namespace API.Features.Monitoring.GetResourceUsage;
 
 sealed class GetServerResourcesEndpoint : EndpointWithoutRequest<ServerResourcesResponse>
 {
-    private static readonly DateTimeOffset _startedAt = DateTimeOffset.UtcNow;
-
     public override void Configure()
     {
         Get("monitoring/resources");
@@ -30,7 +28,7 @@ sealed class GetServerResourcesEndpoint : EndpointWithoutRequest<ServerResources
                 MemoryLimitMb: totalMemoryBytes / 1024 / 1024,
                 MemoryUsagePercent: Math.Round((double)usedMemoryBytes / totalMemoryBytes * 100, 2),
                 ThreadCount: proc.Threads.Count,
-                Uptime: DateTimeOffset.UtcNow - _startedAt,
+                Uptime: DateTimeOffset.UtcNow - new DateTimeOffset(proc.StartTime.ToUniversalTime()),
                 Gen0Collections: GC.CollectionCount(0),
                 Gen1Collections: GC.CollectionCount(1),
                 Gen2Collections: GC.CollectionCount(2)

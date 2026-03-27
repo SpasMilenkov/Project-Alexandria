@@ -1,6 +1,7 @@
 import "./assets/main.css";
 import ui from "@nuxt/ui/vue-plugin";
 import { PiniaColada } from "@pinia/colada";
+import { PiniaColadaRetry } from "@pinia/colada-plugin-retry";
 import { createPinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { createApp } from "vue";
@@ -17,7 +18,12 @@ pinia.use(piniaPluginPersistedstate);
 app.use(pinia);
 app.use(PiniaColada, {
   mutationOptions: {},
-  plugins: [],
+  plugins: [
+    PiniaColadaRetry({
+      delay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
+      retry: 3,
+    }),
+  ],
   queryOptions: {
     staleTime: 0,
   },

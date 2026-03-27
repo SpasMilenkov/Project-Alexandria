@@ -132,7 +132,7 @@ const exampleTag = computed(() => ({
   color: state.color,
   createdAt: new Date().toISOString(),
   description: state.description,
-  icon: getIconByValue(state.icon),
+  icon: state.icon|| "tag",
   id: props.tag.id,
   name: state.name,
   updatedAt: new Date().toISOString(),

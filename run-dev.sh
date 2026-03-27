@@ -2,7 +2,7 @@
 set -e
 
 # Development environment launcher script
-# Usage: ./run-dev.sh [--s3-provider <Garage|MinIO|RustFS>]
+# Usage: ./run-dev.sh [--s3-provider <Garage|RustFS>]
 # Example: ./run-dev.sh --s3-provider Garage
 
 SESSION_NAME="dev-session"
@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown option: $1"
-      echo "Usage: ./run-dev.sh [--s3-provider <Garage|MinIO|RustFS>]"
+      echo "Usage: ./run-dev.sh [--s3-provider <Garage|RustFS>]"
       exit 1
       ;;
   esac
@@ -28,7 +28,7 @@ case "$S3_PROVIDER" in
     ;;
   *)
     echo "Invalid S3 provider: $S3_PROVIDER"
-    echo "Valid values: Garage, MinIO, RustFS"
+    echo "Valid values: Garage, RustFS"
     exit 1
     ;;
 esac

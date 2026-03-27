@@ -1118,7 +1118,6 @@ const handleMouseNavigate = (event: MouseEvent) => {
 onMounted(() => {
   containerRef.value?.addEventListener("mousedown", handleMouseNavigate);
   const tab = tabStore.getTab(props.tabId);
-  logger.log("active dir id",tab?.activeDirId)
   navigateTo(tab?.activeDirId);
 });
 

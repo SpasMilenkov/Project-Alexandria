@@ -612,29 +612,29 @@ const isFilterPanelOpen = ref(false);
 const isDateRangesOpen = ref(false);
 const filterForm = ref();
 
-function commitQuery() {
+const commitQuery = () => {
   apiState.value = userQueryApiSchema.parse(uiState);
-}
+};
 
 const debouncedCommit = useDebounceFn(() => {
   uiState.page = 0;
   commitQuery();
 }, 350);
 
-function applyFilters() {
+const applyFilters = () => {
   uiState.page = 0;
   commitQuery();
-}
+};
 
-function clearFilters() {
+const clearFilters = () => {
   const defaults = userQueryUiSchema.parse({});
   (Object.keys(uiState) as (keyof typeof uiState)[]).forEach((key) => {
     (uiState as Record<string, unknown>)[key] = (defaults as Record<string, unknown>)[key];
   });
   commitQuery();
-}
+};
 
-function toggleQuick(kind: "locked" | "deleted" | "deletedOnly") {
+const toggleQuick = (kind: "locked" | "deleted" | "deletedOnly") => {
   if (kind === "locked") {
     uiState.isLockedOut = uiState.isLockedOut === true ? null : true;
   }
@@ -652,7 +652,7 @@ function toggleQuick(kind: "locked" | "deleted" | "deletedOnly") {
   }
   uiState.page = 0;
   commitQuery();
-}
+};
 
 // Query
 
@@ -704,7 +704,7 @@ const openDelete = (ids: string[]) => (activeModal.value = { ids, type: "delete"
 
 // Submit handlers
 
-async function submitCreate(data: CreateUserSchema) {
+const submitCreate = async (data: CreateUserSchema) => {
   try {
     await createUserMutation(data);
     toast.add({
@@ -722,9 +722,9 @@ async function submitCreate(data: CreateUserSchema) {
       title: "Could not create account",
     });
   }
-}
+};
 
-async function submitEdit(data: UpdateUserSchema) {
+const submitEdit = async (data: UpdateUserSchema) => {
   if (activeModal.value.type !== "edit") {
     return;
   }
@@ -743,7 +743,7 @@ async function submitEdit(data: UpdateUserSchema) {
       title: "Update failed",
     });
   }
-}
+};
 
 async function submitRestrict(data: RestrictUserSchema | { userId: string }) {
   if (activeModal.value.type !== "restrict") {
