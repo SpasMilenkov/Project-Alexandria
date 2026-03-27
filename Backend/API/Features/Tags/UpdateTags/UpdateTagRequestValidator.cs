@@ -39,9 +39,9 @@ public sealed class UpdateTagRequestValidator
         // Optional Color — must be a valid hex color
         When(x => x.Color is not null, () =>
         {
-            RuleFor(x => x.Color!)
-                .Matches("^#[0-9a-fA-F]{6}$")
-                .WithMessage("Color must be a valid hex color in the format #RRGGBB.");
+            RuleFor(x => x.Color)
+                .NotEmpty()
+                .WithMessage("Tag color cannot be empty.");
         });
 
         // Optional Description
