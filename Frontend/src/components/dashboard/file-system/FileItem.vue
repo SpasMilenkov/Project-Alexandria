@@ -9,7 +9,7 @@
         ? { container: 'h-[85vh] rounded-t-2xl' }
         : { container: 'md:max-w-[40rem] lg:min-w-[40rem]' }
     "
-    :handle-only="true"
+    :handle-only="!isMobile"
   >
     <!-- Grid View -->
     <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems">
@@ -98,7 +98,7 @@
       <div class="flex flex-col gap-6 p-1">
         <!-- File Header Section -->
         <div
-          class="flex items-center gap-3 p-4 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
+          class="flex items-center bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
           :class="isMobile ? 'gap-3 p-3' : 'gap-4 p-6'"
         >
           <div
@@ -113,9 +113,30 @@
           </div>
 
           <div class="flex-1 min-w-0">
-            <h3 class="font-semibold truncate mb-1" :class="isMobile ? 'text-base' : 'text-lg'">
-              {{ detail.fileName }}
-            </h3>
+            <!-- File name — tappable on mobile, hover-reveals button on desktop -->
+            <div
+              class="flex items-center gap-1 group mb-1 min-w-0"
+              :class="isMobile ? 'cursor-pointer active:opacity-60' : ''"
+              @click="isMobile && copyWithFeedback(detail.fileName, 'File name')"
+            >
+              <h3 class="font-semibold truncate" :class="isMobile ? 'text-base' : 'text-lg'">
+                {{ detail.fileName }}
+              </h3>
+              <UButton
+                icon="i-mdi-content-copy"
+                size="xs"
+                variant="ghost"
+                color="neutral"
+                :class="
+                  isMobile
+                    ? 'shrink-0 opacity-50'
+                    : 'shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity'
+                "
+                aria-label="Copy file name"
+                @click.stop="copyWithFeedback(detail.fileName, 'File name')"
+              />
+            </div>
+
             <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 w-full">
               <Icon icon="mdi-file" class="w-4 h-4 shrink-0" />
               <span
@@ -232,18 +253,36 @@
               </div>
             </div>
 
+            <!-- File ID — tappable on mobile, hover-reveals button on desktop -->
             <div
               class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
-              :class="isMobile ? '' : 'col-span-2'"
+              :class="[isMobile ? 'cursor-pointer active:opacity-60' : 'col-span-2']"
+              @click="isMobile && copyWithFeedback(detail.fileId, 'File ID')"
             >
               <Icon icon="mdi-identifier" class="w-8 h-8 text-gray-500 mt-0.5 shrink-0" />
               <div class="min-w-0 flex-1">
                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">File ID</div>
-                <div class="font-mono text-sm truncate">
-                  {{ detail.fileId }}
+                <div class="flex items-center gap-1 group min-w-0">
+                  <span class="font-mono text-sm truncate">{{ detail.fileId }}</span>
+                  <UButton
+                    icon="i-mdi-content-copy"
+                    size="xs"
+                    variant="ghost"
+                    color="neutral"
+                    :class="
+                      isMobile
+                        ? 'shrink-0 opacity-50 ml-auto'
+                        : 'shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity'
+                    "
+                    aria-label="Copy file ID"
+                    @click.stop="copyWithFeedback(detail.fileId, 'File ID')"
+                  />
                 </div>
               </div>
             </div>
+
+            <!-- col-span-2 on desktop only; on mobile the grid is single-column anyway -->
+            <div v-if="!isMobile" class="col-span-2 hidden" />
           </div>
         </div>
 
@@ -257,13 +296,29 @@
           </template>
           <div class="flex items-center gap-3">
             <UAvatar :alt="detail.owner.name" :size="isMobile ? 'md' : 'lg'" />
-            <div>
+            <div class="min-w-0 flex-1">
               <div class="font-medium text-sm">{{ detail.owner.name }}</div>
+              <!-- Email — tappable on mobile, hover-reveals button on desktop -->
               <div
-                class="text-sm flex items-center gap-1.5 mt-0.5 text-gray-600 dark:text-gray-400"
+                class="text-sm flex items-center gap-1.5 mt-0.5 text-gray-600 dark:text-gray-400 group"
+                :class="isMobile ? 'cursor-pointer active:opacity-60' : ''"
+                @click="isMobile && copyWithFeedback(detail.owner.email, 'Email')"
               >
                 <Icon icon="mdi-email" class="w-4 h-4 text-primary shrink-0" />
                 <span class="truncate">{{ detail.owner.email }}</span>
+                <UButton
+                  icon="i-mdi-content-copy"
+                  size="xs"
+                  variant="ghost"
+                  color="neutral"
+                  :class="
+                    isMobile
+                      ? 'shrink-0 opacity-50 ml-auto'
+                      : 'shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity ml-auto'
+                  "
+                  aria-label="Copy owner email"
+                  @click.stop="copyWithFeedback(detail.owner.email, 'Email')"
+                />
               </div>
             </div>
           </div>
@@ -296,15 +351,32 @@ import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { Icon } from "@iconify/vue";
 import type { ContextMenuItem } from "@nuxt/ui";
 import { useQuery } from "@pinia/colada";
-import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
+import { breakpointsTailwind, useBreakpoints, useClipboard } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import FilePreview from "./FilePreview.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
+
+
 const settingsStore = useSettingsStore();
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");
+
+const toast = useToast();
+const { copy } = useClipboard();
+
+const copyWithFeedback = async (value: string, label: string) => {
+  await copy(value);
+  toast.add({
+    color: "success",
+    duration: 2000,
+    icon: "i-mdi-check-circle",
+    title: `${label} copied`,
+    // Bottom-right on desktop; top-center on mobile so it clears the bottom-sheet drawer
+    position: isMobile.value ? "top-center" : "bottom-right",
+  });
+};
 
 const props = defineProps<{
   data: FileResult;
