@@ -99,19 +99,9 @@ const parentDirectoryOptions = ref<SelectMenuItem[]>(
 
 const isLoadingParentDirs = ref(false);
 
-// used as a temporary sink for the UFileUpload component; consumed & reset each time
-const filePickerValue = ref<File[]>([]);
-
-// ref for the hidden <input> used by the "Add more" button
+// refs for hidden file inputs
+const initialInputRef = ref<HTMLInputElement | null>(null);
 const addMoreInputRef = ref<HTMLInputElement | null>(null);
-
-watch(filePickerValue, (val) => {
-  if (!val || val.length === 0) return;
-  addFiles(val);
-  nextTick(() => {
-    filePickerValue.value = [];
-  });
-});
 
 // computed
 
@@ -225,7 +215,7 @@ const hashWithWorker = (
 
 // concurrency limiter
 
-const runConcurrent = async <T,>(
+const runConcurrent = async <T>(
   tasks: (() => Promise<T>)[],
   limit: number,
 ): Promise<PromiseSettledResult<T>[]> => {
@@ -340,6 +330,13 @@ const addFiles = (files: File[]) => {
   uploads.value.push(...deduped.map(createUploadState));
 };
 
+const handleInitialChange = (e: Event) => {
+  const input = e.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  if (files.length) addFiles(files);
+  input.value = "";
+};
+
 const handleAddMoreChange = (e: Event) => {
   const input = e.target as HTMLInputElement;
   const files = Array.from(input.files ?? []);
@@ -440,26 +437,28 @@ const searchParentDirectory = async (query: string) => {
       </div>
 
       <!-- empty state: drop zone -->
-      <UFileUpload
+      <div
         v-if="uploads.length === 0"
-        v-model="filePickerValue"
-        multiple
-        label="Drop files here"
-        description="Any file type — up to 4 upload in parallel"
-        icon="i-lucide-upload"
-        class="min-h-44"
-        :disabled="isUploading"
+        class="min-h-44 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-3"
       >
-        <template #actions="{ open }">
-          <UButton
-            label="Select Files"
-            icon="i-lucide-file-plus"
-            color="neutral"
-            variant="outline"
-            @click="open()"
-          />
-        </template>
-      </UFileUpload>
+        <UIcon name="i-lucide-upload" class="size-8 text-muted" />
+        <p class="text-sm text-muted">Drop files here or select to upload</p>
+        <p class="text-xs text-muted opacity-60">Any file type — up to 4 uploads in parallel</p>
+        <UButton
+          label="Select Files"
+          icon="i-lucide-file-plus"
+          color="neutral"
+          variant="outline"
+          @click="initialInputRef?.click()"
+        />
+        <input
+          ref="initialInputRef"
+          type="file"
+          multiple
+          class="hidden"
+          @change="handleInitialChange"
+        />
+      </div>
 
       <!-- file list -->
       <div
