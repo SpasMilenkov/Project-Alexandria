@@ -385,7 +385,6 @@
               @delete="handleDelete"
               @move="handleCut"
               @contextmenu="handleItemClick($event, file.fileId, 'file')"
-              @file-trashed="refreshDir"
             />
           </div>
           <div
@@ -468,7 +467,6 @@
             @copy="handleCopy"
             @delete="handleDelete"
             @move="handleCut"
-            @file-trashed="refreshDir"
             @contextmenu="handleItemClick($event, file.fileId, 'file')"
           />
           <div
@@ -550,7 +548,6 @@ const {
   canGoForward,
   navigateBack,
   navigateForward,
-  refreshDir,
   toggleSelect,
   isDirectorySelected,
   isFileSelected,
@@ -559,7 +556,7 @@ const {
   downloadFile,
 } = useFileExplorer();
 
-const { mutateAsync: copyFilesMutate } = copyFiles();
+const { mutateAsync: copyFilesMutate } =  copyFiles();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
 const { mutateAsync: moveFilesMutate } = moveFiles();
 const { mutateAsync: moveDirectoriesMutate } = moveDirectories();
@@ -695,7 +692,6 @@ const { isOverDropZone } = useDropZone(containerRef, {
 
     const shouldRefresh = await instance.result;
     if (shouldRefresh && settingsStore.toastLevel === "all") {
-      refreshDir();
       toast.add({ color: "success", id: "dropzone-upload-success", title: "Upload complete" });
     }
   },
@@ -803,13 +799,11 @@ const toggleSortDirection = () => {
     selectedSortDirection.value === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
   filePagination.value.paginationParams.sortDirection = selectedSortDirection.value;
   dirPagination.value.paginationParams.sortDirection = selectedSortDirection.value;
-  refreshDir();
 };
 
 const handleSorting = () => {
   filePagination.value.paginationParams.SortBy = selectedSortBy.value.value;
   dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
-  refreshDir();
 };
 
 // mobile upload sheet
@@ -913,7 +907,6 @@ const handleDirectoryRename = async (directoryId: string) => {
   const shouldRefresh = await instance.result;
   if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({ color: "success", id: "modal-success", title: "Directory updated successfully" });
-    refreshDir();
     return;
   }
   if (!shouldRefresh && settingsStore.toastLevel !== "silent") {
@@ -976,7 +969,6 @@ const handleDelete = async () => {
   if (settingsStore.toastLevel === "all") {
     toast.add({ color: "info", id: "deleting", title: "Items deleted" });
   }
-  refreshDir();
 };
 
 const handleCut = async () => {
@@ -989,7 +981,6 @@ const handleCut = async () => {
       directoryIds: directoryStore.directoriesToCopy,
     });
   }
-  refreshDir();
 };
 
 const handlePaste = async () => {
@@ -1003,7 +994,6 @@ const handlePaste = async () => {
       }),
     );
   }
-  refreshDir();
 };
 
 const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
@@ -1032,7 +1022,6 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
 
   const shouldRefresh = await instance.result;
   if (shouldRefresh) {
-    refreshDir();
     return;
   }
   if (!shouldRefresh && directoryStore.error && settingsStore.toastLevel !== "silent") {
@@ -1061,7 +1050,6 @@ const createNewDirectory = async () => {
   const shouldRefresh = await instance.result;
   if (shouldRefresh && settingsStore.toastLevel === "all") {
     toast.add({ color: "success", id: "modal-success", title: "Directory creation successful" });
-    refreshDir();
     return;
   }
   if (!shouldRefresh && directoryStore.error && settingsStore.toastLevel !== "silent") {
