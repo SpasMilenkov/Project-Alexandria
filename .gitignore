@@ -17,3 +17,5 @@ certs
 **/Folder.DotSettings.user
 prometheus.yml
 !/grafana/provisioning/datasources/prometheus.yml
+**/init-output
+garage.local.toml
