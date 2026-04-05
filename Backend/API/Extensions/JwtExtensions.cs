@@ -1,6 +1,9 @@
+using System.Net;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
+using IPNetwork = System.Net.IPNetwork;
 
 namespace API.Extensions;
 
@@ -10,6 +13,17 @@ public static class JwtExtensions
         this IServiceCollection services,
         IConfiguration config)
     {
+
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                                       | ForwardedHeaders.XForwardedProto;
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+            // trust only the Docker bridge subnet where nginx lives
+            options.KnownIPNetworks.Add(IPNetwork.Parse("172.16.0.0/12"));
+            
+        });
         services
             .AddAuthentication(options =>
             {
