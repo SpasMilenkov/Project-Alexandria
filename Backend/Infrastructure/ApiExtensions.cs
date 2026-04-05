@@ -4,13 +4,14 @@ using Infrastructure.Converters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure;
 
 public static class ApiExtensions
 {
-    public static IServiceCollection AddApiServices(this IServiceCollection services)
+    public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration config)
     {
         services.AddFastEndpoints()
             .SwaggerDocument(o =>
@@ -24,17 +25,21 @@ public static class ApiExtensions
             });
         services.AddResponseCaching();
         services.AddHealthChecks();
-        //TODO: Move this to the config
+        
+        var origins = config
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>();
+        
+        if (origins == null || origins.Length == 0)
+            throw new InvalidOperationException("Cors:AllowedOrigins is not configured");
+        
         services.AddCors(c =>
         {
-            c.AddPolicy("AllowOrigin",
-                options => options.WithOrigins(
-                        "https://unitrack.io:8080",
-                        "http://localhost:3000",
-                        "http://localhost:5173")
-                    .AllowCredentials()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
+            c.AddPolicy("AllowOrigin", policy => policy
+                .WithOrigins(origins)
+                .AllowCredentials()
+                .AllowAnyMethod()
+                .AllowAnyHeader()
             );
         });
         services.Configure<JsonOptions>(options =>
@@ -43,7 +48,7 @@ public static class ApiExtensions
         });
 
         return services;
-    }
+    }   
 
     //TODO: Confirm I don't do any more file streaming via the API and remove this.
     public static void ConfigureKestrelMaxRequestSize(this ConfigureWebHostBuilder webHost)
