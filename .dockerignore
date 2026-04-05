@@ -1,0 +1,14 @@
+certs/
+.env
+.git/
+**/node_modules/
+**/bin/
+**/obj/
+**/.vs
+**/.vscode
+**/.idea
+**/Dockerfile*
+**/docker-compose*
+**/charts
+LICENSE
+README.md
