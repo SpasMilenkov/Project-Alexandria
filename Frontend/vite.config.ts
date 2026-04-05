@@ -4,10 +4,13 @@ import vue from "@vitejs/plugin-vue";
 import { URL, fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import vueDevTools from "vite-plugin-vue-devtools";
-// https://vite.dev/config/
+
+import { iconifySubsetPlugin } from "./plugins/iconify-subset";
+
 export default defineConfig({
   plugins: [
     vue(),
+    iconifySubsetPlugin(),
     vueDevTools(),
     ui({
       ui: {
@@ -37,5 +40,8 @@ export default defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
+  },
+  worker: {
+    format: "es",
   },
 });
