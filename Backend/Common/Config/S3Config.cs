@@ -11,9 +11,20 @@ public class S3Config
     public S3Provider Provider { get; set; } = S3Provider.Garage;
 
     /// <summary>
-    /// S3 endpoint URL
+    /// Whether or not the traffic should go through over HTTP or HTTPS
+    /// HTTP can be used on dev for direct work with garage 
+    /// </summary>
+    public bool UseHttps { get; set; } = true;
+
+    /// <summary>
+    /// S3 endpoint URL or internal calls from backend to garage directly
     /// </summary>
     public string Endpoint { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// S3 endpoint URL used for presigned URL to go through NGINX
+    /// </summary>
+    public string PublicEndpoint { get; set; } = string.Empty;
 
     /// <summary>
     /// S3 access key

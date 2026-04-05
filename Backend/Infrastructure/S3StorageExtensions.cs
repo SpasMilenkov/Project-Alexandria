@@ -17,19 +17,20 @@ public static class S3StorageExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Bind configuration
         services.Configure<S3Config>(configuration.GetSection("S3Storage"));
-
-        // Factory
         services.AddSingleton<IS3ClientFactory, S3ClientFactory>();
 
-        // S3 client (created via factory)
-        services.AddSingleton<IAmazonS3>(sp =>
-        {
-            var factory = sp.GetRequiredService<IS3ClientFactory>();
-            return factory.CreateClient();
-        });
+        // Internal client — backend ↔ garage directly
+        services.AddKeyedSingleton<IAmazonS3>("internal", (sp, _) =>
+            sp.GetRequiredService<IS3ClientFactory>().CreateClient());
 
+        // Public client — presigned URLs signed with the nginx-facing host
+        services.AddKeyedSingleton<IAmazonS3>("public", (sp, _) =>
+            sp.GetRequiredService<IS3ClientFactory>().CreatePublicClient());
+
+        // Default registration stays as internal so nothing else breaks
+        services.AddSingleton<IAmazonS3>(sp =>
+            sp.GetRequiredKeyedService<IAmazonS3>("internal"));
 
         return services;
     }
