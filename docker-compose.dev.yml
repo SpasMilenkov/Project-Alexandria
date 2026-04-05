@@ -68,7 +68,7 @@ services:
     networks:
       - alexandria-network
     healthcheck:
-      test: ["CMD", "garage", "status"]
+      test: ["CMD", "/garage", "status"]
       interval: 10s
       timeout: 5s
       retries: 3
