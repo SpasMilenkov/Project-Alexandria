@@ -19,11 +19,13 @@ using Models.Enumerators;
 using MediaMetadata = DTO.Files.MediaMetadata;
 using FileEntity = Models.File;
 using Common.Audit;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Storage;
 
 public partial class S3Service(
     IAmazonS3 s3,
+    [FromKeyedServices("public")] IAmazonS3 publicS3,
     IUnitOfWork unitOfWork,
     IOptions<S3Config> config,
     ILogger<S3Service> logger,
@@ -511,11 +513,10 @@ public partial class S3Service(
             Key = $"previews/{objectKey}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.Add(expiry),
-            //TODO: Change this dynamically based on the environment, should be HTTPS for prod
-            Protocol = Protocol.HTTP
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP
         };
 
-        return s3.GetPreSignedURL(request);
+        return publicS3.GetPreSignedURL(request);
     }
 
     private string GetThumbnailPresignedUrl(string objectKey, TimeSpan expiry)
@@ -526,11 +527,10 @@ public partial class S3Service(
             Key = $"thumbnails/{objectKey}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.Add(expiry),
-            //TODO: Change this dynamically based on the environment, should be HTTPS for prod
-            Protocol = Protocol.HTTP
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP
         };
 
-        return s3.GetPreSignedURL(request);
+        return publicS3.GetPreSignedURL(request);
     }
 
     public async Task<string> GetFilePresignedUrl(Guid fileId, byte[] hash, string fileName, TimeSpan expiry)
@@ -541,14 +541,14 @@ public partial class S3Service(
             Key = $"content/{Convert.ToHexStringLower(hash)}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = Protocol.HTTP,
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
             ResponseHeaderOverrides = new ResponseHeaderOverrides
             {
                 ContentDisposition = $"attachment; filename=\"{fileName}\""
             }
         };
 
-        if (await unitOfWork.Files.IsPromoted(fileId)) return await s3.GetPreSignedURLAsync(request);
+        if (await unitOfWork.Files.IsPromoted(fileId)) return await publicS3.GetPreSignedURLAsync(request);
 
         var upload =
             await unitOfWork.Uploads.FirstOrDefaultAsync(u => u.Hash == hash && u.Status == UploadStatus.Finished) ??
@@ -556,7 +556,7 @@ public partial class S3Service(
         request.BucketName = config.Value.TempBucket;
         request.Key = $"content/{upload.TempObjectKey}";
 
-        return await s3.GetPreSignedURLAsync(request);
+        return await publicS3.GetPreSignedURLAsync(request);
     }
 
     public async Task<Stream> DownloadFile(Guid fileId, Guid userId, CancellationToken ct)
@@ -939,11 +939,11 @@ public partial class S3Service(
             Key = $"{objectKey}",
             Verb = HttpVerb.PUT,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = Protocol.HTTP,
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
             ContentType = contentType,
         };
 
-        return await s3.GetPreSignedURLAsync(request);
+        return await publicS3.GetPreSignedURLAsync(request);
     }
 
     public async Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry)
@@ -954,10 +954,10 @@ public partial class S3Service(
             Key = $"{objectKey}",
             Verb = HttpVerb.PUT,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = Protocol.HTTP,
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP
         };
 
-        return await s3.GetPreSignedURLAsync(request);
+        return await publicS3.GetPreSignedURLAsync(request);
     }
 
     public async Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default)
@@ -973,9 +973,9 @@ public partial class S3Service(
             Key = $"{objectKey}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = Protocol.HTTP,
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP
         };
-        return await s3.GetPreSignedURLAsync(request);
+        return await publicS3.GetPreSignedURLAsync(request);
     }
 
     public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
