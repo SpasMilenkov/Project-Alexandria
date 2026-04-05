@@ -15,6 +15,7 @@
     <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems">
       <div class="relative group" tabindex="0">
         <UTooltip
+          :disabled="isMobile"
           :delay-duration="600"
           :content="{ side: 'bottom', align: 'center' }"
           :ui="{
@@ -56,6 +57,7 @@
     <UContextMenu v-else :items="contextMenuItems">
       <div class="relative group" tabindex="0">
         <UTooltip
+          :disabled="isMobile"
           :delay-duration="600"
           :content="{ side: 'top', align: 'center' }"
           :ui="{
@@ -356,7 +358,6 @@ import { computed, ref, watch } from "vue";
 import FilePreview from "./FilePreview.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
-
 
 const settingsStore = useSettingsStore();
 
