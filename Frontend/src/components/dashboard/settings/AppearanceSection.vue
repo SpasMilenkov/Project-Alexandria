@@ -551,7 +551,7 @@ const exampleDir = {
                 <div
                   class="p-2"
                   :class="[
-                    'flex gap-2 overflow-x-auto',
+                    'flex gap-2 flex-wrapz',
                     viewMode === 'list' ? 'flex-col' : 'flex-row',
                   ]"
                 >
