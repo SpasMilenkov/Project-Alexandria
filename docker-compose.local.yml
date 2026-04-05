@@ -1,0 +1,350 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: alexandria-local-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: alexandria_dev
+      POSTGRES_USER: alexandria_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    networks:
+      - data-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alexandria_user -d alexandria_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  garage:
+    image: dxflrs/garage:v2.2.0
+    container_name: alexandria-local-garage
+    restart: unless-stopped
+    environment:
+      RUST_LOG: garage=info
+    volumes:
+      - ./garage.local.toml:/etc/garage.toml
+      - garage_local_meta_data:/var/lib/garage/meta
+      - garage_local_storage_data:/var/lib/garage/data
+    networks:
+      - app-net   # nginx proxies S3 requests from browser
+      - data-net  # api and workers talk to it directly
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  garage-init:
+    build:
+      context: .
+      dockerfile: scripts/garage-init/Dockerfile
+    container_name: alexandria-garage-init
+    restart: no
+    depends_on:
+      garage:
+        condition: service_healthy
+    environment:
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    volumes:
+      - ./garage.local.toml:/etc/garage.toml:ro
+      - garage_local_meta_data:/var/lib/garage/meta
+      - ./init-output:/output
+      - ./scripts/garage-init/cors.json:/config/cors.json:ro
+    networks:
+      - data-net
+
+  rabbitmq:
+    image: rabbitmq:4.2.5-management-alpine
+    container_name: alexandria-local-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dev_admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-alexandria}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+    volumes:
+      - rabbitmq_local_data:/var/lib/rabbitmq
+    networks:
+      - data-net # only api and workers consume from it, nginx never touches it
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+  rabbitmq-init:
+    image: alpine/curl:8.17.0
+    container_name: alexandria-rabbitmq-init
+    restart: no
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - data-net
+    environment:
+      RABBITMQ_ADMIN_USER: ${RABBITMQ_USER:-dev_admin}
+      RABBITMQ_ADMIN_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-alexandria}
+      DOCUMENT_WORKER_PASS: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:?DOCUMENT_WORKER_RABBITMQ_PASSWORD is required}
+      MEDIA_WORKER_PASS: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
+    entrypoint: ["/bin/sh", "/scripts/init-rabbitmq.sh"]
+    volumes:
+      - ./scripts/rabbitmq-init/init.sh:/scripts/init-rabbitmq.sh:ro
+
+  prometheus:
+    image: prom/prometheus:v3.11.0
+    container_name: alexandria-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_local_data:/prometheus
+    # no ports: — accessed via SSH tunnel: ssh -L 9090:localhost:9090 user@host
+    networks:
+      - observability-net
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    profiles:
+      - monitoring
+      - default
+
+  grafana:
+    image: grafana/grafana:12.4.2
+    container_name: alexandria-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_local_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    # no ports: — accessed via SSH tunnel: ssh -L 3000:localhost:3000 user@host
+    networks:
+      - observability-net
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    profiles:
+      - monitoring
+      - default
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: alexandria-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - frontend
+      - api
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+    networks:
+      - frontend-net    # faces the outside world
+      - app-net         # reaches frontend, api, garage
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: alexandria-frontend
+    restart: always
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app-net
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  api:
+    build:
+      context: ./Backend
+      dockerfile: API/Dockerfile
+    container_name: alexandria-api
+    restart: on-failure:5
+    environment:
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      S3Storage__AccessKey: ${GARAGE_S3_ACCESS_KEY:?GARAGE_S3_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_SECRET_KEY:?GARAGE_S3_SECRET_KEY is required}
+      RabbitMQ__UserName: ${RABBITMQ_USER:-dev_admin}
+      RabbitMQ__Password: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      Jwt__Secret: ${JWT_SECRET:?JWT_SECRET is required}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Csrf__SecretKey: ${CSRF_SECRET:?CSRF_SECRET is required}
+      ADMIN__EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL is required}
+      ADMIN__PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      ADMIN__NAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required}
+      CORS_ALLOWED_ORIGINS__0: ${CORS_ALLOWED_ORIGINS__0:?CORS_ALLOWED_ORIGINS__0 is required}
+      CORS_ALLOWED_ORIGINS__1: ${CORS_ALLOWED_ORIGINS__1:?CORS_ALLOWED_ORIGINS__1 is required}
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+    networks:
+      - app-net           # nginx reaches it here
+      - data-net          # reaches postgres, garage, rabbitmq
+      - observability-net # exposes /metrics to prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  document-worker:
+    build:
+      context: ./Backend
+      dockerfile: DocumentWorker.Service/Dockerfile
+    container_name: alexandria-document-worker
+    restart: always
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
+      RabbitMQ__UserName: document_worker_user
+      RabbitMQ__Password: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:?DOCUMENT_WORKER_RABBITMQ_PASSWORD is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      rabbitmq-init:
+        condition: service_completed_successfully
+    networks:
+      - data-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: ${DOCUMENT_WORKER_MEMORY_LIMIT:-1G}
+        reservations:
+          memory: ${DOCUMENT_WORKER_MEMORY_RESERVATION:-256M}
+
+  media-worker:
+    build:
+      context: ./Backend
+      dockerfile: MediaWorkerService/Dockerfile
+    container_name: alexandria-media-worker
+    restart: always
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
+      RabbitMQ__UserName: media_worker_user
+      RabbitMQ__Password: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      rabbitmq-init:
+        condition: service_completed_successfully
+    networks:
+      - data-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+volumes:
+  postgres_local_data:
+    driver: local
+  garage_local_meta_data:
+    driver: local
+  garage_local_storage_data:
+    driver: local
+  rabbitmq_local_data:
+    driver: local
+  prometheus_local_data:
+    driver: local
+  grafana_local_data:
+    driver: local
+
+networks:
+  frontend-net:
+    driver: bridge
+  app-net:
+    driver: bridge
+  data-net:
+    driver: bridge
+  observability-net:
+    driver: bridge

@@ -9,6 +9,8 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 import { logger } from "./utils/logger";
+import { registerIcons } from './icons';
+registerIcons();
 
 const app = createApp(App);
 
@@ -25,7 +27,7 @@ app.use(PiniaColada, {
     }),
   ],
   queryOptions: {
-    staleTime: 0,
+    staleTime: 30_000,
   },
 });
 

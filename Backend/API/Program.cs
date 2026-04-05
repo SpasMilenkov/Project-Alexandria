@@ -14,7 +14,7 @@ bld.Services
     .AddAuthorizationPolicies()
     .AddS3Storage(bld.Configuration)
     .AddRabbitMqAsync(bld.Configuration)
-    .AddApiServices()
+    .AddApiServices(bld.Configuration)
     .AddServices()
     .AddHealthMonitoring(bld.Configuration)
     .AddAuthServices();
@@ -28,6 +28,7 @@ if (!app.Configuration.GetValue<bool>("SkipDatabaseInit"))
     await app.InitializeDatabaseAsync();
 }
 
+app.UseForwardedHeaders();
 app.UseResponseCaching();
 app.UseCors("AllowOrigin");
 app.UseMiddleware<JwtFromCookieMiddleware>();
@@ -35,10 +36,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAlexandriaEndpoints();
 
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
 
 app.MapHealthChecks("/health");
 

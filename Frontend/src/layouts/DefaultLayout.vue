@@ -48,6 +48,7 @@ import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import OfflineBanner from "@/components/common/OfflineBanner.vue";
+
 const currentYear = ref(new Date().getFullYear());
 const authStore = useAuthStore();
 const route = useRoute();

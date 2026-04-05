@@ -172,7 +172,7 @@ onMounted(() => {
     <template v-else>
       <!-- Active tab content; pb-14 reserves space for the bottom bar -->
       <div class="flex flex-col h-full pb-14">
-        <FileExplorer v-if="tabStore.activeTabId" :tab-id="tabStore.activeTabId" />
+        <FileExplorer v-if="tabStore.activeTabId" :tab-id="tabStore.activeTabId" :key="tabStore.activeTabId"/>
       </div>
 
       <!-- Bottom tab bar -->

@@ -14,6 +14,11 @@ public interface IS3ClientFactory
     IAmazonS3 CreateClient();
 
     /// <summary>
+    /// Creates an S3 client for the current provider to be used for presigned URLs
+    /// </summary>
+    IAmazonS3 CreatePublicClient();
+
+    /// <summary>
     /// Gets the current provider type
     /// </summary>
     S3Provider GetProvider();

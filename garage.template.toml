@@ -1,7 +1,7 @@
 metadata_dir = ""
 data_dir = ""
 
-# Database engine: lmdb (recommended for production) or sqlite (testing only)
+# Database engine: lmdb (recommended for production)
 db_engine = ""
 
 # For single-node development, replication_mode can be "none"
@@ -36,7 +36,7 @@ index = "index.html"
 [admin]
 api_bind_addr = "[::]:3903"
 
-# CRITICAL: Generate secure tokens with: openssl rand -base64 32
+# Generate secure tokens with: openssl rand -base64 32
 # For dev environment, using fixed values for consistency
 admin_token = ""
 metrics_token = ""

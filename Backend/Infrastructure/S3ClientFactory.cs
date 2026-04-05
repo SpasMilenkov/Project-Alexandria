@@ -19,43 +19,39 @@ public class S3ClientFactory(
     public IAmazonS3 CreateClient()
     {
         var resolved = _options.GetResolvedProviderSettings();
+        return BuildClient(resolved.Endpoint!, _options.UseHttps, resolved);
+    }
 
-        if (string.IsNullOrWhiteSpace(resolved.AccessKey) ||
-            string.IsNullOrWhiteSpace(resolved.SecretKey))
-        {
-            throw new InvalidOperationException(
-                $"Missing S3 credentials for provider {_options.Provider}"
-            );
-        }
+    public IAmazonS3 CreatePublicClient()
+    {
+        var resolved = _options.GetResolvedProviderSettings();
+        // Public client always uses HTTPS (going through nginx),
+        // but endpoint is the public-facing URL
+        return BuildClient(_options.PublicEndpoint, useHttp: false, resolved);
+    }
 
-        if (string.IsNullOrWhiteSpace(resolved.Endpoint))
-        {
-            throw new InvalidOperationException(
-                $"Missing S3 endpoint for provider {_options.Provider}"
-            );
-        }
+    private AmazonS3Client BuildClient(string endpoint, bool useHttp, ProviderSettings resolved)
+    {
+        if (string.IsNullOrWhiteSpace(resolved.AccessKey) || string.IsNullOrWhiteSpace(resolved.SecretKey))
+            throw new InvalidOperationException($"Missing S3 credentials for provider {_options.Provider}");
 
-        var credentials = new BasicAWSCredentials(
-            resolved.AccessKey,
-            resolved.SecretKey
-        );
+        if (string.IsNullOrWhiteSpace(endpoint))
+            throw new InvalidOperationException($"Missing S3 endpoint for provider {_options.Provider}");
 
+        var credentials = new BasicAWSCredentials(resolved.AccessKey, resolved.SecretKey);
         var config = new AmazonS3Config
         {
-            ServiceURL = resolved.Endpoint,
+            ServiceURL = endpoint,
             ForcePathStyle = resolved.ForcePathStyle,
             UseAccelerateEndpoint = resolved.UseAccelerateEndpoint,
             UseDualstackEndpoint = resolved.UseDualstackEndpoint,
-            UseHttp = !resolved.Endpoint.StartsWith("https", StringComparison.OrdinalIgnoreCase),
+            UseHttp = useHttp,
             AuthenticationRegion = resolved.Region
         };
 
         logger.LogInformation(
             "Creating S3 client | Provider={Provider} Endpoint={Endpoint} Region={Region}",
-            _options.Provider,
-            resolved.Endpoint,
-            resolved.Region
-        );
+            _options.Provider, endpoint, resolved.Region);
 
         return new AmazonS3Client(credentials, config);
     }
