@@ -1,6 +1,13 @@
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/vite/worker";
-import { NetworkFirst, type PrecacheEntry, Serwist, type SerwistGlobalConfig } from "serwist";
+import {
+  CacheFirst,
+  ExpirationPlugin,
+  NetworkFirst,
+  type PrecacheEntry,
+  Serwist,
+  type SerwistGlobalConfig,
+} from "serwist";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -92,10 +99,25 @@ const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   runtimeCaching: [
     {
+      handler: new NetworkFirst({ networkTimeoutSeconds: 3 }),
+      matcher: ({ request }) => request.mode === "navigate",
+    },
+    {
       handler: new NetworkFirst(),
       matcher: ({ url }) => url.pathname.startsWith("/api/"),
     },
-    ...defaultCache,
+    {
+      handler: new NetworkFirst(),
+      matcher: ({ url }) => url.pathname.startsWith("/sw/"),
+    },
+    {
+      // Only cache genuinely static assets — content-hashed filenames only
+      handler: new CacheFirst({
+        cacheName: "static-assets",
+        plugins: [new ExpirationPlugin({ maxAgeSeconds: 60 * 60 * 24 * 30, maxEntries: 100 })],
+      }),
+      matcher: ({ url }) => /\.[0-9a-f]{8}\.(js|css|woff2|png|svg)$/.test(url.pathname),
+    },
   ],
   skipWaiting: true,
 });
