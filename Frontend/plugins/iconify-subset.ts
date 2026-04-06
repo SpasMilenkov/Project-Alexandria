@@ -275,6 +275,8 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "language-typescript",
     "vuejs",
     "react",
+    "close",
+    "folder-remove-outline",
     "language-python",
     "language-java",
     "language-html5",
