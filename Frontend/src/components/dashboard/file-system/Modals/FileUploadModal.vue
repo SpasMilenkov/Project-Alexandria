@@ -5,6 +5,7 @@ import { useDirectoryStore } from "@/stores/directory";
 import type { SelectMenuItem } from "@nuxt/ui";
 import { formatBytes } from "@/utils/size.utils";
 import type { WorkerOutMessage } from "@/workers/blake3.worker";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
 
 const toast = useToast();
 const directoryStore = useDirectoryStore();
@@ -29,6 +30,8 @@ const PIPELINE_STAGES = [
 ] as const;
 
 type PipelineStage = (typeof PIPELINE_STAGES)[number];
+
+useModalBackGuard(() => emit("close", false));
 
 const STAGE_STEPS: { stage: PipelineStage; label: string; icon: string }[] = [
   { icon: "i-lucide-hash", label: "Hash", stage: UploadStage.HASHING },

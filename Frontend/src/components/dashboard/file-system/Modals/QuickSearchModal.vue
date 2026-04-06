@@ -110,6 +110,7 @@ import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
 import { useDebounceFn } from "@vueuse/core";
 import { logger } from "@/utils/logger";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
 
 const directoryStore = useDirectoryStore();
 const fileStore = useFileStore();
@@ -125,6 +126,8 @@ const hasSearched = ref(false);
 const form = ref();
 
 const searchMode = ref<"both" | "files" | "directories">("both");
+
+useModalBackGuard(() => emit("close", false));
 
 const handleSubmit = useDebounceFn(async () => {
   isSearching.value = true;
