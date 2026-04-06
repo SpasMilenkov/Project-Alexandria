@@ -260,11 +260,11 @@ onMounted(() => {
           @click.self="closeManageSheet"
         >
           <!-- Scrim -->
-          <div class="absolute inset-0 bg-black/40 backdrop-blur-[2px]" @click="closeManageSheet" />
+          <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]" @click="closeManageSheet" />
 
           <!-- Sheet panel -->
           <div
-            class="relative z-10 rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70 bg-background/95 backdrop-blur-sm pb-safe"
+            class="relative z-10 rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70 bg-neutral-100 dark:bg-neutral-900 pb-safe"
           >
             <!-- Handle -->
             <div class="flex justify-center pt-3 pb-1">
