@@ -1,4 +1,4 @@
-import { useQuery } from "@pinia/colada";
+import { useQuery, useQueryCache } from "@pinia/colada";
 import { useMediaQuery } from "@vueuse/core";
 import { type Ref, computed, ref, watch } from "vue";
 
@@ -8,14 +8,16 @@ import type { PaginationParams } from "@/types/pagination-params";
 
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
-import { directoryPath, rootDirectories, subDirectories } from "@/queries/directories";
-import { rootFiles, subFiles } from "@/queries/files";
+import { DIRECTORY_QUERY_KEYS, directoryPath, rootDirectories, subDirectories } from "@/queries/directories";
+import { FILES_QUERY_KEYS, rootFiles, subFiles } from "@/queries/files";
 import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
 
 export const useFileExplorer = () => {
   const fileStore = useFileStore();
-
+  
+    const queryCache = useQueryCache();
+  
   // Default to list view on mobile — evaluated once at instantiation time.
   // useMediaQuery is synchronous on the client so .value is correct immediately.
   const isMobileOnInit = useMediaQuery("(max-width: 767px)");
@@ -77,25 +79,33 @@ export const useFileExplorer = () => {
     return subFiles({ id: currentDirId.value, params });
   });
 
-  watch(directories.data, (newData) => {
-    if (!newData?.items) return;
-    dirPagination.value.hasNext = newData.hasNext ?? false;
-    if (dirPagination.value.paginationParams.page === 1) {
-      directoriesList.value = [...newData.items];
-    } else {
-      directoriesList.value.push(...newData.items);
-    }
-  });
+  watch(
+    directories.data,
+    (newData) => {
+      if (!newData?.items) return;
+      dirPagination.value.hasNext = newData.hasNext ?? false;
+      if (dirPagination.value.paginationParams.page === 1) {
+        directoriesList.value = [...newData.items];
+      } else {
+        directoriesList.value.push(...newData.items);
+      }
+    },
+    { immediate: true },
+  );
 
-  watch(files.data, (newData) => {
-    if (!newData?.items) return;
-    filePagination.value.hasNext = newData.hasNext ?? false;
-    if (filePagination.value.paginationParams.page === 1) {
-      filesList.value = [...newData.items];
-    } else {
-      filesList.value.push(...newData.items);
-    }
-  });
+  watch(
+    files.data,
+    (newData) => {
+      if (!newData?.items) return;
+      filePagination.value.hasNext = newData.hasNext ?? false;
+      if (filePagination.value.paginationParams.page === 1) {
+        filesList.value = [...newData.items];
+      } else {
+        filesList.value.push(...newData.items);
+      }
+    },
+    { immediate: true },
+  );
 
   // ACTIONS
 
@@ -139,14 +149,14 @@ export const useFileExplorer = () => {
   };
 
   const refreshDir = () => {
-    logger.log("Refreshing directory");
-    if (dirPagination.value.paginationParams.page === 1) {
-      directories.refresh();
-      files.refresh();
+    if (!currentDirId.value) {
+      queryCache.invalidateQueries({ key: [DIRECTORY_QUERY_KEYS.root[0], 'root-sub-directories'] })
+      queryCache.invalidateQueries({ key: [FILES_QUERY_KEYS.root[0], 'root-sub-files'] })
     } else {
-      navigateTo(currentDirId.value);
+      queryCache.invalidateQueries({ key: ['directories', 'sub-directories', currentDirId.value] })
+      queryCache.invalidateQueries({ key: ['files', 'sub-files', currentDirId.value] })
     }
-  };
+  }
 
   const toggleSelect = (id: string, type: "file" | "directory") =>
     type === "file" ? selectedFiles.value.add(id) : selectedDirectories.value.add(id);

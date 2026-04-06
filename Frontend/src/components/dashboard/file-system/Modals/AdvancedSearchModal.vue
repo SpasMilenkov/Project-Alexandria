@@ -539,10 +539,12 @@ import { computed, reactive, ref, shallowRef } from "vue";
 import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
 import { logger } from "@/utils/logger";
-
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
 defineShortcuts({
   enter: () => handleSubmit(),
 });
+
+useModalBackGuard(() => emit("close", "close"));
 
 const directoryStore = useDirectoryStore();
 const fileStore = useFileStore();

@@ -41,6 +41,8 @@
 </template>
 
 <script setup lang="ts">
+import { useModalBackGuard } from '@/composables/useModalBackGuard';
+
 interface AlertProps {
   title: string;
   description?: string;
@@ -71,6 +73,9 @@ withDefaults(defineProps<Props>(), {
   open: false,
   title: "Confirm",
 });
+
+useModalBackGuard(() => emit("close", false));
+
 
 // 'confirm' = the action button was clicked (submit the inner form or proceed)
 // 'close'   = modal should close (cancel, backdrop, X button)

@@ -544,6 +544,7 @@ const {
   loadMoreDirs,
   loadMoreFiles,
   navigateTo,
+  refreshDir,
   canGoBack,
   canGoForward,
   navigateBack,
@@ -556,7 +557,7 @@ const {
   downloadFile,
 } = useFileExplorer();
 
-const { mutateAsync: copyFilesMutate } =  copyFiles();
+const { mutateAsync: copyFilesMutate } = copyFiles();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
 const { mutateAsync: moveFilesMutate } = moveFiles();
 const { mutateAsync: moveDirectoriesMutate } = moveDirectories();
@@ -693,6 +694,7 @@ const { isOverDropZone } = useDropZone(containerRef, {
     const shouldRefresh = await instance.result;
     if (shouldRefresh && settingsStore.toastLevel === "all") {
       toast.add({ color: "success", id: "dropzone-upload-success", title: "Upload complete" });
+      refreshDir();
     }
   },
   onEnter(_files, event) {
@@ -1022,6 +1024,8 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
 
   const shouldRefresh = await instance.result;
   if (shouldRefresh) {
+    logger.log("refreshing");
+    refreshDir();
     return;
   }
   if (!shouldRefresh && directoryStore.error && settingsStore.toastLevel !== "silent") {

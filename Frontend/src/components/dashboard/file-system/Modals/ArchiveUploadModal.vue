@@ -9,6 +9,7 @@ import {
   type FileEntry,
   type DirectoryTreeItem,
 } from "@/composables/useDirectoryUpload";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
 
 // configure zip.js to use its own built-in workers for decompression
 configure({ useWebWorkers: true });
@@ -42,6 +43,8 @@ const {
   folderIconClass,
   formatBytes,
 } = useDirectoryUpload();
+
+useModalBackGuard(() => emit("close", false));
 
 // props & emits
 

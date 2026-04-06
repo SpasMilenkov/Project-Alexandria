@@ -7,9 +7,9 @@ import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { createApp } from "vue";
 
 import App from "./App.vue";
+import { registerIcons } from "./icons";
 import router from "./router";
 import { logger } from "./utils/logger";
-import { registerIcons } from './icons';
 registerIcons();
 
 const app = createApp(App);

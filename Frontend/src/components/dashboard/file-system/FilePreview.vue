@@ -145,7 +145,7 @@
     <!-- PDF Preview -->
     <div
       v-else-if="pdfPreviewMimes.includes(mimeType) && previewUrl"
-      class="relative w-xl h-220 bg-white dark:bg-neutral-900 rounded-lg overflow-hidden"
+      class="relative xl:w-xl h-220 bg-white dark:bg-neutral-900 rounded-lg overflow-hidden"
     >
       <embed :src="previewUrl" type="application/pdf" class="w-full h-full" />
     </div>

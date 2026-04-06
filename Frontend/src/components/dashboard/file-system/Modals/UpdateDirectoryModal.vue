@@ -4,6 +4,7 @@ import { type UpdateDirectorySchema, updateDirectorySchema } from "@/schemas/dir
 import type { FormSubmitEvent } from "@nuxt/ui";
 import { updateDirectory } from "@/mutations/directories";
 import { logger } from "@/utils/logger";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
 
 const props = defineProps<{
   directoryId: string;
@@ -12,6 +13,8 @@ const props = defineProps<{
 const { mutateAsync, state: mutationState } = updateDirectory();
 
 const emit = defineEmits<{ close: [boolean] }>();
+
+useModalBackGuard(() => emit("close", false));
 
 const state = reactive({
   directoryId: props.directoryId,

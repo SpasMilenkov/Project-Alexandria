@@ -8,6 +8,7 @@ import {
   type FileEntry,
   type DirectoryTreeItem,
 } from "@/composables/useDirectoryUpload";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
 
 const toast = useToast();
 const directoryStore = useDirectoryStore();
@@ -46,6 +47,8 @@ const props = defineProps<{
   directoryName?: string;
   droppedFiles?: FileEntry[];
 }>();
+
+useModalBackGuard(() => emit("close", false));
 
 const emit = defineEmits<{ close: [boolean] }>();
 

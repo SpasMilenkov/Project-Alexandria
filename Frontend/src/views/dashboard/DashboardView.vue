@@ -5,6 +5,7 @@ import { useTabStore } from "@/stores/tab";
 import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
 import { Icon } from "@iconify/vue";
 import { logger } from "@/utils/logger";
+import type { ExplorerTab } from "@/types/explorer-tab";
 
 defineShortcuts({
   meta_shift_n: () => tabStore.createTab(null),
@@ -20,7 +21,7 @@ const isMobile = useMediaQuery("(max-width: 767px)");
 
 // Desktop UTabs items
 const items = computed(() =>
-  tabStore.tabs.map((tab) => ({
+  tabStore.tabs.map((tab: ExplorerTab) => ({
     icon: "i-heroicons-folder",
     label: tab.title,
     value: tab.id,
@@ -38,12 +39,25 @@ const overflowCount = computed(() => overflowTabs.value.length);
 // Manage tabs sheet state
 const isManageSheetOpen = ref(false);
 
+// Close all tabs confirmation modal
+const isCloseAllModalOpen = ref(false);
+
 const openManageSheet = () => {
   isManageSheetOpen.value = true;
 };
 
 const closeManageSheet = () => {
   isManageSheetOpen.value = false;
+};
+
+const openCloseAllModal = () => {
+  isCloseAllModalOpen.value = true;
+};
+
+const confirmCloseAll = () => {
+  tabStore.closeAllTabs();
+  isCloseAllModalOpen.value = false;
+  closeManageSheet();
 };
 
 const activateTab = (tabId: string) => {
@@ -133,6 +147,17 @@ onMounted(() => {
         list: 'sticky top-0 z-10 bg-background shrink-0',
       }"
     >
+      <template #list-leading>
+        <UButton
+          v-if="tabStore.tabs.length > 1"
+          icon="mdi:folder-remove-outline"
+          variant="ghost"
+          color="error"
+          aria-label="Close all tabs"
+          title="Close all tabs"
+          @click="openCloseAllModal"
+        />
+      </template>
       <template #list-trailing>
         <UButton
           icon="i-heroicons-plus"
@@ -164,7 +189,7 @@ onMounted(() => {
       </template>
 
       <template #content="{ item }">
-        <FileExplorer v-if="item.value" :tab-id="item.value" />
+        <FileExplorer v-if="item.value" :tab-id="item.value" :key="item.value" />
       </template>
     </UTabs>
 
@@ -172,11 +197,16 @@ onMounted(() => {
     <template v-else>
       <!-- Active tab content; pb-14 reserves space for the bottom bar -->
       <div class="flex flex-col h-full pb-14">
-        <FileExplorer v-if="tabStore.activeTabId" :tab-id="tabStore.activeTabId" :key="tabStore.activeTabId"/>
+        <FileExplorer
+          v-if="tabStore.activeTabId"
+          :tab-id="tabStore.activeTabId"
+          :key="tabStore.activeTabId"
+        />
       </div>
 
       <!-- Bottom tab bar -->
       <div
+        @contextmenu="openManageSheet"
         class="fixed bottom-0 inset-x-0 z-40 h-14 flex items-center gap-1 px-2 border-t border-gray-200/70 dark:border-gray-700/70 bg-background/80 backdrop-blur-sm"
       >
         <!-- Visible tab pills (max 3) -->
@@ -230,11 +260,11 @@ onMounted(() => {
           @click.self="closeManageSheet"
         >
           <!-- Scrim -->
-          <div class="absolute inset-0 bg-black/40 backdrop-blur-[2px]" @click="closeManageSheet" />
+          <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]" @click="closeManageSheet" />
 
           <!-- Sheet panel -->
           <div
-            class="relative z-10 rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70 bg-background/95 backdrop-blur-sm pb-safe"
+            class="relative z-10 rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70 bg-neutral-100 dark:bg-neutral-900 pb-safe"
           >
             <!-- Handle -->
             <div class="flex justify-center pt-3 pb-1">
@@ -245,13 +275,14 @@ onMounted(() => {
             <div class="flex items-center justify-between px-4 py-3">
               <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">All tabs</h2>
               <UButton
+                v-if="tabStore.tabs.length > 0"
                 variant="ghost"
-                color="neutral"
+                color="error"
                 size="sm"
-                aria-label="Close"
-                @click="closeManageSheet"
+                aria-label="Close all tabs"
+                @click="openCloseAllModal"
               >
-                <Icon icon="mdi:close" class="w-4 h-4" />
+                <Icon icon="mdi:folder-remove-outline" class="w-4 h-4" />
               </UButton>
             </div>
 
@@ -313,6 +344,27 @@ onMounted(() => {
       </Transition>
     </template>
   </template>
+
+  <!-- Close all tabs confirmation modal (shared between desktop and mobile) -->
+  <UModal v-model:open="isCloseAllModalOpen">
+    <template #content>
+      <div class="p-6 space-y-4">
+        <div class="space-y-1">
+          <h3 class="text-base font-semibold text-gray-900 dark:text-white">Close all tabs?</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            This will close all {{ tabStore.tabs.length }} open
+            {{ tabStore.tabs.length === 1 ? "tab" : "tabs" }}. This action cannot be undone.
+          </p>
+        </div>
+        <div class="flex gap-3 justify-end">
+          <UButton variant="outline" color="neutral" size="sm" @click="isCloseAllModalOpen = false">
+            Cancel
+          </UButton>
+          <UButton color="error" size="sm" @click="confirmCloseAll"> Close all </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
 </template>
 
 <style scoped>

@@ -3,6 +3,8 @@ import { reactive } from "vue";
 import { type CreateDirectorySchema, createDirectorySchema } from "@/schemas/directory";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import { createDirectory } from "@/mutations/directories";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
+
 const props = defineProps<{
   parentId: string | null;
 }>();
@@ -10,6 +12,8 @@ const props = defineProps<{
 const { mutateAsync, state: mutationState } = createDirectory();
 
 const emit = defineEmits<{ close: [boolean] }>();
+
+useModalBackGuard(() => emit("close", false));
 
 const state = reactive({
   name: "",
