@@ -30,8 +30,8 @@ services:
       - garage_local_meta_data:/var/lib/garage/meta
       - garage_local_storage_data:/var/lib/garage/data
     networks:
-      - app-net   # nginx proxies S3 requests from browser
-      - data-net  # api and workers talk to it directly
+      - app-net # nginx proxies S3 requests from browser
+      - data-net # api and workers talk to it directly
     deploy:
       resources:
         limits:
@@ -183,8 +183,8 @@ services:
         reservations:
           memory: 32M
     networks:
-      - frontend-net    # faces the outside world
-      - app-net         # reaches frontend, api, garage
+      - frontend-net # faces the outside world
+      - app-net # reaches frontend, api, garage
 
   frontend:
     build:
@@ -209,11 +209,13 @@ services:
       context: ./Backend
       dockerfile: API/Dockerfile
     container_name: alexandria-api
-    restart: on-failure:5
+    restart: on-failure:3
     environment:
-      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_ACCESS_KEY:?GARAGE_S3_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_SECRET_KEY:?GARAGE_S3_SECRET_KEY is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      S3Storage__ProviderSettings__Garage__MetricsToken: ${GARAGE_S3_METRICS_TOKEN:?GARAGE_S3_METRICS_TOKEN is required}
       RabbitMQ__UserName: ${RABBITMQ_USER:-dev_admin}
       RabbitMQ__Password: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
       Jwt__Secret: ${JWT_SECRET:?JWT_SECRET is required}
@@ -235,8 +237,8 @@ services:
       garage:
         condition: service_healthy
     networks:
-      - app-net           # nginx reaches it here
-      - data-net          # reaches postgres, garage, rabbitmq
+      - app-net # nginx reaches it here
+      - data-net # reaches postgres, garage, rabbitmq
       - observability-net # exposes /metrics to prometheus
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
@@ -259,11 +261,12 @@ services:
     restart: always
     environment:
       DOTNET_ENVIRONMENT: Production
-      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
-      RabbitMQ__UserName: document_worker_user
+      RabbitMQ__UserName: ${RABBITMQ_DOCUMENT_WORKER:?RABBITMQ_DOCUMENT_WORKER is required}
       RabbitMQ__Password: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:?DOCUMENT_WORKER_RABBITMQ_PASSWORD is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -296,11 +299,12 @@ services:
     restart: always
     environment:
       DOTNET_ENVIRONMENT: Production
-      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
-      RabbitMQ__UserName: media_worker_user
+      RabbitMQ__UserName: ${RABBITMQ_MEDIA_WORKER:?RABBITMQ_MEDIA_WORKER is required}
       RabbitMQ__Password: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
     depends_on:
       postgres:
         condition: service_healthy
