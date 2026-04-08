@@ -33,7 +33,7 @@
           variant="solid"
           :icon="confirmIcon"
           :loading="loading"
-          @click="emit('confirm')"
+          @click="emit('close', true)"
         />
       </div>
     </template>
@@ -46,7 +46,7 @@ import { useModalBackGuard } from '@/composables/useModalBackGuard';
 interface AlertProps {
   title: string;
   description?: string;
-  color?: string;
+  color?: "error" | "success" | "primary" | "secondary" | "info" | "warning" | "neutral";
   icon?: string;
 }
 
@@ -57,7 +57,7 @@ interface Props {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmIcon?: string;
-  confirmColor?: string;
+  confirmColor?: "error" | "success" | "primary" | "secondary" | "info" | "warning" | "neutral";
   dangerMode?: boolean;
   loading?: boolean;
   alert?: AlertProps;

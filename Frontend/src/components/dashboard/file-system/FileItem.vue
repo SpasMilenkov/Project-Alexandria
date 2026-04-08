@@ -375,7 +375,6 @@ const copyWithFeedback = async (value: string, label: string) => {
     icon: "i-mdi-check-circle",
     title: `${label} copied`,
     // Bottom-right on desktop; top-center on mobile so it clears the bottom-sheet drawer
-    position: isMobile.value ? "top-center" : "bottom-right",
   });
 };
 
@@ -418,7 +417,7 @@ const {
   data: tagsData,
   isLoading: tagsLoading,
   refresh: refreshFileTag,
-} = useQuery(searchTag(searchFilters.value));
+} = useQuery({...searchTag(searchFilters.value), enabled: openDrawer.value  });
 
 const { isLoading: fileTagsLoading } = useQuery({
   ...getTagsForFile(props.data.fileId),
