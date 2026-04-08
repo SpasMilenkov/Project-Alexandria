@@ -22,33 +22,6 @@ services:
       retries: 3
       start_period: 10s
 
-  # MinIO Object Storage (maintenance mode)
-  minio:
-    image: minio/minio:latest
-    container_name: alexandria-minio-dev
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-dev_admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-dev_password_123}
-      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
-      MINIO_LOG_LEVEL: DEBUG
-    volumes:
-      - minio_dev_data:/data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    networks:
-      - alexandria-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-    profiles:
-      - minio
-
   # Garage Object Storage (default S3-compatible storage)
   garage:
     image: dxflrs/garage:v2.2.0
@@ -78,38 +51,38 @@ services:
       - default
 
   # RustFS Object Storage (alternative S3-compatible storage)
-  rustfs:
-    image: rustfs/rustfs:latest
-    container_name: alexandria-rustfs-dev
-    restart: unless-stopped
-    command:
-      - "--address"
-      - ":3900"
-      - "--console-enable"
-      - "--access-key"
-      - "${RUSTFS_ACCESS_KEY:-dev_admin}"
-      - "--secret-key"
-      - "${RUSTFS_SECRET_KEY:-dev_password_123}"
-      - "/data"
-    environment:
-      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-dev_admin}
-      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-dev_password_123}
-      RUSTFS_CONSOLE_ENABLE: "true"
-    volumes:
-      - rustfs_dev_data:/data
-    ports:
-      - "9000:3900" # S3 API (mapped to 9000 for compatibility)
-      - "9001:9001" # Console UI (mapped to 9001 for compatibility)
-    networks:
-      - alexandria-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3900/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
-    profiles:
-      - rustfs
+  # rustfs:
+  #   image: rustfs/rustfs:latest
+  #   container_name: alexandria-rustfs-dev
+  #   restart: unless-stopped
+  #   command:
+  #     - "--address"
+  #     - ":3900"
+  #     - "--console-enable"
+  #     - "--access-key"
+  #     - "${RUSTFS_ACCESS_KEY:-dev_admin}"
+  #     - "--secret-key"
+  #     - "${RUSTFS_SECRET_KEY:-dev_password_123}"
+  #     - "/data"
+  #   environment:
+  #     RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-dev_admin}
+  #     RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-dev_password_123}
+  #     RUSTFS_CONSOLE_ENABLE: "true"
+  #   volumes:
+  #     - rustfs_dev_data:/data
+  #   ports:
+  #     - "9000:3900" # S3 API (mapped to 9000 for compatibility)
+  #     - "9001:9001" # Console UI (mapped to 9001 for compatibility)
+  #   networks:
+  #     - alexandria-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:3900/health"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 3
+  #     start_period: 15s
+  #   profiles:
+  #     - rustfs
 
   # RabbitMQ Message Broker
   rabbitmq:
