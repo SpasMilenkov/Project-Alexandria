@@ -18,7 +18,7 @@ RUN cd /usr/src/ngx_brotli/deps/brotli \
     && make -j$(nproc) brotlienc brotlidec brotlicommon
 
 # Download + verify nginx source
-COPY pgp/arut.key /tmp/arut.key
+COPY gpg/arut.key /tmp/arut.key
 
 RUN gpg --import /tmp/arut.key \
     && curl -fSL https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz -o /tmp/nginx.tar.gz \
