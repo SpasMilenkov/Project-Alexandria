@@ -162,15 +162,15 @@
             >
               Open
             </UButton>
-            <UButton icon="i-mdi-pencil" color="gray" variant="soft" block @click="handleRename">
+            <UButton icon="i-mdi-pencil" color="neutral" variant="soft" block @click="handleRename">
               Rename
             </UButton>
-            <UButton icon="i-mdi-folder-move" color="gray" variant="soft" block @click="handleMove">
+            <UButton icon="i-mdi-folder-move" color="neutral" variant="soft" block @click="handleMove">
               Move
             </UButton>
             <UButton
               icon="i-mdi-download"
-              color="gray"
+              color="neutral"
               variant="soft"
               block
               @click="handleDownload"
