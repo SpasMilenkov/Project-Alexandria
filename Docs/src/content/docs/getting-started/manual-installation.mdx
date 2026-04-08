@@ -1,0 +1,779 @@
+---
+title: Manual Local Installation
+description: Deploy Alexandria on your local network manually
+---
+
+import { Aside, Steps, Tabs, TabItem, Card, Badge } from '@astrojs/starlight/components';
+
+This guide walks you through setting up a locally running instance of Alexandria that you can access from any device on your network.
+
+<Aside type="tip">
+  This guide assumes deployment under Linux. For least friction, use Linux or WSL.
+</Aside>
+
+## Prerequisites
+
+To get started you will need a basic understanding of how to copy and paste text in a terminal, and a Linux machine with the following installed:
+
+- **Docker** and **Docker Compose**
+- **Git** (optional — you can download a ZIP of the source code instead)
+
+---
+
+## Configuration
+
+The project requires several configuration files to be filled out before it can run. Specifically:
+
+- 3 `appsettings.json` backend config files
+- 1 `garage.local.toml` Garage config file
+- 1 `.env` environment file
+
+Each of these has a template variant already present in the repository. The only action required is to create the non-template variant, copy the template contents into it, and fill it out.
+
+### `.env`
+
+The `.env` file contains the main credentials and secrets for the project.
+
+<Aside type="danger">
+  It is **very important** to never share its contents with anyone. Giving someone the contents of your `.env` file is like giving a stranger the keys to your house — it can lead to a full compromise of the system.
+</Aside>
+
+The template for this file is located at the root of the project, on the same level where the real `.env` file will live. Make sure you are in the root of the Alexandria repository before running the following commands.
+
+Create a new empty file:
+
+```bash
+touch .env
+```
+
+Open it in your editor of choice and copy the contents of `.env.template`.
+
+<Tabs>
+  <TabItem label=".env template">
+    ```ini
+    # ============================================================
+    # Alexandria — Environment Configuration Template
+    # Copy this file to .env and fill in all values
+    # NEVER commit .env to source control
+    # ============================================================
+
+    # Database
+    DB_PORT=
+    DB_NAME=
+    DB_USERNAME=
+    DB_PASSWORD=
+
+    # Admin account credentials
+    ADMIN_EMAIL=
+    ADMIN_PASSWORD=
+    ADMIN_USERNAME=
+
+    # RabbitMQ
+    RABBITMQ_USER=alexandria
+    RABBITMQ_PASSWORD=
+    DOCUMENT_WORKER_RABBITMQ_PASSWORD=
+    MEDIA_WORKER_RABBITMQ_PASSWORD=
+    RABBITMQ_VHOST=alexandria
+
+    # Garage S3
+    # These come from the garage-init container output
+    # When the garage init container finishes all the relevant credentials should be in the init-output directory
+    # located at the root level of the project.
+    # Alternatively you can run:
+    # docker logs alexandria-garage-init
+    # and copy the Key ID and Secret key for alexandria-master-key
+    GARAGE_RPC_SECRET=
+    GARAGE_ADMIN_TOKEN=
+    GARAGE_METRICS_TOKEN=
+    GARAGE_S3_ACCESS_KEY=placeholder
+    GARAGE_S3_SECRET_KEY=placeholder
+    GARAGE_S3_WORKER_ACCESS_KEY=placeholder
+    GARAGE_S3_WORKER_SECRET_KEY=placeholder
+    GARAGE_S3_PUBLIC_ENDPOINT=
+
+    # JWT
+    # Generate with: openssl rand -base64 64
+    JWT_SECRET=
+    JWT_ISSUER=
+    JWT_AUDIENCE=
+
+    # CSRF
+    # Generate with: openssl rand -base64 32
+    CSRF_SECRET=
+
+    # CORS
+    # The public-facing origin your frontend is served from
+    # Dev:        https://localhost
+    # Production: https://yourdomain.com
+    # Multiple:   use index notation in appsettings instead (see appsettings.Production.json)
+    CORS_ALLOWED_ORIGINS__0=
+    CORS_ALLOWED_ORIGINS__1=
+
+    # Garage init
+    # Origin the browser uploads from — must match CORS_ALLOWED_ORIGINS
+    CORS_ORIGIN=
+
+    # Grafana
+    GRAFANA_USER=admin
+    # Generate with: openssl rand -base64 16
+    GRAFANA_PASSWORD=
+    ```
+  </TabItem>
+  <TabItem label="Breakdown by section">
+    <Card title="Database">
+      **`DB_NAME`** <Badge text="Required" variant="danger" />
+
+      The name of the PostgreSQL database Alexandria will use.
+
+      ---
+
+      **`DB_USERNAME`** <Badge text="Required" variant="danger" />
+
+      The database user Alexandria connects as.
+
+      ---
+
+      **`DB_PASSWORD`** <Badge text="Required" variant="danger" />
+
+      The password for your PostgreSQL database. Choose a strong, secure password — this protects all raw data stored by Alexandria.
+
+      ---
+
+      **`DB_PORT`** <Badge text="Default: 5432" variant="success" />
+
+      The port PostgreSQL listens on. Only change this if you have a reason to deviate from the standard port.
+    </Card>
+
+    <Card title="Admin Account">
+      These credentials are used to create your very first administrative account.
+
+      ---
+
+      **`ADMIN_EMAIL`** <Badge text="Required" variant="danger" />
+
+      The email address for the admin account.
+
+      ---
+
+      **`ADMIN_USERNAME`** <Badge text="Required" variant="danger" />
+
+      The username you will use to log in.
+
+      ---
+
+      **`ADMIN_PASSWORD`** <Badge text="Required" variant="danger" />
+
+      The password for your admin account. Make sure it is secure!
+    </Card>
+
+    <Card title="RabbitMQ">
+      RabbitMQ is the message broker that handles background tasks in Alexandria.
+
+      ---
+
+      **`RABBITMQ_USER`** <Badge text="Default: alexandria" variant="success" />
+
+      The main administrative username for your RabbitMQ instance.
+
+      ---
+
+      **`RABBITMQ_PASSWORD`** <Badge text="Required" variant="danger" />
+
+      The main administrative password for your RabbitMQ instance.
+
+      ---
+
+      **`DOCUMENT_WORKER_RABBITMQ_PASSWORD`** & **`MEDIA_WORKER_RABBITMQ_PASSWORD`** <Badge text="Required" variant="danger" />
+
+      Passwords for the dedicated background workers that process your documents and media. Using separate passwords for these is good security practice.
+
+      ---
+
+      **`RABBITMQ_VHOST`** <Badge text="Default: alexandria" variant="success" />
+
+      The virtual host used to isolate Alexandria's messages. Leave this as `alexandria` — don't change it unless you know what you are doing.
+    </Card>
+
+    <Card title="Garage S3">
+      These are filled in after the first Compose run. Leave the S3 key fields as `placeholder` for now — the init container will generate them.
+
+      ---
+
+      **`GARAGE_RPC_SECRET`** <Badge text="Required" variant="danger" />
+
+      Must match `rpc_secret` in `garage.local.toml`. Generate with:
+
+      ```bash
+      openssl rand -hex 32
+      ```
+
+      ---
+
+      **`GARAGE_ADMIN_TOKEN`** <Badge text="Required" variant="danger" />
+
+      Must match `admin_token` in `garage.local.toml`.
+
+      ---
+
+      **`GARAGE_METRICS_TOKEN`** <Badge text="Required" variant="danger" />
+
+      Must match `metrics_token` in `garage.local.toml`.
+
+      ---
+
+      **`GARAGE_S3_ACCESS_KEY`** & **`GARAGE_S3_SECRET_KEY`** <Badge text="Generated later" variant="caution" />
+
+      Credentials for the API to access Garage. Leave as `placeholder` — copied from `init-output` after the first run.
+
+      ---
+
+      **`GARAGE_S3_WORKER_ACCESS_KEY`** & **`GARAGE_S3_WORKER_SECRET_KEY`** <Badge text="Generated later" variant="caution" />
+
+      Credentials for the background workers. Leave as `placeholder` — copied from `init-output` after the first run.
+
+      ---
+
+      **`GARAGE_S3_PUBLIC_ENDPOINT`** <Badge text="Required" variant="danger" />
+
+      The publicly reachable URL of your Garage S3 API — used for presigned upload URLs. Those URLs allow communication between the client application (your browser) and S3 (Garage in the default case) and thus reduce the load on the server. For a local setup this should be `https://192.168.x.x`.
+    </Card>
+
+    <Card title="JWT (JSON Web Tokens)">
+      These properties secure the sessions for logged-in users.
+
+      ---
+
+      **`JWT_SECRET`** <Badge text="Required" variant="danger" />
+
+      A long, random string used to cryptographically sign session tokens. Generate one with:
+
+      ```bash
+      openssl rand -base64 64
+      ```
+
+      ---
+
+      **`JWT_ISSUER`** & **`JWT_AUDIENCE`** <Badge text="Required" variant="danger" />
+
+      Identify who created the token and who it is intended for. You can set both to your domain name or simply `Alexandria`.
+    </Card>
+
+    <Card title="CSRF (Cross-Site Request Forgery)">
+      **`CSRF_SECRET`** <Badge text="Required" variant="danger" />
+
+      A cryptographic secret used to protect forms and state-changing API requests from malicious sites. Generate with:
+
+      ```bash
+      openssl rand -base64 32
+      ```
+    </Card>
+
+    <Card title="CORS (Cross-Origin Resource Sharing)">
+      These settings tell the server which frontend addresses are allowed to talk to it.
+
+      ---
+
+      **`CORS_ALLOWED_ORIGINS__0`** & **`CORS_ALLOWED_ORIGINS__1`** <Badge text="Required" variant="danger" />
+
+      The URLs where your frontend is hosted. For a local setup, set the first to `https://localhost` and the second to the IP of the machine you are serving from — something like `https://192.168.x.x`.
+
+      <Aside type="tip">
+        To get your local IP on Linux, run: `ip route get 1 | awk '{print $7; exit}'`
+      </Aside>
+
+      ---
+
+      **`CORS_ORIGIN`** <Badge text="Required" variant="danger" />
+
+      The origin the browser uploads from. Must match one of the values above — used by the Garage init container to configure bucket CORS policy.
+    </Card>
+
+    <Card title="Grafana">
+      Grafana provides monitoring dashboards to keep an eye on Alexandria's performance.
+
+      ---
+
+      **`GRAFANA_USER`** <Badge text="Default: admin" variant="success" />
+
+      The dashboard username.
+
+      ---
+
+      **`GRAFANA_PASSWORD`** <Badge text="Required" variant="danger" />
+
+      The password to access Grafana. Generate a secure one with:
+
+      ```bash
+      openssl rand -base64 16
+      ```
+    </Card>
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+  The Garage S3 key fields (`GARAGE_S3_ACCESS_KEY` and friends) are intentionally left as `placeholder` for now — you will fill them in after the first Compose run.
+</Aside>
+---
+
+### Garage Configuration
+
+Garage is the piece of software responsible for storing your file data. There should be a `garage.template.toml` at the root of the project. Create a new file called `garage.local.toml` at the same level and copy the template contents into it:
+
+```bash
+touch garage.local.toml
+```
+<Tabs>
+    <TabItem label="Garage toml config">
+        ```toml
+        metadata_dir = ""
+        data_dir = ""
+        
+        # Database engine: lmdb (recommended for production)
+        db_engine = ""
+        
+        # For single-node setups, replication_factor can be 1
+        # For production multi-node, use 2 or 3 (number of copies)
+        replication_factor = 1
+        
+        # Compression level (0-19, 0 = no compression, 1 = fast/low, 19 = slow/high)
+        compression_level = 0
+        block_size = "4M"
+        
+        # RPC configuration
+        rpc_bind_addr = "[::]:3901"
+        rpc_public_addr = "garage:3901"
+        
+        # Generate a secure random secret with: openssl rand -hex 32
+        rpc_secret = ""
+        
+        # S3 API configuration
+        [s3_api]
+        s3_region = "garage"
+        api_bind_addr = "[::]:3900"
+        root_domain = ".s3.garage.localhost"
+        
+        # S3 Web hosting configuration (optional)
+        [s3_web]
+        bind_addr = "[::]:3902"
+        root_domain = ".web.garage.localhost"
+        index = "index.html"
+        
+        # Admin API configuration
+        [admin]
+        api_bind_addr = "[::]:3903"
+        
+        # Generate secure tokens with: openssl rand -base64 32
+        admin_token = ""
+        metrics_token = ""
+        ```
+    </TabItem>
+    <TabItem label="Breakdown by property">
+        Here is a breakdown of the key properties.
+    
+      <Card title="Storage Paths">
+        **`metadata_dir`** <Badge text="Required" variant="danger" />
+    
+        Where Garage stores its internal index and bookkeeping — not your actual files. Point this to a stable, fast path, for example `/var/lib/garage/meta`.
+    
+        ---
+    
+        **`data_dir`** <Badge text="Required" variant="danger" />
+    
+        Where your actual file data lives. Make sure this path has enough free space, for example `/var/lib/garage/data`.
+      </Card>
+    
+      <Card title="Database & Performance">
+        **`db_engine`** <Badge text="Required" variant="danger" />
+    
+        Set this to `lmdb` — the recommended and most reliable option for a local setup.
+    
+        ---
+    
+        **`replication_factor`** <Badge text="Default: 1" variant="success" />
+    
+        How many copies of each piece of data Garage keeps across nodes. Leave this at `1` for a single-node setup.
+    
+        ---
+    
+        **`compression_level`** <Badge text="Default: 0" variant="success" />
+    
+        How aggressively Garage compresses stored data. `0` disables it entirely, which is perfectly fine locally.
+    
+        ---
+    
+        **`block_size`** <Badge text="Default: 4M" variant="success" />
+    
+        The size of chunks Garage splits files into before storing them. The default works well for most cases.
+      </Card>
+    
+      <Card title="RPC">
+        RPC is how Garage nodes talk to each other — even on a single node, it still needs to be configured.
+    
+        ---
+    
+        **`rpc_bind_addr`** <Badge text="Default: ok" variant="success" />
+    
+        The address and port Garage listens on for internal cluster communication. The default `[::]:3901` is fine.
+    
+        ---
+    
+        **`rpc_public_addr`** <Badge text="Default: ok" variant="success" />
+    
+        The address other nodes use to reach this node. For a single-node Docker setup, `garage:3901` refers to the Garage container by its service name.
+    
+        ---
+    
+        **`rpc_secret`** <Badge text="Required" variant="danger" />
+    
+        A shared cryptographic secret all nodes must agree on. Must also match `GARAGE_RPC_SECRET` in your `.env`.
+    
+        ```bash
+        openssl rand -hex 32
+        ```
+      </Card>
+    
+      <Card title="S3 API">
+        **`s3_region`** <Badge text="Default: ok" variant="success" />
+    
+        The region name Garage advertises. Leave this as `garage`.
+    
+        ---
+    
+        **`api_bind_addr`** <Badge text="Default: ok" variant="success" />
+    
+        The address and port for S3 API requests. The default `[::]:3900` matches what the rest of the stack expects.
+    
+        ---
+    
+        **`root_domain`** <Badge text="Default: ok" variant="success" />
+    
+        Used for virtual-hosted-style S3 bucket URLs. The default `.s3.garage.localhost` does not need to be changed for a local setup.
+      </Card>
+    
+      <Card title="S3 Web Hosting">
+        Alexandria does not use this feature directly — the defaults are fine and nothing here needs to be changed.
+      </Card>
+    
+      <Card title="Admin API">
+        **`api_bind_addr`** <Badge text="Default: ok" variant="success" />
+    
+        The address Garage's admin API listens on. Used internally to manage the cluster, create keys, and set up buckets.
+    
+        ---
+    
+        **`admin_token`** <Badge text="Required" variant="danger" />
+    
+        A secret token protecting the admin API. Must also match `GARAGE_ADMIN_TOKEN` in your `.env`.
+    
+        ```bash
+        openssl rand -base64 32
+        ```
+    
+        ---
+    
+        **`metrics_token`** <Badge text="Required" variant="danger" />
+    
+        A separate token protecting the metrics endpoint used by Grafana. Must also match `GARAGE_METRICS_TOKEN` in your `.env`.
+    
+        ```bash
+        openssl rand -base64 32
+        ```
+      </Card>
+    </TabItem>
+</Tabs>
+
+
+
+Now with all of that sorted out you can go back to the .env file and fill out the garage related properties.
+
+```ini
+GARAGE_RPC_SECRET=################################
+GARAGE_ADMIN_TOKEN=################################
+GARAGE_METRICS_TOKEN=################################
+```
+
+The rest should still contain the placeholder text.
+
+Once you have filled in the RPC secret and the admin and metrics tokens, you are ready to move on.
+
+
+### Backend Configuration
+
+With your local IP in hand, it's time to configure the three backend projects: the **API**, the **Document Worker**, and the **Media Worker**. Each has an `appsettings.template.json` file — you need to create a corresponding `appsettings.json` next to it and copy the template contents in.
+
+<Tabs>
+  <TabItem label="API">
+
+    From the root of the project:
+
+    ```bash
+    cd Backend/API
+    touch appsettings.json
+    ```
+
+    Copy the contents of `appsettings.template.json`:
+
+    ```json
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Warning",
+          "Microsoft.AspNetCore": "Warning",
+          "Microsoft.EntityFrameworkCore.Database.Command": "Warning"
+        }
+      },
+      "S3Storage": {
+        "Provider": "Garage",
+        "Endpoint": "http://garage:3900",
+        "UseHttps": true,
+        "Region": "garage",
+        "UploadBucket": "alexandria-files",
+        "PreviewBucket": "alexandria-previews",
+        "TempBucket": "alexandria-temp",
+        "ImagesBucket": "alexandria-images",
+        "ProviderSettings": {
+          "Garage": {
+            "Region": "garage",
+            "ForcePathStyle": true,
+            "UseAccelerateEndpoint": false,
+            "UseDualstackEndpoint": false,
+            "MetricsUrl": "http://garage:3903/metrics"
+          }
+        }
+      },
+      "RabbitMQ": {
+        "HostName": "rabbitmq",
+        "Port": 5672,
+        "VirtualHost": "alexandria",
+        "ChannelPoolSize": 10,
+        "Producer": {
+          "QueueName": "my-queue",
+          "PrefetchCount": 10,
+          "AutoAck": false,
+          "Concurrency": 1
+        }
+      },
+      "Jwt": {
+        "AccessTokenExpiryMinutes": 15,
+        "RefreshTokenExpiryDays": 7
+      },
+      "Csrf": {
+        "ExpiryMinutes": 60
+      },
+      "HealthChecks": {
+        "Database": { "Enabled": true },
+        "Storage": { "Enabled": true },
+        "MessageBroker": { "Enabled": true },
+        "Workers": [
+          {
+            "Name": "DocumentWorker",
+            "Url": "http://document-worker:8080/health",
+            "Enabled": true
+          },
+          {
+            "Name": "MediaWorker",
+            "Url": "http://media-worker:8080/health",
+            "Enabled": true
+          }
+        ]
+      }
+    }
+    ```
+
+  </TabItem>
+  <TabItem label="Document Worker">
+
+    From the root of the project:
+
+    ```bash
+    cd Backend/DocumentWorker.Service
+    touch appsettings.json
+    ```
+
+    Copy the contents of the template:
+
+    ```json
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.Hosting.Lifetime": "Information"
+        }
+      },
+      "S3Storage": {
+        "Provider": "Garage",
+        "Endpoint": "http://garage:3900",
+        "UseHttps": true,
+        "Region": "garage",
+        "UploadBucket": "alexandria-files",
+        "PreviewBucket": "alexandria-previews",
+        "TempBucket": "alexandria-temp",
+        "ProviderSettings": {
+          "Garage": {
+            "Region": "garage",
+            "ForcePathStyle": true,
+            "UseAccelerateEndpoint": false,
+            "UseDualstackEndpoint": false
+          }
+        }
+      },
+      "RabbitMQ": {
+        "HostName": "rabbitmq",
+        "Port": 5672,
+        "VirtualHost": "alexandria",
+        "ChannelPoolSize": 10,
+        "Consumer": {
+          "QueueName": "content-queue",
+          "PrefetchCount": 10,
+          "AutoAck": false,
+          "Concurrency": 1
+        }
+      }
+    }
+    ```
+
+  </TabItem>
+  <TabItem label="Media Worker">
+
+    From the root of the project:
+
+    ```bash
+    cd Backend/MediaWorkerService
+    touch appsettings.json
+    ```
+
+    Copy the contents of the template:
+
+    ```json
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.Hosting.Lifetime": "Warning"
+        }
+      },
+      "S3Storage": {
+        "Provider": "Garage",
+        "Endpoint": "http://garage:3900",
+        "UseHttps": true,
+        "Region": "garage",
+        "UploadBucket": "alexandria-files",
+        "PreviewBucket": "alexandria-previews",
+        "TempBucket": "alexandria-temp",
+        "ProviderSettings": {
+          "Garage": {
+            "Region": "garage",
+            "ForcePathStyle": true,
+            "UseAccelerateEndpoint": false,
+            "UseDualstackEndpoint": false
+          }
+        }
+      },
+      "RabbitMQ": {
+        "HostName": "rabbitmq",
+        "Port": 5672,
+        "VirtualHost": "alexandria",
+        "ChannelPoolSize": 10,
+        "Consumer": {
+          "QueueName": "content-queue",
+          "PrefetchCount": 10,
+          "AutoAck": false,
+          "Concurrency": 1
+        }
+      }
+    }
+    ```
+
+  </TabItem>
+</Tabs>
+
+---
+
+### SSL Certificates
+
+Since this is a local installation without a domain, you will need to generate your own self-signed certificates for NGINX.
+
+Create the directory where the certificates will live:
+
+```bash
+mkdir nginx/certs
+```
+
+Then generate the certificate, substituting your local IP:
+
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout ./nginx/certs/self-signed.key \
+  -out ./nginx/certs/self-signed.crt \
+  -subj "/CN=localhost" \
+  -addext "subjectAltName=IP:192.168.x.x,DNS:localhost"
+```
+
+---
+
+## First Compose Run
+
+<Aside type="note">
+  This is a somewhat involved procedure that will be streamlined in the future — but it works reliably as described below.
+</Aside>
+
+<Steps>
+
+1. **Start the stack** from the root of the project:
+
+   ```bash
+   docker compose -f docker-compose.local.yml -p alexandria-local up -d
+   ```
+
+   Depending on your system resources and internet speed, this may take a while on the first run. Consecutive runs will be considerably faster due to Docker caching.
+
+   This step does two things:
+   - Configures the RabbitMQ broker with dedicated profiles for each worker
+   - Spawns a Garage initialization container that will:
+     1. Create a layout and apply it to Garage
+     2. Create the S3 buckets for file storage
+     3. Set up access keys for the API and worker projects
+     4. Configure the CORS policy for the publicly accessible bucket
+     5. Write the generated keys to the `init-output` directory at the project root
+
+2. **Extract the Garage keys** from the `init-output` directory and copy them into your `.env` file. After this step the Garage section of your `.env` should look something like:
+
+    ```diff
+    GARAGE_RPC_SECRET= The same secret from earlier
+    
+    GARAGE_ADMIN_TOKEN= The same token from earlier
+    
+    GARAGE_METRICS_TOKEN= The same metrics token from earlier
+    
+    -GARAGE_S3_ACCESS_KEY=placeholder
+    +GARAGE_S3_ACCESS_KEY=Your newly generated key
+    
+    -GARAGE_S3_SECRET_KEY=placeholder
+    +GARAGE_S3_SECRET_KEY=Your newly generated key
+    
+    -GARAGE_S3_WORKER_ACCESS_KEY=placeholder
+    +GARAGE_S3_WORKER_ACCESS_KEY=Your newly generated key
+    
+    -GARAGE_S3_WORKER_SECRET_KEY=placeholder
+    +GARAGE_S3_WORKER_SECRET_KEY=Your newly generated key
+    ```
+
+   <Aside type="note">
+     The API will likely be failing at this point because it started before the keys were available — that is expected and perfectly fine.
+   </Aside>
+
+3. **Restart the API and workers** so they pick up the updated environment variables:
+
+   ```bash
+   docker compose -f docker-compose.local.yml -p alexandria-local up -d --build --force-recreate api media-worker document-worker
+   ```
+
+4. **Restart nginx and the frontend** if they went down:
+
+   ```bash
+   docker compose -f docker-compose.local.yml -p alexandria-local up -d --build --force-recreate nginx frontend
+   ```
+
+</Steps>
+
+After all of that is done, you should be good to go. Visiting `https://192.168.x.x/` should take you directly to Alexandria — though you will need to accept the browser's self-signed certificate warning, since we signed our own certificates earlier. Can't really blame it.

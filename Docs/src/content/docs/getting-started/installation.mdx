@@ -5,7 +5,13 @@ description: Deploy Alexandria in production or preview it locally using the int
 
 import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
+<Aside type="danger">
+This is still just a concept, for now the only way to get Alexandria up and running is through a [manual install](../manual-installation). Deployment on local private networks is recommended for now.
+</Aside>
+
 The Alexandria installer is an interactive TUI that guides you through deploying the entire stack. It handles feature selection, system validation, credential generation, port conflict resolution, and Docker Compose orchestration — all in one command.
+
+
 
 <Aside type="tip">
   **TL;DR**: Download the installer binary, run it, pick your deployment mode, answer a few prompts, and the installer handles the rest. No manual config editing required.
