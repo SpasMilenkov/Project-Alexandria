@@ -394,7 +394,10 @@ const openDrawer = ref(false);
 
 // File detail query
 
-const { data: fileDetail, refresh: refreshDetail } = useQuery(getFile(props.data.fileId));
+const { data: fileDetail, refresh: refreshDetail } = useQuery({
+  ...getFile(props.data.fileId),
+  enabled: openDrawer.value,
+});
 const detail = computed(() => fileDetail.value ?? props.data);
 
 // Tag queries & mutations
@@ -417,16 +420,20 @@ const {
   data: tagsData,
   isLoading: tagsLoading,
   refresh: refreshFileTag,
-} = useQuery({...searchTag(searchFilters.value), enabled: openDrawer.value  });
+} = useQuery({ ...searchTag(searchFilters.value), enabled: openDrawer.value });
 
-const { isLoading: fileTagsLoading } = useQuery({
+const { data: fileTags, isLoading: fileTagsLoading } = useQuery({
   ...getTagsForFile(props.data.fileId),
   enabled: () => openDrawer.value,
 });
 
-const displayTags = computed(() =>
-  openDrawer.value && fileDetail.value ? fileDetail.value.tags : props.data.tags,
-);
+const displayTags = computed(() => {
+  if (fileTags) return fileTags.value;
+
+  if (openDrawer.value && fileDetail.value && !tagsData) return fileDetail.value.tags;
+
+  return props.data.tags;
+});
 
 const showTagSearch = ref(false);
 
