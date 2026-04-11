@@ -918,7 +918,9 @@ const handleDirectoryRename = async (directoryId: string) => {
 
 const handleCopy = () => {
   fileStore.filesToCopy = [...selectedFiles.value];
+  fileStore.modificationOriginDirId = currentDirId.value;
   directoryStore.directoriesToCopy = [...selectedDirectories.value];
+  directoryStore.modificationOriginDirId = currentDirId.value;
   if (settingsStore.toastLevel === "all") {
     toast.add({ color: "info", id: "copying", title: "Items selected" });
   }
@@ -932,7 +934,9 @@ const handleDelete = async () => {
   if (selectedDirectories.value.size > 0) {
     const dirIds = Array.from(selectedDirectories.value);
     const results = await Promise.allSettled(
-      dirIds.map((id) => deleteDirectoryMutate({ id, options: { force: false } })),
+      dirIds.map((id) =>
+        deleteDirectoryMutate({ id, options: { force: false }, originId: currentDirId.value }),
+      ),
     );
 
     const failedDirs = results
@@ -943,7 +947,9 @@ const handleDelete = async () => {
     if (failedDirs.length > 0) {
       if (settingsStore.skipDeleteConfirmation) {
         await Promise.all(
-          failedDirs.map((id) => deleteDirectoryMutate({ id, options: { force: true } })),
+          failedDirs.map((id) =>
+            deleteDirectoryMutate({ id, options: { force: true }, originId: currentDirId.value }),
+          ),
         );
       } else {
         const instance = confirmModal.open({
@@ -961,7 +967,9 @@ const handleDelete = async () => {
         const confirmed = await instance.result;
         if (confirmed) {
           await Promise.all(
-            failedDirs.map((id) => deleteDirectoryMutate({ id, options: { force: true } })),
+            failedDirs.map((id) =>
+              deleteDirectoryMutate({ id, options: { force: true }, originId: currentDirId.value }),
+            ),
           );
         }
       }
@@ -975,26 +983,45 @@ const handleDelete = async () => {
 
 const handleCut = async () => {
   if (fileStore.filesToCopy.length > 0) {
-    await moveFilesMutate({ destinationId: currentDirId.value, fileIds: fileStore.filesToCopy });
+    await moveFilesMutate({
+      destinationId: currentDirId.value,
+      fileIds: fileStore.filesToCopy,
+      originId: fileStore.modificationOriginDirId,
+    });
+    fileStore.filesToCopy = [];
+    fileStore.modificationOriginDirId = null;
   }
   if (directoryStore.directoriesToCopy.length > 0) {
     await moveDirectoriesMutate({
       destinationId: currentDirId.value,
       directoryIds: directoryStore.directoriesToCopy,
+      originId: directoryStore.modificationOriginDirId,
     });
+    directoryStore.directoriesToCopy = [];
+    directoryStore.modificationOriginDirId = null;
   }
 };
 
 const handlePaste = async () => {
   if (fileStore.filesToCopy.length > 0) {
-    await copyFilesMutate({ destinationId: currentDirId.value, fileIds: fileStore.filesToCopy });
+    await copyFilesMutate({
+      destinationId: currentDirId.value,
+      fileIds: fileStore.filesToCopy,
+      originId: fileStore.modificationOriginDirId,
+    });
+    fileStore.modificationOriginDirId = null;
   }
   if (directoryStore.directoriesToCopy.length > 0) {
     await Promise.all(
       directoryStore.directoriesToCopy.map(async (dir) => {
-        await copyDirectoryMutate({ destinationId: currentDirId.value, directoryId: dir });
+        await copyDirectoryMutate({
+          destinationId: currentDirId.value,
+          directoryId: dir,
+          originId: directoryStore.modificationOriginDirId,
+        });
       }),
     );
+    directoryStore.modificationOriginDirId = null;
   }
 };
 
