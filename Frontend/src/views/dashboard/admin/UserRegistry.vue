@@ -579,13 +579,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref, shallowRef } from "vue";
 import { useQuery } from "@pinia/colada";
-import { userQueryApiSchema, userQueryUiSchema } from "@/schemas/user";
+import { type CreateUserSchema, type RestrictUserSchema, type UpdateUserSchema, userQueryApiSchema, userQueryUiSchema } from "@/schemas/user";
 import { UserRole } from "@/enums/UserRole";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { userApi } from "@/api/users";
 import type { UserDetailsDto } from "@/types/user";
-import type { CreateUserSchema, RestrictUserSchema, UpdateUserSchema } from "@/schemas/user";
 import { USER_QUERY_KEYS } from "@/queries/user";
 import { useDebounceFn } from "@vueuse/core";
 import UsersTable from "@/components/dashboard/users/UsersTable.vue";
