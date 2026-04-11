@@ -1,10 +1,5 @@
 <template>
-  <UModal
-    :open="open"
-    :ui="{ width: 'sm:max-w-lg', header: 'p-0 sm:px-0' }"
-    :close="false"
-    :overlay="true"
-  >
+  <UModal :open="open" :ui="{ header: 'p-0 sm:px-0' }" :close="false" :overlay="true">
     <!-- Header -->
     <template #header>
       <div
@@ -35,23 +30,11 @@
           <template v-for="(step, i) in STEPS" :key="i">
             <div
               class="flex items-center gap-1.5 text-xs transition-all duration-200"
-              :class="
-                currentStep === i
-                  ? 'text-primary font-medium'
-                  : currentStep > i
-                    ? 'text-muted'
-                    : 'text-muted/50'
-              "
+              :class="getStepTextClass(i)"
             >
               <div
                 class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold border transition-all duration-200"
-                :class="
-                  currentStep > i
-                    ? 'bg-primary/20 border-primary/30 text-primary'
-                    : currentStep === i
-                      ? 'bg-primary border-primary text-white shadow-sm shadow-primary/30'
-                      : 'bg-transparent border-muted/40 text-muted/40'
-                "
+                :class="getStepCircleClass(i)"
               >
                 <UIcon v-if="currentStep > i" name="i-lucide-check" class="size-2.5" />
                 <span v-else>{{ i + 1 }}</span>
@@ -84,6 +67,7 @@
         :state="state"
         class="space-y-4 py-2"
         @submit.prevent
+        @keydown.enter="advanceStep"
       >
         <UFormField
           label="Username"
@@ -117,6 +101,7 @@
         :state="state"
         class="space-y-4 py-2"
         @submit.prevent
+        @keydown.enter="advanceStep"
       >
         <UFormField label="Password" name="password" description="At least 8 characters.">
           <UInput
@@ -127,7 +112,19 @@
             :trailing-icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
             class="w-full"
             @click-trailing="showPassword = !showPassword"
-          />
+          >
+            <template #trailing>
+              <UButton
+                color="neutral"
+                variant="link"
+                size="sm"
+                :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-pressed="showPassword"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </UInput>
         </UFormField>
         <UFormField label="Confirm password" name="confirmPassword">
           <UInput
@@ -137,8 +134,19 @@
             icon="i-lucide-lock-keyhole"
             :trailing-icon="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
             class="w-full"
-            @click-trailing="showConfirmPassword = !showConfirmPassword"
-          />
+          >
+            <template #trailing>
+              <UButton
+                color="neutral"
+                variant="link"
+                size="sm"
+                :icon="showConfirmPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                :aria-label="showConfirmPassword ? 'Hide password' : 'Show password'"
+                :aria-pressed="showConfirmPassword"
+                @click="showConfirmPassword = !showConfirmPassword"
+              />
+            </template>
+          </UInput>
         </UFormField>
 
         <!-- Password strength meter -->
@@ -168,7 +176,8 @@
         :schema="step2Schema"
         :state="state"
         class="space-y-4 py-2"
-        @submit="handleFinalSubmit"
+        @submit="formStep2?.submit()"
+        @keydown.enter="formStep2?.submit()"
       >
         <UFormField label="Role" name="role" description="Controls what the user can see and do.">
           <div class="grid grid-cols-2 gap-3 mt-1">
@@ -312,7 +321,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { z } from "zod";
 import type { CreateUserSchema } from "@/schemas/user";
 import { UserRole } from "@/enums/UserRole";
@@ -466,17 +475,42 @@ const currentForm = computed(() => {
   return null; // Step 2 submits directly
 });
 
-async function advanceStep() {
+const advanceStep = async () => {
   try {
     await currentForm.value?.validate();
     currentStep.value++;
-  } catch {
-    // Inline errors shown by UForm — nothing else needed.
-  }
-}
+  } catch {}
+};
+
+const getStepTextClass = (i: number) => {
+  if (currentStep.value === i) return "text-primary font-medium";
+  if (currentStep.value > i) return "text-muted";
+  return "text-muted/50";
+};
+
+const getStepCircleClass = (i: number) => {
+  if (currentStep.value > i) return "bg-primary/20 border-primary/30 text-primary";
+  if (currentStep.value === i)
+    return "bg-primary border-primary text-white shadow-sm shadow-primary/30";
+  return "bg-transparent border-muted/40 text-muted/40";
+};
 
 //  Final submit
-function handleFinalSubmit(event: { data: Pick<CreateUserSchema, "role"> }) {
+const handleFinalSubmit = (event: { data: Pick<CreateUserSchema, "role"> }) => {
   emit("submit", { ...state, role: event.data.role });
-}
+};
+
+const handleEnter = (e: KeyboardEvent) => {
+  if (!props.open || e.key !== 'Enter') return;
+  e.preventDefault();
+
+  if (currentStep.value < STEPS.length - 1) {
+    advanceStep();
+  } else {
+    formStep2.value?.submit();
+  }
+};
+
+onMounted(() => document.addEventListener('keydown', handleEnter));
+onBeforeUnmount(() => document.removeEventListener('keydown', handleEnter));
 </script>
