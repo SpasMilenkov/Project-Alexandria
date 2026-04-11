@@ -8,6 +8,7 @@ import type { LoginSchema } from "@/schemas/auth";
 import { type AuthResponse, authApi } from "@/api/auth";
 import { logger } from "@/utils/logger";
 
+
 export const useAuthStore = defineStore(
   "auth",
   () => {
@@ -46,6 +47,12 @@ export const useAuthStore = defineStore(
 
     const logout = async () => {
       try {
+        const { useTabStore } = await import('@/stores/tab');
+        
+        const tabStore = useTabStore();
+
+        tabStore.closeAllTabs();
+        // localStorage.removeItem('tab');
         await authApi.logout();
       } catch (err: unknown) {
         logger.error("Logout error:", err);
