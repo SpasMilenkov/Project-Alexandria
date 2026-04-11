@@ -1,7 +1,6 @@
 import { createPinia } from "pinia";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { type Ref, nextTick, ref } from "vue";
-import { createApp } from "vue";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type Ref, nextTick, ref, createApp } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
@@ -45,7 +44,7 @@ vi.mock("@/queries/files", () => ({
  * Run a composable inside a real Vue + Pinia app so that reactivity,
  * computed values, and watchers all work exactly as they would in production.
  */
-function withSetup<T>(composable: () => T): T {
+const withSetup = <T> (composable: () => T): T => {
   let result!: T;
   const app = createApp({
     setup() {
@@ -59,34 +58,35 @@ function withSetup<T>(composable: () => T): T {
 }
 
 const makeDir = (id: string): DirectorySummaryDto => ({
+  createdAt: new Date().toISOString(),
   id,
   name: `Dir ${id}`,
+  ownerUserDto: { email: "owner@test.com", id: "owner", name: "Owner" },
   parentId: "root",
-  createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-  ownerUserDto: { id: "owner", email: "owner@test.com", name: "Owner" },
 });
 
 const makeFile = (fileId: string): FileResult => ({
+  createdAt: new Date().toISOString(),
+  currentVersion: {
+    id: "v1",
+    isDeleted: false,
+    mimeType: "text/plain",
+    size: "1024",
+    versionNumber: 1,
+  },
+  deletedAt: null,
+  directoryId: null,
   fileId,
   fileName: `file-${fileId}.txt`,
   mimeType: "text/plain",
-  directoryId: null,
-  createdAt: new Date().toISOString(),
-  updatedAt: null,
-  deletedAt: null,
-  currentVersion: {
-    id: "v1",
-    size: "1024",
-    mimeType: "text/plain",
-    versionNumber: 1,
-  },
+  owner: { email: "owner@test.com", id: "owner", name: "Owner" },
   tags: [],
-  owner: { id: "owner", name: "Owner", email: "owner@test.com" },
+  updatedAt: null,
 });
 
 // Tests
-
+//oxlint-disable-next-line max-lines-per-function
 describe("useFileExplorer", () => {
   let mockDirData: Ref<{
     items: DirectorySummaryDto[];
@@ -201,25 +201,25 @@ describe("useFileExplorer", () => {
   // clearSelection
 
   describe("clearSelection", () => {
-    it("empties both selectedFiles and selectedDirectories", async () => {
+    it("empties both selectedFiles and selectedDirectories", () => {
       const { toggleSelect, clearSelection, selectedFiles, selectedDirectories } = withSetup(() =>
         useFileExplorer(),
       );
 
       toggleSelect("f1", "file");
       toggleSelect("d1", "directory");
-      await clearSelection();
+      clearSelection();
 
       expect(selectedFiles.value.size).toBe(0);
       expect(selectedDirectories.value.size).toBe(0);
     });
 
-    it("is safe to call when nothing is selected", async () => {
+    it("is safe to call when nothing is selected", () => {
       const { clearSelection, selectedFiles, selectedDirectories } = withSetup(() =>
         useFileExplorer(),
       );
 
-      await clearSelection();
+      clearSelection();
       expect(selectedFiles.value.size).toBe(0);
       expect(selectedDirectories.value.size).toBe(0);
     });
@@ -338,8 +338,8 @@ describe("useFileExplorer", () => {
 
       dirPagination.value.paginationParams.page = 1;
       mockDirData.value = {
-        items: [makeDir("d1"), makeDir("d2")],
         hasNext: false,
+        items: [makeDir("d1"), makeDir("d2")],
       };
       await nextTick();
 
@@ -368,14 +368,14 @@ describe("useFileExplorer", () => {
 
       dirPagination.value.paginationParams.page = 1;
       mockDirData.value = {
-        items: [makeDir("old1"), makeDir("old2")],
         hasNext: false,
+        items: [makeDir("old1"), makeDir("old2")],
       };
       await nextTick();
 
       // Navigation resets the page back to 1
       dirPagination.value.paginationParams.page = 1;
-      mockDirData.value = { items: [makeDir("new1")], hasNext: false };
+      mockDirData.value = { hasNext: false, items: [makeDir("new1")] };
       await nextTick();
 
       expect(directoriesList.value).toHaveLength(1);
@@ -386,11 +386,11 @@ describe("useFileExplorer", () => {
       const { dirPagination } = withSetup(() => useFileExplorer());
 
       dirPagination.value.paginationParams.page = 1;
-      mockDirData.value = { items: [makeDir("d1")], hasNext: true };
+      mockDirData.value = { hasNext: true, items: [makeDir("d1")] };
       await nextTick();
       expect(dirPagination.value.hasNext).toBe(true);
 
-      mockDirData.value = { items: [makeDir("d2")], hasNext: false };
+      mockDirData.value = { hasNext: false, items: [makeDir("d2")] };
       await nextTick();
       expect(dirPagination.value.hasNext).toBe(false);
     });
@@ -419,8 +419,8 @@ describe("useFileExplorer", () => {
 
       filePagination.value.paginationParams.page = 1;
       mockFilesData.value = {
-        items: [makeFile("f1"), makeFile("f2")],
         hasNext: false,
+        items: [makeFile("f1"), makeFile("f2")],
       };
       await nextTick();
 
@@ -432,11 +432,11 @@ describe("useFileExplorer", () => {
       const { filesList, filePagination } = withSetup(() => useFileExplorer());
 
       filePagination.value.paginationParams.page = 1;
-      mockFilesData.value = { items: [makeFile("f1")], hasNext: true };
+      mockFilesData.value = { hasNext: true, items: [makeFile("f1")] };
       await nextTick();
 
       filePagination.value.paginationParams.page = 2;
-      mockFilesData.value = { items: [makeFile("f2")], hasNext: false };
+      mockFilesData.value = { hasNext: false, items: [makeFile("f2")] };
       await nextTick();
 
       expect(filesList.value).toHaveLength(2);
@@ -447,11 +447,11 @@ describe("useFileExplorer", () => {
       const { filePagination } = withSetup(() => useFileExplorer());
 
       filePagination.value.paginationParams.page = 1;
-      mockFilesData.value = { items: [], hasNext: true };
+      mockFilesData.value = { hasNext: true, items: [] };
       await nextTick();
       expect(filePagination.value.hasNext).toBe(true);
 
-      mockFilesData.value = { items: [], hasNext: false };
+      mockFilesData.value = { hasNext: false, items: [] };
       await nextTick();
       expect(filePagination.value.hasNext).toBe(false);
     });
@@ -467,22 +467,22 @@ describe("useFileExplorer", () => {
   // loadMoreDirs
 
   describe("loadMoreDirs", () => {
-    it("increments the directory page when hasNext is true", async () => {
+    it("increments the directory page when hasNext is true", () => {
       const { loadMoreDirs, dirPagination } = withSetup(() => useFileExplorer());
       dirPagination.value.hasNext = true;
       const before = dirPagination.value.paginationParams.page;
 
-      await loadMoreDirs();
+      loadMoreDirs();
 
       expect(dirPagination.value.paginationParams.page).toBe(before + 1);
     });
 
-    it("does not increment the directory page when hasNext is false", async () => {
+    it("does not increment the directory page when hasNext is false", () => {
       const { loadMoreDirs, dirPagination } = withSetup(() => useFileExplorer());
       dirPagination.value.hasNext = false;
       const before = dirPagination.value.paginationParams.page;
 
-      await loadMoreDirs();
+      loadMoreDirs();
 
       expect(dirPagination.value.paginationParams.page).toBe(before);
     });
@@ -491,22 +491,22 @@ describe("useFileExplorer", () => {
   // loadMoreFiles
 
   describe("loadMoreFiles", () => {
-    it("increments the file page when hasNext is true", async () => {
+    it("increments the file page when hasNext is true", () => {
       const { loadMoreFiles, filePagination } = withSetup(() => useFileExplorer());
       filePagination.value.hasNext = true;
       const before = filePagination.value.paginationParams.page;
 
-      await loadMoreFiles();
+      loadMoreFiles();
 
       expect(filePagination.value.paginationParams.page).toBe(before + 1);
     });
 
-    it("does not increment the file page when hasNext is false", async () => {
+    it("does not increment the file page when hasNext is false",() => {
       const { loadMoreFiles, filePagination } = withSetup(() => useFileExplorer());
       filePagination.value.hasNext = false;
       const before = filePagination.value.paginationParams.page;
 
-      await loadMoreFiles();
+      loadMoreFiles();
 
       expect(filePagination.value.paginationParams.page).toBe(before);
     });
