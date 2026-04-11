@@ -90,6 +90,7 @@
                 block
                 trailing-icon="i-mdi-arrow-right"
                 @click="handleContinue"
+                @keydown.enter="handleContinue"
               >
                 Continue
               </UButton>

@@ -33,7 +33,8 @@ export const useTabStore = defineStore(
 
     const closeAllTabs = () => {
       tabs.value = [];
-    }
+      activeTabId.value = null;
+    };
     const getTab = (tabId: string) => tabs.value.find((t) => t.id === tabId);
 
     const setActiveDir = (tabId: string, dirId: string | null) => {

@@ -33,6 +33,7 @@
                 :state="form"
                 class="space-y-5"
                 @submit="handleSubmit"
+                @keydown.enter="handleSubmit"
               >
                 <!-- Temporary password -->
                 <UFormField

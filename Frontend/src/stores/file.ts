@@ -26,7 +26,7 @@ interface DownloadFileParams {
 export const useFileStore = defineStore("file", () => {
   // State
   const currentFile = ref<FileMetadata | null>(null);
-  const uploadProgress = ref<number>(0);
+  const modificationOriginDirId = ref<string | null>(null);
   const downloadProgress = ref<number>(0);
   const filesToCopy = ref<string[]>([]);
   const isUploading = ref(false);
@@ -38,30 +38,6 @@ export const useFileStore = defineStore("file", () => {
   const isProcessing = computed(() => isUploading.value || isDownloading.value);
 
   // Actions
-
-  // Upload a file
-  const uploadFile = async (file: File, path?: string) => {
-    isUploading.value = true;
-    uploadProgress.value = 0;
-    error.value = null;
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      if (path) {
-        formData.append("path", path);
-      }
-
-      await fileApi.uploadFile(formData);
-      uploadProgress.value = 100;
-      return { success: true };
-    } catch (err: unknown) {
-      const message = handleError(err, "Failed to upload file");
-      return { error: message, success: false };
-    } finally {
-      isUploading.value = false;
-      uploadProgress.value = 0;
-    }
-  };
 
   // Download a file
   const downloadFile = async ({ id, fileName, forceDownload = false }: DownloadFileParams) => {
@@ -97,8 +73,9 @@ export const useFileStore = defineStore("file", () => {
     try {
       const data = await fileApi.searchFiles(query);
       return { data, success: true };
-    } catch (error) {
-      return { data: null, error, success: false };
+    } catch (err: unknown) {
+      const message = handleError(err, "Failed to download file");
+      return { data: null, message, success: false };
     }
   };
 
@@ -119,12 +96,13 @@ export const useFileStore = defineStore("file", () => {
     error.value = null;
   };
 
+  //oxlint-disable sort-keys
   return {
     // State
     currentFile,
-    uploadProgress,
     downloadProgress,
     filesToCopy,
+    modificationOriginDirId,
     isUploading,
     isDownloading,
     error,
@@ -132,7 +110,6 @@ export const useFileStore = defineStore("file", () => {
     hasCurrentFile,
     isProcessing,
     // Actions
-    uploadFile,
     downloadFile,
     clearError,
     searchFiles,

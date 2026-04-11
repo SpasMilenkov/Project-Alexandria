@@ -1,9 +1,9 @@
 /// <reference lib="webworker" />
-import { defaultCache } from "@serwist/vite/worker";
 import {
   CacheFirst,
   ExpirationPlugin,
   NetworkFirst,
+  NetworkOnly,
   type PrecacheEntry,
   Serwist,
   type SerwistGlobalConfig,
@@ -105,6 +105,11 @@ const serwist = new Serwist({
     {
       handler: new NetworkFirst(),
       matcher: ({ url }) => url.pathname.startsWith("/api/"),
+    },
+    {
+      handler: new NetworkOnly(),
+      matcher: ({ url }) =>
+        url.pathname.includes("/init-upload") || url.pathname.includes("/finalize-upload"),
     },
     {
       handler: new NetworkFirst(),

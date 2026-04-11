@@ -11,8 +11,8 @@ import { SortDirection } from "@/enums/SortDirection";
 import { DIRECTORY_QUERY_KEYS, directoryPath, rootDirectories, subDirectories } from "@/queries/directories";
 import { FILES_QUERY_KEYS, rootFiles, subFiles } from "@/queries/files";
 import { useFileStore } from "@/stores/file";
-import { logger } from "@/utils/logger";
 
+//oxlint-disable-next-line max-lines-per-function max-statements
 export const useFileExplorer = () => {
   const fileStore = useFileStore();
   
@@ -109,7 +109,7 @@ export const useFileExplorer = () => {
 
   // ACTIONS
 
-  const navigateTo = async (dirId?: string | null, skipHistory = false) => {
+  const navigateTo = (dirId?: string | null, skipHistory = false) => {
     const target = dirId ?? null;
     if (currentDirId.value === target) return;
 
@@ -138,23 +138,23 @@ export const useFileExplorer = () => {
     navigateTo(navigationHistory.value[historyIndex.value], true);
   };
 
-  const loadMoreDirs = async () => {
+  const loadMoreDirs = () => {
     if (!dirPagination.value.hasNext) return;
     dirPagination.value.paginationParams.page++;
   };
 
-  const loadMoreFiles = async () => {
+  const loadMoreFiles = () => {
     if (!filePagination.value.hasNext) return;
     filePagination.value.paginationParams.page++;
   };
 
   const refreshDir = () => {
-    if (!currentDirId.value) {
-      queryCache.invalidateQueries({ key: [DIRECTORY_QUERY_KEYS.root[0], 'root-sub-directories'] })
-      queryCache.invalidateQueries({ key: [FILES_QUERY_KEYS.root[0], 'root-sub-files'] })
-    } else {
+    if (currentDirId.value) {
       queryCache.invalidateQueries({ key: ['directories', 'sub-directories', currentDirId.value] })
       queryCache.invalidateQueries({ key: ['files', 'sub-files', currentDirId.value] })
+    } else {
+      queryCache.invalidateQueries({ key: [DIRECTORY_QUERY_KEYS.root[0], 'root-sub-directories'] })
+      queryCache.invalidateQueries({ key: [FILES_QUERY_KEYS.root[0], 'root-sub-files'] })
     }
   }
 
@@ -198,7 +198,7 @@ export const useFileExplorer = () => {
     await fileStore.downloadFile({ fileName, forceDownload: true, id: fileId });
   };
 
-  const clearSelection = async () => {
+  const clearSelection = () => {
     selectedFiles.value = new Set<string>();
     selectedDirectories.value = new Set<string>();
   };

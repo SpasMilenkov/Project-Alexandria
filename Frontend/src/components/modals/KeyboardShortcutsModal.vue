@@ -138,6 +138,7 @@ onMounted(() => {
           class="w-56 shrink-0"
           :ui="{ base: 'bg-white/60 dark:bg-white/5 backdrop-blur-sm' }"
         />
+        <UButton icon="i-heroicons-x-mark-20-solid" size="sm" variant="subtle" @click="emit('close')" />
       </div>
     </template>
 

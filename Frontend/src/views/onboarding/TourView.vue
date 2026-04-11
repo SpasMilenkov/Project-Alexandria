@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useDark } from "@vueuse/core";
 import { Icon } from "@iconify/vue";
@@ -291,6 +291,15 @@ const tourFeatures: TourFeature[] = [
     title: "Storage & Trash",
   },
 ];
+
+const handleEnter = (e: KeyboardEvent) => {
+  if (e.key !== "Enter") return;
+
+  return isLast.value ? handleFinish() : next();
+};
+
+onMounted(() => document.addEventListener("keydown", handleEnter));
+onBeforeUnmount(() => document.removeEventListener("keydown", handleEnter));
 </script>
 
 <style scoped>
