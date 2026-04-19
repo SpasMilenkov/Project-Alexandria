@@ -53,6 +53,16 @@
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1.5">
             <span class="font-medium text-sm">Version {{ version.versionNumber }}</span>
+
+            <!-- Lock badge for encrypted versions -->
+            <UTooltip
+              v-if="version.isEncrypted"
+              label="This version is encrypted"
+              :delay-duration="400"
+            >
+              <Icon icon="mdi-lock" class="w-3.5 h-3.5 text-primary shrink-0" />
+            </UTooltip>
+
             <UBadge
               v-if="version.isDeleted"
               color="error"
@@ -182,9 +192,9 @@ import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref } from "vue";
-import { fileApi } from "@/api/file";
 import { formatBytes } from "@/utils/size.utils";
 import { logger } from "@/utils/logger";
+import { useFileDownload } from "@/composables/useFileDownload";
 
 const props = defineProps<{
   fileId: string;
@@ -196,6 +206,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   "versions-changed": [];
 }>();
+
+// Download
+
+const { downloadVersion } = useFileDownload();
 
 // Versions query
 
@@ -224,14 +238,15 @@ const deletingVersionId = ref<string | null>(null);
 const changingActiveVersionId = ref<string | null>(null);
 
 // Handlers
-const handleDownloadVersion = async (versionId: string, fileName: string) => {
-  const url = await fileApi.downloadFileVersion(versionId);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+
+/**
+ * Delegates to useFileDownload, which handles both the plain and encrypted paths.
+ * DownloadInfo carries the fileName from the server, so no need to pass it here.
+ * (This also fixes the pre-existing bug where fileName was declared in the
+ *  signature but never passed at the call site.)
+ */
+const handleDownloadVersion = (versionId: string) => {
+  downloadVersion(versionId);
 };
 
 const handleDeleteVersion = async (versionId: string) => {
