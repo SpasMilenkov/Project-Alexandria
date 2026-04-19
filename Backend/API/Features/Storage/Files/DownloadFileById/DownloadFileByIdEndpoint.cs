@@ -1,13 +1,13 @@
 using API.Features.Auth.Extensions;
 using Common.Services;
+using DTO.Files;
 using FastEndpoints;
 
 namespace API.Features.Storage.Files.DownloadFileById;
 
 public class DownloadFileByIdEndpoint(
-    IStorageService storageService,
-    IFileService fileService
-) : Endpoint<DownloadFileByIdRequest>
+    IStorageService storageService
+) : Endpoint<DownloadFileByIdRequest, DownloadInfo>
 {
     public override void Configure()
     {
@@ -30,17 +30,7 @@ public class DownloadFileByIdEndpoint(
     {
         var userId = User.GetUserId();
 
-        var fileMetadata = await fileService.GetUserFileMetadataAsync(req.Id, userId, ct);
-
-        if (fileMetadata == null)
-        {
-            await Send.NotFoundAsync(ct);
-            return;
-        }
-
-        await Send.OkAsync(await storageService.GetFilePresignedUrl(
-            fileMetadata.Id, fileMetadata.ContentHash,
-            fileMetadata.FileName,
-            TimeSpan.FromSeconds(30)), ct);
+        await Send.OkAsync(await storageService.GetFileDownloadDetails(
+            req.Id, userId, ct), ct);
     }
 }

@@ -181,7 +181,7 @@ public class FileVersionRepository : IFileVersionRepository
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(f =>
-                new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt != null))
+                new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt != null, f.IsEncrypted))
             .ToListAsync(ct);
 
         return new PaginatedResult<FileVersionDto>
@@ -224,7 +224,7 @@ public class FileVersionRepository : IFileVersionRepository
         return await _dbSet
             .Where(f => f.FileId == fileId && f.File.OwnerId == userId && f.DeletedAt == null)
             .OrderByDescending(f => f.CreatedAt)
-            .Select(f => new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt == null))
+            .Select(f => new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt == null, f.IsEncrypted))
             .FirstOrDefaultAsync(ct);
     }
 
@@ -276,5 +276,29 @@ public class FileVersionRepository : IFileVersionRepository
     public async Task<VersionDownloadInfo?> GetVersionDownloadInfo(Guid versionId, Guid userId, CancellationToken ct = default)
     {
         return await _dbSet.Where(v => v.Id == versionId && v.File.OwnerId == userId).Select(v => new VersionDownloadInfo(v.File.Name, v.File.MimeType, v.VersionNumber, v.ContentHash)).FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<DownloadMetadata?> GetDownloadMetadataAsync(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        return await _dbSet.Where(v => v.Id == versionId && v.File.OwnerId == userId && v.DeletedAt == null).Select(v => new DownloadMetadata
+        {
+            FileName = v.File.Name,
+            MimeType = v.File.MimeType,
+            EncryptionHint = v.EncryptionHint,
+            EncryptionIv = v.EncryptionIv,
+            IsEncrypted = v.IsEncrypted,
+            EncryptionSalt = v.EncryptionSalt,
+            IntegrityTag = v.IntegrityTag,
+        }).FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<bool> IsEncrypted(Guid versionId, CancellationToken ct = default)
+    {
+        return await _dbSet.Where(v => v.Id == versionId).Select(v => v.IsEncrypted).FirstAsync(ct);
+    }
+
+    public async Task<bool> IsPromoted(Guid versionId, CancellationToken ct = default)
+    {
+        return await _dbSet.Where(v => v.Id == versionId).Select(v => v.ContentObject.IsPromoted).FirstAsync(ct);
     }
 }

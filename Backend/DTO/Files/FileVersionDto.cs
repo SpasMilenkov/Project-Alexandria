@@ -6,4 +6,5 @@ public record FileVersionDto(
     string MimeType,
     int VersionNumber,
     DateTime CreatedAt,
-    bool isDeleted = false);
+    bool isDeleted,
+    bool isEncrypted);

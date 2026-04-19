@@ -9,6 +9,12 @@ internal sealed class FinalizeFileUploadRequest
     public Guid UploadId { get; set; }
     public Guid? DirectoryId { get; set; }
     public required string FileName { get; set; }
+    public bool IsEncrypted { get; set; }
+    public byte[]? EncryptionIv { get; set; }
+    public byte[]? EncryptionSalt { get; set; }
+    public byte[]? IntegrityTag { get; set; }
+    public string? EncryptionHint { get; set; }
+    public int? IterationCount { get; set; }
 }
 
 sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage)
@@ -24,8 +30,17 @@ sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage)
     {
         var userId = User.GetUserId();
 
-        await s3Storage.FinalizeFileUpload(req.FileName, uploadId: req.UploadId, uploadedBy: userId,
-            directoryId: req.DirectoryId, ct);
+        await s3Storage.FinalizeFileUpload(req.FileName,
+            uploadId: req.UploadId,
+            uploadedBy: userId,
+            directoryId: req.DirectoryId,
+            isEncrypted: req.IsEncrypted,
+            encryptionIv: req.EncryptionIv,
+            encryptionSalt: req.EncryptionSalt,
+            integrityTag: req.IntegrityTag,
+            encryptionHint: req.EncryptionHint,
+            iterationCount: req.IterationCount,
+            ct: ct);
 
         await Send.OkAsync(cancellation: ct);
     }
