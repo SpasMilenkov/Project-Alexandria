@@ -224,6 +224,7 @@
 
         <!-- File Preview Section -->
         <FilePreview
+          v-if="!detail.currentVersion.isEncrypted"
           :file-id="props.data.fileId"
           :file-name="detail.fileName"
           :mime-type="detail.currentVersion.mimeType"
