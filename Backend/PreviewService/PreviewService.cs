@@ -9,7 +9,6 @@ namespace PreviewService;
 
 public class PreviewService(
     IStorageService storageService,
-    IMemoryCache memoryCache,
     IPublisherService publisherService,
     IUnitOfWork unitOfWork,
     ITextPreviewService textPreviewService,
@@ -22,7 +21,7 @@ public class PreviewService(
         if (fileData is null || fileData.OwnerId != ownerId)
             throw new InvalidOperationException("No file found for preview generation");
 
-        if (memoryCache.TryGetValue(fileId, out PreviewResultDto? cachedValue) && cachedValue is not null) return cachedValue;
+        if (await unitOfWork.FileVersions.IsEncrypted(fileData.CurrentVersionId ?? throw new InvalidOperationException(""), ct)) return null;
 
         if (!await unitOfWork.Files.IsPromoted(fileId, ct))
         {
@@ -33,16 +32,9 @@ public class PreviewService(
         }
 
         var cachedPreview = await storageService.GetCachedPreview(fileId, ct);
-        var cacheOptions = new MemoryCacheEntryOptions
-        {
-            Size = 1,
-            SlidingExpiration = TimeSpan.FromMinutes(2)
-        };
+
         if (cachedPreview is { PreviewUrl: not null })
-        {
-            memoryCache.Set(fileId, cachedPreview.PreviewUrl, cacheOptions);
             return cachedPreview;
-        }
 
         var tcs = new TaskCompletionSource<PreviewResultDto>();
         try
@@ -78,7 +70,6 @@ public class PreviewService(
 
                         var archivePreviewResult = new PreviewResultDto(archivePreviewSummary, null, null, null,
                             archivePreview.data);
-                        memoryCache.Set(fileId, archivePreviewResult, cacheOptions);
 
                         tcs.SetResult(archivePreviewResult);
 
