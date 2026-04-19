@@ -4,6 +4,7 @@ using System.Numerics;
 using Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using NpgsqlTypes;
 namespace Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260412103245_AddOptionalFileEncryption")]
+    partial class AddOptionalFileEncryption
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -619,12 +622,6 @@ namespace Data.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
-                    b.Property<int?>("IterationCount")
-                        .HasColumnType("integer");
-
-                    b.Property<short?>("KdfVersion")
-                        .HasColumnType("smallint");
-
                     b.Property<string>("MimeType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -660,7 +657,7 @@ namespace Data.Migrations
 
                             t.HasCheckConstraint("CK_FileEntry_EncryptionIv_Length", "\"EncryptionIv\" IS NULL OR octet_length(\"EncryptionIv\") = 12");
 
-                            t.HasCheckConstraint("CK_FileEntry_EncryptionSalt_Length", "\"EncryptionSalt\" IS NULL OR octet_length(\"EncryptionSalt\") = 16");
+                            t.HasCheckConstraint("CK_FileEntry_EncryptionSalt_Length", "\"EncryptionSalt\" IS NULL OR octet_length(\"EncryptionSalt\") = 32");
 
                             t.HasCheckConstraint("CK_FileEntry_IntegrityTag_Length", "\"IntegrityTag\" IS NULL OR octet_length(\"IntegrityTag\") = 16");
                         });
