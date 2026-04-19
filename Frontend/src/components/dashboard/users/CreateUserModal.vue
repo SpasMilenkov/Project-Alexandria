@@ -176,8 +176,8 @@
         :schema="step2Schema"
         :state="state"
         class="space-y-4 py-2"
-        @submit="formStep2?.submit()"
-        @keydown.enter="formStep2?.submit()"
+        @submit="handleFinalSubmit"
+        @keydown.enter.prevent="formStep2?.submit()"
       >
         <UFormField label="Role" name="role" description="Controls what the user can see and do.">
           <div class="grid grid-cols-2 gap-3 mt-1">
@@ -510,7 +510,4 @@ const handleEnter = (e: KeyboardEvent) => {
     formStep2.value?.submit();
   }
 };
-
-onMounted(() => document.addEventListener('keydown', handleEnter));
-onBeforeUnmount(() => document.removeEventListener('keydown', handleEnter));
 </script>

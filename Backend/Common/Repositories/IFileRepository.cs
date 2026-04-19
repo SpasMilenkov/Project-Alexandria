@@ -26,6 +26,8 @@ public interface IFileRepository : IRepository<File>
         SortBy sortBy = SortBy.Name,
         CancellationToken ct = default);
 
+    Task<(DownloadMetadata fileMetadata, byte[] fileHash)?> GetDownloadMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default);
+
     Task<FileSummary?> GetFileNameAndMimeType(Guid fileId, CancellationToken ct = default);
     Task<FileMetadata?> GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default);
 

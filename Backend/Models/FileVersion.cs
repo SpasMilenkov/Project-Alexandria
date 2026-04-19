@@ -16,7 +16,26 @@ public class FileVersion : IBase
 
     //Presentation data
     public required string MimeType { get; set; }
+    
+    //Encryption state
+    public bool IsEncrypted { get; set; }
+    public byte[]? EncryptionIv { get; set; }
+    public byte[]? EncryptionSalt { get; set; }
+    public byte[]? IntegrityTag { get; set; }
+    public string? EncryptionHint { get; set; }
 
+    /// <summary>
+    /// Key derivation function version. 1 = PBKDF2-SHA256.
+    /// Stored to allow future KDF migration without re-encrypting blobs.
+    /// Null when IsClientEncrypted is false.
+    /// </summary>
+    public short? KdfVersion { get; set; }
+    
+    /// <summary>
+    /// The number of iterations used when deryving the key with PBKDF2
+    /// Used to for future reencryption if security requirements rise
+    /// </summary>
+    public int? IterationCount{ get; set; }
     // Lifecycle
     public DateTime CreatedAt { get; set; }
     public Guid CreatedBy { get; set; }

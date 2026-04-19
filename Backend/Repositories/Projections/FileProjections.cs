@@ -22,8 +22,9 @@ public static class FileProjections
                 f.CurrentVersion.MimeType,
                 f.CurrentVersion.VersionNumber,
                 f.CurrentVersion.CreatedAt,
-                f.DeletedAt == null
-            ),
+                f.DeletedAt == null,
+                f.CurrentVersion.IsEncrypted
+                ),
             f.Tags.Where(t => t.DeletedAt == null).Select(t => new TagDto
             {
                 Id = t.Id,

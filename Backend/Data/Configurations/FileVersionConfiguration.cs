@@ -28,6 +28,37 @@ public class FileVersionConfiguration : IEntityTypeConfiguration<FileVersion>
         builder.Property(e => e.VersionNumber)
             .IsRequired();
 
+        //Encryption properties
+        builder.Property(e => e.IsEncrypted)
+            .IsRequired()
+            .HasDefaultValue(false);
+        // AES-GCM nonce — 12 bytes, not 16
+        builder.Property(e => e.EncryptionIv)
+            .HasColumnType("bytea");
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_FileEntry_EncryptionIv_Length",
+            "\"EncryptionIv\" IS NULL OR octet_length(\"EncryptionIv\") = 12"));
+
+        // Salt for KDF (PBKDF2) — 16 bytes, matches worker output
+        builder.Property(e => e.EncryptionSalt)
+            .HasColumnType("bytea");
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_FileEntry_EncryptionSalt_Length",
+            "\"EncryptionSalt\" IS NULL OR octet_length(\"EncryptionSalt\") = 16"));
+
+        // AES-GCM auth tag — always 16 bytes
+        builder.Property(e => e.IntegrityTag)
+            .HasColumnType("bytea");
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_FileEntry_IntegrityTag_Length",
+            "\"IntegrityTag\" IS NULL OR octet_length(\"IntegrityTag\") = 16"));
+
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_FileEntry_EncryptionFields_Consistency",
+            @"(""IsEncrypted"" = false AND ""EncryptionIv"" IS NULL AND ""EncryptionSalt"" IS NULL AND ""IntegrityTag"" IS NULL)
+              OR
+              (""IsEncrypted"" = true AND ""EncryptionIv"" IS NOT NULL AND ""EncryptionSalt"" IS NOT NULL AND ""IntegrityTag"" IS NOT NULL)"));
+
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")

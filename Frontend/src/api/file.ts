@@ -9,6 +9,7 @@ import type { TagDto } from "./tag";
 
 import apiClient from "./client";
 
+
 // Response Types
 export interface UpdateFileMetadataResponse {
   id: string;
@@ -56,6 +57,7 @@ export interface FileVersionDto {
   mimeType: string;
   versionNumber: number;
   isDeleted: boolean;
+  isEncrypted: boolean;
 }
 
 export interface UserDto {
@@ -77,10 +79,27 @@ export interface InitializeFileUploadResponse {
   uploadUrl: string;
 }
 
+export interface DownloadInfo {
+  presignedUrl: string;
+  fileName: string;
+  mimeType: string;
+  isEncrypted: boolean;
+  encryptionIv: string | null;
+  encryptionSalt: string | null;
+  integrityTag: string | null;
+  encryptionHint: string | null;
+}
+
 export interface FinalizeFileUploadRequest {
   uploadId: string;
   directoryId?: string | null;
   fileName: string;
+  isEncrypted: boolean;
+  encryptionIv?: string | null;
+  encryptionSalt?: string | null;
+  integrityTag?: string | null;
+  encryptionHint?: string | null;
+  iterationCount?: number | null; 
 }
 
 export interface FinalizeFileUploadResponse {
@@ -118,13 +137,14 @@ export const fileApi = {
     });
   },
 
-  downloadFile: async (id: string): Promise<string> => {
-    const response = await apiClient.get<string>(`/files/download/${id}`);
+  downloadFile: async (id: string): Promise<DownloadInfo> => {
+    const response = await apiClient.get<DownloadInfo>(`/files/download/${id}`);
     return response.data;
   },
 
-  downloadFileVersion: async (id: string): Promise<string> => {
-    const response = await apiClient.get<string>(`files/versions/${id}`);
+  // Was: downloadFileVersion: async (id: string): Promise<string>
+  downloadFileVersion: async (id: string): Promise<DownloadInfo> => {
+    const response = await apiClient.get<DownloadInfo>(`files/versions/${id}`);
     return response.data;
   },
 
@@ -234,7 +254,7 @@ export const fileApi = {
   searchFiles: async (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {
     const cleanQuery = Object.fromEntries(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      Object.entries(query).filter(([_, value]) => value != null),
+      Object.entries(query).filter(([_, value]) => value !== null),
     );
     const response = await apiClient.get<PaginatedResponse<FileResult>>("/files/search", {
       params: cleanQuery,

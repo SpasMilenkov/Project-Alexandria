@@ -25,7 +25,8 @@ public interface IStorageService
     // File Download
     Task<Stream> DownloadFile(Guid fileId, Guid ownerId, CancellationToken ct);
     Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default);
-
+    Task<DownloadInfo> GetFileDownloadDetails(Guid fileId, Guid userId, CancellationToken ct = default);
+    Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default );
     Task StreamFile(
         string fileId,
         Stream destination,
@@ -41,6 +42,12 @@ public interface IStorageService
         string objectName,
         Guid uploadId,
         Guid uploadedBy,
+        byte[]? encryptionIv,
+        byte[]? encryptionSalt,
+        byte[]? integrityTag,
+        string? encryptionHint,
+        int? iterationCount,
+        bool isEncrypted = false,
         Guid? directoryId = null,
         CancellationToken ct = default
     );

@@ -379,7 +379,7 @@
               :data="file"
               :view-mode="viewMode"
               :is-selected="isFileSelected(file.fileId)"
-              @download="downloadFile(file.fileId, file.fileName)"
+              @download="downloadFile(file.fileId)"
               @click="handleItemClick($event, file.fileId, 'file')"
               @copy="handleCopy"
               @delete="handleDelete"
@@ -462,7 +462,7 @@
             :view-mode="viewMode"
             :tags="tagsData?.items"
             :is-selected="isFileSelected(file.fileId)"
-            @download="downloadFile(file.fileId, file.fileName)"
+            @download="downloadFile(file.fileId)"
             @click="handleItemClick($event, file.fileId, 'file')"
             @copy="handleCopy"
             @delete="handleDelete"
@@ -518,15 +518,16 @@ import { useDropZone } from "@vueuse/core";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import { logger } from "@/utils/logger";
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
+import { useFileDownload } from "@/composables/useFileDownload";
+import { useAppToast } from "@/composables/useAppToast";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
 const settingsStore = useSettingsStore();
 const tabStore = useTabStore();
+const appToast = useAppToast();
 
 const props = defineProps<{ tabId: string }>();
-
-const toast = useToast();
 
 const {
   currentDirId,
@@ -554,8 +555,8 @@ const {
   isFileSelected,
   clearSelection,
   selectRange,
-  downloadFile,
 } = useFileExplorer();
+const { downloadFile } = useFileDownload();
 
 const { mutateAsync: copyFilesMutate } = copyFiles();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
@@ -683,7 +684,6 @@ const { isOverDropZone } = useDropZone(containerRef, {
         droppedFiles: allFiles,
       });
     } else {
-      // pass all dropped files to the modal
       instance = fileUploadModal.open({
         directoryId: currentDirId.value ?? undefined,
         directoryName: currentDirName.value,
@@ -692,8 +692,8 @@ const { isOverDropZone } = useDropZone(containerRef, {
     }
 
     const shouldRefresh = await instance.result;
-    if (shouldRefresh && settingsStore.toastLevel === "all") {
-      toast.add({ color: "success", id: "dropzone-upload-success", title: "Upload complete" });
+    if (shouldRefresh) {
+      appToast.success("Upload complete");
       refreshDir();
     }
   },
@@ -907,12 +907,10 @@ const gridColumns = computed(
 const handleDirectoryRename = async (directoryId: string) => {
   const instance = updateDirectoryModal.open({ directoryId });
   const shouldRefresh = await instance.result;
-  if (shouldRefresh && settingsStore.toastLevel === "all") {
-    toast.add({ color: "success", id: "modal-success", title: "Directory updated successfully" });
-    return;
-  }
-  if (!shouldRefresh && settingsStore.toastLevel !== "silent") {
-    toast.add({ color: "error", id: "modal-error", title: "Directory update failed" });
+  if (shouldRefresh) {
+    appToast.success("Directory updated successfully");
+  } else {
+    appToast.error("Directory update failed");
   }
 };
 
@@ -921,9 +919,7 @@ const handleCopy = () => {
   fileStore.modificationOriginDirId = currentDirId.value;
   directoryStore.directoriesToCopy = [...selectedDirectories.value];
   directoryStore.modificationOriginDirId = currentDirId.value;
-  if (settingsStore.toastLevel === "all") {
-    toast.add({ color: "info", id: "copying", title: "Items selected" });
-  }
+  appToast.info("Items selected");
 };
 
 const handleDelete = async () => {
@@ -976,9 +972,7 @@ const handleDelete = async () => {
     }
   }
 
-  if (settingsStore.toastLevel === "all") {
-    toast.add({ color: "info", id: "deleting", title: "Items deleted" });
-  }
+  appToast.info("Items deleted");
 };
 
 const handleCut = async () => {
@@ -1055,13 +1049,8 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
     refreshDir();
     return;
   }
-  if (!shouldRefresh && directoryStore.error && settingsStore.toastLevel !== "silent") {
-    toast.add({
-      color: "error",
-      description: directoryStore.error,
-      id: "modal-error",
-      title: "Upload failed",
-    });
+  if (!shouldRefresh && directoryStore.error) {
+    appToast.error("Upload failed", directoryStore.error);
   }
 };
 
@@ -1079,17 +1068,10 @@ const breadcrumbs = computed(() => {
 const createNewDirectory = async () => {
   const instance = createDirectoryModal.open({ parentId: currentDirId.value });
   const shouldRefresh = await instance.result;
-  if (shouldRefresh && settingsStore.toastLevel === "all") {
-    toast.add({ color: "success", id: "modal-success", title: "Directory creation successful" });
-    return;
-  }
-  if (!shouldRefresh && directoryStore.error && settingsStore.toastLevel !== "silent") {
-    toast.add({
-      color: "error",
-      description: directoryStore.error,
-      id: "modal-error",
-      title: "Directory creation failed",
-    });
+  if (shouldRefresh) {
+    appToast.success("Directory creation successful");
+  } else if (directoryStore.error) {
+    appToast.error("Directory creation failed", directoryStore.error);
   }
 };
 
@@ -1145,83 +1127,3 @@ onUnmounted(() => {
   if (labelTimer) clearInterval(labelTimer);
 });
 </script>
-
-<style scoped>
-.throbber-enter-active,
-.throbber-leave-active {
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-.throbber-enter-from,
-.throbber-leave-to {
-  opacity: 0;
-  transform: scale(0.7);
-}
-
-.fade-status-enter-active,
-.fade-status-leave-active {
-  transition: opacity 0.35s ease;
-}
-.fade-status-enter-from,
-.fade-status-leave-to {
-  opacity: 0;
-}
-
-.breathe {
-  width: 4rem;
-  height: 4rem;
-  animation: breathe 2.8s ease-in-out infinite;
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  50% {
-    transform: scale(1.18);
-    opacity: 0.15;
-  }
-}
-
-.pulse-tint {
-  animation: pulse-tint 3s ease-in-out infinite;
-}
-
-@keyframes pulse-tint {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-
-.pulse-border {
-  animation: pulse-border 3s ease-in-out infinite;
-}
-
-@keyframes pulse-border {
-  0%,
-  100% {
-    opacity: 0.8;
-  }
-  50% {
-    opacity: 0.2;
-  }
-}
-
-.dropzone-enter-active {
-  transition: opacity 0.2s ease;
-}
-.dropzone-leave-active {
-  transition: opacity 0.15s ease;
-}
-.dropzone-enter-from,
-.dropzone-leave-to {
-  opacity: 0;
-}
-</style>

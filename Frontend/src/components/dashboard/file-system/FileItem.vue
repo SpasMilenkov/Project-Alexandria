@@ -224,6 +224,7 @@
 
         <!-- File Preview Section -->
         <FilePreview
+          v-if="!detail.currentVersion.isEncrypted"
           :file-id="props.data.fileId"
           :file-name="detail.fileName"
           :mime-type="detail.currentVersion.mimeType"
@@ -427,12 +428,12 @@ const { data: fileTags, isLoading: fileTagsLoading } = useQuery({
   enabled: () => openDrawer.value,
 });
 
-const displayTags = computed(() => {
-  if (fileTags) return fileTags.value;
+const displayTags = computed((): TagDto[] => {
+  if (fileTags.value?.tags) return fileTags.value.tags;
 
-  if (openDrawer.value && fileDetail.value && !tagsData) return fileDetail.value.tags;
+  if (openDrawer.value && fileDetail.value?.tags) return fileDetail.value.tags;
 
-  return props.data.tags;
+  return props.data.tags ?? [];
 });
 
 const showTagSearch = ref(false);

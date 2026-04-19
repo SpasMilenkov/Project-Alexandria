@@ -105,13 +105,13 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return query;
     }
 
-    public async Task<File?> GetFileWithPreviewAsync(Guid id, CancellationToken ct = default)
+    public async Task<File?> GetFileWithPreviewAsync(Guid fileId, CancellationToken ct = default)
     {
         return await _files
             .AsNoTracking()
             .Include(f => f.Preview)
             .Where(f => f.DeletedAt == null)
-            .FirstOrDefaultAsync(f => f.Id == id, ct);
+            .FirstOrDefaultAsync(f => f.Id == fileId, ct);
     }
 
     public async Task HasDuplicatesAsync(Guid[] fileIds, Guid destinationId, Guid userId,
@@ -341,114 +341,114 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     Guid? destinationId,
     Guid userId,
     CancellationToken ct)
-{
-    var existingTransaction = context.Database.CurrentTransaction;
-    await using var transaction = existingTransaction is null
-        ? await context.Database.BeginTransactionAsync(ct)
-        : null;
-
-    try
     {
-        // 1. Load only what we need
-        var sourceFiles = await _files
-            .Where(f => fileIds.Contains(f.Id) && f.OwnerId == userId)
-            .Select(f => new
-            {
-                f.Name,
-                f.MimeType,
-                f.HasPreview,
-                f.PreviewGeneratedAt,
-                f.Tags,
-                f.PreviewId,
-                Version = f.CurrentVersion!
-            })
-            .ToListAsync(ct);
+        var existingTransaction = context.Database.CurrentTransaction;
+        await using var transaction = existingTransaction is null
+            ? await context.Database.BeginTransactionAsync(ct)
+            : null;
 
-        if (sourceFiles.Count != fileIds.Length)
-            throw new InvalidOperationException("Some files were not found or not owned by user");
-
-        // 2. Create new entities in memory
-        var now = DateTime.UtcNow;
-        var newFiles = new List<File>(sourceFiles.Count);
-        var newVersions = new List<FileVersion>(sourceFiles.Count);
-
-        foreach (var src in sourceFiles)
+        try
         {
-            if (src.Version is null)
-                throw new InvalidOperationException("Source file has no current version");
+            // 1. Load only what we need
+            var sourceFiles = await _files
+                .Where(f => fileIds.Contains(f.Id) && f.OwnerId == userId)
+                .Select(f => new
+                {
+                    f.Name,
+                    f.MimeType,
+                    f.HasPreview,
+                    f.PreviewGeneratedAt,
+                    f.Tags,
+                    f.PreviewId,
+                    Version = f.CurrentVersion!
+                })
+                .ToListAsync(ct);
 
-            var fileId = Guid.NewGuid();
-            var versionId = Guid.NewGuid();
+            if (sourceFiles.Count != fileIds.Length)
+                throw new InvalidOperationException("Some files were not found or not owned by user");
 
-            newFiles.Add(new File
+            // 2. Create new entities in memory
+            var now = DateTime.UtcNow;
+            var newFiles = new List<File>(sourceFiles.Count);
+            var newVersions = new List<FileVersion>(sourceFiles.Count);
+
+            foreach (var src in sourceFiles)
             {
-                Id = fileId,
-                Name = src.Name,
-                MimeType = src.MimeType,
-                CreatedAt = now,
-                HasPreview = src.HasPreview,
-                PreviewGeneratedAt = src.PreviewGeneratedAt,
-                Tags = src.Tags,
-                PreviewId = src.PreviewId,
-                OwnerId = userId,
-                DirectoryId = destinationId,
-                CurrentVersionId = null,
-                UpdatedBy = userId
-            });
+                if (src.Version is null)
+                    throw new InvalidOperationException("Source file has no current version");
 
-            newVersions.Add(new FileVersion
-            {
-                Id = versionId,
-                FileId = fileId,
-                ContentHash = src.Version.ContentHash,
-                Size = src.Version.Size,
-                VersionNumber = 1,
-                MimeType = src.Version.MimeType,
-                CreatedAt = now,
-                CreatedBy = userId,
-                ContentObjectId = src.Version.ContentObjectId
-            });
+                var fileId = Guid.NewGuid();
+                var versionId = Guid.NewGuid();
+
+                newFiles.Add(new File
+                {
+                    Id = fileId,
+                    Name = src.Name,
+                    MimeType = src.MimeType,
+                    CreatedAt = now,
+                    HasPreview = src.HasPreview,
+                    PreviewGeneratedAt = src.PreviewGeneratedAt,
+                    Tags = src.Tags,
+                    PreviewId = src.PreviewId,
+                    OwnerId = userId,
+                    DirectoryId = destinationId,
+                    CurrentVersionId = null,
+                    UpdatedBy = userId
+                });
+
+                newVersions.Add(new FileVersion
+                {
+                    Id = versionId,
+                    FileId = fileId,
+                    ContentHash = src.Version.ContentHash,
+                    Size = src.Version.Size,
+                    VersionNumber = 1,
+                    MimeType = src.Version.MimeType,
+                    CreatedAt = now,
+                    CreatedBy = userId,
+                    ContentObjectId = src.Version.ContentObjectId
+                });
+            }
+
+            // 3. Insert files (CurrentVersionId = null) and versions
+            _files.AddRange(newFiles);
+            _fileVersions.AddRange(newVersions);
+            await context.SaveChangesAsync(ct);
+
+            // 4. Wire up CurrentVersionId and update
+            var versionLookup = newVersions.ToDictionary(v => v.FileId, v => v.Id);
+            foreach (var file in newFiles)
+                file.CurrentVersionId = versionLookup[file.Id];
+
+            await context.SaveChangesAsync(ct);
+
+            // 5. Update ContentObject ref counts
+            var refCountUpdates = newVersions
+                .GroupBy(v => v.ContentObjectId)
+                .Select(g => new { ContentObjectId = g.Key, Count = g.Count() })
+                .ToList();
+
+            // TODO: apply refCountUpdates as needed
+
+            // Only commit if WE opened the transaction
+            if (transaction is not null)
+                await transaction.CommitAsync(ct);
         }
-
-        // 3. Insert files (CurrentVersionId = null) and versions
-        _files.AddRange(newFiles);
-        _fileVersions.AddRange(newVersions);
-        await context.SaveChangesAsync(ct);
-
-        // 4. Wire up CurrentVersionId and update
-        var versionLookup = newVersions.ToDictionary(v => v.FileId, v => v.Id);
-        foreach (var file in newFiles)
-            file.CurrentVersionId = versionLookup[file.Id];
-
-        await context.SaveChangesAsync(ct);
-
-        // 5. Update ContentObject ref counts
-        var refCountUpdates = newVersions
-            .GroupBy(v => v.ContentObjectId)
-            .Select(g => new { ContentObjectId = g.Key, Count = g.Count() })
-            .ToList();
-
-        // TODO: apply refCountUpdates as needed
-
-        // Only commit if WE opened the transaction
-        if (transaction is not null)
-            await transaction.CommitAsync(ct);
+        catch (DbUpdateException ex)
+        {
+            if (transaction is not null)
+                await transaction.RollbackAsync(ct);
+            throw new InvalidOperationException(
+                "Files with the same names already exist in destination",
+                ex);
+        }
+        catch
+        {
+            if (transaction is not null)
+                await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
-    catch (DbUpdateException ex)
-    {
-        if (transaction is not null)
-            await transaction.RollbackAsync(ct);
-        throw new InvalidOperationException(
-            "Files with the same names already exist in destination",
-            ex);
-    }
-    catch
-    {
-        if (transaction is not null)
-            await transaction.RollbackAsync(ct);
-        throw;
-    }
-}
 
 
     public async Task<File?> FirstOrDefaultAsync(Expression<Func<File, bool>> predicate, CancellationToken ct = default)
@@ -785,5 +785,37 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .ExecuteUpdateAsync(s => s
                 .SetProperty(f => f.CurrentVersionId, versionId)
                 .SetProperty(f => f.UpdatedAt, DateTime.UtcNow), ct);
+    }
+
+    public async Task<(DownloadMetadata fileMetadata, byte[] fileHash)?> GetDownloadMetadataAsync(
+        Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        var row = await _files
+            .Where(f => f.Id == fileId && f.OwnerId == userId && f.DeletedAt == null)
+            .Select(f => new
+            {
+                f.Name,
+                f.MimeType,
+                f.CurrentVersion.EncryptionHint,
+                f.CurrentVersion.EncryptionIv,
+                f.CurrentVersion.IsEncrypted,
+                f.CurrentVersion.EncryptionSalt,
+                f.CurrentVersion.IntegrityTag,
+                f.CurrentVersion.ContentHash,
+            })
+            .FirstOrDefaultAsync(ct);
+    
+        if (row is null) return null;
+    
+        return (new DownloadMetadata
+        {
+            FileName = row.Name,
+            MimeType = row.MimeType,
+            EncryptionHint = row.EncryptionHint,
+            EncryptionIv = row.EncryptionIv,
+            IsEncrypted = row.IsEncrypted,
+            EncryptionSalt = row.EncryptionSalt,
+            IntegrityTag = row.IntegrityTag,
+        }, row.ContentHash);
     }
 }

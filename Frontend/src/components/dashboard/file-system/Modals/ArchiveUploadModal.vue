@@ -10,12 +10,13 @@ import {
   type DirectoryTreeItem,
 } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { useAppToast } from "@/composables/useAppToast";
 
 // configure zip.js to use its own built-in workers for decompression
 configure({ useWebWorkers: true });
 
-const toast = useToast();
 const directoryStore = useDirectoryStore();
+const appToast = useAppToast();
 
 const {
   fileStatuses,
@@ -114,8 +115,6 @@ const isUploadPhase = computed(
   () => extractionPhase.value === "done" && extractedFiles.value.length > 0,
 );
 
-// treeItems live-updates during extraction using extractedFiles,
-// then switches to fileStatuses once upload starts
 const treeItems = computed(() => {
   if (fileStatuses.value.length > 0) return buildTreeFromStatuses();
   return buildFileTree(extractedFiles.value);
@@ -186,7 +185,6 @@ const extractArchive = async () => {
     const reader = new ZipReader(new BlobReader(archiveFile.value));
     const entries = await reader.getEntries();
 
-    // filter to file entries only (skip directory entries and __MACOSX artifacts)
     const fileEntries = entries.filter(
       (e) => !e.directory && !e.filename.startsWith("__MACOSX/") && !e.filename.endsWith("/"),
     );
@@ -199,9 +197,6 @@ const extractArchive = async () => {
 
       const blob = await entry.getData!(new BlobWriter(), { signal });
 
-      // derive a clean relative path — zip entries from some tools include a
-      // leading top-level folder that matches the archive name; we preserve it
-      // as-is so the directory structure stays faithful to what was zipped
       const relativePath = entry.filename;
       const fileName = relativePath.split("/").pop() ?? relativePath;
       const mimeType = mimeFromExtension(fileName);
@@ -250,7 +245,7 @@ const startUpload = async () => {
     await startUploadPipeline(extractedFiles.value, directoryMapping);
 
     if (cancelled.value) {
-      toast.add({ color: "neutral", title: "Upload cancelled" });
+      appToast.info("Upload cancelled");
       return;
     }
 
@@ -258,26 +253,16 @@ const startUpload = async () => {
     const success = successfulFiles.value;
 
     if (failed === 0) {
-      toast.add({
-        color: "success",
-        description: `${success} ${success === 1 ? "file" : "files"} uploaded`,
-        title: "Upload Complete",
-      });
+      appToast.success(
+        "Upload Complete",
+        `${success} ${success === 1 ? "file" : "files"} uploaded`,
+      );
       setTimeout(() => emit("close", true), 1000);
     } else {
-      toast.add({
-        color: "warning",
-        description: `${success} succeeded, ${failed} failed`,
-        title: "Upload Finished with Errors",
-      });
+      appToast.warning("Upload Finished with Errors", `${success} succeeded, ${failed} failed`);
     }
-  } catch (err: any) {
-    toast.add({
-      color: "error",
-      description:
-        err.response?.data?.message ?? err.message ?? "Failed to create directory structure",
-      title: "Upload Failed",
-    });
+  } catch (err) {
+    appToast.error("Upload Failed", err);
   } finally {
     uploading.value = false;
   }
@@ -291,18 +276,13 @@ const handleRetry = async () => {
   const success = successfulFiles.value;
 
   if (stillFailed === 0) {
-    toast.add({
-      color: "success",
-      description: `${success} ${success === 1 ? "file" : "files"} uploaded`,
-      title: "Upload Complete",
-    });
+    appToast.success("Upload Complete", `${success} ${success === 1 ? "file" : "files"} uploaded`);
     setTimeout(() => emit("close", true), 1000);
   } else {
-    toast.add({
-      color: "warning",
-      description: `${stillFailed} ${stillFailed === 1 ? "file" : "files"} still failed`,
-      title: "Retry Complete",
-    });
+    appToast.warning(
+      "Retry Complete",
+      `${stillFailed} ${stillFailed === 1 ? "file" : "files"} still failed`,
+    );
     uploading.value = false;
   }
 };
@@ -343,7 +323,7 @@ const searchParentDirectory = async (query: string) => {
   }
 };
 
-// mime helpers — zip entries have no type, derive from extension
+// mime helpers
 
 const EXTENSION_MIME: Record<string, string> = {
   css: "text/css",

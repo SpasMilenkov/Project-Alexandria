@@ -17,14 +17,6 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddSWorkerServices(this IServiceCollection services)
     {
-        services.AddMemoryCache(options =>
-        {
-            options.SizeLimit = 1000;
-            options.CompactionPercentage = 0.25;
-            options.ExpirationScanFrequency = TimeSpan.FromMinutes(5);
-        });
-
-
         services.AddScoped<IStorageService, S3Service>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ITagRepository, TagRepository>();

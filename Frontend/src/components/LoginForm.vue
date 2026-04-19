@@ -59,16 +59,20 @@ const onSubmit = async (payload: FormSubmitEvent<LoginSchema>) => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center justify-center gap-4 p-4">
-    <UPageCard class="w-full max-w-md">
-      <UAuthForm
-        :schema="loginSchema"
-        title="Login"
-        description="Enter your credentials to access your account."
-        icon="i-lucide-user"
-        :fields="fields"
-        @submit="onSubmit"
-      />
-    </UPageCard>
-  </div>
+  <UPageCard class="w-full max-w-md">
+    <UAuthForm
+      :schema="loginSchema"
+      title="Sign in"
+      description="Enter your credentials to access your account."
+      :fields="fields"
+      :submit="{ label: 'Continue', color: 'primary', block: true }"
+      :ui="{
+        header: 'flex flex-col',
+        title: 'text-2xl font-semibold',
+        description: 'mt-1 text-sm text-muted',
+      }"
+      @submit="onSubmit"
+    >
+    </UAuthForm>
+  </UPageCard>
 </template>

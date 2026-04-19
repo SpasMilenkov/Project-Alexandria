@@ -63,6 +63,12 @@ public partial class S3Service(
         long size,
         byte[] hash,
         Guid contentObjectId,
+        bool isEncrypted,
+        byte[]? encryptionIv,
+        byte[]? encryptionSalt,
+        byte[]? integrityTag,
+        string? encryptionHint,
+        int? iterationCount,
         CancellationToken ct)
     {
         LogCreatingFileRecord(logger, fileName);
@@ -86,7 +92,14 @@ public partial class S3Service(
             MimeType = newFile.MimeType,
             CreatedBy = uploadedBy,
             ContentObjectId = contentObjectId,
-            FileId = newFile.Id
+            FileId = newFile.Id,
+            IsEncrypted = isEncrypted,
+            EncryptionIv = encryptionIv,
+            EncryptionSalt = encryptionSalt,
+            IntegrityTag = integrityTag,
+            EncryptionHint = encryptionHint,
+            IterationCount = iterationCount,
+            KdfVersion = 1,
         };
 
         await unitOfWork.FileVersions.AddAsync(fileVersion, ct);
@@ -710,6 +723,12 @@ public partial class S3Service(
         string objectName,
         Guid uploadId,
         Guid uploadedBy,
+        byte[]? encryptionIv,
+        byte[]? encryptionSalt,
+        byte[]? integrityTag,
+        string? encryptionHint,
+        int? iterationCount,
+        bool isEncrypted = false,
         Guid? directoryId = null,
         CancellationToken ct = default)
     {
@@ -791,7 +810,7 @@ public partial class S3Service(
             // =====================================================
             // 5. Deduplication: check content object
             // =====================================================
-            var contentObject = await unitOfWork.ContentObjects.HashExists(computedHash);
+            var contentObject = !isEncrypted ? await unitOfWork.ContentObjects.HashExists(computedHash, ct) : null;
 
             if (contentObject is null)
             {
@@ -827,8 +846,14 @@ public partial class S3Service(
                     uploadedBy,
                     computedSize,
                     Convert.FromHexString(serverHash),
-                    contentObject.Id,
-                    ct);
+                    encryptionHint: encryptionHint,
+                    encryptionIv: encryptionIv,
+                    encryptionSalt: encryptionSalt,
+                    isEncrypted: isEncrypted,
+                    integrityTag: integrityTag,
+                    iterationCount: iterationCount,
+                    contentObjectId: contentObject.Id,
+                    ct: ct);
                 await unitOfWork.CommitAsync(ct);
 
                 await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
@@ -845,10 +870,7 @@ public partial class S3Service(
             // 7. Create new version
             // =====================================================
             var currentVersion = await unitOfWork.FileVersions.GetByIdAsync(
-                file.CurrentVersionId ?? Guid.Empty, ct);
-
-            if (currentVersion is null)
-                throw new InvalidOperationException("Current version missing");
+                file.CurrentVersionId ?? Guid.Empty, ct) ?? throw new InvalidOperationException("Current version missing");
 
             var newVersion = await unitOfWork.FileVersions.AddAsync(
                 new FileVersion
@@ -859,7 +881,14 @@ public partial class S3Service(
                     MimeType = upload.MimeType,
                     CreatedBy = uploadedBy,
                     ContentObjectId = contentObject.Id,
-                    FileId = file.Id
+                    FileId = file.Id,
+                    IsEncrypted = isEncrypted,
+                    EncryptionIv = encryptionIv,
+                    EncryptionSalt = encryptionSalt,
+                    IntegrityTag = integrityTag,
+                    EncryptionHint = encryptionHint,
+                    IterationCount = iterationCount,
+                    KdfVersion = 1,
                 },
                 ct);
 
@@ -994,8 +1023,8 @@ public partial class S3Service(
 
     public async Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default)
     {
-        var downloadInfo = await unitOfWork.FileVersions.GetVersionDownloadInfo(versionId: fileVersionId, userId: ownerId, ct) ??
-                    throw new InvalidOperationException("Version not found");
+        var downloadInfo = await unitOfWork.FileVersions.GetVersionDownloadInfo(fileVersionId, ownerId, ct) ??
+            throw new InvalidOperationException("Version not found");
 
         var request = new GetPreSignedUrlRequest
         {
@@ -1003,13 +1032,59 @@ public partial class S3Service(
             Key = $"content/{Convert.ToHexStringLower(downloadInfo.Hash)}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.AddMinutes(10),
-            Protocol = Protocol.HTTP,
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP, // fix the hardcode too
             ResponseHeaderOverrides = new ResponseHeaderOverrides
             {
                 ContentDisposition = $"attachment; filename=\"{downloadInfo.FileName}\""
             }
         };
 
-        return await s3.GetPreSignedURLAsync(request);
+        if (await unitOfWork.FileVersions.IsPromoted(fileVersionId, ct))
+            return await publicS3.GetPreSignedURLAsync(request);
+
+        var upload = await unitOfWork.Uploads.FirstOrDefaultAsync(
+            u => u.Hash == downloadInfo.Hash && u.Status == UploadStatus.Finished, ct) ??
+            throw new InvalidOperationException("Upload record not found for unpromoted version");
+
+        request.BucketName = config.Value.TempBucket;
+        request.Key = $"content/{upload.TempObjectKey}";
+
+        return await publicS3.GetPreSignedURLAsync(request);
+    }
+
+    public async Task<DownloadInfo> GetFileDownloadDetails(Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        (DownloadMetadata downloadMetadata, byte[] fileHash) = await unitOfWork.Files.GetDownloadMetadataAsync(fileId, userId, ct) ??
+                    throw new InvalidOperationException("File not found");
+
+        return new DownloadInfo
+        {
+            PresignedUrl = await GetFilePresignedUrl(fileId, fileHash, downloadMetadata.FileName, TimeSpan.FromMinutes(10)),
+            FileName = downloadMetadata.FileName,
+            MimeType = downloadMetadata.MimeType,
+            EncryptionHint = downloadMetadata.EncryptionHint,
+            EncryptionIv = downloadMetadata.EncryptionIv,
+            EncryptionSalt = downloadMetadata.EncryptionSalt,
+            IntegrityTag = downloadMetadata.IntegrityTag,
+            IsEncrypted = downloadMetadata.IsEncrypted
+        };
+    }
+
+    public async Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        var downloadInfo = await unitOfWork.FileVersions.GetDownloadMetadataAsync(versionId, userId, ct) ??
+                    throw new InvalidOperationException("File not found");
+
+        return new DownloadInfo
+        {
+            PresignedUrl = await GetVersionPresignedUrl(versionId, userId, ct),
+            FileName = downloadInfo.FileName,
+            MimeType = downloadInfo.MimeType,
+            EncryptionHint = downloadInfo.EncryptionHint,
+            EncryptionIv = downloadInfo.EncryptionIv,
+            EncryptionSalt = downloadInfo.EncryptionSalt,
+            IntegrityTag = downloadInfo.IntegrityTag,
+            IsEncrypted = downloadInfo.IsEncrypted
+        };
     }
 }
