@@ -4,14 +4,15 @@ import { directoryApi } from "@/api/directory";
 import type { SelectMenuItem } from "@nuxt/ui";
 import { useDirectoryStore } from "@/stores/directory";
 import {
-  useDirectoryUpload,
-  type FileEntry,
   type DirectoryTreeItem,
+  type FileEntry,
+  useDirectoryUpload,
 } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { useAppToast } from "@/composables/useAppToast";
 
-const toast = useToast();
 const directoryStore = useDirectoryStore();
+const appToast = useAppToast();
 
 const {
   fileStatuses,
@@ -89,7 +90,7 @@ const uploadDirectoryStructure = async () => {
     await startUploadPipeline(files.value, directoryMapping);
 
     if (cancelled.value) {
-      toast.add({ color: "neutral", title: "Upload cancelled" });
+      appToast.info("Upload cancelled");
       return;
     }
 
@@ -97,26 +98,16 @@ const uploadDirectoryStructure = async () => {
     const success = successfulFiles.value;
 
     if (failed === 0) {
-      toast.add({
-        color: "success",
-        description: `${success} ${success === 1 ? "file" : "files"} uploaded`,
-        title: "Upload Complete",
-      });
+      appToast.success(
+        "Upload Complete",
+        `${success} ${success === 1 ? "file" : "files"} uploaded`,
+      );
       setTimeout(() => emit("close", true), 1000);
     } else {
-      toast.add({
-        color: "warning",
-        description: `${success} succeeded, ${failed} failed`,
-        title: "Upload Finished with Errors",
-      });
+      appToast.warning("Upload Finished with Errors", `${success} succeeded, ${failed} failed`);
     }
-  } catch (err: any) {
-    toast.add({
-      color: "error",
-      description:
-        err.response?.data?.message ?? err.message ?? "Failed to create directory structure",
-      title: "Directory Structure Failed",
-    });
+  } catch (err) {
+    appToast.error("Directory Structure Failed", err);
   } finally {
     uploading.value = false;
   }
@@ -130,18 +121,13 @@ const handleRetry = async () => {
   const success = successfulFiles.value;
 
   if (stillFailed === 0) {
-    toast.add({
-      color: "success",
-      description: `${success} ${success === 1 ? "file" : "files"} uploaded`,
-      title: "Upload Complete",
-    });
+    appToast.success("Upload Complete", `${success} ${success === 1 ? "file" : "files"} uploaded`);
     setTimeout(() => emit("close", true), 1000);
   } else {
-    toast.add({
-      color: "warning",
-      description: `${stillFailed} ${stillFailed === 1 ? "file" : "files"} still failed`,
-      title: "Retry Complete",
-    });
+    appToast.warning(
+      "Retry Complete",
+      `${stillFailed} ${stillFailed === 1 ? "file" : "files"} still failed`,
+    );
     uploading.value = false;
   }
 };
