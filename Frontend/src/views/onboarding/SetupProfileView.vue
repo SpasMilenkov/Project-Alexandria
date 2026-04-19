@@ -46,7 +46,7 @@
               </div>
 
               <!-- Upcoming features -->
-              <div class="grid grid-colrs-1 sm:grid-cols-2 gap-2">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div
                   v-for="feature in UPCOMING_FEATURES"
                   :key="feature.label"
@@ -90,7 +90,6 @@
                 block
                 trailing-icon="i-mdi-arrow-right"
                 @click="handleContinue"
-                @keydown.enter="handleContinue"
               >
                 Continue
               </UButton>
