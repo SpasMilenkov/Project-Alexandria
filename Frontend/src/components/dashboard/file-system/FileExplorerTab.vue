@@ -388,7 +388,7 @@
                   :view-mode="viewMode"
                   :is-selected="isFileSelected(file.fileId)"
                   :selected-count="selectedCount"
-                  @download="handleDownload(file.fileId)"
+                  @download="handleDownload('file', file.fileId)"
                   @click="handleItemClick($event, file.fileId, 'file')"
                   @copy="handleCopy"
                   @delete="handleDelete"
