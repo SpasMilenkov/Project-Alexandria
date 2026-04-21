@@ -12,7 +12,7 @@
     :handle-only="!isMobile"
   >
     <!-- Grid View -->
-    <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems">
+    <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems" :ui="{ content: 'lg:min-w-56' }">
       <div class="relative group" tabindex="0">
         <UTooltip
           :disabled="isMobile"
@@ -359,8 +359,11 @@ import { computed, ref, watch } from "vue";
 import FilePreview from "./FilePreview.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
+import { logger } from "@/utils/logger";
+import { useFileStore } from "@/stores/file";
 
 const settingsStore = useSettingsStore();
+const fileStore = useFileStore();
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");
@@ -478,91 +481,119 @@ watch(
 
 const contextMenuItems = computed(() => {
   const isMultiSelect = (props.selectedCount ?? 0) > 1;
-  const items: ContextMenuItem[] = [];
+  const count = props.selectedCount ?? 1;
 
   if (!isMultiSelect) {
-    items.push([
+    return [
+      [
+        {
+          icon: "i-mdi-information-outline",
+          label: "View details",
+          onSelect: () => {
+            openDrawer.value = true;
+          },
+        },
+        {
+          disabled: !canDownload(),
+          icon: "i-mdi-download-outline",
+          kbds: [{ value: '⌘' }, { value: 'S' }],
+          label: "Download",
+          onSelect: () => emit("download", [props.data.fileId]),
+        },
+      ],
+      [
+        {
+          disabled: !canRename(),
+          icon: "i-mdi-pencil-outline",
+          kbds: ["F2"],
+          label: "Rename",
+          onSelect: () => emit("rename", props.data.fileId),
+        },
+        {
+          disabled: !canMove(),
+          icon: "i-mdi-folder-move-outline",
+          label: "Move to…",
+          onSelect: () => emit("move", [props.data.fileId]),
+        },
+        {
+          disabled: !canCopy(),
+          icon: "i-mdi-content-copy",
+          kbds: ["⌘", "C"],
+          label: "Copy to…",
+          onSelect: () => emit("copy", [props.data.fileId]),
+        },
+      ],
+      [
+        {
+          disabled: !canShare(),
+          icon: "i-mdi-share-variant-outline",
+          label: "Share",
+          onSelect: () => emit("share", [props.data.fileId]),
+        },
+        {
+          icon: "i-mdi-identifier",
+          label: "Copy file ID",
+          onSelect: () => copyWithFeedback(props.data.fileId, "File ID"),
+        },
+      ],
+      [
+        {
+          color: "error" as const,
+          disabled: !canDelete(),
+          icon: "i-mdi-delete-outline",
+          kbds: ["Del"],
+          label: "Delete",
+          onSelect: () => emit("delete", [props.data.fileId]),
+        },
+      ],
+    ];
+  }
+
+  return [
+    [
+      {
+        label: `${count} items selected`,
+        type: "label" as const,
+      },
+    ],
+    [
       {
         disabled: !canDownload(),
-        icon: "i-mdi-download",
-        label: "Download",
-        onSelect: () => emit("download", [props.data.fileId]),
-      },
-      {
-        disabled: !canRename(),
-        icon: "i-mdi-pencil",
-        label: "Rename",
-        onSelect: () => emit("rename", props.data.fileId),
-      },
-    ]);
-    items.push([
-      {
-        disabled: !canMove(),
-        icon: "i-mdi-folder-move",
-        label: "Move",
-        onSelect: () => emit("move", [props.data.fileId]),
-      },
-      {
-        disabled: !canCopy(),
-        icon: "i-mdi-content-copy",
-        label: "Copy",
-        onSelect: () => emit("copy", [props.data.fileId]),
-      },
-      {
-        disabled: !canShare(),
-        icon: "i-mdi-share-variant",
-        label: "Share",
-        onSelect: () => emit("share", [props.data.fileId]),
-      },
-    ]);
-    items.push([
-      {
-        disabled: !canDelete(),
-        icon: "i-mdi-delete",
-        label: "Delete",
-        onSelect: () => emit("delete", [props.data.fileId]),
-      },
-    ]);
-  } else {
-    items.push([
-      {
-        disabled: !canDownload(),
-        icon: "i-mdi-download",
-        label: `Download ${props.selectedCount} items`,
+        icon: "i-mdi-download-multiple-outline",
+        label: "Download all",
         onSelect: () => emit("download", []),
       },
-    ]);
-    items.push([
+    ],
+    [
       {
         disabled: !canMove(),
-        icon: "i-mdi-folder-move",
-        label: `Move ${props.selectedCount} items`,
+        icon: "i-mdi-folder-move-outline",
+        label: "Move all to…",
         onSelect: () => emit("move", []),
       },
       {
         disabled: !canCopy(),
         icon: "i-mdi-content-copy",
-        label: `Copy ${props.selectedCount} items`,
+        label: "Copy all to…",
         onSelect: () => emit("copy", []),
       },
       {
         disabled: !canShare(),
-        icon: "i-mdi-share-variant",
-        label: `Share ${props.selectedCount} items`,
+        icon: "i-mdi-share-variant-outline",
+        label: "Share all",
         onSelect: () => emit("share", []),
       },
-    ]);
-    items.push([
+    ],
+    [
       {
+        color: "error" as const,
         disabled: !canDelete(),
-        icon: "i-mdi-delete",
-        label: `Delete ${props.selectedCount} items`,
+        icon: "i-mdi-delete-sweep-outline",
+        label: `Delete ${count} items`,
         onSelect: () => emit("delete", []),
       },
-    ]);
-  }
-
-  return items;
+    ],
+  ];
 });
 
 const canRename = (): boolean => true;
