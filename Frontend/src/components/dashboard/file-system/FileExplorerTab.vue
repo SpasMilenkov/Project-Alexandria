@@ -342,6 +342,7 @@
               :view-mode="viewMode"
               :is-selected="isDirectorySelected(dir.id)"
               :selected-count="selectedCount"
+              @download="handleDownload('dir', dir.id)"
               @navigate="handleNavigate"
               @open="handleNavigate"
               @rename="handleDirectoryRename"
@@ -381,7 +382,7 @@
               :view-mode="viewMode"
               :is-selected="isFileSelected(file.fileId)"
               :selected-count="selectedCount"
-              @download="downloadFile(file.fileId)"
+              @download="handleDownload(file.fileId)"
               @click="handleItemClick($event, file.fileId, 'file')"
               @copy="handleCopy"
               @delete="handleDelete"
@@ -422,6 +423,7 @@
             :view-mode="viewMode"
             :is-selected="isDirectorySelected(dir.id)"
             :selected-count="selectedCount"
+            @download="handleDownload('dir', dir.id)"
             @navigate="handleNavigate"
             @open="handleNavigate"
             @rename="handleDirectoryRename"
@@ -466,7 +468,7 @@
             :tags="tagsData?.items"
             :is-selected="isFileSelected(file.fileId)"
             :selected-count="selectedCount"
-            @download="downloadFile(file.fileId)"
+            @download="handleDownload('file', file.fileId)"
             @click="handleItemClick($event, file.fileId, 'file')"
             @copy="handleCopy"
             @delete="handleDelete"
@@ -920,16 +922,15 @@ const handleDirectoryRename = async (directoryId: string) => {
   }
 };
 
-const handleDownload = async (emittedIds: string[]) => {
-  const isMulti = selectedFiles.value.size + selectedDirectories.value.size > 1;
-
-  if (isMulti) {
+const handleDownload = async (type: "dir" | "file", emittedId?: string) => {
+  const isMulti = selectedCount.value > 1;
+  logger.log("emitted ids", emittedId);
+  if (isMulti || type === "dir") {
     await downloadBulk([...selectedFiles.value], [...selectedDirectories.value]);
     return;
   }
 
-  const id = emittedIds[0];
-  if (id) await downloadFile(id);
+  if (emittedId) await downloadFile(emittedId);
 };
 
 const handleCopy = () => {
