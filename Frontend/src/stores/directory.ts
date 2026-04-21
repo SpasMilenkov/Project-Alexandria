@@ -9,7 +9,7 @@ export const useDirectoryStore = defineStore(
   "directory",
   () => {
     // State
-    const directoriesToCopy = ref<string[]>([]);
+    const selectedDirectories = ref<string[]>([]);
     const modificationOriginDirId = ref<string | null>(null);
     const isLoading = ref(false);
     const isSearching = ref(false);
@@ -49,7 +49,7 @@ export const useDirectoryStore = defineStore(
 
     return {
       // State
-      directoriesToCopy,
+      selectedDirectories,
       modificationOriginDirId,
       isLoading,
       isSearching,
