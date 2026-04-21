@@ -297,200 +297,210 @@
     </Transition>
 
     <!-- content area -->
-    <div ref="containerRef" class="flex-1 overflow-auto relative">
-      <!-- drop zone overlay -->
-      <Transition name="dropzone">
-        <div
-          v-if="isOverDropZone"
-          class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
-          aria-hidden="true"
-        >
-          <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" />
-          <div class="absolute inset-0 bg-primary/5 pulse-tint" />
-          <div
-            class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
-          />
-          <div
-            class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-white/60 dark:bg-white/5 shadow-sm"
-          >
-            <div class="relative flex items-center justify-center">
-              <span class="breathe absolute rounded-full border border-primary/20" />
-              <div class="relative z-10 p-3 rounded-full bg-primary/8">
-                <Icon :icon="dropIcon" class="w-8 h-8 text-primary/70" />
+    <UContextMenu :items="backgroundContextMenuItems" class="flex-1 flex flex-col min-h-0">
+      <div ref="containerRef" class="flex-1 overflow-auto relative">
+        <div ref="containerRef" class="flex-1 overflow-auto relative">
+          <!-- drop zone overlay -->
+          <Transition name="dropzone">
+            <div
+              v-if="isOverDropZone"
+              class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+              aria-hidden="true"
+            >
+              <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" />
+              <div class="absolute inset-0 bg-primary/5 pulse-tint" />
+              <div
+                class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
+              />
+              <div
+                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-white/60 dark:bg-white/5 shadow-sm"
+              >
+                <div class="relative flex items-center justify-center">
+                  <span class="breathe absolute rounded-full border border-primary/20" />
+                  <div class="relative z-10 p-3 rounded-full bg-primary/8">
+                    <Icon :icon="dropIcon" class="w-8 h-8 text-primary/70" />
+                  </div>
+                </div>
+                <div class="text-center space-y-0.5">
+                  <p class="font-medium text-base text-primary/80 tracking-tight">
+                    {{ dropLabel }}
+                  </p>
+                  <p class="text-xs text-muted">Release to upload</p>
+                </div>
               </div>
             </div>
-            <div class="text-center space-y-0.5">
-              <p class="font-medium text-base text-primary/80 tracking-tight">{{ dropLabel }}</p>
-              <p class="text-xs text-muted">Release to upload</p>
+          </Transition>
+
+          <!-- grid view -->
+          <div v-if="viewMode === 'grid'" class="p-4">
+            <GridPlaceholder v-if="showDirSkeleton" />
+            <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
+              <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
+                Folders
+              </h3>
+              <div class="grid gap-3" :class="gridColumns">
+                <DirectoryItem
+                  v-for="dir in directoriesList"
+                  :key="dir.id"
+                  :data="dir"
+                  :view-mode="viewMode"
+                  :is-selected="isDirectorySelected(dir.id)"
+                  :selected-count="selectedCount"
+                  @download="handleDownload('dir', dir.id)"
+                  @navigate="handleNavigate"
+                  @open="handleNavigate"
+                  @rename="handleDirectoryRename"
+                  @move="handleCut"
+                  @click="handleItemClick($event, dir.id, 'directory')"
+                  @copy="handleCopy"
+                  @delete="handleDelete"
+                  @contextmenu="handleItemClick($event, dir.id, 'directory')"
+                />
+              </div>
+              <div
+                v-if="directoriesData?.hasNext"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+              >
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  label="Show more folders"
+                  class="w-full"
+                  @click="loadMoreDirs"
+                />
+              </div>
+            </div>
+
+            <GridPlaceholder v-if="showFileSkeleton" />
+            <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
+              <h3
+                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2 pt-2"
+              >
+                Files
+              </h3>
+              <div class="grid gap-3" :class="gridColumns">
+                <FileItem
+                  v-for="file in filesList"
+                  :key="file.fileId"
+                  :tags="tagsData?.items"
+                  :data="file"
+                  :view-mode="viewMode"
+                  :is-selected="isFileSelected(file.fileId)"
+                  :selected-count="selectedCount"
+                  @download="handleDownload(file.fileId)"
+                  @click="handleItemClick($event, file.fileId, 'file')"
+                  @copy="handleCopy"
+                  @delete="handleDelete"
+                  @move="handleCut"
+                  @contextmenu="handleItemClick($event, file.fileId, 'file')"
+                />
+              </div>
+              <div
+                v-if="filesData?.hasNext"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+              >
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  label="Show more files"
+                  class="w-full"
+                  @click="loadMoreFiles"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- list view -->
+          <div v-else class="flex flex-col">
+            <ListPlaceholder v-if="showDirSkeleton" />
+            <div
+              v-else-if="directoriesList.length > 0"
+              class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
+            >
+              <h3
+                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2"
+              >
+                Folders
+              </h3>
+              <DirectoryItem
+                v-for="dir in directoriesList"
+                :key="dir.id"
+                :data="dir"
+                :view-mode="viewMode"
+                :is-selected="isDirectorySelected(dir.id)"
+                :selected-count="selectedCount"
+                @download="handleDownload('dir', dir.id)"
+                @navigate="handleNavigate"
+                @open="handleNavigate"
+                @rename="handleDirectoryRename"
+                @move="handleCut"
+                @click="handleItemClick($event, dir.id, 'directory')"
+                @copy="handleCopy"
+                @delete="handleDelete"
+                @contextmenu="handleItemClick($event, dir.id, 'directory')"
+              />
+              <div
+                v-if="directoriesData?.hasNext"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
+              >
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  label="Show more folders"
+                  class="w-full"
+                  @click="loadMoreDirs"
+                />
+              </div>
+            </div>
+
+            <ListPlaceholder v-if="showFileSkeleton" />
+            <div
+              v-else-if="filesList.length > 0"
+              class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
+              :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
+            >
+              <h3
+                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pb-2"
+                :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
+              >
+                Files
+              </h3>
+              <FileItem
+                v-for="file in filesList"
+                :key="file.fileId"
+                :data="file"
+                :view-mode="viewMode"
+                :tags="tagsData?.items"
+                :is-selected="isFileSelected(file.fileId)"
+                :selected-count="selectedCount"
+                @download="handleDownload('file', file.fileId)"
+                @click="handleItemClick($event, file.fileId, 'file')"
+                @copy="handleCopy"
+                @delete="handleDelete"
+                @move="handleCut"
+                @contextmenu="handleItemClick($event, file.fileId, 'file')"
+              />
+              <div
+                v-if="filesData?.hasNext"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
+              >
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  label="Show more files"
+                  class="w-full"
+                  @click="loadMoreFiles"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </Transition>
-
-      <!-- grid view -->
-      <div v-if="viewMode === 'grid'" class="p-4">
-        <GridPlaceholder v-if="showDirSkeleton" />
-        <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
-          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
-            Folders
-          </h3>
-          <div class="grid gap-3" :class="gridColumns">
-            <DirectoryItem
-              v-for="dir in directoriesList"
-              :key="dir.id"
-              :data="dir"
-              :view-mode="viewMode"
-              :is-selected="isDirectorySelected(dir.id)"
-              :selected-count="selectedCount"
-              @download="handleDownload('dir', dir.id)"
-              @navigate="handleNavigate"
-              @open="handleNavigate"
-              @rename="handleDirectoryRename"
-              @move="handleCut"
-              @click="handleItemClick($event, dir.id, 'directory')"
-              @copy="handleCopy"
-              @delete="handleDelete"
-              @contextmenu="handleItemClick($event, dir.id, 'directory')"
-            />
-          </div>
-          <div
-            v-if="directoriesData?.hasNext"
-            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              label="Show more folders"
-              class="w-full"
-              @click="loadMoreDirs"
-            />
-          </div>
-        </div>
-
-        <GridPlaceholder v-if="showFileSkeleton" />
-        <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
-          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2 pt-2">
-            Files
-          </h3>
-          <div class="grid gap-3" :class="gridColumns">
-            <FileItem
-              v-for="file in filesList"
-              :key="file.fileId"
-              :tags="tagsData?.items"
-              :data="file"
-              :view-mode="viewMode"
-              :is-selected="isFileSelected(file.fileId)"
-              :selected-count="selectedCount"
-              @download="handleDownload(file.fileId)"
-              @click="handleItemClick($event, file.fileId, 'file')"
-              @copy="handleCopy"
-              @delete="handleDelete"
-              @move="handleCut"
-              @contextmenu="handleItemClick($event, file.fileId, 'file')"
-            />
-          </div>
-          <div
-            v-if="filesData?.hasNext"
-            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              label="Show more files"
-              class="w-full"
-              @click="loadMoreFiles"
-            />
-          </div>
-        </div>
       </div>
-
-      <!-- list view -->
-      <div v-else class="flex flex-col">
-        <ListPlaceholder v-if="showDirSkeleton" />
-        <div
-          v-else-if="directoriesList.length > 0"
-          class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
-        >
-          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2">
-            Folders
-          </h3>
-          <DirectoryItem
-            v-for="dir in directoriesList"
-            :key="dir.id"
-            :data="dir"
-            :view-mode="viewMode"
-            :is-selected="isDirectorySelected(dir.id)"
-            :selected-count="selectedCount"
-            @download="handleDownload('dir', dir.id)"
-            @navigate="handleNavigate"
-            @open="handleNavigate"
-            @rename="handleDirectoryRename"
-            @move="handleCut"
-            @click="handleItemClick($event, dir.id, 'directory')"
-            @copy="handleCopy"
-            @delete="handleDelete"
-            @contextmenu="handleItemClick($event, dir.id, 'directory')"
-          />
-          <div
-            v-if="directoriesData?.hasNext"
-            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              label="Show more folders"
-              class="w-full"
-              @click="loadMoreDirs"
-            />
-          </div>
-        </div>
-
-        <ListPlaceholder v-if="showFileSkeleton" />
-        <div
-          v-else-if="filesList.length > 0"
-          class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
-          :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
-        >
-          <h3
-            class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pb-2"
-            :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
-          >
-            Files
-          </h3>
-          <FileItem
-            v-for="file in filesList"
-            :key="file.fileId"
-            :data="file"
-            :view-mode="viewMode"
-            :tags="tagsData?.items"
-            :is-selected="isFileSelected(file.fileId)"
-            :selected-count="selectedCount"
-            @download="handleDownload('file', file.fileId)"
-            @click="handleItemClick($event, file.fileId, 'file')"
-            @copy="handleCopy"
-            @delete="handleDelete"
-            @move="handleCut"
-            @contextmenu="handleItemClick($event, file.fileId, 'file')"
-          />
-          <div
-            v-if="filesData?.hasNext"
-            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              label="Show more files"
-              class="w-full"
-              @click="loadMoreFiles"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    </UContextMenu>
   </div>
 </template>
 
@@ -815,6 +825,40 @@ const handleSorting = () => {
   filePagination.value.paginationParams.SortBy = selectedSortBy.value.value;
   dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
 };
+
+const backgroundContextMenuItems = computed(() => [
+  [
+    {
+      icon: "i-mdi-file-upload-outline",
+      label: "Upload File",
+      onSelect: () => handleFileUpload("File"),
+    },
+    {
+      icon: "i-mdi-folder-upload-outline",
+      label: "Upload Folder",
+      onSelect: () => handleFileUpload("Directory"),
+    },
+    {
+      icon: "i-formkit-zip",
+      label: "Upload Archive",
+      onSelect: () => handleFileUpload("Archive"),
+    },
+  ],
+  [
+    {
+      icon: "i-mdi-folder-plus-outline",
+      label: "New Folder",
+      onSelect: () => createNewDirectory(),
+    },
+  ],
+  [
+    {
+      icon: "i-mdi-refresh",
+      label: "Refresh",
+      onSelect: () => refreshDir(),
+    },
+  ],
+]);
 
 // mobile upload sheet
 
