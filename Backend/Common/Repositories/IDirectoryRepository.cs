@@ -48,4 +48,9 @@ public interface IDirectoryRepository : IRepository<Directory>
     Task CopyDirectory(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default);
     Task MoveDirectories(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default);
     Task<int> RestoreDirectories(Guid[] ids, Guid userId, CancellationToken ct = default);
+    Task<List<BulkDownloadEntry>> GetBulkDownloadEntriesAsync(
+        Guid[] directoryIds,
+        Guid[] fileIds,
+        Guid userId,
+        CancellationToken ct = default);
 }
