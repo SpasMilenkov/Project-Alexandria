@@ -341,6 +341,7 @@
               :data="dir"
               :view-mode="viewMode"
               :is-selected="isDirectorySelected(dir.id)"
+              :selected-count="selectedCount"
               @navigate="handleNavigate"
               @open="handleNavigate"
               @rename="handleDirectoryRename"
@@ -379,6 +380,7 @@
               :data="file"
               :view-mode="viewMode"
               :is-selected="isFileSelected(file.fileId)"
+              :selected-count="selectedCount"
               @download="downloadFile(file.fileId)"
               @click="handleItemClick($event, file.fileId, 'file')"
               @copy="handleCopy"
@@ -419,6 +421,7 @@
             :data="dir"
             :view-mode="viewMode"
             :is-selected="isDirectorySelected(dir.id)"
+            :selected-count="selectedCount"
             @navigate="handleNavigate"
             @open="handleNavigate"
             @rename="handleDirectoryRename"
@@ -462,6 +465,7 @@
             :view-mode="viewMode"
             :tags="tagsData?.items"
             :is-selected="isFileSelected(file.fileId)"
+            :selected-count="selectedCount"
             @download="downloadFile(file.fileId)"
             @click="handleItemClick($event, file.fileId, 'file')"
             @copy="handleCopy"
@@ -556,7 +560,7 @@ const {
   clearSelection,
   selectRange,
 } = useFileExplorer();
-const { downloadFile } = useFileDownload();
+const { downloadFile, downloadBulk } = useFileDownload();
 
 const { mutateAsync: copyFilesMutate } = copyFiles();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
@@ -786,6 +790,8 @@ const sortByOptions = ref([
   { label: "Date Modified", value: SortBy.UpdatedAt },
 ]);
 
+const selectedCount = computed(() => selectedFiles.value.size + selectedDirectories.value.size);
+
 const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
 const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
 const selectedUploadType = ref({ icon: "mdi:file-outline", label: "File" });
@@ -914,10 +920,22 @@ const handleDirectoryRename = async (directoryId: string) => {
   }
 };
 
+const handleDownload = async (emittedIds: string[]) => {
+  const isMulti = selectedFiles.value.size + selectedDirectories.value.size > 1;
+
+  if (isMulti) {
+    await downloadBulk([...selectedFiles.value], [...selectedDirectories.value]);
+    return;
+  }
+
+  const id = emittedIds[0];
+  if (id) await downloadFile(id);
+};
+
 const handleCopy = () => {
-  fileStore.filesToCopy = [...selectedFiles.value];
+  fileStore.selectedFiles = [...selectedFiles.value];
   fileStore.modificationOriginDirId = currentDirId.value;
-  directoryStore.directoriesToCopy = [...selectedDirectories.value];
+  directoryStore.selectedDirectories = [...selectedDirectories.value];
   directoryStore.modificationOriginDirId = currentDirId.value;
   appToast.info("Items selected");
 };
@@ -976,38 +994,38 @@ const handleDelete = async () => {
 };
 
 const handleCut = async () => {
-  if (fileStore.filesToCopy.length > 0) {
+  if (fileStore.selectedFiles.length > 0) {
     await moveFilesMutate({
       destinationId: currentDirId.value,
-      fileIds: fileStore.filesToCopy,
+      fileIds: fileStore.selectedFiles,
       originId: fileStore.modificationOriginDirId,
     });
-    fileStore.filesToCopy = [];
+    fileStore.selectedFiles = [];
     fileStore.modificationOriginDirId = null;
   }
-  if (directoryStore.directoriesToCopy.length > 0) {
+  if (directoryStore.selectedDirectories.length > 0) {
     await moveDirectoriesMutate({
       destinationId: currentDirId.value,
-      directoryIds: directoryStore.directoriesToCopy,
+      directoryIds: directoryStore.selectedDirectories,
       originId: directoryStore.modificationOriginDirId,
     });
-    directoryStore.directoriesToCopy = [];
+    directoryStore.selectedDirectories = [];
     directoryStore.modificationOriginDirId = null;
   }
 };
 
 const handlePaste = async () => {
-  if (fileStore.filesToCopy.length > 0) {
+  if (fileStore.selectedFiles.length > 0) {
     await copyFilesMutate({
       destinationId: currentDirId.value,
-      fileIds: fileStore.filesToCopy,
+      fileIds: fileStore.selectedFiles,
       originId: fileStore.modificationOriginDirId,
     });
     fileStore.modificationOriginDirId = null;
   }
-  if (directoryStore.directoriesToCopy.length > 0) {
+  if (directoryStore.selectedDirectories.length > 0) {
     await Promise.all(
-      directoryStore.directoriesToCopy.map(async (dir) => {
+      directoryStore.selectedDirectories.map(async (dir) => {
         await copyDirectoryMutate({
           destinationId: currentDirId.value,
           directoryId: dir,
