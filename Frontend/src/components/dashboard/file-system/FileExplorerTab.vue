@@ -355,6 +355,7 @@
                   @copy="handleCopy"
                   @delete="handleDelete"
                   @contextmenu="handleItemClick($event, dir.id, 'directory')"
+                  :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
                 />
               </div>
               <div
@@ -394,6 +395,9 @@
                   @delete="handleDelete"
                   @move="handleCut"
                   @contextmenu="handleItemClick($event, file.fileId, 'file')"
+                  :class="{
+                    'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
+                  }"
                 />
               </div>
               <div
@@ -440,6 +444,7 @@
                 @copy="handleCopy"
                 @delete="handleDelete"
                 @contextmenu="handleItemClick($event, dir.id, 'directory')"
+                :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
               />
               <div
                 v-if="directoriesData?.hasNext"
@@ -482,6 +487,7 @@
                 @delete="handleDelete"
                 @move="handleCut"
                 @contextmenu="handleItemClick($event, file.fileId, 'file')"
+                :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
               />
               <div
                 v-if="filesData?.hasNext"
@@ -536,6 +542,7 @@ import { logger } from "@/utils/logger";
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useAppToast } from "@/composables/useAppToast";
+import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -689,22 +696,36 @@ const { isOverDropZone } = useDropZone(containerRef, {
 
     if (entries.length === 0) return;
 
+    const uploadProps = {
+      directoryId: currentDirId.value ?? undefined,
+      directoryName: currentDirName.value,
+    };
+
+    if (isZipDrop(_files, entries)) {
+      const choice = await zipUploadChoiceModal.open().result;
+      if (!choice) return; // user cancelled
+
+      const instance =
+        choice === "archive"
+          ? archiveUploadModal.open({ ...uploadProps, droppedFiles: _files ?? [] })
+          : fileUploadModal.open({ ...uploadProps, droppedFiles: _files ?? [] });
+
+      const shouldRefresh = await instance.result;
+      if (shouldRefresh) {
+        appToast.success("Upload complete");
+        refreshDir();
+      }
+      return;
+    }
+
     const hasDirectory = entries.some((e) => e.isDirectory);
     let instance;
 
     if (hasDirectory) {
       const allFiles = (await Promise.all(entries.map((e) => readEntryRecursive(e)))).flat();
-      instance = directoryUploadModal.open({
-        directoryId: currentDirId.value ?? undefined,
-        directoryName: currentDirName.value,
-        droppedFiles: allFiles,
-      });
+      instance = directoryUploadModal.open({ ...uploadProps, droppedFiles: allFiles });
     } else {
-      instance = fileUploadModal.open({
-        directoryId: currentDirId.value ?? undefined,
-        directoryName: currentDirName.value,
-        droppedFiles: _files ?? [],
-      });
+      instance = fileUploadModal.open({ ...uploadProps, droppedFiles: _files ?? [] });
     }
 
     const shouldRefresh = await instance.result;
@@ -750,6 +771,12 @@ const readEntryRecursive = async (entry: FileSystemEntry, path = ""): Promise<Dr
   return [];
 };
 
+const isZipDrop = (files: File[] | null, entries: FileSystemEntry[]): boolean => {
+  if (entries.length !== 1 || !entries[0].isFile) return false;
+  const name = files?.[0]?.name ?? entries[0].name;
+  return name.toLowerCase().endsWith(".zip");
+};
+
 const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
   new Promise((resolve, reject) => {
     const collected: FileSystemEntry[] = [];
@@ -767,10 +794,11 @@ const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEn
 
 // keyboard shortcuts
 
-let copyMode = true;
+const copyMode = ref(true);
 
 defineShortcuts({
   Delete: () => handleDelete(),
+  Escape: () => cancelCut(),
   alt_arrowleft: () => {
     if (canGoBack.value) navigateBack();
   },
@@ -779,15 +807,15 @@ defineShortcuts({
   },
   "meta_/": () => quickSearch(),
   meta_c: () => {
-    copyMode = true;
+    copyMode.value = true;
     handleCopy();
   },
   meta_v: () => {
-    if (copyMode) handlePaste();
+    if (copyMode.value) handlePaste();
     else handleCut();
   },
   meta_x: () => {
-    copyMode = false;
+    copyMode.value = false;
     handleCopy();
   },
   shift_k: () => quickSearch(),
@@ -927,6 +955,7 @@ const archiveUploadModal = overlay.create(ArchiveUploadModal);
 const advancedSearchModal = overlay.create(AdvancedSearchModal);
 const quickSearchModal = overlay.create(QuickSearchModal);
 const confirmModal = overlay.create(ConfirmModal);
+const zipUploadChoiceModal = overlay.create(ZipUploadChoiceModal);
 
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
@@ -1056,7 +1085,23 @@ const handleCut = async () => {
     });
     directoryStore.selectedDirectories = [];
     directoryStore.modificationOriginDirId = null;
+    copyMode.value = true;
   }
+};
+
+const isCutFile = (id: string) => !copyMode.value && fileStore.selectedFiles.includes(id);
+
+const isCutDirectory = (id: string) =>
+  !copyMode.value && directoryStore.selectedDirectories.includes(id);
+
+const cancelCut = () => {
+  if (copyMode.value) return;
+  fileStore.selectedFiles = [];
+  fileStore.modificationOriginDirId = null;
+  directoryStore.selectedDirectories = [];
+  directoryStore.modificationOriginDirId = null;
+  copyMode.value = true;
+  appToast.info("Cut cancelled");
 };
 
 const handlePaste = async () => {
