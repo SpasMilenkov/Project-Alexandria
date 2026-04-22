@@ -389,6 +389,7 @@
                   :view-mode="viewMode"
                   :is-selected="isFileSelected(file.fileId)"
                   :selected-count="selectedCount"
+                  @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
                   @download="handleDownload('file', file.fileId)"
                   @click="handleItemClick($event, file.fileId, 'file')"
                   @copy="handleCopy"
@@ -481,6 +482,7 @@
                 :tags="tagsData?.items"
                 :is-selected="isFileSelected(file.fileId)"
                 :selected-count="selectedCount"
+                @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
                 @download="handleDownload('file', file.fileId)"
                 @click="handleItemClick($event, file.fileId, 'file')"
                 @copy="handleCopy"
@@ -543,6 +545,7 @@ import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useAppToast } from "@/composables/useAppToast";
 import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
+import UpdateFileModal from "./Modals/UpdateFileModal.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -702,19 +705,7 @@ const { isOverDropZone } = useDropZone(containerRef, {
     };
 
     if (isZipDrop(_files, entries)) {
-      const choice = await zipUploadChoiceModal.open().result;
-      if (!choice) return; // user cancelled
-
-      const instance =
-        choice === "archive"
-          ? archiveUploadModal.open({ ...uploadProps, droppedFiles: _files ?? [] })
-          : fileUploadModal.open({ ...uploadProps, droppedFiles: _files ?? [] });
-
-      const shouldRefresh = await instance.result;
-      if (shouldRefresh) {
-        appToast.success("Upload complete");
-        refreshDir();
-      }
+      chooseUploadMethod(uploadProps, _files);
       return;
     }
 
@@ -745,6 +736,25 @@ const { isOverDropZone } = useDropZone(containerRef, {
     dragHasDirectory.value = false;
   },
 });
+
+const chooseUploadMethod = async (
+  uploadProps: { directoryId: string | undefined; directoryName: string | undefined },
+  files: File[] | null,
+) => {
+  const choice = await zipUploadChoiceModal.open().result;
+  if (!choice) return; // user cancelled
+
+  const instance =
+    choice === "archive"
+      ? archiveUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
+      : fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] });
+
+  const shouldRefresh = await instance.result;
+  if (shouldRefresh) {
+    appToast.success("Upload complete");
+    refreshDir();
+  }
+};
 
 export interface DroppedFile {
   file: File;
@@ -956,6 +966,7 @@ const advancedSearchModal = overlay.create(AdvancedSearchModal);
 const quickSearchModal = overlay.create(QuickSearchModal);
 const confirmModal = overlay.create(ConfirmModal);
 const zipUploadChoiceModal = overlay.create(ZipUploadChoiceModal);
+const updateFileModal = overlay.create(UpdateFileModal);
 
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
@@ -990,9 +1001,12 @@ const handleDirectoryRename = async (directoryId: string) => {
   const shouldRefresh = await instance.result;
   if (shouldRefresh) {
     appToast.success("Directory updated successfully");
-  } else {
-    appToast.error("Directory update failed");
   }
+};
+
+const handleFileRename = async (fileId: string, originalName: string) => {
+  const instance = updateFileModal.open({ fileId, originalName });
+  if (await instance.result) appToast.success("File updated successfully");
 };
 
 const handleDownload = async (type: "dir" | "file", emittedId?: string) => {

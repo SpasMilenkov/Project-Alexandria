@@ -12,7 +12,11 @@
     :handle-only="!isMobile"
   >
     <!-- Grid View -->
-    <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems" :ui="{ content: 'lg:min-w-56' }">
+    <UContextMenu
+      v-if="viewMode === 'grid'"
+      :items="contextMenuItems"
+      :ui="{ content: 'lg:min-w-56' }"
+    >
       <div class="relative group" tabindex="0">
         <UTooltip
           :disabled="isMobile"
@@ -451,7 +455,7 @@ const refreshOnRemove = async (id: string) => {
 const emit = defineEmits<{
   click: [event: MouseEvent];
   open: [fileId: string];
-  rename: [fileId: string];
+  rename: [fileId: string, originalName: string];
   delete: [fileIds: string[]];
   move: [fileIds: string[]];
   copy: [fileIds: string[]];
@@ -496,7 +500,7 @@ const contextMenuItems = computed(() => {
         {
           disabled: !canDownload(),
           icon: "i-mdi-download-outline",
-          kbds: [{ value: '⌘' }, { value: 'S' }],
+          kbds: [{ value: "⌘" }, { value: "S" }],
           label: "Download",
           onSelect: () => emit("download", [props.data.fileId]),
         },
@@ -507,7 +511,7 @@ const contextMenuItems = computed(() => {
           icon: "i-mdi-pencil-outline",
           kbds: ["F2"],
           label: "Rename",
-          onSelect: () => emit("rename", props.data.fileId),
+          onSelect: () => emit("rename", props.data.fileId, props.data.fileName),
         },
         {
           disabled: !canMove(),
