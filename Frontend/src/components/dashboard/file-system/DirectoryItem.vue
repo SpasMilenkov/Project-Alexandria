@@ -7,7 +7,7 @@
     :ui="{ container: 'md:max-w-[40rem]' }"
   >
     <!-- Grid View -->
-    <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems" >
+    <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems">
       <div class="relative group" tabindex="0" @contextmenu="handleClick">
         <button
           type="button"

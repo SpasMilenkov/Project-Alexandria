@@ -350,9 +350,9 @@
                   @navigate="handleNavigate"
                   @open="handleNavigate"
                   @rename="handleDirectoryRename"
-                  @move="handleCut"
+                  @move="openTransferModal('move')"
                   @click="handleItemClick($event, dir.id, 'directory')"
-                  @copy="handleCopy"
+                  @copy="openTransferModal('copy')"
                   @delete="handleDelete"
                   @contextmenu="handleItemClick($event, dir.id, 'directory')"
                   :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
@@ -392,9 +392,9 @@
                   @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
                   @download="handleDownload('file', file.fileId)"
                   @click="handleItemClick($event, file.fileId, 'file')"
-                  @copy="handleCopy"
+                  @copy="openTransferModal('copy')"
                   @delete="handleDelete"
-                  @move="handleCut"
+                  @move="openTransferModal('move')"
                   @contextmenu="handleItemClick($event, file.fileId, 'file')"
                   :class="{
                     'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
@@ -440,9 +440,9 @@
                 @navigate="handleNavigate"
                 @open="handleNavigate"
                 @rename="handleDirectoryRename"
-                @move="handleCut"
+                @move="openTransferModal('move')"
                 @click="handleItemClick($event, dir.id, 'directory')"
-                @copy="handleCopy"
+                @copy="openTransferModal('copy')"
                 @delete="handleDelete"
                 @contextmenu="handleItemClick($event, dir.id, 'directory')"
                 :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
@@ -546,6 +546,8 @@ import { useFileDownload } from "@/composables/useFileDownload";
 import { useAppToast } from "@/composables/useAppToast";
 import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
 import UpdateFileModal from "./Modals/UpdateFileModal.vue";
+import FileTransferModal from "./Modals/Filetransfermodal.vue";
+import { getFileIcon } from "@/utils/icon.utils";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -967,6 +969,47 @@ const quickSearchModal = overlay.create(QuickSearchModal);
 const confirmModal = overlay.create(ConfirmModal);
 const zipUploadChoiceModal = overlay.create(ZipUploadChoiceModal);
 const updateFileModal = overlay.create(UpdateFileModal);
+const fileTransferModal = overlay.create(FileTransferModal);
+
+const openTransferModal = async (mode: "move" | "copy") => {
+  // Build rich chip metadata from what we already have rendered
+  const fileChips = [...selectedFiles.value].map((id) => {
+    const f = filesList.value.find((f) => f.fileId === id);
+    return {
+      icon: f ? getFileIcon(f.fileName) : "mdi:file-outline",
+      id,
+      name: f?.fileName ?? "File",
+      type: "file" as const,
+    };
+  });
+
+  const dirChips = [...selectedDirectories.value].map((id) => {
+    const d = directoriesList.value.find((d) => d.id === id);
+    return {
+      icon: "mdi:folder-outline",
+      id,
+      name: d?.name ?? "Folder",
+      type: "directory" as const,
+    };
+  });
+
+  const instance = fileTransferModal.open({
+    dirChips,
+    directories: [...selectedDirectories.value],
+    fileChips,
+    files: [...selectedFiles.value],
+    mode,
+    originDirId: currentDirId.value,
+    originDirName: currentDirName.value,
+  });
+
+  const destId = await instance.result;
+  if (destId) {
+    appToast.success(mode === "move" ? "Items moved" : "Items copied");
+    refreshDir();
+    clearSelection();
+  }
+};
 
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
