@@ -21,7 +21,7 @@
           <UIcon name="i-heroicons-scale" class="tooltip-card__meta-icon" />
           Size
         </dt>
-        <dd>{{ readableSize }}</dd>
+        <dd>{{ formatBytes(Number(props.data.currentVersion.size)) }}</dd>
       </div>
 
       <div class="tooltip-card__meta-row">
@@ -72,6 +72,7 @@ import type { FileResult } from "@/api/file";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { formatDate } from "@/utils/date-formatters";
+import { formatBytes } from "@/utils/size.utils";
 
 const props = defineProps<{
   data: FileResult;
@@ -80,21 +81,6 @@ const props = defineProps<{
 const readableType = computed(() =>
   getFileTypeReadable(props.data.currentVersion.mimeType, props.data.fileName),
 );
-
-const readableSize = computed(() => {
-  const bytes = Number(props.data.currentVersion.size);
-  if (!bytes) {
-    return "—";
-  }
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = bytes;
-  let i = 0;
-  while (size >= 1024 && i < units.length - 1) {
-    size /= 1024;
-    i++;
-  }
-  return `${size.toFixed(1)} ${units[i]}`;
-});
 
 const readableDate = computed(() => formatDate(props.data.createdAt));
 </script>
