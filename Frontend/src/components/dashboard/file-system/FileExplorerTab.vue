@@ -356,6 +356,11 @@
                   @delete="handleDelete"
                   @contextmenu="handleItemClick($event, dir.id, 'directory')"
                   :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
+                  :ref="
+                    (el: any) => {
+                      if (el) dirItemRefs[dir.id] = el;
+                    }
+                  "
                 />
               </div>
               <div
@@ -399,6 +404,11 @@
                   :class="{
                     'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
                   }"
+                  :ref="
+                    (el: any) => {
+                      if (el) fileItemRefs[file.fileId] = el;
+                    }
+                  "
                 />
               </div>
               <div
@@ -446,6 +456,11 @@
                 @delete="handleDelete"
                 @contextmenu="handleItemClick($event, dir.id, 'directory')"
                 :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
+                :ref="
+                  (el: any) => {
+                    if (el) dirItemRefs[dir.id] = el;
+                  }
+                "
               />
               <div
                 v-if="directoriesData?.hasNext"
@@ -490,6 +505,11 @@
                 @move="handleCut"
                 @contextmenu="handleItemClick($event, file.fileId, 'file')"
                 :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
+                :ref="
+                  (el: any) => {
+                    if (el) fileItemRefs[file.fileId] = el;
+                  }
+                "
               />
               <div
                 v-if="filesData?.hasNext"
@@ -595,6 +615,9 @@ const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
 
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
+
+//copy tracking
+const copyMode = ref(true);
 
 // skeleton tracking
 
@@ -804,36 +827,6 @@ const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEn
     readBatch();
   });
 
-// keyboard shortcuts
-
-const copyMode = ref(true);
-
-defineShortcuts({
-  Delete: () => handleDelete(),
-  Escape: () => cancelCut(),
-  alt_arrowleft: () => {
-    if (canGoBack.value) navigateBack();
-  },
-  alt_arrowright: () => {
-    if (canGoForward.value) navigateForward();
-  },
-  "meta_/": () => quickSearch(),
-  meta_c: () => {
-    copyMode.value = true;
-    handleCopy();
-  },
-  meta_v: () => {
-    if (copyMode.value) handlePaste();
-    else handleCut();
-  },
-  meta_x: () => {
-    copyMode.value = false;
-    handleCopy();
-  },
-  shift_k: () => quickSearch(),
-  shift_l: () => advancedSearch(),
-});
-
 // sort & upload state
 
 const sortByOptions = ref([
@@ -886,7 +879,7 @@ const backgroundContextMenuItems = computed(() => [
   ],
   [
     {
-      icon: "i-mdi-folder-plus-outline",
+      icon: "i-mdi-folder-plus",
       label: "New Folder",
       onSelect: () => createNewDirectory(),
     },
@@ -974,7 +967,7 @@ const fileTransferModal = overlay.create(FileTransferModal);
 const openTransferModal = async (mode: "move" | "copy") => {
   // Build rich chip metadata from what we already have rendered
   const fileChips = [...selectedFiles.value].map((id) => {
-    const f = filesList.value.find((f) => f.fileId === id);
+    const f = filesList.value.find((file) => file.fileId === id);
     return {
       icon: f ? getFileIcon(f.fileName) : "mdi:file-outline",
       id,
@@ -984,7 +977,7 @@ const openTransferModal = async (mode: "move" | "copy") => {
   });
 
   const dirChips = [...selectedDirectories.value].map((id) => {
-    const d = directoriesList.value.find((d) => d.id === id);
+    const d = directoriesList.value.find((dir) => dir.id === id);
     return {
       icon: "mdi:folder-outline",
       id,
@@ -1280,6 +1273,95 @@ const handleMouseNavigate = (event: MouseEvent) => {
   if (event.button === 3 && canGoBack.value) navigateBack();
   if (event.button === 4 && canGoForward.value) navigateForward();
 };
+
+const handleRenameSelected = () => {
+  const fileCount = selectedFiles.value.size;
+  const dirCount = selectedDirectories.value.size;
+
+  // rename only makes sense for a single item
+  if (fileCount + dirCount !== 1) return;
+
+  if (fileCount === 1) {
+    const [fileId] = selectedFiles.value;
+    const file = filesList.value.find((f) => f.fileId === fileId);
+    if (file) handleFileRename(fileId, file.fileName);
+    return;
+  }
+
+  if (dirCount === 1) {
+    const [dirId] = selectedDirectories.value;
+    handleDirectoryRename(dirId);
+  }
+};
+
+const handleDownloadSelected = async () => {
+  const fileCount = selectedFiles.value.size;
+  const dirCount = selectedDirectories.value.size;
+
+  if (fileCount + dirCount === 0) return;
+
+  // single file, no dirs → direct download
+  if (fileCount === 1 && dirCount === 0) {
+    const [fileId] = selectedFiles.value;
+    await downloadFile(fileId);
+    return;
+  }
+
+  // anything else (multi-file, dirs, or mixed) → bulk
+  await downloadBulk([...selectedFiles.value], [...selectedDirectories.value]);
+};
+
+const fileItemRefs = ref<Record<string, { openDetails: () => void }>>({});
+const dirItemRefs = ref<Record<string, { openDetails: () => void }>>({});
+const handleOpenDetailsSelected = () => {
+  const fileCount = selectedFiles.value.size;
+  const dirCount = selectedDirectories.value.size;
+
+  if (fileCount + dirCount !== 1) return;
+
+  if (fileCount === 1) {
+    const [fileId] = selectedFiles.value;
+    fileItemRefs.value[fileId]?.openDetails();
+    return;
+  }
+
+  if (dirCount === 1) {
+    const [dirId] = selectedDirectories.value;
+    dirItemRefs.value[dirId]?.openDetails();
+  }
+};
+
+// oxlint-disable-next-line sort-keys
+defineShortcuts({
+  // already present
+  Delete: () => handleDelete(),
+  Escape: () => cancelCut(),
+  alt_arrowleft: () => canGoBack.value && navigateBack(),
+  alt_arrowright: () => canGoForward.value && navigateForward(),
+  "meta_/": () => quickSearch(),
+  meta_c: () => {
+    copyMode.value = true;
+    handleCopy();
+  },
+  meta_v: () => (copyMode.value ? handlePaste() : handleCut()),
+  meta_x: () => {
+    copyMode.value = false;
+    handleCopy();
+  },
+  shift_k: () => quickSearch(),
+  shift_l: () => advancedSearch(),
+
+  // new — single-key, input-safe
+  r: () => handleRenameSelected(),
+  d: () => handleDownloadSelected(),
+  n: () => createNewDirectory(),
+
+  // new — F-key
+  F2: () => handleRenameSelected(),
+
+  // alt key usage
+  alt_enter: () => handleOpenDetailsSelected(),
+});
 
 onMounted(() => {
   containerRef.value?.addEventListener("mousedown", handleMouseNavigate);

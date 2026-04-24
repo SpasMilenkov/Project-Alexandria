@@ -205,6 +205,12 @@ const iconSize = computed(() =>
   props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
 );
 
+defineExpose({
+  openDetails: () => {
+    openDrawer.value = true;
+  },
+});
+
 const props = defineProps<{
   data: DirectorySummaryDto;
   viewMode: "grid" | "list";

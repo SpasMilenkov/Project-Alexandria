@@ -89,7 +89,7 @@
             />
             <span class="flex-1 truncate">{{ props.data.fileName }}</span>
             <span class="text-xs opacity-70 shrink-0 min-w-15 text-right">
-              {{ formatFileSize(Number(props.data.currentVersion.size)) }}
+              {{ formatBytes(Number(props.data.currentVersion.size)) }}
             </span>
           </button>
 
@@ -245,7 +245,7 @@
               <div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Size</div>
                 <div class="font-medium text-sm">
-                  {{ formatFileSize(Number(detail.currentVersion.size)) }}
+                  {{ formatBytes(Number(detail.currentVersion.size)) }}
                 </div>
               </div>
             </div>
@@ -356,18 +356,15 @@ import { formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { Icon } from "@iconify/vue";
-import type { ContextMenuItem } from "@nuxt/ui";
 import { useQuery } from "@pinia/colada";
 import { breakpointsTailwind, useBreakpoints, useClipboard } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import FilePreview from "./FilePreview.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
-import { logger } from "@/utils/logger";
-import { useFileStore } from "@/stores/file";
+import { formatBytes } from "@/utils/size.utils";
 
 const settingsStore = useSettingsStore();
-const fileStore = useFileStore();
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");
@@ -393,6 +390,12 @@ const props = defineProps<{
   selectedCount?: number;
   tags: TagDto[] | undefined;
 }>();
+
+defineExpose({
+  openDetails: () => {
+    openDrawer.value = true;
+  },
+});
 
 const iconSize = computed(() =>
   props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
@@ -483,6 +486,13 @@ watch(
   },
 );
 
+const canRename = (): boolean => true;
+const canMove = (): boolean => true;
+const canCopy = (): boolean => true;
+const canDownload = (): boolean => true;
+const canShare = (): boolean => true;
+const canDelete = (): boolean => true;
+
 const contextMenuItems = computed(() => {
   const isMultiSelect = (props.selectedCount ?? 0) > 1;
   const count = props.selectedCount ?? 1;
@@ -493,6 +503,7 @@ const contextMenuItems = computed(() => {
         {
           icon: "i-mdi-information-outline",
           label: "View details",
+          kbds: [{ value: "alt" }, { value: "i" }],
           onSelect: () => {
             openDrawer.value = true;
           },
@@ -600,26 +611,7 @@ const contextMenuItems = computed(() => {
   ];
 });
 
-const canRename = (): boolean => true;
-const canMove = (): boolean => true;
-const canCopy = (): boolean => true;
-const canDownload = (): boolean => true;
-const canShare = (): boolean => true;
-const canDelete = (): boolean => true;
-
-// Formatters
-
-const formatFileSize = (bytes: number | undefined): string => {
-  if (!bytes) return "";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = bytes;
-  let unitIndex = 0;
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
-  }
-  return `${size.toFixed(1)} ${units[unitIndex]}`;
-};
+defineShortcuts(extractShortcuts(contextMenuItems.value));
 
 // Interaction handlers
 
