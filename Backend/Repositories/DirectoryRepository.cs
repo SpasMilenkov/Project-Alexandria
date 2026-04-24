@@ -6,6 +6,7 @@ using DTO.Files;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.Enumerators;
+using Npgsql;
 using Repositories.Projections;
 using Directory = Models.Directory;
 using File = Models.File;
@@ -815,5 +816,82 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             throw new InvalidOperationException("Restore failed or nothing to restore.");
 
         return rowsAffected;
+    }
+    public async Task<List<BulkDownloadEntry>> GetBulkDownloadEntriesAsync(
+        Guid[] directoryIds,
+        Guid[] fileIds,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        // ANY(ARRAY[]::uuid[]) = FALSE in Postgres — no conditional branching needed
+        return await context.Database.SqlQuery<BulkDownloadEntry>($"""
+            WITH RECURSIVE dir_tree AS (
+                SELECT
+                    d."Id",
+                    d."Name",
+                    d."ParentId",
+                    d."Name"::text AS "RelativePath"
+                FROM "Directories" d
+                WHERE  d."Id"      = ANY({directoryIds})
+                  AND  d."OwnerId"   = {userId}
+                  AND  d."DeletedAt" IS NULL
+                UNION ALL
+                SELECT
+                    d."Id",
+                    d."Name",
+                    d."ParentId",
+                    dt."RelativePath" || '/' || d."Name"
+                FROM "Directories" d
+                JOIN dir_tree dt ON d."ParentId" = dt."Id"
+                WHERE d."DeletedAt" IS NULL
+            ),
+            dir_files AS (
+                SELECT
+                    f."Id"            AS "FileId",
+                    f."Name"          AS "FileName",
+                    dt."RelativePath" AS "DirectoryPath"
+                FROM "Files" f
+                JOIN dir_tree dt ON f."DirectoryId" = dt."Id"
+                WHERE f."DeletedAt" IS NULL
+                  AND f."OwnerId"   = {userId}
+            ),
+            loose_files AS (
+                SELECT
+                    f."Id"   AS "FileId",
+                    f."Name" AS "FileName",
+                    ''::text AS "DirectoryPath"
+                FROM "Files" f
+                WHERE f."Id"      = ANY({fileIds})
+                  AND f."OwnerId"   = {userId}
+                  AND f."DeletedAt" IS NULL
+            ),
+            all_files AS (
+                SELECT * FROM dir_files
+                UNION
+                SELECT * FROM loose_files
+            )
+            SELECT
+                af."FileId",
+                af."FileName",
+                af."DirectoryPath",
+                co."StorageKey",
+                co."IsPromoted",
+                u."TempObjectKey",
+                fv."IsEncrypted",
+                fv."EncryptionIv",
+                fv."EncryptionSalt",
+                fv."IntegrityTag",
+                fv."EncryptionHint",
+                fv."IterationCount"
+            FROM all_files af
+            JOIN "Files"          f  ON f."Id"  = af."FileId"
+            JOIN "FileVersions"   fv ON fv."Id" = f."CurrentVersionId"
+            JOIN "ContentObjects" co ON co."Id" = fv."ContentObjectId"
+            LEFT JOIN "Uploads"   u
+                   ON u."Hash"        = fv."ContentHash"
+                   AND u."Status" = 'Finished'
+                   AND co."IsPromoted" = FALSE
+            """)
+            .ToListAsync(ct);
     }
 }

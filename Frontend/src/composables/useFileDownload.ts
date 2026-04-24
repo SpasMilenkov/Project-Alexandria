@@ -1,6 +1,8 @@
+import apiClient from "@/api/client";
 import { fileApi } from "@/api/file";
 import FileDecryptionModal from "@/components/dashboard/file-system/Modals/FileDecryptionModal.vue";
 import { decryptFile } from "@/composables/useDecrypt";
+import { logger } from "@/utils/logger";
 
 /**
  * Single entry point for all download operations across the app.
@@ -119,5 +121,15 @@ export const useFileDownload = () => {
     await handleEncryptedDownload(info);
   };
 
-  return { downloadFile, downloadVersion };
+  const downloadBulk = async (fileIds?: string[], directoryIds?: string[]) => {
+    const token = await fileApi.bulkDownloadInit({ directoryIds, fileIds });
+    logger.log("token", token)
+    const a = document.createElement("a");
+    a.href = `${apiClient.defaults.baseURL}/files/download-bulk/${token}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  return { downloadBulk, downloadFile, downloadVersion };
 };

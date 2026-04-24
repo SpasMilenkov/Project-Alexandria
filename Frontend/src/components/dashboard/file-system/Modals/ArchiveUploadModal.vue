@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { BlobReader, BlobWriter, ZipReader, configure } from "@zip.js/zip.js";
 import { directoryApi } from "@/api/directory";
 import type { SelectMenuItem } from "@nuxt/ui";
@@ -52,8 +52,8 @@ useModalBackGuard(() => emit("close", false));
 const props = defineProps<{
   directoryId?: string;
   directoryName?: string;
+  droppedFiles?: File[];
 }>();
-
 const emit = defineEmits<{ close: [boolean] }>();
 
 // accepted formats
@@ -347,6 +347,20 @@ const EXTENSION_MIME: Record<string, string> = {
   yaml: "application/yaml",
   yml: "application/yaml",
 };
+
+onMounted(() => {
+  const dropped = props.droppedFiles?.[0];
+  if (!dropped) return;
+
+  const err = validateArchive(dropped);
+  if (err) {
+    validationError.value = err;
+    return;
+  }
+
+  archiveFile.value = dropped;
+  extractionAbort.value = new AbortController();
+});
 
 const mimeFromExtension = (fileName: string): string => {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";

@@ -20,6 +20,8 @@ using MediaMetadata = DTO.Files.MediaMetadata;
 using FileEntity = Models.File;
 using Common.Audit;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
+using System.IO.Compression;
 
 namespace Storage;
 
@@ -1086,5 +1088,94 @@ public partial class S3Service(
             IntegrityTag = downloadInfo.IntegrityTag,
             IsEncrypted = downloadInfo.IsEncrypted
         };
+    }
+
+    public async Task StreamBulkZipAsync(
+        Guid[] directoryIds,
+        Guid[] fileIds,
+        Guid userId,
+        Stream destination,       // HttpContext.Response.Body
+        CancellationToken ct = default)
+    {
+        var entries = await unitOfWork.Directories.GetBulkDownloadEntriesAsync(
+            directoryIds, fileIds, userId, ct);
+
+        // Sidecar: collect encrypted file metadata so the client
+        // knows what to decrypt — written as a single JSON entry
+        var encryptedMeta = new List<object>();
+
+        // ZipArchive on a non-seekable stream automatically uses
+        // data descriptors for each entry; central directory is
+        // flushed on Dispose() — fully standard, every unzipper handles it
+        await using var archive = new ZipArchive(destination, ZipArchiveMode.Create, leaveOpen: true);
+
+        foreach (var entry in entries)
+        {
+            if (ct.IsCancellationRequested) break;
+
+            var zipPath = string.IsNullOrEmpty(entry.DirectoryPath)
+                ? entry.FileName
+                : $"{entry.DirectoryPath}/{entry.FileName}";
+
+            if (entry.IsEncrypted)
+            {
+                // Include the raw ciphertext under its natural path;
+                // decryption params go into the sidecar
+                encryptedMeta.Add(new
+                {
+                    Path = zipPath,
+                    entry.EncryptionHint,
+                    Iv = entry.EncryptionIv is null ? null : Convert.ToBase64String(entry.EncryptionIv),
+                    Salt = entry.EncryptionSalt is null ? null : Convert.ToBase64String(entry.EncryptionSalt),
+                    Tag = entry.IntegrityTag is null ? null : Convert.ToBase64String(entry.IntegrityTag),
+                    entry.IterationCount
+                });
+            }
+
+            // Resolve bucket + key
+            var (bucket, key) = entry.IsPromoted
+                ? (config.Value.UploadBucket, entry.StorageKey)          // "content/abc123"
+                : (config.Value.TempBucket, $"content/{entry.TempObjectKey}");
+
+            var zipEntry = archive.CreateEntry(zipPath, GetCompressionLevel(entry.FileName));
+
+            try
+            {
+                await using var entryStream = zipEntry.Open();
+
+                using var s3Response = await s3.GetObjectAsync(bucket, key, ct);
+                await s3Response.ResponseStream.CopyToAsync(entryStream, 81920, ct);
+                // S3 connection released here; next file fetched next iteration
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                // Don't abort the whole zip for one missing object —
+                // write a zero-byte placeholder so the user knows
+                logger.LogWarning("S3 object not found during bulk zip: {Bucket}/{Key}", bucket, key);
+            }
+        }
+
+        // Write sidecar at the very end — it lands before the central directory
+        if (encryptedMeta.Count > 0)
+        {
+            var sidecar = archive.CreateEntry("_encrypted_metadata.json", CompressionLevel.Fastest);
+            await using var sidecarStream = sidecar.Open();
+            await JsonSerializer.SerializeAsync(sidecarStream, encryptedMeta, cancellationToken: ct);
+        }
+
+        // Dispose flushes the central directory → response stream closed b y Kestrel
+    }
+
+    private static CompressionLevel GetCompressionLevel(string fileName)
+    {
+        // These formats are already compressed — deflating them again
+        // wastes CPU and barely reduces size
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext is ".jpg" or ".jpeg" or ".png" or ".webp" or ".gif"
+                    or ".mp4" or ".mkv" or ".webm" or ".mov"
+                    or ".mp3" or ".flac" or ".aac" or ".ogg"
+                    or ".zip" or ".7z" or ".gz" or ".rar"
+            ? CompressionLevel.NoCompression
+            : CompressionLevel.Fastest;
     }
 }

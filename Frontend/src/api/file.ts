@@ -9,7 +9,6 @@ import type { TagDto } from "./tag";
 
 import apiClient from "./client";
 
-
 // Response Types
 export interface UpdateFileMetadataResponse {
   id: string;
@@ -18,6 +17,11 @@ export interface UpdateFileMetadataResponse {
   previewGeneratedAt: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
+}
+
+export interface InitBulkDownloadRequest {
+  fileIds?: string[] | null;
+  directoryIds?: string[] | null;
 }
 
 export interface GenerateSignedUrlResponse {
@@ -99,7 +103,7 @@ export interface FinalizeFileUploadRequest {
   encryptionSalt?: string | null;
   integrityTag?: string | null;
   encryptionHint?: string | null;
-  iterationCount?: number | null; 
+  iterationCount?: number | null;
 }
 
 export interface FinalizeFileUploadResponse {
@@ -108,6 +112,11 @@ export interface FinalizeFileUploadResponse {
 }
 
 export const fileApi = {
+  bulkDownloadInit: async (payload: InitBulkDownloadRequest): Promise<string> => {
+    const response = await apiClient.post<{ token: string }>("files/bulk-download/init", payload);
+    return response.data.token;
+  },
+
   changeFileVersion: async ({
     fileId,
     versionId,

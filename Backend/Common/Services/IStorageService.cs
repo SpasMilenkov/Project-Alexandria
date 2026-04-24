@@ -26,7 +26,7 @@ public interface IStorageService
     Task<Stream> DownloadFile(Guid fileId, Guid ownerId, CancellationToken ct);
     Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default);
     Task<DownloadInfo> GetFileDownloadDetails(Guid fileId, Guid userId, CancellationToken ct = default);
-    Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default );
+    Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default);
     Task StreamFile(
         string fileId,
         Stream destination,
@@ -66,4 +66,10 @@ public interface IStorageService
     Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default);
     Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry);
     Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default);
+    Task StreamBulkZipAsync(
+        Guid[] directoryIds,
+        Guid[] fileIds,
+        Guid userId,
+        Stream destination,
+        CancellationToken ct = default);
 }

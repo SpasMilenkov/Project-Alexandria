@@ -51,7 +51,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/Project-Alexandria.git
+git clone git@github.com:SpasMilenkov/Project-Alexandria.git
 cd Project-Alexandria
 
 # Copy and configure environment
@@ -128,7 +128,7 @@ pnpm test:e2e     # E2E tests (Playwright)
 
 Core file operations and authentication are functional. Preview generation and the admin dashboard are under active development. The project is not yet feature-complete and has no stable release.
 
-See the [issue tracker](https://github.com/your-org/Project-Alexandria/issues) for planned work and known issues.
+See the [issue tracker](https://github.com/SpasMilenkov/Project-Alexandria/issues) for planned work and known issues.
 
 ## Contributing
 

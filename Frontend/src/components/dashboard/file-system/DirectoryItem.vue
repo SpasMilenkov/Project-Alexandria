@@ -165,7 +165,13 @@
             <UButton icon="i-mdi-pencil" color="neutral" variant="soft" block @click="handleRename">
               Rename
             </UButton>
-            <UButton icon="i-mdi-folder-move" color="neutral" variant="soft" block @click="handleMove">
+            <UButton
+              icon="i-mdi-folder-move"
+              color="neutral"
+              variant="soft"
+              block
+              @click="handleMove"
+            >
               Move
             </UButton>
             <UButton
@@ -199,6 +205,12 @@ const iconSize = computed(() =>
   props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
 );
 
+defineExpose({
+  openDetails: () => {
+    openDrawer.value = true;
+  },
+});
+
 const props = defineProps<{
   data: DirectorySummaryDto;
   viewMode: "grid" | "list";
@@ -222,90 +234,88 @@ const openDrawer = ref(false);
 
 const contextMenuItems = computed(() => {
   const isMultiSelect = (props.selectedCount ?? 0) > 1;
-  const items: ContextMenuItem[] = [];
+  const count = props.selectedCount ?? 1;
 
-  // Single-select actions
   if (!isMultiSelect) {
-    items.push([
-      {
-        icon: "i-mdi-folder-open",
-        label: "Open",
-        onSelect: () => emit("open", props.data.id),
-      },
-    ]);
+    return [
+      [
+        {
+          icon: "i-mdi-folder-open",
+          label: "Open",
+          onSelect: () => emit("open", props.data.id),
+        },
+      ],
+      [
+        {
+          disabled: !canRename(),
+          icon: "i-mdi-pencil-outline",
+          label: "Rename",
+          onSelect: () => emit("rename", props.data.id),
+        },
+      ],
+      [
+        {
+          disabled: !canMove(),
+          icon: "i-mdi-folder-move-outline",
+          label: "Move to…",
+          onSelect: () => emit("move", props.data.id),
+        },
+        {
+          disabled: !canCopy(),
+          icon: "i-mdi-content-copy",
+          label: "Copy to…",
+          onSelect: () => emit("copy", [props.data.id]),
+        },
+        {
+          disabled: !canDownload(),
+          icon: "i-mdi-download-outline",
+          label: "Download",
+          onSelect: () => emit("download", [props.data.id]),
+        },
+      ],
+      [
+        {
+          color: "error" as const,
+          disabled: !canDelete(),
+          icon: "i-mdi-delete-outline",
+          label: "Delete",
+          onSelect: () => emit("delete", [props.data.id]),
+        },
+      ],
+    ];
+  }
 
-    items.push([
-      {
-        disabled: !canRename(),
-        icon: "i-mdi-pencil",
-        label: "Rename",
-        onSelect: () => emit("rename", props.data.id),
-      },
-    ]);
-
-    items.push([
+  return [
+    [
       {
         disabled: !canMove(),
-        icon: "i-mdi-folder-move",
-        label: "Move",
+        icon: "i-mdi-folder-move-outline",
+        label: `Move ${count} items to…`,
         onSelect: () => emit("move", props.data.id),
       },
       {
         disabled: !canCopy(),
         icon: "i-mdi-content-copy",
-        label: "Copy",
-        onSelect: () => emit("copy", [props.data.id]),
-      },
-      {
-        disabled: !canDownload(),
-        icon: "i-mdi-download",
-        label: "Download",
-        onSelect: () => emit("download", [props.data.id]),
-      },
-    ]);
-
-    items.push([
-      {
-        disabled: !canDelete(),
-        icon: "i-mdi-delete",
-        label: "Delete",
-        onSelect: () => emit("delete", [props.data.id]),
-      },
-    ]);
-  } else {
-    // Multi-select actions
-    items.push([
-      {
-        disabled: !canMove(),
-        icon: "i-mdi-folder-move",
-        label: `Move ${props.selectedCount} items`,
-        onSelect: () => emit("move", props.data.id),
-      },
-      {
-        disabled: !canCopy(),
-        icon: "i-mdi-content-copy",
-        label: `Copy ${props.selectedCount} items`,
+        label: `Copy ${count} items to…`,
         onSelect: () => emit("copy", []),
       },
       {
         disabled: !canDownload(),
-        icon: "i-mdi-download",
-        label: `Download ${props.selectedCount} items`,
+        icon: "i-mdi-download-multiple-outline",
+        label: `Download ${count} items`,
         onSelect: () => emit("download", []),
       },
-    ]);
-
-    items.push([
+    ],
+    [
       {
+        color: "error" as const,
         disabled: !canDelete(),
-        icon: "i-mdi-delete",
-        label: `Delete ${props.selectedCount} items`,
+        icon: "i-mdi-delete-sweep-outline",
+        label: `Delete ${count} items`,
         onSelect: () => emit("delete", []),
       },
-    ]);
-  }
-
-  return items;
+    ],
+  ];
 });
 
 // Permission check stubs

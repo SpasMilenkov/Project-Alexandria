@@ -12,7 +12,11 @@
     :handle-only="!isMobile"
   >
     <!-- Grid View -->
-    <UContextMenu v-if="viewMode === 'grid'" :items="contextMenuItems">
+    <UContextMenu
+      v-if="viewMode === 'grid'"
+      :items="contextMenuItems"
+      :ui="{ content: 'lg:min-w-56' }"
+    >
       <div class="relative group" tabindex="0">
         <UTooltip
           :disabled="isMobile"
@@ -85,7 +89,7 @@
             />
             <span class="flex-1 truncate">{{ props.data.fileName }}</span>
             <span class="text-xs opacity-70 shrink-0 min-w-15 text-right">
-              {{ formatFileSize(Number(props.data.currentVersion.size)) }}
+              {{ formatBytes(Number(props.data.currentVersion.size)) }}
             </span>
           </button>
 
@@ -241,7 +245,7 @@
               <div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Size</div>
                 <div class="font-medium text-sm">
-                  {{ formatFileSize(Number(detail.currentVersion.size)) }}
+                  {{ formatBytes(Number(detail.currentVersion.size)) }}
                 </div>
               </div>
             </div>
@@ -352,13 +356,13 @@ import { formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { Icon } from "@iconify/vue";
-import type { ContextMenuItem } from "@nuxt/ui";
 import { useQuery } from "@pinia/colada";
 import { breakpointsTailwind, useBreakpoints, useClipboard } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import FilePreview from "./FilePreview.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
+import { formatBytes } from "@/utils/size.utils";
 
 const settingsStore = useSettingsStore();
 
@@ -386,6 +390,12 @@ const props = defineProps<{
   selectedCount?: number;
   tags: TagDto[] | undefined;
 }>();
+
+defineExpose({
+  openDetails: () => {
+    openDrawer.value = true;
+  },
+});
 
 const iconSize = computed(() =>
   props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
@@ -448,7 +458,7 @@ const refreshOnRemove = async (id: string) => {
 const emit = defineEmits<{
   click: [event: MouseEvent];
   open: [fileId: string];
-  rename: [fileId: string];
+  rename: [fileId: string, originalName: string];
   delete: [fileIds: string[]];
   move: [fileIds: string[]];
   copy: [fileIds: string[]];
@@ -476,95 +486,6 @@ watch(
   },
 );
 
-const contextMenuItems = computed(() => {
-  const isMultiSelect = (props.selectedCount ?? 0) > 1;
-  const items: ContextMenuItem[] = [];
-
-  if (!isMultiSelect) {
-    items.push([
-      {
-        disabled: !canDownload(),
-        icon: "i-mdi-download",
-        label: "Download",
-        onSelect: () => emit("download", [props.data.fileId]),
-      },
-      {
-        disabled: !canRename(),
-        icon: "i-mdi-pencil",
-        label: "Rename",
-        onSelect: () => emit("rename", props.data.fileId),
-      },
-    ]);
-    items.push([
-      {
-        disabled: !canMove(),
-        icon: "i-mdi-folder-move",
-        label: "Move",
-        onSelect: () => emit("move", [props.data.fileId]),
-      },
-      {
-        disabled: !canCopy(),
-        icon: "i-mdi-content-copy",
-        label: "Copy",
-        onSelect: () => emit("copy", [props.data.fileId]),
-      },
-      {
-        disabled: !canShare(),
-        icon: "i-mdi-share-variant",
-        label: "Share",
-        onSelect: () => emit("share", [props.data.fileId]),
-      },
-    ]);
-    items.push([
-      {
-        disabled: !canDelete(),
-        icon: "i-mdi-delete",
-        label: "Delete",
-        onSelect: () => emit("delete", [props.data.fileId]),
-      },
-    ]);
-  } else {
-    items.push([
-      {
-        disabled: !canDownload(),
-        icon: "i-mdi-download",
-        label: `Download ${props.selectedCount} items`,
-        onSelect: () => emit("download", []),
-      },
-    ]);
-    items.push([
-      {
-        disabled: !canMove(),
-        icon: "i-mdi-folder-move",
-        label: `Move ${props.selectedCount} items`,
-        onSelect: () => emit("move", []),
-      },
-      {
-        disabled: !canCopy(),
-        icon: "i-mdi-content-copy",
-        label: `Copy ${props.selectedCount} items`,
-        onSelect: () => emit("copy", []),
-      },
-      {
-        disabled: !canShare(),
-        icon: "i-mdi-share-variant",
-        label: `Share ${props.selectedCount} items`,
-        onSelect: () => emit("share", []),
-      },
-    ]);
-    items.push([
-      {
-        disabled: !canDelete(),
-        icon: "i-mdi-delete",
-        label: `Delete ${props.selectedCount} items`,
-        onSelect: () => emit("delete", []),
-      },
-    ]);
-  }
-
-  return items;
-});
-
 const canRename = (): boolean => true;
 const canMove = (): boolean => true;
 const canCopy = (): boolean => true;
@@ -572,19 +493,125 @@ const canDownload = (): boolean => true;
 const canShare = (): boolean => true;
 const canDelete = (): boolean => true;
 
-// Formatters
+const contextMenuItems = computed(() => {
+  const isMultiSelect = (props.selectedCount ?? 0) > 1;
+  const count = props.selectedCount ?? 1;
 
-const formatFileSize = (bytes: number | undefined): string => {
-  if (!bytes) return "";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let size = bytes;
-  let unitIndex = 0;
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
+  if (!isMultiSelect) {
+    return [
+      [
+        {
+          icon: "i-mdi-information-outline",
+          label: "View details",
+          kbds: [{ value: "alt" }, { value: "i" }],
+          onSelect: () => {
+            openDrawer.value = true;
+          },
+        },
+        {
+          disabled: !canDownload(),
+          icon: "i-mdi-download-outline",
+          kbds: [{ value: "⌘" }, { value: "S" }],
+          label: "Download",
+          onSelect: () => emit("download", [props.data.fileId]),
+        },
+      ],
+      [
+        {
+          disabled: !canRename(),
+          icon: "i-mdi-pencil-outline",
+          kbds: ["F2"],
+          label: "Rename",
+          onSelect: () => emit("rename", props.data.fileId, props.data.fileName),
+        },
+        {
+          disabled: !canMove(),
+          icon: "i-mdi-folder-move-outline",
+          label: "Move to…",
+          onSelect: () => emit("move", [props.data.fileId]),
+        },
+        {
+          disabled: !canCopy(),
+          icon: "i-mdi-content-copy",
+          kbds: ["⌘", "C"],
+          label: "Copy to…",
+          onSelect: () => emit("copy", [props.data.fileId]),
+        },
+      ],
+      [
+        {
+          disabled: !canShare(),
+          icon: "i-mdi-share-variant-outline",
+          label: "Share",
+          onSelect: () => emit("share", [props.data.fileId]),
+        },
+        {
+          icon: "i-mdi-identifier",
+          label: "Copy file ID",
+          onSelect: () => copyWithFeedback(props.data.fileId, "File ID"),
+        },
+      ],
+      [
+        {
+          color: "error" as const,
+          disabled: !canDelete(),
+          icon: "i-mdi-delete-outline",
+          kbds: ["Del"],
+          label: "Delete",
+          onSelect: () => emit("delete", [props.data.fileId]),
+        },
+      ],
+    ];
   }
-  return `${size.toFixed(1)} ${units[unitIndex]}`;
-};
+
+  return [
+    [
+      {
+        label: `${count} items selected`,
+        type: "label" as const,
+      },
+    ],
+    [
+      {
+        disabled: !canDownload(),
+        icon: "i-mdi-download-multiple-outline",
+        label: "Download all",
+        onSelect: () => emit("download", []),
+      },
+    ],
+    [
+      {
+        disabled: !canMove(),
+        icon: "i-mdi-folder-move-outline",
+        label: "Move all to…",
+        onSelect: () => emit("move", []),
+      },
+      {
+        disabled: !canCopy(),
+        icon: "i-mdi-content-copy",
+        label: "Copy all to…",
+        onSelect: () => emit("copy", []),
+      },
+      {
+        disabled: !canShare(),
+        icon: "i-mdi-share-variant-outline",
+        label: "Share all",
+        onSelect: () => emit("share", []),
+      },
+    ],
+    [
+      {
+        color: "error" as const,
+        disabled: !canDelete(),
+        icon: "i-mdi-delete-sweep-outline",
+        label: `Delete ${count} items`,
+        onSelect: () => emit("delete", []),
+      },
+    ],
+  ];
+});
+
+defineShortcuts(extractShortcuts(contextMenuItems.value));
 
 // Interaction handlers
 

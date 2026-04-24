@@ -297,194 +297,238 @@
     </Transition>
 
     <!-- content area -->
-    <div ref="containerRef" class="flex-1 overflow-auto relative">
-      <!-- drop zone overlay -->
-      <Transition name="dropzone">
-        <div
-          v-if="isOverDropZone"
-          class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
-          aria-hidden="true"
-        >
-          <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" />
-          <div class="absolute inset-0 bg-primary/5 pulse-tint" />
-          <div
-            class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
-          />
-          <div
-            class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-white/60 dark:bg-white/5 shadow-sm"
-          >
-            <div class="relative flex items-center justify-center">
-              <span class="breathe absolute rounded-full border border-primary/20" />
-              <div class="relative z-10 p-3 rounded-full bg-primary/8">
-                <Icon :icon="dropIcon" class="w-8 h-8 text-primary/70" />
+    <UContextMenu :items="backgroundContextMenuItems" class="flex-1 flex flex-col min-h-0">
+      <div ref="containerRef" class="flex-1 overflow-auto relative">
+        <div ref="containerRef" class="flex-1 overflow-auto relative">
+          <!-- drop zone overlay -->
+          <Transition name="dropzone">
+            <div
+              v-if="isOverDropZone"
+              class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+              aria-hidden="true"
+            >
+              <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" />
+              <div class="absolute inset-0 bg-primary/5 pulse-tint" />
+              <div
+                class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
+              />
+              <div
+                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-white/60 dark:bg-white/5 shadow-sm"
+              >
+                <div class="relative flex items-center justify-center">
+                  <span class="breathe absolute rounded-full border border-primary/20" />
+                  <div class="relative z-10 p-3 rounded-full bg-primary/8">
+                    <Icon :icon="dropIcon" class="w-8 h-8 text-primary/70" />
+                  </div>
+                </div>
+                <div class="text-center space-y-0.5">
+                  <p class="font-medium text-base text-primary/80 tracking-tight">
+                    {{ dropLabel }}
+                  </p>
+                  <p class="text-xs text-muted">Release to upload</p>
+                </div>
               </div>
             </div>
-            <div class="text-center space-y-0.5">
-              <p class="font-medium text-base text-primary/80 tracking-tight">{{ dropLabel }}</p>
-              <p class="text-xs text-muted">Release to upload</p>
+          </Transition>
+
+          <!-- grid view -->
+          <div v-if="viewMode === 'grid'" class="p-4">
+            <GridPlaceholder v-if="showDirSkeleton" />
+            <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
+              <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
+                Folders
+              </h3>
+              <div class="grid gap-3" :class="gridColumns">
+                <DirectoryItem
+                  v-for="dir in directoriesList"
+                  :key="dir.id"
+                  :data="dir"
+                  :view-mode="viewMode"
+                  :is-selected="isDirectorySelected(dir.id)"
+                  :selected-count="selectedCount"
+                  @download="handleDownload('dir', dir.id)"
+                  @navigate="handleNavigate"
+                  @open="handleNavigate"
+                  @rename="handleDirectoryRename"
+                  @move="openTransferModal('move')"
+                  @click="handleItemClick($event, dir.id, 'directory')"
+                  @copy="openTransferModal('copy')"
+                  @delete="handleDelete"
+                  @contextmenu="handleItemClick($event, dir.id, 'directory')"
+                  :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
+                  :ref="
+                    (el: any) => {
+                      if (el) dirItemRefs[dir.id] = el;
+                    }
+                  "
+                />
+              </div>
+              <div
+                v-if="directoriesData?.hasNext"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+              >
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  label="Show more folders"
+                  class="w-full"
+                  @click="loadMoreDirs"
+                />
+              </div>
+            </div>
+
+            <GridPlaceholder v-if="showFileSkeleton" />
+            <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
+              <h3
+                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2 pt-2"
+              >
+                Files
+              </h3>
+              <div class="grid gap-3" :class="gridColumns">
+                <FileItem
+                  v-for="file in filesList"
+                  :key="file.fileId"
+                  :tags="tagsData?.items"
+                  :data="file"
+                  :view-mode="viewMode"
+                  :is-selected="isFileSelected(file.fileId)"
+                  :selected-count="selectedCount"
+                  @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
+                  @download="handleDownload('file', file.fileId)"
+                  @click="handleItemClick($event, file.fileId, 'file')"
+                  @copy="openTransferModal('copy')"
+                  @delete="handleDelete"
+                  @move="openTransferModal('move')"
+                  @contextmenu="handleItemClick($event, file.fileId, 'file')"
+                  :class="{
+                    'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
+                  }"
+                  :ref="
+                    (el: any) => {
+                      if (el) fileItemRefs[file.fileId] = el;
+                    }
+                  "
+                />
+              </div>
+              <div
+                v-if="filesData?.hasNext"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+              >
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  label="Show more files"
+                  class="w-full"
+                  @click="loadMoreFiles"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- list view -->
+          <div v-else class="flex flex-col">
+            <ListPlaceholder v-if="showDirSkeleton" />
+            <div
+              v-else-if="directoriesList.length > 0"
+              class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
+            >
+              <h3
+                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2"
+              >
+                Folders
+              </h3>
+              <DirectoryItem
+                v-for="dir in directoriesList"
+                :key="dir.id"
+                :data="dir"
+                :view-mode="viewMode"
+                :is-selected="isDirectorySelected(dir.id)"
+                :selected-count="selectedCount"
+                @download="handleDownload('dir', dir.id)"
+                @navigate="handleNavigate"
+                @open="handleNavigate"
+                @rename="handleDirectoryRename"
+                @move="openTransferModal('move')"
+                @click="handleItemClick($event, dir.id, 'directory')"
+                @copy="openTransferModal('copy')"
+                @delete="handleDelete"
+                @contextmenu="handleItemClick($event, dir.id, 'directory')"
+                :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
+                :ref="
+                  (el: any) => {
+                    if (el) dirItemRefs[dir.id] = el;
+                  }
+                "
+              />
+              <div
+                v-if="directoriesData?.hasNext"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
+              >
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  label="Show more folders"
+                  class="w-full"
+                  @click="loadMoreDirs"
+                />
+              </div>
+            </div>
+
+            <ListPlaceholder v-if="showFileSkeleton" />
+            <div
+              v-else-if="filesList.length > 0"
+              class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
+              :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
+            >
+              <h3
+                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pb-2"
+                :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
+              >
+                Files
+              </h3>
+              <FileItem
+                v-for="file in filesList"
+                :key="file.fileId"
+                :data="file"
+                :view-mode="viewMode"
+                :tags="tagsData?.items"
+                :is-selected="isFileSelected(file.fileId)"
+                :selected-count="selectedCount"
+                @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
+                @download="handleDownload('file', file.fileId)"
+                @click="handleItemClick($event, file.fileId, 'file')"
+                @copy="handleCopy"
+                @delete="handleDelete"
+                @move="handleCut"
+                @contextmenu="handleItemClick($event, file.fileId, 'file')"
+                :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
+                :ref="
+                  (el: any) => {
+                    if (el) fileItemRefs[file.fileId] = el;
+                  }
+                "
+              />
+              <div
+                v-if="filesData?.hasNext"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
+              >
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  label="Show more files"
+                  class="w-full"
+                  @click="loadMoreFiles"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </Transition>
-
-      <!-- grid view -->
-      <div v-if="viewMode === 'grid'" class="p-4">
-        <GridPlaceholder v-if="showDirSkeleton" />
-        <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
-          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
-            Folders
-          </h3>
-          <div class="grid gap-3" :class="gridColumns">
-            <DirectoryItem
-              v-for="dir in directoriesList"
-              :key="dir.id"
-              :data="dir"
-              :view-mode="viewMode"
-              :is-selected="isDirectorySelected(dir.id)"
-              @navigate="handleNavigate"
-              @open="handleNavigate"
-              @rename="handleDirectoryRename"
-              @move="handleCut"
-              @click="handleItemClick($event, dir.id, 'directory')"
-              @copy="handleCopy"
-              @delete="handleDelete"
-              @contextmenu="handleItemClick($event, dir.id, 'directory')"
-            />
-          </div>
-          <div
-            v-if="directoriesData?.hasNext"
-            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              label="Show more folders"
-              class="w-full"
-              @click="loadMoreDirs"
-            />
-          </div>
-        </div>
-
-        <GridPlaceholder v-if="showFileSkeleton" />
-        <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
-          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2 pt-2">
-            Files
-          </h3>
-          <div class="grid gap-3" :class="gridColumns">
-            <FileItem
-              v-for="file in filesList"
-              :key="file.fileId"
-              :tags="tagsData?.items"
-              :data="file"
-              :view-mode="viewMode"
-              :is-selected="isFileSelected(file.fileId)"
-              @download="downloadFile(file.fileId)"
-              @click="handleItemClick($event, file.fileId, 'file')"
-              @copy="handleCopy"
-              @delete="handleDelete"
-              @move="handleCut"
-              @contextmenu="handleItemClick($event, file.fileId, 'file')"
-            />
-          </div>
-          <div
-            v-if="filesData?.hasNext"
-            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              label="Show more files"
-              class="w-full"
-              @click="loadMoreFiles"
-            />
-          </div>
-        </div>
       </div>
-
-      <!-- list view -->
-      <div v-else class="flex flex-col">
-        <ListPlaceholder v-if="showDirSkeleton" />
-        <div
-          v-else-if="directoriesList.length > 0"
-          class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
-        >
-          <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2">
-            Folders
-          </h3>
-          <DirectoryItem
-            v-for="dir in directoriesList"
-            :key="dir.id"
-            :data="dir"
-            :view-mode="viewMode"
-            :is-selected="isDirectorySelected(dir.id)"
-            @navigate="handleNavigate"
-            @open="handleNavigate"
-            @rename="handleDirectoryRename"
-            @move="handleCut"
-            @click="handleItemClick($event, dir.id, 'directory')"
-            @copy="handleCopy"
-            @delete="handleDelete"
-            @contextmenu="handleItemClick($event, dir.id, 'directory')"
-          />
-          <div
-            v-if="directoriesData?.hasNext"
-            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              label="Show more folders"
-              class="w-full"
-              @click="loadMoreDirs"
-            />
-          </div>
-        </div>
-
-        <ListPlaceholder v-if="showFileSkeleton" />
-        <div
-          v-else-if="filesList.length > 0"
-          class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
-          :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
-        >
-          <h3
-            class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pb-2"
-            :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
-          >
-            Files
-          </h3>
-          <FileItem
-            v-for="file in filesList"
-            :key="file.fileId"
-            :data="file"
-            :view-mode="viewMode"
-            :tags="tagsData?.items"
-            :is-selected="isFileSelected(file.fileId)"
-            @download="downloadFile(file.fileId)"
-            @click="handleItemClick($event, file.fileId, 'file')"
-            @copy="handleCopy"
-            @delete="handleDelete"
-            @move="handleCut"
-            @contextmenu="handleItemClick($event, file.fileId, 'file')"
-          />
-          <div
-            v-if="filesData?.hasNext"
-            class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-          >
-            <UButton
-              variant="ghost"
-              color="neutral"
-              size="sm"
-              label="Show more files"
-              class="w-full"
-              @click="loadMoreFiles"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    </UContextMenu>
   </div>
 </template>
 
@@ -520,6 +564,10 @@ import { logger } from "@/utils/logger";
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useAppToast } from "@/composables/useAppToast";
+import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
+import UpdateFileModal from "./Modals/UpdateFileModal.vue";
+import FileTransferModal from "./Modals/Filetransfermodal.vue";
+import { getFileIcon } from "@/utils/icon.utils";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -556,7 +604,7 @@ const {
   clearSelection,
   selectRange,
 } = useFileExplorer();
-const { downloadFile } = useFileDownload();
+const { downloadFile, downloadBulk } = useFileDownload();
 
 const { mutateAsync: copyFilesMutate } = copyFiles();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
@@ -567,6 +615,9 @@ const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
 
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
+
+//copy tracking
+const copyMode = ref(true);
 
 // skeleton tracking
 
@@ -673,22 +724,24 @@ const { isOverDropZone } = useDropZone(containerRef, {
 
     if (entries.length === 0) return;
 
+    const uploadProps = {
+      directoryId: currentDirId.value ?? undefined,
+      directoryName: currentDirName.value,
+    };
+
+    if (isZipDrop(_files, entries)) {
+      chooseUploadMethod(uploadProps, _files);
+      return;
+    }
+
     const hasDirectory = entries.some((e) => e.isDirectory);
     let instance;
 
     if (hasDirectory) {
       const allFiles = (await Promise.all(entries.map((e) => readEntryRecursive(e)))).flat();
-      instance = directoryUploadModal.open({
-        directoryId: currentDirId.value ?? undefined,
-        directoryName: currentDirName.value,
-        droppedFiles: allFiles,
-      });
+      instance = directoryUploadModal.open({ ...uploadProps, droppedFiles: allFiles });
     } else {
-      instance = fileUploadModal.open({
-        directoryId: currentDirId.value ?? undefined,
-        directoryName: currentDirName.value,
-        droppedFiles: _files ?? [],
-      });
+      instance = fileUploadModal.open({ ...uploadProps, droppedFiles: _files ?? [] });
     }
 
     const shouldRefresh = await instance.result;
@@ -708,6 +761,25 @@ const { isOverDropZone } = useDropZone(containerRef, {
     dragHasDirectory.value = false;
   },
 });
+
+const chooseUploadMethod = async (
+  uploadProps: { directoryId: string | undefined; directoryName: string | undefined },
+  files: File[] | null,
+) => {
+  const choice = await zipUploadChoiceModal.open().result;
+  if (!choice) return; // user cancelled
+
+  const instance =
+    choice === "archive"
+      ? archiveUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
+      : fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] });
+
+  const shouldRefresh = await instance.result;
+  if (shouldRefresh) {
+    appToast.success("Upload complete");
+    refreshDir();
+  }
+};
 
 export interface DroppedFile {
   file: File;
@@ -734,6 +806,12 @@ const readEntryRecursive = async (entry: FileSystemEntry, path = ""): Promise<Dr
   return [];
 };
 
+const isZipDrop = (files: File[] | null, entries: FileSystemEntry[]): boolean => {
+  if (entries.length !== 1 || !entries[0].isFile) return false;
+  const name = files?.[0]?.name ?? entries[0].name;
+  return name.toLowerCase().endsWith(".zip");
+};
+
 const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
   new Promise((resolve, reject) => {
     const collected: FileSystemEntry[] = [];
@@ -749,35 +827,6 @@ const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEn
     readBatch();
   });
 
-// keyboard shortcuts
-
-let copyMode = true;
-
-defineShortcuts({
-  Delete: () => handleDelete(),
-  alt_arrowleft: () => {
-    if (canGoBack.value) navigateBack();
-  },
-  alt_arrowright: () => {
-    if (canGoForward.value) navigateForward();
-  },
-  "meta_/": () => quickSearch(),
-  meta_c: () => {
-    copyMode = true;
-    handleCopy();
-  },
-  meta_v: () => {
-    if (copyMode) handlePaste();
-    else handleCut();
-  },
-  meta_x: () => {
-    copyMode = false;
-    handleCopy();
-  },
-  shift_k: () => quickSearch(),
-  shift_l: () => advancedSearch(),
-});
-
 // sort & upload state
 
 const sortByOptions = ref([
@@ -785,6 +834,8 @@ const sortByOptions = ref([
   { label: "Date Created", value: SortBy.CreatedAt },
   { label: "Date Modified", value: SortBy.UpdatedAt },
 ]);
+
+const selectedCount = computed(() => selectedFiles.value.size + selectedDirectories.value.size);
 
 const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
 const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
@@ -807,6 +858,40 @@ const handleSorting = () => {
   filePagination.value.paginationParams.SortBy = selectedSortBy.value.value;
   dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
 };
+
+const backgroundContextMenuItems = computed(() => [
+  [
+    {
+      icon: "i-mdi-file-upload-outline",
+      label: "Upload File",
+      onSelect: () => handleFileUpload("File"),
+    },
+    {
+      icon: "i-mdi-folder-upload-outline",
+      label: "Upload Folder",
+      onSelect: () => handleFileUpload("Directory"),
+    },
+    {
+      icon: "i-formkit-zip",
+      label: "Upload Archive",
+      onSelect: () => handleFileUpload("Archive"),
+    },
+  ],
+  [
+    {
+      icon: "i-mdi-folder-plus",
+      label: "New Folder",
+      onSelect: () => createNewDirectory(),
+    },
+  ],
+  [
+    {
+      icon: "i-mdi-refresh",
+      label: "Refresh",
+      onSelect: () => refreshDir(),
+    },
+  ],
+]);
 
 // mobile upload sheet
 
@@ -875,6 +960,49 @@ const archiveUploadModal = overlay.create(ArchiveUploadModal);
 const advancedSearchModal = overlay.create(AdvancedSearchModal);
 const quickSearchModal = overlay.create(QuickSearchModal);
 const confirmModal = overlay.create(ConfirmModal);
+const zipUploadChoiceModal = overlay.create(ZipUploadChoiceModal);
+const updateFileModal = overlay.create(UpdateFileModal);
+const fileTransferModal = overlay.create(FileTransferModal);
+
+const openTransferModal = async (mode: "move" | "copy") => {
+  // Build rich chip metadata from what we already have rendered
+  const fileChips = [...selectedFiles.value].map((id) => {
+    const f = filesList.value.find((file) => file.fileId === id);
+    return {
+      icon: f ? getFileIcon(f.fileName) : "mdi:file-outline",
+      id,
+      name: f?.fileName ?? "File",
+      type: "file" as const,
+    };
+  });
+
+  const dirChips = [...selectedDirectories.value].map((id) => {
+    const d = directoriesList.value.find((dir) => dir.id === id);
+    return {
+      icon: "mdi:folder-outline",
+      id,
+      name: d?.name ?? "Folder",
+      type: "directory" as const,
+    };
+  });
+
+  const instance = fileTransferModal.open({
+    dirChips,
+    directories: [...selectedDirectories.value],
+    fileChips,
+    files: [...selectedFiles.value],
+    mode,
+    originDirId: currentDirId.value,
+    originDirName: currentDirName.value,
+  });
+
+  const destId = await instance.result;
+  if (destId) {
+    appToast.success(mode === "move" ? "Items moved" : "Items copied");
+    refreshDir();
+    clearSelection();
+  }
+};
 
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
@@ -909,15 +1037,29 @@ const handleDirectoryRename = async (directoryId: string) => {
   const shouldRefresh = await instance.result;
   if (shouldRefresh) {
     appToast.success("Directory updated successfully");
-  } else {
-    appToast.error("Directory update failed");
   }
 };
 
+const handleFileRename = async (fileId: string, originalName: string) => {
+  const instance = updateFileModal.open({ fileId, originalName });
+  if (await instance.result) appToast.success("File updated successfully");
+};
+
+const handleDownload = async (type: "dir" | "file", emittedId?: string) => {
+  const isMulti = selectedCount.value > 1;
+  logger.log("emitted ids", emittedId);
+  if (isMulti || type === "dir") {
+    await downloadBulk([...selectedFiles.value], [...selectedDirectories.value]);
+    return;
+  }
+
+  if (emittedId) await downloadFile(emittedId);
+};
+
 const handleCopy = () => {
-  fileStore.filesToCopy = [...selectedFiles.value];
+  fileStore.selectedFiles = [...selectedFiles.value];
   fileStore.modificationOriginDirId = currentDirId.value;
-  directoryStore.directoriesToCopy = [...selectedDirectories.value];
+  directoryStore.selectedDirectories = [...selectedDirectories.value];
   directoryStore.modificationOriginDirId = currentDirId.value;
   appToast.info("Items selected");
 };
@@ -976,38 +1118,54 @@ const handleDelete = async () => {
 };
 
 const handleCut = async () => {
-  if (fileStore.filesToCopy.length > 0) {
+  if (fileStore.selectedFiles.length > 0) {
     await moveFilesMutate({
       destinationId: currentDirId.value,
-      fileIds: fileStore.filesToCopy,
+      fileIds: fileStore.selectedFiles,
       originId: fileStore.modificationOriginDirId,
     });
-    fileStore.filesToCopy = [];
+    fileStore.selectedFiles = [];
     fileStore.modificationOriginDirId = null;
   }
-  if (directoryStore.directoriesToCopy.length > 0) {
+  if (directoryStore.selectedDirectories.length > 0) {
     await moveDirectoriesMutate({
       destinationId: currentDirId.value,
-      directoryIds: directoryStore.directoriesToCopy,
+      directoryIds: directoryStore.selectedDirectories,
       originId: directoryStore.modificationOriginDirId,
     });
-    directoryStore.directoriesToCopy = [];
+    directoryStore.selectedDirectories = [];
     directoryStore.modificationOriginDirId = null;
+    copyMode.value = true;
   }
 };
 
+const isCutFile = (id: string) => !copyMode.value && fileStore.selectedFiles.includes(id);
+
+const isCutDirectory = (id: string) =>
+  !copyMode.value && directoryStore.selectedDirectories.includes(id);
+
+const cancelCut = () => {
+  if (copyMode.value) return;
+  fileStore.selectedFiles = [];
+  fileStore.modificationOriginDirId = null;
+  directoryStore.selectedDirectories = [];
+  directoryStore.modificationOriginDirId = null;
+  copyMode.value = true;
+  appToast.info("Cut cancelled");
+};
+
 const handlePaste = async () => {
-  if (fileStore.filesToCopy.length > 0) {
+  if (fileStore.selectedFiles.length > 0) {
     await copyFilesMutate({
       destinationId: currentDirId.value,
-      fileIds: fileStore.filesToCopy,
+      fileIds: fileStore.selectedFiles,
       originId: fileStore.modificationOriginDirId,
     });
     fileStore.modificationOriginDirId = null;
   }
-  if (directoryStore.directoriesToCopy.length > 0) {
+  if (directoryStore.selectedDirectories.length > 0) {
     await Promise.all(
-      directoryStore.directoriesToCopy.map(async (dir) => {
+      directoryStore.selectedDirectories.map(async (dir) => {
         await copyDirectoryMutate({
           destinationId: currentDirId.value,
           directoryId: dir,
@@ -1115,6 +1273,95 @@ const handleMouseNavigate = (event: MouseEvent) => {
   if (event.button === 3 && canGoBack.value) navigateBack();
   if (event.button === 4 && canGoForward.value) navigateForward();
 };
+
+const handleRenameSelected = () => {
+  const fileCount = selectedFiles.value.size;
+  const dirCount = selectedDirectories.value.size;
+
+  // rename only makes sense for a single item
+  if (fileCount + dirCount !== 1) return;
+
+  if (fileCount === 1) {
+    const [fileId] = selectedFiles.value;
+    const file = filesList.value.find((f) => f.fileId === fileId);
+    if (file) handleFileRename(fileId, file.fileName);
+    return;
+  }
+
+  if (dirCount === 1) {
+    const [dirId] = selectedDirectories.value;
+    handleDirectoryRename(dirId);
+  }
+};
+
+const handleDownloadSelected = async () => {
+  const fileCount = selectedFiles.value.size;
+  const dirCount = selectedDirectories.value.size;
+
+  if (fileCount + dirCount === 0) return;
+
+  // single file, no dirs → direct download
+  if (fileCount === 1 && dirCount === 0) {
+    const [fileId] = selectedFiles.value;
+    await downloadFile(fileId);
+    return;
+  }
+
+  // anything else (multi-file, dirs, or mixed) → bulk
+  await downloadBulk([...selectedFiles.value], [...selectedDirectories.value]);
+};
+
+const fileItemRefs = ref<Record<string, { openDetails: () => void }>>({});
+const dirItemRefs = ref<Record<string, { openDetails: () => void }>>({});
+const handleOpenDetailsSelected = () => {
+  const fileCount = selectedFiles.value.size;
+  const dirCount = selectedDirectories.value.size;
+
+  if (fileCount + dirCount !== 1) return;
+
+  if (fileCount === 1) {
+    const [fileId] = selectedFiles.value;
+    fileItemRefs.value[fileId]?.openDetails();
+    return;
+  }
+
+  if (dirCount === 1) {
+    const [dirId] = selectedDirectories.value;
+    dirItemRefs.value[dirId]?.openDetails();
+  }
+};
+
+// oxlint-disable-next-line sort-keys
+defineShortcuts({
+  // already present
+  Delete: () => handleDelete(),
+  Escape: () => cancelCut(),
+  alt_arrowleft: () => canGoBack.value && navigateBack(),
+  alt_arrowright: () => canGoForward.value && navigateForward(),
+  "meta_/": () => quickSearch(),
+  meta_c: () => {
+    copyMode.value = true;
+    handleCopy();
+  },
+  meta_v: () => (copyMode.value ? handlePaste() : handleCut()),
+  meta_x: () => {
+    copyMode.value = false;
+    handleCopy();
+  },
+  shift_k: () => quickSearch(),
+  shift_l: () => advancedSearch(),
+
+  // new — single-key, input-safe
+  r: () => handleRenameSelected(),
+  d: () => handleDownloadSelected(),
+  n: () => createNewDirectory(),
+
+  // new — F-key
+  F2: () => handleRenameSelected(),
+
+  // alt key usage
+  alt_enter: () => handleOpenDetailsSelected(),
+});
 
 onMounted(() => {
   containerRef.value?.addEventListener("mousedown", handleMouseNavigate);

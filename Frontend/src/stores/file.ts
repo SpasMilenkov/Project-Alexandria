@@ -28,7 +28,7 @@ export const useFileStore = defineStore("file", () => {
   const currentFile = ref<FileMetadata | null>(null);
   const modificationOriginDirId = ref<string | null>(null);
   const downloadProgress = ref<number>(0);
-  const filesToCopy = ref<string[]>([]);
+  const selectedFiles = ref<string[]>([]);
   const isUploading = ref(false);
   const isDownloading = ref(false);
   const error = ref<string | null>(null);
@@ -101,7 +101,7 @@ export const useFileStore = defineStore("file", () => {
     // State
     currentFile,
     downloadProgress,
-    filesToCopy,
+    selectedFiles,
     modificationOriginDirId,
     isUploading,
     isDownloading,
