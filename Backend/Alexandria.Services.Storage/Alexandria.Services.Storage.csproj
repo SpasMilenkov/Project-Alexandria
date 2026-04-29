@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
+        <ProjectReference Include="..\Alexandria.Data\Alexandria.Data.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AWSSDK.S3" Version="4.0.18.2"/>
+        <PackageReference Include="Blake3" Version="2.2.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2"/>
+        <PackageReference Include="SeekableS3Stream" Version="1.0.3"/>
+    </ItemGroup>
+
+</Project>
