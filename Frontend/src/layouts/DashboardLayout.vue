@@ -1,26 +1,51 @@
 <template>
-  <UDashboardGroup>
+  <UDashboardGroup storage-key="alexandria-sidebar">
     <UDashboardSidebar
+      v-model:collapsed="isCollapsed"
       collapsible
+      resizable
+      :min-size="11"
+      :max-size="24"
+      :default-size="15"
       :ui="{
-        footer: 'border-t border-default',
+        footer: 'border-t border-default py-2',
       }"
-      class="w-60"
       mode="modal"
       toggle-side="right"
     >
+      <!-- Header -->
       <template #header="{ collapsed }">
         <LogoComponent v-if="!collapsed" class="h-5 w-auto shrink-0" />
         <UIcon v-else name="i-heroicons-home" class="size-5 text-primary mx-auto" />
+        <UDashboardSidebarCollapse class="ms-auto" />
       </template>
 
+      <!-- Body -->
       <template #default="{ collapsed }">
         <!-- Desktop navigation -->
-        <div class="hidden lg:flex lg:flex-col lg:flex-1">
-          <UNavigationMenu :collapsed="collapsed" :items="mainMenuItems" orientation="vertical" />
+        <div class="hidden lg:flex lg:flex-col lg:flex-1 gap-1">
+          <!-- Section: Your Library -->
+          <p
+            v-if="!collapsed"
+            class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
+          >
+            Your Library
+          </p>
+          <UNavigationMenu
+            :collapsed="collapsed"
+            :items="libraryMenuItems"
+            orientation="vertical"
+          />
 
-          <!-- Admin section, only visible to admins -->
+          <!-- Section: Admin (conditional) -->
           <template v-if="authStore.isAdmin">
+            <USeparator class="my-1" />
+            <p
+              v-if="!collapsed"
+              class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
+            >
+              Admin
+            </p>
             <UNavigationMenu
               :collapsed="collapsed"
               :items="adminMenuItems"
@@ -28,20 +53,23 @@
             />
           </template>
 
+          <!-- Storage widget pushed to bottom -->
           <StorageInfoWidget class="mt-auto" />
+
+          <!-- Divider before account links -->
+          <USeparator class="my-1" />
+
+          <!-- Section: Account -->
           <UNavigationMenu
             :collapsed="collapsed"
             :items="settingsMenuItems"
             orientation="vertical"
-            class="mt-2"
           />
         </div>
-
-        <!-- Mobile navigation (large touch targets) -->
+        <!-- Mobile navigation -->
         <div class="flex flex-col flex-1 lg:hidden overflow-y-auto">
-          <!-- Section: Library -->
           <div class="px-3 pt-5 pb-1">
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
               Your Library
             </p>
           </div>
@@ -58,7 +86,7 @@
 
           <template v-if="authStore.isAdmin">
             <div class="px-3 pt-6 pb-1">
-              <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
                 Admin
               </p>
             </div>
@@ -74,9 +102,8 @@
             </nav>
           </template>
 
-          <!-- Section: Settings -->
           <div class="px-3 pt-6 pb-1">
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
               Account
             </p>
           </div>
@@ -91,29 +118,32 @@
             />
           </nav>
 
-          <!-- Storage widget -->
           <div class="mt-auto px-3 pb-3 pt-4">
             <StorageInfoWidget />
           </div>
         </div>
+        <!-- Mobile navigation -->
       </template>
 
+      <!-- Footer -->
       <template #footer="{ collapsed }">
         <UButton
           :label="collapsed ? undefined : 'Log out'"
           icon="i-heroicons-arrow-right-on-rectangle"
-          color="error"
+          color="neutral"
           variant="outline"
-          block
           :square="collapsed"
+          block
+          class="hover:text-error"
           @click="handleLogout"
         />
       </template>
     </UDashboardSidebar>
 
+    <!--Main panel -->
     <UDashboardPanel :ui="{ body: 'sm:p-0 p-0' }">
       <template #header>
-        <UDashboardNavbar :title="pageTitle" toggle-side="right">
+        <UDashboardNavbar toggle-side="right">
           <template #right>
             <OnlineStatusIndicator />
             <UTooltip text="Show app shortcuts">
@@ -121,9 +151,9 @@
                 class="md:block hidden"
                 icon="material-symbols:keyboard-outline-rounded"
                 size="xl"
-                @click="openShortCutsModal"
                 variant="ghost"
                 color="neutral"
+                @click="openShortCutsModal"
               />
             </UTooltip>
             <UTooltip text="Toggle light and dark mode">
@@ -132,6 +162,7 @@
           </template>
         </UDashboardNavbar>
       </template>
+
       <template #body>
         <slot />
       </template>
@@ -142,7 +173,7 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { useRoute } from "vue-router";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 import { useAuthStore } from "@/stores/auth";
 import router from "@/router";
@@ -153,11 +184,12 @@ import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
 
 useSettingsSync();
-
 useOnboardingGuard(OnboardingStep.Done);
 
 const authStore = useAuthStore();
 const route = useRoute();
+
+const isCollapsed = ref(false);
 
 const overlay = useOverlay();
 const shortcutsModal = overlay.create(KeyboardShortcutsModal);
@@ -171,70 +203,32 @@ defineShortcuts({
   meta_k: openShortCutsModal,
 });
 
-const pageTitle = computed(() => (route.meta.title as string) || "Dashboard");
 
-//Desktop navigation trees
-
-const mainMenuItems: NavigationMenuItem[][] = [
-  [
-    {
-      children: [
-        {
-          icon: "i-heroicons-folder",
-          label: "File Explorer",
-          to: "/dashboard",
-        },
-        {
-          icon: "i-heroicons-tag",
-          label: "Tags and Categories",
-          to: "/dashboard/tags",
-        },
-        {
-          icon: "i-heroicons-clock",
-          label: "Access History",
-          to: "/access-history",
-        },
-        {
-          icon: "i-heroicons-trash",
-          label: "Trash",
-          to: "/dashboard/trash",
-        },
-      ],
-      defaultOpen: true,
-      icon: "i-heroicons-book-open",
-      label: "Your Library",
-    },
-  ],
+// Desktop navigation
+const libraryMenuItems: NavigationMenuItem[] = [
+  {
+    icon: "i-heroicons-folder",
+    label: "File Explorer",
+    to: "/dashboard",
+  },
+  {
+    icon: "i-heroicons-tag",
+    label: "Tags and Categories",
+    to: "/dashboard/tags",
+  },
+  {
+    icon: "i-heroicons-clock",
+    label: "Access History",
+    to: "/access-history",
+  },
+  {
+    icon: "i-heroicons-trash",
+    label: "Trash",
+    to: "/dashboard/trash",
+  },
 ];
 
-const adminMenuItems = computed<NavigationMenuItem[][]>(() => [
-  [
-    {
-      children: [
-        {
-          icon: "i-heroicons-chart-bar",
-          label: "Admin Dashboard",
-          to: "/dashboard/admin",
-        },
-        {
-          icon: "i-heroicons-users",
-          label: "User Registry",
-          to: "/dashboard/admin/user-registry",
-        },
-        {
-          icon: "material-symbols:vitals",
-          label: "System Vitals",
-          to: "/dashboard/admin/service-status",
-        },
-      ],
-      defaultOpen: true,
-      icon: "i-heroicons-shield-check",
-      label: "Admin",
-    },
-  ],
-]);
-
-const mobileAdminItems = [
+const adminMenuItems = computed<NavigationMenuItem[]>(() => [
   {
     icon: "i-heroicons-chart-bar",
     label: "Admin Dashboard",
@@ -245,34 +239,38 @@ const mobileAdminItems = [
     label: "User Registry",
     to: "/dashboard/admin/user-registry",
   },
+  {
+    icon: "material-symbols:vitals",
+    label: "System Vitals",
+    to: "/dashboard/admin/service-status",
+  },
+]);
+
+const settingsMenuItems: NavigationMenuItem[] = [
+  {
+    icon: "i-heroicons-cog-6-tooth",
+    label: "Settings",
+    to: "/settings",
+  },
+  {
+    icon: "i-heroicons-user-circle",
+    label: "My Account",
+    to: "/account",
+  },
 ];
 
-const settingsMenuItems: NavigationMenuItem[][] = [
-  [
-    {
-      icon: "i-heroicons-cog-6-tooth",
-      label: "Settings",
-      to: "/settings",
-    },
-    {
-      icon: "i-heroicons-user-circle",
-      label: "My Account",
-      to: "/account",
-    },
-  ],
-];
-
-// Mobile flat item lists (same routes, no nesting)
+// Mobile navigation
 
 const mobileMainItems = [
   { icon: "i-heroicons-folder", label: "File Explorer", to: "/dashboard" },
-  {
-    icon: "i-heroicons-tag",
-    label: "Tags and Categories",
-    to: "/dashboard/tags",
-  },
+  { icon: "i-heroicons-tag", label: "Tags and Categories", to: "/dashboard/tags" },
   { icon: "i-heroicons-clock", label: "Access History", to: "/access-history" },
   { icon: "i-heroicons-trash", label: "Trash", to: "/dashboard/trash" },
+];
+
+const mobileAdminItems = [
+  { icon: "i-heroicons-chart-bar", label: "Admin Dashboard", to: "/dashboard/admin" },
+  { icon: "i-heroicons-users", label: "User Registry", to: "/dashboard/admin/user-registry" },
 ];
 
 const mobileSettingsItems = [
