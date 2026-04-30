@@ -24,27 +24,27 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:f061e5a7532b36fa1d1b684857fe1f504b
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 # Copy all transitive csproj dependencies for layer caching
-COPY ["DocumentWorker.Service/DocumentWorker.Service.csproj", "DocumentWorker.Service/"]
-COPY ["Infrastructure/Infrastructure.csproj", "Infrastructure/"]
-COPY ["PreviewService/PreviewService.csproj", "PreviewService/"]
-COPY ["Common/Common.csproj", "Common/"]
-COPY ["Data/Data.csproj", "Data/"]
-COPY ["Models/Models.csproj", "Models/"]
-COPY ["Repositories/Repositories.csproj", "Repositories/"]
-COPY ["Storage/Storage.csproj", "Storage/"]
-COPY ["User.Service/User.Service.csproj", "User.Service/"]
-COPY ["DTO/DTO.csproj", "DTO/"]
-RUN dotnet restore "DocumentWorker.Service/DocumentWorker.Service.csproj"
+COPY ["Alexandria.Workers.Document/Alexandria.Workers.Document.csproj", "Alexandria.Workers.Document/"]
+COPY ["Alexandria.Infrastructure/Alexandria.Infrastructure.csproj", "Alexandria.Infrastructure/"]
+COPY ["Alexandria.Services.Preview/Alexandria.Services.Preview.csproj", "Alexandria.Services.Preview/"]
+COPY ["Alexandria.Common/Alexandria.Common.csproj", "Alexandria.Common/"]
+COPY ["Alexandria.Data/Alexandria.Data.csproj", "Alexandria.Data/"]
+COPY ["Alexandria.Data.Models/Alexandria.Data.Models.csproj", "Alexandria.Data.Models/"]
+COPY ["Alexandria.Repositories/Alexandria.Repositories.csproj", "Alexandria.Repositories/"]
+COPY ["Alexandria.Services.Storage/Alexandria.Services.Storage.csproj", "Alexandria.Services.Storage/"]
+COPY ["Alexandria.Services.User/Alexandria.Services.User.csproj", "Alexandria.Services.User/"]
+COPY ["Alexandria.Dto/Alexandria.Dto.csproj", "Alexandria.Dto/"]
+RUN dotnet restore "Alexandria.Workers.Document/Alexandria.Workers.Document.csproj"
 
 COPY . .
 
-WORKDIR "/src/DocumentWorker.Service"
-RUN dotnet build "./DocumentWorker.Service.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/Alexandria.Workers.Document"
+RUN dotnet build "./Alexandria.Workers.Document.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # ===== PUBLISH STAGE =====
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./DocumentWorker.Service.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./Alexandria.Workers.Document.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # ===== FINAL RUNTIME =====
 FROM base AS final
@@ -54,4 +54,4 @@ COPY --from=publish /app/publish .
 RUN groupadd --gid 1001 appgroup && useradd --uid 1001 --gid appgroup --no-create-home appuser
 USER appuser
 
-ENTRYPOINT ["dotnet", "DocumentWorker.Service.dll"]
+ENTRYPOINT ["dotnet", "Alexandria.Workers.Document.dll"]

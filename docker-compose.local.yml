@@ -211,7 +211,7 @@ services:
   api:
     build:
       context: ./Backend
-      dockerfile: API/Dockerfile
+      dockerfile: Alexandria.Api/Dockerfile
     container_name: alexandria-api
     restart: on-failure:3
     environment:
@@ -260,7 +260,7 @@ services:
   document-worker:
     build:
       context: ./Backend
-      dockerfile: DocumentWorker.Service/Dockerfile
+      dockerfile: Alexandria.Workers.Document/Dockerfile
     container_name: alexandria-document-worker
     restart: always
     environment:
@@ -283,7 +283,7 @@ services:
     networks:
       - data-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://document-worker:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -298,7 +298,7 @@ services:
   media-worker:
     build:
       context: ./Backend
-      dockerfile: MediaWorkerService/Dockerfile
+      dockerfile: Alexandria.Workers.Media/Dockerfile
     container_name: alexandria-media-worker
     restart: always
     environment:
@@ -321,7 +321,7 @@ services:
     networks:
       - data-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://media-worker:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

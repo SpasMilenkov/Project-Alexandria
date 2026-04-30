@@ -13,27 +13,27 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # Copy all transitive csproj dependencies for layer caching
-COPY ["MediaWorkerService/MediaWorkerService.csproj", "MediaWorkerService/"]
-COPY ["Infrastructure/Infrastructure.csproj", "Infrastructure/"]
-COPY ["PreviewService/PreviewService.csproj", "PreviewService/"]
-COPY ["Common/Common.csproj", "Common/"]
-COPY ["Data/Data.csproj", "Data/"]
-COPY ["Models/Models.csproj", "Models/"]
-COPY ["Repositories/Repositories.csproj", "Repositories/"]
-COPY ["Storage/Storage.csproj", "Storage/"]
-COPY ["User.Service/User.Service.csproj", "User.Service/"]
-COPY ["DTO/DTO.csproj", "DTO/"]
-RUN dotnet restore "MediaWorkerService/MediaWorkerService.csproj"
+COPY ["Alexandria.Workers.Media/Alexandria.Workers.Media.csproj", "Alexandria.Workers.Media/"]
+COPY ["Alexandria.Infrastructure/Alexandria.Infrastructure.csproj", "Alexandria.Infrastructure/"]
+COPY ["Alexandria.Services.Preview/Alexandria.Services.Preview.csproj", "Alexandria.Services.Preview/"]
+COPY ["Alexandria.Common/Alexandria.Common.csproj", "Alexandria.Common/"]
+COPY ["Alexandria.Data/Alexandria.Data.csproj", "Alexandria.Data/"]
+COPY ["Alexandria.Data.Models/Alexandria.Data.Models.csproj", "Alexandria.Data.Models/"]
+COPY ["Alexandria.Repositories/Alexandria.Repositories.csproj", "Alexandria.Repositories/"]
+COPY ["Alexandria.Services.Storage/Alexandria.Services.Storage.csproj", "Alexandria.Services.Storage/"]
+COPY ["Alexandria.Services.User/Alexandria.Services.User.csproj", "Alexandria.Services.User/"]
+COPY ["Alexandria.Dto/Alexandria.Dto.csproj", "Alexandria.Dto/"]
+RUN dotnet restore "Alexandria.Workers.Media/Alexandria.Workers.Media.csproj"
 
 COPY . .
 
-WORKDIR "/src/MediaWorkerService"
-RUN dotnet build "./MediaWorkerService.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/Alexandria.Workers.Media"
+RUN dotnet build "./Alexandria.Workers.Media.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # ===== PUBLISH STAGE =====
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./MediaWorkerService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./Alexandria.Workers.Media.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # ===== FINAL RUNTIME =====
 FROM base AS final
@@ -43,4 +43,4 @@ COPY --from=publish /app/publish .
 RUN groupadd --gid 1001 appgroup && useradd --uid 1001 --gid appgroup --no-create-home appuser
 USER appuser
 
-ENTRYPOINT ["dotnet", "MediaWorkerService.dll"]
+ENTRYPOINT ["dotnet", "Alexandria.Workers.Media.dll"]
