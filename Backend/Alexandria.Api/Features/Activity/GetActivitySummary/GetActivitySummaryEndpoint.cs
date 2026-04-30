@@ -39,7 +39,7 @@ internal sealed class GetActivitySummaryEndpoint(IAuditService auditService)
     {
         var userId = User.GetUserId();
 
-        var result = await auditService.GetActivityOverview(userId, req, ct);
+        var result = await auditService.GetActivityOverviewAsync(userId, req, ct);
 
         await Send.OkAsync(result, cancellation: ct);
     }

@@ -45,7 +45,7 @@ internal sealed class InitialPasswordResetEndpoint(IAuthService authService) : E
     {
         var userId = User.GetUserId();
 
-        await authService.ChangeInitialPassword(userId, req.InitialPassword, req.NewPassword, ct);
+        await authService.ChangeInitialPasswordAsync(userId, req.InitialPassword, req.NewPassword, ct);
 
         await Send.OkAsync(cancellation: ct);
     }

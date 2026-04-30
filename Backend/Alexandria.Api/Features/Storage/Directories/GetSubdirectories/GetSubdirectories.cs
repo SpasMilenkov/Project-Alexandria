@@ -51,7 +51,7 @@ internal sealed class GetSubdirectories(IDirectoryService directoryService)
     {
         var userId = User.GetUserId();
 
-        var result = await directoryService.GetPaginatedDirectories(req.DirectoryId,
+        var result = await directoryService.GetPaginatedDirectoriesAsync(req.DirectoryId,
             userId, req.Page, req.PageSize, req.SortDirection, req.SortBy, ct);
 
         await Send.OkAsync(result, ct);

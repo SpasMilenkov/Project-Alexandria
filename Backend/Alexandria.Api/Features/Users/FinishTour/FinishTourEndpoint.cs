@@ -16,7 +16,7 @@ sealed class FinishTourEndpoint(IUserManagementService userManagementService) : 
     {
         var userId = User.GetUserId();
 
-        await userManagementService.FinishTour(userId, ct);
+        await userManagementService.FinishTourAsync(userId, ct);
 
         await Send.OkAsync(cancellation: ct);
     }

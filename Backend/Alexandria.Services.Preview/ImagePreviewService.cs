@@ -13,7 +13,7 @@ namespace Alexandria.Services.Preview;
 
 public class ImagePreviewService() : IImagePreviewService
 {
-    public async Task<Stream> GenerateImagePreview(Stream imageToPreview, string? format, int width = 1280,
+    public async Task<Stream> GenerateImagePreviewAsync(Stream imageToPreview, string? format, int width = 1280,
         int height = 720)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);

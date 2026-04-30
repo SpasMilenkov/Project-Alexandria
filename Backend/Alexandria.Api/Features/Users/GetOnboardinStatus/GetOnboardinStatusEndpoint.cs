@@ -23,7 +23,7 @@ internal sealed class GetOnboardingStatusEndpoint(IUserManagementService userMan
     {
         var userId = User.GetUserId();
 
-        var step = await userManagementService.GetOnboardingStep(userId, ct);
+        var step = await userManagementService.GetOnboardingStepAsync(userId, ct);
         if (step is null)
         {
             await Send.NotFoundAsync(cancellation: ct);

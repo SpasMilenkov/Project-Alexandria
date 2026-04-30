@@ -22,6 +22,6 @@ sealed class GetFileByIdEndpoint(IFileService fileService) : Endpoint<GetFileByI
     {
         var userId = User.GetUserId();
 
-        await Send.OkAsync(await fileService.GetFileWithOwnershipById(fileId: req.Id, userId: userId, ct), ct);
+        await Send.OkAsync(await fileService.GetFileWithOwnershipByIdAsync(fileId: req.Id, userId: userId, ct), ct);
     }
 }

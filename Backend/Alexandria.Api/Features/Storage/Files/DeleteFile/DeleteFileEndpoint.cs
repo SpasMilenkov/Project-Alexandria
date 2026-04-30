@@ -30,7 +30,7 @@ public class DeleteFileEndpoint(IFileService fileService) : Endpoint<DeleteFileR
 
         try
         {
-            await fileService.DeleteFiles(req.Ids, userId, req.HardDelete, ct);
+            await fileService.DeleteFilesAsync(req.Ids, userId, req.HardDelete, ct);
             await Send.OkAsync(new { Message = "File soft deleted successfully" }, ct);
         }
         catch (InvalidOperationException ex)

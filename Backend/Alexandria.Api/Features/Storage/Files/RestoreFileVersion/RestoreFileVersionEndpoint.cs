@@ -21,7 +21,7 @@ internal sealed class RestoreFileVersionEndpoint(IFileService fileService) : End
     {
         var userId = User.GetUserId();
 
-        await fileService.RestoreFileVersion(req.Id, userId, ct);
+        await fileService.RestoreFileVersionAsync(req.Id, userId, ct);
 
         await Send.NoContentAsync(cancellation: ct);
     }

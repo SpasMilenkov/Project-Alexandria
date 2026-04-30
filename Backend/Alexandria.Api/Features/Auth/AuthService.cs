@@ -137,7 +137,7 @@ public class AuthService(
         await unitOfWork.RefreshTokens.RevokeUserTokensAsync(userId, ct);
     }
 
-    public async Task ChangeInitialPassword(Guid userId, string oldPassword, string newPassword,
+    public async Task ChangeInitialPasswordAsync(Guid userId, string oldPassword, string newPassword,
         CancellationToken ct = default)
     {
         var user = await userManager.FindByIdAsync(userId.ToString()) ??

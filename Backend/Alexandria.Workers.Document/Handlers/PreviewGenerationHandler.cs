@@ -2,7 +2,6 @@ using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using Alexandria.Services.Preview.Documents;
-using Microsoft.Extensions.Options;
 
 namespace Alexandria.Workers.Document.Handlers;
 
@@ -11,16 +10,15 @@ public class PreviewGenerationHandler(
     IStorageService storage,
     IFileService fileService,
     IPdfPreviewService pdfPreviewService,
-    IOptions<S3Config> config,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string fileId, CancellationToken ct = default)
     {
         var fileIdGuid = Guid.Parse(fileId);
-        var fileData = await fileService.GetFileMetadata(fileIdGuid, ct);
+        var fileData = await fileService.GetFileMetadataAsync(fileIdGuid, ct);
         if (fileData is null) throw new InvalidOperationException($"File with that ID: {fileId} does not exist.");
         var contentHash = Convert.ToHexStringLower(
-            await unitOfWork.Files.GetFileHash(fileData.Id, fileData.OwnerId, ct)
+            await unitOfWork.Files.GetFileHashAsync(fileData.Id, fileData.OwnerId, ct)
             ?? throw new InvalidOperationException("File does not have content object hash"));
 
         logger.LogInformation("Processing preview for file: {FileId}", fileId);
@@ -53,10 +51,10 @@ public class PreviewGenerationHandler(
 
             await using var previewStream = File.OpenRead(previewPath);
 
-            await storage.UploadPreview(config.Value.PreviewBucket, $"previews/{contentHash}", "application/pdf",
+            await storage.UploadPreview($"previews/{contentHash}", "application/pdf",
                 previewStream,
                 originalFileId: fileData.Id, SystemConfig.SystemId, ct: ct);
-            await fileService.UpdateFileMetadata(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
+            await fileService.UpdateFileMetadataAsync(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
 
             File.Delete(previewPath);
         }

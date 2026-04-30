@@ -25,7 +25,7 @@ sealed class CreateUserEndpoint(IUserManagementService userManagementService) : 
     {
         try
         {
-            await userManagementService.CreateUser(
+            await userManagementService.CreateUserAsync(
                 req.Username, req.Email, req.Password, req.Role, ct);
 
             await Send.OkAsync(cancellation: ct);

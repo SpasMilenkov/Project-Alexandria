@@ -47,7 +47,7 @@ sealed internal class GetVersionsForFileEndpoint(IFileService fileService)
         var userId = User.GetUserId();
 
         await Send.OkAsync(
-            await fileService.GetVersionsForFile(fileId: req.FileId, userId: userId, page: req.Page,
+            await fileService.GetVersionsForFileAsync(fileId: req.FileId, userId: userId, page: req.Page,
                 pageSize: req.PageSize, ct),
             ct);
     }

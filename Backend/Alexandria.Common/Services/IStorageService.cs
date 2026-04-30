@@ -8,7 +8,6 @@ namespace Alexandria.Common.Services;
 public interface IStorageService
 {
     public Task<UploadResult> UploadPreview(
-        string bucketName,
         string objectName,
         string contentType,
         Stream fileStream,

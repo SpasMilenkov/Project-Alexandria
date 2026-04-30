@@ -5,7 +5,7 @@ namespace Alexandria.Infrastructure;
 
 public class PublisherService(IChannelPool channelPool) : IPublisherService
 {
-    public async Task Publish(byte[] body, string routingKey)
+    public async Task PublishAsync(byte[] body, string routingKey)
     {
         var channel = await channelPool.AcquireChannelAsync();
         var exchangeName = "content-exchange";

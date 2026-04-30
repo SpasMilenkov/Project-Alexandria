@@ -34,7 +34,7 @@ internal sealed class DeleteFileVersionEndpoint(IFileService fileService) : Endp
     {
         var userId = User.GetUserId();
 
-        await fileService.RemoveFileVersion(fileVersionId: req.Id, userId, ct);
+        await fileService.RemoveFileVersionAsync(fileVersionId: req.Id, userId, ct);
 
         await Send.OkAsync(cancellation: ct);
     }

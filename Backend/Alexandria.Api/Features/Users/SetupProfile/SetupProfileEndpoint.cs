@@ -16,7 +16,7 @@ sealed class SetupProfileEndpoint(IUserManagementService userManagementService) 
     {
         var userId = User.GetUserId();
 
-        await userManagementService.SetupProfile(userId, ct);
+        await userManagementService.SetupProfileAsync(userId, ct);
 
         await Send.OkAsync(cancellation: ct);
     }

@@ -10,13 +10,13 @@ public class AuditService(IUnitOfWork unitOfWork) : IAuditService
 {
     //Todo: Add a Cron job that runs periodically to clean up old audit logs
     //via delete range
-    public async Task Log(AuditLogDto action)
+    public async Task LogAsync(AuditLogDto action)
     {
         await unitOfWork.AuditLogs.AddAsync(action);
         await unitOfWork.SaveChangesAsync();
     }
 
-    public async Task<PaginatedResult<AuditLogResult>> GetLogs(AuditLogQuery query, Guid userId,
+    public async Task<PaginatedResult<AuditLogResult>> GetLogsAsync(AuditLogQuery query, Guid userId,
         CancellationToken ct = default)
     {
         if (query.UserId != userId)
@@ -29,7 +29,7 @@ public class AuditService(IUnitOfWork unitOfWork) : IAuditService
         return await unitOfWork.AuditLogs.FetchAuditLogAsync(query, ct);
     }
 
-    public async Task<ActivityStatisticsOverview> GetActivityOverview(Guid userId, ActivityQuery query,
+    public async Task<ActivityStatisticsOverview> GetActivityOverviewAsync(Guid userId, ActivityQuery query,
         CancellationToken ct = default)
     {
         return await unitOfWork.AuditLogs.GetOverviewAsync(userId, query, ct);

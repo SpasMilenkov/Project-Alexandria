@@ -49,7 +49,7 @@ sealed class GetFilesByDirectoryIdEndpoint(IFileService fileService)
     {
         var userId = User.GetUserId();
 
-        var result = await fileService.GetFilesByDirectoryId(req.DirectoryId, userId, req.Page, req.PageSize,
+        var result = await fileService.GetFilesByDirectoryIdAsync(req.DirectoryId, userId, req.Page, req.PageSize,
             req.SortBy, req.SortDirection, ct);
         await Send.OkAsync(result, ct);
     }

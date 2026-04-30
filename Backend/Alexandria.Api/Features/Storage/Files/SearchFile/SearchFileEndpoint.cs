@@ -18,6 +18,6 @@ internal sealed class SearchFileEndpoint(IFileService fileService)
     {
         var userId = User.GetUserId();
 
-        await Send.OkAsync(await fileService.SearchFile(req, userId, ct), ct);
+        await Send.OkAsync(await fileService.SearchFileAsync(req, userId, ct), ct);
     }
 }

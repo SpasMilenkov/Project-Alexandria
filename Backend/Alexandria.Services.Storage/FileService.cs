@@ -12,7 +12,7 @@ public partial class FileService(
     IDirectoryService dirService,
     ILogger<FileService> logger) : IFileService
 {
-    public async Task FolderWithOwnershipExists(Guid? directoryId, Guid ownerId, CancellationToken ct = default)
+    public async Task FolderWithOwnershipExistsAsync(Guid? directoryId, Guid ownerId, CancellationToken ct = default)
     {
         if (directoryId is null) return;
 
@@ -22,7 +22,7 @@ public partial class FileService(
 
     public async Task MoveFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default)
     {
-        await FolderWithOwnershipExists(destinationId, userId, ct);
+        await FolderWithOwnershipExistsAsync(destinationId, userId, ct);
 
         await unitOfWork.Files.MoveFilesAsync(fileIds, destinationId, userId, ct);
     }
@@ -30,31 +30,32 @@ public partial class FileService(
     public async Task CopyFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default)
     {
         await unitOfWork.BeginTransactionAsync(ct);
-        await FolderWithOwnershipExists(destinationId, userId, ct);
+        await FolderWithOwnershipExistsAsync(destinationId, userId, ct);
 
         await unitOfWork.Files.CopyFilesAsync(fileIds, destinationId, userId, ct);
 
         await unitOfWork.CommitAsync(ct);
     }
 
-    public async Task<File?> GetFileMetadata(Guid fileId, CancellationToken ct = default) =>
+    public async Task<File?> GetFileMetadataAsync(Guid fileId, CancellationToken ct = default) =>
         await unitOfWork.Files.GetByIdAsync(fileId, ct);
 
     public async Task<FileMetadata?>
         GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default) =>
         await unitOfWork.Files.GetUserFileMetadataAsync(fileId, userId, ct);
 
-    public async Task DeleteFiles(Guid[] fileIds, Guid userId, bool hardDelete = false, CancellationToken ct = default)
+    public async Task DeleteFilesAsync(Guid[] fileIds, Guid userId, bool hardDelete = false,
+        CancellationToken ct = default)
     {
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            await unitOfWork.Files.MarkAsDeleted(fileIds, userId, ct);
+            await unitOfWork.Files.MarkAsDeletedAsync(fileIds, userId, ct);
 
             if (hardDelete)
-                await unitOfWork.FileVersions.DeleteFileVersions(fileIds, userId, ct);
+                await unitOfWork.FileVersions.DeleteFileVersionsAsync(fileIds, userId, ct);
             else
-                await unitOfWork.FileVersions.SoftDeleteFileVersions(fileIds, userId, ct);
+                await unitOfWork.FileVersions.SoftDeleteFileVersionsAsync(fileIds, userId, ct);
 
             await unitOfWork.CommitAsync(ct);
         }
@@ -65,7 +66,7 @@ public partial class FileService(
         }
     }
 
-    public async Task<File> UpdateFileMetadata(
+    public async Task<File> UpdateFileMetadataAsync(
         Guid fileId,
         Guid updatedBy,
         string? newName = null,
@@ -136,7 +137,7 @@ public partial class FileService(
             ct);
     }
 
-    public async Task<PaginatedResult<FileResult>> GetFilesByDirectoryId(Guid directoryId,
+    public async Task<PaginatedResult<FileResult>> GetFilesByDirectoryIdAsync(Guid directoryId,
         Guid ownerId,
         int page = 1,
         int pageSize = 25,
@@ -158,26 +159,26 @@ public partial class FileService(
         );
     }
 
-    public async Task<PaginatedResult<FileResult>> SearchFile(FileSearchQuery query, Guid userId,
+    public async Task<PaginatedResult<FileResult>> SearchFileAsync(FileSearchQuery query, Guid userId,
         CancellationToken ct = default)
     {
-        return await unitOfWork.Files.FindFiles(query, userId, ct);
+        return await unitOfWork.Files.FindFilesAsync(query, userId, ct);
     }
 
-    public async Task<int> GetFileCount(string? mimeTypeFilter = null, CancellationToken ct = default)
+    public async Task<int> GetFileCountAsync(string? mimeTypeFilter = null, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(mimeTypeFilter)) return await unitOfWork.Files.CountAsync(null, ct);
 
         return await unitOfWork.Files.CountAsync(f => f.MimeType == mimeTypeFilter, ct);
     }
 
-    public async Task<int> RestoreFiles(Guid[] fileIds, Guid userId, CancellationToken ct = default)
+    public async Task<int> RestoreFilesAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default)
     {
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            var restoredFiles = await unitOfWork.Files.RestoreFiles(fileIds, userId, ct);
-            await unitOfWork.FileVersions.RestoreFileVersions(fileIds, userId, ct);
+            var restoredFiles = await unitOfWork.Files.RestoreFilesAsync(fileIds, userId, ct);
+            await unitOfWork.FileVersions.RestoreFileVersionsAsync(fileIds, userId, ct);
 
             await unitOfWork.CommitAsync(ct);
 
@@ -190,29 +191,29 @@ public partial class FileService(
         }
     }
 
-    public async Task<int> GetFileCountPerUser(Guid userId, bool deletedOnly, CancellationToken ct = default)
+    public async Task<int> GetFileCountPerUserAsync(Guid userId, bool deletedOnly, CancellationToken ct = default)
     {
-        return await unitOfWork.Files.GetFileCountPerUser(userId, deletedOnly, ct);
+        return await unitOfWork.Files.GetFileCountPerUserAsync(userId, deletedOnly, ct);
     }
 
-    public async Task<long> GetFileSizePerUser(Guid userId, bool deletedOnly, CancellationToken ct = default)
+    public async Task<long> GetFileSizePerUserAsync(Guid userId, bool deletedOnly, CancellationToken ct = default)
     {
-        return await unitOfWork.Files.GetStorageUsagePerUser(userId, deletedOnly, ct);
+        return await unitOfWork.Files.GetStorageUsagePerUserAsync(userId, deletedOnly, ct);
     }
 
-    public async Task<PaginatedResult<FileVersionDto>> GetVersionsForFile(Guid fileId, Guid userId, int page = 1,
+    public async Task<PaginatedResult<FileVersionDto>> GetVersionsForFileAsync(Guid fileId, Guid userId, int page = 1,
         int pageSize = 10, CancellationToken ct = default)
     {
-        return await unitOfWork.FileVersions.GetVersionsForFile(fileId: fileId, ownerId: userId, page: page,
+        return await unitOfWork.FileVersions.GetVersionsForFileAsync(fileId: fileId, ownerId: userId, page: page,
             pageSize: pageSize, ct);
     }
 
-    public async Task ChangeActiveVersion(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default)
+    public async Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default)
     {
-        await unitOfWork.Files.ChangeActiveVersion(versionId, fileId, userId, ct);
+        await unitOfWork.Files.ChangeActiveVersionAsync(versionId, fileId, userId, ct);
     }
 
-    public async Task RemoveFileVersion(Guid fileVersionId, Guid userId, CancellationToken ct = default)
+    public async Task RemoveFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default)
     {
         await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -242,10 +243,10 @@ public partial class FileService(
 
             if (currentVersionId == fileVersionId)
             {
-                var mostRecent = await unitOfWork.FileVersions.GetMostRecent(fileId, userId, ct) ??
+                var mostRecent = await unitOfWork.FileVersions.GetMostRecentAsync(fileId, userId, ct) ??
                                  throw new InvalidOperationException("No active version available");
 
-                await unitOfWork.Files.UpdateCurrentVersion(fileId, mostRecent.Id, ct);
+                await unitOfWork.Files.UpdateCurrentVersionAsync(fileId, mostRecent.Id, ct);
             }
 
             await unitOfWork.CommitAsync(ct);
@@ -257,18 +258,19 @@ public partial class FileService(
         }
     }
 
-    public async Task<FileResult> GetFileWithOwnershipById(Guid fileId, Guid userId, CancellationToken ct = default)
+    public async Task<FileResult> GetFileWithOwnershipByIdAsync(Guid fileId, Guid userId,
+        CancellationToken ct = default)
     {
-        return await unitOfWork.Files.GetFileWithOwnershipById(fileId: fileId, userId: userId, ct) ??
+        return await unitOfWork.Files.GetFileWithOwnershipByIdAsync(fileId: fileId, userId: userId, ct) ??
                throw new InvalidOperationException("File with ID not found");
     }
 
-    public async Task RestoreFileVersion(Guid fileVersionId, Guid userId, CancellationToken ct = default)
+    public async Task RestoreFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default)
     {
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            await unitOfWork.FileVersions.RestoreFileVersion(fileVersionId, userId, ct);
+            await unitOfWork.FileVersions.RestoreFileVersionAsync(fileVersionId, userId, ct);
             await unitOfWork.CommitAsync(ct);
         }
         catch

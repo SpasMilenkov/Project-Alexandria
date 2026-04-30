@@ -12,7 +12,6 @@ public interface ITagRepository : IRepository<Tag>
     // Tag-specific methods
     Task<Tag?> GetByIdAndUserIdAsync(Guid userId, Guid tagId, CancellationToken ct = default);
     Task<Tag?> GetByNameAndUserIdAsync(string name, Guid userId, CancellationToken ct = default);
-    Task<IEnumerable<TagDto>> GetTagsWithFilesAsync(Guid userId, CancellationToken ct = default);
 
     Task<(IEnumerable<TagDto> Tags, int TotalCount)> FindTagsAsync(TagSearchQuery query,
         CancellationToken ct = default);

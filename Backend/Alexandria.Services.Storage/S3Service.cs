@@ -53,7 +53,6 @@ public partial class S3Service(
         catch (Exception ex)
         {
             LogTempObjectCleanupFailed(logger, ex, bucket, key);
-            // Don't throw - cleanup is best-effort
         }
     }
 
@@ -112,7 +111,6 @@ public partial class S3Service(
     }
 
     public async Task<UploadResult> UploadPreview(
-        string bucketName,
         string objectName,
         string contentType,
         Stream fileStream,
@@ -122,6 +120,8 @@ public partial class S3Service(
         string? originalFileName = null,
         CancellationToken ct = default)
     {
+        var bucketName = config.Value.PreviewBucket;
+
         LogStartingPreviewUpload(logger, bucketName, objectName, originalFileId);
 
         auditContext.RunAsSystem();
@@ -488,32 +488,13 @@ public partial class S3Service(
 
             var previewUrl = GetPreviewPresignedUrl(serverHash, TimeSpan.FromMinutes(15));
 
-            // TODO: This is kind of not needed anymore since preview generation fixes the different type handling
-            switch (category)
-            {
-                case FileCategory.Image:
-                case FileCategory.Document:
-                case FileCategory.Spreadsheet:
-                case FileCategory.Presentation:
-                case FileCategory.Pdf:
-                    return new PreviewResultDto(new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true),
-                        previewUrl, null);
-                case FileCategory.Text:
-                case FileCategory.Archive:
-                    break;
-                case FileCategory.Audio:
-                    var thumbnailUrl = GetThumbnailPresignedUrl(serverHash, TimeSpan.FromMinutes(15));
-                    return new PreviewResultDto(new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true),
-                        previewUrl, thumbnailUrl);
+            if (category != FileCategory.Audio)
+                return new PreviewResultDto(new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true),
+                    previewUrl, null);
 
-                case FileCategory.Video:
-                case FileCategory.Unknown:
-                default:
-                    return new PreviewResultDto(new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true),
-                        previewUrl, null);
-            }
-
-            return null;
+            var thumbnailUrl = GetThumbnailPresignedUrl(serverHash, TimeSpan.FromMinutes(15));
+            return new PreviewResultDto(new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true),
+                previewUrl, thumbnailUrl);
         }
         catch (Exception ex)
         {
@@ -565,7 +546,7 @@ public partial class S3Service(
             }
         };
 
-        if (await unitOfWork.Files.IsPromoted(fileId)) return await publicS3.GetPreSignedURLAsync(request);
+        if (await unitOfWork.Files.IsPromotedAsync(fileId)) return await publicS3.GetPreSignedURLAsync(request);
 
         var upload =
             await unitOfWork.Uploads.FirstOrDefaultAsync(u => u.Hash == hash && u.Status == UploadStatus.Finished) ??
@@ -586,7 +567,7 @@ public partial class S3Service(
             throw new InvalidOperationException($"File {fileId} not found in database.");
         }
 
-        var hashString = await unitOfWork.Files.GetFileHashAsString(fileId, userId, ct);
+        var hashString = await unitOfWork.Files.GetFileHashAsStringAsync(fileId, userId, ct);
         var objectName = $"content/{hashString}";
         try
         {
@@ -618,7 +599,7 @@ public partial class S3Service(
             throw new InvalidOperationException($"File {fileId} not found in database.");
         }
 
-        var hashString = await unitOfWork.Files.GetFileHashAsString(fileId, userId, ct);
+        var hashString = await unitOfWork.Files.GetFileHashAsStringAsync(fileId, userId, ct);
         var objectName = $"content/{hashString}";
         try
         {
@@ -653,7 +634,7 @@ public partial class S3Service(
             throw new InvalidOperationException($"File with ID: {fileId} not found.");
         }
 
-        var hash = await unitOfWork.Files.GetFileHashAsString(id, fileData.OwnerId, ct);
+        var hash = await unitOfWork.Files.GetFileHashAsStringAsync(id, fileData.OwnerId, ct);
         try
         {
             using var response = await s3.GetObjectAsync(config.Value.UploadBucket, $"content/{hash}", ct);
@@ -692,7 +673,7 @@ public partial class S3Service(
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            await fileService.FolderWithOwnershipExists(directoryId, userId, ct);
+            await fileService.FolderWithOwnershipExistsAsync(directoryId, userId, ct);
 
             var upload = new Upload
             {
@@ -745,7 +726,7 @@ public partial class S3Service(
 
         try
         {
-            await fileService.FolderWithOwnershipExists(directoryId, uploadedBy, ct);
+            await fileService.FolderWithOwnershipExistsAsync(directoryId, uploadedBy, ct);
 
             var upload = await unitOfWork.Uploads.GetByIdAsync(uploadId);
             if (upload is null)
@@ -814,7 +795,7 @@ public partial class S3Service(
             // =====================================================
             // 5. Deduplication: check content object
             // =====================================================
-            var contentObject = !isEncrypted ? await unitOfWork.ContentObjects.HashExists(computedHash, ct) : null;
+            var contentObject = !isEncrypted ? await unitOfWork.ContentObjects.HashExistsAsync(computedHash, ct) : null;
 
             if (contentObject is null)
             {
@@ -1014,9 +995,9 @@ public partial class S3Service(
 
     public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
     {
-        var trashSize = await unitOfWork.Files.GetDeletedSize(userId, ct);
-        var sizeByMimeType = await unitOfWork.Files.GetSizeByType(userId, ct);
-        var oldFiles = await unitOfWork.Files.GetOldFiles(userId, ct);
+        var trashSize = await unitOfWork.Files.GetDeletedSizeAsync(userId, ct);
+        var sizeByMimeType = await unitOfWork.Files.GetSizeByTypeAsync(userId, ct);
+        var oldFiles = await unitOfWork.Files.GetOldFilesAsync(userId, ct);
 
         return new StorageBreakdown
         {
@@ -1028,7 +1009,7 @@ public partial class S3Service(
 
     public async Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default)
     {
-        var downloadInfo = await unitOfWork.FileVersions.GetVersionDownloadInfo(fileVersionId, ownerId, ct) ??
+        var downloadInfo = await unitOfWork.FileVersions.GetVersionDownloadInfoAsync(fileVersionId, ownerId, ct) ??
                            throw new InvalidOperationException("Version not found");
 
         var request = new GetPreSignedUrlRequest
@@ -1044,7 +1025,7 @@ public partial class S3Service(
             }
         };
 
-        if (await unitOfWork.FileVersions.IsPromoted(fileVersionId, ct))
+        if (await unitOfWork.FileVersions.IsPromotedAsync(fileVersionId, ct))
             return await publicS3.GetPreSignedURLAsync(request);
 
         var upload = await unitOfWork.Uploads.FirstOrDefaultAsync(

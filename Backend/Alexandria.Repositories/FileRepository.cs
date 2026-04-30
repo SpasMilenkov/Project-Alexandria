@@ -129,7 +129,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             throw new InvalidOperationException("Files with the same names already exist in destination");
     }
 
-    public async Task MarkAsDeleted(Guid[] fileIds, Guid userId, CancellationToken ct = default)
+    public async Task MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default)
     {
         await _files
             .Where(f => f.OwnerId == userId && fileIds.Contains(f.Id))
@@ -139,14 +139,14 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 ct);
     }
 
-    public async Task<bool> IsPromoted(Guid fileId, CancellationToken ct = default)
+    public async Task<bool> IsPromotedAsync(Guid fileId, CancellationToken ct = default)
     {
         return await _files.Where(f => f.Id == fileId)
             .Select(f => f.CurrentVersion.ContentObject.IsPromoted)
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<PaginatedResult<FileResult>> FindFiles(FileSearchQuery query, Guid userId,
+    public async Task<PaginatedResult<FileResult>> FindFilesAsync(FileSearchQuery query, Guid userId,
         CancellationToken ct = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(query.CurrentPage);
@@ -568,7 +568,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return await AddAsync(file, ct);
     }
 
-    public async Task<byte[]?> GetFileHash(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    public async Task<byte[]?> GetFileHashAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
     {
         var result = await _files
             .AsNoTracking()
@@ -577,7 +577,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return result?.ContentHash;
     }
 
-    public async Task<string> GetFileHashAsString(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    public async Task<string> GetFileHashAsStringAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
     {
         var result = await _files
                          .AsNoTracking()
@@ -684,7 +684,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<long> GetDeletedSize(Guid userId, CancellationToken ct = default)
+    public async Task<long> GetDeletedSizeAsync(Guid userId, CancellationToken ct = default)
     {
         return await context.FileVersions
             .Where(v => _files
@@ -694,7 +694,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .SumAsync(v => v.Size, ct);
     }
 
-    public async Task<IEnumerable<FileSummary>> GetOldFiles(Guid userId, CancellationToken ct = default)
+    public async Task<IEnumerable<FileSummary>> GetOldFilesAsync(Guid userId, CancellationToken ct = default)
     {
         return await _files.Where(f =>
                 f.OwnerId == userId && f.DeletedAt != null && f.DeletedAt < DateTime.UtcNow.AddDays(-30))
@@ -702,7 +702,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .ToListAsync(ct);
     }
 
-    public Task<Dictionary<string, long>> GetSizeByType(
+    public Task<Dictionary<string, long>> GetSizeByTypeAsync(
         Guid userId,
         CancellationToken ct = default)
     {
@@ -723,7 +723,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .ToDictionaryAsync(x => x.MimeType, x => x.TotalSize, ct);
     }
 
-    public async Task<int> RestoreFiles(Guid[] fileIds, Guid userId, CancellationToken ct = default)
+    public async Task<int> RestoreFilesAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default)
     {
         var thresholdDate = DateTime.UtcNow.AddDays(-30);
 
@@ -745,7 +745,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return files.Count;
     }
 
-    public async Task<int> GetFileCountPerUser(Guid userId, bool deletedOnly, CancellationToken ct = default)
+    public async Task<int> GetFileCountPerUserAsync(Guid userId, bool deletedOnly, CancellationToken ct = default)
     {
         var query = _files.Where(f => f.OwnerId == userId);
 
@@ -755,7 +755,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return await query.CountAsync(ct);
     }
 
-    public async Task<long> GetStorageUsagePerUser(Guid userId, bool onlyDeleted, CancellationToken ct = default)
+    public async Task<long> GetStorageUsagePerUserAsync(Guid userId, bool onlyDeleted, CancellationToken ct = default)
     {
         return await _fileVersions
             .Where(v => v.File.OwnerId == userId)
@@ -763,7 +763,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .SumAsync(v => v.Size, ct);
     }
 
-    public async Task ChangeActiveVersion(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default)
+    public async Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default)
     {
         _ = await _files.FirstOrDefaultAsync(
                 f => f.Id == fileId && f.OwnerId == userId && f.Versions.Any(v => v.Id == versionId), ct) ??
@@ -773,13 +773,14 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 .SetProperty(f => f.CurrentVersionId, versionId), ct);
     }
 
-    public async Task<FileResult?> GetFileWithOwnershipById(Guid fileId, Guid userId, CancellationToken ct = default)
+    public async Task<FileResult?> GetFileWithOwnershipByIdAsync(Guid fileId, Guid userId,
+        CancellationToken ct = default)
     {
         return await _files.Where(f => f.Id == fileId && f.OwnerId == userId).Select(FileProjections.ToFileResult)
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task UpdateCurrentVersion(Guid fileId, Guid versionId, CancellationToken ct = default)
+    public async Task UpdateCurrentVersionAsync(Guid fileId, Guid versionId, CancellationToken ct = default)
     {
         await _files
             .Where(f => f.Id == fileId)

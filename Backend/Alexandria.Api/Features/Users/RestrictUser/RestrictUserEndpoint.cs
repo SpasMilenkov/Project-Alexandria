@@ -19,7 +19,7 @@ sealed class RestrictUserEndpoint(IUserManagementService userManagementService) 
 
     public override async Task HandleAsync(RestrictUserRequest req, CancellationToken ct)
     {
-        await userManagementService.RestrictUser(req.UserId, req.LockoutEndDate, ct);
+        await userManagementService.RestrictUserAsync(req.UserId, req.LockoutEndDate, ct);
 
         await Send.OkAsync(new { Message = "User restricted successfully" }, ct);
     }

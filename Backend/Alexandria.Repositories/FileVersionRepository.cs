@@ -133,7 +133,7 @@ public class FileVersionRepository : IFileVersionRepository
         return await _dbSet.AnyAsync(predicate, ct);
     }
 
-    public async Task<int> DeleteFileVersions(Guid[] fileIds, Guid ownerId, CancellationToken ct = default)
+    public async Task<int> DeleteFileVersionsAsync(Guid[] fileIds, Guid ownerId, CancellationToken ct = default)
     {
         return await _context.FileVersions
             .Where(v => fileIds.Contains(v.FileId) && v.File.OwnerId == ownerId)
@@ -142,7 +142,7 @@ public class FileVersionRepository : IFileVersionRepository
                 ct);
     }
 
-    public async Task<int> RestoreFileVersions(
+    public async Task<int> RestoreFileVersionsAsync(
         Guid[] fileIds,
         Guid ownerId,
         CancellationToken ct = default)
@@ -169,7 +169,7 @@ public class FileVersionRepository : IFileVersionRepository
         return versions.Count;
     }
 
-    public async Task<PaginatedResult<FileVersionDto>> GetVersionsForFile(Guid fileId, Guid ownerId, int page = 1,
+    public async Task<PaginatedResult<FileVersionDto>> GetVersionsForFileAsync(Guid fileId, Guid ownerId, int page = 1,
         int pageSize = 10, CancellationToken ct = default)
     {
         var baseQuery = _dbSet.Where(f => f.FileId == fileId && f.File.OwnerId == ownerId &&
@@ -196,7 +196,7 @@ public class FileVersionRepository : IFileVersionRepository
     }
 
 
-    public async Task<int> SoftDeleteFileVersions(Guid[] fileIds, Guid ownerId, CancellationToken ct = default)
+    public async Task<int> SoftDeleteFileVersionsAsync(Guid[] fileIds, Guid ownerId, CancellationToken ct = default)
     {
         return await _context.FileVersions
             .Where(v => fileIds.Contains(v.FileId) && v.File.OwnerId == ownerId && v.DeletedAt == null)
@@ -205,7 +205,7 @@ public class FileVersionRepository : IFileVersionRepository
                 ct);
     }
 
-    public async Task<int> SoftDeleteFileVersions(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    public async Task<int> SoftDeleteFileVersionsAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
     {
         return await _context.FileVersions
             .Where(v => v.FileId == fileId && v.File.OwnerId == ownerId && v.DeletedAt == null)
@@ -214,13 +214,14 @@ public class FileVersionRepository : IFileVersionRepository
                 ct);
     }
 
-    public async Task<byte[]?> GetContentHashByVersionId(Guid versionId, Guid userId, CancellationToken ct = default)
+    public async Task<byte[]?> GetContentHashByVersionIdAsync(Guid versionId, Guid userId,
+        CancellationToken ct = default)
     {
         return await _dbSet.Where(f => f.Id == versionId && f.File.OwnerId == userId).Select(f => f.ContentHash)
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<FileVersionDto?> GetMostRecent(Guid fileId, Guid userId, CancellationToken ct = default)
+    public async Task<FileVersionDto?> GetMostRecentAsync(Guid fileId, Guid userId, CancellationToken ct = default)
     {
         return await _dbSet
             .Where(f => f.FileId == fileId && f.File.OwnerId == userId && f.DeletedAt == null)
@@ -230,7 +231,7 @@ public class FileVersionRepository : IFileVersionRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task RestoreFileVersion(Guid versionId, Guid userId, CancellationToken ct = default)
+    public async Task RestoreFileVersionAsync(Guid versionId, Guid userId, CancellationToken ct = default)
     {
         // Restore the version
         var updated = await _dbSet
@@ -274,7 +275,7 @@ public class FileVersionRepository : IFileVersionRepository
                 .SetProperty(v => v.UpdatedAt, DateTime.UtcNow), ct);
     }
 
-    public async Task<VersionDownloadInfo?> GetVersionDownloadInfo(Guid versionId, Guid userId,
+    public async Task<VersionDownloadInfo?> GetVersionDownloadInfoAsync(Guid versionId, Guid userId,
         CancellationToken ct = default)
     {
         return await _dbSet.Where(v => v.Id == versionId && v.File.OwnerId == userId)
@@ -298,12 +299,12 @@ public class FileVersionRepository : IFileVersionRepository
             }).FirstOrDefaultAsync(ct);
     }
 
-    public async Task<bool> IsEncrypted(Guid versionId, CancellationToken ct = default)
+    public async Task<bool> IsEncryptedAsync(Guid versionId, CancellationToken ct = default)
     {
         return await _dbSet.Where(v => v.Id == versionId).Select(v => v.IsEncrypted).FirstAsync(ct);
     }
 
-    public async Task<bool> IsPromoted(Guid versionId, CancellationToken ct = default)
+    public async Task<bool> IsPromotedAsync(Guid versionId, CancellationToken ct = default)
     {
         return await _dbSet.Where(v => v.Id == versionId).Select(v => v.ContentObject.IsPromoted).FirstAsync(ct);
     }

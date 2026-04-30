@@ -16,6 +16,6 @@ sealed class GetUsersEndpoint(IUserManagementService userManagementService)
 
     public override async Task HandleAsync(UserQueryDto req, CancellationToken ct)
     {
-        await Send.OkAsync(await userManagementService.GetUsers(req, ct), ct);
+        await Send.OkAsync(await userManagementService.GetUsersAsync(req, ct), ct);
     }
 }

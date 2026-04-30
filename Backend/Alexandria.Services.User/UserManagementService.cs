@@ -14,17 +14,17 @@ namespace Alexandria.Services.User;
 public class UserManagementService(UserManager<ApplicationUser> userManager, IUnitOfWork unitOfWork)
     : IUserManagementService
 {
-    public async Task DeleteUsers(Guid[] userIds, CancellationToken ct = default)
+    public async Task DeleteUsersAsync(Guid[] userIds, CancellationToken ct = default)
     {
-        await unitOfWork.Users.DeleteUsers(userIds, ct);
+        await unitOfWork.Users.DeleteUsersAsync(userIds, ct);
     }
 
-    public async Task<PaginatedResult<UserDetailsDto>> GetUsers(UserQueryDto query, CancellationToken ct = default)
+    public async Task<PaginatedResult<UserDetailsDto>> GetUsersAsync(UserQueryDto query, CancellationToken ct = default)
     {
-        return await unitOfWork.Users.GetUsers(query, ct);
+        return await unitOfWork.Users.GetUsersAsync(query, ct);
     }
 
-    public async Task RestrictUser(Guid userId, DateTime restrictionEndDate, CancellationToken ct = default)
+    public async Task RestrictUserAsync(Guid userId, DateTime restrictionEndDate, CancellationToken ct = default)
     {
         var user = await userManager.FindByIdAsync(userId.ToString())
                    ?? throw new KeyNotFoundException($"User {userId} not found.");
@@ -40,7 +40,7 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
     }
 
 
-    public async Task<UserDetailsDto> UpdateUser(Guid userId, UpdateUserDto dto, CancellationToken ct = default)
+    public async Task<UserDetailsDto> UpdateUserAsync(Guid userId, UpdateUserDto dto, CancellationToken ct = default)
     {
         var user = await userManager.FindByIdAsync(userId.ToString())
                    ?? throw new KeyNotFoundException($"User {userId} not found.");
@@ -94,7 +94,7 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
                 string.Join(", ", result.Errors.Select(e => e.Description)));
     }
 
-    public async Task<UserDetailsDto> CreateUser(string userName, string email, string password, UserRole userRole,
+    public async Task<UserDetailsDto> CreateUserAsync(string userName, string email, string password, UserRole userRole,
         CancellationToken ct = default)
     {
         var existingUser = await userManager.FindByEmailAsync(email);
@@ -140,18 +140,18 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
         return user.ToDto();
     }
 
-    public async Task<UserProfileDto> GetUserProfile(Guid userId, CancellationToken ct = default)
+    public async Task<UserProfileDto> GetUserProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        return await unitOfWork.Users.GetUserProfile(userId, ct) ??
+        return await unitOfWork.Users.GetUserProfileAsync(userId, ct) ??
                throw new InvalidOperationException("User not found exception");
     }
 
-    public async Task SetupProfile(Guid userId, CancellationToken ct = default)
+    public async Task SetupProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        await unitOfWork.Users.SetupProfile(userId, ct);
+        await unitOfWork.Users.SetupProfileAsync(userId, ct);
     }
 
-    public async Task FinishTour(Guid userId, CancellationToken ct = default)
+    public async Task FinishTourAsync(Guid userId, CancellationToken ct = default)
     {
         try
         {
@@ -171,8 +171,8 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
         }
     }
 
-    public async Task<OnboardingStep?> GetOnboardingStep(Guid userId, CancellationToken ct)
+    public async Task<OnboardingStep?> GetOnboardingStepAsync(Guid userId, CancellationToken ct)
     {
-        return await unitOfWork.Users.GetOnboardingStatus(userId, ct);
+        return await unitOfWork.Users.GetOnboardingStatusAsync(userId, ct);
     }
 }

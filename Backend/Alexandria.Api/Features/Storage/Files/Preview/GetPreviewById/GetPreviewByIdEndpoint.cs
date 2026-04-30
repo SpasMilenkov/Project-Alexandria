@@ -26,7 +26,7 @@ public class GetPreviewByIdEndpoint(IPreviewService previewService) : Endpoint<G
     {
         var userId = User.GetUserId();
 
-        var preview = await previewService.GetPreviewUrl(req.Id, userId, ct);
+        var preview = await previewService.GetPreviewUrlAsync(req.Id, userId, ct);
 
         try
         {

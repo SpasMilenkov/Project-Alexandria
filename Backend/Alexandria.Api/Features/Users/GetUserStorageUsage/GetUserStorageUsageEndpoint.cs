@@ -19,6 +19,6 @@ sealed class GetUserStorageUsageEndpoint(IFileService fileService) : Endpoint<Ge
 
     public override async Task HandleAsync(GetUserStorageUsageRequest req, CancellationToken ct)
     {
-        await Send.OkAsync(await fileService.GetFileSizePerUser(req.UserId, req.DeletedOnly, ct), ct);
+        await Send.OkAsync(await fileService.GetFileSizePerUserAsync(req.UserId, req.DeletedOnly, ct), ct);
     }
 }

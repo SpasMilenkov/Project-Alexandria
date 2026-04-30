@@ -58,11 +58,6 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
         return await context.Users.FirstOrDefaultAsync(predicate, ct);
     }
 
-    public async Task<IEnumerable<ApplicationUser>> GetAllAsync(CancellationToken ct = default)
-    {
-        return await context.Users.AsNoTracking().ToListAsync(ct);
-    }
-
     public async Task<ApplicationUser?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         return await userManager.FindByIdAsync(id.ToString());
@@ -81,7 +76,7 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
         context.Users.Update(entity);
     }
 
-    public async Task DeleteUsers(Guid[] userIds, CancellationToken ct = default)
+    public async Task DeleteUsersAsync(Guid[] userIds, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
 
@@ -93,7 +88,7 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
                 ct);
     }
 
-    public async Task<PaginatedResult<UserDetailsDto>> GetUsers(UserQueryDto query, CancellationToken ct = default)
+    public async Task<PaginatedResult<UserDetailsDto>> GetUsersAsync(UserQueryDto query, CancellationToken ct = default)
     {
         var dbQuery =
             from user in context.Users
@@ -228,19 +223,19 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
         context.Users.UpdateRange(entities);
     }
 
-    public async Task<UserProfileDto?> GetUserProfile(Guid userId, CancellationToken ct = default)
+    public async Task<UserProfileDto?> GetUserProfileAsync(Guid userId, CancellationToken ct = default)
     {
         return await context.Users.Where(u => u.Id == userId && u.DeletedAt == null)
             .Select(u => new UserProfileDto(u.UserName, u.Email, u.CreatedAt)).FirstOrDefaultAsync(ct);
     }
 
-    public async Task SetupProfile(Guid userId, CancellationToken ct = default)
+    public async Task SetupProfileAsync(Guid userId, CancellationToken ct = default)
     {
         await context.Users.Where(u => u.Id == userId && u.DeletedAt == null)
             .ExecuteUpdateAsync(u => u.SetProperty(u => u.OnboardinStep, OnboardingStep.Tour), ct);
     }
 
-    public async Task<OnboardingStep?> GetOnboardingStatus(Guid userId, CancellationToken ct)
+    public async Task<OnboardingStep?> GetOnboardingStatusAsync(Guid userId, CancellationToken ct)
     {
         var result = await context.Users.Where(u => userId == u.Id && u.DeletedAt == null).Select(u => u.OnboardinStep)
             .FirstOrDefaultAsync(ct);

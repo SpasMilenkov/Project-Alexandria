@@ -20,6 +20,6 @@ sealed class GetUserActivityEndpoint(IAuditService auditService)
     {
         var userId = User.GetUserId();
 
-        await Send.OkAsync(await auditService.GetLogs(req, userId, ct), ct);
+        await Send.OkAsync(await auditService.GetLogsAsync(req, userId, ct), ct);
     }
 }

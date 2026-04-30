@@ -19,6 +19,6 @@ sealed class GetUserFileCountPerUserEndpoint(IFileService fileService) : Endpoin
 
     public override async Task HandleAsync(GetUserFileCountPerUserRequest req, CancellationToken ct)
     {
-        await Send.OkAsync(await fileService.GetFileCountPerUser(req.UserId, req.DeletedOnly, ct), ct);
+        await Send.OkAsync(await fileService.GetFileCountPerUserAsync(req.UserId, req.DeletedOnly, ct), ct);
     }
 }

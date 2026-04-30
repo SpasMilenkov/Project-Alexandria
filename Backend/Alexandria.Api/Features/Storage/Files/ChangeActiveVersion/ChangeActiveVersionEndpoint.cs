@@ -31,7 +31,7 @@ internal sealed class ChangeActiveVersionEndpoint(IFileService fileService) : En
     public override async Task HandleAsync(ChangeActiveVersionRequest req, CancellationToken ct)
     {
         var userId = User.GetUserId();
-        await fileService.ChangeActiveVersion(versionId: req.VersionId, fileId: req.FileId, userId, ct);
+        await fileService.ChangeActiveVersionAsync(versionId: req.VersionId, fileId: req.FileId, userId, ct);
         await Send.NoContentAsync(ct);
     }
 }

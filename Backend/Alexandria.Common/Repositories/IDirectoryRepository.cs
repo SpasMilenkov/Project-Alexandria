@@ -13,10 +13,10 @@ public interface IDirectoryRepository : IRepository<Directory>
     Task<IEnumerable<File>> GetAllFilesInDirectoryAsync(Guid directoryId,
         bool includeSubdirectories = false, CancellationToken ct = default);
 
-    Task<IEnumerable<Directory>> GetUserDirectories(Guid ownerId, Guid? parentId = null,
+    Task<IEnumerable<Directory>> GetUserDirectoriesAsync(Guid ownerId, Guid? parentId = null,
         CancellationToken ct = default);
 
-    Task<List<Directory>> GetSubDirectories(Guid directoryId, CancellationToken ct = default);
+    Task<List<Directory>> GetSubDirectoriesAsync(Guid directoryId, CancellationToken ct = default);
 
     Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(
         Guid ownerId,
@@ -45,9 +45,9 @@ public interface IDirectoryRepository : IRepository<Directory>
         CancellationToken ct = default);
 
     Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, CancellationToken ct = default);
-    Task CopyDirectory(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default);
-    Task MoveDirectories(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default);
-    Task<int> RestoreDirectories(Guid[] ids, Guid userId, CancellationToken ct = default);
+    Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default);
+    Task MoveDirectoriesAsync(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default);
+    Task<int> RestoreDirectoriesAsync(Guid[] ids, Guid userId, CancellationToken ct = default);
 
     Task<List<BulkDownloadEntry>> GetBulkDownloadEntriesAsync(
         Guid[] directoryIds,

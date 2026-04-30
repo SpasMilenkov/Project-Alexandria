@@ -2,7 +2,6 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Directories;
 using Alexandria.Dto.Files;
 using Directory = Alexandria.Data.Models.Directory;
-using File = Alexandria.Data.Models.File;
 
 namespace Alexandria.Common.Services;
 
@@ -20,13 +19,7 @@ public interface IDirectoryService
     Task<PaginatedResult<DirectorySummaryDto>> FindDirectoryAsync(Guid userId, DirectorySearchQuery query,
         CancellationToken ct = default);
 
-    Task<IEnumerable<DirectorySummaryDto>> GetUserDirectoriesAsync(Guid userId, Guid? parentId = null,
-        CancellationToken ct = default);
-
-    Task<IEnumerable<DirectorySummaryDto>> GetSubDirectoriesAsync(Guid directoryId, Guid userId,
-        CancellationToken ct = default);
-
-    Task<PaginatedResult<DirectorySummaryDto>> GetPaginatedDirectories(Guid id, Guid userId,
+    Task<PaginatedResult<DirectorySummaryDto>> GetPaginatedDirectoriesAsync(Guid id, Guid userId,
         int currentPage = 1,
         int pageSize = 25,
         SortDirection sortDirection = SortDirection.Asc,
@@ -39,9 +32,6 @@ public interface IDirectoryService
         SortDirection sortDirection = SortDirection.Asc,
         SortBy sortBy = SortBy.Name,
         CancellationToken ct = default);
-
-    Task<IEnumerable<File>> GetDirectoryFilesAsync(Guid directoryId, Guid userId,
-        bool includeSubdirectories = false, CancellationToken ct = default);
 
     Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, Guid userId, CancellationToken ct = default);
 

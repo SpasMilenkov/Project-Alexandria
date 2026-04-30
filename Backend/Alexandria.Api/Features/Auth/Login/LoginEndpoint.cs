@@ -58,7 +58,7 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
             Path = "/api/auth/refresh"
         });
 
-        await _auditService.Log(
+        await _auditService.LogAsync(
             new AuditLogDto(
                 OperationType.Login,
                 EntityType.User,

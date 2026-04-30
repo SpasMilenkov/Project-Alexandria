@@ -21,7 +21,7 @@ sealed class UpdateUserEndpoint(IUserManagementService userManagementService)
 
     public override async Task HandleAsync(UpdateUserRequest req, CancellationToken ct)
     {
-        var result = await userManagementService.UpdateUser(req.UserId, req.Payload, ct);
+        var result = await userManagementService.UpdateUserAsync(req.UserId, req.Payload, ct);
 
         await Send.OkAsync(result, ct);
     }

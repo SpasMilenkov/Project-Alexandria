@@ -37,7 +37,6 @@ public class FakeStorageService : IStorageService
     }
 
     public Task<UploadResult> UploadPreview(
-        string bucketName,
         string objectName,
         string contentType,
         Stream fileStream,
@@ -50,16 +49,17 @@ public class FakeStorageService : IStorageService
         using var ms = new MemoryStream();
         fileStream.CopyTo(ms);
         var bytes = ms.ToArray();
+        const string bucket = "alexandria-previews";
 
-        if (!_store.TryGetValue(bucketName, out var bucket))
+        if (!_store.TryGetValue(bucket, out var bucketStore))
         {
-            bucket = new Dictionary<string, byte[]>();
-            _store[bucketName] = bucket;
+            bucketStore = new Dictionary<string, byte[]>();
+            _store[bucket] = bucketStore;
         }
 
-        bucket[objectName] = bytes;
+        bucketStore[objectName] = bytes;
 
-        UploadedObjects.Add((bucketName, objectName, bytes));
+        UploadedObjects.Add((bucket, objectName, bytes));
 
         var checksum = Convert.ToHexString(SHA256.HashData(bytes));
         return Task.FromResult(new UploadResult(objectName, checksum, bytes.Length, originalFileId));

@@ -75,7 +75,7 @@ sealed class UpdateFileMetadataEndpoint(
         {
             var userId = User.GetUserId();
 
-            var updatedFile = await fileService.UpdateFileMetadata(
+            var updatedFile = await fileService.UpdateFileMetadataAsync(
                 req.Id,
                 userId,
                 req.Name,

@@ -13,16 +13,16 @@ public class PreviewService(
     ITextPreviewService textPreviewService,
     IArchivePreviewService archivePreviewService) : IPreviewService
 {
-    public async Task<PreviewResultDto?> GetPreviewUrl(Guid fileId, Guid ownerId, CancellationToken ct)
+    public async Task<PreviewResultDto?> GetPreviewUrlAsync(Guid fileId, Guid ownerId, CancellationToken ct)
     {
         var fileData = await unitOfWork.Files.GetByIdAsync(fileId, ct);
         if (fileData is null || fileData.OwnerId != ownerId)
             throw new InvalidOperationException("No file found for preview generation");
 
-        if (await unitOfWork.FileVersions.IsEncrypted(
+        if (await unitOfWork.FileVersions.IsEncryptedAsync(
                 fileData.CurrentVersionId ?? throw new InvalidOperationException(""), ct)) return null;
 
-        if (!await unitOfWork.Files.IsPromoted(fileId, ct))
+        if (!await unitOfWork.Files.IsPromotedAsync(fileId, ct))
         {
             var unknownFileSummary = new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, false);
             var noPreviewResult = new PreviewResultDto(unknownFileSummary, null, null, null);
@@ -45,7 +45,7 @@ public class PreviewService(
             {
                 case FileCategory.Image:
                     var imageBody = Encoding.UTF8.GetBytes(fileId.ToString());
-                    await publisherService.Publish(imageBody, $"image.{fileData.MimeType.Split('/')[1]}");
+                    await publisherService.PublishAsync(imageBody, $"image.{fileData.MimeType.Split('/')[1]}");
                     return null;
 
                 case FileCategory.Document:
@@ -53,7 +53,7 @@ public class PreviewService(
                 case FileCategory.Presentation:
                 case FileCategory.Pdf:
                     var documentBody = Encoding.UTF8.GetBytes(fileId.ToString());
-                    await publisherService.Publish(documentBody, $"document.{fileData.MimeType.Split('/')[1]}");
+                    await publisherService.PublishAsync(documentBody, $"document.{fileData.MimeType.Split('/')[1]}");
                     return null;
                 case FileCategory.Archive:
                 {
@@ -91,7 +91,7 @@ public class PreviewService(
                 case FileCategory.Audio:
                 case FileCategory.Video:
                     var mediaBody = Encoding.UTF8.GetBytes(fileId.ToString());
-                    await publisherService.Publish(mediaBody, $"media.{fileData.MimeType.Split('/')[1]}");
+                    await publisherService.PublishAsync(mediaBody, $"media.{fileData.MimeType.Split('/')[1]}");
                     return null;
                 default:
                     var unknownFileSummary = new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, false);

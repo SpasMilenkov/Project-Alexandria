@@ -15,12 +15,12 @@ public class MediaPreviewGenerationHandler(
     public async Task HandleAsync(string fileId, CancellationToken ct = default)
     {
         var fileIdGuid = Guid.Parse(fileId);
-        var fileData = await fileService.GetFileMetadata(fileIdGuid, ct);
+        var fileData = await fileService.GetFileMetadataAsync(fileIdGuid, ct);
         if (fileData is null)
             throw new InvalidOperationException($"File with that ID: {fileId} does not exist.");
 
         var fileHash = Convert.ToHexStringLower(
-            await unitOfWork.Files.GetFileHash(fileData.Id, fileData.OwnerId, ct)
+            await unitOfWork.Files.GetFileHashAsync(fileData.Id, fileData.OwnerId, ct)
             ?? throw new InvalidOperationException("File does not have related content object"));
 
         logger.LogInformation("Processing media preview for file: {FileId}", fileId);
@@ -61,7 +61,7 @@ public class MediaPreviewGenerationHandler(
             await using var thumbnailStream = File.OpenRead(thumbnailPath);
             await storage.UploadMediaData(previewStream, thumbnailStream, fileHash, fileData.Id, result.Metadata, ct);
 
-            await fileService.UpdateFileMetadata(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
+            await fileService.UpdateFileMetadataAsync(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
         }
         finally
         {

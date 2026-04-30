@@ -229,7 +229,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .ToListAsync(ct);
     }
 
-    public async Task<IEnumerable<Directory>> GetUserDirectories(Guid ownerId,
+    public async Task<IEnumerable<Directory>> GetUserDirectoriesAsync(Guid ownerId,
         Guid? parentId = null,
         CancellationToken ct = default)
     {
@@ -238,7 +238,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .ToListAsync(cancellationToken: ct);
     }
 
-    public Task<List<Directory>> GetSubDirectories(Guid directoryId, CancellationToken ct = default)
+    public Task<List<Directory>> GetSubDirectoriesAsync(Guid directoryId, CancellationToken ct = default)
     {
         return context.Directories
             .Where(d => d.ParentId == directoryId && d.DeletedAt == null)
@@ -565,7 +565,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         return newName;
     }
 
-    public async Task CopyDirectory(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default)
+    public async Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId,
+        CancellationToken ct = default)
     {
         var dir = await context.Directories
             .Where(d => d.Id == directoryId && d.OwnerId == userId)
@@ -705,7 +706,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         }
     }
 
-    public async Task MoveDirectories(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default)
+    public async Task MoveDirectoriesAsync(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default)
     {
         // 1. Validation: Only run if moving to a specific folder.
         // If destinationId is null, we skip this as 'Root' always exists.
@@ -751,7 +752,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             throw new InvalidOperationException("Move failed: Directories not found or circular reference detected.");
     }
 
-    public async Task<int> RestoreDirectories(
+    public async Task<int> RestoreDirectoriesAsync(
         Guid[] ids,
         Guid userId,
         CancellationToken ct = default)

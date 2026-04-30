@@ -6,11 +6,11 @@ namespace Alexandria.Common.Services;
 
 public interface IAuditService
 {
-    Task Log(AuditLogDto action);
+    Task LogAsync(AuditLogDto action);
 
-    Task<PaginatedResult<AuditLogResult>> GetLogs(AuditLogQuery query, Guid userId,
+    Task<PaginatedResult<AuditLogResult>> GetLogsAsync(AuditLogQuery query, Guid userId,
         CancellationToken ct = default);
 
-    Task<ActivityStatisticsOverview> GetActivityOverview(Guid userId, ActivityQuery query,
+    Task<ActivityStatisticsOverview> GetActivityOverviewAsync(Guid userId, ActivityQuery query,
         CancellationToken ct = default);
 }

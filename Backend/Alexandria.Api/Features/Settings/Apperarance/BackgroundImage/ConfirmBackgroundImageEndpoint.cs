@@ -12,9 +12,11 @@ public class ConfirmUploadRequest
 public class ConfirmBackgroundImageEndpoint(IUserSettingsService settingsService)
     : Endpoint<ConfirmUploadRequest, GetAppearanceResponse>
 {
-    //TODO: Add proper policy here
-    public override void Configure() =>
+    public override void Configure()
+    {
         Put("/settings/appearance/background-image/confirm");
+        Policies(Common.Auth.Policies.RequireUser);
+    }
 
     public override async Task HandleAsync(ConfirmUploadRequest req, CancellationToken ct)
     {

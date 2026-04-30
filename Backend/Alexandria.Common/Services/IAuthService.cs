@@ -16,5 +16,6 @@ public interface IAuthService
      */
     Task RevokeAllUserTokensAsync(Guid userId, CancellationToken ct = default);
 
-    Task ChangeInitialPassword(Guid userId, string oldPassword, string newPassword, CancellationToken ct = default);
+    Task ChangeInitialPasswordAsync(Guid userId, string oldPassword, string newPassword,
+        CancellationToken ct = default);
 }

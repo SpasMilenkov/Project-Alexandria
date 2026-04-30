@@ -18,7 +18,7 @@ sealed class DeleteUserEndpoint(IUserManagementService userManagementService) : 
 
     public override async Task HandleAsync(DeleteUserRequest req, CancellationToken ct)
     {
-        await userManagementService.DeleteUsers(req.UserIds, ct);
+        await userManagementService.DeleteUsersAsync(req.UserIds, ct);
         await Send.OkAsync(new { Message = "Users deleted successfully" }, ct);
     }
 }

@@ -22,7 +22,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
         return await _dbSet.FirstOrDefaultAsync(predicate, ct);
     }
 
-    public async Task<ContentObject?> HashExists(byte[] hash, CancellationToken ct = default)
+    public async Task<ContentObject?> HashExistsAsync(byte[] hash, CancellationToken ct = default)
     {
         return await _dbSet
             .FirstOrDefaultAsync(co =>

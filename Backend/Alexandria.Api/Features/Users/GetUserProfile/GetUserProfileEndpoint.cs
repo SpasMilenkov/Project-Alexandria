@@ -18,8 +18,8 @@ sealed class GetUserProfileEndpoint(IUserManagementService userManagementService
     {
         var userId = User.GetUserId();
 
-        await userManagementService.GetUserProfile(userId, ct);
+        await userManagementService.GetUserProfileAsync(userId, ct);
 
-        await Send.OkAsync(await userManagementService.GetUserProfile(userId, ct), cancellation: ct);
+        await Send.OkAsync(await userManagementService.GetUserProfileAsync(userId, ct), cancellation: ct);
     }
 }

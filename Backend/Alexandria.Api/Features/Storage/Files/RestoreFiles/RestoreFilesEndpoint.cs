@@ -38,6 +38,6 @@ sealed class RestoreFilesEndpoint(IFileService fileService) : Endpoint<RestoreFi
     {
         var userId = User.GetUserId();
 
-        await Send.OkAsync(await fileService.RestoreFiles(req.FileIds, userId, ct), ct);
+        await Send.OkAsync(await fileService.RestoreFilesAsync(req.FileIds, userId, ct), ct);
     }
 }

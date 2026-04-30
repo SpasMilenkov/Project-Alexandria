@@ -128,7 +128,7 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
         return unitOfWork.Directories.FindDirectoryAsync(userId, query, ct);
     }
 
-    public async Task<PaginatedResult<DirectorySummaryDto>> GetPaginatedDirectories(Guid id, Guid userId,
+    public async Task<PaginatedResult<DirectorySummaryDto>> GetPaginatedDirectoriesAsync(Guid id, Guid userId,
         int currentPage = 1,
         int pageSize = 25,
         SortDirection sortDirection = SortDirection.Asc,
@@ -152,7 +152,7 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
     public async Task<IEnumerable<DirectorySummaryDto>> GetUserDirectoriesAsync(Guid userId, Guid? parentId = null,
         CancellationToken ct = default)
     {
-        var dirs = await unitOfWork.Directories.GetUserDirectories(userId, parentId, ct);
+        var dirs = await unitOfWork.Directories.GetUserDirectoriesAsync(userId, parentId, ct);
         return dirs.Select(d => d.ToSummaryDto());
     }
 
@@ -164,7 +164,7 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
         CancellationToken ct = default)
     {
         await VerifyDirectoryAccessAsync(directoryId, userId, ct);
-        var dirs = await unitOfWork.Directories.GetSubDirectories(directoryId, ct);
+        var dirs = await unitOfWork.Directories.GetSubDirectoriesAsync(directoryId, ct);
 
         return dirs.Select(d => d.ToSummaryDto());
     }
@@ -230,7 +230,7 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            await unitOfWork.Directories.MoveDirectories(ids, newParentId, userId, ct);
+            await unitOfWork.Directories.MoveDirectoriesAsync(ids, newParentId, userId, ct);
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
         }
@@ -356,15 +356,15 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
         // Delete all files in this directory
         var files = await unitOfWork.Files.FindAsync(
             f => f.DirectoryId == directoryId && f.DeletedAt == null, ct);
-        await unitOfWork.Files.MarkAsDeleted(files.Select(f => f.Id).ToArray(), userId, ct);
+        await unitOfWork.Files.MarkAsDeletedAsync(files.Select(f => f.Id).ToArray(), userId, ct);
     }
 
     public async Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId,
         CancellationToken ct = default) =>
-        await unitOfWork.Directories.CopyDirectory(directoryId, destinationId, userId, ct);
+        await unitOfWork.Directories.CopyDirectoryAsync(directoryId, destinationId, userId, ct);
 
     public async Task<int> RestoreDirectories(Guid[] directoryIds, Guid userId, CancellationToken ct = default)
     {
-        return await unitOfWork.Directories.RestoreDirectories(directoryIds, userId, ct);
+        return await unitOfWork.Directories.RestoreDirectoriesAsync(directoryIds, userId, ct);
     }
 }
