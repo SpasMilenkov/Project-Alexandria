@@ -8,11 +8,11 @@ namespace Alexandria.Infrastructure.HealthChecks;
 public class S3HealthCheck(IAmazonS3 s3Client, IOptions<S3Config> config) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context, CancellationToken ct = default)
+        HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {
-            await s3Client.ListBucketsAsync(ct);
+            await s3Client.ListBucketsAsync(cancellationToken);
             var provider = config.Value.Provider;
             return HealthCheckResult.Healthy($"Provider: {provider}");
         }

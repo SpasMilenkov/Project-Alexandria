@@ -557,9 +557,9 @@ public partial class S3Service(
         return await publicS3.GetPreSignedURLAsync(request);
     }
 
-    public async Task<Stream> DownloadFile(Guid fileId, Guid userId, CancellationToken ct)
+    public async Task<Stream> DownloadFile(Guid fileId, Guid ownerId, CancellationToken ct)
     {
-        var fileExists = await unitOfWork.Files.ExistsAsync(f => f.Id == fileId && f.OwnerId == userId, ct);
+        var fileExists = await unitOfWork.Files.ExistsAsync(f => f.Id == fileId && f.OwnerId == ownerId, ct);
 
         if (!fileExists)
         {
@@ -567,7 +567,7 @@ public partial class S3Service(
             throw new InvalidOperationException($"File {fileId} not found in database.");
         }
 
-        var hashString = await unitOfWork.Files.GetFileHashAsStringAsync(fileId, userId, ct);
+        var hashString = await unitOfWork.Files.GetFileHashAsStringAsync(fileId, ownerId, ct);
         var objectName = $"content/{hashString}";
         try
         {
@@ -1138,7 +1138,7 @@ public partial class S3Service(
             {
                 // Don't abort the whole zip for one missing object —
                 // write a zero-byte placeholder so the user knows
-                logger.LogWarning("S3 object not found during bulk zip: {Bucket}/{Key}", bucket, key);
+                logger.LogWarning(ex, "S3 object not found during bulk zip: {Bucket}/{Key}", bucket, key);
             }
         }
 

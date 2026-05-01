@@ -3,7 +3,7 @@ using RabbitMQ.Client;
 
 namespace Alexandria.Infrastructure;
 
-public class ChannelPool(IConnection connection, int maxSize = 10) : IChannelPool, IDisposable
+public sealed class ChannelPool(IConnection connection, int maxSize = 10) : IChannelPool, IDisposable
 {
     private readonly ConcurrentBag<IChannel> _channels = new();
     private readonly SemaphoreSlim _semaphore = new(maxSize, maxSize);
@@ -30,8 +30,9 @@ public class ChannelPool(IConnection connection, int maxSize = 10) : IChannelPoo
     {
         if (_disposed || !channel.IsOpen)
         {
-            channel?.Dispose();
-            _semaphore.Release();
+            channel.Dispose();
+            if (!_disposed)
+                _semaphore.Release();
             return;
         }
 
@@ -46,9 +47,9 @@ public class ChannelPool(IConnection connection, int maxSize = 10) : IChannelPoo
 
         while (_channels.TryTake(out var channel))
         {
-            channel?.Dispose();
+            channel.Dispose();
         }
 
-        _semaphore?.Dispose();
+        _semaphore.Dispose();
     }
 }

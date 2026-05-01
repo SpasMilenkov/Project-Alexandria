@@ -17,7 +17,7 @@ public static class RabbitMqExtensions
             return new ConnectionFactory
             {
                 HostName = config["RabbitMQ:HostName"] ?? "localhost",
-                Port = config.GetValue<int>("RabbitMQ:Port", 5672),
+                Port = config.GetValue("RabbitMQ:Port", 5672),
                 UserName = config["RabbitMQ:UserName"] ?? "guest",
                 Password = config["RabbitMQ:Password"] ?? "guest",
                 VirtualHost = config["RabbitMQ:VirtualHost"] ?? "/",
@@ -38,7 +38,7 @@ public static class RabbitMqExtensions
             var config = sp.GetRequiredService<IConfiguration>();
             return new ChannelPool(
                 sp.GetRequiredService<IConnection>(),
-                maxSize: config.GetValue<int>("RabbitMQ:ChannelPoolSize", 10)
+                maxSize: config.GetValue("RabbitMQ:ChannelPoolSize", 10)
             );
         });
 

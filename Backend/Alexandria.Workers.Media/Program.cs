@@ -5,18 +5,12 @@ using Alexandria.Workers.Media.Extensions;
 using Microsoft.AspNetCore.Builder;
 
 var builder = WebApplication.CreateBuilder(args);
-var config = builder.Configuration;
-
-Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
-Console.WriteLine($"RabbitMQ Host: {config["RabbitMQ:HostName"]}");
-Console.WriteLine($"RabbitMQ Port: {config["RabbitMQ:Port"]}");
 
 builder.Services
     .AddWorkerDatabase(builder.Configuration)
     .AddS3Storage(builder.Configuration)
     .AddRabbitMqConsumer(builder.Configuration)
-    .AddPreviewWorkerServices()
-    .AddSWorkerServices()
+    .AddWorkerServices()
     .AddHealthChecks();
 
 builder.Services.AddHostedService<Worker>();

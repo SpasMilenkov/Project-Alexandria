@@ -3,6 +3,8 @@ using Alexandria.Dto.Users;
 using FastEndpoints;
 using FluentValidation;
 
+namespace Alexandria.Api.Features.Users.GetUsers;
+
 public class GetUsersValidator : Validator<UserQueryDto>
 {
     public GetUsersValidator()

@@ -1,8 +1,6 @@
 using Alexandria.Infrastructure.Converters;
 using FastEndpoints;
 using FastEndpoints.Swagger;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,14 +46,5 @@ public static class ApiExtensions
         });
 
         return services;
-    }
-
-    //TODO: Confirm I don't do any more file streaming via the API and remove this.
-    public static void ConfigureKestrelMaxRequestSize(this ConfigureWebHostBuilder webHost)
-    {
-        webHost.ConfigureKestrel(o =>
-        {
-            o.Limits.MaxRequestBodySize = 107374182400; // 100 GB
-        });
     }
 }

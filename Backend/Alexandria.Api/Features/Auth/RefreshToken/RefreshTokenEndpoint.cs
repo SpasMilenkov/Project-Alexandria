@@ -30,8 +30,6 @@ public class RefreshTokenEndpoint(IAuthService authService)
             return;
         }
 
-        var userId = result.User.Id.ToString();
-
         var newAccessToken = authService.GenerateAccessToken(result.User);
         var newRefreshToken = result.RefreshToken;
 

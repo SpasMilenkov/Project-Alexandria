@@ -6,7 +6,7 @@ namespace Alexandria.Infrastructure.HealthChecks;
 public class RabbitMqHealthCheck(IConnection connection) : IHealthCheck
 {
     public Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context, CancellationToken ct = default)
+        HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         var result = connection.IsOpen
             ? HealthCheckResult.Healthy("Connected")

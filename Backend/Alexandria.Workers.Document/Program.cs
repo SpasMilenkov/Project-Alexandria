@@ -10,7 +10,7 @@ builder.Services
     .AddWorkerDatabase(builder.Configuration)
     .AddS3Storage(builder.Configuration)
     .AddRabbitMqConsumer(builder.Configuration)
-    .AddSWorkerServices()
+    .AddWorkerServices()
     .AddHealthChecks();
 
 builder.Services.AddHostedService<Worker>();
@@ -19,4 +19,4 @@ var host = builder.Build();
 
 host.MapHealthChecks("/health");
 
-host.Run();
+await host.RunAsync();

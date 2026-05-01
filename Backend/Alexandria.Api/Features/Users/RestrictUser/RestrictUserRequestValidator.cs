@@ -1,6 +1,7 @@
-using Alexandria.Api.Features.Users.RestrictUser;
 using FastEndpoints;
 using FluentValidation;
+
+namespace Alexandria.Api.Features.Users.RestrictUser;
 
 sealed class RestrictUserRequestValidator : Validator<RestrictUserRequest>
 {

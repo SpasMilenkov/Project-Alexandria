@@ -422,14 +422,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
             await context.SaveChangesAsync(ct);
 
-            // 5. Update ContentObject ref counts
-            var refCountUpdates = newVersions
-                .GroupBy(v => v.ContentObjectId)
-                .Select(g => new { ContentObjectId = g.Key, Count = g.Count() })
-                .ToList();
-
-            // TODO: apply refCountUpdates as needed
-
             // Only commit if WE opened the transaction
             if (transaction is not null)
                 await transaction.CommitAsync(ct);

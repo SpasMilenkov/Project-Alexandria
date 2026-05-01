@@ -1,6 +1,7 @@
-using Alexandria.Api.Features.Users.UpdateUser;
 using FastEndpoints;
 using FluentValidation;
+
+namespace Alexandria.Api.Features.Users.UpdateUser;
 
 sealed class UpdateUserRequestValidator : Validator<UpdateUserRequest>
 {

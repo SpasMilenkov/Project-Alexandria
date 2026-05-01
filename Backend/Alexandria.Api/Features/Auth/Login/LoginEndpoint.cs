@@ -6,9 +6,6 @@ using FastEndpoints;
 
 namespace Alexandria.Api.Features.Auth.Login;
 
-/** TODO Needs to be tested on multiple devices to see the behavior of the tokens,
- * possibly might want to invalidate previous tokens on relogin
- */
 public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
 {
     private readonly IAuthService _authService;

@@ -88,7 +88,8 @@ public class OrphanedCleanupWorker : BackgroundService
                 ct);
 
 
-        if (!orphanedObjects.Any())
+        var contentObjects = orphanedObjects as ContentObject[] ?? orphanedObjects.ToArray();
+        if (contentObjects.Length == 0)
         {
             _logger.LogDebug("No orphaned content objects found for cleanup");
             return;
@@ -96,12 +97,12 @@ public class OrphanedCleanupWorker : BackgroundService
 
         _logger.LogInformation(
             "Found {Count} orphaned content objects to clean up",
-            orphanedObjects.Count());
+            contentObjects.Count());
 
         var deletedCount = 0;
         var failedCount = 0;
 
-        foreach (var contentObject in orphanedObjects)
+        foreach (var contentObject in contentObjects)
         {
             if (ct.IsCancellationRequested)
                 break;
@@ -172,7 +173,7 @@ public class OrphanedCleanupWorker : BackgroundService
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            _logger.LogWarning(
+            _logger.LogWarning(ex,
                 "S3 object not found (already deleted?): {Key}",
                 s3Key);
             // Continue with database deletion

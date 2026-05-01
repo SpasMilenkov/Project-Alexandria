@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Alexandria.Api.Features.Storage.Files.RestoreFiles;
 using Alexandria.Data.Context;
 using Alexandria.Tests.Common.Fixtures;
 using AwesomeAssertions;

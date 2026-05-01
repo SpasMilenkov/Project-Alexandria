@@ -5,7 +5,6 @@ using FastEndpoints;
 
 namespace Alexandria.Api.Features.Tags.GetTagsForFile;
 
-//TODO THIS SHOULD USE THE USER ID TO VALIDATE OWNERSHIP, ALL TAG ENDPOINTS AND SERVICES NEED TO DO THIS 
 public class GetTagsForFileEndpoint(IFileTagService tagService)
     : Endpoint<GetTagsForFileRequest, GetTagsForFileResponse>
 {

@@ -1,8 +1,9 @@
-using Alexandria.Api.Features.Users.DeleteUser;
 using FastEndpoints;
 using FluentValidation;
 
-sealed class DeleteUserRequestValidator : Validator<DeleteUserRequest>
+namespace Alexandria.Api.Features.Users.DeleteUser;
+
+public sealed class DeleteUserRequestValidator : Validator<DeleteUserRequest>
 {
     public DeleteUserRequestValidator()
     {

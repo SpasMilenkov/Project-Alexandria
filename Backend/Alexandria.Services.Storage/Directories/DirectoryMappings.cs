@@ -8,34 +8,37 @@ namespace Alexandria.Services.Storage.Directories;
 
 public static class DirectoryMappings
 {
-    public static DirectoryDto ToDto(this Directory dir)
+    extension(Directory dir)
     {
-        ArgumentNullException.ThrowIfNull(dir);
+        public DirectoryDto ToDto()
+        {
+            ArgumentNullException.ThrowIfNull(dir);
 
-        return new DirectoryDto(
-            Id: dir.Id,
-            Name: dir.Name,
-            ParentId: dir.ParentId ?? Guid.Empty,
-            CreatedAt: dir.CreatedAt,
-            UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
-            OwnerUserDto: dir.Owner?.ToUserDto() ?? new UserDto(),
-            Files: dir.Files?.Select(f => f.ToFileSummary()).ToList() ?? [],
-            Directories: dir.Children?.Select(c => c.ToSummaryDto()).ToList() ?? []
-        );
-    }
+            return new DirectoryDto(
+                Id: dir.Id,
+                Name: dir.Name,
+                ParentId: dir.ParentId ?? Guid.Empty,
+                CreatedAt: dir.CreatedAt,
+                UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
+                OwnerUserDto: dir.Owner.ToUserDto(),
+                Files: dir.Files?.Select(f => f.ToFileSummary()).ToList() ?? [],
+                Directories: dir.Children?.Select(c => c.ToSummaryDto()).ToList() ?? []
+            );
+        }
 
-    public static DirectorySummaryDto ToSummaryDto(this Directory dir)
-    {
-        ArgumentNullException.ThrowIfNull(dir);
+        public DirectorySummaryDto ToSummaryDto()
+        {
+            ArgumentNullException.ThrowIfNull(dir);
 
-        return new DirectorySummaryDto(
-            Id: dir.Id,
-            Name: dir.Name,
-            ParentId: dir.ParentId ?? Guid.Empty,
-            CreatedAt: dir.CreatedAt,
-            UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
-            OwnerUserDto: dir.Owner?.ToUserDto() ?? new UserDto()
-        );
+            return new DirectorySummaryDto(
+                Id: dir.Id,
+                Name: dir.Name,
+                ParentId: dir.ParentId ?? Guid.Empty,
+                CreatedAt: dir.CreatedAt,
+                UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
+                OwnerUserDto: dir.Owner.ToUserDto() ?? new UserDto()
+            );
+        }
     }
 
     public static UserDto ToUserDto(this ApplicationUser user)
@@ -46,7 +49,7 @@ public static class DirectoryMappings
         {
             Id = user.Id,
             Email = user.Email ?? string.Empty,
-            Name = user.Name ?? string.Empty
+            Name = user.Name
         };
     }
 

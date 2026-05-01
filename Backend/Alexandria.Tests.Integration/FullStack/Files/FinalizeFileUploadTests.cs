@@ -38,7 +38,7 @@ public class FinalizeFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
         var bytes = "hello, world!"u8.ToArray();
         using var putContent = new ByteArrayContent(bytes);
         var putResponse =
-            await new HttpClient().PutAsync(initBody!.UploadUrl, putContent, TestContext.Current.CancellationToken);
+            await new HttpClient().PutAsync(initBody.UploadUrl, putContent, TestContext.Current.CancellationToken);
         putResponse.IsSuccessStatusCode.Should().BeTrue();
 
         // Now finalize

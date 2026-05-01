@@ -6,18 +6,18 @@ public class WorkerHealthCheck(IHttpClientFactory factory, string workerUrl, str
     : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context, CancellationToken ct = default)
+        HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {
             var client = factory.CreateClient("worker-health");
-            var response = await client.GetAsync(workerUrl, ct);
+            var response = await client.GetAsync(workerUrl, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
                 return HealthCheckResult.Unhealthy($"HTTP {(int)response.StatusCode}");
 
             // Forward the worker's own health JSON as data
-            var body = await response.Content.ReadAsStringAsync(ct);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
             var data = new Dictionary<string, object> { ["response"] = body };
             return HealthCheckResult.Healthy("Responding", data);
         }

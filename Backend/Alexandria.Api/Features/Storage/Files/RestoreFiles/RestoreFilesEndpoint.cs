@@ -3,6 +3,8 @@ using Alexandria.Common.Services;
 using FastEndpoints;
 using FluentValidation;
 
+namespace Alexandria.Api.Features.Storage.Files.RestoreFiles;
+
 internal sealed class RestoreFilesRequest
 {
     public required Guid[] FileIds { get; set; }

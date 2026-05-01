@@ -27,7 +27,7 @@ public class InitiateFileUploadTests(AlexandriaFixture fixture) : FullStackTestB
         var body = await response.Content.ReadFromJsonAsync<InitializeFileUploadResponse>(
             cancellationToken: TestContext.Current.CancellationToken);
         body.Should().NotBeNull();
-        body!.UploadId.Should().NotBeEmpty();
+        body.UploadId.Should().NotBeEmpty();
         body.UploadUrl.Should().StartWith("http");
     }
 

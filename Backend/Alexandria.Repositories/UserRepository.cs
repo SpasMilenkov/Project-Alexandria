@@ -214,13 +214,14 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
     public void RemoveRange(IEnumerable<ApplicationUser> entities)
     {
         var now = DateTime.UtcNow;
-        foreach (var user in entities)
+        var applicationUsers = entities as ApplicationUser[] ?? entities.ToArray();
+        foreach (var user in applicationUsers)
         {
             user.DeletedAt = now;
             user.UpdatedAt = now;
         }
 
-        context.Users.UpdateRange(entities);
+        context.Users.UpdateRange(applicationUsers);
     }
 
     public async Task<UserProfileDto?> GetUserProfileAsync(Guid userId, CancellationToken ct = default)

@@ -99,7 +99,7 @@ public class AuthService(
         var roles = userManager.GetRolesAsync(user).Result;
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-        var accessTokenExpiry = config.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 15);
+        var accessTokenExpiry = config.GetValue("Jwt:AccessTokenExpiryMinutes", 15);
         var token = JwtBearer.CreateToken(o =>
         {
             o.SigningKey = config["Jwt:Secret"]!;

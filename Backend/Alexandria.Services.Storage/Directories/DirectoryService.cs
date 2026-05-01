@@ -7,7 +7,6 @@ using Alexandria.Dto.Files;
 using Alexandria.Services.Storage.Directories.Exceptions;
 using Alexandria.Services.Storage.Directories.TreeBuilder;
 using Alexandria.Services.Storage.Directories.TreeBuilder.Extensions;
-using File = Alexandria.Data.Models.File;
 
 namespace Alexandria.Services.Storage.Directories;
 
@@ -154,27 +153,6 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
     {
         var dirs = await unitOfWork.Directories.GetUserDirectoriesAsync(userId, parentId, ct);
         return dirs.Select(d => d.ToSummaryDto());
-    }
-
-    /*
-     * TODO: There should be a way to make this smarter with the ownership and getting the children
-     * too tired to do it right now
-     */
-    public async Task<IEnumerable<DirectorySummaryDto>> GetSubDirectoriesAsync(Guid directoryId, Guid userId,
-        CancellationToken ct = default)
-    {
-        await VerifyDirectoryAccessAsync(directoryId, userId, ct);
-        var dirs = await unitOfWork.Directories.GetSubDirectoriesAsync(directoryId, ct);
-
-        return dirs.Select(d => d.ToSummaryDto());
-    }
-
-    public async Task<IEnumerable<File>> GetDirectoryFilesAsync(Guid directoryId, Guid userId,
-        bool includeSubdirectories = false, CancellationToken ct = default)
-    {
-        await VerifyDirectoryAccessAsync(directoryId, userId, ct);
-
-        return await unitOfWork.Directories.GetAllFilesInDirectoryAsync(directoryId, includeSubdirectories, ct);
     }
 
     public async Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, Guid userId,

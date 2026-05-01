@@ -116,7 +116,7 @@ public class AuditLogRepository(AlexandriaDbContext context) : IAuditLogReposito
                                          || a.OperationType == OperationType.Delete));
 
         var data = await dbQuery
-            .Select(a => new { OperationType = a.OperationType, Timestamp = a.Timestamp }).ToListAsync(ct);
+            .Select(a => new { a.OperationType, a.Timestamp }).ToListAsync(ct);
 
         var totalCount = await dbQuery.CountAsync(ct);
 

@@ -2,13 +2,15 @@ using Alexandria.Dto.Metrics;
 using FastEndpoints;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
+namespace Alexandria.Api.Features.Monitoring;
+
 sealed class GetServerStatusEndpoint(HealthCheckService healthService)
     : EndpointWithoutRequest<ServerStatusResponse>
 {
     public override void Configure()
     {
         Get("/monitoring");
-        Policies(Alexandria.Common.Auth.Policies.RequireAdmin);
+        Policies(Common.Auth.Policies.RequireAdmin);
         ResponseCache(10);
     }
 

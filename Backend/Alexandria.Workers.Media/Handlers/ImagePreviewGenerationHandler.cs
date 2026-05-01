@@ -10,12 +10,12 @@ namespace Alexandria.Workers.Media.Handlers
         IImagePreviewService imagePreviewService,
         IUnitOfWork unitOfWork) : IPreviewGenerationHandler
     {
-        public async Task HandleAsync(string fileId, CancellationToken ct = default)
+        public async Task HandleAsync(string message, CancellationToken ct = default)
         {
-            var fileIdGuid = Guid.Parse(fileId);
+            var fileIdGuid = Guid.Parse(message);
             var fileData = await fileService.GetFileMetadataAsync(fileIdGuid, ct);
             if (fileData is null)
-                throw new InvalidOperationException($"File {fileId} does not exist.");
+                throw new InvalidOperationException($"File {message} does not exist.");
 
             var fileHash = Convert.ToHexStringLower(
                 await unitOfWork.Files.GetFileHashAsync(fileData.Id, fileData.OwnerId, ct)
@@ -34,7 +34,7 @@ namespace Alexandria.Workers.Media.Handlers
 
             await fileService.UpdateFileMetadataAsync(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
 
-            logger.LogInformation("Image preview generated for file {FileId}", fileId);
+            logger.LogInformation("Image preview generated for file {FileId}", message);
         }
     }
 }

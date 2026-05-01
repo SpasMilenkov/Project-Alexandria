@@ -3,7 +3,7 @@ using FastEndpoints;
 
 namespace Alexandria.Api.Features.Users.DeleteUser;
 
-sealed class DeleteUserRequest
+public sealed class DeleteUserRequest
 {
     public required Guid[] UserIds { get; set; }
 }

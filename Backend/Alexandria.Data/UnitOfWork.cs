@@ -39,7 +39,7 @@ public sealed class UnitOfWork(
 
     private bool _disposed;
 
-    private int _transactionCount = 0;
+    private int _transactionCount;
 
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
@@ -101,7 +101,6 @@ public sealed class UnitOfWork(
     public void Dispose()
     {
         Dispose(true);
-        GC.SuppressFinalize(this);
     }
 
     public async ValueTask DisposeAsync()

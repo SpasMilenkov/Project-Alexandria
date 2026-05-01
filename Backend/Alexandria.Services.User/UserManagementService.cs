@@ -94,7 +94,7 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
                 string.Join(", ", result.Errors.Select(e => e.Description)));
     }
 
-    public async Task<UserDetailsDto> CreateUserAsync(string userName, string email, string password, UserRole userRole,
+    public async Task<UserDetailsDto> CreateUserAsync(string username, string email, string password, UserRole userRole,
         CancellationToken ct = default)
     {
         var existingUser = await userManager.FindByEmailAsync(email);
@@ -108,11 +108,11 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
 
         var user = new ApplicationUser
         {
-            UserName = userName,
+            UserName = username,
             Email = email,
             EmailConfirmed = false,
             CreatedAt = DateTime.UtcNow,
-            Name = userName
+            Name = username
         };
 
         var result = await userManager.CreateAsync(user, password);

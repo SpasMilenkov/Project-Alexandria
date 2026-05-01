@@ -9,7 +9,6 @@ namespace Alexandria.Services.Storage.Cleanup;
 
 public class TempCleanupWorker : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
     private readonly IAmazonS3 _s3;
     private readonly IOptions<S3Config> _config;
     private readonly ILogger<TempCleanupWorker> _logger;
@@ -17,12 +16,10 @@ public class TempCleanupWorker : BackgroundService
     private readonly TimeSpan _fileAge = TimeSpan.FromHours(3);
 
     public TempCleanupWorker(
-        IServiceProvider serviceProvider,
         IAmazonS3 s3,
         IOptions<S3Config> config,
         ILogger<TempCleanupWorker> logger)
     {
-        _serviceProvider = serviceProvider;
         _s3 = s3;
         _config = config;
         _logger = logger;

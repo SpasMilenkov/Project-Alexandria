@@ -1,10 +1,9 @@
 using Alexandria.Common.Config;
-using Alexandria.Infrastructure.HealthChecks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace Alexandria.Infrastructure;
+namespace Alexandria.Infrastructure.HealthChecks;
 
 public static class HealthMonitoringExtension
 {

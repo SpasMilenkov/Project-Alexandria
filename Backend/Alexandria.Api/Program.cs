@@ -2,6 +2,7 @@ using Alexandria.Api.Extensions;
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Api.Middlewares;
 using Alexandria.Infrastructure;
+using Alexandria.Infrastructure.HealthChecks;
 
 var bld = WebApplication.CreateBuilder();
 
@@ -17,8 +18,6 @@ bld.Services
     .AddServices()
     .AddHealthMonitoring(bld.Configuration)
     .AddAuthServices();
-
-bld.WebHost.ConfigureKestrelMaxRequestSize();
 
 var app = bld.Build();
 

@@ -23,8 +23,8 @@ public class AuditInterceptor(
 
     private async Task SetSessionContextAsync(DbConnection connection, CancellationToken cancellationToken)
     {
-        string? userId = null;
-        string ipAddress = "";
+        string? userId;
+        var ipAddress = "";
 
         if (auditContext.UserId.HasValue)
         {

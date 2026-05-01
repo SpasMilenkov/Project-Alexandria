@@ -25,7 +25,7 @@ public class PreviewService(
         if (!await unitOfWork.Files.IsPromotedAsync(fileId, ct))
         {
             var unknownFileSummary = new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, false);
-            var noPreviewResult = new PreviewResultDto(unknownFileSummary, null, null, null);
+            var noPreviewResult = new PreviewResultDto(unknownFileSummary, null, null);
 
             return noPreviewResult;
         }
@@ -95,7 +95,7 @@ public class PreviewService(
                     return null;
                 default:
                     var unknownFileSummary = new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, false);
-                    var noPreviewResult = new PreviewResultDto(unknownFileSummary, null, null, null);
+                    var noPreviewResult = new PreviewResultDto(unknownFileSummary, null, null);
 
                     tcs.SetResult(noPreviewResult);
 

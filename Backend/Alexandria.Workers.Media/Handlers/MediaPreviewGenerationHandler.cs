@@ -12,18 +12,18 @@ public class MediaPreviewGenerationHandler(
     IMediaPreviewService mediaPreviewService,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
-    public async Task HandleAsync(string fileId, CancellationToken ct = default)
+    public async Task HandleAsync(string message, CancellationToken ct = default)
     {
-        var fileIdGuid = Guid.Parse(fileId);
+        var fileIdGuid = Guid.Parse(message);
         var fileData = await fileService.GetFileMetadataAsync(fileIdGuid, ct);
         if (fileData is null)
-            throw new InvalidOperationException($"File with that ID: {fileId} does not exist.");
+            throw new InvalidOperationException($"File with that ID: {message} does not exist.");
 
         var fileHash = Convert.ToHexStringLower(
             await unitOfWork.Files.GetFileHashAsync(fileData.Id, fileData.OwnerId, ct)
             ?? throw new InvalidOperationException("File does not have related content object"));
 
-        logger.LogInformation("Processing media preview for file: {FileId}", fileId);
+        logger.LogInformation("Processing media preview for file: {FileId}", message);
 
         // Generate temp path with correct extension based on MIME type
         var extension = GetExtensionFromMimeType(fileData.MimeType);
@@ -35,11 +35,11 @@ public class MediaPreviewGenerationHandler(
         {
             await using (var tempFile = File.Create(tempPath))
             {
-                await storage.StreamFile(fileId, tempFile, ct);
+                await storage.StreamFile(message, tempFile, ct);
             }
 
             logger.LogInformation("Media file {FileId} downloaded to {TempPath}, size: {Size}",
-                fileId, tempPath, new FileInfo(tempPath).Length);
+                message, tempPath, new FileInfo(tempPath).Length);
 
             var fileCategory = storage.CategorizeFile(fileData.MimeType);
 

@@ -12,7 +12,7 @@ public static class RabbitMqExtensions
         var factory = new ConnectionFactory
         {
             HostName = configuration["RabbitMQ:HostName"] ?? "localhost",
-            Port = configuration.GetValue<int>("RabbitMQ:Port", 5672),
+            Port = configuration.GetValue("RabbitMQ:Port", 5672),
             UserName = configuration["RabbitMQ:UserName"] ?? "guest",
             Password = configuration["RabbitMQ:Password"] ?? "guest",
             VirtualHost = configuration["RabbitMQ:VirtualHost"] ?? "/",
@@ -24,7 +24,7 @@ public static class RabbitMqExtensions
         services.AddSingleton<IConnectionFactory>(factory);
 
         var connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
-        services.AddSingleton<IConnection>(connection);
+        services.AddSingleton(connection);
 
         services.AddScoped<IPreviewGenerationHandler, PreviewGenerationHandler>();
 

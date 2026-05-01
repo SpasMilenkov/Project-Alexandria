@@ -40,7 +40,7 @@ public class FullStackSmokeTests(AlexandriaFixture fixture) : FullStackTestBase(
         var body = await response.Content.ReadFromJsonAsync<InitiateUploadResponse>(
             cancellationToken: TestContext.Current.CancellationToken);
         body.Should().NotBeNull();
-        body!.UploadId.Should().NotBeEmpty();
+        body.UploadId.Should().NotBeEmpty();
         body.UploadUrl.Should().StartWith("http");
     }
 

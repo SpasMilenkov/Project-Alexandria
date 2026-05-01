@@ -24,7 +24,7 @@ public class CreateDirectoryTreeRequestValidator
             .WithMessage("Duplicate paths are not allowed.");
     }
 
-    private bool BeValidRelativePath(string path)
+    private static bool BeValidRelativePath(string path)
     {
         if (path.StartsWith('/'))
             return false;
