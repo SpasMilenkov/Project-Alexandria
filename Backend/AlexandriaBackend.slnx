@@ -3,6 +3,11 @@
       <Project Path="Alexandria.Data.Models\Alexandria.Data.Models.csproj"/>
       <Project Path="Alexandria.Data\Alexandria.Data.csproj"/>
   </Folder>
+    <Folder Name="/Services/">
+        <Project Path="Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
+        <Project Path="Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
+        <Project Path="Alexandria.Services.User\Alexandria.Services.User.csproj"/>
+    </Folder>
   <Folder Name="/Tests/">
       <Project Path="Alexandria.Tests.Common\Alexandria.Tests.Common.csproj"/>
       <Project Path="Alexandria.Tests.Integration\Alexandria.Tests.Integration.csproj"/>
@@ -17,7 +22,4 @@
     <Project Path="Alexandria.Dto\Alexandria.Dto.csproj"/>
     <Project Path="Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
     <Project Path="Alexandria.Repositories\Alexandria.Repositories.csproj"/>
-    <Project Path="Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
-    <Project Path="Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
-    <Project Path="Alexandria.Services.User\Alexandria.Services.User.csproj"/>
 </Solution>
