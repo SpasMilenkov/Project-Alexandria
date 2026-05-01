@@ -529,14 +529,14 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
     {
         return await context.Database.SqlQuery<PathPartDto>($"""
                                                              WITH RECURSIVE path AS (
-                                                                 SELECT "Id", "Name", 0 AS "Depth"
+                                                                 SELECT "Id", "Name", "ParentId", 0 AS "Depth"
                                                                  FROM "Directories"
                                                                  WHERE "Id" = {directoryId}
                                                                    AND "DeletedAt" IS NULL
 
                                                                  UNION ALL
 
-                                                                 SELECT d."Id", d."Name", p."Depth" + 1
+                                                                 SELECT d."Id", d."Name", d."ParentId", p."Depth" + 1
                                                                  FROM "Directories" d
                                                                  JOIN path p ON d."Id" = p."ParentId"
                                                                  WHERE d."DeletedAt" IS NULL
