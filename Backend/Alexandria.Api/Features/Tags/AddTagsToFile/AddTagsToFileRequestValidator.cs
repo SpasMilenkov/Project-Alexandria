@@ -19,7 +19,7 @@ public class AddTagsToFileRequestValidator : Validator<AddTagsToFileRequest>
             .WithMessage("File ID cannot be empty.");
 
         RuleFor(x => x.TagIds)
-            .Must(ids => ids.Distinct().Count() == ids.Count())
+            .Must(ids => ids.Distinct().Count() == ids.Count)
             .WithMessage("File IDs must be unique.");
     }
 }

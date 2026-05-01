@@ -1,4 +1,4 @@
-namespace Alexandria.Services.Storage.Directories.Exceptions;
+namespace Alexandria.Common.Exceptions.Directories;
 
 public class UnauthorizedDirectoryAccessException : Exception
 {

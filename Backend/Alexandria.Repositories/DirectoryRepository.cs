@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Alexandria.Common.Exceptions.Directories;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
@@ -9,6 +10,7 @@ using Alexandria.Repositories.Projections;
 using Microsoft.EntityFrameworkCore;
 using Directory = Alexandria.Data.Models.Directory;
 using File = Alexandria.Data.Models.File;
+using DirectoryNotFoundException = Alexandria.Common.Exceptions.Directories.DirectoryNotFoundException;
 
 namespace Alexandria.Repositories;
 
@@ -525,28 +527,25 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
 
     public async Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, CancellationToken ct = default)
     {
-        var pathParts = new List<PathPartDto>();
+        return await context.Database.SqlQuery<PathPartDto>($"""
+                                                             WITH RECURSIVE path AS (
+                                                                 SELECT "Id", "Name", 0 AS "Depth"
+                                                                 FROM "Directories"
+                                                                 WHERE "Id" = {directoryId}
+                                                                   AND "DeletedAt" IS NULL
 
-        var currentDir = await context.Directories
-            .Include(d => d.Parent)
-            .FirstOrDefaultAsync(d => d.Id == directoryId && d.DeletedAt == null, ct);
+                                                                 UNION ALL
 
-        while (currentDir != null)
-        {
-            pathParts.Insert(0, new PathPartDto(currentDir.Id, currentDir.Name));
-            if (currentDir.ParentId.HasValue)
-            {
-                currentDir = await context.Directories
-                    .Include(d => d.Parent)
-                    .FirstOrDefaultAsync(d => d.Id == currentDir.ParentId && d.DeletedAt == null, ct);
-            }
-            else
-            {
-                currentDir = null;
-            }
-        }
-
-        return pathParts;
+                                                                 SELECT d."Id", d."Name", p."Depth" + 1
+                                                                 FROM "Directories" d
+                                                                 JOIN path p ON d."Id" = p."ParentId"
+                                                                 WHERE d."DeletedAt" IS NULL
+                                                             )
+                                                             SELECT "Id", "Name"
+                                                             FROM path
+                                                             ORDER BY "Depth" DESC
+                                                             """)
+            .ToListAsync(ct);
     }
 
     private static string ResolveNameDuplicate(HashSet<string> names, string directoryName)
@@ -572,7 +571,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .Where(d => d.Id == directoryId && d.OwnerId == userId)
             .FirstOrDefaultAsync(ct);
 
-        if (dir is null) throw new DirectoryNotFoundException();
+        if (dir is null) throw new DirectoryNotFoundException(directoryId);
 
         var existingDirNames = await context.Directories
             .Where(d => d.ParentId == destinationId && d.OwnerId == userId && d.DeletedAt == null)
@@ -714,7 +713,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         {
             _ = await context.Directories.AsNoTracking()
                     .FirstOrDefaultAsync(d => d.Id == destinationId && d.OwnerId == userId, ct)
-                ?? throw new InvalidOperationException("Invalid destination");
+                ?? throw new InvalidDirectoryDestinationException(destinationId.Value);
         }
 
         // 2. The Unified Query
@@ -749,7 +748,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                                                                                """, ct);
 
         if (rowsAffected == 0)
-            throw new InvalidOperationException("Move failed: Directories not found or circular reference detected.");
+            throw new DirectoryMoveException(ids, destinationId);
     }
 
     public async Task<int> RestoreDirectoriesAsync(
@@ -812,10 +811,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                                                                                    (SELECT COUNT(*) FROM restored_versions)
                                                                                """, ct);
 
-        if (rowsAffected == 0)
-            throw new InvalidOperationException("Restore failed or nothing to restore.");
-
-        return rowsAffected;
+        return rowsAffected == 0 ? throw new DirectoryRestoreException(ids) : rowsAffected;
     }
 
     public async Task<List<BulkDownloadEntry>> GetBulkDownloadEntriesAsync(

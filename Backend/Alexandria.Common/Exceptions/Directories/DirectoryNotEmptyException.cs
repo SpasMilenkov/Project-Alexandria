@@ -1,4 +1,4 @@
-namespace Alexandria.Services.Storage.Directories.Exceptions;
+namespace Alexandria.Common.Exceptions.Directories;
 
 public class DirectoryNotEmptyException(Guid directoryId, int itemCount)
     : Exception($"Directory with ID '{directoryId}' contains {itemCount} item(s) and cannot be deleted.")

@@ -1,6 +1,6 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common.Exceptions.Directories;
 using Alexandria.Common.Services;
-using Alexandria.Services.Storage.Directories.Exceptions;
 using FastEndpoints;
 
 namespace Alexandria.Api.Features.Storage.Directories.DeleteDir;

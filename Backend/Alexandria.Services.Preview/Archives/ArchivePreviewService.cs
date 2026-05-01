@@ -33,7 +33,7 @@ public class ArchivePreviewService : IArchivePreviewService
 
             var previewData = new
             {
-                FileCount = entries.Count(),
+                FileCount = entries.Count,
                 FileName = fileName,
                 Entries = entries
             };

@@ -148,7 +148,7 @@ public partial class FileService(
         var directoryExists =
             await unitOfWork.Directories.ExistsAsync(d => d.Id == directoryId && d.OwnerId == ownerId, ct);
 
-        if (!directoryExists) throw new Directories.Exceptions.DirectoryNotFoundException(directoryId);
+        if (!directoryExists) throw new Common.Exceptions.Directories.DirectoryNotFoundException(directoryId);
 
         return await unitOfWork.Files.GetFilesByDirectoryIdAsync(directoryId,
             ownerId,

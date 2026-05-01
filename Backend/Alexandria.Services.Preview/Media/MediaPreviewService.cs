@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Alexandria.Common.Exceptions.Preview.Media;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Services.Preview.Media.Dto;
@@ -7,42 +8,43 @@ using Microsoft.Extensions.Logging;
 
 namespace Alexandria.Services.Preview.Media;
 
-public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPreviewService
+public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPreviewService
 {
     private const int PreviewDurationSeconds = 30;
-    private const int ThumbnailTimeSeconds = 5; // Extract thumbnail at 5 seconds
+    private const int ThumbnailTimeSeconds = 5;
 
-    /// <summary>
-    /// Main entry point - routes to appropriate preview generation method based on file type
-    /// </summary>
+    /// <inheritdoc/>
     public async Task<MediaPreviewResult?> GeneratePreviewAsync(
         string inputPath,
         FileCategory fileCategory,
         CancellationToken ct)
     {
+        LogGeneratingPreview(logger, inputPath, fileCategory.ToString());
         try
         {
             var metadata = await AnalyzeMediaAsync(inputPath, ct);
 
-            return fileCategory switch
+            var result = fileCategory switch
             {
                 FileCategory.Video => await GenerateVideoPreviewAsync(inputPath, metadata, ct),
                 FileCategory.Audio => await GenerateAudioPreviewAsync(inputPath, metadata, ct),
-                _ => throw new NotSupportedException($"File category {fileCategory} not supported for media preview")
+                _ => throw new UnsupportedMediaCategoryException(fileCategory)
             };
+
+            LogPreviewGenerated(logger, result.ThumbnailPath, result.PreviewPath);
+            return result;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to generate media preview for {InputPath}", inputPath);
+            LogPreviewFailed(logger, ex, inputPath);
             throw;
         }
     }
 
-    /// <summary>
-    /// Analyzes media file using ffprobe to get metadata
-    /// </summary>
     private async Task<MediaMetadata> AnalyzeMediaAsync(string inputPath, CancellationToken ct)
     {
+        LogFfprobeStarting(logger, inputPath);
+
         var psi = new ProcessStartInfo
         {
             FileName = "ffprobe",
@@ -53,24 +55,34 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
             CreateNoWindow = true
         };
 
-        using var process = Process.Start(psi) ?? throw new Exception("Failed to start ffprobe process");
+        using var process = Process.Start(psi);
+        if (process == null)
+        {
+            LogFfprobeStartFailed(logger, inputPath);
+            throw new FfprobeException(inputPath);
+        }
+
         var output = await process.StandardOutput.ReadToEndAsync(ct);
         await process.WaitForExitAsync(ct);
 
         if (process.ExitCode != 0)
         {
             var error = await process.StandardError.ReadToEndAsync(ct);
-            throw new Exception($"ffprobe failed with exit code {process.ExitCode}: {error}");
+            LogFfprobeFailed(logger, process.ExitCode, inputPath, error);
+            throw new FfprobeException(inputPath, process.ExitCode, error);
         }
 
         var probeData = JsonSerializer.Deserialize<FFprobeOutput>(output);
         if (probeData?.Format == null)
-            throw new Exception("Failed to parse ffprobe output");
+        {
+            LogFfprobeParseFailed(logger, inputPath);
+            throw new FfprobeException(inputPath, $"Failed to parse ffprobe output for '{inputPath}'.");
+        }
+
+        LogFfprobeCompleted(logger, inputPath);
 
         var videoStream = probeData.Streams?.FirstOrDefault(s => s.CodecType == "video");
         var audioStream = probeData.Streams?.FirstOrDefault(s => s.CodecType == "audio");
-
-        // Extract audio tags (artist, album, title, etc.)
         var tags = probeData.Format?.Tags;
 
         return new MediaMetadata
@@ -88,7 +100,6 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
             HasEmbeddedArtwork = probeData.Streams?.Any(s =>
                 s.CodecType == "video" &&
                 (s.Disposition?.AttachedPic ?? 0) == 1) ?? false,
-            // Audio metadata
             Title = tags?.GetValueOrDefault("title"),
             Artist = tags?.GetValueOrDefault("artist"),
             Album = tags?.GetValueOrDefault("album"),
@@ -97,9 +108,6 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         };
     }
 
-    /// <summary>
-    /// Generates thumbnail and preview clip for video files
-    /// </summary>
     private async Task<MediaPreviewResult> GenerateVideoPreviewAsync(
         string inputPath,
         MediaMetadata metadata,
@@ -126,10 +134,6 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         };
     }
 
-    /// <summary>
-    /// Generates thumbnail and preview clip for audio files
-    /// Tries to extract embedded album artwork first, falls back to waveform if none exists
-    /// </summary>
     private async Task<MediaPreviewResult> GenerateAudioPreviewAsync(
         string inputPath,
         MediaMetadata metadata,
@@ -140,19 +144,19 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         var thumbnailPath = Path.Combine(outputDir, $"{baseName}_thumb.jpg");
         var previewPath = Path.Combine(outputDir, $"{baseName}_preview.mp3");
 
+        LogArtworkExtracting(logger, inputPath);
         var hasArtwork = await TryExtractAlbumArtworkAsync(inputPath, thumbnailPath, ct);
 
         if (!hasArtwork)
         {
-            logger.LogInformation("No embedded artwork found, generating waveform for {InputPath}", inputPath);
+            LogArtworkNotFound(logger, inputPath);
             await GenerateWaveformAsync(inputPath, thumbnailPath, ct);
         }
         else
         {
-            logger.LogInformation("Successfully extracted album artwork for {InputPath}", inputPath);
+            LogArtworkExtracted(logger, inputPath);
         }
 
-        // Generate 30-second preview clip
         var previewDuration = Math.Min(PreviewDurationSeconds, metadata.Duration);
         await GenerateAudioClipAsync(inputPath, previewPath, previewDuration, ct);
 
@@ -164,20 +168,20 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         };
     }
 
-    /// <summary>
-    /// Extracts a single frame as thumbnail from video
-    /// </summary>
     private async Task GenerateThumbnailAsync(
         string inputPath,
         string outputPath,
         double timeSeconds,
         CancellationToken ct)
     {
+        LogThumbnailStarting(logger, inputPath, timeSeconds);
+
         var psi = new ProcessStartInfo
         {
             FileName = "ffmpeg",
-            Arguments =
-                $"-ss {timeSeconds} -i \"{inputPath}\" -vframes 1 -vf \"scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease\" -q:v 2 \"{outputPath}\"",
+            Arguments = $"-ss {timeSeconds} -i \"{inputPath}\" -vframes 1 " +
+                        $"-vf \"scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease\" " +
+                        $"-q:v 2 \"{outputPath}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -186,24 +190,25 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
 
         using var process = Process.Start(psi);
         if (process == null)
-            throw new Exception("Failed to start ffmpeg process for thumbnail");
+        {
+            LogThumbnailStartFailed(logger, inputPath);
+            throw new FfmpegException(inputPath, "thumbnail");
+        }
 
         await process.WaitForExitAsync(ct);
 
         if (process.ExitCode != 0)
         {
             var error = await process.StandardError.ReadToEndAsync(ct);
-            logger.LogWarning("FFmpeg thumbnail generation warning: {Error}", error);
+            LogThumbnailWarning(logger, inputPath, error);
         }
 
         if (!File.Exists(outputPath))
-            throw new Exception($"Thumbnail generation failed: {outputPath} not created");
+            throw new FfmpegException(inputPath, "thumbnail", outputPath);
+
+        LogThumbnailGenerated(logger, outputPath);
     }
 
-    /// <summary>
-    /// Attempts to extract embedded album artwork from audio file
-    /// Returns true if artwork was successfully extracted, false otherwise
-    /// </summary>
     private async Task<bool> TryExtractAlbumArtworkAsync(
         string inputPath,
         string outputPath,
@@ -227,12 +232,8 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
 
             await process.WaitForExitAsync(ct);
 
-            // Check if artwork was successfully extracted
             if (File.Exists(outputPath) && new FileInfo(outputPath).Length > 0)
-            {
-                logger.LogInformation("Successfully extracted album artwork from {InputPath}", inputPath);
                 return true;
-            }
 
             if (File.Exists(outputPath))
                 File.Delete(outputPath);
@@ -241,9 +242,8 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to extract album artwork from {InputPath}", inputPath);
+            LogArtworkExtractionFailed(logger, ex, inputPath);
 
-            // Clean up any partial file
             if (File.Exists(outputPath))
             {
                 try
@@ -252,7 +252,7 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
                 }
                 catch
                 {
-                    /* ignore */
+                    /* best effort */
                 }
             }
 
@@ -260,19 +260,19 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         }
     }
 
-    /// <summary>
-    /// Generates a waveform visualization for audio files
-    /// </summary>
     private async Task GenerateWaveformAsync(
         string inputPath,
         string outputPath,
         CancellationToken ct)
     {
+        LogWaveformStarting(logger, inputPath);
+
         var psi = new ProcessStartInfo
         {
             FileName = "ffmpeg",
-            Arguments =
-                $"-i \"{inputPath}\" -filter_complex \"[0:a]showwavespic=s=1920x1080:colors=0x3b82f6\" -frames:v 1 \"{outputPath}\"",
+            Arguments = $"-i \"{inputPath}\" " +
+                        $"-filter_complex \"[0:a]showwavespic=s=1920x1080:colors=0x3b82f6\" " +
+                        $"-frames:v 1 \"{outputPath}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -281,34 +281,39 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
 
         using var process = Process.Start(psi);
         if (process == null)
-            throw new Exception("Failed to start ffmpeg process for waveform");
+        {
+            LogWaveformStartFailed(logger, inputPath);
+            throw new FfmpegException(inputPath, "waveform");
+        }
 
         await process.WaitForExitAsync(ct);
 
         if (process.ExitCode != 0)
         {
             var error = await process.StandardError.ReadToEndAsync(ct);
-            logger.LogWarning("FFmpeg waveform generation warning: {Error}", error);
+            LogWaveformWarning(logger, inputPath, error);
         }
 
         if (!File.Exists(outputPath))
-            throw new Exception($"Waveform generation failed: {outputPath} not created");
+            throw new FfmpegException(inputPath, "waveform", outputPath);
+
+        LogWaveformGenerated(logger, outputPath);
     }
 
-    /// <summary>
-    /// Extracts first N seconds of video as preview clip
-    /// </summary>
     private async Task GenerateVideoClipAsync(
         string inputPath,
         string outputPath,
         double durationSeconds,
         CancellationToken ct)
     {
+        LogVideoClipStarting(logger, inputPath, durationSeconds);
+
         var psi = new ProcessStartInfo
         {
             FileName = "ffmpeg",
-            Arguments =
-                $"-i \"{inputPath}\" -t {durationSeconds} -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -movflags +faststart \"{outputPath}\"",
+            Arguments = $"-i \"{inputPath}\" -t {durationSeconds} " +
+                        $"-c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k " +
+                        $"-movflags +faststart \"{outputPath}\"",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -317,29 +322,34 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
 
         using var process = Process.Start(psi);
         if (process == null)
-            throw new Exception("Failed to start ffmpeg process for video clip");
+        {
+            LogVideoClipStartFailed(logger, inputPath);
+            throw new FfmpegException(inputPath, "video clip");
+        }
 
         await process.WaitForExitAsync(ct);
 
         if (process.ExitCode != 0)
         {
             var error = await process.StandardError.ReadToEndAsync(ct);
-            throw new Exception($"Video clip generation failed: {error}");
+            LogVideoClipFailed(logger, inputPath, error);
+            throw new FfmpegException(inputPath, "video clip", process.ExitCode, error);
         }
 
         if (!File.Exists(outputPath))
-            throw new Exception($"Video clip not created: {outputPath}");
+            throw new FfmpegException(inputPath, "video clip", outputPath);
+
+        LogVideoClipGenerated(logger, outputPath);
     }
 
-    /// <summary>
-    /// Extracts first N seconds of audio as preview clip
-    /// </summary>
     private async Task GenerateAudioClipAsync(
         string inputPath,
         string outputPath,
         double durationSeconds,
         CancellationToken ct)
     {
+        LogAudioClipStarting(logger, inputPath, durationSeconds);
+
         var psi = new ProcessStartInfo
         {
             FileName = "ffmpeg",
@@ -352,33 +362,35 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
 
         using var process = Process.Start(psi);
         if (process == null)
-            throw new Exception("Failed to start ffmpeg process for audio clip");
+        {
+            LogAudioClipStartFailed(logger, inputPath);
+            throw new FfmpegException(inputPath, "audio clip");
+        }
 
         await process.WaitForExitAsync(ct);
 
         if (process.ExitCode != 0)
         {
             var error = await process.StandardError.ReadToEndAsync(ct);
-            throw new Exception($"Audio clip generation failed: {error}");
+            LogAudioClipFailed(logger, inputPath, error);
+            throw new FfmpegException(inputPath, "audio clip", process.ExitCode, error);
         }
 
         if (!File.Exists(outputPath))
-            throw new Exception($"Audio clip not created: {outputPath}");
+            throw new FfmpegException(inputPath, "audio clip", outputPath);
+
+        LogAudioClipGenerated(logger, outputPath);
     }
 
-    /// <summary>
-    /// Optimizes video for progressive web streaming by moving moov atom to front
-    /// This is already done in GenerateVideoClipAsync with -movflags +faststart,
-    /// should be used for optimization of existing files
-    /// </summary>
     private async Task OptimizeForStreamingAsync(string videoPath, CancellationToken ct)
     {
-        // Check if already optimized
         if (videoPath.Contains("_preview.mp4"))
         {
-            // Already optimized during generation with faststart flag
+            LogOptimizationSkipped(logger, videoPath);
             return;
         }
+
+        LogOptimizationStarting(logger, videoPath);
 
         var tempPath = $"{videoPath}.temp.mp4";
 
@@ -394,7 +406,10 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
 
         using var process = Process.Start(psi);
         if (process == null)
-            throw new Exception("Failed to start ffmpeg process for optimization");
+        {
+            LogOptimizationStartFailed(logger, videoPath);
+            throw new FfmpegException(videoPath, "streaming optimization");
+        }
 
         await process.WaitForExitAsync(ct);
 
@@ -402,6 +417,7 @@ public class MediaPreviewService(ILogger<MediaPreviewService> logger) : IMediaPr
         {
             File.Delete(videoPath);
             File.Move(tempPath, videoPath);
+            LogOptimizationCompleted(logger, videoPath);
         }
     }
 }
