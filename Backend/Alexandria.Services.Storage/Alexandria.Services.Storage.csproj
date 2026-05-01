@@ -11,10 +11,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.S3" Version="4.0.18.2"/>
-        <PackageReference Include="Blake3" Version="2.2.0"/>
-        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2"/>
-        <PackageReference Include="SeekableS3Stream" Version="1.0.3"/>
+        <PackageReference Include="AWSSDK.S3"/>
+        <PackageReference Include="Blake3"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+        <PackageReference Include="SeekableS3Stream"/>
     </ItemGroup>
 
 </Project>

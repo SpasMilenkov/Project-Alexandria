@@ -34,6 +34,11 @@ COPY ["Alexandria.Repositories/Alexandria.Repositories.csproj", "Alexandria.Repo
 COPY ["Alexandria.Services.Storage/Alexandria.Services.Storage.csproj", "Alexandria.Services.Storage/"]
 COPY ["Alexandria.Services.User/Alexandria.Services.User.csproj", "Alexandria.Services.User/"]
 COPY ["Alexandria.Dto/Alexandria.Dto.csproj", "Alexandria.Dto/"]
+
+COPY ["Directory.Packages.props", "."]
+COPY ["Directory.Build.props", "."]
+COPY ["nuget.config", "."]
+
 RUN dotnet restore "Alexandria.Workers.Document/Alexandria.Workers.Document.csproj"
 
 COPY . .

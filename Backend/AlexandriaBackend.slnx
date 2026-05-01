@@ -17,6 +17,12 @@
       <Project Path="Alexandria.Workers.Document\Alexandria.Workers.Document.csproj"/>
       <Project Path="Alexandria.Workers.Media\Alexandria.Workers.Media.csproj"/>
   </Folder>
+
+    <Folder Name="/Solution Items/">
+        <File Path="Directory.Build.props"/>
+        <File Path="Directory.Packages.props"/>
+        <File Path="nuget.config"/>
+    </Folder>
     <Project Path="Alexandria.Api\Alexandria.Api.csproj"/>
     <Project Path="Alexandria.Common\Alexandria.Common.csproj"/>
     <Project Path="Alexandria.Dto\Alexandria.Dto.csproj"/>

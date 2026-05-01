@@ -7,16 +7,16 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AWSSDK.S3" Version="4.0.18.2"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2"/>
-        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.2"/>
-        <PackageReference Include="Microsoft.Extensions.Diagnostics.ResourceMonitoring" Version="10.2.0"/>
-        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.2"/>
-        <PackageReference Include="FastEndpoints" Version="7.0.1"/>
-        <PackageReference Include="FastEndpoints.Swagger" Version="7.0.1"/>
-        <PackageReference Include="FastEndpoints.Security" Version="7.0.1"/>
-        <PackageReference Include="RabbitMQ.Client" Version="7.1.2"/>
-        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="10.0.3"/>
+        <PackageReference Include="AWSSDK.S3"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks"/>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.ResourceMonitoring"/>
+        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>
+        <PackageReference Include="FastEndpoints"/>
+        <PackageReference Include="FastEndpoints.Swagger"/>
+        <PackageReference Include="FastEndpoints.Security"/>
+        <PackageReference Include="RabbitMQ.Client"/>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions"/>
 
     </ItemGroup>
 
