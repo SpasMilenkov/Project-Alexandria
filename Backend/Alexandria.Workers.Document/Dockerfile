@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     ghostscript \
     fonts-dejavu-core \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 ENV HOME=/tmp \

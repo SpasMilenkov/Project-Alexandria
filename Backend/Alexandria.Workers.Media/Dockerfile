@@ -5,6 +5,7 @@ WORKDIR /app
 # Install FFmpeg for media processing
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # ===== BUILD IMAGE =====
