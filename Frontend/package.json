@@ -10,7 +10,7 @@
     "test:unit": "vitest",
     "test:e2e": "playwright test",
     "build-only": "vite build",
-    "type-check": "vue-tsc --build",
+    "type-check": "vue-tsc --noEmit -p tsconfig.app.json",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@iconify/vue": "5.0.0",
     "@internationalized/date": "3.11.0",
-    "@nuxt/ui": "4.6.1",
+    "@nuxt/ui": "4.7.0",
     "@pinia/colada": "0.21.7",
     "@pinia/colada-plugin-retry": "0.2.3",
     "@serwist/window": "9.5.6",
