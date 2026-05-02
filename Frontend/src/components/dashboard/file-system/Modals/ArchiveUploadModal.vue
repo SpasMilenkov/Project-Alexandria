@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from "vue";
 import { BlobReader, BlobWriter, ZipReader, configure } from "@zip.js/zip.js";
 import { directoryApi } from "@/api/directory";
-import type { SelectMenuItem } from "@nuxt/ui";
 import { useDirectoryStore } from "@/stores/directory";
 import {
   type DirectoryTreeItem,
