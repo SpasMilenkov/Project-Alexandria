@@ -36,7 +36,7 @@ public static class DirectoryMappings
                 ParentId: dir.ParentId ?? Guid.Empty,
                 CreatedAt: dir.CreatedAt,
                 UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
-                OwnerUserDto: dir.Owner.ToUserDto() ?? new UserDto()
+                OwnerUserDto: dir.Owner?.ToUserDto() ?? new UserDto()
             );
         }
     }
