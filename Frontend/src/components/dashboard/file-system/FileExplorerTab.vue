@@ -298,7 +298,14 @@
 
     <!-- content area -->
     <UContextMenu :items="backgroundContextMenuItems" class="flex-1 flex flex-col min-h-0">
-      <div ref="containerRef" class="flex-1 overflow-auto relative">
+      <div
+        ref="containerRef"
+        class="flex-1 overflow-auto relative"
+        @dragenter="onDragEnter"
+        @dragleave="onDragLeave"
+        @dragover="onDragOver"
+        @drop="handleDropEvent"
+      >
         <div ref="containerRef" class="flex-1 overflow-auto relative">
           <!-- drop zone overlay -->
           <Transition name="dropzone">
@@ -558,7 +565,6 @@ import { useQuery } from "@pinia/colada";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import QuickSearchModal from "./Modals/QuickSearchModal.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
-import { useDropZone } from "@vueuse/core";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import { logger } from "@/utils/logger";
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
@@ -568,6 +574,7 @@ import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
 import UpdateFileModal from "./Modals/UpdateFileModal.vue";
 import FileTransferModal from "./Modals/Filetransfermodal.vue";
 import { getFileIcon } from "@/utils/icon.utils";
+import { useDropZone, type DropContents } from "@/composables/useDropZone";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -704,128 +711,68 @@ const { data: tagsData } = useQuery(searchTag(searchFilters.value));
 
 // drop zone
 
-const containerRef = ref<HTMLElement | null>(null);
-const dragHasDirectory = ref(false);
+const chooseUploadMethod = async (
+  uploadProps: { directoryId: string | undefined; directoryName: string | undefined },
+  files: File[] | null,
+): Promise<bool> => {
+  const choice = await zipUploadChoiceModal.open().result;
+  if (!choice) return false; // user cancelled
+
+  const instance =
+    choice === "archive"
+      ? await archiveUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
+      : await fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] });
+
+  return instance ?? false;
+};
+
+const {
+  containerRef,
+  dragHasDirectory,
+  isOverDropZone,
+  onDragEnter,
+  onDragLeave,
+  onDragOver,
+  onDrop,
+} = useDropZone();
+
+interface UploadProps {
+  directoryId: string | undefined;
+  directoryName: string | undefined;
+}
 
 const dropIcon = computed(() =>
   dragHasDirectory.value ? "mdi:folder-upload-outline" : "mdi:cloud-upload-outline",
 );
 const dropLabel = computed(() => (dragHasDirectory.value ? "Drop folder here" : "Drop files here"));
 
-const { isOverDropZone } = useDropZone(containerRef, {
-  async onDrop(_files, event) {
-    dragHasDirectory.value = false;
-    const items = Array.from(event.dataTransfer?.items ?? []);
-    if (items.length === 0) return;
+const openUploadModal = (dropResult: DropContents, uploadProps: UploadProps) => {
+  switch (dropResult.dropType) {
+    case "dir":
+      return directoryUploadModal.open({ ...uploadProps, droppedFiles: dropResult.entries });
+    case "file":
+      return fileUploadModal.open({ ...uploadProps, droppedFiles: dropResult.entries });
+    case "zip":
+      return chooseUploadMethod(uploadProps, dropResult.entries);
+    case "none":
+      return false;
+  }
+};
 
-    const entries = items
-      .map((item) => item.webkitGetAsEntry?.())
-      .filter((e): e is FileSystemEntry => e !== null && e !== undefined);
+const handleDropEvent = async (event: DragEvent) => {
+  const dropResult = await onDrop(event);
 
-    if (entries.length === 0) return;
+  const uploadProps = {
+    directoryId: currentDirId.value ?? undefined,
+    directoryName: currentDirName.value,
+  };
+  const shouldRefresh = await openUploadModal(dropResult, uploadProps);
 
-    const uploadProps = {
-      directoryId: currentDirId.value ?? undefined,
-      directoryName: currentDirName.value,
-    };
-
-    if (isZipDrop(_files, entries)) {
-      chooseUploadMethod(uploadProps, _files);
-      return;
-    }
-
-    const hasDirectory = entries.some((e) => e.isDirectory);
-    let instance;
-
-    if (hasDirectory) {
-      const allFiles = (await Promise.all(entries.map((e) => readEntryRecursive(e)))).flat();
-      instance = directoryUploadModal.open({ ...uploadProps, droppedFiles: allFiles });
-    } else {
-      instance = fileUploadModal.open({ ...uploadProps, droppedFiles: _files ?? [] });
-    }
-
-    const shouldRefresh = await instance.result;
-    if (shouldRefresh) {
-      appToast.success("Upload complete");
-      refreshDir();
-    }
-  },
-  onEnter(_files, event) {
-    const items = Array.from(event.dataTransfer?.items ?? []);
-    dragHasDirectory.value = items.some((item) => {
-      const entry = (item as DataTransferItem).webkitGetAsEntry?.();
-      return entry?.isDirectory ?? false;
-    });
-  },
-  onLeave() {
-    dragHasDirectory.value = false;
-  },
-});
-
-const chooseUploadMethod = async (
-  uploadProps: { directoryId: string | undefined; directoryName: string | undefined },
-  files: File[] | null,
-) => {
-  const choice = await zipUploadChoiceModal.open().result;
-  if (!choice) return; // user cancelled
-
-  const instance =
-    choice === "archive"
-      ? archiveUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
-      : fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] });
-
-  const shouldRefresh = await instance.result;
   if (shouldRefresh) {
     appToast.success("Upload complete");
     refreshDir();
   }
 };
-
-export interface DroppedFile {
-  file: File;
-  relativePath: string;
-}
-
-const readEntryRecursive = async (entry: FileSystemEntry, path = ""): Promise<DroppedFile[]> => {
-  if (entry.isFile) {
-    return new Promise((resolve, reject) => {
-      (entry as FileSystemFileEntry).file(
-        (file) => resolve([{ file, relativePath: path + file.name }]),
-        reject,
-      );
-    });
-  }
-  if (entry.isDirectory) {
-    const dirEntry = entry as FileSystemDirectoryEntry;
-    const children = await readAllEntries(dirEntry.createReader());
-    const nested = await Promise.all(
-      children.map((child) => readEntryRecursive(child, `${path}${entry.name}/`)),
-    );
-    return nested.flat();
-  }
-  return [];
-};
-
-const isZipDrop = (files: File[] | null, entries: FileSystemEntry[]): boolean => {
-  if (entries.length !== 1 || !entries[0].isFile) return false;
-  const name = files?.[0]?.name ?? entries[0].name;
-  return name.toLowerCase().endsWith(".zip");
-};
-
-const readAllEntries = (reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> =>
-  new Promise((resolve, reject) => {
-    const collected: FileSystemEntry[] = [];
-    const readBatch = () => {
-      reader.readEntries((batch) => {
-        if (batch.length === 0) resolve(collected);
-        else {
-          collected.push(...batch);
-          readBatch();
-        }
-      }, reject);
-    };
-    readBatch();
-  });
 
 // sort & upload state
 
