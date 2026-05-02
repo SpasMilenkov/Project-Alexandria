@@ -574,7 +574,7 @@ import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
 import UpdateFileModal from "./Modals/UpdateFileModal.vue";
 import FileTransferModal from "./Modals/Filetransfermodal.vue";
 import { getFileIcon } from "@/utils/icon.utils";
-import { useDropZone, type DropContents } from "@/composables/useDropZone";
+import { type DropContents, useDropZone } from "@/composables/useDropZone";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -582,7 +582,7 @@ const settingsStore = useSettingsStore();
 const tabStore = useTabStore();
 const appToast = useAppToast();
 
-const props = defineProps<{ tabId: string }>();
+const { tabId }  = defineProps<{ tabId: string }>();
 
 const {
   currentDirId,
@@ -694,7 +694,7 @@ const currentDirName = computed<string | undefined>(() => {
 watch(
   currentDirName,
   (name) => {
-    tabStore.updateTabTitle(props.tabId, name ?? "Home");
+    tabStore.updateTabTitle(tabId, name ?? "Home");
   },
   { immediate: true },
 );
@@ -714,7 +714,7 @@ const { data: tagsData } = useQuery(searchTag(searchFilters.value));
 const chooseUploadMethod = async (
   uploadProps: { directoryId: string | undefined; directoryName: string | undefined },
   files: File[] | null,
-): Promise<bool> => {
+): Promise<boolean> => {
   const choice = await zipUploadChoiceModal.open().result;
   if (!choice) return false; // user cancelled
 
@@ -1160,7 +1160,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
 };
 
 const breadcrumbs = computed(() => {
-  const items: BreadcrumbItem[] = [
+  const items: NavItem[] = [
     { icon: "i-heroicons-home", key: null, label: "Home", to: { name: "dashboard" } },
   ];
   const path = pathQuery.data.value?.pathParts;
@@ -1210,7 +1210,7 @@ const handleNavigate = (dirId: string | null) => {
   dirHasLoaded.value = false;
   fileHasLoaded.value = false;
   navigateTo(dirId);
-  tabStore.setActiveDir(props.tabId, dirId);
+  tabStore.setActiveDir(tabId, dirId);
 };
 
 const handleMouseNavigate = (event: MouseEvent) => {
@@ -1312,7 +1312,7 @@ defineShortcuts({
 
 onMounted(() => {
   containerRef.value?.addEventListener("mousedown", handleMouseNavigate);
-  const tab = tabStore.getTab(props.tabId);
+  const tab = tabStore.getTab(tabId);
   navigateTo(tab?.activeDirId);
 });
 
