@@ -1015,7 +1015,7 @@ const handleCopy = () => {
 
 const handleDelete = async () => {
   if (selectedFiles.value.size > 0) {
-    await deleteFilesMutate({ ids: [...selectedFiles.value] });
+    await deleteFilesMutate({ ids: [...selectedFiles.value], directoryId: currentDirId.value ?? undefined });
   }
 
   if (selectedDirectories.value.size > 0) {
