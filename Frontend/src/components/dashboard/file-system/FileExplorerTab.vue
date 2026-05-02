@@ -575,6 +575,7 @@ import UpdateFileModal from "./Modals/UpdateFileModal.vue";
 import FileTransferModal from "./Modals/Filetransfermodal.vue";
 import { getFileIcon } from "@/utils/icon.utils";
 import { type DropContents, useDropZone } from "@/composables/useDropZone";
+import type { NavItem } from "@/types/nav-item";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -582,7 +583,7 @@ const settingsStore = useSettingsStore();
 const tabStore = useTabStore();
 const appToast = useAppToast();
 
-const { tabId }  = defineProps<{ tabId: string }>();
+const { tabId } = defineProps<{ tabId: string }>();
 
 const {
   currentDirId,
@@ -1160,9 +1161,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
 };
 
 const breadcrumbs = computed(() => {
-  const items: NavItem[] = [
-    { icon: "i-heroicons-home", key: null, label: "Home", to: { name: "dashboard" } },
-  ];
+  const items: NavItem[] = [{ icon: "i-heroicons-home", key: null, label: "Home" }];
   const path = pathQuery.data.value?.pathParts;
   if (path && path.length > 0) {
     items.push(...path.map((segment) => ({ key: segment.id, label: segment.name })));
