@@ -25,7 +25,6 @@
             :stroke-dasharray="`${2 * Math.PI * 12}`"
             :stroke-dashoffset="`${2 * Math.PI * 12 * (1 - data.dataUsagePercentage / 100)}`"
           />
-          
         </svg>
         <UIcon name="mdi:harddisk" class="absolute inset-0 m-auto w-3.5 h-3.5 opacity-60" />
       </div>

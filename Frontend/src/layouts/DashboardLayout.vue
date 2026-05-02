@@ -16,7 +16,6 @@
       <!-- Header -->
       <template #header="{ collapsed }">
         <LogoComponent v-if="!collapsed" class="h-5 w-auto shrink-0" />
-        <UIcon v-else name="i-heroicons-home" class="size-5 text-primary mx-auto" />
         <UDashboardSidebarCollapse class="ms-auto" />
       </template>
 
@@ -202,7 +201,6 @@ const openShortCutsModal = async () => {
 defineShortcuts({
   meta_k: openShortCutsModal,
 });
-
 
 // Desktop navigation
 const libraryMenuItems: NavigationMenuItem[] = [

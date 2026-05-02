@@ -40,13 +40,13 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@iconify/utils": "3.1.0",
     "@iconify-json/formkit": "1.2.2",
     "@iconify-json/heroicons": "1.2.3",
     "@iconify-json/lucide": "1.2.100",
     "@iconify-json/material-symbols": "1.2.64",
     "@iconify-json/mdi": "1.2.3",
     "@iconify-json/mdi-light": "1.2.2",
+    "@iconify/utils": "3.1.0",
     "@pinia/colada-devtools": "0.4.4",
     "@playwright/test": "1.58.2",
     "@serwist/vite": "9.5.6",

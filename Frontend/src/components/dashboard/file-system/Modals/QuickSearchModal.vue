@@ -127,7 +127,7 @@ const form = ref();
 
 const searchMode = ref<"both" | "files" | "directories">("both");
 
-useModalBackGuard(() => emit("close", false));
+useModalBackGuard(() => emit("close", "close"));
 
 const handleSubmit = useDebounceFn(async () => {
   isSearching.value = true;

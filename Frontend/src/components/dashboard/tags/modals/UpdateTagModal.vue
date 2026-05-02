@@ -119,20 +119,19 @@ const emit = defineEmits<{ close: [boolean] }>();
 const settingsStore = useSettingsStore();
 const { mutateAsync, state: mutationState, isLoading: mutationLoading } = updateTag();
 
-const state = reactive<UpdateTagSchema>({
+const state = reactive<{ color: string; description: string; icon: string; name: string }>({
   color: props.tag.color,
-  description: props.tag.description,
+  description: props.tag.description ?? "",
   icon: props.tag.icon,
   name: props.tag.name,
 });
-
 const isPreviewSelected = ref(false);
 
 const exampleTag = computed(() => ({
   color: state.color,
   createdAt: new Date().toISOString(),
   description: state.description,
-  icon: state.icon|| "tag",
+  icon: state.icon || "tag",
   id: props.tag.id,
   name: state.name,
   updatedAt: new Date().toISOString(),
@@ -140,7 +139,11 @@ const exampleTag = computed(() => ({
 }));
 
 const onSubmit = async (event: FormSubmitEvent<UpdateTagSchema>) => {
-  await mutateAsync({ data: event.data, tagId: props.tag.id });
+  const data: UpdateTagSchema = {
+    ...event.data,
+    description: event.data.description?.trim() || null,
+  };
+  await mutateAsync({ data, tagId: props.tag.id });
   if (!mutationState.value.error) {
     emit("close", true);
   }

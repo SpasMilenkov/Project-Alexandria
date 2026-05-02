@@ -123,7 +123,7 @@ export const useFileDownload = () => {
 
   const downloadBulk = async (fileIds?: string[], directoryIds?: string[]) => {
     const token = await fileApi.bulkDownloadInit({ directoryIds, fileIds });
-    logger.log("token", token)
+    logger.log("token", token);
     const a = document.createElement("a");
     a.href = `${apiClient.defaults.baseURL}/files/download-bulk/${token}`;
     document.body.appendChild(a);

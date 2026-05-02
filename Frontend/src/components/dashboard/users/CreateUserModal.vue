@@ -501,7 +501,7 @@ const handleFinalSubmit = (event: { data: Pick<CreateUserSchema, "role"> }) => {
 };
 
 const handleEnter = (e: KeyboardEvent) => {
-  if (!props.open || e.key !== 'Enter') return;
+  if (!props.open || e.key !== "Enter") return;
   e.preventDefault();
 
   if (currentStep.value < STEPS.length - 1) {

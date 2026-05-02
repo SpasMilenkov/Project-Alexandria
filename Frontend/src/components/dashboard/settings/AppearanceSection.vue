@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { MAX_BACKGROUND_IMAGE_BYTES, useSettingsStore } from "@/stores/settings";
+import { type ColorName, MAX_BACKGROUND_IMAGE_BYTES, useSettingsStore } from "@/stores/settings";
 import { useTheme } from "@/composables/useTheme";
 import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
 import { logger } from "@/utils/logger";
+import type { FileDto } from "@/api/tag";
+import type { FileResult } from "@/api/file";
 
 const settingsStore = useSettingsStore();
 const { isDark } = useTheme();
@@ -25,7 +27,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 // Computed store bindings
 const selectedColor = computed({
   get: () => settingsStore.accentColor,
-  set: (v: string) => settingsStore.setAccentColor(v),
+  set: (v: ColorName) => settingsStore.setAccentColor(v),
 });
 const selectedBackground = computed({
   get: () => settingsStore.backgroundColor,
@@ -55,7 +57,7 @@ const colorOptions = settingsStore.AVAILABLE_COLORS.map((color) => ({
 
 const selectedColorLabel = computed(() => {
   const found = settingsStore.AVAILABLE_COLORS.find((c) => c.name === selectedColor.value);
-  return found ? found.name.charAt(0).toUpperCase() + found.name.slice(1) : null;
+  return found ? found.name.charAt(0).toUpperCase() + found.name.slice(1) : undefined;
 });
 
 const persistAppearance = useDebounceFn(async () => {
@@ -142,10 +144,12 @@ const imageName = computed(() => {
   return settingsStore.backgroundImageKey.split("/").pop() ?? "background";
 });
 
-const exampleFile = {
+const exampleFile: FileResult = {
   createdAt: "2025-01-10T09:15:30.000Z",
   currentVersion: {
     id: "version-1",
+    isDeleted: false,
+    isEncrypted: false,
     mimeType: "application/pdf",
     size: "1048576",
     versionNumber: 3,
@@ -158,14 +162,18 @@ const exampleFile = {
   owner: { email: "jane.doe@example.com", id: "user-1", name: "Jane Doe" },
   tags: [
     {
+      color: "blue",
       createdAt: "2025-01-10T09:20:00.000Z",
+      icon: "mdi-tag",
       id: "tag-1",
       name: "documentation",
       updatedAt: null,
       userId: "user-1",
     },
     {
+      color: "blue",
       createdAt: "2025-01-11T08:00:00.000Z",
+      icon: "mdi-tag",
       id: "tag-2",
       name: "important",
       updatedAt: "2025-01-15T10:30:00.000Z",
@@ -550,14 +558,13 @@ const exampleDir = {
 
                 <div
                   class="p-2"
-                  :class="[
-                    'flex gap-2 flex-wrapz',
-                    viewMode === 'list' ? 'flex-col' : 'flex-row',
-                  ]"
+                  :class="['flex gap-2 flex-wrapz', viewMode === 'list' ? 'flex-col' : 'flex-row']"
                 >
                   <div
                     :class="[viewMode === 'list' ? '' : 'max-w-40 min-w-36', 'max-h-40 shrink-0']"
                   >
+                    <!-- Doesn't really need to be real. It is a stub anyway. -->
+                    <!-- @vue-expect-error -->
                     <FileItem :data="exampleFile" :is-selected="false" :view-mode="viewMode" />
                   </div>
                   <div

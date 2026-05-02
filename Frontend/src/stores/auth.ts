@@ -8,7 +8,6 @@ import type { LoginSchema } from "@/schemas/auth";
 import { type AuthResponse, authApi } from "@/api/auth";
 import { logger } from "@/utils/logger";
 
-
 export const useAuthStore = defineStore(
   "auth",
   () => {
@@ -47,8 +46,8 @@ export const useAuthStore = defineStore(
 
     const logout = async () => {
       try {
-        const { useTabStore } = await import('@/stores/tab');
-        
+        const { useTabStore } = await import("@/stores/tab");
+
         const tabStore = useTabStore();
 
         tabStore.closeAllTabs();
@@ -69,6 +68,7 @@ export const useAuthStore = defineStore(
       error.value = null;
     };
 
+    // oxlint-disable-next-line sort-keys
     return {
       // State
       user,

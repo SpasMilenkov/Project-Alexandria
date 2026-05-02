@@ -126,7 +126,8 @@
                 <UCheckbox
                   :model-value="selectedDirectories.has(dir.id)"
                   @update:model-value="
-                    (checked: boolean) => toggleDirectorySelection(dir.id, checked)
+                    (checked: boolean | 'indeterminate') =>
+                      toggleDirectorySelection(dir.id, checked)
                   "
                   size="sm"
                   :disabled="isMutating"
@@ -195,7 +196,8 @@
                 <UCheckbox
                   :model-value="selectedFiles.has(file.fileId)"
                   @update:model-value="
-                    (checked: boolean) => toggleFileSelection(file.fileId, checked)
+                    (checked: boolean | 'indeterminate') =>
+                      toggleFileSelection(file.fileId, checked)
                   "
                   size="sm"
                   :disabled="isMutating"
@@ -339,29 +341,30 @@ const calculateDeletedAfterDate = (): string => {
   const pastDate = now.subtract({ days: daysFilter.value });
   return pastDate.toString();
 };
-
-const toggleDirectorySelection = (id: string, checked: boolean) => {
+const toggleDirectorySelection = (id: string, checked: boolean | "indeterminate") => {
+  if (checked === "indeterminate") return;
   const newSet = new Set(selectedDirectories.value);
   if (checked) newSet.add(id);
   else newSet.delete(id);
   selectedDirectories.value = newSet;
 };
 
-const toggleFileSelection = (id: string, checked: boolean) => {
+const toggleFileSelection = (id: string, checked: boolean | "indeterminate") => {
+  if (checked === "indeterminate") return;
   const newSet = new Set(selectedFiles.value);
   if (checked) newSet.add(id);
   else newSet.delete(id);
   selectedFiles.value = newSet;
 };
 
-const toggleSelectAllDirectories = (checked: boolean) => {
-  selectedDirectories.value = checked
-    ? new Set(directoryResults.value.map((d) => d.id))
-    : new Set();
+const toggleSelectAllDirectories = (checked: boolean | "indeterminate") => {
+  selectedDirectories.value =
+    checked === true ? new Set(directoryResults.value.map((d) => d.id)) : new Set();
 };
 
-const toggleSelectAllFiles = (checked: boolean) => {
-  selectedFiles.value = checked ? new Set(fileResults.value.map((f) => f.fileId)) : new Set();
+const toggleSelectAllFiles = (checked: boolean | "indeterminate") => {
+  selectedFiles.value =
+    checked === true ? new Set(fileResults.value.map((f) => f.fileId)) : new Set();
 };
 
 const fetchDeletedItems = async () => {
@@ -386,7 +389,7 @@ const fetchDeletedItems = async () => {
         maxSize: null,
         mimeType: null,
         minSize: null,
-        nameContains: searchQuery.value || null,
+        nameContains: searchQuery.value || undefined,
         onlyDeleted: true,
         ownerId: null,
         pageSize: pageSize.value,

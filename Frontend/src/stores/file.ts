@@ -6,7 +6,6 @@ import { computed, ref } from "vue";
 import type { FileSearchQuery } from "@/schemas/search";
 
 import { fileApi } from "@/api/file";
-import { logger } from "@/utils/logger";
 
 interface FileMetadata {
   id: string;
@@ -48,16 +47,15 @@ export const useFileStore = defineStore("file", () => {
     try {
       const url = await fileApi.downloadFile(id);
       downloadProgress.value = 100;
-      logger.log(url);
       if (forceDownload) {
         const link = document.createElement("a");
-        link.href = url;
+        link.href = url.presignedUrl;
         link.download = fileName ? fileName : `file-${id}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       } else {
-        window.open(url, "_blank");
+        window.open(url.presignedUrl, "_blank");
       }
 
       return { success: true };

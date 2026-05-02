@@ -1,5 +1,3 @@
-import type { SelectMenuItem } from "@nuxt/ui";
-
 import { ref } from "vue";
 
 import type { DirectoryOption } from "@/types/directory-option";

@@ -722,7 +722,7 @@ const handleConfirm = async () => {
         );
       }
     }
-    emit("close", destinationDirId?.value);
+    emit("close", destinationDirId?.value ?? false);
   } catch (e) {
     logger.error("FileTransferModal: confirm failed", e);
     const action = props.mode === "move" ? "Move" : "Copy";

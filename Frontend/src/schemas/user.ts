@@ -41,29 +41,30 @@ type UserDateField =
 // Query / Search Schema (UI)
 
 export const userQueryUiSchema = z
+  // oxlint-disable-next-line sort-keys
   .object({
     page: z.number().int().min(0).default(0),
     pageSize: z.number().int().min(1).max(MAX_PAGE_SIZE).default(20),
     sortBy: z.enum(SortBy).default(SortBy.CreatedAt),
     sortDirection: z.enum(SortDirection).default(SortDirection.Desc),
 
-    userName: z.string().max(50).nullish(),
-    userEmail: z.string().email().nullish(),
-    role: z.nativeEnum(UserRole).nullish(),
-    isLockedOut: z.boolean().nullish(),
+    userName: z.string().max(50).optional(),
+    userEmail: z.email().optional(),
+    role: z.enum(UserRole).optional(),
+    isLockedOut: z.boolean().optional(),
 
     showDeleted: z.boolean().default(false),
     showDeletedOnly: z.boolean().default(false),
 
     // Date filters (UI types — CalendarDate)
-    createdAfter: dateValueSchema.nullish(),
-    createdBefore: dateValueSchema.nullish(),
-    updatedAfter: dateValueSchema.nullish(),
-    updatedBefore: dateValueSchema.nullish(),
-    deletedAfter: dateValueSchema.nullish(),
-    deletedBefore: dateValueSchema.nullish(),
-    lockedOutAfter: dateValueSchema.nullish(),
-    lockedOutBefore: dateValueSchema.nullish(),
+    createdAfter: dateValueSchema.optional(),
+    createdBefore: dateValueSchema.optional(),
+    updatedAfter: dateValueSchema.optional(),
+    updatedBefore: dateValueSchema.optional(),
+    deletedAfter: dateValueSchema.optional(),
+    deletedBefore: dateValueSchema.optional(),
+    lockedOutAfter: dateValueSchema.optional(),
+    lockedOutBefore: dateValueSchema.optional(),
   })
   // Date range consistency
   .refine(
@@ -118,7 +119,7 @@ export const userQueryUiSchema = z
       const value = data[field];
       if (value && value.compare(now) > 0) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Date cannot be in the future",
           path: [field],
         });
@@ -144,11 +145,10 @@ export const userQueryApiSchema = userQueryUiSchema.transform((v) => ({
 
 export const updateUserSchema = z.object({
   email: z
-    .string()
     .email("A valid email address is required")
     .max(256, "Email cannot exceed 256 characters")
-    .nullish(),
-  role: z.nativeEnum(UserRole).nullish(),
+    .optional(),
+  role: z.enum(UserRole).optional(),
   userName: z
     .string()
     .max(50, "Username cannot exceed 50 characters")
@@ -156,7 +156,7 @@ export const updateUserSchema = z.object({
       /^[a-zA-Z0-9_.-]*$/,
       "Username can only contain letters, numbers, underscores, dots and hyphens",
     )
-    .nullish(),
+    .optional(),
 });
 
 // Restrict User Schema

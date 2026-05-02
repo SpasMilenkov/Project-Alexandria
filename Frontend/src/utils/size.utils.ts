@@ -15,7 +15,6 @@ const DEFAULT_PLURALS: Plurals = {
 const SIZE_UNITS_BINARY = ["Bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
 const SIZE_UNITS_DECIMAL = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
-
 export const formatBytes = (
   bytes: number,
   options: {
@@ -32,7 +31,11 @@ export const formatBytes = (
       | { language: string; plurals?: Partial<Plurals> };
   } = {},
 ) => {
-  const { useBinaryUnits = false, roundingPrecision = 2, localizeOptions = { language: "en" } } = options;
+  const {
+    useBinaryUnits = false,
+    roundingPrecision = 2,
+    localizeOptions = { language: "en" },
+  } = options;
 
   // Ensure rounding precision is valid (non-negative).
   if (roundingPrecision < 0) throw new Error(`Invalid decimal precision: ${roundingPrecision}`);
@@ -59,4 +62,4 @@ export const formatBytes = (
   const unit = exponent === 0 ? pluralizedUnit : units[exponent];
 
   return `${value} ${unit}`;
-}
+};

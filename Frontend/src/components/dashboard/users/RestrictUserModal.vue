@@ -15,6 +15,7 @@
     @confirm="form?.submit()"
     @close="emit('close', $event)"
   >
+    <!-- @vue-expect-error -->
     <UForm
       v-if="!user?.isLockedOut"
       ref="form"
@@ -37,9 +38,11 @@
 
 <script setup lang="ts">
 import { reactive, ref, watch } from "vue";
-import { restrictUserSchema } from "@/schemas/user";
-import type { RestrictUserSchema } from "@/schemas/user";
+import { type RestrictUserSchema, restrictUserSchema } from "@/schemas/user";
 import type { UserDetailsDto } from "@/types/user";
+import type { CalendarDate } from "@internationalized/date";
+
+// TODO: FORM IS BORKED AND NEEDS FIXING
 
 const props = defineProps<{
   open: boolean;
@@ -57,8 +60,8 @@ const emit = defineEmits<{
 const form = ref();
 
 // Local form state — reset whenever a new user is loaded
-const state = reactive<RestrictUserSchema>({
-  lockoutEndDate: null,
+const state = reactive<{ lockoutEndDate: CalendarDate | undefined; userId: string }>({
+  lockoutEndDate: undefined,
   userId: "",
 });
 
@@ -66,7 +69,7 @@ watch(
   () => props.user,
   (user) => {
     state.userId = user?.id ?? "";
-    state.lockoutEndDate = null;
+    state.lockoutEndDate = undefined;
 
     // If the account is already locked, there's no date picker —
     // Clicking confirm just emits the userId for the unlock call.

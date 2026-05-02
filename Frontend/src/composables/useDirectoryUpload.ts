@@ -42,6 +42,7 @@ export const VIRTUALIZE_THRESHOLD = 150;
 
 // composable
 
+// oxlint-disable-next-line max-lines-per-function, oxlint-disable-next-line max-statements
 export const useDirectoryUpload = () => {
   const fileStatuses = ref<FileUploadStatus[]>([]);
   const uploading = ref(false);
@@ -167,11 +168,11 @@ export const useDirectoryUpload = () => {
 
       if (!folderMap.has(segmentPath)) {
         const node: DirectoryTreeItem = {
-          label: parts[depth],
+          children: [],
+          defaultExpanded: depth < 2,
           fullPath: segmentPath,
           isFolder: true,
-          defaultExpanded: depth < 2,
-          children: [],
+          label: parts[depth],
         };
         parent.push(node);
         folderMap.set(segmentPath, node);
@@ -184,20 +185,20 @@ export const useDirectoryUpload = () => {
       const parts = entry.relativePath.split("/");
       if (parts.length === 1) {
         root.push({
-          label: entry.file.name,
+          fileSize: entry.file.size,
           fullPath: entry.relativePath,
           isFolder: false,
+          label: entry.file.name,
           relativePath: entry.relativePath,
-          fileSize: entry.file.size,
         });
       } else {
         const parentList = getOrCreateFolder(parts, 0, root);
         parentList.push({
-          label: parts[parts.length - 1],
+          fileSize: entry.file.size,
           fullPath: entry.relativePath,
           isFolder: false,
+          label: parts[parts.length - 1],
           relativePath: entry.relativePath,
-          fileSize: entry.file.size,
         });
       }
     }
@@ -264,7 +265,7 @@ export const useDirectoryUpload = () => {
   // shouldStop is checked before pulling each new task — slots drain immediately on cancel
 
   const runConcurrent = async <T>(
-    tasks: Array<() => Promise<T>>,
+    tasks: (() => Promise<T>)[],
     limit: number,
     shouldStop: () => boolean = () => false,
   ): Promise<PromiseSettledResult<T>[]> => {
@@ -337,6 +338,7 @@ export const useDirectoryUpload = () => {
         directoryId: fileStatus.directoryId || undefined,
         fileName: file.name,
         uploadId,
+        isEncrypted: false,
       });
 
       fileStatus.status = "success";
@@ -359,7 +361,7 @@ export const useDirectoryUpload = () => {
 
   const startUploadPipeline = async (
     entries: FileEntry[],
-    directoryMapping: Record<string, string>,
+    directoryMapping: Record<string, string | null>,
   ) => {
     fileStatuses.value = entries.map(({ file, relativePath }) => ({
       abortController: new AbortController(),
@@ -454,6 +456,7 @@ export const useDirectoryUpload = () => {
     }
   };
 
+  // oxlint-disable-next-line sort-keys
   return {
     // state
     fileStatuses,

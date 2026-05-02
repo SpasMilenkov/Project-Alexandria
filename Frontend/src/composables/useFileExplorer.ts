@@ -8,16 +8,21 @@ import type { PaginationParams } from "@/types/pagination-params";
 
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
-import { DIRECTORY_QUERY_KEYS, directoryPath, rootDirectories, subDirectories } from "@/queries/directories";
+import {
+  DIRECTORY_QUERY_KEYS,
+  directoryPath,
+  rootDirectories,
+  subDirectories,
+} from "@/queries/directories";
 import { FILES_QUERY_KEYS, rootFiles, subFiles } from "@/queries/files";
 import { useFileStore } from "@/stores/file";
 
 //oxlint-disable-next-line max-lines-per-function max-statements
 export const useFileExplorer = () => {
   const fileStore = useFileStore();
-  
-    const queryCache = useQueryCache();
-  
+
+  const queryCache = useQueryCache();
+
   // Default to list view on mobile — evaluated once at instantiation time.
   // useMediaQuery is synchronous on the client so .value is correct immediately.
   const isMobileOnInit = useMediaQuery("(max-width: 767px)");
@@ -65,7 +70,7 @@ export const useFileExplorer = () => {
   const directoriesList = ref<DirectorySummaryDto[]>([]);
   const filesList = ref<FileResult[]>([]);
 
-  const pathQuery = useQuery(directoryPath, () => currentDirId.value);
+  const pathQuery = useQuery(() => directoryPath(currentDirId.value ?? ""));
 
   const directories = useQuery(() => {
     const params = dirPagination.value.paginationParams;
@@ -150,13 +155,13 @@ export const useFileExplorer = () => {
 
   const refreshDir = () => {
     if (currentDirId.value) {
-      queryCache.invalidateQueries({ key: ['directories', 'sub-directories', currentDirId.value] })
-      queryCache.invalidateQueries({ key: ['files', 'sub-files', currentDirId.value] })
+      queryCache.invalidateQueries({ key: ["directories", "sub-directories", currentDirId.value] });
+      queryCache.invalidateQueries({ key: ["files", "sub-files", currentDirId.value] });
     } else {
-      queryCache.invalidateQueries({ key: [DIRECTORY_QUERY_KEYS.root[0], 'root-sub-directories'] })
-      queryCache.invalidateQueries({ key: [FILES_QUERY_KEYS.root[0], 'root-sub-files'] })
+      queryCache.invalidateQueries({ key: [DIRECTORY_QUERY_KEYS.root[0], "root-sub-directories"] });
+      queryCache.invalidateQueries({ key: [FILES_QUERY_KEYS.root[0], "root-sub-files"] });
     }
-  }
+  };
 
   const toggleSelect = (id: string, type: "file" | "directory") =>
     type === "file" ? selectedFiles.value.add(id) : selectedDirectories.value.add(id);

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
+
 const dateValueSchema = z.instanceof(CalendarDate);
 
 type DateField =
@@ -21,7 +22,7 @@ export const baseSearchUiSchema = z
     parentDirectoryId: z.uuid().nullish(),
 
     // Text search
-    nameContains: z.string().nullish(),
+    nameContains: z.string().optional(),
 
     // Ownership & sharing
     ownerId: z.uuid().nullish(),

@@ -1,3 +1,4 @@
+// oxlint-disable max-statements
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 
@@ -156,7 +157,7 @@ export const TOAST_LEVELS = [
 ] as const;
 
 export interface UserSettings {
-  accentColor: string;
+  accentColor: ColorName;
   backgroundColor: string;
   backgroundImageKey: string | null;
   backgroundImageUpdatedAt: string | null;
@@ -183,8 +184,9 @@ export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024;
 
 export const useSettingsStore = defineStore(
   "settings",
+  // oxlint-disable-next-line max-lines-per-function
   () => {
-    const accentColor = ref<string>(DEFAULT_ACCENT_COLOR);
+    const accentColor = ref<ColorName>(DEFAULT_ACCENT_COLOR);
     const backgroundColor = ref<string>(DEFAULT_BACKGROUND);
     const backgroundImageKey = ref<string | null>(null);
     const backgroundImageUpdatedAt = ref<string | null>(null);
@@ -220,10 +222,8 @@ export const useSettingsStore = defineStore(
     const hasBackgroundImage = computed(() => Boolean(backgroundImage.value));
 
     // Actions
-    const setAccentColor = (v: string) => {
-      if (AVAILABLE_COLORS.some((c) => c.name === v)) {
-        accentColor.value = v;
-      }
+    const setAccentColor = (v: ColorName) => {
+      accentColor.value = v;
     };
     const setBackgroundColor = (v: string) => {
       if (AVAILABLE_BACKGROUNDS.some((b) => b.name === v)) {

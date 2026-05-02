@@ -3,7 +3,7 @@ import { z } from "zod";
 // Create Tag Schema
 export const createTagSchema = z.object({
   color: z.string().min(1, "Tag color is required"),
-  description: z.string().max(255, "name cannot be longer than 255 symbols").nullish(),
+  description: z.string().max(255, "name cannot be longer than 255 symbols").optional(),
   icon: z.string().min(1, "Tag icon is required"),
   name: z
     .string()

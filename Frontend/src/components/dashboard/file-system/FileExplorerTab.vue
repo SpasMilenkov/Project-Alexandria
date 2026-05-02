@@ -963,6 +963,7 @@ const advancedSearch = async () => {
 const quickSearch = async () => {
   const instance = quickSearchModal.open();
   const result = await instance.result;
+
   if (result === "close") return;
   else if (result === "root") handleNavigate(null);
   else if (result === "advanced") advancedSearch();

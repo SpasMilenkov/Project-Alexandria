@@ -8,7 +8,7 @@ import { updateAppearance, updateBehavior } from "@/mutations/settings";
 import { appearanceSettings, behaviorSettings } from "@/queries/settings";
 import { useSettingsStore } from "@/stores/settings";
 
-export function useSettingsSync() {
+export const useSettingsSync = () => {
   const store = useSettingsStore();
   const { syncBackgroundImage } = useBackgroundImageSync();
 
@@ -55,4 +55,4 @@ export function useSettingsSync() {
     saveAppearance,
     saveBehavior,
   };
-}
+};

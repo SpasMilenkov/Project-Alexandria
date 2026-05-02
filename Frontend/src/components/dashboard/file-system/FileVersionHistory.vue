@@ -230,9 +230,9 @@ const {
 
 // Mutations
 
-const { mutation: deleteVersionMutate } = deleteVersion();
-const { mutation: changeActiveVersionMutate } = changeActiveVersion();
-const { mutation: restoreVersionMutate } = restoreFileVersion();
+const { mutateAsync: deleteVersionMutate } = deleteVersion();
+const { mutateAsync: changeActiveVersionMutate } = changeActiveVersion();
+const { mutateAsync: restoreVersionMutate } = restoreFileVersion();
 
 const deletingVersionId = ref<string | null>(null);
 const changingActiveVersionId = ref<string | null>(null);

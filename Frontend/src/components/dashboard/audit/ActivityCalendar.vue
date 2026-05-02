@@ -93,6 +93,7 @@ const setFilter = (op: OperationType | null) => {
 };
 
 // Data fetching — always full year; mobile slicing is purely client-side
+// oxlint-disable-next-line sort-keys
 const { data, isLoading, error } = useQuery(activitySummary, () => ({
   startDate: new Date(Date.UTC(selectedYear.value, 0, 1)),
   endDate: new Date(Date.UTC(selectedYear.value + 1, 0, 1)),

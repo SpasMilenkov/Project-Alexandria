@@ -7,6 +7,7 @@
     :ui="{ body: 'p-0' }"
   >
     <template #body>
+      <!-- @vue-ignore -->
       <UForm
         :schema="unifiedSearchUiSchema"
         :state="state"

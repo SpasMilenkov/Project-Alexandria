@@ -27,59 +27,77 @@ const resolveAccentRGB = (colorName: string): string => {
  * `watchEffect`. The effect re-runs synchronously whenever any of them
  * change, with no DOM sniffing or manual watcher wiring needed.
  */
+
+const resolvePreset = (name: string) =>
+  AVAILABLE_BACKGROUNDS.find((b) => b.name === name) ?? AVAILABLE_BACKGROUNDS[0];
+
+const applyImageBackground = (
+  preset: (typeof AVAILABLE_BACKGROUNDS)[0],
+  opts: {
+    image: string;
+    opacity: number;
+    isDark: boolean;
+  },
+) => {
+  const alpha = Math.min(0.65, Math.max(0.1, opts.opacity));
+  const overlayAlpha = parseFloat((1 - alpha).toFixed(2));
+  const overlayHex = opts.isDark ? preset.darkValue || "#09090b" : preset.lightValue || "#ffffff";
+  const overlay = `rgba(${hexToRgbChannels(overlayHex)},${overlayAlpha})`;
+
+  Object.assign(document.body.style, {
+    backgroundAttachment: "fixed",
+    backgroundImage: `linear-gradient(${overlay}, ${overlay}), url(${opts.image})`,
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "cover",
+  });
+
+  document.body.style.removeProperty("background-color");
+  document.documentElement.style.removeProperty("--ui-bg");
+};
+
+const applyFlatBackground = (preset: (typeof AVAILABLE_BACKGROUNDS)[0], isDark: boolean) => {
+  Object.assign(document.body.style, {
+    backgroundAttachment: "",
+    backgroundImage: "",
+    backgroundPosition: "",
+    backgroundRepeat: "",
+    backgroundSize: "",
+  });
+
+  if (preset.name === "system" || !preset.lightValue) {
+    document.body.style.removeProperty("background-color");
+    document.documentElement.style.removeProperty("--ui-bg");
+    return;
+  }
+
+  const bgColor = isDark ? preset.darkValue : preset.lightValue;
+  document.body.style.backgroundColor = bgColor;
+  document.documentElement.style.setProperty("--ui-bg", bgColor);
+};
+
 export const useTheme = () => {
   const store = useSettingsStore();
   const isDark = useDark();
 
   watchEffect(() => {
-    if (typeof document === "undefined") {
-      return;
-    }
-    const root = document.documentElement;
+    if (typeof document === "undefined") return;
 
-    // Accent color
-    root.style.setProperty("--ui-primary", `rgb(${resolveAccentRGB(store.accentColor)})`);
+    document.documentElement.style.setProperty(
+      "--ui-primary",
+      `rgb(${resolveAccentRGB(store.accentColor)})`,
+    );
 
-    // Background
-    const preset =
-      AVAILABLE_BACKGROUNDS.find((b) => b.name === store.backgroundColor) ??
-      AVAILABLE_BACKGROUNDS[0];
+    const preset = resolvePreset(store.backgroundColor);
 
     if (store.backgroundImage) {
-      // Image mode — overlay the preset color on top of the image to keep
-      // Text readable. Opacity controls image show-through; the overlay
-      // Uses (1 - opacity) as its alpha so they always sum to 1.
-      const alpha = Math.min(0.65, Math.max(0.1, store.backgroundImageOpacity));
-      const overlayAlpha = parseFloat((1 - alpha).toFixed(2));
-      const overlayHex = isDark.value
-        ? preset.darkValue || "#09090b"
-        : preset.lightValue || "#ffffff";
-      const rgb = hexToRgbChannels(overlayHex);
-      const overlay = `rgba(${rgb},${overlayAlpha})`;
-
-      document.body.style.backgroundImage = `linear-gradient(${overlay}, ${overlay}), url(${store.backgroundImage})`;
-      document.body.style.backgroundSize = "cover";
-      document.body.style.backgroundAttachment = "fixed";
-      document.body.style.backgroundRepeat = "no-repeat";
-      document.body.style.backgroundPosition = "center";
-      document.body.style.removeProperty("background-color");
-      root.style.removeProperty("--ui-bg");
+      applyImageBackground(preset, {
+        image: store.backgroundImage,
+        isDark: isDark.value,
+        opacity: store.backgroundImageOpacity,
+      });
     } else {
-      // Flat color mode — clear any leftover image styles first
-      document.body.style.backgroundImage = "";
-      document.body.style.backgroundSize = "";
-      document.body.style.backgroundAttachment = "";
-      document.body.style.backgroundRepeat = "";
-      document.body.style.backgroundPosition = "";
-
-      if (preset.name === "system" || !preset.lightValue) {
-        document.body.style.removeProperty("background-color");
-        root.style.removeProperty("--ui-bg");
-      } else {
-        const bgColor = isDark.value ? preset.darkValue : preset.lightValue;
-        document.body.style.backgroundColor = bgColor;
-        root.style.setProperty("--ui-bg", bgColor);
-      }
+      applyFlatBackground(preset, isDark.value);
     }
   });
 
