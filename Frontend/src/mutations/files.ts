@@ -91,6 +91,7 @@ export const moveFiles = defineMutation(() => {
     mutation: ({
       fileIds,
       destinationId,
+      // oxlint-disable-next-line no-unused-vars
       originId,
     }: {
       fileIds: string[];
@@ -100,7 +101,7 @@ export const moveFiles = defineMutation(() => {
 
     onSettled(_data, _error, { originId, destinationId }) {
       const originKey =
-        originId == null
+        originId === null
           ? [...FILES_QUERY_KEYS.root, "root-sub-files"]
           : [...FILES_QUERY_KEYS.root, "sub-files", originId];
 
@@ -133,6 +134,9 @@ export const deleteVersion = defineMutation(() => {
       fileApi.deleteFileVersion(versionId),
     onSettled(_: any, __: any, { fileId }: { fileId: string }) {
       queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(fileId) });
+      queryCache.invalidateQueries({
+        key: [...FILES_QUERY_KEYS.root, "versions-for-file", fileId],
+      });
     },
   });
 });
