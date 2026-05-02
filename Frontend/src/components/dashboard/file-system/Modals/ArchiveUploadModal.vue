@@ -5,12 +5,13 @@ import { directoryApi } from "@/api/directory";
 import type { SelectMenuItem } from "@nuxt/ui";
 import { useDirectoryStore } from "@/stores/directory";
 import {
-  useDirectoryUpload,
-  type FileEntry,
   type DirectoryTreeItem,
+  type FileEntry,
+  useDirectoryUpload,
 } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { useAppToast } from "@/composables/useAppToast";
+import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
 
 // configure zip.js to use its own built-in workers for decompression
 configure({ useWebWorkers: true });
@@ -88,17 +89,6 @@ const extractionAbort = ref(new AbortController());
 const validationError = ref<string | null>(null);
 
 const archiveInputRef = ref<HTMLInputElement | null>(null);
-
-// directory state
-
-const selectedDirectoryId = ref<string | null>(props.directoryId ?? null);
-
-const parentDirectoryOptions = ref<SelectMenuItem[]>(
-  props.directoryId && props.directoryName
-    ? [{ id: props.directoryId, label: props.directoryName }]
-    : [],
-);
-const isLoadingParentDirs = ref(false);
 
 // computed
 
@@ -230,6 +220,8 @@ const cancelExtraction = () => {
   extractionAbort.value.abort();
 };
 
+const selectedDirectoryId = ref<string | undefined>(props.directoryId ?? undefined);
+
 // upload
 
 const startUpload = async () => {
@@ -299,30 +291,6 @@ const reset = () => {
   resetUpload();
 };
 
-// directory search
-
-const searchParentDirectory = async (query: string) => {
-  if (!query.trim()) return;
-  isLoadingParentDirs.value = true;
-  try {
-    const response = await directoryStore.searchDirectory({
-      isDeleted: false,
-      nameContains: query,
-      pageSize: 20,
-    });
-    if (response.success && response.data) {
-      const newOptions = response.data.items.map((d) => ({ id: d.id, label: d.name }));
-      const selectedId = selectedDirectoryId.value;
-      const kept = parentDirectoryOptions.value.find((o) => o.id === selectedId);
-      parentDirectoryOptions.value = kept
-        ? [kept, ...newOptions.filter((o) => o.id !== selectedId)]
-        : newOptions;
-    }
-  } finally {
-    isLoadingParentDirs.value = false;
-  }
-};
-
 // mime helpers
 
 const EXTENSION_MIME: Record<string, string> = {
@@ -372,7 +340,7 @@ const mimeFromExtension = (fileName: string): string => {
   <UModal
     :close="{ onClick: () => emit('close', false) }"
     title="Upload Archive"
-    :ui="{ body: 'space-y-4', width: 'max-w-2xl' }"
+    :ui="{ body: 'space-y-4' }"
   >
     <template #body>
       <p class="text-sm text-muted">
@@ -381,36 +349,12 @@ const mimeFromExtension = (fileName: string): string => {
         uploaded as a directory.
       </p>
 
-      <!-- directory selector -->
-      <div class="space-y-1.5">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Upload to Directory
-        </label>
-        <USelectMenu
-          v-model="selectedDirectoryId"
-          :items="parentDirectoryOptions"
-          :loading="isLoadingParentDirs"
-          :disabled="isExtracting || uploading"
-          placeholder="Search for directory..."
-          value-key="id"
-          display-key="label"
-          searchable
-          :debounce="300"
-          class="w-full"
-          @update:search-term="searchParentDirectory"
-        >
-          <template #default="{ modelValue }">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-folder" class="size-4 text-muted" />
-              <span v-if="modelValue">
-                {{ parentDirectoryOptions.find((i) => i.id === modelValue)?.label }}
-              </span>
-              <span v-else class="text-muted">Root directory</span>
-            </div>
-          </template>
-        </USelectMenu>
-        <p class="text-xs text-muted">Leave empty to upload to the root directory</p>
-      </div>
+      <DirectoryPicker
+        v-model="selectedDirectoryId"
+        :initial-id="directoryId"
+        :initial-name="directoryName"
+        :disabled="uploading"
+      />
 
       <!-- empty: archive picker -->
       <div
