@@ -3,10 +3,12 @@ using RabbitMQ.Client;
 
 namespace Alexandria.Infrastructure;
 
-public class PublisherService(IChannelPool channelPool) : IPublisherService
+public class PublisherService(Lazy<Task<IConnection>> connectionLazy, IChannelPool channelPool) : IPublisherService
 {
     public async Task PublishAsync(byte[] body, string routingKey)
     {
+        await connectionLazy.Value;
+
         var channel = await channelPool.AcquireChannelAsync();
         var exchangeName = "content-exchange";
         await channel.ExchangeDeclareAsync(

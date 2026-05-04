@@ -3,14 +3,14 @@ using RabbitMQ.Client;
 
 namespace Alexandria.Infrastructure.HealthChecks;
 
-public class RabbitMqHealthCheck(IConnection connection) : IHealthCheck
+public class RabbitMqHealthCheck(Lazy<Task<IConnection>> connectionLazy) : IHealthCheck
 {
-    public Task<HealthCheckResult> CheckHealthAsync(
+    public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var result = connection.IsOpen
+        var connection = await connectionLazy.Value;
+        return connection.IsOpen
             ? HealthCheckResult.Healthy("Connected")
             : HealthCheckResult.Unhealthy("Connection closed");
-        return Task.FromResult(result);
     }
 }
