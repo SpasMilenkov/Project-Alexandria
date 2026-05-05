@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AwesomeAssertions"/>
+        <PackageReference Include="Bogus"/>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing"/>
+        <PackageReference Include="Respawn"/>
+        <PackageReference Include="Testcontainers"/>
+        <PackageReference Include="Testcontainers.PostgreSql"/>
+        <PackageReference Include="Testcontainers.RabbitMq"/>
+        <PackageReference Include="xunit.runner.visualstudio">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="xunit.v3.extensibility.core"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Alexandria.Api\Alexandria.Api.csproj"/>
+        <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
+        <ProjectReference Include="..\Alexandria.Data\Alexandria.Data.csproj"/>
+        <ProjectReference Include="..\Alexandria.Dto\Alexandria.Dto.csproj"/>
+        <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
+        <ProjectReference Include="..\Alexandria.Data.Models\Alexandria.Data.Models.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
+    </ItemGroup>
+
+</Project>

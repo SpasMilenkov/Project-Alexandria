@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AWSSDK.S3"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions"/>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks"/>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.ResourceMonitoring"/>
+        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>
+        <PackageReference Include="FastEndpoints"/>
+        <PackageReference Include="FastEndpoints.Swagger"/>
+        <PackageReference Include="FastEndpoints.Security"/>
+        <PackageReference Include="RabbitMQ.Client"/>
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions"/>
+
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
+        <ProjectReference Include="..\Alexandria.Data\Alexandria.Data.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
+        <ProjectReference Include="..\Alexandria.Repositories\Alexandria.Repositories.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.User\Alexandria.Services.User.csproj"/>
+    </ItemGroup>
+
+</Project>

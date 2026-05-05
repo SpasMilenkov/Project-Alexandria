@@ -32,7 +32,7 @@ const persistBehavior = useDebounceFn(async () => {
 
 watch(() => [settingsStore.skipDeleteConfirmation, settingsStore.toastLevel], persistBehavior);
 
-const handleResetBehavior = async () => {
+const handleResetBehavior = () => {
   settingsStore.resetBehaviorSettings();
   // Reset fires the watcher which debounces the save — no manual call needed
 };

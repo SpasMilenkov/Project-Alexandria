@@ -16,6 +16,7 @@ export const useActivityStore = defineStore("activity", () => {
   const getPageSize = computed(() => pageSize.value);
   const getTotalCount = computed(() => totalCount.value);
 
+  // oxlint-disable-next-line sort-keys
   return {
     // State
     activity,

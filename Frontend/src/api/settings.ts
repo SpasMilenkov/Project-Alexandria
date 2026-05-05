@@ -1,9 +1,11 @@
+import type { ColorName } from "@/stores/settings";
+
 import apiClient from "./client";
 
 export type ToastLevel = "all" | "errors-only" | "silent";
 
 export interface AppearanceSettings {
-  accentColor: string;
+  accentColor: ColorName;
   backgroundColor: string;
   backgroundImageKey: string | null;
   // ISO 8601

@@ -108,7 +108,6 @@ import TagCard from "../TagCard.vue";
 import type { TagDto } from "@/api/tag";
 import { getIconByValue, iconOptions } from "@/utils/icon.utils";
 import TagBadge from "../TagBadge.vue";
-import { logger } from "@/utils/logger";
 
 const settingsStore = useSettingsStore();
 const { mutateAsync, state: mutationState, isLoading } = createTag();
@@ -116,7 +115,7 @@ const emit = defineEmits<{ close: [boolean] }>();
 
 const state = reactive<CreateTagSchema>({
   color: `rgb(${settingsStore.AVAILABLE_COLORS[0]?.value || ""})`,
-  description: null,
+  description: undefined,
   icon: "",
   name: "",
 });

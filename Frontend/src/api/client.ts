@@ -14,7 +14,7 @@ const apiClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-const forceLogout = async() => {
+const forceLogout = async () => {
   const { useAuthStore } = await import("@/stores/auth");
   const { getActivePinia } = await import("pinia");
   const { default: router } = await import("@/router");
@@ -30,9 +30,9 @@ const forceLogout = async() => {
   if (currentPath !== "/auth") {
     router.push({ name: "auth", query: { redirect: currentPath } });
   }
-}
+};
 
- const attemptRefresh = (): Promise<void> => {
+const attemptRefresh = (): Promise<void> => {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = apiClient
@@ -53,7 +53,7 @@ const forceLogout = async() => {
     });
 
   return refreshPromise;
-}
+};
 
 apiClient.interceptors.response.use(
   (response) => response,

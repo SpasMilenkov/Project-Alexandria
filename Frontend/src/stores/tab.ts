@@ -9,7 +9,7 @@ export const useTabStore = defineStore(
   "tab",
   () => {
     const tabs = ref<ExplorerTab[]>([]);
-    const activeTabId = ref<string | null>(null);
+    const activeTabId = ref<string | undefined>();
 
     const createTab = (activeDirId: string | null) => {
       logger.log("CREATING TAB");
@@ -33,7 +33,7 @@ export const useTabStore = defineStore(
 
     const closeAllTabs = () => {
       tabs.value = [];
-      activeTabId.value = null;
+      activeTabId.value = undefined;
     };
     const getTab = (tabId: string) => tabs.value.find((t) => t.id === tabId);
 

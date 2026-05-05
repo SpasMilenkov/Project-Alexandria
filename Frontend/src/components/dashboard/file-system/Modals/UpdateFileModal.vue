@@ -35,7 +35,6 @@ const onSubmit = async (event: FormSubmitEvent<UpdateFileMetadataSchema>) => {
     emit("close", true);
   }
 };
-
 </script>
 
 <template>

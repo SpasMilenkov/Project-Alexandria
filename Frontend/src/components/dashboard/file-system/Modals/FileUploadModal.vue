@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { fileApi } from "@/api/file";
-import { useDirectoryStore } from "@/stores/directory";
-import type { SelectMenuItem } from "@nuxt/ui";
 import { formatBytes } from "@/utils/size.utils";
 import type { WorkerOutMessage } from "@/workers/blake3.worker";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { encryptFile } from "@/composables/useFileEncryption";
 import { useAppToast } from "@/composables/useAppToast";
+import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
 
-const directoryStore = useDirectoryStore();
 const appToast = useAppToast();
 
 // enums & constants
@@ -140,15 +138,7 @@ const createUploadState = (file: File): FileUploadState => ({
 
 const uploads = ref<FileUploadState[]>((props.droppedFiles ?? []).map(createUploadState));
 
-const selectedDirectoryId = ref<string | null>(props.directoryId ?? null);
-
-const parentDirectoryOptions = ref<SelectMenuItem[]>(
-  props.directoryId && props.directoryName
-    ? [{ id: props.directoryId, label: props.directoryName }]
-    : [],
-);
-
-const isLoadingParentDirs = ref(false);
+const selectedDirectoryId = ref<string | undefined>(props.directoryId ?? undefined);
 
 const initialInputRef = ref<HTMLInputElement | null>(null);
 const addMoreInputRef = ref<HTMLInputElement | null>(null);
@@ -536,32 +526,6 @@ const onDrop = (e: DragEvent) => {
     addFiles(Array.from(e.dataTransfer.files));
   }
 };
-
-// directory search
-
-const searchParentDirectory = async (query: string) => {
-  if (!query.trim()) return;
-
-  isLoadingParentDirs.value = true;
-  try {
-    const response = await directoryStore.searchDirectory({
-      isDeleted: false,
-      nameContains: query,
-      pageSize: 20,
-    });
-
-    if (response.success && response.data) {
-      const newOptions = response.data.items.map((d) => ({ id: d.id, label: d.name }));
-      const selectedId = selectedDirectoryId.value;
-      const kept = parentDirectoryOptions.value.find((o) => o.id === selectedId);
-      parentDirectoryOptions.value = kept
-        ? [kept, ...newOptions.filter((o) => o.id !== selectedId)]
-        : newOptions;
-    }
-  } finally {
-    isLoadingParentDirs.value = false;
-  }
-};
 </script>
 
 <template>
@@ -573,35 +537,12 @@ const searchParentDirectory = async (query: string) => {
     <template #body>
       <div class="space-y-6">
         <!-- directory selector -->
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Upload to Directory
-          </label>
-          <USelectMenu
-            v-model="selectedDirectoryId"
-            :items="parentDirectoryOptions"
-            :loading="isLoadingParentDirs"
-            :disabled="isUploading"
-            placeholder="Search for directory..."
-            value-key="id"
-            display-key="label"
-            searchable
-            :debounce="300"
-            class="w-full"
-            @update:search-term="searchParentDirectory"
-          >
-            <template #default="{ modelValue }">
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-folder" class="size-4 text-muted" />
-                <span v-if="modelValue">
-                  {{ parentDirectoryOptions.find((i) => i.id === modelValue)?.label }}
-                </span>
-                <span v-else class="text-muted">Root directory</span>
-              </div>
-            </template>
-          </USelectMenu>
-          <p class="text-xs text-muted">Leave empty to upload to the root directory</p>
-        </div>
+        <DirectoryPicker
+          v-model="selectedDirectoryId"
+          :initial-id="directoryId"
+          :initial-name="directoryName"
+          :disabled="isUploading"
+        />
 
         <!-- Drop Zone Wrapper -->
         <div

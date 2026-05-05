@@ -143,7 +143,7 @@ export const directoryApi = {
   },
 
   uploadDirectory: async (
-    parentId: string | null,
+    parentId: string | undefined,
     paths: string[],
   ): Promise<Record<string, string | null>> => {
     const response = await apiClient.post<Record<string, string | null>>(

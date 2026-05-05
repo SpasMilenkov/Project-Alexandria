@@ -8,6 +8,20 @@ import vueDevTools from "vite-plugin-vue-devtools";
 import { iconifySubsetPlugin } from "./plugins/iconify-subset";
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-charts": ["chart.js", "vue-chartjs"],
+          "vendor-pinia-colada": ["@pinia/colada", "@pinia/colada-plugin-retry"],
+          "vendor-vue": ["vue", "vue-router", "pinia"],
+          "vendor-vueuse": ["@vueuse/core", "@vueuse/integrations"],
+          "vendor-zip": ["@zip.js/zip.js"],
+          "vendor-zod": ["zod"],
+        },
+      },
+    },
+  },
   plugins: [
     vue(),
     iconifySubsetPlugin(),

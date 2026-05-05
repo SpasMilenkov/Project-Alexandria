@@ -53,8 +53,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, watch } from "vue";
-import { updateUserSchema } from "@/schemas/user";
-import type { UpdateUserSchema } from "@/schemas/user";
+import { type UpdateUserSchema, updateUserSchema } from "@/schemas/user";
 import type { UserDetailsDto } from "@/types/user";
 import { UserRole } from "@/enums/UserRole";
 
@@ -73,9 +72,9 @@ const form = ref();
 
 // Local form state — the parent has no idea this exists
 const state = reactive<UpdateUserSchema>({
-  email: null,
-  role: null,
-  userName: null,
+  email: undefined,
+  role: undefined,
+  userName: undefined,
 });
 
 // Whenever the parent swaps in a different user (or opens the modal),
@@ -83,9 +82,9 @@ const state = reactive<UpdateUserSchema>({
 watch(
   () => props.user,
   (user) => {
-    state.userName = user?.userName ?? null;
-    state.email = user?.email ?? null;
-    state.role = user?.role ?? null;
+    state.userName = user?.userName ?? undefined;
+    state.email = user?.email ?? undefined;
+    state.role = user?.role ?? undefined;
   },
   { immediate: true },
 );

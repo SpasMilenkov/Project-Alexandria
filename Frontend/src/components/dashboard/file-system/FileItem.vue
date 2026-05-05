@@ -493,75 +493,77 @@ const canDownload = (): boolean => true;
 const canShare = (): boolean => true;
 const canDelete = (): boolean => true;
 
+const singleSelectMenuItems = [
+  [
+    {
+      icon: "i-mdi-information-outline",
+      label: "View details",
+      kbds: [{ value: "alt" }, { value: "enter" }],
+      onSelect: () => {
+        openDrawer.value = true;
+      },
+    },
+    {
+      disabled: !canDownload(),
+      icon: "i-mdi-download-outline",
+      kbds: [ { value: "D" }],
+      label: "Download",
+      onSelect: () => emit("download", [props.data.fileId]),
+    },
+  ],
+  [
+    {
+      disabled: !canRename(),
+      icon: "i-mdi-pencil-outline",
+      kbds: ["R"],
+      label: "Rename",
+      onSelect: () => emit("rename", props.data.fileId, props.data.fileName),
+    },
+    {
+      disabled: !canMove(),
+      icon: "i-mdi-folder-move-outline",
+      label: "Move to…",
+      onSelect: () => emit("move", [props.data.fileId]),
+    },
+    {
+      disabled: !canCopy(),
+      icon: "i-mdi-content-copy",
+      kbds: ["⌘", "C"],
+      label: "Copy to…",
+      onSelect: () => emit("copy", [props.data.fileId]),
+    },
+  ],
+  [
+    {
+      disabled: !canShare(),
+      icon: "i-mdi-share-variant-outline",
+      label: "Share",
+      onSelect: () => emit("share", [props.data.fileId]),
+    },
+    {
+      icon: "i-mdi-identifier",
+      label: "Copy file ID",
+      onSelect: () => copyWithFeedback(props.data.fileId, "File ID"),
+    },
+  ],
+  [
+    {
+      color: "error" as const,
+      disabled: !canDelete(),
+      icon: "i-mdi-delete-outline",
+      kbds: ["Del"],
+      label: "Delete",
+      onSelect: () => emit("delete", [props.data.fileId]),
+    },
+  ],
+];
+
 const contextMenuItems = computed(() => {
   const isMultiSelect = (props.selectedCount ?? 0) > 1;
   const count = props.selectedCount ?? 1;
 
   if (!isMultiSelect) {
-    return [
-      [
-        {
-          icon: "i-mdi-information-outline",
-          label: "View details",
-          kbds: [{ value: "alt" }, { value: "i" }],
-          onSelect: () => {
-            openDrawer.value = true;
-          },
-        },
-        {
-          disabled: !canDownload(),
-          icon: "i-mdi-download-outline",
-          kbds: [{ value: "⌘" }, { value: "S" }],
-          label: "Download",
-          onSelect: () => emit("download", [props.data.fileId]),
-        },
-      ],
-      [
-        {
-          disabled: !canRename(),
-          icon: "i-mdi-pencil-outline",
-          kbds: ["F2"],
-          label: "Rename",
-          onSelect: () => emit("rename", props.data.fileId, props.data.fileName),
-        },
-        {
-          disabled: !canMove(),
-          icon: "i-mdi-folder-move-outline",
-          label: "Move to…",
-          onSelect: () => emit("move", [props.data.fileId]),
-        },
-        {
-          disabled: !canCopy(),
-          icon: "i-mdi-content-copy",
-          kbds: ["⌘", "C"],
-          label: "Copy to…",
-          onSelect: () => emit("copy", [props.data.fileId]),
-        },
-      ],
-      [
-        {
-          disabled: !canShare(),
-          icon: "i-mdi-share-variant-outline",
-          label: "Share",
-          onSelect: () => emit("share", [props.data.fileId]),
-        },
-        {
-          icon: "i-mdi-identifier",
-          label: "Copy file ID",
-          onSelect: () => copyWithFeedback(props.data.fileId, "File ID"),
-        },
-      ],
-      [
-        {
-          color: "error" as const,
-          disabled: !canDelete(),
-          icon: "i-mdi-delete-outline",
-          kbds: ["Del"],
-          label: "Delete",
-          onSelect: () => emit("delete", [props.data.fileId]),
-        },
-      ],
-    ];
+    return singleSelectMenuItems;
   }
 
   return [

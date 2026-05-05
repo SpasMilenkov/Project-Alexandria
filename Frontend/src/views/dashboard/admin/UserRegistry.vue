@@ -77,8 +77,8 @@
       </UTooltip>
 
       <div class="ml-auto flex items-center gap-2">
-        <span v-if="!isLoading && data" class="text-xs text-muted">
-          {{ data.totalCount.toLocaleString() }} user{{ data.totalCount !== 1 ? "s" : "" }}
+        <span v-if="!isLoading && userData" class="text-xs text-muted">
+          {{ userData.totalCount.toLocaleString() }} user{{ userData.totalCount !== 1 ? "s" : "" }}
         </span>
         <USeparator orientation="vertical" class="h-5" />
         <UTooltip text="Toggle advanced filters" :delay-duration="300">
@@ -107,6 +107,7 @@
         v-if="isFilterPanelOpen"
         class="rounded-xl border border-default bg-white/70 dark:bg-white/5 backdrop-blur-sm overflow-hidden max-h-[40vh] overflow-y-auto shrink-0"
       >
+        <!-- @vue-ignore -->
         <UForm ref="filterForm" :schema="userQueryUiSchema" :state="uiState" @submit="applyFilters">
           <div
             class="flex items-center justify-between px-5 py-3 border-b border-default bg-elevated/30"
@@ -531,13 +532,13 @@
 
     <!-- PAGINATION -->
     <div
-      v-if="data && data.totalCount > uiState.pageSize"
+      v-if="userData && userData.totalCount > uiState.pageSize"
       class="flex items-center justify-between"
     >
       <span class="text-xs text-muted">Page {{ uiState.page + 1 }} of {{ totalPages }}</span>
       <UPagination
         v-model:page="currentPage"
-        :total="data.totalCount"
+        :total="userData.totalCount"
         :items-per-page="uiState.pageSize"
         size="sm"
       />
@@ -579,7 +580,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref, shallowRef } from "vue";
 import { useQuery } from "@pinia/colada";
-import { type CreateUserSchema, type RestrictUserSchema, type UpdateUserSchema, userQueryApiSchema, userQueryUiSchema } from "@/schemas/user";
+import {
+  type CreateUserSchema,
+  type RestrictUserSchema,
+  type UpdateUserSchema,
+  userQueryApiSchema,
+  userQueryUiSchema,
+} from "@/schemas/user";
 import { UserRole } from "@/enums/UserRole";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
@@ -635,7 +642,7 @@ const clearFilters = () => {
 
 const toggleQuick = (kind: "locked" | "deleted" | "deletedOnly") => {
   if (kind === "locked") {
-    uiState.isLockedOut = uiState.isLockedOut === true ? null : true;
+    uiState.isLockedOut = uiState.isLockedOut === true ? undefined : true;
   }
   if (kind === "deleted") {
     uiState.showDeleted = !uiState.showDeleted;
@@ -655,15 +662,15 @@ const toggleQuick = (kind: "locked" | "deleted" | "deletedOnly") => {
 
 // Query
 
-const { data, isLoading } = useQuery({
+const { data: userData, isLoading } = useQuery({
   key: () => USER_QUERY_KEYS.getUsers(apiState.value),
   query: () => userApi.getUsers(apiState.value),
   staleTime: 30_000,
 });
 
-const tableData = computed(() => data.value?.items ?? []);
+const tableData = computed(() => userData.value?.items ?? []);
 const totalPages = computed(() =>
-  data.value ? Math.ceil(data.value.totalCount / uiState.pageSize) : 1,
+  userData.value ? Math.ceil(userData.value.totalCount / uiState.pageSize) : 1,
 );
 const currentPage = computed({
   get: () => uiState.page + 1,
@@ -744,7 +751,7 @@ const submitEdit = async (data: UpdateUserSchema) => {
   }
 };
 
-async function submitRestrict(data: RestrictUserSchema | { userId: string }) {
+const submitRestrict = async (data: RestrictUserSchema | { userId: string }) => {
   if (activeModal.value.type !== "restrict") {
     return;
   }
@@ -765,22 +772,21 @@ async function submitRestrict(data: RestrictUserSchema | { userId: string }) {
       title: "Restriction failed",
     });
   }
-}
+};
 
-async function submitDelete() {
-  if (activeModal.value.type !== "delete") {
-    return;
-  }
+const submitDelete = async () => {
+  if (activeModal.value.type !== "delete") return;
+
+  const { ids } = activeModal.value; // capture before any await
+
   try {
-    await deleteUsersMutation(activeModal.value.ids);
+    await deleteUsersMutation(ids);
     toast.add({
       color: "success",
       icon: "i-lucide-check-circle",
-      title: `${activeModal.value.ids.length} user(s) deleted`,
+      title: `${ids.length} user(s) deleted`,
     });
-    selectedUserIds.value = selectedUserIds.value.filter(
-      (id) => !activeModal.value.ids.includes(id),
-    );
+    selectedUserIds.value = selectedUserIds.value.filter((id) => !ids.includes(id));
     closeModal();
   } catch {
     toast.add({
@@ -789,8 +795,7 @@ async function submitDelete() {
       title: "Delete failed",
     });
   }
-}
-
+};
 // Select options
 
 const roleOptions = [

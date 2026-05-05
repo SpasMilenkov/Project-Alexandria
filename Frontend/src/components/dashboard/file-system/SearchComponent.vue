@@ -61,7 +61,7 @@ const emit = defineEmits<{
 }>();
 const directoryStore = useDirectoryStore();
 const searchTerm = ref("");
-const selectedItem: Ref<string | null> = ref(null);
+const selectedItem: Ref<string | undefined> = ref();
 const items: Ref<DirectorySummaryDto[]> = ref([]);
 
 const search = useDebounceFn(async () => {
@@ -81,10 +81,10 @@ const search = useDebounceFn(async () => {
   }
 }, 350);
 
-const handleSelect = (id: string | null) => {
+const handleSelect = (id: string | undefined) => {
   if (id) {
     emit("navigate", id);
-    selectedItem.value = null;
+    selectedItem.value = undefined;
   }
 };
 </script>

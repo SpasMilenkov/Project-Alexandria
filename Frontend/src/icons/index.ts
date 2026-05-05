@@ -9,4 +9,4 @@ export const registerIcons = () => {
   for (const collection of Object.values(subsets)) {
     addCollection(collection as never);
   }
-}
+};

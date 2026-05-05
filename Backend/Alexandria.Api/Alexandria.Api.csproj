@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+      <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FastEndpoints"/>
+    <PackageReference Include="FastEndpoints.Security"/>
+    <PackageReference Include="FastEndpoints.Swagger"/>
+
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
+    <ProjectReference Include="..\Alexandria.Data.Models\Alexandria.Data.Models.csproj"/>
+    <ProjectReference Include="..\Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Alexandria.Tests.Integration"/>
+    <InternalsVisibleTo Include="Alexandria.Tests.Common"/>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Content Include="..\..\docker-compose.dev.yml">
+      <Link>docker-compose.dev.yml</Link>
+    </Content>
+  </ItemGroup>
+
+</Project>

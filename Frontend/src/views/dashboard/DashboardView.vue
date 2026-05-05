@@ -166,11 +166,10 @@ onMounted(() => {
           aria-label="New tab"
           title="New tab (⌘⇧N)"
           class="hover:text-primary"
-          :ui="{ body: 'sm:p-0 p-0' }"
           @click="tabStore.createTab(null)"
         />
       </template>
-
+      <!-- @vue-ignore -->
       <template #label="{ item }">
         <span class="max-w-[160px] truncate block">{{ item.label }}</span>
       </template>

@@ -19,6 +19,9 @@
     "curly": "allow",
     "capitalized-comments": "allow",
     "no-ternary": "allow",
+    "no-inline-comments": "allow",
+    "sort-keys": "off",
+    "prefer-destructuring": "off",
     "eslint/sort-imports": [
       "warn",
       {

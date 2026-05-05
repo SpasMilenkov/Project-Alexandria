@@ -11,8 +11,7 @@ import { logger } from "@/utils/logger";
  * No `exact` so all page/sort variants are hit via prefix match.
  */
 const invalidateFileListings = (queryCache: QueryCache, parentId: string | null) => {
-  
-  logger.log("Invalidating file listings for parentId", parentId)
+  logger.log("Invalidating file listings for parentId", parentId);
   const key =
     parentId === null
       ? [...FILES_QUERY_KEYS.root, "root-sub-files"]
@@ -24,11 +23,10 @@ const invalidateFileListings = (queryCache: QueryCache, parentId: string | null)
 export const updateFileMetadata = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({
-    mutation: ({ id, data }: { id: string; data: UpdateFileMetadataSchema }) =>
-      fileApi.updateFileMetadata(id, data),
-    onSettled(_: any, __: any, { id }: { id: string }) {
+    mutation: (data: UpdateFileMetadataSchema) => fileApi.updateFileMetadata(data),
+    onSettled(_: any, __: any, data: UpdateFileMetadataSchema) {
       // Only the detail view and the listing that shows its name are stale.
-      queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(id) });
+      queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(data.id) });
       // directoryId of the file is not tracked here, so we invalidate all listings.
       // If you add originId to this mutation's params you can narrow this down.
       queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.root });
@@ -93,6 +91,7 @@ export const moveFiles = defineMutation(() => {
     mutation: ({
       fileIds,
       destinationId,
+      // oxlint-disable-next-line no-unused-vars
       originId,
     }: {
       fileIds: string[];
@@ -101,14 +100,15 @@ export const moveFiles = defineMutation(() => {
     }) => fileApi.moveFiles(fileIds, destinationId),
 
     onSettled(_data, _error, { originId, destinationId }) {
-      const originKey = originId == null
-        ? [...FILES_QUERY_KEYS.root, "root-sub-files"]
-        : [...FILES_QUERY_KEYS.root, "sub-files", originId];
-    
+      const originKey =
+        originId === null
+          ? [...FILES_QUERY_KEYS.root, "root-sub-files"]
+          : [...FILES_QUERY_KEYS.root, "sub-files", originId];
+
       logger.log("originId:", originId);
       logger.log("origin key:", originKey);
       logger.log("cache entries:", queryCache.getQueryData(originKey));
-    
+
       invalidateFileListings(queryCache, originId);
       invalidateFileListings(queryCache, destinationId);
     },
@@ -134,6 +134,9 @@ export const deleteVersion = defineMutation(() => {
       fileApi.deleteFileVersion(versionId),
     onSettled(_: any, __: any, { fileId }: { fileId: string }) {
       queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(fileId) });
+      queryCache.invalidateQueries({
+        key: [...FILES_QUERY_KEYS.root, "versions-for-file", fileId],
+      });
     },
   });
 });

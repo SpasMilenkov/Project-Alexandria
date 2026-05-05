@@ -21,7 +21,7 @@ const invalidateDirectoryListings = (queryCache: QueryCache, parentId: string | 
       : [...DIRECTORY_QUERY_KEYS.root, "sub-directories", parentId];
 
   queryCache.invalidateQueries({ key });
-}
+};
 
 // Mutations
 

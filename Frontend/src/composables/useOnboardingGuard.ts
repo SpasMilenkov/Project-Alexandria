@@ -16,7 +16,7 @@ const STEP_ROUTES: Record<OnboardingStep, string> = {
 export const useOnboardingGuard = (requiredStep: OnboardingStep) => {
   const router = useRouter();
   const { data, isLoading, error } = useQuery(getOnboardingStep());
-  
+
   watch(isLoading, (loading) => {
     if (loading || error.value || data.value === undefined || data.value === null) return;
 

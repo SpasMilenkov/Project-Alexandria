@@ -2,6 +2,7 @@ import { z } from "zod";
 // Update File Metadata Schema
 export const updateFileMetadataSchema = z.object({
   hasPreview: z.boolean().nullish(),
+  id: z.guid(),
   name: z.string().nullish(),
 });
 

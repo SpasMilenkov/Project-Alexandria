@@ -47,6 +47,7 @@ export const useDirectoryStore = defineStore(
       error.value = null;
     };
 
+    // oxlint-disable-next-line sort-keys
     return {
       // State
       selectedDirectories,

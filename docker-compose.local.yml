@@ -78,11 +78,11 @@ services:
     networks:
       - data-net # only api and workers consume from it, nginx never touches it
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -211,7 +211,7 @@ services:
   api:
     build:
       context: ./Backend
-      dockerfile: API/Dockerfile
+      dockerfile: Alexandria.Api/Dockerfile
     container_name: alexandria-api
     restart: on-failure:3
     environment:
@@ -260,7 +260,7 @@ services:
   document-worker:
     build:
       context: ./Backend
-      dockerfile: DocumentWorker.Service/Dockerfile
+      dockerfile: Alexandria.Workers.Document/Dockerfile
     container_name: alexandria-document-worker
     restart: always
     environment:
@@ -271,6 +271,7 @@ services:
       RabbitMQ__UserName: ${RABBITMQ_DOCUMENT_WORKER:?RABBITMQ_DOCUMENT_WORKER is required}
       RabbitMQ__Password: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:?DOCUMENT_WORKER_RABBITMQ_PASSWORD is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      ASPNETCORE_URLS: http://+:8080
     depends_on:
       postgres:
         condition: service_healthy
@@ -283,7 +284,7 @@ services:
     networks:
       - data-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -298,7 +299,7 @@ services:
   media-worker:
     build:
       context: ./Backend
-      dockerfile: MediaWorkerService/Dockerfile
+      dockerfile: Alexandria.Workers.Media/Dockerfile
     container_name: alexandria-media-worker
     restart: always
     environment:
@@ -309,6 +310,7 @@ services:
       RabbitMQ__UserName: ${RABBITMQ_MEDIA_WORKER:?RABBITMQ_MEDIA_WORKER is required}
       RabbitMQ__Password: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      ASPNETCORE_URLS: http://+:8080
     depends_on:
       postgres:
         condition: service_healthy
@@ -321,7 +323,7 @@ services:
     networks:
       - data-net
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

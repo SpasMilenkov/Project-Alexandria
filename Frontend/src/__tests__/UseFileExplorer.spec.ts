@@ -44,7 +44,7 @@ vi.mock("@/queries/files", () => ({
  * Run a composable inside a real Vue + Pinia app so that reactivity,
  * computed values, and watchers all work exactly as they would in production.
  */
-const withSetup = <T> (composable: () => T): T => {
+const withSetup = <T>(composable: () => T): T => {
   let result!: T;
   const app = createApp({
     setup() {
@@ -55,7 +55,7 @@ const withSetup = <T> (composable: () => T): T => {
   app.use(createPinia());
   app.mount(document.createElement("div"));
   return result;
-}
+};
 
 const makeDir = (id: string): DirectorySummaryDto => ({
   createdAt: new Date().toISOString(),
@@ -74,6 +74,7 @@ const makeFile = (fileId: string): FileResult => ({
     mimeType: "text/plain",
     size: "1024",
     versionNumber: 1,
+    isEncrypted: false,
   },
   deletedAt: null,
   directoryId: null,
@@ -501,7 +502,7 @@ describe("useFileExplorer", () => {
       expect(filePagination.value.paginationParams.page).toBe(before + 1);
     });
 
-    it("does not increment the file page when hasNext is false",() => {
+    it("does not increment the file page when hasNext is false", () => {
       const { loadMoreFiles, filePagination } = withSetup(() => useFileExplorer());
       filePagination.value.hasNext = false;
       const before = filePagination.value.paginationParams.page;

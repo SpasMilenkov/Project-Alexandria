@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>dotnet-VideoAndAudioWorkerService-7a305031-10cd-4f13-a071-97b64235b3f9</UserSecretsId>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <PackageReference Include="RabbitMQ.Client"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="..\.dockerignore">
+            <Link>.dockerignore</Link>
+        </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
+    </ItemGroup>
+</Project>

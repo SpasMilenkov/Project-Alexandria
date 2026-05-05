@@ -13,21 +13,21 @@ export interface CalendarDay {
   intensity: 0 | 1 | 2 | 3 | 4;
 }
 
-function isLeapYear(year: number): boolean {
-  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-}
+const isLeapYear = (year: number): boolean =>
+  (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 
-function computeIntensity(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
+const computeIntensity = (count: number, max: number): 0 | 1 | 2 | 3 | 4 => {
   if (count === 0 || max === 0) return 0;
   const ratio = count / max;
   if (ratio <= 0.25) return 1;
   if (ratio <= 0.5) return 2;
   if (ratio <= 0.75) return 3;
   return 4;
-}
+};
 
 // C# serializes enum keys as their string names ("Create", "Read" …).
 // Normalize them to numeric OperationType values so all lookups work correctly.
+// oxlint-disable-next-line sort-keys
 const OP_NAME_TO_VALUE: Record<string, OperationType> = {
   Read: OperationType.Read,
   Create: OperationType.Create,
@@ -37,9 +37,9 @@ const OP_NAME_TO_VALUE: Record<string, OperationType> = {
   Logout: OperationType.Logout,
 };
 
-function normalizeBreakdown(
+const normalizeBreakdown = (
   raw: Partial<Record<OperationType, number>>,
-): Partial<Record<OperationType, number>> {
+): Partial<Record<OperationType, number>> => {
   const result: Partial<Record<OperationType, number>> = {};
   for (const [k, v] of Object.entries(raw)) {
     if (!v) continue;
@@ -48,7 +48,7 @@ function normalizeBreakdown(
     if (op !== undefined) result[op] = v;
   }
   return result;
-}
+};
 
 const MONTH_NAMES = [
   "Jan",
@@ -65,11 +65,11 @@ const MONTH_NAMES = [
   "Dec",
 ];
 
-export function useActivityCalendar(
+export const useActivityCalendar = (
   data: Ref<ActivityStatisticsOverview | undefined>,
   selectedYear: Ref<number>,
   selectedOperation: Ref<OperationType | null>,
-) {
+) => {
   const allSlots = computed<CalendarDay[]>(() => {
     const year = selectedYear.value;
     const op = selectedOperation.value;
@@ -198,4 +198,4 @@ export function useActivityCalendar(
   });
 
   return { weeks, monthLabelByWeek, totalFiltered };
-}
+};

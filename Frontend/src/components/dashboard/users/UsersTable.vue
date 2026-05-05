@@ -74,7 +74,7 @@ const UDropdownMenu = resolveComponent("UDropdownMenu");
 
 // Cell helpers
 
-function statusLabel(user: UserDetailsDto) {
+const statusLabel = (user: UserDetailsDto) => {
   if (user.deletedAt) {
     return "Deleted";
   }
@@ -82,9 +82,9 @@ function statusLabel(user: UserDetailsDto) {
     return "Locked";
   }
   return "Active";
-}
+};
 
-function statusColor(user: UserDetailsDto): "error" | "warning" | "success" {
+const statusColor = (user: UserDetailsDto): "error" | "warning" | "success" => {
   if (user.deletedAt) {
     return "error";
   }
@@ -92,9 +92,9 @@ function statusColor(user: UserDetailsDto): "error" | "warning" | "success" {
     return "warning";
   }
   return "success";
-}
+};
 
-function avatarBg(user: UserDetailsDto) {
+const avatarBg = (user: UserDetailsDto) => {
   if (user.deletedAt) {
     return "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400";
   }
@@ -105,32 +105,30 @@ function avatarBg(user: UserDetailsDto) {
     return "bg-primary/15 text-primary";
   }
   return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
-}
+};
 
-function rowActions(user: UserDetailsDto) {
-  return [
-    [
-      {
-        icon: "i-lucide-pencil",
-        label: "Edit",
-        onSelect: () => emit("edit", user),
-      },
-      {
-        icon: user.isLockedOut ? "i-lucide-lock-open" : "i-lucide-lock",
-        label: user.isLockedOut ? "Remove restriction" : "Restrict",
-        onSelect: () => emit("restrict", user),
-      },
-    ],
-    [
-      {
-        class: "text-error",
-        icon: "i-lucide-trash-2",
-        label: "Delete",
-        onSelect: () => emit("delete", [user.id]),
-      },
-    ],
-  ];
-}
+const rowActions = (user: UserDetailsDto) => [
+  [
+    {
+      icon: "i-lucide-pencil",
+      label: "Edit",
+      onSelect: () => emit("edit", user),
+    },
+    {
+      icon: user.isLockedOut ? "i-lucide-lock-open" : "i-lucide-lock",
+      label: user.isLockedOut ? "Remove restriction" : "Restrict",
+      onSelect: () => emit("restrict", user),
+    },
+  ],
+  [
+    {
+      class: "text-error",
+      icon: "i-lucide-trash-2",
+      label: "Delete",
+      onSelect: () => emit("delete", [user.id]),
+    },
+  ],
+];
 
 // Column definitions
 
