@@ -498,7 +498,7 @@ const singleSelectMenuItems = [
     {
       icon: "i-mdi-information-outline",
       label: "View details",
-      kbds: [{ value: "alt" }, { value: "i" }],
+      kbds: [{ value: "alt" }, { value: "enter" }],
       onSelect: () => {
         openDrawer.value = true;
       },
@@ -506,7 +506,7 @@ const singleSelectMenuItems = [
     {
       disabled: !canDownload(),
       icon: "i-mdi-download-outline",
-      kbds: [{ value: "⌘" }, { value: "S" }],
+      kbds: [ { value: "D" }],
       label: "Download",
       onSelect: () => emit("download", [props.data.fileId]),
     },
@@ -515,7 +515,7 @@ const singleSelectMenuItems = [
     {
       disabled: !canRename(),
       icon: "i-mdi-pencil-outline",
-      kbds: ["F2"],
+      kbds: ["R"],
       label: "Rename",
       onSelect: () => emit("rename", props.data.fileId, props.data.fileName),
     },
