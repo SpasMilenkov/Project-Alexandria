@@ -4,7 +4,7 @@
       v-model:collapsed="isCollapsed"
       collapsible
       resizable
-      :min-size="11"
+      :min-size="15"
       :max-size="24"
       :default-size="15"
       :ui="{
