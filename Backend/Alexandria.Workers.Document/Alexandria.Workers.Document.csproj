@@ -11,6 +11,9 @@
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.Hosting"/>
         <PackageReference Include="RabbitMQ.Client"/>
+        <PackageReference Include="Serilog.AspNetCore" />
+        <PackageReference Include="Serilog.Sinks.Console" />
+        <PackageReference Include="Serilog.Sinks.File" />
     </ItemGroup>
 
     <ItemGroup>

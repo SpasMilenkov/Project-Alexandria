@@ -3,20 +3,39 @@ using Alexandria.Infrastructure.DocumentWorker;
 using Alexandria.Workers.Media;
 using Alexandria.Workers.Media.Extensions;
 using Microsoft.AspNetCore.Builder;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
+    builder.Host.UseSerilog((ctx, services, config) => config
+        .ReadFrom.Configuration(ctx.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+    );
+    builder.Services
+        .AddWorkerDatabase(builder.Configuration)
+        .AddS3Storage(builder.Configuration)
+        .AddRabbitMqConsumer(builder.Configuration)
+        .AddWorkerServices()
+        .AddHealthChecks();
 
-builder.Services
-    .AddWorkerDatabase(builder.Configuration)
-    .AddS3Storage(builder.Configuration)
-    .AddRabbitMqConsumer(builder.Configuration)
-    .AddWorkerServices()
-    .AddHealthChecks();
+    builder.Services.AddHostedService<Worker>();
 
-builder.Services.AddHostedService<Worker>();
+    var host = builder.Build();
 
-var host = builder.Build();
+    host.MapHealthChecks("/health");
 
-host.MapHealthChecks("/health");
-
-await host.RunAsync();
+    await host.RunAsync();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Worker terminated unexpectedly");
+}
+finally
+{
+    await Log.CloseAndFlushAsync();
+}

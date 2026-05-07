@@ -38,14 +38,14 @@
     >
       <button
         @click="isExpanded = !isExpanded"
-        class="w-full p-3 flex flex-col gap-2 hover:bg-black/4 dark:hover:bg-white/5 transition-colors"
+        class="w-full p-2 flex flex-col gap-2 hover:bg-black/4 dark:hover:bg-white/5 transition-colors"
       >
         <div class="flex items-center justify-between w-full">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1">
             <UIcon name="mdi:harddisk" class="w-5 h-5" />
             <span class="font-medium">Storage</span>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
             <div v-if="!isLoading && data" class="text-sm font-semibold">
               {{ Math.round(data.dataUsagePercentage) }}%
             </div>
