@@ -3,3 +3,7 @@ onlyBuiltDependencies:
   - vue-demi
 
 minimumReleaseAge: 10080
+
+allowBuilds:
+  esbuild: true
+  vue-demi: false

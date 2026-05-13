@@ -56,6 +56,9 @@ importers:
       pinia-plugin-persistedstate:
         specifier: 4.7.1
         version: 4.7.1(@nuxt/kit@4.4.2)(pinia@3.0.4(typescript@5.8.3)(vue@3.5.29(typescript@5.8.3)))
+      shaka-player:
+        specifier: 5.1.2
+        version: 5.1.2
       tailwindcss:
         specifier: 4.2.1
         version: 4.2.1
@@ -2942,6 +2945,10 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  shaka-player@5.1.2:
+    resolution: {integrity: sha512-Drkt3Hw1E9lrzMVZr6UEq8Z3tT/S2i8I9btUuS30gRvKN+kjrgvIJYMlNHVEc616SYEpXqdguF+asqfPrn1kDQ==}
+    engines: {node: '>=18'}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -6284,6 +6291,8 @@ snapshots:
       typescript: 5.8.3
     transitivePeerDependencies:
       - browserslist
+
+  shaka-player@5.1.2: {}
 
   shebang-command@2.0.0:
     dependencies:
