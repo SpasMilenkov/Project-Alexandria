@@ -58,6 +58,7 @@ WORKDIR /app
 COPY --from=publish /app/publish .
 
 RUN groupadd --gid 1001 appgroup && useradd --uid 1001 --gid appgroup --no-create-home appuser
+RUN mkdir -p /tmp/worker-scratch && chown appuser:appgroup /tmp/worker-scratch
 USER appuser
 
 ENTRYPOINT ["dotnet", "Alexandria.Workers.Document.dll"]
