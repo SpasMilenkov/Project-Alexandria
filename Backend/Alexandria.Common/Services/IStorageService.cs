@@ -1,3 +1,4 @@
+using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Metrics;
@@ -24,6 +25,28 @@ public interface IStorageService
     // File Download
     Task<Stream> DownloadFile(Guid fileId, Guid ownerId, CancellationToken ct);
     Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Downloads the raw content object to a local file path.
+    /// Transparently resolves whether the object lives in the promoted upload bucket
+    /// or the temporary bucket based on <see cref="ContentObject.IsPromoted"/>.
+    /// </summary>
+    /// <param name="contentObjectId">The content object to download.</param>
+    /// <param name="localFilePath">Absolute path of the file to write. The file is created or overwritten.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task DownloadContentObjectAsync(Guid contentObjectId, string localFilePath, CancellationToken ct = default);
+
+    /// <summary>
+    /// Uploads every file under <paramref name="localDirectory"/> (recursively) to the streaming
+    /// bucket, preserving relative paths under <paramref name="keyPrefix"/>.
+    /// Example: <c>{localDirectory}/hls/seg001.ts</c> → <c>{keyPrefix}/hls/seg001.ts</c>.
+    /// </summary>
+    /// <param name="localDirectory">Root of the local output tree to upload.</param>
+    /// <param name="keyPrefix">Prefix applied to every key in the streaming bucket.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task UploadStreamingOutputAsync(string localDirectory, string keyPrefix, CancellationToken ct = default);
+
+    Task<string> GetStreamManifest(Guid versionId, Guid userId, CancellationToken ct = default);
     Task<DownloadInfo> GetFileDownloadDetails(Guid fileId, Guid userId, CancellationToken ct = default);
     Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default);
 
@@ -49,6 +72,7 @@ public interface IStorageService
         int? iterationCount,
         bool isEncrypted = false,
         Guid? directoryId = null,
+        bool shouldTranspile = false,
         CancellationToken ct = default
     );
 

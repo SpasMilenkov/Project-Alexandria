@@ -13,6 +13,7 @@ public interface IFileService
     Task CopyFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
 
     Task<File?> GetFileMetadataAsync(Guid fileId, CancellationToken ct = default);
+    Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);
 
     Task<FileMetadata?> GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default);
     Task<FileResult> GetFileWithOwnershipByIdAsync(Guid fileId, Guid userId, CancellationToken ct = default);
@@ -57,4 +58,9 @@ public interface IFileService
     Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
     Task RemoveFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default);
     Task RestoreFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default);
+
+    Task<(Guid ContentObjectId, bool IsVideo)> GetContentObjectInfoByVersionIdAsync(
+        Guid versionId,
+        Guid userId,
+        CancellationToken ct = default);
 }

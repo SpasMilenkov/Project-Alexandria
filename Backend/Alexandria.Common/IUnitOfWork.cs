@@ -17,6 +17,9 @@ public interface IUnitOfWork : IDisposable
     IUserRepository Users { get; }
     IUserSettingsRepository UserSettings { get; }
     IAdminSettingsRepository AdminSettings { get; }
+    IStreamingRepresentationRepository StreamingRepresentations { get; }
+    ITranspilationJobRepository TranspilationJobs { get; }
+    IStreamHistoryRepository StreamingHistories { get; }
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);

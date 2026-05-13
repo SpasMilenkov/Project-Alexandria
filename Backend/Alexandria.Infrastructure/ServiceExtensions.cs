@@ -11,6 +11,7 @@ using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.Cleanup;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Promotions;
+using Alexandria.Services.Streaming;
 using Alexandria.Services.User;
 using Alexandria.Services.User.Settings;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +48,12 @@ public static class ServiceExtensions
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IAdminSettingsService, AdminSettingsService>();
+        services.AddScoped<IStreamHistoryRepository, StreamHistoryRepository>();
+        services.AddScoped<IStreamingRepresentationRepository, StreamingRepresentationRepository>();
+        services.AddScoped<ITranspilationJobRepository, TranspilationJobRepository>();
+        services.AddScoped<ITranspilationJobService, TranspilationJobService>();
+        services.AddScoped<IStreamHistoryService, StreamHistoryService>();
+        services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

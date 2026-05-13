@@ -185,4 +185,44 @@ public partial class S3Service
 
     [LoggerMessage(1042, LogLevel.Error, "Finalize upload failed: {Object}")]
     private static partial void LogFinalizeUploadFailed(ILogger logger, Exception ex, string @object);
+
+    [LoggerMessage(1043, LogLevel.Debug,
+        "Downloading content object {ContentObjectId} from {Bucket}/{Key}")]
+    private static partial void LogDownloadingContentObject(
+        ILogger logger, Guid contentObjectId, string bucket, string key);
+
+    [LoggerMessage(1044, LogLevel.Debug,
+        "Content object {ContentObjectId} downloaded to {LocalFilePath}")]
+    private static partial void LogContentObjectDownloaded(
+        ILogger logger, Guid contentObjectId, string localFilePath);
+
+    [LoggerMessage(1045, LogLevel.Error,
+        "S3 error downloading content object {ContentObjectId} from {Bucket}/{Key} — status {StatusCode}")]
+    private static partial void LogContentObjectDownloadS3Error(
+        ILogger logger, Exception ex, Guid contentObjectId, string bucket, string key, HttpStatusCode statusCode);
+
+    [LoggerMessage(1046, LogLevel.Error,
+        "Failed to download content object {ContentObjectId} from {Bucket}/{Key}")]
+    private static partial void LogContentObjectDownloadFailed(
+        ILogger logger, Exception ex, Guid contentObjectId, string bucket, string key);
+
+    [LoggerMessage(1047, LogLevel.Debug,
+        "Uploading {FileCount} streaming file(s) from '{LocalDirectory}' to prefix '{KeyPrefix}'")]
+    private static partial void LogUploadingStreamingOutput(
+        ILogger logger, string localDirectory, string keyPrefix, int fileCount);
+
+    [LoggerMessage(1048, LogLevel.Debug,
+        "PUT streaming file {Bucket}/{Key}")]
+    private static partial void LogStreamingFilePut(
+        ILogger logger, string bucket, string key);
+
+    [LoggerMessage(1049, LogLevel.Error,
+        "Failed to PUT streaming file {Bucket}/{Key}")]
+    private static partial void LogStreamingFilePutFailed(
+        ILogger logger, Exception ex, string bucket, string key);
+
+    [LoggerMessage(1050, LogLevel.Information,
+        "Streaming output upload complete: {FileCount} file(s) under prefix '{KeyPrefix}'")]
+    private static partial void LogStreamingOutputUploaded(
+        ILogger logger, string keyPrefix, int fileCount);
 }

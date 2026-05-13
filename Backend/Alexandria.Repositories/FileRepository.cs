@@ -658,6 +658,12 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default) =>
+        await context.FileVersions
+            .AsNoTracking()
+            .Where(v => v.ContentObjectId == versionId && v.File.OwnerId == userId)
+            .AnyAsync(cancellationToken: ct);
+
     public async Task<File?> GetFileEntityWithTagsAsync(
         Guid fileId,
         CancellationToken ct = default)

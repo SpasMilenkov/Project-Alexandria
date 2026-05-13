@@ -26,6 +26,7 @@
         <ProjectReference Include="..\Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
         <ProjectReference Include="..\Alexandria.Repositories\Alexandria.Repositories.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Streaming\Alexandria.Services.Streaming.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.User\Alexandria.Services.User.csproj"/>
     </ItemGroup>
 

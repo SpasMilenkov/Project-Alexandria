@@ -32,6 +32,9 @@ public static class ServiceExtensions
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
+        services.AddScoped<IStreamHistoryRepository, StreamHistoryRepository>();
+        services.AddScoped<IStreamingRepresentationRepository, StreamingRepresentationRepository>();
+        services.AddScoped<ITranspilationJobRepository, TranspilationJobRepository>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

@@ -40,6 +40,10 @@ public partial class FileService(
     public async Task<File?> GetFileMetadataAsync(Guid fileId, CancellationToken ct = default) =>
         await unitOfWork.Files.GetByIdAsync(fileId, ct);
 
+    public async Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default) =>
+        await unitOfWork.Files.VersionBelongsToUserAsync(versionId, userId, ct);
+
+
     public async Task<FileMetadata?>
         GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default) =>
         await unitOfWork.Files.GetUserFileMetadataAsync(fileId, userId, ct);
@@ -279,4 +283,8 @@ public partial class FileService(
             throw;
         }
     }
+
+    public Task<(Guid ContentObjectId, bool IsVideo)> GetContentObjectInfoByVersionIdAsync(Guid versionId, Guid userId,
+        CancellationToken ct = default) =>
+        unitOfWork.ContentObjects.GetContentObjectInfoByVersionIdAsync(versionId, userId, ct);
 }

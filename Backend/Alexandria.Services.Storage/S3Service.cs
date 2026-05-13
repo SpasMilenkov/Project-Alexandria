@@ -6,6 +6,7 @@ using System.Text.Json;
 using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Queues;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -20,6 +21,7 @@ using Cppl.Utilities.AWS;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Directory = System.IO.Directory;
 using MediaMetadata = Alexandria.Dto.Files.MediaMetadata;
 using FileEntity = Alexandria.Data.Models.File;
 
@@ -621,6 +623,137 @@ public partial class S3Service(
         }
     }
 
+    public async Task DownloadContentObjectAsync(
+        Guid contentObjectId,
+        string localFilePath,
+        CancellationToken ct = default)
+    {
+        var contentObject = await unitOfWork.ContentObjects.GetByIdAsync(contentObjectId, ct)
+                            ?? throw new InvalidOperationException(
+                                $"Content object '{contentObjectId}' was not found.");
+
+        string bucket;
+        string key;
+
+        if (contentObject.IsPromoted)
+        {
+            bucket = config.Value.UploadBucket;
+            key = contentObject.StorageKey;
+        }
+        else
+        {
+            var upload = await unitOfWork.Uploads.FirstOrDefaultAsync(
+                             u => u.Id == contentObject.UploadId && u.Status == UploadStatus.Finished, ct)
+                         ?? throw new InvalidOperationException(
+                             $"No finished upload found for content object '{contentObjectId}'.");
+
+            bucket = config.Value.TempBucket;
+            key = $"content/{upload.TempObjectKey}";
+        }
+
+        LogDownloadingContentObject(logger, contentObjectId, bucket, key);
+
+        try
+        {
+            using var response = await s3.GetObjectAsync(bucket, key, ct);
+
+            await using var localFile = new FileStream(
+                localFilePath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 81920,
+                useAsync: true);
+
+            await response.ResponseStream.CopyToAsync(localFile, 81920, ct);
+
+            LogContentObjectDownloaded(logger, contentObjectId, localFilePath);
+        }
+        catch (AmazonS3Exception ex)
+        {
+            LogContentObjectDownloadS3Error(logger, ex, contentObjectId, bucket, key, ex.StatusCode);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogContentObjectDownloadFailed(logger, ex, contentObjectId, bucket, key);
+            throw;
+        }
+    }
+
+    public async Task UploadStreamingOutputAsync(
+        string localDirectory,
+        string keyPrefix,
+        CancellationToken ct = default)
+    {
+        var bucket = config.Value.StreamingBucket
+                     ?? throw new InvalidOperationException("Streaming bucket is not configured.");
+
+        var files = Directory.GetFiles(localDirectory, "*", SearchOption.AllDirectories);
+
+        LogUploadingStreamingOutput(logger, localDirectory, keyPrefix, files.Length);
+
+        foreach (var file in files)
+        {
+            if (ct.IsCancellationRequested)
+                break;
+
+            var relativePath = Path.GetRelativePath(localDirectory, file).Replace('\\', '/');
+            var s3Key = $"{keyPrefix}/{relativePath}";
+            var contentType = GetStreamingContentType(Path.GetExtension(file));
+
+            try
+            {
+                await using var stream = new FileStream(
+                    file,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize: 81920,
+                    useAsync: true);
+
+                await s3.PutObjectAsync(new PutObjectRequest
+                {
+                    BucketName = bucket,
+                    Key = s3Key,
+                    InputStream = stream,
+                    ContentType = contentType,
+                    AutoCloseStream = false,
+                    DisableDefaultChecksumValidation = true,
+                }, ct);
+
+                LogStreamingFilePut(logger, bucket, s3Key);
+            }
+            catch (Exception ex)
+            {
+                LogStreamingFilePutFailed(logger, ex, bucket, s3Key);
+                throw;
+            }
+        }
+
+        LogStreamingOutputUploaded(logger, keyPrefix, files.Length);
+    }
+
+    public async Task<string> GetStreamManifest(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        var representation = await unitOfWork.StreamingRepresentations.GetByVersionIdAsync(versionId, userId, ct)
+                             ?? throw new StreamingRepresentationNotFoundException(versionId);
+
+        return $"{config.Value.BaseUrl}/stream/{representation.SegmentPrefix}/dash/manifest.mpd";
+    }
+
+    private static string GetStreamingContentType(string extension)
+        => extension.ToLowerInvariant() switch
+        {
+            ".m3u8" => "application/x-mpegURL",
+            ".mpd" => "application/dash+xml",
+            ".ts" => "video/mp2t",
+            ".m4s" => "video/iso.segment",
+            ".mp4" => "video/mp4",
+            ".m4a" => "audio/mp4",
+            _ => "application/octet-stream"
+        };
+
     public async Task StreamFile(string fileId, Stream destination, CancellationToken ct)
     {
         LogStreamingFileToDestination(logger, fileId);
@@ -704,8 +837,7 @@ public partial class S3Service(
         }
     }
 
-    public async Task<UploadResult> FinalizeFileUpload(
-        string objectName,
+    public async Task<UploadResult> FinalizeFileUpload(string objectName,
         Guid uploadId,
         Guid uploadedBy,
         byte[]? encryptionIv,
@@ -715,6 +847,7 @@ public partial class S3Service(
         int? iterationCount,
         bool isEncrypted = false,
         Guid? directoryId = null,
+        bool shouldTranspile = false,
         CancellationToken ct = default)
     {
         if (config.Value.TempBucket is null)
