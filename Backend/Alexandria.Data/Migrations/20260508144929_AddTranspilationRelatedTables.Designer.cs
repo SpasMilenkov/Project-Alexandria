@@ -4,6 +4,7 @@ using System.Numerics;
 using Alexandria.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using NpgsqlTypes;
 namespace Alexandria.Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260508144929_AddTranspilationRelatedTables")]
+    partial class AddTranspilationRelatedTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1019,9 +1022,6 @@ namespace Alexandria.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ContentObjectId")
@@ -1030,8 +1030,6 @@ namespace Alexandria.Data.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("Status");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("TranspilationJobs", (string)null);
                 });
@@ -1288,7 +1286,7 @@ namespace Alexandria.Data.Migrations
                     b.HasOne("Alexandria.Data.Models.FileVersion", "CurrentVersion")
                         .WithMany()
                         .HasForeignKey("CurrentVersionId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Alexandria.Data.Models.Directory", "Directory")
                         .WithMany("Files")
@@ -1419,15 +1417,7 @@ namespace Alexandria.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("ContentObject");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.Upload", b =>

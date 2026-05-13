@@ -4,6 +4,7 @@ using System.Numerics;
 using Alexandria.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using NpgsqlTypes;
 namespace Alexandria.Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260510084041_RemoveTranspilationJobUserIdDefault")]
+    partial class RemoveTranspilationJobUserIdDefault
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

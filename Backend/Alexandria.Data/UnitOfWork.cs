@@ -19,6 +19,9 @@ public sealed class UnitOfWork(
     IUserRepository users,
     IUserSettingsRepository userSettings,
     IAdminSettingsRepository adminSettings,
+    IStreamingRepresentationRepository streamingRepresentations,
+    ITranspilationJobRepository transpilationJobs,
+    IStreamHistoryRepository streamingHistories,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -34,6 +37,9 @@ public sealed class UnitOfWork(
     public IUserRepository Users { get; } = users;
     public IUserSettingsRepository UserSettings { get; } = userSettings;
     public IAdminSettingsRepository AdminSettings { get; } = adminSettings;
+    public IStreamingRepresentationRepository StreamingRepresentations { get; } = streamingRepresentations;
+    public ITranspilationJobRepository TranspilationJobs { get; } = transpilationJobs;
+    public IStreamHistoryRepository StreamingHistories { get; } = streamingHistories;
 
     private IDbContextTransaction? _transaction;
 

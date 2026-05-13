@@ -37,6 +37,11 @@ public class ContentObjectConfiguration : IEntityTypeConfiguration<ContentObject
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasMany<FileVersion>()
+            .WithOne(fv => fv.ContentObject)
+            .HasForeignKey(fv => fv.ContentObjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(e => e.Hash)
             .IsUnique()
             .HasFilter("\"OrphanedAt\" IS NULL")

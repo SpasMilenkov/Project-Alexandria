@@ -48,6 +48,9 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<Upload> Uploads { get; set; }
     public DbSet<UserSettings> UserSettings { get; set; }
     public DbSet<AdminSettings> AdminSettings { get; set; }
+    public DbSet<TranspilationJob> TranspilationJobs { get; set; }
+    public DbSet<StreamHistory> StreamHistory { get; set; }
+    public DbSet<StreamingRepresentation> StreamingRepresentations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -83,6 +86,9 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         modelBuilder.ApplyConfiguration(new UploadConfiguration());
         modelBuilder.ApplyConfiguration(new UserSettingsConfiguration());
         modelBuilder.ApplyConfiguration(new AdminSettingsConfiguration());
+        modelBuilder.ApplyConfiguration(new StreamHistoryConfiguration());
+        modelBuilder.ApplyConfiguration(new TranspilationJobConfiguration());
+        modelBuilder.ApplyConfiguration(new StreamingRepresentationConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
