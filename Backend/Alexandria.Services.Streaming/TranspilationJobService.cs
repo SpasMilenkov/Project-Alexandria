@@ -103,6 +103,18 @@ public partial class TranspilationJobService(
         LogJobStatusUpdated(logger, jobId, status);
     }
 
+    public async Task UpdateStatusAsync(Guid jobId, Guid userId, TranspilationStatus status,
+        CancellationToken ct = default)
+    {
+        var exists = await unitOfWork.TranspilationJobs.ExistsAsync(j => j.Id == jobId && j.UserId == userId, ct);
+
+        if (!exists) throw new TranspilationJobNotFoundException(jobId);
+
+        await unitOfWork.TranspilationJobs.UpdateStatusAsync(jobId, status, ct: ct);
+
+        LogJobStatusUpdated(logger, jobId, status);
+    }
+
     /// <inheritdoc/>
     public async Task<IEnumerable<TranspilationJobResponse>> GetStalledJobsAsync(
         TimeSpan threshold,

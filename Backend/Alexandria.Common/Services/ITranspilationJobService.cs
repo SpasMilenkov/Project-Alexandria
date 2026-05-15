@@ -88,6 +88,22 @@ public interface ITranspilationJobService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Updates the status of a transpilation job scoped only to the user who owns the job.
+    /// </summary>
+    /// <param name="jobId">The job identifier.</param>
+    /// <param name="status">The new status to apply.</param>
+    /// <param name="userId"> The id of the user requesting job update</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <exception cref="TranspilationJobNotFoundException">
+    /// Thrown when no job with <paramref name="jobId"/> exists.
+    /// </exception>
+    Task UpdateStatusAsync(
+        Guid jobId,
+        Guid userId,
+        TranspilationStatus status,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Returns all transpilation jobs that have been in the
     /// <see cref="TranspilationStatus.Processing"/> state longer than
     /// <paramref name="threshold"/>, indicating they are stalled.

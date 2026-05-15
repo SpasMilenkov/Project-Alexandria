@@ -63,4 +63,7 @@ public interface IFileService
         Guid versionId,
         Guid userId,
         CancellationToken ct = default);
+
+    Task<PaginatedResult<FileResult>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+        CancellationToken ct = default);
 }

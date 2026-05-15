@@ -15,6 +15,7 @@ internal sealed class FinalizeFileUploadRequest
     public byte[]? IntegrityTag { get; set; }
     public string? EncryptionHint { get; set; }
     public int? IterationCount { get; set; }
+    public bool? ShouldTranspile { get; set; }
 }
 
 sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage)
@@ -33,14 +34,12 @@ sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage)
         await s3Storage.FinalizeFileUpload(req.FileName,
             uploadId: req.UploadId,
             uploadedBy: userId,
-            directoryId: req.DirectoryId,
-            isEncrypted: req.IsEncrypted,
             encryptionIv: req.EncryptionIv,
             encryptionSalt: req.EncryptionSalt,
             integrityTag: req.IntegrityTag,
             encryptionHint: req.EncryptionHint,
             iterationCount: req.IterationCount,
-            ct: ct);
+            isEncrypted: req.IsEncrypted, directoryId: req.DirectoryId, ct: ct);
 
         await Send.OkAsync(cancellation: ct);
     }

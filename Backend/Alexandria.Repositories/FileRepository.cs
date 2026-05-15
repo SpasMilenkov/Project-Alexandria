@@ -787,6 +787,43 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 .SetProperty(f => f.UpdatedAt, DateTime.UtcNow), ct);
     }
 
+    public async Task<PaginatedResult<FileResult>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+        CancellationToken ct = default)
+    {
+        // EF Core translates this into a subquery, not a second round-trip.
+        // TranspilationJob.UserId is already scoped to the calling user per the model's contract.
+        IQueryable<Guid> viableContentObjectIds = context.Set<TranspilationJob>()
+            .Where(j =>
+                j.UserId == userId
+                && j.DeletedAt == null
+                && j.Status == TranspilationStatus.Ready
+                && j.Representations.Any(r =>
+                    r.DeletedAt == null
+                    && r.Status == RepresentationStatus.Ready
+                    && r.SegmentPrefix != null))
+            .Select(j => j.ContentObjectId);
+
+        var query = _files.Where(f =>
+            f.OwnerId == userId
+            && f.DeletedAt == null
+            && f.Versions.Any(v =>
+                v.DeletedAt == null
+                && viableContentObjectIds.Contains(v.ContentObjectId))).Select(FileProjections.ToFileResult);
+
+        var count = await query.CountAsync(ct);
+
+        var items = await query.Skip((page - 1) * pageSize)
+            .Take(pageSize).ToListAsync(ct);
+        return new PaginatedResult<FileResult>
+        {
+            Items = items,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalCount = count,
+            TotalPages = (int)Math.Ceiling(count / (double)pageSize)
+        };
+    }
+
     public async Task<(DownloadMetadata fileMetadata, byte[] fileHash)?> GetDownloadMetadataAsync(
         Guid fileId, Guid userId, CancellationToken ct = default)
     {

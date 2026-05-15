@@ -105,6 +105,21 @@ public class FakeStorageService : IStorageService
     public Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default)
         => DownloadFile(fileId, userId, ct);
 
+    public Task DownloadContentObjectAsync(Guid contentObjectId, string localFilePath, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task UploadStreamingOutputAsync(string localDirectory, string keyPrefix, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<string> GetStreamManifest(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task<DownloadInfo> GetFileDownloadDetails(Guid fileId, Guid userId, CancellationToken ct = default)
     {
         throw new NotImplementedException();
@@ -137,7 +152,7 @@ public class FakeStorageService : IStorageService
     public Task<UploadResult> FinalizeFileUpload(string objectName, Guid uploadId, Guid uploadedBy,
         byte[]? encryptionIv, byte[]? encryptionSalt,
         byte[]? integrityTag, string? encryptionHint, int? iterationCount, bool isEncrypted = false,
-        Guid? directoryId = null, CancellationToken ct = default)
+        Guid? directoryId = null, bool shouldTranspile = false, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }

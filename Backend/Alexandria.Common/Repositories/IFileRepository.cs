@@ -58,4 +58,7 @@ public interface IFileRepository : IRepository<File>
     Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
     Task<FileResult?> GetFileWithOwnershipByIdAsync(Guid fileId, Guid userId, CancellationToken ct = default);
     Task UpdateCurrentVersionAsync(Guid fileId, Guid versionId, CancellationToken ct = default);
+
+    Task<PaginatedResult<FileResult>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+        CancellationToken ct = default);
 }

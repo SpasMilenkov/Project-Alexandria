@@ -8,10 +8,10 @@ public sealed class TranspilationJobQuery
     public TranspilationStatus? Status { get; init; }
     public bool? IsVideo { get; init; }
     public Guid? ContentObjectId { get; init; }
-    public DateTimeOffset? CreatedAfter { get; init; }
-    public DateTimeOffset? CreatedBefore { get; init; }
-    public DateTimeOffset? CompletedAfter { get; init; }
-    public DateTimeOffset? CompletedBefore { get; init; }
+    public DateTime? CreatedAfter { get; init; }
+    public DateTime? CreatedBefore { get; init; }
+    public DateTime? CompletedAfter { get; init; }
+    public DateTime? CompletedBefore { get; init; }
     public int? MinRetryCount { get; init; }
     public int CurrentPage { get; init; } = 0;
     public int PageSize { get; init; } = 25;
