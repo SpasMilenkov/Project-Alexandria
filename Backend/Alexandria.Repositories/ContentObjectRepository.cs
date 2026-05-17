@@ -152,8 +152,7 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
                 ct);
     }
 
-    public async Task<(Guid ContentObjectId, bool IsVideo)> GetContentObjectInfoByVersionIdAsync(
-        Guid versionId,
+    public async Task<bool> IsVideo(Guid versionId,
         Guid userId,
         CancellationToken ct = default)
     {
@@ -162,10 +161,10 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
                                      && v.File.OwnerId == userId
                                      && v.ContentObject.OrphanedAt == null
                                      && v.ContentObject.DeletedAt == null)
-                         .Select(v => new { v.ContentObjectId, v.MimeType })
+                         .Select(v => v.MimeType)
                          .FirstOrDefaultAsync(ct)
                      ?? throw new ContentObjectNotFoundException(versionId);
 
-        return (result.ContentObjectId, result.MimeType.StartsWith("video/", StringComparison.OrdinalIgnoreCase));
+        return result.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
     }
 }

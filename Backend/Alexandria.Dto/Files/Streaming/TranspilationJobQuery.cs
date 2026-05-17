@@ -7,7 +7,7 @@ public sealed class TranspilationJobQuery
     public Guid? UserId { get; init; }
     public TranspilationStatus? Status { get; init; }
     public bool? IsVideo { get; init; }
-    public Guid? ContentObjectId { get; init; }
+    public Guid? VersionId { get; init; }
     public DateTime? CreatedAfter { get; init; }
     public DateTime? CreatedBefore { get; init; }
     public DateTime? CompletedAfter { get; init; }

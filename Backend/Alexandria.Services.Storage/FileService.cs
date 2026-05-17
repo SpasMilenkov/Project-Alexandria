@@ -284,9 +284,9 @@ public partial class FileService(
         }
     }
 
-    public Task<(Guid ContentObjectId, bool IsVideo)> GetContentObjectInfoByVersionIdAsync(Guid versionId, Guid userId,
+    public Task<bool> IsVideo(Guid versionId, Guid userId,
         CancellationToken ct = default) =>
-        unitOfWork.ContentObjects.GetContentObjectInfoByVersionIdAsync(versionId, userId, ct);
+        unitOfWork.ContentObjects.IsVideo(versionId, userId, ct);
 
     public async Task<PaginatedResult<FileResult>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
         CancellationToken ct = default)

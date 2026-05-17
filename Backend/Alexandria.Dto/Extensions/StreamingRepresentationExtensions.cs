@@ -16,7 +16,6 @@ public static class StreamingRepresentationExtensions
             Height = representation.Height,
             BitrateKbps = representation.BitrateKbps,
             Status = representation.Status,
-            SegmentPrefix = representation.SegmentPrefix,
             CompletedAt = representation.CompletedAt
         };
 

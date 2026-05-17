@@ -59,7 +59,7 @@ public interface IFileService
     Task RemoveFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default);
     Task RestoreFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default);
 
-    Task<(Guid ContentObjectId, bool IsVideo)> GetContentObjectInfoByVersionIdAsync(
+    Task<bool> IsVideo(
         Guid versionId,
         Guid userId,
         CancellationToken ct = default);

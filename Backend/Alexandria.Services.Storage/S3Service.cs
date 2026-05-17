@@ -736,7 +736,7 @@ public partial class S3Service(
 
     public async Task<string> GetStreamManifest(Guid versionId, Guid userId, CancellationToken ct = default)
     {
-        var representation = await unitOfWork.StreamingRepresentations.GetByVersionIdAsync(versionId, userId, ct)
+        var representation = await unitOfWork.TranspilationJobs.GetByVersionId(versionId, userId, ct)
                              ?? throw new StreamingRepresentationNotFoundException(versionId);
 
         return $"{config.Value.BaseUrl}/stream/{representation.SegmentPrefix}/dash/manifest.mpd";

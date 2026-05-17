@@ -7,14 +7,15 @@ namespace Alexandria.Common.Repositories;
 
 public interface ITranspilationJobRepository : IRepository<TranspilationJob>
 {
-    Task<TranspilationJob?> GetByContentObjectIdAsync(Guid contentObjectId, CancellationToken ct = default);
+    Task<TranspilationJob?> GetByVersionId(Guid versionId, CancellationToken ct = default);
+    Task<TranspilationJob?> GetByVersionId(Guid versionId, Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the transpilation job for the given content object that has an active status
     /// (<see cref="TranspilationStatus.Queued"/> or <see cref="TranspilationStatus.Processing"/>), if one exists.
     /// Uses a non-tracked, projected query — safe to call in hot paths.
     /// </summary>
-    Task<TranspilationJob?> GetActiveJobForContentObjectAsync(Guid contentObjectId, CancellationToken ct = default);
+    Task<TranspilationJob?> GetActiveJobForVersionAsync(Guid versionId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the transpilation job with the given identifier, eagerly loading its representations.
@@ -24,6 +25,7 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
     Task<PaginatedResult<TranspilationJob>> FindJobsAsync(TranspilationJobQuery query, CancellationToken ct = default);
 
     Task UpdateStatusAsync(Guid jobId, TranspilationStatus status, int? progress = null, string? errorDetail = null,
+        string? segmentPrefix = null,
         CancellationToken ct = default);
 
     Task<IEnumerable<TranspilationJob>> GetStalledJobsAsync(TimeSpan threshold, CancellationToken ct = default);

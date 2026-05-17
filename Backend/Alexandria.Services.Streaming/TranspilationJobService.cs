@@ -20,19 +20,19 @@ public partial class TranspilationJobService(
         Guid userId,
         CancellationToken ct = default)
     {
-        var (contentObjectId, isVideo) =
-            await unitOfWork.ContentObjects.GetContentObjectInfoByVersionIdAsync(versionId, userId, ct);
+        var isVideo =
+            await unitOfWork.ContentObjects.IsVideo(versionId, userId, ct);
 
         var activeJob = await unitOfWork.TranspilationJobs
-            .GetActiveJobForContentObjectAsync(contentObjectId, ct);
+            .GetActiveJobForVersionAsync(versionId, ct);
 
         if (activeJob is not null)
-            throw new TranspilationJobConflictException(contentObjectId, activeJob.Id);
+            throw new TranspilationJobConflictException(versionId, activeJob.Id);
 
         var entity = new TranspilationJob()
         {
             Id = Guid.NewGuid(),
-            ContentObjectId = contentObjectId,
+            VersionId = versionId,
             IsVideo = isVideo,
             Status = TranspilationStatus.Queued,
             ProgressPercent = 0,
@@ -42,7 +42,7 @@ public partial class TranspilationJobService(
         };
         var created = await unitOfWork.TranspilationJobs.AddAsync(entity, ct);
 
-        LogJobCreated(logger, created.Id, contentObjectId);
+        LogJobCreated(logger, created.Id, versionId);
 
         return created.ToResponse();
     }
@@ -59,12 +59,12 @@ public partial class TranspilationJobService(
     }
 
     /// <inheritdoc/>
-    public async Task<TranspilationJobResponse> GetByContentObjectIdAsync(
-        Guid contentObjectId,
+    public async Task<TranspilationJobResponse> GetByVersionId(
+        Guid versionId,
         CancellationToken ct = default)
     {
-        var job = await unitOfWork.TranspilationJobs.GetByContentObjectIdAsync(contentObjectId, ct)
-                  ?? throw new TranspilationJobNotFoundException(contentObjectId);
+        var job = await unitOfWork.TranspilationJobs.GetByVersionId(versionId, ct)
+                  ?? throw new TranspilationJobNotFoundException(versionId);
 
         return job.ToResponse();
     }
@@ -91,6 +91,7 @@ public partial class TranspilationJobService(
         TranspilationStatus status,
         int? progress = null,
         string? errorDetail = null,
+        string? segmentPrefix = null,
         CancellationToken ct = default)
     {
         var exists = await unitOfWork.TranspilationJobs.ExistsAsync(j => j.Id == jobId, ct);
@@ -98,7 +99,7 @@ public partial class TranspilationJobService(
         if (!exists)
             throw new TranspilationJobNotFoundException(jobId);
 
-        await unitOfWork.TranspilationJobs.UpdateStatusAsync(jobId, status, progress, errorDetail, ct);
+        await unitOfWork.TranspilationJobs.UpdateStatusAsync(jobId, status, progress, errorDetail, segmentPrefix, ct);
 
         LogJobStatusUpdated(logger, jobId, status);
     }

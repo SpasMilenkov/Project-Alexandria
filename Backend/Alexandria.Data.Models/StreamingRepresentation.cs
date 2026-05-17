@@ -19,9 +19,6 @@ public class StreamingRepresentation : IBase
 
     public RepresentationStatus Status { get; set; } = RepresentationStatus.Pending;
 
-    // relative path root in the streaming bucket, e.g. "{fileId}/v/1080p_av1"
-    public string? SegmentPrefix { get; set; }
-
     public DateTime? CompletedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }

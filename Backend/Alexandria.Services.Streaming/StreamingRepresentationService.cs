@@ -1,6 +1,7 @@
 using Alexandria.Common;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Extensions;
 using Alexandria.Dto.Files;
@@ -29,6 +30,30 @@ public partial class StreamingRepresentationService(
         LogRepresentationCreated(logger, created.Id, request.JobId, request.Codec);
 
         return created.ToResponse();
+    }
+
+    /// <inheritdoc/>
+    public async Task<IEnumerable<StreamingRepresentationResponse>> CreateRepresentationsAsync(
+        List<CreateStreamingRepresentationRequest> requests,
+        CancellationToken ct = default)
+    {
+        if (requests.Count == 0)
+            return [];
+
+        var jobId = requests[0].JobId;
+
+        var jobExists = await uow.TranspilationJobs.ExistsAsync(j => j.Id == jobId, ct);
+        if (!jobExists)
+            throw new TranspilationJobNotFoundException(jobId);
+
+        var entities = requests.Select(r => r.ToEntity());
+        var created = await uow.StreamingRepresentations.AddRangeAsync(entities, ct);
+
+        var list = created as StreamingRepresentation[] ?? created.ToArray();
+
+        LogRepresentationsCreated(logger, list.Length, jobId);
+
+        return list.Select(c => c.ToResponse());
     }
 
     /// <inheritdoc/>
@@ -71,7 +96,6 @@ public partial class StreamingRepresentationService(
     /// <inheritdoc/>
     public async Task MarkReadyAsync(
         Guid representationId,
-        string segmentPrefix,
         CancellationToken ct = default)
     {
         var representation = await uow.StreamingRepresentations.GetByIdAsync(representationId, ct)
@@ -81,9 +105,9 @@ public partial class StreamingRepresentationService(
             throw new InvalidRepresentationStateException(
                 representationId, representation.Status, nameof(MarkReadyAsync));
 
-        await uow.StreamingRepresentations.MarkReadyAsync(representationId, segmentPrefix, ct);
+        await uow.StreamingRepresentations.MarkReadyAsync(representationId, ct);
 
-        LogRepresentationMarkedReady(logger, representationId, segmentPrefix);
+        LogRepresentationMarkedReady(logger, representationId);
     }
 
     /// <inheritdoc/>
@@ -118,5 +142,23 @@ public partial class StreamingRepresentationService(
         await uow.StreamingRepresentations.MarkProcessingAsync(representationId, ct);
 
         LogRepresentationMarkedProcessing(logger, representationId);
+    }
+
+    /// <inheritdoc/>
+    public async Task MarkAllReadyAsync(
+        List<Guid> representationIds,
+        CancellationToken ct = default)
+    {
+        await uow.StreamingRepresentations.MarkAllReadyAsync(representationIds, ct);
+        LogRepresentationsMarkedReady(logger, representationIds.Count);
+    }
+
+    /// <inheritdoc/>
+    public async Task MarkAllFailedAsync(
+        List<Guid> representationIds,
+        CancellationToken ct = default)
+    {
+        await uow.StreamingRepresentations.MarkAllFailedAsync(representationIds, ct);
+        LogRepresentationsMarkedFailed(logger, representationIds.Count);
     }
 }

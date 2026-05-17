@@ -9,11 +9,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
 
-public class StreamingRepresentationRepository(AlexandriaDbContext context) : IStreamingRepresentationRepository
+public class StreamingRepresentationRepository(AlexandriaDbContext context)
+    : IStreamingRepresentationRepository
 {
-    private readonly DbSet<StreamingRepresentation> _representations = context.StreamingRepresentations;
+    private readonly DbSet<StreamingRepresentation> _representations =
+        context.StreamingRepresentations;
 
-    public async Task<StreamingRepresentation?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<StreamingRepresentation?> GetByIdAsync(
+        Guid id,
+        CancellationToken ct = default)
         => await _representations.FirstOrDefaultAsync(r => r.Id == id, ct);
 
     public async Task<StreamingRepresentation?> FirstOrDefaultAsync(
@@ -45,9 +49,11 @@ public class StreamingRepresentationRepository(AlexandriaDbContext context) : IS
         return list;
     }
 
-    public void Update(StreamingRepresentation entity) => _representations.Update(entity);
+    public void Update(StreamingRepresentation entity)
+        => _representations.Update(entity);
 
-    public void Remove(StreamingRepresentation entity) => _representations.Remove(entity);
+    public void Remove(StreamingRepresentation entity)
+        => _representations.Remove(entity);
 
     public void RemoveRange(IEnumerable<StreamingRepresentation> entities)
         => _representations.RemoveRange(entities);
@@ -113,29 +119,21 @@ public class StreamingRepresentationRepository(AlexandriaDbContext context) : IS
         };
     }
 
-    public async Task<StreamingRepresentation?> GetByVersionIdAsync(
-        Guid versionId,
-        Guid userId,
+    public async Task MarkProcessingAsync(
+        Guid representationId,
         CancellationToken ct = default)
-    {
-        return await _representations
-            .AsNoTracking()
-            .Where(r => context.FileVersions.Any(v =>
-                v.Id == versionId
-                && v.File.OwnerId == userId
-                && v.ContentObjectId == r.Job.ContentObjectId))
-            .FirstOrDefaultAsync(ct);
-    }
+        => await _representations
+            .Where(r => r.Id == representationId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, RepresentationStatus.Processing), ct);
 
     public async Task MarkReadyAsync(
         Guid representationId,
-        string segmentPrefix,
         CancellationToken ct = default)
         => await _representations
             .Where(r => r.Id == representationId)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.Status, RepresentationStatus.Ready)
-                .SetProperty(r => r.SegmentPrefix, segmentPrefix)
                 .SetProperty(r => r.CompletedAt, DateTime.UtcNow), ct);
 
     public async Task MarkFailedAsync(
@@ -147,11 +145,29 @@ public class StreamingRepresentationRepository(AlexandriaDbContext context) : IS
                 .SetProperty(r => r.Status, RepresentationStatus.Failed)
                 .SetProperty(r => r.CompletedAt, DateTime.UtcNow), ct);
 
-    public async Task MarkProcessingAsync(
-        Guid representationId,
+    public async Task MarkAllProcessingAsync(
+        List<Guid> representationIds,
         CancellationToken ct = default)
         => await _representations
-            .Where(r => r.Id == representationId)
+            .Where(r => representationIds.Contains(r.Id))
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.Status, RepresentationStatus.Processing), ct);
+
+    public async Task MarkAllReadyAsync(
+        List<Guid> representationIds,
+        CancellationToken ct = default)
+        => await _representations
+            .Where(r => representationIds.Contains(r.Id))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, RepresentationStatus.Ready)
+                .SetProperty(r => r.CompletedAt, DateTime.UtcNow), ct);
+
+    public async Task MarkAllFailedAsync(
+        List<Guid> representationIds,
+        CancellationToken ct = default)
+        => await _representations
+            .Where(r => representationIds.Contains(r.Id))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, RepresentationStatus.Failed)
+                .SetProperty(r => r.CompletedAt, DateTime.UtcNow), ct);
 }

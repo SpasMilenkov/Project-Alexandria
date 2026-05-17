@@ -5,23 +5,38 @@ namespace Alexandria.Services.Streaming;
 
 public partial class StreamingRepresentationService
 {
-    [LoggerMessage(6000, LogLevel.Information,
-        "Streaming representation {RepresentationId} created for job {JobId} with codec {Codec}")]
+    [LoggerMessage(2000, LogLevel.Information,
+        "Representation {RepresentationId} created for job {JobId} with codec {Codec}")]
     private static partial void LogRepresentationCreated(
         ILogger logger, Guid representationId, Guid jobId, StreamCodec codec);
 
-    [LoggerMessage(6001, LogLevel.Information,
-        "Streaming representation {RepresentationId} marked ready at segment prefix '{SegmentPrefix}'")]
-    private static partial void LogRepresentationMarkedReady(
-        ILogger logger, Guid representationId, string segmentPrefix);
+    [LoggerMessage(2001, LogLevel.Information,
+        "{Count} representations created for job {JobId}")]
+    private static partial void LogRepresentationsCreated(
+        ILogger logger, int count, Guid jobId);
 
-    [LoggerMessage(6002, LogLevel.Warning,
-        "Streaming representation {RepresentationId} marked failed")]
+    [LoggerMessage(2002, LogLevel.Information,
+        "Representation {RepresentationId} marked Ready")]
+    private static partial void LogRepresentationMarkedReady(
+        ILogger logger, Guid representationId);
+
+    [LoggerMessage(2003, LogLevel.Information,
+        "Representation {RepresentationId} marked Failed")]
     private static partial void LogRepresentationMarkedFailed(
         ILogger logger, Guid representationId);
 
-    [LoggerMessage(6003, LogLevel.Debug,
-        "Streaming representation {RepresentationId} marked processing")]
+    [LoggerMessage(2004, LogLevel.Information,
+        "Representation {RepresentationId} marked Processing")]
     private static partial void LogRepresentationMarkedProcessing(
         ILogger logger, Guid representationId);
+
+    [LoggerMessage(2005, LogLevel.Information,
+        "{Count} representations marked Ready")]
+    private static partial void LogRepresentationsMarkedReady(
+        ILogger logger, int count);
+
+    [LoggerMessage(2006, LogLevel.Warning,
+        "{Count} representations marked Failed")]
+    private static partial void LogRepresentationsMarkedFailed(
+        ILogger logger, int count);
 }

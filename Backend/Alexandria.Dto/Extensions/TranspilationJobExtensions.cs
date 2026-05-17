@@ -9,7 +9,7 @@ public static class TranspilationJobExtensions
         => new()
         {
             Id = job.Id,
-            ContentObjectId = job.ContentObjectId,
+            VersionId = job.VersionId,
             Status = job.Status,
             IsVideo = job.IsVideo,
             ProgressPercent = job.ProgressPercent,

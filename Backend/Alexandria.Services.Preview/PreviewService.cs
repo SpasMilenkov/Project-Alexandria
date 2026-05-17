@@ -13,7 +13,16 @@ public class PreviewService(
     ITextPreviewService textPreviewService,
     IArchivePreviewService archivePreviewService) : IPreviewService
 {
-    public async Task<PreviewResultDto?> GetPreviewUrlAsync(Guid fileId, Guid ownerId, CancellationToken ct)
+    /// <inheritdoc/>
+    public async Task<bool> HasPreviewAsync(Guid versionId, CancellationToken ct = default)
+    {
+        return await unitOfWork.Files.ExistsAsync(f => f.Versions
+            .Select(v => v.Id)
+            .Contains(versionId) && !f.HasPreview, ct);
+    }
+
+    /// <inheritdoc/>
+    public async Task<PreviewResultDto?> GetPreviewUrlAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
     {
         var fileData = await unitOfWork.Files.GetByIdAsync(fileId, ct);
         if (fileData is null || fileData.OwnerId != ownerId)

@@ -661,7 +661,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     public async Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default) =>
         await context.FileVersions
             .AsNoTracking()
-            .Where(v => v.ContentObjectId == versionId && v.File.OwnerId == userId)
+            .Where(v => v.Id == versionId && v.File.OwnerId == userId)
             .AnyAsync(cancellationToken: ct);
 
     public async Task<File?> GetFileEntityWithTagsAsync(
@@ -799,16 +799,15 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 && j.Status == TranspilationStatus.Ready
                 && j.Representations.Any(r =>
                     r.DeletedAt == null
-                    && r.Status == RepresentationStatus.Ready
-                    && r.SegmentPrefix != null))
-            .Select(j => j.ContentObjectId);
+                    && r.Status == RepresentationStatus.Ready))
+            .Select(j => j.VersionId);
 
         var query = _files.Where(f =>
             f.OwnerId == userId
             && f.DeletedAt == null
             && f.Versions.Any(v =>
                 v.DeletedAt == null
-                && viableContentObjectIds.Contains(v.ContentObjectId))).Select(FileProjections.ToFileResult);
+                && viableContentObjectIds.Contains(v.Id))).Select(FileProjections.ToFileResult);
 
         var count = await query.CountAsync(ct);
 

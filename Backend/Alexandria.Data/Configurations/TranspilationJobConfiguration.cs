@@ -25,8 +25,7 @@ public class TranspilationJobConfiguration : IEntityTypeConfiguration<Transpilat
             .IsRequired();
 
         builder.Property(e => e.ErrorDetail)
-            .HasMaxLength(ValidationConstants.StringLengths.LongString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.LongString})")
+            .HasColumnType("text")
             .IsRequired(false);
 
         builder.Property(e => e.IsVideo)
@@ -44,18 +43,22 @@ public class TranspilationJobConfiguration : IEntityTypeConfiguration<Transpilat
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
 
-        builder.HasOne(e => e.ContentObject)
-            .WithOne()
-            .HasForeignKey<TranspilationJob>(e => e.ContentObjectId)
+        builder.HasOne(e => e.FileVersion)
+            .WithMany()
+            .HasForeignKey(e => e.VersionId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Property(e => e.SegmentPrefix)
+            .HasMaxLength(ValidationConstants.StringLengths.MediumString)
+            .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
+            .IsRequired(false);
 
         builder.HasMany(e => e.Representations)
             .WithOne(r => r.Job)
             .HasForeignKey(r => r.JobId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(e => e.ContentObjectId).IsUnique();
+        builder.HasIndex(e => new { e.VersionId, e.UserId }).IsUnique();
         builder.HasIndex(e => e.Status);
         builder.HasIndex(e => e.CreatedAt);
 

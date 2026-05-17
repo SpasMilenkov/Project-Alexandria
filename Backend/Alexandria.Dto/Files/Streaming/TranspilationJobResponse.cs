@@ -5,7 +5,7 @@ namespace Alexandria.Dto.Files.Streaming;
 public sealed class TranspilationJobResponse
 {
     public Guid Id { get; init; }
-    public Guid ContentObjectId { get; init; }
+    public Guid VersionId { get; init; }
     public TranspilationStatus Status { get; init; }
     public bool IsVideo { get; init; }
     public int ProgressPercent { get; init; }

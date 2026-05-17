@@ -15,6 +15,7 @@ internal sealed class StreamCheckEndpoint(IFileService fileService) : EndpointWi
     public override async Task HandleAsync(CancellationToken ct)
     {
         var uri = HttpContext.Request.Headers["X-Original-URI"].FirstOrDefault();
+        Console.WriteLine($"uri before if  {uri}");
 
         if (string.IsNullOrEmpty(uri))
         {

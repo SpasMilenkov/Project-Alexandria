@@ -64,18 +64,21 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
         CancellationToken ct = default)
         => await _jobs.AnyAsync(predicate, ct);
 
-    public async Task<TranspilationJob?> GetByContentObjectIdAsync(
-        Guid contentObjectId,
+    public async Task<TranspilationJob?> GetByVersionId(
+        Guid versionId,
         CancellationToken ct = default)
-        => await _jobs.FirstOrDefaultAsync(j => j.ContentObjectId == contentObjectId, ct);
+        => await _jobs.FirstOrDefaultAsync(j => j.VersionId == versionId, ct);
 
-    public async Task<TranspilationJob?> GetActiveJobForContentObjectAsync(
-        Guid contentObjectId,
+    public async Task<TranspilationJob?> GetByVersionId(Guid versionId, Guid userId, CancellationToken ct = default)
+        => await _jobs.FirstOrDefaultAsync(j => j.VersionId == versionId && j.UserId == userId, ct);
+
+    public async Task<TranspilationJob?> GetActiveJobForVersionAsync(
+        Guid versionId,
         CancellationToken ct = default)
         => await _jobs
             .AsNoTracking()
             .FirstOrDefaultAsync(j =>
-                j.ContentObjectId == contentObjectId &&
+                j.VersionId == versionId &&
                 (j.Status == TranspilationStatus.Queued || j.Status == TranspilationStatus.Processing), ct);
 
 
@@ -101,8 +104,8 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
         if (query.IsVideo.HasValue)
             q = q.Where(j => j.IsVideo == query.IsVideo.Value);
 
-        if (query.ContentObjectId.HasValue)
-            q = q.Where(j => j.ContentObjectId == query.ContentObjectId.Value);
+        if (query.VersionId.HasValue)
+            q = q.Where(j => j.VersionId == query.VersionId.Value);
 
         if (query.CreatedAfter.HasValue)
             q = q.Where(j => j.CreatedAt >= query.CreatedAfter.Value);
@@ -124,7 +127,7 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
         var items = await q
             .AsNoTracking()
             .OrderByDescending(j => j.CreatedAt)
-            .Skip(query.CurrentPage * query.PageSize)
+            .Skip((query.CurrentPage - 1) * query.PageSize)
             .Take(query.PageSize)
             .Include(j => j.Representations)
             .ToListAsync(ct);
@@ -144,6 +147,7 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
         TranspilationStatus status,
         int? progress = null,
         string? errorDetail = null,
+        string? segmentPrefix = null,
         CancellationToken ct = default)
         => await _jobs
             .Where(j => j.Id == jobId)
@@ -153,6 +157,7 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
                     .SetProperty(j => j.ErrorDetail, j => errorDetail ?? j.ErrorDetail)
                     .SetProperty(j => j.StartedAt, j =>
                         status == TranspilationStatus.Processing ? DateTime.UtcNow : j.StartedAt)
+                    .SetProperty(j => j.SegmentPrefix, j => segmentPrefix ?? j.SegmentPrefix)
                     .SetProperty(j => j.CompletedAt, j =>
                         status == TranspilationStatus.Ready
                         || status == TranspilationStatus.Failed

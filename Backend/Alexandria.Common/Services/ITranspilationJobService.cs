@@ -42,14 +42,14 @@ public interface ITranspilationJobService
     /// Representations are not eagerly loaded on this path; use
     /// <see cref="GetByIdAsync"/> if you need them.
     /// </summary>
-    /// <param name="contentObjectId">The content object identifier.</param>
+    /// <param name="versionId">The version identifier.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The associated transpilation job.</returns>
     /// <exception cref="TranspilationJobNotFoundException">
-    /// Thrown when no job exists for <paramref name="contentObjectId"/>.
+    /// Thrown when no job exists for <paramref name="versionId"/>.
     /// </exception>
-    Task<TranspilationJobResponse> GetByContentObjectIdAsync(
-        Guid contentObjectId,
+    Task<TranspilationJobResponse> GetByVersionId(
+        Guid versionId,
         CancellationToken ct = default);
 
     /// <summary>
@@ -76,6 +76,10 @@ public interface ITranspilationJobService
     /// Optional error detail message. When <see langword="null"/>, the existing
     /// value is preserved.
     /// </param>
+    /// <param name="segmentPrefix">
+    /// The prefix that points to the location of the mpd file and the individual chunks stored
+    /// in the streaming bucket.
+    /// </param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="TranspilationJobNotFoundException">
     /// Thrown when no job with <paramref name="jobId"/> exists.
@@ -85,6 +89,7 @@ public interface ITranspilationJobService
         TranspilationStatus status,
         int? progress = null,
         string? errorDetail = null,
+        string? segmentPrefix = null,
         CancellationToken ct = default);
 
     /// <summary>

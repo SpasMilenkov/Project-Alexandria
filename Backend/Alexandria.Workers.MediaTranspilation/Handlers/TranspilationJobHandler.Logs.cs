@@ -3,9 +3,9 @@ namespace Alexandria.Workers.MediaTranspilation.Handlers;
 public partial class TranspilationJobHandler
 {
     [LoggerMessage(10000, LogLevel.Information,
-        "Job {JobId}: downloading source from content object {ContentObjectId}")]
+        "Job {JobId}: downloading source for version {VersionId}")]
     private static partial void LogDownloadingSource(
-        ILogger logger, Guid jobId, Guid contentObjectId);
+        ILogger logger, Guid jobId, Guid versionId);
 
     [LoggerMessage(10001, LogLevel.Information,
         "Job {JobId}: running {MediaType} transpilation")]
@@ -19,7 +19,8 @@ public partial class TranspilationJobHandler
 
     [LoggerMessage(10003, LogLevel.Information,
         "Job {JobId}: completed successfully")]
-    private static partial void LogJobCompleted(ILogger logger, Guid jobId);
+    private static partial void LogJobCompleted(
+        ILogger logger, Guid jobId);
 
     [LoggerMessage(10004, LogLevel.Error,
         "Job {JobId}: failed")]
@@ -27,9 +28,9 @@ public partial class TranspilationJobHandler
         ILogger logger, Exception ex, Guid jobId);
 
     [LoggerMessage(10005, LogLevel.Warning,
-        "Job {JobId}: could not mark representation {RepresentationId} as failed during error cleanup")]
+        "Job {JobId}: could not mark representations as failed during error cleanup")]
     private static partial void LogRepresentationMarkFailedError(
-        ILogger logger, Exception ex, Guid JobId, Guid representationId);
+        ILogger logger, Exception ex, Guid jobId);
 
     [LoggerMessage(10006, LogLevel.Warning,
         "Job {JobId}: could not update job status to Failed during error cleanup")]

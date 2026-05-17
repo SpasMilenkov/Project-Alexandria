@@ -87,17 +87,17 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
             q = q.Where(h => h.Completed == query.Completed.Value);
 
         if (query.AccessedAfter.HasValue)
-            q = q.Where(h => h.LastAccessedAt >= query.AccessedAfter.Value);
+            q = q.Where(h => h.LastAccessedAt >= query.AccessedAfter.Value.ToUniversalTime());
 
         if (query.AccessedBefore.HasValue)
-            q = q.Where(h => h.LastAccessedAt <= query.AccessedBefore.Value);
+            q = q.Where(h => h.LastAccessedAt <= query.AccessedBefore.Value.ToUniversalTime());
 
         var totalCount = await q.CountAsync(ct);
 
         var items = await q
             .AsNoTracking()
             .OrderByDescending(h => h.LastAccessedAt)
-            .Skip(query.CurrentPage * query.PageSize)
+            .Skip((query.CurrentPage - 1) * query.PageSize)
             .Take(query.PageSize)
             .ToListAsync(ct);
 
@@ -141,7 +141,7 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(h => h.PositionSeconds, positionSeconds)
                     .SetProperty(h => h.Completed, completed)
-                    .SetProperty(h => h.LastAccessedAt, DateTimeOffset.UtcNow), ct);
+                    .SetProperty(h => h.LastAccessedAt, DateTime.UtcNow), ct);
         }
     }
 

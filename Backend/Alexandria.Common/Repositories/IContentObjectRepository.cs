@@ -9,7 +9,7 @@ public interface IContentObjectRepository : IRepository<ContentObject>
     Task<int> MarkOrphaned(DateTime time, CancellationToken ct = default);
     Task<int> ClearOrphaned(DateTime time, CancellationToken ct = default);
 
-    Task<(Guid ContentObjectId, bool IsVideo)> GetContentObjectInfoByVersionIdAsync(
+    Task<bool> IsVideo(
         Guid versionId,
         Guid userId,
         CancellationToken ct = default);

@@ -1,8 +1,9 @@
+using System.Data;
+using Alexandria.Common;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
-using Alexandria.Workers.MediaTranspilation.Config;
-using Microsoft.Extensions.Options;
+using Directory = System.IO.Directory;
 
 namespace Alexandria.Workers.MediaTranspilation.Handlers;
 
@@ -12,14 +13,9 @@ public partial class TranspilationJobHandler(
     IStorageService storage,
     IVideoTranspilationService videoTranspilation,
     IAudioTranspilationService audioTranspilation,
-    IOptions<TranspilationConfig> config,
+    IUnitOfWork unitOfWork,
     ILogger<TranspilationJobHandler> logger)
 {
-    /// <summary>
-    /// Attempts to claim and fully process the transpilation job identified by
-    /// <paramref name="jobId"/>. If another worker already claimed the job this
-    /// call is a no-op.
-    /// </summary>
     public async Task HandleAsync(Guid jobId, CancellationToken ct = default)
     {
         var claimed = await jobService.TryClaimJobAsync(jobId, ct);
@@ -34,43 +30,47 @@ public partial class TranspilationJobHandler(
         var repDir = Path.Combine(jobDir, mediaDir, codecStr);
         var inputPath = Path.Combine(jobDir, "source");
 
-        Guid? representationId = null;
+        List<Guid> representationIds = [];
 
         try
         {
             Directory.CreateDirectory(repDir);
 
-            LogDownloadingSource(logger, jobId, job.ContentObjectId);
+            LogDownloadingSource(logger, jobId, job.VersionId);
 
-            await storage.DownloadContentObjectAsync(job.ContentObjectId, inputPath, ct);
+            var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == job.VersionId, ct) ??
+                          throw new VersionNotFoundException();
 
-            var representation = await representationService.CreateRepresentationAsync(
-                new CreateStreamingRepresentationRequest
-                {
-                    JobId = jobId,
-                    Codec = job.IsVideo ? StreamCodec.H264 : StreamCodec.Opus
-                }, ct);
-
-            representationId = representation.Id;
-
-            await representationService.MarkProcessingAsync(representation.Id, ct);
+            await storage.DownloadContentObjectAsync(version.ContentObjectId, inputPath, ct);
 
             LogTranspilationRunning(logger, jobId, job.IsVideo);
+
 
             TranspilationOutput output = job.IsVideo
                 ? await videoTranspilation.TranspileAsync(inputPath, repDir, ct)
                 : await audioTranspilation.TranspileAsync(inputPath, repDir, ct);
 
-            var segmentPrefix = $"{job.ContentObjectId}/{mediaDir}/{codecStr}";
+            var segmentPrefix = $"{job.VersionId}/{mediaDir}/{codecStr}";
 
             LogUploadingOutput(logger, jobId, segmentPrefix);
-
             await storage.UploadStreamingOutputAsync(output.RootDirectory, segmentPrefix, ct);
 
-            await representationService.MarkReadyAsync(representation.Id, segmentPrefix, ct);
+            var representations = await representationService.CreateRepresentationsAsync(
+                output.Lanes.Select(lane => new CreateStreamingRepresentationRequest
+                {
+                    JobId = jobId,
+                    Codec = lane.Codec,
+                    BitrateKbps = lane.BitrateKbps,
+                    Width = lane.Width,
+                    Height = lane.Height
+                }).ToList(), ct);
 
-            await jobService.UpdateStatusAsync(
-                jobId, TranspilationStatus.Ready, progress: 100, ct: ct);
+            representationIds = representations.Select(r => r.Id).ToList();
+
+            await representationService.MarkAllReadyAsync(representationIds, ct);
+
+            await jobService.UpdateStatusAsync(jobId, TranspilationStatus.Ready, progress: 100,
+                segmentPrefix: segmentPrefix, ct: ct);
 
             LogJobCompleted(logger, jobId);
         }
@@ -78,25 +78,21 @@ public partial class TranspilationJobHandler(
         {
             LogJobFailed(logger, ex, jobId);
 
-            if (representationId.HasValue)
+            if (representationIds.Count > 0)
             {
                 try
                 {
-                    await representationService.MarkFailedAsync(representationId.Value, ct);
+                    await representationService.MarkAllFailedAsync(representationIds, ct);
                 }
                 catch (Exception cleanupEx)
                 {
-                    LogRepresentationMarkFailedError(logger, cleanupEx, job.Id, representationId.Value);
+                    LogRepresentationMarkFailedError(logger, cleanupEx, jobId);
                 }
             }
 
             try
             {
-                await jobService.UpdateStatusAsync(
-                    jobId,
-                    TranspilationStatus.Failed,
-                    errorDetail: ex.Message,
-                    ct: ct);
+                await jobService.UpdateStatusAsync(jobId, TranspilationStatus.Failed, errorDetail: ex.Message, ct: ct);
             }
             catch (Exception cleanupEx)
             {

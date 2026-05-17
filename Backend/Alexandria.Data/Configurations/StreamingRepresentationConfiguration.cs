@@ -32,10 +32,6 @@ public class StreamingRepresentationConfiguration : IEntityTypeConfiguration<Str
             .IsRequired(false);
 
         // e.g. "{contentObjectId}/v/1080p_av1" or "{contentObjectId}/a/128kbps_opus"
-        builder.Property(e => e.SegmentPrefix)
-            .HasMaxLength(ValidationConstants.StringLengths.MediumString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
-            .IsRequired(false);
 
         builder.Property(e => e.CompletedAt)
             .HasColumnType("timestamp with time zone")
@@ -47,7 +43,7 @@ public class StreamingRepresentationConfiguration : IEntityTypeConfiguration<Str
             .OnDelete(DeleteBehavior.Cascade);
 
         // one row per codec per job, no duplicates
-        builder.HasIndex(e => new { e.JobId, e.Codec }).IsUnique();
+        builder.HasIndex(e => new { e.JobId, e.Codec });
         builder.HasIndex(e => e.Status);
 
         builder.ToTable("StreamRepresentations");

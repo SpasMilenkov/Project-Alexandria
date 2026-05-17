@@ -75,17 +75,18 @@ internal sealed class GetTranspilationJobsEndpoint(ITranspilationJobService jobS
                 CurrentPage = req.CurrentPage,
                 PageSize = req.PageSize
             }, ct), ct);
+            return;
         }
 
-        var (contentObjectId, isVideo) =
-            await fileService.GetContentObjectInfoByVersionIdAsync(req.VersionId.Value, userId, ct);
+        var isVideo =
+            await fileService.IsVideo(req.VersionId.Value, userId, ct);
 
         var result = await jobService.FindJobsAsync(new TranspilationJobQuery
         {
             UserId = userId,
             Status = req.Status,
             IsVideo = isVideo,
-            ContentObjectId = contentObjectId,
+            VersionId = req.VersionId,
             CreatedAfter = req.CreatedAfter,
             CreatedBefore = req.CreatedBefore,
             CompletedAfter = req.CompletedAfter,

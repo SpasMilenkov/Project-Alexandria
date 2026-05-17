@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Alexandria.Common.Exceptions.Transpilation;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +10,15 @@ namespace Alexandria.Services.Streaming;
 public partial class VideoTranspilationService(
     ILogger<VideoTranspilationService> logger) : IVideoTranspilationService
 {
+    private sealed record VideoQualityLane(int Width, int Height, int BitrateKbps, int Crf);
+
+    private static readonly IReadOnlyList<VideoQualityLane> ResolutionLadder =
+    [
+        new(640, 360, 800, 28),
+        new(1280, 720, 2500, 23),
+        new(1920, 1080, 5000, 21),
+    ];
+
     /// <inheritdoc/>
     public async Task<TranspilationOutput> TranspileAsync(
         string inputPath,
@@ -16,7 +26,6 @@ public partial class VideoTranspilationService(
         CancellationToken ct = default)
     {
         var dashDir = Path.Combine(outputDirectory, "dash");
-
         Directory.CreateDirectory(dashDir);
 
         LogTranspilationStarting(logger, inputPath, outputDirectory);
@@ -28,7 +37,10 @@ public partial class VideoTranspilationService(
         return new TranspilationOutput
         {
             DashDirectory = dashDir,
-            RootDirectory = outputDirectory
+            RootDirectory = outputDirectory,
+            Lanes = ResolutionLadder
+                .Select(l => new ProducedLane(StreamCodec.H264, l.BitrateKbps, l.Width, l.Height))
+                .ToList()
         };
     }
 
@@ -36,19 +48,35 @@ public partial class VideoTranspilationService(
     {
         var manifestPath = Path.Combine(dashDir, "manifest.mpd");
 
-        var args = string.Join(" ",
-            $"-i \"{inputPath}\"",
-            "-c:v libx264 -preset fast -crf 23",
-            "-c:a aac -b:a 128k",
-            "-f dash -seg_duration 6",
-            "-init_seg_name init.mp4",
-            "-media_seg_name \"seg$Number%03d$.m4s\"",
-            $"\"{manifestPath}\"");
+        var args = new List<string> { "-i", $"\"{inputPath}\"" };
+
+        for (var i = 0; i < ResolutionLadder.Count; i++)
+        {
+            var lane = ResolutionLadder[i];
+            args.AddRange([
+                "-map", "0:v",
+                $"-c:v:{i}", "libx264",
+                "-preset", "fast",
+                $"-crf", lane.Crf.ToString(),
+                $"-vf:{i}", $"scale={lane.Width}:{lane.Height}",
+                $"-b:v:{i}", $"{lane.BitrateKbps}k",
+            ]);
+        }
+
+        args.AddRange([
+            "-map", "0:a",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-f", "dash",
+            "-seg_duration", "6",
+            "-adaptation_sets", "\"id=0,streams=v id=1,streams=a\"",
+            $"\"{manifestPath}\""
+        ]);
+
+        var argString = string.Join(" ", args);
 
         LogDashPassStarting(logger, inputPath);
-
-        await RunFfmpegAsync(inputPath, args, "video DASH", manifestPath, ct);
-
+        await RunFfmpegAsync(inputPath, argString, "video DASH", manifestPath, ct);
         LogDashPassCompleted(logger, manifestPath);
     }
 
@@ -69,16 +97,11 @@ public partial class VideoTranspilationService(
             CreateNoWindow = true
         };
 
-        using var process = Process.Start(psi);
+        using var process = Process.Start(psi)
+                            ?? throw new TranspilationFfmpegException(inputPath, operation);
 
-        if (process is null)
-            throw new TranspilationFfmpegException(inputPath, operation);
-
-        // Drain stderr concurrently to avoid blocking the process on a full pipe buffer
         var stderrTask = process.StandardError.ReadToEndAsync(ct);
-
         await process.WaitForExitAsync(ct);
-
         var stderr = await stderrTask;
 
         if (process.ExitCode != 0)
