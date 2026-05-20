@@ -14,9 +14,20 @@ public class StreamHistoryConfiguration : IEntityTypeConfiguration<StreamHistory
             .HasDefaultValue(0L)
             .IsRequired();
 
-        builder.Property(e => e.Completed)
-            .HasDefaultValue(false)
+        builder.Property(e => e.MaxPositionReachedSeconds)
+            .HasDefaultValue(0L)
             .IsRequired();
+
+        builder.Property(e => e.TotalListenedSeconds)
+            .HasDefaultValue(0L)
+            .IsRequired();
+
+        builder.Property(e => e.TimesCompleted)
+            .HasDefaultValue(0)
+            .IsRequired();
+
+        builder.Property(e => e.LastCompletedAt)
+            .HasColumnType("timestamp with time zone");
 
         builder.Property(e => e.LastAccessedAt)
             .HasColumnType("timestamp with time zone")
@@ -25,6 +36,8 @@ public class StreamHistoryConfiguration : IEntityTypeConfiguration<StreamHistory
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")
             .IsRequired();
+
+        builder.Ignore(e => e.HasCompleted);
 
         builder.HasOne(e => e.User)
             .WithMany()
@@ -36,7 +49,11 @@ public class StreamHistoryConfiguration : IEntityTypeConfiguration<StreamHistory
             .HasForeignKey(e => e.FileId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // enforces upsert semantics: one resume point per user per file
+        builder.HasMany(e => e.Sessions)
+            .WithOne(s => s.StreamHistory)
+            .HasForeignKey(s => s.StreamHistoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(e => new { e.UserId, e.FileId }).IsUnique();
         builder.HasIndex(e => e.LastAccessedAt);
 

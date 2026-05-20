@@ -1,63 +1,43 @@
-using Alexandria.Dto.Files;
+using Alexandria.Common.Exceptions.Streaming;
+using Alexandria.Data.Models;
 using Alexandria.Dto.Files.Streaming;
 
 namespace Alexandria.Common.Services;
 
+/// <summary>Provides operations for tracking and querying a user's streaming history.</summary>
 public interface IStreamHistoryService
 {
     /// <summary>
-    /// Returns the stream history entry for the given user and file combination,
-    /// or <see langword="null"/> when no history has been recorded yet.
+    /// Returns the stream history for the given file and user, or <c>null</c> if the file has
+    /// never been played by this user.
     /// </summary>
-    /// <param name="userId">The user identifier.</param>
-    /// <param name="fileId">The file identifier.</param>
-    /// <param name="ct">Cancellation token.</param>
-    Task<StreamHistoryResponse?> GetByUserAndFileAsync(
-        Guid userId,
-        Guid fileId,
-        CancellationToken ct = default);
+    Task<StreamHistoryDto?> GetByFileAsync(Guid fileId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns a paginated list of stream history entries matching the given query filters.
-    /// </summary>
-    /// <param name="query">Filtering and pagination parameters.</param>
-    /// <param name="ct">Cancellation token.</param>
-    Task<PaginatedResult<StreamHistoryResponse>> FindHistoryAsync(
+    /// <summary>Returns a paginated list of stream history records for the given user.</summary>
+    Task<(ICollection<StreamHistoryDto> Items, int TotalCount)> FindAsync(
+        Guid userId,
         StreamHistoryQuery query,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Creates or updates the playback position for the given user and file.
-    /// Idempotent — safe to call on every progress tick.
+    /// Returns all sessions for a stream history row. Throws <see cref="StreamHistoryNotFoundException"/>
+    /// if the row does not belong to the user.
     /// </summary>
-    /// <param name="userId">The user identifier.</param>
-    /// <param name="fileId">The file identifier.</param>
-    /// <param name="positionSeconds">The current playback position in seconds.</param>
-    /// <param name="completed">
-    /// <see langword="true"/> when the file has been played to completion.
-    /// </param>
-    /// <param name="ct">Cancellation token.</param>
-    Task UpsertPositionAsync(
-        Guid userId,
-        Guid fileId,
-        long positionSeconds,
-        bool completed,
+    Task<IEnumerable<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId, Guid userId,
         CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the most recently accessed stream history entries for the given user,
-    /// ordered by <c>LastAccessedAt</c> descending.
+    /// Opens a new playback session. Creates the parent stream history row if this is the
+    /// first time the user plays this file.
     /// </summary>
-    /// <param name="userId">The user identifier.</param>
-    /// <param name="count">
-    /// Maximum number of entries to return. Must be greater than zero.
-    /// </param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <paramref name="count"/> is less than or equal to zero.
-    /// </exception>
-    Task<IEnumerable<StreamHistoryResponse>> GetRecentByUserAsync(
-        Guid userId,
-        int count,
+    Task<StreamSessionDto> StartSessionAsync(StartSessionRequest request, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Closes an open session, recording the end position and listened seconds. Updates the
+    /// parent <see cref="StreamHistory"/> summary fields (position, max reached, total listened,
+    /// completion count). Throws <see cref="StreamSessionNotFoundException"/> or
+    /// <see cref="StreamSessionAlreadyClosedException"/> when appropriate.
+    /// </summary>
+    Task<StreamHistoryDto> CloseSessionAsync(Guid sessionId, CloseSessionRequest request, Guid userId,
         CancellationToken ct = default);
 }

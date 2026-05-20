@@ -49,46 +49,48 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<UserSettings> UserSettings { get; set; }
     public DbSet<AdminSettings> AdminSettings { get; set; }
     public DbSet<TranspilationJob> TranspilationJobs { get; set; }
-    public DbSet<StreamHistory> StreamHistory { get; set; }
+    public DbSet<StreamHistory> StreamHistories { get; set; }
     public DbSet<StreamingRepresentation> StreamingRepresentations { get; set; }
+    public DbSet<StreamSession> StreamSessions { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder builder)
     {
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(builder);
 
         // Apply common audit column configuration to all entities implementing IBase
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+#pragma warning disable S3267
+        foreach (var entityType in builder.Model.GetEntityTypes())
+#pragma warning restore S3267
         {
-            if (typeof(IBase).IsAssignableFrom(entityType.ClrType))
-            {
-                var entity = modelBuilder.Entity(entityType.ClrType);
-                entity.Property<DateTime>("CreatedAt")
-                    .HasDefaultValueSql("NOW()")
-                    .IsRequired();
-                entity.Property<DateTime?>("UpdatedAt");
-                entity.Property<DateTime?>("DeletedAt");
-                entity.Property<Guid?>("UpdatedBy")
-                    .HasMaxLength(100);
-            }
+            if (!typeof(IBase).IsAssignableFrom(entityType.ClrType)) continue;
+            var entity = builder.Entity(entityType.ClrType);
+            entity.Property<DateTime>("CreatedAt")
+                .HasDefaultValueSql("NOW()")
+                .IsRequired();
+            entity.Property<DateTime?>("UpdatedAt");
+            entity.Property<DateTime?>("DeletedAt");
+            entity.Property<Guid?>("UpdatedBy")
+                .HasMaxLength(100);
         }
 
-        modelBuilder.ApplyConfiguration(new FileConfiguration());
-        modelBuilder.ApplyConfiguration(new SignedUrlConfiguration());
-        modelBuilder.ApplyConfiguration(new PreviewConfiguration());
-        modelBuilder.ApplyConfiguration(new MediaMetadataConfiguration());
-        modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
-        modelBuilder.ApplyConfiguration(new UserConfiguration());
-        modelBuilder.ApplyConfiguration(new TagConfiguration());
-        modelBuilder.ApplyConfiguration(new DirectoryConfiguration());
-        modelBuilder.ApplyConfiguration(new FileVersionConfiguration());
-        modelBuilder.ApplyConfiguration(new ContentObjectConfiguration());
-        modelBuilder.ApplyConfiguration(new AuditLogConfiguration());
-        modelBuilder.ApplyConfiguration(new UploadConfiguration());
-        modelBuilder.ApplyConfiguration(new UserSettingsConfiguration());
-        modelBuilder.ApplyConfiguration(new AdminSettingsConfiguration());
-        modelBuilder.ApplyConfiguration(new StreamHistoryConfiguration());
-        modelBuilder.ApplyConfiguration(new TranspilationJobConfiguration());
-        modelBuilder.ApplyConfiguration(new StreamingRepresentationConfiguration());
+        builder.ApplyConfiguration(new FileConfiguration());
+        builder.ApplyConfiguration(new SignedUrlConfiguration());
+        builder.ApplyConfiguration(new PreviewConfiguration());
+        builder.ApplyConfiguration(new MediaMetadataConfiguration());
+        builder.ApplyConfiguration(new RefreshTokenConfiguration());
+        builder.ApplyConfiguration(new UserConfiguration());
+        builder.ApplyConfiguration(new TagConfiguration());
+        builder.ApplyConfiguration(new DirectoryConfiguration());
+        builder.ApplyConfiguration(new FileVersionConfiguration());
+        builder.ApplyConfiguration(new ContentObjectConfiguration());
+        builder.ApplyConfiguration(new AuditLogConfiguration());
+        builder.ApplyConfiguration(new UploadConfiguration());
+        builder.ApplyConfiguration(new UserSettingsConfiguration());
+        builder.ApplyConfiguration(new AdminSettingsConfiguration());
+        builder.ApplyConfiguration(new StreamHistoryConfiguration());
+        builder.ApplyConfiguration(new TranspilationJobConfiguration());
+        builder.ApplyConfiguration(new StreamingRepresentationConfiguration());
+        builder.ApplyConfiguration(new StreamSessionConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

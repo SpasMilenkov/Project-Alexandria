@@ -98,4 +98,7 @@ public class MediaMetadataRepository(AlexandriaDbContext context) : IMediaMetada
         await context.SaveChangesAsync(ct);
         return metadata;
     }
+
+    public async Task<double> GetFileDurationAsync(Guid fileId, CancellationToken ct = default)
+        => await _mediaMetadata.Where(m => m.FileId == fileId).Select(m => m.Duration).FirstAsync(ct);
 }

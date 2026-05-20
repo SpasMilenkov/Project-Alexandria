@@ -804,11 +804,6 @@ namespace Alexandria.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("Completed")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -823,7 +818,25 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTime>("LastAccessedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("LastCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("MaxPositionReachedSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
                     b.Property<long>("PositionSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<int>("TimesCompleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<long>("TotalListenedSeconds")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
                         .HasDefaultValue(0L);
@@ -848,6 +861,63 @@ namespace Alexandria.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("StreamHistory", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("EndPositionSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("ListenedSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<bool>("ReachedCompletionThreshold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<long>("StartPositionSeconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("StreamHistoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReachedCompletionThreshold");
+
+                    b.HasIndex("StreamHistoryId");
+
+                    b.ToTable("StreamSession", (string)null);
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.StreamingRepresentation", b =>
@@ -1387,6 +1457,17 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.StreamSession", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.StreamHistory", "StreamHistory")
+                        .WithMany("Sessions")
+                        .HasForeignKey("StreamHistoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StreamHistory");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.StreamingRepresentation", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.TranspilationJob", "Job")
@@ -1519,6 +1600,11 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("SignedUrls");
 
                     b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamHistory", b =>
+                {
+                    b.Navigation("Sessions");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>

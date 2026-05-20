@@ -1,67 +1,124 @@
 using Alexandria.Common;
+using Alexandria.Common.Exceptions.Streaming;
 using Alexandria.Common.Services;
-using Alexandria.Dto.Extensions;
-using Alexandria.Dto.Files;
+using Alexandria.Data.Models;
 using Alexandria.Dto.Files.Streaming;
 using Microsoft.Extensions.Logging;
 
 namespace Alexandria.Services.Streaming;
 
-public partial class StreamHistoryService(
-    IUnitOfWork uow,
+public sealed partial class StreamHistoryService(
+    IUnitOfWork unitOfWork,
     ILogger<StreamHistoryService> logger) : IStreamHistoryService
 {
-    /// <inheritdoc/>
-    public async Task<StreamHistoryResponse?> GetByUserAndFileAsync(
-        Guid userId,
-        Guid fileId,
-        CancellationToken ct = default)
+    public async Task<StreamHistoryDto?> GetByFileAsync(Guid fileId, Guid userId, CancellationToken ct = default)
     {
-        var history = await uow.StreamingHistories.GetByUserAndFileAsync(userId, fileId, ct);
-        return history?.ToResponse();
+        LogFetchingHistory(fileId, userId);
+        var entity = await unitOfWork.StreamingHistories.GetByUserAndFileAsync(userId, fileId, ct);
+        return entity is null ? null : StreamHistoryDto.FromEntity(entity);
     }
 
-    /// <inheritdoc/>
-    public async Task<PaginatedResult<StreamHistoryResponse>> FindHistoryAsync(
+    public async Task<(ICollection<StreamHistoryDto> Items, int TotalCount)> FindAsync(Guid userId,
         StreamHistoryQuery query,
         CancellationToken ct = default)
     {
-        var result = await uow.StreamingHistories.FindHistoryAsync(query, ct);
+        LogFindingHistory(userId);
+        return await unitOfWork.StreamingHistories.FindAsync(userId, query, ct);
+    }
 
-        return new PaginatedResult<StreamHistoryResponse>
+    public async Task<IEnumerable<StreamSessionDto>> GetSessionsAsync(
+        Guid streamHistoryId,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var history = await unitOfWork.StreamingHistories.GetByIdAndUserIdAsync(streamHistoryId, userId, ct)
+                      ?? throw new StreamHistoryNotFoundException(streamHistoryId);
+
+        return await unitOfWork.StreamingHistories.GetSessionsAsync(history.Id, ct);
+    }
+
+    public async Task<StreamSessionDto> StartSessionAsync(
+        StartSessionRequest request,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        LogStartingSession(request.FileId, userId);
+
+        var history = await unitOfWork.StreamingHistories.GetByUserAndFileAsync(userId, request.FileId, ct);
+
+        if (history is null)
         {
-            Items = result.Items.Select(h => h.ToResponse()).ToList(),
-            TotalCount = result.TotalCount,
-            CurrentPage = result.CurrentPage,
-            PageSize = result.PageSize,
-            TotalPages = result.TotalPages
-        };
+            history = await unitOfWork.StreamingHistories.CreateAsync(new StreamHistory
+            {
+                UserId = userId,
+                FileId = request.FileId,
+                PositionSeconds = request.StartPositionSeconds,
+                LastAccessedAt = DateTime.UtcNow,
+            }, ct);
+
+            LogCreatedHistory(history.Id, request.FileId, userId);
+        }
+        else
+        {
+            history.LastAccessedAt = DateTime.UtcNow;
+            history.PositionSeconds = request.StartPositionSeconds;
+            await unitOfWork.StreamingHistories.UpdateAsync(history, ct);
+        }
+
+        var session = await unitOfWork.StreamingHistories.CreateSessionAsync(new StreamSession
+        {
+            StreamHistoryId = history.Id,
+            StartPositionSeconds = request.StartPositionSeconds,
+            StartedAt = DateTime.UtcNow,
+        }, ct);
+
+        LogSessionStarted(session.Id, history.Id);
+        return StreamSessionDto.FromEntity(session);
     }
 
-    /// <inheritdoc/>
-    public async Task UpsertPositionAsync(
+    public async Task<StreamHistoryDto> CloseSessionAsync(
+        Guid sessionId,
+        CloseSessionRequest request,
         Guid userId,
-        Guid fileId,
-        long positionSeconds,
-        bool completed,
         CancellationToken ct = default)
     {
-        await uow.StreamingHistories.UpsertPositionAsync(userId, fileId, positionSeconds, completed, ct);
+        LogClosingSession(sessionId, userId);
 
-        LogPositionUpserted(logger, userId, fileId, positionSeconds, completed);
-    }
+        var session = await unitOfWork.StreamingHistories.GetSessionByIdAsync(sessionId, ct)
+                      ?? throw new StreamSessionNotFoundException(sessionId);
 
-    /// <inheritdoc/>
-    public async Task<IEnumerable<StreamHistoryResponse>> GetRecentByUserAsync(
-        Guid userId,
-        int count,
-        CancellationToken ct = default)
-    {
-        if (count <= 0)
-            throw new ArgumentOutOfRangeException(nameof(count), count,
-                "Count must be greater than zero.");
+        if (session.EndedAt.HasValue)
+            throw new StreamSessionAlreadyClosedException(sessionId);
 
-        var histories = await uow.StreamingHistories.GetRecentByUserAsync(userId, count, ct);
-        return histories.Select(h => h.ToResponse()).ToList();
+        var history = await unitOfWork.StreamingHistories.GetByIdAndUserIdAsync(session.StreamHistoryId, userId, ct)
+                      ?? throw new StreamHistoryNotFoundException(session.StreamHistoryId);
+
+        session.EndPositionSeconds = request.EndPositionSeconds;
+        session.ListenedSeconds = request.ListenedSeconds;
+        session.EndedAt = DateTime.UtcNow;
+
+        var fileDurationSeconds = await unitOfWork.MediaMetadata.GetFileDurationAsync(history.FileId, ct);
+        session.ReachedCompletionThreshold = fileDurationSeconds > 0
+                                             && request.EndPositionSeconds >= fileDurationSeconds *
+                                             StreamingConstants.CompletionThresholdRatio;
+
+        await unitOfWork.StreamingHistories.UpdateSessionAsync(session, ct);
+
+        history.PositionSeconds = request.EndPositionSeconds;
+        history.TotalListenedSeconds += request.ListenedSeconds;
+        history.LastAccessedAt = DateTime.UtcNow;
+
+        if (request.EndPositionSeconds > history.MaxPositionReachedSeconds)
+            history.MaxPositionReachedSeconds = request.EndPositionSeconds;
+
+        if (session.ReachedCompletionThreshold)
+        {
+            history.TimesCompleted++;
+            history.LastCompletedAt = DateTime.UtcNow;
+            LogSessionCompleted(sessionId, history.Id);
+        }
+
+        var updated = await unitOfWork.StreamingHistories.UpdateAsync(history, ct);
+        return StreamHistoryDto.FromEntity(updated);
     }
 }

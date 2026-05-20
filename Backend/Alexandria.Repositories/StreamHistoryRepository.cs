@@ -2,7 +2,6 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
-using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,10 +9,99 @@ namespace Alexandria.Repositories;
 
 public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHistoryRepository
 {
-    private readonly DbSet<StreamHistory> _history = context.StreamHistory;
+    private readonly DbSet<StreamHistory> _history = context.StreamHistories;
+    private readonly DbSet<StreamSession> _sessions = context.StreamSessions;
 
     public async Task<StreamHistory?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _history.FirstOrDefaultAsync(h => h.Id == id, ct);
+        => await _history.FindAsync(new object[] { id }, ct);
+
+    public async Task<StreamHistory?> GetByIdAndUserIdAsync(Guid id, Guid userId, CancellationToken ct = default)
+        => await _history
+            .FirstOrDefaultAsync(h => h.Id == id && h.UserId == userId && h.DeletedAt == null, ct);
+
+    public async Task<StreamHistory?> GetByUserAndFileAsync(Guid userId, Guid fileId, CancellationToken ct = default)
+        => await _history
+            .FirstOrDefaultAsync(h => h.UserId == userId && h.FileId == fileId && h.DeletedAt == null, ct);
+
+    public async Task<(ICollection<StreamHistoryDto> Items, int TotalCount)> FindAsync(
+        Guid userId,
+        StreamHistoryQuery query,
+        CancellationToken ct = default)
+    {
+        var q = _history.Where(h => h.UserId == userId && h.DeletedAt == null);
+
+        if (query.FileId.HasValue)
+            q = q.Where(h => h.FileId == query.FileId.Value);
+
+        if (query.Completed.HasValue)
+            q = query.Completed.Value
+                ? q.Where(h => h.TimesCompleted > 0)
+                : q.Where(h => h.TimesCompleted == 0);
+
+        if (query.LastAccessedAfter.HasValue)
+            q = q.Where(h => h.LastAccessedAt >= query.LastAccessedAfter.Value);
+
+        if (query.LastAccessedBefore.HasValue)
+            q = q.Where(h => h.LastAccessedAt <= query.LastAccessedBefore.Value);
+
+        var totalCount = await q.CountAsync(ct);
+
+        var items = await q
+            .OrderByDescending(h => h.LastAccessedAt)
+            .Skip((query.CurrentPage - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(h => StreamHistoryDto.FromEntity(h))
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
+
+    public async Task<StreamHistory> CreateAsync(StreamHistory entity, CancellationToken ct = default)
+    {
+        entity.CreatedAt = DateTime.UtcNow;
+        var entry = await _history.AddAsync(entity, ct);
+        await context.SaveChangesAsync(ct);
+        return entry.Entity;
+    }
+
+    public async Task<StreamHistory> UpdateAsync(StreamHistory entity, CancellationToken ct = default)
+    {
+        entity.UpdatedAt = DateTime.UtcNow;
+        _history.Update(entity);
+        await context.SaveChangesAsync(ct);
+        return entity;
+    }
+
+    public async Task<StreamSession> CreateSessionAsync(StreamSession session, CancellationToken ct = default)
+    {
+        session.CreatedAt = DateTime.UtcNow;
+        var entry = await _sessions.AddAsync(session, ct);
+        await context.SaveChangesAsync(ct);
+        return entry.Entity;
+    }
+
+    public async Task<StreamSession> UpdateSessionAsync(StreamSession session, CancellationToken ct = default)
+    {
+        session.UpdatedAt = DateTime.UtcNow;
+        _sessions.Update(session);
+        await context.SaveChangesAsync(ct);
+        return session;
+    }
+
+    public async Task<StreamSession?> GetSessionByIdAsync(Guid sessionId, CancellationToken ct = default)
+        => await _sessions.FindAsync(new object[] { sessionId }, ct);
+
+    public async Task<IEnumerable<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId,
+        CancellationToken ct = default)
+        => await _sessions
+            .Where(s => s.StreamHistoryId == streamHistoryId && s.DeletedAt == null)
+            .OrderBy(s => s.StartedAt)
+            .Select(s => StreamSessionDto.FromEntity(s))
+            .ToListAsync(ct);
+
+    // IRepository passthrough members
+    public async Task<IEnumerable<StreamHistory>> GetAllAsync(CancellationToken ct = default)
+        => await _history.ToListAsync(ct);
 
     public async Task<StreamHistory?> FirstOrDefaultAsync(
         Expression<Func<StreamHistory, bool>> predicate,
@@ -27,22 +115,22 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
 
     public async Task<StreamHistory> AddAsync(StreamHistory entity, CancellationToken ct = default)
     {
-        var result = await _history.AddAsync(entity, ct);
-        await context.SaveChangesAsync(ct);
-        return result.Entity;
+        entity.CreatedAt = DateTime.UtcNow;
+        var entry = await _history.AddAsync(entity, ct);
+        return entry.Entity;
     }
 
-    public async Task<IEnumerable<StreamHistory>> AddRangeAsync(
-        IEnumerable<StreamHistory> entities,
+    public Task<IEnumerable<StreamHistory>> AddRangeAsync(IEnumerable<StreamHistory> entities,
         CancellationToken ct = default)
     {
-        var list = entities.ToList();
-        await _history.AddRangeAsync(list, ct);
-        await context.SaveChangesAsync(ct);
-        return list;
+        throw new NotImplementedException();
     }
 
-    public void Update(StreamHistory entity) => _history.Update(entity);
+    public void Update(StreamHistory entity)
+    {
+        entity.UpdatedAt = DateTime.UtcNow;
+        _history.Update(entity);
+    }
 
     public void Remove(StreamHistory entity) => _history.Remove(entity);
 
@@ -51,108 +139,12 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
     public async Task<int> CountAsync(
         Expression<Func<StreamHistory, bool>>? predicate = null,
         CancellationToken ct = default)
-    {
-        var q = _history.AsQueryable();
-        if (predicate is not null)
-            q = q.Where(predicate);
-        return await q.CountAsync(ct);
-    }
+        => predicate == null
+            ? await _history.CountAsync(ct)
+            : await _history.CountAsync(predicate, ct);
 
     public async Task<bool> ExistsAsync(
         Expression<Func<StreamHistory, bool>> predicate,
         CancellationToken ct = default)
         => await _history.AnyAsync(predicate, ct);
-
-    public async Task<StreamHistory?> GetByUserAndFileAsync(
-        Guid userId,
-        Guid fileId,
-        CancellationToken ct = default)
-        => await _history
-            .AsNoTracking()
-            .FirstOrDefaultAsync(h => h.UserId == userId && h.FileId == fileId, ct);
-
-    public async Task<PaginatedResult<StreamHistory>> FindHistoryAsync(
-        StreamHistoryQuery query,
-        CancellationToken ct = default)
-    {
-        var q = _history.AsQueryable();
-
-        if (query.UserId.HasValue)
-            q = q.Where(h => h.UserId == query.UserId.Value);
-
-        if (query.FileId.HasValue)
-            q = q.Where(h => h.FileId == query.FileId.Value);
-
-        if (query.Completed.HasValue)
-            q = q.Where(h => h.Completed == query.Completed.Value);
-
-        if (query.AccessedAfter.HasValue)
-            q = q.Where(h => h.LastAccessedAt >= query.AccessedAfter.Value.ToUniversalTime());
-
-        if (query.AccessedBefore.HasValue)
-            q = q.Where(h => h.LastAccessedAt <= query.AccessedBefore.Value.ToUniversalTime());
-
-        var totalCount = await q.CountAsync(ct);
-
-        var items = await q
-            .AsNoTracking()
-            .OrderByDescending(h => h.LastAccessedAt)
-            .Skip((query.CurrentPage - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .ToListAsync(ct);
-
-        return new PaginatedResult<StreamHistory>
-        {
-            Items = items,
-            TotalCount = totalCount,
-            CurrentPage = query.CurrentPage,
-            PageSize = query.PageSize,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
-        };
-    }
-
-    public async Task UpsertPositionAsync(
-        Guid userId,
-        Guid fileId,
-        long positionSeconds,
-        bool completed,
-        CancellationToken ct = default)
-    {
-        var exists = await _history.AnyAsync(h => h.UserId == userId && h.FileId == fileId, ct);
-
-        if (!exists)
-        {
-            await _history.AddAsync(new StreamHistory
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                FileId = fileId,
-                PositionSeconds = positionSeconds,
-                Completed = completed,
-                CreatedAt = DateTime.UtcNow,
-                LastAccessedAt = DateTime.UtcNow
-            }, ct);
-            await context.SaveChangesAsync(ct);
-        }
-        else
-        {
-            await _history
-                .Where(h => h.UserId == userId && h.FileId == fileId)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(h => h.PositionSeconds, positionSeconds)
-                    .SetProperty(h => h.Completed, completed)
-                    .SetProperty(h => h.LastAccessedAt, DateTime.UtcNow), ct);
-        }
-    }
-
-    public async Task<IEnumerable<StreamHistory>> GetRecentByUserAsync(
-        Guid userId,
-        int count,
-        CancellationToken ct = default)
-        => await _history
-            .AsNoTracking()
-            .Where(h => h.UserId == userId)
-            .OrderByDescending(h => h.LastAccessedAt)
-            .Take(count)
-            .ToListAsync(ct);
 }

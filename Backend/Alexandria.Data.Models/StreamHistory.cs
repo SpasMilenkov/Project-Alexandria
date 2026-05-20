@@ -8,13 +8,19 @@ public class StreamHistory : IBase
     public Guid FileId { get; set; }
     public File File { get; set; } = null!;
 
-    // stored in seconds, sufficient granularity for resume
     public long PositionSeconds { get; set; }
-    public bool Completed { get; set; }
+    public long MaxPositionReachedSeconds { get; set; }
+    public long TotalListenedSeconds { get; set; }
+    public int TimesCompleted { get; set; }
+    public DateTime? LastCompletedAt { get; set; }
+
+    public ICollection<StreamSession> Sessions { get; set; } = [];
 
     public DateTime LastAccessedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
+
+    public bool HasCompleted => TimesCompleted > 0;
 }

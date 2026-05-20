@@ -3,41 +3,61 @@ using Alexandria.Common.Services;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using FastEndpoints;
+using FluentValidation;
 
 namespace Alexandria.Api.Features.Streaming.GetHistory;
 
-internal sealed class GetHistoryRequest
+internal sealed class GetStreamHistoryRequest
 {
     public Guid? FileId { get; init; }
     public bool? Completed { get; init; }
-    public DateTime? AccessedAfter { get; init; }
-    public DateTime? AccessedBefore { get; init; }
-    public int CurrentPage { get; init; } = 0;
+    public DateTime? LastAccessedAfter { get; init; }
+    public DateTime? LastAccessedBefore { get; init; }
+    public int CurrentPage { get; init; } = 1;
     public int PageSize { get; init; } = 25;
 }
 
-internal sealed class GetHistoryEndpoint(IStreamHistoryService historyService)
-    : Endpoint<GetHistoryRequest, PaginatedResult<StreamHistoryResponse>>
+internal sealed class GetStreamHistoryValidator : Validator<GetStreamHistoryRequest>
+{
+    public GetStreamHistoryValidator()
+    {
+        RuleFor(x => x.CurrentPage).GreaterThanOrEqualTo(1);
+        RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
+        RuleFor(x => x.LastAccessedBefore)
+            .GreaterThan(x => x.LastAccessedAfter)
+            .When(x => x.LastAccessedAfter.HasValue && x.LastAccessedBefore.HasValue)
+            .WithMessage("LastAccessedBefore must be after LastAccessedAfter");
+    }
+}
+
+internal sealed class GetStreamHistoryEndpoint(IStreamHistoryService historyService)
+    : Endpoint<GetStreamHistoryRequest, PaginatedResult<StreamHistoryDto>>
 {
     public override void Configure()
     {
-        Get("/streaming/history");
+        Get("/stream-history");
         Policies(Common.Auth.Policies.RequireUser);
     }
 
-    public override async Task HandleAsync(GetHistoryRequest req, CancellationToken ct)
+    public override async Task HandleAsync(GetStreamHistoryRequest req, CancellationToken ct)
     {
         var userId = User.GetUserId();
-
-        await Send.OkAsync(await historyService.FindHistoryAsync(new StreamHistoryQuery
+        var (items, total) = await historyService.FindAsync(userId, new StreamHistoryQuery
         {
-            UserId = userId,
             FileId = req.FileId,
             Completed = req.Completed,
-            AccessedAfter = req.AccessedAfter,
-            AccessedBefore = req.AccessedBefore,
+            LastAccessedAfter = req.LastAccessedAfter,
+            LastAccessedBefore = req.LastAccessedBefore,
             CurrentPage = req.CurrentPage,
-            PageSize = req.PageSize
-        }, ct), cancellation: ct);
+            PageSize = req.PageSize,
+        }, ct);
+
+        await Send.OkAsync(new PaginatedResult<StreamHistoryDto>
+        {
+            Items = items,
+            TotalCount = total,
+            CurrentPage = req.CurrentPage,
+            PageSize = req.PageSize,
+        }, ct);
     }
 }

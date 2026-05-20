@@ -13,7 +13,7 @@ public sealed class TranspilationJobQuery
     public DateTime? CompletedAfter { get; init; }
     public DateTime? CompletedBefore { get; init; }
     public int? MinRetryCount { get; init; }
-    public int CurrentPage { get; init; } = 0;
+    public int CurrentPage { get; init; } = 1;
     public int PageSize { get; init; } = 25;
     public bool IsSystem { get; init; } = false;
 }

@@ -12,7 +12,6 @@ public static class StreamHistoryExtensions
             UserId = history.UserId,
             FileId = history.FileId,
             PositionSeconds = history.PositionSeconds,
-            Completed = history.Completed,
             LastAccessedAt = history.LastAccessedAt,
             CreatedAt = history.CreatedAt
         };
