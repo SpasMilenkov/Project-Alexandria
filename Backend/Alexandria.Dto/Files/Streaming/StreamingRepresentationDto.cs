@@ -2,7 +2,7 @@ using Alexandria.Data.Models.Enumerators;
 
 namespace Alexandria.Dto.Files.Streaming;
 
-public sealed class StreamingRepresentationResponse
+public sealed class StreamingRepresentationDto
 {
     public Guid Id { get; init; }
     public Guid JobId { get; init; }
@@ -11,6 +11,5 @@ public sealed class StreamingRepresentationResponse
     public int? Height { get; init; }
     public int? BitrateKbps { get; init; }
     public RepresentationStatus Status { get; init; }
-    public string? SegmentPrefix { get; init; }
     public DateTimeOffset? CompletedAt { get; init; }
 }
