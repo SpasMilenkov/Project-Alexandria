@@ -7,7 +7,7 @@ let refreshFailures = 0;
 // same promise instead of firing its own refresh call.
 let refreshPromise: Promise<void> | null = null;
 
-const apiClient: AxiosInstance = axios.create({
+export const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
   headers: { "Content-Type": "application/json" },
   timeout: 100_000,
@@ -32,7 +32,7 @@ const forceLogout = async () => {
   }
 };
 
-const attemptRefresh = (): Promise<void> => {
+export const attemptRefresh = (): Promise<void> => {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = apiClient
@@ -79,4 +79,3 @@ apiClient.interceptors.response.use(
   },
 );
 
-export default apiClient;
