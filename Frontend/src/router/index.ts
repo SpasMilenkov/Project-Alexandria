@@ -102,6 +102,36 @@ const router = createRouter({
       name: "tour",
       path: "/onboarding/tour",
     },
+    {
+      component: () => import("@/views/dashboard/streaming/MusicView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "music",
+      path: "/streaming/music",
+    },
+    {
+      component: () => import("@/views/dashboard/streaming/StreamHistoryView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "history",
+      path: "/streaming/history",
+    },
+    {
+      component: () => import("@/views/dashboard/streaming/TranspilationJobsView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "transpilation-jobs",
+      path: "/streaming/jobs",
+    },
+    {
+      component: () => import("@/views/dashboard/streaming/PlaylistView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "playlists",
+      path: "/streaming/playlists",
+    },
+    {
+      component: () => import("@/views/dashboard/streaming/PlaylistDetailsView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "playlist-details",
+      path: "/streaming/playlists/:id",
+    },
   ],
 });
 
