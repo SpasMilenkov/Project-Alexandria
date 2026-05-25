@@ -2,7 +2,7 @@ import type { SortDirection } from "@/enums/SortDirection";
 
 import type { PaginatedResponse } from "./directory";
 
-import apiClient from "./client";
+import {apiClient} from "./client";
 
 export enum OperationType {
   Read = 0,

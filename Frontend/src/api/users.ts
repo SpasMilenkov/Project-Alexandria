@@ -6,7 +6,7 @@ import { logger } from "@/utils/logger";
 
 import type { PaginatedResponse } from "./directory";
 
-import apiClient from "./client";
+import {apiClient} from "./client";
 
 export const userApi = {
   createUser: async (query: CreateUserSchema) => {

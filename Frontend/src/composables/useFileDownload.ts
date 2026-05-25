@@ -1,4 +1,4 @@
-import apiClient from "@/api/client";
+import { apiClient } from "@/api/client";
 import { fileApi } from "@/api/file";
 import FileDecryptionModal from "@/components/dashboard/file-system/Modals/FileDecryptionModal.vue";
 import { decryptFile } from "@/composables/useDecrypt";

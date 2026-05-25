@@ -1,6 +1,6 @@
 import type { ColorName } from "@/stores/settings";
 
-import apiClient from "./client";
+import {apiClient} from "./client";
 
 export type ToastLevel = "all" | "errors-only" | "silent";
 
