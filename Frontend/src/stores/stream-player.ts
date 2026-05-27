@@ -1,13 +1,34 @@
-// oxlint-disable max-lines-per-function
 // oxlint-disable max-statements
+// oxlint-disable max-lines-per-function
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
+export interface VariantTrack {
+  id: number;
+  height: number | null;
+  width: number | null;
+  bandwidth: number;
+  videoCodec: string | null;
+  audioCodec: string | null;
+  active: boolean;
+}
+
+type EngineControls = {
+  play: () => void;
+  pause: () => void;
+  seek: (seconds: number) => void;
+  selectVariant: (id: number | null) => void;
+  setPlaybackRate: (rate: number) => void;
+};
+
+let _engine: EngineControls | null = null;
+
 export const usePlayerStore = defineStore(
   "player",
   () => {
+    // Persisted state
     const activeFile = ref<MediaFileDto | null>(null);
     const snapCorner = ref<"tl" | "tr" | "bl" | "br">("br");
     const volume = ref(0.5);
@@ -19,11 +40,71 @@ export const usePlayerStore = defineStore(
     const loop = ref(false);
     const shuffled = ref(false);
 
+    // Runtime-only playback state
+    const currentTime = ref(0);
+    const duration = ref(0);
+    const isPlaying = ref(false);
+
+    // Runtime-only quality state
+    const variantTracks = ref<VariantTrack[]>([]);
+    const activeVariantId = ref<number | null>(null); // null = ABR is choosing
+    const abrEnabled = ref(true);
+    const playbackRate = ref(1);
+
+    // Computed
     const hasNext = computed(() => currentIndex.value < queue.value.length - 1);
     const hasPrevious = computed(() => currentIndex.value > 0);
     const hasActiveFile = computed(() => activeFile.value !== null);
     const isAudio = computed(() => activeFile.value?.mimeType.startsWith("audio/") ?? false);
     const isStrip = computed(() => playerMode.value === "strip");
+
+    // Engine bridge
+    const registerEngine = (controls: EngineControls) => {
+      _engine = controls;
+    };
+    const unregisterEngine = () => {
+      _engine = null;
+    };
+
+    // Playback controls — called by presentational components
+    const play = () => _engine?.play();
+    const pause = () => _engine?.pause();
+    const seek = (seconds: number) => _engine?.seek(seconds);
+    const togglePlay = () => {
+      if (!_engine) return;
+      if (isPlaying.value) {
+        _engine.pause();
+      } else {
+        _engine.play();
+      }
+    };
+
+    // Quality controls
+    const selectVariant = (id: number | null) => _engine?.selectVariant(id);
+    const setPlaybackRate = (rate: number) => _engine?.setPlaybackRate(rate);
+
+    // Setters for runtime state — called only by usePlayerEngine
+    const setCurrentTime = (t: number) => {
+      currentTime.value = t;
+    };
+    const setDuration = (d: number) => {
+      duration.value = d;
+    };
+    const setIsPlaying = (v: boolean) => {
+      isPlaying.value = v;
+    };
+    const setVariantTracks = (tracks: VariantTrack[]) => {
+      variantTracks.value = tracks;
+    };
+    const setActiveVariantId = (id: number | null) => {
+      activeVariantId.value = id;
+    };
+    const setAbrEnabled = (v: boolean) => {
+      abrEnabled.value = v;
+    };
+    const setPlaybackRateState = (rate: number) => {
+      playbackRate.value = rate;
+    };
 
     const setPlayerMode = (mode: "expanded" | "pip" | "strip") => {
       playerMode.value = mode;
@@ -54,10 +135,9 @@ export const usePlayerStore = defineStore(
 
     const updateQueue = (files: MediaFileDto[]) => {
       queue.value = files;
-      // Re-anchor currentIndex in case the list changed, but don't touch activeFile
       if (activeFile.value) {
         const idx = files.findIndex((f) => f.fileId === activeFile.value!.fileId);
-        currentIndex.value = idx; // -1 if the active file disappeared from the list
+        currentIndex.value = idx;
       }
     };
 
@@ -105,38 +185,81 @@ export const usePlayerStore = defineStore(
     };
 
     return {
+      // Persisted
       activeFile,
-      hasActiveFile,
-      currentIndex,
+      snapCorner,
+      volume,
       queue,
-      playerMode,
+      currentIndex,
       autoplay,
-      isStrip,
-      isAudio,
+      playerMode,
+      activePlaylistId,
       loop,
       shuffled,
-      snapCorner,
+      // Runtime
+      currentTime,
+      duration,
+      isPlaying,
+      variantTracks,
+      activeVariantId,
+      abrEnabled,
+      playbackRate,
+      // Computed
       hasNext,
-      updateQueue,
       hasPrevious,
-      activePlaylistId,
-      setQueue,
-      setCurrentIndex,
-      setActiveFile,
+      hasActiveFile,
+      isAudio,
+      isStrip,
+      // Engine bridge
+      registerEngine,
+      unregisterEngine,
+      // Playback actions
+      play,
+      pause,
+      seek,
+      togglePlay,
+      // Quality actions
+      selectVariant,
+      setPlaybackRate,
+      // Engine-only setters
+      setCurrentTime,
+      setDuration,
+      setIsPlaying,
+      setVariantTracks,
+      setActiveVariantId,
+      setAbrEnabled,
+      setPlaybackRateState,
+      // Standard actions
       setPlayerMode,
-      previous,
-      next,
-      toggleLoop,
-      shuffle,
-      toggleAutoplay,
-      volume,
       clearActiveFile,
       setSnapCorner,
       setVolume,
+      shuffle,
+      updateQueue,
+      setQueue,
+      setCurrentIndex,
+      setActiveFile,
+      toggleLoop,
+      next,
+      previous,
+      toggleAutoplay,
     };
   },
   {
-    persist: true,
+    persist: {
+      pick: [
+        "activeFile",
+        "snapCorner",
+        "volume",
+        "queue",
+        "currentIndex",
+        "autoplay",
+        "playerMode",
+        "activePlaylistId",
+        "loop",
+        "shuffled",
+      ],
+    },
   },
 );
 

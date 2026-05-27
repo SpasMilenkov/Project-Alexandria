@@ -36,6 +36,19 @@
             orientation="vertical"
           />
 
+          <USeparator class="my-1" />
+          <p
+            v-if="!collapsed"
+            class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
+          >
+            Media Streaming
+          </p>
+          <UNavigationMenu
+            :collapsed="collapsed"
+            :items="streamingMenuItems"
+            orientation="vertical"
+          />
+
           <!-- Section: Admin (conditional) -->
           <template v-if="authStore.isAdmin">
             <USeparator class="my-1" />
@@ -82,6 +95,24 @@
               :active="route.path === item.to"
             />
           </nav>
+
+          <template v-if="streamingEnabled">
+            <div class="px-3 pt-6 pb-1">
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
+                Streaming
+              </p>
+            </div>
+            <nav class="flex flex-col gap-0.5 px-3">
+              <MobileNavItem
+                v-for="item in mobileStreamingItems"
+                :key="item.to"
+                :icon="item.icon"
+                :label="item.label"
+                :to="item.to"
+                :active="route.path === item.to"
+              />
+            </nav>
+          </template>
 
           <template v-if="authStore.isAdmin">
             <div class="px-3 pt-6 pb-1">
@@ -163,7 +194,35 @@
       </template>
 
       <template #body>
-        <slot />
+        <div class="relative flex flex-col h-full">
+          <div class="flex-1 min-h-0 overflow-y-auto">
+            <slot />
+            <!-- Keeps the bottom row of content clear of the compact strip -->
+            <div
+              v-if="streamingEnabled && player.hasActiveFile && isCompactStrip"
+              class="h-10"
+              aria-hidden="true"
+            />
+          </div>
+
+          <!-- Full strip: flex sibling, scroll area shrinks to fit naturally -->
+          <template v-if="streamingEnabled && !isCompactStrip">
+            <component
+              :is="AudioSkin"
+              v-if="AudioSkin && !player.activeFile?.isVideo"
+              :style="{ visibility: player.hasActiveFile ? 'visible' : 'hidden' }"
+            />
+            <component :is="VideoSkin" v-if="VideoSkin && player.activeFile?.isVideo" />
+          </template>
+
+          <!-- Compact strip: absolute so hover expansion doesn't reflow -->
+          <div
+            v-if="streamingEnabled && isCompactStrip && player.hasActiveFile"
+            class="absolute bottom-0 left-0 right-0 z-[9999]"
+          >
+            <component :is="AudioSkin" v-if="AudioSkin && !player.activeFile?.isVideo" />
+          </div>
+        </div>
       </template>
     </UDashboardPanel>
   </UDashboardGroup>
@@ -171,16 +230,32 @@
 
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
+
+import { computed, defineAsyncComponent, ref } from "vue";
 import { useRoute } from "vue-router";
-import { computed, ref } from "vue";
-import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
-import { useAuthStore } from "@/stores/auth";
-import router from "@/router";
+
 import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
 import MobileNavItem from "@/components/dashboard/MobileNavItem.vue";
-import { useSettingsSync } from "@/composables/useSettingsSync";
+import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
+import { useSettingsSync } from "@/composables/useSettingsSync";
 import { OnboardingStep } from "@/enums";
+import router from "@/router";
+import { useAuthStore } from "@/stores/auth";
+import { usePlayerStore } from "@/stores/stream-player";
+
+const streamingEnabled = import.meta.env.VITE_STREAMING_ENABLED === "true";
+
+const AudioSkin = streamingEnabled
+  ? defineAsyncComponent(() => import("@/components/streaming/AudioPlayerSkin.vue"))
+  : null;
+
+const VideoSkin = streamingEnabled
+  ? defineAsyncComponent(() => import("@/components/streaming/VideoPlayerSkin.vue"))
+  : null;
+
+const player = usePlayerStore();
+const isCompactStrip = computed(() => player.isStrip && route.path !== "/streaming/music");
 
 useSettingsSync();
 useOnboardingGuard(OnboardingStep.Done);
@@ -226,6 +301,13 @@ const libraryMenuItems: NavigationMenuItem[] = [
   },
 ];
 
+const streamingMenuItems: NavigationMenuItem[] = [
+  { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
+  { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
+  { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
+  { icon: "mdi:history", label: "History", to: "/streaming/history" },
+];
+
 const adminMenuItems = computed<NavigationMenuItem[]>(() => [
   {
     icon: "i-heroicons-chart-bar",
@@ -264,6 +346,13 @@ const mobileMainItems = [
   { icon: "i-heroicons-tag", label: "Tags and Categories", to: "/dashboard/tags" },
   { icon: "i-heroicons-clock", label: "Access History", to: "/access-history" },
   { icon: "i-heroicons-trash", label: "Trash", to: "/dashboard/trash" },
+];
+
+const mobileStreamingItems = [
+  { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
+  { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
+  { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
+  { icon: "mdi:history", label: "History", to: "/streaming/history" },
 ];
 
 const mobileAdminItems = [
