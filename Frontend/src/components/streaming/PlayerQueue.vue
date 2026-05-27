@@ -21,13 +21,17 @@ const PANEL_MARGIN = 8; // gap between strip top edge and panel bottom
 const reposition = () => {
   if (!btnRef.value) return;
   const r = btnRef.value.getBoundingClientRect();
-  // Anchor bottom of panel to top of strip row, right-aligned to button
+
   const bottom = window.innerHeight - r.top + PANEL_MARGIN;
-  const right = window.innerWidth - r.right;
+  const left = Math.min(
+    Math.max(r.right - PANEL_W, PANEL_MARGIN),
+    window.innerWidth - PANEL_W - PANEL_MARGIN,
+  );
+
   panelStyle.value = {
     position: "fixed",
     bottom: `${bottom}px`,
-    right: `${right}px`,
+    left: `${left}px`,
     width: `${PANEL_W}px`,
     maxHeight: `min(60vh, 480px)`,
     zIndex: "10000",
