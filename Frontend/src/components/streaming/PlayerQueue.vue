@@ -1,12 +1,23 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { usePlayerStore } from "@/stores/stream-player";
 
 const store = usePlayerStore();
-const { queue, currentIndex, activeFile, loop, shuffled } = storeToRefs(store);
+const {
+  upNextItems,
+  currentIndex,
+  activeFile,
+  repeatMode,
+  shuffled,
+  queueEnded,
+  userQueue,
+  isExpandingSource,
+} = storeToRefs(store);
+
+const userQueueCount = computed(() => userQueue.value.length);
 
 const isOpen = ref(false);
 const listRef = ref<HTMLElement | null>(null);
@@ -89,16 +100,6 @@ const fmtDuration = (secs: number): string => {
   return `${m}:${String(s).padStart(2, "0")}`;
 };
 
-const trackLabel = (index: number): string => {
-  const item = queue.value[index];
-  return item?.title || item?.fileName || "Unknown track";
-};
-
-const artistLabel = (index: number): string => {
-  const item = queue.value[index];
-  return item?.artist || item?.album || "";
-};
-
 defineExpose({ toggle, close, isOpen });
 </script>
 
@@ -107,7 +108,7 @@ defineExpose({ toggle, close, isOpen });
     <!-- Toggle button -->
     <button
       ref="btnRef"
-      class="queue-toggle w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+      class="queue-toggle w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
       :class="
         isOpen
           ? 'text-primary dark:text-primary'
@@ -116,7 +117,7 @@ defineExpose({ toggle, close, isOpen });
       :title="isOpen ? 'Close queue' : 'Show queue'"
       @click.stop="toggle"
     >
-      <Icon icon="mdi:playlist-play" class="w-4 h-4" />
+      <Icon icon="mdi:playlist-play" class="w-5 h-5" />
     </button>
 
     <!--
@@ -129,7 +130,7 @@ defineExpose({ toggle, close, isOpen });
         <div
           v-if="isOpen"
           id="player-queue-panel"
-          class="bg-white/80 dark:bg-[#0e0e12]/90 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.09] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+          class="bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
           :style="panelStyle"
         >
           <!-- Header -->
@@ -143,10 +144,10 @@ defineExpose({ toggle, close, isOpen });
                 Queue
               </span>
               <span
-                v-if="queue.length"
+                v-if="upNextItems.length"
                 class="text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full bg-black/[0.06] dark:bg-white/[0.08] text-gray-500 dark:text-white/40"
               >
-                {{ queue.length }}
+                {{ upNextItems.length }}
               </span>
             </div>
 
@@ -159,11 +160,14 @@ defineExpose({ toggle, close, isOpen });
                 shuffled
               </span>
               <span
-                v-if="loop"
+                v-if="repeatMode !== 'off'"
                 class="flex items-center gap-1 text-[10px] font-medium text-primary dark:text-primary bg-primary/10 dark:bg-primary/[0.12] px-1.5 py-0.5 rounded-full ml-1 select-none"
               >
-                <Icon icon="mdi:repeat" class="w-3 h-3" />
-                loop
+                <Icon
+                  :icon="repeatMode === 'one' ? 'mdi:repeat-once' : 'mdi:repeat'"
+                  class="w-3 h-3"
+                />
+                {{ repeatMode === "one" ? "repeat one" : "loop" }}
               </span>
               <button
                 class="ml-1.5 w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/30 hover:text-gray-700 dark:hover:text-white/70 transition-colors"
@@ -175,109 +179,149 @@ defineExpose({ toggle, close, isOpen });
           </div>
 
           <!-- Track list -->
-          <ol
-            ref="listRef"
-            class="overflow-y-auto overscroll-contain flex-1 py-1.5"
-            role="listbox"
-            aria-label="Playback queue"
-          >
-            <li
-              v-for="(item, idx) in queue"
-              :key="item.fileId"
-              :data-active="idx === currentIndex"
-              role="option"
-              :aria-selected="idx === currentIndex"
-              class="queue-row group relative flex items-center gap-3 px-3 py-2 mx-1.5 rounded-xl cursor-pointer select-none transition-colors"
-              :class="
-                idx === currentIndex
-                  ? 'bg-primary/10 dark:bg-primary/20'
-                  : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.04]'
-              "
-              @click="store.setCurrentIndex(idx)"
-            >
-              <!-- Left: index / playing indicator -->
-              <div class="w-6 flex-shrink-0 flex items-center justify-center">
-                <template v-if="idx === currentIndex">
-                  <span class="wave-bars" aria-hidden="true">
-                    <span class="bar" />
-                    <span class="bar" />
-                    <span class="bar" />
-                  </span>
-                </template>
-                <template v-else>
-                  <span
-                    class="text-[11px] tabular-nums text-gray-300 dark:text-white/20 group-hover:hidden"
+          <ol ref="listRef" class="overflow-y-auto overscroll-contain flex-1 py-1.5" role="listbox">
+            <!-- Playlist / user queue section -->
+            <template v-if="userQueueCount > 0">
+              <li class="px-5 pt-2 pb-1 select-none">
+                <span
+                  class="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-white/25"
+                >
+                  Playing from playlist
+                </span>
+              </li>
+              <li
+                v-for="item in upNextItems.filter((i) => i.kind === 'queue')"
+                :key="`q-${item.queueIndex}`"
+                role="option"
+                class="queue-row group relative flex items-center gap-3 px-3 py-2 mx-1.5 rounded-xl cursor-pointer select-none transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                @click="store.skipToQueueIndex(item.queueIndex)"
+              >
+                <div class="w-6 flex-shrink-0 flex items-center justify-center">
+                  <Icon icon="mdi:playlist-play" class="w-3.5 h-3.5 text-primary opacity-60" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p
+                    class="text-[13px] font-medium truncate leading-tight text-gray-800 dark:text-white/80"
                   >
-                    {{ idx + 1 }}
-                  </span>
-                  <Icon
-                    icon="mdi:play"
-                    class="w-3.5 h-3.5 text-gray-400 dark:text-white/40 hidden group-hover:block"
-                  />
-                </template>
-              </div>
+                    {{ item.file.title || item.file.fileName }}
+                  </p>
+                  <p
+                    v-if="item.file.artist"
+                    class="text-[11px] truncate mt-0.5 text-gray-400 dark:text-white/30"
+                  >
+                    {{ item.file.artist }}
+                  </p>
+                </div>
+                <button
+                  class="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-400 transition-all"
+                  @click.stop="store.dequeueAt(item.queueIndex)"
+                >
+                  <Icon icon="mdi:close" class="w-3 h-3" />
+                </button>
+                <span
+                  class="text-[11px] tabular-nums flex-shrink-0 text-gray-400 dark:text-white/30"
+                >
+                  {{ fmtDuration(item.file.duration) }}
+                </span>
+              </li>
 
-              <!-- Track info -->
+              <!-- Divider before source section -->
+              <li
+                v-if="upNextItems.some((i) => i.kind === 'source')"
+                class="px-5 pt-3 pb-1 select-none"
+              >
+                <span
+                  class="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-white/25"
+                >
+                  Then from library
+                </span>
+              </li>
+              <li
+                v-if="isExpandingSource"
+                class="flex items-center justify-center gap-2 py-3 text-gray-300 dark:text-white/20"
+              >
+                <Icon icon="mdi:loading" class="w-3.5 h-3.5 animate-spin" />
+                <span class="text-xs">Loading more…</span>
+              </li>
+            </template>
+
+            <!-- Source list section -->
+            <li
+              v-for="item in upNextItems.filter((i) => i.kind === 'source')"
+              :key="`s-${item.sourceIndex}`"
+              role="option"
+              class="queue-row group relative flex items-center gap-3 px-3 py-2 mx-1.5 rounded-xl cursor-pointer select-none transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+              @click="store.playFromSource(item.sourceIndex)"
+            >
+              <div class="w-6 flex-shrink-0 flex items-center justify-center">
+                <span
+                  class="text-[11px] tabular-nums text-gray-300 dark:text-white/20 group-hover:hidden"
+                >
+                  {{ item.sourceIndex + 1 }}
+                </span>
+                <Icon
+                  icon="mdi:play"
+                  class="w-3.5 h-3.5 text-gray-400 dark:text-white/40 hidden group-hover:block"
+                />
+              </div>
               <div class="flex-1 min-w-0">
                 <p
-                  class="text-[13px] font-medium truncate leading-tight"
-                  :class="
-                    idx === currentIndex
-                      ? 'text-primary dark:text-primary'
-                      : 'text-gray-800 dark:text-white/80'
-                  "
+                  class="text-[13px] font-medium truncate leading-tight text-gray-800 dark:text-white/80"
                 >
-                  {{ trackLabel(idx) }}
+                  {{ item.file.title || item.file.fileName }}
                 </p>
                 <p
-                  v-if="artistLabel(idx)"
+                  v-if="item.file.artist"
                   class="text-[11px] truncate mt-0.5 text-gray-400 dark:text-white/30"
                 >
-                  {{ artistLabel(idx) }}
+                  {{ item.file.artist }}
                 </p>
               </div>
-
-              <Icon
-                v-if="item.isVideo"
-                icon="mdi:video-outline"
-                class="w-3.5 h-3.5 flex-shrink-0 text-gray-300 dark:text-white/20"
-              />
-
               <span class="text-[11px] tabular-nums flex-shrink-0 text-gray-400 dark:text-white/30">
-                {{ fmtDuration(item.duration) }}
+                {{ fmtDuration(item.file.duration) }}
               </span>
-
-              <span
-                v-if="idx === currentIndex"
-                class="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary"
-                aria-hidden="true"
-              />
             </li>
 
             <li
-              v-if="!queue.length"
+              v-if="!upNextItems.length"
               class="flex flex-col items-center justify-center gap-2 py-10 text-gray-300 dark:text-white/20"
             >
               <Icon icon="mdi:playlist-remove" class="w-8 h-8" />
-              <span class="text-xs">Queue is empty</span>
+              <span class="text-xs">Nothing queued</span>
             </li>
           </ol>
 
           <!-- Footer -->
           <div
-            v-if="activeFile"
+            v-if="activeFile || queueEnded"
             class="flex items-center gap-2 px-4 py-2.5 border-t border-black/[0.06] dark:border-white/[0.07] flex-shrink-0"
           >
-            <Icon icon="mdi:music-note" class="w-3.5 h-3.5 flex-shrink-0 text-primary" />
-            <p class="text-[11px] text-gray-400 dark:text-white/30 truncate">
-              Playing
-              <span class="text-gray-600 dark:text-white/60 font-medium">
-                {{ activeFile.title || activeFile.fileName }}
-              </span>
-              <template v-if="queue.length > 1">
-                · {{ currentIndex + 1 }} of {{ queue.length }}
-              </template>
-            </p>
+            <template v-if="queueEnded">
+              <Icon
+                icon="mdi:playlist-check"
+                class="w-3.5 h-3.5 flex-shrink-0 text-gray-400 dark:text-white/30"
+              />
+              <p class="text-[11px] text-gray-400 dark:text-white/30 flex-1">Queue finished</p>
+              <button
+                class="text-[11px] font-medium text-primary hover:opacity-80 transition-opacity"
+                @click="store.restartQueue()"
+              >
+                ↺ Replay
+              </button>
+            </template>
+            <template v-else>
+              <Icon icon="mdi:music-note" class="w-3.5 h-3.5 flex-shrink-0 text-primary" />
+
+              <p class="text-[11px] text-gray-400 dark:text-white/30 truncate">
+                Playing
+                <span class="text-gray-600 dark:text-white/60 font-medium">
+                  {{ activeFile?.title || activeFile?.fileName }}
+                </span>
+                <template v-if="userQueueCount > 1">
+                  · {{ currentIndex + 1 }} of {{ userQueueCount }}
+                </template>
+              </p>
+            </template>
           </div>
         </div>
       </Transition>
