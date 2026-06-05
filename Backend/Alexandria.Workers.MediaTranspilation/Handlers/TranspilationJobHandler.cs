@@ -1,5 +1,7 @@
 using System.Data;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
+using Alexandria.Common.Exceptions.Transpilation;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
@@ -22,7 +24,8 @@ public partial class TranspilationJobHandler(
         if (!claimed)
             return;
 
-        var job = await jobService.GetByIdAsync(jobId, ct);
+        var job = await unitOfWork.TranspilationJobs.GetByIdAsync(jobId, ct);
+        if (job is null) throw new TranspilationJobNotFoundException(jobId);
 
         var mediaDir = job.IsVideo ? "v" : "a";
         var codecStr = job.IsVideo ? "h264" : "opus";
@@ -45,10 +48,16 @@ public partial class TranspilationJobHandler(
 
             LogTranspilationRunning(logger, jobId, job.IsVideo);
 
+            if (!string.IsNullOrEmpty(job.SegmentPrefix))
+            {
+                LogCleaningUpOldSegments(logger, jobId, job.SegmentPrefix);
+                await storage.DeleteStreamingOutputByPrefixAsync(job.SegmentPrefix, ct);
+                await representationService.DeleteByJobIdAsync(jobId, ct);
+            }
 
             TranspilationOutput output = job.IsVideo
-                ? await videoTranspilation.TranspileAsync(inputPath, repDir, ct)
-                : await audioTranspilation.TranspileAsync(inputPath, repDir, ct);
+                ? await videoTranspilation.TranspileAsync(jobId, inputPath, repDir, job.VideoRungs, ct)
+                : await audioTranspilation.TranspileAsync(jobId, inputPath, repDir, job.AudioRungs, ct);
 
             var segmentPrefix = $"{job.VersionId}/{mediaDir}/{codecStr}";
 
@@ -74,10 +83,13 @@ public partial class TranspilationJobHandler(
 
             LogJobCompleted(logger, jobId);
         }
+        catch (TranspilationCancelledException)
+        {
+            await representationService.MarkAllFailedAsync(representationIds, ct);
+            await jobService.UpdateStatusAsync(jobId, TranspilationStatus.Cancelled, ct: ct);
+        }
         catch (Exception ex)
         {
-            LogJobFailed(logger, ex, jobId);
-
             if (representationIds.Count > 0)
             {
                 try

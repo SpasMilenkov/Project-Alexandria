@@ -46,4 +46,8 @@ public partial class TranspilationJobHandler
         "Job {JobId}: failed to delete local output directory '{JobDir}'")]
     private static partial void LogLocalOutputCleanupFailed(
         ILogger logger, Exception ex, Guid jobId, string jobDir);
+
+    [LoggerMessage(10009, LogLevel.Debug,
+        "Cleaning up  old segments for job with Id {jobId} and prefix {segmentPrefix} ")]
+    private static partial void LogCleaningUpOldSegments(ILogger logger, Guid jobId, string segmentPrefix);
 }
