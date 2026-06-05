@@ -22,6 +22,9 @@ public sealed class UnitOfWork(
     IStreamingRepresentationRepository streamingRepresentations,
     ITranspilationJobRepository transpilationJobs,
     IStreamHistoryRepository streamingHistories,
+    IPolicyRuleRepository policyRules,
+    IDirectoryPolicyRepository directoryPolicies,
+    IPlaylistRepository playlistRepository,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -40,6 +43,9 @@ public sealed class UnitOfWork(
     public IStreamingRepresentationRepository StreamingRepresentations { get; } = streamingRepresentations;
     public ITranspilationJobRepository TranspilationJobs { get; } = transpilationJobs;
     public IStreamHistoryRepository StreamingHistories { get; } = streamingHistories;
+    public IPolicyRuleRepository PolicyRules { get; set; } = policyRules;
+    public IDirectoryPolicyRepository DirectoryPolicies { get; set; } = directoryPolicies;
+    public IPlaylistRepository Playlists { get; set; } = playlistRepository;
 
     private IDbContextTransaction? _transaction;
 

@@ -20,6 +20,9 @@ public interface IUnitOfWork : IDisposable
     IStreamingRepresentationRepository StreamingRepresentations { get; }
     ITranspilationJobRepository TranspilationJobs { get; }
     IStreamHistoryRepository StreamingHistories { get; }
+    IPolicyRuleRepository PolicyRules { get; }
+    IDirectoryPolicyRepository DirectoryPolicies { get; }
+    IPlaylistRepository Playlists { get; }
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);
