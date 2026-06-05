@@ -13,12 +13,10 @@
       </div>
     </template>
 
-    <!-- Loading skeleton -->
     <div v-if="versionsLoading" class="space-y-3">
       <USkeleton v-for="i in 3" :key="i" class="h-16 w-full rounded-lg" />
     </div>
 
-    <!-- Version list -->
     <div v-else-if="versionsData?.items?.length" class="space-y-2">
       <div
         v-for="version in versionsData.items"
@@ -54,7 +52,6 @@
           <div class="flex items-center gap-2 mb-1.5">
             <span class="font-medium text-sm">Version {{ version.versionNumber }}</span>
 
-            <!-- Lock badge for encrypted versions -->
             <UTooltip
               v-if="version.isEncrypted"
               label="This version is encrypted"
@@ -77,6 +74,25 @@
               size="xs"
               label="Current"
             />
+
+            <Transition
+              enter-active-class="transition-all duration-200 ease-out"
+              enter-from-class="opacity-0 scale-90"
+              enter-to-class="opacity-100 scale-100"
+              leave-active-class="transition-all duration-150 ease-in"
+              leave-from-class="opacity-100 scale-100"
+              leave-to-class="opacity-0 scale-90"
+            >
+              <UBadge
+                v-if="queuedVersionIds.has(version.id)"
+                color="success"
+                variant="subtle"
+                size="xs"
+              >
+                <Icon icon="mdi-check-circle-outline" class="w-3.5 h-3.5 mr-0.5" />
+                Queued
+              </UBadge>
+            </Transition>
           </div>
 
           <div
@@ -104,6 +120,87 @@
             :title="`Download version ${version.versionNumber}`"
             @click="handleDownloadVersion(version.id)"
           />
+
+          <!-- Transpilation popover -->
+          <UPopover v-if="!version.isDeleted" v-model:open="transpilationPopoverOpen[version.id]">
+            <UButton
+              icon="i-mdi-transfer"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              square
+              :loading="queuingTranspilationVersionId === version.id"
+              :disabled="queuingTranspilationVersionId !== null || deletingVersionId !== null"
+              :title="`Queue transpilation job for version ${version.versionNumber}`"
+            />
+
+            <template #content>
+              <div class="p-4 w-72 space-y-4">
+                <p class="text-sm font-medium">Queue Transpilation</p>
+
+                <!-- Audio rungs — shown for audio files -->
+                <div v-if="!isVideoFile(version.mimeType)" class="space-y-2">
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400">Audio quality</p>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="rung in audioRungOptions"
+                      :key="rung.value"
+                      class="px-2.5 py-1 rounded text-xs border transition-all"
+                      :class="
+                        selectedAudioRungs[version.id]?.includes(rung.value)
+                          ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
+                          : 'border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500'
+                      "
+                      @click="toggleAudioRung(version.id, rung.value)"
+                    >
+                      {{ rung.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Video rungs — shown for video files -->
+                <div v-if="isVideoFile(version.mimeType)" class="space-y-2">
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400">Video quality</p>
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="rung in videoRungOptions"
+                      :key="rung.value"
+                      class="px-2.5 py-1 rounded text-xs border transition-all"
+                      :class="
+                        selectedVideoRungs[version.id]?.includes(rung.value)
+                          ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
+                          : 'border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-neutral-400 dark:hover:border-neutral-500'
+                      "
+                      @click="toggleVideoRung(version.id, rung.value)"
+                    >
+                      {{ rung.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  class="flex items-center justify-between gap-2 pt-1 border-t border-neutral-200/70 dark:border-neutral-700/70"
+                >
+                  <span class="text-xs text-neutral-400">
+                    {{ selectedRungCount(version.id, version.mimeType) }} rung{{
+                      selectedRungCount(version.id, version.mimeType) !== 1 ? "s" : ""
+                    }}
+                    selected
+                  </span>
+                  <UButton
+                    size="xs"
+                    color="primary"
+                    variant="solid"
+                    label="Queue"
+                    :disabled="selectedRungCount(version.id, version.mimeType) === 0"
+                    :loading="queuingTranspilationVersionId === version.id"
+                    @click="handleQueueTranspilationJob(version.id, version.mimeType)"
+                  />
+                </div>
+              </div>
+            </template>
+          </UPopover>
+
           <UButton
             icon="i-mdi-delete-outline"
             size="xs"
@@ -142,7 +239,6 @@
         </div>
       </div>
 
-      <!-- Pagination -->
       <div
         v-if="versionsData.totalCount > versionsPageSize"
         class="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700"
@@ -174,7 +270,6 @@
       </div>
     </div>
 
-    <!-- Empty state -->
     <div
       v-else
       class="flex flex-col items-center gap-2 py-4 text-neutral-400 dark:text-neutral-500"
@@ -186,15 +281,18 @@
 </template>
 
 <script setup lang="ts">
-import { changeActiveVersion, deleteVersion, restoreFileVersion } from "@/mutations/files";
-import { getVersionsForFile } from "@/queries/files";
-import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
-import { computed, ref } from "vue";
-import { formatBytes } from "@/utils/size.utils";
-import { logger } from "@/utils/logger";
+import { computed, reactive, ref } from "vue";
+
+import { AudioRung, VideoRung } from "@/api/policy";
+import { useAppToast } from "@/composables/useAppToast";
 import { useFileDownload } from "@/composables/useFileDownload";
+import { changeActiveVersion, deleteVersion, restoreFileVersion } from "@/mutations/files";
+import { queueTranspilationJob } from "@/mutations/streaming";
+import { getVersionsForFile } from "@/queries/files";
+import { getFileTypeReadable } from "@/utils/mimetype.utils";
+import { formatBytes } from "@/utils/size.utils";
 
 const props = defineProps<{
   fileId: string;
@@ -206,6 +304,54 @@ const props = defineProps<{
 const emit = defineEmits<{
   "versions-changed": [];
 }>();
+
+const toast = useAppToast();
+
+// Rung option definitions
+
+const audioRungOptions = [
+  { label: "96 kbps", value: AudioRung.Kbps96 },
+  { label: "128 kbps", value: AudioRung.Kbps128 },
+  { label: "192 kbps", value: AudioRung.Kbps192 },
+  { label: "256 kbps", value: AudioRung.Kbps256 },
+  { label: "320 kbps", value: AudioRung.Kbps320 },
+];
+
+const videoRungOptions = [
+  { label: "360p", value: VideoRung.P360 },
+  { label: "480p", value: VideoRung.P480 },
+  { label: "720p", value: VideoRung.P720 },
+  { label: "1080p", value: VideoRung.P1080 },
+  { label: "1440p", value: VideoRung.P1440 },
+  { label: "2160p", value: VideoRung.P2160 },
+];
+
+const isVideoFile = (mimeType: string) => mimeType.startsWith("video/");
+
+// Per-version rung selection state
+
+const selectedAudioRungs = reactive<Record<string, AudioRung[]>>({});
+const selectedVideoRungs = reactive<Record<string, VideoRung[]>>({});
+const transpilationPopoverOpen = reactive<Record<string, boolean>>({});
+
+const toggleAudioRung = (versionId: string, rung: AudioRung) => {
+  if (!selectedAudioRungs[versionId]) selectedAudioRungs[versionId] = [];
+  const idx = selectedAudioRungs[versionId].indexOf(rung);
+  if (idx === -1) selectedAudioRungs[versionId].push(rung);
+  else selectedAudioRungs[versionId].splice(idx, 1);
+};
+
+const toggleVideoRung = (versionId: string, rung: VideoRung) => {
+  if (!selectedVideoRungs[versionId]) selectedVideoRungs[versionId] = [];
+  const idx = selectedVideoRungs[versionId].indexOf(rung);
+  if (idx === -1) selectedVideoRungs[versionId].push(rung);
+  else selectedVideoRungs[versionId].splice(idx, 1);
+};
+
+const selectedRungCount = (versionId: string, mimeType: string) =>
+  isVideoFile(mimeType)
+    ? (selectedVideoRungs[versionId]?.length ?? 0)
+    : (selectedAudioRungs[versionId]?.length ?? 0);
 
 // Download
 
@@ -233,18 +379,16 @@ const {
 const { mutateAsync: deleteVersionMutate } = deleteVersion();
 const { mutateAsync: changeActiveVersionMutate } = changeActiveVersion();
 const { mutateAsync: restoreVersionMutate } = restoreFileVersion();
+const { mutateAsync: queueTranspilationJobMutate } = queueTranspilationJob();
 
 const deletingVersionId = ref<string | null>(null);
 const changingActiveVersionId = ref<string | null>(null);
+const queuingTranspilationVersionId = ref<string | null>(null);
+
+const queuedVersionIds = ref<Set<string>>(new Set());
 
 // Handlers
 
-/**
- * Delegates to useFileDownload, which handles both the plain and encrypted paths.
- * DownloadInfo carries the fileName from the server, so no need to pass it here.
- * (This also fixes the pre-existing bug where fileName was declared in the
- *  signature but never passed at the call site.)
- */
 const handleDownloadVersion = (versionId: string) => {
   downloadVersion(versionId);
 };
@@ -255,6 +399,8 @@ const handleDeleteVersion = async (versionId: string) => {
     await deleteVersionMutate({ fileId: props.fileId, versionId });
     await refreshVersions();
     emit("versions-changed");
+  } catch (err) {
+    toast.error("Failed to delete version", err);
   } finally {
     deletingVersionId.value = null;
   }
@@ -262,11 +408,12 @@ const handleDeleteVersion = async (versionId: string) => {
 
 const handleChangeActiveVersion = async (versionId: string) => {
   changingActiveVersionId.value = versionId;
-  logger.log("activeVersion ", versionId);
   try {
     await changeActiveVersionMutate({ fileId: props.fileId, versionId });
     await refreshVersions();
     emit("versions-changed");
+  } catch (err) {
+    toast.error("Failed to change active version", err);
   } finally {
     changingActiveVersionId.value = null;
   }
@@ -278,8 +425,34 @@ const handleRestoreVersion = async (versionId: string) => {
     await restoreVersionMutate({ fileId: props.fileId, versionId });
     await refreshVersions();
     emit("versions-changed");
+  } catch (err) {
+    toast.error("Failed to restore version", err);
   } finally {
     changingActiveVersionId.value = null;
+  }
+};
+
+const handleQueueTranspilationJob = async (versionId: string, mimeType: string) => {
+  queuingTranspilationVersionId.value = versionId;
+  try {
+    await queueTranspilationJobMutate({
+      versionId,
+      audioRungs: isVideoFile(mimeType) ? [] : (selectedAudioRungs[versionId] ?? []),
+      videoRungs: isVideoFile(mimeType) ? (selectedVideoRungs[versionId] ?? []) : [],
+    });
+
+    transpilationPopoverOpen[versionId] = false;
+
+    queuedVersionIds.value = new Set([...queuedVersionIds.value, versionId]);
+    setTimeout(() => {
+      queuedVersionIds.value = new Set(
+        [...queuedVersionIds.value].filter((id) => id !== versionId),
+      );
+    }, 2500);
+  } catch (err) {
+    toast.error("Failed to queue transpilation job", err);
+  } finally {
+    queuingTranspilationVersionId.value = null;
   }
 };
 </script>
