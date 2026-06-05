@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
@@ -36,33 +35,39 @@ public class FakeStorageService : IStorageService
         UploadIdFactory = null;
     }
 
-    public Task<UploadResult> UploadPreview(
-        string objectName,
-        string contentType,
-        Stream fileStream,
-        Guid originalFileId,
+    // public Task UploadPreview(string objectName,
+    //     string contentType,
+    //     Stream fileStream,
+    //     Guid originalFileId,
+    //     Guid uploadedBy,
+    //     long contentLength = -1L,
+    //     string? originalFileName = null,
+    //     CancellationToken ct = default)
+    // {
+    //     using var ms = new MemoryStream();
+    //     fileStream.CopyTo(ms);
+    //     var bytes = ms.ToArray();
+    //     const string bucket = "alexandria-previews";
+    //
+    //     if (!_store.TryGetValue(bucket, out var bucketStore))
+    //     {
+    //         bucketStore = new Dictionary<string, byte[]>();
+    //         _store[bucket] = bucketStore;
+    //     }
+    //
+    //     bucketStore[objectName] = bytes;
+    //
+    //     UploadedObjects.Add((bucket, objectName, bytes));
+    //
+    //     var checksum = Convert.ToHexString(SHA256.HashData(bytes));
+    //     return Task.FromResult(new UploadResult(objectName, checksum, bytes.Length, originalFileId));
+    // }
+
+    public Task UploadPreview(string objectName, string contentType, Stream fileStream, Guid originalFileId,
         Guid uploadedBy,
-        long contentLength = -1,
-        string? originalFileName = null,
-        CancellationToken ct = default)
+        long contentLength = -1, string? originalFileName = null, CancellationToken ct = default)
     {
-        using var ms = new MemoryStream();
-        fileStream.CopyTo(ms);
-        var bytes = ms.ToArray();
-        const string bucket = "alexandria-previews";
-
-        if (!_store.TryGetValue(bucket, out var bucketStore))
-        {
-            bucketStore = new Dictionary<string, byte[]>();
-            _store[bucket] = bucketStore;
-        }
-
-        bucketStore[objectName] = bytes;
-
-        UploadedObjects.Add((bucket, objectName, bytes));
-
-        var checksum = Convert.ToHexString(SHA256.HashData(bytes));
-        return Task.FromResult(new UploadResult(objectName, checksum, bytes.Length, originalFileId));
+        throw new NotImplementedException();
     }
 
     public async Task UploadMediaData(
@@ -70,7 +75,7 @@ public class FakeStorageService : IStorageService
         Stream thumbnailStream,
         string objectName,
         Guid fileId,
-        MediaMetadata metadataDto,
+        MediaMetadataDto metadataDto,
         CancellationToken ct = default)
     {
         const string bucket = "alexandria-previews";
@@ -115,6 +120,11 @@ public class FakeStorageService : IStorageService
         throw new NotImplementedException();
     }
 
+    public Task DeleteStreamingOutputByPrefixAsync(string prefix, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task<string> GetStreamManifest(Guid versionId, Guid userId, CancellationToken ct = default)
     {
         throw new NotImplementedException();
@@ -152,6 +162,14 @@ public class FakeStorageService : IStorageService
     public Task<UploadResult> FinalizeFileUpload(string objectName, Guid uploadId, Guid uploadedBy,
         byte[]? encryptionIv, byte[]? encryptionSalt,
         byte[]? integrityTag, string? encryptionHint, int? iterationCount, bool isEncrypted = false,
+        Guid? directoryId = null, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<UploadResult> FinalizeFileUpload(string objectName, Guid uploadId, Guid uploadedBy,
+        byte[]? encryptionIv, byte[]? encryptionSalt,
+        byte[]? integrityTag, string? encryptionHint, int? iterationCount, bool isEncrypted = false,
         Guid? directoryId = null, bool shouldTranspile = false, CancellationToken ct = default)
     {
         throw new NotImplementedException();
@@ -170,13 +188,13 @@ public class FakeStorageService : IStorageService
         return Task.FromResult((uploadId, uploadUrl));
     }
 
-    public Task<UploadResult> FinalizeFileUpload(
-        string objectName,
-        Guid uploadId,
-        Guid uploadedBy,
-        Guid? directoryId = null,
-        CancellationToken ct = default)
-        => Task.FromResult(new UploadResult(objectName, "fake-checksum", 0, Guid.NewGuid()));
+    // public Task<UploadResult> FinalizeFileUpload(
+    //     string objectName,
+    //     Guid uploadId,
+    //     Guid uploadedBy,
+    //     Guid? directoryId = null,
+    //     CancellationToken ct = default)
+    //     => Task.FromResult(new UploadResult(objectName, "fake-checksum", 0, Guid.NewGuid()));
 
     public Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
         => Task.FromResult(new StorageBreakdown
@@ -205,6 +223,17 @@ public class FakeStorageService : IStorageService
 
     public Task StreamBulkZipAsync(Guid[] directoryIds, Guid[] fileIds, Guid userId, Stream destination,
         CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<string> GetPlaylistCoverUploadUrlAsync(Guid playlistId, Guid userId, string contentType,
+        CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<string> GetPlaylistCoverUrlAsync(Guid playlistId, Guid userId, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }
