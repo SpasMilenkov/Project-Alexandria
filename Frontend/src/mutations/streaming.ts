@@ -2,8 +2,9 @@ import { defineMutation, useMutation, useQueryCache } from "@pinia/colada";
 
 import {
   type CloseSessionRequest,
+  type QueueTranspilationJobRequest,
   type StartSessionRequest,
-  type StopTranspilationJobRequest,
+  type UpdateTranspilationJobRequest,
   streamingApi,
 } from "@/api/streaming";
 import { STREAMING_QUERY_KEYS } from "@/queries/streaming";
@@ -11,7 +12,7 @@ import { STREAMING_QUERY_KEYS } from "@/queries/streaming";
 export const queueTranspilationJob = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({
-    mutation: (versionId: string) => streamingApi.queueTranspilationJob(versionId),
+    mutation: (params: QueueTranspilationJobRequest) => streamingApi.queueTranspilationJob(params),
     onSettled() {
       queryCache.invalidateQueries({ key: [...STREAMING_QUERY_KEYS.root, "transpilation-jobs"] });
     },
@@ -50,7 +51,7 @@ export const closeSession = defineMutation(() => {
 export const stopTranspilationJob = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({
-    mutation: (req: StopTranspilationJobRequest) => streamingApi.stopTranspilationJob(req),
+    mutation: (req: UpdateTranspilationJobRequest) => streamingApi.updateTranspilationJob(req),
     onSettled() {
       queryCache.invalidateQueries({ key: [...STREAMING_QUERY_KEYS.root, "transpilation-jobs"] });
     },
