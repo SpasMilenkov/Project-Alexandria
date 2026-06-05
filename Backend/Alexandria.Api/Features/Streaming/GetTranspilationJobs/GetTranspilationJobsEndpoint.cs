@@ -49,7 +49,7 @@ internal sealed class GetTranspilationJobsRequestValidator : Validator<GetTransp
 }
 
 internal sealed class GetTranspilationJobsEndpoint(ITranspilationJobService jobService, IFileService fileService)
-    : Endpoint<GetTranspilationJobsRequest, PaginatedResult<TranspilationJobResponse>>
+    : Endpoint<GetTranspilationJobsRequest, PaginatedResult<TranspilationJobWithDetailsDto>>
 {
     public override void Configure()
     {
@@ -63,10 +63,11 @@ internal sealed class GetTranspilationJobsEndpoint(ITranspilationJobService jobS
 
         if (!req.VersionId.HasValue)
         {
-            await Send.OkAsync(await jobService.FindJobsAsync(new TranspilationJobQuery
+            await Send.OkAsync(await jobService.GetWithDetailsAsync(new TranspilationJobQuery
             {
                 UserId = userId,
                 Status = req.Status,
+                IsVideo = req.IsVideo,
                 CreatedAfter = req.CreatedAfter,
                 CreatedBefore = req.CreatedBefore,
                 CompletedAfter = req.CompletedAfter,
@@ -81,7 +82,7 @@ internal sealed class GetTranspilationJobsEndpoint(ITranspilationJobService jobS
         var isVideo =
             await fileService.IsVideo(req.VersionId.Value, userId, ct);
 
-        var result = await jobService.FindJobsAsync(new TranspilationJobQuery
+        var result = await jobService.GetWithDetailsAsync(new TranspilationJobQuery
         {
             UserId = userId,
             Status = req.Status,
