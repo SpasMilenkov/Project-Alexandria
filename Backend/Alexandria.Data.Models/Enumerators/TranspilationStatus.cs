@@ -6,5 +6,7 @@ public enum TranspilationStatus
     Processing,
     Partial, // some representations completed, others failed
     Ready,
-    Failed
+    Failed,
+    Cancelled,
+    CancellationRequested,
 }
