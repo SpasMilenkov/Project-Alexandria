@@ -16,7 +16,10 @@ export const STREAMING_QUERY_KEYS = {
     query.playlistId ?? null,
     query.page,
     query.pageSize,
+    query.isVideo,
+    query.query ?? null,
   ],
+
   history: (query: StreamHistoryQuery) => [
     ...STREAMING_QUERY_KEYS.root,
     "history",
@@ -29,7 +32,7 @@ export const STREAMING_QUERY_KEYS = {
   ],
   historyByFile: (fileId: string) => [...STREAMING_QUERY_KEYS.root, "history", "by-file", fileId],
   sessions: (streamHistoryId: string) => [
-  ...STREAMING_QUERY_KEYS.root,
+    ...STREAMING_QUERY_KEYS.root,
     "sessions",
     streamHistoryId,
   ],
