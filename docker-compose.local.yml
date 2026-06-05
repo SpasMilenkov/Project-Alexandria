@@ -197,6 +197,7 @@ services:
     restart: always
     environment:
       VITE_PBKDF2_ITERATIONS: ${PBKDF2_ITERATION_COUNT}
+      VITE_STREAMING_NEABLED: ${STREAMING_NEABLED}
     depends_on:
       api:
         condition: service_healthy
