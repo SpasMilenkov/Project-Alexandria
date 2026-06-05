@@ -1,15 +1,19 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators;
 using FastEndpoints;
 
 namespace Alexandria.Api.Features.Streaming.QueueTranspilationJob;
 
-sealed class QueueTranspilationJobRequest
+internal sealed class QueueTranspilationJobRequest
 {
     public Guid VersionId { get; set; }
+    public AudioRung[] AudioRungs { get; set; } = [];
+    public VideoRung[] VideoRungs { get; set; } = [];
 }
 
-sealed class QueueTranspilationJobEndpoint(ITranspilationJobService jobService) : Endpoint<QueueTranspilationJobRequest>
+internal sealed class QueueTranspilationJobEndpoint(ITranspilationJobService jobService)
+    : Endpoint<QueueTranspilationJobRequest>
 {
     public override void Configure()
     {
@@ -20,6 +24,7 @@ sealed class QueueTranspilationJobEndpoint(ITranspilationJobService jobService) 
     public override async Task HandleAsync(QueueTranspilationJobRequest req, CancellationToken ct)
     {
         var userId = User.GetUserId();
-        await Send.OkAsync(await jobService.CreateJobAsync(req.VersionId, userId, ct), cancellation: ct);
+        await Send.OkAsync(await jobService.CreateJobAsync(req.VersionId, userId, req.AudioRungs, req.VideoRungs, ct),
+            cancellation: ct);
     }
 }
