@@ -6,6 +6,7 @@ public sealed class StreamHistoryDto
 {
     public Guid Id { get; init; }
     public Guid FileId { get; init; }
+    public string Title { get; init; }
     public long PositionSeconds { get; init; }
     public long MaxPositionReachedSeconds { get; init; }
     public long TotalListenedSeconds { get; init; }
