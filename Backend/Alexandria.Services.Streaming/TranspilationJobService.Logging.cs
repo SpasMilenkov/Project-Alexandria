@@ -27,4 +27,14 @@ public partial class TranspilationJobService
     [LoggerMessage(5004, LogLevel.Debug,
         "Transpilation job {JobId} was already claimed by another worker — skipping")]
     private static partial void LogJobClaimSkipped(ILogger logger, Guid jobId);
+
+    [LoggerMessage(5005, LogLevel.Information,
+        "Transpilation job {JobId} requeued")]
+    private static partial void LogJobRequeued(
+        ILogger logger, Guid jobId);
+
+    [LoggerMessage(5006, LogLevel.Information,
+        "Transpilation job {JobId} cancellation requested")]
+    private static partial void LogJobCancellationRequested(
+        ILogger logger, Guid jobId);
 }

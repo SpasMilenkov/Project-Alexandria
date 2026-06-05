@@ -15,7 +15,7 @@ public partial class StreamingRepresentationService(
     ILogger<StreamingRepresentationService> logger) : IStreamingRepresentationService
 {
     /// <inheritdoc/>
-    public async Task<StreamingRepresentationResponse> CreateRepresentationAsync(
+    public async Task<StreamingRepresentationDto> CreateRepresentationAsync(
         CreateStreamingRepresentationRequest request,
         CancellationToken ct = default)
     {
@@ -33,7 +33,7 @@ public partial class StreamingRepresentationService(
     }
 
     /// <inheritdoc/>
-    public async Task<IEnumerable<StreamingRepresentationResponse>> CreateRepresentationsAsync(
+    public async Task<IEnumerable<StreamingRepresentationDto>> CreateRepresentationsAsync(
         List<CreateStreamingRepresentationRequest> requests,
         CancellationToken ct = default)
     {
@@ -57,7 +57,7 @@ public partial class StreamingRepresentationService(
     }
 
     /// <inheritdoc/>
-    public async Task<StreamingRepresentationResponse> GetByIdAsync(
+    public async Task<StreamingRepresentationDto> GetByIdAsync(
         Guid id,
         CancellationToken ct = default)
     {
@@ -68,7 +68,7 @@ public partial class StreamingRepresentationService(
     }
 
     /// <inheritdoc/>
-    public async Task<IEnumerable<StreamingRepresentationResponse>> GetByJobIdAsync(
+    public async Task<IEnumerable<StreamingRepresentationDto>> GetByJobIdAsync(
         Guid jobId,
         CancellationToken ct = default)
     {
@@ -77,13 +77,13 @@ public partial class StreamingRepresentationService(
     }
 
     /// <inheritdoc/>
-    public async Task<PaginatedResult<StreamingRepresentationResponse>> FindRepresentationsAsync(
+    public async Task<PaginatedResult<StreamingRepresentationDto>> FindRepresentationsAsync(
         StreamingRepresentationQuery query,
         CancellationToken ct = default)
     {
         var result = await uow.StreamingRepresentations.FindRepresentationsAsync(query, ct);
 
-        return new PaginatedResult<StreamingRepresentationResponse>
+        return new PaginatedResult<StreamingRepresentationDto>
         {
             Items = result.Items.Select(r => r.ToResponse()).ToList(),
             TotalCount = result.TotalCount,
@@ -160,5 +160,10 @@ public partial class StreamingRepresentationService(
     {
         await uow.StreamingRepresentations.MarkAllFailedAsync(representationIds, ct);
         LogRepresentationsMarkedFailed(logger, representationIds.Count);
+    }
+
+    public async Task DeleteByJobIdAsync(Guid jobId, CancellationToken ct = default)
+    {
+        await uow.StreamingRepresentations.DeleteByJobIdAsync(jobId, ct);
     }
 }

@@ -2,6 +2,7 @@ using Alexandria.Common;
 using Alexandria.Common.Exceptions.Streaming;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
+using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Microsoft.Extensions.Logging;
 
@@ -18,7 +19,8 @@ public sealed partial class StreamHistoryService(
         return entity is null ? null : StreamHistoryDto.FromEntity(entity);
     }
 
-    public async Task<(ICollection<StreamHistoryDto> Items, int TotalCount)> FindAsync(Guid userId,
+
+    public async Task<PaginatedResult<StreamHistoryDto>> FindAsync(Guid userId,
         StreamHistoryQuery query,
         CancellationToken ct = default)
     {
@@ -26,15 +28,17 @@ public sealed partial class StreamHistoryService(
         return await unitOfWork.StreamingHistories.FindAsync(userId, query, ct);
     }
 
-    public async Task<IEnumerable<StreamSessionDto>> GetSessionsAsync(
+    public async Task<PaginatedResult<StreamSessionDto>> GetSessionsAsync(
         Guid streamHistoryId,
         Guid userId,
+        int page = 1,
+        int pageSize = 25,
         CancellationToken ct = default)
     {
         var history = await unitOfWork.StreamingHistories.GetByIdAndUserIdAsync(streamHistoryId, userId, ct)
                       ?? throw new StreamHistoryNotFoundException(streamHistoryId);
 
-        return await unitOfWork.StreamingHistories.GetSessionsAsync(history.Id, ct);
+        return await unitOfWork.StreamingHistories.GetSessionsAsync(history.Id, page, pageSize, ct);
     }
 
     public async Task<StreamSessionDto> StartSessionAsync(
