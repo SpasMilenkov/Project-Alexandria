@@ -378,6 +378,46 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("Directories", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.DirectoryPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DirectoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("InheritedByChildren")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("DirectoryId")
+                        .IsUnique()
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.ToTable("DirectoryPolicies", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.File", b =>
                 {
                     b.Property<Guid>("Id")
@@ -597,6 +637,18 @@ namespace Alexandria.Data.Migrations
                     b.Property<int>("Height")
                         .HasColumnType("integer");
 
+                    b.Property<string>("NormalizedSearch")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("lower(\n            coalesce(\"Title\", '') || ' ' ||\n            coalesce(\"Artist\", '') || ' ' ||\n            coalesce(\"Album\", '') || ' ' ||\n            coalesce(\"Genre\", '')\n        )", true);
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("setweight(to_tsvector('simple', coalesce(\"Title\", '')),  'A') ||\n          setweight(to_tsvector('simple', coalesce(\"Artist\", '')), 'B') ||\n          setweight(to_tsvector('simple', coalesce(\"Album\", '')),  'C') ||\n          setweight(to_tsvector('simple', coalesce(\"Genre\", '')),  'D')", true);
+
                     b.Property<string>("ThumbnailPath")
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
@@ -630,7 +682,163 @@ namespace Alexandria.Data.Migrations
                     b.HasIndex("FileId")
                         .IsUnique();
 
+                    b.HasIndex("NormalizedSearch");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("NormalizedSearch"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedSearch"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("SearchVector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "gin");
+
                     b.ToTable("MediaMetadata", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AmbientTheme")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("HasCover")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Playlists");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.PlaylistItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlaylistId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TranspilationJobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlaylistId");
+
+                    b.HasIndex("TranspilationJobId");
+
+                    b.ToTable("PlaylistItems");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.PolicyRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<bool>("ApplyOnNewVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Parameters")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("PolicyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("TriggerValue")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TriggerValue")
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.HasIndex("PolicyId", "Priority")
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.ToTable("PolicyRules", (string)null);
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.Preview", b =>
@@ -1038,6 +1246,10 @@ namespace Alexandria.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.PrimitiveCollection<int[]>("AudioRungs")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1089,6 +1301,10 @@ namespace Alexandria.Data.Migrations
 
                     b.Property<Guid>("VersionId")
                         .HasColumnType("uuid");
+
+                    b.PrimitiveCollection<int[]>("VideoRungs")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
 
                     b.HasKey("Id");
 
@@ -1351,6 +1567,17 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.DirectoryPolicy", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.Directory", "Directory")
+                        .WithOne()
+                        .HasForeignKey("Alexandria.Data.Models.DirectoryPolicy", "DirectoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Directory");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.File", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.FileVersion", "CurrentVersion")
@@ -1397,12 +1624,53 @@ namespace Alexandria.Data.Migrations
             modelBuilder.Entity("Alexandria.Data.Models.MediaMetadata", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.File", "File")
-                        .WithOne()
+                        .WithOne("MediaMetadata")
                         .HasForeignKey("Alexandria.Data.Models.MediaMetadata", "FileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("File");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.PlaylistItem", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.Playlist", "Playlist")
+                        .WithMany("PlaylistItems")
+                        .HasForeignKey("PlaylistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.TranspilationJob", "TranspilationJob")
+                        .WithMany()
+                        .HasForeignKey("TranspilationJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Playlist");
+
+                    b.Navigation("TranspilationJob");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.PolicyRule", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.DirectoryPolicy", "Policy")
+                        .WithMany("Rules")
+                        .HasForeignKey("PolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Policy");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.Preview", b =>
@@ -1593,13 +1861,25 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Files");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.DirectoryPolicy", b =>
+                {
+                    b.Navigation("Rules");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.File", b =>
                 {
+                    b.Navigation("MediaMetadata");
+
                     b.Navigation("Preview");
 
                     b.Navigation("SignedUrls");
 
                     b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>
+                {
+                    b.Navigation("PlaylistItems");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.StreamHistory", b =>
