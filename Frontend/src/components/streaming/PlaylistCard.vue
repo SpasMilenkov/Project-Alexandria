@@ -6,8 +6,8 @@
     <!-- Cover art -->
     <div class="relative aspect-square w-full bg-gray-100/80 dark:bg-gray-800/50 overflow-hidden">
       <img
-        v-if="playlist.coverUrl"
-        :src="playlist.coverUrl"
+        v-if="!isCoverUrlLoading && coverUrl"
+        :src="coverUrl"
         :alt="playlist.name"
         class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
       />
@@ -49,7 +49,9 @@
             {{ playlist.itemCount }} {{ playlist.itemCount === 1 ? "track" : "tracks" }}
           </span>
           <span class="text-xs text-gray-300 dark:text-white/20">·</span>
-          <span class="text-xs text-gray-400 dark:text-white/35">{{ relativeDate }}</span>
+          <span class="text-xs text-gray-400 dark:text-white/35">{{
+            formatDate(props.playlist.updatedAt ?? props.playlist.createdAt)
+          }}</span>
         </div>
       </div>
 
@@ -69,14 +71,23 @@
 </template>
 
 <script setup lang="ts">
+import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
 import type { PlaylistResponse } from "@/api/playlist";
+
+import { getPlaylistCover } from "@/queries/playlist";
+import { formatDate } from "@/utils/date-formatters";
 
 const props = defineProps<{
   playlist: PlaylistResponse;
   isPlaying?: boolean;
 }>();
+
+const { data: coverUrl, isLoading: isCoverUrlLoading } = useQuery({
+  ...getPlaylistCover(props.playlist.id),
+  enabled: computed(() => props.playlist.hasCover),
+});
 
 const emit = defineEmits<{
   open: [];
@@ -84,18 +95,6 @@ const emit = defineEmits<{
   delete: [];
   play: [];
 }>();
-
-const relativeDate = computed(() => {
-  const date = new Date(props.playlist.updatedAt ?? props.playlist.createdAt);
-  const diff = Date.now() - date.getTime();
-  const days = Math.floor(diff / 86_400_000);
-  if (days === 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 30) return `${days}d ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months}mo ago`;
-  return `${Math.floor(months / 12)}y ago`;
-});
 
 const menuItems = [
   [
