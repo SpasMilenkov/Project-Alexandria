@@ -137,7 +137,7 @@ const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
         <div
           v-if="isOpen"
           id="player-settings-panel"
-          class="bg-white/75 dark:bg-white/[0.06] backdrop-blur-xl border border-gray-200/70 dark:border-gray-700/70 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+          class="player-card bg-white dark:bg-neutral-900  border border-black/[0.08] dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           :style="panelStyle"
         >
           <!-- Quality -->
