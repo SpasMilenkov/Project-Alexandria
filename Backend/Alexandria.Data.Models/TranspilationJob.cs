@@ -11,6 +11,9 @@ public class TranspilationJob : IBase
     public TranspilationStatus Status { get; set; } = TranspilationStatus.Queued;
     public bool IsVideo { get; set; }
 
+    public AudioRung[] AudioRungs { get; set; } = [];
+    public VideoRung[] VideoRungs { get; set; } = [];
+
     public int ProgressPercent { get; set; }
     public int RetryCount { get; set; }
     public string? ErrorDetail { get; set; }
