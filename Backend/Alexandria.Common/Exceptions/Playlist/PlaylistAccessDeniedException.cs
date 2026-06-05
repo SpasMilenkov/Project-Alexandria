@@ -1,6 +1,4 @@
 namespace Alexandria.Common.Exceptions.Playlist;
 
-public class PlaylistAccessDeniedException
-{
-    
-}
+public sealed class PlaylistAccessDeniedException(Guid playlistId, Guid userId)
+    : Exception($"User {userId} does not have access to playlist {playlistId}.");

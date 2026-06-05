@@ -1,6 +1,4 @@
 namespace Alexandria.Common.Exceptions.Playlist;
 
-public class PlaylistNotFoundException
-{
-    
-}
+public sealed class PlaylistNotFoundException(Guid id)
+    : Exception($"Playlist with id {id} was not found.");
