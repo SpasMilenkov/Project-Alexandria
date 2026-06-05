@@ -28,9 +28,8 @@ namespace Alexandria.Workers.Media.Handlers
                 $"previews/{fileHash}",
                 fileData.MimeType,
                 previewStream,
-                uploadedBy: Guid.Empty,
                 originalFileId: fileData.Id,
-                ct: ct);
+                uploadedBy: Guid.Empty, ct: ct);
 
             await fileService.UpdateFileMetadataAsync(fileIdGuid, Guid.Empty, hasPreview: true, ct: ct);
 

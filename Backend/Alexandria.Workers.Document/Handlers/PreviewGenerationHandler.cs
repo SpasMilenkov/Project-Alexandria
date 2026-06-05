@@ -53,7 +53,7 @@ public class PreviewGenerationHandler(
 
             await storage.UploadPreview($"previews/{contentHash}", "application/pdf",
                 previewStream,
-                originalFileId: fileData.Id, SystemConfig.SystemId, ct: ct);
+                originalFileId: fileData.Id, uploadedBy: SystemConfig.SystemId, ct: ct);
             await fileService.UpdateFileMetadataAsync(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
 
             File.Delete(previewPath);
