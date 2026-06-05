@@ -7,10 +7,6 @@
   scrollbar-color: rgb(var(--ui-color-neutral-300)) transparent;
 }
 
-:root {
-  --media-scroller-offset: 180px;
-}
-
 .dark * {
   scrollbar-color: rgb(var(--ui-color-neutral-700)) transparent;
 }
