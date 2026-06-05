@@ -87,6 +87,7 @@ const query = useQuery({
       query: debouncedQuery.value || null,
       page: 1,
       pageSize: 20,
+      isVideo: false,
     }),
   staleTime: 15_000,
 });
