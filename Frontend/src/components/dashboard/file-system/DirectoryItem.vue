@@ -306,6 +306,8 @@
             </UButton>
           </div>
         </UCard>
+        <PolicySection :directory-id="data.id" />
+        
       </div>
     </template>
   </UDrawer>
@@ -320,6 +322,7 @@ import type { DirectorySummaryDto } from "@/api/directory";
 
 import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
+import PolicySection from "@/components/policy/PolicySection.vue";
 
 const settingsStore = useSettingsStore();
 
