@@ -5,7 +5,7 @@ namespace Alexandria.Dto.Extensions;
 
 public static class TranspilationJobExtensions
 {
-    public static TranspilationJobResponse ToResponse(this TranspilationJob job)
+    public static TranspilationJobDto ToDto(this TranspilationJob job)
         => new()
         {
             Id = job.Id,
@@ -18,6 +18,8 @@ public static class TranspilationJobExtensions
             StartedAt = job.StartedAt,
             CompletedAt = job.CompletedAt,
             CreatedAt = job.CreatedAt,
+            AudioRungs = job.AudioRungs,
+            VideoRungs = job.VideoRungs,
             Representations = job.Representations
                 .Select(r => r.ToResponse())
                 .ToList()

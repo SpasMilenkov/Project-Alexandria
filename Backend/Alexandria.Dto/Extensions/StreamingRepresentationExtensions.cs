@@ -6,7 +6,7 @@ namespace Alexandria.Dto.Extensions;
 
 public static class StreamingRepresentationExtensions
 {
-    public static StreamingRepresentationResponse ToResponse(this StreamingRepresentation representation)
+    public static StreamingRepresentationDto ToResponse(this StreamingRepresentation representation)
         => new()
         {
             Id = representation.Id,
