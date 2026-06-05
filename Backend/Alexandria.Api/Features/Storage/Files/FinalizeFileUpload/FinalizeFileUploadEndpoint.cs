@@ -15,10 +15,9 @@ internal sealed class FinalizeFileUploadRequest
     public byte[]? IntegrityTag { get; set; }
     public string? EncryptionHint { get; set; }
     public int? IterationCount { get; set; }
-    public bool? ShouldTranspile { get; set; }
 }
 
-sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage)
+sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage, IPolicyDispatcher policyDispatcher)
     : Endpoint<FinalizeFileUploadRequest>
 {
     public override void Configure()
@@ -31,7 +30,7 @@ sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage)
     {
         var userId = User.GetUserId();
 
-        await s3Storage.FinalizeFileUpload(req.FileName,
+        var result = await s3Storage.FinalizeFileUpload(req.FileName,
             uploadId: req.UploadId,
             uploadedBy: userId,
             encryptionIv: req.EncryptionIv,
@@ -40,6 +39,17 @@ sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage)
             encryptionHint: req.EncryptionHint,
             iterationCount: req.IterationCount,
             isEncrypted: req.IsEncrypted, directoryId: req.DirectoryId, ct: ct);
+        //TODO: gotta make it job specific, encrypted files are eligible for backup
+        if (!req.IsEncrypted)
+        {
+            await policyDispatcher.DispatchAsync(new FileFinalizedEvent(result.FileId,
+                result.VersionId,
+                req.DirectoryId,
+                result.MimeType,
+                req.FileName,
+                userId,
+                result.IsNewVersion), ct);
+        }
 
         await Send.OkAsync(cancellation: ct);
     }
