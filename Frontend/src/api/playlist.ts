@@ -27,7 +27,7 @@ export interface PlaylistResponse {
   id: string;
   name: string;
   description?: string;
-  coverUrl?: string;
+  hasCover: boolean;
   ambientTheme?: string;
   itemCount: number;
   createdAt: string;
@@ -38,11 +38,17 @@ export interface PlaylistDetailResponse {
   id: string;
   name: string;
   description?: string;
-  coverUrl?: string;
+  hasCover: boolean;
   ambientTheme?: string;
   items: PlaylistItemResponse[];
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface CoverUploadRequest {
+  playlistId: string;
+  mimeType: string;
+  fileSize: number;
 }
 
 // Request types
@@ -54,7 +60,7 @@ export interface CreatePlaylistRequest {
    * Pre-resolved cover URL. When omitted and initialTranspilationJobIds is non-empty,
    * the backend falls back to a random preview from those files.
    */
-  coverUrl?: string;
+  hasCover: boolean;
   ambientTheme?: string;
   initialTranspilationJobIds?: string[];
 }
@@ -62,7 +68,7 @@ export interface CreatePlaylistRequest {
 export interface UpdatePlaylistRequest {
   name?: string;
   description?: string;
-  coverUrl?: string;
+  hasCover?: boolean;
   ambientTheme?: string;
 }
 
@@ -91,6 +97,17 @@ export const playlistApi = {
     const result = await apiClient.get<PaginatedResponse<PlaylistResponse>>("/playlists", {
       params: { page, pageSize },
     });
+    return result.data;
+  },
+
+  getCoverUploadUrl: async (req: CoverUploadRequest) => {
+    const result = await apiClient.post("/streaming/playlists/cover", req);
+
+    return result.data;
+  },
+
+  getPlaylistCover: async (playlistId: string): Promise<string> => {
+    const result = await apiClient.get<string>(`/streaming/playlists/cover/${playlistId}`);
     return result.data;
   },
 
