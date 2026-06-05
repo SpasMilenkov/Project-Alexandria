@@ -345,24 +345,27 @@
 </template>
 
 <script setup lang="ts">
-import { type FileResult } from "@/api/file";
-import type { TagDto } from "@/api/tag";
-import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
-import { getFile } from "@/queries/files";
-import { getTagsForFile, searchTag } from "@/queries/tags";
-import type { SearchTagsSchema } from "@/schemas/tag";
-import { useSettingsStore } from "@/stores/settings";
-import { formatDate } from "@/utils/date-formatters";
-import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
-import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { breakpointsTailwind, useBreakpoints, useClipboard } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
+
+import type { TagDto } from "@/api/tag";
+import type { SearchTagsSchema } from "@/schemas/tag";
+
+import { type FileResult } from "@/api/file";
+import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
+import { getFile } from "@/queries/files";
+import { getTagsForFile, searchTag } from "@/queries/tags";
+import { useSettingsStore } from "@/stores/settings";
+import { formatDate } from "@/utils/date-formatters";
+import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
+import { getFileTypeReadable } from "@/utils/mimetype.utils";
+import { formatBytes } from "@/utils/size.utils";
+
 import FilePreview from "./FilePreview.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
-import { formatBytes } from "@/utils/size.utils";
 
 const settingsStore = useSettingsStore();
 
@@ -506,7 +509,7 @@ const singleSelectMenuItems = [
     {
       disabled: !canDownload(),
       icon: "i-mdi-download-outline",
-      kbds: [ { value: "D" }],
+      kbds: [{ value: "D" }],
       label: "Download",
       onSelect: () => emit("download", [props.data.fileId]),
     },
@@ -523,6 +526,7 @@ const singleSelectMenuItems = [
       disabled: !canMove(),
       icon: "i-mdi-folder-move-outline",
       label: "Move to…",
+      kbds: ["⌘", "X"],
       onSelect: () => emit("move", [props.data.fileId]),
     },
     {

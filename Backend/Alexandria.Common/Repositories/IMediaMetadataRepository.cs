@@ -6,4 +6,5 @@ public interface IMediaMetadataRepository : IRepository<MediaMetadata>
 {
     Task<MediaMetadata> CreateAsync(MediaMetadata metadata, CancellationToken ct = default);
     Task<MediaMetadata> UpdateAsync(MediaMetadata metadata, CancellationToken ct = default);
+    Task<double> GetFileDurationAsync(Guid fileId, CancellationToken ct = default);
 }

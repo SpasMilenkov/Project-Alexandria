@@ -4,7 +4,7 @@ import type { ChangePasswordSchema } from "@/schemas/user";
 
 import { logger } from "@/utils/logger";
 
-import apiClient from "./client";
+import {apiClient} from "./client";
 
 export interface AuthResponse {
   success: boolean;

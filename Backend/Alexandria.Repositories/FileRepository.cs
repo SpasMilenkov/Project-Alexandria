@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Tags;
 using Alexandria.Repositories.Projections;
 using Microsoft.EntityFrameworkCore;
@@ -51,27 +53,17 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         // Apply user filter - files that have at least one tag from this user
         if (query.UserId.HasValue)
-        {
             filesQuery = filesQuery.Where(f =>
                 f.Tags.Any(t => t.OwnerId == query.UserId.Value && t.DeletedAt == null));
-        }
 
         // Apply MIME type filter
         if (!string.IsNullOrWhiteSpace(query.MimeTypePrefix))
-        {
             filesQuery = filesQuery.Where(f => f.MimeType.StartsWith(query.MimeTypePrefix));
-        }
 
         // Apply date range filters
-        if (query.CreatedAfter.HasValue)
-        {
-            filesQuery = filesQuery.Where(f => f.CreatedAt >= query.CreatedAfter.Value);
-        }
+        if (query.CreatedAfter.HasValue) filesQuery = filesQuery.Where(f => f.CreatedAt >= query.CreatedAfter.Value);
 
-        if (query.CreatedBefore.HasValue)
-        {
-            filesQuery = filesQuery.Where(f => f.CreatedAt <= query.CreatedBefore.Value);
-        }
+        if (query.CreatedBefore.HasValue) filesQuery = filesQuery.Where(f => f.CreatedAt <= query.CreatedBefore.Value);
 
         var totalCount = await filesQuery.CountAsync(ct);
 
@@ -185,13 +177,9 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         // Deletion filters
         if (query.OnlyDeleted || query.IsDeleted)
-        {
             dbQuery = dbQuery.Where(f => f.DeletedAt != null);
-        }
         else
-        {
             dbQuery = dbQuery.Where(f => f.DeletedAt == null);
-        }
 
         if (query.DeletedAfter.HasValue)
         {
@@ -206,36 +194,20 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         }
 
         // Identity & structure filters
-        if (query.DirectoryId.HasValue)
-        {
-            dbQuery = dbQuery.Where(f => f.Id == query.DirectoryId.Value);
-        }
+        if (query.DirectoryId.HasValue) dbQuery = dbQuery.Where(f => f.Id == query.DirectoryId.Value);
 
         if (query.ParentDirectoryId.HasValue)
-        {
             dbQuery = dbQuery.Where(f => f.DirectoryId == query.ParentDirectoryId.Value);
-        }
 
-        if (query.OwnerId.HasValue)
-        {
-            dbQuery = dbQuery.Where(f => f.OwnerId == query.OwnerId.Value);
-        }
+        if (query.OwnerId.HasValue) dbQuery = dbQuery.Where(f => f.OwnerId == query.OwnerId.Value);
 
         // File-specific filters
-        if (query.MinSize.HasValue)
-        {
-            dbQuery = dbQuery.Where(f => f.CurrentVersion.Size >= query.MinSize.Value);
-        }
+        if (query.MinSize.HasValue) dbQuery = dbQuery.Where(f => f.CurrentVersion.Size >= query.MinSize.Value);
 
-        if (query.MaxSize.HasValue)
-        {
-            dbQuery = dbQuery.Where(f => f.CurrentVersion.Size <= query.MaxSize.Value);
-        }
+        if (query.MaxSize.HasValue) dbQuery = dbQuery.Where(f => f.CurrentVersion.Size <= query.MaxSize.Value);
 
         if (!string.IsNullOrWhiteSpace(query.MimeType))
-        {
             dbQuery = dbQuery.Where(f => f.MimeType == query.MimeType.Trim());
-        }
 
         // Time filters
         if (query.CreatedAfter.HasValue)
@@ -263,7 +235,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         }
 
         if (!isSearching)
-        {
             dbQuery = query.SortBy switch
             {
                 SortBy.Name => query.SortDirection == SortDirection.Asc
@@ -280,7 +251,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
                 _ => dbQuery.OrderBy(f => f.Name)
             };
-        }
 
         var totalCount = await dbQuery.CountAsync(ct);
 
@@ -540,10 +510,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     {
         var query = _files.Where(f => f.DeletedAt == null);
 
-        if (predicate != null)
-        {
-            query = query.Where(predicate);
-        }
+        if (predicate != null) query = query.Where(predicate);
 
         return await query.CountAsync(ct);
     }
@@ -565,7 +532,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         var result = await _files
             .AsNoTracking()
             .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
-            .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct);
+            .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, ct);
         return result?.ContentHash;
     }
 
@@ -574,7 +541,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         var result = await _files
                          .AsNoTracking()
                          .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
-                         .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, cancellationToken: ct) ??
+                         .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, ct) ??
                      throw new InvalidOperationException("File hash not found");
 
         return Convert.ToHexStringLower(result.ContentHash);
@@ -656,6 +623,14 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .Where(f => f.OwnerId == userId && f.Id == fileId && f.DeletedAt == null)
             .Select(FileProjections.ToFileResult)
             .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        return await context.FileVersions
+            .AsNoTracking()
+            .Where(v => v.Id == versionId && v.File.OwnerId == userId)
+            .AnyAsync(ct);
     }
 
     public async Task<File?> GetFileEntityWithTagsAsync(
@@ -781,6 +756,254 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 .SetProperty(f => f.UpdatedAt, DateTime.UtcNow), ct);
     }
 
+    public async Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(
+        Guid userId, int page, int pageSize, string? query = null, Guid? playlistId = null, bool isVideo = false,
+        CancellationToken ct = default)
+    {
+        var viableVersionIds = context.Set<TranspilationJob>()
+            .Where(j =>
+                j.UserId == userId
+                && j.DeletedAt == null
+                && j.Status == TranspilationStatus.Ready
+                && j.IsVideo == isVideo
+                && j.Representations.Any(r =>
+                    r.DeletedAt == null
+                    && r.Status == RepresentationStatus.Ready))
+            .Select(j => j.VersionId);
+
+        // Resolve playlist order before the main query.
+        // The join walks: PlaylistItem -> TranspilationJob -> FileVersion -> File.
+        List<Guid>? playlistFileIds = null;
+        if (playlistId.HasValue)
+            playlistFileIds = await context.Set<PlaylistItem>()
+                .Where(pi => pi.PlaylistId == playlistId.Value && pi.DeletedAt == null)
+                .OrderBy(pi => pi.Position)
+                .Join(context.Set<TranspilationJob>(),
+                    pi => pi.TranspilationJobId,
+                    tj => tj.Id,
+                    (pi, tj) => tj.VersionId)
+                .Join(context.Set<FileVersion>(),
+                    vId => vId,
+                    fv => fv.Id,
+                    (_, fv) => fv.FileId)
+                .ToListAsync(ct);
+
+        var isSearching = !string.IsNullOrWhiteSpace(query);
+        if (isSearching)
+        {
+            var searchTerm = query!.Trim().ToLower();
+            var tsqueryTerm = string.Join(" & ",
+                searchTerm
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(w => Regex.Replace(w, @"[^a-z0-9]", ""))
+                    .Where(w => w.Length > 0)
+                    .Select(w => $"{w}:*"));
+
+            if (string.IsNullOrWhiteSpace(tsqueryTerm))
+            {
+                return new PaginatedResult<MediaFileDto>
+                {
+                    Items = [],
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    TotalCount = 0,
+                    TotalPages = 0,
+                };
+            }
+
+            var fileNamePattern = $"%{searchTerm}%";
+
+            // Pre-build the streamable ID set for this user so we can:
+            //   a) filter metadata results to only files with a ready transcode job
+            //   b) avoid .First() throwing during projection for non-streamable files
+            var streamableIds = (await _files
+                    .Where(f =>
+                        f.OwnerId == userId
+                        && f.DeletedAt == null
+                        && f.Versions.Any(v => v.DeletedAt == null && viableVersionIds.Contains(v.Id)))
+                    .Select(f => f.Id)
+                    .ToListAsync(ct))
+                .ToHashSet();
+
+            // Step 1: metadata search ordered by relevance.
+            //
+            // IMPORTANT: materialize with ToListAsync() BEFORE projecting to FileId.
+            // Chaining .Select() onto FromSqlInterpolated() causes EF to wrap the raw
+            // SQL in a subquery, and PostgreSQL silently discards ORDER BY in subqueries
+            // without LIMIT. Materializing first executes the SQL as-is.
+            var metadataRankedIds = (await context.Set<MediaMetadata>()
+                    .FromSqlInterpolated($@"
+                        SELECT *
+                        FROM ""MediaMetadata""
+                        WHERE
+                            {searchTerm} <% ""NormalizedSearch""
+                            OR ""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                            OR lower(""Title"") LIKE {fileNamePattern}
+                        ORDER BY
+                            CASE WHEN lower(""Title"") LIKE {fileNamePattern} THEN 8.0 ELSE 0.0 END +
+                            word_similarity({searchTerm}, ""NormalizedSearch"") * 2.0 +
+                            ts_rank(""SearchVector"", to_tsquery('simple', {tsqueryTerm})) DESC")
+                    .AsNoTracking()
+                    .ToListAsync(ct))
+                .Select(m => m.FileId)
+                .Where(id => streamableIds.Contains(id))
+                .ToList();
+            // Step 2: filename fallback for files with no metadata tags.
+            var metadataIdSet = metadataRankedIds.ToHashSet();
+            var filenameOnlyIds = await _files
+                .Where(f =>
+                    f.OwnerId == userId
+                    && f.DeletedAt == null
+                    && f.Versions.Any(v => v.DeletedAt == null && viableVersionIds.Contains(v.Id))
+                    && EF.Functions.ILike(f.Name, fileNamePattern))
+                .Select(f => f.Id)
+                .ToListAsync(ct);
+
+            // Metadata matches first (ranked), filename-only matches appended.
+            var orderedSearchIds = metadataRankedIds
+                .Concat(filenameOnlyIds.Except(metadataIdSet))
+                .ToList();
+
+            // Step 3: narrow to playlist scope if active.
+            if (playlistFileIds != null)
+            {
+                var playlistSet = playlistFileIds.ToHashSet();
+                orderedSearchIds = orderedSearchIds.Where(id => playlistSet.Contains(id)).ToList();
+            }
+
+            // Step 4: paginate on the ordered ID list.
+            var totalCount = orderedSearchIds.Count;
+            var pageIds = orderedSearchIds.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            if (pageIds.Count == 0)
+                return new PaginatedResult<MediaFileDto>
+                {
+                    Items = [],
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                };
+
+            // Step 5: fetch and project only this page's items.
+            var searchItems = await _files
+                .Where(f =>
+                    f.OwnerId == userId
+                    && f.DeletedAt == null
+                    && pageIds.Contains(f.Id))
+                .Select(f => new MediaFileDto
+                {
+                    FileId = f.Id,
+                    FileName = f.Name,
+                    MimeType = f.MimeType,
+                    CurrentVersionId = f.CurrentVersion.Id,
+                    Duration = f.MediaMetadata!.Duration,
+                    Artist = f.MediaMetadata.Artist,
+                    Album = f.MediaMetadata.Album,
+                    Title = f.MediaMetadata.Title,
+                    TranspilationJobId = context.Set<TranspilationJob>()
+                        .Where(j => j.UserId == userId && j.Status == TranspilationStatus.Ready && j.DeletedAt == null
+                                    && f.Versions.Any(v => v.DeletedAt == null && v.Id == j.VersionId))
+                        .Select(j => j.Id)
+                        .First(),
+                    IsVideo = context.Set<TranspilationJob>()
+                        .Where(j => j.UserId == userId && j.Status == TranspilationStatus.Ready && j.DeletedAt == null
+                                    && f.Versions.Any(v => v.DeletedAt == null && v.Id == j.VersionId))
+                        .Select(j => j.IsVideo)
+                        .First(),
+                    SegmentPrefix = context.Set<TranspilationJob>()
+                        .Where(j => j.UserId == userId && j.Status == TranspilationStatus.Ready && j.DeletedAt == null
+                                    && f.Versions.Any(v => v.DeletedAt == null && v.Id == j.VersionId))
+                        .Select(j => j.SegmentPrefix)
+                        .First()
+                })
+                .ToListAsync(ct);
+
+            // IN (...) does not preserve list order, restore relevance ordering.
+            var rankMap = pageIds.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
+            searchItems = searchItems
+                .OrderBy(m => rankMap.GetValueOrDefault(m.FileId, int.MaxValue))
+                .ToList();
+
+            return new PaginatedResult<MediaFileDto>
+            {
+                Items = searchItems,
+                CurrentPage = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
+        }
+
+        var dbQuery = _files
+            .Where(f =>
+                f.OwnerId == userId
+                && f.DeletedAt == null
+                && f.Versions.Any(v =>
+                    v.DeletedAt == null
+                    && viableVersionIds.Contains(v.Id)));
+
+        // Only apply CreatedAt ordering when not in playlist mode.
+        // Playlist ordering is applied in memory after materialization.
+        if (playlistFileIds == null)
+            dbQuery = dbQuery.OrderByDescending(f => f.CreatedAt);
+
+        if (playlistFileIds != null)
+            dbQuery = dbQuery.Where(f => playlistFileIds.Contains(f.Id));
+
+        var count = await dbQuery.CountAsync(ct);
+        var items = await dbQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(f => new MediaFileDto
+            {
+                FileId = f.Id,
+                FileName = f.Name,
+                MimeType = f.MimeType,
+                CurrentVersionId = f.CurrentVersion.Id,
+                Duration = f.MediaMetadata!.Duration,
+                Artist = f.MediaMetadata.Artist,
+                Album = f.MediaMetadata.Album,
+                Title = f.MediaMetadata.Title,
+                TranspilationJobId = context.Set<TranspilationJob>()
+                    .Where(j => j.UserId == userId && j.Status == TranspilationStatus.Ready && j.DeletedAt == null
+                                && f.Versions.Any(v => v.DeletedAt == null && v.Id == j.VersionId))
+                    .Select(j => j.Id)
+                    .First(),
+                IsVideo = context.Set<TranspilationJob>()
+                    .Where(j => j.UserId == userId && j.Status == TranspilationStatus.Ready && j.DeletedAt == null
+                                && f.Versions.Any(v => v.DeletedAt == null && v.Id == j.VersionId))
+                    .Select(j => j.IsVideo)
+                    .First(),
+                SegmentPrefix = context.Set<TranspilationJob>()
+                    .Where(j => j.UserId == userId && j.Status == TranspilationStatus.Ready && j.DeletedAt == null
+                                && f.Versions.Any(v => v.DeletedAt == null && v.Id == j.VersionId))
+                    .Select(j => j.SegmentPrefix)
+                    .First()
+            })
+            .ToListAsync(ct);
+
+        if (playlistFileIds != null)
+        {
+            var positionMap = playlistFileIds
+                .Select((id, i) => (id, i))
+                .ToDictionary(x => x.id, x => x.i);
+
+            items = items
+                .OrderBy(m => positionMap.TryGetValue(m.FileId, out var pos) ? pos : int.MaxValue)
+                .ToList();
+        }
+
+        return new PaginatedResult<MediaFileDto>
+        {
+            Items = items,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalCount = count,
+            TotalPages = (int)Math.Ceiling(count / (double)pageSize)
+        };
+    }
+
     public async Task<(DownloadMetadata fileMetadata, byte[] fileHash)?> GetDownloadMetadataAsync(
         Guid fileId, Guid userId, CancellationToken ct = default)
     {
@@ -795,7 +1018,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 f.CurrentVersion.IsEncrypted,
                 f.CurrentVersion.EncryptionSalt,
                 f.CurrentVersion.IntegrityTag,
-                f.CurrentVersion.ContentHash,
+                f.CurrentVersion.ContentHash
             })
             .FirstOrDefaultAsync(ct);
 
@@ -809,7 +1032,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             EncryptionIv = row.EncryptionIv,
             IsEncrypted = row.IsEncrypted,
             EncryptionSalt = row.EncryptionSalt,
-            IntegrityTag = row.IntegrityTag,
+            IntegrityTag = row.IntegrityTag
         }, row.ContentHash);
     }
 }

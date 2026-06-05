@@ -10,9 +10,15 @@ import App from "./App.vue";
 import { registerIcons } from "./icons";
 import router from "./router";
 import { logger } from "./utils/logger";
+import VueVirtualScroller from "vue-virtual-scroller";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
+
+
 registerIcons();
 
 const app = createApp(App);
+
+app.use(VueVirtualScroller);
 
 const pinia = createPinia();
 pinia.use(piniaPluginPersistedstate);

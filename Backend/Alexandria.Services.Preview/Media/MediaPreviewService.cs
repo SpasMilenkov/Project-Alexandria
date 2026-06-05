@@ -41,7 +41,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         }
     }
 
-    private async Task<MediaMetadata> AnalyzeMediaAsync(string inputPath, CancellationToken ct)
+    private async Task<MediaMetadataDto> AnalyzeMediaAsync(string inputPath, CancellationToken ct)
     {
         LogFfprobeStarting(logger, inputPath);
 
@@ -85,7 +85,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         var audioStream = probeData.Streams?.FirstOrDefault(s => s.CodecType == "audio");
         var tags = probeData.Format?.Tags;
 
-        return new MediaMetadata
+        return new MediaMetadataDto
         {
             Duration = double.TryParse(probeData.Format?.Duration, out var dur) ? dur : 0,
             FileSize = long.TryParse(probeData.Format?.Size, out var size) ? size : 0,
@@ -110,7 +110,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
     private async Task<MediaPreviewResult> GenerateVideoPreviewAsync(
         string inputPath,
-        MediaMetadata metadata,
+        MediaMetadataDto metadata,
         CancellationToken ct)
     {
         var outputDir = Path.GetTempPath();
@@ -136,7 +136,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
     private async Task<MediaPreviewResult> GenerateAudioPreviewAsync(
         string inputPath,
-        MediaMetadata metadata,
+        MediaMetadataDto metadata,
         CancellationToken ct)
     {
         var outputDir = Path.GetTempPath();

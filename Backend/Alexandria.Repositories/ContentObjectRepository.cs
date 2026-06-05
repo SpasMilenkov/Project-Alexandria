@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
@@ -35,11 +36,6 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         await _dbSet.Where(c => c.Id == id).ExecuteDeleteAsync(ct);
-    }
-
-    public async Task<IEnumerable<ContentObject>> GetAllAsync(CancellationToken ct = default)
-    {
-        return await _dbSet.ToListAsync(ct);
     }
 
     public async Task<IEnumerable<ContentObject>> FindAsync(
@@ -154,5 +150,21 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
             .ExecuteUpdateAsync(
                 s => s.SetProperty(co => co.OrphanedAt, _ => (DateTime?)null),
                 ct);
+    }
+
+    public async Task<bool> IsVideo(Guid versionId,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var result = await context.FileVersions
+                         .Where(v => v.Id == versionId
+                                     && v.File.OwnerId == userId
+                                     && v.ContentObject.OrphanedAt == null
+                                     && v.ContentObject.DeletedAt == null)
+                         .Select(v => v.MimeType)
+                         .FirstOrDefaultAsync(ct)
+                     ?? throw new ContentObjectNotFoundException(versionId);
+
+        return result.StartsWith("video/", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -33,10 +33,12 @@
     "hash-wasm": "4.12.0",
     "pinia": "3.0.4",
     "pinia-plugin-persistedstate": "4.7.1",
+    "shaka-player": "5.1.2",
     "tailwindcss": "4.2.1",
     "vue": "3.5.29",
     "vue-chartjs": "5.3.3",
     "vue-router": "4.6.4",
+    "vue-virtual-scroller": "3.0.4",
     "zod": "4.3.6"
   },
   "devDependencies": {
@@ -69,7 +71,7 @@
     "vue-tsc": "3.2.5"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "^22.13.0 || >=24.15.0"
   },
-  "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
+  "packageManager": "pnpm@11.0.6+sha512.97f906e1da2bedac3df83cadae04b4753a130092dd49d55cd36825ad3e623e9df3f97754f8f259e699172a360fac569acf2f908e7732bdae3eddb2dcf7e121fd"
 }

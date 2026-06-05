@@ -1,6 +1,6 @@
 import type { FileSummary } from "./directory";
 
-import apiClient from "./client";
+import {apiClient} from "./client";
 
 export interface StorageInfo {
   dataAvailableBytes: number;

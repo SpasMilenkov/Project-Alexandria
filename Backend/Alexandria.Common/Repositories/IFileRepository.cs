@@ -1,5 +1,6 @@
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Tags;
 using File = Alexandria.Data.Models.File;
 
@@ -12,6 +13,7 @@ public interface IFileRepository : IRepository<File>
     Task<string> GetFileHashAsStringAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
     Task<File> UpdateAsync(File file, CancellationToken ct = default);
     Task<FileResult?> GetFileWithTagsAsync(Guid userId, Guid fileId, CancellationToken ct = default);
+    Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);
 
     Task<File?> GetFileEntityWithTagsAsync(
         Guid fileId,
@@ -57,4 +59,8 @@ public interface IFileRepository : IRepository<File>
     Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
     Task<FileResult?> GetFileWithOwnershipByIdAsync(Guid fileId, Guid userId, CancellationToken ct = default);
     Task UpdateCurrentVersionAsync(Guid fileId, Guid versionId, CancellationToken ct = default);
+
+    Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+        string? query = null, Guid? playlistId = null, bool isVideo = false,
+        CancellationToken ct = default);
 }

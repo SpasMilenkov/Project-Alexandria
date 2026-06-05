@@ -24,6 +24,1403 @@ namespace Alexandria.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Alexandria.Data.Models.AdminSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.ToTable("AdminSettings", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.ApplicationRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("RoleNameIndex");
+
+                    b.ToTable("AspNetRoles", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.ApplicationUser", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LockoutStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("OnboardinStep")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex");
+
+                    b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("EventCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("FallbackDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<bool>("IsEnriched")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("OperationType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventCode");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.ContentObject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Hash")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<bool>("IsPromoted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastPromotionAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("OrphanedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("PromotedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PromotionAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UploadId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_contentobjects_hash_active")
+                        .HasFilter("\"OrphanedAt\" IS NULL");
+
+                    b.HasIndex("UploadId")
+                        .IsUnique();
+
+                    b.ToTable("ContentObjects", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Directory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("regexp_replace(\n            lower(\n                regexp_replace(\n                    regexp_replace(\n                        coalesce(\"Name\", ''), \n                        '\\.[^.]*$', ''\n                    ), \n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            ), \n            '\\s+', ' ', 'g'\n        )", true);
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("to_tsvector('simple', \n                regexp_replace(\n                    regexp_replace(coalesce(\"Name\", ''), '\\.[^.]*$', ''),\n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            )", true);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedName");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("NormalizedName"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedName"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("ParentId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Directories", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.DirectoryPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DirectoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("InheritedByChildren")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeletedAt");
+
+                    b.HasIndex("DirectoryId")
+                        .IsUnique()
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.ToTable("DirectoryPolicies", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.File", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid?>("CurrentVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DirectoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("HasPreview")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("regexp_replace(\n            lower(\n                regexp_replace(\n                    regexp_replace(\n                        coalesce(\"Name\", ''),\n                        '\\.[^.]*$', ''\n                    ),\n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            ),\n            '\\s+', ' ', 'g'\n        )", true);
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PreviewGeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PreviewId")
+                        .HasColumnType("uuid");
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("to_tsvector('simple',\n                regexp_replace(\n                    regexp_replace(coalesce(\"Name\", ''), '\\.[^.]*$', ''),\n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            )", true);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CurrentVersionId");
+
+                    b.HasIndex("DirectoryId");
+
+                    b.HasIndex("NormalizedName");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("NormalizedName"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedName"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Files", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.FileVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("ContentHash")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid>("ContentObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EncryptionHint")
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("EncryptionIv")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("EncryptionSalt")
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("IntegrityTag")
+                        .HasColumnType("bytea");
+
+                    b.Property<bool>("IsEncrypted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<int?>("IterationCount")
+                        .HasColumnType("integer");
+
+                    b.Property<short?>("KdfVersion")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<decimal>("Size")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentHash");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("ContentObjectId", "DeletedAt")
+                        .HasDatabaseName("ix_fileversions_contentobjectid_deletedat");
+
+                    b.ToTable("FileVersions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FileEntry_EncryptionFields_Consistency", "(\"IsEncrypted\" = false AND \"EncryptionIv\" IS NULL AND \"EncryptionSalt\" IS NULL AND \"IntegrityTag\" IS NULL)\n              OR\n              (\"IsEncrypted\" = true AND \"EncryptionIv\" IS NOT NULL AND \"EncryptionSalt\" IS NOT NULL AND \"IntegrityTag\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_FileEntry_EncryptionIv_Length", "\"EncryptionIv\" IS NULL OR octet_length(\"EncryptionIv\") = 12");
+
+                            t.HasCheckConstraint("CK_FileEntry_EncryptionSalt_Length", "\"EncryptionSalt\" IS NULL OR octet_length(\"EncryptionSalt\") = 16");
+
+                            t.HasCheckConstraint("CK_FileEntry_IntegrityTag_Length", "\"IntegrityTag\" IS NULL OR octet_length(\"IntegrityTag\") = 16");
+                        });
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.MediaMetadata", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Album")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Artist")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("AudioCodec")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<double>("BitrateMbps")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("Duration")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FormatName")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Genre")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<bool>("HasAudio")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NormalizedSearch")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("lower(\n            coalesce(\"Title\", '') || ' ' ||\n            coalesce(\"Artist\", '') || ' ' ||\n            coalesce(\"Album\", '') || ' ' ||\n            coalesce(\"Genre\", '')\n        )", true);
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("setweight(to_tsvector('simple', coalesce(\"Title\", '')),  'A') ||\n          setweight(to_tsvector('simple', coalesce(\"Artist\", '')), 'B') ||\n          setweight(to_tsvector('simple', coalesce(\"Album\", '')),  'C') ||\n          setweight(to_tsvector('simple', coalesce(\"Genre\", '')),  'D')", true);
+
+                    b.Property<string>("ThumbnailPath")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VideoCodec")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Year")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("FileId")
+                        .IsUnique();
+
+                    b.HasIndex("NormalizedSearch");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("NormalizedSearch"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedSearch"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("SearchVector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "gin");
+
+                    b.ToTable("MediaMetadata", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AmbientTheme")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("HasCover")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Playlists");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.PlaylistItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlaylistId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TranspilationJobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlaylistId");
+
+                    b.HasIndex("TranspilationJobId");
+
+                    b.ToTable("PlaylistItems");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.PolicyRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<bool>("ApplyOnNewVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Parameters")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("PolicyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("TriggerType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("TriggerValue")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TriggerValue")
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.HasIndex("PolicyId", "Priority")
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.ToTable("PolicyRules", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Preview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<BigInteger>("Size")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("FileId")
+                        .IsUnique();
+
+                    b.ToTable("Previews", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("Token");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.SignedUrl", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BucketName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("CreatorId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("varchar(450)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ObjectName")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Permission")
+                        .IsRequired()
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("varchar(2000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("BucketName", "ObjectName");
+
+                    b.ToTable("SignedUrls", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastAccessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("MaxPositionReachedSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<long>("PositionSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<int>("TimesCompleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<long>("TotalListenedSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("LastAccessedAt");
+
+                    b.HasIndex("UserId", "FileId")
+                        .IsUnique();
+
+                    b.ToTable("StreamHistory", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("EndPositionSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("ListenedSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.Property<bool>("ReachedCompletionThreshold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<long>("StartPositionSeconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("StreamHistoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReachedCompletionThreshold");
+
+                    b.HasIndex("StreamHistoryId");
+
+                    b.ToTable("StreamSession", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamingRepresentation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("BitrateKbps")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Codec")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("JobId", "Codec");
+
+                    b.ToTable("StreamRepresentations", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Icon")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("OwnerId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Tags", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.PrimitiveCollection<int[]>("AudioRungs")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorDetail")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsVideo")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("ProgressPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("RetryCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("SegmentPrefix")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid");
+
+                    b.PrimitiveCollection<int[]>("VideoRungs")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("VersionId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("TranspilationJobs", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Upload", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Hash")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<BigInteger>("Size")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("TempObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Uploads", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Upload_Hash_Length", "octet_length(\"ContentHash\") IN (16, 32, 64)");
+                        });
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.UserSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Key")
+                        .IsUnique()
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.ToTable("Settings", (string)null);
+                });
+
             modelBuilder.Entity("FileTags", b =>
                 {
                     b.Property<Guid>("FileId")
@@ -142,1023 +1539,25 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Models.AdminSettings", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.ContentObject", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Key")
-                        .HasFilter("\"DeletedAt\" IS NULL");
-
-                    b.ToTable("AdminSettings", (string)null);
-                });
-
-            modelBuilder.Entity("Models.ApplicationRole", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("NormalizedName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedName")
-                        .IsUnique()
-                        .HasDatabaseName("RoleNameIndex");
-
-                    b.ToTable("AspNetRoles", (string)null);
-                });
-
-            modelBuilder.Entity("Models.ApplicationUser", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("LockoutStartedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("OnboardinStep")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex");
-
-                    b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("Models.AuditLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("EventCode")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("FallbackDescription")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("IpAddress")
-                        .HasMaxLength(45)
-                        .HasColumnType("character varying(45)");
-
-                    b.Property<bool>("IsEnriched")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("MetadataJson")
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("OperationType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTimeOffset>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EventCode");
-
-                    b.HasIndex("Timestamp");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.ToTable("AuditLogs", (string)null);
-                });
-
-            modelBuilder.Entity("Models.ContentObject", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<byte[]>("Hash")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<bool>("IsPromoted")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("LastPromotionAttemptAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("OrphanedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("PromotedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("PromotionAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("varchar(1000)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("UploadId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Hash")
-                        .IsUnique()
-                        .HasDatabaseName("ix_contentobjects_hash_active")
-                        .HasFilter("\"OrphanedAt\" IS NULL");
-
-                    b.HasIndex("UploadId")
-                        .IsUnique();
-
-                    b.ToTable("ContentObjects", (string)null);
-                });
-
-            modelBuilder.Entity("Models.Directory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("NormalizedName")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("text")
-                        .HasComputedColumnSql("regexp_replace(\n            lower(\n                regexp_replace(\n                    regexp_replace(\n                        coalesce(\"Name\", ''), \n                        '\\.[^.]*$', ''\n                    ), \n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            ), \n            '\\s+', ' ', 'g'\n        )", true);
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ParentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<NpgsqlTsVector>("SearchVector")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("tsvector")
-                        .HasComputedColumnSql("to_tsvector('simple', \n                regexp_replace(\n                    regexp_replace(coalesce(\"Name\", ''), '\\.[^.]*$', ''),\n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            )", true);
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedName");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("NormalizedName"), "gin");
-                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedName"), new[] { "gin_trgm_ops" });
-
-                    b.HasIndex("OwnerId");
-
-                    b.HasIndex("ParentId", "Name")
-                        .IsUnique();
-
-                    b.ToTable("Directories", (string)null);
-                });
-
-            modelBuilder.Entity("Models.File", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<Guid?>("CurrentVersionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("DirectoryId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("HasPreview")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("MimeType")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("NormalizedName")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("text")
-                        .HasComputedColumnSql("regexp_replace(\n            lower(\n                regexp_replace(\n                    regexp_replace(\n                        coalesce(\"Name\", ''),\n                        '\\.[^.]*$', ''\n                    ),\n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            ),\n            '\\s+', ' ', 'g'\n        )", true);
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("PreviewGeneratedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("PreviewId")
-                        .HasColumnType("uuid");
-
-                    b.Property<NpgsqlTsVector>("SearchVector")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("tsvector")
-                        .HasComputedColumnSql("to_tsvector('simple',\n                regexp_replace(\n                    regexp_replace(coalesce(\"Name\", ''), '\\.[^.]*$', ''),\n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            )", true);
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("CurrentVersionId");
-
-                    b.HasIndex("DirectoryId");
-
-                    b.HasIndex("NormalizedName");
-
-                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("NormalizedName"), "gin");
-                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedName"), new[] { "gin_trgm_ops" });
-
-                    b.HasIndex("OwnerId");
-
-                    b.ToTable("Files", (string)null);
-                });
-
-            modelBuilder.Entity("Models.FileVersion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<byte[]>("ContentHash")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<Guid>("ContentObjectId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("EncryptionHint")
-                        .HasColumnType("text");
-
-                    b.Property<byte[]>("EncryptionIv")
-                        .HasColumnType("bytea");
-
-                    b.Property<byte[]>("EncryptionSalt")
-                        .HasColumnType("bytea");
-
-                    b.Property<Guid>("FileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<byte[]>("IntegrityTag")
-                        .HasColumnType("bytea");
-
-                    b.Property<bool>("IsEncrypted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
-
-                    b.Property<int?>("IterationCount")
-                        .HasColumnType("integer");
-
-                    b.Property<short?>("KdfVersion")
-                        .HasColumnType("smallint");
-
-                    b.Property<string>("MimeType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<decimal>("Size")
-                        .HasColumnType("numeric(20,0)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("VersionNumber")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ContentHash");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("FileId");
-
-                    b.HasIndex("ContentObjectId", "DeletedAt")
-                        .HasDatabaseName("ix_fileversions_contentobjectid_deletedat");
-
-                    b.ToTable("FileVersions", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_FileEntry_EncryptionFields_Consistency", "(\"IsEncrypted\" = false AND \"EncryptionIv\" IS NULL AND \"EncryptionSalt\" IS NULL AND \"IntegrityTag\" IS NULL)\n              OR\n              (\"IsEncrypted\" = true AND \"EncryptionIv\" IS NOT NULL AND \"EncryptionSalt\" IS NOT NULL AND \"IntegrityTag\" IS NOT NULL)");
-
-                            t.HasCheckConstraint("CK_FileEntry_EncryptionIv_Length", "\"EncryptionIv\" IS NULL OR octet_length(\"EncryptionIv\") = 12");
-
-                            t.HasCheckConstraint("CK_FileEntry_EncryptionSalt_Length", "\"EncryptionSalt\" IS NULL OR octet_length(\"EncryptionSalt\") = 16");
-
-                            t.HasCheckConstraint("CK_FileEntry_IntegrityTag_Length", "\"IntegrityTag\" IS NULL OR octet_length(\"IntegrityTag\") = 16");
-                        });
-                });
-
-            modelBuilder.Entity("Models.MediaMetadata", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Album")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Artist")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("AudioCodec")
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<double>("BitrateMbps")
-                        .HasColumnType("double precision");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<double>("Duration")
-                        .HasColumnType("double precision");
-
-                    b.Property<Guid>("FileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("FormatName")
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<string>("Genre")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<bool>("HasAudio")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("Height")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ThumbnailPath")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Title")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("VideoCodec")
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<int>("Width")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Year")
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("FileId")
-                        .IsUnique();
-
-                    b.ToTable("MediaMetadata", (string)null);
-                });
-
-            modelBuilder.Entity("Models.Preview", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("FileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("MimeType")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Path")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
-
-                    b.Property<BigInteger>("Size")
-                        .HasColumnType("numeric(20,0)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("FileId")
-                        .IsUnique();
-
-                    b.ToTable("Previews", (string)null);
-                });
-
-            modelBuilder.Entity("Models.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("Token");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens", (string)null);
-                });
-
-            modelBuilder.Entity("Models.SignedUrl", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("BucketName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<string>("CreatorId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("varchar(450)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("FileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ObjectName")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("varchar(1000)");
-
-                    b.Property<string>("Permission")
-                        .IsRequired()
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("FileId");
-
-                    b.HasIndex("BucketName", "ObjectName");
-
-                    b.ToTable("SignedUrls", (string)null);
-                });
-
-            modelBuilder.Entity("Models.Tag", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Color")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Icon")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("Name");
-
-                    b.HasIndex("OwnerId");
-
-                    b.HasIndex("OwnerId", "Name")
-                        .IsUnique();
-
-                    b.ToTable("Tags", (string)null);
-                });
-
-            modelBuilder.Entity("Models.Upload", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("FinishedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<byte[]>("Hash")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<string>("MimeType")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<BigInteger>("Size")
-                        .HasColumnType("numeric");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<string>("TempObjectKey")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Hash");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Uploads", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_Upload_Hash_Length", "octet_length(\"ContentHash\") IN (16, 32, 64)");
-                        });
-                });
-
-            modelBuilder.Entity("Models.UserSettings", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "Key")
-                        .IsUnique()
-                        .HasFilter("\"DeletedAt\" IS NULL");
-
-                    b.ToTable("Settings", (string)null);
-                });
-
-            modelBuilder.Entity("FileTags", b =>
-                {
-                    b.HasOne("Models.File", null)
-                        .WithMany()
-                        .HasForeignKey("FileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Models.Tag", null)
-                        .WithMany()
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
-                {
-                    b.HasOne("Models.ApplicationRole", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
-                {
-                    b.HasOne("Models.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
-                {
-                    b.HasOne("Models.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
-                {
-                    b.HasOne("Models.ApplicationRole", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Models.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
-                {
-                    b.HasOne("Models.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Models.ContentObject", b =>
-                {
-                    b.HasOne("Models.Upload", "Upload")
+                    b.HasOne("Alexandria.Data.Models.Upload", "Upload")
                         .WithOne()
-                        .HasForeignKey("Models.ContentObject", "UploadId")
+                        .HasForeignKey("Alexandria.Data.Models.ContentObject", "UploadId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Upload");
                 });
 
-            modelBuilder.Entity("Models.Directory", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.Directory", b =>
                 {
-                    b.HasOne("Models.ApplicationUser", "Owner")
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Models.Directory", "Parent")
+                    b.HasOne("Alexandria.Data.Models.Directory", "Parent")
                         .WithMany("Children")
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Restrict);
@@ -1168,18 +1567,29 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Parent");
                 });
 
-            modelBuilder.Entity("Models.File", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.DirectoryPolicy", b =>
                 {
-                    b.HasOne("Models.FileVersion", "CurrentVersion")
+                    b.HasOne("Alexandria.Data.Models.Directory", "Directory")
+                        .WithOne()
+                        .HasForeignKey("Alexandria.Data.Models.DirectoryPolicy", "DirectoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Directory");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.File", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.FileVersion", "CurrentVersion")
                         .WithMany()
                         .HasForeignKey("CurrentVersionId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Models.Directory", "Directory")
+                    b.HasOne("Alexandria.Data.Models.Directory", "Directory")
                         .WithMany("Files")
                         .HasForeignKey("DirectoryId");
 
-                    b.HasOne("Models.ApplicationUser", "Owner")
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1192,15 +1602,15 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("Models.FileVersion", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.FileVersion", b =>
                 {
-                    b.HasOne("Models.ContentObject", "ContentObject")
+                    b.HasOne("Alexandria.Data.Models.ContentObject", "ContentObject")
                         .WithMany()
                         .HasForeignKey("ContentObjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Models.File", "File")
+                    b.HasOne("Alexandria.Data.Models.File", "File")
                         .WithMany("Versions")
                         .HasForeignKey("FileId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1211,53 +1621,20 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("File");
                 });
 
-            modelBuilder.Entity("Models.MediaMetadata", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.MediaMetadata", b =>
                 {
-                    b.HasOne("Models.File", "File")
-                        .WithOne()
-                        .HasForeignKey("Models.MediaMetadata", "FileId")
+                    b.HasOne("Alexandria.Data.Models.File", "File")
+                        .WithOne("MediaMetadata")
+                        .HasForeignKey("Alexandria.Data.Models.MediaMetadata", "FileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("File");
                 });
 
-            modelBuilder.Entity("Models.Preview", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>
                 {
-                    b.HasOne("Models.File", "File")
-                        .WithOne("Preview")
-                        .HasForeignKey("Models.Preview", "FileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("File");
-                });
-
-            modelBuilder.Entity("Models.RefreshToken", b =>
-                {
-                    b.HasOne("Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Models.SignedUrl", b =>
-                {
-                    b.HasOne("Models.File", "FileInfo")
-                        .WithMany("SignedUrls")
-                        .HasForeignKey("FileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("FileInfo");
-                });
-
-            modelBuilder.Entity("Models.Tag", b =>
-                {
-                    b.HasOne("Models.ApplicationUser", "Owner")
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1266,9 +1643,50 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("Models.Upload", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.PlaylistItem", b =>
                 {
-                    b.HasOne("Models.ApplicationUser", "User")
+                    b.HasOne("Alexandria.Data.Models.Playlist", "Playlist")
+                        .WithMany("PlaylistItems")
+                        .HasForeignKey("PlaylistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.TranspilationJob", "TranspilationJob")
+                        .WithMany()
+                        .HasForeignKey("TranspilationJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Playlist");
+
+                    b.Navigation("TranspilationJob");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.PolicyRule", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.DirectoryPolicy", "Policy")
+                        .WithMany("Rules")
+                        .HasForeignKey("PolicyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Policy");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Preview", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.File", "File")
+                        .WithOne("Preview")
+                        .HasForeignKey("Alexandria.Data.Models.Preview", "FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.RefreshToken", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1277,20 +1695,201 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Models.Directory", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.SignedUrl", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.File", "FileInfo")
+                        .WithMany("SignedUrls")
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FileInfo");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamHistory", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.File", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamSession", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.StreamHistory", "StreamHistory")
+                        .WithMany("Sessions")
+                        .HasForeignKey("StreamHistoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StreamHistory");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamingRepresentation", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.TranspilationJob", "Job")
+                        .WithMany("Representations")
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Tag", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "Owner")
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.FileVersion", "FileVersion")
+                        .WithMany()
+                        .HasForeignKey("VersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FileVersion");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Upload", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FileTags", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.File", null)
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.Tag", null)
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Directory", b =>
                 {
                     b.Navigation("Children");
 
                     b.Navigation("Files");
                 });
 
-            modelBuilder.Entity("Models.File", b =>
+            modelBuilder.Entity("Alexandria.Data.Models.DirectoryPolicy", b =>
                 {
+                    b.Navigation("Rules");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.File", b =>
+                {
+                    b.Navigation("MediaMetadata");
+
                     b.Navigation("Preview");
 
                     b.Navigation("SignedUrls");
 
                     b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>
+                {
+                    b.Navigation("PlaylistItems");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.StreamHistory", b =>
+                {
+                    b.Navigation("Sessions");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>
+                {
+                    b.Navigation("Representations");
                 });
 #pragma warning restore 612, 618
         }

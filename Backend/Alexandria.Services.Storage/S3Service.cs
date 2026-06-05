@@ -6,6 +6,8 @@ using System.Text.Json;
 using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
+using Alexandria.Common.Exceptions;
+using Alexandria.Common.Exceptions.Playlist;
 using Alexandria.Common.Queues;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -20,7 +22,7 @@ using Cppl.Utilities.AWS;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MediaMetadata = Alexandria.Dto.Files.MediaMetadata;
+using Directory = System.IO.Directory;
 using FileEntity = Alexandria.Data.Models.File;
 
 namespace Alexandria.Services.Storage;
@@ -36,6 +38,14 @@ public partial class S3Service(
     AuditContext auditContext)
     : IStorageService
 {
+    private static readonly HashSet<string> AllowedCoverTypes =
+    [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif"
+    ];
+
     /// <summary>
     /// Deletes a temporary object from the temp bucket with error handling.
     /// </summary>
@@ -110,7 +120,7 @@ public partial class S3Service(
         return (newFile, fileVersion);
     }
 
-    public async Task<UploadResult> UploadPreview(
+    public async Task UploadPreview(
         string objectName,
         string contentType,
         Stream fileStream,
@@ -186,12 +196,6 @@ public partial class S3Service(
             await unitOfWork.CommitAsync(ct);
 
             LogPreviewUploadCompleted(logger, savedFile.Id, contentLength);
-
-            return new UploadResult(
-                objectName,
-                "",
-                contentLength,
-                savedFile.Id);
         }
         catch (Exception ex)
         {
@@ -254,7 +258,7 @@ public partial class S3Service(
     /// <param name="fileId">The original file's entity ID inside the database</param>
     /// <param name="ct">Cancellation token</param>
     public async Task UploadMediaData(Stream previewStream, Stream thumbnailStream,
-        string objectName, Guid fileId, MediaMetadata metadataDto,
+        string objectName, Guid fileId, MediaMetadataDto metadataDto,
         CancellationToken ct = default)
     {
         var bucketName = config.Value.PreviewBucket ??
@@ -488,7 +492,7 @@ public partial class S3Service(
 
             var previewUrl = GetPreviewPresignedUrl(serverHash, TimeSpan.FromMinutes(15));
 
-            if (category != FileCategory.Audio)
+            if (category != FileCategory.Audio && category != FileCategory.Video)
                 return new PreviewResultDto(new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true),
                     previewUrl, null);
 
@@ -621,6 +625,137 @@ public partial class S3Service(
         }
     }
 
+    public async Task DownloadContentObjectAsync(
+        Guid contentObjectId,
+        string localFilePath,
+        CancellationToken ct = default)
+    {
+        var contentObject = await unitOfWork.ContentObjects.GetByIdAsync(contentObjectId, ct)
+                            ?? throw new InvalidOperationException(
+                                $"Content object '{contentObjectId}' was not found.");
+
+        string bucket;
+        string key;
+
+        if (contentObject.IsPromoted)
+        {
+            bucket = config.Value.UploadBucket;
+            key = contentObject.StorageKey;
+        }
+        else
+        {
+            var upload = await unitOfWork.Uploads.FirstOrDefaultAsync(
+                             u => u.Id == contentObject.UploadId && u.Status == UploadStatus.Finished, ct)
+                         ?? throw new InvalidOperationException(
+                             $"No finished upload found for content object '{contentObjectId}'.");
+
+            bucket = config.Value.TempBucket;
+            key = $"content/{upload.TempObjectKey}";
+        }
+
+        LogDownloadingContentObject(logger, contentObjectId, bucket, key);
+
+        try
+        {
+            using var response = await s3.GetObjectAsync(bucket, key, ct);
+
+            await using var localFile = new FileStream(
+                localFilePath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 81920,
+                useAsync: true);
+
+            await response.ResponseStream.CopyToAsync(localFile, 81920, ct);
+
+            LogContentObjectDownloaded(logger, contentObjectId, localFilePath);
+        }
+        catch (AmazonS3Exception ex)
+        {
+            LogContentObjectDownloadS3Error(logger, ex, contentObjectId, bucket, key, ex.StatusCode);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogContentObjectDownloadFailed(logger, ex, contentObjectId, bucket, key);
+            throw;
+        }
+    }
+
+    public async Task UploadStreamingOutputAsync(
+        string localDirectory,
+        string keyPrefix,
+        CancellationToken ct = default)
+    {
+        var bucket = config.Value.StreamingBucket
+                     ?? throw new InvalidOperationException("Streaming bucket is not configured.");
+
+        var files = Directory.GetFiles(localDirectory, "*", SearchOption.AllDirectories);
+
+        LogUploadingStreamingOutput(logger, localDirectory, keyPrefix, files.Length);
+
+        foreach (var file in files)
+        {
+            if (ct.IsCancellationRequested)
+                break;
+
+            var relativePath = Path.GetRelativePath(localDirectory, file).Replace('\\', '/');
+            var s3Key = $"{keyPrefix}/{relativePath}";
+            var contentType = GetStreamingContentType(Path.GetExtension(file));
+
+            try
+            {
+                await using var stream = new FileStream(
+                    file,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize: 81920,
+                    useAsync: true);
+
+                await s3.PutObjectAsync(new PutObjectRequest
+                {
+                    BucketName = bucket,
+                    Key = s3Key,
+                    InputStream = stream,
+                    ContentType = contentType,
+                    AutoCloseStream = false,
+                    DisableDefaultChecksumValidation = true,
+                }, ct);
+
+                LogStreamingFilePut(logger, bucket, s3Key);
+            }
+            catch (Exception ex)
+            {
+                LogStreamingFilePutFailed(logger, ex, bucket, s3Key);
+                throw;
+            }
+        }
+
+        LogStreamingOutputUploaded(logger, keyPrefix, files.Length);
+    }
+
+    public async Task<string> GetStreamManifest(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        var job = await unitOfWork.TranspilationJobs.GetByVersionId(versionId, userId, ct)
+                  ?? throw new StreamingRepresentationNotFoundException(versionId);
+
+        return $"{config.Value.BaseUrl}/stream/{job.SegmentPrefix}/dash/manifest.mpd";
+    }
+
+    private static string GetStreamingContentType(string extension)
+        => extension.ToLowerInvariant() switch
+        {
+            ".m3u8" => "application/x-mpegURL",
+            ".mpd" => "application/dash+xml",
+            ".ts" => "video/mp2t",
+            ".m4s" => "video/iso.segment",
+            ".mp4" => "video/mp4",
+            ".m4a" => "audio/mp4",
+            _ => "application/octet-stream"
+        };
+
     public async Task StreamFile(string fileId, Stream destination, CancellationToken ct)
     {
         LogStreamingFileToDestination(logger, fileId);
@@ -704,8 +839,7 @@ public partial class S3Service(
         }
     }
 
-    public async Task<UploadResult> FinalizeFileUpload(
-        string objectName,
+    public async Task<UploadResult> FinalizeFileUpload(string objectName,
         Guid uploadId,
         Guid uploadedBy,
         byte[]? encryptionIv,
@@ -845,9 +979,12 @@ public partial class S3Service(
 
                 return new UploadResult(
                     ObjectName: objectName,
-                    Checksum: serverHash,
                     Size: computedSize,
-                    FileId: result.file.Id
+                    FileId: result.file.Id,
+                    MimeType: result.file.MimeType,
+                    result.fileVersion.Id,
+                    false,
+                    isEncrypted
                 );
             }
 
@@ -890,9 +1027,12 @@ public partial class S3Service(
 
             return new UploadResult(
                 objectName,
-                serverHash,
                 computedSize,
-                file.Id);
+                file.Id,
+                file.MimeType,
+                newVersion.Id,
+                true,
+                isEncrypted);
         }
         catch (Exception ex)
         {
@@ -978,6 +1118,43 @@ public partial class S3Service(
     public async Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default)
     {
         await s3.DeleteObjectAsync(config.Value.ImagesBucket, $"{objectKey}", ct);
+    }
+
+    public async Task DeleteStreamingOutputByPrefixAsync(string prefix, CancellationToken ct = default)
+    {
+        var paginator = s3.Paginators.ListObjectsV2(new ListObjectsV2Request
+        {
+            BucketName = config.Value.StreamingBucket,
+            Prefix = prefix
+        });
+
+        var batch = new List<KeyVersion>();
+
+        await foreach (var obj in paginator.S3Objects.WithCancellation(ct))
+        {
+            batch.Add(new KeyVersion { Key = obj.Key });
+
+            if (batch.Count == 1000)
+            {
+                await FlushBatchAsync(batch, ct);
+            }
+        }
+
+        if (batch.Count > 0)
+        {
+            await FlushBatchAsync(batch, ct);
+        }
+    }
+
+    private async Task FlushBatchAsync(List<KeyVersion> batch, CancellationToken ct)
+    {
+        await s3.DeleteObjectsAsync(new DeleteObjectsRequest
+        {
+            BucketName = config.Value.StreamingBucket,
+            Objects = batch
+        }, ct);
+
+        batch.Clear();
     }
 
     public async Task<string> GenerateBackgroundImageGetUrl(string objectKey, TimeSpan expiry)
@@ -1151,6 +1328,45 @@ public partial class S3Service(
         }
 
         // Dispose flushes the central directory → response stream closed b y Kestrel
+    }
+
+    public async Task<string> GetPlaylistCoverUploadUrlAsync(Guid playlistId, Guid userId, string contentType,
+        CancellationToken ct = default)
+    {
+        if (!AllowedCoverTypes.Contains(contentType))
+            throw new InvalidOperationException($"Content type '{contentType}' is not allowed for covers.");
+
+        if (!await unitOfWork.Playlists.ExistsAsync(p => p.Id == playlistId && p.OwnerId == userId, ct))
+            throw new PlaylistNotFoundException(playlistId);
+
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = config.Value.PreviewBucket,
+            Key = $"covers/{playlistId}",
+            Verb = HttpVerb.PUT,
+            Expires = DateTime.UtcNow.Add(TimeSpan.FromMinutes(1)),
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
+            ContentType = contentType,
+        };
+
+        return await publicS3.GetPreSignedURLAsync(request);
+    }
+
+    public async Task<string> GetPlaylistCoverUrlAsync(Guid playlistId, Guid userId, CancellationToken ct = default)
+    {
+        if (!await unitOfWork.Playlists.ExistsAsync(p => p.Id == playlistId && p.OwnerId == userId, ct))
+            throw new PlaylistNotFoundException(playlistId);
+
+        var request = new GetPreSignedUrlRequest
+        {
+            BucketName = config.Value.PreviewBucket,
+            Key = $"covers/{playlistId}",
+            Verb = HttpVerb.GET,
+            Expires = DateTime.UtcNow.Add(TimeSpan.FromMinutes(1)),
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
+        };
+
+        return await publicS3.GetPreSignedURLAsync(request);
     }
 
     private static CompressionLevel GetCompressionLevel(string fileName)

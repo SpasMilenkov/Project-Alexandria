@@ -3,7 +3,7 @@
     <!-- Toolbar -->
     <div class="flex flex-col w-full border-b border-b-primary">
       <!-- Desktop toolbar -->
-      <div class="hidden md:flex items-center gap-2 p-3 w-full">
+      <div class="hidden md:flex items-center gap-2 p-3 w-full h-full">
         <!-- Upload split button -->
         <div class="flex border border-primary rounded-md overflow-hidden shrink-0">
           <UButton

@@ -105,6 +105,7 @@ services:
       RABBITMQ_VHOST: ${RABBITMQ_VHOST:-alexandria}
       DOCUMENT_WORKER_PASS: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:?DOCUMENT_WORKER_RABBITMQ_PASSWORD is required}
       MEDIA_WORKER_PASS: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
+      TRANSPILATION_WORKER_PASS: ${TRANSPILATION_WORKER_RABBITMQ_PASSWORD:?TRANSPILATION_WORKER_RABBITMQ_PASSWORD is required}
     entrypoint: ["/bin/sh", "/scripts/init-rabbitmq.sh"]
     volumes:
       - ./scripts/rabbitmq-init/init.sh:/scripts/init-rabbitmq.sh:ro
@@ -196,6 +197,7 @@ services:
     restart: always
     environment:
       VITE_PBKDF2_ITERATIONS: ${PBKDF2_ITERATION_COUNT}
+      VITE_STREAMING_NEABLED: ${STREAMING_NEABLED}
     depends_on:
       api:
         condition: service_healthy
@@ -220,6 +222,7 @@ services:
       S3Storage__SecretKey: ${GARAGE_S3_SECRET_KEY:?GARAGE_S3_SECRET_KEY is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
       S3Storage__ProviderSettings__Garage__MetricsToken: ${GARAGE_S3_METRICS_TOKEN:?GARAGE_S3_METRICS_TOKEN is required}
+      S3Storage__BaseUrl: ${BASE_URL:?BASE_URL is required}
       RabbitMQ__UserName: ${RABBITMQ_USER:-dev_admin}
       RabbitMQ__Password: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
       Jwt__Secret: ${JWT_SECRET:?JWT_SECRET is required}
@@ -268,6 +271,8 @@ services:
       dockerfile: Alexandria.Workers.Document/Dockerfile
     container_name: alexandria-document-worker
     restart: always
+    volumes:
+      - document_worker_scratch:/tmp/worker-scratch
     environment:
       DOTNET_ENVIRONMENT: Production
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
@@ -277,6 +282,7 @@ services:
       RabbitMQ__Password: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:?DOCUMENT_WORKER_RABBITMQ_PASSWORD is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
       ASPNETCORE_URLS: http://+:8080
+      TMPDIR: /tmp/worker-scratch
     depends_on:
       postgres:
         condition: service_healthy
@@ -312,6 +318,8 @@ services:
       dockerfile: Alexandria.Workers.Media/Dockerfile
     container_name: alexandria-media-worker
     restart: always
+    volumes:
+      - media_worker_scratch:/tmp/worker-scratch
     environment:
       DOTNET_ENVIRONMENT: Production
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
@@ -321,6 +329,54 @@ services:
       RabbitMQ__Password: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
       ASPNETCORE_URLS: http://+:8080
+      TMPDIR: /tmp/worker-scratch
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      rabbitmq-init:
+        condition: service_completed_successfully
+    networks:
+      - data-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  transpilation-worker:
+    build:
+      context: ./Backend
+      dockerfile: Alexandria.Workers.MediaTranspilation/Dockerfile
+    container_name: alexandria-transpilation-worker
+    restart: always
+    volumes:
+      - transpilation_worker_scratch:/tmp/worker-scratch
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      S3Storage__AccessKey: ${GARAGE_S3_TRANSPILATION_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_TRANSPILATION_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
+      RabbitMQ__UserName: ${RABBITMQ_TRANSPILATION_WORKER:?RABBITMQ_TRANSPILATION_WORKER is required}
+      RabbitMQ__Password: ${TRANSPILATION_WORKER_RABBITMQ_PASSWORD:?TRANSPILATION_WORKER_RABBITMQ_PASSWORD is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      ASPNETCORE_URLS: http://+:8080
+      TMPDIR: /tmp/worker-scratch
     depends_on:
       postgres:
         condition: service_healthy
@@ -362,6 +418,12 @@ volumes:
   prometheus_local_data:
     driver: local
   grafana_local_data:
+    driver: local
+  document_worker_scratch:
+    driver: local
+  media_worker_scratch:
+    driver: local
+  transpilation_worker_scratch:
     driver: local
 
 networks:

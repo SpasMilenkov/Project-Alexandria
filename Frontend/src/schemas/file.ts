@@ -20,9 +20,9 @@ export type GenerateSignedUrlSchema = z.infer<typeof generateSignedUrlSchema>;
 // Copy files schema
 export const copyFilesSchema = z
   .object({
-    destinationId: z.string().uuid(),
-    directoryIds: z.array(z.string().uuid()).min(1).optional(),
-    fileIds: z.array(z.string().uuid()).min(1).optional(),
+    destinationId: z.uuid(),
+    directoryIds: z.array(z.uuid()).min(1).optional(),
+    fileIds: z.array(z.uuid()).min(1).optional(),
   })
   .refine((data) => data.fileIds?.length || data.directoryIds?.length, {
     message: "Provide at least fileIds or directoryIds",

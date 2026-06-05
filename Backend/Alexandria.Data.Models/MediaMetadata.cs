@@ -1,3 +1,5 @@
+using NpgsqlTypes;
+
 namespace Alexandria.Data.Models;
 
 /// <summary>
@@ -28,6 +30,10 @@ public class MediaMetadata : IBase
     public string? Album { get; set; }
     public string? Year { get; set; }
     public string? Genre { get; set; }
+
+    // Searching
+    public NpgsqlTsVector SearchVector { get; set; } = null!;
+    public string NormalizedSearch { get; set; } = null!; // for trigram
 
     //Datetime properties
     public DateTime CreatedAt { get; set; }

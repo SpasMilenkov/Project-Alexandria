@@ -1,11 +1,12 @@
 using Alexandria.Data.Models;
+using Alexandria.Dto.Files;
 
 namespace Alexandria.Dto.Extensions;
 
 public static class MediaMetadataExtensions
 {
     public static MediaMetadata ToEntity(
-        this Files.MediaMetadata dto,
+        this MediaMetadataDto dto,
         Guid fileId,
         string? thumbnailPath = null)
     {

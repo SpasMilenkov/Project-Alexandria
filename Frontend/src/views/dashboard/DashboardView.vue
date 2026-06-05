@@ -141,7 +141,7 @@ onMounted(() => {
       v-model="tabStore.activeTabId"
       :items="items"
       variant="link"
-      class="w-full flex-1 flex flex-col min-h-0 h-0"
+      class="w-full flex-1 flex flex-col min-h-0 h-full"
       :ui="{
         content: 'flex flex-1 min-h-0',
         list: 'sticky top-0 z-10 bg-background shrink-0',

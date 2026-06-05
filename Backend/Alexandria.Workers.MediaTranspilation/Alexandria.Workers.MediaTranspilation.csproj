@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>dotnet-Alexandria.Workers.MediaTranspilation-baae27a3-ac90-424f-b727-72ba0b6817be</UserSecretsId>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Hosting"/>
+        <PackageReference Include="RabbitMQ.Client"/>
+        <PackageReference Include="Serilog.AspNetCore"/>
+        <PackageReference Include="Serilog.Sinks.Console"/>
+        <PackageReference Include="Serilog.Sinks.File"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Streaming\Alexandria.Services.Streaming.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="..\.dockerignore">
+            <Link>.dockerignore</Link>
+        </Content>
+    </ItemGroup>
+</Project>

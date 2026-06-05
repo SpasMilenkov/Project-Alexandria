@@ -8,7 +8,7 @@ import type {
 
 import type { PaginatedResponse } from "./directory";
 
-import apiClient from "./client";
+import {apiClient} from "./client";
 
 // Response Types
 export interface TagDto {

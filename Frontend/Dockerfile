@@ -1,16 +1,17 @@
 # ===== BUILD STAGE =====
-FROM node:22-alpine3.23@sha256:45ee7adabf5073b70c18746ef34be804077b8f5fa09d0188c19697590463b53e AS build
+FROM node:24.15-alpine3.22@sha256:b689d4005875ae167178471a7a622ec2909459a3bbb32277260be1971af7a99f AS build
 WORKDIR /app
 
 # Enable corepack for pnpm
-RUN npm install -g pnpm@10.32.1
+RUN npm install -g pnpm@11.0.6
 
 # Copy package files for dependency caching
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml  pnpm-workspace.yaml  ./
 RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
+ENV CI=true
 ENV VITE_API_BASE_URL=/api
 RUN pnpm run build-only
 

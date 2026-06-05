@@ -8,8 +8,8 @@ echo ""
 CONTAINER_NAME="alexandria-garage-dev"
 MASTER_KEY_NAME="alexandria-master-key"
 PREVIEW_KEY_NAME="alexandria-preview-key"
-BUCKETS=("alexandria-files" "alexandria-previews" "alexandria-temp" "alexandria-images")
-PUBLIC_BUCKETS=("alexandria-previews")  # Only previews are public
+STREAMING_KEY_NAME="alexandria-streaming-key"
+BUCKETS=("alexandria-files" "alexandria-previews" "alexandria-temp" "alexandria-images" "alexandria-streaming")
 CORS_BUCKETS=("alexandria-images")      # Buckets that need browser CORS access
 ZONE="dc1"
 CAPACITY="10G"
@@ -211,6 +211,25 @@ else
 fi
 
 echo ""
+echo "Step 5b: Creating STREAMING WORKER access key..."
+if garage_exec key list | grep -q "${STREAMING_KEY_NAME}"; then
+    echo -e "${YELLOW}Streaming key '${STREAMING_KEY_NAME}' already exists${NC}"
+    garage_exec key info "${STREAMING_KEY_NAME}"
+else
+    echo -e "${GREEN}Creating new streaming key: ${STREAMING_KEY_NAME}${NC}"
+    STREAMING_KEY_OUTPUT=$(garage_exec key create "${STREAMING_KEY_NAME}")
+    echo "${STREAMING_KEY_OUTPUT}"
+
+    echo ""
+    echo "================================================================"
+    echo -e "${BLUE}STREAMING KEY CREDENTIALS (worker only)${NC}"
+    echo "================================================================"
+    echo "${STREAMING_KEY_OUTPUT}" | grep -E "Key ID:|Secret key:"
+    echo "================================================================"
+    echo ""
+fi
+
+echo ""
 echo "Step 6: Granting MASTER key permissions (full access to all buckets)..."
 for bucket in "${BUCKETS[@]}"; do
     garage_exec bucket allow --read --write --owner "${bucket}" --key "${MASTER_KEY_NAME}"
@@ -224,11 +243,10 @@ garage_exec bucket allow --read "alexandria-files" --key "${PREVIEW_KEY_NAME}"
 echo -e "${BLUE}✓ Preview key: read/write access to alexandria-previews${NC}"
 
 echo ""
-echo "Step 8: Setting public read access for preview bucket..."
-for bucket in "${PUBLIC_BUCKETS[@]}"; do
-    garage_exec bucket website --allow "${bucket}"
-    echo -e "${GREEN}✓ Public access enabled for: ${bucket}${NC}"
-done
+echo "Step 8: Granting Streaming key permissions..."
+garage_exec bucket allow --read --write "alexandria-streaming" --key "${STREAMING_KEY_NAME}"
+garage_exec bucket allow --read "alexandria-files" --key "${STREAMING_KEY_NAME}"
+echo -e "${BLUE}✓ Streaming key: read/write access to alexandria-streaming${NC}"
 
 echo ""
 echo "Step 9: Applying CORS policies..."
@@ -277,6 +295,10 @@ else
     done
 fi
 
+echo "Step 10: Setting up streaming bucket..."
+
+garage_exec bucket website --allow "alexandria-streaming"
+
 echo ""
 echo "=== Garage Initialization Complete! ==="
 echo ""
@@ -286,15 +308,16 @@ echo "  S3 Region:   garage"
 echo "  Admin API:   http://localhost:9001"
 echo ""
 echo "Buckets:"
-echo "  • alexandria-files     (private — server only, no CORS)"
-echo "  • alexandria-previews  (public read — master + preview keys)"
-echo "  • alexandria-temp      (private — server only, no CORS)"
-echo "  • alexandria-images    (private — CORS enabled for browser GET/PUT/POST/HEAD)"
+echo "  • alexandria-files     (private — server only, presigned download)"
+echo "  • alexandria-previews  (private — server only, presigned GET)"
+echo "  • alexandria-temp      (private — presigned browser uploads)"
+echo "  • alexandria-images    (private — CORS enabled for presigned browser uploads)"
+echo "  • alexandria-streaming (private — session-gated via nginx /stream/)"
 echo ""
 echo "Keys:"
-echo "  • ${MASTER_KEY_NAME}  → Full access to ALL buckets"
-echo "  • ${PREVIEW_KEY_NAME} → Read/Write access to alexandria-previews ONLY"
-echo ""
+echo "  • ${MASTER_KEY_NAME}   → Full access to all buckets"
+echo "  • ${PREVIEW_KEY_NAME}  → Read/write on previews, read on files"
+echo "  • ${STREAMING_KEY_NAME} → Read on files, read/write on streaming"
 echo "CORS:"
 if [ "${SKIP_CORS}" = true ]; then
     echo -e "  ${RED}• CORS was NOT applied — see manual commands above${NC}"

@@ -10,10 +10,13 @@ using Alexandria.Services.Preview.Text;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.Cleanup;
 using Alexandria.Services.Storage.Directories;
+using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Promotions;
+using Alexandria.Services.Streaming;
 using Alexandria.Services.User;
 using Alexandria.Services.User.Settings;
 using Microsoft.Extensions.DependencyInjection;
+using IPolicyDispatcher = Alexandria.Common.Services.IPolicyDispatcher;
 
 namespace Alexandria.Infrastructure;
 
@@ -47,6 +50,19 @@ public static class ServiceExtensions
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IAdminSettingsService, AdminSettingsService>();
+        services.AddScoped<IStreamHistoryRepository, StreamHistoryRepository>();
+        services.AddScoped<IStreamingRepresentationRepository, StreamingRepresentationRepository>();
+        services.AddScoped<ITranspilationJobRepository, TranspilationJobRepository>();
+        services.AddScoped<ITranspilationJobService, TranspilationJobService>();
+        services.AddScoped<IStreamHistoryService, StreamHistoryService>();
+        services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
+        services.AddScoped<IPlaylistService, PlaylistService>();
+        services.AddScoped<IPlaylistRepository, PlaylistRepository>();
+        services.AddScoped<IPolicyRuleRepository, PolicyRuleRepository>();
+        services.AddScoped<IDirectoryPolicyRepository, DirectoryPolicyRepository>();
+        services.AddScoped<IPolicyDispatcher, PolicyDispatcher>();
+        services.AddScoped<IDirectoryPolicyService, DirectoryPolicyService>();
+        services.AddScoped<IJobQueue, JobQueue>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

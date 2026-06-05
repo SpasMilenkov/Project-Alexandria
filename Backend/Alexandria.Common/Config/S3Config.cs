@@ -27,6 +27,11 @@ public class S3Config
     public string PublicEndpoint { get; set; } = string.Empty;
 
     /// <summary>
+    /// The public NGINX URL. Used for streaming content.
+    /// </summary>
+    public string BaseUrl { get; set; } = string.Empty;
+
+    /// <summary>
     /// S3 access key
     /// </summary>
     public string AccessKey { get; set; } = string.Empty;
@@ -60,6 +65,11 @@ public class S3Config
     /// Bucket for storing background images, cors is enabled
     /// </summary>
     public string ImagesBucket { get; set; } = default!; // user images — CORS enabled
+
+    /// <summary>
+    /// Bucket for storing audio and video formatted for streaming
+    /// </summary>
+    public string StreamingBucket { get; set; } = "alexandria-streaming";
 
     /// <summary>
     /// Provider-specific settings

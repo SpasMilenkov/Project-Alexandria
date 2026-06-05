@@ -7,7 +7,7 @@ import type {
 } from "@/schemas/directory";
 import type { PaginationParams } from "@/types/pagination-params";
 
-import apiClient from "./client";
+import {apiClient} from "./client";
 
 // Response Types
 export interface UserDto {

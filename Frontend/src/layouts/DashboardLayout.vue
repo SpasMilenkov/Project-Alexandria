@@ -13,17 +13,13 @@
       mode="modal"
       toggle-side="right"
     >
-      <!-- Header -->
       <template #header="{ collapsed }">
         <LogoComponent v-if="!collapsed" class="h-5 w-auto shrink-0" />
         <UDashboardSidebarCollapse class="ms-auto" />
       </template>
 
-      <!-- Body -->
       <template #default="{ collapsed }">
-        <!-- Desktop navigation -->
         <div class="hidden lg:flex lg:flex-col lg:flex-1 gap-1">
-          <!-- Section: Your Library -->
           <p
             v-if="!collapsed"
             class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
@@ -36,7 +32,19 @@
             orientation="vertical"
           />
 
-          <!-- Section: Admin (conditional) -->
+          <USeparator class="my-1" />
+          <p
+            v-if="!collapsed"
+            class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
+          >
+            Media Streaming
+          </p>
+          <UNavigationMenu
+            :collapsed="collapsed"
+            :items="streamingMenuItems"
+            orientation="vertical"
+          />
+
           <template v-if="authStore.isAdmin">
             <USeparator class="my-1" />
             <p
@@ -52,20 +60,15 @@
             />
           </template>
 
-          <!-- Storage widget pushed to bottom -->
           <StorageInfoWidget class="mt-auto" />
-
-          <!-- Divider before account links -->
           <USeparator class="my-1" />
-
-          <!-- Section: Account -->
           <UNavigationMenu
             :collapsed="collapsed"
             :items="settingsMenuItems"
             orientation="vertical"
           />
         </div>
-        <!-- Mobile navigation -->
+
         <div class="flex flex-col flex-1 lg:hidden overflow-y-auto">
           <div class="px-3 pt-5 pb-1">
             <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
@@ -82,6 +85,24 @@
               :active="route.path === item.to"
             />
           </nav>
+
+          <template v-if="streamingEnabled">
+            <div class="px-3 pt-6 pb-1">
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
+                Streaming
+              </p>
+            </div>
+            <nav class="flex flex-col gap-0.5 px-3">
+              <MobileNavItem
+                v-for="item in mobileStreamingItems"
+                :key="item.to"
+                :icon="item.icon"
+                :label="item.label"
+                :to="item.to"
+                :active="route.path === item.to"
+              />
+            </nav>
+          </template>
 
           <template v-if="authStore.isAdmin">
             <div class="px-3 pt-6 pb-1">
@@ -121,10 +142,8 @@
             <StorageInfoWidget />
           </div>
         </div>
-        <!-- Mobile navigation -->
       </template>
 
-      <!-- Footer -->
       <template #footer="{ collapsed }">
         <UButton
           :label="collapsed ? undefined : 'Log out'"
@@ -139,7 +158,6 @@
       </template>
     </UDashboardSidebar>
 
-    <!--Main panel -->
     <UDashboardPanel :ui="{ body: 'sm:p-0 p-0' }">
       <template #header>
         <UDashboardNavbar toggle-side="right">
@@ -163,7 +181,24 @@
       </template>
 
       <template #body>
-        <slot />
+        <div class="flex flex-col h-full">
+          <div class=" flex-1 min-h-0 overflow-y-auto h-full">
+            <slot />
+          </div>
+
+          <template v-if="streamingEnabled">
+            <component
+              :is="AudioSkin"
+              v-if="
+                AudioSkin &&
+                !player.activeFile?.isVideo &&
+                player.hasActiveFile &&
+                !route.path.includes('streaming/videos')
+              "
+              :style="{ visibility: player.hasActiveFile ? 'visible' : 'hidden' }"
+            />
+          </template>
+        </div>
       </template>
     </UDashboardPanel>
   </UDashboardGroup>
@@ -171,16 +206,29 @@
 
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
+
+import { computed, defineAsyncComponent, ref } from "vue";
 import { useRoute } from "vue-router";
-import { computed, ref } from "vue";
-import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
-import { useAuthStore } from "@/stores/auth";
-import router from "@/router";
+
 import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
 import MobileNavItem from "@/components/dashboard/MobileNavItem.vue";
-import { useSettingsSync } from "@/composables/useSettingsSync";
+import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
+import { useSettingsSync } from "@/composables/useSettingsSync";
 import { OnboardingStep } from "@/enums";
+import router from "@/router";
+import { useAuthStore } from "@/stores/auth";
+import { usePlayerStore } from "@/stores/stream-player";
+
+const streamingEnabled = import.meta.env.VITE_STREAMING_ENABLED === "true";
+
+const AudioSkin = streamingEnabled
+  ? defineAsyncComponent(() => import("@/components/streaming/AudioPlayerSkin.vue"))
+  : null;
+
+
+
+const player = usePlayerStore();
 
 useSettingsSync();
 useOnboardingGuard(OnboardingStep.Done);
@@ -226,6 +274,14 @@ const libraryMenuItems: NavigationMenuItem[] = [
   },
 ];
 
+const streamingMenuItems: NavigationMenuItem[] = [
+  { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
+  { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
+  { icon: "mdi:film-open-outline", label: "Videos", to: "/streaming/videos" },
+  { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
+  { icon: "mdi:history", label: "History", to: "/streaming/history" },
+];
+
 const adminMenuItems = computed<NavigationMenuItem[]>(() => [
   {
     icon: "i-heroicons-chart-bar",
@@ -264,6 +320,14 @@ const mobileMainItems = [
   { icon: "i-heroicons-tag", label: "Tags and Categories", to: "/dashboard/tags" },
   { icon: "i-heroicons-clock", label: "Access History", to: "/access-history" },
   { icon: "i-heroicons-trash", label: "Trash", to: "/dashboard/trash" },
+];
+
+const mobileStreamingItems = [
+  { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
+  { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
+  { icon: "mdi:film-open-outline", label: "Videos", to: "/streaming/videos" },
+  { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
+  { icon: "mdi:history", label: "History", to: "/streaming/history" },
 ];
 
 const mobileAdminItems = [

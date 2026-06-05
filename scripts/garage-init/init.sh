@@ -8,11 +8,9 @@ echo ""
 g() { /garage "$@"; }
 
 # ── Wait
-# echo "Waiting for Garage..."
 until g status 2>&1 | grep -q "HEALTHY NODES"; do
   sleep 2
 done
-
 
 mkdir -p ~/.aws
 cat > ~/.aws/config << 'EOF'
@@ -44,10 +42,10 @@ else
   echo "  Layout already configured"
 fi
 
-# Buckets
+# ── Buckets
 echo ""
 echo "Step 2: Buckets..."
-for bucket in alexandria-files alexandria-previews alexandria-temp alexandria-images; do
+for bucket in alexandria-files alexandria-previews alexandria-temp alexandria-images alexandria-streaming; do
   if g bucket list 2>/dev/null | grep -q "$bucket"; then
     echo "  Already exists: $bucket"
   else
@@ -56,7 +54,15 @@ for bucket in alexandria-files alexandria-previews alexandria-temp alexandria-im
   fi
 done
 
-# Keys
+# Enable web endpoint for streaming bucket so nginx can proxy to port 3902
+# without S3 auth. The bucket is not externally reachable — nginx enforces
+# auth_request before any request reaches Garage.
+echo ""
+echo "Step 2b: Web endpoint..."
+g bucket website --allow alexandria-streaming
+echo "  Web endpoint enabled: alexandria-streaming"
+
+# ── Keys
 echo ""
 echo "Step 3: Keys..."
 
@@ -74,15 +80,24 @@ else
   echo "  Already exists: alexandria-preview-key"
 fi
 
+if ! g key list | grep -q "alexandria-streaming-key"; then
+  g key create alexandria-streaming-key
+  echo "  Created: alexandria-streaming-key"
+else
+  echo "  Already exists: alexandria-streaming-key"
+fi
+
 MASTER_KEY_ID=$(g key info alexandria-master-key | grep "Key ID"     | awk '{print $NF}' | tr -d '[:space:]')
 MASTER_SECRET=$(g key info --show-secret alexandria-master-key  | grep "Secret key" | awk '{print $NF}' | tr -d '[:space:]')
 PREVIEW_KEY_ID=$(g key info alexandria-preview-key | grep "Key ID"     | awk '{print $NF}' | tr -d '[:space:]')
 PREVIEW_SECRET=$(g key info --show-secret alexandria-preview-key | grep "Secret key" | awk '{print $NF}' | tr -d '[:space:]')
+STREAMING_KEY_ID=$(g key info alexandria-streaming-key | grep "Key ID" | awk '{print $NF}' | tr -d '[:space:]')
+STREAMING_SECRET=$(g key info --show-secret alexandria-streaming-key | grep "Secret key" | awk '{print $NF}' | tr -d '[:space:]')
 
-# Permissions
+# ── Permissions
 echo ""
 echo "Step 4: Permissions..."
-for bucket in alexandria-files alexandria-previews alexandria-temp alexandria-images; do
+for bucket in alexandria-files alexandria-previews alexandria-temp alexandria-images alexandria-streaming; do
   g bucket allow --read --write --owner "$bucket" --key alexandria-master-key
   echo "  Master key -> full access -> $bucket"
 done
@@ -92,14 +107,14 @@ g bucket allow --read         alexandria-files    --key alexandria-preview-key
 echo "  Preview key -> read/write -> alexandria-previews"
 echo "  Preview key -> read       -> alexandria-files"
 
-# Public bucket
-echo ""
-echo "Step 5: Public access..."
-g bucket website --allow alexandria-previews
-echo "  Public read enabled: alexandria-previews"
+g bucket allow --read         alexandria-files     --key alexandria-streaming-key
+g bucket allow --read --write alexandria-streaming --key alexandria-streaming-key
+echo "  Streaming key -> read       -> alexandria-files"
+echo "  Streaming key -> read/write -> alexandria-streaming"
 
-# CORS
-echo "Step 6: CORS..."
+# ── CORS
+echo ""
+echo "Step 5: CORS..."
 CORS_ORIGIN="${CORS_ORIGIN:-http://localhost:5173}"
 
 export AWS_ACCESS_KEY_ID="$MASTER_KEY_ID"
@@ -117,7 +132,7 @@ aws --endpoint-url http://garage:3900 \
     --bucket alexandria-images \
     --cors-configuration file:///tmp/cors.json
 
-# Write credentials to host
+# ── Credentials
 echo ""
 echo "Step 7: Writing credentials..."
 mkdir -p /output
@@ -132,10 +147,13 @@ GARAGE_S3_SECRET_KEY=$MASTER_SECRET
 # Preview key (media worker)
 GARAGE_PREVIEW_KEY_ID=$PREVIEW_KEY_ID
 GARAGE_PREVIEW_SECRET=$PREVIEW_SECRET
+
+# Streaming key (transpilation worker)
+GARAGE_STREAMING_KEY_ID=$STREAMING_KEY_ID
+GARAGE_STREAMING_SECRET=$STREAMING_SECRET
 EOF
 
 echo "  Credentials written to ./init-output/garage-credentials.env"
 
-# Done
 echo ""
 echo "=== Done ==="

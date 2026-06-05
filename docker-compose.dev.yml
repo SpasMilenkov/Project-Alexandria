@@ -1,5 +1,4 @@
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: alexandria-postgres-dev
@@ -22,7 +21,6 @@ services:
       retries: 3
       start_period: 10s
 
-  # Garage Object Storage (default S3-compatible storage)
   garage:
     image: dxflrs/garage:v2.2.0
     container_name: alexandria-garage-dev
@@ -46,47 +44,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-    profiles:
-      - garage
-      - default
 
-  # RustFS Object Storage (alternative S3-compatible storage)
-  # rustfs:
-  #   image: rustfs/rustfs:latest
-  #   container_name: alexandria-rustfs-dev
-  #   restart: unless-stopped
-  #   command:
-  #     - "--address"
-  #     - ":3900"
-  #     - "--console-enable"
-  #     - "--access-key"
-  #     - "${RUSTFS_ACCESS_KEY:-dev_admin}"
-  #     - "--secret-key"
-  #     - "${RUSTFS_SECRET_KEY:-dev_password_123}"
-  #     - "/data"
-  #   environment:
-  #     RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-dev_admin}
-  #     RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-dev_password_123}
-  #     RUSTFS_CONSOLE_ENABLE: "true"
-  #   volumes:
-  #     - rustfs_dev_data:/data
-  #   ports:
-  #     - "9000:3900" # S3 API (mapped to 9000 for compatibility)
-  #     - "9001:9001" # Console UI (mapped to 9001 for compatibility)
-  #   networks:
-  #     - alexandria-network
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:3900/health"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 3
-  #     start_period: 15s
-  #   profiles:
-  #     - rustfs
-
-  # RabbitMQ Message Broker
   rabbitmq:
-    image: rabbitmq:3-management-alpine
+    image: rabbitmq:4.2.5-management-alpine
     container_name: alexandria-rabbitmq-dev
     restart: unless-stopped
     environment:
@@ -97,77 +57,25 @@ services:
     volumes:
       - rabbitmq_dev_data:/var/lib/rabbitmq
     ports:
-      - "5672:5672" # AMQP protocol port
-      - "15672:15672" # Management UI port
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - alexandria-network
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity" ]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: alexandria-prometheus
-    restart: unless-stopped
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-    networks:
-      - alexandria-network
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/etc/prometheus/console_libraries"
-      - "--web.console.templates=/etc/prometheus/consoles"
-      - "--web.enable-lifecycle"
-    profiles:
-      - garage
-      - monitoring
-      - default
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: alexandria-grafana
-    restart: unless-stopped
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-    ports:
-      - "3000:3000"
-    networks:
-      - alexandria-network
-    depends_on:
-      - prometheus
-    profiles:
-      - garage
-      - monitoring
-      - default
+      start_period: 30s
 
 volumes:
   postgres_dev_data:
-    driver: local
-  minio_dev_data:
     driver: local
   garage_meta_data:
     driver: local
   garage_storage_data:
     driver: local
-  rustfs_dev_data:
-    driver: local
   rabbitmq_dev_data:
-    driver: local
-  prometheus_data:
-    driver: local
-  grafana_data:
     driver: local
 
 networks:

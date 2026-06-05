@@ -1,5 +1,6 @@
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Files.Streaming;
 using File = Alexandria.Data.Models.File;
 
 
@@ -13,6 +14,7 @@ public interface IFileService
     Task CopyFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
 
     Task<File?> GetFileMetadataAsync(Guid fileId, CancellationToken ct = default);
+    Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);
 
     Task<FileMetadata?> GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default);
     Task<FileResult> GetFileWithOwnershipByIdAsync(Guid fileId, Guid userId, CancellationToken ct = default);
@@ -57,4 +59,13 @@ public interface IFileService
     Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
     Task RemoveFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default);
     Task RestoreFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default);
+
+    Task<bool> IsVideo(
+        Guid versionId,
+        Guid userId,
+        CancellationToken ct = default);
+
+    Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+        string? query = null, Guid? playlistId = null, bool isVideo = false,
+        CancellationToken ct = default);
 }

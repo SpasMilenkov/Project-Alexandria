@@ -7,7 +7,7 @@ import { logger } from "@/utils/logger";
 import type { PaginatedResponse } from "./directory";
 import type { TagDto } from "./tag";
 
-import apiClient from "./client";
+import { apiClient } from "./client";
 
 // Response Types
 export interface UpdateFileMetadataResponse {

@@ -40,4 +40,5 @@ public class File : IBase
     public Guid? CurrentVersionId { get; set; }
     public FileVersion CurrentVersion { get; set; } = null!;
     public ICollection<FileVersion> Versions { get; set; } = [];
+    public MediaMetadata? MediaMetadata { get; set; }
 }

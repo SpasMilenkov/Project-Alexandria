@@ -74,14 +74,7 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
         builder.HasOne(f => f.CurrentVersion)
             .WithMany()
             .HasForeignKey(f => f.CurrentVersionId)
-            .OnDelete(DeleteBehavior.Restrict)
-            .IsRequired(false);
-
-        // FileConfiguration
-        builder.HasOne(f => f.CurrentVersion)
-            .WithMany()
-            .HasForeignKey(f => f.CurrentVersionId)
-            .OnDelete(DeleteBehavior.Restrict)
+            .OnDelete(DeleteBehavior.SetNull)
             .IsRequired(false);
 
         // DateTime properties

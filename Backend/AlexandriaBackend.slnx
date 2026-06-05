@@ -6,6 +6,7 @@
     <Folder Name="/Services/">
         <Project Path="Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
         <Project Path="Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
+        <Project Path="Alexandria.Services.Streaming/Alexandria.Services.Streaming.csproj"/>
         <Project Path="Alexandria.Services.User\Alexandria.Services.User.csproj"/>
     </Folder>
   <Folder Name="/Tests/">
@@ -15,6 +16,7 @@
   </Folder>
   <Folder Name="/Workers/">
       <Project Path="Alexandria.Workers.Document\Alexandria.Workers.Document.csproj"/>
+      <Project Path="Alexandria.Workers.MediaTranspilation/Alexandria.Workers.MediaTranspilation.csproj"/>
       <Project Path="Alexandria.Workers.Media\Alexandria.Workers.Media.csproj"/>
   </Folder>
 
