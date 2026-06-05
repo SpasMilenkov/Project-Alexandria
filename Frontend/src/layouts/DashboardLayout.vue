@@ -13,17 +13,13 @@
       mode="modal"
       toggle-side="right"
     >
-      <!-- Header -->
       <template #header="{ collapsed }">
         <LogoComponent v-if="!collapsed" class="h-5 w-auto shrink-0" />
         <UDashboardSidebarCollapse class="ms-auto" />
       </template>
 
-      <!-- Body -->
       <template #default="{ collapsed }">
-        <!-- Desktop navigation -->
         <div class="hidden lg:flex lg:flex-col lg:flex-1 gap-1">
-          <!-- Section: Your Library -->
           <p
             v-if="!collapsed"
             class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
@@ -49,7 +45,6 @@
             orientation="vertical"
           />
 
-          <!-- Section: Admin (conditional) -->
           <template v-if="authStore.isAdmin">
             <USeparator class="my-1" />
             <p
@@ -65,20 +60,15 @@
             />
           </template>
 
-          <!-- Storage widget pushed to bottom -->
           <StorageInfoWidget class="mt-auto" />
-
-          <!-- Divider before account links -->
           <USeparator class="my-1" />
-
-          <!-- Section: Account -->
           <UNavigationMenu
             :collapsed="collapsed"
             :items="settingsMenuItems"
             orientation="vertical"
           />
         </div>
-        <!-- Mobile navigation -->
+
         <div class="flex flex-col flex-1 lg:hidden overflow-y-auto">
           <div class="px-3 pt-5 pb-1">
             <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
@@ -152,10 +142,8 @@
             <StorageInfoWidget />
           </div>
         </div>
-        <!-- Mobile navigation -->
       </template>
 
-      <!-- Footer -->
       <template #footer="{ collapsed }">
         <UButton
           :label="collapsed ? undefined : 'Log out'"
@@ -170,7 +158,6 @@
       </template>
     </UDashboardSidebar>
 
-    <!--Main panel -->
     <UDashboardPanel :ui="{ body: 'sm:p-0 p-0' }">
       <template #header>
         <UDashboardNavbar toggle-side="right">
@@ -194,34 +181,23 @@
       </template>
 
       <template #body>
-        <div class="relative flex flex-col h-full">
-          <div class="flex-1 min-h-0 overflow-y-auto">
+        <div class="flex flex-col h-full">
+          <div class=" flex-1 min-h-0 overflow-y-auto h-full">
             <slot />
-            <!-- Keeps the bottom row of content clear of the compact strip -->
-            <div
-              v-if="streamingEnabled && player.hasActiveFile && isCompactStrip"
-              class="h-10"
-              aria-hidden="true"
-            />
           </div>
 
-          <!-- Full strip: flex sibling, scroll area shrinks to fit naturally -->
-          <template v-if="streamingEnabled && !isCompactStrip">
+          <template v-if="streamingEnabled">
             <component
               :is="AudioSkin"
-              v-if="AudioSkin && !player.activeFile?.isVideo"
+              v-if="
+                AudioSkin &&
+                !player.activeFile?.isVideo &&
+                player.hasActiveFile &&
+                !route.path.includes('streaming/videos')
+              "
               :style="{ visibility: player.hasActiveFile ? 'visible' : 'hidden' }"
             />
-            <component :is="VideoSkin" v-if="VideoSkin && player.activeFile?.isVideo" />
           </template>
-
-          <!-- Compact strip: absolute so hover expansion doesn't reflow -->
-          <div
-            v-if="streamingEnabled && isCompactStrip && player.hasActiveFile"
-            class="absolute bottom-0 left-0 right-0 z-[9999]"
-          >
-            <component :is="AudioSkin" v-if="AudioSkin && !player.activeFile?.isVideo" />
-          </div>
         </div>
       </template>
     </UDashboardPanel>
@@ -250,12 +226,9 @@ const AudioSkin = streamingEnabled
   ? defineAsyncComponent(() => import("@/components/streaming/AudioPlayerSkin.vue"))
   : null;
 
-const VideoSkin = streamingEnabled
-  ? defineAsyncComponent(() => import("@/components/streaming/VideoPlayerSkin.vue"))
-  : null;
+
 
 const player = usePlayerStore();
-const isCompactStrip = computed(() => player.isStrip && route.path !== "/streaming/music");
 
 useSettingsSync();
 useOnboardingGuard(OnboardingStep.Done);
@@ -304,6 +277,7 @@ const libraryMenuItems: NavigationMenuItem[] = [
 const streamingMenuItems: NavigationMenuItem[] = [
   { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
   { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
+  { icon: "mdi:film-open-outline", label: "Videos", to: "/streaming/videos" },
   { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
   { icon: "mdi:history", label: "History", to: "/streaming/history" },
 ];
@@ -351,6 +325,7 @@ const mobileMainItems = [
 const mobileStreamingItems = [
   { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
   { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
+  { icon: "mdi:film-open-outline", label: "Videos", to: "/streaming/videos" },
   { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
   { icon: "mdi:history", label: "History", to: "/streaming/history" },
 ];
