@@ -132,6 +132,12 @@ const router = createRouter({
       name: "playlist-details",
       path: "/streaming/playlists/:id",
     },
+    {
+      component: () => import("@/views/dashboard/streaming/VideoView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "videos",
+      path: "/streaming/videos",
+    },
   ],
 });
 
