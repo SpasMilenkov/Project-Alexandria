@@ -2,12 +2,13 @@ using Alexandria.Common;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Files.Streaming;
 using Microsoft.Extensions.Logging;
 using File = Alexandria.Data.Models.File;
 
 namespace Alexandria.Services.Storage;
 
-public partial class FileService(
+public class FileService(
     IUnitOfWork unitOfWork,
     IDirectoryService dirService,
     ILogger<FileService> logger) : IFileService
@@ -288,7 +289,8 @@ public partial class FileService(
         CancellationToken ct = default) =>
         unitOfWork.ContentObjects.IsVideo(versionId, userId, ct);
 
-    public async Task<PaginatedResult<FileResult>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+    public async Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+        string? query = null, Guid? playlistId = null, bool isVideo = false,
         CancellationToken ct = default)
-        => await unitOfWork.Files.GetFilesForStreamingAsync(userId, page, pageSize, ct);
+        => await unitOfWork.Files.GetFilesForStreamingAsync(userId, page, pageSize, query, playlistId, isVideo, ct);
 }

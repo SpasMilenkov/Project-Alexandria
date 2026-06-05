@@ -1,5 +1,6 @@
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Files.Streaming;
 using File = Alexandria.Data.Models.File;
 
 
@@ -64,6 +65,7 @@ public interface IFileService
         Guid userId,
         CancellationToken ct = default);
 
-    Task<PaginatedResult<FileResult>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+    Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
+        string? query = null, Guid? playlistId = null, bool isVideo = false,
         CancellationToken ct = default);
 }
