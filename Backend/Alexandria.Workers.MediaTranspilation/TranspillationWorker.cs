@@ -1,3 +1,4 @@
+using System.Text;
 using Alexandria.Workers.MediaTranspilation.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -30,7 +31,10 @@ public partial class TranspilationWorker(
             autoDelete: false,
             cancellationToken: ct);
 
+        var queueName = configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "content-queue")!;
+
         var queueDeclareResult = await _channel.QueueDeclareAsync(
+            queue: queueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
@@ -45,16 +49,17 @@ public partial class TranspilationWorker(
             cancellationToken: ct);
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
-
         consumer.ReceivedAsync += async (_, eventArgs) =>
         {
             await _concurrencyGate.WaitAsync(ct);
             try
             {
+                var jobId = Guid.Parse(Encoding.UTF8.GetString(eventArgs.Body.Span));
+
                 using var scope = serviceProvider.CreateScope();
                 var handler = scope.ServiceProvider.GetRequiredService<TranspilationJobHandler>();
 
-                // deserialize eventArgs.Body into your job dto here
+                await handler.HandleAsync(jobId, ct);
 
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
             }

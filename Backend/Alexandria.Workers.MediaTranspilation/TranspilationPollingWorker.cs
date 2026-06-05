@@ -36,7 +36,7 @@ public partial class TranspilationPollingWorker(
             var result = await jobService.FindJobsAsync(
                 new TranspilationJobQuery
                 {
-                    Status = TranspilationStatus.Queued,
+                    Status = TranspilationStatus.Failed,
                     PageSize = 10,
                     IsSystem = true
                 }, ct);
