@@ -3,7 +3,7 @@ namespace Alexandria.Dto.Files;
 /// <summary>
 /// Metadata extracted from media files
 /// </summary>
-public class MediaMetadata
+public class MediaMetadataDto
 {
     // File information
     public double Duration { get; set; }
