@@ -9,5 +9,5 @@ public class MediaPreviewResult
 {
     public string? ThumbnailPath { get; set; }
     public string? PreviewPath { get; set; }
-    public MediaMetadata? Metadata { get; set; }
+    public MediaMetadataDto? Metadata { get; set; }
 }
