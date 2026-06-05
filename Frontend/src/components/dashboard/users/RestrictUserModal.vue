@@ -78,12 +78,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, shallowRef, watch } from "vue";
-import type { FormSubmitEvent } from "@nuxt/ui";
-import { type RestrictUserSchema, restrictUserSchema } from "@/schemas/user";
-import type { UserDetailsDto } from "@/types/user";
 import type { CalendarDate } from "@internationalized/date";
+import type { FormSubmitEvent } from "@nuxt/ui";
+
+import { reactive, ref, shallowRef, watch } from "vue";
+
+import type { UserDetailsDto } from "@/types/user";
+
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { type RestrictUserSchema, restrictUserSchema } from "@/schemas/user";
 
 const props = defineProps<{
   open: boolean;
