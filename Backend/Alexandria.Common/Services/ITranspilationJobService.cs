@@ -11,6 +11,10 @@ public interface ITranspilationJobService
     /// Creates a new transpilation job for the specified content object.
     /// </summary>
     /// <param name="versionId">The id of the file version.</param>
+    /// <param name="audioRungs">How many variants of differing quality will be generated
+    /// from the same source when transpiling audio</param>
+    /// <param name="videoRungs">How many variants of differing quality will be generated
+    /// from the same source when transpiling video</param>
     /// <param name="userId">The id the user that owns the file version.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The created transpilation job.</returns>
@@ -21,9 +25,11 @@ public interface ITranspilationJobService
     /// Thrown when a job with status <see cref="TranspilationStatus.Queued"/> or
     /// <see cref="TranspilationStatus.Processing"/> already exists for the content object.
     /// </exception>
-    Task<TranspilationJobResponse> CreateJobAsync(
+    Task<TranspilationJobDto> CreateJobAsync(
         Guid versionId,
         Guid userId,
+        AudioRung[] audioRungs,
+        VideoRung[] videoRungs,
         CancellationToken ct = default);
 
     /// <summary>
@@ -35,7 +41,15 @@ public interface ITranspilationJobService
     /// <exception cref="TranspilationJobNotFoundException">
     /// Thrown when no job with <paramref name="jobId"/> exists.
     /// </exception>
-    Task<TranspilationJobResponse> GetByIdAsync(Guid jobId, CancellationToken ct = default);
+    Task<TranspilationJobDto> GetByIdAsync(Guid jobId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the transpilation job DTO with the file name and the version number
+    /// </summary>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>The job with file name and version number</returns>
+    Task<PaginatedResult<TranspilationJobWithDetailsDto>> GetWithDetailsAsync(TranspilationJobQuery query,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Returns the most recent transpilation job associated with the given content object.
@@ -48,7 +62,7 @@ public interface ITranspilationJobService
     /// <exception cref="TranspilationJobNotFoundException">
     /// Thrown when no job exists for <paramref name="versionId"/>.
     /// </exception>
-    Task<TranspilationJobResponse> GetByVersionId(
+    Task<TranspilationJobDto> GetByVersionId(
         Guid versionId,
         CancellationToken ct = default);
 
@@ -58,7 +72,7 @@ public interface ITranspilationJobService
     /// </summary>
     /// <param name="query">Filtering and pagination parameters.</param>
     /// <param name="ct">Cancellation token.</param>
-    Task<PaginatedResult<TranspilationJobResponse>> FindJobsAsync(
+    Task<PaginatedResult<TranspilationJobDto>> FindJobsAsync(
         TranspilationJobQuery query,
         CancellationToken ct = default);
 
@@ -80,6 +94,8 @@ public interface ITranspilationJobService
     /// The prefix that points to the location of the mpd file and the individual chunks stored
     /// in the streaming bucket.
     /// </param>
+    /// <param name="audioRungs">Audio rungs</param>
+    /// <param name="videoRungs">Video rungs</param>
     /// <param name="ct">Cancellation token.</param>
     /// <exception cref="TranspilationJobNotFoundException">
     /// Thrown when no job with <paramref name="jobId"/> exists.
@@ -90,6 +106,26 @@ public interface ITranspilationJobService
         int? progress = null,
         string? errorDetail = null,
         string? segmentPrefix = null,
+        AudioRung[]? audioRungs = null,
+        VideoRung[]? videoRungs = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    ///  Handles status change with requing and cleaning of the old files 
+    /// </summary>
+    /// <param name="jobId">The job Id</param>
+    /// <param name="userId">The user Id</param>
+    /// <param name="targetStatus">The statues we are trying to change to</param>
+    /// <param name="audioRungs">Audio rungs</param>
+    /// <param name="videoRungs">Video rungs</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns></returns>
+    Task UpdateStatusAsync(
+        Guid jobId,
+        Guid userId,
+        TranspilationStatus targetStatus,
+        AudioRung[]? audioRungs = null,
+        VideoRung[]? videoRungs = null,
         CancellationToken ct = default);
 
     /// <summary>
@@ -118,7 +154,7 @@ public interface ITranspilationJobService
     /// The maximum acceptable duration for a job to remain in the processing state.
     /// </param>
     /// <param name="ct">Cancellation token.</param>
-    Task<IEnumerable<TranspilationJobResponse>> GetStalledJobsAsync(
+    Task<IEnumerable<TranspilationJobDto>> GetStalledJobsAsync(
         TimeSpan threshold,
         CancellationToken ct = default);
 

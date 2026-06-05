@@ -1,3 +1,4 @@
+using Alexandria.Common.Exceptions;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 
@@ -9,7 +10,7 @@ public interface IStreamingRepresentationService
     /// Creates a single streaming representation record for a given job.
     /// Throws <see cref="TranspilationJobNotFoundException"/> when the job does not exist.
     /// </summary>
-    Task<StreamingRepresentationResponse> CreateRepresentationAsync(
+    Task<StreamingRepresentationDto> CreateRepresentationAsync(
         CreateStreamingRepresentationRequest request,
         CancellationToken ct = default);
 
@@ -18,7 +19,7 @@ public interface IStreamingRepresentationService
     /// All requests must carry the same <see cref="CreateStreamingRepresentationRequest.JobId"/>.
     /// Throws <see cref="TranspilationJobNotFoundException"/> when the job does not exist.
     /// </summary>
-    Task<IEnumerable<StreamingRepresentationResponse>> CreateRepresentationsAsync(
+    Task<IEnumerable<StreamingRepresentationDto>> CreateRepresentationsAsync(
         List<CreateStreamingRepresentationRequest> requests,
         CancellationToken ct = default);
 
@@ -26,21 +27,21 @@ public interface IStreamingRepresentationService
     /// Returns a representation by its primary key.
     /// Throws <see cref="StreamingRepresentationNotFoundException"/> when not found.
     /// </summary>
-    Task<StreamingRepresentationResponse> GetByIdAsync(
+    Task<StreamingRepresentationDto> GetByIdAsync(
         Guid id,
         CancellationToken ct = default);
 
     /// <summary>
     /// Returns all representations belonging to a job.
     /// </summary>
-    Task<IEnumerable<StreamingRepresentationResponse>> GetByJobIdAsync(
+    Task<IEnumerable<StreamingRepresentationDto>> GetByJobIdAsync(
         Guid jobId,
         CancellationToken ct = default);
 
     /// <summary>
     /// Filtered, paginated query over representations.
     /// </summary>
-    Task<PaginatedResult<StreamingRepresentationResponse>> FindRepresentationsAsync(
+    Task<PaginatedResult<StreamingRepresentationDto>> FindRepresentationsAsync(
         StreamingRepresentationQuery query,
         CancellationToken ct = default);
 
@@ -73,4 +74,6 @@ public interface IStreamingRepresentationService
     /// intended for cleanup paths inside the transpilation worker.
     /// </summary>
     Task MarkAllFailedAsync(List<Guid> representationIds, CancellationToken ct = default);
+
+    Task DeleteByJobIdAsync(Guid jobId, CancellationToken ct = default);
 }

@@ -2,24 +2,22 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Metrics;
-using MediaMetadata = Alexandria.Dto.Files.MediaMetadata;
 
 namespace Alexandria.Common.Services;
 
 public interface IStorageService
 {
-    public Task<UploadResult> UploadPreview(
-        string objectName,
+    public Task UploadPreview(string objectName,
         string contentType,
         Stream fileStream,
         Guid originalFileId,
         Guid uploadedBy,
-        long contentLength = -1,
+        long contentLength = -1L,
         string? originalFileName = null,
         CancellationToken ct = default);
 
     Task UploadMediaData(Stream previewStream, Stream thumbnailStream, string objectName, Guid fileId,
-        MediaMetadata metadataDto,
+        MediaMetadataDto metadataDto,
         CancellationToken ct = default);
 
     // File Download
@@ -45,6 +43,14 @@ public interface IStorageService
     /// <param name="keyPrefix">Prefix applied to every key in the streaming bucket.</param>
     /// <param name="ct">Cancellation token.</param>
     Task UploadStreamingOutputAsync(string localDirectory, string keyPrefix, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes all the old transpilation 
+    /// </summary>
+    /// <param name="prefix"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    Task DeleteStreamingOutputByPrefixAsync(string prefix, CancellationToken ct = default);
 
     Task<string> GetStreamManifest(Guid versionId, Guid userId, CancellationToken ct = default);
     Task<DownloadInfo> GetFileDownloadDetails(Guid fileId, Guid userId, CancellationToken ct = default);
@@ -72,7 +78,6 @@ public interface IStorageService
         int? iterationCount,
         bool isEncrypted = false,
         Guid? directoryId = null,
-        bool shouldTranspile = false,
         CancellationToken ct = default
     );
 
@@ -97,4 +102,9 @@ public interface IStorageService
         Guid userId,
         Stream destination,
         CancellationToken ct = default);
+
+    Task<string> GetPlaylistCoverUploadUrlAsync(Guid playlistId, Guid userId, string contentType,
+        CancellationToken ct = default);
+
+    Task<string> GetPlaylistCoverUrlAsync(Guid playlistId, Guid userId, CancellationToken ct = default);
 }

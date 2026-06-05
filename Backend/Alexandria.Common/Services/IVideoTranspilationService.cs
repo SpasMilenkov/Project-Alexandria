@@ -1,4 +1,5 @@
 using Alexandria.Common.Exceptions.Transpilation;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
 
 namespace Alexandria.Common.Services;
@@ -10,6 +11,7 @@ public interface IVideoTranspilationService
     /// HLS output in <c>{outputDirectory}/hls/</c> and DASH output in
     /// <c>{outputDirectory}/dash/</c>.
     /// </summary>
+    /// <param name="jobId">Id of the job associated with this run.</param>
     /// <param name="inputPath">Absolute path to the source video file.</param>
     /// <param name="outputDirectory">
     /// Absolute path of the directory that will receive the <c>hls/</c> and
@@ -24,7 +26,9 @@ public interface IVideoTranspilationService
     /// produce the expected output file.
     /// </exception>
     Task<TranspilationOutput> TranspileAsync(
+        Guid jobId,
         string inputPath,
         string outputDirectory,
+        VideoRung[] videoRungs,
         CancellationToken ct = default);
 }

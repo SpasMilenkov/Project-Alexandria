@@ -1,5 +1,6 @@
 using Alexandria.Common.Exceptions.Streaming;
 using Alexandria.Data.Models;
+using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 
 namespace Alexandria.Common.Services;
@@ -14,8 +15,7 @@ public interface IStreamHistoryService
     Task<StreamHistoryDto?> GetByFileAsync(Guid fileId, Guid userId, CancellationToken ct = default);
 
     /// <summary>Returns a paginated list of stream history records for the given user.</summary>
-    Task<(ICollection<StreamHistoryDto> Items, int TotalCount)> FindAsync(
-        Guid userId,
+    Task<PaginatedResult<StreamHistoryDto>> FindAsync(Guid userId,
         StreamHistoryQuery query,
         CancellationToken ct = default);
 
@@ -23,7 +23,8 @@ public interface IStreamHistoryService
     /// Returns all sessions for a stream history row. Throws <see cref="StreamHistoryNotFoundException"/>
     /// if the row does not belong to the user.
     /// </summary>
-    Task<IEnumerable<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId, Guid userId,
+    Task<PaginatedResult<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId, Guid userId, int page = 1,
+        int pageSize = 25,
         CancellationToken ct = default);
 
     /// <summary>
