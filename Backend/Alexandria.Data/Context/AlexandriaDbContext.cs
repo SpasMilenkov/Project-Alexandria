@@ -52,6 +52,10 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<StreamHistory> StreamHistories { get; set; }
     public DbSet<StreamingRepresentation> StreamingRepresentations { get; set; }
     public DbSet<StreamSession> StreamSessions { get; set; }
+    public DbSet<Playlist> Playlists { get; set; }
+    public DbSet<PlaylistItem> PlaylistItems { get; set; }
+    public DbSet<PolicyRule> PolicyRules { get; set; }
+    public DbSet<DirectoryPolicy> DirectoryPolicies { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -91,6 +95,8 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new TranspilationJobConfiguration());
         builder.ApplyConfiguration(new StreamingRepresentationConfiguration());
         builder.ApplyConfiguration(new StreamSessionConfiguration());
+        builder.ApplyConfiguration(new PolicyRuleConfiguration());
+        builder.ApplyConfiguration(new DirectoryPolicyConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
