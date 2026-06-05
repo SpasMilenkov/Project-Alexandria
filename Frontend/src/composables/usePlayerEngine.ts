@@ -1,3 +1,5 @@
+// oxlint-disable max-statements
+// oxlint-disable max-lines-per-function
 import { onMounted, onUnmounted, watch, ref, type Ref } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
@@ -7,15 +9,16 @@ import { streamingApi } from "@/api/streaming";
 import { closeSession, startSession } from "@/mutations/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 
-const REFRESH_INTERVAL_MS = 10 * 60 * 1_000;
+const REFRESH_INTERVAL_MS = 10 * 30 * 1_000;
+const VIDEO_AUTOPLAY_COUNTDOWN_SECONDS = 5;
+const RESUME_CUTOFF_FROM_END = 10; // seconds before end — no prompt past this point
+const RESUME_MIN_POSITION = 5; // seconds from start — no prompt before this point
 
 export interface PlayerEngineOptions {
   getThumbnailUrl?: () => string | null | undefined;
   shakaUiConfig?: Record<string, unknown>;
 }
 
-// Quality is intentionally excluded from both skin configs — it's handled by
-// PlayerSettings.vue so the menu is never clipped by strip overflow constraints.
 const BASE_SHAKA_UI_CONFIG = {
   addSeekBar: true,
   fadeDelay: 3,
@@ -26,6 +29,7 @@ const BASE_SHAKA_UI_CONFIG = {
     played: "var(--seek-played)",
   },
 };
+
 export const AUDIO_SHAKA_UI_CONFIG = {
   ...BASE_SHAKA_UI_CONFIG,
   controlPanelElements: ["play_pause", "time_and_duration", "spacer", "mute", "volume"],
@@ -33,21 +37,14 @@ export const AUDIO_SHAKA_UI_CONFIG = {
 
 export const VIDEO_SHAKA_UI_CONFIG = {
   ...BASE_SHAKA_UI_CONFIG,
-  controlPanelElements: [
-    "play_pause",
-    "time_and_duration",
-    "spacer",
-    "mute",
-    "volume",
-    "fullscreen",
-  ],
+  controlPanelElements: ["spacer", "mute", "volume"],
 };
 
-export function usePlayerEngine(
+export const usePlayerEngine = (
   videoRef: Ref<HTMLVideoElement | null>,
   containerRef: Ref<HTMLElement | null>,
   options: PlayerEngineOptions = {},
-) {
+) => {
   const store = usePlayerStore();
   const { mutate: endSession } = closeSession();
   const { mutateAsync: openSessionAsync } = startSession();
@@ -55,12 +52,18 @@ export function usePlayerEngine(
   const playerReady = ref(false);
   const isBuffering = ref(false);
   const loadError = ref<string | null>(null);
+  const resumePrompt = ref<{ positionSeconds: number } | null>(null);
 
   let shakaPlayer: any = null;
   let shakaUi: any = null;
   let shakaInitPromise: Promise<void> | null = null;
   let isFirstLoad = true;
   let currentManifestUrl = "";
+
+  // Holds the saved position across the loadFile -> loadedmetadata boundary.
+  // Set in loadFile once we know there's a candidate resume position.
+  // Consumed and cleared inside the loadedmetadata handler once duration is known.
+  let pendingResumePosition: number | null = null;
 
   const activeSessionId = ref<string | null>(null);
   const listenedSeconds = ref(0);
@@ -82,7 +85,6 @@ export function usePlayerEngine(
 
   const startListenTicker = () => {
     if (listenTicker !== null) return;
-    startRefreshTicker();
     listenTicker = setInterval(() => {
       if (videoRef.value && !videoRef.value.paused && !isBuffering.value) {
         listenedSeconds.value++;
@@ -91,7 +93,6 @@ export function usePlayerEngine(
   };
 
   const stopListenTicker = () => {
-    stopRefreshTicker();
     if (listenTicker === null) return;
     clearInterval(listenTicker);
     listenTicker = null;
@@ -123,6 +124,21 @@ export function usePlayerEngine(
     startListenTicker();
   };
 
+  // Resume prompt controls
+
+  const acceptResumePrompt = () => {
+    if (resumePrompt.value && videoRef.value) {
+      videoRef.value.currentTime = resumePrompt.value.positionSeconds;
+    }
+    resumePrompt.value = null;
+    videoRef.value?.play();
+  };
+
+  const dismissResumePrompt = () => {
+    resumePrompt.value = null;
+    videoRef.value?.play();
+  };
+
   // Quality management
 
   const syncVariantTracks = () => {
@@ -130,8 +146,6 @@ export function usePlayerEngine(
     const tracks = shakaPlayer.getVariantTracks();
     store.setVariantTracks(tracks);
     const active = tracks.find((t: any) => t.active);
-    // Only report a specific active ID when ABR is disabled — when ABR is on,
-    // activeVariantId stays null so the settings panel shows "Auto".
     store.setActiveVariantId(store.abrEnabled ? null : (active?.id ?? null));
   };
 
@@ -227,28 +241,83 @@ export function usePlayerEngine(
         shakaPlayer = new shaka.Player();
         await shakaPlayer.attach(videoRef.value);
 
+        // loadedmetadata fires once the browser knows the duration.
+        // This is the earliest safe place to:
+        //   1. push the real duration into the store (fixes the 0:00 bug)
+        //   2. decide whether to show the resume prompt (needs duration to
+        //      guard against prompting near the end of short videos)
+        videoRef.value?.addEventListener("loadedmetadata", () => {
+          const el = videoRef.value;
+          if (!el) return;
+
+          const dur = el.duration;
+          if (dur && isFinite(dur)) {
+            store.setDuration(dur);
+          }
+
+          const pos = pendingResumePosition;
+          pendingResumePosition = null;
+
+          if (
+            pos !== null &&
+            dur &&
+            isFinite(dur) &&
+            pos > RESUME_MIN_POSITION &&
+            pos < dur - RESUME_CUTOFF_FROM_END
+          ) {
+            resumePrompt.value = { positionSeconds: pos };
+            // Hold playback — the user's button choice will call
+            // acceptResumePrompt() or dismissResumePrompt(), both of which
+            // call play() themselves.
+            el.pause();
+          } else {
+            // No resume prompt: autoplay if this isn't the initial page load.
+            if (!isFirstLoad) {
+              setTimeout(() => el.play(), 50);
+            }
+          }
+        });
+
         videoRef.value?.addEventListener("playing", () => {
           store.setIsPlaying(true);
+          store.cancelAutoplay();
           openNewSession();
           syncPositionState();
         });
+
         videoRef.value?.addEventListener("pause", () => {
           store.setIsPlaying(false);
           closeActiveSession();
           syncPositionState();
         });
+
         videoRef.value?.addEventListener("timeupdate", () => {
           store.setCurrentTime(videoRef.value?.currentTime ?? 0);
-          store.setDuration(videoRef.value?.duration ?? 0);
+          // Keep duration in sync for live streams or sources that update it.
+          const dur = videoRef.value?.duration;
+          if (dur && isFinite(dur)) store.setDuration(dur);
           syncPositionState();
         });
+
         videoRef.value?.addEventListener("ratechange", () => {
           store.setPlaybackRateState(videoRef.value?.playbackRate ?? 1);
         });
+
         videoRef.value?.addEventListener("ended", () => {
           store.setIsPlaying(false);
           closeActiveSession();
-          if (store.autoplay && (store.hasNext || store.loop)) store.next();
+
+          const isVideoFile = !store.activeFile?.mimeType.startsWith("audio/");
+          const canAdvance = store.hasNext || store.repeatMode === "all";
+
+          if (isVideoFile) {
+            resumePrompt.value = null;
+            if (store.videoAutoplay && canAdvance) {
+              store.startAutoplayCountdown(VIDEO_AUTOPLAY_COUNTDOWN_SECONDS, () => store.next());
+            }
+          } else {
+            if (store.autoplay && canAdvance) store.next();
+          }
         });
 
         shakaUi = new shaka.ui.Overlay(shakaPlayer, containerRef.value, videoRef.value);
@@ -258,7 +327,6 @@ export function usePlayerEngine(
           isBuffering.value = e.buffering;
         });
 
-        // Sync tracks whenever ABR picks a new variant or the manifest changes.
         shakaPlayer.addEventListener("adaptation", syncVariantTracks);
         shakaPlayer.addEventListener("trackschanged", syncVariantTracks);
 
@@ -282,6 +350,7 @@ export function usePlayerEngine(
         });
 
         playerReady.value = true;
+        startRefreshTicker();
 
         if (videoRef.value) {
           videoRef.value.volume = store.volume;
@@ -290,9 +359,6 @@ export function usePlayerEngine(
           });
         }
 
-        // Register engine controls in the store so presentational components
-        // (ExpandedPlayerCard, PlayerSettings) can drive playback without
-        // holding a reference to videoRef or shakaPlayer themselves.
         store.registerEngine({
           play: () => videoRef.value?.play(),
           pause: () => videoRef.value?.pause(),
@@ -305,13 +371,10 @@ export function usePlayerEngine(
           selectVariant: (id) => {
             if (!shakaPlayer) return;
             if (id === null) {
-              // Re-enable ABR — Shaka will resume automatic quality selection.
               shakaPlayer.configure("abr.enabled", true);
               store.setAbrEnabled(true);
               store.setActiveVariantId(null);
             } else {
-              // Lock to a specific track. clearBuffer=false means Shaka waits for
-              // the current buffer to drain before switching, avoiding a hard stall.
               shakaPlayer.configure("abr.enabled", false);
               const track = shakaPlayer.getVariantTracks().find((t: any) => t.id === id);
               if (track) shakaPlayer.selectVariantTrack(track, false);
@@ -334,9 +397,11 @@ export function usePlayerEngine(
 
   const loadFile = async (file: MediaFileDto | null) => {
     closeActiveSession();
+    store.cancelAutoplay();
     loadError.value = null;
+    resumePrompt.value = null;
+    pendingResumePosition = null;
     currentManifestUrl = "";
-    // Reset quality state for the new file.
     store.setVariantTracks([]);
     store.setActiveVariantId(null);
     store.setAbrEnabled(true);
@@ -348,8 +413,8 @@ export function usePlayerEngine(
       if (!shakaPlayer) return;
 
       const [manifestUrl, history] = await Promise.all([
-        streamingApi.getManifest(file.currentVersion.id),
-        streamingApi.getHistoryByFile(file.fileId),
+        streamingApi.getManifest(file.currentVersionId),
+        streamingApi.getHistoryByFile(file.fileId).catch(() => null),
       ]);
 
       if (!manifestUrl) {
@@ -358,22 +423,29 @@ export function usePlayerEngine(
       }
 
       currentManifestUrl = manifestUrl;
-
-      // Re-enable ABR on each new file load so a quality lock from the previous
-      // track doesn't carry over unexpectedly.
       shakaPlayer.configure("abr.enabled", true);
 
-      const shouldResume = isFirstLoad || !file.mimeType.startsWith("audio/");
-      const startTime = shouldResume ? (history?.positionSeconds ?? 0) : 0;
+      const isAudio = file.mimeType.startsWith("audio/");
+      const savedPosition = history?.positionSeconds ?? 0;
 
-      await shakaPlayer.load(manifestUrl, startTime > 0 ? startTime : null);
+      if (isAudio) {
+        // Audio: seek directly on first load, start from 0 on subsequent loads.
+        const startTime = isFirstLoad ? savedPosition : 0;
+        await shakaPlayer.load(manifestUrl, startTime > 0 ? startTime : null);
+        if (!isFirstLoad) setTimeout(() => videoRef.value?.play(), 50);
+      } else {
+        // Video: always load from 0. If there's a saved position worth resuming,
+        // store it so the loadedmetadata handler can evaluate it once duration
+        // is known and show the prompt (or skip it if we're near the end).
+        if (savedPosition > RESUME_MIN_POSITION) {
+          pendingResumePosition = savedPosition;
+        }
+        await shakaPlayer.load(manifestUrl, null);
+        // loadedmetadata will handle autoplay / resume prompt from here.
+      }
 
       syncVariantTracks();
       updateMediaSession(file);
-
-      if (!isFirstLoad) {
-        setTimeout(() => videoRef.value?.play(), 50);
-      }
       isFirstLoad = false;
     } catch (err: any) {
       loadError.value = err?.message ?? "Failed to load stream.";
@@ -397,6 +469,8 @@ export function usePlayerEngine(
   onUnmounted(async () => {
     clearMediaSession();
     closeActiveSession();
+    store.cancelAutoplay();
+    stopRefreshTicker();
     store.unregisterEngine();
     if (shakaUi) {
       shakaUi.destroy();
@@ -409,5 +483,12 @@ export function usePlayerEngine(
     document.removeEventListener("visibilitychange", onVisibilityChange);
   });
 
-  return { isBuffering, loadError, playerReady };
-}
+  return {
+    isBuffering,
+    loadError,
+    playerReady,
+    resumePrompt,
+    acceptResumePrompt,
+    dismissResumePrompt,
+  };
+};
