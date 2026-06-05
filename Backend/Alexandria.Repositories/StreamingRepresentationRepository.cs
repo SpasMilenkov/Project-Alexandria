@@ -170,4 +170,9 @@ public class StreamingRepresentationRepository(AlexandriaDbContext context)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.Status, RepresentationStatus.Failed)
                 .SetProperty(r => r.CompletedAt, DateTime.UtcNow), ct);
+
+    public async Task DeleteByJobIdAsync(Guid jobId, CancellationToken ct = default)
+    {
+        await _representations.Where(r => r.JobId == jobId).ExecuteDeleteAsync(ct);
+    }
 }

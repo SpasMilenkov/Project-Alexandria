@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
+using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +14,7 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
     private readonly DbSet<StreamSession> _sessions = context.StreamSessions;
 
     public async Task<StreamHistory?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _history.FindAsync(new object[] { id }, ct);
+        => await _history.FindAsync([id], ct);
 
     public async Task<StreamHistory?> GetByIdAndUserIdAsync(Guid id, Guid userId, CancellationToken ct = default)
         => await _history
@@ -23,7 +24,7 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
         => await _history
             .FirstOrDefaultAsync(h => h.UserId == userId && h.FileId == fileId && h.DeletedAt == null, ct);
 
-    public async Task<(ICollection<StreamHistoryDto> Items, int TotalCount)> FindAsync(
+    public async Task<PaginatedResult<StreamHistoryDto>> FindAsync(
         Guid userId,
         StreamHistoryQuery query,
         CancellationToken ct = default)
@@ -50,10 +51,30 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
             .OrderByDescending(h => h.LastAccessedAt)
             .Skip((query.CurrentPage - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Select(h => StreamHistoryDto.FromEntity(h))
+            .Select(h => new StreamHistoryDto
+            {
+                Id = h.Id,
+                FileId = h.FileId,
+                Title = h.File.MediaMetadata!.Title ?? h.File.Name,
+                PositionSeconds = h.PositionSeconds,
+                MaxPositionReachedSeconds = h.MaxPositionReachedSeconds,
+                TotalListenedSeconds = h.TotalListenedSeconds,
+                TimesCompleted = h.TimesCompleted,
+                LastCompletedAt = h.LastCompletedAt,
+                LastAccessedAt = h.LastAccessedAt,
+                CreatedAt = h.CreatedAt,
+                UpdatedAt = h.UpdatedAt
+            })
             .ToListAsync(ct);
 
-        return (items, totalCount);
+        return new PaginatedResult<StreamHistoryDto>
+        {
+            Items = items,
+            CurrentPage = query.CurrentPage,
+            PageSize = query.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize),
+            TotalCount = totalCount
+        };
     }
 
     public async Task<StreamHistory> CreateAsync(StreamHistory entity, CancellationToken ct = default)
@@ -91,13 +112,31 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
     public async Task<StreamSession?> GetSessionByIdAsync(Guid sessionId, CancellationToken ct = default)
         => await _sessions.FindAsync(new object[] { sessionId }, ct);
 
-    public async Task<IEnumerable<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId,
+    public async Task<PaginatedResult<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId,
+        int page = 1, int pageSize = 25,
         CancellationToken ct = default)
-        => await _sessions
+    {
+        var query = _sessions
             .Where(s => s.StreamHistoryId == streamHistoryId && s.DeletedAt == null)
             .OrderBy(s => s.StartedAt)
-            .Select(s => StreamSessionDto.FromEntity(s))
+            .Select(s => StreamSessionDto.FromEntity(s));
+
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query.Skip((page - 1) * pageSize)
+            .Take(page * pageSize)
             .ToListAsync(ct);
+
+        return new PaginatedResult<StreamSessionDto>
+        {
+            Items = items,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        };
+    }
 
     // IRepository passthrough members
     public async Task<IEnumerable<StreamHistory>> GetAllAsync(CancellationToken ct = default)

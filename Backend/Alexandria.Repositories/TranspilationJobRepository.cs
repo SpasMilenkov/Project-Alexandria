@@ -72,6 +72,88 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
     public async Task<TranspilationJob?> GetByVersionId(Guid versionId, Guid userId, CancellationToken ct = default)
         => await _jobs.FirstOrDefaultAsync(j => j.VersionId == versionId && j.UserId == userId, ct);
 
+    public async Task<PaginatedResult<TranspilationJobWithDetailsDto>> GetWithDetailsAsync(
+        TranspilationJobQuery query,
+        CancellationToken ct = default)
+    {
+        var q = _jobs.AsQueryable();
+
+        if (!query.IsSystem)
+            q = q.Where(j => j.UserId == query.UserId);
+
+        if (query.Status.HasValue)
+            q = q.Where(j => j.Status == query.Status.Value);
+
+        if (query.IsVideo.HasValue)
+            q = q.Where(j => j.IsVideo == query.IsVideo.Value);
+
+        if (query.VersionId.HasValue)
+            q = q.Where(j => j.VersionId == query.VersionId.Value);
+
+        if (query.CreatedAfter.HasValue)
+            q = q.Where(j => j.CreatedAt >= query.CreatedAfter.Value);
+
+        if (query.CreatedBefore.HasValue)
+            q = q.Where(j => j.CreatedAt <= query.CreatedBefore.Value);
+
+        if (query.CompletedAfter.HasValue)
+            q = q.Where(j => j.CompletedAt >= query.CompletedAfter.Value);
+
+        if (query.CompletedBefore.HasValue)
+            q = q.Where(j => j.CompletedAt <= query.CompletedBefore.Value);
+
+        if (query.MinRetryCount.HasValue)
+            q = q.Where(j => j.RetryCount >= query.MinRetryCount.Value);
+
+        var totalCount = await q.CountAsync(ct);
+
+        var items = await q
+            .AsNoTracking()
+            .OrderByDescending(j => j.CreatedAt)
+            .Skip((query.CurrentPage - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(j => new TranspilationJobWithDetailsDto
+            {
+                Id = j.Id,
+                VersionId = j.VersionId,
+                Status = j.Status,
+                IsVideo = j.IsVideo,
+                FileName = j.FileVersion.File.Name,
+                VersionNumber = j.FileVersion.VersionNumber,
+                ProgressPercent = j.ProgressPercent,
+                RetryCount = j.RetryCount,
+                ErrorDetail = j.ErrorDetail,
+                StartedAt = j.StartedAt,
+                CompletedAt = j.CompletedAt,
+                CreatedAt = j.CreatedAt,
+                AudioRungs = j.AudioRungs,
+                VideoRungs = j.VideoRungs,
+                Representations = j.Representations
+                    .Where(r => r.DeletedAt == null)
+                    .Select(r => new StreamingRepresentationDto()
+                    {
+                        Id = r.Id,
+                        JobId = r.JobId,
+                        Codec = r.Codec,
+                        Width = r.Width,
+                        Height = r.Height,
+                        BitrateKbps = r.BitrateKbps,
+                        Status = r.Status,
+                        CompletedAt = r.CompletedAt
+                    })
+                    .ToList()
+            }).ToListAsync(ct);
+
+        return new PaginatedResult<TranspilationJobWithDetailsDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            CurrentPage = query.CurrentPage,
+            PageSize = query.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
+        };
+    }
+
     public async Task<TranspilationJob?> GetActiveJobForVersionAsync(
         Guid versionId,
         CancellationToken ct = default)
@@ -142,12 +224,13 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
         };
     }
 
-    public async Task UpdateStatusAsync(
-        Guid jobId,
+    public async Task UpdateStatusAsync(Guid jobId,
         TranspilationStatus status,
         int? progress = null,
         string? errorDetail = null,
         string? segmentPrefix = null,
+        AudioRung[]? audioRungs = null,
+        VideoRung[]? videoRungs = null,
         CancellationToken ct = default)
         => await _jobs
             .Where(j => j.Id == jobId)
@@ -155,6 +238,8 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
                     .SetProperty(j => j.Status, status)
                     .SetProperty(j => j.ProgressPercent, j => progress ?? j.ProgressPercent)
                     .SetProperty(j => j.ErrorDetail, j => errorDetail ?? j.ErrorDetail)
+                    .SetProperty(j => j.AudioRungs, j => audioRungs ?? j.AudioRungs)
+                    .SetProperty(j => j.VideoRungs, j => videoRungs ?? j.VideoRungs)
                     .SetProperty(j => j.StartedAt, j =>
                         status == TranspilationStatus.Processing ? DateTime.UtcNow : j.StartedAt)
                     .SetProperty(j => j.SegmentPrefix, j => segmentPrefix ?? j.SegmentPrefix)
@@ -165,6 +250,10 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
                             ? DateTime.UtcNow
                             : j.CompletedAt),
                 ct);
+
+    public async Task ClearErrorAsync(Guid jobId, CancellationToken ct = default)
+        => await _jobs.Where(j => j.Id == jobId)
+            .ExecuteUpdateAsync(s => s.SetProperty(j => j.ErrorDetail, j => null), ct);
 
     public async Task<IEnumerable<TranspilationJob>> GetStalledJobsAsync(
         TimeSpan threshold,
@@ -189,4 +278,7 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
 
         return affected > 0;
     }
+
+    public async Task<TranspilationStatus> GetTranspilationStatusAsync(Guid jobId, CancellationToken ct = default) =>
+        await _jobs.Where(j => j.Id == jobId).Select(j => j.Status).FirstAsync(ct);
 }

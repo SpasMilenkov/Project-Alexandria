@@ -54,4 +54,6 @@ public interface IStreamingRepresentationRepository : IRepository<StreamingRepre
     /// and stamps <see cref="StreamingRepresentation.CompletedAt"/>.
     /// </summary>
     Task MarkAllFailedAsync(List<Guid> representationIds, CancellationToken ct = default);
+
+    Task DeleteByJobIdAsync(Guid jobId, CancellationToken ct = default);
 }

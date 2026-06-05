@@ -1,4 +1,5 @@
 using Alexandria.Data.Models;
+using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 
 namespace Alexandria.Common.Repositories;
@@ -26,7 +27,7 @@ public interface IStreamHistoryRepository : IRepository<StreamHistory>
     Task<StreamHistory?> GetByIdAndUserIdAsync(Guid id, Guid userId, CancellationToken ct = default);
 
     /// <summary>Returns a paginated list of stream history rows for a user, applying optional filters.</summary>
-    Task<(ICollection<StreamHistoryDto> Items, int TotalCount)> FindAsync(
+    Task<PaginatedResult<StreamHistoryDto>> FindAsync(
         Guid userId,
         StreamHistoryQuery query,
         CancellationToken ct = default);
@@ -43,5 +44,6 @@ public interface IStreamHistoryRepository : IRepository<StreamHistory>
     Task<StreamSession?> GetSessionByIdAsync(Guid sessionId, CancellationToken ct = default);
 
     /// <summary>Returns all sessions for a given stream history row, ordered by start time ascending.</summary>
-    Task<IEnumerable<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId, CancellationToken ct = default);
+    Task<PaginatedResult<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId, int page = 1, int pageSize = 25,
+        CancellationToken ct = default);
 }

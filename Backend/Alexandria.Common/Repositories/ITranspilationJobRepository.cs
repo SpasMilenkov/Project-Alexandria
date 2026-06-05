@@ -10,6 +10,9 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
     Task<TranspilationJob?> GetByVersionId(Guid versionId, CancellationToken ct = default);
     Task<TranspilationJob?> GetByVersionId(Guid versionId, Guid userId, CancellationToken ct = default);
 
+    Task<PaginatedResult<TranspilationJobWithDetailsDto>> GetWithDetailsAsync(TranspilationJobQuery query,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Returns the transpilation job for the given content object that has an active status
     /// (<see cref="TranspilationStatus.Queued"/> or <see cref="TranspilationStatus.Processing"/>), if one exists.
@@ -24,10 +27,17 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
 
     Task<PaginatedResult<TranspilationJob>> FindJobsAsync(TranspilationJobQuery query, CancellationToken ct = default);
 
-    Task UpdateStatusAsync(Guid jobId, TranspilationStatus status, int? progress = null, string? errorDetail = null,
+    Task UpdateStatusAsync(
+        Guid jobId,
+        TranspilationStatus status,
+        int? progress = null,
+        string? errorDetail = null,
         string? segmentPrefix = null,
+        AudioRung[]? audioRungs = null,
+        VideoRung[]? videoRungs = null,
         CancellationToken ct = default);
 
+    Task ClearErrorAsync(Guid jobId, CancellationToken ct = default);
     Task<IEnumerable<TranspilationJob>> GetStalledJobsAsync(TimeSpan threshold, CancellationToken ct = default);
 
     /// <summary>
@@ -37,4 +47,12 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
     /// <see langword="false"/> when the job was already claimed or does not exist.
     /// </summary>
     Task<bool> TryClaimJobAsync(Guid jobId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the status of a transpilation job
+    /// </summary>
+    /// <param name="jobId">The id of the job</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns>A transpilation status enum</returns>
+    Task<TranspilationStatus> GetTranspilationStatusAsync(Guid jobId, CancellationToken ct = default);
 }
