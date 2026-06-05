@@ -103,6 +103,10 @@ const serwist = new Serwist({
       matcher: ({ request }) => request.mode === "navigate",
     },
     {
+      matcher: ({ url }) => url.pathname.startsWith("/stream"),
+      handler: new NetworkOnly,
+    },
+    {
       handler: new NetworkFirst(),
       matcher: ({ url }) => url.pathname.startsWith("/api/"),
     },
