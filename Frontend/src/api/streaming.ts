@@ -1,8 +1,7 @@
 import type { TranspilationStatus } from "@/enums/transpilation-status";
 
-import type { PaginatedResponse, UserDto } from "./directory";
-import type { FileResult, FileVersionDto } from "./file";
-import type { TagDto } from "./tag";
+import type { PaginatedResponse } from "./directory";
+import type { AudioRung, VideoRung } from "./policy";
 
 import { apiClient } from "./client";
 
@@ -13,6 +12,12 @@ export enum RepresentationStatus {
   Failed = 3,
 }
 
+export interface QueueTranspilationJobRequest {
+  versionId: string;
+  audioRungs: AudioRung[];
+  videoRungs: VideoRung[];
+}
+
 // Query / request param types
 
 export interface GetFilesForStreamingQuery {
@@ -20,6 +25,7 @@ export interface GetFilesForStreamingQuery {
   playlistId?: string | null;
   page: number;
   pageSize: number;
+  isVideo: boolean
 }
 
 export interface TranspilationJobQuery {
@@ -54,9 +60,11 @@ export interface CloseSessionRequest {
   listenedSeconds: number;
 }
 
-export interface StopTranspilationJobRequest {
+export interface UpdateTranspilationJobRequest {
   jobId: string;
   status: TranspilationStatus;
+  audioRungs?: AudioRung[];
+  videoRungs?: VideoRung[];
 }
 
 // Response types
@@ -64,6 +72,7 @@ export interface StopTranspilationJobRequest {
 export interface StreamHistoryResponse {
   id: string;
   fileId: string;
+  title: string;
   positionSeconds: number;
   maxPositionReachedSeconds: number;
   totalListenedSeconds: number;
@@ -105,21 +114,14 @@ export interface TranspilationJobResponse {
   progressPercent: number;
   retryCount: number;
   errorDetail?: string;
+  fileName?: string;
+  versionNumber?: number;
+  audioRungs: AudioRung[];
+  videoRungs: VideoRung[];
   startedAt?: string;
   completedAt?: string;
   createdAt: string;
   representations: StreamingRepresentationResponse[];
-}
-
-export interface RawMediaFileDto {
-  file: FileResult;
-  duration: number;
-  artist: string | null;
-  album: string | null;
-  title: string | null;
-  transpilationJobId: string;
-  isVideo: boolean;
-  segmentPrefix: string | null;
 }
 
 export interface MediaFileDto {
@@ -127,13 +129,7 @@ export interface MediaFileDto {
   fileId: string;
   fileName: string;
   mimeType: string;
-  directoryId: string | null;
-  createdAt: string;
-  updatedAt: string | null;
-  deletedAt: string | null;
-  currentVersion: FileVersionDto;
-  tags: TagDto[];
-  owner: UserDto;
+  currentVersionId: string;
 
   // Media metadata
   duration: number;
@@ -147,36 +143,16 @@ export interface MediaFileDto {
   segmentPrefix: string | null;
 }
 
-const mapMediaFileDto = (raw: RawMediaFileDto): MediaFileDto => ({
-  fileId: raw.file.fileId,
-  fileName: raw.file.fileName,
-  mimeType: raw.file.mimeType,
-  directoryId: raw.file.directoryId,
-  createdAt: raw.file.createdAt,
-  updatedAt: raw.file.updatedAt,
-  deletedAt: raw.file.deletedAt,
-  currentVersion: raw.file.currentVersion,
-  tags: raw.file.tags,
-  owner: raw.file.owner,
-  duration: raw.duration,
-  artist: raw.artist,
-  album: raw.album,
-  title: raw.title,
-  transpilationJobId: raw.transpilationJobId,
-  isVideo: raw.isVideo,
-  segmentPrefix: raw.segmentPrefix,
-});
-// API
 
 export const streamingApi = {
   getFilesForStreaming: async (
     query: GetFilesForStreamingQuery,
   ): Promise<PaginatedResponse<MediaFileDto>> => {
-    const result = await apiClient.get<PaginatedResponse<RawMediaFileDto>>("/streaming/files", {
+    const result = await apiClient.get<PaginatedResponse<MediaFileDto>>("/streaming/files", {
       params: query,
     });
 
-    return { ...result.data, items: result.data.items.map((i) => mapMediaFileDto(i)) };
+    return result.data;
   },
 
   getManifest: async (id: string): Promise<string> => {
@@ -201,8 +177,8 @@ export const streamingApi = {
     return result.data;
   },
 
-  getSessions: async (streamHistoryId: string): Promise<StreamSessionResponse[]> => {
-    const result = await apiClient.get<StreamSessionResponse[]>(
+  getSessions: async (streamHistoryId: string): Promise<PaginatedResponse<StreamSessionResponse>> => {
+    const result = await apiClient.get<PaginatedResponse<StreamSessionResponse>>(
       `/stream-history/${streamHistoryId}/sessions`,
     );
     return result.data;
@@ -234,11 +210,11 @@ export const streamingApi = {
     return result.data;
   },
 
-  queueTranspilationJob: async (versionId: string): Promise<void> => {
-    await apiClient.post("/streaming/job", { versionId });
+  queueTranspilationJob: async (params: QueueTranspilationJobRequest): Promise<void> => {
+    await apiClient.post("/streaming/job", params);
   },
 
-  stopTranspilationJob: async (req: StopTranspilationJobRequest): Promise<void> => {
-    await apiClient.put("/streaming/stop-transpilation", req);
+  updateTranspilationJob: async (req: UpdateTranspilationJobRequest): Promise<void> => {
+    await apiClient.patch("/streaming/update-transpilation-status", req);
   },
 };
