@@ -90,9 +90,34 @@ public class MediaMetadataConfiguration : IEntityTypeConfiguration<MediaMetadata
             .IsRequired(false);
 
         builder.HasOne(m => m.File)
-            .WithOne()
+            .WithOne(f => f.MediaMetadata)
             .HasForeignKey<MediaMetadata>(m => m.FileId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property(e => e.NormalizedSearch)
+            .HasComputedColumnSql(
+                @"lower(
+            coalesce(""Title"", '') || ' ' ||
+            coalesce(""Artist"", '') || ' ' ||
+            coalesce(""Album"", '') || ' ' ||
+            coalesce(""Genre"", '')
+        )",
+                stored: true);
+
+        builder.Property(e => e.SearchVector)
+            .HasComputedColumnSql(
+                @"setweight(to_tsvector('simple', coalesce(""Title"", '')),  'A') ||
+          setweight(to_tsvector('simple', coalesce(""Artist"", '')), 'B') ||
+          setweight(to_tsvector('simple', coalesce(""Album"", '')),  'C') ||
+          setweight(to_tsvector('simple', coalesce(""Genre"", '')),  'D')",
+                stored: true);
+
+        builder.HasIndex(e => e.SearchVector)
+            .HasMethod("gin");
+
+        builder.HasIndex(e => e.NormalizedSearch)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops");
 
         builder.HasIndex(e => e.CreatedAt);
         builder.HasIndex(e => e.FileId);
