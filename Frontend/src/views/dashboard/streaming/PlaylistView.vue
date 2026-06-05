@@ -13,7 +13,6 @@
         @click="showCreateModal = true"
       />
     </div>
-
     <div v-if="playlistsQuery.status.value === 'pending'" class="flex justify-center py-16">
       <UIcon name="mdi:loading" class="w-6 h-6 animate-spin text-muted" />
     </div>
@@ -45,7 +44,7 @@
       />
     </div>
 
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
       <PlaylistCard
         v-for="playlist in playlists"
         :key="playlist.id"
@@ -63,25 +62,56 @@
     </div>
   </div>
 
-  <UModal v-model:open="showCreateModal" title="New Playlist">
+  <UModal
+    v-model:open="showCreateModal"
+    title="New Playlist"
+    :ui="{ body: ' sm:p-0 p-0 overflow-hidden bg-transparent!', content: 'lg:min-w-2xl max-w-3xl' }"
+  >
     <template #body>
-      <PlaylistForm
-        :loading="isCreateLoading"
-        @submit="handleCreate"
-        @cancel="showCreateModal = false"
-      />
+      <div
+        class="relative transition-colors duration-500"
+        :style="
+          createAmbient
+            ? `background: linear-gradient(to left, ${createAmbient}35 65%, transparent 100%)`
+            : 'bg-neutral-500'
+        "
+      >
+        <PlaylistForm
+          :loading="isCreateLoading"
+          @submit="handleCreate"
+          @cancel="showCreateModal = false"
+          @ambient-change="createAmbient = $event"
+        />
+      </div>
     </template>
   </UModal>
 
-  <UModal v-model:open="showEditModal" title="Edit Playlist">
+  <UModal
+    v-model:open="showEditModal"
+    title="Edit Playlist"
+    :ui="{
+      body: 'sm:p-0 p-0 overflow-hidden bg-transparent! min-h-90',
+      content: 'lg:min-w-2xl max-w-3xl',
+    }"
+  >
     <template #body>
-      <PlaylistForm
-        v-if="editTarget"
-        :initial="editTarget"
-        :loading="isUpdateLoading"
-        @submit="handleUpdate"
-        @cancel="showEditModal = false"
-      />
+      <div
+        class="relative transition-colors duration-500 pb-6"
+        :style="
+          editAmbient
+            ? `background: linear-gradient(to left, ${editAmbient}35 65%, transparent 100%)`
+            : undefined
+        "
+      >
+        <PlaylistForm
+          v-if="editTarget"
+          :initial="editTarget"
+          :loading="isUpdateLoading"
+          @submit="handleUpdate"
+          @cancel="showEditModal = false"
+          @ambient-change="editAmbient = $event"
+        />
+      </div>
     </template>
   </UModal>
 
@@ -114,16 +144,15 @@
 </template>
 
 <script setup lang="ts">
-import { useQuery } from "@pinia/colada";
-import { computed, ref } from "vue";
+import { useQuery, useQueryCache } from "@pinia/colada";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
-import type { CreatePlaylistSchema, UpdatePlaylistSchema } from "@/schemas/playlist";
-
+import { fileApi } from "@/api/file";
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
 import { streamingApi } from "@/api/streaming";
 import PlaylistCard from "@/components/streaming/PlaylistCard.vue";
-import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
+import PlaylistForm, { type PlaylistFormPayload } from "@/components/streaming/PlaylistForm.vue";
 import { createPlaylist, deletePlaylist, updatePlaylist } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
@@ -131,6 +160,7 @@ import { usePlayerStore } from "@/stores/stream-player";
 const router = useRouter();
 const toast = useToast();
 const store = usePlayerStore();
+const queryCache = useQueryCache();
 
 const page = ref(1);
 const pageSize = 18;
@@ -169,6 +199,7 @@ const playPlaylist = async (playlistId: string) => {
       page: 1,
       pageSize: 500,
       playlistId,
+      isVideo: false,
     });
 
     if (!result.items.length) {
@@ -180,7 +211,7 @@ const playPlaylist = async (playlistId: string) => {
       return;
     }
 
-    store.setQueue(result.items, 0, playlistId);
+    store.playNow(result.items);
   } catch {
     toast.add({
       title: "Failed to load playlist",
@@ -202,21 +233,81 @@ const confirmDelete = (playlist: PlaylistResponse) => {
   showDeleteModal.value = true;
 };
 
+const createAmbientBg = computed(() =>
+  createAmbient.value
+    ? `linear-gradient(to bottom right, ${createAmbient.value}28 0%, transparent 60%)`
+    : "transparent",
+);
+
 const navigateToPlaylist = (id: string) => {
   router.push(`/streaming/playlists/${id}`);
 };
 
-const handleCreate = async (payload: CreatePlaylistSchema) => {
-  await create(payload);
-  if (!createState.value.error) showCreateModal.value = false;
+const handleCreate = async (payload: PlaylistFormPayload) => {
+  try {
+    const playlist = await playlistApi.create({
+      name: payload.name,
+      description: payload.description,
+      hasCover: Boolean(payload.coverFile),
+    });
+
+    if (payload.coverFile) {
+      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
+        playlistId: playlist.id,
+        mimeType: payload.coverFile.type,
+        fileSize: payload.coverFile.size,
+      });
+
+      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
+
+      if (payload.ambientTheme) {
+        await playlistApi.update(playlist.id, { ambientTheme: payload.ambientTheme });
+      }
+    }
+
+    await queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.root });
+    showCreateModal.value = false;
+  } catch {
+    toast.add({ title: "Failed to create playlist", color: "error" });
+  }
 };
 
-const handleUpdate = async (payload: UpdatePlaylistSchema) => {
+const handleUpdate = async (payload: PlaylistFormPayload) => {
   if (!editTarget.value) return;
-  await update({ id: editTarget.value.id, req: payload });
-  if (!updateState.value.error) {
-    showEditModal.value = false;
-    editTarget.value = null;
+
+  const id = editTarget.value.id;
+
+  try {
+    await update({
+      id,
+      req: {
+        name: payload.name,
+        description: payload.description,
+        hasCover: Boolean(payload.coverFile),
+      },
+    });
+
+    if (payload.coverFile) {
+      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
+        playlistId: id,
+        mimeType: payload.coverFile.type,
+        fileSize: payload.coverFile.size,
+      });
+
+      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
+
+      if (payload.ambientTheme) {
+        await playlistApi.update(id, { ambientTheme: payload.ambientTheme });
+      }
+    }
+
+    if (!updateState.value.error) {
+      await queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.root });
+      showEditModal.value = false;
+      editTarget.value = null;
+    }
+  } catch {
+    toast.add({ title: "Failed to update playlist", color: "error" });
   }
 };
 
@@ -228,4 +319,22 @@ const handleDelete = async () => {
     deleteTarget.value = null;
   }
 };
+
+const createAmbient = ref<string | null>(null);
+const editAmbient = ref<string | null>(null);
+
+watch(showCreateModal, (open) => {
+  if (!open) createAmbient.value = null;
+});
+
+watch(showEditModal, (open) => {
+  if (!open) editAmbient.value = null;
+  else editAmbient.value = editTarget.value?.ambientTheme ?? null;
+});
 </script>
+
+<style lang="css">
+.ambient-cover {
+  background: v-bind(createAmbientBg);
+}
+</style>

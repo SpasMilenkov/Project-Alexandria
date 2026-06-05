@@ -1,5 +1,5 @@
 <template>
-  <div class="px-6 py-5">
+  <div class="px-2 md:px-6 py-5">
     <!-- Back -->
     <UButton
       icon="mdi:arrow-left"
@@ -25,24 +25,51 @@
     />
 
     <template v-else-if="playlist">
-      <!-- Header -->
-      <div class="flex items-start justify-between gap-4 mb-6">
-        <div class="flex items-center gap-4">
+      <!-- Header card with blurred cover background -->
+      <div
+        class="relative rounded-2xl overflow-hidden mb-6 border border-gray-200/70 dark:border-gray-700/70"
+      >
+        <!-- Background: blurred cover image or ambient tint -->
+        <div class="absolute inset-0">
+          <img
+            v-if="!isCoverUrlLoading && coverUrl"
+            :src="coverUrl"
+            :alt="playlist.name"
+            class="w-full h-full object-cover blur-sm scale-125 opacity-25 dark:opacity-15"
+          />
           <div
-            class="w-16 h-16 rounded-lg bg-gray-100/60 dark:bg-gray-800/40 flex items-center justify-center overflow-hidden shrink-0"
+            v-else-if="playlist.ambientTheme"
+            class="w-full h-full"
+            :style="{ backgroundColor: playlist.ambientTheme, opacity: 0.08 }"
+          />
+        </div>
+        <!-- <div class="absolute inset-0 bg-white/60 dark:bg-gray-950/70" /> -->
+
+        <!-- Content -->
+        <div class="relative flex flex-col md:flex-row items-center md:items-end gap-5 p-5 md:p-6">
+          <!-- Cover image -->
+          <div
+            class="w-48 shrink-0 aspect-square rounded-xl overflow-hidden shadow-lg"
+            :style="coverShadowStyle"
           >
             <img
-              v-if="playlist.coverUrl"
-              :src="playlist.coverUrl"
+              v-if="!isCoverUrlLoading && coverUrl"
+              :src="coverUrl"
               :alt="playlist.name"
               class="w-full h-full object-cover"
             />
-            <UIcon v-else name="mdi:playlist-music" class="w-7 h-7 text-muted" />
+            <div
+              v-else
+              class="w-full h-full bg-gray-200/50 dark:bg-gray-700/40 flex items-center justify-center"
+            >
+              <UIcon name="mdi:playlist-music" class="w-12 h-12 text-muted" />
+            </div>
           </div>
 
-          <div>
-            <h1 class="text-xl font-semibold text-highlighted">{{ playlist.name }}</h1>
-            <p v-if="playlist.description" class="text-sm text-muted mt-0.5">
+          <!-- Info + actions -->
+          <div class="flex-1 min-w-0 w-full text-center md:text-left">
+            <h1 class="text-2xl font-bold text-highlighted">{{ playlist.name }}</h1>
+            <p v-if="playlist.description" class="text-sm text-muted mt-1">
               {{ playlist.description }}
             </p>
             <UBadge
@@ -50,46 +77,46 @@
               color="neutral"
               variant="subtle"
               size="sm"
-              class="mt-1"
+              class="mt-2"
             />
+
+            <!-- Action buttons -->
+            <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-4">
+              <UButton
+                icon="mdi:play"
+                label="Play all"
+                color="primary"
+                variant="solid"
+                size="sm"
+                :loading="isLoadingQueue"
+                :disabled="!localItems.length"
+                @click="playAll"
+              />
+              <UButton
+                :icon="showSearch ? 'i-heroicons-x-mark' : 'i-heroicons-plus'"
+                :label="showSearch ? 'Cancel' : 'Add tracks'"
+                color="primary"
+                variant="outline"
+                size="sm"
+                @click="showSearch = !showSearch"
+              />
+              <UButton
+                icon="mdi:pencil"
+                label="Edit"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="showEditModal = true"
+              />
+              <UButton
+                icon="i-heroicons-trash"
+                color="error"
+                variant="outline"
+                size="sm"
+                @click="showDeleteModal = true"
+              />
+            </div>
           </div>
-        </div>
-
-        <div class="flex items-center gap-2 shrink-0">
-          <UButton
-            icon="mdi:play"
-            label="Play all"
-            color="primary"
-            variant="solid"
-            size="sm"
-            :loading="isLoadingQueue"
-            :disabled="!localItems.length"
-            @click="playAll"
-          />
-
-          <UButton
-            :icon="showSearch ? 'i-heroicons-x-mark' : 'i-heroicons-plus'"
-            :label="showSearch ? 'Cancel' : 'Add tracks'"
-            color="primary"
-            variant="outline"
-            size="sm"
-            @click="showSearch = !showSearch"
-          />
-          <UButton
-            icon="mdi:pencil"
-            label="Edit"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            @click="showEditModal = true"
-          />
-          <UButton
-            icon="i-heroicons-trash"
-            color="error"
-            variant="outline"
-            size="sm"
-            @click="showDeleteModal = true"
-          />
         </div>
       </div>
 
@@ -116,23 +143,38 @@
         <p class="text-sm text-muted mt-1">Use "Add tracks" above to get started.</p>
       </div>
 
-      <!-- Item list -->
+      <!-- Item list with ambient color tint -->
       <div
         v-else
-        class="flex flex-col divide-y divide-gray-100/50 dark:divide-gray-800/50 border border-gray-200/70 dark:border-gray-700/70 rounded-xl overflow-hidden"
+        class="relative rounded-xl overflow-hidden border border-gray-200/70 dark:border-gray-700/70"
       >
-        <PlaylistItemRow
-          v-for="item in localItems"
-          :key="item.id"
-          :item="item"
-          :dragged-item-id="draggedItemId"
-          @remove="confirmRemoveItem(item.id)"
-          @drag-start="onDragStart"
-          @drag-end="onDragEnd"
-          @drag-over="onDragOver"
-          @drop="onDrop"
-          @play="playFromItem(item.transpilationJobId)"
+        <!-- Ambient color background overlay -->
+        <div
+          v-if="playlist.ambientTheme"
+          class="absolute inset-0 pointer-events-none"
+          :style="{ backgroundColor: playlist.ambientTheme, opacity: ambientListOpacity }"
         />
+        <!-- Ambient top accent line -->
+        <div
+          v-if="playlist.ambientTheme"
+          class="absolute top-0 inset-x-0 h-0.5 pointer-events-none z-10"
+          :style="{ backgroundColor: playlist.ambientTheme, opacity: 0.4 }"
+        />
+
+        <div class="relative flex flex-col divide-y divide-gray-100/50 dark:divide-gray-800/50">
+          <PlaylistItemRow
+            v-for="item in localItems"
+            :key="item.id"
+            :item="item"
+            :dragged-item-id="draggedItemId"
+            @remove="confirmRemoveItem(item.id)"
+            @drag-start="onDragStart"
+            @drag-end="onDragEnd"
+            @drag-over="onDragOver"
+            @drop="onDrop"
+            @play="playFromItem(item.transpilationJobId)"
+          />
+        </div>
       </div>
 
       <!-- Reorder saving indicator -->
@@ -217,22 +259,24 @@ import type { PlaylistItemResponse } from "@/api/playlist";
 import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 
 import { playlistApi } from "@/api/playlist";
+import { streamingApi } from "@/api/streaming";
 import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
 import PlaylistItemRow from "@/components/streaming/PlaylistItemRow.vue";
 import PlaylistTrackSearch from "@/components/streaming/PlaylistTrackSearch.vue";
+import { useTheme } from "@/composables/useTheme";
 import {
-  updatePlaylist,
-  deletePlaylist,
   addPlaylistItem,
+  deletePlaylist,
   removePlaylistItem,
   reorderPlaylistItems,
+  updatePlaylist,
 } from "@/mutations/playlists";
-import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
-import { streamingApi } from "@/api/streaming";
+import { PLAYLIST_QUERY_KEYS, getPlaylistCover } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
 
 const store = usePlayerStore();
 const toast = useToast();
+const { isDark } = useTheme();
 
 const isLoadingQueue = ref(false);
 
@@ -243,14 +287,13 @@ const playAll = async () => {
       page: 1,
       pageSize: 500,
       playlistId: playlistId.value,
+      isVideo: false,
     });
-
     if (!result.items.length) {
       toast.add({ title: "Playlist is empty", color: "warning" });
       return;
     }
-
-    store.setQueue(result.items, 0, playlistId.value);
+    store.playNow(result.items);
   } catch {
     toast.add({ title: "Failed to load playlist", color: "error" });
   } finally {
@@ -271,13 +314,24 @@ const detailQuery = useQuery({
 
 const playlist = computed(() => detailQuery.data.value ?? null);
 
+const { data: coverUrl, isLoading: isCoverUrlLoading } = useQuery({
+  ...getPlaylistCover(playlistId.value),
+  enabled: computed(() => (playlist.value === null ? false : playlist.value.hasCover)),
+});
+
+// Ambient color helpers
+const coverShadowStyle = computed(() => {
+  if (!playlist.value?.ambientTheme) return {};
+  return {
+    boxShadow: `0 8px 24px -4px color-mix(in srgb, ${playlist.value.ambientTheme} 30%, transparent)`,
+  };
+});
+
+const ambientListOpacity = computed(() => (isDark.value ? 0.1 : 0.06));
+
 const { mutateAsync: update, isLoading: isUpdating, state: updateState } = updatePlaylist();
 const { mutateAsync: remove, isLoading: isDeletingPlaylist, state: deleteState } = deletePlaylist();
-const {
-  mutateAsync: addItem,
-  isLoading: isAddingPlaylistItem,
-  state: addItemState,
-} = addPlaylistItem();
+const { mutateAsync: addItem } = addPlaylistItem();
 const {
   mutateAsync: removeItem,
   isLoading: isRemovingPlaylistItem,
@@ -289,7 +343,7 @@ const {
   state: reorderState,
 } = reorderPlaylistItems();
 
-// Local item list — keeps UI in sync during drag reorder without waiting for the server
+// Local item list
 const localItems = ref<PlaylistItemResponse[]>([]);
 
 watch(
@@ -300,10 +354,8 @@ watch(
   { immediate: true },
 );
 
-// Track which job IDs are already in the playlist so the search can mark them
 const addedItemJobIds = computed(() => new Set(localItems.value.map((i) => i.transpilationJobId)));
 
-// Track in-flight add requests to show per-row loading state in the search panel
 const addingIds = ref<Set<string>>(new Set());
 
 // Modal state
@@ -323,18 +375,14 @@ const playFromItem = async (transpilationJobId: string) => {
       page: 1,
       pageSize: 500,
       playlistId: playlistId.value,
+      isVideo: false,
     });
-
     if (!result.items.length) {
       toast.add({ title: "Playlist is empty", color: "warning" });
       return;
     }
-
-    const startIndex = result.items.findIndex(
-      (f) => f.transpilationJobId === transpilationJobId,
-    );
-
-    store.setQueue(result.items, startIndex === -1 ? 0 : startIndex, playlistId.value);
+    const idx = result.items.findIndex((f) => f.transpilationJobId === transpilationJobId);
+    store.playNow(result.items.slice(idx === -1 ? 0 : idx));
   } catch {
     toast.add({ title: "Failed to load playlist", color: "error" });
   } finally {
@@ -342,15 +390,15 @@ const playFromItem = async (transpilationJobId: string) => {
   }
 };
 
-function onDragStart(id: string) {
+const onDragStart = (id: string) => {
   draggedItemId.value = id;
-}
+};
 
-function onDragEnd() {
+const onDragEnd = () => {
   draggedItemId.value = null;
-}
+};
 
-function onDragOver(targetId: string) {
+const onDragOver = (targetId: string) => {
   if (!draggedItemId.value || draggedItemId.value === targetId) return;
 
   const items = [...localItems.value];
@@ -361,46 +409,53 @@ function onDragOver(targetId: string) {
   const [moved] = items.splice(fromIndex, 1);
   items.splice(toIndex, 0, moved);
   localItems.value = items;
-}
+};
 
-async function onDrop(_targetId: string) {
+const onDrop = async (_targetId: string) => {
   draggedItemId.value = null;
   await reorder({
     playlistId: playlistId.value,
     req: { orderedItemIds: localItems.value.map((i) => i.id) },
   });
-}
+};
 
-async function handleAddItem(transpilationJobId: string) {
+const handleAddItem = async (transpilationJobId: string) => {
   addingIds.value = new Set([...addingIds.value, transpilationJobId]);
   try {
     await addItem({ playlistId: playlistId.value, req: { transpilationJobId } });
   } finally {
     addingIds.value = new Set([...addingIds.value].filter((id) => id !== transpilationJobId));
   }
-}
+};
 
-function confirmRemoveItem(itemId: string) {
+const confirmRemoveItem = (itemId: string) => {
   removeItemTarget.value = itemId;
   showRemoveItemModal.value = true;
-}
+};
 
-async function handleUpdate(payload: UpdatePlaylistSchema) {
-  await update({ id: playlistId.value, req: payload });
+const handleUpdate = async (payload: UpdatePlaylistSchema) => {
+  await update({
+    id: playlistId.value,
+    req: {
+      name: payload.name,
+      description: payload.description,
+      hasCover: Boolean(payload.coverFile),
+    },
+  });
   if (!updateState.value.error) showEditModal.value = false;
-}
+};
 
-async function handleDelete() {
+const handleDelete = async () => {
   await remove(playlistId.value);
   if (!deleteState.value.error) router.push("/streaming/playlists");
-}
+};
 
-async function handleRemoveItem() {
+const handleRemoveItem = async () => {
   if (!removeItemTarget.value) return;
   await removeItem({ playlistId: playlistId.value, itemId: removeItemTarget.value });
   if (!removeItemState.value.error) {
     showRemoveItemModal.value = false;
     removeItemTarget.value = null;
   }
-}
+};
 </script>
