@@ -1,4 +1,5 @@
 using Alexandria.Common.Services;
+using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Streaming;
 using Alexandria.Workers.MediaTranspilation.Config;
@@ -21,6 +22,8 @@ public static class WorkerExtensions
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
         services.AddScoped<IVideoTranspilationService, VideoTranspilationService>();
         services.AddScoped<IAudioTranspilationService, AudioTranspilationService>();
+        services.AddRabbitMqAsync(configuration);
+        services.AddScoped<IPublisherService, PublisherService>();
         services.AddScoped<TranspilationJobHandler>();
 
         return services;
