@@ -17,4 +17,13 @@ public interface IPreviewService
     /// preview generation when the preview service has already run.
     /// </summary>
     Task<bool> HasPreviewAsync(Guid versionId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generate a preview for a given file owned by a given user
+    /// </summary>
+    /// <param name="fileId">File ID</param>
+    /// <param name="userId">Owner ID</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns></returns>
+    Task GeneratePreviewAsync(Guid fileId, Guid userId, CancellationToken ct = default);
 }
