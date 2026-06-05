@@ -42,7 +42,8 @@ internal sealed class GetStreamHistoryEndpoint(IStreamHistoryService historyServ
     public override async Task HandleAsync(GetStreamHistoryRequest req, CancellationToken ct)
     {
         var userId = User.GetUserId();
-        var (items, total) = await historyService.FindAsync(userId, new StreamHistoryQuery
+
+        await Send.OkAsync(await historyService.FindAsync(userId, new StreamHistoryQuery
         {
             FileId = req.FileId,
             Completed = req.Completed,
@@ -50,14 +51,6 @@ internal sealed class GetStreamHistoryEndpoint(IStreamHistoryService historyServ
             LastAccessedBefore = req.LastAccessedBefore,
             CurrentPage = req.CurrentPage,
             PageSize = req.PageSize,
-        }, ct);
-
-        await Send.OkAsync(new PaginatedResult<StreamHistoryDto>
-        {
-            Items = items,
-            TotalCount = total,
-            CurrentPage = req.CurrentPage,
-            PageSize = req.PageSize,
-        }, ct);
+        }, ct), ct);
     }
 }
