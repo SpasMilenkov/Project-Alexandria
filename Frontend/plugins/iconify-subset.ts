@@ -166,8 +166,15 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "skip-next",
     "skip-previous",
     "repeat",
+    "repeat-once",
+    "video-outline",
+    "film-open-outline",
+    "transfer",
+    "playlist-plus",
+    "playlist-minus",
     "luggage",
-    "music-note",
+    "fullscreen",
+    "fullscreen-exit",
     "shuffle-variant",
     "microphone-variant",
     "playlist-play",
@@ -316,7 +323,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
 
 export const iconifySubsetPlugin = (): Plugin => {
   const virtualModuleId = "virtual:iconify-subset";
-  const resolvedId = "\0" + virtualModuleId;
+  const resolvedId = `\0${  virtualModuleId}`;
 
   return {
     async load(id) {
