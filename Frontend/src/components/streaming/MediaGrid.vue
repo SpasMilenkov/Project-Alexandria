@@ -203,16 +203,16 @@ import { usePlayerStore } from "@/stores/stream-player";
 
 import MediaCard from "./MediaCard.vue";
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+// Props
 
 const { mediaType } = defineProps<{ mediaType: "video" | "audio" }>();
 
-// ─── Store ────────────────────────────────────────────────────────────────────
+// Store
 
 const playerStore = usePlayerStore();
 const mySourceId = computed(() => `library-${mediaType}`);
 
-// ─── View mode (persisted to localStorage) ───────────────────────────────────
+// View mode (persisted to localStorage)
 
 const storageKey = `media-view-mode-${mediaType}`;
 const defaultMode = mediaType === "audio" ? "list" : "grid";
@@ -221,8 +221,6 @@ const viewMode = ref<"grid" | "list">(
 );
 watch(viewMode, (m) => localStorage.setItem(storageKey, m));
 
-// ─── Display pagination ───────────────────────────────────────────────────────
-//
 // Accumulates raw library pages for the virtual scroller.
 // Completely independent from the player store's sliding window.
 

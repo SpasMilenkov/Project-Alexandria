@@ -96,7 +96,7 @@ import { type MediaFileDto } from "@/api/streaming";
 import { getPreview } from "@/queries/files";
 import { formatDuration } from "@/utils/date-formatters";
 
-// ─── Props & emits ────────────────────────────────────────────────────────────
+// Props & emits
 
 const { file, mediaType } = defineProps<{
   file: MediaFileDto;
@@ -108,7 +108,7 @@ const emit = defineEmits<{
   enqueue: [file: MediaFileDto];
 }>();
 
-// ─── Thumbnail (presigned URL, fetched per-row) ───────────────────────────────
+// Thumbnail (presigned URL, fetched per-row)
 
 const { data: preview, isLoading: previewLoading } = useQuery(() => getPreview(file.fileId));
 
