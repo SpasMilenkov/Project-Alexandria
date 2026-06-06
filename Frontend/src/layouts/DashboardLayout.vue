@@ -219,8 +219,17 @@ import { OnboardingStep } from "@/enums";
 import router from "@/router";
 import { useAuthStore } from "@/stores/auth";
 import { usePlayerStore } from "@/stores/stream-player";
+import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext";
+
 
 const streamingEnabled = import.meta.env.VITE_STREAMING_ENABLED === "true";
+
+// Add after the existing composable calls (useSettingsSync, useOnboardingGuard)
+// The guard matches the streamingEnabled flag already used in the template.
+if (streamingEnabled) {
+  useStreamingMediaContext();
+}
+
 
 const AudioSkin = streamingEnabled
   ? defineAsyncComponent(() => import("@/components/streaming/AudioPlayerSkin.vue"))

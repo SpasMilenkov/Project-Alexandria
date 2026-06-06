@@ -28,17 +28,19 @@ type UpNextItem =
   | { kind: "source"; file: MediaFileDto; sourceIndex: number };
 
 /**
- * Describes how to lazily expand the playback source list.
- * Set when playback is started from an infinite-scroll source (e.g. the media
- * library) so that next() can fetch more items before the loaded window runs out.
+ * Describes how to lazily expand the playback source window.
+ * Replaces the old PlaybackContext — callers pass fetchPage + pageSize
+ * when starting playback from a paginated source.
  */
-export interface PlaybackContext {
+type Cursor = {
   fetchPage: (page: number) => Promise<{ items: MediaFileDto[]; totalPages: number }>;
-  loadedPage: number;
-  totalPages: number;
-}
+  pageSize: number;
+};
+
+const MAX_WINDOW_PAGES = 3;
 
 let _engine: EngineControls | null = null;
+let _cursor: Cursor | null = null;
 
 export const usePlayerStore = defineStore(
   "player",
@@ -48,41 +50,41 @@ export const usePlayerStore = defineStore(
     const snapCorner = ref<"tl" | "tr" | "bl" | "br">("br");
     const volume = ref(0.5);
     const queueEnded = ref(false);
-    const currentIndex = ref(-1);
     const autoplay = ref(true);
     const videoAutoplay = ref(true);
     const playerMode = ref<"expanded" | "pip" | "strip">("pip");
     const activePlaylistId = ref<string | null>(null);
     const repeatMode = ref<"off" | "all" | "one">("off");
     const shuffled = ref(false);
-    const sourceList = ref<MediaFileDto[]>([]);
     const sourceId = ref<string | null>(null);
-    const originalSourceList = ref<MediaFileDto[]>([]);
     const userQueue = ref<MediaFileDto[]>([]);
-    const loadedPage = ref(0);
     const totalPages = ref(0);
+    const cursorPage = ref(1); // page number that contains activeFile
+    const cursorOffset = ref(0); // index within that page
 
-    // Runtime-only playback state
+    // Runtime window (not persisted)
+    const sourceList = ref<MediaFileDto[]>([]);
+    const originalSourceList = ref<MediaFileDto[]>([]);
+    const currentIndex = ref(-1);
+    const windowStartPage = ref(1);
+    const windowEndPage = ref(1);
+
+    // Runtime playback state
     const currentTime = ref(0);
     const duration = ref(0);
     const isPlaying = ref(false);
 
-    // Runtime-only quality state
+    // Runtime quality state
     const variantTracks = ref<VariantTrack[]>([]);
     const activeVariantId = ref<number | null>(null);
     const abrEnabled = ref(true);
     const playbackRate = ref(1);
 
-    // Runtime-only autoplay countdown (video only)
+    // Runtime autoplay countdown (video only)
     const autoplayCountdown = ref<number | null>(null);
     let _countdownInterval: ReturnType<typeof setInterval> | null = null;
     let _completionTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    /**
-     * Runtime-only lazy expansion context.
-     * Not persisted — restored on mount by useStreamingMediaContext().
-     */
-    let _playbackContext: PlaybackContext | null = null;
     const isExpandingSource = ref(false);
 
     // Computed
@@ -90,13 +92,18 @@ export const usePlayerStore = defineStore(
       () =>
         userQueue.value.length > 0 ||
         isExpandingSource.value ||
-        (_playbackContext !== null && _playbackContext.loadedPage < _playbackContext.totalPages) ||
-        (repeatMode.value !== "off"
-          ? sourceList.value.length > 1
-          : currentIndex.value < sourceList.value.length - 1),
+        currentIndex.value < sourceList.value.length - 1 ||
+        windowEndPage.value < totalPages.value ||
+        (sourceList.value.length === 0 && cursorPage.value < totalPages.value) ||
+        (repeatMode.value !== "off" && totalPages.value > 0),
     );
 
-    const hasPrevious = computed(() => currentIndex.value > 0);
+    const hasPrevious = computed(
+      () =>
+        currentIndex.value > 0 ||
+        windowStartPage.value > 1 ||
+        (sourceList.value.length === 0 && (cursorPage.value > 1 || cursorOffset.value > 0)),
+    );
 
     const upNextItems = computed((): UpNextItem[] => [
       ...userQueue.value.map((file, i) => ({
@@ -132,6 +139,7 @@ export const usePlayerStore = defineStore(
     const playNow = (files: MediaFileDto[]) => {
       if (!files.length) return;
       userQueue.value = [...files.slice(1), ...userQueue.value];
+      console.log(userQueue.value)
       activeFile.value = files[0];
     };
 
@@ -221,69 +229,138 @@ export const usePlayerStore = defineStore(
       }, 1_000);
     };
 
-    // Source management
+    // Cursor helper
+    /**
+     * Keeps the persisted cursorPage/cursorOffset in sync with the current
+     * window position so we can rebuild the window after a page reload.
+     */
+    const updateCursor = () => {
+      if (!_cursor) return;
+      const pagesBeforeCurrent = Math.floor(currentIndex.value / _cursor.pageSize);
+      cursorPage.value = windowStartPage.value + pagesBeforeCurrent;
+      cursorOffset.value = currentIndex.value % _cursor.pageSize;
+    };
 
+    // Source management
     /**
      * Start playback from a new source snapshot.
      *
-     * Pass `context` when the source is a paginated/infinite list so the store
-     * can lazily fetch more pages as playback advances. Omit for bounded
-     * sources (playlists, search results already fully loaded, etc.).
+     * Callers supply the already-loaded page slice, the page number it came
+     * from, and a fetchPage callback so the store can slide the window
+     * forward/backward without re-fetching the initial page.
      */
     const setSource = (
-      files: MediaFileDto[],
+      pageItems: MediaFileDto[],
       id: string,
-      startIndex: number,
-      context?: PlaybackContext,
+      pageNum: number,
+      activeIndexInPage: number,
+      ttlPages: number,
+      fetchPage: Cursor["fetchPage"],
     ) => {
       if (sourceId.value !== id) userQueue.value = [];
-      sourceList.value = files;
       sourceId.value = id;
-      shuffled.value = false;
+      sourceList.value = [...pageItems];
       originalSourceList.value = [];
-      currentIndex.value = startIndex;
-      activeFile.value = files[startIndex] ?? null;
-      _playbackContext = context ?? null;
-      loadedPage.value = context?.loadedPage ?? 0;
-      totalPages.value = context?.totalPages ?? 0;
+      shuffled.value = false;
+      windowStartPage.value = pageNum;
+      windowEndPage.value = pageNum;
+      currentIndex.value = activeIndexInPage;
+      cursorPage.value = pageNum;
+      cursorOffset.value = activeIndexInPage;
+      totalPages.value = ttlPages;
+      activeFile.value = pageItems[activeIndexInPage] ?? null;
+      _cursor = { fetchPage, pageSize: pageItems.length || 20 };
     };
 
     /**
      * Restores the runtime fetch context after navigation destroys the
      * originating component. Called by useStreamingMediaContext() in the layout.
+     * Now async — callers should await it.
      */
-    const restoreContext = (fetchPage: PlaybackContext["fetchPage"]) => {
+    const restoreContext = async (fetchPage: Cursor["fetchPage"], pageSize = 20) => {
       if (!sourceId.value) return;
-      _playbackContext = {
-        fetchPage,
-        loadedPage: loadedPage.value,
-        totalPages: totalPages.value,
-      };
+      _cursor = { fetchPage, pageSize };
+      if (sourceList.value.length > 0) return; // window already populated
+      isExpandingSource.value = true;
+      try {
+        const { items, totalPages: tp } = await fetchPage(cursorPage.value);
+        totalPages.value = tp;
+        sourceList.value = items;
+        windowStartPage.value = cursorPage.value;
+        windowEndPage.value = cursorPage.value;
+        const safeOffset = Math.min(cursorOffset.value, items.length - 1);
+        currentIndex.value = Math.max(0, safeOffset);
+        // If the file at the cursor slot changed (upload/delete), find it by id
+        if (items[currentIndex.value]?.fileId !== activeFile.value?.fileId) {
+          const match = items.findIndex((f) => f.fileId === activeFile.value?.fileId);
+          if (match !== -1) currentIndex.value = match;
+        }
+      } finally {
+        isExpandingSource.value = false;
+      }
     };
 
     const playFromSource = (index: number) => {
       currentIndex.value = index;
       activeFile.value = sourceList.value[index] ?? null;
+      updateCursor();
     };
 
-    // Lazy source expansion
-    const _expandSource = async () => {
-      if (!_playbackContext) return;
-      if (_playbackContext.loadedPage >= _playbackContext.totalPages) return;
-      if (isExpandingSource.value) return;
-
+    // Lazy window expansion
+    const _expandForward = async (): Promise<boolean> => {
+      if (!_cursor || isExpandingSource.value) return false;
+      if (windowEndPage.value >= totalPages.value) return false;
       isExpandingSource.value = true;
       try {
-        const nextPage = _playbackContext.loadedPage + 1;
-        const result = await _playbackContext.fetchPage(nextPage);
-        _playbackContext.loadedPage = nextPage;
-        _playbackContext.totalPages = result.totalPages;
-        loadedPage.value = nextPage;
-        totalPages.value = result.totalPages;
+        const nextPage = windowEndPage.value + 1;
+        const { items, totalPages: tp } = await _cursor.fetchPage(nextPage);
+        totalPages.value = tp;
+        const existing = new Set(sourceList.value.map((f) => f.fileId));
+        const fresh = items.filter((f) => !existing.has(f.fileId));
+        if (!fresh.length) {
+          windowEndPage.value = nextPage;
+          return false;
+        }
+        sourceList.value = [...sourceList.value, ...fresh];
+        windowEndPage.value = nextPage;
+        // Trim the front when the window exceeds MAX_WINDOW_PAGES
+        const maxItems = MAX_WINDOW_PAGES * _cursor.pageSize;
+        if (sourceList.value.length > maxItems && windowStartPage.value < windowEndPage.value) {
+          const trim = sourceList.value.length - maxItems;
+          sourceList.value = sourceList.value.slice(trim);
+          windowStartPage.value++;
+          currentIndex.value = Math.max(0, currentIndex.value - trim);
+        }
+        return true;
+      } finally {
+        isExpandingSource.value = false;
+      }
+    };
 
-        const existingIds = new Set(sourceList.value.map((f) => f.fileId));
-        const fresh = result.items.filter((f) => !existingIds.has(f.fileId));
-        if (fresh.length) sourceList.value = [...sourceList.value, ...fresh];
+    const _expandBackward = async (): Promise<boolean> => {
+      if (!_cursor || isExpandingSource.value) return false;
+      if (windowStartPage.value <= 1) return false;
+      isExpandingSource.value = true;
+      try {
+        const prevPage = windowStartPage.value - 1;
+        const { items, totalPages: tp } = await _cursor.fetchPage(prevPage);
+        totalPages.value = tp;
+        const existing = new Set(sourceList.value.map((f) => f.fileId));
+        const fresh = items.filter((f) => !existing.has(f.fileId));
+        if (!fresh.length) {
+          windowStartPage.value = prevPage;
+          return false;
+        }
+        sourceList.value = [...fresh, ...sourceList.value];
+        windowStartPage.value = prevPage;
+        currentIndex.value += fresh.length; // still points to the same file
+        // Trim the back
+        const maxItems = MAX_WINDOW_PAGES * _cursor.pageSize;
+        if (sourceList.value.length > maxItems) {
+          sourceList.value = sourceList.value.slice(0, maxItems);
+          windowEndPage.value--;
+        }
+        return true;
       } finally {
         isExpandingSource.value = false;
       }
@@ -305,6 +382,11 @@ export const usePlayerStore = defineStore(
       if (!file) return;
       userQueue.value = userQueue.value.slice(index + 1);
       activeFile.value = file;
+      const srcIdx = sourceList.value.findIndex((f) => f.fileId === file.fileId);
+      if (srcIdx !== -1) {
+        currentIndex.value = srcIdx;
+        updateCursor();
+      }
     };
 
     // Navigation
@@ -323,46 +405,79 @@ export const usePlayerStore = defineStore(
         const srcIdx = sourceList.value.findIndex((f) => f.fileId === file.fileId);
         if (srcIdx !== -1) currentIndex.value = srcIdx;
         activeFile.value = file;
+        updateCursor();
         return;
       }
 
-      // Pre-fetch when within 5 tracks of the loaded window edge
-      const nearEnd =
-        _playbackContext &&
+      // Prefetch when within 5 tracks of the window's trailing edge
+      if (
         currentIndex.value >= sourceList.value.length - 5 &&
-        _playbackContext.loadedPage < _playbackContext.totalPages;
-
-      if (nearEnd) await _expandSource();
+        windowEndPage.value < totalPages.value
+      ) {
+        await _expandForward();
+      }
 
       if (currentIndex.value < sourceList.value.length - 1) {
         currentIndex.value++;
         activeFile.value = sourceList.value[currentIndex.value];
+        updateCursor();
         return;
       }
 
-      // We're at the end of the loaded window — try to expand before giving up
-      if (_playbackContext && _playbackContext.loadedPage < _playbackContext.totalPages) {
-        await _expandSource();
-        if (currentIndex.value < sourceList.value.length - 1) {
+      // Still at the end — try one more expansion before giving up
+      if (windowEndPage.value < totalPages.value) {
+        const ok = await _expandForward();
+        if (ok && currentIndex.value < sourceList.value.length - 1) {
           currentIndex.value++;
           activeFile.value = sourceList.value[currentIndex.value];
+          updateCursor();
           return;
         }
       }
 
       if (repeatMode.value === "all") {
+        if (_cursor) {
+          isExpandingSource.value = true;
+          try {
+            const { items, totalPages: tp } = await _cursor.fetchPage(1);
+            totalPages.value = tp;
+            sourceList.value = items;
+            windowStartPage.value = 1;
+            windowEndPage.value = 1;
+          } finally {
+            isExpandingSource.value = false;
+          }
+        }
         currentIndex.value = 0;
-        activeFile.value = sourceList.value[0];
+        activeFile.value = sourceList.value[0] ?? null;
+        updateCursor();
       } else {
         queueEnded.value = true;
       }
     };
 
-    const previous = () => {
+    const previous = async () => {
       if (!hasPrevious.value) return;
       clearCountdown();
-      currentIndex.value--;
-      activeFile.value = sourceList.value[currentIndex.value];
+
+      if (currentIndex.value > 0) {
+        currentIndex.value--;
+        activeFile.value = sourceList.value[currentIndex.value];
+        updateCursor();
+        return;
+      }
+
+      if (windowStartPage.value > 1) {
+        const prevWindowIdx = currentIndex.value;
+        const ok = await _expandBackward();
+        // _expandBackward adjusts currentIndex to still point to the same file.
+        // Step back one more to actually go to the previous track.
+        if (ok && currentIndex.value > prevWindowIdx) {
+          currentIndex.value--;
+          activeFile.value = sourceList.value[currentIndex.value];
+          updateCursor();
+        }
+      }
     };
 
     const restartQueue = () => {
@@ -375,12 +490,16 @@ export const usePlayerStore = defineStore(
     const setCurrentIndex = (idx: number) => {
       currentIndex.value = idx;
       activeFile.value = sourceList.value[idx] ?? null;
+      updateCursor();
     };
 
     const setActiveFile = (file: MediaFileDto) => {
       activeFile.value = file;
       const idx = sourceList.value.findIndex((f) => f.fileId === file.fileId);
-      currentIndex.value = idx;
+      if (idx !== -1) {
+        currentIndex.value = idx;
+        updateCursor();
+      }
     };
 
     // Shuffle
@@ -390,8 +509,11 @@ export const usePlayerStore = defineStore(
         sourceList.value = [...originalSourceList.value];
         originalSourceList.value = [];
         shuffled.value = false;
+        windowStartPage.value = 1;
+        windowEndPage.value = 1;
         if (currentFile) {
           currentIndex.value = sourceList.value.findIndex((f) => f.fileId === currentFile.fileId);
+          updateCursor();
         }
       } else {
         originalSourceList.value = [...sourceList.value];
@@ -404,8 +526,9 @@ export const usePlayerStore = defineStore(
         sourceList.value = current ? [current, ...rest] : rest;
         currentIndex.value = current ? 0 : -1;
         shuffled.value = true;
-        // Shuffle invalidates lazy context — reordered list is source of truth now
-        _playbackContext = null;
+        // Shuffle invalidates lazy fetch — window is the source of truth now
+        _cursor = null;
+        updateCursor();
       }
     };
 
@@ -429,18 +552,23 @@ export const usePlayerStore = defineStore(
       activeFile,
       snapCorner,
       volume,
-      currentIndex,
+      cursorPage,
+      cursorOffset,
+      sourceId,
+      userQueue,
       autoplay,
       videoAutoplay,
       playerMode,
       activePlaylistId,
       repeatMode,
       shuffled,
-      sourceList,
-      sourceId,
-      userQueue,
-      loadedPage,
       totalPages,
+
+      // Runtime window
+      sourceList,
+      currentIndex,
+      windowStartPage,
+      windowEndPage,
 
       // Computed
       upNextItems,
@@ -521,17 +649,15 @@ export const usePlayerStore = defineStore(
         "activeFile",
         "snapCorner",
         "volume",
-        "currentIndex",
+        "cursorPage",
+        "cursorOffset",
         "sourceId",
         "userQueue",
         "autoplay",
-        "sourceList",
-        "originalSourceList",
         "videoAutoplay",
         "playerMode",
         "repeatMode",
         "shuffled",
-        "loadedPage",
         "totalPages",
       ],
     },

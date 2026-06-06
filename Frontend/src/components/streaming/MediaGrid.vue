@@ -1,10 +1,10 @@
 <template>
   <section class="px-2 flex flex-col h-full overflow-hidden">
     <div
-      class="sticky top-0 z-10 -mx-6 px-6 pt-4 pb-3 mb-5 bg-white/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-black/[0.04] dark:border-white/[0.04]"
+      class="sticky top-0 z-10 px-2 pt-4 pb-3 mb-5 w-full justify-evenly bg-white/90 dark:bg-neutral-950/90 backdrop-blur-md border-b border-black/[0.04] dark:border-white/[0.04]"
     >
-      <div class="flex items-center justify-between mb-2.5">
-        <div class="flex items-center gap-3">
+      <div class="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:flex sm:items-center sm:gap-8">
+        <div class="flex items-center gap-3 order-1">
           <h2
             class="text-xs font-semibold tracking-widest uppercase text-gray-400 dark:text-white/35 m-0"
           >
@@ -18,7 +18,14 @@
           </span>
         </div>
 
-        <div class="flex items-center gap-1.5">
+        <MediaSearchBar
+          :mediaType="mediaType"
+          class="order-3 col-span-2 sm:order-2 sm:flex-1 sm:min-w-0"
+        />
+
+        <div
+          class="flex items-center gap-1.5 order-2 justify-end sm:order-3 sm:justify-start sm:shrink-0"
+        >
           <button
             class="p-1.5 rounded-md text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
             aria-label="Refresh"
@@ -62,27 +69,6 @@
           </div>
         </div>
       </div>
-
-      <div class="relative">
-        <Icon
-          icon="mdi:magnify"
-          class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-white/25 pointer-events-none"
-        />
-        <input
-          v-model="searchQuery"
-          type="search"
-          placeholder="Search…"
-          class="w-full pl-8 pr-7 py-1.5 text-sm rounded-lg bg-black/[0.04] dark:bg-white/[0.06] border border-transparent focus:border-black/10 dark:focus:border-white/15 focus:outline-none text-gray-700 dark:text-white/75 placeholder-gray-400 dark:placeholder-white/25 transition-colors duration-150"
-        />
-        <button
-          v-if="searchQuery"
-          class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/25 hover:text-gray-600 dark:hover:text-white/50 transition-colors duration-150"
-          aria-label="Clear search"
-          @click="clearSearch"
-        >
-          <Icon icon="mdi:close" class="w-3.5 h-3.5" />
-        </button>
-      </div>
     </div>
 
     <!-- Loading: Grid skeleton -->
@@ -91,7 +77,7 @@
       class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
     >
       <div
-        v-for="i in pageSize"
+        v-for="i in LIBRARY_PAGE_SIZE"
         :key="i"
         class="rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] animate-pulse"
       >
@@ -109,7 +95,7 @@
       class="flex flex-col rounded-xl border border-black/[0.06] dark:border-white/[0.06] overflow-hidden"
     >
       <div
-        v-for="i in pageSize"
+        v-for="i in LIBRARY_PAGE_SIZE"
         :key="i"
         class="flex items-center gap-3 px-3 py-2.5 animate-pulse border-b border-black/[0.04] dark:border-white/[0.04] last:border-b-0"
       >
@@ -131,19 +117,11 @@
       <p class="text-sm text-gray-500 dark:text-white/40 m-0">Failed to load media library</p>
     </div>
 
-    <!-- Empty / no results -->
+    <!-- Empty -->
     <div v-else-if="!allItems.length" class="flex flex-col items-center gap-3 py-20 text-center">
-      <Icon
-        :icon="debouncedQuery ? 'mdi:file-search-outline' : 'mdi:video-off-outline'"
-        class="w-10 h-10 text-gray-300 dark:text-white/[0.18]"
-      />
-      <p class="text-sm text-gray-500 dark:text-white/40 m-0">
-        {{ debouncedQuery ? `No results for "${debouncedQuery}"` : "No streamable media found" }}
-      </p>
-      <p
-        v-if="!debouncedQuery"
-        class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0"
-      >
+      <Icon icon="mdi:video-off-outline" class="w-10 h-10 text-gray-300 dark:text-white/[0.18]" />
+      <p class="text-sm text-gray-500 dark:text-white/40 m-0">No streamable media found</p>
+      <p class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0">
         Files need a completed transcoding job before they appear here.
       </p>
     </div>
@@ -216,18 +194,25 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
-import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
+import { computed, ref, watch, watchEffect } from "vue";
 
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
+import { LIBRARY_PAGE_SIZE } from "@/composables/useStreamingMediaContext";
 import { getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 
 import MediaCard from "./MediaCard.vue";
 
+// Props
+
 const { mediaType } = defineProps<{ mediaType: "video" | "audio" }>();
+
+// Store
 
 const playerStore = usePlayerStore();
 const mySourceId = computed(() => `library-${mediaType}`);
+
+// View mode (persisted to localStorage)
 
 const storageKey = `media-view-mode-${mediaType}`;
 const defaultMode = mediaType === "audio" ? "list" : "grid";
@@ -236,31 +221,11 @@ const viewMode = ref<"grid" | "list">(
 );
 watch(viewMode, (m) => localStorage.setItem(storageKey, m));
 
-const searchQuery = ref("");
-const debouncedQuery = ref("");
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-watch(searchQuery, (val) => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    debouncedQuery.value = val.trim();
-  }, 300);
-});
-
-const clearSearch = () => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  searchQuery.value = "";
-  debouncedQuery.value = "";
-};
+// Accumulates raw library pages for the virtual scroller.
+// Completely independent from the player store's sliding window.
 
 const page = ref(1);
-const pageSize = ref(20);
 const allItems = ref<MediaFileDto[]>([]);
-
-watch(debouncedQuery, () => {
-  allItems.value = [];
-  page.value = 1;
-});
 
 watch(
   () => mediaType,
@@ -278,9 +243,9 @@ const {
 } = useQuery(() =>
   getFilesForStreaming({
     page: page.value,
-    pageSize: pageSize.value,
+    pageSize: LIBRARY_PAGE_SIZE,
     isVideo: mediaType === "video",
-    query: debouncedQuery.value || null,
+    query: null,
   }),
 );
 
@@ -322,26 +287,32 @@ const onRefresh = () => {
   if (wasAlreadyOnFirstPage) refetchQuery();
 };
 
-const onFileClick = async (file: MediaFileDto) => {
-  const baseParams = {
-    isVideo: mediaType === "video",
-    pageSize: 50,
-    query: debouncedQuery.value || null,
-  };
+const onFileClick = (file: MediaFileDto) => {
+  const globalIndex = allItems.value.findIndex((f) => f.fileId === file.fileId);
+  if (globalIndex === -1) return;
 
-  const firstPage = await streamingApi.getFilesForStreaming({ ...baseParams, page: 1 });
+  const sourcePage = Math.floor(globalIndex / LIBRARY_PAGE_SIZE) + 1;
+  const indexInPage = globalIndex % LIBRARY_PAGE_SIZE;
+  const pageStart = (sourcePage - 1) * LIBRARY_PAGE_SIZE;
+  const pageItems = allItems.value.slice(pageStart, pageStart + LIBRARY_PAGE_SIZE);
 
-  const idx = Math.max(
-    0,
-    firstPage.items.findIndex((f) => f.fileId === file.fileId),
+  playerStore.setSource(
+    pageItems,
+    mySourceId.value,
+    sourcePage,
+    indexInPage,
+    data.value?.totalPages ?? 1,
+    (p) =>
+      streamingApi.getFilesForStreaming({
+        page: p,
+        pageSize: LIBRARY_PAGE_SIZE,
+        isVideo: mediaType === "video",
+        query: null,
+      }),
   );
-
-  playerStore.setSource(firstPage.items, mySourceId.value, idx, {
-    loadedPage: 1,
-    totalPages: firstPage.totalPages,
-    fetchPage: (page) => streamingApi.getFilesForStreaming({ ...baseParams, page }),
-  });
 };
+
+// Grid layout
 
 const gridContainerRef = ref<HTMLElement | null>(null);
 const columnCount = ref(5);
@@ -351,7 +322,7 @@ const gridRowHeight = computed(() => {
   if (!containerWidth.value) return 240;
   const gap = 12;
   const colWidth = (containerWidth.value - (columnCount.value - 1) * gap) / columnCount.value;
-  const thumbHeight = Math.round(colWidth * (mediaType === "video" ? 9.5  / 16 : 1));
+  const thumbHeight = Math.round(colWidth * (mediaType === "video" ? 9.5 / 16 : 1));
   return thumbHeight;
 });
 
