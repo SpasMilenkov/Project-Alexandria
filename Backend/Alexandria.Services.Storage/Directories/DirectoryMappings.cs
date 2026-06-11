@@ -20,7 +20,7 @@ public static class DirectoryMappings
                 ParentId: dir.ParentId ?? Guid.Empty,
                 CreatedAt: dir.CreatedAt,
                 UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
-                OwnerUserDto: dir.Owner.ToUserDto(),
+                OwnerUserDto: dir.Owner?.ToUserDto(),
                 Files: dir.Files?.Select(f => f.ToFileSummary()).ToList() ?? [],
                 Directories: dir.Children?.Select(c => c.ToSummaryDto()).ToList() ?? []
             );
