@@ -12,6 +12,7 @@ using Alexandria.Services.Storage.Cleanup;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Promotions;
+using Alexandria.Services.Storage.SignedUrls;
 using Alexandria.Services.Streaming;
 using Alexandria.Services.User;
 using Alexandria.Services.User.Settings;
@@ -63,6 +64,8 @@ public static class ServiceExtensions
         services.AddScoped<IPolicyDispatcher, PolicyDispatcher>();
         services.AddScoped<IDirectoryPolicyService, DirectoryPolicyService>();
         services.AddScoped<IJobQueue, JobQueue>();
+        services.AddScoped<ISignedUrlRepository, SignedUrlRepository>();
+        services.AddScoped<ISignedUrlService, SignedUrlService>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

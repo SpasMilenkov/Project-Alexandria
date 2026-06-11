@@ -4,6 +4,7 @@ using System.Numerics;
 using Alexandria.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using NpgsqlTypes;
 namespace Alexandria.Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260609135250_RemoveLegacyColumnsFromSignedUrl")]
+    partial class RemoveLegacyColumnsFromSignedUrl
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -950,9 +953,6 @@ namespace Alexandria.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("AccessCount")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -972,15 +972,6 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("FileVersionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("LastAccessedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("MaxAccessCount")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -998,8 +989,6 @@ namespace Alexandria.Data.Migrations
                     b.HasIndex("ExpiresAt");
 
                     b.HasIndex("FileId");
-
-                    b.HasIndex("FileVersionId");
 
                     b.ToTable("SignedUrls", (string)null);
                 });
@@ -1701,13 +1690,7 @@ namespace Alexandria.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Alexandria.Data.Models.FileVersion", "PinnedVersion")
-                        .WithMany()
-                        .HasForeignKey("FileVersionId");
-
                     b.Navigation("FileInfo");
-
-                    b.Navigation("PinnedVersion");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.StreamHistory", b =>

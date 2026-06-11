@@ -23,6 +23,7 @@ public interface IUnitOfWork : IDisposable
     IPolicyRuleRepository PolicyRules { get; }
     IDirectoryPolicyRepository DirectoryPolicies { get; }
     IPlaylistRepository Playlists { get; }
+    ISignedUrlRepository SignedUrls { get; }
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);

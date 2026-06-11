@@ -3,7 +3,6 @@ import type { Plugin } from "vite";
 // vite-plugin-iconify-subset.ts
 import { getIcons } from "@iconify/utils";
 
-// Your icon lists, centralised here
 const ICON_SUBSETS: Record<string, string[]> = {
   formkit: ["zip"],
   heroicons: [
@@ -169,6 +168,12 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "repeat-once",
     "video-outline",
     "film-open-outline",
+    "clock-alert-outline",
+    "link-variant-off",
+    "link-variant-remove",
+    "download-off-outline",
+    "calendar-clock-outline",
+    "link-variant-plus",
     "transfer",
     "playlist-plus",
     "playlist-minus",

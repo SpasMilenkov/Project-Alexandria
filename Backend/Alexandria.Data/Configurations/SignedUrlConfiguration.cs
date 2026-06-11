@@ -1,8 +1,6 @@
 using Alexandria.Data.Models;
-using Alexandria.Data.Models.Enumerators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Alexandria.Data.Configurations;
 
@@ -12,23 +10,6 @@ public class SignedUrlConfiguration
     public void Configure(EntityTypeBuilder<SignedUrl> builder)
     {
         builder.HasKey(e => e.Id);
-
-        // String conversion for enum
-        var converter = new EnumToStringConverter<FilePermission>();
-        builder.Property(e => e.Permission)
-            .HasConversion(converter)
-            .HasColumnType("varchar(50)")
-            .IsRequired();
-
-        builder.Property(e => e.BucketName)
-            .HasMaxLength(ValidationConstants.StringLengths.MediumString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
-            .IsRequired();
-
-        builder.Property(e => e.ObjectName)
-            .HasMaxLength(ValidationConstants.StringLengths.LongString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.LongString})")
-            .IsRequired();
 
         builder.Property(e => e.Token)
             .HasMaxLength(ValidationConstants.StringLengths.ExtraLongString)
@@ -70,7 +51,6 @@ public class SignedUrlConfiguration
         // Indexes
         builder.HasIndex(e => e.FileId);
         builder.HasIndex(e => e.ExpiresAt);
-        builder.HasIndex(e => new { e.BucketName, e.ObjectName }); // Composite index
 
         builder.ToTable("SignedUrls");
     }

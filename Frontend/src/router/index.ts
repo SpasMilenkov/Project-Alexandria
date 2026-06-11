@@ -18,6 +18,12 @@ const router = createRouter({
       path: "/auth",
     },
     {
+      component: () => import("@/views/SharedLinkView.vue"),
+      meta: { layout: "default", requiresAuth: false },
+      name: "shared-link",
+      path: "/share/:token",
+    },
+    {
       component: () => import("@/views/dashboard/DashboardView.vue"),
       meta: { layout: "dashboard", requiresAuth: true },
       name: "dashboard",

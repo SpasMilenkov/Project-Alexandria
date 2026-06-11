@@ -22,30 +22,12 @@
         v-for="version in versionsData.items"
         :key="version.id"
         class="flex items-start gap-3 p-3 rounded-lg border transition-colors"
-        :class="
-          version.isDeleted
-            ? 'border-error/30 bg-error/5'
-            : version.versionNumber === currentVersionNumber
-              ? 'border-primary/30 bg-primary/5'
-              : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/30'
-        "
+        :class="getVersionRowClass(version)"
       >
         <Icon
-          :icon="
-            version.isDeleted
-              ? 'mdi-delete-clock'
-              : version.versionNumber === currentVersionNumber
-                ? 'mdi-check-circle'
-                : 'mdi-clock-outline'
-          "
+          :icon="getVersionIcon(version)"
           class="w-5 h-5 mt-0.5 shrink-0"
-          :class="
-            version.isDeleted
-              ? 'text-error'
-              : version.versionNumber === currentVersionNumber
-                ? 'text-primary'
-                : 'text-neutral-400 dark:text-neutral-500'
-          "
+          :class="getVersionIconClass(version)"
         />
 
         <div class="flex-1 min-w-0">
@@ -119,6 +101,18 @@
             :disabled="version.isDeleted"
             :title="`Download version ${version.versionNumber}`"
             @click="handleDownloadVersion(version.id)"
+          />
+
+          <!-- Share link -->
+          <UButton
+            v-if="!version.isDeleted"
+            icon="i-mdi-link-variant"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            square
+            :title="`Share version ${version.versionNumber}`"
+            @click="handleOpenShareModal(version)"
           />
 
           <!-- Transpilation popover -->
@@ -286,6 +280,7 @@ import { useQuery } from "@pinia/colada";
 import { computed, reactive, ref } from "vue";
 
 import { AudioRung, VideoRung } from "@/api/policy";
+import ShareLinkModal from "./Modals/ShareLinkModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { changeActiveVersion, deleteVersion, restoreFileVersion } from "@/mutations/files";
@@ -293,6 +288,15 @@ import { queueTranspilationJob } from "@/mutations/streaming";
 import { getVersionsForFile } from "@/queries/files";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { formatBytes } from "@/utils/size.utils";
+
+interface FileVersionDto {
+  id: string;
+  versionNumber: number;
+  size: number | string;
+  mimeType: string;
+  isDeleted: boolean;
+  isEncrypted: boolean;
+}
 
 const props = defineProps<{
   fileId: string;
@@ -306,6 +310,42 @@ const emit = defineEmits<{
 }>();
 
 const toast = useAppToast();
+
+// Version status presentation
+
+type VersionStatus = "deleted" | "current" | "default";
+
+const VERSION_ROW_CLASSES: Record<VersionStatus, string> = {
+  deleted: "border-error/30 bg-error/5",
+  current: "border-primary/30 bg-primary/5",
+  default: "border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/30",
+};
+
+const VERSION_ICONS: Record<VersionStatus, string> = {
+  deleted: "mdi-delete-clock",
+  current: "mdi-check-circle",
+  default: "mdi-clock-outline",
+};
+
+const VERSION_ICON_CLASSES: Record<VersionStatus, string> = {
+  deleted: "text-error",
+  current: "text-primary",
+  default: "text-neutral-400 dark:text-neutral-500",
+};
+
+const getVersionStatus = (version: FileVersionDto): VersionStatus => {
+  if (version.isDeleted) return "deleted";
+  if (version.versionNumber === props.currentVersionNumber) return "current";
+  return "default";
+};
+
+const getVersionRowClass = (version: FileVersionDto) =>
+  VERSION_ROW_CLASSES[getVersionStatus(version)];
+
+const getVersionIcon = (version: FileVersionDto) => VERSION_ICONS[getVersionStatus(version)];
+
+const getVersionIconClass = (version: FileVersionDto) =>
+  VERSION_ICON_CLASSES[getVersionStatus(version)];
 
 // Rung option definitions
 
@@ -352,6 +392,20 @@ const selectedRungCount = (versionId: string, mimeType: string) =>
   isVideoFile(mimeType)
     ? (selectedVideoRungs[versionId]?.length ?? 0)
     : (selectedAudioRungs[versionId]?.length ?? 0);
+
+// Share link modal
+
+const overlay = useOverlay();
+const shareLinkModal = overlay.create(ShareLinkModal);
+
+const handleOpenShareModal = (version: FileVersionDto) => {
+  shareLinkModal.open({
+    fileId: props.fileId,
+    fileName: props.fileName,
+    fileVersionId: version.id,
+    versionNumber: version.versionNumber,
+  });
+};
 
 // Download
 
