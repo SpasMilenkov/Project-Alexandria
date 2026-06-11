@@ -407,6 +407,7 @@
                   @copy="openTransferModal('copy')"
                   @delete="handleDelete"
                   @move="openTransferModal('move')"
+                  @share="handleShare(file.fileId, file.fileName)"
                   @contextmenu="handleItemClick($event, file.fileId, 'file')"
                   :class="{
                     'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
@@ -504,20 +505,22 @@
                 :tags="tagsData?.items"
                 :is-selected="isFileSelected(file.fileId)"
                 :selected-count="selectedCount"
-                @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
-                @download="handleDownload('file', file.fileId)"
-                @click="handleItemClick($event, file.fileId, 'file')"
-                @copy="handleCopy"
-                @delete="handleDelete"
-                @move="handleCut"
-                @contextmenu="handleItemClick($event, file.fileId, 'file')"
-                :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
-                :ref="
-                  (el: any) => {
-                    if (el) fileItemRefs[file.fileId] = el;
-                  }
-                "
-              />
+                  @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
+                  @download="handleDownload('file', file.fileId)"
+                  @click="handleItemClick($event, file.fileId, 'file')"
+                  @copy="handleCopy"
+                  @delete="handleDelete"
+                  @move="handleCut"
+                  @share="handleShare(file.fileId, file.fileName)"
+                  @contextmenu="handleItemClick($event, file.fileId, 'file')"
+                  :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
+                  :ref="
+                    (el: any) => {
+                      if (el) fileItemRefs[file.fileId] = el;
+                    }
+                  "
+                />
+              </div>
               <div
                 v-if="filesData?.hasNext"
                 class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
@@ -534,7 +537,6 @@
             </div>
           </div>
         </div>
-      </div>
     </UContextMenu>
   </div>
 </template>
@@ -573,6 +575,7 @@ import { useAppToast } from "@/composables/useAppToast";
 import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
 import UpdateFileModal from "./Modals/UpdateFileModal.vue";
 import FileTransferModal from "./Modals/Filetransfermodal.vue";
+import ShareLinkModal from "./Modals/ShareLinkModal.vue";
 import { getFileIcon } from "@/utils/icon.utils";
 import { type DropContents, useDropZone } from "@/composables/useDropZone";
 import type { NavItem } from "@/types/nav-item";
@@ -911,6 +914,7 @@ const confirmModal = overlay.create(ConfirmModal);
 const zipUploadChoiceModal = overlay.create(ZipUploadChoiceModal);
 const updateFileModal = overlay.create(UpdateFileModal);
 const fileTransferModal = overlay.create(FileTransferModal);
+const shareLinkModal = overlay.create(ShareLinkModal);
 
 const openTransferModal = async (mode: "move" | "copy") => {
   // Build rich chip metadata from what we already have rendered
@@ -992,6 +996,10 @@ const handleDirectoryRename = async (directoryId: string) => {
 const handleFileRename = async (fileId: string, originalName: string) => {
   const instance = updateFileModal.open({ fileId, originalName });
   if (await instance.result) appToast.success("File updated successfully");
+};
+
+const handleShare = (fileId: string, fileName: string) => {
+  shareLinkModal.open({ fileId, fileName });
 };
 
 const handleDownload = async (type: "dir" | "file", emittedId?: string) => {
