@@ -8,7 +8,7 @@ import { usePlayerStore } from "@/stores/stream-player";
  * store (navigation window). Must be the same value in both places so that
  * cursorPage / cursorOffset coordinates are valid after a restore.
  */
-export const LIBRARY_PAGE_SIZE = 20;
+export const LIBRARY_PAGE_SIZE = 50;
 
 /**
  * Restores the player store's lazy-fetch context after a navigation or
