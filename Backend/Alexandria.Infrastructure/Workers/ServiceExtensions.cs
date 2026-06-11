@@ -38,6 +38,7 @@ public static class ServiceExtensions
         services.AddScoped<IPolicyRuleRepository, PolicyRuleRepository>();
         services.AddScoped<IDirectoryPolicyRepository, DirectoryPolicyRepository>();
         services.AddScoped<IPlaylistRepository, PlaylistRepository>();
+        services.AddScoped<ISignedUrlRepository, SignedUrlRepository>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

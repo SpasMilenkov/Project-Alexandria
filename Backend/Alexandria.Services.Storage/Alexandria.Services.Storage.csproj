@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
+        <ProjectReference Include="..\Alexandria.Data\Alexandria.Data.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
