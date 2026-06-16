@@ -18,7 +18,9 @@ public class ContentObjectBuilder
     private DateTime? _orphanedAt = null;
     private Guid? _uploadId = null;
     private DateTime _createdAt = DateTime.UtcNow;
+    private DateTime? _updatedAt = null;
     private DateTime? _deletedAt = null;
+    private Guid? _updatedBy = null;
 
     public ContentObjectBuilder WithId(Guid id)
     {
@@ -87,6 +89,18 @@ public class ContentObjectBuilder
         return this;
     }
 
+    public ContentObjectBuilder WithUpdatedAt(DateTime? updatedAt)
+    {
+        _updatedAt = updatedAt;
+        return this;
+    }
+
+    public ContentObjectBuilder WithUpdatedBy(Guid? updatedBy)
+    {
+        _updatedBy = updatedBy;
+        return this;
+    }
+
     public ContentObject Build()
     {
         var hash = _hash;
@@ -104,7 +118,9 @@ public class ContentObjectBuilder
             OrphanedAt = _orphanedAt,
             UploadId = _uploadId,
             CreatedAt = _createdAt,
-            DeletedAt = _deletedAt
+            UpdatedAt = _updatedAt,
+            DeletedAt = _deletedAt,
+            UpdatedBy = _updatedBy
         };
     }
 }

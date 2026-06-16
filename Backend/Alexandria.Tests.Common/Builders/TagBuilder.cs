@@ -14,7 +14,10 @@ public class TagBuilder
     private string? _description = null;
     private Guid _ownerId = Guid.NewGuid();
     private DateTime _createdAt = DateTime.UtcNow;
+    private DateTime? _updatedAt = null;
     private DateTime? _deletedAt = null;
+    private Guid? _updatedBy = null;
+    private ApplicationUser? _owner = null;
 
     public TagBuilder WithId(Guid id)
     {
@@ -64,6 +67,24 @@ public class TagBuilder
         return this;
     }
 
+    public TagBuilder WithUpdatedAt(DateTime? updatedAt)
+    {
+        _updatedAt = updatedAt;
+        return this;
+    }
+
+    public TagBuilder WithUpdatedBy(Guid? updatedBy)
+    {
+        _updatedBy = updatedBy;
+        return this;
+    }
+
+    public TagBuilder WithOwner(ApplicationUser? owner)
+    {
+        _owner = owner;
+        return this;
+    }
+
     public Tag Build() => new()
     {
         Id = _id,
@@ -72,8 +93,11 @@ public class TagBuilder
         Color = _color,
         Description = _description,
         OwnerId = _ownerId,
+        Owner = _owner,
         CreatedAt = _createdAt,
+        UpdatedAt = _updatedAt,
         DeletedAt = _deletedAt,
+        UpdatedBy = _updatedBy,
         Files = []
     };
 }

@@ -13,7 +13,11 @@ public class UploadBuilder
     private BigInteger _size = BigInteger.Zero;
     private string _mimeType = "text/plain";
     private readonly DateTime _createdAt = DateTime.UtcNow;
+    private DateTime? _updatedAt = null;
+    private DateTime? _deletedAt = null;
+    private Guid? _updatedBy = null;
     private Guid _userId = Guid.NewGuid();
+    private ApplicationUser? _user = null;
     private DateTime? _finishedAt = null;
 
     public UploadBuilder WithId(Guid id)
@@ -64,6 +68,30 @@ public class UploadBuilder
         return this;
     }
 
+    public UploadBuilder WithUpdatedAt(DateTime? updatedAt)
+    {
+        _updatedAt = updatedAt;
+        return this;
+    }
+
+    public UploadBuilder WithDeletedAt(DateTime? deletedAt)
+    {
+        _deletedAt = deletedAt;
+        return this;
+    }
+
+    public UploadBuilder WithUpdatedBy(Guid? updatedBy)
+    {
+        _updatedBy = updatedBy;
+        return this;
+    }
+
+    public UploadBuilder WithUser(ApplicationUser user)
+    {
+        _user = user;
+        return this;
+    }
+
     public Upload Build() => new()
     {
         Id = _id,
@@ -73,7 +101,11 @@ public class UploadBuilder
         Size = _size,
         MimeType = _mimeType,
         CreatedAt = _createdAt,
+        UpdatedAt = _updatedAt,
+        DeletedAt = _deletedAt,
+        UpdatedBy = _updatedBy,
         UserId = _userId,
+        User = _user!,
         FinishedAt = _finishedAt
     };
 }
