@@ -19,7 +19,7 @@ public class S3ClientFactory(
     public IAmazonS3 CreateClient()
     {
         var resolved = _options.GetResolvedProviderSettings();
-        return BuildClient(resolved.Endpoint!, _options.UseHttps, resolved);
+        return BuildClient(resolved.Endpoint, _options.UseHttps, resolved);
     }
 
     public IAmazonS3 CreatePublicClient()
@@ -37,6 +37,7 @@ public class S3ClientFactory(
 
         if (string.IsNullOrWhiteSpace(endpoint))
             throw new InvalidOperationException($"Missing S3 endpoint for provider {_options.Provider}");
+        
 
         var credentials = new BasicAWSCredentials(resolved.AccessKey, resolved.SecretKey);
         var config = new AmazonS3Config
