@@ -160,6 +160,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "play-circle-outline",
     "chevron-left",
     "all-inclusive",
+    "music-note-outline",
     "picture-in-picture-bottom-right",
     "dock-bottom",
     "skip-next",
@@ -170,6 +171,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "film-open-outline",
     "clock-alert-outline",
     "link-variant-off",
+    "link-variant",
     "link-variant-remove",
     "download-off-outline",
     "calendar-clock-outline",
@@ -328,7 +330,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
 
 export const iconifySubsetPlugin = (): Plugin => {
   const virtualModuleId = "virtual:iconify-subset";
-  const resolvedId = `\0${  virtualModuleId}`;
+  const resolvedId = `\0${virtualModuleId}`;
 
   return {
     async load(id) {
