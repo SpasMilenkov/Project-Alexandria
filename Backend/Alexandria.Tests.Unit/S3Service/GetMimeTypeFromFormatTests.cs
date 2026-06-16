@@ -28,7 +28,7 @@ public class GetMimeTypeFromFormatTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("unknown_format")]
-    public void GetMimeTypeFromFormat_fallback(string format)
+    public void GetMimeTypeFromFormat_fallback(string? format)
     {
         Services.Storage.S3Service.GetMimeTypeFromFormat(format)
             .Should().Be("application/octet-stream");
