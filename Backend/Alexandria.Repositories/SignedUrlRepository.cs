@@ -37,7 +37,7 @@ public class SignedUrlRepository(AlexandriaDbContext context) : ISignedUrlReposi
         return entry.Entity;
     }
 
-    public async Task<bool> RevokeAsync(Guid id, string userId, CancellationToken ct = default)
+    public async Task<bool> RevokeAsync(Guid id, Guid userId, CancellationToken ct = default)
     {
         var entity = await _signedUrls
             .Where(s => s.Id == id && s.CreatorId == userId && s.DeletedAt == null)

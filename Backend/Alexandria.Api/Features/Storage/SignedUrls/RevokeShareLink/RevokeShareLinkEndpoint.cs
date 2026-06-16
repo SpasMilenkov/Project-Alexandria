@@ -30,7 +30,7 @@ internal sealed class RevokeShareLinkEndpoint(ISignedUrlService signedUrlService
 
     public override async Task HandleAsync(RevokeShareLinkRequest req, CancellationToken ct)
     {
-        var userId = User.GetUserId().ToString();
+        var userId = User.GetUserId();
         var revoked = await signedUrlService.RevokeShareLinkAsync(req.Id, userId, ct);
 
         if (!revoked)
