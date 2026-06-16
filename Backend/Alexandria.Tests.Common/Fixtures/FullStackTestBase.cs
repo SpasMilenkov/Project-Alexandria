@@ -24,11 +24,24 @@ public abstract class FullStackTestBase : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         Factory = new AlexandriaWebFactory(Fixture);
+    
+        try
+        {
+            Anon = Factory.CreateClient();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                $"WebApplicationFactory failed to start. Inner: {ex}", ex);
+        }
+
+        // Access Services first so startup exceptions surface with the real message
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
+    
         Anon = Factory.CreateClient();
         Auth = Factory.CreateAuthenticatedClient(UserId);
 
-        using var scope = Factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
         db.Users.Add(new UserBuilder().WithId(UserId).Build());
         await db.SaveChangesAsync();
     }
@@ -79,16 +92,17 @@ public abstract class FullStackTestBase : IAsyncLifetime
         configure?.Invoke(fb);
         var file = fb.Build();
 
+        // Link FileVersion to File before first save to satisfy FK constraint
+        fv.File = file;
+
         db.ContentObjects.Add(co);
         db.FileVersions.Add(fv);
         db.Files.Add(file);
         await db.SaveChangesAsync();
 
-        // Second pass: wire up the circular FK
+        // Second pass: wire up the remaining circular FK
         file.CurrentVersionId = fv.Id;
-        fv.FileId = file.Id;
         db.Files.Update(file);
-        db.FileVersions.Update(fv);
         await db.SaveChangesAsync();
 
         return file;

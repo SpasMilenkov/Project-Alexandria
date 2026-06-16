@@ -1,5 +1,3 @@
-// Tests.Common/Fixtures/AlexandriaFixture.cs
-
 using Alexandria.Data.Context;
 using Alexandria.Tests.Common.TestContainers;
 using Microsoft.EntityFrameworkCore;
@@ -107,9 +105,13 @@ public class AlexandriaFixture : IAsyncLifetime
         ["RabbitMQ:VirtualHost"] = RabbitMqVirtualHost,
 
         ["S3Storage:Endpoint"] = GarageEndpoint,
+        ["S3Storage:PublicEndpoint"] = GarageEndpoint,
         ["S3Storage:AccessKey"] = GarageAccessKey,
         ["S3Storage:SecretKey"] = GarageSecretKey,
         ["S3Storage:Region"] = GarageRegion,
+        ["S3Storage:Provider"] = "Garage",
+        ["S3Storage:ProviderSettings:Garage:Endpoint"] = GarageEndpoint,
+        
 
         ["Jwt:Secret"] = TestJwtSecret,
         ["Jwt:Issuer"] = TestJwtIssuer,
@@ -126,6 +128,8 @@ public class AlexandriaFixture : IAsyncLifetime
         // Workers don't exist in the test environment
         ["HealthChecks:Workers:0:Enabled"] = "false",
         ["HealthChecks:Workers:1:Enabled"] = "false",
+
+        ["Cors:AllowedOrigins:0"] = "http://localhost",
 
         // Skip database initialization — the fixture already runs migrations
         ["SkipDatabaseInit"] = "true",
