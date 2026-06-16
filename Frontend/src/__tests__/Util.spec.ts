@@ -52,39 +52,39 @@ describe("formatDate", () => {
 // formatBytes
 
 describe("formatBytes", () => {
-  it('returns "0 Bytes" for 0', () => {
-    expect(formatBytes(0)).toBe("0 Bytes");
+  it('returns "0.00 Bytes" for 0', () => {
+    expect(formatBytes(0)).toBe("0.00 Bytes");
   });
 
   it("formats bytes under 1 KB", () => {
-    expect(formatBytes(500)).toBe("500 Bytes");
+    expect(formatBytes(500)).toBe("500.00 Bytes");
   });
 
   it("formats kilobytes", () => {
-    expect(formatBytes(1024)).toBe("1 KB");
-    expect(formatBytes(2048)).toBe("2 KB");
+    expect(formatBytes(1024)).toBe("1.02 KB");
+    expect(formatBytes(2048)).toBe("2.05 KB");
   });
 
   it("formats megabytes", () => {
-    expect(formatBytes(1024 * 1024)).toBe("1 MB");
-    expect(formatBytes(1.5 * 1024 * 1024)).toBe("1.5 MB");
+    expect(formatBytes(1024 * 1024)).toBe("1.05 MB");
+    expect(formatBytes(1.5 * 1024 * 1024)).toBe("1.57 MB");
   });
 
   it("formats gigabytes", () => {
-    expect(formatBytes(1024 ** 3)).toBe("1 GB");
+    expect(formatBytes(1024 ** 3)).toBe("1.07 GB");
   });
 
   it("formats terabytes", () => {
-    expect(formatBytes(1024 ** 4)).toBe("1 TB");
+    expect(formatBytes(1024 ** 4)).toBe("1.10 TB");
   });
 
-  it("respects the decimals argument", () => {
-    expect(formatBytes(1500, 0)).toBe("1 KB");
-    expect(formatBytes(1500, 3)).toBe("1.465 KB");
+  it("respects the options argument", () => {
+    expect(formatBytes(1500, { roundingPrecision: 0 })).toBe("2 KB");
+    expect(formatBytes(1500, { roundingPrecision: 3 })).toBe("1.500 KB");
   });
 
-  it("treats negative decimals as 0", () => {
-    expect(formatBytes(1500, -1)).toBe("1 KB");
+  it("throws for negative roundingPrecision", () => {
+    expect(() => formatBytes(1500, { roundingPrecision: -1 })).toThrow();
   });
 });
 
@@ -197,7 +197,7 @@ describe("groupMimeSizeRecord", () => {
     expect(result.categories).toContain("Images");
     const idx = result.categories.indexOf("Images");
     expect(result.size[idx]).toBe(2048);
-    expect(result.formattedSize[idx]).toBe("2 KB");
+    expect(result.formattedSize[idx]).toBe("2.05 KB");
   });
 
   it("aggregates multiple MIME types that belong to the same group", () => {
