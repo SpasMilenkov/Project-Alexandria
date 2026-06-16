@@ -16,9 +16,15 @@ public class FileBuilder
     private DateTime _createdAt = DateTime.UtcNow;
     private DateTime? _deletedAt = null;
     private bool _hasPreview = false;
+    private DateTime? _previewGeneratedAt = null;
     private FileVersion? _currentVersion = null;
+    private Guid? _currentVersionId = null;
     private Guid _previewId = Guid.Empty;
     private Preview? _preview = null;
+    private ICollection<FileVersion> _versions = [];
+    private MediaMetadata? _mediaMetadata = null;
+    private DateTime? _updatedAt = null;
+    private Guid? _updatedBy = null;
 
     public FileBuilder WithId(Guid id)
     {
@@ -89,6 +95,42 @@ public class FileBuilder
         return this;
     }
 
+    public FileBuilder WithPreviewGeneratedAt(DateTime? previewGeneratedAt)
+    {
+        _previewGeneratedAt = previewGeneratedAt;
+        return this;
+    }
+
+    public FileBuilder WithCurrentVersionId(Guid? currentVersionId)
+    {
+        _currentVersionId = currentVersionId;
+        return this;
+    }
+
+    public FileBuilder WithVersions(ICollection<FileVersion> versions)
+    {
+        _versions = versions;
+        return this;
+    }
+
+    public FileBuilder WithMediaMetadata(MediaMetadata? mediaMetadata)
+    {
+        _mediaMetadata = mediaMetadata;
+        return this;
+    }
+
+    public FileBuilder WithUpdatedAt(DateTime? updatedAt)
+    {
+        _updatedAt = updatedAt;
+        return this;
+    }
+
+    public FileBuilder WithUpdatedBy(Guid? updatedBy)
+    {
+        _updatedBy = updatedBy;
+        return this;
+    }
+
     public File Build() => new()
     {
         Id = _id,
@@ -97,11 +139,17 @@ public class FileBuilder
         OwnerId = _ownerId,
         DirectoryId = _directoryId,
         CreatedAt = _createdAt,
+        UpdatedAt = _updatedAt,
         DeletedAt = _deletedAt,
+        UpdatedBy = _updatedBy,
         HasPreview = _hasPreview,
+        PreviewGeneratedAt = _previewGeneratedAt,
         CurrentVersion = _currentVersion!,
+        CurrentVersionId = _currentVersionId,
         PreviewId = _previewId,
         Preview = _preview,
+        Versions = _versions,
+        MediaMetadata = _mediaMetadata,
         NormalizedName = _name.ToLowerInvariant(),
         // SearchVector is a DB-computed column — not set for in-memory test use
         Tags = new List<Tag>(),

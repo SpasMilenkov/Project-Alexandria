@@ -12,7 +12,9 @@ public class DirectoryBuilder
     private Guid _ownerId = Guid.NewGuid();
     private Guid? _parentId = null;
     private DateTime _createdAt = DateTime.UtcNow;
+    private DateTime? _updatedAt = null;
     private DateTime? _deletedAt = null;
+    private Guid? _updatedBy = null;
 
     public DirectoryBuilder WithId(Guid id)
     {
@@ -50,6 +52,18 @@ public class DirectoryBuilder
         return this;
     }
 
+    public DirectoryBuilder WithUpdatedAt(DateTime? updatedAt)
+    {
+        _updatedAt = updatedAt;
+        return this;
+    }
+
+    public DirectoryBuilder WithUpdatedBy(Guid? updatedBy)
+    {
+        _updatedBy = updatedBy;
+        return this;
+    }
+
     public Directory Build() => new()
     {
         Id = _id,
@@ -57,7 +71,9 @@ public class DirectoryBuilder
         OwnerId = _ownerId,
         ParentId = _parentId,
         CreatedAt = _createdAt,
+        UpdatedAt = _updatedAt,
         DeletedAt = _deletedAt,
+        UpdatedBy = _updatedBy,
         NormalizedName = _name.ToLowerInvariant(),
         // SearchVector is a DB-computed column — not set for in-memory test use
         Children = [],
