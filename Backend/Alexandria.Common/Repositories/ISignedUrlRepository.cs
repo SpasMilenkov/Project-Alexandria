@@ -23,7 +23,7 @@ public interface ISignedUrlRepository : IRepository<SignedUrl>
     /// Soft-deletes a signed URL by id, verifying it belongs to the requesting user.
     /// Returns false if not found or not owned by the user.
     /// </summary>
-    Task<bool> RevokeAsync(Guid id, string userId, CancellationToken ct = default);
+    Task<bool> RevokeAsync(Guid id, Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Increments the access counter on a given signed URL link

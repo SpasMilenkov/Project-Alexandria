@@ -16,7 +16,7 @@ public interface ISignedUrlService
     /// </summary>
     Task<CreateShareLinkResponse> CreateShareLinkAsync(
         Guid fileId,
-        string userId,
+        Guid userId,
         TimeSpan? expiry,
         Guid? fileVersionId = null,
         int? maxAccessCount = null,
@@ -41,9 +41,9 @@ public interface ISignedUrlService
     /// <summary>Returns all active share links for a file. Only the file owner may call this.</summary>
     Task<IEnumerable<ShareLinkSummaryDto>> GetShareLinksForFileAsync(
         Guid fileId,
-        string userId,
+        Guid userId,
         CancellationToken ct = default);
 
     /// <summary>Revokes a share link. Returns false if not found or not owned by the user.</summary>
-    Task<bool> RevokeShareLinkAsync(Guid id, string userId, CancellationToken ct = default);
+    Task<bool> RevokeShareLinkAsync(Guid id, Guid userId, CancellationToken ct = default);
 }

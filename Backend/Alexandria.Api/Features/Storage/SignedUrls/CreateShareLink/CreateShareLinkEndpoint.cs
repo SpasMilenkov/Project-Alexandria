@@ -62,7 +62,7 @@ internal sealed class CreateShareLinkEndpoint(ISignedUrlService signedUrlService
 
     public override async Task HandleAsync(CreateShareLinkRequest req, CancellationToken ct)
     {
-        var userId = User.GetUserId().ToString();
+        var userId = User.GetUserId();
 
         try
         {

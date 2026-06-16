@@ -4,6 +4,7 @@ using System.Numerics;
 using Alexandria.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using NpgsqlTypes;
 namespace Alexandria.Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260612091214_ChangeSignedUrlCreatorIdToGuid")]
+    partial class ChangeSignedUrlCreatorIdToGuid
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -993,8 +996,6 @@ namespace Alexandria.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatorId");
-
                     b.HasIndex("ExpiresAt");
 
                     b.HasIndex("FileId");
@@ -1695,12 +1696,6 @@ namespace Alexandria.Data.Migrations
 
             modelBuilder.Entity("Alexandria.Data.Models.SignedUrl", b =>
                 {
-                    b.HasOne("Alexandria.Data.Models.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("CreatorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Alexandria.Data.Models.File", "FileInfo")
                         .WithMany("SignedUrls")
                         .HasForeignKey("FileId")
@@ -1709,8 +1704,7 @@ namespace Alexandria.Data.Migrations
 
                     b.HasOne("Alexandria.Data.Models.FileVersion", "PinnedVersion")
                         .WithMany()
-                        .HasForeignKey("FileVersionId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("FileVersionId");
 
                     b.Navigation("FileInfo");
 

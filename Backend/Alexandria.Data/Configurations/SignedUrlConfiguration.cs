@@ -17,8 +17,6 @@ public class SignedUrlConfiguration
             .IsRequired();
 
         builder.Property(e => e.CreatorId)
-            .HasMaxLength(ValidationConstants.StringLengths.UserId)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.UserId})")
             .IsRequired();
 
         // Nullable string property
@@ -48,9 +46,20 @@ public class SignedUrlConfiguration
             .HasForeignKey(s => s.FileId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(s => s.CreatorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.PinnedVersion)
+            .WithMany()
+            .HasForeignKey(s => s.FileVersionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Indexes
         builder.HasIndex(e => e.FileId);
         builder.HasIndex(e => e.ExpiresAt);
+        builder.HasIndex(e => e.FileVersionId);
 
         builder.ToTable("SignedUrls");
     }

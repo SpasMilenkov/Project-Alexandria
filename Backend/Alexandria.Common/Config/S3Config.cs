@@ -82,15 +82,16 @@ public class S3Config
     public ProviderSettings GetResolvedProviderSettings()
     {
         var providerKey = Provider.ToString();
-
         ProviderSettings.TryGetValue(providerKey, out var provider);
+
+        static string? Coerce(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
 
         return new ProviderSettings
         {
-            Endpoint = provider?.Endpoint ?? Endpoint,
-            AccessKey = provider?.AccessKey ?? AccessKey,
-            SecretKey = provider?.SecretKey ?? SecretKey,
-            Region = provider?.Region ?? Region,
+            Endpoint = Coerce(provider?.Endpoint) ?? Coerce(Endpoint),
+            AccessKey = Coerce(provider?.AccessKey) ?? Coerce(AccessKey),
+            SecretKey = Coerce(provider?.SecretKey) ?? Coerce(SecretKey),
+            Region = Coerce(provider?.Region) ?? Coerce(Region),
             ForcePathStyle = provider?.ForcePathStyle ?? true,
             UseAccelerateEndpoint = provider?.UseAccelerateEndpoint ?? false,
             UseDualstackEndpoint = provider?.UseDualstackEndpoint ?? false,

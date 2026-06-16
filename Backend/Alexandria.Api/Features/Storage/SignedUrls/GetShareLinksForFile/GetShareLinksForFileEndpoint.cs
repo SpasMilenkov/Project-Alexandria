@@ -31,7 +31,7 @@ internal sealed class GetShareLinksForFileEndpoint(ISignedUrlService signedUrlSe
 
     public override async Task HandleAsync(GetShareLinksForFileRequest req, CancellationToken ct)
     {
-        var userId = User.GetUserId().ToString();
+        var userId = User.GetUserId();
         var links = await signedUrlService.GetShareLinksForFileAsync(req.FileId, userId, ct);
         await Send.OkAsync(links, ct);
     }

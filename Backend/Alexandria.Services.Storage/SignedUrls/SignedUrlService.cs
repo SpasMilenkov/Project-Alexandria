@@ -22,14 +22,14 @@ public sealed partial class SignedUrlService(
 
     public async Task<CreateShareLinkResponse> CreateShareLinkAsync(
         Guid fileId,
-        string userId,
+        Guid userId,
         TimeSpan? expiry,
         Guid? fileVersionId = null,
         int? maxAccessCount = null,
         CancellationToken ct = default)
     {
         var fileExists = await context.Files
-            .AnyAsync(f => f.Id == fileId && f.OwnerId.ToString() == userId && f.DeletedAt == null, ct);
+            .AnyAsync(f => f.Id == fileId && f.OwnerId == userId && f.DeletedAt == null, ct);
 
         if (!fileExists)
             throw new FileNotFoundException($"File {fileId} not found for user {userId}.");
@@ -104,11 +104,11 @@ public sealed partial class SignedUrlService(
 
     public async Task<IEnumerable<ShareLinkSummaryDto>> GetShareLinksForFileAsync(
         Guid fileId,
-        string userId,
+        Guid userId,
         CancellationToken ct = default)
     {
         var fileExists = await context.Files
-            .AnyAsync(f => f.Id == fileId && f.OwnerId.ToString() == userId && f.DeletedAt == null, ct);
+            .AnyAsync(f => f.Id == fileId && f.OwnerId == userId && f.DeletedAt == null, ct);
 
         if (!fileExists)
             throw new FileNotFoundException($"File {fileId} not found for user {userId}.");
@@ -117,7 +117,7 @@ public sealed partial class SignedUrlService(
         return links.Select(ShareLinkSummaryDto.FromEntity);
     }
 
-    public async Task<bool> RevokeShareLinkAsync(Guid id, string userId, CancellationToken ct = default)
+    public async Task<bool> RevokeShareLinkAsync(Guid id, Guid userId, CancellationToken ct = default)
     {
         LogRevokingShareLink(id, userId);
         return await unitOfWork.SignedUrls.RevokeAsync(id, userId, ct);
@@ -137,7 +137,7 @@ public sealed partial class SignedUrlService(
     /// <summary>
     /// Resolves the correct FileVersion for a signed URL.
     /// When the link has a pinned version, that version is fetched and cross-checked against the file id.
-    /// Otherwise the file's current version pointer is followed.
+    /// Otherwise, the file's current version pointer is followed.
     /// </summary>
     private async Task<FileVersion> ResolveVersionAsync(SignedUrl signedUrl, CancellationToken ct)
     {

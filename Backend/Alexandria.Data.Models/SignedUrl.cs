@@ -18,9 +18,7 @@ public class SignedUrl : IBase
     public DateTime? LastAccessedAt { get; set; }
     public int? MaxAccessCount { get; set; }
 
-    [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
-    [StringLength(ValidationConstants.StringLengths.UserId)]
-    public required string CreatorId { get; set; }
+    public required Guid CreatorId { get; set; }
 
     /// <summary>
     /// When set, this link always resolves to a specific version rather than the file's current version.
