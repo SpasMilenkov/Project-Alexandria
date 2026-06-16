@@ -12,6 +12,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="AWSSDK.S3"/>
         <PackageReference Include="Blake3"/>
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
