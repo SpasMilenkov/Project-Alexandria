@@ -220,7 +220,7 @@ public partial class S3Service(
         }
     }
 
-    private static string GetMimeTypeFromFormat(string? formatName)
+    internal static string GetMimeTypeFromFormat(string? formatName)
     {
         if (string.IsNullOrWhiteSpace(formatName))
             return "application/octet-stream";
@@ -744,7 +744,7 @@ public partial class S3Service(
         return $"{config.Value.BaseUrl}/stream/{job.SegmentPrefix}/dash/manifest.mpd";
     }
 
-    private static string GetStreamingContentType(string extension)
+    internal static string GetStreamingContentType(string extension)
         => extension.ToLowerInvariant() switch
         {
             ".m3u8" => "application/x-mpegURL",
@@ -1369,7 +1369,7 @@ public partial class S3Service(
         return await publicS3.GetPreSignedURLAsync(request);
     }
 
-    private static CompressionLevel GetCompressionLevel(string fileName)
+    internal static CompressionLevel GetCompressionLevel(string fileName)
     {
         // These formats are already compressed — deflating them again
         // wastes CPU and barely reduces size
