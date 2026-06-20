@@ -55,12 +55,14 @@ public class FileService(
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            await unitOfWork.Files.MarkAsDeletedAsync(fileIds, userId, ct);
+            var filesDeleted = await unitOfWork.Files.MarkAsDeletedAsync(fileIds, userId, ct);
 
-            if (hardDelete)
-                await unitOfWork.FileVersions.DeleteFileVersionsAsync(fileIds, userId, ct);
-            else
-                await unitOfWork.FileVersions.SoftDeleteFileVersionsAsync(fileIds, userId, ct);
+            var versionsDeleted = hardDelete
+                ? await unitOfWork.FileVersions.DeleteFileVersionsAsync(fileIds, userId, ct)
+                : await unitOfWork.FileVersions.SoftDeleteFileVersionsAsync(fileIds, userId, ct);
+
+            if (filesDeleted == 0)
+                throw new InvalidOperationException("No files found exception");
 
             await unitOfWork.CommitAsync(ct);
         }
