@@ -10,31 +10,20 @@ using Microsoft.Extensions.Options;
 
 namespace Alexandria.Services.Storage.Cleanup;
 
-public class OrphanedCleanupWorker : BackgroundService
+public class OrphanedCleanupWorker(
+    IServiceProvider serviceProvider,
+    IAmazonS3 s3,
+    IOptions<S3Config> config,
+    ILogger<OrphanedCleanupWorker> logger)
+    : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IAmazonS3 _s3;
-    private readonly IOptions<S3Config> _config;
-    private readonly ILogger<OrphanedCleanupWorker> _logger;
     private readonly TimeSpan _cleanupInterval = TimeSpan.FromHours(1);
     private readonly TimeSpan _orphanedRetention = TimeSpan.FromDays(30);
     private const int MaxDeletionAttempts = 10;
 
-    public OrphanedCleanupWorker(
-        IServiceProvider serviceProvider,
-        IAmazonS3 s3,
-        IOptions<S3Config> config,
-        ILogger<OrphanedCleanupWorker> logger)
-    {
-        _serviceProvider = serviceProvider;
-        _s3 = s3;
-        _config = config;
-        _logger = logger;
-    }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("OrphanedCleanupWorker started");
+        logger.LogInformation("OrphanedCleanupWorker started");
 
         // Wait before first run
         await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
@@ -47,36 +36,36 @@ public class OrphanedCleanupWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during orphaned content cleanup");
+                logger.LogError(ex, "Error during orphaned content cleanup");
             }
 
             await Task.Delay(_cleanupInterval, stoppingToken);
         }
 
-        _logger.LogInformation("OrphanedCleanupWorker stopped");
+        logger.LogInformation("OrphanedCleanupWorker stopped");
     }
 
     private async Task CleanupOrphanedContentAsync(CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
         var cutoffTime = DateTime.UtcNow - _orphanedRetention;
         var now = DateTime.UtcNow;
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Scanning for orphaned content objects (orphaned before {CutoffTime})",
             cutoffTime);
 
 
         var markedCount = await unitOfWork.ContentObjects.MarkOrphaned(now, ct);
         if (markedCount > 0)
-            _logger.LogInformation("Marked {Count} ContentObjects as orphaned", markedCount);
+            logger.LogInformation("Marked {Count} ContentObjects as orphaned", markedCount);
 
         var clearedCount = await unitOfWork.ContentObjects.ClearOrphaned(now, ct);
 
         if (clearedCount > 0)
-            _logger.LogInformation("Cleared orphan status from {Count} ContentObjects", clearedCount);
+            logger.LogInformation("Cleared orphan status from {Count} ContentObjects", clearedCount);
 
         // Find orphaned ContentObjects ready for deletion
         var orphanedObjects = await unitOfWork.ContentObjects
@@ -91,11 +80,11 @@ public class OrphanedCleanupWorker : BackgroundService
         var contentObjects = orphanedObjects as ContentObject[] ?? orphanedObjects.ToArray();
         if (contentObjects.Length == 0)
         {
-            _logger.LogDebug("No orphaned content objects found for cleanup");
+            logger.LogDebug("No orphaned content objects found for cleanup");
             return;
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Found {Count} orphaned content objects to clean up",
             contentObjects.Count());
 
@@ -115,7 +104,7 @@ public class OrphanedCleanupWorker : BackgroundService
             catch (Exception ex)
             {
                 failedCount++;
-                _logger.LogError(
+                logger.LogError(
                     ex,
                     "Failed to delete orphaned ContentObject {Id} (hash: {Hash})",
                     contentObject.Id,
@@ -137,7 +126,7 @@ public class OrphanedCleanupWorker : BackgroundService
             }
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Orphaned cleanup completed: {DeletedCount} deleted, {FailedCount} failed",
             deletedCount, failedCount);
 
@@ -155,25 +144,25 @@ public class OrphanedCleanupWorker : BackgroundService
         var hash = Convert.ToHexStringLower(contentObject.Hash);
         var s3Key = $"content/{hash}";
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Deleting orphaned ContentObject {Id} from S3: {Key}",
             contentObject.Id, s3Key);
 
         try
         {
             // Delete from S3
-            await _s3.DeleteObjectAsync(
-                _config.Value.UploadBucket,
+            await s3.DeleteObjectAsync(
+                config.Value.UploadBucket,
                 s3Key,
                 ct);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Successfully deleted S3 object: {Key}",
                 s3Key);
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            _logger.LogWarning(ex,
+            logger.LogWarning(ex,
                 "S3 object not found (already deleted?): {Key}",
                 s3Key);
             // Continue with database deletion
@@ -183,7 +172,7 @@ public class OrphanedCleanupWorker : BackgroundService
         await unitOfWork.ContentObjects.DeleteAsync(contentObject.Id, ct);
         await unitOfWork.CommitAsync(ct);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Deleted orphaned ContentObject {Id} (hash: {Hash}, orphaned since: {OrphanedAt})",
             contentObject.Id,
             hash,
@@ -193,7 +182,7 @@ public class OrphanedCleanupWorker : BackgroundService
     private Task AlertOrphanedDeletionFailureAsync(Guid contentObjectId, int attempts)
     {
         // TODO: Implement alerting
-        _logger.LogCritical(
+        logger.LogCritical(
             "ALERT: ContentObject {ContentObjectId} failed orphaned deletion after {Attempts} attempts!",
             contentObjectId, attempts);
 
@@ -203,7 +192,7 @@ public class OrphanedCleanupWorker : BackgroundService
     private Task AlertMultipleDeletionFailuresAsync(int failedCount)
     {
         // TODO: Implement alerting
-        _logger.LogCritical(
+        logger.LogCritical(
             "ALERT: Orphaned cleanup encountered {FailedCount} deletion failures!",
             failedCount);
 
