@@ -38,7 +38,7 @@ public interface IFileRepository : IRepository<File>
 
     Task<File?> GetFileWithPreviewAsync(Guid fileId, CancellationToken ct = default);
     Task MoveFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
-    Task MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default);
+    Task<int> MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default);
     Task<bool> IsPromotedAsync(Guid fileId, CancellationToken ct = default);
 
     Task<PaginatedResult<FileResult>>

@@ -814,6 +814,62 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         return rowsAffected == 0 ? throw new DirectoryRestoreException(ids) : rowsAffected;
     }
 
+    public async Task<int> DeleteDirectoryTreeAsync(Guid directoryId, Guid userId, CancellationToken ct = default)
+    {
+        var rowsAffected = await context.Database.ExecuteSqlInterpolatedAsync($$"""
+                                                                                WITH RECURSIVE subtree AS (
+                                                                                    SELECT "Id"
+                                                                                    FROM "Directories"
+                                                                                    WHERE "Id" = {{directoryId}}
+                                                                                      AND "OwnerId" = {{userId}}
+                                                                                      AND "DeletedAt" IS NULL
+
+                                                                                    UNION ALL
+
+                                                                                    SELECT d."Id"
+                                                                                    FROM "Directories" d
+                                                                                    JOIN subtree s ON d."ParentId" = s."Id"
+                                                                                    WHERE d."DeletedAt" IS NULL
+                                                                                ),
+                                                                                deleted_directories AS (
+                                                                                    UPDATE "Directories"
+                                                                                    SET
+                                                                                        "DeletedAt" = NOW(),
+                                                                                        "UpdatedAt" = NOW(),
+                                                                                        "UpdatedBy" = {{userId}}
+                                                                                    WHERE "Id" IN (SELECT "Id" FROM subtree)
+                                                                                    RETURNING "Id"
+                                                                                ),
+                                                                                deleted_files AS (
+                                                                                    UPDATE "Files"
+                                                                                    SET
+                                                                                        "DeletedAt" = NOW(),
+                                                                                        "UpdatedAt" = NOW(),
+                                                                                        "UpdatedBy" = {{userId}}
+                                                                                    WHERE "DirectoryId" IN (SELECT "Id" FROM subtree)
+                                                                                      AND "OwnerId" = {{userId}}
+                                                                                      AND "DeletedAt" IS NULL
+                                                                                    RETURNING "Id"
+                                                                                ),
+                                                                                deleted_versions AS (
+                                                                                    UPDATE "FileVersions"
+                                                                                    SET
+                                                                                        "DeletedAt" = NOW(),
+                                                                                        "UpdatedAt" = NOW(),
+                                                                                        "UpdatedBy" = {{userId}}
+                                                                                    WHERE "FileId" IN (SELECT "Id" FROM deleted_files)
+                                                                                      AND "DeletedAt" IS NULL
+                                                                                    RETURNING "Id"
+                                                                                )
+                                                                                SELECT
+                                                                                    (SELECT COUNT(*) FROM deleted_directories) +
+                                                                                    (SELECT COUNT(*) FROM deleted_files) +
+                                                                                    (SELECT COUNT(*) FROM deleted_versions)
+                                                                                """, ct);
+
+        return rowsAffected;
+    }
+
     public async Task<List<BulkDownloadEntry>> GetBulkDownloadEntriesAsync(
         Guid[] directoryIds,
         Guid[] fileIds,
