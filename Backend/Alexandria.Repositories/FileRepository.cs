@@ -121,10 +121,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             throw new InvalidOperationException("Files with the same names already exist in destination");
     }
 
-    public async Task MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default)
+    public async Task<int> MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default)
     {
-        await _files
-            .Where(f => f.OwnerId == userId && fileIds.Contains(f.Id))
+        return await _files
+            .Where(f => f.OwnerId == userId && fileIds.Contains(f.Id) && f.DeletedAt == null)
             .ExecuteUpdateAsync(setters => setters
                     .SetProperty(f => f.DeletedAt, _ => DateTime.UtcNow)
                     .SetProperty(f => f.UpdatedBy, _ => userId),

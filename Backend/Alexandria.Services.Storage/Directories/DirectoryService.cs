@@ -222,45 +222,32 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
     }
 
     /// <inheritdoc/>
-    public async Task DeleteDirectoryAsync(Guid id, Guid userId, bool force = false,
-        CancellationToken ct = default)
+    public async Task DeleteDirectoryAsync(Guid id, Guid userId, bool force = false, CancellationToken ct = default)
     {
         var directory = await GetDirectoryByIdAsync(id, userId, ct);
 
         if (!force)
         {
-            // Check if directory has children or files
             var childCount = await unitOfWork.Directories.CountAsync(
                 d => d.ParentId == id && d.DeletedAt == null, ct);
 
             var fileCount = await unitOfWork.Files.CountAsync(
                 f => f.DirectoryId == id && f.DeletedAt == null, ct);
 
-            var totalItems = childCount + fileCount;
-            if (totalItems > 0)
+            if (childCount + fileCount > 0)
             {
-                throw new DirectoryNotEmptyException(id, totalItems);
-            }
-        }
-
-        await unitOfWork.BeginTransactionAsync(ct);
-        try
-        {
-            if (force)
-            {
-                // Recursively delete all subdirectories and files
-                await DeleteDirectoryRecursivelyAsync(id, userId, ct);
+                throw new DirectoryNotEmptyException(id, childCount + fileCount);
             }
 
+            // empty directory, no recursion needed
             unitOfWork.Directories.Remove(directory);
             await unitOfWork.SaveChangesAsync(ct);
-            await unitOfWork.CommitAsync(ct);
+            return;
         }
-        catch
-        {
-            await unitOfWork.RollbackAsync(ct);
-            throw;
-        }
+
+        var affected = await unitOfWork.Directories.DeleteDirectoryTreeAsync(id, userId, ct);
+        if (affected == 0)
+            throw new DirectoryNotFoundException(id);
     }
 
     /// <inheritdoc/>
@@ -324,20 +311,5 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
             throw new InvalidDirectoryNameException(name,
                 $"Directory name contains invalid characters: {string.Join(", ", SInvalidChars)}");
         }
-    }
-
-    private async Task DeleteDirectoryRecursivelyAsync(Guid directoryId, Guid userId, CancellationToken ct = default)
-    {
-        // Get all subdirectories
-        var subdirectories = await unitOfWork.Directories.FindAsync(
-            d => d.ParentId == directoryId && d.DeletedAt == null, ct);
-
-        // Recursively delete subdirectories
-        foreach (var subdir in subdirectories) await DeleteDirectoryRecursivelyAsync(subdir.Id, userId, ct);
-
-        // Delete all files in this directory
-        var files = await unitOfWork.Files.FindAsync(
-            f => f.DirectoryId == directoryId && f.DeletedAt == null, ct);
-        await unitOfWork.Files.MarkAsDeletedAsync(files.Select(f => f.Id).ToArray(), userId, ct);
     }
 }
