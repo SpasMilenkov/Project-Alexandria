@@ -85,10 +85,10 @@ const handleDownload = () => {
 
 <template>
   <div
-    class="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-950 dark:via-gray-900 dark:to-primary/10 flex flex-col items-center justify-center gap-5 p-6 w-full"
+    class="min-h-screen bg-neutral flex flex-col items-center justify-center gap-5 p-6 w-full"
   >
     <!-- Loading -->
-    <UCard v-if="isLoading" class="w-full max-w-md bg-white dark:bg-gray-900" :ui="cardUi">
+    <UCard v-if="isLoading" class="w-full max-w-md bg-white dark:bg-neutral-800" :ui="cardUi">
       <div class="flex items-start gap-4">
         <USkeleton class="w-16 h-16 rounded-2xl shrink-0" />
         <div class="flex-1 space-y-2.5 pt-1">
@@ -118,9 +118,9 @@ const handleDownload = () => {
     <UCard v-else-if="displayError === 'not-found'" class="w-full max-w-md" :ui="cardUi">
       <div class="flex flex-col items-center gap-4 text-center py-4">
         <div
-          class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800"
+          class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 dark:bg-neutral-800"
         >
-          <Icon icon="mdi:link-variant-off" class="w-8 h-8 text-gray-400 dark:text-gray-500" />
+          <Icon icon="mdi:link-variant-off" class="w-8 h-8 text-gray-400 dark:text-neutral-500" />
         </div>
         <div class="space-y-1.5">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Link not found</h2>
@@ -191,7 +191,7 @@ const handleDownload = () => {
     <!-- Success -->
     <template v-else-if="metadata">
       <!-- Contextual header above card -->
-      <UCard class="w-full max-w-md bg-white dark:bg-gray-900" :ui="cardUi">
+      <UCard class="w-full max-w-md bg-white dark:bg-neutral-950" :ui="cardUi">
         <!-- File identity -->
         <div class="flex items-start gap-4">
           <div
@@ -216,7 +216,7 @@ const handleDownload = () => {
         <!-- Inline image preview -->
         <div
           v-if="canPreview"
-          class="mt-5 rounded-xl overflow-hidden border border-gray-200/70 dark:border-gray-700/70 bg-gray-50 dark:bg-gray-800/50"
+          class="mt-5 rounded-xl overflow-hidden border border-neutral-200/70 dark:border-neutral-700/70 bg-gray-50 dark:bg-neutral-800/50"
         >
           <img
             :src="downloadData!.presignedUrl"
@@ -228,7 +228,7 @@ const handleDownload = () => {
         <USeparator class="my-5" />
 
         <!-- Metadata rows -->
-        <div class="divide-y divide-gray-100 dark:divide-gray-800/60">
+        <div class="divide-y divide-gray-100 dark:divide-neutral-800/60">
           <div class="flex items-center justify-between py-2.5">
             <div class="flex items-center gap-2 text-muted">
               <Icon icon="mdi:file-outline" class="w-4 h-4" />
