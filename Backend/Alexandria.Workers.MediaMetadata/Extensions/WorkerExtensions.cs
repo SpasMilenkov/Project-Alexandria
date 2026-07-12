@@ -1,10 +1,10 @@
 using Alexandria.Common.Services;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
-using Alexandria.Services.Streaming;
 using Alexandria.Services.Streaming.Lyrics;
+using Alexandria.Workers.MediaMetadata.Handlers;
 
-namespace AlexandriaW.Workers.MediaMetadata.Extensions;
+namespace Alexandria.Workers.MediaMetadata.Extensions;
 
 public static class WorkerExtensions
 {
@@ -13,17 +13,15 @@ public static class WorkerExtensions
         IConfiguration configuration)
     {
         services.AddCoreWorkerServices();
+        services.AddRabbitMqAsync(configuration);
+
+        if (!configuration.GetValue<bool>("Features:Lyrics")) return services;
 
         services.AddHttpClient<LrcLibPublicProvider>();
         services.AddSingleton<ITrackLyricsProvider>(sp => sp.GetRequiredService<LrcLibPublicProvider>());
         services.AddSingleton<CompositeLyricsProvider>();
-
-        services.AddScoped<ITranspilationJobService, TranspilationJobService>();
-        services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
-        services.AddScoped<IVideoTranspilationService, VideoTranspilationService>();
-        services.AddScoped<IAudioTranspilationService, AudioTranspilationService>();
-        services.AddRabbitMqAsync(configuration);
-        services.AddScoped<IPublisherService, PublisherService>();
+        services.AddScoped<LyricsHandler>();
+        services.AddHostedService<LyricsWorker>();
 
         return services;
     }

@@ -1,6 +1,6 @@
 using RabbitMQ.Client;
 
-namespace AlexandriaW.Workers.MediaMetadata.Extensions;
+namespace Alexandria.Workers.MediaMetadata.Extensions;
 
 public static class RabbitMqExtensions
 {

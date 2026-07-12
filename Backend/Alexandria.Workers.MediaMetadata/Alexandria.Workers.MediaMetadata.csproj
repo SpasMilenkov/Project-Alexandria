@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-        <UserSecretsId>dotnet-AlexandriaW.Workers.MediaMetadata-a370982f-eb8f-445c-b54f-5acc8a36b29d</UserSecretsId>
+        <UserSecretsId>dotnet-Alexandria .Workers.MediaMetadata-a370982f-eb8f-445c-b54f-5acc8a36b29d</UserSecretsId>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
