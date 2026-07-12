@@ -1,5 +1,5 @@
 <template>
-  <div ref="wrapperRef" class="relative ">
+  <div ref="wrapperRef" class="relative">
     <!-- Search input -->
     <div class="relative">
       <Icon
@@ -39,26 +39,7 @@
       >
         <!-- Loading -->
         <div v-if="isLoading" class="flex items-center justify-center py-8">
-          <svg
-            class="w-5 h-5 animate-spin text-gray-400 dark:text-white/30"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              class="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              stroke-width="4"
-            />
-            <path
-              class="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
+          <BlocksSpinner :size="11" aria-label="Refreshing" class="opacity-50" />
         </div>
 
         <!-- No results -->
@@ -119,6 +100,7 @@ import { ref, watch } from "vue";
 
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
+import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 
 import MediaSearchResultRow from "./MediaSearchResultRow.vue";
 
