@@ -28,6 +28,9 @@ public class TranspilationJob : IBase
 
     public ApplicationUser? User { get; set; }
 
+    public Guid? LyricsId { get; set; }
+    public TrackLyrics? TrackLyrics { get; set; }
+
     public ICollection<StreamingRepresentation> Representations { get; set; } = [];
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
