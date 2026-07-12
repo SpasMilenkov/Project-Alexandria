@@ -26,6 +26,7 @@ public sealed class UnitOfWork(
     IDirectoryPolicyRepository directoryPolicies,
     IPlaylistRepository playlistRepository,
     ISignedUrlRepository signedUrls,
+    ITrackLyricsRepository lyrics,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -44,10 +45,12 @@ public sealed class UnitOfWork(
     public IStreamingRepresentationRepository StreamingRepresentations { get; } = streamingRepresentations;
     public ITranspilationJobRepository TranspilationJobs { get; } = transpilationJobs;
     public IStreamHistoryRepository StreamingHistories { get; } = streamingHistories;
-    public IPolicyRuleRepository PolicyRules { get; set; } = policyRules;
-    public IDirectoryPolicyRepository DirectoryPolicies { get; set; } = directoryPolicies;
-    public IPlaylistRepository Playlists { get; set; } = playlistRepository;
-    public ISignedUrlRepository SignedUrls { get; set; } = signedUrls;
+    public IPolicyRuleRepository PolicyRules { get; } = policyRules;
+    public IDirectoryPolicyRepository DirectoryPolicies { get; } = directoryPolicies;
+    public IPlaylistRepository Playlists { get; } = playlistRepository;
+    public ISignedUrlRepository SignedUrls { get; } = signedUrls;
+    public ITrackLyricsRepository Lyrics { get; } = lyrics;
+
     private IDbContextTransaction? _transaction;
 
     private bool _disposed;

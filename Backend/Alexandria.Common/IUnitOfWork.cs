@@ -24,6 +24,7 @@ public interface IUnitOfWork : IDisposable
     IDirectoryPolicyRepository DirectoryPolicies { get; }
     IPlaylistRepository Playlists { get; }
     ISignedUrlRepository SignedUrls { get; }
+    ITrackLyricsRepository Lyrics { get; }
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);
