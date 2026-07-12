@@ -66,6 +66,8 @@ public static class ServiceExtensions
         services.AddScoped<IJobQueue, JobQueue>();
         services.AddScoped<ISignedUrlRepository, SignedUrlRepository>();
         services.AddScoped<ISignedUrlService, SignedUrlService>();
+        services.AddScoped<ITrackLyricsRepository, TrackLyricsRepository>();
+        services.AddScoped<ITrackLyricsService, TrackLyricsService>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>
