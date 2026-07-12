@@ -24,7 +24,7 @@ To get started you will need a basic understanding of how to copy and paste text
 
 The project requires several configuration files to be filled out before it can run. Specifically:
 
-- 3 `appsettings.json` backend config files
+- 4 `appsettings.json` backend config files
 - 1 `garage.local.toml` Garage config file
 - 1 `.env` environment file
 
@@ -70,9 +70,15 @@ Open it in your editor of choice and copy the contents of `.env.template`.
 
     # RabbitMQ
     RABBITMQ_USER=alexandria
+    RABBITMQ_DOCUMENT_WORKER=document_worker_user
+    RABBITMQ_MEDIA_WORKER=media_worker_user
+    RABBITMQ_TRANSPILATION_WORKER=media_transpilation_worker
+    RABBITMQ_MEDIA_METADATA_WORKER=media_metadata_worker
+    MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD=
     RABBITMQ_PASSWORD=
     DOCUMENT_WORKER_RABBITMQ_PASSWORD=
     MEDIA_WORKER_RABBITMQ_PASSWORD=
+    TRANSPILATION_WORKER_RABBITMQ_PASSWORD=
     RABBITMQ_VHOST=alexandria
 
     # Garage S3
@@ -84,11 +90,13 @@ Open it in your editor of choice and copy the contents of `.env.template`.
     # and copy the Key ID and Secret key for alexandria-master-key
     GARAGE_RPC_SECRET=
     GARAGE_ADMIN_TOKEN=
-    GARAGE_METRICS_TOKEN=
+    GARAGE_S3_METRICS_TOKEN=
     GARAGE_S3_ACCESS_KEY=placeholder
     GARAGE_S3_SECRET_KEY=placeholder
     GARAGE_S3_WORKER_ACCESS_KEY=placeholder
     GARAGE_S3_WORKER_SECRET_KEY=placeholder
+    GARAGE_S3_TRANSPILATION_WORKER_ACCESS_KEY=placeholder
+    GARAGE_S3_TRANSPILATION_WORKER_SECRET_KEY=placeholder
     GARAGE_S3_PUBLIC_ENDPOINT=
 
     # JWT
@@ -117,6 +125,13 @@ Open it in your editor of choice and copy the contents of `.env.template`.
     GRAFANA_USER=admin
     # Generate with: openssl rand -base64 16
     GRAFANA_PASSWORD=
+
+    # Encryption
+    PBKDF2_ITERATION_COUNT=800000
+
+    # Streaming
+    STREAMING_ENABLED=false
+    LYRICS_ENABLED=true
     ```
   </TabItem>
   <TabItem label="Breakdown by section">
@@ -183,9 +198,9 @@ Open it in your editor of choice and copy the contents of `.env.template`.
 
       ---
 
-      **`DOCUMENT_WORKER_RABBITMQ_PASSWORD`** & **`MEDIA_WORKER_RABBITMQ_PASSWORD`** <Badge text="Required" variant="danger" />
+      **`DOCUMENT_WORKER_RABBITMQ_PASSWORD`**, **`MEDIA_WORKER_RABBITMQ_PASSWORD`**, **`TRANSPILATION_WORKER_RABBITMQ_PASSWORD`** & **`MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD`** <Badge text="Required" variant="danger" />
 
-      Passwords for the dedicated background workers that process your documents and media. Using separate passwords for these is good security practice.
+      Passwords for the four dedicated background workers. Using separate passwords for each is good security practice.
 
       ---
 
@@ -215,7 +230,7 @@ Open it in your editor of choice and copy the contents of `.env.template`.
 
       ---
 
-      **`GARAGE_METRICS_TOKEN`** <Badge text="Required" variant="danger" />
+      **`GARAGE_S3_METRICS_TOKEN`** <Badge text="Required" variant="danger" />
 
       Must match `metrics_token` in `garage.local.toml`.
 
@@ -306,6 +321,24 @@ Open it in your editor of choice and copy the contents of `.env.template`.
       ```bash
       openssl rand -base64 16
       ```
+    </Card>
+
+    <Card title="Encryption">
+      **`PBKDF2_ITERATION_COUNT`** <Badge text="Default: 800000" variant="success" />
+
+      The number of PBKDF2 iterations used for client-side file encryption key derivation. Higher values are more secure but slower.
+    </Card>
+
+    <Card title="Streaming">
+      **`STREAMING_ENABLED`** <Badge text="Default: false" variant="success" />
+
+      Enables the media streaming feature (DASH/HLS adaptive playback).
+
+      ---
+
+      **`LYRICS_ENABLED`** <Badge text="Default: true" variant="success" />
+
+      Enables the lyrics system. When enabled, the media-metadata worker will fetch synced and plain lyrics from lrclib.net for your streaming audio files.
     </Card>
   </TabItem>
 </Tabs>
@@ -473,7 +506,7 @@ touch garage.local.toml
     
         **`metrics_token`** <Badge text="Required" variant="danger" />
     
-        A separate token protecting the metrics endpoint used by Grafana. Must also match `GARAGE_METRICS_TOKEN` in your `.env`.
+        A separate token protecting the metrics endpoint used by Grafana. Must also match `GARAGE_S3_METRICS_TOKEN` in your `.env`.
     
         ```bash
         openssl rand -base64 32
@@ -489,7 +522,7 @@ Now with all of that sorted out you can go back to the .env file and fill out th
 ```ini
 GARAGE_RPC_SECRET=################################
 GARAGE_ADMIN_TOKEN=################################
-GARAGE_METRICS_TOKEN=################################
+GARAGE_S3_METRICS_TOKEN=################################
 ```
 
 The rest should still contain the placeholder text.
@@ -499,7 +532,7 @@ Once you have filled in the RPC secret and the admin and metrics tokens, you are
 
 ### Backend Configuration
 
-With your local IP in hand, it's time to configure the three backend projects: the **API**, the **Document Worker**, and the **Media Worker**. Each has an `appsettings.template.json` file — you need to create a corresponding `appsettings.json` next to it and copy the template contents in.
+With your local IP in hand, it's time to configure the backend projects: the **API**, the **Document Worker**, the **Media Worker**, and the **Media Metadata Worker**. Each has an `appsettings.template.json` file — you need to create a corresponding `appsettings.json` next to it and copy the template contents in.
 
 <Tabs>
   <TabItem label="API">
@@ -685,6 +718,58 @@ With your local IP in hand, it's time to configure the three backend projects: t
     ```
 
   </TabItem>
+  <TabItem label="Media Metadata Worker">
+
+    From the root of the project:
+
+    ```bash
+    cd Backend/Alexandria.Workers.MediaMetadata
+    touch appsettings.json
+    ```
+
+    Copy the contents of the template:
+
+    ```json
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.Hosting.Lifetime": "Warning"
+        }
+      },
+      "S3Storage": {
+        "Provider": "Garage",
+        "Endpoint": "http://garage:3900",
+        "UseHttps": true,
+        "Region": "garage",
+        "UploadBucket": "alexandria-files",
+        "PreviewBucket": "alexandria-previews",
+        "TempBucket": "alexandria-temp",
+        "ProviderSettings": {
+          "Garage": {
+            "Region": "garage",
+            "ForcePathStyle": true,
+            "UseAccelerateEndpoint": false,
+            "UseDualstackEndpoint": false
+          }
+        }
+      },
+      "RabbitMQ": {
+        "HostName": "rabbitmq",
+        "Port": 5672,
+        "VirtualHost": "alexandria",
+        "ChannelPoolSize": 10,
+        "Consumer": {
+          "QueueName": "content-queue",
+          "PrefetchCount": 2,
+          "AutoAck": false,
+          "Concurrency": 2
+        }
+      }
+    }
+    ```
+
+  </TabItem>
 </Tabs>
 
 ---
@@ -743,7 +828,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     
     GARAGE_ADMIN_TOKEN= The same token from earlier
     
-    GARAGE_METRICS_TOKEN= The same metrics token from earlier
+    GARAGE_S3_METRICS_TOKEN= The same metrics token from earlier
     
     -GARAGE_S3_ACCESS_KEY=placeholder
     +GARAGE_S3_ACCESS_KEY=Your newly generated key
@@ -765,7 +850,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 3. **Restart the API and workers** so they pick up the updated environment variables:
 
    ```bash
-   docker compose -f docker-compose.local.yml -p alexandria-local up -d --build --force-recreate api media-worker document-worker
+   docker compose -f docker-compose.local.yml -p alexandria-local up -d --build --force-recreate api media-worker document-worker media-metadata-worker
    ```
 
 4. **Restart nginx and the frontend** if they went down:

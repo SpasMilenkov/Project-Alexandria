@@ -1238,6 +1238,70 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("Tags", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.TrackLyrics", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Cached")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("ConfidenceScore")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FetchedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsInstrumental")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PlainLyrics")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProviderTrackId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("SourceProvider")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SyncedLyrics")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TranspilationJobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TranspilationJobId")
+                        .IsUnique()
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.ToTable("TrackLyrics", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1264,6 +1328,9 @@ namespace Alexandria.Data.Migrations
 
                     b.Property<bool>("IsVideo")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid?>("LyricsId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("ProgressPercent")
                         .ValueGeneratedOnAdd()
@@ -1769,6 +1836,17 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.TrackLyrics", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.TranspilationJob", "TranspilationJob")
+                        .WithOne("TrackLyrics")
+                        .HasForeignKey("Alexandria.Data.Models.TrackLyrics", "TranspilationJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TranspilationJob");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
@@ -1901,6 +1979,8 @@ namespace Alexandria.Data.Migrations
             modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>
                 {
                     b.Navigation("Representations");
+
+                    b.Navigation("TrackLyrics");
                 });
 #pragma warning restore 612, 618
         }

@@ -42,6 +42,7 @@ api_profile="API ($S3_PROVIDER)"
 doc_worker_profile="DocumentWorker ($S3_PROVIDER)"
 media_worker_profile="MediaWorker ($S3_PROVIDER)"
 streaming_worker_profile="Alexandria.Workers.MediaTranspilation ($S3_PROVIDER)"
+media_metadata_worker_profile="Alexandria.Workers.MediaMetadata ($S3_PROVIDER)"
 # ----------------------------
 # tmux setup
 # ----------------------------
@@ -71,6 +72,11 @@ tmux new-window -t "$SESSION_NAME" -n "TranspilationWorker" -c "$PWD"
 sleep 5.0
 tmux send-keys -t "$SESSION_NAME:TranspilationWorker" \
   "cd Backend && dotnet run --project Alexandria.Workers.MediaTranspilation --launch-profile \"$streaming_worker_profile\"" C-m
+
+tmux new-window -t "$SESSION_NAME" -n "MediaMetadata" -c "$PWD"
+sleep 5.0
+tmux send-keys -t "$SESSION_NAME:MediaMetadata" \
+  "cd Backend && dotnet run --project Alexandria.Workers.MediaMetadata --launch-profile \"$media_metadata_worker_profile\"" C-m
 
 tmux select-window -t "$SESSION_NAME:Frontend"
 tmux attach-session -t "$SESSION_NAME"

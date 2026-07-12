@@ -25,8 +25,11 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Streaming\Alexandria.Services.Streaming.csproj"/>
+        <ProjectReference Include="..\Alexandria.Workers.MediaMetadata\Alexandria.Workers.MediaMetadata.csproj"/>
         <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
         <ProjectReference Include="..\Alexandria.Data.Models\Alexandria.Data.Models.csproj"/>
+        <ProjectReference Include="..\Alexandria.Dto\Alexandria.Dto.csproj"/>
         <ProjectReference Include="..\Alexandria.Tests.Common\Alexandria.Tests.Common.csproj"/>
     </ItemGroup>
 

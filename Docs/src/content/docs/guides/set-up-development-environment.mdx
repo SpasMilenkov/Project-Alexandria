@@ -26,11 +26,12 @@ Before you begin, ensure you have the following installed:
 Alexandria's dev environment runs with this architecture:
 
 - **Docker Compose** manages infrastructure services (PostgreSQL, RabbitMQ, S3 storage)
-- **tmux** orchestrates 4 development processes with hot reload:
+- **tmux** orchestrates 5 development processes with hot reload:
   - Frontend (Vue + Vite)
   - API Server (ASP.NET Core)
   - Document Worker
   - Media Worker
+  - Media Metadata Worker (lyrics fetching, future metadata enrichment)
 
 You can choose between **three S3 providers** using Docker Compose profiles:
 - **Garage** (default, lightweight, Rust-based)
@@ -76,8 +77,12 @@ You can choose between **three S3 providers** using Docker Compose profiles:
    # RabbitMQ
    RABBITMQ_USER=dev_admin
    RABBITMQ_PASSWORD=your_secure_password_here
+   MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD=your_secure_password_here
    RABBITMQ_VHOST=alexandria
-   
+
+   # Streaming
+   LYRICS_ENABLED=true
+
    # Ports (default values, change if needed)
    POSTGRES_PORT=5432
    MINIO_API_PORT=9000
@@ -172,12 +177,13 @@ You can choose between **three S3 providers** using Docker Compose profiles:
        }
        ```
        
-       <Aside type="caution">
-         Copy this configuration to **all three backend projects**:
-         - `Backend/API/appsettings.Development.json`
-         - `Backend/DocumentWorker.Service/appsettings.Development.json`
-         - `Backend/MediaWorkerService/appsettings.Development.json`
-       </Aside>
+        <Aside type="caution">
+          Copy this configuration to **all backend projects**:
+          - `Backend/API/appsettings.Development.json`
+          - `Backend/DocumentWorker.Service/appsettings.Development.json`
+          - `Backend/MediaWorkerService/appsettings.Development.json`
+          - `Backend/Alexandria.Workers.MediaMetadata/appsettings.Development.json`
+        </Aside>
      </TabItem>
      
      <TabItem label="MinIO">
@@ -270,11 +276,12 @@ You can choose between **three S3 providers** using Docker Compose profiles:
    # ./run-dev.sh --s3-provider RustFS
    ```
 
-   This creates a tmux session with 4 windows:
+   This creates a tmux session with 5 windows:
    - **Frontend** — Vue dev server on http://localhost:5173
    - **API** — ASP.NET Core API on http://localhost:5000
    - **DocumentWorker** — Background worker for document processing
    - **MediaWorker** — Background worker for media processing
+   - **MediaMetadata** — Background worker for lyrics fetching and metadata enrichment
 
 </Steps>
 
@@ -285,7 +292,7 @@ Once the dev environment is running, you can navigate between windows:
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+b` then `w` | List all windows (interactive selector) |
-| `Ctrl+b` then `0-3` | Switch to window by number (0=Frontend, 1=API, 2=DocWorker, 3=MediaWorker) |
+| `Ctrl+b` then `0-4` | Switch to window by number (0=Frontend, 1=API, 2=DocWorker, 3=MediaWorker, 4=MediaMetadata) |
 | `Ctrl+b` then `d` | Detach from tmux (services keep running) |
 | `tmux attach -t dev-session` | Reattach to running session |
 | `Ctrl+c` in any window | Stop that service |

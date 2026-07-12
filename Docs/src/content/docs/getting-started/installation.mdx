@@ -95,7 +95,7 @@ After choosing your deployment mode, the installer asks which optional features 
 
 | Option | Default | Notes |
 |--------|---------|-------|
-| Media processing | Yes | Adds the media-worker service for audio/video transcoding. Requires ~1 GB extra RAM and 4 CPU cores recommended. |
+| Media processing | Yes | Adds the media-worker and media-metadata-worker services for audio/video transcoding and lyrics fetching. Requires ~1 GB extra RAM and 4 CPU cores recommended. |
 | Monitoring | No | Adds Prometheus + Grafana dashboards. Requires ~512 MB extra RAM. |
 | Frontend port | 80 (prod) / 3000 (preview) | The port Nginx serves the frontend on. Any value 1–65535. |
 | Grafana port | 3000 or 3001 | Shown only when monitoring is enabled. Defaults to 3001 if the frontend is on 3000. |

@@ -155,6 +155,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
   "material-symbols": ["keyboard-outline-rounded", "vitals"],
   mdi: [
     "playlist-music",
+    "script-text-outline",
     "music-note",
     "music-note-off",
     "play-circle-outline",

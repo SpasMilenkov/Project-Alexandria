@@ -7,26 +7,7 @@
       class="w-9 h-9 rounded-lg shrink-0 overflow-hidden bg-black dark:bg-white flex items-center justify-center"
     >
       <template v-if="showSpinner">
-        <svg
-          class="w-3.5 h-3.5 animate-spin text-gray-300 dark:text-white/20"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            class="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            stroke-width="4"
-          />
-          <path
-            class="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 22 6.477 22 12h-4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
+        <BlockSpinner />
       </template>
       <img
         v-else-if="loadedSrc"
@@ -70,7 +51,7 @@
           size="xs"
           variant="ghost"
           color="primary"
-          icon="i-heroicons-play"
+          icon="i-mdi-play"
           @click="emit('play-now', file)"
         />
       </UTooltip>
@@ -91,7 +72,7 @@
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref } from "vue";
-
+import BlockSpinner from "../common/BlockSpinner.vue";
 import { type MediaFileDto } from "@/api/streaming";
 import { getPreview } from "@/queries/files";
 import { formatDuration } from "@/utils/date-formatters";

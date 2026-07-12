@@ -17,7 +17,7 @@
     "fmt:check": "oxfmt --check"
   },
   "dependencies": {
-    "@iconify/vue": "5.0.0",
+    "@iconify/vue": "5.0.1",
     "@internationalized/date": "3.11.0",
     "@nuxt/ui": "4.9.0",
     "@pinia/colada": "0.21.7",

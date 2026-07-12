@@ -34,7 +34,7 @@ curl -sf -XPUT $AUTH "$BASE/permissions/${RABBITMQ_VHOST}/document_worker_user" 
     "read":      "^(content-exchange|document-queue|amq\\.gen-.*)$"
   }' \
   && echo "Permissions set: document_worker_user"
-  
+
 # TODO: remove amq\.gen-.* once workers are updated to use named queues
 curl -sf -XPUT $AUTH "$BASE/permissions/${RABBITMQ_VHOST}/media_worker_user" \
   -H "Content-Type: application/json" \
@@ -91,4 +91,27 @@ curl -sf -XPOST $AUTH "$BASE/bindings/${RABBITMQ_VHOST}/e/content-exchange/q/tra
   -H "Content-Type: application/json" \
   -d '{"routing_key":"transpilation.#","arguments":{}}' \
   && echo "Binding ready: content-exchange -> transpilation-queue (transpilation.#)"
+
+  # User
+curl -sf -XPUT $AUTH "$BASE/users/media_metadata_worker" \
+  -H "Content-Type: application/json" \
+  -d "{\"password\":\"${MEDIA_METADATA_WORKER_PASS}\",\"tags\":\"\"}" \
+  && echo "User ready: media_metadata_worker"
+
+# Permissions - content-queue until queue migration is done
+curl -sf -XPUT $AUTH "$BASE/permissions/${RABBITMQ_VHOST}/media_metadata_worker" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "configure": "^(content-exchange|content-queue|amq\\.gen-.*)$",
+    "write":     "^(content-exchange|content-queue|amq\\.gen-.*)$",
+    "read":      "^(content-exchange|content-queue|amq\\.gen-.*)$"
+  }' \
+  && echo "Permissions set: media_metadata_worker"
+
+# TODO: switch to dedicated queue as part of RabbitMQ registration cleanup
+curl -sf -XPOST $AUTH "$BASE/bindings/${RABBITMQ_VHOST}/e/content-exchange/q/content-queue" \
+  -H "Content-Type: application/json" \
+  -d '{"routing_key":"lyrics.#","arguments":{}}' \
+  && echo "Binding ready: content-exchange -> content-queue (lyrics.#)"
+
 echo "=== RabbitMQ init complete ==="
