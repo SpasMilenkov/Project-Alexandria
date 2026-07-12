@@ -297,7 +297,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
                 />
                 <UButton
                   v-if="getLinkStatus(link) === 'active'"
-                  icon="i-mdi-close-circle-outline"
+                  icon="i-mdi-close"
                   size="xs"
                   variant="ghost"
                   color="error"
