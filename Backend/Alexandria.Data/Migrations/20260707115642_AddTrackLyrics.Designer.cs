@@ -4,6 +4,7 @@ using System.Numerics;
 using Alexandria.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using NpgsqlTypes;
 namespace Alexandria.Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260707115642_AddTrackLyrics")]
+    partial class AddTrackLyrics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1247,7 +1250,7 @@ namespace Alexandria.Data.Migrations
                     b.Property<bool>("Cached")
                         .HasColumnType("boolean");
 
-                    b.Property<decimal?>("ConfidenceScore")
+                    b.Property<decimal>("ConfidenceScore")
                         .HasColumnType("numeric");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1260,9 +1263,6 @@ namespace Alexandria.Data.Migrations
 
                     b.Property<DateTime?>("FetchedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsInstrumental")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("PlainLyrics")
                         .HasColumnType("text");
@@ -1291,15 +1291,10 @@ namespace Alexandria.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Id");
-
-                    b.HasIndex("Status");
-
                     b.HasIndex("TranspilationJobId")
-                        .IsUnique()
-                        .HasFilter("\"DeletedAt\" IS NULL");
+                        .IsUnique();
 
-                    b.ToTable("TrackLyrics", (string)null);
+                    b.ToTable("TrackLyrics");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>

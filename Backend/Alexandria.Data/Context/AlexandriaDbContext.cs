@@ -56,6 +56,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<PlaylistItem> PlaylistItems { get; set; }
     public DbSet<PolicyRule> PolicyRules { get; set; }
     public DbSet<DirectoryPolicy> DirectoryPolicies { get; set; }
+    public  DbSet<TrackLyrics>  TrackLyrics { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -97,6 +98,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new StreamSessionConfiguration());
         builder.ApplyConfiguration(new PolicyRuleConfiguration());
         builder.ApplyConfiguration(new DirectoryPolicyConfiguration());
+        builder.ApplyConfiguration(new TrackLyricsConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
