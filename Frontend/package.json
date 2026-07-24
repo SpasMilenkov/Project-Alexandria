@@ -24,18 +24,18 @@
     "@pinia/colada-plugin-retry": "0.2.3",
     "@serwist/window": "9.5.6",
     "@tailwindcss/vite": "4.2.1",
-    "@unhead/vue": "3.1.6",
+    "@unhead/vue": "3.1.7",
     "@vueuse/core": "14.3.0",
     "@vueuse/integrations": "14.3.0",
     "@zip.js/zip.js": "2.6.40",
-    "axios": "1.16.1",
+    "axios": "1.18.1",
     "chart.js": "4.5.1",
     "hash-wasm": "4.12.0",
     "pinia": "3.0.4",
     "pinia-plugin-persistedstate": "4.7.1",
     "shaka-player": "5.1.2",
-    "tailwindcss": "4.2.1",
-    "vue": "3.5.29",
+    "tailwindcss": "4.3.1",
+    "vue": "3.5.39",
     "vue-chartjs": "5.3.3",
     "vue-router": "4.6.4",
     "vue-virtual-scroller": "3.0.4",
@@ -73,5 +73,5 @@
   "engines": {
     "node": "^22.13.0 || >=24.15.0"
   },
-  "packageManager": "pnpm@11.0.6+sha512.97f906e1da2bedac3df83cadae04b4753a130092dd49d55cd36825ad3e623e9df3f97754f8f259e699172a360fac569acf2f908e7732bdae3eddb2dcf7e121fd"
+  "packageManager": "pnpm@11.14.0+sha512.66c1ac4c7d4762d6d7dde44c7f3e5a73591ed0a0806e751d4ed32d4f004f25b2285a906b1fd8a9e3e621df3b4e2858bf88e50e0cf626bedbe977fe434a5caf85"
 }
