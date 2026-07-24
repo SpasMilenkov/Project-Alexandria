@@ -45,6 +45,8 @@ public static class ApiExtensions
             options.SerializerOptions.Converters.Add(new BigIntegerJsonConverter());
         });
 
+        services.AddMemoryCache(options => { options.SizeLimit = 3000; });
+
         return services;
     }
 }
