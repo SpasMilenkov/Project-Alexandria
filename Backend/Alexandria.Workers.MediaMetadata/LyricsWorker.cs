@@ -47,9 +47,7 @@ public partial class LyricsWorker : BackgroundService
             autoDelete: false,
             cancellationToken: ct);
 
-        // TODO: migrate to dedicated lyrics-queue as part of RabbitMQ registration cleanup
-        var queueName = _configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "content-queue");
-
+        var queueName = _configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "lyrics-queue")!;
         var queueDeclareResult = await _channel.QueueDeclareAsync(
             queue: queueName,
             durable: true,

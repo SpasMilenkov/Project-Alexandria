@@ -26,4 +26,8 @@
         <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
     </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="logs\"/>
+    </ItemGroup>
 </Project>

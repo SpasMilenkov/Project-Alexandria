@@ -1,6 +1,7 @@
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Preview.Documents;
 
 namespace Alexandria.Workers.Document.Handlers;
@@ -14,61 +15,90 @@ public class PreviewGenerationHandler(
 {
     public async Task HandleAsync(string message, CancellationToken ct = default)
     {
-        var fileIdGuid = Guid.Parse(message);
-        var fileData = await fileService.GetFileMetadataAsync(fileIdGuid, ct);
-        if (fileData is null) throw new InvalidOperationException($"File with that ID: {message} does not exist.");
-        var contentHash = Convert.ToHexStringLower(
-            await unitOfWork.Files.GetFileHashAsync(fileData.Id, fileData.OwnerId, ct)
-            ?? throw new InvalidOperationException("File does not have content object hash"));
+        var versionId = Guid.Parse(message);
+        var version =
+            await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == versionId && v.DeletedAt == null, ct);
+        if (version is null) throw new InvalidOperationException($"Version with that ID: {message} does not exist.");
 
-        logger.LogInformation("Processing preview for file: {FileId}", message);
+        var contentHash = Convert.ToHexStringLower(version.ContentHash);
+
+        logger.LogInformation("Processing preview for version: {FileId}", message);
+
+        var mimetype = await unitOfWork.Files.GetMimeTypeByVersionIdAsync(versionId, ct) ??
+                       throw new InvalidOperationException("Mime type is missing");
 
         // Generate temp path with correct extension based on MIME type
-        var extension = GetExtensionFromMimeType(fileData.MimeType);
+        var extension = GetExtensionFromMimeType(mimetype);
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
+        string? previewPath = null;
+        string? thumbnailPath = null;
 
         try
         {
             await using (var tempFile = File.Create(tempPath))
             {
-                await storage.StreamFile(message, tempFile, ct);
+                await storage.StreamFile(versionId, tempFile, ct);
             }
 
             logger.LogInformation("File {FileId} downloaded to {TempPath}, size: {Size}",
                 message, tempPath, new FileInfo(tempPath).Length);
 
-            var fileCategory = storage.CategorizeFile(fileData.MimeType);
-            var previewPath = await pdfPreviewService.GeneratePreviewAsync(tempPath, fileCategory, ct);
+            var fileCategory = storage.CategorizeFile(mimetype);
+            var (generatedPreviewPath, generatedThumbnailPath) =
+                await pdfPreviewService.GeneratePreviewAsync(tempPath, fileCategory, ct);
+
+            previewPath = generatedPreviewPath;
+            thumbnailPath = generatedThumbnailPath;
 
             if (string.IsNullOrEmpty(previewPath) || !File.Exists(previewPath))
-            {
                 throw new InvalidOperationException(
                     $"Preview generation failed. Expected path: {previewPath}, Exists: {File.Exists(previewPath)}");
-            }
 
-            logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}",
-                previewPath, new FileInfo(previewPath).Length);
+            if (string.IsNullOrEmpty(thumbnailPath) || !File.Exists(thumbnailPath))
+                throw new InvalidOperationException(
+                    $"Thumbnail generation failed. Expected path: {thumbnailPath}, Exists: {File.Exists(thumbnailPath)}");
 
             await using var previewStream = File.OpenRead(previewPath);
+            logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}",
+                previewPath, previewStream.Length);
 
-            await storage.UploadPreview($"previews/{contentHash}", "application/pdf",
+            await storage.UploadPreview($"previews/{contentHash}",
+                "application/pdf",
                 previewStream,
-                originalFileId: fileData.Id, uploadedBy: SystemConfig.SystemId, ct: ct);
-            await fileService.UpdateFileMetadataAsync(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
+                versionId,
+                SystemConfig.SystemId,
+                previewStream.Length,
+                PreviewKind.Preview,
+                ct);
 
-            File.Delete(previewPath);
+            await using var thumbnailStream = File.OpenRead(thumbnailPath);
+            logger.LogInformation("Thumbnail generated at {ThumbnailPath}, size: {Size}",
+                thumbnailPath, thumbnailStream.Length);
+
+            await storage.UploadPreview($"thumbnails/{contentHash}",
+                "image/png",
+                thumbnailStream,
+                versionId,
+                SystemConfig.SystemId,
+                thumbnailStream.Length,
+                PreviewKind.Thumbnail,
+                ct);
         }
         finally
         {
             if (File.Exists(tempPath))
                 File.Delete(tempPath);
+            if (previewPath != null && File.Exists(previewPath))
+                File.Delete(previewPath);
+            if (thumbnailPath != null && File.Exists(thumbnailPath))
+                File.Delete(thumbnailPath);
         }
     }
 
-
+    //TODO: I can probably unify those so that they are in one place with the media one maybe
     /// <summary>
-    /// Maps MIME types to their corresponding file extensions
-    /// Returns appropriate extension for preview-supported formats
+    ///     Maps MIME types to their corresponding file extensions
+    ///     Returns appropriate extension for preview-supported formats
     /// </summary>
     private static string GetExtensionFromMimeType(string mimeType)
     {

@@ -33,15 +33,15 @@ public class Worker(
             autoDelete: false,
             cancellationToken: stoppingToken);
 
-        var queueDeclareResult = await _channel.QueueDeclareAsync(
-            // queue: queueName,
+        var queueName = configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "document-queue")!;
+
+        await _channel.QueueDeclareAsync(
+            queue: queueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
             arguments: null,
             cancellationToken: stoppingToken);
-
-        string queueName = queueDeclareResult.QueueName;
 
 
         await _channel.QueueBindAsync(
@@ -66,7 +66,7 @@ public class Worker(
                 logger.LogInformation("Received message: {Message}", message);
 
                 // Process message
-                await messageHandler.HandleAsync(message);
+                await messageHandler.HandleAsync(message, stoppingToken);
 
                 // Acknowledge message
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);

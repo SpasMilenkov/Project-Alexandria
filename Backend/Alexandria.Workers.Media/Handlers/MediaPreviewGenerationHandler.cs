@@ -1,5 +1,4 @@
 using Alexandria.Common;
-using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using Alexandria.Services.Preview.Media;
 
@@ -8,25 +7,28 @@ namespace Alexandria.Workers.Media.Handlers;
 public class MediaPreviewGenerationHandler(
     ILogger<MediaPreviewGenerationHandler> logger,
     IStorageService storage,
-    IFileService fileService,
     IMediaPreviewService mediaPreviewService,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string message, CancellationToken ct = default)
     {
-        var fileIdGuid = Guid.Parse(message);
-        var fileData = await fileService.GetFileMetadataAsync(fileIdGuid, ct);
-        if (fileData is null)
-            throw new InvalidOperationException($"File with that ID: {message} does not exist.");
+        var versionId = Guid.Parse(message);
+        var version =
+            await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == versionId && v.DeletedAt == null, ct);
 
-        var fileHash = Convert.ToHexStringLower(
-            await unitOfWork.Files.GetFileHashAsync(fileData.Id, fileData.OwnerId, ct)
-            ?? throw new InvalidOperationException("File does not have related content object"));
+        if (version is null) throw new InvalidOperationException($"Version with that ID: {message} does not exist.");
+
+        var contentHash = Convert.ToHexStringLower(version.ContentHash);
+
+        logger.LogInformation("Processing preview for version: {FileId}", message);
+
+        var mimetype = await unitOfWork.Files.GetMimeTypeByVersionIdAsync(versionId, ct) ??
+                       throw new InvalidOperationException("Mime type is missing");
 
         logger.LogInformation("Processing media preview for file: {FileId}", message);
 
         // Generate temp path with correct extension based on MIME type
-        var extension = GetExtensionFromMimeType(fileData.MimeType);
+        var extension = GetExtensionFromMimeType(mimetype);
         var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
         string? previewPath = null;
         string? thumbnailPath = null;
@@ -35,13 +37,13 @@ public class MediaPreviewGenerationHandler(
         {
             await using (var tempFile = File.Create(tempPath))
             {
-                await storage.StreamFile(message, tempFile, ct);
+                await storage.StreamFile(versionId, tempFile, ct);
             }
 
             logger.LogInformation("Media file {FileId} downloaded to {TempPath}, size: {Size}",
                 message, tempPath, new FileInfo(tempPath).Length);
 
-            var fileCategory = storage.CategorizeFile(fileData.MimeType);
+            var fileCategory = storage.CategorizeFile(mimetype);
 
             // Generate media previews (thumbnail + preview clip)
             var result = await mediaPreviewService.GeneratePreviewAsync(tempPath, fileCategory, ct);
@@ -54,14 +56,16 @@ public class MediaPreviewGenerationHandler(
             previewPath = result.PreviewPath;
             thumbnailPath = result.ThumbnailPath;
 
+            var previewSize = new FileInfo(previewPath).Length;
+            var thumbnailSize = new FileInfo(thumbnailPath).Length;
+
             logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}",
-                result.PreviewPath, new FileInfo(result.PreviewPath).Length);
+                result.PreviewPath, previewSize);
 
             await using var previewStream = File.OpenRead(previewPath);
             await using var thumbnailStream = File.OpenRead(thumbnailPath);
-            await storage.UploadMediaData(previewStream, thumbnailStream, fileHash, fileData.Id, result.Metadata, ct);
-
-            await fileService.UpdateFileMetadataAsync(fileIdGuid, SystemConfig.SystemId, hasPreview: true, ct: ct);
+            await storage.UploadMediaData(previewStream, thumbnailStream, previewSize, thumbnailSize, contentHash,
+                versionId, result.Metadata, ct);
         }
         finally
         {

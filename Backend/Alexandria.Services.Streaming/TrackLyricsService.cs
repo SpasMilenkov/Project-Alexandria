@@ -33,7 +33,7 @@ public class TrackLyricsService(
     public async Task QueueLyricsRefetchAsync(Guid jobId, Guid userId, CancellationToken ct = default)
     {
         var existing = await unitOfWork.Lyrics.FirstOrDefaultAsync(
-            l => l.TranspilationJobId == jobId && l.TranspilationJob!.UserId == userId, ct);
+            l => l.TranspilationJobId == jobId && l.TranspilationJob!.UserId == userId && l.DeletedAt == null, ct);
 
         if (existing is not null)
         {
