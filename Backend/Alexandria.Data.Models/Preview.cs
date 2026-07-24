@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.Numerics;
+using Alexandria.Data.Models.Enumerators;
 
 namespace Alexandria.Data.Models;
 
@@ -9,21 +9,14 @@ public class Preview : IBase
 
     [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
     [StringLength(ValidationConstants.StringLengths.MediumString)]
-    public required string Name { get; set; }
-
-    [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
-    [StringLength(ValidationConstants.StringLengths.ExtraLongString)]
-    public required string Path { get; set; }
-
-    [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
-    [StringLength(ValidationConstants.StringLengths.MediumString)]
-    public required string MimeType { get; init; }
+    public required string MimeType { get; set; }
 
     [Range(ValidationConstants.FileConstants.MinFileSize,
         ValidationConstants.FileConstants.MaxFileSize,
         ErrorMessage = ValidationConstants.ErrorMessages.FileSizeRange)]
-    public BigInteger Size { get; set; }
+    public long Size { get; set; }
 
+    public PreviewKind Kind { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
@@ -33,6 +26,6 @@ public class Preview : IBase
     [StringLength(ValidationConstants.StringLengths.UserId)]
     public Guid? UpdatedBy { get; set; }
 
-    public Guid FileId { get; set; }
-    public File? File { get; set; }
+    public Guid VersionId { get; set; }
+    public FileVersion? Version { get; set; }
 }

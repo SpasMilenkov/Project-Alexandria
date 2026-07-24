@@ -51,10 +51,6 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             )",
                 stored: true);
         // Relations
-        builder.HasOne(f => f.Preview)
-            .WithOne(p => p.File)
-            .HasForeignKey<Preview>(p => p.FileId)
-            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(f => f.Tags)
             .WithMany(t => t.Files)

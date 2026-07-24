@@ -10,16 +10,6 @@ public class PreviewConfiguration : IEntityTypeConfiguration<Preview>
     {
         builder.HasKey(e => e.Id);
 
-        builder.Property(e => e.Name)
-            .HasMaxLength(ValidationConstants.StringLengths.MediumString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
-            .IsRequired();
-
-        builder.Property(e => e.Path)
-            .HasMaxLength(ValidationConstants.StringLengths.ExtraLongString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.ExtraLongString})")
-            .IsRequired();
-
         builder.Property(e => e.MimeType)
             .HasMaxLength(ValidationConstants.StringLengths.MediumString)
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
@@ -28,10 +18,6 @@ public class PreviewConfiguration : IEntityTypeConfiguration<Preview>
         builder.Property(e => e.UpdatedBy)
             .HasColumnType("uuid")
             .IsRequired(false);
-
-        builder.Property(e => e.Size)
-            .HasColumnType("numeric(20,0)")
-            .IsRequired();
 
         // DateTime properties
         builder.Property(e => e.CreatedAt)
@@ -46,8 +32,15 @@ public class PreviewConfiguration : IEntityTypeConfiguration<Preview>
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
 
+        //Conversions
+        builder
+            .Property(p => p.Kind)
+            .HasConversion<string>();
+
         // Indexes for performance
         builder.HasIndex(e => e.CreatedAt);
+        builder.HasIndex(p => new { p.VersionId, p.Kind })
+            .IsUnique();
 
         // Table name
         builder.ToTable("Previews");
