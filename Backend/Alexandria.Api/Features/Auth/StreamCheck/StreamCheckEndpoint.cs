@@ -15,7 +15,6 @@ internal sealed class StreamCheckEndpoint(IFileService fileService) : EndpointWi
     public override async Task HandleAsync(CancellationToken ct)
     {
         var uri = HttpContext.Request.Headers["X-Original-URI"].FirstOrDefault();
-        Console.WriteLine($"uri before if  {uri}");
 
         if (string.IsNullOrEmpty(uri))
         {
@@ -23,21 +22,18 @@ internal sealed class StreamCheckEndpoint(IFileService fileService) : EndpointWi
             return;
         }
 
-        Console.WriteLine($"uri  {uri}");
-
         // uri format: /stream/{fileId}/...
         var segments = uri.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Length < 2 || !Guid.TryParse(segments[1], out var fileId))
+        if (segments.Length < 2 || !Guid.TryParse(segments[1], out var versionId))
         {
             await Send.UnauthorizedAsync(ct);
             return;
         }
 
         var userId = User.GetUserId();
-        Console.WriteLine($"User id {userId}");
-        var belongs = await fileService.VersionBelongsToUserAsync(fileId, userId, ct);
+        var hash = await fileService.VersionBelongsToUserAsync(versionId, userId, ct);
 
-        if (!belongs)
+        if (hash is null)
         {
             await Send.UnauthorizedAsync(ct);
             return;
