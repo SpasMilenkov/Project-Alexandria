@@ -45,17 +45,59 @@ services:
       retries: 3
       start_period: 20s
 
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: alexandria-nginx-dev
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      garage:
+        condition: service_healthy
+ 
+
+
+  rabbitmq-config:
+    image: alpine:3.20
+    container_name: alexandria-rabbitmq-config-dev
+    restart: "no"
+    environment:
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-alexandria}
+      API_RABBITMQ_USER: ${API_RABBITMQ_USER:?API_RABBITMQ_USER is required}
+      RABBITMQ_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      API_RABBITMQ_PASS: ${API_RABBITMQ_PASSWORD:?API_RABBITMQ_PASSWORD is required}
+      DOCUMENT_WORKER_PASS: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
+      MEDIA_WORKER_PASS: ${MEDIA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
+      TRANSPILATION_WORKER_PASS: ${TRANSPILATION_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
+      MEDIA_METADATA_WORKER_PASS: ${MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
+    volumes:
+      - ./rabbitmq/definitions.template.json:/template/definitions.template.json:ro
+      - rabbitmq_definitions_dev:/output
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - apk add --no-cache gettext > /dev/null && envsubst < /template/definitions.template.json > /output/definitions.json
+
   rabbitmq:
     image: rabbitmq:4.2.5-management-alpine
     container_name: alexandria-rabbitmq-dev
     restart: unless-stopped
+    depends_on:
+      rabbitmq-config:
+        condition: service_completed_successfully
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dev_admin}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-dev_password_123}
+      # RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      # RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
       RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-alexandria}
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
     volumes:
       - rabbitmq_dev_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - rabbitmq_definitions_dev:/etc/rabbitmq/definitions:ro
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -77,7 +119,8 @@ volumes:
     driver: local
   rabbitmq_dev_data:
     driver: local
-
+  rabbitmq_definitions_dev:
+    driver: local
 networks:
   alexandria-network:
     driver: bridge

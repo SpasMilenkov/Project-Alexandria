@@ -58,4 +58,13 @@ export default defineConfig({
   worker: {
     format: "es",
   },
+  server: {
+    host: true,
+    port: 5173,
+    hmr: {
+      protocol: "wss",
+      host: "localhost",
+      clientPort: 8443,
+    },
+  },
 });
