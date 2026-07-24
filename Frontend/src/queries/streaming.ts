@@ -62,6 +62,7 @@ export const getFilesForStreaming = defineQueryOptions((query: GetFilesForStream
   key: STREAMING_QUERY_KEYS.filesForStreaming(query),
   placeholderData: (prev) => prev,
   query: () => streamingApi.getFilesForStreaming(query),
+  staleTime: 30_000
 }));
 
 export const getHistory = defineQueryOptions((query: StreamHistoryQuery) => ({

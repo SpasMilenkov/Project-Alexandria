@@ -13,8 +13,6 @@ import { apiClient } from "./client";
 export interface UpdateFileMetadataResponse {
   id: string;
   name: string;
-  hasPreview: boolean;
-  previewGeneratedAt: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
 }
@@ -42,17 +40,12 @@ export interface FileResult {
   owner: UserDto;
 }
 
+// thumbnailUrl removed, thumbnails are a separate endpoint/call now
+// (Kind = Thumbnail is its own artifact, not bundled into the preview response)
 export interface PreviewResultDto {
-  metaData: {
-    id: string;
-    fileName: string;
-    mimeType: string;
-    hasPreview: boolean;
-  };
-  previewUrl: string;
-  thumbnailUrl: string;
-  textPreview: string;
-  archivePreview: string;
+  previewUrl: string | null;
+  textPreview: string | null;
+  archivePreview: string | null;
 }
 
 export interface FileVersionDto {
@@ -176,8 +169,18 @@ export const fileApi = {
     return response.data;
   },
 
-  getPreview: async (id: string): Promise<PreviewResultDto> => {
-    const response = await apiClient.get<PreviewResultDto>(`/files/${id}/preview`);
+  // Hits the unversioned redirect endpoint, resolves to the file's current version
+  // server-side. Prefer getPreviewByVersion when the caller already has a versionId
+  // (e.g. from a MediaFileDto/FileResult already in hand), it skips the redirect hop.
+  getPreview: async (fileId: string): Promise<PreviewResultDto> => {
+    const response = await apiClient.get<PreviewResultDto>(`/files/${fileId}/preview`);
+    return response.data;
+  },
+
+  getPreviewByVersion: async (fileId: string, versionId: string): Promise<PreviewResultDto> => {
+    const response = await apiClient.get<PreviewResultDto>(
+      `/files/${fileId}/versions/${versionId}/preview`,
+    );
     return response.data;
   },
 
@@ -212,12 +215,15 @@ export const fileApi = {
     return response.data;
   },
 
-  getThumbnail: async (id: string, width: number, height: number): Promise<Blob> => {
-    const response = await apiClient.get(`/files/${id}/thumbnail/${width}/${height}`, {
-      responseType: "blob",
-    });
-    return response.data;
-  },
+  // URL builders, not fetch calls. Point <img :src> directly at these so the
+  // browser's native HTTP cache (backed by nginx proxy_cache server-side) does
+  // the work, no blob fetch, no JS-owned caching layer. The endpoint itself
+  // redirects (302) to the presigned URL, browsers follow img-src redirects
+  // transparently.
+  getThumbnailUrl: (fileId: string): string => `/api/files/${fileId}/thumbnail`,
+  
+  getThumbnailUrlForVersion: (fileId: string, versionId: string): string =>
+    `/api/files/${fileId}/versions/${versionId}/thumbnail`,
 
   getVersionsForFile: async ({
     id,

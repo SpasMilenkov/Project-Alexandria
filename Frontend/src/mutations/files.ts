@@ -148,6 +148,8 @@ export const changeActiveVersion = defineMutation(() => {
       fileApi.changeFileVersion({ fileId, versionId }),
     onSettled(_: any, __: any, { fileId }: { fileId: string }) {
       queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(fileId) });
+      // current version changed, the unversioned preview redirect target changed too
+      queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.preview(fileId) });
     },
   });
 });
@@ -162,6 +164,7 @@ export const restoreFileVersion = defineMutation(() => {
       queryCache.invalidateQueries({
         key: [...FILES_QUERY_KEYS.root, "versions-for-file", fileId],
       });
+      queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.preview(fileId) });
     },
   });
 });

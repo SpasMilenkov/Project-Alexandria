@@ -230,6 +230,7 @@
         <FilePreview
           v-if="!detail.currentVersion.isEncrypted"
           :file-id="props.data.fileId"
+          :current-version-id="props.data.currentVersion.id"
           :file-name="detail.fileName"
           :mime-type="detail.currentVersion.mimeType"
         />

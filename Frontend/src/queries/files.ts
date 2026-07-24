@@ -28,7 +28,17 @@ export const FILES_QUERY_KEYS = {
     query.sortBy,
     query.pageSize,
   ],
-  signedUrl: (id: string) => [...FILES_QUERY_KEYS.root, "signed-url", id],
+  // unversioned, resolves to "current version" server-side, so its result
+  // can go stale the moment a new version becomes active
+  preview: (fileId: string) => [...FILES_QUERY_KEYS.root, "preview", fileId],
+  // versionId is part of the key, and a version's content never changes,
+  // so this key is safe to cache indefinitely once populated
+  previewByVersion: (fileId: string, versionId: string) => [
+    ...FILES_QUERY_KEYS.root,
+    "preview-by-version",
+    fileId,
+    versionId,
+  ],
   subFiles: ({ id, params }: { id: string; params: PaginationParams }) =>
     [
       ...FILES_QUERY_KEYS.root,
@@ -57,12 +67,27 @@ export const subFiles = defineQueryOptions(
   }),
 );
 
+// Unversioned convenience query, "whatever's current." Keep the TTL short,
+// this can legitimately go stale the moment someone uploads a new version.
 export const getPreview = defineQueryOptions((id: string) => ({
-  key: FILES_QUERY_KEYS.signedUrl(id),
+  key: FILES_QUERY_KEYS.preview(id),
   query: () => fileApi.getPreview(id),
   refetchOnMount: true,
-  staleTime: 30000,
+  staleTime: 30_000,
 }));
+
+// Versioned query. A given (fileId, versionId) pair's preview content is
+// permanent — the version can't change out from under this key — so it's
+// safe to treat as effectively immutable client-side, same reasoning as the
+// immutable Cache-Control on the byte-serving endpoint itself.
+export const getPreviewByVersion = defineQueryOptions(
+  ({ fileId, versionId }: { fileId: string; versionId: string }) => ({
+    key: FILES_QUERY_KEYS.previewByVersion(fileId, versionId),
+    query: () => fileApi.getPreviewByVersion(fileId, versionId),
+    staleTime: Infinity,
+    gcTime: 24 * 60 * 60 * 1000, // 24h, keeps scroll-back from refetching within a session
+  }),
+);
 
 export const rootFiles = defineQueryOptions((params: PaginationParams) => ({
   key: FILES_QUERY_KEYS.rootFiles(params),

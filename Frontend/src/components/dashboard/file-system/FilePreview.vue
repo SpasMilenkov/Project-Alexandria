@@ -13,8 +13,8 @@
     >
       <div class="relative w-full aspect-video">
         <img
-          v-if="thumbnailUrl"
-          :src="thumbnailUrl"
+          v-if="thumbnailSrc"
+          :src="thumbnailSrc"
           alt="Audio thumbnail"
           class="w-full h-full object-cover"
         />
@@ -173,9 +173,11 @@ import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref, watch } from "vue";
 import AudioEqualizer from "../AudioEqualizer.vue";
+import { fileApi } from "@/api/file";
 
 const props = defineProps<{
   fileId: string;
+  currentVersionId: string;
   fileName: string;
   mimeType: string;
 }>();
@@ -185,7 +187,6 @@ const props = defineProps<{
 const { data: previewData, isLoading: previewLoading } = useQuery(() => getPreview(props.fileId));
 
 const previewUrl = computed(() => previewData.value?.previewUrl ?? null);
-const thumbnailUrl = computed(() => previewData.value?.thumbnailUrl ?? null);
 const archivePreview = computed(() => previewData.value?.archivePreview ?? null);
 const textPreview = computed(() => previewData.value?.textPreview ?? null);
 
@@ -275,6 +276,10 @@ interface ArchiveData {
   FileName: string;
   Entries: ArchiveEntry[];
 }
+
+const thumbnailSrc = computed(() =>
+  fileApi.getThumbnailUrlForVersion(props.fileId, props.currentVersionId)
+);
 
 const archivePreviewItems = computed(() => {
   if (!archivePreview.value) return undefined;
