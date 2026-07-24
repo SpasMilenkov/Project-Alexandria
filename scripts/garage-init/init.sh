@@ -54,13 +54,18 @@ for bucket in alexandria-files alexandria-previews alexandria-temp alexandria-im
   fi
 done
 
-# Enable web endpoint for streaming bucket so nginx can proxy to port 3902
-# without S3 auth. The bucket is not externally reachable — nginx enforces
-# auth_request before any request reaches Garage.
+# Enable web endpoint for streaming + previews buckets so nginx can proxy to
+# the website port without S3 auth. Neither bucket is externally reachable —
+# nginx enforces auth_request (stream-check / preview-check) before any
+# request reaches Garage. Write access is unaffected: uploads still require
+# a valid Garage key (see alexandria-preview-key / alexandria-streaming-key
+# below) — website mode only changes unauthenticated GET behavior.
 echo ""
-echo "Step 2b: Web endpoint..."
+echo "Step 2b: Web endpoints..."
 g bucket website --allow alexandria-streaming
 echo "  Web endpoint enabled: alexandria-streaming"
+g bucket website --allow alexandria-previews
+echo "  Web endpoint enabled: alexandria-previews"
 
 # ── Keys
 echo ""
@@ -102,6 +107,9 @@ for bucket in alexandria-files alexandria-previews alexandria-temp alexandria-im
   echo "  Master key -> full access -> $bucket"
 done
 
+# Preview key still needs read/write via the authenticated S3 API — website
+# mode only changes how reads happen for unauthenticated nginx-proxied
+# requests, it does not replace the worker's own upload path.
 g bucket allow --read --write alexandria-previews --key alexandria-preview-key
 g bucket allow --read         alexandria-files    --key alexandria-preview-key
 echo "  Preview key -> read/write -> alexandria-previews"
