@@ -63,9 +63,20 @@ public class FakeStorageService : IStorageService
     //     return Task.FromResult(new UploadResult(objectName, checksum, bytes.Length, originalFileId));
     // }
 
-    public Task UploadPreview(string objectName, string contentType, Stream fileStream, Guid originalFileId,
-        Guid uploadedBy,
-        long contentLength = -1, string? originalFileName = null, CancellationToken ct = default)
+    public Task UploadPreview(string objectName, string contentType, Stream fileStream, Guid versionId, Guid uploadedBy,
+        long contentLength, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task UploadPreview(string objectName, string contentType, Stream fileStream, Guid versionId, Guid uploadedBy,
+        long contentLength, PreviewKind kind, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task UploadMediaData(Stream previewStream, Stream thumbnailStream, long previewSize, long thumbnailSize,
+        string objectName, Guid versionId, MediaMetadataDto metadataDto, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }
@@ -107,6 +118,16 @@ public class FakeStorageService : IStorageService
         throw new InvalidOperationException($"File not found: {fileId}");
     }
 
+    public Task<Stream> DownloadSeekableFile(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Stream> DownloadSeekableFile(Guid versionId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default)
         => DownloadFile(fileId, userId, ct);
 
@@ -136,6 +157,16 @@ public class FakeStorageService : IStorageService
     }
 
     public Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task StreamFile(Guid versionId, Stream destination, CancellationToken ct)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<string?> GetCachedPreview(Guid versionId, PreviewKind kind, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }
