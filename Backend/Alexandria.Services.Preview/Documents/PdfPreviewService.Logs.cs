@@ -67,4 +67,17 @@ public partial class PdfPreviewService
     [LoggerMessage(3032, LogLevel.Warning,
         "Failed to delete temporary Excel file: '{TempPath}'")]
     private static partial void LogExcelTempDeleteFailed(ILogger logger, Exception ex, string tempPath);
+
+    // Thumbnail
+    [LoggerMessage(3040, LogLevel.Debug,
+        "Starting thumbnail generation: '{InputPath}' -> max {MaxDimensionPx}px")]
+    private static partial void LogThumbnailStarting(ILogger logger, string inputPath, int maxDimensionPx);
+
+    [LoggerMessage(3041, LogLevel.Debug,
+        "Thumbnail generated successfully: '{OutputPath}'")]
+    private static partial void LogThumbnailCompleted(ILogger logger, string outputPath);
+
+    [LoggerMessage(3042, LogLevel.Warning,
+        "pdftocairo failed generating thumbnail for '{InputPath}', falling back to Ghostscript")]
+    private static partial void LogThumbnailFallback(ILogger logger, Exception ex, string inputPath);
 }

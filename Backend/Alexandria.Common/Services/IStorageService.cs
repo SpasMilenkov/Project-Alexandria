@@ -7,22 +7,29 @@ namespace Alexandria.Common.Services;
 
 public interface IStorageService
 {
-    public Task UploadPreview(string objectName,
+    public Task UploadPreview(
+        string objectName,
         string contentType,
         Stream fileStream,
-        Guid originalFileId,
+        Guid versionId,
         Guid uploadedBy,
-        long contentLength = -1L,
-        string? originalFileName = null,
+        long contentLength,
+        PreviewKind kind,
         CancellationToken ct = default);
 
-    Task UploadMediaData(Stream previewStream, Stream thumbnailStream, string objectName, Guid fileId,
+    Task UploadMediaData(Stream previewStream,
+        Stream thumbnailStream,
+        long previewSize,
+        long thumbnailSize,
+        string objectName,
+        Guid versionId,
         MediaMetadataDto metadataDto,
         CancellationToken ct = default);
 
     // File Download
-    Task<Stream> DownloadFile(Guid fileId, Guid ownerId, CancellationToken ct);
-    Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default);
+    Task<Stream> DownloadFile(Guid versionId, Guid userId, CancellationToken ct = default);
+    Task<Stream> DownloadSeekableFile(Guid versionId, Guid userId, CancellationToken ct = default);
+    Task<Stream> DownloadSeekableFile(Guid versionId, CancellationToken ct = default);
 
     /// <summary>
     /// Downloads the raw content object to a local file path.
@@ -57,11 +64,11 @@ public interface IStorageService
     Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default);
 
     Task StreamFile(
-        string fileId,
+        Guid versionId,
         Stream destination,
-        CancellationToken ct);
+        CancellationToken ct = default);
 
-    Task<PreviewResultDto?> GetCachedPreview(Guid id, CancellationToken ct);
+    Task<string?> GetCachedPreview(Guid versionId, PreviewKind kind, CancellationToken ct = default);
 
     FileCategory CategorizeFile(string mimeType);
 

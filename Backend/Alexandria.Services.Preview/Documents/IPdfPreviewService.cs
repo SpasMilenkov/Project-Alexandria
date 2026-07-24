@@ -1,4 +1,5 @@
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Files;
 
 namespace Alexandria.Services.Preview.Documents;
 
@@ -24,8 +25,10 @@ public interface IPdfPreviewService
     /// existing PDF to 5 pages.
     /// </param>
     /// <param name="ct">Token for cooperative cancellation.</param>
-    /// <returns>Absolute path to the generated preview PDF in the system temp directory.</returns>
-    Task<string> GeneratePreviewAsync(string inputPath, FileCategory fileCategory, CancellationToken ct);
+    /// <returns>An object containing the paths to the thumbnail and the preview of a document</returns>
+    Task<PdfPreviewResult> GeneratePreviewAsync(string inputPath, FileCategory fileCategory, CancellationToken ct);
+
+    Task<string> GenerateThumbnailAsync(string inputPdfPath, CancellationToken ct);
 
     /// <summary>
     /// Converts a Word document to PDF via LibreOffice, then trims the result to

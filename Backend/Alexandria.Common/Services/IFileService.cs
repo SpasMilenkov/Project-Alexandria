@@ -14,9 +14,8 @@ public interface IFileService
     Task CopyFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
 
     Task<File?> GetFileMetadataAsync(Guid fileId, CancellationToken ct = default);
-    Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);
+    Task<string?> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);
 
-    Task<FileMetadata?> GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default);
     Task<FileResult> GetFileWithOwnershipByIdAsync(Guid fileId, Guid userId, CancellationToken ct = default);
     Task DeleteFilesAsync(Guid[] fileIds, Guid userId, bool hardDelete = false, CancellationToken ct = default);
 
@@ -24,7 +23,6 @@ public interface IFileService
         Guid fileId,
         Guid updatedBy,
         string? newName = null,
-        bool? hasPreview = null,
         CancellationToken ct = default);
 
     Task<PaginatedResult<FileResult>> GetRootFilesAsync(
@@ -56,6 +54,7 @@ public interface IFileService
         int pageSize = 10,
         CancellationToken ct = default);
 
+    Task<Guid?> GetCurrentVersionIdAsync(Guid fileId, Guid userId, CancellationToken ct = default);
     Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
     Task RemoveFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default);
     Task RestoreFileVersionAsync(Guid fileVersionId, Guid userId, CancellationToken ct = default);

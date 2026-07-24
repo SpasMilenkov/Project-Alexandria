@@ -1,3 +1,4 @@
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 
 namespace Alexandria.Common.Services;
@@ -9,21 +10,28 @@ public interface IPreviewService
     /// as appropriate. Returns <c>null</c> when the file is encrypted, or when preview
     /// generation has been dispatched asynchronously and is not yet available.
     /// </summary>
-    Task<PreviewResultDto?> GetPreviewUrlAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns <c>true</c> when a completed preview artifact already exists in storage
-    /// for the given file version. Used by the transpilation worker to skip redundant
-    /// preview generation when the preview service has already run.
-    /// </summary>
-    Task<bool> HasPreviewAsync(Guid versionId, CancellationToken ct = default);
+    /// <param name="versionId">The id of the version whose preview we are fetching</param>
+    /// <param name="ownerId">The id of the owner of the file whose version we are previewing</param>
+    /// <param name="ct">Cancellation token</param>
+    /// <returns></returns>
+    Task<PreviewResultDto?> GetPreviewUrlAsync(Guid versionId, Guid ownerId, CancellationToken ct = default);
 
     /// <summary>
     /// Generate a preview for a given file owned by a given user
     /// </summary>
-    /// <param name="fileId">File ID</param>
+    /// <param name="versionId">File ID</param>
     /// <param name="userId">Owner ID</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns></returns>
-    Task GeneratePreviewAsync(Guid fileId, Guid userId, CancellationToken ct = default);
+    Task GeneratePreviewAsync(Guid versionId, Guid userId, PreviewKind kind = PreviewKind.Preview,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="versionId"></param>
+    /// <param name="userId"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    Task<string?> GetThumbnailAsync(Guid versionId, Guid userId, CancellationToken ct = default);
 }

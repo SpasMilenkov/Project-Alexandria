@@ -37,14 +37,6 @@ public class FileVersionRepository : IFileVersionRepository
             .FirstOrDefaultAsync(predicate, ct);
     }
 
-    public async Task<IEnumerable<FileVersion>> GetAllAsync(CancellationToken ct = default)
-    {
-        return await _dbSet
-            .Include(fv => fv.ContentObject)
-            .Include(fv => fv.File)
-            .ToListAsync(ct);
-    }
-
     public async Task<IEnumerable<FileVersion>> FindAsync(
         Expression<Func<FileVersion, bool>> predicate,
         CancellationToken ct = default)
@@ -212,13 +204,6 @@ public class FileVersionRepository : IFileVersionRepository
             .ExecuteUpdateAsync(
                 s => s.SetProperty(v => v.DeletedAt, _ => DateTime.UtcNow),
                 ct);
-    }
-
-    public async Task<byte[]?> GetContentHashByVersionIdAsync(Guid versionId, Guid userId,
-        CancellationToken ct = default)
-    {
-        return await _dbSet.Where(f => f.Id == versionId && f.File.OwnerId == userId).Select(f => f.ContentHash)
-            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<FileVersionDto?> GetMostRecentAsync(Guid fileId, Guid userId, CancellationToken ct = default)

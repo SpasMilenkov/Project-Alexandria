@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Exceptions.Preview.Documents;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Files;
 using ClosedXML.Excel;
 using Microsoft.Extensions.Logging;
 
@@ -8,13 +10,16 @@ namespace Alexandria.Services.Preview.Documents;
 
 public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdfPreviewService
 {
-    /// <inheritdoc/>
-    public async Task<string> GeneratePreviewAsync(string inputPath, FileCategory fileCategory, CancellationToken ct)
+    private const int ThumbnailMaxDimensionPx = 320;
+
+    /// <inheritdoc>
+    public async Task<PdfPreviewResult> GeneratePreviewAsync(string inputPath, FileCategory fileCategory,
+        CancellationToken ct)
     {
         LogGeneratingPreview(logger, inputPath, fileCategory.ToString());
         try
         {
-            var output = fileCategory switch
+            var previewPath = fileCategory switch
             {
                 FileCategory.Document => await GenerateWordPreviewAsync(inputPath, ct),
                 FileCategory.Presentation => await GeneratePowerPointPreviewAsync(inputPath, ct),
@@ -23,19 +28,102 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
                 _ => await GenerateFullPdfAsync(inputPath, ct)
             };
 
-            LogPreviewGenerated(logger, output);
-            return output;
+            var thumbnailPath = await GenerateThumbnailAsync(previewPath, ct);
+
+            LogPreviewGenerated(logger, previewPath);
+            return new PdfPreviewResult(previewPath, thumbnailPath);
         }
         catch (LibreOfficeException)
         {
-            // LibreOffice itself is broken, the fallback will also fail, so re-throw
-            // rather than masking the real failure with a confusing second exception.
             throw;
         }
         catch (Exception ex)
         {
             LogPreviewFallback(logger, ex, inputPath);
-            return await GenerateFullPdfAsync(inputPath, ct);
+            var fallbackPreview = await GenerateFullPdfAsync(inputPath, ct);
+            var fallbackThumbnail = await GenerateThumbnailAsync(fallbackPreview, ct);
+            return new PdfPreviewResult(fallbackPreview, fallbackThumbnail);
+        }
+    }
+
+
+    /// <inheritdoc/>
+    public async Task<string> GenerateThumbnailAsync(string inputPdfPath, CancellationToken ct)
+    {
+        var outputBasePath = Path.Combine(
+            Path.GetDirectoryName(inputPdfPath) ?? Path.GetTempPath(),
+            $"{Path.GetFileNameWithoutExtension(inputPdfPath)}_thumb");
+        var expectedOutput = $"{outputBasePath}.png";
+
+        LogThumbnailStarting(logger, inputPdfPath, ThumbnailMaxDimensionPx);
+
+        try
+        {
+            await RunPdftocairoAsync(inputPdfPath, outputBasePath, ct);
+        }
+        catch (Exception ex)
+        {
+            LogThumbnailFallback(logger, ex, inputPdfPath);
+            await RunGhostscriptThumbnailAsync(inputPdfPath, expectedOutput, ct);
+        }
+
+        if (!File.Exists(expectedOutput))
+            throw new ThumbnailException(inputPdfPath, expectedOutput);
+
+        LogThumbnailCompleted(logger, expectedOutput);
+        return expectedOutput;
+    }
+
+    private async Task RunPdftocairoAsync(string inputPdfPath, string outputBasePath, CancellationToken ct)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "pdftocairo",
+            Arguments = $"-png -f 1 -l 1 -scale-to {ThumbnailMaxDimensionPx} -singlefile " +
+                        $"\"{inputPdfPath}\" \"{outputBasePath}\"",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(psi);
+        if (process == null)
+            throw new ThumbnailException(inputPdfPath);
+
+        await process.WaitForExitAsync(ct);
+
+        if (process.ExitCode != 0)
+        {
+            var error = await process.StandardError.ReadToEndAsync(ct);
+            throw new ThumbnailException(inputPdfPath, process.ExitCode, error);
+        }
+    }
+
+    private async Task RunGhostscriptThumbnailAsync(string inputPdfPath, string outputPath, CancellationToken ct)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "gs",
+            Arguments = $"-dNOPAUSE -dBATCH -dSAFER -dFirstPage=1 -dLastPage=1 " +
+                        $"-sDEVICE=png16m -r150 -dPDFFitPage " +
+                        $"-sOutputFile=\"{outputPath}\" \"{inputPdfPath}\"",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(psi);
+        if (process == null)
+            throw new ThumbnailException(inputPdfPath);
+
+        await process.WaitForExitAsync(ct);
+
+        if (process.ExitCode != 0)
+        {
+            var error = await process.StandardError.ReadToEndAsync(ct);
+            throw new ThumbnailException(inputPdfPath, process.ExitCode, error);
         }
     }
 
