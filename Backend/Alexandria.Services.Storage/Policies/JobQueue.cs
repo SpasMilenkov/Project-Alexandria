@@ -12,7 +12,7 @@ public class JobQueue(
     {
         //TODO: Add support for dynamic parameters setting.
         var job = await jobService.CreateJobAsync(versionId, userId, parameters.AudioRungs, parameters.VideoRungs, ct);
-        await previewService.GeneratePreviewAsync(fileId, userId, ct);
+        await previewService.GeneratePreviewAsync(fileId, userId, ct: ct);
     }
 
     public Task QueueBackupAsync(Guid fileId, BackupParameters parameters, CancellationToken ct = default)

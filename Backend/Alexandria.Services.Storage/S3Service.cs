@@ -124,22 +124,22 @@ public partial class S3Service(
         string objectName,
         string contentType,
         Stream fileStream,
-        Guid originalFileId,
+        Guid versionId,
         Guid uploadedBy,
-        long contentLength = -1,
-        string? originalFileName = null,
+        long contentLength,
+        PreviewKind kind,
         CancellationToken ct = default)
     {
         var bucketName = config.Value.PreviewBucket;
 
-        LogStartingPreviewUpload(logger, bucketName, objectName, originalFileId);
+        LogStartingPreviewUpload(logger, bucketName, objectName, versionId);
 
         auditContext.RunAsSystem();
 
         await unitOfWork.BeginTransactionAsync(ct);
 
-        var file = await unitOfWork.Files.GetByIdAsync(originalFileId, ct) ??
-                   throw new InvalidOperationException("File for preview not found");
+        var version = await unitOfWork.FileVersions.GetByIdAsync(versionId, ct) ??
+                      throw new InvalidOperationException("Version for preview not found");
 
         try
         {
@@ -155,42 +155,34 @@ public partial class S3Service(
                 DisableDefaultChecksumValidation = true,
             }, ct);
 
-            var existingFile = await unitOfWork.Previews.FirstOrDefaultAsync(f => f.Path == filePath, ct);
+            var existingPreview =
+                await unitOfWork.Previews.FirstOrDefaultAsync(p => p.VersionId == version.Id && p.Kind == kind, ct);
 
             Preview savedFile;
 
-            if (existingFile != null)
+            if (existingPreview != null)
             {
-                LogUpdatingExistingPreview(logger, existingFile.Id, filePath);
+                LogUpdatingExistingPreview(logger, existingPreview.Id, filePath);
 
-                existingFile.Name = originalFileName ?? existingFile.Name;
-                existingFile.Size = new BigInteger();
-                existingFile.UpdatedBy = uploadedBy;
-
-                savedFile = await unitOfWork.Previews.UpdateAsync(existingFile, ct);
+                existingPreview.Size = contentLength;
+                existingPreview.UpdatedBy = uploadedBy;
+                savedFile = await unitOfWork.Previews.UpdateAsync(existingPreview, ct);
             }
             else
             {
-                LogCreatingNewPreview(logger, filePath, originalFileId);
+                LogCreatingNewPreview(logger, filePath, versionId);
 
                 var fileEntity = new Preview
                 {
                     Id = Guid.NewGuid(),
-                    Name = originalFileName ?? objectName,
-                    Path = filePath,
                     MimeType = contentType,
-                    Size = new BigInteger(contentLength),
+                    Size = contentLength,
                     UpdatedBy = uploadedBy,
-                    FileId = originalFileId
+                    VersionId = versionId,
+                    Kind = kind
                 };
 
                 savedFile = await unitOfWork.Previews.CreateAsync(fileEntity, ct);
-            }
-
-            if (file.PreviewId != savedFile.Id)
-            {
-                file.PreviewId = savedFile.Id;
-                unitOfWork.Files.Update(file);
             }
 
             await unitOfWork.CommitAsync(ct);
@@ -199,7 +191,7 @@ public partial class S3Service(
         }
         catch (Exception ex)
         {
-            LogPreviewUploadFailed(logger, ex, bucketName, objectName, originalFileId);
+            LogPreviewUploadFailed(logger, ex, bucketName, objectName, versionId);
 
             await unitOfWork.RollbackAsync(ct);
 
@@ -217,6 +209,10 @@ public partial class S3Service(
             }
 
             throw new InvalidOperationException($"Upload failed: {ex.Message}", ex);
+        }
+        finally
+        {
+            await fileStream.DisposeAsync();
         }
     }
 
@@ -248,26 +244,31 @@ public partial class S3Service(
     }
 
     /// <summary>
-    ///     Takes in the preview video and the thumbnail streams, uploads them to storage and registers a metadata entity into
-    ///     the database
+    ///  Takes in the preview video and the thumbnail streams, uploads them to storage and registers a metadata entity into
+    ///  the database
     /// </summary>
     /// <param name="previewStream">The stream of the video preview</param>
     /// <param name="thumbnailStream">The thumbnail stream</param>
     /// <param name="metadataDto">The metadata DTO object returned from FFMPEG</param>
     /// <param name="objectName">The original object's name into the database</param>
-    /// <param name="fileId">The original file's entity ID inside the database</param>
+    /// <param name="versionId">The version's entity ID inside the database</param>
     /// <param name="ct">Cancellation token</param>
-    public async Task UploadMediaData(Stream previewStream, Stream thumbnailStream,
-        string objectName, Guid fileId, MediaMetadataDto metadataDto,
+    public async Task UploadMediaData(
+        Stream previewStream,
+        Stream thumbnailStream,
+        long previewSize,
+        long thumbnailSize,
+        string objectName,
+        Guid versionId,
+        MediaMetadataDto metadataDto,
         CancellationToken ct = default)
     {
         var bucketName = config.Value.PreviewBucket ??
                          throw new InvalidOperationException("Preview bucket not configured");
-        var filePath = $"{bucketName}/{objectName}";
         var previewKey = $"previews/{objectName}";
-        var thumbnailKey = $"thumbnails/{fileId}.jpg";
+        var thumbnailKey = $"thumbnails/{objectName}";
 
-        LogStartingMediaDataUpload(logger, fileId, previewKey, thumbnailKey);
+        LogStartingMediaDataUpload(logger, versionId, previewKey, thumbnailKey);
 
         auditContext.RunAsSystem();
 
@@ -275,9 +276,8 @@ public partial class S3Service(
 
         try
         {
-            var file = await unitOfWork.Files.GetByIdAsync(fileId, ct) ??
-                       throw new InvalidOperationException("File for preview not found");
-
+            var version = await unitOfWork.FileVersions.GetByIdAsync(versionId, ct) ??
+                          throw new InvalidOperationException("File for preview not found");
 
             if (previewStream.CanSeek) previewStream.Position = 0;
             if (thumbnailStream.CanSeek) thumbnailStream.Position = 0;
@@ -288,16 +288,12 @@ public partial class S3Service(
             await s3.PutObjectAsync(new PutObjectRequest
             {
                 BucketName = bucketName,
-                Key = $"previews/{objectName}",
+                Key = previewKey,
                 InputStream = previewStream,
                 ContentType = GetMimeTypeFromFormat(metadataDto.FormatName),
                 DisableDefaultChecksumValidation = true,
                 AutoCloseStream = false
             }, ct);
-
-            // Reset thumbnail stream if needed
-            if (thumbnailStream.CanSeek)
-                thumbnailStream.Position = 0;
 
             LogUploadingThumbnail(logger, thumbnailKey);
 
@@ -305,23 +301,24 @@ public partial class S3Service(
             await s3.PutObjectAsync(new PutObjectRequest
             {
                 BucketName = bucketName,
-                Key = $"thumbnails/{objectName}",
+                Key = thumbnailKey,
                 InputStream = thumbnailStream,
                 ContentType = "image/jpeg",
                 DisableDefaultChecksumValidation = true
             }, ct);
 
+            // Media metadata, purely descriptive/technical fields now,
+            // thumbnail location no longer tracked here, Previews owns that
+            var existingMetadata =
+                await unitOfWork.MediaMetadata.FirstOrDefaultAsync(f => f.FileId == version.FileId, ct);
 
-            var existingMetadata = await unitOfWork.MediaMetadata.FirstOrDefaultAsync(f => f.FileId == fileId, ct);
-            Preview savedPreview;
             if (existingMetadata != null)
             {
-                LogUpdatingMediaMetadata(logger, existingMetadata.Id, fileId);
+                LogUpdatingMediaMetadata(logger, existingMetadata.Id, version.FileId);
 
                 existingMetadata.Duration = metadataDto.Duration;
                 existingMetadata.BitrateMbps = metadataDto.BitrateMbps;
                 existingMetadata.FormatName = metadataDto.FormatName;
-                existingMetadata.ThumbnailPath = $"{bucketName}/{thumbnailKey}";
                 existingMetadata.VideoCodec = metadataDto.VideoCodec;
                 existingMetadata.AudioCodec = metadataDto.AudioCodec;
                 existingMetadata.Width = metadataDto.Width;
@@ -338,55 +335,80 @@ public partial class S3Service(
             }
             else
             {
-                LogCreatingMediaMetadata(logger, fileId);
-
-                var mediaMetadata = metadataDto.ToEntity(fileId, $"{bucketName}/{thumbnailKey}");
-                mediaMetadata.ThumbnailPath = thumbnailKey;
+                LogCreatingMediaMetadata(logger, version.FileId);
+                var mediaMetadata = metadataDto.ToEntity(version.FileId);
                 await unitOfWork.MediaMetadata.CreateAsync(mediaMetadata, ct);
             }
 
-            var existingPreview = await unitOfWork.Previews.FirstOrDefaultAsync(f => f.Path == filePath, ct);
+            // Preview record (the video/document preview object itself)
+            var existingPreviewRecord = await unitOfWork.Previews.FirstOrDefaultAsync(
+                f => f.VersionId == versionId && f.Kind == PreviewKind.Preview, ct);
 
-            if (existingPreview != null)
+            if (existingPreviewRecord != null)
             {
-                LogUpdatingPreviewRecord(logger, existingPreview.Id);
+                LogUpdatingPreviewRecord(logger, existingPreviewRecord.Id);
 
-                existingPreview.Size = new BigInteger(previewStream.Length);
-                existingPreview.UpdatedBy = SystemConfig.SystemId;
+                existingPreviewRecord.Size = previewSize;
+                existingPreviewRecord.MimeType = GetMimeTypeFromFormat(metadataDto.FormatName);
+                existingPreviewRecord.UpdatedBy = SystemConfig.SystemId;
 
-                savedPreview = await unitOfWork.Previews.UpdateAsync(existingPreview, ct);
+                await unitOfWork.Previews.UpdateAsync(existingPreviewRecord, ct);
             }
             else
             {
-                LogCreatingPreviewForMedia(logger, fileId);
+                LogCreatingPreviewForMedia(logger, versionId);
 
                 var preview = new Preview
                 {
                     Id = Guid.NewGuid(),
-                    Name = previewKey,
-                    Path = filePath,
-                    MimeType = metadataDto.FormatName ?? "mp4",
-                    Size = new BigInteger(previewStream.Length),
+                    MimeType = GetMimeTypeFromFormat(metadataDto.FormatName),
+                    Size = previewSize,
+                    Kind = PreviewKind.Preview,
                     UpdatedBy = SystemConfig.SystemId,
-                    FileId = fileId
+                    VersionId = versionId
                 };
 
-                savedPreview = await unitOfWork.Previews.CreateAsync(preview, ct);
+                await unitOfWork.Previews.CreateAsync(preview, ct);
             }
 
-            if (savedPreview is not null && file.PreviewId != savedPreview.Id)
+            // Thumbnail record, separate row, separate Kind, same VersionId
+            var existingThumbnailRecord = await unitOfWork.Previews.FirstOrDefaultAsync(
+                f => f.VersionId == versionId && f.Kind == PreviewKind.Thumbnail, ct);
+
+            if (existingThumbnailRecord != null)
             {
-                file.PreviewId = savedPreview.Id;
-                unitOfWork.Files.Update(file);
+                LogUpdatingPreviewRecord(logger, existingThumbnailRecord.Id);
+
+                existingThumbnailRecord.Size = thumbnailSize;
+                existingThumbnailRecord.MimeType = "image/jpeg";
+                existingThumbnailRecord.UpdatedBy = SystemConfig.SystemId;
+
+                await unitOfWork.Previews.UpdateAsync(existingThumbnailRecord, ct);
+            }
+            else
+            {
+                LogCreatingPreviewForMedia(logger, versionId);
+
+                var thumbnail = new Preview
+                {
+                    Id = Guid.NewGuid(),
+                    MimeType = "image/jpeg",
+                    Size = thumbnailSize,
+                    Kind = PreviewKind.Thumbnail,
+                    UpdatedBy = SystemConfig.SystemId,
+                    VersionId = versionId
+                };
+
+                await unitOfWork.Previews.CreateAsync(thumbnail, ct);
             }
 
             await unitOfWork.CommitAsync(ct);
 
-            LogMediaDataUploadCompleted(logger, fileId, previewStream.Length);
+            LogMediaDataUploadCompleted(logger, versionId, previewStream.Length);
         }
         catch (Exception e)
         {
-            LogMediaDataUploadFailed(logger, e, fileId, previewKey, thumbnailKey);
+            LogMediaDataUploadFailed(logger, e, versionId, previewKey, thumbnailKey);
 
             await unitOfWork.RollbackAsync(ct);
 
@@ -409,6 +431,7 @@ public partial class S3Service(
         finally
         {
             await previewStream.DisposeAsync();
+            await thumbnailStream.DisposeAsync();
         }
     }
 
@@ -468,43 +491,24 @@ public partial class S3Service(
         };
     }
 
-    public async Task<PreviewResultDto?> GetCachedPreview(Guid id, CancellationToken ct)
+    public async Task<string?> GetCachedPreview(Guid versionId, PreviewKind kind, CancellationToken ct = default)
     {
-        LogRetrievingCachedPreview(logger, id);
+        LogRetrievingCachedPreview(logger, versionId);
 
-        var fileData = await unitOfWork.Files.GetFileWithPreviewAsync(id, ct);
+        var preview = await unitOfWork.Previews.FirstOrDefaultAsync(
+            p => p.VersionId == versionId && p.Kind == kind, ct);
 
-        if (fileData is null or { HasPreview: false })
+        if (preview is null)
         {
-            LogNoPreviewAvailable(logger, id);
+            LogNoPreviewAvailable(logger, versionId);
             return null;
         }
 
-        var currentVersion = await unitOfWork.FileVersions.GetByIdAsync(fileData.CurrentVersionId ?? Guid.Empty, ct);
-        if (currentVersion is null) throw new InvalidOperationException("File does not have a current version");
-        var category = CategorizeFile(fileData.MimeType);
-
-        LogFileCategorized(logger, category, id, fileData.MimeType);
-
-        try
-        {
-            var serverHash = Convert.ToHexStringLower(currentVersion.ContentHash);
-
-            var previewUrl = GetPreviewPresignedUrl(serverHash, TimeSpan.FromMinutes(15));
-
-            if (category != FileCategory.Audio && category != FileCategory.Video)
-                return new PreviewResultDto(new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true),
-                    previewUrl, null);
-
-            var thumbnailUrl = GetThumbnailPresignedUrl(serverHash, TimeSpan.FromMinutes(15));
-            return new PreviewResultDto(new FileSummary(fileData.Id, fileData.Name, fileData.MimeType, true),
-                previewUrl, thumbnailUrl);
-        }
-        catch (Exception ex)
-        {
-            LogFailedToRetrieveCachedPreview(logger, ex, id, category);
-            throw;
-        }
+        // No presigning needed anymore — the previews bucket is website-mode,
+        // and nginx's auth_request gate is what enforces ownership on every
+        // read, cache hit or miss. This just needs to be a stable path.
+        var kindSegment = kind == PreviewKind.Thumbnail ? "thumbnail" : "preview";
+        return $"/preview/{versionId}/{kindSegment}";
     }
 
     public string GetPreviewPresignedUrl(string objectKey, TimeSpan expiry)
@@ -515,7 +519,7 @@ public partial class S3Service(
             Key = $"previews/{objectKey}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP
+            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
         };
 
         return publicS3.GetPreSignedURL(request);
@@ -561,17 +565,18 @@ public partial class S3Service(
         return await publicS3.GetPreSignedURLAsync(request);
     }
 
-    public async Task<Stream> DownloadFile(Guid fileId, Guid ownerId, CancellationToken ct)
+    public async Task<Stream> DownloadFile(Guid versionId, Guid userId, CancellationToken ct)
     {
-        var fileExists = await unitOfWork.Files.ExistsAsync(f => f.Id == fileId && f.OwnerId == ownerId, ct);
+        var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(
+            v => v.Id == versionId && v.File!.OwnerId == userId, ct);
 
-        if (!fileExists)
+        if (version is null)
         {
-            LogFileNotFoundForDownload(logger, fileId);
-            throw new InvalidOperationException($"File {fileId} not found in database.");
+            LogFileNotFoundForDownload(logger, versionId);
+            throw new InvalidOperationException($"File {versionId} not found in database.");
         }
 
-        var hashString = await unitOfWork.Files.GetFileHashAsStringAsync(fileId, ownerId, ct);
+        var hashString = Convert.ToHexStringLower(version.ContentHash);
         var objectName = $"content/{hashString}";
         try
         {
@@ -593,18 +598,54 @@ public partial class S3Service(
         }
     }
 
-    public async Task<Stream> DownloadStreamableFile(Guid fileId, Guid userId, CancellationToken ct = default)
+    public async Task<Stream> DownloadSeekableFile(Guid versionId, Guid userId, CancellationToken ct = default)
     {
-        var fileExists = await unitOfWork.Files.ExistsAsync(f => f.Id == fileId && f.OwnerId == userId, ct);
+        var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(
+            v => v.Id == versionId && v.File!.OwnerId == userId, ct);
 
-        if (!fileExists)
+        if (version is null)
         {
-            LogFileNotFoundForDownload(logger, fileId);
-            throw new InvalidOperationException($"File {fileId} not found in database.");
+            LogFileNotFoundForDownload(logger, versionId);
+            throw new InvalidOperationException($"File {versionId} not found in database.");
         }
 
-        var hashString = await unitOfWork.Files.GetFileHashAsStringAsync(fileId, userId, ct);
+        var hashString = Convert.ToHexStringLower(version.ContentHash);
         var objectName = $"content/{hashString}";
+
+        try
+        {
+            var stream = new SeekableS3Stream(s3, config.Value.UploadBucket, objectName, 128 * 1024, 12);
+
+            LogFileDownloadStreamAcquired(logger, config.Value.UploadBucket, objectName, stream.Length);
+
+            return stream;
+        }
+        catch (AmazonS3Exception ex)
+        {
+            LogS3ErrorDuringDownload(logger, ex, config.Value.UploadBucket, objectName, ex.StatusCode);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogFailedToDownloadFile(logger, ex, config.Value.UploadBucket, objectName);
+            throw;
+        }
+    }
+
+    public async Task<Stream> DownloadSeekableFile(Guid versionId, CancellationToken ct = default)
+    {
+        var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(
+            v => v.Id == versionId, ct);
+
+        if (version is null)
+        {
+            LogFileNotFoundForDownload(logger, versionId);
+            throw new InvalidOperationException($"File {versionId} not found in database.");
+        }
+
+        var hashString = Convert.ToHexStringLower(version.ContentHash);
+        var objectName = $"content/{hashString}";
+
         try
         {
             var stream = new SeekableS3Stream(s3, config.Value.UploadBucket, objectName, 128 * 1024, 12);
@@ -756,38 +797,37 @@ public partial class S3Service(
             _ => "application/octet-stream"
         };
 
-    public async Task StreamFile(string fileId, Stream destination, CancellationToken ct)
+    public async Task StreamFile(Guid versionId, Stream destination, CancellationToken ct)
     {
-        LogStreamingFileToDestination(logger, fileId);
+        LogStreamingFileToDestination(logger, versionId);
 
-        var id = Guid.Parse(fileId);
-        var fileData = await unitOfWork.Files.GetByIdAsync(id, ct);
+        var version = await unitOfWork.FileVersions.GetByIdAsync(versionId, ct);
 
-        if (fileData is null)
+        if (version is null)
         {
-            LogFileNotFoundForStreaming(logger, fileId);
-            throw new InvalidOperationException($"File with ID: {fileId} not found.");
+            LogFileNotFoundForStreaming(logger, versionId);
+            throw new InvalidOperationException($"File with ID: {versionId} not found.");
         }
 
-        var hash = await unitOfWork.Files.GetFileHashAsStringAsync(id, fileData.OwnerId, ct);
+        var hash = Convert.ToHexStringLower(version.ContentHash);
         try
         {
             using var response = await s3.GetObjectAsync(config.Value.UploadBucket, $"content/{hash}", ct);
 
-            LogStreamingFileContent(logger, fileId, fileData.Name, response.ContentLength);
+            LogStreamingFileContent(logger, versionId, response.ContentLength);
 
             await response.ResponseStream.CopyToAsync(destination, 81920, ct);
 
-            LogFileStreamingCompleted(logger, fileId, fileData.Name);
+            LogFileStreamingCompleted(logger, versionId);
         }
         catch (AmazonS3Exception ex)
         {
-            LogS3ErrorDuringStreaming(logger, ex, fileId, fileData.Name, ex.StatusCode);
+            LogS3ErrorDuringStreaming(logger, ex, versionId, ex.StatusCode);
             throw;
         }
         catch (Exception ex)
         {
-            LogFailedToStreamFile(logger, ex, fileId, fileData.Name);
+            LogFailedToStreamFile(logger, ex, versionId);
             throw;
         }
     }

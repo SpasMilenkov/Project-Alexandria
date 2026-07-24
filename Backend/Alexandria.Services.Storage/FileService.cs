@@ -41,13 +41,8 @@ public class FileService(
     public async Task<File?> GetFileMetadataAsync(Guid fileId, CancellationToken ct = default) =>
         await unitOfWork.Files.GetByIdAsync(fileId, ct);
 
-    public async Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default) =>
+    public async Task<string?> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default) =>
         await unitOfWork.Files.VersionBelongsToUserAsync(versionId, userId, ct);
-
-
-    public async Task<FileMetadata?>
-        GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default) =>
-        await unitOfWork.Files.GetUserFileMetadataAsync(fileId, userId, ct);
 
     public async Task DeleteFilesAsync(Guid[] fileIds, Guid userId, bool hardDelete = false,
         CancellationToken ct = default)
@@ -77,12 +72,11 @@ public class FileService(
         Guid fileId,
         Guid updatedBy,
         string? newName = null,
-        bool? hasPreview = null,
         CancellationToken ct = default)
     {
         logger.LogInformation(
-            "Updating file metadata: FileId={FileId}, NewName={NewName}, HasPreview={HasPreview}, UpdatedBy={UpdatedBy}",
-            fileId, newName, hasPreview, updatedBy);
+            "Updating file metadata: FileId={FileId}, NewName={NewName}, UpdatedBy={UpdatedBy}",
+            fileId, newName, updatedBy);
 
         await unitOfWork.BeginTransactionAsync(ct);
 
@@ -95,20 +89,11 @@ public class FileService(
                 throw new InvalidOperationException($"File with ID {fileId} not found.");
             }
 
-            // Update only provided fields
             if (!string.IsNullOrEmpty(newName))
             {
                 logger.LogDebug("Updating file name: FileId={FileId}, OldName={OldName}, NewName={NewName}",
                     fileId, fileEntity.Name, newName);
                 fileEntity.Name = newName;
-            }
-
-            if (hasPreview.HasValue)
-            {
-                logger.LogDebug("Updating preview status: FileId={FileId}, HasPreview={HasPreview}",
-                    fileId, hasPreview.Value);
-                fileEntity.HasPreview = hasPreview.Value;
-                if (hasPreview.Value) fileEntity.PreviewGeneratedAt = DateTime.UtcNow;
             }
 
             fileEntity.UpdatedBy = updatedBy;
@@ -213,6 +198,11 @@ public class FileService(
     {
         return await unitOfWork.FileVersions.GetVersionsForFileAsync(fileId: fileId, ownerId: userId, page: page,
             pageSize: pageSize, ct);
+    }
+
+    public async Task<Guid?> GetCurrentVersionIdAsync(Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        return await unitOfWork.Files.GetCurrentVersionIdAsync(fileId, userId, ct);
     }
 
     public async Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default)
