@@ -438,9 +438,6 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid?>("DirectoryId")
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("HasPreview")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("MimeType")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -458,12 +455,6 @@ namespace Alexandria.Data.Migrations
                         .HasComputedColumnSql("regexp_replace(\n            lower(\n                regexp_replace(\n                    regexp_replace(\n                        coalesce(\"Name\", ''),\n                        '\\.[^.]*$', ''\n                    ),\n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            ),\n            '\\s+', ' ', 'g'\n        )", true);
 
                     b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("PreviewGeneratedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("PreviewId")
                         .HasColumnType("uuid");
 
                     b.Property<NpgsqlTsVector>("SearchVector")
@@ -855,26 +846,17 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("FileId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("MimeType")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<string>("Path")
-                        .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("varchar(2000)");
-
-                    b.Property<BigInteger>("Size")
-                        .HasColumnType("numeric(20,0)");
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -883,11 +865,14 @@ namespace Alexandria.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("FileId")
+                    b.HasIndex("VersionId", "Kind")
                         .IsUnique();
 
                     b.ToTable("Previews", (string)null);
@@ -1740,13 +1725,13 @@ namespace Alexandria.Data.Migrations
 
             modelBuilder.Entity("Alexandria.Data.Models.Preview", b =>
                 {
-                    b.HasOne("Alexandria.Data.Models.File", "File")
-                        .WithOne("Preview")
-                        .HasForeignKey("Alexandria.Data.Models.Preview", "FileId")
+                    b.HasOne("Alexandria.Data.Models.FileVersion", "Version")
+                        .WithMany("Previews")
+                        .HasForeignKey("VersionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("File");
+                    b.Navigation("Version");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.RefreshToken", b =>
@@ -1959,11 +1944,14 @@ namespace Alexandria.Data.Migrations
                 {
                     b.Navigation("MediaMetadata");
 
-                    b.Navigation("Preview");
-
                     b.Navigation("SignedUrls");
 
                     b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.FileVersion", b =>
+                {
+                    b.Navigation("Previews");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>

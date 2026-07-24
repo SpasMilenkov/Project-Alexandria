@@ -1,0 +1,82 @@
+{
+  "rabbit_version": "3.13.0",
+  "vhosts": [
+    { "name": "${RABBITMQ_VHOST}" }
+  ],
+  "users": [
+    { "name": "${RABBITMQ_USER}", "password": "${RABBITMQ_PASS}", "tags": "administrator" },
+    { "name": "api_user", "password": "${API_RABBITMQ_PASS}", "tags": "" },
+    { "name": "document_worker_user", "password": "${DOCUMENT_WORKER_PASS}", "tags": "" },
+    { "name": "media_worker_user", "password": "${MEDIA_WORKER_PASS}", "tags": "" },
+    { "name": "media_transpilation_worker", "password": "${TRANSPILATION_WORKER_PASS}", "tags": "" },
+    { "name": "media_metadata_worker", "password": "${MEDIA_METADATA_WORKER_PASS}", "tags": "" }
+  ],
+  "permissions": [
+    {
+      "user": "${RABBITMQ_USER}",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "api_user",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": "^content-exchange$",
+      "write": "^content-exchange$",
+      "read": "^$"
+    },
+    {
+      "user": "document_worker_user",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": "^(content-exchange|document-queue)$",
+      "write": "^(content-exchange|document-queue)$",
+      "read": "^(content-exchange|document-queue)$"
+    },
+    {
+      "user": "media_worker_user",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": "^(content-exchange|media-queue)$",
+      "write": "^(content-exchange|media-queue)$",
+      "read": "^(content-exchange|media-queue)$"
+    },
+    {
+      "user": "media_transpilation_worker",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": "^(content-exchange|transpilation-queue)$",
+      "write": "^(content-exchange|transpilation-queue)$",
+      "read": "^(content-exchange|transpilation-queue)$"
+    },
+    {
+      "user": "media_metadata_worker",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": "^(content-exchange|lyrics-queue)$",
+      "write": "^(content-exchange|lyrics-queue)$",
+      "read": "^(content-exchange|lyrics-queue)$"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "content-exchange",
+      "vhost": "${RABBITMQ_VHOST}",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    { "name": "document-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "media-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "transpilation-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "lyrics-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "bindings": [
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "document-queue", "destination_type": "queue", "routing_key": "document.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-queue", "destination_type": "queue", "routing_key": "media.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-queue", "destination_type": "queue", "routing_key": "image.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "transpilation-queue", "destination_type": "queue", "routing_key": "transpilation.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "lyrics-queue", "destination_type": "queue", "routing_key": "lyrics.#", "arguments": {} }
+  ]
+}

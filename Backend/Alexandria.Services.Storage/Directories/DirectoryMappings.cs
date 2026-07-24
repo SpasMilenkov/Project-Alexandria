@@ -60,8 +60,7 @@ public static class DirectoryMappings
         return new FileSummary(
             Id: file.Id,
             FileName: file.Name,
-            MimeType: file.MimeType,
-            HasPreview: file.HasPreview
+            MimeType: file.MimeType
         );
     }
 }

@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Alexandria.Common.Services;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
@@ -17,7 +18,19 @@ public static class WorkerExtensions
 
         if (!configuration.GetValue<bool>("Features:Lyrics")) return services;
 
-        services.AddHttpClient<LrcLibPublicProvider>();
+        services.AddSingleton<RateLimiter>(_ => new SlidingWindowRateLimiter(new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = 2,
+            Window = TimeSpan.FromSeconds(10),
+            SegmentsPerWindow = 2,
+            QueueLimit = 25,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+        }));
+
+        services.AddTransient<RateLimitingHandler>();
+
+        services.AddHttpClient<LrcLibPublicProvider>()
+            .AddHttpMessageHandler<RateLimitingHandler>();
         services.AddSingleton<ITrackLyricsProvider>(sp => sp.GetRequiredService<LrcLibPublicProvider>());
         services.AddSingleton<CompositeLyricsProvider>();
         services.AddScoped<LyricsHandler>();

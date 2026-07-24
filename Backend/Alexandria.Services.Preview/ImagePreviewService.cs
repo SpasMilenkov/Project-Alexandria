@@ -11,17 +11,15 @@ using SixLabors.ImageSharp.Processing;
 
 namespace Alexandria.Services.Preview;
 
-public class ImagePreviewService() : IImagePreviewService
+public class ImagePreviewService : IImagePreviewService
 {
     public async Task<Stream> GenerateImagePreviewAsync(Stream imageToPreview, string? format, int width = 1280,
-        int height = 720)
+        int height = 720, CancellationToken ct = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        var stream = new MemoryStream();
-        using var image = await Image.LoadAsync(imageToPreview);
-        try
+        return await ProcessImageAsync(imageToPreview, format, image =>
         {
             if (image.Width > width || image.Height > height)
             {
@@ -32,6 +30,37 @@ public class ImagePreviewService() : IImagePreviewService
                     Sampler = KnownResamplers.Welch
                 }));
             }
+        }, ct);
+    }
+
+    public async Task<Stream> GenerateImageThumbnailAsync(Stream imageToPreview, string? format, int size = 320,
+        CancellationToken ct = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(size);
+
+        return await ProcessImageAsync(imageToPreview, format, image =>
+        {
+            image.Mutate(x => x.Resize(new ResizeOptions
+            {
+                Size = new Size(size, size),
+                Mode = ResizeMode.Pad,
+                PadColor = Color.Transparent,
+                Sampler = KnownResamplers.Welch
+            }));
+        }, ct);
+    }
+
+    private static async Task<Stream> ProcessImageAsync(
+        Stream imageStream,
+        string? format,
+        Action<Image> mutateAction,
+        CancellationToken ct)
+    {
+        var stream = new MemoryStream();
+        using var image = await Image.LoadAsync(imageStream, ct);
+        try
+        {
+            mutateAction(image);
 
             var encoder = format is not null
                 ? GetEncoder(format)
@@ -40,9 +69,9 @@ public class ImagePreviewService() : IImagePreviewService
                     : GetEncoder(null);
 
             if (encoder is not null)
-                await image.SaveAsync(stream, encoder);
+                await image.SaveAsync(stream, encoder, ct);
             else
-                await image.SaveAsync(stream, image.Metadata.DecodedImageFormat!);
+                await image.SaveAsync(stream, image.Metadata.DecodedImageFormat!, ct);
 
             stream.Position = 0;
             return stream;

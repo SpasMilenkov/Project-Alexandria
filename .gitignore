@@ -19,3 +19,5 @@ prometheus.yml
 !/grafana/provisioning/datasources/prometheus.yml
 **/init-output
 garage.local.toml
+**/rabbitmq.conf
+**/rabbitmq/definitions.json

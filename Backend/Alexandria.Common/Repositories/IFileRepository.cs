@@ -9,11 +9,10 @@ namespace Alexandria.Common.Repositories;
 public interface IFileRepository : IRepository<File>
 {
     Task<File> CreateAsync(File file, CancellationToken ct = default);
-    Task<byte[]?> GetFileHashAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
-    Task<string> GetFileHashAsStringAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
+    Task<string?> GetMimeTypeByVersionIdAsync(Guid versionId, CancellationToken ct = default);
     Task<File> UpdateAsync(File file, CancellationToken ct = default);
     Task<FileResult?> GetFileWithTagsAsync(Guid userId, Guid fileId, CancellationToken ct = default);
-    Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);
+    Task<string?> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);
 
     Task<File?> GetFileEntityWithTagsAsync(
         Guid fileId,
@@ -36,7 +35,6 @@ public interface IFileRepository : IRepository<File>
     Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
         CancellationToken ct = default);
 
-    Task<File?> GetFileWithPreviewAsync(Guid fileId, CancellationToken ct = default);
     Task MoveFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
     Task<int> MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default);
     Task<bool> IsPromotedAsync(Guid fileId, CancellationToken ct = default);
@@ -59,6 +57,7 @@ public interface IFileRepository : IRepository<File>
     Task ChangeActiveVersionAsync(Guid versionId, Guid fileId, Guid userId, CancellationToken ct = default);
     Task<FileResult?> GetFileWithOwnershipByIdAsync(Guid fileId, Guid userId, CancellationToken ct = default);
     Task UpdateCurrentVersionAsync(Guid fileId, Guid versionId, CancellationToken ct = default);
+    Task<Guid?> GetCurrentVersionIdAsync(Guid fileId, Guid userId, CancellationToken ct = default);
 
     Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
         string? query = null, Guid? playlistId = null, bool isVideo = false,

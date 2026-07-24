@@ -238,6 +238,9 @@ done
 
 echo ""
 echo "Step 7: Granting PREVIEW key permissions..."
+# Preview key still needs read/write via the authenticated S3 API — website
+# mode (step 10 below) only changes how *unauthenticated* nginx-proxied reads
+# behave. The worker's own upload path is untouched by that change.
 garage_exec bucket allow --read --write "alexandria-previews" --key "${PREVIEW_KEY_NAME}"
 garage_exec bucket allow --read "alexandria-files" --key "${PREVIEW_KEY_NAME}"
 echo -e "${BLUE}✓ Preview key: read/write access to alexandria-previews${NC}"
@@ -295,9 +298,16 @@ else
     done
 fi
 
-echo "Step 10: Setting up streaming bucket..."
-
+echo ""
+echo "Step 10: Setting up website-mode buckets..."
+# Neither bucket is externally reachable — nginx enforces auth_request
+# (stream-check / preview-check) before any request reaches Garage. Write
+# access is untouched: uploads still require the preview/streaming key via
+# the authenticated S3 API (steps 7-8 above).
 garage_exec bucket website --allow "alexandria-streaming"
+echo -e "${GREEN}✓ Web endpoint enabled: alexandria-streaming${NC}"
+garage_exec bucket website --allow "alexandria-previews"
+echo -e "${GREEN}✓ Web endpoint enabled: alexandria-previews${NC}"
 
 echo ""
 echo "=== Garage Initialization Complete! ==="
@@ -309,10 +319,10 @@ echo "  Admin API:   http://localhost:9001"
 echo ""
 echo "Buckets:"
 echo "  • alexandria-files     (private — server only, presigned download)"
-echo "  • alexandria-previews  (private — server only, presigned GET)"
+echo "  • alexandria-previews  (website mode — read gated by nginx auth_request /preview/, write via preview key only)"
 echo "  • alexandria-temp      (private — presigned browser uploads)"
 echo "  • alexandria-images    (private — CORS enabled for presigned browser uploads)"
-echo "  • alexandria-streaming (private — session-gated via nginx /stream/)"
+echo "  • alexandria-streaming (website mode — read gated by nginx auth_request /stream/, write via streaming key only)"
 echo ""
 echo "Keys:"
 echo "  • ${MASTER_KEY_NAME}   → Full access to all buckets"

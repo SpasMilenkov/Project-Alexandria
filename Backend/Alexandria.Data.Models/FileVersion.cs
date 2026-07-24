@@ -50,4 +50,5 @@ public class FileVersion : IBase
     public ContentObject ContentObject { get; set; } = null!;
     public Guid FileId { get; set; }
     public File File { get; set; } = null!;
+    public ICollection<Preview> Previews { get; set; } = new List<Preview>();
 }

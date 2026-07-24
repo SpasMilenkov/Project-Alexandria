@@ -78,6 +78,11 @@ public class FileVersionConfiguration : IEntityTypeConfiguration<FileVersion>
             .HasForeignKey(e => e.FileId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(v => v.Previews)
+            .WithOne(p => p.Version)
+            .HasForeignKey(p => p.VersionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
 
         // Indexes for performance
         builder.HasIndex(e => e.CreatedAt);

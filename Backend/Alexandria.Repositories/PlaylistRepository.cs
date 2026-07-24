@@ -238,21 +238,21 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
                 .SetProperty(i => i.UpdatedBy, userId), ct);
     }
 
-    public async Task<string?> GetRandomPreviewPathForJobsAsync(
-        Guid[] jobIds, CancellationToken ct = default)
-    {
-        // Walk the chain: TranspilationJob -> FileVersion -> File -> Preview
-        // The subquery resolves the file IDs without loading any entities.
-        var fileIds = context.Set<TranspilationJob>()
-            .Where(j => jobIds.Contains(j.Id) && j.DeletedAt == null)
-            .Select(j => j.FileVersion.FileId);
-
-        return await context.Set<Preview>()
-            .Where(p => p.DeletedAt == null && fileIds.Contains(p.FileId))
-            .OrderBy(_ => EF.Functions.Random())
-            .Select(p => p.Path)
-            .FirstOrDefaultAsync(ct);
-    }
+    // public async Task<string?> GetRandomPreviewPathForJobsAsync(
+    //     Guid[] jobIds, CancellationToken ct = default)
+    // {
+    //     // Walk the chain: TranspilationJob -> FileVersion -> File -> Preview
+    //     // The subquery resolves the file IDs without loading any entities.
+    //     var fileIds = context.Set<TranspilationJob>()
+    //         .Where(j => ((IEnumerable<Guid>)jobIds).Contains(j.Id) && j.DeletedAt == null)
+    //         .Select(j => j.FileVersion.FileId);
+    //
+    //     return await context.Set<Preview>()
+    //         .Where(p => p.DeletedAt == null && fileIds.Contains(p.VersionId))
+    //         .OrderBy(_ => EF.Functions.Random())
+    //         .Select(p => p.Path)
+    //         .FirstOrDefaultAsync(ct);
+    // }
 
     public async Task<bool> IsOwnerAsync(Guid playlistId, Guid userId, CancellationToken ct = default)
     {

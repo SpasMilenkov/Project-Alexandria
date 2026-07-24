@@ -2,13 +2,12 @@
 import type { ContextMenuItem } from "@nuxt/ui";
 
 import { Icon } from "@iconify/vue";
-import { useQuery } from "@pinia/colada";
 import { storeToRefs } from "pinia";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
-import { getPreview } from "@/queries/files";
+import { fileApi } from "@/api/file";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatDuration } from "@/utils/date-formatters";
 
@@ -29,13 +28,31 @@ const typeIcon = computed(() => (isVideo.value ? "mdi:file-video" : "mdi:music-n
 const displayName = computed(() => file.title ?? file.fileName);
 const subtitle = computed(() => file.artist ?? file.mimeType);
 
-const { data: preview, isLoading: previewLoading } = useQuery(() => getPreview(file.fileId));
-const thumbnail = computed(() => preview.value?.thumbnailUrl ?? null);
-
-const loadedSrc = ref<string | null>(null);
-const showSpinner = computed(
-  () => previewLoading.value || (Boolean(thumbnail.value) && loadedSrc.value !== thumbnail.value),
+// Direct URL, no fetch, no query cache — browser + nginx cache the bytes,
+// permanently valid since it's scoped to a specific version.
+const thumbnail = computed(() =>
+  fileApi.getThumbnailUrlForVersion(file.fileId, file.currentVersionId),
 );
+
+const thumbnailLoaded = ref(false);
+const thumbnailErrored = ref(false);
+
+// reset when this card gets recycled onto a different file/version
+watch(thumbnail, () => {
+  thumbnailLoaded.value = false;
+  thumbnailErrored.value = false;
+});
+
+const onThumbnailLoad = () => {
+  thumbnailLoaded.value = true;
+};
+
+const onThumbnailError = () => {
+  thumbnailErrored.value = true;
+};
+
+const showSpinner = computed(() => !thumbnailLoaded.value && !thumbnailErrored.value);
+const showFallbackIcon = computed(() => thumbnailErrored.value);
 
 // Queue state
 const queueIndex = computed(() => userQueue.value.findIndex((f) => f.fileId === file.fileId));
@@ -85,15 +102,15 @@ const emit = defineEmits<{ select: [file: MediaFileDto] }>();
         :class="isAudio ? 'aspect-square' : 'aspect-video'"
       >
         <img
-          v-if="thumbnail"
+          v-show="!showFallbackIcon"
           :src="thumbnail"
           :alt="displayName"
           class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
           :class="{ 'opacity-0': showSpinner }"
-          @load="loadedSrc = thumbnail"
-          @error="loadedSrc = thumbnail"
+          @load="onThumbnailLoad"
+          @error="onThumbnailError"
         />
-        <div v-else-if="!previewLoading" class="w-full h-full flex items-center justify-center">
+        <div v-if="showFallbackIcon" class="w-full h-full flex items-center justify-center">
           <Icon :icon="typeIcon" class="w-8 h-8 text-gray-300 dark:text-white/15" />
         </div>
 
@@ -162,12 +179,14 @@ const emit = defineEmits<{ select: [file: MediaFileDto] }>();
         class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 dark:bg-neutral-900 flex-shrink-0 relative"
       >
         <img
-          v-if="thumbnail"
+          v-show="!showFallbackIcon"
           :src="thumbnail"
           :alt="displayName"
           class="w-full h-full object-cover"
+          @load="onThumbnailLoad"
+          @error="onThumbnailError"
         />
-        <div v-else class="w-full h-full flex items-center justify-center">
+        <div v-if="showFallbackIcon" class="w-full h-full flex items-center justify-center">
           <Icon :icon="typeIcon" class="w-3.5 h-3.5 text-gray-300 dark:text-white/15" />
         </div>
       </div>

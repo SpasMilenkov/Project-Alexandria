@@ -7,11 +7,11 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import { usePlayerEngine } from "@/composables/usePlayerEngine";
-import { getPreview } from "@/queries/files";
 import { usePlayerStore } from "@/stores/stream-player";
 
 import PlayerQueue from "./PlayerQueue.vue";
 import PlayerSettings from "./PlayerSettings.vue";
+import { fileApi } from "@/api/file";
 
 const route = useRoute();
 const store = usePlayerStore();
@@ -24,9 +24,8 @@ const cardRef = ref<HTMLDivElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
 const videoRef = ref<HTMLVideoElement | null>(null);
 
-const { data: preview } = useQuery(() => getPreview(activeFile.value?.fileId ?? ""));
-const audioBg = computed(() => preview.value?.thumbnailUrl ?? null);
-const activeFileName = computed(() => activeFile.value?.fileName ?? null);
+const audioBg = computed(() =>   fileApi.getThumbnailUrlForVersion(activeFile.value?.fileId, activeFile.value?.currentVersionId) ?? null);
+const activeFileName = computed(() => activeFile.value?.title ?? activeFile.value?.fileName ?? null);
 
 const { isBuffering, loadError } = usePlayerEngine(videoRef, containerRef, {
   getThumbnailUrl: () => audioBg.value,

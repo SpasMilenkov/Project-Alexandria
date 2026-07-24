@@ -31,8 +31,7 @@ public partial class TranspilationWorker(
             autoDelete: false,
             cancellationToken: ct);
 
-        var queueName = configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "content-queue")!;
-
+        var queueName = configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "transpilation-queue")!;
         var queueDeclareResult = await _channel.QueueDeclareAsync(
             queue: queueName,
             durable: true,

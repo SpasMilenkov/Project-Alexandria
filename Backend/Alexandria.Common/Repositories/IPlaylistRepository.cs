@@ -47,7 +47,7 @@ public interface IPlaylistRepository : IRepository<Playlist>
     /// Returns a random Preview.Path sourced from the files that back the given transpilation jobs.
     /// Returns null when none of those files have a non-deleted preview.
     /// </summary>
-    Task<string?> GetRandomPreviewPathForJobsAsync(Guid[] jobIds, CancellationToken ct = default);
+    // Task<string?> GetRandomPreviewPathForJobsAsync(Guid[] jobIds, CancellationToken ct = default);
 
     /// <summary>Returns whether the given user is the owner of the playlist and it has not been deleted.</summary>
     Task<bool> IsOwnerAsync(Guid playlistId, Guid userId, CancellationToken ct = default);

@@ -33,14 +33,15 @@ public class Worker(
             autoDelete: false,
             cancellationToken: ct);
 
-        var queueDeclareResult = await _channel.QueueDeclareAsync(
+        var queueName = configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "media-queue")!;
+
+        await _channel.QueueDeclareAsync(
+            queue: queueName,
             durable: true,
             exclusive: false,
             autoDelete: false,
             arguments: null,
             cancellationToken: ct);
-
-        string queueName = queueDeclareResult.QueueName;
 
 
         await _channel.QueueBindAsync(
@@ -49,6 +50,7 @@ public class Worker(
             routingKey: routingKey,
             arguments: null,
             cancellationToken: ct);
+
         await _channel.QueueBindAsync(queue: queueName, exchange: exchangeName,
             routingKey: "image.#", cancellationToken: ct);
         var consumer = new AsyncEventingBasicConsumer(_channel);

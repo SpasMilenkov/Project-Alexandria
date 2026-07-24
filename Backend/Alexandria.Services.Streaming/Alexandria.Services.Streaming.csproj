@@ -10,4 +10,8 @@
         <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <PackageReference Include="System.Threading.RateLimiting"/>
+    </ItemGroup>
+
 </Project>

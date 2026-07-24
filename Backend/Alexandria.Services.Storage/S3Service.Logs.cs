@@ -25,26 +25,26 @@ public partial class S3Service
     // Preview upload
 
     [LoggerMessage(1005, LogLevel.Information,
-        "Starting preview upload: Bucket={BucketName}, Object={ObjectName}, OriginalFileId={OriginalFileId}")]
+        "Starting preview upload: Bucket={BucketName}, Object={ObjectName}, VersionId={VersionId}")]
     private static partial void LogStartingPreviewUpload(
-        ILogger logger, string bucketName, string objectName, Guid originalFileId);
+        ILogger logger, string bucketName, string objectName, Guid versionId);
 
     [LoggerMessage(1006, LogLevel.Information,
         "Updating existing preview record: PreviewId={PreviewId}, Path={Path}")]
     private static partial void LogUpdatingExistingPreview(ILogger logger, Guid previewId, string path);
 
     [LoggerMessage(1007, LogLevel.Information,
-        "Creating new preview record: Path={Path}, OriginalFileId={OriginalFileId}")]
-    private static partial void LogCreatingNewPreview(ILogger logger, string path, Guid originalFileId);
+        "Creating new preview record: Path={Path}, VersionId={VersionId}")]
+    private static partial void LogCreatingNewPreview(ILogger logger, string path, Guid versionId);
 
     [LoggerMessage(1008, LogLevel.Information,
         "Preview upload completed successfully: PreviewId={PreviewId}, Size={Size}")]
     private static partial void LogPreviewUploadCompleted(ILogger logger, Guid previewId, long size);
 
     [LoggerMessage(1009, LogLevel.Error,
-        "Preview upload failed: Bucket={BucketName}, Object={ObjectName}, OriginalFileId={OriginalFileId}")]
+        "Preview upload failed: Bucket={BucketName}, Object={ObjectName}, VersionId={VersionId}")]
     private static partial void LogPreviewUploadFailed(
-        ILogger logger, Exception ex, string bucketName, string objectName, Guid originalFileId);
+        ILogger logger, Exception ex, string bucketName, string objectName, Guid versionId);
 
     [LoggerMessage(1010, LogLevel.Warning,
         "Attempting cleanup: Deleting preview from storage: Bucket={BucketName}, Object={ObjectName}")]
@@ -62,12 +62,10 @@ public partial class S3Service
     // Media data upload
 
     [LoggerMessage(1013, LogLevel.Information,
-        "Starting media data upload: FileId={FileId}, PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}")]
+        "Starting media data upload: VersionId={VersionId}, PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}")]
     private static partial void LogStartingMediaDataUpload(
-        ILogger logger, Guid fileId, string previewKey, string thumbnailKey);
+        ILogger logger, Guid versionId, string previewKey, string thumbnailKey);
 
-    [LoggerMessage(1014, LogLevel.Error, "Original file not found for media data upload: FileId={FileId}")]
-    private static partial void LogOriginalFileNotFoundForMedia(ILogger logger, Guid fileId);
 
     [LoggerMessage(1015, LogLevel.Debug, "Uploading preview video: PreviewKey={PreviewKey}")]
     private static partial void LogUploadingPreviewVideo(ILogger logger, string previewKey);
@@ -85,17 +83,17 @@ public partial class S3Service
     [LoggerMessage(1019, LogLevel.Debug, "Updating existing preview record: PreviewId={PreviewId}")]
     private static partial void LogUpdatingPreviewRecord(ILogger logger, Guid previewId);
 
-    [LoggerMessage(1020, LogLevel.Debug, "Creating new preview record for media: FileId={FileId}")]
-    private static partial void LogCreatingPreviewForMedia(ILogger logger, Guid fileId);
+    [LoggerMessage(1020, LogLevel.Debug, "Creating new preview record for media: VersionId={VersionId}")]
+    private static partial void LogCreatingPreviewForMedia(ILogger logger, Guid versionId);
 
     [LoggerMessage(1021, LogLevel.Information,
-        "Media data upload completed successfully: FileId={FileId}, PreviewSize={PreviewSize}")]
-    private static partial void LogMediaDataUploadCompleted(ILogger logger, Guid fileId, long previewSize);
+        "Media data upload completed successfully: VersionId={VersionId}, PreviewSize={PreviewSize}")]
+    private static partial void LogMediaDataUploadCompleted(ILogger logger, Guid versionId, long previewSize);
 
     [LoggerMessage(1022, LogLevel.Error,
-        "Failed to upload media data: FileId={FileId}, PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}")]
+        "Failed to upload media data: VersionId={VersionId}, PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}")]
     private static partial void LogMediaDataUploadFailed(
-        ILogger logger, Exception ex, Guid fileId, string previewKey, string thumbnailKey);
+        ILogger logger, Exception ex, Guid versionId, string previewKey, string thumbnailKey);
 
     [LoggerMessage(1023, LogLevel.Warning,
         "Attempting cleanup of media data: PreviewKey={PreviewKey}, ThumbnailKey={ThumbnailKey}")]
@@ -112,26 +110,26 @@ public partial class S3Service
 
     // Cached preview
 
-    [LoggerMessage(1026, LogLevel.Debug, "Retrieving cached preview: FileId={FileId}")]
-    private static partial void LogRetrievingCachedPreview(ILogger logger, Guid fileId);
+    [LoggerMessage(1026, LogLevel.Debug, "Retrieving cached preview: VersionId={VersionId}")]
+    private static partial void LogRetrievingCachedPreview(ILogger logger, Guid versionId);
 
-    [LoggerMessage(1027, LogLevel.Debug, "No preview available for file: FileId={FileId}")]
-    private static partial void LogNoPreviewAvailable(ILogger logger, Guid fileId);
+    [LoggerMessage(1027, LogLevel.Debug, "No preview available for version: VersionId={VersionId}")]
+    private static partial void LogNoPreviewAvailable(ILogger logger, Guid versionId);
 
     [LoggerMessage(1028, LogLevel.Debug,
-        "File categorized as {Category} for preview: FileId={FileId}, MimeType={MimeType}")]
+        "File categorized as {Category} for preview: VersionId={VersionId}, MimeType={MimeType}")]
     private static partial void LogFileCategorized(
-        ILogger logger, FileCategory category, Guid fileId, string mimeType);
+        ILogger logger, FileCategory category, Guid versionId, string mimeType);
 
     [LoggerMessage(1029, LogLevel.Error,
-        "Failed to retrieve cached preview: FileId={FileId}, Category={Category}")]
+        "Failed to retrieve cached preview: VersionId={VersionId}, Kind={Kind}")]
     private static partial void LogFailedToRetrieveCachedPreview(
-        ILogger logger, Exception ex, Guid fileId, FileCategory category);
+        ILogger logger, Exception ex, Guid versionId, PreviewKind kind);
 
     // File download
 
-    [LoggerMessage(1030, LogLevel.Warning, "File not found in database during download: Id={FileId}")]
-    private static partial void LogFileNotFoundForDownload(ILogger logger, Guid fileId);
+    [LoggerMessage(1030, LogLevel.Warning, "File not found in database during download: Id={VersionId}")]
+    private static partial void LogFileNotFoundForDownload(ILogger logger, Guid versionId);
 
     [LoggerMessage(1031, LogLevel.Information,
         "File download stream acquired: Bucket={BucketName}, Object={ObjectName}, Size={ContentLength}")]
@@ -149,27 +147,27 @@ public partial class S3Service
 
     // File streaming
 
-    [LoggerMessage(1034, LogLevel.Information, "Streaming file to destination: FileId={FileId}")]
-    private static partial void LogStreamingFileToDestination(ILogger logger, string fileId);
+    [LoggerMessage(1034, LogLevel.Information, "Streaming file version to destination: FileId={VersionId}")]
+    private static partial void LogStreamingFileToDestination(ILogger logger, Guid versionId);
 
-    [LoggerMessage(1035, LogLevel.Warning, "File not found for streaming: FileId={FileId}")]
-    private static partial void LogFileNotFoundForStreaming(ILogger logger, string fileId);
+    [LoggerMessage(1035, LogLevel.Warning, "File not found for streaming: FileId={VersionId}")]
+    private static partial void LogFileNotFoundForStreaming(ILogger logger, Guid versionId);
 
     [LoggerMessage(1036, LogLevel.Debug,
-        "Streaming file content: FileId={FileId}, Name={FileName}, Size={ContentLength}")]
+        "Streaming file content: VersionId={VersionId}, Size={ContentLength}")]
     private static partial void LogStreamingFileContent(
-        ILogger logger, string fileId, string fileName, long contentLength);
+        ILogger logger, Guid versionId, long contentLength);
 
-    [LoggerMessage(1037, LogLevel.Information, "File streaming completed: FileId={FileId}, Name={FileName}")]
-    private static partial void LogFileStreamingCompleted(ILogger logger, string fileId, string fileName);
+    [LoggerMessage(1037, LogLevel.Information, "File streaming completed: VersionId={VersionId}")]
+    private static partial void LogFileStreamingCompleted(ILogger logger, Guid versionId);
 
     [LoggerMessage(1038, LogLevel.Error,
-        "S3 error during file streaming: FileId={FileId}, Name={FileName}, StatusCode={StatusCode}")]
+        "S3 error during file streaming: VersionId={versionId}, StatusCode={StatusCode}")]
     private static partial void LogS3ErrorDuringStreaming(
-        ILogger logger, Exception ex, string fileId, string fileName, HttpStatusCode statusCode);
+        ILogger logger, Exception ex, Guid versionId, HttpStatusCode statusCode);
 
-    [LoggerMessage(1039, LogLevel.Error, "Failed to stream file: FileId={FileId}, Name={FileName}")]
-    private static partial void LogFailedToStreamFile(ILogger logger, Exception ex, string fileId, string fileName);
+    [LoggerMessage(1039, LogLevel.Error, "Failed to stream file: VersionId={VersionId}")]
+    private static partial void LogFailedToStreamFile(ILogger logger, Exception ex, Guid versionId);
 
     // Initiate upload
 

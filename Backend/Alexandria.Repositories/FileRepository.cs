@@ -97,30 +97,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return query;
     }
 
-    public async Task<File?> GetFileWithPreviewAsync(Guid fileId, CancellationToken ct = default)
-    {
-        return await _files
-            .AsNoTracking()
-            .Include(f => f.Preview)
-            .Where(f => f.DeletedAt == null)
-            .FirstOrDefaultAsync(f => f.Id == fileId, ct);
-    }
-
-    public async Task HasDuplicatesAsync(Guid[] fileIds, Guid destinationId, Guid userId,
-        CancellationToken ct = default)
-    {
-        var hasDuplicates = await _files.AnyAsync(f =>
-                f.OwnerId == userId &&
-                f.DirectoryId == destinationId &&
-                _files.Any(src =>
-                    fileIds.Contains(src.Id) &&
-                    src.OwnerId == userId &&
-                    src.Name == f.Name),
-            ct);
-        if (hasDuplicates)
-            throw new InvalidOperationException("Files with the same names already exist in destination");
-    }
-
     public async Task<int> MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default)
     {
         return await _files
@@ -298,14 +274,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         }
     }
 
-    public async Task<IEnumerable<File>> GetFilesByIds(Guid[] fileIds, CancellationToken ct = default)
-    {
-        return await _files
-            .AsNoTracking()
-            .Where(f => fileIds.Contains(f.Id))
-            .ToListAsync(ct);
-    }
-
     public async Task CopyFilesAsync(
         Guid[] fileIds,
         Guid? destinationId,
@@ -326,10 +294,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 {
                     f.Name,
                     f.MimeType,
-                    f.HasPreview,
-                    f.PreviewGeneratedAt,
                     f.Tags,
-                    f.PreviewId,
                     Version = f.CurrentVersion!
                 })
                 .ToListAsync(ct);
@@ -356,10 +321,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                     Name = src.Name,
                     MimeType = src.MimeType,
                     CreatedAt = now,
-                    HasPreview = src.HasPreview,
-                    PreviewGeneratedAt = src.PreviewGeneratedAt,
                     Tags = src.Tags,
-                    PreviewId = src.PreviewId,
                     OwnerId = userId,
                     DirectoryId = destinationId,
                     CurrentVersionId = null,
@@ -527,25 +489,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return await AddAsync(file, ct);
     }
 
-    public async Task<byte[]?> GetFileHashAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
-    {
-        var result = await _files
-            .AsNoTracking()
-            .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
-            .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, ct);
-        return result?.ContentHash;
-    }
-
-    public async Task<string> GetFileHashAsStringAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
-    {
-        var result = await _files
-                         .AsNoTracking()
-                         .Select(f => new { f.Id, f.OwnerId, f.CurrentVersion.ContentHash })
-                         .FirstOrDefaultAsync(f => f.Id == fileId && f.OwnerId == ownerId, ct) ??
-                     throw new InvalidOperationException("File hash not found");
-
-        return Convert.ToHexStringLower(result.ContentHash);
-    }
+    public async Task<string?> GetMimeTypeByVersionIdAsync(Guid versionId, CancellationToken ct = default) =>
+        await _files.Where(f => f.Versions.Any(v => v.Id == versionId))
+            .Select(f => f.MimeType)
+            .FirstOrDefaultAsync(ct);
 
     public async Task<PaginatedResult<FileResult>> GetFilesByDirectoryIdAsync(
         Guid parentDirectoryId,
@@ -602,8 +549,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         // Update mutable properties
         existingFile.Name = file.Name;
-        existingFile.HasPreview = file.HasPreview;
-        existingFile.PreviewGeneratedAt = file.PreviewGeneratedAt;
         existingFile.UpdatedBy = file.UpdatedBy;
         existingFile.UpdatedAt = DateTime.UtcNow;
 
@@ -625,12 +570,15 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<bool> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default)
+    public async Task<string?> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default)
     {
-        return await context.FileVersions
+        var hash = await context.FileVersions
             .AsNoTracking()
             .Where(v => v.Id == versionId && v.File.OwnerId == userId)
-            .AnyAsync(ct);
+            .Select(v => (byte[]?)v.ContentHash)
+            .FirstOrDefaultAsync(ct);
+
+        return hash is null ? null : Convert.ToHexStringLower(hash);
     }
 
     public async Task<File?> GetFileEntityWithTagsAsync(
@@ -640,14 +588,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         return await _files
             .Include(f => f.Tags)
             .Where(f => f.Id == fileId && f.DeletedAt == null)
-            .FirstOrDefaultAsync(ct);
-    }
-
-    public async Task<FileSummary?> GetFileNameAndMimeType(Guid fileId, CancellationToken ct = default)
-    {
-        return await _files
-            .Where(f => f.Id == fileId)
-            .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview))
             .FirstOrDefaultAsync(ct);
     }
 
@@ -665,7 +605,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     {
         return await _files.Where(f =>
                 f.OwnerId == userId && f.DeletedAt != null && f.DeletedAt < DateTime.UtcNow.AddDays(-30))
-            .Select(f => new FileSummary(f.Id, f.Name, f.MimeType, f.HasPreview))
+            .Select(f => new FileSummary(f.Id, f.Name, f.MimeType))
             .ToListAsync(ct);
     }
 
@@ -754,6 +694,12 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .ExecuteUpdateAsync(s => s
                 .SetProperty(f => f.CurrentVersionId, versionId)
                 .SetProperty(f => f.UpdatedAt, DateTime.UtcNow), ct);
+    }
+
+    public async Task<Guid?> GetCurrentVersionIdAsync(Guid fileId, Guid userId, CancellationToken ct = default)
+    {
+        return await _files.Where(f => f.Id == fileId && f.OwnerId == userId).Select(f => f.CurrentVersionId)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(
@@ -868,7 +814,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             if (playlistFileIds != null)
             {
                 var playlistSet = playlistFileIds.ToHashSet();
-                orderedSearchIds = orderedSearchIds.Where(id => playlistSet.Contains(id)).ToList();
+                orderedSearchIds = orderedSearchIds.Where(playlistSet.Contains).ToList();
             }
 
             // Step 4: paginate on the ordered ID list.
@@ -990,7 +936,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 .ToDictionary(x => x.id, x => x.i);
 
             items = items
-                .OrderBy(m => positionMap.TryGetValue(m.FileId, out var pos) ? pos : int.MaxValue)
+                .OrderBy(m => positionMap.GetValueOrDefault(m.FileId, int.MaxValue))
                 .ToList();
         }
 
