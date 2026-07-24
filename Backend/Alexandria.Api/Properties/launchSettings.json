@@ -20,6 +20,7 @@
     "API (Garage)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
+      "applicationUrl": "http://0.0.0.0:5000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "S3Storage__Provider": "Garage"
