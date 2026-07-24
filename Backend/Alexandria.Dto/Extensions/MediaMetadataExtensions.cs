@@ -7,8 +7,7 @@ public static class MediaMetadataExtensions
 {
     public static MediaMetadata ToEntity(
         this MediaMetadataDto dto,
-        Guid fileId,
-        string? thumbnailPath = null)
+        Guid fileId)
     {
         return new MediaMetadata
         {
@@ -17,7 +16,6 @@ public static class MediaMetadataExtensions
             Duration = dto.Duration,
             BitrateMbps = dto.BitrateMbps,
             FormatName = dto.FormatName,
-            ThumbnailPath = thumbnailPath,
             VideoCodec = dto.VideoCodec,
             AudioCodec = dto.AudioCodec,
             Width = dto.Width,

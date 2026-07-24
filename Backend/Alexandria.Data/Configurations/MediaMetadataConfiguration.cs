@@ -22,10 +22,6 @@ public class MediaMetadataConfiguration : IEntityTypeConfiguration<MediaMetadata
             .HasColumnType($"varchar({ValidationConstants.StringLengths.ShortString})")
             .IsRequired(false);
 
-        builder.Property(e => e.ThumbnailPath)
-            .HasMaxLength(ValidationConstants.StringLengths.MediumString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
-            .IsRequired(false);
         // Stream information
         builder.Property(e => e.VideoCodec)
             .HasMaxLength(ValidationConstants.StringLengths.ShortString)

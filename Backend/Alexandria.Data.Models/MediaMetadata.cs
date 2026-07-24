@@ -15,7 +15,6 @@ public class MediaMetadata : IBase
     public double Duration { get; set; }
     public double BitrateMbps { get; set; }
     public string? FormatName { get; set; }
-    public string? ThumbnailPath { get; set; }
 
     // Stream information
     public string? VideoCodec { get; set; }
