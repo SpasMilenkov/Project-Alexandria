@@ -8,7 +8,6 @@ public sealed class SharedFileMetadataDto
     public required string MimeType { get; init; }
     public required long Size { get; init; }
     public required DateTime ExpiresAt { get; init; }
-    public required bool HasPreview { get; init; }
     public required int VersionNumber { get; init; }
 
     /// <summary>True when the link targets a specific pinned version rather than always-current.</summary>
@@ -20,7 +19,6 @@ public sealed class SharedFileMetadataDto
         MimeType = version.MimeType,
         Size = version.Size,
         ExpiresAt = signedUrl.ExpiresAt,
-        HasPreview = signedUrl.FileInfo.HasPreview,
         VersionNumber = version.VersionNumber,
         IsPinnedVersion = signedUrl.FileVersionId.HasValue,
     };
