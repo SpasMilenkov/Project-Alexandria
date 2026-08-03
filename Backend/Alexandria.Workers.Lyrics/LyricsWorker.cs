@@ -1,10 +1,10 @@
 using System.Text;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
-using Alexandria.Workers.MediaMetadata.Handlers;
+using Alexandria.Workers.Lyrics.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace Alexandria.Workers.MediaMetadata;
+namespace Alexandria.Workers.Lyrics;
 
 public partial class LyricsWorker : BackgroundService
 {

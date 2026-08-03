@@ -3,9 +3,9 @@ using Alexandria.Common.Services;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Streaming.Lyrics;
-using Alexandria.Workers.MediaMetadata.Handlers;
+using Alexandria.Workers.Lyrics.Handlers;
 
-namespace Alexandria.Workers.MediaMetadata.Extensions;
+namespace Alexandria.Workers.Lyrics.Extensions;
 
 public static class WorkerExtensions
 {

@@ -3,7 +3,7 @@ using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Streaming.Lyrics;
 
-namespace Alexandria.Workers.MediaMetadata.Handlers;
+namespace Alexandria.Workers.Lyrics.Handlers;
 
 public partial class LyricsHandler(
     ILogger<LyricsHandler> logger,

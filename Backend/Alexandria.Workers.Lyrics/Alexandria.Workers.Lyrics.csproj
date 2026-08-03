@@ -4,7 +4,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-        <UserSecretsId>dotnet-Alexandria.Workers.MediaMetadata-f33f64df-183b-48de-aff8-9a98d99833db</UserSecretsId>
+        <UserSecretsId>dotnet-Alexandria .Workers.MediaMetadata-a370982f-eb8f-445c-b54f-5acc8a36b29d</UserSecretsId>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
@@ -17,17 +17,13 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Streaming\Alexandria.Services.Streaming.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <Content Include="..\.dockerignore">
             <Link>.dockerignore</Link>
         </Content>
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
-        <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Extensions\"/>
     </ItemGroup>
 </Project>

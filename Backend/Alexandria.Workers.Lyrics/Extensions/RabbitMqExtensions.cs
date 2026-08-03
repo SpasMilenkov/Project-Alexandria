@@ -1,6 +1,6 @@
 using RabbitMQ.Client;
 
-namespace Alexandria.Workers.MediaMetadata.Extensions;
+namespace Alexandria.Workers.Lyrics.Extensions;
 
 public static class RabbitMqExtensions
 {
@@ -24,6 +24,7 @@ public static class RabbitMqExtensions
 
         var connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
         services.AddSingleton(connection);
+
 
         return services;
     }

@@ -1,4 +1,4 @@
-namespace Alexandria.Workers.MediaMetadata;
+namespace Alexandria.Workers.Lyrics;
 
 public partial class LyricsWorker
 {
