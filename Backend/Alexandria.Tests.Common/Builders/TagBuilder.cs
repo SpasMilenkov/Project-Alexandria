@@ -98,6 +98,5 @@ public class TagBuilder
         UpdatedAt = _updatedAt,
         DeletedAt = _deletedAt,
         UpdatedBy = _updatedBy,
-        Files = []
     };
 }
