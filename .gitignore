@@ -21,3 +21,8 @@ prometheus.yml
 garage.local.toml
 **/rabbitmq.conf
 **/rabbitmq/definitions.json
+**/models/**.json
+**/models/**.pb
+**/lib/**
+**/.venv/**
+**/__pycache__/**
