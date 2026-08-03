@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Tags;
 using File = Alexandria.Data.Models.File;
@@ -25,17 +26,20 @@ public static class FileProjections
                 f.DeletedAt == null,
                 f.CurrentVersion.IsEncrypted
             ),
-            f.Tags.Where(t => t.DeletedAt == null).Select(t => new TagDto
-            {
-                Id = t.Id,
-                CreatedAt = t.CreatedAt,
-                UpdatedAt = t.UpdatedAt,
-                Name = t.Name,
-                Color = t.Color,
-                Icon = t.Icon,
-                Description = t.Description,
-                UserId = t.OwnerId
-            }).ToList(),
+            f.FileTags!.Where(ft => ft.Source != TagSource.Suppressed && ft.Tag.DeletedAt == null)
+                .Select(ft => new TagDto
+                {
+                    Id = ft.Tag.Id,
+                    CreatedAt = ft.Tag.CreatedAt,
+                    UpdatedAt = ft.Tag.UpdatedAt,
+                    Name = ft.Tag.Name,
+                    Color = ft.Tag.Color,
+                    Icon = ft.Tag.Icon,
+                    Description = ft.Tag.Description,
+                    UserId = ft.Tag.OwnerId,
+                    Source = ft.Source,
+                    Confidence = ft.Confidence
+                }).ToList(),
             new UserDto
             {
                 Id = f.OwnerId,

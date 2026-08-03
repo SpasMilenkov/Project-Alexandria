@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Tags;
 using Microsoft.EntityFrameworkCore;
 
@@ -110,7 +111,6 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
     public async Task<IEnumerable<TagDto>> GetTagsWithFilesAsync(Guid userId, CancellationToken ct = default)
     {
         return await _tags
-            .Include(t => t.Files)
             .Where(t => t.OwnerId == userId)
             .Select(t => new TagDto
             {
@@ -132,76 +132,43 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
     {
         IQueryable<Tag> tagsQuery = _tags.Where(t => t.DeletedAt == null);
 
-        // Only include Files if we need to filter by HasFiles
-        if (query.HasFiles.HasValue)
-        {
-            tagsQuery = _tags.Include(t => t.Files).Where(t => t.DeletedAt == null);
-        }
-
         if (query.ExcludeOnFile.HasValue)
         {
-            tagsQuery = tagsQuery.Where(t => !t.Files.Any(f => f.Id == query.ExcludeOnFile));
+            tagsQuery = tagsQuery.Where(t => !t.FileTags!.Any(ft =>
+                ft.FileId == query.ExcludeOnFile.Value && ft.Source != TagSource.Suppressed));
         }
 
-        // Apply user ID filter
         if (query.UserId.HasValue)
-        {
             tagsQuery = tagsQuery.Where(t => t.OwnerId == query.UserId.Value);
-        }
 
-        // Apply created by filter
         if (query.CreatedBy.HasValue)
-        {
             tagsQuery = tagsQuery.Where(t => t.OwnerId == query.CreatedBy.Value);
-        }
 
-        // Apply updated by filter
         if (query.UpdatedBy.HasValue)
-        {
             tagsQuery = tagsQuery.Where(t => t.UpdatedBy == query.UpdatedBy);
-        }
 
-        // Apply creation date filters
         if (query.CreatedAfter.HasValue)
-        {
             tagsQuery = tagsQuery.Where(t => t.CreatedAt >= query.CreatedAfter.Value);
-        }
 
         if (query.CreatedBefore.HasValue)
-        {
             tagsQuery = tagsQuery.Where(t => t.CreatedAt <= query.CreatedBefore.Value);
-        }
 
-        // Apply update date filters
         if (query.UpdatedAfter.HasValue && query.UpdatedAfter.Value != default)
-        {
             tagsQuery = tagsQuery.Where(t =>
                 t.UpdatedAt.HasValue && t.UpdatedAt.Value >= query.UpdatedAfter.Value);
-        }
 
         if (query.UpdatedBefore.HasValue && query.UpdatedBefore.Value != default)
-        {
             tagsQuery = tagsQuery.Where(t =>
                 t.UpdatedAt.HasValue && t.UpdatedAt.Value <= query.UpdatedBefore.Value);
-        }
 
-        // Apply name search filter
         if (!string.IsNullOrWhiteSpace(query.NameContains))
-        {
             tagsQuery = tagsQuery.Where(d => d.Name.Contains(query.NameContains));
-        }
 
-        // Apply has files filter
         if (query.HasFiles.HasValue)
         {
-            if (query.HasFiles.Value)
-            {
-                tagsQuery = tagsQuery.Where(t => t.Files != null && t.Files.Any());
-            }
-            else
-            {
-                tagsQuery = tagsQuery.Where(t => t.Files == null || !t.Files.Any());
-            }
+            tagsQuery = query.HasFiles.Value
+                ? tagsQuery.Where(t => t.FileTags!.Any(ft => ft.Source != TagSource.Suppressed))
+                : tagsQuery.Where(t => t.FileTags!.All(ft => ft.Source == TagSource.Suppressed));
         }
 
         var totalCount = await tagsQuery.CountAsync(ct);

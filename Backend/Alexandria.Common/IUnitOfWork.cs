@@ -25,6 +25,9 @@ public interface IUnitOfWork : IDisposable
     IPlaylistRepository Playlists { get; }
     ISignedUrlRepository SignedUrls { get; }
     ITrackLyricsRepository Lyrics { get; }
+    IEssentiaBatchRepository EssentiaBatches { get; }
+    IEssentiaBatchFileRepository EssentiaBatchFiles { get; }
+    IFileEnrichmentRepository FileEnrichments { get; }
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);

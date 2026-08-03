@@ -1,3 +1,5 @@
+using Alexandria.Data.Models.Enumerators;
+
 namespace Alexandria.Dto.Tags;
 
 public class TagDto
@@ -10,4 +12,6 @@ public class TagDto
     public Guid UserId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public TagSource Source { get; set; }
+    public double? Confidence { get; set; }
 }

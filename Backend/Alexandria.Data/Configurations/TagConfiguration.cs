@@ -1,7 +1,6 @@
 using Alexandria.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using File = Alexandria.Data.Models.File;
 
 namespace Alexandria.Data.Configurations;
 
@@ -34,6 +33,10 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
             .IsRequired(false);
 
+        builder.Property(e => e.ParentId)
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
         builder.Property(e => e.UpdatedBy)
             .HasColumnType("uuid")
             .IsRequired(false);
@@ -57,23 +60,20 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
             .HasForeignKey(t => t.OwnerId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Many-to-many relationship with Files
-        builder.HasMany(t => t.Files)
-            .WithMany(f => f.Tags)
-            .UsingEntity<Dictionary<string, object>>(
-                "FileTags",
-                j => j.HasOne<File>().WithMany().HasForeignKey("FileId").OnDelete(DeleteBehavior.Cascade),
-                j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId").OnDelete(DeleteBehavior.Cascade),
-                j =>
-                {
-                    j.HasKey("FileId", "TagId");
-                    j.ToTable("FileTags");
-                });
+        // Single-level self reference (subgenre -> genre). Restrict so deleting
+        // a parent tag doesn't cascade-delete its children by accident.
+        builder.HasOne(t => t.Parent)
+            .WithMany(t => t.Children)
+            .HasForeignKey(t => t.ParentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // File associations now live on FileTag (see FileTagConfiguration)
 
         // Indexes for performance
         builder.HasIndex(e => e.OwnerId);
         builder.HasIndex(e => e.Name);
         builder.HasIndex(e => e.CreatedAt);
+        builder.HasIndex(e => e.ParentId);
         builder.HasIndex(e => new { e.OwnerId, e.Name })
             .IsUnique();
 
