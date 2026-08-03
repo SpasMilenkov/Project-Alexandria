@@ -40,6 +40,9 @@ public static class ServiceExtensions
         services.AddScoped<IPlaylistRepository, PlaylistRepository>();
         services.AddScoped<ISignedUrlRepository, SignedUrlRepository>();
         services.AddScoped<ITrackLyricsRepository, TrackLyricsRepository>();
+        services.AddScoped<IEssentiaBatchRepository, EssentiaBatchRepository>();
+        services.AddScoped<IEssentiaBatchFileRepository, EssentiaBatchFileRepository>();
+        services.AddScoped<IFileEnrichmentRepository, FileEnrichmentRepository>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

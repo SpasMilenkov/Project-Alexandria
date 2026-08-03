@@ -27,6 +27,9 @@ public sealed class UnitOfWork(
     IPlaylistRepository playlistRepository,
     ISignedUrlRepository signedUrls,
     ITrackLyricsRepository lyrics,
+    IEssentiaBatchRepository essentiaBatches,
+    IEssentiaBatchFileRepository essentiaBatchFiles,
+    IFileEnrichmentRepository fileEnrichments,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -50,6 +53,9 @@ public sealed class UnitOfWork(
     public IPlaylistRepository Playlists { get; } = playlistRepository;
     public ISignedUrlRepository SignedUrls { get; } = signedUrls;
     public ITrackLyricsRepository Lyrics { get; } = lyrics;
+    public IEssentiaBatchRepository EssentiaBatches { get; } = essentiaBatches;
+    public IEssentiaBatchFileRepository EssentiaBatchFiles { get; } = essentiaBatchFiles;
+    public IFileEnrichmentRepository FileEnrichments { get; } = fileEnrichments;
 
     private IDbContextTransaction? _transaction;
 
