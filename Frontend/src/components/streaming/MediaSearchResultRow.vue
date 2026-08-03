@@ -72,10 +72,13 @@
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref } from "vue";
-import BlockSpinner from "../common/BlockSpinner.vue";
+
+import { fileApi } from "@/api/file";
 import { type MediaFileDto } from "@/api/streaming";
 import { getPreview } from "@/queries/files";
 import { formatDuration } from "@/utils/date-formatters";
+
+import BlockSpinner from "../common/BlockSpinner.vue";
 
 // Props & emits
 
@@ -89,14 +92,11 @@ const emit = defineEmits<{
   enqueue: [file: MediaFileDto];
 }>();
 
-// Thumbnail (presigned URL, fetched per-row)
+const thumbnail = computed(() =>
+  fileApi.getThumbnailUrlForVersion(file.fileId, file.currentVersionId),
+);
 
-const { data: preview, isLoading: previewLoading } = useQuery(() => getPreview(file.fileId));
-
-const thumbnail = computed(() => preview.value?.thumbnailUrl ?? null);
 const loadedSrc = ref<string | null>(null);
 
-const showSpinner = computed(
-  () => previewLoading.value || (Boolean(thumbnail.value) && loadedSrc.value !== thumbnail.value),
-);
+const showSpinner = computed(() => Boolean(thumbnail.value) && loadedSrc.value !== thumbnail.value);
 </script>
