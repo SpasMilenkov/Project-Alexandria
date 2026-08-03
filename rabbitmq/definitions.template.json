@@ -9,7 +9,9 @@
     { "name": "document_worker_user", "password": "${DOCUMENT_WORKER_PASS}", "tags": "" },
     { "name": "media_worker_user", "password": "${MEDIA_WORKER_PASS}", "tags": "" },
     { "name": "media_transpilation_worker", "password": "${TRANSPILATION_WORKER_PASS}", "tags": "" },
-    { "name": "media_metadata_worker", "password": "${MEDIA_METADATA_WORKER_PASS}", "tags": "" }
+    { "name": "lyrics_worker_user", "password": "${LYRICS_WORKER_PASS}", "tags": "" },
+    { "name": "media_metadata_worker_user", "password": "${MEDIA_METADATA_WORKER_PASS}", "tags": "" },
+    { "name": "essentia_worker_user", "password": "${ESSENTIA_WORKER_PASS}", "tags": "" }
   ],
   "permissions": [
     {
@@ -48,11 +50,25 @@
       "read": "^(content-exchange|transpilation-queue)$"
     },
     {
-      "user": "media_metadata_worker",
+      "user": "lyrics_worker_user",
       "vhost": "${RABBITMQ_VHOST}",
       "configure": "^(content-exchange|lyrics-queue)$",
       "write": "^(content-exchange|lyrics-queue)$",
       "read": "^(content-exchange|lyrics-queue)$"
+    },
+    {
+      "user": "media_metadata_worker_user",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue)$",
+      "write": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue)$",
+      "read": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue)$"
+    },
+    {
+      "user": "essentia_worker_user",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": "^(content-exchange|classify-effnet-queue|classify-maest-queue)$",
+      "write": "^content-exchange$",
+      "read": "^(classify-effnet-queue|classify-maest-queue)$"
     }
   ],
   "exchanges": [
@@ -70,13 +86,21 @@
     { "name": "document-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "media-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "transpilation-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
-    { "name": "lyrics-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} }
+    { "name": "lyrics-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "classify-effnet-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "classify-maest-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "media-metadata-results-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "media-metadata-trigger-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} }
   ],
   "bindings": [
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "document-queue", "destination_type": "queue", "routing_key": "document.#", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-queue", "destination_type": "queue", "routing_key": "media.#", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-queue", "destination_type": "queue", "routing_key": "image.#", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "transpilation-queue", "destination_type": "queue", "routing_key": "transpilation.#", "arguments": {} },
-    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "lyrics-queue", "destination_type": "queue", "routing_key": "lyrics.#", "arguments": {} }
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "lyrics-queue", "destination_type": "queue", "routing_key": "lyrics.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "classify-effnet-queue", "destination_type": "queue", "routing_key": "media-metadata.classify.audio.effnet", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "classify-maest-queue", "destination_type": "queue", "routing_key": "media-metadata.classify.audio.maest", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-metadata-results-queue", "destination_type": "queue", "routing_key": "media-metadata.completed.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-metadata-trigger-queue", "destination_type": "queue", "routing_key": "media-metadata.enrich.#", "arguments": {} }
   ]
 }
