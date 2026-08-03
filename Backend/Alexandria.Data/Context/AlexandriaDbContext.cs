@@ -103,7 +103,10 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new PolicyRuleConfiguration());
         builder.ApplyConfiguration(new DirectoryPolicyConfiguration());
         builder.ApplyConfiguration(new TrackLyricsConfiguration());
+        builder.ApplyConfiguration(new FileEnrichmentConfiguration());
         builder.ApplyConfiguration(new FileTagConfiguration());
+        builder.ApplyConfiguration(new EssentiaBatchConfiguration());
+        builder.ApplyConfiguration(new EssentiaBatchFileConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
