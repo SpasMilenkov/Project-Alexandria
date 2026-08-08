@@ -1,9 +1,11 @@
 import { z } from "zod";
 // Update File Metadata Schema
 export const updateFileMetadataSchema = z.object({
+  artist: z.string().max(255).nullish(),
   hasPreview: z.boolean().nullish(),
   id: z.guid(),
   name: z.string().nullish(),
+  title: z.string().max(255).nullish(),
 });
 
 export type UpdateFileMetadataSchema = z.infer<typeof updateFileMetadataSchema>;
