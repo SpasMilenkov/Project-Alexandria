@@ -27,6 +27,7 @@ const persistBehavior = useDebounceFn(async () => {
   await saveBehavior({
     skipDeleteConfirmation: settingsStore.skipDeleteConfirmation,
     toastLevel: settingsStore.toastLevel,
+    allowAutoTagRegression: settingsStore.allowAutoTagRegression,
   });
 }, 600);
 
