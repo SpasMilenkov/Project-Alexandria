@@ -13,32 +13,22 @@
         </UBadge>
       </div>
 
-      <!-- Right: sort cluster + view toggle + destructive -->
+      <!-- Right: system toggle + view toggle + destructive -->
       <div class="flex items-center gap-2 shrink-0">
-        <!-- Sort cluster -->
-        <div class="flex items-center gap-1">
-          <USelectMenu
-            v-model="selectedSortBy"
-            :items="sortByOptions"
+        <!-- System vocabulary toggle -->
+        <UTooltip text="Show system vocabulary">
+          <UButton
             size="sm"
-            class="w-36"
-            @update:model-value="handleSorting"
-          >
-            <template #leading>
-              <UIcon name="i-lucide-arrow-up-down" class="w-4 h-4 text-muted" />
-            </template>
-          </USelectMenu>
-
-          <UTooltip :text="sortDirection === 'asc' ? 'Ascending' : 'Descending'">
-            <UButton
-              size="sm"
-              variant="ghost"
-              color="neutral"
-              :icon="sortDirection === 'asc' ? 'i-lucide-arrow-up' : 'i-lucide-arrow-down'"
-              @click="toggleSortDirection"
-            />
-          </UTooltip>
-        </div>
+            :variant="settingsStore.isSystemTagsVisible ? 'soft' : 'ghost'"
+            :color="settingsStore.isSystemTagsVisible ? 'primary' : 'neutral'"
+            icon="i-lucide-library-big"
+            :aria-pressed="settingsStore.isSystemTagsVisible"
+            :aria-label="
+              settingsStore.isSystemTagsVisible ? 'Hide system vocabulary' : 'Show system vocabulary'
+            "
+            @click="settingsStore.setSystemTagsVisible(!settingsStore.isSystemTagsVisible)"
+          />
+        </UTooltip>
 
         <!-- Divider -->
         <div class="w-px h-5 bg-gray-200/70 dark:bg-gray-700/70" />
@@ -198,19 +188,29 @@
             <UButton variant="ghost" color="neutral" @click="loadMore">Show more</UButton>
           </div>
         </template>
+
+        <!-- System vocabulary (read-only; hidden while searching — search results are unified) -->
+        <div
+          v-if="settingsStore.isSystemTagsVisible && !searchQuery"
+          class="pt-6 border-t border-gray-200/70 dark:border-gray-700/70"
+          :class="{ 'mt-8': tagsList.length > 0 }"
+        >
+          <SystemTagSection />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { useQuery } from "@pinia/colada";
 import { searchTag } from "@/queries/tags";
 import { deleteTag } from "@/mutations/tags";
 import type { SearchTagsSchema } from "@/schemas/tag";
 import TagCard from "./TagCard.vue";
 import TagListItem from "./TagListItem.vue";
+import SystemTagSection from "./SystemTagSection.vue";
 import CreateTagModal from "./modals/CreateTagModal.vue";
 import UpdateTagModal from "./modals/UpdateTagModal.vue";
 import type { TagDto } from "@/api/tag";
@@ -230,31 +230,20 @@ const selectedTags = ref<Set<string>>(new Set());
 const lastSelected = ref<string | null>(null);
 const containerRef = ref<HTMLElement | null>(null);
 
-// Sorting
-const sortByOptions = [
-  { label: "Name", value: "name" },
-  { label: "Date Created", value: "createdAt" },
-  { label: "Date Modified", value: "updatedAt" },
-];
-
-const selectedSortBy = ref({ label: "Name", value: "name" });
-const sortDirection = ref<"asc" | "desc">("asc");
-
 // Pagination
 const currentPage = ref(1);
 const pageSize = ref(25);
 
-// Search filters
+// Search filters — personal tags only while browsing; unified (own + system) while searching
 const searchFilters = computed<SearchTagsSchema>(() => ({
-  SortBy: selectedSortBy.value.value,
-  name: searchQuery.value || undefined,
+  nameContains: searchQuery.value || undefined,
+  ownerScope: searchQuery.value ? "all" : "user",
   page: currentPage.value,
   pageSize: pageSize.value,
-  sortDirection: sortDirection.value,
 }));
 
-// Query
-const { data: tagsData, isLoading, refetch } = useQuery(searchTag(searchFilters.value));
+// Query — reactive: re-keyed automatically when searchFilters changes
+const { data: tagsData, isLoading, refetch } = useQuery(() => searchTag(searchFilters.value));
 
 const tagsList = computed(() => tagsData.value?.items || []);
 
@@ -323,6 +312,8 @@ const handleBulkDelete = async () => {
 };
 
 const handleTagClick = (event: MouseEvent, tagId: string) => {
+  const tag = tagsList.value.find((t) => t.id === tagId);
+  if (tag?.isSystem) return;
   const isCtrlOrCmd = event.ctrlKey || event.metaKey;
   const isShift = event.shiftKey;
   if (isShift && lastSelected.value) {
@@ -352,7 +343,9 @@ const selectRange = (startId: string, endId: string) => {
   const endIndex = tagsList.value.findIndex((t) => t.id === endId);
   if (startIndex === -1 || endIndex === -1) return;
   const [from, to] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
-  for (let i = from; i <= to; i++) selectedTags.value.add(tagsList.value[i].id);
+  for (let i = from; i <= to; i++) {
+    if (!tagsList.value[i].isSystem) selectedTags.value.add(tagsList.value[i].id);
+  }
 };
 
 const handleContainerClick = (event: MouseEvent) => {
@@ -360,18 +353,8 @@ const handleContainerClick = (event: MouseEvent) => {
   if (!target.closest("button") && !target.closest("[data-tag-item]")) clearSelection();
 };
 
-const handleSorting = () => {
-  currentPage.value = 1;
-  refetch();
-};
-const toggleSortDirection = () => {
-  sortDirection.value = sortDirection.value === "asc" ? "desc" : "asc";
-  currentPage.value = 1;
-  refetch();
-};
 const handleSearch = () => {
   currentPage.value = 1;
-  refetch();
 };
 const loadMore = () => {
   if (tagsData.value?.hasNext) currentPage.value++;
@@ -383,11 +366,11 @@ defineShortcuts({
   },
   meta_a: (event) => {
     event.preventDefault();
-    tagsList.value.forEach((tag) => selectedTags.value.add(tag.id));
+    tagsList.value.forEach((tag) => {
+      if (!tag.isSystem) selectedTags.value.add(tag.id);
+    });
   },
 });
-
-watch(searchFilters, () => refetch(), { deep: true });
 </script>
 
 <style scoped></style>

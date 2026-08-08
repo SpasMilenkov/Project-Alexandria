@@ -1,6 +1,6 @@
 <template>
   <div
-    draggable
+    :draggable="!readOnly"
     data-tag-item
     class="relative group cursor-pointer rounded-xl border p-5 transition-all duration-300 backdrop-blur-sm"
     :class="[
@@ -11,7 +11,7 @@
           : 'border-gray-300/70 dark:border-gray-700/70 hover:border-primary/60 hover:shadow-xl hover:-translate-y-0.5',
     ]"
     :style="{ '--tag-color': tag.color }"
-    @click="!preview && $emit('click', $event)"
+    @click="!preview && !readOnly && $emit('click', $event)"
   >
     <!-- Selection indicator -->
     <Transition
@@ -30,15 +30,20 @@
       </div>
     </Transition>
 
-    <!-- Actions menu — hidden in preview mode -->
+    <!-- Actions menu — hidden in preview/read-only mode -->
     <div
-      v-if="!preview"
+      v-if="!preview && !readOnly"
       class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
       @click.stop
     >
       <UDropdownMenu :items="menuItems">
         <UButton icon="i-lucide-ellipsis-vertical" size="sm" variant="ghost" color="neutral" />
       </UDropdownMenu>
+    </div>
+
+    <!-- System badge — read-only tags in search results -->
+    <div v-if="readOnly" class="absolute top-3 right-3" @click.stop>
+      <UBadge color="neutral" variant="subtle" size="sm">System</UBadge>
     </div>
 
     <!-- Main content -->
@@ -102,6 +107,8 @@ const props = defineProps<{
   isSelected: boolean;
   preview?: boolean;
 }>();
+
+const readOnly = computed(() => props.tag.isSystem === true);
 
 const emit = defineEmits<{
   click: [event: MouseEvent];

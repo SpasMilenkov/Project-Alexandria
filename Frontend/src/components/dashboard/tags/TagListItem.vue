@@ -4,10 +4,10 @@
     class="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50/60 dark:hover:bg-white/5"
     :class="isSelected ? 'ring-1 ring-inset ring-primary bg-primary/5' : ''"
     :style="{ '--tag-color': tag.color }"
-    @click="$emit('click', $event)"
+    @click="!readOnly && $emit('click', $event)"
   >
-    <!-- Selection checkbox -->
-    <div class="shrink-0">
+    <!-- Selection checkbox — read-only tags are not selectable -->
+    <div v-if="!readOnly" class="shrink-0">
       <div
         class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors"
         :class="isSelected ? 'bg-primary border-primary' : 'border-gray-300 dark:border-gray-600'"
@@ -29,7 +29,12 @@
 
     <!-- Tag info -->
     <div class="flex-1 min-w-0">
-      <p class="text-sm font-medium truncate">{{ tag.name }}</p>
+      <div class="flex items-center gap-2 min-w-0">
+        <p class="text-sm font-medium truncate">{{ tag.name }}</p>
+        <UBadge v-if="readOnly" color="neutral" variant="subtle" size="sm" class="shrink-0">
+          System
+        </UBadge>
+      </div>
       <p class="text-xs text-muted mt-0.5">Created {{ formatDate(tag.createdAt) }}</p>
     </div>
 
@@ -40,7 +45,7 @@
     />
 
     <!-- Actions -->
-    <div class="shrink-0" @click.stop>
+    <div v-if="!readOnly" class="shrink-0" @click.stop>
       <UDropdownMenu :items="menuItems">
         <UButton icon="i-lucide-ellipsis-vertical" size="sm" variant="ghost" color="neutral" />
       </UDropdownMenu>
@@ -59,6 +64,8 @@ const props = defineProps<{
   tag: TagDto;
   isSelected: boolean;
 }>();
+
+const readOnly = computed(() => props.tag.isSystem === true);
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
