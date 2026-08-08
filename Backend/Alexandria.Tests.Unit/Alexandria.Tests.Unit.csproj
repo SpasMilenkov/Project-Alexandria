@@ -30,6 +30,7 @@
         <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
         <ProjectReference Include="..\Alexandria.Data.Models\Alexandria.Data.Models.csproj"/>
         <ProjectReference Include="..\Alexandria.Dto\Alexandria.Dto.csproj"/>
+        <ProjectReference Include="..\Alexandria.Repositories\Alexandria.Repositories.csproj"/>
         <ProjectReference Include="..\Alexandria.Tests.Common\Alexandria.Tests.Common.csproj"/>
     </ItemGroup>
 
