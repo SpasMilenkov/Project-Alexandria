@@ -8,6 +8,7 @@ using Alexandria.Services.Preview;
 using Alexandria.Services.Preview.Archives;
 using Alexandria.Services.Preview.Text;
 using Alexandria.Services.Storage;
+using Alexandria.Services.Storage.AutoTagging;
 using Alexandria.Services.Storage.Cleanup;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Policies;
@@ -16,6 +17,7 @@ using Alexandria.Services.Storage.SignedUrls;
 using Alexandria.Services.Streaming;
 using Alexandria.Services.User;
 using Alexandria.Services.User.Settings;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using IPolicyDispatcher = Alexandria.Common.Services.IPolicyDispatcher;
 
@@ -90,6 +92,18 @@ public static class ServiceExtensions
             .SetHandlerLifetime(TimeSpan.FromMinutes(5));
 
         services.AddResourceMonitoring();
+        return services;
+    }
+
+    /// <summary>
+    /// Binds the auto-tagging derivation options from the <c>Tagging</c> configuration
+    /// section. Values not present in config fall back to the locked defaults.
+    /// </summary>
+    public static IServiceCollection AddAutoTagging(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.Configure<AutoTaggingOptions>(configuration.GetSection("Tagging"));
         return services;
     }
 }
