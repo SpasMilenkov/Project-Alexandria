@@ -6,6 +6,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Messages;
+using Alexandria.Workers.MediaMetadata.Queueing;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -26,17 +27,22 @@ public partial class ResultsConsumerWorker(
     IConnection connection,
     IServiceProvider serviceProvider,
     IOptions<RabbitMqConsumerConfig> rabbitOptions,
-    IOptions<EssentiaConfig> essentiaOptions) : BackgroundService
+    IOptions<EssentiaConfig> essentiaOptions,
+    IConfiguration configuration,
+    IAutoTagQueue autoTagQueue) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private IChannel? _channel;
+    private bool _autoTagEnabled;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var config = rabbitOptions.Value;
         var exchangeName = config.ExchangeName;
         var queueName = config.ResultsQueueName;
+
+        _autoTagEnabled = configuration.GetValue<bool>("Features:Autotagging");
 
         _channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
@@ -121,12 +127,14 @@ public partial class ResultsConsumerWorker(
 
         var config = essentiaOptions.Value;
         var localOutputDir = completion.OutputDir is null ? null : config.ToLocalPath(completion.OutputDir);
+        var succeededFileIds = new List<Guid>();
 
         foreach (var batchFile in batch.Files)
         {
             if (localOutputDir is null || !Directory.Exists(localOutputDir))
             {
                 batchFile.Status = EssentiaBatchFileStatus.MissingOutput;
+                batchFile.CompletedAt = DateTime.UtcNow;
                 LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
                 continue;
             }
@@ -135,6 +143,7 @@ public partial class ResultsConsumerWorker(
             if (!File.Exists(jsonPath))
             {
                 batchFile.Status = EssentiaBatchFileStatus.MissingOutput;
+                batchFile.CompletedAt = DateTime.UtcNow;
                 LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
                 continue;
             }
@@ -153,6 +162,7 @@ public partial class ResultsConsumerWorker(
             if (output is null)
             {
                 batchFile.Status = EssentiaBatchFileStatus.MissingOutput;
+                batchFile.CompletedAt = DateTime.UtcNow;
                 LogMalformedPerFile(logger, batchFile.FileId, completion.BatchId);
                 continue;
             }
@@ -165,6 +175,8 @@ public partial class ResultsConsumerWorker(
             {
                 await UpsertSuccessAsync(unitOfWork, batchFile.FileId, backbone, output, ct);
                 batchFile.Status = EssentiaBatchFileStatus.Succeeded;
+                batchFile.CompletedAt = DateTime.UtcNow;
+                succeededFileIds.Add(batchFile.FileId);
                 LogFileSucceeded(logger, batchFile.FileId, completion.BatchId);
             }
             else
@@ -172,6 +184,7 @@ public partial class ResultsConsumerWorker(
                 var error = string.IsNullOrWhiteSpace(output.Error) ? "unknown error" : output.Error;
                 await UpsertFailureAsync(unitOfWork, batchFile.FileId, backbone, output, error, ct);
                 batchFile.Status = EssentiaBatchFileStatus.Failed;
+                batchFile.CompletedAt = DateTime.UtcNow;
                 batchFile.ErrorDetail = error;
                 LogFileFailed(logger, batchFile.FileId, completion.BatchId, error);
             }
@@ -183,6 +196,28 @@ public partial class ResultsConsumerWorker(
         batch.UpdatedBy = SystemConfig.SystemId;
 
         await unitOfWork.SaveChangesAsync(ct);
+
+        // Enqueue only after the batch (enrichment rows + status) has fully committed, so
+        // the sync drainer never reads uncommitted rows. Missed files are recovered by the
+        // AutoTagSweepWorker backstop.
+        if (_autoTagEnabled)
+        {
+            foreach (var fileId in succeededFileIds)
+            {
+                try
+                {
+                    await autoTagQueue.QueueFileAsync(fileId, ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    LogEnqueueError(logger, ex, fileId);
+                }
+            }
+        }
 
         Cleanup(batch, config, localOutputDir);
 

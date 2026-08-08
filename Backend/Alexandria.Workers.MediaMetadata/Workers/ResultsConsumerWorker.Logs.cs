@@ -40,4 +40,7 @@ public partial class ResultsConsumerWorker
 
     [LoggerMessage(22411, LogLevel.Information, "Results consumer stopping")]
     private static partial void LogWorkerStopping(ILogger logger);
+
+    [LoggerMessage(22412, LogLevel.Warning, "Failed to enqueue auto-tag sync for file {FileId}")]
+    private static partial void LogEnqueueError(ILogger logger, Exception ex, Guid fileId);
 }
