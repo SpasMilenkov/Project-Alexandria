@@ -19,6 +19,7 @@ public static class DatabaseExtensions
             opt.UseNpgsql(configuration.GetConnectionString("AlexandriaPostgres"));
         });
         services.AddScoped<AdminSeeder>();
+        services.AddScoped<TagSeeder>();
         return services;
     }
 }
