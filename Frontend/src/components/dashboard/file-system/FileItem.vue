@@ -157,7 +157,20 @@
 
         <!-- Tags Section -->
         <div class="flex flex-col gap-3">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags</h4>
+          <div class="flex items-center justify-between gap-2">
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags</h4>
+            <UButton
+              v-if="isAudioFile"
+              icon="i-mdi-tag-outline"
+              label="Auto-tag"
+              size="xs"
+              variant="outline"
+              color="neutral"
+              :loading="isAutoTagging"
+              :disabled="isAutoTagging"
+              @click="handleAutoTag"
+            />
+          </div>
 
           <USkeleton v-if="fileTagsLoading && openDrawer" class="h-8 w-48 rounded-full" />
 
@@ -195,29 +208,14 @@
               <template #content>
                 <div class="p-2 w-56">
                   <USelectMenu
+                    v-model="selectedTagId"
                     :loading="tagsLoading"
-                    :items="
-                      tagsData?.items.map((t) => ({
-                        label: t.name,
-                        value: t.id,
-                        icon: getIconByValue(t.icon),
-                      }))
-                    "
+                    :items="tagOptions"
+                    value-key="value"
+                    value-attribute="value"
                     v-model:search-term="searchQuery"
-                    @update:search-term="refreshFileTag()"
                     placeholder="Search tags…"
                     autofocus
-                    @update:model-value="
-                      async (tag) => {
-                        await addTagMutate({
-                          fileId: props.data.fileId,
-                          data: { tagIds: [tag.value] },
-                        });
-                        showTagSearch = false;
-                        searchQuery = '';
-                        refreshFileTag();
-                      }
-                    "
                     class="w-full"
                   />
                 </div>
@@ -355,13 +353,15 @@ import type { TagDto } from "@/api/tag";
 import type { SearchTagsSchema } from "@/schemas/tag";
 
 import { type FileResult } from "@/api/file";
+import { useAppToast } from "@/composables/useAppToast";
+import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import { getFile } from "@/queries/files";
 import { getTagsForFile, searchTag } from "@/queries/tags";
 import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
-import { getFileTypeReadable } from "@/utils/mimetype.utils";
+import { getFileTypeReadable, isAutoTagSupportedFileType } from "@/utils/mimetype.utils";
 import { formatBytes } from "@/utils/size.utils";
 
 import FilePreview from "./FilePreview.vue";
@@ -420,22 +420,71 @@ const detail = computed(() => fileDetail.value ?? props.data);
 const { mutateAsync: addTagMutate } = addTagToFile();
 const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
 
+const appToast = useAppToast();
+const { mutateAsync: autoTagMutate, isLoading: isAutoTagging } = autoTagFile();
+
+const isAudioFile = computed(() =>
+  isAutoTagSupportedFileType(detail.value.currentVersion.mimeType),
+);
+
+const extractAutoTagError = (err: any): string => {
+  const data = err?.response?.data;
+  if (data?.errors && typeof data.errors === "object") {
+    const parts = Object.values(data.errors as Record<string, string[]>)
+      .flat()
+      .filter(Boolean);
+    if (parts.length > 0) return parts.join(" · ");
+  }
+  return data?.message ?? data?.error ?? err?.message ?? "Unknown error";
+};
+
+const handleAutoTag = async () => {
+  if (isAutoTagging.value) return;
+  try {
+    const result = await autoTagMutate(props.data.fileId);
+    if (result.queued) {
+      appToast.success("Auto-tag queued", "Tags will be derived in the background.");
+    } else {
+      appToast.info("Already tagged", result.message);
+    }
+  } catch (error) {
+    const message = extractAutoTagError(error);
+    if (message.toLowerCase().includes("disabled")) {
+      appToast.info("Auto-tagging disabled", message);
+    } else {
+      appToast.error("Auto-tag failed", message);
+    }
+  }
+};
+
 const currentPage = ref(1);
 const pageSize = ref(25);
 const searchQuery = ref("");
+const selectedTagId = ref<string | undefined>(undefined);
 
+// Add-tag search: personal + system scope, name contains, excludes tags already on the file
 const searchFilters = computed<SearchTagsSchema>(() => ({
   excludeOnFile: props.data.fileId,
-  name: searchQuery.value || undefined,
+  nameContains: searchQuery.value || undefined,
+  ownerScope: "all",
   page: currentPage.value,
   pageSize: pageSize.value,
 }));
 
+// Reactive form — re-keys/refetches when filters change; only fetches while the drawer is open
 const {
   data: tagsData,
   isLoading: tagsLoading,
   refresh: refreshFileTag,
-} = useQuery({ ...searchTag(searchFilters.value), enabled: openDrawer.value });
+} = useQuery(() => ({ ...searchTag(searchFilters.value), enabled: openDrawer.value }));
+
+const tagOptions = computed(() =>
+  (tagsData.value?.items ?? []).map((t) => ({
+    label: t.name,
+    value: t.id,
+    icon: getIconByValue(t.icon),
+  })),
+);
 
 const { data: fileTags, isLoading: fileTagsLoading } = useQuery({
   ...getTagsForFile(props.data.fileId),
@@ -451,6 +500,25 @@ const displayTags = computed((): TagDto[] => {
 });
 
 const showTagSearch = ref(false);
+
+const handleTagAdd = async (tagId: string) => {
+  if (!tagId) return;
+  try {
+    await addTagMutate({
+      fileId: props.data.fileId,
+      data: { tagIds: [tagId] },
+    });
+    selectedTagId.value = undefined;
+    searchQuery.value = "";
+    showTagSearch.value = false;
+  } catch {
+    selectedTagId.value = undefined;
+  }
+};
+
+watch(selectedTagId, (tagId) => {
+  if (tagId) void handleTagAdd(tagId);
+});
 
 const refreshOnRemove = async (id: string) => {
   await removeTagMutateAsync({ fileId: props.data.fileId, tagId: id });
@@ -631,7 +699,10 @@ const handleDoubleClick = () => {
 // Watchers
 
 watch(showTagSearch, (open) => {
-  if (!open) searchQuery.value = "";
+  if (!open) {
+    searchQuery.value = "";
+    selectedTagId.value = undefined;
+  }
 });
 </script>
 
