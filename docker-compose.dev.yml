@@ -129,6 +129,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    cap_add:
+          - DAC_OVERRIDE
     networks:
       - alexandria-network
 
@@ -153,6 +155,8 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    cap_add:
+          - DAC_OVERRIDE
     networks:
       - alexandria-network
 
