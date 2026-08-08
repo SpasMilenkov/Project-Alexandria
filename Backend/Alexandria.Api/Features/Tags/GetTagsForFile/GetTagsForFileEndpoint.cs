@@ -41,7 +41,13 @@ public class GetTagsForFileEndpoint(IFileTagService tagService)
                     Description = t.Description,
                     Icon = t.Icon,
                     CreatedAt = t.CreatedAt,
-                    UpdatedAt = t.UpdatedAt
+                    UpdatedAt = t.UpdatedAt,
+                    Source = t.Source,
+                    Confidence = t.Confidence,
+                    IsSystem = t.IsSystem,
+                    Facet = t.Facet,
+                    ParentId = t.ParentId,
+                    ParentName = t.ParentName
                 }).ToList()
             }, ct);
         }
