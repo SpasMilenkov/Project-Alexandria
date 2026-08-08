@@ -78,6 +78,8 @@ services:
       MEDIA_WORKER_PASS: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
       TRANSPILATION_WORKER_PASS: ${TRANSPILATION_WORKER_RABBITMQ_PASSWORD:?TRANSPILATION_WORKER_RABBITMQ_PASSWORD is required}
       MEDIA_METADATA_WORKER_PASS: ${MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD:?MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD is required}
+      LYRICS_WORKER_PASS: ${LYRICS_WORKER_RABBITMQ_PASSWORD:?LYRICS_WORKER_RABBITMQ_PASSWORD is required}
+      ESSENTIA_WORKER_PASS: ${ESSENTIA_WORKER_RABBITMQ_PASSWORD:?ESSENTIA_WORKER_RABBITMQ_PASSWORD is required}
     volumes:
       - ./rabbitmq/definitions.template.json:/template/definitions.template.json:ro
       - rabbitmq_definitions:/output
@@ -103,6 +105,7 @@ services:
       - rabbitmq_definitions:/etc/rabbitmq/definitions:ro
     networks:
       - data-net
+      - essentia-net
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 10s
@@ -204,6 +207,7 @@ services:
       Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
       Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
       Csrf__SecretKey: ${CSRF_SECRET:?CSRF_SECRET is required}
+      Features__Autotagging: "true"
       ADMIN__EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL is required}
       ADMIN__PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
       ADMIN__NAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required}
@@ -396,13 +400,72 @@ services:
     restart: always
     volumes:
       - media_metadata_worker_scratch:/tmp/worker-scratch
+      - media_audio_data:/data
     environment:
       DOTNET_ENVIRONMENT: Production
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      RabbitMQ__HostName: rabbitmq
       RabbitMQ__UserName: ${RABBITMQ_MEDIA_METADATA_WORKER:?RABBITMQ_MEDIA_METADATA_WORKER is required}
       RabbitMQ__Password: ${MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD:?MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD is required}
+      RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
+      RabbitMQ__Consumer__ExchangeName: content-exchange
+      RabbitMQ__Consumer__TriggerQueueName: media-metadata-trigger-queue
+      RabbitMQ__Consumer__ResultsQueueName: media-metadata-results-queue
+      Features__Autotagging: "true"
+      Essentia__Backbone: effnet
+      Essentia__StagedDir: /data/staged
+      Essentia__OutputDir: /data/output
+      Essentia__LocalVolumePath: /data
+      Essentia__VolumeMountPath: /data
+      ASPNETCORE_URLS: http://+:8080
+      TMPDIR: /tmp/worker-scratch
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      rabbitmq-config:
+        condition: service_completed_successfully
+    networks:
+      - data-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  lyrics-worker:
+    build:
+      context: ./Backend
+      dockerfile: Alexandria.Workers.Lyrics/Dockerfile
+    container_name: alexandria-lyrics-worker
+    restart: always
+    volumes:
+      - media_metadata_worker_scratch:/tmp/worker-scratch
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
+      RabbitMQ__UserName: ${RABBITMQ_LYRICS_WORKER:?RABBITMQ_LYRICS_WORKER is required}
+      RabbitMQ__Password: ${LYRICS_WORKER_RABBITMQ_PASSWORD:?LYRICS_WORKER_RABBITMQ_PASSWORD is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
       Features__Lyrics: ${LYRICS_ENABLED:?LYRICS_ENABLED is required}
       ASPNETCORE_URLS: http://+:8080
@@ -434,9 +497,71 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 1.5G
         reservations:
           memory: 512M
+
+  essentia-effnet-worker:
+    build:
+      context: ./classificators/essentia
+      dockerfile: Dockerfile
+    container_name: alexandria-essentia-effnet
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://essentia_worker_user:${ESSENTIA_WORKER_RABBITMQ_PASSWORD:?ESSENTIA_WORKER_RABBITMQ_PASSWORD is required}@rabbitmq:5672/${RABBITMQ_VHOST:-alexandria}
+      EXCHANGE_NAME: content-exchange
+      RESULT_ROUTING_KEY: media-metadata.completed
+      QUEUE_NAME: classify-effnet-queue
+      BACKBONE: effnet
+      ESSENTIA_MODEL_DIR: /app/models
+      VERIFY_MODELS: "true"
+      PREFETCH_COUNT: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      HOME: /tmp
+    volumes:
+      - ./classificators/essentia/models:/app/models:ro
+      - media_audio_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - essentia-net
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 2G
+
+  essentia-maest-worker:
+    build:
+      context: ./classificators/essentia
+      dockerfile: Dockerfile
+    container_name: alexandria-essentia-maest
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://essentia_worker_user:${ESSENTIA_WORKER_RABBITMQ_PASSWORD:?ESSENTIA_WORKER_RABBITMQ_PASSWORD is required}@rabbitmq:5672/${RABBITMQ_VHOST:-alexandria}
+      EXCHANGE_NAME: content-exchange
+      RESULT_ROUTING_KEY: media-metadata.completed
+      QUEUE_NAME: classify-maest-queue
+      BACKBONE: maest
+      ESSENTIA_MODEL_DIR: /app/models
+      VERIFY_MODELS: "true"
+      PREFETCH_COUNT: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      HOME: /tmp
+    volumes:
+      - ./classificators/essentia/models:/app/models:ro
+      - media_audio_data:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - essentia-net
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 2G
 
 volumes:
   postgres_local_data:
@@ -459,6 +584,8 @@ volumes:
     driver: local
   media_metadata_worker_scratch:
       driver: local
+  media_audio_data:
+    driver: local
   rabbitmq_definitions:
       driver: local
 
@@ -468,6 +595,8 @@ networks:
   app-net:
     driver: bridge
   data-net:
+    driver: bridge
+  essentia-net:
     driver: bridge
   observability-net:
     driver: bridge
