@@ -282,6 +282,17 @@ const labelFromMimeType = (mimeType: string, fileName?: string): string => {
 export const getFileTypeReadable = (mimeType: string, fileName?: string): string =>
   MIME_META[mimeType]?.label ?? labelFromMimeType(mimeType, fileName);
 
+/**
+ * Mirror of the backend `AutoTagSupportedFileTypes.IsSupported` gate: audio (`audio/*`
+ * plus `application/ogg`) is supported today. Used to decide where the auto-tag trigger
+ * is offered in the UI so it stays in sync with what the endpoint accepts.
+ */
+export const isAutoTagSupportedFileType = (mimeType: string | null | undefined): boolean => {
+  if (!mimeType) return false;
+  const normalized = mimeType.trim().toLowerCase();
+  return normalized.startsWith("audio/") || normalized === "application/ogg";
+};
+
 export interface GroupedMimeSizeResult {
   categories: FileGroup[];
   size: number[];
