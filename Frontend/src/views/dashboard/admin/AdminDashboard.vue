@@ -196,6 +196,17 @@ const sections = [
     tags: ["Features", "Policies", "Toggles"],
     title: "System Configuration",
   },
+  {
+    badges: [{ label: "Integrations", type: "neutral" as BadgeType }],
+    chapter: "Chapter VII",
+    description:
+      "Monitoring pages for shipped services: audio analysis, transpilations, auto-tagging, lyrics.",
+    icon: "mdi:puzzle-outline",
+    id: "integrations",
+    route: "/dashboard/admin/integrations",
+    tags: ["Audio Analysis", "Transpilations", "Auto-tagging"],
+    title: "Integrations",
+  },
 ] as const;
 </script>
 
