@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Alexandria.Common.Helpers;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
@@ -80,5 +81,14 @@ public class FileEnrichmentRepository(AlexandriaDbContext context) : IFileEnrich
         var result = await _enrichments.AddAsync(row, ct);
         await context.SaveChangesAsync(ct);
         return result.Entity;
+    }
+
+    public async Task<bool> HasSuccessfulAutoTagEnrichmentAsync(Guid fileId, CancellationToken ct = default)
+    {
+        var payloads = await _enrichments
+            .Where(e => e.FileId == fileId && e.DeletedAt == null)
+            .Select(e => e.PayloadJson)
+            .ToListAsync(ct);
+        return payloads.Any(p => !EnrichmentPayload.IsFailure(p));
     }
 }
