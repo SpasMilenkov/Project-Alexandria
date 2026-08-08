@@ -21,6 +21,8 @@ public sealed record BackupParameters(
     BackupFrequency Frequency
 ) : IPolicyRuleParameters;
 
+// Source is reserved for a future "apply already-computed enrichments" policy mode and is
+// currently ignored by the trigger (a policy dispatch always publishes a fresh enrichment).
 public sealed record AutoTagParameters(
     TagSource Source
 ) : IPolicyRuleParameters;
