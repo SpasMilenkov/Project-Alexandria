@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Alexandria.Common.Config;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Tags;
@@ -38,7 +39,11 @@ public static class FileProjections
                     Description = ft.Tag.Description,
                     UserId = ft.Tag.OwnerId,
                     Source = ft.Source,
-                    Confidence = ft.Confidence
+                    Confidence = ft.Confidence,
+                    IsSystem = ft.Tag.OwnerId == SystemConfig.SystemId,
+                    Facet = ft.Tag.Facet,
+                    ParentId = ft.Tag.ParentId,
+                    ParentName = ft.Tag.Parent == null ? null : ft.Tag.Parent.Name
                 }).ToList(),
             new UserDto
             {
