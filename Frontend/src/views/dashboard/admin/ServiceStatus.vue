@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed } from "vue";
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
-import { serverResourceUsage, serverStatus } from "@/queries/status";
+import { computed } from "vue";
+
 import type { HealthCheckEntry, HealthStatus } from "@/api/status";
+
+import { serverResourceUsage, serverStatus } from "@/queries/status";
 
 const { data, status, asyncStatus, refresh } = useQuery(serverStatus());
 const { data: resources, refresh: refreshResources } = useQuery(serverResourceUsage());
@@ -86,7 +88,70 @@ const sortedChecks = computed<HealthCheckEntry[]>(() => {
 const formatMs = (ms: number) =>
   ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${ms.toFixed(0)} ms`;
 
-const formatName = (name: string) => name.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]/g, " ");
+// Explicit names/icons for the checks the server reports today. New checks
+// that aren't listed here fall through to fallbackLabel below instead of
+// breaking, but won't get a tailored icon or name until added here.
+interface CheckDisplayMeta {
+  label: string;
+  icon: string;
+}
+
+const CHECK_DISPLAY_META: Record<string, CheckDisplayMeta> = {
+  postgres: { icon: "mdi:database-outline", label: "Database" },
+  rabbitmq: { icon: "mdi:swap-horizontal-circle-outline", label: "Message Queue" },
+  storage: { icon: "mdi:folder-network-outline", label: "File Storage" },
+  "worker-documentworker": { icon: "mdi:file-document-outline", label: "Document Worker" },
+  "worker-lyricsworker": { icon: "mdi:script-text-outline", label: "Lyrics Worker" },
+  "worker-mediametadataworker": { icon: "mdi:tag-text-outline", label: "Media Metadata Worker" },
+  "worker-mediaworker": { icon: "mdi:file-music-outline", label: "Media Worker" },
+  "worker-transpilationworker": { icon: "mdi:file-swap-outline", label: "Transpilation Worker" },
+};
+
+const fallbackLabel = (name: string): string =>
+  name
+    .replace(/^worker-/, "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const checkLabel = (name: string): string => CHECK_DISPLAY_META[name]?.label ?? fallbackLabel(name);
+const checkIcon = (name: string): string =>
+  CHECK_DISPLAY_META[name]?.icon ?? "mdi:help-circle-outline";
+
+const GROUP_META: Record<string, { label: string; icon: string }> = {
+  infrastructure: { icon: "mdi:server-network", label: "Infrastructure" },
+  worker: { icon: "mdi:cog-outline", label: "Workers" },
+};
+
+interface CheckGroup {
+  key: string;
+  label: string;
+  icon: string;
+  hasIssues: boolean;
+  checks: HealthCheckEntry[];
+}
+
+// Groups preserve the severity ordering already applied by sortedChecks,
+// so unhealthy/degraded checks still surface first within their group.
+const groupedChecks = computed<CheckGroup[]>(() => {
+  const groups = new Map<string, HealthCheckEntry[]>();
+  for (const check of sortedChecks.value) {
+    const key = check.tags[0] ?? "other";
+    const bucket = groups.get(key);
+    if (bucket) {
+      bucket.push(check);
+    } else {
+      groups.set(key, [check]);
+    }
+  }
+  return Array.from(groups.entries()).map(([key, checks]) => ({
+    checks,
+    hasIssues: checks.some((check) => check.status !== "Healthy"),
+    icon: GROUP_META[key]?.icon ?? "mdi:shape-outline",
+    key,
+    label: GROUP_META[key]?.label ?? fallbackLabel(key),
+  }));
+});
 
 const proc = computed(() => resources.value?.process ?? null);
 
@@ -142,19 +207,28 @@ const memoryColor = (pct: number) => {
 
 const memPct = computed(() => Math.min(proc.value?.memoryUsagePercent ?? 0, 100));
 const memColor = computed(() => memoryColor(memPct.value));
-const memLabel = computed(() =>
-  memPct.value < 60 ? "Comfortable" : memPct.value < 80 ? "Getting full" : "Nearly full",
-);
+const memLabel = computed(() => {
+  if (memPct.value < 60) {
+    return "Comfortable";
+  }
+  if (memPct.value < 80) {
+    return "Getting full";
+  }
+  return "Nearly full";
+});
 
 const formatMb = (mb: number) =>
   mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
 
-const formatCpuTime = (s: number) =>
-  s < 60
-    ? `${s.toFixed(1)}s`
-    : s < 3600
-      ? `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`
-      : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+const formatCpuTime = (s: number) => {
+  if (s < 60) {
+    return `${s.toFixed(1)}s`;
+  }
+  if (s < 3600) {
+    return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
+  }
+  return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+};
 </script>
 
 <template>
@@ -168,16 +242,18 @@ const formatCpuTime = (s: number) =>
           <span v-if="totalDuration" class="ml-1 opacity-60">· {{ totalDuration }} total</span>
         </p>
       </div>
-      <UButton
-        size="sm"
-        color="neutral"
-        variant="outline"
-        :loading="isFetching"
-        icon="i-mdi-refresh"
-        @click="handleRefresh()"
-      >
-        Refresh
-      </UButton>
+      <div class="flex items-center gap-4">
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="outline"
+          :loading="isFetching"
+          icon="i-mdi-refresh"
+          @click="handleRefresh()"
+        >
+          Refresh
+        </UButton>
+      </div>
     </div>
 
     <!-- Loading -->
@@ -200,7 +276,7 @@ const formatCpuTime = (s: number) =>
       <div class="max-w-400 mx-auto space-y-3 lg:space-y-4">
         <!-- Row 1: Health overview -->
         <div
-          class="grid grid-cols-1 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr] gap-3 lg:gap-4"
+          class="grid grid-cols-1 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr] gap-3 lg:gap-4 items-start"
         >
           <!-- Left: status summary -->
           <div class="flex flex-col gap-3">
@@ -259,9 +335,9 @@ const formatCpuTime = (s: number) =>
 
             <!-- Meta info -->
             <div
-              class="flex-1 flex flex-col rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm divide-y divide-gray-200/70 dark:divide-gray-700/70"
+              class="flex flex-col rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm divide-y divide-gray-200/70 dark:divide-gray-700/70"
             >
-              <div class="px-4 py-2.5 flex flex-1 items-center justify-between">
+              <div class="px-4 py-2.5 flex items-center justify-between">
                 <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                   <Icon icon="mdi:clock-outline" class="w-4 h-4" />Checked at
                 </span>
@@ -269,7 +345,7 @@ const formatCpuTime = (s: number) =>
                   lastChecked ?? "—"
                 }}</span>
               </div>
-              <div class="px-4 py-2.5 flex flex-1 items-center justify-between">
+              <div class="px-4 py-2.5 flex items-center justify-between">
                 <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                   <Icon icon="mdi:timer-outline" class="w-4 h-4" />Total duration
                 </span>
@@ -277,7 +353,7 @@ const formatCpuTime = (s: number) =>
                   totalDuration ?? "—"
                 }}</span>
               </div>
-              <div class="px-4 py-2.5 flex flex-1 items-center justify-between">
+              <div class="px-4 py-2.5 flex items-center justify-between">
                 <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
                   <Icon icon="mdi:format-list-checks" class="w-4 h-4" />Total checks
                 </span>
@@ -288,69 +364,82 @@ const formatCpuTime = (s: number) =>
             </div>
           </div>
 
-          <!-- Right: checks table -->
-          <div
-            class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm overflow-hidden"
-          >
+          <!-- Right: grouped checks -->
+          <div class="flex flex-col gap-3">
             <div
-              class="px-4 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 grid grid-cols-[14px_1fr_80px_100px] gap-4 items-center"
+              v-for="group in groupedChecks"
+              :key="group.key"
+              class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm overflow-hidden"
             >
-              <span />
-              <span
-                class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
-                >Service</span
+              <div
+                class="px-4 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2"
               >
-              <span
-                class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 text-right"
-                >Duration</span
-              >
-              <span
-                class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 text-right"
-                >Status</span
-              >
-            </div>
-            <div
-              v-for="(check, index) in sortedChecks"
-              :key="check.name"
-              class="px-4 py-3 grid grid-cols-[14px_1fr_80px_100px] gap-4 items-center transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-              :class="{
-                'border-t border-gray-200/70 dark:border-gray-700/70': index > 0,
-              }"
-            >
-              <span class="w-2.5 h-2.5 rounded-full" :class="statusConfig[check.status].dot" />
-              <div class="min-w-0">
-                <p class="text-sm font-medium text-gray-800 dark:text-gray-100 capitalize">
-                  {{ formatName(check.name) }}
-                </p>
-                <p
-                  v-if="check.description || check.error"
-                  class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate"
+                <Icon :icon="group.icon" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{
+                  group.label
+                }}</span>
+                <span
+                  class="ml-auto text-xs font-medium"
+                  :class="
+                    group.hasIssues
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-gray-500 dark:text-gray-500'
+                  "
                 >
-                  {{ check.error ?? check.description }}
-                </p>
-                <div v-if="check.tags.length" class="flex gap-1 flex-wrap mt-1">
+                  {{ group.hasIssues ? "Needs attention" : `${group.checks.length} healthy` }}
+                </span>
+              </div>
+
+              <div
+                v-for="(check, index) in group.checks"
+                :key="check.name"
+                class="px-4 py-3 grid grid-cols-[14px_1fr_80px_100px] gap-4 items-start transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+                :class="{ 'border-t border-gray-200/70 dark:border-gray-700/70': index > 0 }"
+              >
+                <span
+                  class="w-2.5 h-2.5 rounded-full mt-1 shrink-0"
+                  :class="statusConfig[check.status].dot"
+                />
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <Icon
+                      :icon="checkIcon(check.name)"
+                      class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0"
+                    />
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-100">
+                      {{ checkLabel(check.name) }}
+                    </p>
+                  </div>
+                  <p
+                    v-if="check.error || check.description"
+                    class="text-xs mt-0.5 truncate"
+                    :class="
+                      check.error
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-gray-500 dark:text-gray-400'
+                    "
+                  >
+                    {{ check.error ?? check.description }}
+                  </p>
+                </div>
+                <span
+                  class="text-xs text-gray-500 dark:text-gray-400 text-right tabular-nums pt-0.5"
+                >
+                  {{ formatMs(check.duration) }}
+                </span>
+                <div class="flex justify-end pt-0.5">
                   <span
-                    v-for="tag in check.tags"
-                    :key="tag"
-                    class="text-[10px] px-1.5 py-0.5 rounded-md bg-gray-100/80 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400"
-                    >{{ tag }}</span
+                    class="text-xs font-semibold px-2.5 py-1 rounded-full"
+                    :class="[statusConfig[check.status].bg, statusConfig[check.status].text]"
+                    >{{ statusConfig[check.status].label }}</span
                   >
                 </div>
               </div>
-              <span class="text-xs text-gray-500 dark:text-gray-400 text-right tabular-nums">
-                {{ formatMs(check.duration) }}
-              </span>
-              <div class="flex justify-end">
-                <span
-                  class="text-xs font-semibold px-2.5 py-1 rounded-full"
-                  :class="[statusConfig[check.status].bg, statusConfig[check.status].text]"
-                  >{{ statusConfig[check.status].label }}</span
-                >
-              </div>
             </div>
+
             <div
-              v-if="!sortedChecks.length"
-              class="px-5 py-12 text-center text-sm text-gray-400 dark:text-gray-500"
+              v-if="!groupedChecks.length"
+              class="rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 px-5 py-12 text-center text-sm text-gray-400 dark:text-gray-500"
             >
               No checks reported.
             </div>
