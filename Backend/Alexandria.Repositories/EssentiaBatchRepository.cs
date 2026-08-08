@@ -3,6 +3,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Enrichment;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -85,5 +86,29 @@ public class EssentiaBatchRepository(AlexandriaDbContext context) : IEssentiaBat
                 .SetProperty(b => b.Status, EssentiaBatchStatus.TimedOut)
                 .SetProperty(b => b.CompletedAt, DateTime.UtcNow)
                 .SetProperty(b => b.UpdatedAt, DateTime.UtcNow), ct);
+    }
+
+    public async Task<IReadOnlyList<EnrichmentBatchDto>> GetRecentBatchesAsync(int limit,
+        CancellationToken ct = default)
+    {
+        return await _batches
+            .AsNoTracking()
+            .Where(b => b.DeletedAt == null)
+            .OrderByDescending(b => b.CreatedAt)
+            .Take(limit)
+            .Select(b => new EnrichmentBatchDto
+            {
+                Id = b.Id,
+                Backbone = b.Backbone.ToString(),
+                Status = b.Status.ToString(),
+                DispatchedAt = b.DispatchedAt,
+                CompletedAt = b.CompletedAt,
+                CreatedAt = b.CreatedAt,
+                FilesCompleted = b.Files.Count(f => f.Status == EssentiaBatchFileStatus.Succeeded
+                                                    || f.Status == EssentiaBatchFileStatus.Failed
+                                                    || f.Status == EssentiaBatchFileStatus.MissingOutput),
+                FilesTotal = b.Files.Count(),
+            })
+            .ToListAsync(ct);
     }
 }
