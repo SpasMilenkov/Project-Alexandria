@@ -20,8 +20,6 @@ COPY ["Alexandria.Services.Storage/Alexandria.Services.Storage.csproj", "Alexand
 COPY ["Alexandria.Services.User/Alexandria.Services.User.csproj", "Alexandria.Services.User/"]
 COPY ["Alexandria.Dto/Alexandria.Dto.csproj", "Alexandria.Dto/"]
 RUN dotnet restore "Alexandria.Workers.Lyrics/Alexandria.Workers.Lyrics.csproj"
-
-RUN dotnet restore "Alexandria.Workers.Lyrics/Alexandria.Workers.Lyrics.csproj"
 COPY . .
 WORKDIR "/src/Alexandria.Workers.Lyrics"
 RUN dotnet build "./Alexandria.Workers.Lyrics.csproj" -c $BUILD_CONFIGURATION -o /app/build
