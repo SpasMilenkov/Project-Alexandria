@@ -72,10 +72,18 @@
           </Transition>
         </div>
 
-        <USeparator v-if="form.actionType !== null && (form.anyFile || form.selectedGroups.length > 0)" label="Parameters" />
+        <USeparator
+          v-if="form.actionType !== null && (form.anyFile || form.selectedGroups.length > 0)"
+          label="Parameters"
+        />
 
         <!-- Transcode parameters -->
-        <template v-if="form.actionType === PolicyActionType.Transcode && (form.anyFile || form.selectedGroups.length > 0)">
+        <template
+          v-if="
+            form.actionType === PolicyActionType.Transcode &&
+            (form.anyFile || form.selectedGroups.length > 0)
+          "
+        >
           <div class="flex flex-col gap-5">
             <Transition name="fade">
               <div v-if="hasVideoTarget" class="flex flex-col gap-2">
@@ -165,25 +173,13 @@
 
         <!-- AutoTag parameters -->
         <template v-else-if="form.actionType === PolicyActionType.AutoTag">
-          <UFormField label="Read tags from">
-            <div class="grid grid-cols-2 gap-2">
-              <button
-                v-for="opt in tagSourceOptions"
-                :key="opt.value"
-                type="button"
-                class="flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 transition-colors"
-                :class="
-                  autoTagParams.source === opt.value
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-neutral-200 dark:border-neutral-700 hover:border-neutral-300'
-                "
-                @click="autoTagParams.source = opt.value"
-              >
-                <Icon :icon="opt.icon" class="w-4 h-4 shrink-0" />
-                <span class="text-sm font-medium">{{ opt.label }}</span>
-              </button>
-            </div>
-          </UFormField>
+          <UAlert
+            color="primary"
+            variant="subtle"
+            icon="i-lucide-info"
+            title="Currently audio only"
+            description="Auto-tagging now applies to audio files. Other file groups are reserved for future multi-file support."
+          />
         </template>
 
         <!-- No action selected -->
@@ -236,7 +232,6 @@ import {
   PolicyActionType,
   type PolicyRuleDto,
   PolicyTriggerType,
-  TagSource,
   type TranscodeParameters,
   type UpdatePolicyRuleRequest,
   VideoRung,
@@ -323,9 +318,9 @@ const backupSchema = z.object({
   frequency: z.nativeEnum(BackupFrequency),
 });
 
-const autoTagSchema = z.object({
-  source: z.nativeEnum(TagSource),
-});
+// `source` is fixed — the backend ignores it (reserved for a future enrichment mode), so there
+// is no user input to validate for AutoTag.
+const AUTO_TAG_PARAMETERS: AutoTagParameters = { source: 1 };
 
 const baseSchema = z
   .object({
@@ -386,17 +381,9 @@ const defaultBackupParams = (): BackupParameters => ({
     : {}),
 });
 
-const defaultAutoTagParams = (): AutoTagParameters => ({
-  source: TagSource.FileMetadata,
-  ...(props.rule?.actionType === PolicyActionType.AutoTag
-    ? (props.rule.parameters as AutoTagParameters)
-    : {}),
-});
-
 const form = reactive(defaultForm());
 const transcodeParams = reactive(defaultTranscodeParams());
 const backupParams = reactive(defaultBackupParams());
-const autoTagParams = reactive(defaultAutoTagParams());
 const errors = ref<Record<string, string>>({});
 
 watch(open, (val) => {
@@ -404,7 +391,6 @@ watch(open, (val) => {
   Object.assign(form, defaultForm());
   Object.assign(transcodeParams, defaultTranscodeParams());
   Object.assign(backupParams, defaultBackupParams());
-  Object.assign(autoTagParams, defaultAutoTagParams());
   errors.value = {};
 });
 
@@ -456,7 +442,7 @@ const resolvedParameters = computed(() => {
     case PolicyActionType.Backup:
       return { ...backupParams };
     case PolicyActionType.AutoTag:
-      return { ...autoTagParams };
+      return { ...AUTO_TAG_PARAMETERS };
     default:
       return null;
   }
@@ -495,13 +481,6 @@ const validate = (): boolean => {
     }
   } else if (form.actionType === PolicyActionType.Backup) {
     const r = backupSchema.safeParse(backupParams);
-    if (!r.success) {
-      r.error.issues.forEach((i) => {
-        errors.value[i.path[0] as string] = i.message;
-      });
-    }
-  } else if (form.actionType === PolicyActionType.AutoTag) {
-    const r = autoTagSchema.safeParse(autoTagParams);
     if (!r.success) {
       r.error.issues.forEach((i) => {
         errors.value[i.path[0] as string] = i.message;
@@ -572,11 +551,6 @@ const backupFrequencyOptions = [
   { label: "Weekly", value: BackupFrequency.Weekly },
   { label: "Monthly", value: BackupFrequency.Monthly },
   { label: "3 months", value: BackupFrequency.Every3Months },
-];
-
-const tagSourceOptions = [
-  { label: "File metadata", value: TagSource.FileMetadata, icon: "mdi:information-outline" },
-  { label: "File name", value: TagSource.FileName, icon: "mdi:file-outline" },
 ];
 </script>
 
