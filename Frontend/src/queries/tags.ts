@@ -5,7 +5,7 @@ import type { PaginationParams } from "@/types/pagination-params";
 
 import { tagApi } from "@/api/tag";
 
-const normalizeFilters = (filters: SearchTagsSchema) => {
+const normalizeFilters = <T extends { page: number; pageSize: number }>(filters: T) => {
   const { page, pageSize, ...rest } = filters;
 
   return {
@@ -48,6 +48,12 @@ export const searchTag = defineQueryOptions((filters: SearchTagsSchema) => ({
   key: TAGS_QUERY_KEYS.searchTag(filters),
   query: () => tagApi.searchTags(filters),
   staleTime: 30000,
+}));
+
+export const systemTags = defineQueryOptions(() => ({
+  key: [...TAGS_QUERY_KEYS.root, "system"],
+  query: () => tagApi.getAllSystemTags(),
+  staleTime: 60000,
 }));
 
 export const getTagsForFile = defineQueryOptions((fileId: string) => ({
