@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim@sha256:646fb0bca3dd3ea1bcc6feb72c17ed16eed6e10cffc732fcc1478bd3e7f02d7b
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
@@ -26,5 +26,11 @@ RUN chmod +x /app/entrypoint.sh
 ENV ESSENTIA_MODEL_DIR=/app/models
 ENV VERIFY_MODELS=true
 
+# Shared /data volume ownership: local.yml runs this image as uid 1001 (the
+# same uid the .NET media-metadata worker uses) so both sides can clean up each
+# other's files. The named volume inherits this ownership on first mount.
+RUN groupadd --gid 1001 appgroup && useradd --uid 1001 --gid appgroup --no-create-home appuser \
+    && mkdir -p /data && chown appuser:appgroup /data
+USER appuser
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["python", "worker.py"]
