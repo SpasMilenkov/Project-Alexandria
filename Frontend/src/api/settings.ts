@@ -1,6 +1,6 @@
 import type { ColorName } from "@/stores/settings";
 
-import {apiClient} from "./client";
+import { apiClient } from "./client";
 
 export type ToastLevel = "all" | "errors-only" | "silent";
 
@@ -18,6 +18,7 @@ export interface AppearanceSettings {
 export interface BehaviorSettings {
   skipDeleteConfirmation: boolean;
   toastLevel: ToastLevel;
+  allowAutoTagRegression: boolean;
 }
 
 export interface RequestUploadResponse {
@@ -25,21 +26,24 @@ export interface RequestUploadResponse {
   objectKey: string;
 }
 
-const toastLevelFromServer: Record<string, ToastLevel> = {
-  All: "all",
-  ErrorsOnly: "errors-only",
-  Silent: "silent",
+// Backend `ToastLevel` is a numeric enum (All=0, ErrorsOnly=1, Silent=2) serialized without a
+// JsonStringEnumConverter, so it travels as a number in both directions.
+const TOAST_LEVEL_TO_VALUE: Record<ToastLevel, number> = {
+  all: 0,
+  "errors-only": 1,
+  silent: 2,
 };
 
-const toastLevelToServer: Record<ToastLevel, string> = {
-  all: "All",
-  "errors-only": "ErrorsOnly",
-  silent: "Silent",
+const toastLevelFromServer: Record<number, ToastLevel> = {
+  0: "all",
+  1: "errors-only",
+  2: "silent",
 };
 
 const mapBehaviorFromServer = (raw: any): BehaviorSettings => ({
   skipDeleteConfirmation: raw.skipDeleteConfirmation,
   toastLevel: toastLevelFromServer[raw.toastLevel] ?? "all",
+  allowAutoTagRegression: raw.allowAutoTagRegression,
 });
 
 export const settingsApi = {
@@ -87,7 +91,7 @@ export const settingsApi = {
   updateBehavior: async (payload: BehaviorSettings): Promise<BehaviorSettings> => {
     const result = await apiClient.put("/settings/behavior", {
       ...payload,
-      toastLevel: toastLevelToServer[payload.toastLevel],
+      toastLevel: TOAST_LEVEL_TO_VALUE[payload.toastLevel],
     });
     return mapBehaviorFromServer(result.data);
   },
