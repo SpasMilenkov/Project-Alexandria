@@ -11,6 +11,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="Seeders\Tagging\tagging-taxonomy.json"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions"/>
         <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
