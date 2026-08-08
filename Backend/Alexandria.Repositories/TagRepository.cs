@@ -1,9 +1,11 @@
 using System.Linq.Expressions;
+using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Tags;
+using Alexandria.Repositories.Projections;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -112,18 +114,24 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
     {
         return await _tags
             .Where(t => t.OwnerId == userId)
-            .Select(t => new TagDto
-            {
-                Id = t.Id,
-                CreatedAt = t.CreatedAt,
-                UpdatedAt = t.UpdatedAt,
-                Name = t.Name,
-                Color = t.Color,
-                Icon = t.Icon,
-                Description = t.Description,
-                UserId = t.OwnerId
-            })
+            .Select(TagProjections.ToTagDto(SystemConfig.SystemId))
             .ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Builds the owner-scope predicate used by tag searches.
+    /// </summary>
+    public static Expression<Func<Tag, bool>> BuildOwnerScopeFilter(Guid? userId, OwnerScope scope, Guid systemId)
+    {
+        if (!userId.HasValue)
+            return _ => true;
+
+        return scope switch
+        {
+            OwnerScope.System => t => t.OwnerId == systemId,
+            OwnerScope.All => t => t.OwnerId == userId.Value || t.OwnerId == systemId,
+            _ => t => t.OwnerId == userId.Value
+        };
     }
 
     public async Task<(IEnumerable<TagDto> Tags, int TotalCount)> FindTagsAsync(
@@ -139,7 +147,7 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
         }
 
         if (query.UserId.HasValue)
-            tagsQuery = tagsQuery.Where(t => t.OwnerId == query.UserId.Value);
+            tagsQuery = tagsQuery.Where(BuildOwnerScopeFilter(query.UserId, query.OwnerScope, SystemConfig.SystemId));
 
         if (query.CreatedBy.HasValue)
             tagsQuery = tagsQuery.Where(t => t.OwnerId == query.CreatedBy.Value);
@@ -162,7 +170,11 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
                 t.UpdatedAt.HasValue && t.UpdatedAt.Value <= query.UpdatedBefore.Value);
 
         if (!string.IsNullOrWhiteSpace(query.NameContains))
-            tagsQuery = tagsQuery.Where(d => d.Name.Contains(query.NameContains));
+        {
+            // Case-insensitive contains (Postgres ILIKE), same as the file-name search.
+            var namePattern = $"%{query.NameContains.Trim()}%";
+            tagsQuery = tagsQuery.Where(d => EF.Functions.ILike(d.Name, namePattern));
+        }
 
         if (query.HasFiles.HasValue)
         {
@@ -177,17 +189,7 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
             .OrderByDescending(t => t.CreatedAt)
             .Skip((query.CurrentPage - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Select(t => new TagDto
-            {
-                Id = t.Id,
-                CreatedAt = t.CreatedAt,
-                UpdatedAt = t.UpdatedAt,
-                Name = t.Name,
-                Color = t.Color,
-                Icon = t.Icon,
-                Description = t.Description,
-                UserId = t.OwnerId
-            })
+            .Select(TagProjections.ToTagDto(SystemConfig.SystemId))
             .ToListAsync(ct);
 
         return (tags, totalCount);
