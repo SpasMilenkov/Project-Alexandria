@@ -475,6 +475,9 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid>("BatchId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -505,7 +508,13 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("BatchId");
 
+                    b.HasIndex("CompletedAt");
+
+                    b.HasIndex("CreatedAt");
+
                     b.HasIndex("FileId");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("EssentiaBatchFiles", (string)null);
                 });
@@ -1365,6 +1374,14 @@ namespace Alexandria.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("ExternalKey")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Facet")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<string>("Icon")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1392,13 +1409,17 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("CreatedAt");
 
+                    b.HasIndex("ExternalKey")
+                        .IsUnique()
+                        .HasFilter("\"ExternalKey\" IS NOT NULL");
+
                     b.HasIndex("Name");
 
                     b.HasIndex("OwnerId");
 
                     b.HasIndex("ParentId");
 
-                    b.HasIndex("OwnerId", "Name")
+                    b.HasIndex("OwnerId", "ParentId", "Name")
                         .IsUnique();
 
                     b.ToTable("Tags", (string)null);
