@@ -1,3 +1,5 @@
+using Alexandria.Dto.Tags;
+
 namespace Alexandria.Api.Features.Tags.SearchTags;
 
 public class SearchTagsRequest
@@ -14,6 +16,10 @@ public class SearchTagsRequest
     public Guid? ExcludeOnFile { get; set; }
     public string? NameContains { get; set; }
     public bool? HasFiles { get; set; }
+
+    /// <summary>Which owner boundary to search within (default: the user only).</summary>
+    public OwnerScope OwnerScope { get; set; } = OwnerScope.User;
+
     public int Page { get; set; } = 0;
     public int PageSize { get; set; } = 20;
 }
