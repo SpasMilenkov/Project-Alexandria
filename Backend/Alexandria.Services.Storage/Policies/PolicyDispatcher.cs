@@ -46,7 +46,7 @@ public sealed partial class PolicyDispatcher(
                     TranscodeParameters p => jobQueue.QueueTranspilationJobAsync(
                         ev.VersionId ?? throw new InvalidOperationException(), ev.FileId, ev.OwnerId, p, ct),
                     BackupParameters p => jobQueue.QueueBackupAsync(ev.FileId, p, ct),
-                    AutoTagParameters p => jobQueue.QueueAutoTagAsync(ev.FileId, p, ct),
+                    AutoTagParameters p => jobQueue.QueueAutoTagAsync(ev.FileId, p, ev.MimeType, ct),
                     _ => Task.CompletedTask
                 });
 
