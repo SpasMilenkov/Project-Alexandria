@@ -37,6 +37,17 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
             .HasColumnType("uuid")
             .IsRequired(false);
 
+        builder.Property(e => e.ExternalKey)
+            .HasMaxLength(ValidationConstants.StringLengths.MediumString)
+            .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
+            .IsRequired(false);
+
+        builder.Property(e => e.Facet)
+            .HasConversion<string>()
+            .HasMaxLength(ValidationConstants.StringLengths.ShortString)
+            .HasColumnType($"varchar({ValidationConstants.StringLengths.ShortString})")
+            .IsRequired(false);
+
         builder.Property(e => e.UpdatedBy)
             .HasColumnType("uuid")
             .IsRequired(false);
@@ -74,7 +85,14 @@ public class TagConfiguration : IEntityTypeConfiguration<Tag>
         builder.HasIndex(e => e.Name);
         builder.HasIndex(e => e.CreatedAt);
         builder.HasIndex(e => e.ParentId);
-        builder.HasIndex(e => new { e.OwnerId, e.Name })
+        // One name per (owner, parent): distinct genres can share a display name
+        // (e.g. "Rhythm & Blues" under both Blues and Funk / Soul), so uniqueness is
+        // parent-scoped. Null parents (top-level tags) are distinct in PostgreSQL.
+        builder.HasIndex(e => new { e.OwnerId, e.ParentId, e.Name })
+            .IsUnique();
+        // Machine lookup key: unique wherever set (system-seeded taxonomy tags only).
+        builder.HasIndex(e => e.ExternalKey)
+            .HasFilter("\"ExternalKey\" IS NOT NULL")
             .IsUnique();
 
         // Table name
