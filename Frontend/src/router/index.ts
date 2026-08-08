@@ -91,6 +91,18 @@ const router = createRouter({
       path: "/dashboard/admin/system-configuration",
     },
     {
+      component: () => import("@/views/dashboard/admin/integrations/IntegrationsDashboard.vue"),
+      meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
+      name: "integrations-dashboard",
+      path: "/dashboard/admin/integrations",
+    },
+    {
+      component: () => import("@/views/dashboard/admin/integrations/AudioAnalysis.vue"),
+      meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
+      name: "audio-analysis",
+      path: "/dashboard/admin/integrations/audio-analysis",
+    },
+    {
       component: () => import("@/views/onboarding/SetPasswordView.vue"),
       meta: { layout: "onboarding", requiresAdmin: false, requiresAuth: true },
       name: "set-password",
