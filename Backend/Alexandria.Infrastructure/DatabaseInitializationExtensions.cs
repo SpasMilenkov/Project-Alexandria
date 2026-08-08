@@ -20,6 +20,9 @@ public static class DatabaseInitializationExtensions
 
         var seeder = scope.ServiceProvider.GetRequiredService<AdminSeeder>();
         await seeder.SeedAsync();
+
+        var tagSeeder = scope.ServiceProvider.GetRequiredService<TagSeeder>();
+        await tagSeeder.SeedAsync();
     }
 
     private static async Task MigrateWithRetryAsync(AlexandriaDbContext db, ILogger logger)

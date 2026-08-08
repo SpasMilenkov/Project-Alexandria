@@ -7,6 +7,7 @@ using Alexandria.Repositories;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Promotions;
+using Alexandria.Services.User.Settings;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Alexandria.Infrastructure.Workers;
@@ -40,6 +41,11 @@ public static class ServiceExtensions
         services.AddScoped<IPlaylistRepository, PlaylistRepository>();
         services.AddScoped<ISignedUrlRepository, SignedUrlRepository>();
         services.AddScoped<ITrackLyricsRepository, TrackLyricsRepository>();
+        services.AddScoped<IEssentiaBatchRepository, EssentiaBatchRepository>();
+        services.AddScoped<IEssentiaBatchFileRepository, EssentiaBatchFileRepository>();
+        services.AddScoped<IFileEnrichmentRepository, FileEnrichmentRepository>();
+        services.AddScoped<IFileTagService, FileTagService>();
+        services.AddScoped<IUserSettingsService, UserSettingsService>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

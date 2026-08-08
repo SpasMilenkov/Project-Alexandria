@@ -68,4 +68,13 @@ public partial class FileTagService
 
     [LoggerMessage(2017, LogLevel.Error, "Error finding tags with criteria")]
     private static partial void LogFindTagsFailed(ILogger logger, Exception ex);
+
+    // Apply auto tags
+
+    [LoggerMessage(2018, LogLevel.Information,
+        "Auto-tagged file {FileId}: {Applied} candidates applied, {Pruned} pruned")]
+    private static partial void LogAutoTagsApplied(ILogger logger, Guid fileId, int applied, int pruned);
+
+    [LoggerMessage(2019, LogLevel.Error, "Error applying auto tags to file {FileId}")]
+    private static partial void LogAutoTagsApplyFailed(ILogger logger, Exception ex, Guid fileId);
 }

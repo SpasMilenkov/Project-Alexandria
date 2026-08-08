@@ -16,6 +16,7 @@
   </Folder>
   <Folder Name="/Workers/">
       <Project Path="Alexandria.Workers.Document\Alexandria.Workers.Document.csproj"/>
+      <Project Path="Alexandria.Workers.Lyrics\Alexandria.Workers.Lyrics.csproj"/>
       <Project Path="Alexandria.Workers.MediaMetadata\Alexandria.Workers.MediaMetadata.csproj"/>
       <Project Path="Alexandria.Workers.MediaTranspilation/Alexandria.Workers.MediaTranspilation.csproj"/>
       <Project Path="Alexandria.Workers.Media\Alexandria.Workers.Media.csproj"/>

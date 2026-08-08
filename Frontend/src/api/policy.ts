@@ -38,11 +38,6 @@ export enum BackupFrequency {
   Every3Months = 4,
 }
 
-export enum TagSource {
-  FileName = 0,
-  FileMetadata = 1,
-}
-
 // Parameter shapes per action type
 
 export interface TranscodeParameters {
@@ -56,8 +51,11 @@ export interface BackupParameters {
   frequency: BackupFrequency;
 }
 
+// `source` is reserved for a future "apply already-computed enrichments" policy mode and is
+// currently ignored by the trigger. The backend `AutoTagParameters` record still deserializes
+// `source`, so we keep sending a fixed numeric value to stay wire-compatible.
 export interface AutoTagParameters {
-  source: TagSource;
+  source: 1;
 }
 
 export type PolicyRuleParameters = TranscodeParameters | BackupParameters | AutoTagParameters;

@@ -1,6 +1,8 @@
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Tags;
 using Microsoft.Extensions.Logging;
@@ -149,14 +151,19 @@ public partial class FileTagService(
         if (tagIds == null || tagIds.Count == 0)
             throw new ArgumentException("Tag IDs cannot be empty", nameof(tagIds));
 
-        var file = await unitOfWork.Files.GetByIdAsync(fileId, ct);
+        var file = await unitOfWork.Files.GetFileEntityWithTagsAsync(fileId, ct);
 
-        if (file == null || file.DeletedAt != null)
+        if (file is not { DeletedAt: null })
             throw new InvalidOperationException($"File {fileId} not found");
+
+        if (file.OwnerId != userId)
+            throw new UnauthorizedAccessException("You do not have permission to tag this file");
 
         try
         {
             await unitOfWork.BeginTransactionAsync(ct);
+
+            var now = DateTime.UtcNow;
 
             foreach (var tagId in tagIds)
             {
@@ -168,19 +175,37 @@ public partial class FileTagService(
                     continue;
                 }
 
-                if (tag.OwnerId != userId)
+                // Valid to associate: the user's own tag, or a shared system tag (genre/mood vocabulary)
+                if (tag.OwnerId != userId && tag.OwnerId != SystemConfig.SystemId)
                 {
                     LogTagOwnershipMismatchSkipping(logger, userId, tagId);
                     continue;
                 }
 
-                if (file.Tags.Any(t => t.Id == tagId))
+                var existing = file.FileTags!.FirstOrDefault(ft => ft.TagId == tagId);
+
+                if (existing is null)
                 {
-                    LogFileAlreadyHasTagSkipping(logger, fileId, tagId);
+                    file.FileTags!.Add(new FileTag
+                    {
+                        FileId = fileId,
+                        TagId = tagId,
+                        Source = TagSource.User,
+                        CreatedAt = now
+                    });
                     continue;
                 }
 
-                file.Tags.Add(tag);
+                if (existing.Source == TagSource.Suppressed)
+                {
+                    // User previously removed this tag, re-adding it explicitly overrides that
+                    existing.Source = TagSource.User;
+                    existing.Confidence = null;
+                    existing.UpdatedAt = now;
+                    continue;
+                }
+
+                LogFileAlreadyHasTagSkipping(logger, fileId, tagId);
             }
 
             await unitOfWork.SaveChangesAsync(ct);
@@ -207,21 +232,28 @@ public partial class FileTagService(
         if (file is not { DeletedAt: null })
             throw new InvalidOperationException($"File {fileId} not found");
 
-        var tag = file.Tags.FirstOrDefault(t => t.Id == tagId);
+        if (file.OwnerId != userId)
+            throw new UnauthorizedAccessException("You do not have permission to remove this tag");
 
-        if (tag == null)
+        var fileTag = file.FileTags!.FirstOrDefault(ft => ft.TagId == tagId && ft.Source != TagSource.Suppressed);
+
+        if (fileTag == null)
         {
             LogTagNotAssociatedWithFile(logger, tagId, fileId);
             return;
         }
 
-        if (tag.OwnerId != userId)
-            throw new UnauthorizedAccessException("You do not have permission to remove this tag");
-
         try
         {
             await unitOfWork.BeginTransactionAsync(ct);
-            file.Tags.Remove(tag);
+
+            if (fileTag.Source == TagSource.User)
+                // Manually added by the user, nothing worth remembering once it's gone
+                file.FileTags!.Remove(fileTag);
+            else
+                // Auto/Embedded: tombstone so the next enrichment sync doesn't reapply it
+                fileTag.Source = TagSource.Suppressed;
+
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 

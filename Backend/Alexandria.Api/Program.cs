@@ -22,6 +22,7 @@ bld.Services
     .AddRabbitMqAsync(bld.Configuration)
     .AddApiServices(bld.Configuration)
     .AddServices()
+    .AddAutoTagging(bld.Configuration)
     .AddHealthMonitoring(bld.Configuration)
     .AddAuthServices();
 

@@ -151,7 +151,7 @@
         @scroll.passive="onScroll"
       >
         <template #default="{ item }">
-          <MediaCard :file="item" view-mode="list" @select="onFileClick" />
+          <MediaCard :file="item" view-mode="list" @select="onFileClick" @info="onMediaInfo" />
         </template>
       </RecycleScroller>
 
@@ -180,6 +180,7 @@
                   :file="file"
                   view-mode="grid"
                   @select="onFileClick"
+                  @info="onMediaInfo"
                 />
               </div>
             </div>
@@ -194,6 +195,24 @@
     </section>
 
     <LyricsPanel v-if="mediaType === 'audio'" v-model:open="lyricsOpen" />
+
+    <UDrawer
+      v-model:open="infoOpen"
+      :title="infoTitle"
+      description="Audio analysis results"
+      :direction="isMobile ? 'bottom' : 'right'"
+      :ui="{ container: 'md:max-w-[34rem] lg:min-w-[44rem]' }"
+    >
+      <template #body>
+        <div class="p-1">
+          <AudioAnalysisFilePanel
+            v-if="infoFile"
+            :file-id="infoFile.fileId"
+            :enabled="infoOpen"
+          />
+        </div>
+      </template>
+    </UDrawer>
   </div>
 </template>
 
@@ -210,6 +229,11 @@ import { usePlayerStore } from "@/stores/stream-player";
 import LyricsPanel from "./LyricsPanel.vue";
 import MediaCard from "./MediaCard.vue";
 import BlockSpinner from "../common/BlockSpinner.vue";
+import AudioAnalysisFilePanel from "../dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";
+import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
+
+const breakpoints = useBreakpoints(breakpointsTailwind);
+const isMobile = breakpoints.smaller("md");
 
 // Props
 
@@ -319,6 +343,18 @@ const onFileClick = (file: MediaFileDto) => {
         query: null,
       }),
   );
+};
+
+// Audio analysis drawer
+
+const infoOpen = ref(false);
+const infoFile = ref<MediaFileDto | null>(null);
+
+const infoTitle = computed(() => infoFile.value?.title ?? infoFile.value?.fileName ?? "");
+
+const onMediaInfo = (file: MediaFileDto) => {
+  infoFile.value = file;
+  infoOpen.value = true;
 };
 
 // Grid layout

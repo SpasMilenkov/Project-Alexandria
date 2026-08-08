@@ -7,7 +7,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming.Lyrics;
 using Alexandria.Services.Streaming.Lyrics;
-using Alexandria.Workers.MediaMetadata.Handlers;
+using Alexandria.Workers.Lyrics.Handlers;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;

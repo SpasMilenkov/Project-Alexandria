@@ -708,10 +708,11 @@ watch(
 const tagCurrentPage = ref(1);
 const tagPageSize = ref(25);
 const searchFilters = computed<SearchTagsSchema>(() => ({
+  ownerScope: "all",
   page: tagCurrentPage.value,
   pageSize: tagPageSize.value,
 }));
-const { data: tagsData } = useQuery(searchTag(searchFilters.value));
+const { data: tagsData } = useQuery(() => searchTag(searchFilters.value));
 
 // drop zone
 

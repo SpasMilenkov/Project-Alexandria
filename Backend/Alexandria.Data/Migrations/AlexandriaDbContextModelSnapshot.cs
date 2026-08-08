@@ -418,6 +418,107 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("DirectoryPolicies", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.EssentiaBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Backbone")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DispatchedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Backbone");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("EssentiaBatches", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.EssentiaBatchFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorDetail")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("CompletedAt");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("EssentiaBatchFiles", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.File", b =>
                 {
                     b.Property<Guid>("Id")
@@ -486,6 +587,94 @@ namespace Alexandria.Data.Migrations
                     b.HasIndex("OwnerId");
 
                     b.ToTable("Files", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.FileEnrichment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Analyzer")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileId", "Analyzer", "CreatedAt");
+
+                    b.HasIndex("FileId", "Analyzer", "Version")
+                        .IsUnique();
+
+                    b.ToTable("FileEnrichments", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.FileTag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("Confidence")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("Source");
+
+                    b.HasIndex("TagId");
+
+                    b.HasIndex("FileId", "TagId")
+                        .IsUnique();
+
+                    b.ToTable("FileTags", (string)null);
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.FileVersion", b =>
@@ -639,10 +828,6 @@ namespace Alexandria.Data.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("tsvector")
                         .HasComputedColumnSql("setweight(to_tsvector('simple', coalesce(\"Title\", '')),  'A') ||\n          setweight(to_tsvector('simple', coalesce(\"Artist\", '')), 'B') ||\n          setweight(to_tsvector('simple', coalesce(\"Album\", '')),  'C') ||\n          setweight(to_tsvector('simple', coalesce(\"Genre\", '')),  'D')", true);
-
-                    b.Property<string>("ThumbnailPath")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
 
                     b.Property<string>("Title")
                         .HasMaxLength(255)
@@ -1189,6 +1374,14 @@ namespace Alexandria.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("ExternalKey")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Facet")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<string>("Icon")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1202,6 +1395,9 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1213,11 +1409,17 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("CreatedAt");
 
+                    b.HasIndex("ExternalKey")
+                        .IsUnique()
+                        .HasFilter("\"ExternalKey\" IS NOT NULL");
+
                     b.HasIndex("Name");
 
                     b.HasIndex("OwnerId");
 
-                    b.HasIndex("OwnerId", "Name")
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex("OwnerId", "ParentId", "Name")
                         .IsUnique();
 
                     b.ToTable("Tags", (string)null);
@@ -1471,21 +1673,6 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("Settings", (string)null);
                 });
 
-            modelBuilder.Entity("FileTags", b =>
-                {
-                    b.Property<Guid>("FileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TagId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("FileId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("FileTags", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
@@ -1628,6 +1815,25 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Directory");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.EssentiaBatchFile", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.EssentiaBatch", "Batch")
+                        .WithMany("Files")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.File", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("File");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.File", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.FileVersion", "CurrentVersion")
@@ -1650,6 +1856,36 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Directory");
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.FileEnrichment", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.File", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.FileTag", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.File", "File")
+                        .WithMany("FileTags")
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.Tag", "Tag")
+                        .WithMany("FileTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+
+                    b.Navigation("Tag");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.FileVersion", b =>
@@ -1818,7 +2054,14 @@ namespace Alexandria.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Alexandria.Data.Models.Tag", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Owner");
+
+                    b.Navigation("Parent");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.TrackLyrics", b =>
@@ -1860,21 +2103,6 @@ namespace Alexandria.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("FileTags", b =>
-                {
-                    b.HasOne("Alexandria.Data.Models.File", null)
-                        .WithMany()
-                        .HasForeignKey("FileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Alexandria.Data.Models.Tag", null)
-                        .WithMany()
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -1940,8 +2168,15 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Rules");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.EssentiaBatch", b =>
+                {
+                    b.Navigation("Files");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.File", b =>
                 {
+                    b.Navigation("FileTags");
+
                     b.Navigation("MediaMetadata");
 
                     b.Navigation("SignedUrls");
@@ -1962,6 +2197,13 @@ namespace Alexandria.Data.Migrations
             modelBuilder.Entity("Alexandria.Data.Models.StreamHistory", b =>
                 {
                     b.Navigation("Sessions");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Tag", b =>
+                {
+                    b.Navigation("Children");
+
+                    b.Navigation("FileTags");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>

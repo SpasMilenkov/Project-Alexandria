@@ -23,6 +23,8 @@ public interface IFileService
         Guid fileId,
         Guid updatedBy,
         string? newName = null,
+        string? newTitle = null,
+        string? newArtist = null,
         CancellationToken ct = default);
 
     Task<PaginatedResult<FileResult>> GetRootFilesAsync(

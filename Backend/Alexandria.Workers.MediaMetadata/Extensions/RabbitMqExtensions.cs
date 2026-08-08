@@ -25,7 +25,6 @@ public static class RabbitMqExtensions
         var connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
         services.AddSingleton(connection);
 
-
         return services;
     }
 }

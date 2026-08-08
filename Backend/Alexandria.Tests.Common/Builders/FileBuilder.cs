@@ -148,7 +148,7 @@ public class FileBuilder
         MediaMetadata = _mediaMetadata,
         NormalizedName = _name.ToLowerInvariant(),
         // SearchVector is a DB-computed column — not set for in-memory test use
-        Tags = new List<Tag>(),
+        FileTags = new List<FileTag>(),
         SignedUrls = new List<SignedUrl>()
     };
 }

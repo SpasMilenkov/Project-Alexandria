@@ -1,3 +1,4 @@
+using Alexandria.Common.Settings;
 using Alexandria.Infrastructure.Converters;
 using FastEndpoints;
 using FastEndpoints.Swagger;
@@ -46,6 +47,8 @@ public static class ApiExtensions
         });
 
         services.AddMemoryCache(options => { options.SizeLimit = 3000; });
+
+        services.Configure<EnrichmentMonitoringOptions>(config.GetSection("Monitoring:Enrichment"));
 
         return services;
     }

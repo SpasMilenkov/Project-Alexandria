@@ -166,6 +166,7 @@ export interface UserSettings {
   listIconSize: number;
   skipDeleteConfirmation: boolean;
   toastLevel: ToastLevel;
+  allowAutoTagRegression: boolean;
 }
 const DEFAULT_ACCENT_COLOR = "amber";
 const DEFAULT_BACKGROUND = "parchment";
@@ -175,9 +176,12 @@ const DEFAULT_GRID_ICON_SIZE = 48;
 const DEFAULT_LIST_ICON_SIZE = 20;
 const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
 const DEFAULT_TOAST_LEVEL: ToastLevel = "all";
+const DEFAULT_ALLOW_AUTO_TAG_REGRESSION = false;
 const DEFAULT_UI_STATE = {
   isAppearanceSectionOpen: true,
+  isAutoTaggingSectionOpen: true,
   isBehaviorSectionOpen: true,
+  isSystemTagsVisible: false,
 };
 
 export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024;
@@ -196,8 +200,11 @@ export const useSettingsStore = defineStore(
     const listIconSize = ref(DEFAULT_LIST_ICON_SIZE);
     const skipDeleteConfirmation = ref(DEFAULT_SKIP_DELETE_CONFIRMATION);
     const toastLevel = ref<ToastLevel>(DEFAULT_TOAST_LEVEL);
+    const allowAutoTagRegression = ref(DEFAULT_ALLOW_AUTO_TAG_REGRESSION);
     const isAppearanceSectionOpen = ref(DEFAULT_UI_STATE.isAppearanceSectionOpen);
     const isBehaviorSectionOpen = ref(DEFAULT_UI_STATE.isBehaviorSectionOpen);
+    const isAutoTaggingSectionOpen = ref(DEFAULT_UI_STATE.isAutoTaggingSectionOpen);
+    const isSystemTagsVisible = ref(DEFAULT_UI_STATE.isSystemTagsVisible);
 
     // Getters
     const getSettings = computed(
@@ -211,6 +218,7 @@ export const useSettingsStore = defineStore(
         listIconSize: listIconSize.value,
         skipDeleteConfirmation: skipDeleteConfirmation.value,
         toastLevel: toastLevel.value,
+        allowAutoTagRegression: allowAutoTagRegression.value,
       }),
     );
 
@@ -253,11 +261,20 @@ export const useSettingsStore = defineStore(
     const setToastLevel = (v: ToastLevel) => {
       toastLevel.value = v;
     };
+    const setAllowAutoTagRegression = (v: boolean) => {
+      allowAutoTagRegression.value = v;
+    };
     const setAppearanceSectionOpen = (v: boolean) => {
       isAppearanceSectionOpen.value = v;
     };
     const setBehaviorSectionOpen = (v: boolean) => {
       isBehaviorSectionOpen.value = v;
+    };
+    const setAutoTaggingSectionOpen = (v: boolean) => {
+      isAutoTaggingSectionOpen.value = v;
+    };
+    const setSystemTagsVisible = (v: boolean) => {
+      isSystemTagsVisible.value = v;
     };
 
     const syncAppearanceFromServer = (appearance: AppearanceSettings) => {
@@ -273,6 +290,7 @@ export const useSettingsStore = defineStore(
     const syncBehaviorFromServer = (behavior: BehaviorSettings) => {
       setSkipDeleteConfirmation(behavior.skipDeleteConfirmation);
       setToastLevel(behavior.toastLevel);
+      setAllowAutoTagRegression(behavior.allowAutoTagRegression);
     };
 
     const syncFromServer = (appearance: AppearanceSettings, behavior: BehaviorSettings) => {
@@ -301,6 +319,9 @@ export const useSettingsStore = defineStore(
       if (settings.toastLevel !== undefined) {
         setToastLevel(settings.toastLevel);
       }
+      if (settings.allowAutoTagRegression !== undefined) {
+        setAllowAutoTagRegression(settings.allowAutoTagRegression);
+      }
     };
 
     const resetSettings = () => {
@@ -312,6 +333,7 @@ export const useSettingsStore = defineStore(
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
       skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
       toastLevel.value = DEFAULT_TOAST_LEVEL;
+      allowAutoTagRegression.value = DEFAULT_ALLOW_AUTO_TAG_REGRESSION;
     };
 
     const resetAppearanceSettings = () => {
@@ -328,15 +350,22 @@ export const useSettingsStore = defineStore(
       toastLevel.value = DEFAULT_TOAST_LEVEL;
     };
 
+    const resetAutoTaggingSettings = () => {
+      allowAutoTagRegression.value = DEFAULT_ALLOW_AUTO_TAG_REGRESSION;
+    };
+
     const resetUIState = () => {
       isAppearanceSectionOpen.value = DEFAULT_UI_STATE.isAppearanceSectionOpen;
       isBehaviorSectionOpen.value = DEFAULT_UI_STATE.isBehaviorSectionOpen;
+      isAutoTaggingSectionOpen.value = DEFAULT_UI_STATE.isAutoTaggingSectionOpen;
+      isSystemTagsVisible.value = DEFAULT_UI_STATE.isSystemTagsVisible;
     };
 
     return {
       AVAILABLE_BACKGROUNDS,
       AVAILABLE_COLORS,
       accentColor,
+      allowAutoTagRegression,
       backgroundColor,
       backgroundImage,
       backgroundImageKey,
@@ -348,14 +377,19 @@ export const useSettingsStore = defineStore(
       gridIconSize,
       hasBackgroundImage,
       isAppearanceSectionOpen,
+      isAutoTaggingSectionOpen,
       isBehaviorSectionOpen,
+      isSystemTagsVisible,
       listIconSize,
       resetAppearanceSettings,
+      resetAutoTaggingSettings,
       resetBehaviorSettings,
       resetSettings,
       resetUIState,
       setAccentColor,
+      setAllowAutoTagRegression,
       setAppearanceSectionOpen,
+      setAutoTaggingSectionOpen,
       setBackgroundColor,
       setBackgroundImage,
       setBackgroundImageOpacity,
@@ -363,6 +397,7 @@ export const useSettingsStore = defineStore(
       setGridIconSize,
       setListIconSize,
       setSkipDeleteConfirmation,
+      setSystemTagsVisible,
       setToastLevel,
       skipDeleteConfirmation,
       syncAppearanceFromServer,
@@ -384,8 +419,11 @@ export const useSettingsStore = defineStore(
         "listIconSize",
         "skipDeleteConfirmation",
         "toastLevel",
+        "allowAutoTagRegression",
         "isAppearanceSectionOpen",
         "isBehaviorSectionOpen",
+        "isAutoTaggingSectionOpen",
+        "isSystemTagsVisible",
       ],
     },
   },

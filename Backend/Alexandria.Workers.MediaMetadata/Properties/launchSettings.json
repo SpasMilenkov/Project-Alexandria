@@ -1,11 +1,20 @@
 ﻿{
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "Alexandria.Workers.MediaMetadata": {
+    "Alexandria.Workers.MediaMetadata (RustFS)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "environmentVariables": {
-        "DOTNET_ENVIRONMENT": "Development"
+        "DOTNET_ENVIRONMENT": "Development",
+        "S3Storage__Provider": "RustFS"
+      }
+    },
+    "Alexandria.Workers.MediaMetadata (MinIO)": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "S3Storage__Provider": "MinIO"
       }
     },
     "Alexandria.Workers.MediaMetadata (Garage)": {

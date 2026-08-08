@@ -13,6 +13,8 @@ import { apiClient } from "./client";
 export interface UpdateFileMetadataResponse {
   id: string;
   name: string;
+  title: string | null;
+  artist: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
 }
@@ -25,6 +27,12 @@ export interface InitBulkDownloadRequest {
 export interface GenerateSignedUrlResponse {
   url: string;
   expiresAt: string;
+}
+
+export interface AutoTagFileResponse {
+  fileId: string;
+  queued: boolean;
+  message: string;
 }
 
 export interface FileResult {
@@ -139,6 +147,11 @@ export const fileApi = {
     });
   },
 
+  autoTagFile: async (fileId: string): Promise<AutoTagFileResponse> => {
+    const response = await apiClient.post<AutoTagFileResponse>(`/files/${fileId}/auto-tag`);
+    return response.data;
+  },
+
   downloadFile: async (id: string): Promise<DownloadInfo> => {
     const response = await apiClient.get<DownloadInfo>(`/files/download/${id}`);
     return response.data;
@@ -221,7 +234,7 @@ export const fileApi = {
   // redirects (302) to the presigned URL, browsers follow img-src redirects
   // transparently.
   getThumbnailUrl: (fileId: string): string => `/api/files/${fileId}/thumbnail`,
-  
+
   getThumbnailUrlForVersion: (fileId: string, versionId: string): string =>
     `/api/files/${fileId}/versions/${versionId}/thumbnail`,
 

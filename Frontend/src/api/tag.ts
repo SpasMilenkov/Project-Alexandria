@@ -20,7 +20,20 @@ export interface TagDto {
   userId: string;
   createdAt: string;
   updatedAt: string | null;
+  source?: number;
+  confidence?: number | null;
+  isSystem?: boolean;
+  facet?: number | null;
+  parentId?: string | null;
+  parentName?: string | null;
 }
+
+export const TAG_FACET = { Genre: 0, Mood: 1 } as const;
+
+export const FACET_LABELS: Record<number, string> = {
+  [TAG_FACET.Genre]: "Genre",
+  [TAG_FACET.Mood]: "Mood",
+};
 
 export interface PaginatedTagsResponse {
   tags: TagDto[];
@@ -111,6 +124,25 @@ export const tagApi = {
       params: query,
     });
     return response.data;
+  },
+
+  // Load the full system vocabulary (pages until the server's total count is reached).
+  getAllSystemTags: async (): Promise<TagDto[]> => {
+    const pageSize = 100;
+    const tags: TagDto[] = [];
+    let page = 1;
+    let total = 0;
+
+    do {
+      const response = await apiClient.get<PaginatedResponse<TagDto>>("/tags/search", {
+        params: { ownerScope: "system", page, pageSize },
+      });
+      total = response.data.totalCount;
+      tags.push(...response.data.items);
+      page++;
+    } while (tags.length < total && page <= 20);
+
+    return tags;
   },
 
   // Get all tags for a file

@@ -56,7 +56,11 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<PlaylistItem> PlaylistItems { get; set; }
     public DbSet<PolicyRule> PolicyRules { get; set; }
     public DbSet<DirectoryPolicy> DirectoryPolicies { get; set; }
-    public  DbSet<TrackLyrics>  TrackLyrics { get; set; }
+    public DbSet<TrackLyrics> TrackLyrics { get; set; }
+    public DbSet<FileTag> FileTags { get; set; }
+    public DbSet<FileEnrichment> FileEnrichments { get; set; }
+    public DbSet<EssentiaBatch> EssentiaBatches { get; set; }
+    public DbSet<EssentiaBatchFile> EssentiaBatchFiles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -99,6 +103,10 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new PolicyRuleConfiguration());
         builder.ApplyConfiguration(new DirectoryPolicyConfiguration());
         builder.ApplyConfiguration(new TrackLyricsConfiguration());
+        builder.ApplyConfiguration(new FileEnrichmentConfiguration());
+        builder.ApplyConfiguration(new FileTagConfiguration());
+        builder.ApplyConfiguration(new EssentiaBatchConfiguration());
+        builder.ApplyConfiguration(new EssentiaBatchFileConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

@@ -25,7 +25,7 @@ public class File : IBase
     [StringLength(ValidationConstants.StringLengths.UserId)]
     public Guid? UpdatedBy { get; set; }
 
-    public ICollection<Tag> Tags { get; set; } = new List<Tag>();
+    public ICollection<FileTag> FileTags { get; set; } = new List<FileTag>();
     public ICollection<SignedUrl> SignedUrls { get; set; } = new List<SignedUrl>();
 
     public ApplicationUser Owner { get; set; } = null!;

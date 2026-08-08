@@ -1,7 +1,9 @@
-import { defineMutation, useMutation, useQueryCache, type QueryCache } from "@pinia/colada";
+import { type QueryCache, defineMutation, useMutation, useQueryCache } from "@pinia/colada";
 
 import { fileApi } from "@/api/file";
 import { FILES_QUERY_KEYS } from "@/queries/files";
+import { INTEGRATIONS_QUERY_KEYS } from "@/queries/audioAnalysis";
+import { TAGS_QUERY_KEYS } from "@/queries/tags";
 import { type UpdateFileMetadataSchema } from "@/schemas/file";
 import { logger } from "@/utils/logger";
 
@@ -27,9 +29,27 @@ export const updateFileMetadata = defineMutation(() => {
     onSettled(_: any, __: any, data: UpdateFileMetadataSchema) {
       // Only the detail view and the listing that shows its name are stale.
       queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(data.id) });
+      // Title/Artist edits show up in the file drawer's audio-analysis panel.
+      queryCache.invalidateQueries({
+        exact: true,
+        key: INTEGRATIONS_QUERY_KEYS.file(data.id),
+      });
       // directoryId of the file is not tracked here, so we invalidate all listings.
       // If you add originId to this mutation's params you can narrow this down.
       queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.root });
+    },
+  });
+});
+
+export const autoTagFile = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return useMutation({
+    mutation: (fileId: string) => fileApi.autoTagFile(fileId),
+    onSettled(_: any, __: any, fileId: string) {
+      // Tags are derived asynchronously by the worker; invalidate so the drawer's
+      // tag list and the file detail refresh once the enrichment lands.
+      queryCache.invalidateQueries({ exact: true, key: TAGS_QUERY_KEYS.getTagsForFile(fileId) });
+      queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(fileId) });
     },
   });
 });

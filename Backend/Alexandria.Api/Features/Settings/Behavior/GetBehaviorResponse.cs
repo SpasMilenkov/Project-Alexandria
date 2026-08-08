@@ -6,4 +6,5 @@ public class GetBehaviorResponse
 {
     public bool SkipDeleteConfirmation { get; set; }
     public ToastLevel ToastLevel { get; set; }
+    public bool AllowAutoTagRegression { get; set; }
 }

@@ -58,8 +58,6 @@ services:
     depends_on:
       garage:
         condition: service_healthy
- 
-
 
   rabbitmq-config:
     image: alpine:3.20
@@ -74,7 +72,9 @@ services:
       DOCUMENT_WORKER_PASS: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
       MEDIA_WORKER_PASS: ${MEDIA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
       TRANSPILATION_WORKER_PASS: ${TRANSPILATION_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
+      LYRICS_WORKER_PASS: ${LYRICS_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
       MEDIA_METADATA_WORKER_PASS: ${MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
+      ESSENTIA_WORKER_PASS: ${ESSENTIA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}
     volumes:
       - ./rabbitmq/definitions.template.json:/template/definitions.template.json:ro
       - rabbitmq_definitions_dev:/output
@@ -90,8 +90,6 @@ services:
       rabbitmq-config:
         condition: service_completed_successfully
     environment:
-      # RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
-      # RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
       RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-alexandria}
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
     volumes:
@@ -109,6 +107,58 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
+  essentia-effnet-worker:
+    build:
+      context: ./classificators/essentia
+      dockerfile: Dockerfile
+    container_name: alexandria-essentia-effnet-dev
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://essentia_worker_user:${ESSENTIA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}@rabbitmq:5672/${RABBITMQ_VHOST:-alexandria}
+      EXCHANGE_NAME: content-exchange
+      RESULT_ROUTING_KEY: media-metadata.completed
+      QUEUE_NAME: classify-effnet-queue
+      BACKBONE: effnet
+      ESSENTIA_MODEL_DIR: /app/models
+      VERIFY_MODELS: "true"
+      PREFETCH_COUNT: "1"
+    volumes:
+      - ./classificators/essentia/models:/app/models:ro
+      - ./data/media-audio:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    cap_add:
+          - DAC_OVERRIDE
+    networks:
+      - alexandria-network
+
+  essentia-maest-worker:
+    build:
+      context: ./classificators/essentia
+      dockerfile: Dockerfile
+    container_name: alexandria-essentia-maest-dev
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqp://essentia_worker_user:${ESSENTIA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}@rabbitmq:5672/${RABBITMQ_VHOST:-alexandria}
+      EXCHANGE_NAME: content-exchange
+      RESULT_ROUTING_KEY: media-metadata.completed
+      QUEUE_NAME: classify-maest-queue
+      BACKBONE: maest
+      ESSENTIA_MODEL_DIR: /app/models
+      VERIFY_MODELS: "true"
+      PREFETCH_COUNT: "1"
+    volumes:
+      - ./classificators/essentia/models:/app/models:ro
+      - ./data/media-audio:/data
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    cap_add:
+          - DAC_OVERRIDE
+    networks:
+      - alexandria-network
 
 volumes:
   postgres_dev_data:

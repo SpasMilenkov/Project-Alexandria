@@ -30,39 +30,42 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         CancellationToken ct = default)
     {
         var filesQuery = _files
-            .Include(f => f.Tags)
+            .Include(f => f.FileTags)
+            .ThenInclude(ft => ft.Tag)
             .Where(f => f.DeletedAt == null);
 
-        // Apply tag filtering based on match type
         filesQuery = query.MatchType switch
         {
-            // ANY: File has at least one of the specified tags
             TagMatchType.Any => filesQuery.Where(f =>
-                f.Tags.Any(t => query.TagIds.Contains(t.Id) && t.DeletedAt == null)),
+                f.FileTags!.Any(ft =>
+                    query.TagIds.Contains(ft.TagId) &&
+                    ft.Source != TagSource.Suppressed &&
+                    ft.Tag.DeletedAt == null)),
 
-            // ALL: File has all the specified tags
             TagMatchType.All => ApplyAllTagsFilter(filesQuery, query.TagIds),
 
-            // EXACT: File has exactly these tags, no more, no less
             TagMatchType.Exact => filesQuery.Where(f =>
-                f.Tags.Count(t => t.DeletedAt == null) == query.TagIds.Count &&
-                f.Tags.Count(t => query.TagIds.Contains(t.Id) && t.DeletedAt == null) == query.TagIds.Count),
+                f.FileTags!.Count(ft => ft.Source != TagSource.Suppressed && ft.Tag.DeletedAt == null) ==
+                query.TagIds.Count &&
+                f.FileTags!.Count(ft =>
+                    query.TagIds.Contains(ft.TagId) &&
+                    ft.Source != TagSource.Suppressed &&
+                    ft.Tag.DeletedAt == null) == query.TagIds.Count),
 
             _ => throw new UnreachableException($"Unhandled match type: {query.MatchType}")
         };
 
-        // Apply user filter - files that have at least one tag from this user
         if (query.UserId.HasValue)
             filesQuery = filesQuery.Where(f =>
-                f.Tags.Any(t => t.OwnerId == query.UserId.Value && t.DeletedAt == null));
+                f.FileTags!.Any(ft =>
+                    ft.Tag.OwnerId == query.UserId.Value &&
+                    ft.Source != TagSource.Suppressed &&
+                    ft.Tag.DeletedAt == null));
 
-        // Apply MIME type filter
         if (!string.IsNullOrWhiteSpace(query.MimeTypePrefix))
             filesQuery = filesQuery.Where(f => f.MimeType.StartsWith(query.MimeTypePrefix));
 
-        // Apply date range filters
         if (query.CreatedAfter.HasValue) filesQuery = filesQuery.Where(f => f.CreatedAt >= query.CreatedAfter.Value);
-
         if (query.CreatedBefore.HasValue) filesQuery = filesQuery.Where(f => f.CreatedAt <= query.CreatedBefore.Value);
 
         var totalCount = await filesQuery.CountAsync(ct);
@@ -88,10 +91,12 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     {
         foreach (var tagId in tagIds)
         {
-            // Capture the tagId in a local variable to avoid closure issues
             var currentTagId = tagId;
             query = query.Where(f =>
-                f.Tags.Any(t => t.Id == currentTagId && t.DeletedAt == null));
+                f.FileTags!.Any(ft =>
+                    ft.TagId == currentTagId &&
+                    ft.Source != TagSource.Suppressed &&
+                    ft.Tag.DeletedAt == null));
         }
 
         return query;
@@ -294,7 +299,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 {
                     f.Name,
                     f.MimeType,
-                    f.Tags,
+                    TagAssignments = f.FileTags!.Select(ft => new { ft.TagId, ft.Source, ft.Confidence }).ToList(),
                     Version = f.CurrentVersion!
                 })
                 .ToListAsync(ct);
@@ -302,10 +307,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             if (sourceFiles.Count != fileIds.Length)
                 throw new InvalidOperationException("Some files were not found or not owned by user");
 
-            // 2. Create new entities in memory
             var now = DateTime.UtcNow;
             var newFiles = new List<File>(sourceFiles.Count);
             var newVersions = new List<FileVersion>(sourceFiles.Count);
+            var newFileTags = new List<FileTag>();
 
             foreach (var src in sourceFiles)
             {
@@ -321,7 +326,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                     Name = src.Name,
                     MimeType = src.MimeType,
                     CreatedAt = now,
-                    Tags = src.Tags,
                     OwnerId = userId,
                     DirectoryId = destinationId,
                     CurrentVersionId = null,
@@ -340,11 +344,21 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                     CreatedBy = userId,
                     ContentObjectId = src.Version.ContentObjectId
                 });
+
+                newFileTags.AddRange(src.TagAssignments.Select(ta => new FileTag
+                {
+                    Id = Guid.NewGuid(),
+                    FileId = fileId,
+                    TagId = ta.TagId,
+                    Source = ta.Source,
+                    Confidence = ta.Confidence,
+                    CreatedAt = now
+                }));
             }
 
-            // 3. Insert files (CurrentVersionId = null) and versions
             _files.AddRange(newFiles);
             _fileVersions.AddRange(newVersions);
+            context.FileTags.AddRange(newFileTags);
             await context.SaveChangesAsync(ct);
 
             // 4. Wire up CurrentVersionId and update
@@ -586,7 +600,8 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         CancellationToken ct = default)
     {
         return await _files
-            .Include(f => f.Tags)
+            .Include(f => f.FileTags)
+            .ThenInclude(ft => ft.Tag)
             .Where(f => f.Id == fileId && f.DeletedAt == null)
             .FirstOrDefaultAsync(ct);
     }

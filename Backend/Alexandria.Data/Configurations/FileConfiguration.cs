@@ -51,19 +51,6 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             )",
                 stored: true);
         // Relations
-
-        builder.HasMany(f => f.Tags)
-            .WithMany(t => t.Files)
-            .UsingEntity<Dictionary<string, object>>(
-                "FileTags", // Join table name
-                j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId"),
-                j => j.HasOne<File>().WithMany().HasForeignKey("FileId"),
-                j =>
-                {
-                    j.HasKey("FileId", "TagId");
-                    j.ToTable("FileTags");
-                });
-
         builder.Property(e => e.CurrentVersionId)
             .IsRequired(false);
 

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { useSettingsStore } from "@/stores/settings";
 import AppearanceSection from "@/components/dashboard/settings/AppearanceSection.vue";
+import AutoTaggingSection from "@/components/dashboard/settings/AutoTaggingSection.vue";
 import BehaviorSection from "@/components/dashboard/settings/BehaviorSection.vue";
 
 const settingsStore = useSettingsStore();
 const handleResetAll = () => {
   settingsStore.resetSettings();
 };
+
+const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
 </script>
 
 <template>
@@ -33,6 +36,7 @@ const handleResetAll = () => {
       <div class="space-y-6">
         <AppearanceSection />
         <BehaviorSection />
+        <AutoTaggingSection v-if="autoTaggingEnabled" />
       </div>
     </div>
   </div>

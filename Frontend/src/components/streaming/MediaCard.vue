@@ -82,7 +82,10 @@ const contextItems = computed((): ContextMenuItem[][] => [
   ],
 ]);
 
-const emit = defineEmits<{ select: [file: MediaFileDto] }>();
+const emit = defineEmits<{
+  info: [file: MediaFileDto];
+  select: [file: MediaFileDto];
+}>();
 </script>
 
 <template>
@@ -102,7 +105,7 @@ const emit = defineEmits<{ select: [file: MediaFileDto] }>();
         :class="isAudio ? 'aspect-square' : 'aspect-video'"
       >
         <img
-          v-show="!showFallbackIcon"
+          v-if="!showFallbackIcon"
           :src="thumbnail"
           :alt="displayName"
           class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
@@ -125,12 +128,22 @@ const emit = defineEmits<{ select: [file: MediaFileDto] }>();
           {{ typeLabel }}
         </span>
 
-        <span
-          v-if="file.duration"
-          class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md text-[0.625rem] font-medium bg-black/40 backdrop-blur-md text-white/80 tabular-nums"
-        >
-          {{ formatDuration(file.duration) }}
-        </span>
+        <div class="absolute top-2 right-2 flex items-center gap-1.5">
+          <button
+            v-if="isAudio"
+            class="w-6 h-6 flex items-center justify-center rounded-md bg-black/40 backdrop-blur-md text-white/70 hover:text-white transition-colors"
+            aria-label="View audio analysis"
+            @click.stop="emit('info', file)"
+          >
+            <Icon icon="mdi:information-outline" class="w-3.5 h-3.5" />
+          </button>
+          <span
+            v-if="file.duration"
+            class="px-1.5 py-0.5 rounded-md text-[0.625rem] font-medium bg-black/40 backdrop-blur-md text-white/80 tabular-nums"
+          >
+            {{ formatDuration(file.duration) }}
+          </span>
+        </div>
 
         <div
           v-if="isVideo && !isActive"
@@ -179,7 +192,7 @@ const emit = defineEmits<{ select: [file: MediaFileDto] }>();
         class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 dark:bg-neutral-900 flex-shrink-0 relative"
       >
         <img
-          v-show="!showFallbackIcon"
+          v-if="!showFallbackIcon"
           :src="thumbnail"
           :alt="displayName"
           class="w-full h-full object-cover"
@@ -231,6 +244,14 @@ const emit = defineEmits<{ select: [file: MediaFileDto] }>();
         >
           {{ formatDuration(file.duration) }}
         </span>
+        <button
+          v-if="isAudio"
+          class="p-1.5 rounded-md text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+          aria-label="View audio analysis"
+          @click.stop="emit('info', file)"
+        >
+          <Icon icon="mdi:information-outline" class="w-4 h-4" />
+        </button>
       </div>
     </button>
   </UContextMenu>

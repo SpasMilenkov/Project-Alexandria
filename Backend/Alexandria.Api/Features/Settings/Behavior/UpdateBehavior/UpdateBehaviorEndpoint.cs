@@ -9,6 +9,7 @@ public class UpdateBehaviorRequest
 {
     public bool SkipDeleteConfirmation { get; set; }
     public ToastLevel ToastLevel { get; set; }
+    public bool AllowAutoTagRegression { get; set; }
 }
 
 public class UpdateBehaviorEndpoint(IUserSettingsService settingsService)
@@ -27,6 +28,7 @@ public class UpdateBehaviorEndpoint(IUserSettingsService settingsService)
         {
             SkipDeleteConfirmation = req.SkipDeleteConfirmation,
             ToastLevel = req.ToastLevel,
+            AllowAutoTagRegression = req.AllowAutoTagRegression,
         }, userId, ct);
 
         var saved = await settingsService.GetBehaviorAsync(userId, ct);
@@ -35,6 +37,7 @@ public class UpdateBehaviorEndpoint(IUserSettingsService settingsService)
         {
             SkipDeleteConfirmation = saved.SkipDeleteConfirmation,
             ToastLevel = saved.ToastLevel,
+            AllowAutoTagRegression = saved.AllowAutoTagRegression,
         }, ct);
     }
 }

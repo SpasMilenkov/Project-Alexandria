@@ -72,11 +72,13 @@ public class FileService(
         Guid fileId,
         Guid updatedBy,
         string? newName = null,
+        string? newTitle = null,
+        string? newArtist = null,
         CancellationToken ct = default)
     {
         logger.LogInformation(
-            "Updating file metadata: FileId={FileId}, NewName={NewName}, UpdatedBy={UpdatedBy}",
-            fileId, newName, updatedBy);
+            "Updating file metadata: FileId={FileId}, NewName={NewName}, NewTitle={NewTitle}, NewArtist={NewArtist}, UpdatedBy={UpdatedBy}",
+            fileId, newName, newTitle, newArtist, updatedBy);
 
         await unitOfWork.BeginTransactionAsync(ct);
 
@@ -94,6 +96,29 @@ public class FileService(
                 logger.LogDebug("Updating file name: FileId={FileId}, OldName={OldName}, NewName={NewName}",
                     fileId, fileEntity.Name, newName);
                 fileEntity.Name = newName;
+            }
+
+            if (!string.IsNullOrEmpty(newTitle) || !string.IsNullOrEmpty(newArtist))
+            {
+                var metadata = await unitOfWork.MediaMetadata.FirstOrDefaultAsync(
+                    m => m.FileId == fileId, ct);
+
+                if (metadata == null)
+                {
+                    logger.LogWarning("No media metadata for title/artist update: FileId={FileId}", fileId);
+                    throw new InvalidOperationException($"Media metadata for file with ID {fileId} not found.");
+                }
+
+                if (!string.IsNullOrEmpty(newTitle))
+                    metadata.Title = newTitle;
+                if (!string.IsNullOrEmpty(newArtist))
+                    metadata.Artist = newArtist;
+                metadata.UpdatedBy = updatedBy;
+                metadata.UpdatedAt = DateTime.UtcNow;
+
+                await unitOfWork.MediaMetadata.UpdateAsync(metadata, ct);
+
+                fileEntity.MediaMetadata = metadata;
             }
 
             fileEntity.UpdatedBy = updatedBy;

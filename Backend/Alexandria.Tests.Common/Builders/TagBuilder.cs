@@ -1,4 +1,5 @@
 using Alexandria.Data.Models;
+using Alexandria.Data.Models.Enumerators;
 using Bogus;
 
 namespace Alexandria.Tests.Common.Builders;
@@ -18,6 +19,9 @@ public class TagBuilder
     private DateTime? _deletedAt = null;
     private Guid? _updatedBy = null;
     private ApplicationUser? _owner = null;
+    private string? _externalKey = null;
+    private TagFacet? _facet = null;
+    private Guid? _parentId = null;
 
     public TagBuilder WithId(Guid id)
     {
@@ -85,6 +89,24 @@ public class TagBuilder
         return this;
     }
 
+    public TagBuilder WithExternalKey(string? externalKey)
+    {
+        _externalKey = externalKey;
+        return this;
+    }
+
+    public TagBuilder WithFacet(TagFacet? facet)
+    {
+        _facet = facet;
+        return this;
+    }
+
+    public TagBuilder WithParent(Guid? parentId)
+    {
+        _parentId = parentId;
+        return this;
+    }
+
     public Tag Build() => new()
     {
         Id = _id,
@@ -98,6 +120,8 @@ public class TagBuilder
         UpdatedAt = _updatedAt,
         DeletedAt = _deletedAt,
         UpdatedBy = _updatedBy,
-        Files = []
+        ExternalKey = _externalKey,
+        Facet = _facet,
+        ParentId = _parentId,
     };
 }

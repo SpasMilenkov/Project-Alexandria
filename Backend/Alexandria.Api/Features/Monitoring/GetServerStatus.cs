@@ -38,9 +38,6 @@ sealed class GetServerStatusEndpoint(HealthCheckService healthService)
             ))
         );
 
-        if (report.Status == HealthStatus.Healthy)
-            await Send.OkAsync(response, ct);
-        else
-            await Send.ResponseAsync(response, statusCode: 503, cancellation: ct);
+        await Send.OkAsync(response, ct);
     }
 }

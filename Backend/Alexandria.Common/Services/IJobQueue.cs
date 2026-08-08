@@ -8,5 +8,5 @@ public interface IJobQueue
         CancellationToken ct = default);
 
     Task QueueBackupAsync(Guid fileId, BackupParameters parameters, CancellationToken ct = default);
-    Task QueueAutoTagAsync(Guid fileId, AutoTagParameters parameters, CancellationToken ct = default);
+    Task QueueAutoTagAsync(Guid fileId, AutoTagParameters parameters, string mimeType, CancellationToken ct = default);
 }
