@@ -324,8 +324,12 @@ public partial class S3Service(
                 existingMetadata.Width = metadataDto.Width;
                 existingMetadata.Height = metadataDto.Height;
                 existingMetadata.HasAudio = metadataDto.HasAudio;
-                existingMetadata.Title = metadataDto.Title;
-                existingMetadata.Artist = metadataDto.Artist;
+                existingMetadata.Title = string.IsNullOrWhiteSpace(existingMetadata.Title)
+                    ? metadataDto.Title
+                    : existingMetadata.Title;
+                existingMetadata.Artist = string.IsNullOrWhiteSpace(existingMetadata.Artist)
+                    ? metadataDto.Artist
+                    : existingMetadata.Artist;
                 existingMetadata.Album = metadataDto.Album;
                 existingMetadata.Year = metadataDto.Year;
                 existingMetadata.Genre = metadataDto.Genre;
@@ -511,34 +515,6 @@ public partial class S3Service(
         return $"/preview/{versionId}/{kindSegment}";
     }
 
-    public string GetPreviewPresignedUrl(string objectKey, TimeSpan expiry)
-    {
-        var request = new GetPreSignedUrlRequest
-        {
-            BucketName = config.Value.PreviewBucket,
-            Key = $"previews/{objectKey}",
-            Verb = HttpVerb.GET,
-            Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
-        };
-
-        return publicS3.GetPreSignedURL(request);
-    }
-
-    private string GetThumbnailPresignedUrl(string objectKey, TimeSpan expiry)
-    {
-        var request = new GetPreSignedUrlRequest
-        {
-            BucketName = config.Value.PreviewBucket,
-            Key = $"thumbnails/{objectKey}",
-            Verb = HttpVerb.GET,
-            Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP
-        };
-
-        return publicS3.GetPreSignedURL(request);
-    }
-
     public async Task<string> GetFilePresignedUrl(Guid fileId, byte[] hash, string fileName, TimeSpan expiry)
     {
         var request = new GetPreSignedUrlRequest
@@ -547,7 +523,7 @@ public partial class S3Service(
             Key = $"content/{Convert.ToHexStringLower(hash)}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
+            Protocol = Protocol.HTTPS,
             ResponseHeaderOverrides = new ResponseHeaderOverrides
             {
                 ContentDisposition = $"attachment; filename=\"{fileName}\""
@@ -1134,7 +1110,7 @@ public partial class S3Service(
             Key = $"{objectKey}",
             Verb = HttpVerb.PUT,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
+            Protocol = Protocol.HTTPS,
             ContentType = contentType,
         };
 
@@ -1149,7 +1125,7 @@ public partial class S3Service(
             Key = $"{objectKey}",
             Verb = HttpVerb.PUT,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP
+            Protocol = Protocol.HTTPS
         };
 
         return await publicS3.GetPreSignedURLAsync(request);
@@ -1205,7 +1181,7 @@ public partial class S3Service(
             Key = $"{objectKey}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP
+            Protocol = Protocol.HTTPS
         };
         return await publicS3.GetPreSignedURLAsync(request);
     }
@@ -1235,7 +1211,7 @@ public partial class S3Service(
             Key = $"content/{Convert.ToHexStringLower(downloadInfo.Hash)}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.AddMinutes(10),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP, // fix the hardcode too
+            Protocol = Protocol.HTTPS,
             ResponseHeaderOverrides = new ResponseHeaderOverrides
             {
                 ContentDisposition = $"attachment; filename=\"{downloadInfo.FileName}\""
@@ -1385,7 +1361,7 @@ public partial class S3Service(
             Key = $"covers/{playlistId}",
             Verb = HttpVerb.PUT,
             Expires = DateTime.UtcNow.Add(TimeSpan.FromMinutes(1)),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
+            Protocol = Protocol.HTTPS,
             ContentType = contentType,
         };
 
@@ -1403,7 +1379,7 @@ public partial class S3Service(
             Key = $"covers/{playlistId}",
             Verb = HttpVerb.GET,
             Expires = DateTime.UtcNow.Add(TimeSpan.FromMinutes(1)),
-            Protocol = config.Value.UseHttps ? Protocol.HTTPS : Protocol.HTTP,
+            Protocol = Protocol.HTTPS,
         };
 
         return await publicS3.GetPreSignedURLAsync(request);
