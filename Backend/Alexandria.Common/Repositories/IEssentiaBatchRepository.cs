@@ -1,5 +1,6 @@
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Enrichment;
 
 namespace Alexandria.Common.Repositories;
 
@@ -22,4 +23,10 @@ public interface IEssentiaBatchRepository : IRepository<EssentiaBatch>
     /// Returns the number of batches transitioned.
     /// </summary>
     Task<int> MarkTimedOutAsync(IEnumerable<Guid> batchIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// The most recent <paramref name="limit"/> batches (by <c>CreatedAt</c> desc) with the
+    /// number of files that reached a terminal outcome and the total file count.
+    /// </summary>
+    Task<IReadOnlyList<EnrichmentBatchDto>> GetRecentBatchesAsync(int limit, CancellationToken ct = default);
 }

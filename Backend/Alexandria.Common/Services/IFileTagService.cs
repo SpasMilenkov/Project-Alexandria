@@ -1,4 +1,5 @@
 using Alexandria.Data.Models;
+using Alexandria.Dto.Autotag;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Tags;
 
@@ -75,6 +76,23 @@ public interface IFileTagService
     /// <exception cref="InvalidOperationException">If file not found</exception>
     /// <exception cref="UnauthorizedAccessException">If user doesn't own the tag</exception>
     Task RemoveTagFromFileAsync(Guid fileId, Guid tagId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Applies derived auto-tag candidates to a file (system operation, no user context).
+    /// Precedence per (file, tag) row: <c>User</c>/<c>Suppressed</c> are never touched;
+    /// a missing row is inserted as <c>Auto</c>; an <c>Auto</c> row is updated only when the
+    /// candidate confidence is higher (or when <paramref name="allowAutoTagRegression"/>);
+    /// <c>FileName</c>/<c>FileMetadata</c> rows matching a candidate are promoted to
+    /// <c>Auto</c>. Then, facet-scoped prune: for each facet that produced candidates, any
+    /// remaining <c>Auto</c> row of that facet not in the candidate set is removed (a run
+    /// with zero candidates prunes nothing; other facets and all non-<c>Auto</c> sources are
+    /// untouched).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">If file not found</exception>
+    Task ApplyAutoTagsAsync(Guid fileId,
+        IReadOnlyCollection<TagCandidate> candidates,
+        bool allowAutoTagRegression,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Finds files based on tag criteria with advanced filtering and pagination.
