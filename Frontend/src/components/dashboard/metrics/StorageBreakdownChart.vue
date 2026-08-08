@@ -30,7 +30,7 @@
             cy="48"
             r="36"
             fill="none"
-            stroke="currentColor"
+            stroke="currentColor"       
             stroke-width="10"
             stroke-dasharray="6 5"
             stroke-linecap="round"
