@@ -8,8 +8,10 @@ services:
       POSTGRES_USER: alexandria_user
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:?POSTGRES_EXPORTER_PASSWORD is required}
     volumes:
       - postgres_local_data:/var/lib/postgresql/data
+      - ./scripts/postgres/init:/docker-entrypoint-initdb.d:ro
     networks:
       - data-net
     healthcheck:
@@ -102,6 +104,7 @@ services:
     volumes:
       - rabbitmq_local_data:/var/lib/rabbitmq
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
       - rabbitmq_definitions:/etc/rabbitmq/definitions:ro
     networks:
       - data-net
@@ -125,16 +128,186 @@ services:
       - grafana_local_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
     # no ports: — accessed via SSH tunnel: ssh -L 3000:localhost:3000 user@host
+    # for dev since I work on the same machine :) in real deployment the comment above is valid
+    ports:
+      - "127.0.0.1:3000:3000"
     networks:
       - observability-net
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_healthy
     deploy:
       resources:
         limits:
           memory: 128M
         reservations:
           memory: 64M
+    profiles:
+      - monitoring
+      - default
+
+  prometheus:
+    image: prom/prometheus:v3.13.2@sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69
+    container_name: alexandria-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_local_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+    networks:
+      - data-net
+      - essentia-net
+      - observability-net
+    environment:
+      - GARAGE_S3_METRICS_TOKEN=${GARAGE_S3_METRICS_TOKEN:?GARAGE_S3_METRICS_TOKEN is required}
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+    profiles:
+      - monitoring
+      - default
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.5@sha256:763aecf1c32c2be8a1a75f9abfc2fc461005c9dbbaa39cb356b354aac1296dbe
+    container_name: alexandria-cadvisor
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks:
+      - observability-net
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 64M
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+    profiles:
+      - monitoring
+      - default
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e
+    container_name: alexandria-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_URI: "postgres:${DB_PORT:-5432}/${DB_NAME:?DB_NAME is required}?sslmode=disable"
+      DATA_SOURCE_USER: postgres_exporter
+      DATA_SOURCE_PASS: ${POSTGRES_EXPORTER_PASSWORD:?POSTGRES_EXPORTER_PASSWORD is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - data-net
+      - observability-net
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9187/metrics || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+    profiles:
+      - monitoring
+      - default
+
+  alloy:
+    image: grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33
+    container_name: alexandria-alloy
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_local_data:/var/lib/alloy/data
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - observability-net
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+    profiles:
+      - monitoring
+      - default
+
+  loki:
+    image: grafana/loki:3.7.6@sha256:efd47c67f9bac88ca29bcf8cb997d9ab29d1848bd0aff579282295542a745952
+    container_name: alexandria-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_local_data:/loki
+    networks:
+      - observability-net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
     profiles:
       - monitoring
       - default
@@ -192,6 +365,8 @@ services:
       context: ./Backend
       dockerfile: Alexandria.Api/Dockerfile
     container_name: alexandria-api
+    labels:
+      - "logs.collect=true"
     restart: on-failure:3
     environment:
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}; GssEncryptionMode=Disable"
@@ -249,6 +424,8 @@ services:
       context: ./Backend
       dockerfile: Alexandria.Workers.Document/Dockerfile
     container_name: alexandria-document-worker
+    labels:
+      - "logs.collect=true"
     restart: always
     volumes:
       - document_worker_scratch:/tmp/worker-scratch
@@ -298,6 +475,8 @@ services:
       context: ./Backend
       dockerfile: Alexandria.Workers.Media/Dockerfile
     container_name: alexandria-media-worker
+    labels:
+      - "logs.collect=true"
     restart: always
     volumes:
       - media_worker_scratch:/tmp/worker-scratch
@@ -347,6 +526,8 @@ services:
       context: ./Backend
       dockerfile: Alexandria.Workers.MediaTranspilation/Dockerfile
     container_name: alexandria-transpilation-worker
+    labels:
+      - "logs.collect=true"
     restart: always
     volumes:
       - transpilation_worker_scratch:/tmp/worker-scratch
@@ -397,6 +578,8 @@ services:
       context: ./Backend
       dockerfile: Alexandria.Workers.MediaMetadata/Dockerfile
     container_name: alexandria-media-metadata-worker
+    labels:
+      - "logs.collect=true"
     restart: always
     volumes:
       - media_metadata_worker_scratch:/tmp/worker-scratch
@@ -456,6 +639,8 @@ services:
       context: ./Backend
       dockerfile: Alexandria.Workers.Lyrics/Dockerfile
     container_name: alexandria-lyrics-worker
+    labels:
+      - "logs.collect=true"
     restart: always
     volumes:
       - media_metadata_worker_scratch:/tmp/worker-scratch
@@ -587,7 +772,11 @@ volumes:
   media_audio_data:
     driver: local
   rabbitmq_definitions:
-      driver: local
+    driver: local
+  loki_local_data:
+    driver: local
+  alloy_local_data:
+    driver: local
 
 networks:
   frontend-net:
