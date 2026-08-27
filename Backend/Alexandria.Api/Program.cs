@@ -24,7 +24,8 @@ bld.Services
     .AddServices()
     .AddAutoTagging(bld.Configuration)
     .AddHealthMonitoring(bld.Configuration)
-    .AddAuthServices();
+    .AddAuthServices()
+    .AddTelemetry();
 
 bld.Host.UseSerilog((ctx, services, config) => config
     .ReadFrom.Configuration(ctx.Configuration)
@@ -61,7 +62,7 @@ try
 
 
     app.MapHealthChecks("/health");
-
+    app.MapPrometheusScrapingEndpoint();
     await app.RunAsync();
 }
 catch (Exception ex) when (ex is not HostAbortedException)

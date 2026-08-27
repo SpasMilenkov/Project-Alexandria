@@ -20,6 +20,9 @@
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
 
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore"/>
+
   </ItemGroup>
 
   <ItemGroup>
