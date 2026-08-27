@@ -61,6 +61,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<FileEnrichment> FileEnrichments { get; set; }
     public DbSet<EssentiaBatch> EssentiaBatches { get; set; }
     public DbSet<EssentiaBatchFile> EssentiaBatchFiles { get; set; }
+    public DbSet<OperationalEvent> OperationalEvents { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -107,6 +108,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new FileTagConfiguration());
         builder.ApplyConfiguration(new EssentiaBatchConfiguration());
         builder.ApplyConfiguration(new EssentiaBatchFileConfiguration());
+        builder.ApplyConfiguration(new OperationalEventConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
