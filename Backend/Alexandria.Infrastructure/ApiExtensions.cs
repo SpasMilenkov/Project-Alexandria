@@ -1,10 +1,12 @@
 using Alexandria.Common.Settings;
 using Alexandria.Infrastructure.Converters;
+using Alexandria.Services.Monitoring;
 using FastEndpoints;
 using FastEndpoints.Swagger;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Alexandria.Infrastructure;
 
@@ -24,6 +26,10 @@ public static class ApiExtensions
             });
         services.AddResponseCaching();
         services.AddHealthChecks();
+
+        services.AddSingleton<IHealthCheckPublisher, OperationalEventHealthPublisher>();
+
+        services.Configure<HealthCheckPublisherOptions>(options => { options.Period = TimeSpan.FromMinutes(1); });
 
         var origins = config
             .GetSection("Cors:AllowedOrigins")

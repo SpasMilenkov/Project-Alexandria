@@ -1,0 +1,79 @@
+logging {
+  level    = "info"
+  write_to = [loki.write.local.receiver]
+}
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Only keep containers explicitly opted in via the "logs.collect=true" label.
+discovery.relabel "dotnet_services" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_logs_collect"]
+    regex         = "true"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+loki.source.docker "default" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.dotnet_services.output
+  labels        = {platform = "docker"}
+  relabel_rules = discovery.relabel.dotnet_services.rules
+  forward_to    = [loki.process.serilog.receiver]
+}
+
+// Parse Serilog's structured JSON output.
+loki.process "serilog" {
+  forward_to = [loki.write.local.receiver]
+
+  stage.json {
+    expressions = {
+      level      = "Level",
+      message    = "RenderedMessage",
+      timestamp  = "Timestamp",
+      exception  = "Exception",
+      source_ctx = "Properties.SourceContext",
+    }
+  }
+
+  // Low-cardinality fields become real Loki labels (indexed, cheap to query on).
+  stage.labels {
+    values = {
+      level = "level",
+    }
+  }
+
+  // High-cardinality fields go in structured metadata instead — queryable,
+  // but not part of the label index, so they don't blow up cardinality.
+  stage.structured_metadata {
+    values = {
+      source_context = "source_ctx",
+    }
+  }
+
+  stage.timestamp {
+    source = "timestamp"
+    format = "RFC3339"
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

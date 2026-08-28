@@ -4,6 +4,7 @@ using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Messages;
 using Alexandria.Workers.MediaMetadata.Queueing;
@@ -23,6 +24,7 @@ public partial class AccumulatorWorker(
     AccumulatorBuffer buffer,
     IOptions<EssentiaConfig> essentiaOptions,
     IPublisherService publisher,
+    IJobOutcomeTracker outcomeTracker,
     IServiceProvider serviceProvider) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -104,7 +106,18 @@ public partial class AccumulatorWorker(
                 .ToList()
         };
 
-        await unitOfWork.EssentiaBatches.AddAsync(batchEntity, stoppingToken);
+        try
+        {
+            await unitOfWork.EssentiaBatches.AddAsync(batchEntity, stoppingToken);
+            await unitOfWork.SaveChangesAsync(stoppingToken);
+            outcomeTracker.RecordSuccess(ServiceType.MediaMetadata);
+        }
+        catch (Exception ex)
+        {
+            outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
+            LogPersistError(logger, ex, batchId, batch.Count);
+            return;
+        }
 
         var outputDir = $"{config.ToVolumePath(config.OutputDir.TrimEnd('/'))}/{batchId}";
         var files = batch.Select(f => config.ToVolumePath(f.FilePath)).ToArray();
@@ -125,6 +138,7 @@ public partial class AccumulatorWorker(
         }
         catch (Exception ex)
         {
+            outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
             LogDispatchError(logger, ex, batchId, batch.Count);
             return;
         }

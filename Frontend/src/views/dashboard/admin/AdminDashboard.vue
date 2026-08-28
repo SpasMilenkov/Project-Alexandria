@@ -207,6 +207,17 @@ const sections = [
     tags: ["Audio Analysis", "Transpilations", "Auto-tagging"],
     title: "Integrations",
   },
+  {
+    badges: [{ label: "Live", type: "live" as BadgeType }],
+    chapter: "Chapter VIII",
+    description:
+      "Track daily incident patterns, per-service uptime, and the full operational event log over time.",
+    icon: "mdi:calendar-clock-outline",
+    id: "incidents",
+    route: "/dashboard/admin/incident-history",
+    tags: ["Incidents", "Uptime", "Trends"],
+    title: "Incident History",
+  },
 ] as const;
 </script>
 

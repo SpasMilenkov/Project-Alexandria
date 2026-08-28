@@ -1,4 +1,6 @@
 using System.Text;
+using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.Document.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -9,7 +11,8 @@ public class Worker(
     ILogger<Worker> logger,
     IConnection connection,
     IConfiguration configuration,
-    IServiceProvider serviceProvider)
+    IServiceProvider serviceProvider,
+    IJobOutcomeTracker outcomeTracker)
     : BackgroundService
 {
     private IChannel? _channel;
@@ -33,7 +36,7 @@ public class Worker(
             autoDelete: false,
             cancellationToken: stoppingToken);
 
-        var queueName = configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "document-queue")!;
+        var queueName = configuration.GetValue<string>("RabbitMQ:Consumer:QueueName", "document-queue");
 
         await _channel.QueueDeclareAsync(
             queue: queueName,
@@ -70,9 +73,11 @@ public class Worker(
 
                 // Acknowledge message
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                outcomeTracker.RecordSuccess(ServiceType.DocumentPreviews);
             }
             catch (Exception ex)
             {
+                outcomeTracker.RecordFailure(ServiceType.DocumentPreviews);
                 logger.LogError(ex, "Error processing message");
 
                 // Reject and requeue (or send to DLQ)

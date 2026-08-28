@@ -145,14 +145,24 @@
       </template>
 
       <template #footer="{ collapsed }">
+        <UTooltip v-if="collapsed" text="Log out">
+          <UButton
+            icon="i-heroicons-arrow-right-on-rectangle"
+            color="neutral"
+            variant="ghost"
+            square
+            @click="handleLogout"
+          />
+        </UTooltip>
         <UButton
-          :label="collapsed ? undefined : 'Log out'"
+          v-else
+          label="Log out"
           icon="i-heroicons-arrow-right-on-rectangle"
           color="neutral"
-          variant="outline"
-          :square="collapsed"
+          variant="link"
+          size="sm"
           block
-          class="hover:text-error"
+          class="justify-start text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
           @click="handleLogout"
         />
       </template>
@@ -163,6 +173,15 @@
         <UDashboardNavbar toggle-side="right">
           <template #right>
             <OnlineStatusIndicator />
+            <UTooltip text="Report a problem">
+              <UButton
+                icon="i-lucide-life-buoy"
+                size="xl"
+                variant="ghost"
+                color="neutral"
+                @click="openReportProblemModal"
+              />
+            </UTooltip>
             <UTooltip text="Show app shortcuts">
               <UButton
                 class="md:block hidden"
@@ -182,7 +201,7 @@
 
       <template #body>
         <div class="flex flex-col h-full">
-          <div class=" flex-1 min-h-0 overflow-y-auto h-full">
+          <div class="flex-1 min-h-0 overflow-y-auto h-full">
             <slot />
           </div>
 
@@ -213,14 +232,14 @@ import { useRoute } from "vue-router";
 import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
 import MobileNavItem from "@/components/dashboard/MobileNavItem.vue";
 import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
+import ReportProblemModal from "@/components/modals/ReportProblemModal.vue";
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { useSettingsSync } from "@/composables/useSettingsSync";
+import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext";
 import { OnboardingStep } from "@/enums";
 import router from "@/router";
 import { useAuthStore } from "@/stores/auth";
 import { usePlayerStore } from "@/stores/stream-player";
-import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext";
-
 
 const streamingEnabled = import.meta.env.VITE_STREAMING_ENABLED === "true";
 
@@ -230,12 +249,9 @@ if (streamingEnabled) {
   useStreamingMediaContext();
 }
 
-
 const AudioSkin = streamingEnabled
   ? defineAsyncComponent(() => import("@/components/streaming/AudioPlayerSkin.vue"))
   : null;
-
-
 
 const player = usePlayerStore();
 
@@ -252,6 +268,13 @@ const shortcutsModal = overlay.create(KeyboardShortcutsModal);
 
 const openShortCutsModal = async () => {
   const instance = shortcutsModal.open();
+  await instance.result;
+};
+
+const reportProblemModal = overlay.create(ReportProblemModal);
+
+const openReportProblemModal = async () => {
+  const instance = reportProblemModal.open();
   await instance.result;
 };
 
@@ -307,6 +330,11 @@ const adminMenuItems = computed<NavigationMenuItem[]>(() => [
     label: "System Vitals",
     to: "/dashboard/admin/service-status",
   },
+  {
+    icon: "lucide:calendar-clock",
+    label: "Incident History",
+    to: "/dashboard/admin/incident-history",
+  },
 ]);
 
 const settingsMenuItems: NavigationMenuItem[] = [
@@ -342,6 +370,16 @@ const mobileStreamingItems = [
 const mobileAdminItems = [
   { icon: "i-heroicons-chart-bar", label: "Admin Dashboard", to: "/dashboard/admin" },
   { icon: "i-heroicons-users", label: "User Registry", to: "/dashboard/admin/user-registry" },
+  {
+    icon: "i-material-symbols:vitals",
+    label: "System Vitals",
+    to: "/dashboard/admin/service-status",
+  },
+  {
+    icon: "i-mdi-calendar-clock",
+    label: "Incident History",
+    to: "/dashboard/admin/incident-history",
+  },
 ];
 
 const mobileSettingsItems = [

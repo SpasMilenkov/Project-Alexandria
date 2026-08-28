@@ -4,6 +4,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data;
 using Alexandria.Repositories;
+using Alexandria.Services.Monitoring;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Promotions;
@@ -46,10 +47,13 @@ public static class ServiceExtensions
         services.AddScoped<IFileEnrichmentRepository, FileEnrichmentRepository>();
         services.AddScoped<IFileTagService, FileTagService>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
+        services.AddScoped<IOperationalEventRepository, OperationalEventRepository>();
+
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>
             sp.GetRequiredService<PromotionQueueService>());
+        services.AddSingleton<IJobOutcomeTracker, JobOutcomeTracker>();
         services.AddScoped<IPromotionService, PromotionService>();
 
         return services;

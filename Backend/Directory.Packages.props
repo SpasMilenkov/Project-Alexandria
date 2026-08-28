@@ -49,6 +49,13 @@
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <!-- Threading -->
     <PackageVersion Include="System.Threading.RateLimiting" Version="10.0.10"/>
+    <!--  Monitoring  -->
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0"/>
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0"/>
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="1.17.0-rc.1 "/>
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0"/>
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.17.0"/>
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.17.0-beta.1"/>
     <!-- Analyzers -->
     <PackageVersion Include="SonarAnalyzer.CSharp" Version="10.25.0.139117" />
   </ItemGroup>

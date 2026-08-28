@@ -24,6 +24,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Alexandria.Services.Monitoring\Alexandria.Services.Monitoring.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.Streaming\Alexandria.Services.Streaming.csproj"/>
         <ProjectReference Include="..\Alexandria.Workers.Lyrics\Alexandria.Workers.Lyrics.csproj"/>

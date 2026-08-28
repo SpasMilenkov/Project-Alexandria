@@ -28,6 +28,7 @@ public interface IUnitOfWork : IDisposable
     IEssentiaBatchRepository EssentiaBatches { get; }
     IEssentiaBatchFileRepository EssentiaBatchFiles { get; }
     IFileEnrichmentRepository FileEnrichments { get; }
+    IOperationalEventRepository OperationalEvents { get; }
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);

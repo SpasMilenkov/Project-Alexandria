@@ -17,7 +17,7 @@ export const SHARE_LINKS_QUERY_KEYS = {
 export const getSharedFileMetadata = defineQueryOptions<string, SharedFileMetadataDto>(
   (token: string) => ({
     key: SHARE_LINKS_QUERY_KEYS.metadata(token),
-    query: async () =>await shareLinkApi.getSharedFileMetadata(token),
+    query: async () => await shareLinkApi.getSharedFileMetadata(token),
     retry: 1,
   }),
 );

@@ -1,5 +1,6 @@
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Dto.Files.Streaming;
 using Alexandria.Workers.MediaTranspilation.Handlers;
 
@@ -8,6 +9,7 @@ namespace Alexandria.Workers.MediaTranspilation;
 public partial class TranspilationPollingWorker(
     ILogger<TranspilationPollingWorker> logger,
     IConfiguration configuration,
+    IJobOutcomeTracker outcomeTracker,
     IServiceProvider serviceProvider) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
@@ -56,15 +58,18 @@ public partial class TranspilationPollingWorker(
                 try
                 {
                     await handler.HandleAsync(job.Id, ct);
+                    outcomeTracker.RecordSuccess(ServiceType.Transpilation);
                 }
                 catch (Exception ex)
                 {
+                    outcomeTracker.RecordFailure(ServiceType.Transpilation);
                     LogUnhandledJobError(logger, ex, job.Id);
                 }
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            outcomeTracker.RecordFailure(ServiceType.Transpilation);
             LogPollCycleError(logger, ex);
         }
     }

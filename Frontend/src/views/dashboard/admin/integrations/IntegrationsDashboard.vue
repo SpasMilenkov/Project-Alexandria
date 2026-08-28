@@ -39,7 +39,9 @@
         </div>
 
         <div class="flex-1">
-          <p class="text-[0.6rem] uppercase tracking-[0.15em] text-gray-500 dark:text-gray-400 mb-1">
+          <p
+            class="text-[0.6rem] uppercase tracking-[0.15em] text-gray-500 dark:text-gray-400 mb-1"
+          >
             {{ integration.chapter }}
           </p>
           <h2 class="font-playfair text-xl font-semibold leading-snug mb-2">
@@ -88,13 +90,23 @@ const integrations = [
   },
   {
     chapter: "Media Processing",
-    description: "Inspect and manage transcoding jobs across audio and video rungs.",
-    icon: "mdi:file-cog-outline",
+    description: "Queue depth, failure-rate trends and throughput for the transpilation worker.",
+    icon: "mdi:file-swap-outline",
     id: "transpilations",
-    live: false,
-    route: "/streaming/jobs",
-    tags: ["Rungs", "Status", "Retries"],
+    live: true,
+    route: "/dashboard/admin/integrations/transpilation",
+    tags: ["Queue", "Failure rate", "Volume"],
     title: "Transpilations",
+  },
+  {
+    chapter: "Media Processing",
+    description: "Artifact volume and incidents across the media and document preview workers.",
+    icon: "mdi:image-multiple-outline",
+    id: "previews",
+    live: true,
+    route: "/dashboard/admin/integrations/previews",
+    tags: ["Thumbnails", "Volume", "Incidents"],
+    title: "Previews",
   },
   {
     chapter: "Classification",
@@ -108,12 +120,12 @@ const integrations = [
   },
   {
     chapter: "Transcription",
-    description: "Tracked lyrics and synchronized transcription for streamed media.",
-    icon: "mdi:music-note-text",
+    description: "Fetch outcomes, provider reliability and confidence for the lyrics worker.",
+    icon: "mdi:script-text-outline",
     id: "lyrics",
-    live: false,
-    route: "",
-    tags: ["Lyrics", "Timing", "Synced"],
+    live: true,
+    route: "/dashboard/admin/integrations/lyrics",
+    tags: ["Failure rate", "Providers", "Confidence"],
     title: "Lyrics",
   },
 ] as const;

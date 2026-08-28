@@ -1,7 +1,9 @@
 using System.Threading.RateLimiting;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
+using Alexandria.Services.Monitoring;
 using Alexandria.Services.Streaming.Lyrics;
 using Alexandria.Workers.Lyrics.Handlers;
 
@@ -35,6 +37,12 @@ public static class WorkerExtensions
         services.AddSingleton<CompositeLyricsProvider>();
         services.AddScoped<LyricsHandler>();
         services.AddHostedService<LyricsWorker>();
+
+        services.AddHostedService(sp => new JobFailureThresholdChecker(
+            sp.GetRequiredService<IJobOutcomeTracker>(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            ServiceType.Lyrics,
+            sp.GetRequiredService<ILogger<JobFailureThresholdChecker>>()));
 
         return services;
     }

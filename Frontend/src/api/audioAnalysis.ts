@@ -84,9 +84,12 @@ export const audioAnalysisApi = {
     to: string,
     bucket: EnrichmentBucket,
   ): Promise<EnrichmentFailureRatePoint[]> => {
-    const result = await apiClient.get<EnrichmentFailureRatePoint[]>("/admin/enrichment/failure-rate", {
-      params: { from, to, bucket },
-    });
+    const result = await apiClient.get<EnrichmentFailureRatePoint[]>(
+      "/admin/enrichment/failure-rate",
+      {
+        params: { from, to, bucket },
+      },
+    );
     return result.data;
   },
 
@@ -103,9 +106,12 @@ export const audioAnalysisApi = {
   },
 
   getVolumeByHour: async (from: string, to: string): Promise<EnrichmentVolumePoint[]> => {
-    const result = await apiClient.get<EnrichmentVolumePoint[]>("/admin/enrichment/volume-by-hour", {
-      params: { from, to },
-    });
+    const result = await apiClient.get<EnrichmentVolumePoint[]>(
+      "/admin/enrichment/volume-by-hour",
+      {
+        params: { from, to },
+      },
+    );
     return result.data;
   },
 

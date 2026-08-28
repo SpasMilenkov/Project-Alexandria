@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
+using Alexandria.Dto.PreviewsStats;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -95,5 +96,24 @@ public class PreviewRepository(AlexandriaDbContext context) : IPreviewRepository
         _previews.Update(file);
         await context.SaveChangesAsync(ct);
         return file;
+    }
+
+    public async Task<IReadOnlyList<PreviewKindTotals>> GetKindTotalsAsync(
+        CancellationToken ct = default)
+    {
+        return await _previews
+            .AsNoTracking()
+            .GroupBy(p => p.Kind)
+            .Select(g => new PreviewKindTotals(g.Key, g.Count(), g.Sum(p => p.Size)))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<Preview>> GetCreatedBetweenAsync(
+        DateTime from, DateTime to, CancellationToken ct = default)
+    {
+        return await _previews
+            .AsNoTracking()
+            .Where(p => p.CreatedAt >= from && p.CreatedAt < to)
+            .ToListAsync(ct);
     }
 }
