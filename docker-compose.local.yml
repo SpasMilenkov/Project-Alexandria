@@ -642,8 +642,6 @@ services:
     labels:
       - "logs.collect=true"
     restart: always
-    volumes:
-      - media_metadata_worker_scratch:/tmp/worker-scratch
     environment:
       DOTNET_ENVIRONMENT: Production
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
@@ -654,7 +652,6 @@ services:
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
       Features__Lyrics: ${LYRICS_ENABLED:?LYRICS_ENABLED is required}
       ASPNETCORE_URLS: http://+:8080
-      TMPDIR: /tmp/worker-scratch
       RabbitMQ__Consumer__QueueName: lyrics-queue
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
     depends_on:

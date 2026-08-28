@@ -9,14 +9,11 @@ export const uploadLyricsSchema = z
     syncedLyrics: z.string().nullish(),
     isInstrumental: z.boolean().default(false),
   })
-  .refine(
-    (data) => data.isInstrumental || data.plainLyrics || data.syncedLyrics,
-    {
-      message:
-        "At least one of plainLyrics or syncedLyrics must be provided when the track is not instrumental",
-      path: ["plainLyrics"],
-    },
-  );
+  .refine((data) => data.isInstrumental || data.plainLyrics || data.syncedLyrics, {
+    message:
+      "At least one of plainLyrics or syncedLyrics must be provided when the track is not instrumental",
+    path: ["plainLyrics"],
+  });
 
 export type UploadLyricsSchema = z.infer<typeof uploadLyricsSchema>;
 

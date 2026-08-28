@@ -103,7 +103,10 @@
           class="flex flex-col items-center justify-center gap-2.5 flex-1 text-center px-6"
         >
           <template v-if="!fetchTimedOut">
-            <Icon icon="mdi:loading" class="w-6 h-6 animate-spin text-gray-400 dark:text-white/30" />
+            <Icon
+              icon="mdi:loading"
+              class="w-6 h-6 animate-spin text-gray-400 dark:text-white/30"
+            />
             <p class="text-sm text-gray-500 dark:text-white/40 m-0">Fetching lyrics…</p>
             <p
               v-if="showSlowFetchHint"
@@ -185,13 +188,16 @@
 
         <!-- Manual upload form -->
         <div v-if="showManualUpload" class="flex flex-col gap-3 px-4 py-4">
-          <UFormField label="Paste lyrics">
+          <UFormField label="Paste lyrics (plain or LRC)">
             <UTextarea
-              v-model="manualPlainLyrics"
+              v-model="manualLyrics"
               :rows="10"
-              placeholder="Paste plain lyrics here…"
+              placeholder="Paste plain or LRC lyrics here…"
               class="w-full"
             />
+            <p v-if="manualFormatHint" class="text-xs text-gray-500 dark:text-gray-500 mt-1 m-0">
+              {{ manualFormatHint }}
+            </p>
           </UFormField>
           <div class="flex justify-end gap-2">
             <UButton variant="outline" color="neutral" size="sm" @click="onCancelManualUpload">
@@ -202,7 +208,7 @@
               color="primary"
               size="sm"
               :loading="isUploading"
-              :disabled="!manualPlainLyrics.trim()"
+              :disabled="!manualLyrics.trim()"
               @click="onManualUploadSubmit"
             >
               Save lyrics
@@ -260,7 +266,11 @@
             {{ providerLabel }}
           </UBadge>
 
-          <UTooltip v-if="confidenceInfo" v-model:open="confidenceTooltipOpen" :text="confidenceScoreLabel">
+          <UTooltip
+            v-if="confidenceInfo"
+            v-model:open="confidenceTooltipOpen"
+            :text="confidenceScoreLabel"
+          >
             <button
               type="button"
               class="focus:outline-none"
@@ -291,6 +301,8 @@ import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 
 import {
   type LyricLine,
+  type LyricsFormat,
+  detectLyricsFormat,
   parsePlainLyrics,
   parseSyncedLyrics,
   useLyricsSync,
@@ -386,11 +398,11 @@ const onClose = () => {
 // Provider label + relative fetched date
 
 const PROVIDER_LABELS: Record<LyricsProvider, string> = {
-    [LyricsProvider.LrclibPublic]: "LRCLIB",
-    [LyricsProvider.LrclibLocal]: "LRCLIB (local)",
-    [LyricsProvider.Musicxmatch]: "Musixmatch",
-    [LyricsProvider.Manual]: "Manual upload",
-    [LyricsProvider.None]: "None"
+  [LyricsProvider.LrclibPublic]: "LRCLIB",
+  [LyricsProvider.LrclibLocal]: "LRCLIB (local)",
+  [LyricsProvider.Musicxmatch]: "Musixmatch",
+  [LyricsProvider.Manual]: "Manual upload",
+  [LyricsProvider.None]: "None",
 };
 
 const providerLabel = computed(() => (data.value ? PROVIDER_LABELS[data.value.provider] : ""));
@@ -473,7 +485,8 @@ const onRequeue = () => {
 const SLOW_HINT_DELAY_MS = 5_000;
 const FETCH_TIMEOUT_MS = 45_000;
 
-const slowFetchHintText = "First fetches reach out to an external lyrics provider and can take a bit — hang tight.";
+const slowFetchHintText =
+  "First fetches reach out to an external lyrics provider and can take a bit — hang tight.";
 
 const showSlowFetchHint = ref(false);
 const fetchTimedOut = ref(false);
@@ -521,13 +534,24 @@ watch(lyricsJobId, resetFetchWaitState);
 
 onUnmounted(clearFetchTimers);
 
-// Manual upload
+// Manual upload. A single textarea accepts both formats; the pasted content is
+// classified with the same parser the panel renders with, so whatever gets
+// labeled synced here is guaranteed to come back as a synced view after save.
 
 const showManualUpload = ref(false);
-const manualPlainLyrics = ref("");
+const manualLyrics = ref("");
+
+const FORMAT_HINTS: Record<LyricsFormat, string> = {
+  plain: "Detected: plain text",
+  synced: "Detected: synced (LRC)",
+};
+
+const manualFormatHint = computed(() =>
+  manualLyrics.value.trim() ? FORMAT_HINTS[detectLyricsFormat(manualLyrics.value)] : "",
+);
 
 const onOpenManualUpload = () => {
-  manualPlainLyrics.value = data.value?.playLyrics ?? "";
+  manualLyrics.value = data.value?.playLyrics ?? "";
   showManualUpload.value = true;
 };
 const onCancelManualUpload = () => {
@@ -536,21 +560,24 @@ const onCancelManualUpload = () => {
 
 watch(lyricsJobId, () => {
   showManualUpload.value = false;
-  manualPlainLyrics.value = "";
+  manualLyrics.value = "";
 });
 
 const { mutateAsync: uploadMutateAsync, isLoading: isUploading } = uploadLyrics();
 
 const onManualUploadSubmit = async () => {
-  if (!lyricsJobId.value || !manualPlainLyrics.value.trim()) return;
+  if (!lyricsJobId.value || !manualLyrics.value.trim()) return;
+
+  const isSynced = detectLyricsFormat(manualLyrics.value) === "synced";
+
   await uploadMutateAsync({
     jobId: lyricsJobId.value,
-    plainLyrics: manualPlainLyrics.value,
-    syncedLyrics: null,
+    plainLyrics: isSynced ? null : manualLyrics.value,
+    syncedLyrics: isSynced ? manualLyrics.value : null,
     isInstrumental: false,
   });
   showManualUpload.value = false;
-  manualPlainLyrics.value = "";
+  manualLyrics.value = "";
 };
 
 // Overflow menu: refetch / change provider / delete lyrics
@@ -580,7 +607,12 @@ const providerMenuItems = computed(() => {
   const currentProvider = data.value?.provider;
   const switchItems = (Object.values(LyricsProvider) as LyricsProvider[])
     .filter((provider) => typeof provider === "number")
-    .filter((provider) => provider !== currentProvider && provider !== LyricsProvider.Manual && provider !== LyricsProvider.None)
+    .filter(
+      (provider) =>
+        provider !== currentProvider &&
+        provider !== LyricsProvider.Manual &&
+        provider !== LyricsProvider.None,
+    )
     .map((provider) => ({
       label: `Switch to ${PROVIDER_LABELS[provider]}`,
       icon: "i-mdi-swap-horizontal",
