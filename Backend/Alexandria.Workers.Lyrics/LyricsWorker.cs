@@ -1,5 +1,7 @@
 using System.Text;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
+using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.Lyrics.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -14,17 +16,20 @@ public partial class LyricsWorker : BackgroundService
     private readonly IConnection _connection;
     private readonly IConfiguration _configuration;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IJobOutcomeTracker _outcomeTracker;
 
     public LyricsWorker(
         ILogger<LyricsWorker> logger,
         IConnection connection,
         IConfiguration configuration,
+        IJobOutcomeTracker outcomeTracker,
         IServiceProvider serviceProvider)
     {
         _logger = logger;
         _connection = connection;
         _configuration = configuration;
         _serviceProvider = serviceProvider;
+        _outcomeTracker = outcomeTracker;
 
         var concurrency = configuration.GetValue("RabbitMQ:Consumer:Concurrency", 2);
         _concurrencyGate = new SemaphoreSlim(concurrency, concurrency);
@@ -77,6 +82,7 @@ public partial class LyricsWorker : BackgroundService
                 await handler.HandleAsync(lyricsId, ct);
 
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
+                _outcomeTracker.RecordSuccess(ServiceType.Lyrics);
             }
             catch (LyricsNotFoundException ex)
             {
@@ -85,6 +91,7 @@ public partial class LyricsWorker : BackgroundService
             }
             catch (Exception ex)
             {
+                _outcomeTracker.RecordFailure(ServiceType.Lyrics);
                 LogConsumerError(_logger, ex);
                 await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, ct);
             }

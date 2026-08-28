@@ -1,4 +1,6 @@
 using System.Text;
+using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.Media.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -9,7 +11,8 @@ public class Worker(
     ILogger<Worker> logger,
     IConnection connection,
     IConfiguration configuration,
-    IServiceProvider serviceProvider)
+    IServiceProvider serviceProvider,
+    IJobOutcomeTracker outcomeTracker)
     : BackgroundService
 {
     private IChannel? _channel;
@@ -61,7 +64,6 @@ public class Worker(
             {
                 using var scope = serviceProvider.CreateScope();
 
-                // Use eventArgs.RoutingKey, not the outer binding variable
                 IPreviewGenerationHandler handler = eventArgs.RoutingKey.StartsWith("image.")
                     ? scope.ServiceProvider.GetRequiredService<ImagePreviewGenerationHandler>()
                     : scope.ServiceProvider.GetRequiredService<MediaPreviewGenerationHandler>();
@@ -72,10 +74,21 @@ public class Worker(
 
                 await handler.HandleAsync(message, ct);
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
+                outcomeTracker.RecordSuccess(ServiceType.MediaPreviews);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error processing message");
+
+                try
+                {
+                    outcomeTracker.RecordFailure(ServiceType.MediaPreviews);
+                }
+                catch (Exception trackerEx)
+                {
+                    logger.LogError(trackerEx, "Failed to record job failure for monitoring");
+                }
+
                 await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: false, ct);
             }
         };

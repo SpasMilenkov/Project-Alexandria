@@ -1,5 +1,7 @@
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure.Workers;
+using Alexandria.Services.Monitoring;
 using Alexandria.Services.Preview;
 using Alexandria.Services.Preview.Media;
 using Alexandria.Workers.Media.Handlers;
@@ -17,6 +19,11 @@ public static class PreviewExtensions
         services.AddScoped<ImagePreviewGenerationHandler>();
         services.AddScoped<MediaPreviewGenerationHandler>();
 
+        services.AddHostedService(sp => new JobFailureThresholdChecker(
+            sp.GetRequiredService<IJobOutcomeTracker>(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            ServiceType.MediaPreviews,
+            sp.GetRequiredService<ILogger<JobFailureThresholdChecker>>()));
         return services;
     }
 }

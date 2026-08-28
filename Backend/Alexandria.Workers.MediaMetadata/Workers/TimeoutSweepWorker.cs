@@ -1,8 +1,10 @@
 using System.Text.Json;
 using Alexandria.Common;
 using Alexandria.Common.Config;
+using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.MediaMetadata.Config;
 using Microsoft.Extensions.Options;
 
@@ -17,6 +19,7 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 public partial class TimeoutSweepWorker(
     ILogger<TimeoutSweepWorker> logger,
     IOptions<EssentiaConfig> essentiaOptions,
+    IJobOutcomeTracker outcomeTracker,
     IServiceProvider serviceProvider) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -41,6 +44,7 @@ public partial class TimeoutSweepWorker(
             }
             catch (Exception ex)
             {
+                outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
                 LogSweepError(logger, ex);
             }
 
@@ -85,12 +89,9 @@ public partial class TimeoutSweepWorker(
                 await UpsertTimeoutFailureAsync(unitOfWork, file.FileId, batch.Backbone, batch.Id, ct);
 
             await unitOfWork.EssentiaBatchFiles.UpdateStatusForBatchAsync(
-                batch.Id,
-                EssentiaBatchFileStatus.Pending,
-                EssentiaBatchFileStatus.Failed,
-                SystemConfig.SystemId,
-                ct);
+                batch.Id, EssentiaBatchFileStatus.Pending, EssentiaBatchFileStatus.Failed, SystemConfig.SystemId, ct);
 
+            outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
             LogBatchFilesTimedOut(logger, batch.Id, pendingFiles.Count);
         }
     }

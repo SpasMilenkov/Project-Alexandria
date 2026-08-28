@@ -1,6 +1,8 @@
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
+using Alexandria.Services.Monitoring;
 using Alexandria.Services.Streaming;
 using Alexandria.Workers.MediaTranspilation.Config;
 using Alexandria.Workers.MediaTranspilation.Handlers;
@@ -26,6 +28,12 @@ public static class WorkerExtensions
         services.AddScoped<IPublisherService, PublisherService>();
         services.AddScoped<TranspilationJobHandler>();
 
+        // Monitoring
+        services.AddHostedService(sp => new JobFailureThresholdChecker(
+            sp.GetRequiredService<IJobOutcomeTracker>(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            ServiceType.Transpilation,
+            sp.GetRequiredService<ILogger<JobFailureThresholdChecker>>()));
         return services;
     }
 }

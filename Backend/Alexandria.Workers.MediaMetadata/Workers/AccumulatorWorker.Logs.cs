@@ -17,4 +17,8 @@ public partial class AccumulatorWorker
     [LoggerMessage(22302, LogLevel.Error,
         "Failed to publish dispatch for batch {BatchId} ({Count} files); batch left Dispatched for the timeout sweep")]
     private static partial void LogDispatchError(ILogger logger, Exception ex, Guid batchId, int count);
+
+    [LoggerMessage(22303, LogLevel.Error,
+        "Failed to persist batch {BatchId} ({Count} files); batch left Dispatched for the timeout sweep")]
+    private static partial void LogPersistError(ILogger logger, Exception ex, Guid batchId, int count);
 }

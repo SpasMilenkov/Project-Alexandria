@@ -2,8 +2,10 @@ using System.Text;
 using System.Text.Json;
 using Alexandria.Common;
 using Alexandria.Common.Config;
+using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Messages;
 using Alexandria.Workers.MediaMetadata.Queueing;
@@ -29,6 +31,7 @@ public partial class ResultsConsumerWorker(
     IOptions<RabbitMqConsumerConfig> rabbitOptions,
     IOptions<EssentiaConfig> essentiaOptions,
     IConfiguration configuration,
+    IJobOutcomeTracker outcomeTracker,
     IAutoTagQueue autoTagQueue) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -135,6 +138,7 @@ public partial class ResultsConsumerWorker(
             {
                 batchFile.Status = EssentiaBatchFileStatus.MissingOutput;
                 batchFile.CompletedAt = DateTime.UtcNow;
+                outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
                 LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
                 continue;
             }
@@ -144,6 +148,7 @@ public partial class ResultsConsumerWorker(
             {
                 batchFile.Status = EssentiaBatchFileStatus.MissingOutput;
                 batchFile.CompletedAt = DateTime.UtcNow;
+                outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
                 LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
                 continue;
             }
@@ -177,6 +182,7 @@ public partial class ResultsConsumerWorker(
                 batchFile.Status = EssentiaBatchFileStatus.Succeeded;
                 batchFile.CompletedAt = DateTime.UtcNow;
                 succeededFileIds.Add(batchFile.FileId);
+                outcomeTracker.RecordSuccess(ServiceType.MediaMetadata);
                 LogFileSucceeded(logger, batchFile.FileId, completion.BatchId);
             }
             else
@@ -186,6 +192,7 @@ public partial class ResultsConsumerWorker(
                 batchFile.Status = EssentiaBatchFileStatus.Failed;
                 batchFile.CompletedAt = DateTime.UtcNow;
                 batchFile.ErrorDetail = error;
+                outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
                 LogFileFailed(logger, batchFile.FileId, completion.BatchId, error);
             }
         }

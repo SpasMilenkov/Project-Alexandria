@@ -1,6 +1,8 @@
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
+using Alexandria.Services.Monitoring;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.AutoTagging;
 using Alexandria.Workers.MediaMetadata.Config;
@@ -42,6 +44,12 @@ public static class ServiceExtensions
         services.AddSingleton<AccumulatorBuffer>();
 
         services.AddScoped<IStagingService, StagingService>();
+
+        services.AddHostedService(sp => new JobFailureThresholdChecker(
+            sp.GetRequiredService<IJobOutcomeTracker>(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            ServiceType.MediaMetadata,
+            sp.GetRequiredService<ILogger<JobFailureThresholdChecker>>()));
 
         return services;
     }

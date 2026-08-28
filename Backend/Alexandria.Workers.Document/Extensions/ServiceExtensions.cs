@@ -1,4 +1,7 @@
+using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure.Workers;
+using Alexandria.Services.Monitoring;
 using Alexandria.Services.Preview.Documents;
 
 namespace Alexandria.Workers.Document.Extensions;
@@ -11,6 +14,11 @@ public static class ServiceExtensions
 
         services.AddScoped<IPdfPreviewService, PdfPreviewService>();
 
+        services.AddHostedService(sp => new JobFailureThresholdChecker(
+            sp.GetRequiredService<IJobOutcomeTracker>(),
+            sp.GetRequiredService<IServiceScopeFactory>(),
+            ServiceType.DocumentPreviews,
+            sp.GetRequiredService<ILogger<JobFailureThresholdChecker>>()));
         return services;
     }
 }
