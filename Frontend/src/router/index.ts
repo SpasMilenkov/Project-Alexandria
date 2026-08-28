@@ -24,6 +24,12 @@ const router = createRouter({
       path: "/share/:token",
     },
     {
+      component: () => import("@/views/PublicStatusView.vue"),
+      meta: { layout: "default", requiresAuth: false },
+      name: "public-status",
+      path: "/status",
+    },
+    {
       component: () => import("@/views/dashboard/DashboardView.vue"),
       meta: { layout: "dashboard", requiresAuth: true },
       name: "dashboard",
@@ -85,6 +91,12 @@ const router = createRouter({
       path: "/dashboard/admin/service-status",
     },
     {
+      component: () => import("@/views/dashboard/admin/IncidentHistory.vue"),
+      meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
+      name: "incident-history",
+      path: "/dashboard/admin/incident-history",
+    },
+    {
       component: () => import("@/views/dashboard/admin/SystemConfiguration.vue"),
       meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
       name: "system-configuration",
@@ -101,6 +113,24 @@ const router = createRouter({
       meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
       name: "audio-analysis",
       path: "/dashboard/admin/integrations/audio-analysis",
+    },
+    {
+      component: () => import("@/views/dashboard/admin/integrations/Transpilation.vue"),
+      meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
+      name: "transpilation-dashboard",
+      path: "/dashboard/admin/integrations/transpilation",
+    },
+    {
+      component: () => import("@/views/dashboard/admin/integrations/Previews.vue"),
+      meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
+      name: "previews-dashboard",
+      path: "/dashboard/admin/integrations/previews",
+    },
+    {
+      component: () => import("@/views/dashboard/admin/integrations/Lyrics.vue"),
+      meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
+      name: "lyrics-dashboard",
+      path: "/dashboard/admin/integrations/lyrics",
     },
     {
       component: () => import("@/views/onboarding/SetPasswordView.vue"),
