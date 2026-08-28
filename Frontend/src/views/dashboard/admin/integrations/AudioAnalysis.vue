@@ -16,10 +16,13 @@ import {
 } from "chart.js";
 import { computed, ref, watch } from "vue";
 import { Bar, Line } from "vue-chartjs";
+import { useRoute } from "vue-router";
 
 import type { EnrichmentBucket } from "@/api/audioAnalysis";
 
+import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
 import { useTheme } from "@/composables/useTheme";
+import { ServiceType } from "@/enums";
 import {
   batches,
   duration,
@@ -29,6 +32,7 @@ import {
   volumeByHour,
 } from "@/queries/audioAnalysis";
 import { formatDate, formatDuration } from "@/utils/date-formatters";
+import { parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
 
 ChartJS.register(
   Title,
@@ -42,6 +46,24 @@ ChartJS.register(
 );
 
 const { isDark } = useTheme();
+
+// Incidents section (D12): consumes the shared deep-link params so doorways
+// from the monitoring surfaces land pre-filtered on this page.
+const route = useRoute();
+const feedDateRange = ref<{ from: Date; to: Date } | null>(null);
+const initialSeverity = ref<number | null>(null);
+const highlightId = ref<string | null>(null);
+
+watch(
+  () => route.query,
+  () => {
+    const params = parseDeepLinkQuery(route.query);
+    feedDateRange.value = params.from && params.to ? { from: params.from, to: params.to } : null;
+    initialSeverity.value = params.severity ?? null;
+    highlightId.value = params.eventId ?? null;
+  },
+  { immediate: true },
+);
 
 const palette = ["#C17B5C", "#5B7FA6", "#7A9E87", "#C9A84C"];
 
@@ -900,6 +922,23 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
           </p>
         </div>
       </div>
+    </section>
+
+    <!-- Incidents (D12): locked to MediaMetadata, fed by the deep-link contract -->
+    <section class="space-y-2">
+      <div class="flex items-center gap-2">
+        <Icon icon="mdi:alert-circle-outline" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+          Audio Analysis incidents
+        </h2>
+      </div>
+      <EventsFeed
+        :date-range="feedDateRange"
+        :initial-severity="initialSeverity"
+        :highlight-id="highlightId"
+        :initial-service-type="ServiceType.MediaMetadata"
+        locked-service
+      />
     </section>
   </div>
 </template>

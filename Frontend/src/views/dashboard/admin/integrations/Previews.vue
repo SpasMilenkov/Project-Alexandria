@@ -1,0 +1,319 @@
+<script setup lang="ts">
+import { useQuery } from "@pinia/colada";
+import {
+  BarElement,
+  CategoryScale,
+  type ChartData,
+  Chart as ChartJS,
+  type ChartOptions,
+  Legend,
+  LinearScale,
+  Title,
+  Tooltip,
+} from "chart.js";
+import { computed, ref, watch } from "vue";
+import { Bar } from "vue-chartjs";
+import { useRoute, useRouter } from "vue-router";
+
+import type { PreviewStatsBucket } from "@/api/previewsStats";
+
+import { PREVIEW_STATS_BUCKET } from "@/api/previewsStats";
+import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
+import { useTheme } from "@/composables/useTheme";
+import { ServiceType } from "@/enums";
+import { previewsOverview, previewsVolume } from "@/queries/previewsStats";
+import { parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
+import { formatBytes } from "@/utils/size.utils";
+
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
+
+const route = useRoute();
+const router = useRouter();
+const { isDark } = useTheme();
+
+type Scope = "all" | "media" | "docs";
+
+// ?service= picks the half (deep links); absent → both
+const scope = ref<Scope>("all");
+
+const feedDateRange = ref<{ from: Date; to: Date } | null>(null);
+const initialSeverity = ref<number | null>(null);
+const highlightId = ref<string | null>(null);
+
+const applyQuery = () => {
+  const params = parseDeepLinkQuery(route.query);
+
+  if (params.service === ServiceType.MediaPreviews) scope.value = "media";
+  else if (params.service === ServiceType.DocumentPreviews) scope.value = "docs";
+  else scope.value = "all";
+
+  feedDateRange.value = params.from && params.to ? { from: params.from, to: params.to } : null;
+  initialSeverity.value = params.severity ?? null;
+  highlightId.value = params.eventId ?? null;
+};
+
+watch(() => route.query, applyQuery, { immediate: true });
+
+const setScope = (next: Scope) => {
+  scope.value = next;
+  const query = { ...route.query };
+  if (next === "all") delete query.service;
+  else {
+    query.service = String(
+      next === "media" ? ServiceType.MediaPreviews : ServiceType.DocumentPreviews,
+    );
+  }
+  void router.replace({ query });
+};
+
+const SCOPE_TABS: { label: string; value: Scope }[] = [
+  { label: "Both", value: "all" },
+  { label: "Media Previews", value: "media" },
+  { label: "Document Previews", value: "docs" },
+];
+
+// Overview + volume
+const rangeOptions = [
+  { label: "24h", value: 24 * 60 * 60 * 1000 },
+  { label: "7d", value: 7 * 24 * 60 * 60 * 1000 },
+] as const;
+
+const bucketOptions: { label: string; value: PreviewStatsBucket }[] = [
+  { label: "Hourly", value: PREVIEW_STATS_BUCKET.Hour },
+  { label: "Daily", value: PREVIEW_STATS_BUCKET.Day },
+];
+
+const rangeMs = ref(rangeOptions[0].value);
+const bucket = ref<PreviewStatsBucket>(PREVIEW_STATS_BUCKET.Hour);
+
+const volumeParams = computed(() => {
+  const to = Date.now();
+  return {
+    from: new Date(to - rangeMs.value).toISOString(),
+    to: new Date(to).toISOString(),
+    bucket: bucket.value,
+  };
+});
+
+const { data: overview, isLoading: overviewLoading } = useQuery(previewsOverview());
+const { data: volume, isLoading: volumeLoading } = useQuery(
+  previewsVolume,
+  () => volumeParams.value,
+);
+
+const kindTotal = (kind: number): number =>
+  overview.value?.byKind.find((entry) => entry.kind === kind)?.count ?? 0;
+
+const totalArtifacts = computed(() =>
+  (overview.value?.byKind ?? []).reduce((sum, entry) => sum + entry.count, 0),
+);
+
+const totalSizeBytes = computed(() =>
+  (overview.value?.byKind ?? []).reduce((sum, entry) => sum + entry.totalSizeBytes, 0),
+);
+
+const gridColor = computed(() =>
+  isDark.value ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)",
+);
+const tickColor = computed(() => (isDark.value ? "#9ca3af" : "#6b7280"));
+
+const bucketLabel = (iso: string): string => {
+  const date = new Date(iso);
+  return bucket.value === PREVIEW_STATS_BUCKET.Hour
+    ? date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+
+const volumeChartData = computed<ChartData<"bar">>(() => ({
+  labels: (volume.value?.points ?? []).map((p) => bucketLabel(p.bucketStart)),
+  datasets: [
+    {
+      label: "Thumbnails",
+      data: (volume.value?.points ?? []).map((p) => p.thumbnails),
+      backgroundColor: "#5B7FA6",
+      borderRadius: 3,
+    },
+    {
+      label: "Preview images",
+      data: (volume.value?.points ?? []).map((p) => p.previews),
+      backgroundColor: "#C17B5C",
+      borderRadius: 3,
+    },
+  ],
+}));
+
+const volumeOptions = computed<ChartOptions<"bar">>(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: true, labels: { color: tickColor.value } },
+    tooltip: { intersect: false, mode: "index" as const },
+  },
+  scales: {
+    x: {
+      stacked: true,
+      grid: { color: gridColor.value },
+      ticks: { color: tickColor.value, maxRotation: 0 },
+    },
+    y: {
+      stacked: true,
+      beginAtZero: true,
+      grid: { color: gridColor.value },
+      ticks: { color: tickColor.value, precision: 0 },
+    },
+  },
+}));
+
+interface IncidentScope {
+  label: string;
+  service: ServiceType;
+}
+
+const incidentScopes = computed<IncidentScope[]>(() => {
+  if (scope.value === "media") {
+    return [{ label: "Media Previews", service: ServiceType.MediaPreviews }];
+  }
+  if (scope.value === "docs") {
+    return [{ label: "Document Previews", service: ServiceType.DocumentPreviews }];
+  }
+  return [
+    { label: "Media Previews", service: ServiceType.MediaPreviews },
+    { label: "Document Previews", service: ServiceType.DocumentPreviews },
+  ];
+});
+</script>
+
+<template>
+  <div class="p-3 sm:p-5 lg:p-6">
+    <div class="max-w-400 mx-auto space-y-3 lg:space-y-4">
+      <!-- Page header -->
+      <div class="flex items-center justify-between gap-3 flex-wrap mb-1">
+        <div>
+          <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Previews Dashboard</h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Artifact throughput for the media and document preview workers
+          </p>
+        </div>
+        <div class="flex items-center gap-1">
+          <UButton
+            v-for="tab in SCOPE_TABS"
+            :key="tab.value"
+            size="xs"
+            :variant="scope === tab.value ? 'solid' : 'outline'"
+            :color="scope === tab.value ? 'primary' : 'neutral'"
+            @click="setScope(tab.value)"
+          >
+            {{ tab.label }}
+          </UButton>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+        >
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Total artifacts
+          </p>
+          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
+          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+            {{ totalArtifacts.toLocaleString() }}
+          </p>
+        </div>
+        <div
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+        >
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Total size
+          </p>
+          <USkeleton v-if="overviewLoading" class="h-7 w-20 mt-1" />
+          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+            {{ formatBytes(totalSizeBytes) }}
+          </p>
+        </div>
+        <div
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+        >
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Thumbnails
+          </p>
+          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
+          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+            {{ kindTotal(0).toLocaleString() }}
+          </p>
+        </div>
+        <div
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+        >
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Preview images
+          </p>
+          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
+          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+            {{ kindTotal(1).toLocaleString() }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Volume chart -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-end gap-2 flex-wrap">
+          <div class="flex items-center gap-1">
+            <UButton
+              v-for="option in rangeOptions"
+              :key="option.label"
+              size="xs"
+              :variant="rangeMs === option.value ? 'solid' : 'outline'"
+              :color="rangeMs === option.value ? 'primary' : 'neutral'"
+              @click="rangeMs = option.value"
+            >
+              {{ option.label }}
+            </UButton>
+          </div>
+          <div class="flex items-center gap-1">
+            <UButton
+              v-for="option in bucketOptions"
+              :key="option.label"
+              size="xs"
+              :variant="bucket === option.value ? 'solid' : 'outline'"
+              :color="bucket === option.value ? 'primary' : 'neutral'"
+              @click="bucket = option.value"
+            >
+              {{ option.label }}
+            </UButton>
+          </div>
+        </div>
+
+        <div
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm p-4"
+        >
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            Artifacts created
+          </p>
+          <!-- Bounded height is mandatory with maintainAspectRatio:false -->
+          <div v-if="volumeLoading" class="h-56">
+            <USkeleton class="h-full w-full rounded-xl" />
+          </div>
+          <div v-else class="relative h-56">
+            <Bar :data="volumeChartData" :options="volumeOptions" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Incidents per scope -->
+      <div v-for="incident in incidentScopes" :key="incident.service" class="space-y-2">
+        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 px-1">
+          {{ incident.label }} incidents
+        </h2>
+        <EventsFeed
+          :date-range="feedDateRange"
+          :initial-service-type="incident.service"
+          :initial-severity="initialSeverity"
+          :highlight-id="highlightId"
+          locked-service
+        />
+      </div>
+    </div>
+  </div>
+</template>
