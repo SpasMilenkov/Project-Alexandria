@@ -17,17 +17,33 @@
         <PackageReference Include="FastEndpoints.Security"/>
         <PackageReference Include="RabbitMQ.Client"/>
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.Process"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.Http"/>
+        <PackageReference Include="OpenTelemetry.Instrumentation.Runtime"/>
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting"/>
+        <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore"/>
 
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
         <ProjectReference Include="..\Alexandria.Data\Alexandria.Data.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Monitoring\Alexandria.Services.Monitoring.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.Preview\Alexandria.Services.Preview.csproj"/>
         <ProjectReference Include="..\Alexandria.Repositories\Alexandria.Repositories.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.Streaming\Alexandria.Services.Streaming.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.User\Alexandria.Services.User.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="OpenTelemetry">
+            <HintPath>..\..\..\..\.nuget\packages\opentelemetry\1.17.0\lib\net10.0\OpenTelemetry.dll</HintPath>
+        </Reference>
+        <Reference Include="OpenTelemetry.Api">
+            <HintPath>..\..\..\..\.nuget\packages\opentelemetry.api\1.17.0\lib\net10.0\OpenTelemetry.Api.dll</HintPath>
+        </Reference>
     </ItemGroup>
 
 </Project>

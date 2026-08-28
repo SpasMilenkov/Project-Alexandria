@@ -4,6 +4,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data;
 using Alexandria.Repositories;
+using Alexandria.Services.Monitoring;
 using Alexandria.Services.Preview;
 using Alexandria.Services.Preview.Archives;
 using Alexandria.Services.Preview.Text;
@@ -73,6 +74,11 @@ public static class ServiceExtensions
         services.AddScoped<IEssentiaBatchRepository, EssentiaBatchRepository>();
         services.AddScoped<IEssentiaBatchFileRepository, EssentiaBatchFileRepository>();
         services.AddScoped<IFileEnrichmentRepository, FileEnrichmentRepository>();
+        services.AddScoped<IOperationalEventRepository, OperationalEventRepository>();
+        services.AddScoped<IOperationalEventService, OperationalEventService>();
+        services.AddScoped<ITranspilationStatsService, TranspilationStatsService>();
+        services.AddScoped<IPreviewStatsService, PreviewStatsService>();
+        services.AddScoped<ILyricsStatsService, LyricsStatsService>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>
