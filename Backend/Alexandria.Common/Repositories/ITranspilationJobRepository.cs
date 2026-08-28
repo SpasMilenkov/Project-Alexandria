@@ -2,6 +2,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.TranspilationStats;
 
 namespace Alexandria.Common.Repositories;
 
@@ -55,4 +56,15 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
     /// <param name="ct">Cancellation token</param>
     /// <returns>A transpilation status enum</returns>
     Task<TranspilationStatus> GetTranspilationStatusAsync(Guid jobId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns every job that was created inside the window or completed
+    /// inside it (either boundary may match) — the raw material for volume and
+    /// rate bucketing. No tracking.
+    /// </summary>
+    Task<IReadOnlyList<TranspilationJob>> GetJobsTouchingWindowAsync(
+        DateTime from, DateTime to, CancellationToken ct = default);
+
+    /// <summary>Current all-time job count per status.</summary>
+    Task<IReadOnlyList<TranspilationStatusCount>> GetStatusCountsAsync(CancellationToken ct = default);
 }

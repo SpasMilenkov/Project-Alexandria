@@ -5,6 +5,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.TranspilationStats;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -281,4 +282,24 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
 
     public async Task<TranspilationStatus> GetTranspilationStatusAsync(Guid jobId, CancellationToken ct = default) =>
         await _jobs.Where(j => j.Id == jobId).Select(j => j.Status).FirstAsync(ct);
+
+    public async Task<IReadOnlyList<TranspilationJob>> GetJobsTouchingWindowAsync(
+        DateTime from, DateTime to, CancellationToken ct = default)
+    {
+        return await _jobs
+            .AsNoTracking()
+            .Where(j => (j.CreatedAt >= from && j.CreatedAt < to)
+                        || (j.CompletedAt != null && j.CompletedAt >= from && j.CompletedAt < to))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TranspilationStatusCount>> GetStatusCountsAsync(
+        CancellationToken ct = default)
+    {
+        return await _jobs
+            .AsNoTracking()
+            .GroupBy(j => j.Status)
+            .Select(g => new TranspilationStatusCount(g.Key, g.Count()))
+            .ToListAsync(ct);
+    }
 }

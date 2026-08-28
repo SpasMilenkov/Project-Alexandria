@@ -2,7 +2,9 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming.Lyrics;
+using Alexandria.Dto.LyricsStats;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -70,5 +72,46 @@ public class TrackLyricsRepository(AlexandriaDbContext context) : ITrackLyricsRe
             Artist = l.TranspilationJob!.FileVersion.File.MediaMetadata!.Artist,
             Duration = (int)Math.Round(l.TranspilationJob!.FileVersion.File.MediaMetadata!.Duration)
         }).FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<LyricsStatusCount>> GetStatusCountsAsync(
+        CancellationToken ct = default)
+    {
+        return await _lyrics
+            .AsNoTracking()
+            .GroupBy(l => l.Status)
+            .Select(g => new LyricsStatusCount(g.Key, g.Count()))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<LyricsProviderBreakdownRow>> GetProviderBreakdownAsync(
+        CancellationToken ct = default)
+    {
+        return await _lyrics
+            .AsNoTracking()
+            .GroupBy(l => l.SourceProvider)
+            .Select(g => new LyricsProviderBreakdownRow(
+                g.Key,
+                g.Count(),
+                g.Count(l => l.Status == LyricsStatus.FetchFailed)))
+            .ToListAsync(ct);
+    }
+
+    public async Task<double?> GetAvgConfidenceAsync(CancellationToken ct = default)
+    {
+        return await _lyrics
+            .AsNoTracking()
+            .Where(l => l.Status == LyricsStatus.Fetched && l.ConfidenceScore != null)
+            .Select(l => (double?)l.ConfidenceScore!.Value)
+            .AverageAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TrackLyrics>> GetCreatedBetweenAsync(
+        DateTime from, DateTime to, CancellationToken ct = default)
+    {
+        return await _lyrics
+            .AsNoTracking()
+            .Where(l => l.CreatedAt >= from && l.CreatedAt < to)
+            .ToListAsync(ct);
     }
 }
