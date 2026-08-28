@@ -42,6 +42,17 @@ export const parseSyncedLyrics = (raw: string): LyricLine[] => {
  */
 export const parsePlainLyrics = (raw: string): string[] => raw.replace(/\\n/g, "\n").split(/\r?\n/);
 
+export type LyricsFormat = "synced" | "plain";
+
+/**
+ * Classifies pasted lyrics as synced or plain by running them through the real
+ * synced parser, so anything classified as synced is guaranteed to render as
+ * synced. Metadata-only LRC headers ([ar:], [ti:]) without any time-tagged
+ * line classify as plain.
+ */
+export const detectLyricsFormat = (raw: string): LyricsFormat =>
+  parseSyncedLyrics(raw).length > 0 ? "synced" : "plain";
+
 /**
  * Tracks which synced line is active for a given playback time using
  * binary search, since lines are sorted ascending. Returns -1 before
