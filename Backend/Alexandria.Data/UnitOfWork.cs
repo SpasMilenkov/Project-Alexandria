@@ -30,6 +30,7 @@ public sealed class UnitOfWork(
     IEssentiaBatchRepository essentiaBatches,
     IEssentiaBatchFileRepository essentiaBatchFiles,
     IFileEnrichmentRepository fileEnrichments,
+    IOperationalEventRepository operationalEvents,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -56,6 +57,7 @@ public sealed class UnitOfWork(
     public IEssentiaBatchRepository EssentiaBatches { get; } = essentiaBatches;
     public IEssentiaBatchFileRepository EssentiaBatchFiles { get; } = essentiaBatchFiles;
     public IFileEnrichmentRepository FileEnrichments { get; } = fileEnrichments;
+    public IOperationalEventRepository OperationalEvents { get; } = operationalEvents;
 
     private IDbContextTransaction? _transaction;
 
