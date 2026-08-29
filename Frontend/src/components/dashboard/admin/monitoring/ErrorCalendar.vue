@@ -27,6 +27,10 @@ const MIN_YEAR = currentYear - 4;
 const selectedYear = ref(currentYear);
 const selectedMonth = ref(currentMonth);
 
+const HEATMAP_CELL = "w-3.5 h-3.5 xl:w-4 xl:h-4";
+const HEATMAP_GAP = "gap-[4px] xl:gap-[5px]";
+const HEATMAP_ROW = "h-3.5 xl:h-4";
+
 watch(selectedYear, (yr) => {
   selectedMonth.value = yr === currentYear ? currentMonth : 0;
   selectedDay.value = null;
@@ -449,10 +453,14 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
     </div>
 
     <!-- Desktop: GitHub-style heatmap -->
+    <!-- Desktop: GitHub-style heatmap -->
     <div v-else class="flex flex-col gap-3">
       <div class="overflow-x-auto -mx-1 px-1 flex">
         <div class="w-fit mx-auto">
-          <div v-if="isLoading" class="flex items-center justify-center py-16 w-[720px]">
+          <div
+            v-if="isLoading"
+            class="flex items-center justify-center py-16 w-[970px] xl:w-[1125px]"
+          >
             <UIcon
               name="i-mdi-loading"
               class="w-6 h-6 text-neutral-400 dark:text-neutral-500 animate-spin"
@@ -481,24 +489,27 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
             </p>
           </div>
 
-          <div v-else class="inline-flex gap-1 min-w-max">
-            <div class="flex flex-col shrink-0 w-7">
-              <div class="h-5" />
+          <div v-else class="inline-flex gap-1.5 min-w-max">
+            <!-- Weekday labels — spacer height, gap and row height mirror the week
+                 columns exactly; that's what keeps Mon/Wed/Fri on their rows. -->
+            <div class="flex flex-col shrink-0 w-8" :class="HEATMAP_GAP">
+              <div class="h-6" />
               <div
                 v-for="(label, i) in DAY_LABELS"
                 :key="i"
-                class="h-3 mb-[3px] text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center justify-end leading-none"
+                class="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center justify-end leading-none"
+                :class="HEATMAP_ROW"
               >
                 {{ label }}
               </div>
             </div>
 
-            <div class="flex gap-[3px]">
-              <div v-for="(week, wi) in weeks" :key="wi" class="flex flex-col gap-[3px]">
-                <div class="h-5 flex items-end pb-1">
+            <div class="flex" :class="HEATMAP_GAP">
+              <div v-for="(week, wi) in weeks" :key="wi" class="flex flex-col" :class="HEATMAP_GAP">
+                <div class="h-6 flex items-end pb-1">
                   <span
                     v-if="monthLabelByWeek[wi]"
-                    class="text-[10px] text-neutral-500 dark:text-neutral-400 leading-none whitespace-nowrap"
+                    class="text-[11px] text-neutral-500 dark:text-neutral-400 leading-none whitespace-nowrap"
                   >
                     {{ monthLabelByWeek[wi] }}
                   </span>
@@ -507,8 +518,9 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
                 <div
                   v-for="(day, di) in week"
                   :key="di"
-                  class="calendar-cell w-3 h-3 rounded-sm"
+                  class="calendar-cell rounded-sm"
                   :class="[
+                    HEATMAP_CELL,
                     cellColorClass(day),
                     !day.isPadding && day.count > 0 ? 'interactive' : '',
                     selectedDay?.dayOfYear === day.dayOfYear ? 'selected' : '',
@@ -526,24 +538,23 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
 
       <div class="flex flex-col items-end gap-1">
         <div class="flex items-center gap-1.5">
-          <span class="text-[10px] text-neutral-500 dark:text-neutral-400 mr-1">Failure</span>
+          <span class="text-[11px] text-neutral-500 dark:text-neutral-400 mr-1">Failure</span>
           <div
             v-for="intensity in [0, 1, 2, 3, 4] as const"
             :key="`f${intensity}`"
-            :class="[cellSizeClass, 'rounded-sm', RED_RAMP[intensity]]"
+            :class="[HEATMAP_CELL, 'rounded-sm', RED_RAMP[intensity]]"
           />
         </div>
         <div class="flex items-center gap-1.5">
-          <span class="text-[10px] text-neutral-500 dark:text-neutral-400 mr-1">Degraded</span>
+          <span class="text-[11px] text-neutral-500 dark:text-neutral-400 mr-1">Degraded</span>
           <div
             v-for="intensity in [0, 1, 2, 3, 4] as const"
             :key="`a${intensity}`"
-            :class="[cellSizeClass, 'rounded-sm', AMBER_RAMP[intensity]]"
+            :class="[HEATMAP_CELL, 'rounded-sm', AMBER_RAMP[intensity]]"
           />
         </div>
       </div>
     </div>
-
     <!-- Desktop: inline detail panel -->
     <Transition
       enter-active-class="transition-all duration-200 ease-out overflow-hidden"
