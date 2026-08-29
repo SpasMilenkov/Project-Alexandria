@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { reactive } from "vue";
-import { type UpdateFileMetadataSchema, updateFileMetadataSchema } from "@/schemas/file";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import { updateFileMetadata } from "@/mutations/files";
+
+import { reactive } from "vue";
+
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { updateFileMetadata } from "@/mutations/files";
+import { type UpdateFileMetadataSchema, updateFileMetadataSchema } from "@/schemas/file";
 
 const { fileId, originalName } = defineProps<{
   fileId: string;

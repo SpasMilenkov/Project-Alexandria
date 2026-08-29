@@ -99,8 +99,8 @@ import { onClickOutside } from "@vueuse/core";
 import { ref, watch } from "vue";
 
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
-import { usePlayerStore } from "@/stores/stream-player";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
+import { usePlayerStore } from "@/stores/stream-player";
 
 import MediaSearchResultRow from "./MediaSearchResultRow.vue";
 

@@ -139,7 +139,7 @@ export const usePlayerStore = defineStore(
     const playNow = (files: MediaFileDto[]) => {
       if (!files.length) return;
       userQueue.value = [...files.slice(1), ...userQueue.value];
-      console.log(userQueue.value)
+      console.log(userQueue.value);
       activeFile.value = files[0];
     };
 

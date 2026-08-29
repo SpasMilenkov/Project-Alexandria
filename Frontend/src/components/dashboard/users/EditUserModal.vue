@@ -53,9 +53,11 @@
 
 <script setup lang="ts">
 import { reactive, ref, watch } from "vue";
-import { type UpdateUserSchema, updateUserSchema } from "@/schemas/user";
+
 import type { UserDetailsDto } from "@/types/user";
+
 import { UserRole } from "@/enums/UserRole";
+import { type UpdateUserSchema, updateUserSchema } from "@/schemas/user";
 
 const props = defineProps<{
   open: boolean;

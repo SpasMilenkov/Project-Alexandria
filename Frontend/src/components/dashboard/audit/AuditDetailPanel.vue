@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { EntityType } from "@/api/activity";
+
 import type { MetadataRenderer } from "@/composables/useAuditMessage";
+
+import { EntityType } from "@/api/activity";
 
 const props = defineProps<{
   entityId: string;

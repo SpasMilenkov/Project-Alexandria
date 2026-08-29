@@ -33,10 +33,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
 import { Icon } from "@iconify/vue";
+import { ref } from "vue";
+
 import type { TagDto } from "@/api/tag";
+
 import { getIconByValue } from "@/utils/icon.utils";
+
 import SystemTagChip from "./SystemTagChip.vue";
 
 defineProps<{

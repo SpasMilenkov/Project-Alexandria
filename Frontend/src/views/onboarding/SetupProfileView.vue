@@ -136,12 +136,13 @@
 </template>
 
 <script setup lang="ts">
+import { Icon } from "@iconify/vue";
 import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
-import { Icon } from "@iconify/vue";
-import { setupProfile } from "@/mutations/user";
+
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
+import { setupProfile } from "@/mutations/user";
 
 useOnboardingGuard(OnboardingStep.CompleteProfile);
 

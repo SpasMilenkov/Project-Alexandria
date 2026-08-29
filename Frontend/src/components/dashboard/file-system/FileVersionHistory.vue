@@ -280,7 +280,6 @@ import { useQuery } from "@pinia/colada";
 import { computed, reactive, ref } from "vue";
 
 import { AudioRung, VideoRung } from "@/api/policy";
-import ShareLinkModal from "./Modals/ShareLinkModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { changeActiveVersion, deleteVersion, restoreFileVersion } from "@/mutations/files";
@@ -288,6 +287,8 @@ import { queueTranspilationJob } from "@/mutations/streaming";
 import { getVersionsForFile } from "@/queries/files";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
 import { formatBytes } from "@/utils/size.utils";
+
+import ShareLinkModal from "./Modals/ShareLinkModal.vue";
 
 interface FileVersionDto {
   id: string;

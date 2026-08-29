@@ -301,51 +301,49 @@ const failureChartData = computed((): ChartData<"line"> => {
 
 const failureEmpty = computed(() => (failure.data.value ?? []).length === 0);
 
-const failureChartOptions = computed(
-  (): ChartOptions<"line"> => ({
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        labels: {
-          boxWidth: 8,
-          color: isDark.value ? "#999" : "#666",
-          usePointStyle: true,
-        },
-      },
-      tooltip: {
-        backgroundColor: isDark.value ? "#1e1e1e" : "#ffffff",
-        bodyColor: isDark.value ? "#999" : "#666",
-        borderColor: isDark.value ? "#333" : "#e5e5e5",
-        borderWidth: 1,
-        callbacks: {
-          label: (context) => `  ${context.dataset.label}: ${context.parsed.y}%`,
-        },
-        padding: 10,
-        titleColor: isDark.value ? "#e0ddd8" : "#1a1a1a",
+const failureChartOptions = computed((): ChartOptions<"line"> => ({
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      labels: {
+        boxWidth: 8,
+        color: isDark.value ? "#999" : "#666",
+        usePointStyle: true,
       },
     },
-    responsive: true,
-    scales: {
-      x: {
-        grid: { color: isDark.value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" },
-        ticks: {
-          color: isDark.value ? "#999" : "#666",
-          maxRotation: 45,
-          maxTicksLimit: 8,
-        },
+    tooltip: {
+      backgroundColor: isDark.value ? "#1e1e1e" : "#ffffff",
+      bodyColor: isDark.value ? "#999" : "#666",
+      borderColor: isDark.value ? "#333" : "#e5e5e5",
+      borderWidth: 1,
+      callbacks: {
+        label: (context) => `  ${context.dataset.label}: ${context.parsed.y}%`,
       },
-      y: {
-        beginAtZero: true,
-        grid: { color: isDark.value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" },
-        max: 100,
-        ticks: {
-          callback: (value) => `${value}%`,
-          color: isDark.value ? "#999" : "#666",
-        },
+      padding: 10,
+      titleColor: isDark.value ? "#e0ddd8" : "#1a1a1a",
+    },
+  },
+  responsive: true,
+  scales: {
+    x: {
+      grid: { color: isDark.value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" },
+      ticks: {
+        color: isDark.value ? "#999" : "#666",
+        maxRotation: 45,
+        maxTicksLimit: 8,
       },
     },
-  }),
-);
+    y: {
+      beginAtZero: true,
+      grid: { color: isDark.value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" },
+      max: 100,
+      ticks: {
+        callback: (value) => `${value}%`,
+        color: isDark.value ? "#999" : "#666",
+      },
+    },
+  },
+}));
 
 // Volume is a single time series, not a category breakdown, so every bar
 // shares one color rather than cycling through the palette per-bar. The
@@ -372,41 +370,39 @@ const volumeChartData = computed((): ChartData<"bar"> => {
 
 const volumeEmpty = computed(() => (volume.data.value ?? []).length === 0);
 
-const volumeChartOptions = computed(
-  (): ChartOptions<"bar"> => ({
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: isDark.value ? "#1e1e1e" : "#ffffff",
-        bodyColor: isDark.value ? "#999" : "#666",
-        borderColor: isDark.value ? "#333" : "#e5e5e5",
-        borderWidth: 1,
-        padding: 10,
-        titleColor: isDark.value ? "#e0ddd8" : "#1a1a1a",
+const volumeChartOptions = computed((): ChartOptions<"bar"> => ({
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: isDark.value ? "#1e1e1e" : "#ffffff",
+      bodyColor: isDark.value ? "#999" : "#666",
+      borderColor: isDark.value ? "#333" : "#e5e5e5",
+      borderWidth: 1,
+      padding: 10,
+      titleColor: isDark.value ? "#e0ddd8" : "#1a1a1a",
+    },
+  },
+  responsive: true,
+  scales: {
+    x: {
+      grid: { display: false },
+      ticks: {
+        color: isDark.value ? "#999" : "#666",
+        maxRotation: 45,
+        maxTicksLimit: 8,
       },
     },
-    responsive: true,
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: {
-          color: isDark.value ? "#999" : "#666",
-          maxRotation: 45,
-          maxTicksLimit: 8,
-        },
-      },
-      y: {
-        beginAtZero: true,
-        grid: { color: isDark.value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" },
-        ticks: {
-          precision: 0,
-          color: isDark.value ? "#999" : "#666",
-        },
+    y: {
+      beginAtZero: true,
+      grid: { color: isDark.value ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)" },
+      ticks: {
+        precision: 0,
+        color: isDark.value ? "#999" : "#666",
       },
     },
-  }),
-);
+  },
+}));
 
 const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse());
 </script>

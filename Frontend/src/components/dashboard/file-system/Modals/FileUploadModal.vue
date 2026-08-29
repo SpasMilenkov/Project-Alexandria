@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { fileApi } from "@/api/file";
-import { formatBytes } from "@/utils/size.utils";
+
 import type { WorkerOutMessage } from "@/workers/blake3.worker";
-import { useModalBackGuard } from "@/composables/useModalBackGuard";
-import { encryptFile } from "@/composables/useFileEncryption";
-import { useAppToast } from "@/composables/useAppToast";
+
+import { fileApi } from "@/api/file";
 import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
+import { useAppToast } from "@/composables/useAppToast";
+import { encryptFile } from "@/composables/useFileEncryption";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { formatBytes } from "@/utils/size.utils";
 
 const appToast = useAppToast();
 
@@ -330,7 +332,7 @@ const hashWithWorker = (
 
 // concurrency limiter
 
-const runConcurrent = async <T,>(
+const runConcurrent = async <T>(
   tasks: (() => Promise<T>)[],
   limit: number,
 ): Promise<PromiseSettledResult<T>[]> => {

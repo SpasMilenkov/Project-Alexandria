@@ -96,11 +96,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { Icon } from "@iconify/vue";
+import { computed } from "vue";
+
 import type { TagDto } from "@/api/tag";
-import { getIconByValue } from "@/utils/icon.utils";
+
 import { formatDate } from "@/utils/date-formatters";
+import { getIconByValue } from "@/utils/icon.utils";
 
 const props = defineProps<{
   tag: TagDto;

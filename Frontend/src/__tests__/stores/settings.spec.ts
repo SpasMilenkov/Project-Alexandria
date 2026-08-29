@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { useSettingsStore } from "@/stores/settings";
 
@@ -225,7 +225,15 @@ describe("useSettingsStore", () => {
     it("syncFromServer updates both appearance and behavior", () => {
       const store = useSettingsStore();
       store.syncFromServer(
-        { accentColor: "red", backgroundColor: "cool", backgroundImageKey: null, backgroundImageOpacity: 0.3, backgroundImageUpdatedAt: null, gridIconSize: 24, listIconSize: 14 },
+        {
+          accentColor: "red",
+          backgroundColor: "cool",
+          backgroundImageKey: null,
+          backgroundImageOpacity: 0.3,
+          backgroundImageUpdatedAt: null,
+          gridIconSize: 24,
+          listIconSize: 14,
+        },
         { skipDeleteConfirmation: true, toastLevel: "silent" },
       );
       expect(store.accentColor).toBe("red");

@@ -66,12 +66,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { Icon } from "@iconify/vue";
+import { computed } from "vue";
+
 import type { FileResult } from "@/api/file";
+
+import { formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
-import { formatDate } from "@/utils/date-formatters";
 import { formatBytes } from "@/utils/size.utils";
 
 const props = defineProps<{

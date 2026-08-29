@@ -54,9 +54,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { Icon } from "@iconify/vue";
+import { computed } from "vue";
+
 import type { TagDto } from "@/api/tag";
+
 import { formatDate } from "@/utils/date-formatters";
 import { getIconByValue } from "@/utils/icon.utils";
 

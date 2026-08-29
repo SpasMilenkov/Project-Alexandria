@@ -190,18 +190,16 @@ const router = createRouter({
 });
 
 // Navigation Guard
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, from) => {
   const authStore = useAuthStore();
   const { isAuthenticated, isAdmin } = authStore;
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next({ path: "/auth", query: { redirect: to.fullPath } });
+    return { path: "/auth", query: { redirect: to.fullPath } };
   } else if (to.meta.guestOnly && isAuthenticated) {
-    next((to.query.redirect as string) || "/dashboard");
+    return (to.query.redirect as string) || "/dashboard";
   } else if (to.meta.requiresAdmin && !isAdmin) {
-    next({ path: "/dashboard" });
-  } else {
-    next();
+    return { path: "/dashboard" };
   }
 });
 

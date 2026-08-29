@@ -25,7 +25,7 @@ export interface GetFilesForStreamingQuery {
   playlistId?: string | null;
   page: number;
   pageSize: number;
-  isVideo: boolean
+  isVideo: boolean;
 }
 
 export interface TranspilationJobQuery {
@@ -143,7 +143,6 @@ export interface MediaFileDto {
   segmentPrefix: string | null;
 }
 
-
 export const streamingApi = {
   getFilesForStreaming: async (
     query: GetFilesForStreamingQuery,
@@ -177,7 +176,9 @@ export const streamingApi = {
     return result.data;
   },
 
-  getSessions: async (streamHistoryId: string): Promise<PaginatedResponse<StreamSessionResponse>> => {
+  getSessions: async (
+    streamHistoryId: string,
+  ): Promise<PaginatedResponse<StreamSessionResponse>> => {
     const result = await apiClient.get<PaginatedResponse<StreamSessionResponse>>(
       `/stream-history/${streamHistoryId}/sessions`,
     );

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
-import { TOAST_LEVELS, type ToastLevel, useSettingsStore } from "@/stores/settings";
-import { useSettingsSync } from "@/composables/useSettingsSync";
 import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
+import { computed, watch } from "vue";
+
+import { useSettingsSync } from "@/composables/useSettingsSync";
+import { TOAST_LEVELS, type ToastLevel, useSettingsStore } from "@/stores/settings";
 
 const settingsStore = useSettingsStore();
 const { saveBehavior } = useSettingsSync();

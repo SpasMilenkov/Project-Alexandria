@@ -62,10 +62,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { useQuery } from "@pinia/colada";
+import { computed } from "vue";
+
 import { TAG_FACET, type TagDto } from "@/api/tag";
 import { systemTags as systemTagsQuery } from "@/queries/tags";
+
 import GenreFamily from "./GenreFamily.vue";
 import SystemTagChip from "./SystemTagChip.vue";
 
@@ -73,8 +75,7 @@ const { data: systemTagsData, isLoading } = useQuery(systemTagsQuery());
 
 const allSystemTags = computed(() => systemTagsData.value || []);
 
-const sortByName = (tags: TagDto[]) =>
-  tags.sort((a, b) => a.name.localeCompare(b.name));
+const sortByName = (tags: TagDto[]) => tags.sort((a, b) => a.name.localeCompare(b.name));
 
 const genreTags = computed(() =>
   sortByName(allSystemTags.value.filter((t) => t.facet === TAG_FACET.Genre)),

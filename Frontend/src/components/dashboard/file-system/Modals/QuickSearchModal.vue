@@ -98,19 +98,21 @@
 </template>
 
 <script setup lang="ts">
+import { useDebounceFn } from "@vueuse/core";
+import { reactive, ref } from "vue";
+
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
+
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import {
   directorySearchApiSchema,
   fileSearchApiSchema,
   unifiedSearchUiSchema,
 } from "@/schemas/search";
-import { reactive, ref } from "vue";
-import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
-import { useDebounceFn } from "@vueuse/core";
+import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
-import { useModalBackGuard } from "@/composables/useModalBackGuard";
 
 const directoryStore = useDirectoryStore();
 const fileStore = useFileStore();

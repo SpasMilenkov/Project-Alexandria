@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
 import type { DropdownMenuItem } from "@nuxt/ui";
+
+import { computed, ref, watch } from "vue";
+
 import type { NavItem } from "@/types/nav-item";
 
 interface EllipsisItem {

@@ -207,20 +207,18 @@ export const useSettingsStore = defineStore(
     const isSystemTagsVisible = ref(DEFAULT_UI_STATE.isSystemTagsVisible);
 
     // Getters
-    const getSettings = computed(
-      (): UserSettings => ({
-        accentColor: accentColor.value,
-        backgroundColor: backgroundColor.value,
-        backgroundImageKey: backgroundImageKey.value,
-        backgroundImageOpacity: backgroundImageOpacity.value,
-        backgroundImageUpdatedAt: backgroundImageUpdatedAt.value,
-        gridIconSize: gridIconSize.value,
-        listIconSize: listIconSize.value,
-        skipDeleteConfirmation: skipDeleteConfirmation.value,
-        toastLevel: toastLevel.value,
-        allowAutoTagRegression: allowAutoTagRegression.value,
-      }),
-    );
+    const getSettings = computed((): UserSettings => ({
+      accentColor: accentColor.value,
+      backgroundColor: backgroundColor.value,
+      backgroundImageKey: backgroundImageKey.value,
+      backgroundImageOpacity: backgroundImageOpacity.value,
+      backgroundImageUpdatedAt: backgroundImageUpdatedAt.value,
+      gridIconSize: gridIconSize.value,
+      listIconSize: listIconSize.value,
+      skipDeleteConfirmation: skipDeleteConfirmation.value,
+      toastLevel: toastLevel.value,
+      allowAutoTagRegression: allowAutoTagRegression.value,
+    }));
 
     const getCurrentBackgroundPreset = computed(
       () =>
