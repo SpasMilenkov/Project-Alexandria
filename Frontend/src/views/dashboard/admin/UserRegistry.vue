@@ -578,8 +578,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, shallowRef } from "vue";
 import { useQuery } from "@pinia/colada";
+import { useDebounceFn } from "@vueuse/core";
+import { computed, reactive, ref, shallowRef } from "vue";
+
+import type { UserDetailsDto } from "@/types/user";
+
+import { userApi } from "@/api/users";
+import CreateUserModal from "@/components/dashboard/users/CreateUserModal.vue";
+import DeleteUsersModal from "@/components/dashboard/users/DeleteUserModal.vue";
+import EditUserModal from "@/components/dashboard/users/EditUserModal.vue";
+import RestrictUserModal from "@/components/dashboard/users/RestrictUserModal.vue";
+import UsersTable from "@/components/dashboard/users/UsersTable.vue";
+import { SortBy } from "@/enums/SortBy";
+import { SortDirection } from "@/enums/SortDirection";
+import { UserRole } from "@/enums/UserRole";
+import { useCreateUser, useDeleteUsers, useRestrictUser, useUpdateUser } from "@/mutations/user";
+import { USER_QUERY_KEYS } from "@/queries/user";
 import {
   type CreateUserSchema,
   type RestrictUserSchema,
@@ -587,19 +602,6 @@ import {
   userQueryApiSchema,
   userQueryUiSchema,
 } from "@/schemas/user";
-import { UserRole } from "@/enums/UserRole";
-import { SortBy } from "@/enums/SortBy";
-import { SortDirection } from "@/enums/SortDirection";
-import { userApi } from "@/api/users";
-import type { UserDetailsDto } from "@/types/user";
-import { USER_QUERY_KEYS } from "@/queries/user";
-import { useDebounceFn } from "@vueuse/core";
-import UsersTable from "@/components/dashboard/users/UsersTable.vue";
-import EditUserModal from "@/components/dashboard/users/EditUserModal.vue";
-import RestrictUserModal from "@/components/dashboard/users/RestrictUserModal.vue";
-import DeleteUsersModal from "@/components/dashboard/users/DeleteUserModal.vue";
-import CreateUserModal from "@/components/dashboard/users/CreateUserModal.vue";
-import { useCreateUser, useDeleteUsers, useRestrictUser, useUpdateUser } from "@/mutations/user";
 
 const toast = useToast();
 

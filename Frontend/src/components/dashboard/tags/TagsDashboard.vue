@@ -24,7 +24,9 @@
             icon="i-lucide-library-big"
             :aria-pressed="settingsStore.isSystemTagsVisible"
             :aria-label="
-              settingsStore.isSystemTagsVisible ? 'Hide system vocabulary' : 'Show system vocabulary'
+              settingsStore.isSystemTagsVisible
+                ? 'Hide system vocabulary'
+                : 'Show system vocabulary'
             "
             @click="settingsStore.setSystemTagsVisible(!settingsStore.isSystemTagsVisible)"
           />
@@ -203,18 +205,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
 import { useQuery } from "@pinia/colada";
-import { searchTag } from "@/queries/tags";
-import { deleteTag } from "@/mutations/tags";
+import { computed, ref } from "vue";
+
+import type { TagDto } from "@/api/tag";
 import type { SearchTagsSchema } from "@/schemas/tag";
-import TagCard from "./TagCard.vue";
-import TagListItem from "./TagListItem.vue";
-import SystemTagSection from "./SystemTagSection.vue";
+
+import { deleteTag } from "@/mutations/tags";
+import { searchTag } from "@/queries/tags";
+import { useSettingsStore } from "@/stores/settings";
+
 import CreateTagModal from "./modals/CreateTagModal.vue";
 import UpdateTagModal from "./modals/UpdateTagModal.vue";
-import type { TagDto } from "@/api/tag";
-import { useSettingsStore } from "@/stores/settings";
+import SystemTagSection from "./SystemTagSection.vue";
+import TagCard from "./TagCard.vue";
+import TagListItem from "./TagListItem.vue";
 
 const settingsStore = useSettingsStore();
 const toast = useToast();

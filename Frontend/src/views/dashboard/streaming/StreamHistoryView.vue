@@ -28,7 +28,6 @@ const toggleRow = (id: string) => {
     expandedRows.value.add(id);
   }
 };
-
 </script>
 
 <template>
@@ -262,9 +261,7 @@ const toggleRow = (id: string) => {
               <div>
                 <dt class="text-xs text-gray-400 dark:text-white/30 mb-0.5">Last Completed</dt>
                 <dd class="text-sm font-medium text-gray-700 dark:text-white/70 m-0">
-                  <span v-if="entry.lastCompletedAt">{{
-                    formatDate(entry.lastCompletedAt)
-                  }}</span>
+                  <span v-if="entry.lastCompletedAt">{{ formatDate(entry.lastCompletedAt) }}</span>
                   <span v-else class="text-gray-300 dark:text-white/20">—</span>
                 </dd>
               </div>

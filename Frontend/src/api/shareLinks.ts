@@ -63,7 +63,6 @@ export const shareLinkApi = {
     fileVersionId?: string | null,
     maxAccessCount?: number | null,
   ): Promise<CreateShareLinkResponse> => {
-
     const response = await apiClient.post<CreateShareLinkResponse>(`/files/${fileId}/share`, {
       expiry: expiry ?? null,
       fileVersionId: fileVersionId ?? null,

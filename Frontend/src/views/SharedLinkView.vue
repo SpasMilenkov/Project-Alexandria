@@ -57,8 +57,7 @@ type DisplayError = "expired" | "revoked" | "limit-reached" | "not-found";
 const displayError = computed((): DisplayError | null => {
   if ((metadata.value as any)?.isRevoked) return "revoked";
   if (isExpired.value) return "expired";
-  if (!error.value)
-    return null;
+  if (!error.value) return null;
   if (errorStatus.value === 410) return "revoked";
   if (errorStatus.value === 429) return "limit-reached";
   return "not-found";
@@ -84,9 +83,7 @@ const handleDownload = () => {
 </script>
 
 <template>
-  <div
-    class="min-h-screen bg-neutral flex flex-col items-center justify-center gap-5 p-6 w-full"
-  >
+  <div class="min-h-screen bg-neutral flex flex-col items-center justify-center gap-5 p-6 w-full">
     <!-- Loading -->
     <UCard v-if="isLoading" class="w-full max-w-md bg-white dark:bg-neutral-800" :ui="cardUi">
       <div class="flex items-start gap-4">

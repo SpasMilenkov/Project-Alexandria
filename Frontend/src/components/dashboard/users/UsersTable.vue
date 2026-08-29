@@ -43,11 +43,14 @@
 </template>
 
 <script setup lang="ts">
-import { h, resolveComponent } from "vue";
 import type { TableColumn } from "@nuxt/ui";
-import { UserRole } from "@/enums/UserRole";
+
+import { h, resolveComponent } from "vue";
+
 import type { UserDetailsDto } from "@/types/user";
+
 import UserExpandedRow from "@/components/dashboard/users/UserExpandedRow.vue";
+import { UserRole } from "@/enums/UserRole";
 import { formatDate } from "@/utils/date-formatters";
 
 // Props & emits

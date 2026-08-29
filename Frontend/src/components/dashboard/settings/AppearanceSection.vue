@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { type ColorName, MAX_BACKGROUND_IMAGE_BYTES, useSettingsStore } from "@/stores/settings";
-import { useTheme } from "@/composables/useTheme";
-import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
-import { useSettingsSync } from "@/composables/useSettingsSync";
 import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
-import { logger } from "@/utils/logger";
-import type { FileDto } from "@/api/tag";
+import { computed, onMounted, ref, watch } from "vue";
+
 import type { FileResult } from "@/api/file";
+import type { FileDto } from "@/api/tag";
+
+import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
+import { useSettingsSync } from "@/composables/useSettingsSync";
+import { useTheme } from "@/composables/useTheme";
+import { type ColorName, MAX_BACKGROUND_IMAGE_BYTES, useSettingsStore } from "@/stores/settings";
+import { logger } from "@/utils/logger";
 
 const settingsStore = useSettingsStore();
 const { isDark } = useTheme();

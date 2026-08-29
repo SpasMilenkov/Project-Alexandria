@@ -523,8 +523,15 @@
 </template>
 
 <script setup lang="ts">
+import type { FormSubmitEvent } from "@nuxt/ui";
+
+import { useQuery } from "@pinia/colada";
+import { computed, reactive, ref, shallowRef } from "vue";
+
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
+
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { searchDirectory } from "@/queries/directories";
@@ -534,13 +541,9 @@ import {
   fileSearchApiSchema,
   unifiedSearchUiSchema,
 } from "@/schemas/search";
-import type { FormSubmitEvent } from "@nuxt/ui";
-import { useQuery } from "@pinia/colada";
-import { computed, reactive, ref, shallowRef } from "vue";
-import { useFileStore } from "@/stores/file";
 import { useDirectoryStore } from "@/stores/directory";
+import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
-import { useModalBackGuard } from "@/composables/useModalBackGuard";
 defineShortcuts({
   enter: () => handleSubmit(),
 });

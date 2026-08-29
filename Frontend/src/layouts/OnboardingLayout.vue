@@ -148,9 +148,10 @@
 </template>
 
 <script setup lang="ts">
+import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
-import { Icon } from "@iconify/vue";
+
 import OfflineBanner from "@/components/common/OfflineBanner.vue";
 
 const ONBOARDING_STEPS = [

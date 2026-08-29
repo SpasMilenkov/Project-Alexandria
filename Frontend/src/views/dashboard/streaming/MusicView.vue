@@ -2,6 +2,5 @@
 import MediaGrid from "@/components/streaming/MediaGrid.vue";
 </script>
 <template>
-    <MediaGrid  mediaType="audio" />
+  <MediaGrid mediaType="audio" />
 </template>
-    

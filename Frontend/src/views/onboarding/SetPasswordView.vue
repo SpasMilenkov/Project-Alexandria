@@ -234,14 +234,16 @@
 </template>
 
 <script setup lang="ts">
+import type { AxiosError } from "axios";
+
+import { Icon } from "@iconify/vue";
 import { computed, reactive, watch } from "vue";
 import { useRouter } from "vue-router";
-import { Icon } from "@iconify/vue";
-import type { AxiosError } from "axios";
-import { changeInitialPassword } from "@/mutations/user";
-import { changePasswordSchema } from "@/schemas/user";
+
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
+import { changeInitialPassword } from "@/mutations/user";
+import { changePasswordSchema } from "@/schemas/user";
 
 useOnboardingGuard(OnboardingStep.SetPassword);
 

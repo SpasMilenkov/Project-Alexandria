@@ -98,16 +98,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
-import { Icon } from "@iconify/vue";
-import { useSettingsStore } from "@/stores/settings";
-import { type CreateTagSchema, createTagSchema } from "@/schemas/tag";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import { createTag } from "@/mutations/tags";
-import TagCard from "../TagCard.vue";
+
+import { Icon } from "@iconify/vue";
+import { computed, reactive, ref } from "vue";
+
 import type { TagDto } from "@/api/tag";
+
+import { createTag } from "@/mutations/tags";
+import { type CreateTagSchema, createTagSchema } from "@/schemas/tag";
+import { useSettingsStore } from "@/stores/settings";
 import { getIconByValue, iconOptions } from "@/utils/icon.utils";
+
 import TagBadge from "../TagBadge.vue";
+import TagCard from "../TagCard.vue";
 
 const settingsStore = useSettingsStore();
 const { mutateAsync, state: mutationState, isLoading } = createTag();

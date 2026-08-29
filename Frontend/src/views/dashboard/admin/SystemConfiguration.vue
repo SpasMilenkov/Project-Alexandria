@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
-import { resetUploadPolicy, updateUploadPolicy } from "@/mutations/adminSettings";
 import { Icon } from "@iconify/vue";
-import { uploadPolicy } from "@/queries/adminSettings";
-import { useDebounceFn } from "@vueuse/core";
 import { useQuery } from "@pinia/colada";
+import { useDebounceFn } from "@vueuse/core";
+import { ref, watch } from "vue";
+
+import { resetUploadPolicy, updateUploadPolicy } from "@/mutations/adminSettings";
+import { uploadPolicy } from "@/queries/adminSettings";
 
 const { data: policy, isLoading, error } = useQuery(uploadPolicy());
 

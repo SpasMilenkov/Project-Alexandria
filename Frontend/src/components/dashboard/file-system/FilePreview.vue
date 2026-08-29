@@ -168,12 +168,14 @@
 </template>
 
 <script setup lang="ts">
-import { getPreview } from "@/queries/files";
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref, watch } from "vue";
-import AudioEqualizer from "../AudioEqualizer.vue";
+
 import { fileApi } from "@/api/file";
+import { getPreview } from "@/queries/files";
+
+import AudioEqualizer from "../AudioEqualizer.vue";
 
 const props = defineProps<{
   fileId: string;
@@ -278,7 +280,7 @@ interface ArchiveData {
 }
 
 const thumbnailSrc = computed(() =>
-  fileApi.getThumbnailUrlForVersion(props.fileId, props.currentVersionId)
+  fileApi.getThumbnailUrlForVersion(props.fileId, props.currentVersionId),
 );
 
 const archivePreviewItems = computed(() => {
@@ -427,5 +429,9 @@ const pdfPreviewMimes = [
   .volume-range {
     background: rgb(255 255 255 / 0.2);
   }
+}
+
+.debug-preview {
+  outline: 2px solid blue;
 }
 </style>

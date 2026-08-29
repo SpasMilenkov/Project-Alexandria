@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useDirectoryStore } from "@/stores/directory";
 
@@ -48,7 +48,12 @@ describe("useDirectoryStore", () => {
 
   it("searchDirectory sets isSearching during the call", async () => {
     mockSearchDirectory.mockImplementationOnce(
-      () => new Promise((resolve) => setTimeout(() => { resolve({ items: [] }); }, 50)),
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => {
+            resolve({ items: [] });
+          }, 50),
+        ),
     );
 
     const store = useDirectoryStore();

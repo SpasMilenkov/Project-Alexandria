@@ -5,14 +5,13 @@ import { PiniaColadaRetry } from "@pinia/colada-plugin-retry";
 import { createPinia } from "pinia";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { createApp } from "vue";
+import VueVirtualScroller from "vue-virtual-scroller";
 
 import App from "./App.vue";
 import { registerIcons } from "./icons";
 import router from "./router";
 import { logger } from "./utils/logger";
-import VueVirtualScroller from "vue-virtual-scroller";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
-
 
 registerIcons();
 

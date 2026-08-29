@@ -92,15 +92,12 @@ const genreLowConfidence = computed(
 );
 
 const flattenMoodPayload = (payload: MoodPayload): Record<string, number> =>
-  Object.entries(payload).reduce<Record<string, number>>(
-    (flat, [axis, poles]) => {
-      for (const [pole, value] of Object.entries(poles)) {
-        flat[`${axis}:${pole}`] = value;
-      }
-      return flat;
-    },
-    {},
-  );
+  Object.entries(payload).reduce<Record<string, number>>((flat, [axis, poles]) => {
+    for (const [pole, value] of Object.entries(poles)) {
+      flat[`${axis}:${pole}`] = value;
+    }
+    return flat;
+  }, {});
 
 const moodScores = computed(() => {
   const payload = moodEnrichment.value?.payload as MoodPayload | undefined;

@@ -102,16 +102,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
-import { Icon } from "@iconify/vue";
-import { useSettingsStore } from "@/stores/settings";
-import { type UpdateTagSchema, updateTagSchema } from "@/schemas/tag";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import { updateTag } from "@/mutations/tags";
-import TagCard from "../TagCard.vue";
-import { getIconByValue, iconOptions } from "@/utils/icon.utils";
+
+import { Icon } from "@iconify/vue";
+import { computed, reactive, ref } from "vue";
+
 import type { TagDto } from "@/api/tag";
+
+import { updateTag } from "@/mutations/tags";
+import { type UpdateTagSchema, updateTagSchema } from "@/schemas/tag";
+import { useSettingsStore } from "@/stores/settings";
+import { getIconByValue, iconOptions } from "@/utils/icon.utils";
+
 import TagBadge from "../TagBadge.vue";
+import TagCard from "../TagCard.vue";
 
 const props = defineProps<{ tag: TagDto }>();
 const emit = defineEmits<{ close: [boolean] }>();

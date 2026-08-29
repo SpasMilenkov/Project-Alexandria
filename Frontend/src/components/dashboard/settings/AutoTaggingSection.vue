@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, watch } from "vue";
-import { useSettingsSync } from "@/composables/useSettingsSync";
-import { useSettingsStore } from "@/stores/settings";
 import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
+import { computed, watch } from "vue";
+
+import { useSettingsSync } from "@/composables/useSettingsSync";
+import { useSettingsStore } from "@/stores/settings";
 
 const settingsStore = useSettingsStore();
 const { saveBehavior } = useSettingsSync();
@@ -67,9 +68,9 @@ const handleResetAutoTagging = () => {
             <div class="flex flex-col gap-1">
               <span class="text-sm font-medium">Allow confidence regression</span>
               <span class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                When off (default), re-running auto-tagging never lowers the confidence of a
-                tag already on a file — the higher verdict is kept. When on, the latest verdict
-                is always stored.
+                When off (default), re-running auto-tagging never lowers the confidence of a tag
+                already on a file — the higher verdict is kept. When on, the latest verdict is
+                always stored.
               </span>
             </div>
             <USwitch v-model="allowAutoTagRegression" size="lg" />

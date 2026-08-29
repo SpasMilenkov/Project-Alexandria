@@ -34,12 +34,15 @@
 </template>
 
 <script setup lang="ts">
-import { type Ref, ref } from "vue";
-import type { DirectorySummaryDto, SearchDirectoryRequest } from "@/api/directory";
-import { useDirectoryStore } from "@/stores/directory";
 import { useDebounceFn } from "@vueuse/core";
-import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
+import { type Ref, ref } from "vue";
+
+import type { DirectorySummaryDto, SearchDirectoryRequest } from "@/api/directory";
+
+import { useDirectoryStore } from "@/stores/directory";
 import { logger } from "@/utils/logger";
+
+import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 
 const overlay = useOverlay();
 const selectMenu = ref(null);
