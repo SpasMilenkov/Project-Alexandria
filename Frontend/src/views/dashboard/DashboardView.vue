@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
-import { useMediaQuery } from "@vueuse/core";
-import { useTabStore } from "@/stores/tab";
-import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
 import { Icon } from "@iconify/vue";
-import { logger } from "@/utils/logger";
+import { useMediaQuery } from "@vueuse/core";
+import { computed, onMounted, ref } from "vue";
+
 import type { ExplorerTab } from "@/types/explorer-tab";
+
+import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
+import { useTabStore } from "@/stores/tab";
+import { logger } from "@/utils/logger";
 
 defineShortcuts({
   meta_shift_n: () => tabStore.createTab(null),

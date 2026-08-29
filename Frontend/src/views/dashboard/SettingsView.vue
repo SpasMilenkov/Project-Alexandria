@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useSettingsStore } from "@/stores/settings";
 import AppearanceSection from "@/components/dashboard/settings/AppearanceSection.vue";
 import AutoTaggingSection from "@/components/dashboard/settings/AutoTaggingSection.vue";
 import BehaviorSection from "@/components/dashboard/settings/BehaviorSection.vue";
+import { useSettingsStore } from "@/stores/settings";
 
 const settingsStore = useSettingsStore();
 const handleResetAll = () => {

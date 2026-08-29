@@ -72,7 +72,7 @@ export const subFiles = defineQueryOptions(
 export const getPreview = defineQueryOptions((id: string) => ({
   key: FILES_QUERY_KEYS.preview(id),
   query: () => fileApi.getPreview(id),
-  refetchOnMount: true,
+  refetchOnMount: false,
   staleTime: 30_000,
 }));
 
@@ -104,6 +104,7 @@ export const getVersionsForFile = defineQueryOptions(
   (query: { id: string; page: number; pageSize: number }) => ({
     key: FILES_QUERY_KEYS.versionsForFile(query),
     query: () => fileApi.getVersionsForFile(query),
+    staleTime: 30_000,
   }),
 );
 

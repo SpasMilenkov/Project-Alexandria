@@ -101,7 +101,7 @@ describe("useFileExplorer", () => {
   //oxlint-disable-next-line init-declarations
   let mockFilesData: Ref<{ items: FileResult[]; hasNext: boolean } | null>;
 
-beforeEach(() => {
+  beforeEach(() => {
     mockRouterPush.mockClear();
     //oxlint-disable-next-line require-typed-ref
     mockDirData = ref(null);
@@ -347,79 +347,79 @@ beforeEach(() => {
     it("replaces directoriesList when page is 1", async () => {
       const { directoriesList, dirPagination } = withSetup(() => useFileExplorer());
 
-    dirPagination.value.paginationParams.page = 1;
-    mockDirData.value = {
-      hasNext: false,
-      items: [makeDir("d1"), makeDir("d2")],
-    };
-    await nextTick();
+      dirPagination.value.paginationParams.page = 1;
+      mockDirData.value = {
+        hasNext: false,
+        items: [makeDir("d1"), makeDir("d2")],
+      };
+      await nextTick();
 
-    expect(directoriesList.value).toHaveLength(2);
+      expect(directoriesList.value).toHaveLength(2);
       expect(directoriesList.value[0].id).toBe("d1");
     });
 
     it("appends to directoriesList when page is > 1", async () => {
       const { directoriesList, dirPagination } = withSetup(() => useFileExplorer());
 
-    dirPagination.value.paginationParams.page = 1;
-    mockDirData.value = { items: [makeDir("d1")], hasNext: true };
-    await nextTick();
+      dirPagination.value.paginationParams.page = 1;
+      mockDirData.value = { items: [makeDir("d1")], hasNext: true };
+      await nextTick();
 
-    // Simulate user hitting "load more" — page increments before data arrives
-    dirPagination.value.paginationParams.page = 2;
-    mockDirData.value = { items: [makeDir("d2")], hasNext: false };
-    await nextTick();
+      // Simulate user hitting "load more" — page increments before data arrives
+      dirPagination.value.paginationParams.page = 2;
+      mockDirData.value = { items: [makeDir("d2")], hasNext: false };
+      await nextTick();
 
-    expect(directoriesList.value).toHaveLength(2);
+      expect(directoriesList.value).toHaveLength(2);
       expect(directoriesList.value.map((d) => d.id)).toEqual(["d1", "d2"]);
     });
 
     it("replaces (does not append) when navigating to a new folder resets page to 1", async () => {
       const { directoriesList, dirPagination } = withSetup(() => useFileExplorer());
 
-    dirPagination.value.paginationParams.page = 1;
-    mockDirData.value = {
-      hasNext: false,
-      items: [makeDir("old1"), makeDir("old2")],
-    };
-    await nextTick();
+      dirPagination.value.paginationParams.page = 1;
+      mockDirData.value = {
+        hasNext: false,
+        items: [makeDir("old1"), makeDir("old2")],
+      };
+      await nextTick();
 
-    // Navigation resets the page back to 1
-    dirPagination.value.paginationParams.page = 1;
-    mockDirData.value = { hasNext: false, items: [makeDir("new1")] };
-    await nextTick();
+      // Navigation resets the page back to 1
+      dirPagination.value.paginationParams.page = 1;
+      mockDirData.value = { hasNext: false, items: [makeDir("new1")] };
+      await nextTick();
 
-    expect(directoriesList.value).toHaveLength(1);
+      expect(directoriesList.value).toHaveLength(1);
       expect(directoriesList.value[0].id).toBe("new1");
-  });
+    });
 
-  it("updates the hasNext flag", async () => {
-    const { dirPagination } = withSetup(() => useFileExplorer());
+    it("updates the hasNext flag", async () => {
+      const { dirPagination } = withSetup(() => useFileExplorer());
 
-    dirPagination.value.paginationParams.page = 1;
-    mockDirData.value = { hasNext: true, items: [makeDir("d1")] };
-    await nextTick();
-    expect(dirPagination.value.hasNext).toBe(true);
+      dirPagination.value.paginationParams.page = 1;
+      mockDirData.value = { hasNext: true, items: [makeDir("d1")] };
+      await nextTick();
+      expect(dirPagination.value.hasNext).toBe(true);
 
-    mockDirData.value = { hasNext: false, items: [makeDir("d2")] };
-    await nextTick();
-    expect(dirPagination.value.hasNext).toBe(false);
-  });
+      mockDirData.value = { hasNext: false, items: [makeDir("d2")] };
+      await nextTick();
+      expect(dirPagination.value.hasNext).toBe(false);
+    });
 
     it("does nothing when data is null", async () => {
-    const { directoriesList } = withSetup(() => useFileExplorer());
-    mockDirData.value = null;
-    await nextTick();
-    expect(directoriesList.value).toHaveLength(0);
-  });
+      const { directoriesList } = withSetup(() => useFileExplorer());
+      mockDirData.value = null;
+      await nextTick();
+      expect(directoriesList.value).toHaveLength(0);
+    });
 
     it("does nothing when items is missing from the payload", async () => {
-    const { directoriesList } = withSetup(() => useFileExplorer());
-    // @ts-expect-error – intentionally malformed to test the guard
-    mockDirData.value = { hasNext: false };
-    await nextTick();
-    expect(directoriesList.value).toHaveLength(0);
-  });
+      const { directoriesList } = withSetup(() => useFileExplorer());
+      // @ts-expect-error – intentionally malformed to test the guard
+      mockDirData.value = { hasNext: false };
+      await nextTick();
+      expect(directoriesList.value).toHaveLength(0);
+    });
   });
 
   // files watcher
@@ -428,70 +428,70 @@ beforeEach(() => {
     it("replaces filesList when page is 1", async () => {
       const { filesList, filePagination } = withSetup(() => useFileExplorer());
 
-    filePagination.value.paginationParams.page = 1;
-    mockFilesData.value = {
-      hasNext: false,
-      items: [makeFile("f1"), makeFile("f2")],
-    };
-    await nextTick();
+      filePagination.value.paginationParams.page = 1;
+      mockFilesData.value = {
+        hasNext: false,
+        items: [makeFile("f1"), makeFile("f2")],
+      };
+      await nextTick();
 
-    expect(filesList.value).toHaveLength(2);
+      expect(filesList.value).toHaveLength(2);
       expect(filesList.value[0].fileId).toBe("f1");
     });
 
     it("appends to filesList when page is > 1", async () => {
       const { filesList, filePagination } = withSetup(() => useFileExplorer());
 
-    filePagination.value.paginationParams.page = 1;
-    mockFilesData.value = { hasNext: true, items: [makeFile("f1")] };
-    await nextTick();
+      filePagination.value.paginationParams.page = 1;
+      mockFilesData.value = { hasNext: true, items: [makeFile("f1")] };
+      await nextTick();
 
-    filePagination.value.paginationParams.page = 2;
-    mockFilesData.value = { hasNext: false, items: [makeFile("f2")] };
-    await nextTick();
+      filePagination.value.paginationParams.page = 2;
+      mockFilesData.value = { hasNext: false, items: [makeFile("f2")] };
+      await nextTick();
 
-    expect(filesList.value).toHaveLength(2);
+      expect(filesList.value).toHaveLength(2);
       expect(filesList.value.map((f) => f.fileId)).toEqual(["f1", "f2"]);
-  });
+    });
 
-  it("updates the hasNext flag for files", async () => {
-    const { filePagination } = withSetup(() => useFileExplorer());
+    it("updates the hasNext flag for files", async () => {
+      const { filePagination } = withSetup(() => useFileExplorer());
 
-    filePagination.value.paginationParams.page = 1;
-    mockFilesData.value = { hasNext: true, items: [] };
-    await nextTick();
-    expect(filePagination.value.hasNext).toBe(true);
+      filePagination.value.paginationParams.page = 1;
+      mockFilesData.value = { hasNext: true, items: [] };
+      await nextTick();
+      expect(filePagination.value.hasNext).toBe(true);
 
-    mockFilesData.value = { hasNext: false, items: [] };
-    await nextTick();
-    expect(filePagination.value.hasNext).toBe(false);
-  });
+      mockFilesData.value = { hasNext: false, items: [] };
+      await nextTick();
+      expect(filePagination.value.hasNext).toBe(false);
+    });
 
     it("does nothing when data is null", async () => {
-    const { filesList } = withSetup(() => useFileExplorer());
-    mockFilesData.value = null;
-    await nextTick();
-    expect(filesList.value).toHaveLength(0);
-  });
+      const { filesList } = withSetup(() => useFileExplorer());
+      mockFilesData.value = null;
+      await nextTick();
+      expect(filesList.value).toHaveLength(0);
+    });
   });
 
   // loadMoreDirs
 
-describe("loadMoreDirs", () => {
-  it("increments the directory page when hasNext is true", () => {
-    const { loadMoreDirs, dirPagination } = withSetup(() => useFileExplorer());
-    dirPagination.value.hasNext = true;
-    const before = dirPagination.value.paginationParams.page;
+  describe("loadMoreDirs", () => {
+    it("increments the directory page when hasNext is true", () => {
+      const { loadMoreDirs, dirPagination } = withSetup(() => useFileExplorer());
+      dirPagination.value.hasNext = true;
+      const before = dirPagination.value.paginationParams.page;
 
       loadMoreDirs();
 
       expect(dirPagination.value.paginationParams.page).toBe(before + 1);
-  });
+    });
 
-  it("does not increment the directory page when hasNext is false", () => {
-    const { loadMoreDirs, dirPagination } = withSetup(() => useFileExplorer());
-    dirPagination.value.hasNext = false;
-    const before = dirPagination.value.paginationParams.page;
+    it("does not increment the directory page when hasNext is false", () => {
+      const { loadMoreDirs, dirPagination } = withSetup(() => useFileExplorer());
+      dirPagination.value.hasNext = false;
+      const before = dirPagination.value.paginationParams.page;
 
       loadMoreDirs();
 
@@ -501,21 +501,21 @@ describe("loadMoreDirs", () => {
 
   // loadMoreFiles
 
-describe("loadMoreFiles", () => {
-  it("increments the file page when hasNext is true", () => {
-    const { loadMoreFiles, filePagination } = withSetup(() => useFileExplorer());
-    filePagination.value.hasNext = true;
-    const before = filePagination.value.paginationParams.page;
+  describe("loadMoreFiles", () => {
+    it("increments the file page when hasNext is true", () => {
+      const { loadMoreFiles, filePagination } = withSetup(() => useFileExplorer());
+      filePagination.value.hasNext = true;
+      const before = filePagination.value.paginationParams.page;
 
       loadMoreFiles();
 
       expect(filePagination.value.paginationParams.page).toBe(before + 1);
-  });
+    });
 
-  it("does not increment the file page when hasNext is false", () => {
-    const { loadMoreFiles, filePagination } = withSetup(() => useFileExplorer());
-    filePagination.value.hasNext = false;
-    const before = filePagination.value.paginationParams.page;
+    it("does not increment the file page when hasNext is false", () => {
+      const { loadMoreFiles, filePagination } = withSetup(() => useFileExplorer());
+      filePagination.value.hasNext = false;
+      const before = filePagination.value.paginationParams.page;
 
       loadMoreFiles();
 

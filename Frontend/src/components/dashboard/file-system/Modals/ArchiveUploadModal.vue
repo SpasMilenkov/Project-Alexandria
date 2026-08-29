@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
 import { BlobReader, BlobWriter, ZipReader, configure } from "@zip.js/zip.js";
+import { computed, onMounted, ref } from "vue";
+
 import { directoryApi } from "@/api/directory";
-import { useDirectoryStore } from "@/stores/directory";
+import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
+import { useAppToast } from "@/composables/useAppToast";
 import {
   type DirectoryTreeItem,
   type FileEntry,
   useDirectoryUpload,
 } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
-import { useAppToast } from "@/composables/useAppToast";
-import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
+import { useDirectoryStore } from "@/stores/directory";
 
 // configure zip.js to use its own built-in workers for decompression
 configure({ useWebWorkers: true });

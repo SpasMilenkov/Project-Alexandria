@@ -26,7 +26,8 @@ const durations = [0.8, 0.7, 0.9, 0.75, 0.85];
 }
 
 @keyframes bar-animation {
-  0%, 100% {
+  0%,
+  100% {
     transform: scaleY(0.167);
   }
   50% {

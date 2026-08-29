@@ -162,13 +162,14 @@
 </template>
 
 <script setup lang="ts">
+import { Icon } from "@iconify/vue";
+import { useDark } from "@vueuse/core";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
-import { useDark } from "@vueuse/core";
-import { Icon } from "@iconify/vue";
-import { finishTour } from "@/mutations/user";
+
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
+import { finishTour } from "@/mutations/user";
 
 useOnboardingGuard(OnboardingStep.Tour);
 

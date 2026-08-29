@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPinia, setActivePinia } from "pinia";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useFileStore } from "@/stores/file";
 
@@ -35,7 +35,14 @@ describe("useFileStore", () => {
   it("hasCurrentFile is true when currentFile is set", () => {
     const store = useFileStore();
     expect(store.hasCurrentFile).toBe(false);
-    store.currentFile = { id: "f1", name: "test.txt", hasPreview: false, previewGeneratedAt: null, updatedAt: null, updatedBy: null };
+    store.currentFile = {
+      id: "f1",
+      name: "test.txt",
+      hasPreview: false,
+      previewGeneratedAt: null,
+      updatedAt: null,
+      updatedBy: null,
+    };
     expect(store.hasCurrentFile).toBe(true);
   });
 
@@ -55,7 +62,11 @@ describe("useFileStore", () => {
       mockDownloadFile.mockResolvedValueOnce(mockUrl);
 
       const store = useFileStore();
-      const result = await store.downloadFile({ id: "f1", fileName: "doc.txt", forceDownload: true });
+      const result = await store.downloadFile({
+        id: "f1",
+        fileName: "doc.txt",
+        forceDownload: true,
+      });
 
       expect(result.success).toBe(true);
       expect(mockDownloadFile).toHaveBeenCalledWith("f1");
@@ -63,7 +74,12 @@ describe("useFileStore", () => {
 
     it("sets isDownloading during the call", async () => {
       mockDownloadFile.mockImplementationOnce(
-        () => new Promise((resolve) => setTimeout(() => { resolve({ presignedUrl: `https://example.com/file` }); }, 50)),
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => {
+              resolve({ presignedUrl: `https://example.com/file` });
+            }, 50),
+          ),
       );
 
       const store = useFileStore();

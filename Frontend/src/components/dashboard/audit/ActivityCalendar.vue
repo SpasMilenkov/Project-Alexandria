@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-import { useMediaQuery } from "@vueuse/core";
 import { useQuery } from "@pinia/colada";
+import { useMediaQuery } from "@vueuse/core";
+import { computed, ref, watch } from "vue";
+
 import { OperationType } from "@/api/activity";
-import { activitySummary } from "@/queries/activities";
 import { type CalendarDay, useActivityCalendar } from "@/composables/useActivityCalendar";
+import { activitySummary } from "@/queries/activities";
 
 // Responsive breakpoint
 const isMobile = useMediaQuery("(max-width: 767px)");

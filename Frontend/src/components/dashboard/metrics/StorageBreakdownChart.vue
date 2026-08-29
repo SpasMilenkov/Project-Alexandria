@@ -30,7 +30,7 @@
             cy="48"
             r="36"
             fill="none"
-            stroke="currentColor"       
+            stroke="currentColor"
             stroke-width="10"
             stroke-dasharray="6 5"
             stroke-linecap="round"
@@ -119,7 +119,6 @@
 </template>
 
 <script setup lang="ts">
-import { Doughnut } from "vue-chartjs";
 import { useColorMode } from "@vueuse/core";
 import {
   ArcElement,
@@ -131,6 +130,7 @@ import {
   Tooltip,
 } from "chart.js";
 import { computed } from "vue";
+import { Doughnut } from "vue-chartjs";
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement);
 
@@ -196,47 +196,43 @@ const totalFormatted = computed(() => {
   return `${size.toFixed(1)} ${units[i]}`;
 });
 
-const chartData = computed(
-  (): ChartData<"doughnut"> => ({
-    datasets: [
-      {
-        backgroundColor: palette.map((c) => c),
-        borderColor: isDark.value ? "#1a1a1a" : "#f8f7f4",
-        borderWidth: 2,
-        data: sortedItems.value.map((item) => item.bytes),
-        hoverBorderColor: isDark.value ? "#2a2a2a" : "#ffffff",
-        hoverOffset: 4,
-      },
-    ],
-    labels: sortedItems.value.map((item) => item.label),
-  }),
-);
-
-const chartOptions = computed(
-  (): ChartOptions<"doughnut"> => ({
-    cutout: "72%",
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: isDark.value ? "#1e1e1e" : "#ffffff",
-        bodyColor: isDark.value ? "#999" : "#666",
-        borderColor: isDark.value ? "#333" : "#e5e5e5",
-        borderWidth: 1,
-        callbacks: {
-          label: (context) => {
-            const item = sortedItems.value[context.dataIndex];
-            const pct = total.value > 0 ? Math.round((item.bytes / total.value) * 100) : 0;
-            return `  ${item.size}  ·  ${pct}%`;
-          },
-          title: (items) => `  ${items[0].label}`,
-        },
-        cornerRadius: 6,
-        padding: 10,
-        titleColor: isDark.value ? "#e0ddd8" : "#1a1a1a",
-      },
+const chartData = computed((): ChartData<"doughnut"> => ({
+  datasets: [
+    {
+      backgroundColor: palette.map((c) => c),
+      borderColor: isDark.value ? "#1a1a1a" : "#f8f7f4",
+      borderWidth: 2,
+      data: sortedItems.value.map((item) => item.bytes),
+      hoverBorderColor: isDark.value ? "#2a2a2a" : "#ffffff",
+      hoverOffset: 4,
     },
-    responsive: true,
-  }),
-);
+  ],
+  labels: sortedItems.value.map((item) => item.label),
+}));
+
+const chartOptions = computed((): ChartOptions<"doughnut"> => ({
+  cutout: "72%",
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: isDark.value ? "#1e1e1e" : "#ffffff",
+      bodyColor: isDark.value ? "#999" : "#666",
+      borderColor: isDark.value ? "#333" : "#e5e5e5",
+      borderWidth: 1,
+      callbacks: {
+        label: (context) => {
+          const item = sortedItems.value[context.dataIndex];
+          const pct = total.value > 0 ? Math.round((item.bytes / total.value) * 100) : 0;
+          return `  ${item.size}  ·  ${pct}%`;
+        },
+        title: (items) => `  ${items[0].label}`,
+      },
+      cornerRadius: 6,
+      padding: 10,
+      titleColor: isDark.value ? "#e0ddd8" : "#1a1a1a",
+    },
+  },
+  responsive: true,
+}));
 </script>

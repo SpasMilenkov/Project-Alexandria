@@ -127,10 +127,11 @@
 </template>
 
 <script setup lang="ts">
-import { storageInfo } from "@/queries/status";
 import { useQuery } from "@pinia/colada";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+
+import { storageInfo } from "@/queries/status";
 
 const router = useRouter();
 const { defaultState } = defineProps<{ defaultState?: boolean }>();

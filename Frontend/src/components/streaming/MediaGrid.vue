@@ -190,7 +190,7 @@
 
       <!-- Fetching more indicator -->
       <div v-if="isFetchingMore" class="flex justify-center py-6">
-          <BlockSpinner />
+        <BlockSpinner />
       </div>
     </section>
 
@@ -205,11 +205,7 @@
     >
       <template #body>
         <div class="p-1">
-          <AudioAnalysisFilePanel
-            v-if="infoFile"
-            :file-id="infoFile.fileId"
-            :enabled="infoOpen"
-          />
+          <AudioAnalysisFilePanel v-if="infoFile" :file-id="infoFile.fileId" :enabled="infoOpen" />
         </div>
       </template>
     </UDrawer>
@@ -219,6 +215,7 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
+import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { computed, ref, watch, watchEffect } from "vue";
 
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
@@ -226,11 +223,10 @@ import { LIBRARY_PAGE_SIZE } from "@/composables/useStreamingMediaContext";
 import { getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 
-import LyricsPanel from "./LyricsPanel.vue";
-import MediaCard from "./MediaCard.vue";
 import BlockSpinner from "../common/BlockSpinner.vue";
 import AudioAnalysisFilePanel from "../dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";
-import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
+import LyricsPanel from "./LyricsPanel.vue";
+import MediaCard from "./MediaCard.vue";
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");

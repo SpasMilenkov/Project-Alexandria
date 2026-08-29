@@ -161,13 +161,14 @@
 
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
-import { myStorage, storageInfo } from "@/queries/status";
-import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
+import { computed } from "vue";
+
 import StorageBreakdownDiagram from "@/components/dashboard/metrics/StorageBreakdownChart.vue";
+import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
+import { myStorage, storageInfo } from "@/queries/status";
+import { getFileIcon } from "@/utils/icon.utils";
 import { getFileTypeReadable, groupMimeSizeRecord } from "@/utils/mimetype.utils";
 import { formatBytes } from "@/utils/size.utils";
-import { computed } from "vue";
-import { getFileIcon } from "@/utils/icon.utils";
 
 const { refresh: refreshStorageData } = useQuery(storageInfo);
 const {

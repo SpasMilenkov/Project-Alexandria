@@ -254,18 +254,20 @@
 </template>
 
 <script setup lang="ts">
+import { getLocalTimeZone, today } from "@internationalized/date";
 import { computed, onMounted, ref, watch } from "vue";
-import { useFileStore } from "@/stores/file";
-import { useDirectoryStore } from "@/stores/directory";
-import DirectoryItem from "@/components/dashboard/file-system/DirectoryItem.vue";
-import FileItem from "@/components/dashboard/file-system/FileItem.vue";
+
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
-import { getLocalTimeZone, today } from "@internationalized/date";
+
+import DirectoryItem from "@/components/dashboard/file-system/DirectoryItem.vue";
+import FileItem from "@/components/dashboard/file-system/FileItem.vue";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
-import { restoreFiles } from "@/mutations/files";
 import { restoreDirectories } from "@/mutations/directories";
+import { restoreFiles } from "@/mutations/files";
+import { useDirectoryStore } from "@/stores/directory";
+import { useFileStore } from "@/stores/file";
 import { useSettingsStore } from "@/stores/settings";
 import { logger } from "@/utils/logger";
 

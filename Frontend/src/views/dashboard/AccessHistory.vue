@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { useActivityStore } from "@/stores/activity";
-import { SortDirection } from "@/enums/SortDirection";
-import { EntityType, LogSource, OperationType } from "@/api/activity";
-import { useAuthStore } from "@/stores/auth";
 import { useQuery } from "@pinia/colada";
-import { personalPaginated } from "@/queries/activities";
-import { useAuditMessage } from "@/composables/useAuditMessage";
+import { computed, ref } from "vue";
+
+import { EntityType, LogSource, OperationType } from "@/api/activity";
 import ActivityCalendar from "@/components/dashboard/audit/ActivityCalendar.vue";
+import { useAuditMessage } from "@/composables/useAuditMessage";
+import { SortDirection } from "@/enums/SortDirection";
+import { personalPaginated } from "@/queries/activities";
+import { useActivityStore } from "@/stores/activity";
+import { useAuthStore } from "@/stores/auth";
 
 const activityStore = useActivityStore();
 const authStore = useAuthStore();

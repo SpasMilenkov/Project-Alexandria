@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { reactive } from "vue";
-import { type CreateDirectorySchema, createDirectorySchema } from "@/schemas/directory";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import { createDirectory } from "@/mutations/directories";
+
+import { reactive } from "vue";
+
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { createDirectory } from "@/mutations/directories";
+import { type CreateDirectorySchema, createDirectorySchema } from "@/schemas/directory";
 
 const props = defineProps<{
   parentId: string | null;

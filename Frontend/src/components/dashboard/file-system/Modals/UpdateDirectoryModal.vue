@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { reactive } from "vue";
-import { type UpdateDirectorySchema, updateDirectorySchema } from "@/schemas/directory";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import { updateDirectory } from "@/mutations/directories";
-import { logger } from "@/utils/logger";
+
+import { reactive } from "vue";
+
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { updateDirectory } from "@/mutations/directories";
+import { type UpdateDirectorySchema, updateDirectorySchema } from "@/schemas/directory";
+import { logger } from "@/utils/logger";
 
 const props = defineProps<{
   directoryId: string;

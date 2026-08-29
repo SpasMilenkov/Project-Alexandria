@@ -104,7 +104,7 @@ const serwist = new Serwist({
     },
     {
       matcher: ({ url }) => url.pathname.startsWith("/stream"),
-      handler: new NetworkOnly,
+      handler: new NetworkOnly(),
     },
     {
       handler: new NetworkFirst(),

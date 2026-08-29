@@ -1,8 +1,8 @@
 import { type QueryCache, defineMutation, useMutation, useQueryCache } from "@pinia/colada";
 
 import { fileApi } from "@/api/file";
-import { FILES_QUERY_KEYS } from "@/queries/files";
 import { INTEGRATIONS_QUERY_KEYS } from "@/queries/audioAnalysis";
+import { FILES_QUERY_KEYS } from "@/queries/files";
 import { TAGS_QUERY_KEYS } from "@/queries/tags";
 import { type UpdateFileMetadataSchema } from "@/schemas/file";
 import { logger } from "@/utils/logger";

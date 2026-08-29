@@ -1,6 +1,5 @@
 import type { LyricsProvider } from "@/enums/lyrics-provider";
 import type { LyricsStatus } from "@/enums/lyrics-status";
-
 import type { UploadLyricsSchema } from "@/schemas/lyrics";
 
 import { apiClient } from "./client";
@@ -45,5 +44,5 @@ export const lyricsApi = {
 
   requeueLyrics: async (jobId: string): Promise<void> => {
     await apiClient.patch(`/streaming/lyrics/refetch/${jobId}`);
-  }
+  },
 };

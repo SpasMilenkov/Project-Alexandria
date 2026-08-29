@@ -44,10 +44,12 @@
 </template>
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
+
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
-import { useAuthStore } from "@/stores/auth";
+
 import OfflineBanner from "@/components/common/OfflineBanner.vue";
+import { useAuthStore } from "@/stores/auth";
 
 const currentYear = ref(new Date().getFullYear());
 const authStore = useAuthStore();

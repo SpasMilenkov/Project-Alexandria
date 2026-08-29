@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { AuthFormField, FormSubmitEvent } from "@nuxt/ui";
+
+import { useRouter } from "vue-router";
+
+import { OnboardingStep } from "@/enums";
 import { type LoginSchema, loginSchema } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth";
-import { useRouter } from "vue-router";
-import { OnboardingStep } from "@/enums";
 
 const toast = useToast();
 const authStore = useAuthStore();
