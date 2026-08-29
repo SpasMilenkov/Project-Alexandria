@@ -401,6 +401,7 @@
                   :view-mode="viewMode"
                   :is-selected="isFileSelected(file.fileId)"
                   :selected-count="selectedCount"
+                  @open-details="activeDetailsFile = $event"
                   @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
                   @download="handleDownload('file', file.fileId)"
                   @click="handleItemClick($event, file.fileId, 'file')"
@@ -412,11 +413,6 @@
                   :class="{
                     'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
                   }"
-                  :ref="
-                    (el: any) => {
-                      if (el) fileItemRefs[file.fileId] = el;
-                    }
-                  "
                 />
               </div>
               <div
@@ -505,80 +501,89 @@
                 :tags="tagsData?.items"
                 :is-selected="isFileSelected(file.fileId)"
                 :selected-count="selectedCount"
-                  @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
-                  @download="handleDownload('file', file.fileId)"
-                  @click="handleItemClick($event, file.fileId, 'file')"
-                  @copy="handleCopy"
-                  @delete="handleDelete"
-                  @move="handleCut"
-                  @share="handleShare(file.fileId, file.fileName)"
-                  @contextmenu="handleItemClick($event, file.fileId, 'file')"
-                  :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
-                  :ref="
-                    (el: any) => {
-                      if (el) fileItemRefs[file.fileId] = el;
-                    }
-                  "
-                />
-              </div>
-              <div
-                v-if="filesData?.hasNext"
-                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-              >
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  size="sm"
-                  label="Show more files"
-                  class="w-full"
-                  @click="loadMoreFiles"
-                />
-              </div>
+                @open-details="activeDetailsFile = $event"
+                @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
+                @download="handleDownload('file', file.fileId)"
+                @click="handleItemClick($event, file.fileId, 'file')"
+                @copy="handleCopy"
+                @delete="handleDelete"
+                @move="handleCut"
+                @share="handleShare(file.fileId, file.fileName)"
+                @contextmenu="handleItemClick($event, file.fileId, 'file')"
+                :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
+              />
+            </div>
+            <div
+              v-if="filesData?.hasNext"
+              class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
+            >
+              <UButton
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                label="Show more files"
+                class="w-full"
+                @click="loadMoreFiles"
+              />
             </div>
           </div>
         </div>
+      </div>
     </UContextMenu>
+
+    <!-- shared file details drawer — single instance for all FileItem triggers -->
+    <FileDetailsDrawer
+      v-model:file="activeDetailsFile"
+      @file-trashed="handleFileTrashed"
+      @file-restored="refreshDir"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import FileItem from "./FileItem.vue";
-import DirectoryItem from "./DirectoryItem.vue";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { Icon } from "@iconify/vue";
-import { SortBy } from "@/enums/SortBy";
-import { useFileExplorer } from "@/composables/useFileExplorer";
-import { useTabStore } from "@/stores/tab";
 import type { BreadcrumbItem, DropdownMenuItem } from "@nuxt/ui";
-import { SortDirection } from "@/enums/SortDirection";
-import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
-import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
-import FileUploadModal from "./Modals/FileUploadModal.vue";
-import DirectoryUploadModal from "./Modals/DirectoryUploadModal.vue";
-import ArchiveUploadModal from "./Modals/ArchiveUploadModal.vue";
-import { useFileStore } from "@/stores/file";
-import { useDirectoryStore } from "@/stores/directory";
-import { useSettingsStore } from "@/stores/settings";
-import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
-import { copyDirectory, deleteDirectory, moveDirectories } from "@/mutations/directories";
-import type { SearchTagsSchema } from "@/schemas/tag";
-import { searchTag } from "@/queries/tags";
+
+import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
-import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
-import QuickSearchModal from "./Modals/QuickSearchModal.vue";
-import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
-import BlocksSpinner from "@/components/common/BlockSpinner.vue";
-import { logger } from "@/utils/logger";
-import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
-import { useFileDownload } from "@/composables/useFileDownload";
-import { useAppToast } from "@/composables/useAppToast";
-import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
-import UpdateFileModal from "./Modals/UpdateFileModal.vue";
-import FileTransferModal from "./Modals/Filetransfermodal.vue";
-import ShareLinkModal from "./Modals/ShareLinkModal.vue";
-import { getFileIcon } from "@/utils/icon.utils";
-import { type DropContents, useDropZone } from "@/composables/useDropZone";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+
+import type { SearchTagsSchema } from "@/schemas/tag";
 import type { NavItem } from "@/types/nav-item";
+
+import { type FileResult } from "@/api/file";
+import BlocksSpinner from "@/components/common/BlockSpinner.vue";
+import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
+import { useAppToast } from "@/composables/useAppToast";
+import { type DropContents, useDropZone } from "@/composables/useDropZone";
+import { useFileDownload } from "@/composables/useFileDownload";
+import { useFileExplorer } from "@/composables/useFileExplorer";
+import { SortBy } from "@/enums/SortBy";
+import { SortDirection } from "@/enums/SortDirection";
+import { copyDirectory, deleteDirectory, moveDirectories } from "@/mutations/directories";
+import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
+import { searchTag } from "@/queries/tags";
+import { useDirectoryStore } from "@/stores/directory";
+import { useFileStore } from "@/stores/file";
+import { useSettingsStore } from "@/stores/settings";
+import { useTabStore } from "@/stores/tab";
+import { getFileIcon } from "@/utils/icon.utils";
+import { logger } from "@/utils/logger";
+
+import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
+import DirectoryItem from "./DirectoryItem.vue";
+import FileDetailsDrawer from "./FileDetailsDrawer.vue";
+import FileItem from "./FileItem.vue";
+import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
+import ArchiveUploadModal from "./Modals/ArchiveUploadModal.vue";
+import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
+import DirectoryUploadModal from "./Modals/DirectoryUploadModal.vue";
+import FileTransferModal from "./Modals/Filetransfermodal.vue";
+import FileUploadModal from "./Modals/FileUploadModal.vue";
+import QuickSearchModal from "./Modals/QuickSearchModal.vue";
+import ShareLinkModal from "./Modals/ShareLinkModal.vue";
+import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
+import UpdateFileModal from "./Modals/UpdateFileModal.vue";
+import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -1024,7 +1029,10 @@ const handleCopy = () => {
 
 const handleDelete = async () => {
   if (selectedFiles.value.size > 0) {
-    await deleteFilesMutate({ ids: [...selectedFiles.value], directoryId: currentDirId.value ?? undefined });
+    await deleteFilesMutate({
+      ids: [...selectedFiles.value],
+      directoryId: currentDirId.value ?? undefined,
+    });
   }
 
   if (selectedDirectories.value.size > 0) {
@@ -1267,7 +1275,14 @@ const handleDownloadSelected = async () => {
   await downloadBulk([...selectedFiles.value], [...selectedDirectories.value]);
 };
 
-const fileItemRefs = ref<Record<string, { openDetails: () => void }>>({});
+// shared file details drawer state — one drawer instance for every FileItem
+const activeDetailsFile = ref<FileResult | null>(null);
+
+const handleFileTrashed = (fileId: string) => {
+  selectedFiles.value.delete(fileId);
+  refreshDir();
+};
+
 const dirItemRefs = ref<Record<string, { openDetails: () => void }>>({});
 const handleOpenDetailsSelected = () => {
   const fileCount = selectedFiles.value.size;
@@ -1277,7 +1292,8 @@ const handleOpenDetailsSelected = () => {
 
   if (fileCount === 1) {
     const [fileId] = selectedFiles.value;
-    fileItemRefs.value[fileId]?.openDetails();
+    const file = filesList.value.find((f) => f.fileId === fileId);
+    if (file) activeDetailsFile.value = file;
     return;
   }
 
