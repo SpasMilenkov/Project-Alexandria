@@ -6,6 +6,7 @@ public interface IUnitOfWork : IDisposable
 {
     IFileRepository Files { get; }
     IPreviewRepository Previews { get; }
+    IPreviewJobRepository PreviewJobs { get; }
     IMediaMetadataRepository MediaMetadata { get; }
     IRefreshTokenRepository RefreshTokens { get; }
     ITagRepository Tags { get; }
@@ -29,6 +30,7 @@ public interface IUnitOfWork : IDisposable
     IEssentiaBatchFileRepository EssentiaBatchFiles { get; }
     IFileEnrichmentRepository FileEnrichments { get; }
     IOperationalEventRepository OperationalEvents { get; }
+    IJobRepository Jobs { get; }
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
     public Task CommitAsync(CancellationToken cancellationToken = default);

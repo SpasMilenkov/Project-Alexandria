@@ -36,6 +36,7 @@ public static class ServiceExtensions
         services.AddScoped<IArchivePreviewService, ArchivePreviewService>();
         services.AddScoped<ITextPreviewService, TextPreviewService>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
+        services.AddScoped<IPreviewJobRepository, PreviewJobRepository>();
         services.AddScoped<IPreviewService, PreviewService>();
         services.AddScoped<IFileTagService, FileTagService>();
         services.AddScoped<IDirectoryRepository, DirectoryRepository>();
@@ -79,7 +80,7 @@ public static class ServiceExtensions
         services.AddScoped<ITranspilationStatsService, TranspilationStatsService>();
         services.AddScoped<IPreviewStatsService, PreviewStatsService>();
         services.AddScoped<ILyricsStatsService, LyricsStatsService>();
-
+        services.AddScoped<IJobRepository, JobRepository>();
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>
             sp.GetRequiredService<PromotionQueueService>());
