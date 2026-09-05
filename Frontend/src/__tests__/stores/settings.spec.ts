@@ -16,6 +16,9 @@ describe("useSettingsStore", () => {
     expect(store.backgroundImage).toBeNull();
     expect(store.backgroundImageKey).toBeNull();
     expect(store.backgroundImageOpacity).toBe(0.35);
+    expect(store.frostEnabled).toBe(true);
+    expect(store.frostStrength).toBe(8);
+    expect(store.frostDisabledOnMobile).toBe(false);
     expect(store.gridIconSize).toBe(48);
     expect(store.listIconSize).toBe(20);
     expect(store.skipDeleteConfirmation).toBe(false);
@@ -108,6 +111,47 @@ describe("useSettingsStore", () => {
       const store = useSettingsStore();
       store.setBackgroundImageOpacity(0.4);
       expect(store.backgroundImageOpacity).toBe(0.4);
+    });
+  });
+
+  describe("frosted glass", () => {
+    it("setFrostEnabled toggles the value", () => {
+      const store = useSettingsStore();
+      store.setFrostEnabled(false);
+      expect(store.frostEnabled).toBe(false);
+      store.setFrostEnabled(true);
+      expect(store.frostEnabled).toBe(true);
+    });
+
+    it("setFrostStrength clamps to min 0", () => {
+      const store = useSettingsStore();
+      store.setFrostStrength(-5);
+      expect(store.frostStrength).toBe(0);
+    });
+
+    it("setFrostStrength clamps to max 24", () => {
+      const store = useSettingsStore();
+      store.setFrostStrength(100);
+      expect(store.frostStrength).toBe(24);
+    });
+
+    it("setFrostStrength rounds to whole pixels", () => {
+      const store = useSettingsStore();
+      store.setFrostStrength(12.7);
+      expect(store.frostStrength).toBe(13);
+    });
+
+    it("setFrostDisabledOnMobile toggles the value", () => {
+      const store = useSettingsStore();
+      store.setFrostDisabledOnMobile(true);
+      expect(store.frostDisabledOnMobile).toBe(true);
+    });
+
+    it("updateSettings applies frost fields", () => {
+      const store = useSettingsStore();
+      store.updateSettings({ frostEnabled: false, frostStrength: 16 });
+      expect(store.frostEnabled).toBe(false);
+      expect(store.frostStrength).toBe(16);
     });
   });
 
@@ -264,11 +308,17 @@ describe("useSettingsStore", () => {
       store.setBackgroundColor("midnight");
       store.setGridIconSize(64);
       store.setSkipDeleteConfirmation(true);
+      store.setFrostEnabled(false);
+      store.setFrostStrength(20);
+      store.setFrostDisabledOnMobile(true);
       store.resetSettings();
       expect(store.accentColor).toBe("amber");
       expect(store.backgroundColor).toBe("parchment");
       expect(store.gridIconSize).toBe(48);
       expect(store.skipDeleteConfirmation).toBe(false);
+      expect(store.frostEnabled).toBe(true);
+      expect(store.frostStrength).toBe(8);
+      expect(store.frostDisabledOnMobile).toBe(false);
     });
   });
 
@@ -278,9 +328,12 @@ describe("useSettingsStore", () => {
       store.setAccentColor("blue");
       store.setGridIconSize(64);
       store.setSkipDeleteConfirmation(true);
+      store.setFrostEnabled(false);
       store.resetAppearanceSettings();
       expect(store.accentColor).toBe("amber");
       expect(store.gridIconSize).toBe(48);
+      expect(store.frostEnabled).toBe(true);
+      expect(store.frostStrength).toBe(8);
       expect(store.skipDeleteConfirmation).toBe(true);
     });
   });
