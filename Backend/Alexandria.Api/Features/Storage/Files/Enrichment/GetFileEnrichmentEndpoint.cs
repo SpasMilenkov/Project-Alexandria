@@ -73,8 +73,8 @@ internal sealed class GetFileEnrichmentEndpoint(IUnitOfWork unitOfWork)
                 {
                     BatchId = f.BatchId,
                     BatchStatus = batchIdToStatus.GetValueOrDefault(f.BatchId, "Unknown"),
-                    FileStatus = f.Status.ToString(),
-                    ErrorDetail = f.ErrorDetail,
+                    FileStatus = f.Job.Status.ToString(),
+                    ErrorDetail = f.Job.ErrorDetail,
                     CreatedAt = f.CreatedAt,
                 })
                 .ToList(),

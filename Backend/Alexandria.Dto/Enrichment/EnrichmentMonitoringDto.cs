@@ -1,7 +1,8 @@
 namespace Alexandria.Dto.Enrichment;
 
 /// <summary>
-/// Live count of queued (dispatched) batch-files, split by backbone and file status.
+/// Live count of queued (dispatched) batch-files, split by backbone and linked
+/// job status (<c>JobStatus</c> names such as Queued/Ready/Failed).
 /// </summary>
 public sealed class EnrichmentQueueDepthDto
 {
@@ -11,8 +12,8 @@ public sealed class EnrichmentQueueDepthDto
 }
 
 /// <summary>
-/// A batch-file that has been pending longer than the configured threshold inside a
-/// non-terminal (dispatched) batch.
+/// A batch-file whose linked job is still queued longer than the configured
+/// threshold inside a non-terminal (dispatched) batch.
 /// </summary>
 public sealed class EnrichmentStuckDto
 {
@@ -38,9 +39,11 @@ public sealed class EnrichmentBatchDto
 }
 
 /// <summary>
-/// Time-series point for terminal batch-file outcomes, bucketed per backbone via Postgres
-/// <c>date_trunc</c>. Failures count <c>Failed</c> + <c>MissingOutput</c>; the rate is among
-/// completed attempts only.
+/// Time-series point for terminal linked-job outcomes, bucketed per backbone via
+/// Postgres <c>date_trunc</c>. Failures count <c>Failed</c> jobs (the old
+/// <c>MissingOutput</c> outcome collapses into <c>Failed</c> at the Job layer);
+/// <c>Succeeded</c> counts <c>Ready</c> jobs. The rate is among completed
+/// attempts only.
 /// </summary>
 public sealed record EnrichmentFailureRatePointDto(
     DateTime Bucket,
@@ -53,8 +56,8 @@ public sealed record EnrichmentFailureRatePointDto(
 }
 
 /// <summary>
-/// Per-backbone duration stats over terminal batch-files, where duration =
-/// <c>CompletedAt - CreatedAt</c>. Median is computed in SQL via
+/// Per-backbone duration stats over terminal linked jobs, where duration =
+/// <c>Job.CompletedAt - Job.CreatedAt</c>. Median is computed in SQL via
 /// <c>PERCENTILE_CONT(0.5)</c> — there is no LINQ median and client-side eval would pull
 /// every row into memory.
 /// </summary>

@@ -6,6 +6,7 @@ namespace Alexandria.Dto.Events.Operational;
 [JsonDerivedType(typeof(HealthcheckFailureMetadata), "healthcheck-failure")]
 [JsonDerivedType(typeof(ErrorRateThresholdMetadata), "error-rate-threshold")]
 [JsonDerivedType(typeof(UserReportedMetadata), "user-reported")]
+[JsonDerivedType(typeof(WorkerCycleFailureMetadata), "worker-cycle-failure")]
 public abstract class OperationalEventMetadata
 {
     public required string ServiceInstance { get; init; }
@@ -28,4 +29,9 @@ public sealed class UserReportedMetadata : OperationalEventMetadata
 {
     public required string Description { get; init; }
     public string? PageContext { get; init; }
+}
+
+public sealed class WorkerCycleFailureMetadata : OperationalEventMetadata
+{
+    public required string ExceptionMessage { get; init; }
 }

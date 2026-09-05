@@ -10,7 +10,7 @@ public static class StreamingRepresentationExtensions
         => new()
         {
             Id = representation.Id,
-            JobId = representation.JobId,
+            JobId = representation.TranspilationId,
             Codec = representation.Codec,
             Width = representation.Width,
             Height = representation.Height,
@@ -23,7 +23,7 @@ public static class StreamingRepresentationExtensions
         => new()
         {
             Id = Guid.NewGuid(),
-            JobId = request.JobId,
+            TranspilationId = request.TranspilationId,
             Codec = request.Codec,
             Width = request.Width,
             Height = request.Height,

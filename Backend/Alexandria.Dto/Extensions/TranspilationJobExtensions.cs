@@ -5,24 +5,29 @@ namespace Alexandria.Dto.Extensions;
 
 public static class TranspilationJobExtensions
 {
-    public static TranspilationJobDto ToDto(this TranspilationJob job)
-        => new()
+    public static TranspilationJobDto ToDto(this TranspilationJob transpilation)
+    {
+        if (transpilation.Job is null)
+            throw new InvalidOperationException("Transpilation can't be mapped when Job is null");
+
+        return new TranspilationJobDto
         {
-            Id = job.Id,
-            VersionId = job.VersionId,
-            Status = job.Status,
-            IsVideo = job.IsVideo,
-            ProgressPercent = job.ProgressPercent,
-            RetryCount = job.RetryCount,
-            ErrorDetail = job.ErrorDetail,
-            StartedAt = job.StartedAt,
-            CompletedAt = job.CompletedAt,
-            CreatedAt = job.CreatedAt,
-            AudioRungs = job.AudioRungs,
-            VideoRungs = job.VideoRungs,
-            Representations = job.Representations
+            Id = transpilation.Id,
+            VersionId = transpilation.VersionId,
+            Status = transpilation.Job.Status,
+            IsVideo = transpilation.IsVideo,
+            ProgressPercent = transpilation.Job.ProgressPercent,
+            RetryCount = transpilation.Job.RetryCount,
+            ErrorDetail = transpilation.Job.ErrorDetail,
+            StartedAt = transpilation.Job.StartedAt,
+            CompletedAt = transpilation.Job.CompletedAt,
+            CreatedAt = transpilation.CreatedAt,
+            AudioRungs = transpilation.AudioRungs,
+            VideoRungs = transpilation.VideoRungs,
+            Representations = transpilation.Representations
                 .Select(r => r.ToResponse())
                 .ToList()
                 .AsReadOnly()
         };
+    }
 }

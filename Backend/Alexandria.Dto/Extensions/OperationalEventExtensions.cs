@@ -25,6 +25,7 @@ public static class OperationalEventExtensions
                 => typeof(HealthcheckFailureMetadata),
             OperationalEventCode.ErrorRateThresholdExceeded => typeof(ErrorRateThresholdMetadata),
             OperationalEventCode.UserReportedProblem => typeof(UserReportedMetadata),
+            OperationalEventCode.WorkerCycleFailure => typeof(WorkerCycleFailureMetadata),
             _ => throw new ArgumentOutOfRangeException(nameof(code))
         };
 

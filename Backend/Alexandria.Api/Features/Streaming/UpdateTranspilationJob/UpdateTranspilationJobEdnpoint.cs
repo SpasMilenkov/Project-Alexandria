@@ -8,7 +8,7 @@ namespace Alexandria.Api.Features.Streaming.UpdateTranspilationJob;
 internal sealed class UpdateTranspilationJobRequest
 {
     public Guid JobId { get; set; }
-    public TranspilationStatus Status { get; set; }
+    public JobStatus Status { get; set; }
     public AudioRung[]? AudioRungs { get; set; }
     public VideoRung[]? VideoRungs { get; set; }
 }

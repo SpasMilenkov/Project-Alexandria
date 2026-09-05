@@ -10,7 +10,7 @@ namespace Alexandria.Api.Features.Streaming.GetTranspilationJobs;
 
 internal sealed class GetTranspilationJobsRequest
 {
-    public TranspilationStatus? Status { get; init; }
+    public JobStatus? Status { get; init; }
     public bool? IsVideo { get; init; }
     public Guid? VersionId { get; init; }
     public DateTime? CreatedAfter { get; init; }
