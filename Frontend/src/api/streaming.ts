@@ -132,7 +132,7 @@ export interface MediaFileDto {
   currentVersionId: string;
 
   // Media metadata
-  duration: number;
+  duration: number | null;
   artist: string | null;
   album: string | null;
   title: string | null;

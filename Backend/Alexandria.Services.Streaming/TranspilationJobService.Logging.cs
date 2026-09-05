@@ -13,7 +13,7 @@ public partial class TranspilationJobService
     [LoggerMessage(5001, LogLevel.Information,
         "Transpilation job {JobId} status updated to {Status}")]
     private static partial void LogJobStatusUpdated(
-        ILogger logger, Guid jobId, TranspilationStatus status);
+        ILogger logger, Guid jobId, JobStatus status);
 
     [LoggerMessage(5002, LogLevel.Debug,
         "Stalled job query returned {Count} job(s) exceeding threshold {Threshold}")]

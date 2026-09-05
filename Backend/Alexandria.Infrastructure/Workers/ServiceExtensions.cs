@@ -22,6 +22,7 @@ public static class ServiceExtensions
         services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();
         services.AddScoped<IPreviewRepository, PreviewRepository>();
+        services.AddScoped<IPreviewJobRepository, PreviewJobRepository>();
         services.AddScoped<IFileRepository, FileRepository>();
         services.AddScoped<IFileVersionRepository, FileVersionRepository>();
         services.AddScoped<IContentObjectRepository, ContentObjectRepository>();
@@ -48,7 +49,7 @@ public static class ServiceExtensions
         services.AddScoped<IFileTagService, FileTagService>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IOperationalEventRepository, OperationalEventRepository>();
-
+        services.AddScoped<IJobRepository, JobRepository>();
 
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>

@@ -8,6 +8,7 @@ namespace Alexandria.Data;
 public sealed class UnitOfWork(
     IFileRepository files,
     IPreviewRepository previews,
+    IPreviewJobRepository previewJobs,
     IMediaMetadataRepository mediaData,
     IRefreshTokenRepository refreshTokens,
     ITagRepository tags,
@@ -31,10 +32,12 @@ public sealed class UnitOfWork(
     IEssentiaBatchFileRepository essentiaBatchFiles,
     IFileEnrichmentRepository fileEnrichments,
     IOperationalEventRepository operationalEvents,
+    IJobRepository jobs,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
     public IPreviewRepository Previews { get; } = previews;
+    public IPreviewJobRepository PreviewJobs { get; } = previewJobs;
     public IMediaMetadataRepository MediaMetadata { get; } = mediaData;
     public IRefreshTokenRepository RefreshTokens { get; } = refreshTokens;
     public ITagRepository Tags { get; } = tags;
@@ -58,7 +61,7 @@ public sealed class UnitOfWork(
     public IEssentiaBatchFileRepository EssentiaBatchFiles { get; } = essentiaBatchFiles;
     public IFileEnrichmentRepository FileEnrichments { get; } = fileEnrichments;
     public IOperationalEventRepository OperationalEvents { get; } = operationalEvents;
-
+    public IJobRepository Jobs { get; } = jobs;
     private IDbContextTransaction? _transaction;
 
     private bool _disposed;

@@ -78,7 +78,7 @@ public class StreamingRepresentationRepository(AlexandriaDbContext context)
         CancellationToken ct = default)
         => await _representations
             .AsNoTracking()
-            .Where(r => r.JobId == jobId)
+            .Where(r => r.TranspilationId == jobId)
             .ToListAsync(ct);
 
     public async Task<PaginatedResult<StreamingRepresentation>> FindRepresentationsAsync(
@@ -88,7 +88,7 @@ public class StreamingRepresentationRepository(AlexandriaDbContext context)
         var q = _representations.AsQueryable();
 
         if (query.JobId.HasValue)
-            q = q.Where(r => r.JobId == query.JobId.Value);
+            q = q.Where(r => r.TranspilationId == query.JobId.Value);
 
         if (query.Codec.HasValue)
             q = q.Where(r => r.Codec == query.Codec.Value);
@@ -171,8 +171,8 @@ public class StreamingRepresentationRepository(AlexandriaDbContext context)
                 .SetProperty(r => r.Status, RepresentationStatus.Failed)
                 .SetProperty(r => r.CompletedAt, DateTime.UtcNow), ct);
 
-    public async Task DeleteByJobIdAsync(Guid jobId, CancellationToken ct = default)
+    public async Task DeleteByTranspilation(Guid transpilationId, CancellationToken ct = default)
     {
-        await _representations.Where(r => r.JobId == jobId).ExecuteDeleteAsync(ct);
+        await _representations.Where(r => r.TranspilationId == transpilationId).ExecuteDeleteAsync(ct);
     }
 }

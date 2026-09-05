@@ -1,8 +1,10 @@
 using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Alexandria.Services.Preview;
@@ -42,6 +44,75 @@ public class PreviewService(
             memoryCache.Remove(key);
     }
 
+    // Creates (or requeues) the durable preview job and publishes its id.
+    // Returns the job id, or null when equivalent work is already in flight.
+    // Terminal jobs are requeued in place (same id, clean queued lifecycle)
+    // instead of spawning a second job for the same version/kind/owner.
+    private async Task<Guid?> DispatchPreviewJobAsync(
+        Guid versionId, Guid userId, PreviewKind kind, string routingKey, JobType jobType,
+        CancellationToken ct)
+    {
+        var existing = await unitOfWork.PreviewJobs.FirstOrDefaultAsync(
+            j => j.VersionId == versionId && j.Kind == kind && j.UserId == userId && j.DeletedAt == null, ct);
+
+        if (existing is not null)
+        {
+            if (existing.Job.Status is JobStatus.Queued or JobStatus.Processing)
+                return null;
+
+            await unitOfWork.Jobs.UpdateStatusAsync(existing.JobId, JobStatus.Queued, progress: 0, ct: ct);
+            await unitOfWork.Jobs.ClearErrorAsync(existing.JobId, ct);
+            await PublishOrFailAsync(existing.JobId, routingKey, ct);
+            return existing.JobId;
+        }
+
+        var job = new Job
+        {
+            Id = Guid.NewGuid(),
+            Status = JobStatus.Queued,
+            Type = jobType,
+            UserId = userId
+        };
+        await unitOfWork.Jobs.AddAsync(job, ct);
+
+        try
+        {
+            await unitOfWork.PreviewJobs.AddAsync(new PreviewJob
+            {
+                Id = Guid.NewGuid(),
+                JobId = job.Id,
+                VersionId = versionId,
+                Kind = kind,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow
+            }, ct);
+        }
+        catch (DbUpdateException)
+        {
+            // Lost a dispatch race on the (version, kind, owner) unique index:
+            // drop the orphan job and let the winner's delivery do the work.
+            unitOfWork.Jobs.Remove(job);
+            await unitOfWork.SaveChangesAsync(ct);
+            return null;
+        }
+
+        await PublishOrFailAsync(job.Id, routingKey, ct);
+        return job.Id;
+    }
+
+    private async Task PublishOrFailAsync(Guid jobId, string routingKey, CancellationToken ct)
+    {
+        try
+        {
+            await publisherService.PublishAsync(Encoding.UTF8.GetBytes(jobId.ToString()), routingKey);
+        }
+        catch (Exception)
+        {
+            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: "publish failed", ct: ct);
+            throw;
+        }
+    }
+
     /// <inheritdoc/>
     public async Task<PreviewResultDto?> GetPreviewUrlAsync(Guid versionId, Guid ownerId,
         CancellationToken ct = default)
@@ -72,8 +143,8 @@ public class PreviewService(
         {
             case FileCategory.Image:
                 if (TryStartJob(versionId))
-                    await publisherService.PublishAsync(
-                        Encoding.UTF8.GetBytes(versionId.ToString()), $"image.{fileData.MimeType.Split('/')[1]}");
+                    await DispatchPreviewJobAsync(versionId, ownerId, PreviewKind.Preview,
+                        $"image.{fileData.MimeType.Split('/')[1]}", JobType.MediaPreview, ct);
                 return null;
 
             case FileCategory.Document:
@@ -81,8 +152,8 @@ public class PreviewService(
             case FileCategory.Presentation:
             case FileCategory.Pdf:
                 if (TryStartJob(versionId))
-                    await publisherService.PublishAsync(
-                        Encoding.UTF8.GetBytes(versionId.ToString()), $"document.{fileData.MimeType.Split('/')[1]}");
+                    await DispatchPreviewJobAsync(versionId, ownerId, PreviewKind.Preview,
+                        $"document.{fileData.MimeType.Split('/')[1]}", JobType.DocumentPreview, ct);
                 return null;
 
             case FileCategory.Archive:
@@ -105,8 +176,8 @@ public class PreviewService(
             case FileCategory.Audio:
             case FileCategory.Video:
                 if (TryStartJob(versionId))
-                    await publisherService.PublishAsync(
-                        Encoding.UTF8.GetBytes(versionId.ToString()), $"media.{fileData.MimeType.Split('/')[1]}");
+                    await DispatchPreviewJobAsync(versionId, ownerId, PreviewKind.Preview,
+                        $"media.{fileData.MimeType.Split('/')[1]}", JobType.MediaPreview, ct);
                 return null;
 
             default:
@@ -142,8 +213,8 @@ public class PreviewService(
         {
             case FileCategory.Image:
                 if (TryStartJob(versionId))
-                    await publisherService.PublishAsync(Encoding.UTF8.GetBytes(versionId.ToString()),
-                        $"image.{subType}");
+                    await DispatchPreviewJobAsync(versionId, userId, kind,
+                        $"image.{subType}", JobType.MediaPreview, ct);
                 break;
 
             case FileCategory.Document:
@@ -151,15 +222,15 @@ public class PreviewService(
             case FileCategory.Presentation:
             case FileCategory.Pdf:
                 if (TryStartJob(versionId))
-                    await publisherService.PublishAsync(Encoding.UTF8.GetBytes(versionId.ToString()),
-                        $"document.{subType}");
+                    await DispatchPreviewJobAsync(versionId, userId, kind,
+                        $"document.{subType}", JobType.DocumentPreview, ct);
                 break;
 
             case FileCategory.Audio:
             case FileCategory.Video:
                 if (TryStartJob(versionId))
-                    await publisherService.PublishAsync(Encoding.UTF8.GetBytes(versionId.ToString()),
-                        $"media.{subType}");
+                    await DispatchPreviewJobAsync(versionId, userId, kind,
+                        $"media.{subType}", JobType.MediaPreview, ct);
                 break;
 
             case FileCategory.Archive:

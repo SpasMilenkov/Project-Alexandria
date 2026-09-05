@@ -9,7 +9,6 @@ public class EssentiaBatch : IBase
     public EssentiaBackbone Backbone { get; set; }
 
     public EssentiaBatchStatus Status { get; set; } = EssentiaBatchStatus.Dispatched;
-
     public DateTime? DispatchedAt { get; set; }
 
     public DateTime? CompletedAt { get; set; }

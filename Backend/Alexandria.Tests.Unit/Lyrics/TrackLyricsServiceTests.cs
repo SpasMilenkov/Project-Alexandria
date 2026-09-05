@@ -17,6 +17,7 @@ public class TrackLyricsServiceTests
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _jobId = Guid.NewGuid();
     private readonly ITrackLyricsRepository _lyricsRepo = Substitute.For<ITrackLyricsRepository>();
+    private readonly IJobRepository _jobsRepo = Substitute.For<IJobRepository>();
     private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
 
@@ -25,6 +26,9 @@ public class TrackLyricsServiceTests
     public TrackLyricsServiceTests()
     {
         _uow.Lyrics.Returns(_lyricsRepo);
+        _uow.Jobs.Returns(_jobsRepo);
+        _jobsRepo.AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>())
+            .Returns(ci => ci.Arg<Job>());
         _sut = new TrackLyricsService(_uow, _publisher);
     }
 
@@ -61,11 +65,18 @@ public class TrackLyricsServiceTests
             .Returns((TrackLyrics?)null);
         _lyricsRepo.AddAsync(Arg.Any<TrackLyrics>(), Arg.Any<CancellationToken>())
             .Returns(callInfo => callInfo.Arg<TrackLyrics>());
+        Job? created = null;
+        _jobsRepo.AddAsync(Arg.Do<Job>(j => created = j), Arg.Any<CancellationToken>())
+            .Returns(ci => ci.Arg<Job>());
 
         var result = await _sut.GetLyricsForMediaAsync(_jobId, _userId);
 
         result.Status.Should().Be(LyricsStatus.PendingFetch);
-        await _publisher.ReceivedWithAnyArgs().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        created.Should().NotBeNull();
+        created!.Type.Should().Be(JobType.LyricsFetch);
+        await _publisher.Received(1).PublishAsync(
+            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == created.Id.ToString()),
+            "lyrics.job");
     }
 
     // ---- QueueLyricsRefetchAsync ----
@@ -74,13 +85,15 @@ public class TrackLyricsServiceTests
     public async Task queue_refetch_existing_non_manual_resets()
     {
         var lyricsId = Guid.NewGuid();
+        var linkedJobId = Guid.NewGuid();
         var record = new TrackLyrics
         {
             Id = lyricsId,
             TranspilationJobId = _jobId,
             SourceProvider = LyricsProvider.LrclibPublic,
             Status = LyricsStatus.Fetched,
-            FetchedAt = DateTime.UtcNow
+            FetchedAt = DateTime.UtcNow,
+            JobId = linkedJobId
         };
         _lyricsRepo.FirstOrDefaultAsync(
                 Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
@@ -92,8 +105,12 @@ public class TrackLyricsServiceTests
         record.FetchedAt.Should().BeNull();
         _lyricsRepo.Received(1).Update(record);
         await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _jobsRepo.Received(1).UpdateStatusAsync(
+            linkedJobId, JobStatus.Queued, Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await _jobsRepo.Received(1).ClearErrorAsync(linkedJobId, Arg.Any<CancellationToken>());
         await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == lyricsId.ToString()),
+            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == linkedJobId.ToString()),
             "lyrics.job");
     }
 
@@ -130,15 +147,24 @@ public class TrackLyricsServiceTests
                 entity.Id = newId;
                 return entity;
             });
+        Job? created = null;
+        _jobsRepo.AddAsync(Arg.Do<Job>(j => created = j), Arg.Any<CancellationToken>())
+            .Returns(ci => ci.Arg<Job>());
 
         await _sut.QueueLyricsRefetchAsync(_jobId, _userId);
 
         await _lyricsRepo.Received(1).AddAsync(
             Arg.Is<TrackLyrics>(l => l.TranspilationJobId == _jobId && l.Status == LyricsStatus.PendingFetch),
             Arg.Any<CancellationToken>());
+        created.Should().NotBeNull();
+        created!.Type.Should().Be(JobType.LyricsFetch);
+        created.UserId.Should().Be(_userId);
+        await _lyricsRepo.Received(1).AddAsync(
+            Arg.Is<TrackLyrics>(l => l.JobId == created.Id),
+            Arg.Any<CancellationToken>());
         await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == newId.ToString()),
+            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == created.Id.ToString()),
             "lyrics.job");
     }
 
@@ -183,6 +209,14 @@ public class TrackLyricsServiceTests
 
         await _sut.UploadLyricsAsync(_jobId, _userId, "plain", "synced");
 
+        await _jobsRepo.Received(1).AddAsync(
+            Arg.Is<Job>(j =>
+                j.Status == JobStatus.Ready
+                && j.ProgressPercent == 100
+                && j.Type == JobType.LyricsFetch
+                && j.UserId == _userId
+                && j.CompletedAt != null),
+            Arg.Any<CancellationToken>());
         await _lyricsRepo.Received(1).AddAsync(
             Arg.Is<TrackLyrics>(l =>
                 l.PlainLyrics == "plain" &&
@@ -196,12 +230,14 @@ public class TrackLyricsServiceTests
     [Fact]
     public async Task upload_overwrites_existing()
     {
+        var linkedJobId = Guid.NewGuid();
         var record = new TrackLyrics
         {
             Id = Guid.NewGuid(),
             TranspilationJob = new TranspilationJob { UserId = _userId },
             SourceProvider = LyricsProvider.LrclibPublic,
-            Status = LyricsStatus.Fetched
+            Status = LyricsStatus.Fetched,
+            JobId = linkedJobId
         };
         _lyricsRepo.FirstOrDefaultAsync(
                 Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
@@ -217,6 +253,10 @@ public class TrackLyricsServiceTests
         record.ProviderTrackId.Should().BeNull();
         record.ConfidenceScore.Should().BeNull();
         _lyricsRepo.Received(1).Update(record);
+        await _jobsRepo.Received(1).UpdateStatusAsync(
+            linkedJobId, JobStatus.Ready, Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await _jobsRepo.Received(1).ClearErrorAsync(linkedJobId, Arg.Any<CancellationToken>());
         await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
@@ -234,6 +274,7 @@ public class TrackLyricsServiceTests
     public async Task change_provider_valid_resets_and_publishes()
     {
         var lyricsId = Guid.NewGuid();
+        var linkedJobId = Guid.NewGuid();
         var record = new TrackLyrics
         {
             Id = lyricsId,
@@ -245,7 +286,8 @@ public class TrackLyricsServiceTests
             ProviderTrackId = "42",
             ConfidenceScore = 10m,
             FetchedAt = DateTime.UtcNow,
-            Cached = true
+            Cached = true,
+            JobId = linkedJobId
         };
         _lyricsRepo.FirstOrDefaultAsync(
                 Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
@@ -262,9 +304,12 @@ public class TrackLyricsServiceTests
         record.FetchedAt.Should().BeNull();
         record.Cached.Should().BeFalse();
         _lyricsRepo.Received(1).Update(record);
+        await _jobsRepo.Received(1).UpdateStatusAsync(
+            linkedJobId, JobStatus.Queued, Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
         await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
         await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == lyricsId.ToString()),
+            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == linkedJobId.ToString()),
             "lyrics.change");
     }
 

@@ -8,7 +8,7 @@ public enum StatsBucket
     Day
 }
 
-public sealed record TranspilationStatusCount(TranspilationStatus Status, int Count);
+public sealed record JobStatusCount(JobStatus Status, int Count);
 
 // Failure rate is computed over terminal jobs only:
 //   Total = Ready + Partial + Failed   (Cancelled is excluded from the denominator)
@@ -27,7 +27,7 @@ public sealed record TranspilationDurationStats(
     long SampleCount);
 
 public sealed record TranspilationOverviewResponse(
-    IReadOnlyList<TranspilationStatusCount> StatusCounts,
+    IReadOnlyList<JobStatusCount> StatusCounts,
     TranspilationDurationStats? Duration);
 
 public sealed record TranspilationTrendResponse(

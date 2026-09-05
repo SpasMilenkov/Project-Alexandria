@@ -1,18 +1,14 @@
-using Alexandria.Data.Models.Enumerators.Monitoring;
+using Alexandria.Data.Models.Enumerators;
 
 namespace Alexandria.Common.Services;
 
 /// <summary>
-/// This is a temporary hack to track failures until I properly
-/// rework the Job table to handle all types of jobs and
-/// account for errors, retries and causation properly.
-/// Until then this counts errors over a sliding window in memory
-/// It is prone to breaking every time the worker using it is reset
-/// because the count will be lost :(
+/// Reports job success/failure counts over a sliding time window, used by the
+/// failure-rate threshold checker to detect degraded job workers. Backed by the
+/// Job table; a job's outcome is whatever UpdateStatusAsync last persisted for it.
 /// </summary>
 public interface IJobOutcomeTracker
 {
-    void RecordSuccess(ServiceType serviceType);
-    void RecordFailure(ServiceType serviceType);
-    (int Failures, int Total) GetCountsSince(ServiceType serviceType, DateTime since);
+    Task<(int Failures, int Total)> GetCountsSinceAsync(
+        JobType type, DateTime since, CancellationToken ct = default);
 }

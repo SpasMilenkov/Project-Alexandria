@@ -1,6 +1,4 @@
 using System.Text;
-using Alexandria.Common.Services;
-using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.MediaTranspilation.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -11,7 +9,6 @@ public partial class TranspilationWorker(
     ILogger<TranspilationWorker> logger,
     IConnection connection,
     IConfiguration configuration,
-    IJobOutcomeTracker outcomeTracker,
     IServiceProvider serviceProvider) : BackgroundService
 {
     private IChannel? _channel;
@@ -64,11 +61,9 @@ public partial class TranspilationWorker(
                 await handler.HandleAsync(jobId, ct);
 
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
-                outcomeTracker.RecordSuccess(ServiceType.Transpilation);
             }
             catch (Exception ex)
             {
-                outcomeTracker.RecordFailure(ServiceType.Transpilation);
                 LogConsumerError(logger, ex);
                 await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, ct);
             }

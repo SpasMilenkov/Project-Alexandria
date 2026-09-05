@@ -1,5 +1,3 @@
-using Alexandria.Data.Models.Enumerators;
-
 namespace Alexandria.Data.Models;
 
 public class EssentiaBatchFile : IBase
@@ -9,16 +7,11 @@ public class EssentiaBatchFile : IBase
     public Guid BatchId { get; set; }
 
     public EssentiaBatch Batch { get; set; } = null!;
-
+    public Guid JobId { get; set; }
+    public Job Job { get; set; } = null!;
     public Guid FileId { get; set; }
 
     public File File { get; set; } = null!;
-
-    public EssentiaBatchFileStatus Status { get; set; } = EssentiaBatchFileStatus.Pending;
-
-    public string? ErrorDetail { get; set; }
-
-    public DateTime? CompletedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

@@ -103,31 +103,45 @@ public partial class AudioTranspilationService(
 
         var watchdog = Task.Run(async () =>
         {
-            while (!killCts.Token.IsCancellationRequested)
+            try
             {
-                await Task.Delay(10_000, killCts.Token).ConfigureAwait(false);
-                var status = await unitOfWork.TranspilationJobs.GetTranspilationStatusAsync(jobId, killCts.Token);
-                if (status == TranspilationStatus.CancellationRequested)
+                while (!killCts.Token.IsCancellationRequested)
                 {
+                    await Task.Delay(10_000, killCts.Token).ConfigureAwait(false);
+                    var status = await unitOfWork.Jobs.GetStatusAsync(jobId, killCts.Token);
+                    if (status != JobStatus.CancellationRequested) continue;
                     wasCancelled = true;
                     process.Kill(entireProcessTree: true);
                     break;
                 }
             }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                LogWatchdogPollFailed(logger, ex, jobId);
+            }
         }, killCts.Token);
 
-        var stderrTask = process.StandardError.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct);
-        await killCts.CancelAsync();
+        string stderr;
         try
         {
-            await watchdog;
+            var stderrTask = process.StandardError.ReadToEndAsync(ct);
+            await process.WaitForExitAsync(ct);
+            stderr = await stderrTask;
         }
-        catch (OperationCanceledException)
+        finally
         {
+            await killCts.CancelAsync();
+            try
+            {
+                await watchdog;
+            }
+            catch (OperationCanceledException)
+            {
+            }
         }
-
-        var stderr = await stderrTask;
 
         if (wasCancelled)
             throw new TranspilationCancelledException(jobId);

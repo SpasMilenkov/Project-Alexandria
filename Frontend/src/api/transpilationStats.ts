@@ -15,7 +15,7 @@ export const TRANSPILATION_STATUS = {
   CancellationRequested: 6,
 } as const;
 
-export interface TranspilationStatusCount {
+export interface JobStatusCount {
   status: number;
   count: number;
 }
@@ -40,7 +40,7 @@ export interface TranspilationDurationStats {
 }
 
 export interface TranspilationOverviewResponse {
-  statusCounts: TranspilationStatusCount[];
+  statusCounts: JobStatusCount[];
   duration: TranspilationDurationStats | null;
 }
 

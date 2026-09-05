@@ -6,16 +6,18 @@ using Alexandria.Dto.TranspilationStats;
 
 namespace Alexandria.Services.Monitoring;
 
-public class TranspilationStatsService(ITranspilationJobRepository jobRepository)
+public class TranspilationStatsService(
+    ITranspilationJobRepository transpilationRepository,
+    IJobRepository jobRepository)
     : ITranspilationStatsService
 {
     // Terminal = the job finished with an outcome; Cancelled is a user decision,
     // not a system outcome, so it stays out of the rate denominator entirely.
-    private static readonly TranspilationStatus[] TerminalStatuses =
+    private static readonly JobStatus[] TerminalStatuses =
     [
-        TranspilationStatus.Ready,
-        TranspilationStatus.Partial,
-        TranspilationStatus.Failed,
+        JobStatus.Ready,
+        JobStatus.Partial,
+        JobStatus.Failed,
     ];
 
     public const int DefaultDurationWindowDays = 30;
@@ -26,7 +28,7 @@ public class TranspilationStatsService(ITranspilationJobRepository jobRepository
         var to = DateTime.UtcNow;
         var from = to.AddDays(-durationWindowDays);
 
-        var statusCounts = await jobRepository.GetStatusCountsAsync(ct);
+        var statusCounts = await jobRepository.GetStatusCountsAsync(JobType.Transpilation, ct);
         var window = await jobRepository.GetJobsTouchingWindowAsync(from, to, ct);
 
         return new TranspilationOverviewResponse(statusCounts, DurationStats(window));
@@ -35,21 +37,21 @@ public class TranspilationStatsService(ITranspilationJobRepository jobRepository
     public async Task<TranspilationTrendResponse> GetTrendAsync(DateTime fromUtc, DateTime toUtc,
         StatsBucket bucket, CancellationToken ct)
     {
-        var jobs = await jobRepository.GetJobsTouchingWindowAsync(fromUtc, toUtc, ct);
+        var transpilations = await transpilationRepository.GetJobsTouchingWindowAsync(fromUtc, toUtc, ct);
 
-        var failureRate = jobs
-            .Where(j => TerminalStatuses.Contains(j.Status) && j.CompletedAt != null)
-            .GroupBy(j => BucketStart(j.CompletedAt!.Value, bucket))
+        var failureRate = transpilations
+            .Where(t => TerminalStatuses.Contains(t.Job.Status) && t.Job.CompletedAt != null)
+            .GroupBy(t => BucketStart(t.Job.CompletedAt!.Value, bucket))
             .OrderBy(g => g.Key)
             .Select(g =>
             {
                 var total = g.Count();
-                var failed = g.Count(j => j.Status == TranspilationStatus.Failed);
+                var failed = g.Count(t => t.Job.Status == JobStatus.Failed);
                 return new TranspilationRatePoint(g.Key, total, failed);
             })
             .ToList();
 
-        var volume = jobs
+        var volume = transpilations
             .GroupBy(j => BucketStart(j.CreatedAt, bucket))
             .OrderBy(g => g.Key)
             .Select(g => new TranspilationVolumePoint(g.Key, g.Count()))
@@ -59,7 +61,7 @@ public class TranspilationStatsService(ITranspilationJobRepository jobRepository
     }
 
     private static TranspilationDurationStats? DurationStats(
-        IEnumerable<TranspilationJob> windowJobs)
+        IEnumerable<Job> windowJobs)
     {
         var durationsMinutes = windowJobs
             .Where(j => TerminalStatuses.Contains(j.Status)

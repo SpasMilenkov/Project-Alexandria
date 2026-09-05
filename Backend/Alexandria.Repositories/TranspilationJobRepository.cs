@@ -5,7 +5,6 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
-using Alexandria.Dto.TranspilationStats;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -15,17 +14,27 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
     private readonly DbSet<TranspilationJob> _jobs = context.TranspilationJobs;
 
     public async Task<TranspilationJob?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _jobs.FirstOrDefaultAsync(j => j.Id == id, ct);
+        => await _jobs
+            .Include(j => j.Job)
+            .FirstOrDefaultAsync(j => j.Id == id, ct);
+
+    public async Task<TranspilationJob?> GetByJobIdAsync(Guid jobId, CancellationToken ct = default)
+        => await _jobs.FirstOrDefaultAsync(j => j.JobId == jobId, ct);
 
     public async Task<TranspilationJob?> FirstOrDefaultAsync(
         Expression<Func<TranspilationJob, bool>> predicate,
         CancellationToken ct = default)
-        => await _jobs.FirstOrDefaultAsync(predicate, ct);
+        => await _jobs
+            .Include(j => j.Job)
+            .FirstOrDefaultAsync(predicate, ct);
 
     public async Task<IEnumerable<TranspilationJob>> FindAsync(
         Expression<Func<TranspilationJob, bool>> predicate,
         CancellationToken ct = default)
-        => await _jobs.Where(predicate).ToListAsync(ct);
+        => await _jobs
+            .Include(j => j.Job)
+            .Where(predicate)
+            .ToListAsync(ct);
 
     public async Task<TranspilationJob> AddAsync(TranspilationJob entity, CancellationToken ct = default)
     {
@@ -68,43 +77,20 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
     public async Task<TranspilationJob?> GetByVersionId(
         Guid versionId,
         CancellationToken ct = default)
-        => await _jobs.FirstOrDefaultAsync(j => j.VersionId == versionId, ct);
+        => await _jobs
+            .Include(j => j.Job)
+            .FirstOrDefaultAsync(j => j.VersionId == versionId, ct);
 
     public async Task<TranspilationJob?> GetByVersionId(Guid versionId, Guid userId, CancellationToken ct = default)
-        => await _jobs.FirstOrDefaultAsync(j => j.VersionId == versionId && j.UserId == userId, ct);
+        => await _jobs
+            .Include(j => j.Job)
+            .FirstOrDefaultAsync(j => j.VersionId == versionId && j.UserId == userId, ct);
 
     public async Task<PaginatedResult<TranspilationJobWithDetailsDto>> GetWithDetailsAsync(
         TranspilationJobQuery query,
         CancellationToken ct = default)
     {
-        var q = _jobs.AsQueryable();
-
-        if (!query.IsSystem)
-            q = q.Where(j => j.UserId == query.UserId);
-
-        if (query.Status.HasValue)
-            q = q.Where(j => j.Status == query.Status.Value);
-
-        if (query.IsVideo.HasValue)
-            q = q.Where(j => j.IsVideo == query.IsVideo.Value);
-
-        if (query.VersionId.HasValue)
-            q = q.Where(j => j.VersionId == query.VersionId.Value);
-
-        if (query.CreatedAfter.HasValue)
-            q = q.Where(j => j.CreatedAt >= query.CreatedAfter.Value);
-
-        if (query.CreatedBefore.HasValue)
-            q = q.Where(j => j.CreatedAt <= query.CreatedBefore.Value);
-
-        if (query.CompletedAfter.HasValue)
-            q = q.Where(j => j.CompletedAt >= query.CompletedAfter.Value);
-
-        if (query.CompletedBefore.HasValue)
-            q = q.Where(j => j.CompletedAt <= query.CompletedBefore.Value);
-
-        if (query.MinRetryCount.HasValue)
-            q = q.Where(j => j.RetryCount >= query.MinRetryCount.Value);
+        var q = ApplyFilters(query);
 
         var totalCount = await q.CountAsync(ct);
 
@@ -117,15 +103,15 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
             {
                 Id = j.Id,
                 VersionId = j.VersionId,
-                Status = j.Status,
+                Status = j.Job.Status,
                 IsVideo = j.IsVideo,
                 FileName = j.FileVersion.File.Name,
                 VersionNumber = j.FileVersion.VersionNumber,
-                ProgressPercent = j.ProgressPercent,
-                RetryCount = j.RetryCount,
-                ErrorDetail = j.ErrorDetail,
-                StartedAt = j.StartedAt,
-                CompletedAt = j.CompletedAt,
+                ProgressPercent = j.Job.ProgressPercent,
+                RetryCount = j.Job.RetryCount,
+                ErrorDetail = j.Job.ErrorDetail,
+                StartedAt = j.Job.StartedAt,
+                CompletedAt = j.Job.CompletedAt,
                 CreatedAt = j.CreatedAt,
                 AudioRungs = j.AudioRungs,
                 VideoRungs = j.VideoRungs,
@@ -134,7 +120,7 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
                     .Select(r => new StreamingRepresentationDto()
                     {
                         Id = r.Id,
-                        JobId = r.JobId,
+                        JobId = r.TranspilationId,
                         Codec = r.Codec,
                         Width = r.Width,
                         Height = r.Height,
@@ -160,15 +146,16 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
         CancellationToken ct = default)
         => await _jobs
             .AsNoTracking()
+            .Include(j => j.Job)
             .FirstOrDefaultAsync(j =>
                 j.VersionId == versionId &&
-                (j.Status == TranspilationStatus.Queued || j.Status == TranspilationStatus.Processing), ct);
-
+                (j.Job.Status == JobStatus.Queued || j.Job.Status == JobStatus.Processing), ct);
 
     public async Task<TranspilationJob?> GetWithRepresentationsAsync(
         Guid jobId,
         CancellationToken ct = default)
         => await _jobs
+            .Include(j => j.Job)
             .Include(j => j.Representations)
             .FirstOrDefaultAsync(j => j.Id == jobId, ct);
 
@@ -176,13 +163,42 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
         TranspilationJobQuery query,
         CancellationToken ct = default)
     {
+        var q = ApplyFilters(query);
+
+        var totalCount = await q.CountAsync(ct);
+
+        var items = await q
+            .AsNoTracking()
+            .OrderByDescending(j => j.CreatedAt)
+            .Skip((query.CurrentPage - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Include(j => j.Job)
+            .Include(j => j.Representations)
+            .ToListAsync(ct);
+
+        return new PaginatedResult<TranspilationJob>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            CurrentPage = query.CurrentPage,
+            PageSize = query.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
+        };
+    }
+
+    // Shared filtering for GetWithDetailsAsync / FindJobsAsync. Status/RetryCount/CompletedAt
+    // live on the related Job row, so these predicates go through j.Job - EF translates that
+    // into a join for report/listing queries, which is a legitimate use here since the result
+    // is a merged DTO, not a hot-path status check.
+    private IQueryable<TranspilationJob> ApplyFilters(TranspilationJobQuery query)
+    {
         var q = _jobs.AsQueryable();
 
         if (!query.IsSystem)
             q = q.Where(j => j.UserId == query.UserId);
 
         if (query.Status.HasValue)
-            q = q.Where(j => j.Status == query.Status.Value);
+            q = q.Where(j => j.Job.Status == query.Status.Value);
 
         if (query.IsVideo.HasValue)
             q = q.Where(j => j.IsVideo == query.IsVideo.Value);
@@ -197,109 +213,42 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
             q = q.Where(j => j.CreatedAt <= query.CreatedBefore.Value);
 
         if (query.CompletedAfter.HasValue)
-            q = q.Where(j => j.CompletedAt >= query.CompletedAfter.Value);
+            q = q.Where(j => j.Job.CompletedAt >= query.CompletedAfter.Value);
 
         if (query.CompletedBefore.HasValue)
-            q = q.Where(j => j.CompletedAt <= query.CompletedBefore.Value);
+            q = q.Where(j => j.Job.CompletedAt <= query.CompletedBefore.Value);
 
         if (query.MinRetryCount.HasValue)
-            q = q.Where(j => j.RetryCount >= query.MinRetryCount.Value);
+            q = q.Where(j => j.Job.RetryCount >= query.MinRetryCount.Value);
 
-        var totalCount = await q.CountAsync(ct);
-
-        var items = await q
-            .AsNoTracking()
-            .OrderByDescending(j => j.CreatedAt)
-            .Skip((query.CurrentPage - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Include(j => j.Representations)
-            .ToListAsync(ct);
-
-        return new PaginatedResult<TranspilationJob>
-        {
-            Items = items,
-            TotalCount = totalCount,
-            CurrentPage = query.CurrentPage,
-            PageSize = query.PageSize,
-            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
-        };
+        return q;
     }
 
-    public async Task UpdateStatusAsync(Guid jobId,
-        TranspilationStatus status,
-        int? progress = null,
-        string? errorDetail = null,
+    // Rungs and segment prefix are transpilation-specific and stay here, keyed by
+    // TranspilationJob.Id. Status/progress/retry/error live on Job now - see JobRepository.
+    public async Task UpdateDetailsAsync(
+        Guid transpilationJobId,
         string? segmentPrefix = null,
         AudioRung[]? audioRungs = null,
         VideoRung[]? videoRungs = null,
         CancellationToken ct = default)
         => await _jobs
-            .Where(j => j.Id == jobId)
+            .Where(j => j.Id == transpilationJobId)
             .ExecuteUpdateAsync(s => s
-                    .SetProperty(j => j.Status, status)
-                    .SetProperty(j => j.ProgressPercent, j => progress ?? j.ProgressPercent)
-                    .SetProperty(j => j.ErrorDetail, j => errorDetail ?? j.ErrorDetail)
                     .SetProperty(j => j.AudioRungs, j => audioRungs ?? j.AudioRungs)
                     .SetProperty(j => j.VideoRungs, j => videoRungs ?? j.VideoRungs)
-                    .SetProperty(j => j.StartedAt, j =>
-                        status == TranspilationStatus.Processing ? DateTime.UtcNow : j.StartedAt)
-                    .SetProperty(j => j.SegmentPrefix, j => segmentPrefix ?? j.SegmentPrefix)
-                    .SetProperty(j => j.CompletedAt, j =>
-                        status == TranspilationStatus.Ready
-                        || status == TranspilationStatus.Failed
-                        || status == TranspilationStatus.Partial
-                            ? DateTime.UtcNow
-                            : j.CompletedAt),
+                    .SetProperty(j => j.SegmentPrefix, j => segmentPrefix ?? j.SegmentPrefix),
                 ct);
-
-    public async Task ClearErrorAsync(Guid jobId, CancellationToken ct = default)
-        => await _jobs.Where(j => j.Id == jobId)
-            .ExecuteUpdateAsync(s => s.SetProperty(j => j.ErrorDetail, j => null), ct);
-
-    public async Task<IEnumerable<TranspilationJob>> GetStalledJobsAsync(
-        TimeSpan threshold,
-        CancellationToken ct = default)
-    {
-        var cutoff = DateTimeOffset.UtcNow - threshold;
-        return await _jobs
-            .Where(j => j.Status == TranspilationStatus.Processing && j.StartedAt < cutoff)
-            .ToListAsync(ct);
-    }
-
-
-    public async Task<bool> TryClaimJobAsync(
-        Guid jobId,
-        CancellationToken ct = default)
-    {
-        var affected = await _jobs
-            .Where(j => j.Id == jobId && j.Status == TranspilationStatus.Queued)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(j => j.Status, TranspilationStatus.Processing)
-                .SetProperty(j => j.StartedAt, DateTime.UtcNow), ct);
-
-        return affected > 0;
-    }
-
-    public async Task<TranspilationStatus> GetTranspilationStatusAsync(Guid jobId, CancellationToken ct = default) =>
-        await _jobs.Where(j => j.Id == jobId).Select(j => j.Status).FirstAsync(ct);
 
     public async Task<IReadOnlyList<TranspilationJob>> GetJobsTouchingWindowAsync(
         DateTime from, DateTime to, CancellationToken ct = default)
     {
         return await _jobs
             .AsNoTracking()
+            .Include(j => j.Job)
             .Where(j => (j.CreatedAt >= from && j.CreatedAt < to)
-                        || (j.CompletedAt != null && j.CompletedAt >= from && j.CompletedAt < to))
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<TranspilationStatusCount>> GetStatusCountsAsync(
-        CancellationToken ct = default)
-    {
-        return await _jobs
-            .AsNoTracking()
-            .GroupBy(j => j.Status)
-            .Select(g => new TranspilationStatusCount(g.Key, g.Count()))
+                        || (j.Job.CompletedAt != null
+                            && j.Job.CompletedAt >= from && j.Job.CompletedAt < to))
             .ToListAsync(ct);
     }
 }

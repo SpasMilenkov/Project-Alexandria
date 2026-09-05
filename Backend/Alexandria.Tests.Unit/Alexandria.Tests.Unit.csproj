@@ -12,6 +12,7 @@
         <PackageReference Include="coverlet.collector"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>
         <PackageReference Include="NSubstitute"/>
+        <PackageReference Include="RabbitMQ.Client"/>
         <PackageReference Include="xunit.runner.visualstudio">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -28,6 +29,9 @@
         <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
         <ProjectReference Include="..\Alexandria.Services.Streaming\Alexandria.Services.Streaming.csproj"/>
         <ProjectReference Include="..\Alexandria.Workers.Lyrics\Alexandria.Workers.Lyrics.csproj"/>
+        <ProjectReference Include="..\Alexandria.Workers.Media\Alexandria.Workers.Media.csproj"/>
+        <ProjectReference Include="..\Alexandria.Workers.Document\Alexandria.Workers.Document.csproj"/>
+        <ProjectReference Include="..\Alexandria.Workers.MediaMetadata\Alexandria.Workers.MediaMetadata.csproj"/>
         <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
         <ProjectReference Include="..\Alexandria.Data.Models\Alexandria.Data.Models.csproj"/>
         <ProjectReference Include="..\Alexandria.Dto\Alexandria.Dto.csproj"/>

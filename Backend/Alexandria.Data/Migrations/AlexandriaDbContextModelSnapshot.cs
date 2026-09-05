@@ -168,6 +168,9 @@ namespace Alexandria.Data.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<long>("StorageQuota")
+                        .HasColumnType("bigint");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -475,9 +478,6 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid>("BatchId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -486,16 +486,11 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("ErrorDetail")
-                        .HasColumnType("text");
-
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -508,13 +503,11 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("BatchId");
 
-                    b.HasIndex("CompletedAt");
-
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("FileId");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("JobId");
 
                     b.ToTable("EssentiaBatchFiles", (string)null);
                 });
@@ -766,6 +759,68 @@ namespace Alexandria.Data.Migrations
 
                             t.HasCheckConstraint("CK_FileEntry_IntegrityTag_Length", "\"IntegrityTag\" IS NULL OR octet_length(\"IntegrityTag\") = 16");
                         });
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.Job", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorDetail")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ProgressPercent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("RetryCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Jobs", (string)null);
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.MediaMetadata", b =>
@@ -1122,6 +1177,56 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("Previews", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.PreviewJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("JobId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("VersionId", "Kind", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("PreviewJobs", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1383,13 +1488,16 @@ namespace Alexandria.Data.Migrations
                     b.Property<int?>("Height")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("JobId")
-                        .HasColumnType("uuid");
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
+
+                    b.Property<Guid>("TranspilationId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1405,7 +1513,7 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("JobId", "Codec");
+                    b.HasIndex("TranspilationId", "Codec");
 
                     b.ToTable("StreamRepresentations", (string)null);
                 });
@@ -1510,6 +1618,9 @@ namespace Alexandria.Data.Migrations
                     b.Property<bool>("IsInstrumental")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PlainLyrics")
                         .HasColumnType("text");
 
@@ -1539,6 +1650,9 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("Id");
 
+                    b.HasIndex("JobId")
+                        .IsUnique();
+
                     b.HasIndex("Status");
 
                     b.HasIndex("TranspilationJobId")
@@ -1558,9 +1672,6 @@ namespace Alexandria.Data.Migrations
                         .IsRequired()
                         .HasColumnType("integer[]");
 
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1569,36 +1680,18 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("ErrorDetail")
-                        .HasColumnType("text");
-
                     b.Property<bool>("IsVideo")
                         .HasColumnType("boolean");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("LyricsId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ProgressPercent")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
-                    b.Property<int>("RetryCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
                     b.Property<string>("SegmentPrefix")
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
-
-                    b.Property<DateTime?>("StartedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1621,7 +1714,8 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("JobId")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -1888,9 +1982,17 @@ namespace Alexandria.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Alexandria.Data.Models.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Batch");
 
                     b.Navigation("File");
+
+                    b.Navigation("Job");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.File", b =>
@@ -1966,6 +2068,17 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("File");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.Job", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.MediaMetadata", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.File", "File")
@@ -2025,6 +2138,33 @@ namespace Alexandria.Data.Migrations
                         .HasForeignKey("VersionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Version");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.PreviewJob", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Alexandria.Data.Models.FileVersion", "Version")
+                        .WithMany()
+                        .HasForeignKey("VersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Job");
+
+                    b.Navigation("User");
 
                     b.Navigation("Version");
                 });
@@ -2098,7 +2238,7 @@ namespace Alexandria.Data.Migrations
                 {
                     b.HasOne("Alexandria.Data.Models.TranspilationJob", "Job")
                         .WithMany("Representations")
-                        .HasForeignKey("JobId")
+                        .HasForeignKey("TranspilationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2125,17 +2265,31 @@ namespace Alexandria.Data.Migrations
 
             modelBuilder.Entity("Alexandria.Data.Models.TrackLyrics", b =>
                 {
+                    b.HasOne("Alexandria.Data.Models.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Alexandria.Data.Models.TranspilationJob", "TranspilationJob")
                         .WithOne("TrackLyrics")
                         .HasForeignKey("Alexandria.Data.Models.TrackLyrics", "TranspilationJobId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Job");
+
                     b.Navigation("TranspilationJob");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.TranspilationJob", b =>
                 {
+                    b.HasOne("Alexandria.Data.Models.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -2149,6 +2303,8 @@ namespace Alexandria.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("FileVersion");
+
+                    b.Navigation("Job");
 
                     b.Navigation("User");
                 });

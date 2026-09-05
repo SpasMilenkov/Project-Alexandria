@@ -19,7 +19,6 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 public partial class TimeoutSweepWorker(
     ILogger<TimeoutSweepWorker> logger,
     IOptions<EssentiaConfig> essentiaOptions,
-    IJobOutcomeTracker outcomeTracker,
     IServiceProvider serviceProvider) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -44,8 +43,8 @@ public partial class TimeoutSweepWorker(
             }
             catch (Exception ex)
             {
-                outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
                 LogSweepError(logger, ex);
+                await RecordSweepFailureAsync(ex, stoppingToken);
             }
 
             try
@@ -59,7 +58,7 @@ public partial class TimeoutSweepWorker(
         }
     }
 
-    private async Task SweepAsync(IServiceScope scope, CancellationToken ct)
+    internal async Task SweepAsync(IServiceScope scope, CancellationToken ct)
     {
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var config = essentiaOptions.Value;
@@ -81,27 +80,37 @@ public partial class TimeoutSweepWorker(
         foreach (var batch in overdue)
         {
             var files = await unitOfWork.EssentiaBatchFiles.GetByBatchAsync(batch.Id, ct);
-            var pendingFiles = files.Where(f => f.Status == EssentiaBatchFileStatus.Pending).ToList();
+            var pendingFiles = files.Where(f => f.Job.Status == JobStatus.Queued).ToList();
             if (pendingFiles.Count == 0)
                 continue;
 
             foreach (var file in pendingFiles)
                 await UpsertTimeoutFailureAsync(unitOfWork, file.FileId, batch.Backbone, batch.Id, ct);
 
-            await unitOfWork.EssentiaBatchFiles.UpdateStatusForBatchAsync(
-                batch.Id, EssentiaBatchFileStatus.Pending, EssentiaBatchFileStatus.Failed, SystemConfig.SystemId, ct);
+            await unitOfWork.Jobs.UpdateStatusForJobsAsync(
+                pendingFiles.Select(f => f.JobId), JobStatus.Failed, "batch timed out", ct);
 
-            outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
             LogBatchFilesTimedOut(logger, batch.Id, pendingFiles.Count);
         }
     }
 
+    private async Task RecordSweepFailureAsync(Exception ex, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = serviceProvider.CreateScope();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex,
+                ct);
+        }
+        catch (Exception loggingEx)
+        {
+            LogSweepError(logger, loggingEx);
+        }
+    }
+
     private static async Task UpsertTimeoutFailureAsync(
-        IUnitOfWork unitOfWork,
-        Guid fileId,
-        EssentiaBackbone backbone,
-        Guid batchId,
-        CancellationToken ct)
+        IUnitOfWork unitOfWork, Guid fileId, EssentiaBackbone backbone, Guid batchId, CancellationToken ct)
     {
         var payload = JsonSerializer.Serialize(
             new { success = false, error = "batch timed out", batch_id = batchId }, JsonOptions);

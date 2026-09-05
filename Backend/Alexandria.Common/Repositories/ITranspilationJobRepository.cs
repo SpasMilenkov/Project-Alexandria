@@ -2,12 +2,18 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
-using Alexandria.Dto.TranspilationStats;
 
 namespace Alexandria.Common.Repositories;
 
 public interface ITranspilationJobRepository : IRepository<TranspilationJob>
 {
+    /// <summary>
+    /// Returns the transpilation job for the given generic Job id, via the indexed
+    /// TranspilationJob.JobId FK. This is the lookup workers/handlers use, since the
+    /// Job id is the canonical identifier flowing through the queue.
+    /// </summary>
+    Task<TranspilationJob?> GetByJobIdAsync(Guid jobId, CancellationToken ct = default);
+
     Task<TranspilationJob?> GetByVersionId(Guid versionId, CancellationToken ct = default);
     Task<TranspilationJob?> GetByVersionId(Guid versionId, Guid userId, CancellationToken ct = default);
 
@@ -16,7 +22,7 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
 
     /// <summary>
     /// Returns the transpilation job for the given content object that has an active status
-    /// (<see cref="TranspilationStatus.Queued"/> or <see cref="TranspilationStatus.Processing"/>), if one exists.
+    /// (<see cref="JobStatus.Queued"/> or <see cref="JobStatus.Processing"/>), if one exists.
     /// Uses a non-tracked, projected query — safe to call in hot paths.
     /// </summary>
     Task<TranspilationJob?> GetActiveJobForVersionAsync(Guid versionId, CancellationToken ct = default);
@@ -28,34 +34,16 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
 
     Task<PaginatedResult<TranspilationJob>> FindJobsAsync(TranspilationJobQuery query, CancellationToken ct = default);
 
-    Task UpdateStatusAsync(
-        Guid jobId,
-        TranspilationStatus status,
-        int? progress = null,
-        string? errorDetail = null,
+    /// <summary>
+    /// Updates transpilation-specific fields only (rungs, segment prefix). Status, progress,
+    /// retry count, and error detail live on the related Job row — see IJobRepository.
+    /// </summary>
+    Task UpdateDetailsAsync(
+        Guid transpilationJobId,
         string? segmentPrefix = null,
         AudioRung[]? audioRungs = null,
         VideoRung[]? videoRungs = null,
         CancellationToken ct = default);
-
-    Task ClearErrorAsync(Guid jobId, CancellationToken ct = default);
-    Task<IEnumerable<TranspilationJob>> GetStalledJobsAsync(TimeSpan threshold, CancellationToken ct = default);
-
-    /// <summary>
-    /// Atomically transitions the job from <see cref="TranspilationStatus.Queued"/> to
-    /// <see cref="TranspilationStatus.Processing"/> and stamps <c>StartedAt</c>.
-    /// Returns <see langword="true"/> when this caller won the claim;
-    /// <see langword="false"/> when the job was already claimed or does not exist.
-    /// </summary>
-    Task<bool> TryClaimJobAsync(Guid jobId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the status of a transpilation job
-    /// </summary>
-    /// <param name="jobId">The id of the job</param>
-    /// <param name="ct">Cancellation token</param>
-    /// <returns>A transpilation status enum</returns>
-    Task<TranspilationStatus> GetTranspilationStatusAsync(Guid jobId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns every job that was created inside the window or completed
@@ -64,7 +52,4 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
     /// </summary>
     Task<IReadOnlyList<TranspilationJob>> GetJobsTouchingWindowAsync(
         DateTime from, DateTime to, CancellationToken ct = default);
-
-    /// <summary>Current all-time job count per status.</summary>
-    Task<IReadOnlyList<TranspilationStatusCount>> GetStatusCountsAsync(CancellationToken ct = default);
 }

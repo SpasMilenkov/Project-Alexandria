@@ -101,11 +101,11 @@ public class OperationalEventHealthPublisherTests
     {
         var cases = new (string CheckName, ServiceType Expected)[]
         {
-            ("worker-mediapreviews", ServiceType.MediaPreviews),
-            ("worker-documentpreviews", ServiceType.DocumentPreviews),
-            ("worker-transpilation", ServiceType.Transpilation),
-            ("worker-lyrics", ServiceType.Lyrics),
-            ("worker-mediametadata", ServiceType.MediaMetadata),
+            ("worker-mediaworker", ServiceType.MediaPreviews),
+            ("worker-documentworker", ServiceType.DocumentPreviews),
+            ("worker-transpilationworker", ServiceType.Transpilation),
+            ("worker-lyricsworker", ServiceType.Lyrics),
+            ("worker-mediametadataworker", ServiceType.MediaMetadata),
         };
 
         foreach (var (checkName, expectedService) in cases)
@@ -123,7 +123,7 @@ public class OperationalEventHealthPublisherTests
     [Fact]
     public async Task http_exception_maps_to_unreachable_code()
     {
-        var report = Report(("worker-lyrics",
+        var report = Report(("worker-lyricsworker",
             Entry(HealthStatus.Unhealthy, exception: new HttpRequestException("connection refused"))));
 
         await _sut.PublishAsync(report, TestContext.Current.CancellationToken);
@@ -134,7 +134,7 @@ public class OperationalEventHealthPublisherTests
     [Fact]
     public async Task timeout_exception_maps_to_unreachable_code()
     {
-        var report = Report(("worker-transpilation",
+        var report = Report(("worker-transpilationworker",
             Entry(HealthStatus.Unhealthy, exception: new TaskCanceledException("timed out"))));
 
         await _sut.PublishAsync(report, TestContext.Current.CancellationToken);

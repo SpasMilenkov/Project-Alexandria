@@ -23,11 +23,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
-        <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Extensions\"/>
+        <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
+        <ProjectReference Include="..\Alexandria.Services.Storage\Alexandria.Services.Storage.csproj"/>
     </ItemGroup>
 </Project>

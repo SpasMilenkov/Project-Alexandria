@@ -30,7 +30,10 @@ public sealed class EnrichmentRowDto
 }
 
 /// <summary>
-/// One batch-file attempt for a file.
+/// One batch-file attempt for a file. <c>FileStatus</c> carries the linked
+/// <c>JobStatus</c> name (Queued/Ready/Failed/...); failures that used to be
+/// reported as <c>MissingOutput</c> now surface as <c>Failed</c> with the detail
+/// in <c>ErrorDetail</c>.
 /// </summary>
 public sealed class BatchRowDto
 {

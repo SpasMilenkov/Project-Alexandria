@@ -5,7 +5,7 @@ namespace Alexandria.Dto.Files.Streaming;
 public sealed class TranspilationJobQuery
 {
     public Guid? UserId { get; init; }
-    public TranspilationStatus? Status { get; init; }
+    public JobStatus? Status { get; init; }
     public bool? IsVideo { get; init; }
     public Guid? VersionId { get; init; }
     public DateTime? CreatedAfter { get; init; }

@@ -27,7 +27,7 @@ public sealed class AutoTaggingOptions
 
     /// <summary>
     /// Minimum time between enrichment attempts for a file before the sweeper will
-    /// re-queue it. The latest attempt (any outcome, via <c>EssentiaBatchFile.UpdatedAt</c>)
+    /// re-queue it. The latest attempt (any outcome, via the linked <c>Job.CompletedAt</c>)
     /// must be older than this for the file to be a retry candidate.
     /// </summary>
     public int RetryCooldownHours { get; set; } = 24;

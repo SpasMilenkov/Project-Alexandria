@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using Alexandria.Common;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Repositories;
@@ -16,18 +15,14 @@ namespace Alexandria.Tests.Unit.Lyrics;
 
 public class LyricsHandlerTests
 {
-    private readonly Guid _lyricsId = Guid.NewGuid();
+    private readonly Guid _jobId = Guid.NewGuid();
     private readonly ITrackLyricsRepository _lyricsRepo = Substitute.For<ITrackLyricsRepository>();
+    private readonly IJobRepository _jobsRepo = Substitute.For<IJobRepository>();
     private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
     private readonly ITrackLyricsProvider _defaultProvider = Substitute.For<ITrackLyricsProvider>();
     private readonly LyricsHandler _sut;
 
-    private readonly TrackLyrics _record = new()
-    {
-        Id = Guid.NewGuid(),
-        SourceProvider = LyricsProvider.None,
-        Status = LyricsStatus.PendingFetch
-    };
+    private readonly TrackLyrics _record;
 
     private readonly LyricsSearchParams _searchParams = new()
     {
@@ -42,7 +37,20 @@ public class LyricsHandlerTests
 
     public LyricsHandlerTests()
     {
+        _record = new TrackLyrics
+        {
+            Id = Guid.NewGuid(),
+            SourceProvider = LyricsProvider.None,
+            Status = LyricsStatus.PendingFetch,
+            JobId = _jobId
+        };
+
         _uow.Lyrics.Returns(_lyricsRepo);
+        _uow.Jobs.Returns(_jobsRepo);
+        _jobsRepo.TryClaimJobAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(true);
+        _lyricsRepo.GetByJobIdAsync(_jobId, Arg.Any<CancellationToken>()).Returns(_record);
+        _lyricsRepo.GetSearchParamsAsync(_record.Id, Arg.Any<CancellationToken>())
+            .Returns(_searchParams);
         _defaultProvider.Priority.Returns(10);
         _defaultProvider.Provider.Returns(LyricsProvider.LrclibPublic);
         _defaultProvider.IsAvailableAsync(Arg.Any<CancellationToken>()).Returns(true);
@@ -60,17 +68,12 @@ public class LyricsHandlerTests
     [Fact]
     public async Task fetch_success_updates_record_with_lyrics()
     {
-        _lyricsRepo.FirstOrDefaultAsync(
-                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
-            .Returns(_record);
-        _lyricsRepo.GetSearchParamsAsync(_lyricsId, Arg.Any<CancellationToken>())
-            .Returns(_searchParams);
         _defaultProvider.FetchAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
                 Arg.Any<CancellationToken>())
             .Returns(SampleResult);
 
-        await _sut.HandleAsync(_lyricsId);
+        await _sut.HandleAsync(_jobId);
 
         _record.PlainLyrics.Should().Be("plain lyric");
         _record.SyncedLyrics.Should().Be("synced lyric");
@@ -86,19 +89,29 @@ public class LyricsHandlerTests
     }
 
     [Fact]
+    public async Task fetch_success_completes_job_as_ready()
+    {
+        _defaultProvider.FetchAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(SampleResult);
+
+        await _sut.HandleAsync(_jobId);
+
+        await _jobsRepo.Received(1).UpdateStatusAsync(
+            _jobId, JobStatus.Ready, Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task fetch_no_match_sets_status_to_no_match()
     {
-        _lyricsRepo.FirstOrDefaultAsync(
-                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
-            .Returns(_record);
-        _lyricsRepo.GetSearchParamsAsync(_lyricsId, Arg.Any<CancellationToken>())
-            .Returns(_searchParams);
         _defaultProvider.FetchAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
                 Arg.Any<CancellationToken>())
             .Returns((LyricsResult?)null);
 
-        await _sut.HandleAsync(_lyricsId);
+        await _sut.HandleAsync(_jobId);
 
         _record.Status.Should().Be(LyricsStatus.NoMatch);
         _record.FetchedAt.Should().NotBeNull();
@@ -107,26 +120,34 @@ public class LyricsHandlerTests
     }
 
     [Fact]
+    public async Task fetch_no_match_completes_job_as_ready()
+    {
+        _defaultProvider.FetchAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
+                Arg.Any<CancellationToken>())
+            .Returns((LyricsResult?)null);
+
+        await _sut.HandleAsync(_jobId);
+
+        await _jobsRepo.Received(1).UpdateStatusAsync(
+            _jobId, JobStatus.Ready, Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task fetch_exception_sets_status_to_fetch_failed()
     {
-        _lyricsRepo.FirstOrDefaultAsync(
-                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
-            .Returns(_record);
-        _lyricsRepo.GetSearchParamsAsync(_lyricsId, Arg.Any<CancellationToken>())
-            .Returns(_searchParams);
         _defaultProvider.FetchAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
                 Arg.Any<CancellationToken>())
             .Returns(SampleResult);
 
-        var tcs = new TaskCompletionSource();
-        tcs.SetException(new InvalidOperationException("DB error"));
         _uow.SaveChangesAsync(Arg.Any<CancellationToken>())
             .Returns(
                 _ => Task.FromException(new InvalidOperationException("DB error")),
                 _ => Task.CompletedTask);
 
-        await _sut.HandleAsync(_lyricsId);
+        await _sut.HandleAsync(_jobId);
 
         _record.Status.Should().Be(LyricsStatus.FetchFailed);
         _lyricsRepo.Received(2).Update(_record);
@@ -134,13 +155,64 @@ public class LyricsHandlerTests
     }
 
     [Fact]
+    public async Task fetch_exception_marks_job_failed()
+    {
+        _defaultProvider.FetchAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(SampleResult);
+
+        _uow.SaveChangesAsync(Arg.Any<CancellationToken>())
+            .Returns(
+                _ => Task.FromException(new InvalidOperationException("DB error")),
+                _ => Task.CompletedTask);
+
+        await _sut.HandleAsync(_jobId);
+
+        await _jobsRepo.Received(1).UpdateStatusAsync(
+            _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task transient_provider_error_rethrows_without_terminal_outcome()
+    {
+        _defaultProvider.FetchAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<LyricsResult?>(new HttpRequestException("timeout")));
+
+        var act = () => _sut.HandleAsync(_jobId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+        _record.Status.Should().Be(LyricsStatus.PendingFetch);
+        await _jobsRepo.DidNotReceive().UpdateStatusAsync(
+            Arg.Any<Guid>(), Arg.Any<JobStatus>(), Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task duplicate_delivery_returns_silently_without_work()
+    {
+        _jobsRepo.TryClaimJobAsync(_jobId, Arg.Any<CancellationToken>()).Returns(false);
+
+        await _sut.HandleAsync(_jobId);
+
+        await _defaultProvider.DidNotReceiveWithAnyArgs().FetchAsync(
+            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
+            Arg.Any<CancellationToken>());
+        await _jobsRepo.DidNotReceive().UpdateStatusAsync(
+            Arg.Any<Guid>(), Arg.Any<JobStatus>(), Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task lyrics_not_found_throws()
     {
-        _lyricsRepo.FirstOrDefaultAsync(
-                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+        _lyricsRepo.GetByJobIdAsync(_jobId, Arg.Any<CancellationToken>())
             .Returns((TrackLyrics?)null);
 
-        var act = async () => await _sut.HandleAsync(_lyricsId);
+        var act = async () => await _sut.HandleAsync(_jobId);
 
         await act.Should().ThrowAsync<LyricsNotFoundException>();
     }
@@ -148,13 +220,10 @@ public class LyricsHandlerTests
     [Fact]
     public async Task search_params_not_found_throws()
     {
-        _lyricsRepo.FirstOrDefaultAsync(
-                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
-            .Returns(_record);
-        _lyricsRepo.GetSearchParamsAsync(_lyricsId, Arg.Any<CancellationToken>())
+        _lyricsRepo.GetSearchParamsAsync(_record.Id, Arg.Any<CancellationToken>())
             .Returns((LyricsSearchParams?)null);
 
-        var act = async () => await _sut.HandleAsync(_lyricsId);
+        var act = async () => await _sut.HandleAsync(_jobId);
 
         await act.Should().ThrowAsync<LyricsNotFoundException>();
     }
@@ -187,13 +256,7 @@ public class LyricsHandlerTests
             composite,
             _uow);
 
-        _lyricsRepo.FirstOrDefaultAsync(
-                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
-            .Returns(_record);
-        _lyricsRepo.GetSearchParamsAsync(_lyricsId, Arg.Any<CancellationToken>())
-            .Returns(_searchParams);
-
-        await sut.HandleAsync(_lyricsId);
+        await sut.HandleAsync(_jobId);
 
         await lrcLib.Received(1).FetchAsync(
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
@@ -209,17 +272,12 @@ public class LyricsHandlerTests
     {
         _record.SourceProvider = LyricsProvider.None;
 
-        _lyricsRepo.FirstOrDefaultAsync(
-                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
-            .Returns(_record);
-        _lyricsRepo.GetSearchParamsAsync(_lyricsId, Arg.Any<CancellationToken>())
-            .Returns(_searchParams);
         _defaultProvider.FetchAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
                 Arg.Any<CancellationToken>())
             .Returns(SampleResult);
 
-        await _sut.HandleAsync(_lyricsId);
+        await _sut.HandleAsync(_jobId);
 
         await _defaultProvider.Received(1).FetchAsync(
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
@@ -251,13 +309,7 @@ public class LyricsHandlerTests
             composite,
             _uow);
 
-        _lyricsRepo.FirstOrDefaultAsync(
-                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
-            .Returns(_record);
-        _lyricsRepo.GetSearchParamsAsync(_lyricsId, Arg.Any<CancellationToken>())
-            .Returns(_searchParams);
-
-        await sut.HandleAsync(_lyricsId);
+        await sut.HandleAsync(_jobId);
 
         _record.SourceProvider.Should().Be(LyricsProvider.Musicxmatch);
         _record.Status.Should().Be(LyricsStatus.Fetched);

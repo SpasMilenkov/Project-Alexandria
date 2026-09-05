@@ -57,11 +57,13 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<PolicyRule> PolicyRules { get; set; }
     public DbSet<DirectoryPolicy> DirectoryPolicies { get; set; }
     public DbSet<TrackLyrics> TrackLyrics { get; set; }
+    public DbSet<PreviewJob> PreviewJobs { get; set; }
     public DbSet<FileTag> FileTags { get; set; }
     public DbSet<FileEnrichment> FileEnrichments { get; set; }
     public DbSet<EssentiaBatch> EssentiaBatches { get; set; }
     public DbSet<EssentiaBatchFile> EssentiaBatchFiles { get; set; }
     public DbSet<OperationalEvent> OperationalEvents { get; set; }
+    public DbSet<Job> Jobs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -104,11 +106,13 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new PolicyRuleConfiguration());
         builder.ApplyConfiguration(new DirectoryPolicyConfiguration());
         builder.ApplyConfiguration(new TrackLyricsConfiguration());
+        builder.ApplyConfiguration(new PreviewJobConfiguration());
         builder.ApplyConfiguration(new FileEnrichmentConfiguration());
         builder.ApplyConfiguration(new FileTagConfiguration());
         builder.ApplyConfiguration(new EssentiaBatchConfiguration());
         builder.ApplyConfiguration(new EssentiaBatchFileConfiguration());
         builder.ApplyConfiguration(new OperationalEventConfiguration());
+        builder.ApplyConfiguration(new JobConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

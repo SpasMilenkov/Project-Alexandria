@@ -26,4 +26,8 @@
             <Link>.dockerignore</Link>
         </Content>
     </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
+    </ItemGroup>
 </Project>

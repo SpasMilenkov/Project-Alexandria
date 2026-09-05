@@ -14,17 +14,16 @@ using Microsoft.Extensions.Options;
 namespace Alexandria.Workers.MediaMetadata.Workers;
 
 /// <summary>
-/// Drains the <see cref="AccumulatorBuffer"/>, flushes batches on
-/// <c>BatchSize</c> or <c>MaxBatchWaitSeconds</c>, persists a
-/// <c>Dispatched</c> batch with <c>Pending</c> batch-files and publishes the
-/// dispatch message to the active backbone queue.
+///     Drains the <see cref="AccumulatorBuffer" />, flushes batches on
+///     <c>BatchSize</c> or <c>MaxBatchWaitSeconds</c>, persists a
+///     <c>Dispatched</c> batch with <c>Pending</c> batch-files and publishes the
+///     dispatch message to the active backbone queue.
 /// </summary>
 public partial class AccumulatorWorker(
     ILogger<AccumulatorWorker> logger,
     AccumulatorBuffer buffer,
     IOptions<EssentiaConfig> essentiaOptions,
     IPublisherService publisher,
-    IJobOutcomeTracker outcomeTracker,
     IServiceProvider serviceProvider) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -77,7 +76,7 @@ public partial class AccumulatorWorker(
         }
     }
 
-    private async Task FlushAsync(
+    internal async Task FlushAsync(
         List<StagedFile> batch,
         EssentiaBackbone backbone,
         string routingKey,
@@ -97,11 +96,23 @@ public partial class AccumulatorWorker(
             DispatchedAt = DateTime.UtcNow,
             UpdatedBy = SystemConfig.SystemId,
             Files = batch
-                .Select(f => new EssentiaBatchFile
+                .Select(f =>
                 {
-                    FileId = f.FileId,
-                    Status = EssentiaBatchFileStatus.Pending,
-                    UpdatedBy = SystemConfig.SystemId,
+                    var jobId = Guid.NewGuid();
+                    return new EssentiaBatchFile
+                    {
+                        FileId = f.FileId,
+                        UpdatedBy = SystemConfig.SystemId,
+                        JobId = jobId,
+                        Job = new Job
+                        {
+                            Id = jobId,
+                            Type = JobType.MetadataEnrichment,
+                            Status = JobStatus.Queued,
+                            UserId = SystemConfig.SystemId,
+                            CreatedAt = DateTime.UtcNow
+                        }
+                    };
                 })
                 .ToList()
         };
@@ -110,12 +121,12 @@ public partial class AccumulatorWorker(
         {
             await unitOfWork.EssentiaBatches.AddAsync(batchEntity, stoppingToken);
             await unitOfWork.SaveChangesAsync(stoppingToken);
-            outcomeTracker.RecordSuccess(ServiceType.MediaMetadata);
         }
         catch (Exception ex)
         {
-            outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
             LogPersistError(logger, ex, batchId, batch.Count);
+            await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex,
+                stoppingToken);
             return;
         }
 
@@ -129,7 +140,7 @@ public partial class AccumulatorWorker(
         {
             BatchId = batchId,
             OutputDir = outputDir,
-            Files = files,
+            Files = files
         };
 
         try
@@ -138,18 +149,30 @@ public partial class AccumulatorWorker(
         }
         catch (Exception ex)
         {
-            outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
             LogDispatchError(logger, ex, batchId, batch.Count);
+
+            // Batch and per-file Job rows are already persisted, but the message that
+            // would ever trigger their completion never went out. Without this they'd
+            // sit in Queued forever, invisible to TimeoutSweepWorker since it
+            // only looks at batches it believes were successfully dispatched.
+            var jobIds = batchEntity.Files.Select(f => f.JobId).ToList();
+            await unitOfWork.Jobs.UpdateStatusForJobsAsync(jobIds, JobStatus.Failed, "publish failed", stoppingToken);
+
+            await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex,
+                stoppingToken);
             return;
         }
 
         LogBatchDispatched(logger, batchId, backbone, batch.Count, outputDir, routingKey);
     }
 
-    private static EssentiaBackbone ParseBackbone(string backbone) => backbone.ToLowerInvariant() switch
+    private static EssentiaBackbone ParseBackbone(string backbone)
     {
-        "effnet" => EssentiaBackbone.Effnet,
-        "maest" => EssentiaBackbone.Maest,
-        _ => throw new InvalidOperationException($"Unknown Essentia backbone: {backbone}"),
-    };
+        return backbone.ToLowerInvariant() switch
+        {
+            "effnet" => EssentiaBackbone.Effnet,
+            "maest" => EssentiaBackbone.Maest,
+            _ => throw new InvalidOperationException($"Unknown Essentia backbone: {backbone}")
+        };
+    }
 }

@@ -6,7 +6,7 @@ public class TranspilationJobWithDetailsDto
 {
     public Guid Id { get; init; }
     public Guid VersionId { get; init; }
-    public TranspilationStatus Status { get; init; }
+    public JobStatus Status { get; init; }
     public string FileName { get; set; }
     public int VersionNumber { get; set; }
     public bool IsVideo { get; init; }

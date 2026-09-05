@@ -6,7 +6,7 @@ public sealed class TranspilationJobDto
 {
     public Guid Id { get; init; }
     public Guid VersionId { get; init; }
-    public TranspilationStatus Status { get; init; }
+    public JobStatus Status { get; init; }
     public bool IsVideo { get; init; }
     public int ProgressPercent { get; init; }
     public int RetryCount { get; init; }

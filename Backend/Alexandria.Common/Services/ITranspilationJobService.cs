@@ -22,8 +22,8 @@ public interface ITranspilationJobService
     /// Thrown when no content object exists that is linked to the passed version and user Id/>.
     /// </exception>
     /// <exception cref="TranspilationJobConflictException">
-    /// Thrown when a job with status <see cref="TranspilationStatus.Queued"/> or
-    /// <see cref="TranspilationStatus.Processing"/> already exists for the content object.
+    /// Thrown when a job with status <see cref="JobStatus.Queued"/> or
+    /// <see cref="JobStatus.Processing"/> already exists for the content object.
     /// </exception>
     Task<TranspilationJobDto> CreateJobAsync(
         Guid versionId,
@@ -102,7 +102,7 @@ public interface ITranspilationJobService
     /// </exception>
     Task UpdateStatusAsync(
         Guid jobId,
-        TranspilationStatus status,
+        JobStatus status,
         int? progress = null,
         string? errorDetail = null,
         string? segmentPrefix = null,
@@ -123,7 +123,7 @@ public interface ITranspilationJobService
     Task UpdateStatusAsync(
         Guid jobId,
         Guid userId,
-        TranspilationStatus targetStatus,
+        JobStatus targetStatus,
         AudioRung[]? audioRungs = null,
         VideoRung[]? videoRungs = null,
         CancellationToken ct = default);
@@ -141,12 +141,12 @@ public interface ITranspilationJobService
     Task UpdateStatusAsync(
         Guid jobId,
         Guid userId,
-        TranspilationStatus status,
+        JobStatus status,
         CancellationToken ct = default);
 
     /// <summary>
     /// Returns all transpilation jobs that have been in the
-    /// <see cref="TranspilationStatus.Processing"/> state longer than
+    /// <see cref="JobStatus.Processing"/> state longer than
     /// <paramref name="threshold"/>, indicating they are stalled.
     /// Intended for consumption by background recovery workers.
     /// </summary>
@@ -159,8 +159,8 @@ public interface ITranspilationJobService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Atomically transitions the job from <see cref="TranspilationStatus.Queued"/> to
-    /// <see cref="TranspilationStatus.Processing"/> and stamps <c>StartedAt</c>.
+    /// Atomically transitions the job from <see cref="JobStatus.Queued"/> to
+    /// <see cref="JobStatus.Processing"/> and stamps <c>StartedAt</c>.
     /// Returns <see langword="false"/> if the job was already claimed by another worker
     /// or does not exist — both are non-error outcomes for the caller.
     /// </summary>
