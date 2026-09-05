@@ -2,7 +2,9 @@ using System.Text.Json;
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
+using Alexandria.Common.Services;
 using Alexandria.Data.Models;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Services.Monitoring;
 using AwesomeAssertions;
@@ -16,7 +18,7 @@ public class JobFailureThresholdCheckerTests
 {
     private readonly IOperationalEventRepository _repo = Substitute.For<IOperationalEventRepository>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
-    private readonly JobOutcomeTracker _tracker = new();
+    private readonly IJobOutcomeTracker _tracker = Substitute.For<IJobOutcomeTracker>();
     private readonly List<OperationalEvent> _added = [];
 
     private readonly OperationalEvent _activeEvent = new()
@@ -57,18 +59,11 @@ public class JobFailureThresholdCheckerTests
             .Returns(1);
     }
 
-    private void SeedOutcomes(int failures, int successes, ServiceType? service = null)
+    private void SeedOutcomes(int failures, int successes)
     {
-        var target = service ?? Monitored;
-        for (var i = 0; i < failures; i++)
-        {
-            _tracker.RecordFailure(target);
-        }
-
-        for (var i = 0; i < successes; i++)
-        {
-            _tracker.RecordSuccess(target);
-        }
+        _tracker.GetCountsSinceAsync(
+                Arg.Any<JobType>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns((failures, failures + successes));
     }
 
     [Fact]
@@ -146,18 +141,14 @@ public class JobFailureThresholdCheckerTests
     }
 
     [Fact]
-    public async Task outcomes_from_other_services_do_not_trigger_the_check()
+    public async Task checker_queries_the_mapped_job_type_for_the_monitored_service()
     {
-        SeedOutcomes(failures: 100, successes: 0, service: ServiceType.MediaPreviews);
+        SeedOutcomes(failures: 8, successes: 3);
 
         await CreateSut().CheckAsync(TestContext.Current.CancellationToken);
 
-        _added.Should().BeEmpty();
-        await _repo.DidNotReceive().ResolveActiveEventsAsync(
-            Arg.Any<ServiceType>(),
-            Arg.Any<OperationalEventCode>(),
-            Arg.Any<DateTime>(),
-            Arg.Any<CancellationToken>());
+        await _tracker.Received(1).GetCountsSinceAsync(
+            JobType.LyricsFetch, Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

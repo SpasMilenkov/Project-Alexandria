@@ -11,31 +11,43 @@ namespace Alexandria.Tests.Unit.Monitoring;
 public class TranspilationStatsServiceTests
 {
     private readonly ITranspilationJobRepository _repo = Substitute.For<ITranspilationJobRepository>();
+    private readonly IJobRepository _jobRepo = Substitute.For<IJobRepository>();
     private readonly TranspilationStatsService _sut;
 
     public TranspilationStatsServiceTests()
     {
-        _sut = new TranspilationStatsService(_repo);
+        _sut = new TranspilationStatsService(_repo, _jobRepo);
     }
 
     private static DateTime Utc(int year, int month, int day, int hour = 0, int minute = 0) =>
         new(year, month, day, hour, minute, 0, DateTimeKind.Utc);
 
-    private static TranspilationJob Job(
-        TranspilationStatus status,
+    private static TranspilationJob CreateTranspilationJob(
+        JobStatus status,
         DateTime createdAt,
         DateTime? startedAt = null,
-        DateTime? completedAt = null) =>
-        new()
+        DateTime? completedAt = null)
+    {
+        var job = new Job
         {
             Id = Guid.NewGuid(),
-            VersionId = Guid.NewGuid(),
             Status = status,
-            CreatedAt = createdAt,
             StartedAt = startedAt,
             CompletedAt = completedAt,
+            Type = JobType.Transpilation,
             UserId = Guid.NewGuid()
         };
+
+        return new TranspilationJob
+        {
+            Id = Guid.NewGuid(),
+            JobId = job.Id,
+            Job = job,
+            VersionId = Guid.NewGuid(),
+            CreatedAt = createdAt,
+            UserId = Guid.NewGuid()
+        };
+    }
 
     [Fact]
     public async Task hourly_buckets_truncate_to_the_hour()
@@ -46,12 +58,12 @@ public class TranspilationStatsServiceTests
         var jobs = new List<TranspilationJob>
         {
             // Terminal job completing at :37 → bucket 12:00
-            Job(TranspilationStatus.Ready, Utc(2026, 8, 21, 12, 5),
+            CreateTranspilationJob(JobStatus.Ready, Utc(2026, 8, 21, 12, 5),
                 startedAt: Utc(2026, 8, 21, 12, 10), completedAt: Utc(2026, 8, 21, 12, 37)),
             // Volume-only job created at :52 → bucket 12:00 as well
-            Job(TranspilationStatus.Queued, Utc(2026, 8, 21, 12, 52)),
+            CreateTranspilationJob(JobStatus.Queued, Utc(2026, 8, 21, 12, 52)),
             // Terminal job in a different hour → separate bucket
-            Job(TranspilationStatus.Failed, Utc(2026, 8, 21, 11),
+            CreateTranspilationJob(JobStatus.Failed, Utc(2026, 8, 21, 11),
                 startedAt: Utc(2026, 8, 21, 11), completedAt: Utc(2026, 8, 21, 11, 30)),
         };
         _repo.GetJobsTouchingWindowAsync(windowFrom, windowTo, Arg.Any<CancellationToken>())
@@ -75,9 +87,9 @@ public class TranspilationStatsServiceTests
 
         var jobs = new List<TranspilationJob>
         {
-            Job(TranspilationStatus.Ready, Utc(2026, 8, 20, 23),
+            CreateTranspilationJob(JobStatus.Ready, Utc(2026, 8, 20, 23),
                 startedAt: Utc(2026, 8, 20, 23), completedAt: Utc(2026, 8, 21, 1)),
-            Job(TranspilationStatus.Failed, Utc(2026, 8, 21, 9),
+            CreateTranspilationJob(JobStatus.Failed, Utc(2026, 8, 21, 9),
                 startedAt: Utc(2026, 8, 21, 9), completedAt: Utc(2026, 8, 21, 10)),
         };
         _repo.GetJobsTouchingWindowAsync(windowFrom, windowTo, Arg.Any<CancellationToken>())
@@ -101,10 +113,10 @@ public class TranspilationStatsServiceTests
 
         var jobs = new List<TranspilationJob>
         {
-            Job(TranspilationStatus.Ready, start, start, Utc(2026, 8, 21, 10)),
-            Job(TranspilationStatus.Partial, start, start, Utc(2026, 8, 21, 10)),
-            Job(TranspilationStatus.Failed, start, start, Utc(2026, 8, 21, 10)),
-            Job(TranspilationStatus.Cancelled, start, start, Utc(2026, 8, 21, 10)),
+            CreateTranspilationJob(JobStatus.Ready, start, start, Utc(2026, 8, 21, 10)),
+            CreateTranspilationJob(JobStatus.Partial, start, start, Utc(2026, 8, 21, 10)),
+            CreateTranspilationJob(JobStatus.Failed, start, start, Utc(2026, 8, 21, 10)),
+            CreateTranspilationJob(JobStatus.Cancelled, start, start, Utc(2026, 8, 21, 10)),
         };
         _repo.GetJobsTouchingWindowAsync(windowFrom, windowTo, Arg.Any<CancellationToken>())
             .Returns(jobs);
@@ -127,17 +139,17 @@ public class TranspilationStatsServiceTests
             .Select(i =>
             {
                 var started = baseTime;
-                return Job(
-                    TranspilationStatus.Ready,
+                return CreateTranspilationJob(
+                    JobStatus.Ready,
                     started,
                     started,
                     started.AddMinutes(i * 10));
             })
             .ToList();
 
-        _repo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
+        _jobRepo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
                 Arg.Any<CancellationToken>())
-            .Returns(jobs);
+            .Returns(jobs.Select(j => j.Job).ToList());
 
         var result = await _sut.GetOverviewAsync(30, TestContext.Current.CancellationToken);
 
@@ -151,13 +163,13 @@ public class TranspilationStatsServiceTests
     [Fact]
     public async Task overview_status_counts_pass_through()
     {
-        var counts = new List<TranspilationStatusCount>
+        var counts = new List<JobStatusCount>
         {
-            new(TranspilationStatus.Queued, 2),
-            new(TranspilationStatus.Processing, 1),
-            new(TranspilationStatus.Failed, 1),
+            new(JobStatus.Queued, 2),
+            new(JobStatus.Processing, 1),
+            new(JobStatus.Failed, 1),
         };
-        _repo.GetStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(counts);
+        _jobRepo.GetStatusCountsAsync(JobType.Transpilation, Arg.Any<CancellationToken>()).Returns(counts);
         _repo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
@@ -174,7 +186,7 @@ public class TranspilationStatsServiceTests
         _repo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
-        _repo.GetStatusCountsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _jobRepo.GetStatusCountsAsync(JobType.Transpilation, Arg.Any<CancellationToken>()).Returns([]);
 
         var trend = await _sut.GetTrendAsync(Utc(2026, 8, 21), Utc(2026, 8, 22), StatsBucket.Hour,
             TestContext.Current.CancellationToken);
