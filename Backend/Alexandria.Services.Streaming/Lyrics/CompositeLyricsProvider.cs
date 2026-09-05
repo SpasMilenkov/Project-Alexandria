@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming.Lyrics;
@@ -33,6 +34,8 @@ public sealed partial class CompositeLyricsProvider(
             candidates = _ordered;
         }
 
+        Exception? transientFailure = null;
+
         foreach (var provider in candidates)
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -61,6 +64,13 @@ public sealed partial class CompositeLyricsProvider(
             {
                 // timeoutCts fired, not the caller's token -> treat as this provider's failure
                 LogProviderTimedOutAfterTimeoutSTryingNext(provider.GetType().Name, PerProviderTimeout.TotalSeconds);
+                transientFailure ??= new TimeoutException(
+                    $"Provider {provider.GetType().Name} timed out after {PerProviderTimeout.TotalSeconds}s");
+            }
+            catch (Exception ex) when (IsTransient(ex))
+            {
+                logger.LogError(ex, "{Provider} threw unexpectedly, trying next", provider.GetType().Name);
+                transientFailure ??= ex;
             }
             catch (Exception ex)
             {
@@ -70,8 +80,16 @@ public sealed partial class CompositeLyricsProvider(
             }
         }
 
+        // A provider error means "unknown", not "no lyrics": surface it so the
+        // caller requeues instead of recording a terminal NoMatch.
+        if (transientFailure is not null)
+            ExceptionDispatchInfo.Capture(transientFailure).Throw();
+
         return null;
     }
+
+    private static bool IsTransient(Exception ex) =>
+        ex is HttpRequestException or TimeoutException or TaskCanceledException;
 
     [LoggerMessage(LogLevel.Debug, "{Provider} unavailable, skipping")]
     partial void LogProviderUnavailableSkipping(string provider);

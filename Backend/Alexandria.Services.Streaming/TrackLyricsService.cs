@@ -46,21 +46,51 @@ public class TrackLyricsService(
             unitOfWork.Lyrics.Update(existing);
             await unitOfWork.SaveChangesAsync(ct);
 
-            var refetchMessage = Encoding.UTF8.GetBytes(existing.Id.ToString());
-            await publisher.PublishAsync(refetchMessage, "lyrics.job");
+            await RequeueAndPublishAsync(existing.JobId, "lyrics.job", ct);
             return;
         }
+
+        var job = new Job
+        {
+            Id = Guid.NewGuid(),
+            Status = JobStatus.Queued,
+            Type = JobType.LyricsFetch,
+            UserId = userId
+        };
+        await unitOfWork.Jobs.AddAsync(job, ct);
 
         var lyrics = await unitOfWork.Lyrics.AddAsync(new TrackLyrics
         {
             TranspilationJobId = jobId,
             Status = LyricsStatus.PendingFetch,
+            JobId = job.Id
         }, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
 
-        var message = Encoding.UTF8.GetBytes(lyrics.Id.ToString());
-        await publisher.PublishAsync(message, "lyrics.job");
+        await PublishOrFailAsync(job.Id, "lyrics.job", ct);
+    }
+
+    // Requeues the linked job in place (same id, clean queued lifecycle) and
+    // publishes it. Mirrors the preview dispatch requeue semantics.
+    private async Task RequeueAndPublishAsync(Guid jobId, string routingKey, CancellationToken ct)
+    {
+        await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Queued, progress: 0, ct: ct);
+        await unitOfWork.Jobs.ClearErrorAsync(jobId, ct);
+        await PublishOrFailAsync(jobId, routingKey, ct);
+    }
+
+    private async Task PublishOrFailAsync(Guid jobId, string routingKey, CancellationToken ct)
+    {
+        try
+        {
+            await publisher.PublishAsync(Encoding.UTF8.GetBytes(jobId.ToString()), routingKey);
+        }
+        catch (Exception)
+        {
+            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: "publish failed", ct: ct);
+            throw;
+        }
     }
 
     /// <inheritdoc/>
@@ -100,9 +130,26 @@ public class TrackLyricsService(
             existing.ConfidenceScore = null;
             existing.FetchedAt = DateTime.UtcNow;
             unitOfWork.Lyrics.Update(existing);
+
+            // Manual upload is a completed fetch by definition: the linked job
+            // reflects the user-supplied outcome instead of worker output.
+            await unitOfWork.Jobs.UpdateStatusAsync(
+                existing.JobId, JobStatus.Ready, progress: 100, ct: ct);
+            await unitOfWork.Jobs.ClearErrorAsync(existing.JobId, ct);
         }
         else
         {
+            var job = new Job
+            {
+                Id = Guid.NewGuid(),
+                Status = JobStatus.Ready,
+                ProgressPercent = 100,
+                CompletedAt = DateTime.UtcNow,
+                Type = JobType.LyricsFetch,
+                UserId = userId
+            };
+            await unitOfWork.Jobs.AddAsync(job, ct);
+
             await unitOfWork.Lyrics.AddAsync(new TrackLyrics
             {
                 TranspilationJobId = jobId,
@@ -111,7 +158,8 @@ public class TrackLyricsService(
                 SourceProvider = LyricsProvider.Manual,
                 Status = LyricsStatus.Fetched,
                 Cached = false,
-                FetchedAt = DateTime.UtcNow
+                FetchedAt = DateTime.UtcNow,
+                JobId = job.Id
             }, ct);
         }
 
@@ -143,7 +191,6 @@ public class TrackLyricsService(
         unitOfWork.Lyrics.Update(lyrics);
         await unitOfWork.SaveChangesAsync(ct);
 
-        var message = Encoding.UTF8.GetBytes(lyricsId.ToString());
-        await publisher.PublishAsync(message, "lyrics.change");
+        await RequeueAndPublishAsync(lyrics.JobId, "lyrics.change", ct);
     }
 }

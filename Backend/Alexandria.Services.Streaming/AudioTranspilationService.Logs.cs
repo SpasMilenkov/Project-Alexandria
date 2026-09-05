@@ -23,4 +23,9 @@ public partial class AudioTranspilationService
         "Audio DASH pass completed → '{ManifestPath}'")]
     private static partial void LogDashPassCompleted(
         ILogger logger, string manifestPath);
+
+    [LoggerMessage(9005, LogLevel.Error,
+        "Failed polling for status on Job with ID: {JobId}")]
+    private static partial void LogWatchdogPollFailed(
+        ILogger<AudioTranspilationService> logger, Exception exception, Guid jobId);
 }

@@ -19,15 +19,15 @@ public partial class StreamingRepresentationService(
         CreateStreamingRepresentationRequest request,
         CancellationToken ct = default)
     {
-        var jobExists = await uow.TranspilationJobs.ExistsAsync(j => j.Id == request.JobId, ct);
+        var jobExists = await uow.TranspilationJobs.ExistsAsync(j => j.Id == request.TranspilationId, ct);
 
         if (!jobExists)
-            throw new TranspilationJobNotFoundException(request.JobId);
+            throw new TranspilationJobNotFoundException(request.TranspilationId);
 
         var entity = request.ToEntity();
         var created = await uow.StreamingRepresentations.AddAsync(entity, ct);
 
-        LogRepresentationCreated(logger, created.Id, request.JobId, request.Codec);
+        LogRepresentationCreated(logger, created.Id, request.TranspilationId, request.Codec);
 
         return created.ToResponse();
     }
@@ -40,7 +40,7 @@ public partial class StreamingRepresentationService(
         if (requests.Count == 0)
             return [];
 
-        var jobId = requests[0].JobId;
+        var jobId = requests[0].TranspilationId;
 
         var jobExists = await uow.TranspilationJobs.ExistsAsync(j => j.Id == jobId, ct);
         if (!jobExists)
@@ -162,8 +162,8 @@ public partial class StreamingRepresentationService(
         LogRepresentationsMarkedFailed(logger, representationIds.Count);
     }
 
-    public async Task DeleteByJobIdAsync(Guid jobId, CancellationToken ct = default)
+    public async Task DeleteByTranspilationIdAsync(Guid transpilationId, CancellationToken ct = default)
     {
-        await uow.StreamingRepresentations.DeleteByJobIdAsync(jobId, ct);
+        await uow.StreamingRepresentations.DeleteByTranspilation(transpilationId, ct);
     }
 }

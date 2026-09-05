@@ -124,8 +124,8 @@ public partial class VideoTranspilationService(
             while (!killCts.Token.IsCancellationRequested)
             {
                 await Task.Delay(10_000, killCts.Token).ConfigureAwait(false);
-                var status = await unitOfWork.TranspilationJobs.GetTranspilationStatusAsync(jobId, killCts.Token);
-                if (status == TranspilationStatus.CancellationRequested)
+                var status = await unitOfWork.Jobs.GetStatusAsync(jobId, killCts.Token);
+                if (status == JobStatus.CancellationRequested)
                 {
                     wasCancelled = true;
                     process.Kill(entireProcessTree: true);

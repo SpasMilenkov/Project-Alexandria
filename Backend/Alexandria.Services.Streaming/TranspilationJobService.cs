@@ -17,24 +17,23 @@ public partial class TranspilationJobService(
     IPublisherService publisherService,
     ILogger<TranspilationJobService> logger) : ITranspilationJobService
 {
-    private static readonly IReadOnlyDictionary<TranspilationStatus, IReadOnlySet<TranspilationStatus>>
+    private static readonly IReadOnlyDictionary<JobStatus, IReadOnlySet<JobStatus>>
         AllowedTransitions =
-            new Dictionary<TranspilationStatus, IReadOnlySet<TranspilationStatus>>
+            new Dictionary<JobStatus, IReadOnlySet<JobStatus>>
             {
-                [TranspilationStatus.Queued] = new HashSet<TranspilationStatus>
-                    { TranspilationStatus.Processing, TranspilationStatus.Cancelled },
-                [TranspilationStatus.Processing] = new HashSet<TranspilationStatus>
+                [JobStatus.Queued] = new HashSet<JobStatus>
+                    { JobStatus.Processing, JobStatus.Cancelled },
+                [JobStatus.Processing] = new HashSet<JobStatus>
                 {
-                    TranspilationStatus.Ready, TranspilationStatus.Failed, TranspilationStatus.CancellationRequested
+                    JobStatus.Ready, JobStatus.Failed, JobStatus.CancellationRequested
                 },
-                [TranspilationStatus.CancellationRequested] = new HashSet<TranspilationStatus>
-                    { TranspilationStatus.Cancelled },
-                [TranspilationStatus.Ready] = new HashSet<TranspilationStatus> { TranspilationStatus.Queued },
-                [TranspilationStatus.Failed] = new HashSet<TranspilationStatus> { TranspilationStatus.Queued },
-                [TranspilationStatus.Cancelled] = new HashSet<TranspilationStatus> { TranspilationStatus.Queued },
-                [TranspilationStatus.Partial] = new HashSet<TranspilationStatus> { TranspilationStatus.Queued },
+                [JobStatus.CancellationRequested] = new HashSet<JobStatus>
+                    { JobStatus.Cancelled },
+                [JobStatus.Ready] = new HashSet<JobStatus> { JobStatus.Queued },
+                [JobStatus.Failed] = new HashSet<JobStatus> { JobStatus.Queued },
+                [JobStatus.Cancelled] = new HashSet<JobStatus> { JobStatus.Queued },
+                [JobStatus.Partial] = new HashSet<JobStatus> { JobStatus.Queued },
             };
-
 
     /// <inheritdoc/>
     public async Task<TranspilationJobDto> CreateJobAsync(
@@ -44,40 +43,52 @@ public partial class TranspilationJobService(
         VideoRung[] videoRungs,
         CancellationToken ct = default)
     {
-        var isVideo =
-            await unitOfWork.ContentObjects.IsVideo(versionId, userId, ct);
+        var isVideo = await unitOfWork.ContentObjects.IsVideo(versionId, userId, ct);
 
-        var activeJob = await unitOfWork.TranspilationJobs
-            .GetActiveJobForVersionAsync(versionId, ct);
-
+        var activeJob = await unitOfWork.TranspilationJobs.GetActiveJobForVersionAsync(versionId, ct);
         if (activeJob is not null)
             throw new TranspilationJobConflictException(versionId, activeJob.Id);
 
-        var entity = new TranspilationJob()
+        var job = new Job
+        {
+            Id = Guid.NewGuid(),
+            Status = JobStatus.Queued,
+            ProgressPercent = 0,
+            RetryCount = 0,
+            Type = JobType.Transpilation,
+            UserId = userId,
+        };
+
+        await unitOfWork.Jobs.AddAsync(job, ct);
+
+        var transpilation = new TranspilationJob
         {
             Id = Guid.NewGuid(),
             VersionId = versionId,
             IsVideo = isVideo,
-            Status = TranspilationStatus.Queued,
-            ProgressPercent = 0,
+            JobId = job.Id,
             AudioRungs = audioRungs.Length == 0 && !isVideo
                 ? [AudioRung.Kbps96, AudioRung.Kbps128, AudioRung.Kbps192]
                 : audioRungs,
             VideoRungs = videoRungs.Length == 0 && isVideo ? [VideoRung.P360, VideoRung.P1080] : videoRungs,
-            RetryCount = 0,
             CreatedAt = DateTime.UtcNow,
             UserId = userId
         };
-        var created = await unitOfWork.TranspilationJobs.AddAsync(entity, ct);
-        await publisherService.PublishAsync(Encoding.UTF8.GetBytes(entity.Id.ToString()), "transpilation.job");
-        LogJobCreated(logger, created.Id, versionId);
 
-        return created.ToDto();
+        await unitOfWork.TranspilationJobs.AddAsync(transpilation, ct);
+
+        // Job.Id is the canonical id published to the queue - it's what the worker
+        // claims and reports status against.
+        await publisherService.PublishAsync(Encoding.UTF8.GetBytes(job.Id.ToString()), "transpilation.job");
+        LogJobCreated(logger, transpilation.Id, versionId);
+
+        transpilation.Job = job; // set so ToDto() below doesn't need a reload
+        return transpilation.ToDto();
     }
 
     /// <inheritdoc/>
     public async Task<TranspilationJobDto> GetByIdAsync(
-        Guid jobId,
+        Guid jobId, // TranspilationJob.Id
         CancellationToken ct = default)
     {
         var job = await unitOfWork.TranspilationJobs.GetWithRepresentationsAsync(jobId, ct)
@@ -119,9 +130,11 @@ public partial class TranspilationJobService(
         };
     }
 
+    /// <inheritdoc/>
+    // Called by the worker/handler. jobId here is Job.Id.
     public async Task UpdateStatusAsync(
         Guid jobId,
-        TranspilationStatus status,
+        JobStatus status,
         int? progress = null,
         string? errorDetail = null,
         string? segmentPrefix = null,
@@ -129,76 +142,77 @@ public partial class TranspilationJobService(
         VideoRung[]? videoRungs = null,
         CancellationToken ct = default)
     {
-        var exists = await unitOfWork.TranspilationJobs.ExistsAsync(j => j.Id == jobId, ct);
+        var transpilation = await unitOfWork.TranspilationJobs.GetByJobIdAsync(jobId, ct)
+                            ?? throw new TranspilationJobNotFoundException(jobId);
 
-        if (!exists)
-            throw new TranspilationJobNotFoundException(jobId);
+        await unitOfWork.Jobs.UpdateStatusAsync(jobId, status, progress, errorDetail, ct);
 
-        await unitOfWork.TranspilationJobs.UpdateStatusAsync(jobId, status, progress, errorDetail, segmentPrefix,
-            audioRungs, videoRungs, ct: ct);
+        if (segmentPrefix is not null || audioRungs is not null || videoRungs is not null)
+        {
+            await unitOfWork.TranspilationJobs.UpdateDetailsAsync(
+                transpilation.Id, segmentPrefix, audioRungs, videoRungs, ct);
+        }
 
         LogJobStatusUpdated(logger, jobId, status);
     }
 
-
     /// <inheritdoc/>
-    // Called by users to drive state machine transitions.
+    // Called by users to drive state machine transitions. jobId here is TranspilationJob.Id.
     public async Task UpdateStatusAsync(
         Guid jobId,
         Guid userId,
-        TranspilationStatus targetStatus,
+        JobStatus targetStatus,
         AudioRung[]? audioRungs = null,
         VideoRung[]? videoRungs = null,
         CancellationToken ct = default)
     {
-        var job = await unitOfWork.TranspilationJobs.FirstOrDefaultAsync(
-                      j => j.Id == jobId && j.UserId == userId, ct)
-                  ?? throw new TranspilationJobNotFoundException(jobId);
+        var transpilation = await unitOfWork.TranspilationJobs.FirstOrDefaultAsync(
+                                j => j.Id == jobId && j.UserId == userId, ct)
+                            ?? throw new TranspilationJobNotFoundException(jobId);
 
-        if (!AllowedTransitions.TryGetValue(job.Status, out var allowed) || !allowed.Contains(targetStatus))
-            throw new InvalidTranspilationTransitionException(job.Status, targetStatus, jobId);
+        if (!AllowedTransitions.TryGetValue(transpilation.Job.Status, out var allowed) ||
+            !allowed.Contains(targetStatus))
+            throw new InvalidTranspilationTransitionException(transpilation.Job.Status, targetStatus, jobId);
 
-        if (targetStatus == TranspilationStatus.Queued)
+        if (targetStatus == JobStatus.Queued)
         {
-            if (audioRungs is not null) job.AudioRungs = audioRungs;
-            if (videoRungs is not null) job.VideoRungs = videoRungs;
+            if (audioRungs is not null) transpilation.AudioRungs = audioRungs;
+            if (videoRungs is not null) transpilation.VideoRungs = videoRungs;
+
+            await unitOfWork.TranspilationJobs.UpdateDetailsAsync(
+                transpilation.Id, audioRungs: audioRungs, videoRungs: videoRungs, ct: ct);
 
             // Reset progress so the UI doesn't show stale 100% on a requeued job.
-            await unitOfWork.TranspilationJobs.UpdateStatusAsync(jobId,
-                TranspilationStatus.Queued,
-                progress: 0,
-                audioRungs: audioRungs,
-                videoRungs: videoRungs,
-                ct: ct);
+            await unitOfWork.Jobs.UpdateStatusAsync(transpilation.JobId, JobStatus.Queued, progress: 0, ct: ct);
+            await unitOfWork.Jobs.ClearErrorAsync(transpilation.JobId, ct);
 
-            await unitOfWork.TranspilationJobs.ClearErrorAsync(jobId, ct);
-
-            await publisherService.PublishAsync(Encoding.UTF8.GetBytes(jobId.ToString()), "transpilation.job");
+            await publisherService.PublishAsync(
+                Encoding.UTF8.GetBytes(transpilation.JobId.ToString()), "transpilation.job");
 
             LogJobRequeued(logger, jobId);
             return;
         }
 
-        if (targetStatus == TranspilationStatus.CancellationRequested)
+        if (targetStatus == JobStatus.CancellationRequested)
         {
-            await unitOfWork.TranspilationJobs.UpdateStatusAsync(jobId, TranspilationStatus.CancellationRequested,
-                ct: ct);
+            await unitOfWork.Jobs.UpdateStatusAsync(transpilation.JobId, JobStatus.CancellationRequested, ct: ct);
             LogJobCancellationRequested(logger, jobId);
             return;
         }
 
-        await unitOfWork.TranspilationJobs.UpdateStatusAsync(jobId, targetStatus, ct: ct);
+        await unitOfWork.Jobs.UpdateStatusAsync(transpilation.JobId, targetStatus, ct: ct);
         LogJobStatusUpdated(logger, jobId, targetStatus);
     }
 
-    public async Task UpdateStatusAsync(Guid jobId, Guid userId, TranspilationStatus status,
+    /// <inheritdoc/>
+    public async Task UpdateStatusAsync(Guid jobId, Guid userId, JobStatus status,
         CancellationToken ct = default)
     {
-        var exists = await unitOfWork.TranspilationJobs.ExistsAsync(j => j.Id == jobId && j.UserId == userId, ct);
+        var transpilation = await unitOfWork.TranspilationJobs.FirstOrDefaultAsync(
+                                j => j.Id == jobId && j.UserId == userId, ct)
+                            ?? throw new TranspilationJobNotFoundException(jobId);
 
-        if (!exists) throw new TranspilationJobNotFoundException(jobId);
-
-        await unitOfWork.TranspilationJobs.UpdateStatusAsync(jobId, status, ct: ct);
+        await unitOfWork.Jobs.UpdateStatusAsync(transpilation.JobId, status, ct: ct);
 
         LogJobStatusUpdated(logger, jobId, status);
     }
@@ -208,8 +222,18 @@ public partial class TranspilationJobService(
         TimeSpan threshold,
         CancellationToken ct = default)
     {
-        var jobs = await unitOfWork.TranspilationJobs.GetStalledJobsAsync(threshold, ct);
-        var result = jobs.Select(j => j.ToDto()).ToList();
+        var stalledJobs = await unitOfWork.Jobs.GetStalledJobsAsync(threshold, ct);
+        var transpilationStalledJobs = stalledJobs.Where(j => j.Type == JobType.Transpilation).ToList();
+
+        var result = new List<TranspilationJobDto>(transpilationStalledJobs.Count);
+        foreach (var job in transpilationStalledJobs)
+        {
+            var transpilation = await unitOfWork.TranspilationJobs.GetByJobIdAsync(job.Id, ct);
+            if (transpilation is null) continue; // shouldn't happen, but don't fail the whole sweep over one row
+
+            transpilation.Job = job; // already have it in hand, skip a redundant lookup
+            result.Add(transpilation.ToDto());
+        }
 
         LogStalledJobsFound(logger, result.Count, threshold);
 
@@ -217,11 +241,12 @@ public partial class TranspilationJobService(
     }
 
     /// <inheritdoc/>
+    // Called by the worker/handler. jobId here is Job.Id.
     public async Task<bool> TryClaimJobAsync(
         Guid jobId,
         CancellationToken ct = default)
     {
-        var claimed = await unitOfWork.TranspilationJobs.TryClaimJobAsync(jobId, ct);
+        var claimed = await unitOfWork.Jobs.TryClaimJobAsync(jobId, ct);
 
         if (claimed)
             LogJobClaimed(logger, jobId);
