@@ -12,4 +12,5 @@ public class ApplicationUser : IdentityUser<Guid>, IBase
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
+    public long StorageQuota { get; set; }
 }
