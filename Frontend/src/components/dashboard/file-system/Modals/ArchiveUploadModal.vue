@@ -3,15 +3,16 @@ import { BlobReader, BlobWriter, ZipReader, configure } from "@zip.js/zip.js";
 import { computed, onMounted, ref } from "vue";
 
 import { directoryApi } from "@/api/directory";
-import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
 import { useAppToast } from "@/composables/useAppToast";
-import {
-  type DirectoryTreeItem,
-  type FileEntry,
-  useDirectoryUpload,
-} from "@/composables/useDirectoryUpload";
+import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { useDirectoryStore } from "@/stores/directory";
+
+import UploadEmptyState from "./upload/UploadEmptyState.vue";
+import UploadFileTree from "./upload/UploadFileTree.vue";
+import UploadModalFooter from "./upload/UploadModalFooter.vue";
+import UploadModalShell from "./upload/UploadModalShell.vue";
+import UploadProgressSummary from "./upload/UploadProgressSummary.vue";
 
 // configure zip.js to use its own built-in workers for decompression
 configure({ useWebWorkers: true });
@@ -337,50 +338,39 @@ const mimeFromExtension = (fileName: string): string => {
 </script>
 
 <template>
-  <UModal
-    :close="{ onClick: () => emit('close', false) }"
+  <UploadModalShell
+    v-model="selectedDirectoryId"
     title="Upload Archive"
-    :ui="{ body: 'space-y-4' }"
+    :initial-id="directoryId"
+    :initial-name="directoryName"
+    :picker-disabled="uploading"
+    @close="emit('close', false)"
   >
-    <template #body>
+    <template #intro>
       <p class="text-sm text-muted">
         Upload a <code class="text-xs font-mono">.zip</code> or
         <code class="text-xs font-mono">.jar</code> archive — its contents will be extracted and
         uploaded as a directory.
       </p>
+    </template>
 
-      <DirectoryPicker
-        v-model="selectedDirectoryId"
-        :initial-id="directoryId"
-        :initial-name="directoryName"
-        :disabled="uploading"
+    <!-- empty: archive picker -->
+    <UploadEmptyState
+      v-if="!archiveFile"
+      icon="i-lucide-archive"
+      button-label="Select Archive"
+      button-icon="i-lucide-file-archive"
+      hint=".zip and .jar only"
+      @select="archiveInputRef?.click()"
+    >
+      <input
+        ref="archiveInputRef"
+        type="file"
+        accept=".zip,.jar,application/zip,application/java-archive"
+        class="hidden"
+        @change="handleFileChange"
       />
-
-      <!-- empty: archive picker -->
-      <div
-        v-if="!archiveFile"
-        class="rounded-lg border border-dashed border-gray-200/70 dark:border-gray-700/70 p-8 flex flex-col items-center gap-4"
-      >
-        <UIcon name="i-lucide-archive" class="size-10 text-muted" />
-        <div class="flex flex-col items-center gap-2">
-          <UButton
-            label="Select Archive"
-            icon="i-lucide-file-archive"
-            variant="outline"
-            color="neutral"
-            @click="archiveInputRef?.click()"
-          />
-          <p class="text-xs text-muted">.zip and .jar only</p>
-        </div>
-
-        <input
-          ref="archiveInputRef"
-          type="file"
-          accept=".zip,.jar,application/zip,application/java-archive"
-          class="hidden"
-          @change="handleFileChange"
-        />
-
+      <template #below>
         <Transition
           enter-active-class="transition-all duration-200 ease-out"
           leave-active-class="transition-all duration-150 ease-in"
@@ -389,238 +379,131 @@ const mimeFromExtension = (fileName: string): string => {
         >
           <p v-if="validationError" class="text-xs text-error">{{ validationError }}</p>
         </Transition>
-      </div>
+      </template>
+    </UploadEmptyState>
 
-      <!-- archive selected -->
+    <!-- archive selected -->
+    <div
+      v-else
+      class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden"
+    >
+      <!-- archive file row -->
       <div
-        v-else
-        class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden"
+        class="flex items-center gap-3 px-3 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass bg-white/40 dark:bg-white/3"
       >
-        <!-- archive file row -->
-        <div
-          class="flex items-center gap-3 px-3 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 bg-white/40 dark:bg-white/3"
-        >
-          <UIcon name="i-lucide-file-archive" class="size-4 text-muted shrink-0" />
-          <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium truncate text-gray-700 dark:text-gray-300">
-              {{ archiveFile.name }}
-            </p>
-            <p class="text-xs text-muted">{{ formatBytes(archiveFile.size) }}</p>
-          </div>
-
-          <!-- extraction phase badge -->
-          <div class="flex items-center gap-1.5 shrink-0">
-            <template v-if="extractionPhase === 'idle'">
-              <span class="text-xs text-muted">Ready to extract</span>
-            </template>
-            <template v-else-if="isExtracting">
-              <UIcon name="i-lucide-loader-circle" class="size-3.5 text-primary animate-spin" />
-              <span class="text-xs text-primary">Extracting…</span>
-            </template>
-            <template v-else-if="extractionPhase === 'done'">
-              <UIcon name="i-lucide-check-circle" class="size-3.5 text-success" />
-              <span class="text-xs text-success">{{ extractedFiles.length }} files extracted</span>
-            </template>
-            <template v-else-if="extractionPhase === 'error'">
-              <UIcon name="i-lucide-x-circle" class="size-3.5 text-error" />
-              <span class="text-xs text-error">{{ extractionError }}</span>
-            </template>
-          </div>
-
-          <UButton
-            v-if="!isExtracting && !uploading"
-            icon="i-lucide-x"
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            aria-label="Remove archive"
-            @click="reset"
-          />
+        <UIcon name="i-lucide-file-archive" class="size-4 text-muted shrink-0" />
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium truncate text-gray-700 dark:text-gray-300">
+            {{ archiveFile.name }}
+          </p>
+          <p class="text-xs text-muted">{{ formatBytes(archiveFile.size) }}</p>
         </div>
 
-        <!-- extraction + upload progress bar -->
-        <Transition
-          enter-active-class="transition-all duration-200 ease-out"
-          leave-active-class="transition-all duration-150 ease-in"
-          enter-from-class="opacity-0"
-          leave-to-class="opacity-0"
-        >
-          <div
-            v-if="isExtracting || fileStatuses.length > 0"
-            class="px-3 pt-2.5 pb-2 border-b border-gray-200/70 dark:border-gray-700/70 space-y-1.5"
-          >
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-muted">{{ progressLabel }}</span>
-              <span class="tabular-nums font-medium">{{ progressValue }}%</span>
-            </div>
-            <UProgress :value="progressValue" :color="progressBarColor" size="xs" />
-          </div>
-        </Transition>
-
-        <!-- live file tree — shown once we have any extracted entries -->
-        <div
-          v-if="extractedFiles.length > 0 || fileStatuses.length > 0"
-          class="max-h-64 overflow-y-auto px-2 py-1.5"
-        >
-          <UTree
-            :items="treeItems"
-            :virtualize="shouldVirtualize"
-            :get-key="(item: DirectoryTreeItem) => item.fullPath"
-            color="neutral"
-            size="sm"
-            :ui="{ listWithChildren: 'border-s border-gray-200/50 dark:border-gray-700/50' }"
-          >
-            <template #item-leading="{ item }: { item: DirectoryTreeItem }">
-              <UIcon
-                v-if="item.isFolder"
-                name="i-lucide-folder"
-                class="size-4 transition-colors"
-                :class="fileStatuses.length > 0 ? folderIconClass(item.fullPath) : 'text-muted'"
-              />
-              <UIcon v-else name="i-lucide-file" class="size-4 text-muted" />
-            </template>
-
-            <template #item-trailing="{ item }: { item: DirectoryTreeItem }">
-              <!-- folder: child count during upload -->
-              <template v-if="item.isFolder && fileStatuses.length > 0">
-                <span
-                  v-if="folderChildCountMap.get(item.fullPath)"
-                  class="text-xs tabular-nums"
-                  :class="{
-                    'text-success': folderStatusMap.get(item.fullPath) === 'complete',
-                    'text-error': folderStatusMap.get(item.fullPath) === 'error',
-                    'text-primary': folderStatusMap.get(item.fullPath) === 'uploading',
-                    'text-muted': folderStatusMap.get(item.fullPath) === 'pending',
-                  }"
-                >
-                  {{ folderChildCountMap.get(item.fullPath)?.done }}/{{
-                    folderChildCountMap.get(item.fullPath)?.total
-                  }}
-                </span>
-              </template>
-
-              <!-- leaf: size (extraction) or status (upload) -->
-              <template v-else-if="!item.isFolder">
-                <span v-if="fileStatuses.length === 0" class="text-xs text-muted tabular-nums">
-                  {{ formatBytes(item.fileSize ?? 0) }}
-                </span>
-                <div v-else class="flex items-center gap-1.5">
-                  <span
-                    v-if="
-                      statusMap.get(item.relativePath!)?.status === 'hashing' ||
-                      statusMap.get(item.relativePath!)?.status === 'uploading'
-                    "
-                    class="text-xs text-muted tabular-nums w-7 text-right"
-                  >
-                    {{ statusMap.get(item.relativePath!)?.progress ?? 0 }}%
-                  </span>
-                  <UIcon
-                    :name="statusIcon(statusMap.get(item.relativePath!)?.status ?? 'pending')"
-                    class="size-3.5 transition-colors"
-                    :class="statusIconClass(statusMap.get(item.relativePath!)?.status ?? 'pending')"
-                  />
-                </div>
-              </template>
-            </template>
-
-            <template #item-label="{ item }: { item: DirectoryTreeItem }">
-              <span
-                class="truncate"
-                :class="{
-                  'text-error': statusMap.get(item.relativePath ?? '')?.status === 'error',
-                }"
-              >
-                {{ item.label }}
-              </span>
-              <span
-                v-if="statusMap.get(item.relativePath ?? '')?.error"
-                class="ml-1.5 text-xs text-error/70 truncate max-w-32"
-              >
-                — {{ statusMap.get(item.relativePath ?? "")?.error }}
-              </span>
-            </template>
-          </UTree>
+        <!-- extraction phase badge -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          <template v-if="extractionPhase === 'idle'">
+            <span class="text-xs text-muted">Ready to extract</span>
+          </template>
+          <template v-else-if="isExtracting">
+            <UIcon name="i-lucide-loader-circle" class="size-3.5 text-primary animate-spin" />
+            <span class="text-xs text-primary">Extracting…</span>
+          </template>
+          <template v-else-if="extractionPhase === 'done'">
+            <UIcon name="i-lucide-check-circle" class="size-3.5 text-success" />
+            <span class="text-xs text-success">{{ extractedFiles.length }} files extracted</span>
+          </template>
+          <template v-else-if="extractionPhase === 'error'">
+            <UIcon name="i-lucide-x-circle" class="size-3.5 text-error" />
+            <span class="text-xs text-error">{{ extractionError }}</span>
+          </template>
         </div>
 
-        <!-- upload summary bar -->
-        <Transition
-          enter-active-class="transition-all duration-200 ease-out"
-          leave-active-class="transition-all duration-150 ease-in"
-          enter-from-class="opacity-0"
-          leave-to-class="opacity-0"
-        >
-          <div
-            v-if="fileStatuses.length > 0"
-            class="px-3 py-2.5 border-t border-gray-200/70 dark:border-gray-700/70 bg-white/40 dark:bg-white/3 space-y-1.5"
-          >
-            <div class="flex items-center justify-between text-xs">
-              <span class="text-muted">
-                <template v-if="uploading">
-                  {{ activeFiles }} uploading
-                  <span v-if="successfulFiles > 0" class="text-success">
-                    · {{ successfulFiles }} done</span
-                  >
-                  <span v-if="failedFiles.length > 0" class="text-error">
-                    · {{ failedFiles.length }} failed</span
-                  >
-                </template>
-                <template v-else> {{ completedFiles }} of {{ totalFiles }} files </template>
-              </span>
-              <span class="tabular-nums font-medium">{{ overallProgress }}%</span>
-            </div>
-            <UProgress :value="overallProgress" :color="summaryBarColor" size="xs" />
-          </div>
-        </Transition>
+        <UButton
+          v-if="!isExtracting && !uploading"
+          icon="i-lucide-x"
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          aria-label="Remove archive"
+          @click="reset"
+        />
       </div>
-    </template>
+
+      <!-- extraction + upload progress bar -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        leave-active-class="transition-all duration-150 ease-in"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="isExtracting || fileStatuses.length > 0"
+          class="px-3 pt-2.5 pb-2 border-b border-gray-200/70 dark:border-gray-700/70 space-y-1.5"
+        >
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-muted">{{ progressLabel }}</span>
+            <span class="tabular-nums font-medium">{{ progressValue }}%</span>
+          </div>
+          <UProgress :value="progressValue" :color="progressBarColor" size="xs" />
+        </div>
+      </Transition>
+
+      <!-- live file tree — shown once we have any extracted entries -->
+      <UploadFileTree
+        v-if="extractedFiles.length > 0 || fileStatuses.length > 0"
+        :items="treeItems"
+        :virtualize="shouldVirtualize"
+        :has-statuses="fileStatuses.length > 0"
+        :status-map="statusMap"
+        :folder-status-map="folderStatusMap"
+        :folder-child-count-map="folderChildCountMap"
+        :status-icon="statusIcon"
+        :status-icon-class="statusIconClass"
+        :folder-icon-class="folderIconClass"
+        :format-bytes="formatBytes"
+      />
+
+      <!-- upload summary bar -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        leave-active-class="transition-all duration-150 ease-in"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <UploadProgressSummary
+          v-if="fileStatuses.length > 0"
+          :percent="overallProgress"
+          :color="summaryBarColor"
+        >
+          <template #label>
+            <span>
+              <template v-if="uploading">
+                {{ activeFiles }} uploading
+                <span v-if="successfulFiles > 0" class="text-success">
+                  · {{ successfulFiles }} done</span
+                >
+                <span v-if="failedFiles.length > 0" class="text-error">
+                  · {{ failedFiles.length }} failed</span
+                >
+              </template>
+              <template v-else> {{ completedFiles }} of {{ totalFiles }} files </template>
+            </span>
+          </template>
+        </UploadProgressSummary>
+      </Transition>
+    </div>
 
     <template #footer>
-      <div class="flex justify-between w-full gap-2">
-        <!-- left -->
-        <div class="flex gap-2">
-          <UButton
-            v-if="isExtracting"
-            label="Cancel"
-            icon="i-lucide-x"
-            variant="outline"
-            color="error"
-            @click="cancelExtraction"
-          />
-          <UButton
-            v-else-if="uploading"
-            label="Cancel"
-            icon="i-lucide-x"
-            variant="outline"
-            color="error"
-            @click="cancelUpload"
-          />
-          <UButton
-            v-else-if="archiveFile"
-            label="Start Over"
-            icon="i-lucide-rotate-ccw"
-            variant="ghost"
-            color="neutral"
-            @click="reset"
-          />
-          <UButton
-            v-else
-            label="Cancel"
-            variant="outline"
-            color="neutral"
-            @click="emit('close', false)"
-          />
-        </div>
-
-        <!-- right -->
-        <div class="flex gap-2">
-          <UButton
-            v-if="failedFiles.length > 0 && !uploading"
-            label="Retry Failed"
-            icon="i-lucide-refresh-cw"
-            variant="outline"
-            color="neutral"
-            @click="handleRetry"
-          />
+      <UploadModalFooter
+        :working="isExtracting || uploading"
+        :has-session="!!archiveFile"
+        :has-failures="failedFiles.length > 0 && !uploading"
+        @cancel="isExtracting ? cancelExtraction() : cancelUpload()"
+        @start-over="reset"
+        @close="emit('close', false)"
+        @retry="handleRetry"
+      >
+        <template #primary>
           <UButton
             v-if="extractionPhase === 'idle' && archiveFile"
             label="Extract"
@@ -645,8 +528,8 @@ const mimeFromExtension = (fileName: string): string => {
             variant="solid"
             @click="startUpload"
           />
-        </div>
-      </div>
+        </template>
+      </UploadModalFooter>
     </template>
-  </UModal>
+  </UploadModalShell>
 </template>

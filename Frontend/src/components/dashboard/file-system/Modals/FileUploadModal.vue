@@ -4,11 +4,15 @@ import { computed, ref } from "vue";
 import type { WorkerOutMessage } from "@/workers/blake3.worker";
 
 import { fileApi } from "@/api/file";
-import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { encryptFile } from "@/composables/useFileEncryption";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { formatBytes } from "@/utils/size.utils";
+
+import UploadEmptyState from "./upload/UploadEmptyState.vue";
+import UploadModalFooter from "./upload/UploadModalFooter.vue";
+import UploadModalShell from "./upload/UploadModalShell.vue";
+import UploadProgressSummary from "./upload/UploadProgressSummary.vue";
 
 const appToast = useAppToast();
 
@@ -531,483 +535,443 @@ const onDrop = (e: DragEvent) => {
 </script>
 
 <template>
-  <UModal
-    :close="{ onClick: () => emit('close', false) }"
-    :ui="{ content: 'sm:max-w-2xl' }"
+  <UploadModalShell
+    v-model="selectedDirectoryId"
     title="Upload Files"
+    wide
+    :initial-id="directoryId"
+    :initial-name="directoryName"
+    :picker-disabled="isUploading"
+    @close="emit('close', false)"
   >
-    <template #body>
-      <div class="space-y-6">
-        <!-- directory selector -->
-        <DirectoryPicker
-          v-model="selectedDirectoryId"
-          :initial-id="directoryId"
-          :initial-name="directoryName"
-          :disabled="isUploading"
+    <!-- Drop Zone Wrapper -->
+    <div
+      class="relative"
+      @dragenter="onDragEnter"
+      @dragleave="onDragLeave"
+      @dragover="onDragOver"
+      @drop="onDrop"
+    >
+      <!-- empty state: drop zone -->
+      <UploadEmptyState
+        v-if="uploads.length === 0"
+        tall
+        icon="i-lucide-upload"
+        title="Drop files here or select to upload"
+        subtitle="Any file type — up to 4 uploads in parallel"
+        button-label="Select Files"
+        button-icon="i-lucide-file-plus"
+        @select="initialInputRef?.click()"
+      >
+        <input
+          ref="initialInputRef"
+          type="file"
+          multiple
+          class="hidden"
+          @change="handleInitialChange"
         />
+      </UploadEmptyState>
 
-        <!-- Drop Zone Wrapper -->
+      <!-- file list -->
+      <div
+        v-else
+        class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden"
+      >
+        <!-- rows -->
         <div
-          class="relative"
-          @dragenter="onDragEnter"
-          @dragleave="onDragLeave"
-          @dragover="onDragOver"
-          @drop="onDrop"
+          class="divide-y divide-gray-100/50 dark:divide-gray-800/50 max-h-[28rem] overflow-y-auto"
         >
-          <!-- empty state: drop zone -->
-          <div
-            v-if="uploads.length === 0"
-            class="sm:min-h-80 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-4 p-6"
-          >
-            <UIcon name="i-lucide-upload" class="size-10 text-muted" />
-            <div class="text-center">
-              <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Drop files here or select to upload
-              </p>
-              <p class="text-xs text-muted mt-1">Any file type — up to 4 uploads in parallel</p>
-            </div>
-            <UButton
-              label="Select Files"
-              icon="i-lucide-file-plus"
-              color="neutral"
-              variant="outline"
-              @click="initialInputRef?.click()"
-            />
-            <input
-              ref="initialInputRef"
-              type="file"
-              multiple
-              class="hidden"
-              @change="handleInitialChange"
-            />
-          </div>
+          <div v-for="upload in uploads" :key="upload.id" class="px-4 py-3.5">
+            <div class="flex items-start gap-3">
+              <!-- file icon -->
+              <UIcon name="i-lucide-file" class="size-5 text-muted mt-1 shrink-0" />
 
-          <!-- file list -->
-          <div
-            v-else
-            class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden"
-          >
-            <!-- rows -->
-            <div
-              class="divide-y divide-gray-100/50 dark:divide-gray-800/50 max-h-[28rem] overflow-y-auto"
-            >
-              <div v-for="upload in uploads" :key="upload.id" class="px-4 py-3.5">
-                <div class="flex items-start gap-3">
-                  <!-- file icon -->
-                  <UIcon name="i-lucide-file" class="size-5 text-muted mt-1 shrink-0" />
+              <!-- content container -->
+              <div class="flex-1 min-w-0">
+                <!-- top row: name & controls -->
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-medium truncate text-gray-800 dark:text-gray-200">
+                    {{ upload.file.name }}
+                  </p>
 
-                  <!-- content container -->
-                  <div class="flex-1 min-w-0">
-                    <!-- top row: name & controls -->
-                    <div class="flex items-center justify-between gap-3">
-                      <p class="text-sm font-medium truncate text-gray-800 dark:text-gray-200">
-                        {{ upload.file.name }}
-                      </p>
-
-                      <div class="flex items-center gap-1.5 shrink-0">
-                        <!-- lock toggle — disabled for large files -->
-                        <UTooltip
-                          v-if="!canEncrypt(upload.file)"
-                          text="Encryption is only supported for files under 500 MB. Encrypt locally before uploading."
-                          :delay-duration="0"
-                        >
-                          <UButton
-                            icon="i-lucide-lock-open"
-                            size="xs"
-                            variant="ghost"
-                            color="neutral"
-                            class="opacity-40 cursor-not-allowed"
-                            aria-label="Encryption unavailable for large files"
-                            disabled
-                          />
-                        </UTooltip>
-
-                        <!-- lock toggle — enabled -->
-                        <UTooltip
-                          v-else
-                          :text="
-                            upload.isEncrypted ? 'Encrypted — click to remove' : 'Encrypt this file'
-                          "
-                        >
-                          <UButton
-                            :icon="upload.isEncrypted ? 'i-lucide-lock' : 'i-lucide-lock-open'"
-                            size="xs"
-                            variant="ghost"
-                            :color="getLockColor(upload)"
-                            :disabled="isPipeline(upload.stage)"
-                            :aria-label="
-                              upload.isEncrypted ? 'Remove encryption' : 'Encrypt this file'
-                            "
-                            @click="upload.isEncrypted = !upload.isEncrypted"
-                          />
-                        </UTooltip>
-
-                        <!-- stage dots -->
-                        <div
-                          v-if="upload.stage !== UploadStage.IDLE"
-                          class="flex items-center gap-0.5"
-                          :title="upload.stage"
-                        >
-                          <template v-for="step in STAGE_STEPS" :key="step.stage">
-                            <template
-                              v-if="step.stage !== UploadStage.ENCRYPTING || upload.isEncrypted"
-                            >
-                              <UIcon
-                                v-if="getStageStatus(upload, step.stage) === 'complete'"
-                                name="i-lucide-check-circle"
-                                class="size-3.5 text-success"
-                                :title="step.label"
-                              />
-                              <UIcon
-                                v-else-if="getStageStatus(upload, step.stage) === 'active'"
-                                name="i-lucide-loader-circle"
-                                class="size-3.5 text-primary animate-spin"
-                                :title="step.label"
-                              />
-                              <UIcon
-                                v-else-if="getStageStatus(upload, step.stage) === 'error'"
-                                name="i-lucide-x-circle"
-                                class="size-3.5 text-error"
-                                :title="step.label"
-                              />
-                              <UIcon
-                                v-else
-                                name="i-lucide-circle"
-                                class="size-3.5 text-muted"
-                                :title="step.label"
-                              />
-                            </template>
-                          </template>
-                        </div>
-
-                        <!-- progress percentage -->
-                        <span
-                          v-if="isPipeline(upload.stage)"
-                          class="text-xs tabular-nums text-muted w-9 text-right"
-                        >
-                          {{ Math.round(upload.overallProgress) }}%
-                        </span>
-
-                        <!-- cancel / remove -->
-                        <UButton
-                          icon="i-lucide-x"
-                          size="xs"
-                          variant="ghost"
-                          color="neutral"
-                          :aria-label="isPipeline(upload.stage) ? 'Cancel upload' : 'Remove file'"
-                          @click="handleRemoveOrCancel(upload)"
-                        />
-                      </div>
-                    </div>
-
-                    <!-- size + status badges row -->
-                    <div class="flex items-center gap-2 mt-1.5">
-                      <span class="text-xs text-muted">{{ formatBytes(upload.file.size) }}</span>
-
-                      <span
-                        v-if="upload.stage === UploadStage.IDLE && !upload.isEncrypted"
-                        class="text-xs text-muted"
-                      >
-                        Ready
-                      </span>
-                      <UBadge
-                        v-else-if="upload.stage === UploadStage.IDLE && upload.isEncrypted"
-                        label="Encrypted"
-                        color="warning"
-                        variant="subtle"
-                        size="xs"
-                      />
-                      <span
-                        v-else-if="upload.stage === UploadStage.COMPLETE"
-                        class="text-xs text-success flex items-center gap-1"
-                      >
-                        <UIcon
-                          v-if="upload.isEncrypted"
-                          name="i-lucide-lock"
-                          class="size-3 text-warning"
-                        />
-                        Uploaded
-                      </span>
-                    </div>
-
-                    <!-- progress bar -->
-                    <div v-if="upload.stage !== UploadStage.IDLE" class="mt-3">
-                      <UProgress
-                        :value="upload.overallProgress"
-                        :color="
-                          upload.stage === UploadStage.ERROR
-                            ? 'error'
-                            : upload.stage === UploadStage.COMPLETE
-                              ? 'success'
-                              : 'primary'
-                        "
-                        size="xs"
-                      />
-                    </div>
-
-                    <!-- error message -->
-                    <p
-                      v-if="upload.stage === UploadStage.ERROR && upload.errorMessage"
-                      class="text-xs text-error line-clamp-2 mt-2"
-                      :title="upload.errorMessage"
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <!-- lock toggle — disabled for large files -->
+                    <UTooltip
+                      v-if="!canEncrypt(upload.file)"
+                      text="Encryption is only supported for files under 500 MB. Encrypt locally before uploading."
+                      :delay-duration="0"
                     >
-                      {{ upload.errorMessage }}
-                    </p>
+                      <UButton
+                        icon="i-lucide-lock-open"
+                        size="xs"
+                        variant="ghost"
+                        color="neutral"
+                        class="opacity-40 cursor-not-allowed"
+                        aria-label="Encryption unavailable for large files"
+                        disabled
+                      />
+                    </UTooltip>
 
-                    <!-- encryption sub-panel -->
-                    <Transition
-                      enter-active-class="transition-[grid-template-rows,opacity] duration-200 ease-out"
-                      leave-active-class="transition-[grid-template-rows,opacity] duration-150 ease-in"
-                      enter-from-class="grid-template-rows-[0fr] opacity-0"
-                      enter-to-class="grid-template-rows-[1fr] opacity-100"
-                      leave-from-class="grid-template-rows-[1fr] opacity-100"
-                      leave-to-class="grid-template-rows-[0fr] opacity-0"
+                    <!-- lock toggle — enabled -->
+                    <UTooltip
+                      v-else
+                      :text="
+                        upload.isEncrypted ? 'Encrypted — click to remove' : 'Encrypt this file'
+                      "
                     >
-                      <div
-                        v-if="upload.isEncrypted && upload.stage === UploadStage.IDLE"
-                        class="grid"
-                      >
-                        <div class="overflow-hidden">
-                          <div
-                            class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800 space-y-3"
-                          >
-                            <!-- password field -->
-                            <UInput
-                              v-model="upload.password"
-                              :type="upload.passwordVisible ? 'text' : 'password'"
-                              placeholder="Password"
-                              size="sm"
-                              class="w-full"
-                              :ui="{ trailing: 'pe-1' }"
-                              :color="
-                                upload.password &&
-                                getPasswordRequirements(upload.password).some((r) => !r.met)
-                                  ? 'error'
-                                  : 'neutral'
-                              "
-                            >
-                              <template #trailing>
-                                <UButton
-                                  :icon="
-                                    upload.passwordVisible ? 'i-lucide-eye-off' : 'i-lucide-eye'
-                                  "
-                                  size="xs"
-                                  variant="ghost"
-                                  color="neutral"
-                                  :aria-label="
-                                    upload.passwordVisible ? 'Hide password' : 'Show password'
-                                  "
-                                  @click="upload.passwordVisible = !upload.passwordVisible"
-                                />
-                              </template>
-                            </UInput>
+                      <UButton
+                        :icon="upload.isEncrypted ? 'i-lucide-lock' : 'i-lucide-lock-open'"
+                        size="xs"
+                        variant="ghost"
+                        :color="getLockColor(upload)"
+                        :disabled="isPipeline(upload.stage)"
+                        :aria-label="upload.isEncrypted ? 'Remove encryption' : 'Encrypt this file'"
+                        @click="upload.isEncrypted = !upload.isEncrypted"
+                      />
+                    </UTooltip>
 
-                            <!-- confirm password field -->
-                            <UInput
-                              v-model="upload.confirmPassword"
-                              :type="upload.confirmPasswordVisible ? 'text' : 'password'"
-                              placeholder="Confirm Password"
-                              size="sm"
-                              class="w-full"
-                              :ui="{ trailing: 'pe-1' }"
-                              :color="
-                                upload.confirmPassword && upload.password !== upload.confirmPassword
-                                  ? 'error'
-                                  : 'neutral'
-                              "
-                            >
-                              <template #trailing>
-                                <UButton
-                                  :icon="
-                                    upload.confirmPasswordVisible
-                                      ? 'i-lucide-eye-off'
-                                      : 'i-lucide-eye'
-                                  "
-                                  size="xs"
-                                  variant="ghost"
-                                  color="neutral"
-                                  :aria-label="
-                                    upload.confirmPasswordVisible
-                                      ? 'Hide confirm password'
-                                      : 'Show confirm password'
-                                  "
-                                  @click="
-                                    upload.confirmPasswordVisible = !upload.confirmPasswordVisible
-                                  "
-                                />
-                              </template>
-                            </UInput>
+                    <!-- stage dots -->
+                    <div
+                      v-if="upload.stage !== UploadStage.IDLE"
+                      class="flex items-center gap-0.5"
+                      :title="upload.stage"
+                    >
+                      <template v-for="step in STAGE_STEPS" :key="step.stage">
+                        <template
+                          v-if="step.stage !== UploadStage.ENCRYPTING || upload.isEncrypted"
+                        >
+                          <UIcon
+                            v-if="getStageStatus(upload, step.stage) === 'complete'"
+                            name="i-lucide-check-circle"
+                            class="size-3.5 text-success"
+                            :title="step.label"
+                          />
+                          <UIcon
+                            v-else-if="getStageStatus(upload, step.stage) === 'active'"
+                            name="i-lucide-loader-circle"
+                            class="size-3.5 text-primary animate-spin"
+                            :title="step.label"
+                          />
+                          <UIcon
+                            v-else-if="getStageStatus(upload, step.stage) === 'error'"
+                            name="i-lucide-x-circle"
+                            class="size-3.5 text-error"
+                            :title="step.label"
+                          />
+                          <UIcon
+                            v-else
+                            name="i-lucide-circle"
+                            class="size-3.5 text-muted"
+                            :title="step.label"
+                          />
+                        </template>
+                      </template>
+                    </div>
 
-                            <!-- strength bar -->
-                            <div class="space-y-1">
-                              <div class="flex gap-1">
-                                <div
-                                  v-for="i in 5"
-                                  :key="i"
-                                  class="h-1.5 flex-1 rounded-full transition-all duration-300"
-                                  :class="
-                                    upload.password && i <= getPasswordScore(upload.password)
-                                      ? PASSWORD_STRENGTH_LEVELS[
-                                          getPasswordScore(upload.password) - 1
-                                        ].barColor
-                                      : 'bg-gray-200 dark:bg-gray-700'
-                                  "
-                                />
-                              </div>
-                              <p
-                                class="text-xs font-medium transition-colors duration-200"
-                                :class="
-                                  upload.password
-                                    ? PASSWORD_STRENGTH_LEVELS[
-                                        getPasswordScore(upload.password) - 1
-                                      ]?.textColor
-                                    : 'text-muted'
-                                "
-                              >
-                                {{
-                                  upload.password
-                                    ? PASSWORD_STRENGTH_LEVELS[
-                                        getPasswordScore(upload.password) - 1
-                                      ]?.label
-                                    : "Enter a password"
-                                }}
-                              </p>
-                            </div>
+                    <!-- progress percentage -->
+                    <span
+                      v-if="isPipeline(upload.stage)"
+                      class="text-xs tabular-nums text-muted w-9 text-right"
+                    >
+                      {{ Math.round(upload.overallProgress) }}%
+                    </span>
 
-                            <!-- requirements grid -->
-                            <div class="grid grid-cols-2 gap-x-6 gap-y-2">
-                              <div
-                                v-for="req in getPasswordRequirements(upload.password)"
-                                :key="req.label"
-                                class="flex items-center gap-2 text-xs transition-colors duration-150"
-                                :class="
-                                  req.met ? 'text-green-600 dark:text-green-400' : 'text-muted'
-                                "
-                              >
-                                <div
-                                  class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
-                                  :class="
-                                    req.met
-                                      ? 'bg-green-100 dark:bg-green-900/30'
-                                      : 'bg-gray-100 dark:bg-white/5'
-                                  "
-                                >
-                                  <UIcon
-                                    :name="req.met ? 'i-lucide-check' : 'i-lucide-minus'"
-                                    class="size-2.5"
-                                  />
-                                </div>
-                                {{ req.label }}
-                              </div>
-                            </div>
-
-                            <!-- inline validation error -->
-                            <p v-if="getPasswordError(upload)" class="text-xs text-error px-1">
-                              {{ getPasswordError(upload) }}
-                            </p>
-
-                            <!-- hint field -->
-                            <UInput
-                              v-model="upload.encryptionHint"
-                              placeholder="Hint (optional — stored unencrypted)"
-                              size="sm"
-                              class="w-full"
-                              :ui="{ leading: 'ps-2' }"
-                            >
-                              <template #leading>
-                                <UIcon name="i-lucide-info" class="size-3.5 text-muted" />
-                              </template>
-                            </UInput>
-                          </div>
-                        </div>
-                      </div>
-                    </Transition>
+                    <!-- cancel / remove -->
+                    <UButton
+                      icon="i-lucide-x"
+                      size="xs"
+                      variant="ghost"
+                      color="neutral"
+                      :aria-label="isPipeline(upload.stage) ? 'Cancel upload' : 'Remove file'"
+                      @click="handleRemoveOrCancel(upload)"
+                    />
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <!-- add more -->
-            <div
-              v-if="!isUploading"
-              class="px-4 py-3 border-t border-gray-200/70 dark:border-gray-700/70"
-            >
-              <UButton
-                icon="i-lucide-plus"
-                label="Add more files"
-                variant="ghost"
-                color="neutral"
-                size="sm"
-                @click="addMoreInputRef?.click()"
-              />
-              <input
-                ref="addMoreInputRef"
-                type="file"
-                multiple
-                class="hidden"
-                @change="handleAddMoreChange"
-              />
-            </div>
+                <!-- size + status badges row -->
+                <div class="flex items-center gap-2 mt-1.5">
+                  <span class="text-xs text-muted">{{ formatBytes(upload.file.size) }}</span>
 
-            <!-- overall progress summary -->
-            <Transition
-              enter-active-class="transition-all duration-200 ease-out"
-              leave-active-class="transition-all duration-150 ease-in"
-              enter-from-class="opacity-0"
-              leave-to-class="opacity-0"
-            >
-              <div
-                v-if="showProgressSummary"
-                class="px-4 py-3 border-t border-gray-200/70 dark:border-gray-700/70 bg-white/40 dark:bg-white/3"
-              >
-                <div class="flex items-center justify-between text-xs text-muted mb-1.5">
-                  <span>{{ completedCount }} of {{ uploads.length }} uploaded</span>
-                  <span class="tabular-nums">{{ overallSummaryProgress }}%</span>
+                  <span
+                    v-if="upload.stage === UploadStage.IDLE && !upload.isEncrypted"
+                    class="text-xs text-muted"
+                  >
+                    Ready
+                  </span>
+                  <UBadge
+                    v-else-if="upload.stage === UploadStage.IDLE && upload.isEncrypted"
+                    label="Encrypted"
+                    color="warning"
+                    variant="subtle"
+                    size="xs"
+                  />
+                  <span
+                    v-else-if="upload.stage === UploadStage.COMPLETE"
+                    class="text-xs text-success flex items-center gap-1"
+                  >
+                    <UIcon
+                      v-if="upload.isEncrypted"
+                      name="i-lucide-lock"
+                      class="size-3 text-warning"
+                    />
+                    Uploaded
+                  </span>
                 </div>
-                <UProgress :value="overallSummaryProgress" :color="summaryBarColor" size="xs" />
-              </div>
-            </Transition>
-          </div>
 
-          <!-- Unified Drag Overlay -->
-          <Transition
-            enter-active-class="transition-opacity duration-200"
-            leave-active-class="transition-opacity duration-150"
-            enter-from-class="opacity-0"
-            leave-from-class="opacity-100"
-            leave-to-class="opacity-0"
-          >
-            <div
-              v-if="isDragging"
-              class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-lg border-2 border-dashed border-primary-500 shadow-sm"
-            >
-              <UIcon name="i-lucide-download" class="size-8 text-primary mb-2" />
-              <p class="text-sm font-medium text-primary">Drop files to add them</p>
+                <!-- progress bar -->
+                <div v-if="upload.stage !== UploadStage.IDLE" class="mt-3">
+                  <UProgress
+                    :value="upload.overallProgress"
+                    :color="
+                      upload.stage === UploadStage.ERROR
+                        ? 'error'
+                        : upload.stage === UploadStage.COMPLETE
+                          ? 'success'
+                          : 'primary'
+                    "
+                    size="xs"
+                  />
+                </div>
+
+                <!-- error message -->
+                <p
+                  v-if="upload.stage === UploadStage.ERROR && upload.errorMessage"
+                  class="text-xs text-error line-clamp-2 mt-2"
+                  :title="upload.errorMessage"
+                >
+                  {{ upload.errorMessage }}
+                </p>
+
+                <!-- encryption sub-panel -->
+                <Transition
+                  enter-active-class="transition-[grid-template-rows,opacity] duration-200 ease-out"
+                  leave-active-class="transition-[grid-template-rows,opacity] duration-150 ease-in"
+                  enter-from-class="grid-template-rows-[0fr] opacity-0"
+                  enter-to-class="grid-template-rows-[1fr] opacity-100"
+                  leave-from-class="grid-template-rows-[1fr] opacity-100"
+                  leave-to-class="grid-template-rows-[0fr] opacity-0"
+                >
+                  <div v-if="upload.isEncrypted && upload.stage === UploadStage.IDLE" class="grid">
+                    <div class="overflow-hidden">
+                      <div
+                        class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800 space-y-3"
+                      >
+                        <!-- password field -->
+                        <UInput
+                          v-model="upload.password"
+                          :type="upload.passwordVisible ? 'text' : 'password'"
+                          placeholder="Password"
+                          size="sm"
+                          class="w-full"
+                          :ui="{ trailing: 'pe-1' }"
+                          :color="
+                            upload.password &&
+                            getPasswordRequirements(upload.password).some((r) => !r.met)
+                              ? 'error'
+                              : 'neutral'
+                          "
+                        >
+                          <template #trailing>
+                            <UButton
+                              :icon="upload.passwordVisible ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                              size="xs"
+                              variant="ghost"
+                              color="neutral"
+                              :aria-label="
+                                upload.passwordVisible ? 'Hide password' : 'Show password'
+                              "
+                              @click="upload.passwordVisible = !upload.passwordVisible"
+                            />
+                          </template>
+                        </UInput>
+
+                        <!-- confirm password field -->
+                        <UInput
+                          v-model="upload.confirmPassword"
+                          :type="upload.confirmPasswordVisible ? 'text' : 'password'"
+                          placeholder="Confirm Password"
+                          size="sm"
+                          class="w-full"
+                          :ui="{ trailing: 'pe-1' }"
+                          :color="
+                            upload.confirmPassword && upload.password !== upload.confirmPassword
+                              ? 'error'
+                              : 'neutral'
+                          "
+                        >
+                          <template #trailing>
+                            <UButton
+                              :icon="
+                                upload.confirmPasswordVisible ? 'i-lucide-eye-off' : 'i-lucide-eye'
+                              "
+                              size="xs"
+                              variant="ghost"
+                              color="neutral"
+                              :aria-label="
+                                upload.confirmPasswordVisible
+                                  ? 'Hide confirm password'
+                                  : 'Show confirm password'
+                              "
+                              @click="
+                                upload.confirmPasswordVisible = !upload.confirmPasswordVisible
+                              "
+                            />
+                          </template>
+                        </UInput>
+
+                        <!-- strength bar -->
+                        <div class="space-y-1">
+                          <div class="flex gap-1">
+                            <div
+                              v-for="i in 5"
+                              :key="i"
+                              class="h-1.5 flex-1 rounded-full transition-all duration-300"
+                              :class="
+                                upload.password && i <= getPasswordScore(upload.password)
+                                  ? PASSWORD_STRENGTH_LEVELS[getPasswordScore(upload.password) - 1]
+                                      .barColor
+                                  : 'bg-gray-200 dark:bg-gray-700'
+                              "
+                            />
+                          </div>
+                          <p
+                            class="text-xs font-medium transition-colors duration-200"
+                            :class="
+                              upload.password
+                                ? PASSWORD_STRENGTH_LEVELS[getPasswordScore(upload.password) - 1]
+                                    ?.textColor
+                                : 'text-muted'
+                            "
+                          >
+                            {{
+                              upload.password
+                                ? PASSWORD_STRENGTH_LEVELS[getPasswordScore(upload.password) - 1]
+                                    ?.label
+                                : "Enter a password"
+                            }}
+                          </p>
+                        </div>
+
+                        <!-- requirements grid -->
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-2">
+                          <div
+                            v-for="req in getPasswordRequirements(upload.password)"
+                            :key="req.label"
+                            class="flex items-center gap-2 text-xs transition-colors duration-150"
+                            :class="req.met ? 'text-green-600 dark:text-green-400' : 'text-muted'"
+                          >
+                            <div
+                              class="flex h-4 w-4 shrink-0 items-center justify-center rounded-full transition-colors duration-150"
+                              :class="
+                                req.met
+                                  ? 'bg-green-100 dark:bg-green-900/30'
+                                  : 'bg-gray-100 dark:bg-white/5'
+                              "
+                            >
+                              <UIcon
+                                :name="req.met ? 'i-lucide-check' : 'i-lucide-minus'"
+                                class="size-2.5"
+                              />
+                            </div>
+                            {{ req.label }}
+                          </div>
+                        </div>
+
+                        <!-- inline validation error -->
+                        <p v-if="getPasswordError(upload)" class="text-xs text-error px-1">
+                          {{ getPasswordError(upload) }}
+                        </p>
+
+                        <!-- hint field -->
+                        <UInput
+                          v-model="upload.encryptionHint"
+                          placeholder="Hint (optional — stored unencrypted)"
+                          size="sm"
+                          class="w-full"
+                          :ui="{ leading: 'ps-2' }"
+                        >
+                          <template #leading>
+                            <UIcon name="i-lucide-info" class="size-3.5 text-muted" />
+                          </template>
+                        </UInput>
+                      </div>
+                    </div>
+                  </div>
+                </Transition>
+              </div>
             </div>
-          </Transition>
+          </div>
         </div>
+
+        <!-- add more -->
+        <div
+          v-if="!isUploading"
+          class="px-4 py-3 border-t border-gray-200/70 dark:border-gray-700/70"
+        >
+          <UButton
+            icon="i-lucide-plus"
+            label="Add more files"
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            @click="addMoreInputRef?.click()"
+          />
+          <input
+            ref="addMoreInputRef"
+            type="file"
+            multiple
+            class="hidden"
+            @change="handleAddMoreChange"
+          />
+        </div>
+
+        <!-- overall progress summary -->
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          leave-active-class="transition-all duration-150 ease-in"
+          enter-from-class="opacity-0"
+          leave-to-class="opacity-0"
+        >
+          <UploadProgressSummary
+            v-if="showProgressSummary"
+            :percent="overallSummaryProgress"
+            :color="summaryBarColor"
+          >
+            <template #label>
+              <span>{{ completedCount }} of {{ uploads.length }} uploaded</span>
+            </template>
+          </UploadProgressSummary>
+        </Transition>
       </div>
-    </template>
+
+      <!-- Unified Drag Overlay -->
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        leave-active-class="transition-opacity duration-150"
+        enter-from-class="opacity-0"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="isDragging"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90 dark:bg-gray-900/90 frosted-glass rounded-lg border-2 border-dashed border-primary-500 shadow-sm"
+        >
+          <UIcon name="i-lucide-download" class="size-8 text-primary mb-2" />
+          <p class="text-sm font-medium text-primary">Drop files to add them</p>
+        </div>
+      </Transition>
+    </div>
 
     <template #footer>
-      <div class="flex justify-between w-full gap-2">
-        <UButton
-          color="neutral"
-          variant="outline"
-          label="Cancel"
-          :disabled="isUploading"
-          @click="emit('close', false)"
-        />
-
-        <div class="flex gap-2">
-          <UButton
-            v-if="hasFailures && !isUploading"
-            label="Retry Failed"
-            icon="i-lucide-rotate-ccw"
-            color="neutral"
-            variant="outline"
-            @click="retryFailed"
-          />
+      <UploadModalFooter
+        :working="false"
+        :has-session="false"
+        :has-failures="hasFailures && !isUploading"
+        :cancel-disabled="isUploading"
+        @close="emit('close', false)"
+        @retry="retryFailed"
+      >
+        <template #primary>
           <UTooltip :text="uploadButtonTooltip">
             <UButton
               v-if="idleCount > 0 && !isUploading"
@@ -1019,10 +983,10 @@ const onDrop = (e: DragEvent) => {
               @click="startUpload"
             />
           </UTooltip>
-        </div>
-      </div>
+        </template>
+      </UploadModalFooter>
     </template>
-  </UModal>
+  </UploadModalShell>
 </template>
 
 <style>
