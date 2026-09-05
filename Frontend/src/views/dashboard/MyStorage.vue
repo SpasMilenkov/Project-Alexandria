@@ -54,7 +54,7 @@
         <template v-else-if="myStorageData">
           <!-- Stat row: Trash + quick stats -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <UCard :ui="{ body: 'p-5' }">
+            <UCard class="bg-white/60 dark:bg-white/5 frosted-glass" :ui="{ body: 'p-5' }">
               <div class="flex items-start justify-between">
                 <div class="space-y-1">
                   <p class="text-xs uppercase tracking-widest opacity-90 font-medium">Trash</p>
@@ -69,7 +69,7 @@
               </div>
             </UCard>
 
-            <UCard :ui="{ body: 'p-5' }">
+            <UCard class="bg-white/60 dark:bg-white/5 frosted-glass" :ui="{ body: 'p-5' }">
               <div class="flex items-start justify-between">
                 <div class="space-y-1">
                   <p class="text-xs uppercase tracking-widest opacity-90 font-medium">Old Files</p>
@@ -84,7 +84,7 @@
               </div>
             </UCard>
 
-            <UCard :ui="{ body: 'p-5' }">
+            <UCard class="bg-white/60 dark:bg-white/5 frosted-glass" :ui="{ body: 'p-5' }">
               <div class="flex items-start justify-between">
                 <div class="space-y-1">
                   <p class="text-xs uppercase tracking-widest opacity-90 font-medium">File Types</p>

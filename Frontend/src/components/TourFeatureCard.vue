@@ -4,7 +4,7 @@
       'group flex flex-col gap-4 rounded-2xl border p-5 transition-all duration-200',
       highlight
         ? 'border-primary/20 bg-primary/4 dark:border-primary/15 dark:bg-primary/5'
-        : 'border-gray-200/50 bg-white/30 dark:border-gray-700/40 dark:bg-white/2',
+        : 'border-gray-200/50 frosted-glass bg-white/30 dark:border-gray-700/40 dark:bg-white/2',
     ]"
   >
     <!-- Icon + badge row -->

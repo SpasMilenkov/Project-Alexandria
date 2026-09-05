@@ -162,6 +162,9 @@ export interface UserSettings {
   backgroundImageKey: string | null;
   backgroundImageUpdatedAt: string | null;
   backgroundImageOpacity: number;
+  frostDisabledOnMobile: boolean;
+  frostEnabled: boolean;
+  frostStrength: number;
   gridIconSize: number;
   listIconSize: number;
   skipDeleteConfirmation: boolean;
@@ -172,6 +175,9 @@ const DEFAULT_ACCENT_COLOR = "amber";
 const DEFAULT_BACKGROUND = "parchment";
 const DEFAULT_BACKGROUND_IMAGE = null;
 const DEFAULT_BACKGROUND_IMAGE_OPACITY = 0.35;
+const DEFAULT_FROST_ENABLED = true;
+const DEFAULT_FROST_STRENGTH = 8;
+const DEFAULT_FROST_DISABLED_ON_MOBILE = false;
 const DEFAULT_GRID_ICON_SIZE = 48;
 const DEFAULT_LIST_ICON_SIZE = 20;
 const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
@@ -196,6 +202,9 @@ export const useSettingsStore = defineStore(
     const backgroundImageUpdatedAt = ref<string | null>(null);
     const backgroundImage = ref<string | null>(null); // Runtime only — SW URL
     const backgroundImageOpacity = ref<number>(DEFAULT_BACKGROUND_IMAGE_OPACITY);
+    const frostEnabled = ref<boolean>(DEFAULT_FROST_ENABLED);
+    const frostStrength = ref<number>(DEFAULT_FROST_STRENGTH);
+    const frostDisabledOnMobile = ref<boolean>(DEFAULT_FROST_DISABLED_ON_MOBILE);
     const gridIconSize = ref(DEFAULT_GRID_ICON_SIZE);
     const listIconSize = ref(DEFAULT_LIST_ICON_SIZE);
     const skipDeleteConfirmation = ref(DEFAULT_SKIP_DELETE_CONFIRMATION);
@@ -213,6 +222,9 @@ export const useSettingsStore = defineStore(
       backgroundImageKey: backgroundImageKey.value,
       backgroundImageOpacity: backgroundImageOpacity.value,
       backgroundImageUpdatedAt: backgroundImageUpdatedAt.value,
+      frostDisabledOnMobile: frostDisabledOnMobile.value,
+      frostEnabled: frostEnabled.value,
+      frostStrength: frostStrength.value,
       gridIconSize: gridIconSize.value,
       listIconSize: listIconSize.value,
       skipDeleteConfirmation: skipDeleteConfirmation.value,
@@ -241,6 +253,15 @@ export const useSettingsStore = defineStore(
     };
     const setBackgroundImageOpacity = (v: number) => {
       backgroundImageOpacity.value = Math.min(0.65, Math.max(0.1, v));
+    };
+    const setFrostEnabled = (v: boolean) => {
+      frostEnabled.value = v;
+    };
+    const setFrostStrength = (v: number) => {
+      frostStrength.value = Math.min(24, Math.max(0, Math.round(v)));
+    };
+    const setFrostDisabledOnMobile = (v: boolean) => {
+      frostDisabledOnMobile.value = v;
     };
     const clearBackgroundImage = () => {
       backgroundImage.value = null;
@@ -305,6 +326,15 @@ export const useSettingsStore = defineStore(
       if (settings.backgroundImageOpacity !== undefined) {
         setBackgroundImageOpacity(settings.backgroundImageOpacity);
       }
+      if (settings.frostEnabled !== undefined) {
+        setFrostEnabled(settings.frostEnabled);
+      }
+      if (settings.frostStrength !== undefined) {
+        setFrostStrength(settings.frostStrength);
+      }
+      if (settings.frostDisabledOnMobile !== undefined) {
+        setFrostDisabledOnMobile(settings.frostDisabledOnMobile);
+      }
       if (settings.gridIconSize !== undefined) {
         setGridIconSize(settings.gridIconSize);
       }
@@ -327,6 +357,9 @@ export const useSettingsStore = defineStore(
       backgroundColor.value = DEFAULT_BACKGROUND;
       backgroundImage.value = DEFAULT_BACKGROUND_IMAGE;
       backgroundImageOpacity.value = DEFAULT_BACKGROUND_IMAGE_OPACITY;
+      frostEnabled.value = DEFAULT_FROST_ENABLED;
+      frostStrength.value = DEFAULT_FROST_STRENGTH;
+      frostDisabledOnMobile.value = DEFAULT_FROST_DISABLED_ON_MOBILE;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
       skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
@@ -339,6 +372,9 @@ export const useSettingsStore = defineStore(
       backgroundColor.value = DEFAULT_BACKGROUND;
       backgroundImage.value = DEFAULT_BACKGROUND_IMAGE;
       backgroundImageOpacity.value = DEFAULT_BACKGROUND_IMAGE_OPACITY;
+      frostEnabled.value = DEFAULT_FROST_ENABLED;
+      frostStrength.value = DEFAULT_FROST_STRENGTH;
+      frostDisabledOnMobile.value = DEFAULT_FROST_DISABLED_ON_MOBILE;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
     };
@@ -370,6 +406,9 @@ export const useSettingsStore = defineStore(
       backgroundImageOpacity,
       backgroundImageUpdatedAt,
       clearBackgroundImage,
+      frostDisabledOnMobile,
+      frostEnabled,
+      frostStrength,
       getCurrentBackgroundPreset,
       getSettings,
       gridIconSize,
@@ -392,6 +431,9 @@ export const useSettingsStore = defineStore(
       setBackgroundImage,
       setBackgroundImageOpacity,
       setBehaviorSectionOpen,
+      setFrostDisabledOnMobile,
+      setFrostEnabled,
+      setFrostStrength,
       setGridIconSize,
       setListIconSize,
       setSkipDeleteConfirmation,
@@ -413,6 +455,9 @@ export const useSettingsStore = defineStore(
         "backgroundImageKey",
         "backgroundImageUpdatedAt",
         "backgroundImageOpacity",
+        "frostEnabled",
+        "frostStrength",
+        "frostDisabledOnMobile",
         "gridIconSize",
         "listIconSize",
         "skipDeleteConfirmation",

@@ -2,7 +2,7 @@
   <div class="flex flex-1 items-center justify-center">
     <div class="w-full max-w-4xl">
       <div
-        class="overflow-hidden rounded-2xl border border-gray-200/60 bg-white/50 shadow-lg shadow-black/5 backdrop-blur-sm dark:border-gray-700/50 dark:bg-white/4"
+        class="overflow-hidden rounded-2xl border border-gray-200/60 bg-white/50 shadow-lg shadow-black/5 frosted-glass dark:border-gray-700/50 dark:bg-white/4"
       >
         <div class="flex flex-col lg:flex-row lg:min-h-120">
           <!-- LEFT: placeholder pane -->
@@ -30,7 +30,7 @@
               <!-- Avatar placeholder -->
               <div class="mb-6 flex flex-col items-center text-center py-4">
                 <div
-                  class="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-300/70 bg-white/60 dark:border-gray-600/60 dark:bg-white/5"
+                  class="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-300/70 frosted-glass bg-white/60 dark:border-gray-600/60 dark:bg-white/5"
                 >
                   <Icon
                     icon="mdi:account-outline"
@@ -50,7 +50,7 @@
                 <div
                   v-for="feature in UPCOMING_FEATURES"
                   :key="feature.label"
-                  class="flex items-start gap-2.5 rounded-lg border border-gray-200/60 bg-gray-50/60 px-3 py-3 dark:border-gray-700/40 dark:bg-white/2"
+                  class="flex items-start gap-2.5 rounded-lg border border-gray-200/60 frosted-glass bg-gray-50/60 px-3 py-3 dark:border-gray-700/40 dark:bg-white/2"
                 >
                   <Icon
                     :icon="feature.icon"
@@ -98,7 +98,7 @@
 
           <!-- RIGHT: context pane -->
           <div
-            class="flex flex-col justify-center gap-8 bg-gray-50/40 p-8 dark:bg-white/2 lg:flex-1"
+            class="flex flex-col justify-center gap-8 frosted-glass bg-gray-50/40 p-8 dark:bg-white/2 lg:flex-1"
           >
             <div>
               <p
@@ -110,7 +110,7 @@
                 <div
                   v-for="context in PROFILE_CONTEXTS"
                   :key="context.label"
-                  class="flex items-start gap-4 rounded-xl border border-gray-200/60 bg-white/50 px-4 py-4 dark:border-gray-700/40 dark:bg-white/[0.03]"
+                  class="flex items-start gap-4 rounded-xl border border-gray-200/60 frosted-glass bg-white/50 px-4 py-4 dark:border-gray-700/40 dark:bg-white/[0.03]"
                 >
                   <div
                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100/80 dark:bg-white/5"

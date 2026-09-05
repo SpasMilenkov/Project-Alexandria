@@ -240,7 +240,7 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
       <!-- Stat cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Fetched
@@ -251,7 +251,7 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Failed fetches
@@ -270,7 +270,7 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Failure rate (window)
@@ -281,7 +281,7 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Avg confidence
@@ -327,7 +327,7 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
         </div>
 
         <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm p-4"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-4"
         >
           <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Fetch attempts by outcome
@@ -344,7 +344,7 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <!-- Status distribution -->
           <div
-            class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm p-4"
+            class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-4"
           >
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
               Status distribution
@@ -393,7 +393,7 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
 
           <!-- Provider breakdown -->
           <div
-            class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm p-4"
+            class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-4"
           >
             <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Providers</p>
             <USkeleton v-if="overviewLoading" class="h-40 w-full rounded-xl" />

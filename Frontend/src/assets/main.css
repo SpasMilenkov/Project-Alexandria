@@ -1,6 +1,38 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+:root {
+  --frost-blur: 8px;
+}
+
+/* Singular frosted-glass surface. Backgrounds stay as per-component Tailwind
+   background utilities; this class only contributes the blur so a
+   global toggle + strength slider can control every frosted surface.
+   Defined as a Tailwind utility so responsive variants (e.g.
+   md:frosted-glass) keep working. */
+@utility frosted-glass {
+  backdrop-filter: blur(var(--frost-blur)) saturate(1.2);
+  -webkit-backdrop-filter: blur(var(--frost-blur)) saturate(1.2);
+}
+
+/* Global off + mobile off: kill blur, fall back to solid surfaces so
+   frosted cards don't turn into unreadable translucent sheets. */
+html.frost-off .frosted-glass,
+html.frost-off-mobile .frosted-glass,
+html.frost-off .md\:frosted-glass,
+html.frost-off-mobile .md\:frosted-glass,
+html.frost-off .player-card .shaka-play-button,
+html.frost-off-mobile .player-card .shaka-play-button,
+html.frost-off .vps-shaka-container .shaka-play-button,
+html.frost-off-mobile .vps-shaka-container .shaka-play-button,
+html.frost-off .vps-resume-prompt,
+html.frost-off-mobile .vps-resume-prompt,
+html.frost-off .vps-autoplay-banner,
+html.frost-off-mobile .vps-autoplay-banner {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 /* Firefox */
 * {
   scrollbar-width: thin;

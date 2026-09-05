@@ -34,7 +34,7 @@
     </div>
 
     <div
-      class="hidden @[80px]:block border border-gray-300/70 dark:border-gray-700/70 rounded-lg overflow-hidden bg-neutral/60 dark:bg-neutral/5 backdrop-blur-sm"
+      class="hidden @[80px]:block border border-gray-300/70 dark:border-gray-700/70 rounded-lg overflow-hidden bg-neutral/60 dark:bg-neutral/5 frosted-glass"
     >
       <button
         @click="isExpanded = !isExpanded"

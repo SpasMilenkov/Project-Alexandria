@@ -199,7 +199,10 @@
         </div>
 
         <!-- Owner Section -->
-        <UCard :ui="isMobile ? { body: 'p-3' } : {}">
+        <UCard
+          class="bg-white/60 dark:bg-white/5 frosted-glass"
+          :ui="isMobile ? { body: 'p-3' } : {}"
+        >
           <template #header>
             <div class="flex items-center gap-2" :class="isMobile ? 'p-3 pb-0' : ''">
               <Icon icon="mdi-account" class="w-5 h-5 text-primary" />

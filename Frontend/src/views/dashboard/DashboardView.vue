@@ -146,7 +146,7 @@ onMounted(() => {
       class="w-full flex-1 flex flex-col min-h-0 h-full"
       :ui="{
         content: 'flex flex-1 min-h-0',
-        list: 'sticky top-0 z-10 bg-background shrink-0',
+        list: 'sticky top-0 z-10 bg-background/80 frosted-glass shrink-0',
       }"
     >
       <template #list-leading>
@@ -208,7 +208,7 @@ onMounted(() => {
       <!-- Bottom tab bar -->
       <div
         @contextmenu="openManageSheet"
-        class="fixed bottom-0 inset-x-0 z-40 h-14 flex items-center gap-1 px-2 border-t border-gray-200/70 dark:border-gray-700/70 bg-background/80 backdrop-blur-sm"
+        class="fixed bottom-0 inset-x-0 z-40 h-14 flex items-center gap-1 px-2 border-t border-gray-200/70 dark:border-gray-700/70 bg-background/80 frosted-glass"
       >
         <!-- Visible tab pills (max 3) -->
         <button
@@ -261,11 +261,11 @@ onMounted(() => {
           @click.self="closeManageSheet"
         >
           <!-- Scrim -->
-          <div class="absolute inset-0 bg-black/30 backdrop-blur-[2px]" @click="closeManageSheet" />
+          <div class="absolute inset-0 bg-black/30 frosted-glass" @click="closeManageSheet" />
 
           <!-- Sheet panel -->
           <div
-            class="relative z-10 rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70 bg-neutral-100 dark:bg-neutral-900 pb-safe"
+            class="relative z-10 rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70 bg-neutral-100/85 dark:bg-neutral-900/85 frosted-glass pb-safe"
           >
             <!-- Handle -->
             <div class="flex justify-center pt-3 pb-1">

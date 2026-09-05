@@ -300,7 +300,7 @@ const incidentScopes = computed<IncidentScope[]>(() => {
       <!-- Stat cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Total artifacts
@@ -311,7 +311,7 @@ const incidentScopes = computed<IncidentScope[]>(() => {
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Total size
@@ -322,7 +322,7 @@ const incidentScopes = computed<IncidentScope[]>(() => {
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Thumbnails
@@ -333,7 +333,7 @@ const incidentScopes = computed<IncidentScope[]>(() => {
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Preview images
@@ -375,7 +375,7 @@ const incidentScopes = computed<IncidentScope[]>(() => {
         </div>
 
         <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm p-4"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-4"
         >
           <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
             Artifacts created

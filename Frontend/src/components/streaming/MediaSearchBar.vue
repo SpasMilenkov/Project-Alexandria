@@ -35,7 +35,7 @@
     >
       <div
         v-if="isOpen && debouncedQuery"
-        class="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-black/[0.07] dark:border-white/[0.08] bg-white dark:bg-neutral-900 backdrop-blur-md shadow-lg shadow-black/[0.08] dark:shadow-black/30 overflow-hidden"
+        class="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-black/[0.07] dark:border-white/[0.08] bg-white/85 dark:bg-neutral-900/85 frosted-glass shadow-lg shadow-black/[0.08] dark:shadow-black/30 overflow-hidden"
       >
         <!-- Loading -->
         <div v-if="isLoading" class="flex items-center justify-center py-8">

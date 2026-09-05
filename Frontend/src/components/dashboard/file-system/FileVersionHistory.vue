@@ -1,5 +1,5 @@
 <template>
-  <UCard>
+  <UCard class="bg-white/60 dark:bg-white/5 frosted-glass">
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">

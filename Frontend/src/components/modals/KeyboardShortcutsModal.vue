@@ -136,7 +136,7 @@ onMounted(() => {
           icon="i-lucide-search"
           size="sm"
           class="w-56 shrink-0"
-          :ui="{ base: 'bg-white/60 dark:bg-white/5 backdrop-blur-sm' }"
+          :ui="{ base: 'bg-white/60 dark:bg-white/5 frosted-glass' }"
         />
         <UButton icon="i-heroicons-x-mark" size="sm" variant="subtle" @click="emit('close')" />
       </div>
@@ -153,7 +153,7 @@ onMounted(() => {
         >
           <nav
             v-if="!isFiltering"
-            class="w-52 shrink-0 border-r border-gray-200/70 dark:border-gray-700/70 bg-white/30 dark:bg-white/3 backdrop-blur-sm flex flex-col gap-1 p-3 overflow-y-auto"
+            class="w-52 shrink-0 border-r border-gray-200/70 dark:border-gray-700/70 bg-white/30 dark:bg-white/3 frosted-glass flex flex-col gap-1 p-3 overflow-y-auto"
           >
             <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
               Categories
@@ -219,7 +219,7 @@ onMounted(() => {
 
             <!-- Shortcut rows -->
             <div
-              class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm overflow-hidden"
+              class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass overflow-hidden"
             >
               <div
                 v-for="(shortcut, i) in section.shortcuts"

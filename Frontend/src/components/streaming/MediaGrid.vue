@@ -2,7 +2,7 @@
   <div class="flex h-full overflow-hidden">
     <section class="flex flex-col h-full overflow-hidden flex-1 min-w-0">
       <div
-        class="sticky top-0 z-10 px-2 pt-4 pb-3 mb-5 w-full justify-evenly bg-white/55 dark:bg-white/[0.03] backdrop-blur-sm border border-black/[0.08] dark:border-white/10"
+        class="sticky top-0 z-10 px-2 pt-4 pb-3 mb-5 w-full justify-evenly bg-white/55 dark:bg-white/[0.03] frosted-glass border border-black/[0.08] dark:border-white/10"
       >
         <div class="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:flex sm:items-center sm:gap-8">
           <div class="flex items-center gap-3 order-1">

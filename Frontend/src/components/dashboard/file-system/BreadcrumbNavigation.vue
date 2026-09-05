@@ -106,7 +106,7 @@ const handleNavigate = (key: string | null) => {
                 @click="handleNavigate(item.key)"
               >
                 <div
-                  class="flex items-center justify-center w-9 h-9 rounded-xl bg-white/40 dark:bg-white/5 border border-gray-200/70 dark:border-gray-700/70 shrink-0"
+                  class="flex items-center justify-center w-9 h-9 rounded-xl frosted-glass bg-white/40 dark:bg-white/5 border border-gray-200/70 dark:border-gray-700/70 shrink-0"
                 >
                   <UIcon
                     :name="item.icon ?? 'i-lucide-folder'"

@@ -132,7 +132,7 @@ const bannerStyle = computed(() => BANNER_STYLES[overall.value.color]);
       <template v-else>
         <!-- Overall banner -->
         <div
-          class="rounded-2xl border border-transparent px-5 py-4 flex items-center gap-3 backdrop-blur-sm ring-1"
+          class="rounded-2xl border border-transparent px-5 py-4 flex items-center gap-3 frosted-glass ring-1"
           :class="[bannerStyle.bg, bannerStyle.ring]"
         >
           <UIcon :name="overall.icon" class="w-6 h-6 shrink-0" :class="bannerStyle.icon" />
@@ -141,7 +141,7 @@ const bannerStyle = computed(() => BANNER_STYLES[overall.value.color]);
 
         <!-- Per-service rows -->
         <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
         >
           <div v-for="row in rows" :key="row.service" class="px-5 py-4 space-y-2">
             <div class="flex items-center justify-between gap-3">

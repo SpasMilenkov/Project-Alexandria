@@ -123,7 +123,7 @@
       <!-- Track search panel -->
       <div
         v-if="showSearch"
-        class="mb-5 p-4 rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/40 dark:bg-white/3 backdrop-blur-sm"
+        class="mb-5 p-4 rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/40 dark:bg-white/3 frosted-glass"
       >
         <p class="text-sm font-medium text-highlighted mb-3">Add tracks</p>
         <PlaylistTrackSearch

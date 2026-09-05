@@ -30,7 +30,7 @@
 
     <!--  TOOLBAR  -->
     <div
-      class="flex flex-wrap items-center gap-2 rounded-lg border border-default px-3 py-2 bg-white/60 dark:bg-white/5 backdrop-blur-sm"
+      class="flex flex-wrap items-center gap-2 rounded-lg border border-default px-3 py-2 bg-white/60 dark:bg-white/5 frosted-glass"
     >
       <UInput
         v-model="uiState.userName"
@@ -105,12 +105,12 @@
     >
       <div
         v-if="isFilterPanelOpen"
-        class="rounded-xl border border-default bg-white/70 dark:bg-white/5 backdrop-blur-sm overflow-hidden max-h-[40vh] overflow-y-auto shrink-0"
+        class="rounded-xl border border-default bg-white/70 dark:bg-white/5 frosted-glass overflow-hidden max-h-[40vh] overflow-y-auto shrink-0"
       >
         <!-- @vue-ignore -->
         <UForm ref="filterForm" :schema="userQueryUiSchema" :state="uiState" @submit="applyFilters">
           <div
-            class="flex items-center justify-between px-5 py-3 border-b border-default bg-elevated/30"
+            class="flex items-center justify-between px-5 py-3 border-b border-default frosted-glass bg-elevated/30"
           >
             <span class="text-sm font-semibold text-default">Advanced Filters</span>
             <div class="flex items-center gap-2">
@@ -517,7 +517,7 @@
 
     <!-- TABLE  -->
     <div
-      class="flex-1 min-h-0 rounded-xl border border-default overflow-x-hidden bg-white/60 dark:bg-white/5 backdrop-blur-sm"
+      class="flex-1 min-h-0 rounded-xl border border-default overflow-x-hidden bg-white/60 dark:bg-white/5 frosted-glass"
     >
       <UsersTable
         v-model:selected="selectedUserIds"

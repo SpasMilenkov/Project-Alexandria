@@ -39,6 +39,18 @@ const imageOpacity = computed({
   get: () => settingsStore.backgroundImageOpacity,
   set: (v: number) => settingsStore.setBackgroundImageOpacity(v),
 });
+const frostEnabled = computed({
+  get: () => settingsStore.frostEnabled,
+  set: (v: boolean) => settingsStore.setFrostEnabled(v),
+});
+const frostStrength = computed({
+  get: () => settingsStore.frostStrength,
+  set: (v: number) => settingsStore.setFrostStrength(v),
+});
+const frostDisabledOnMobile = computed({
+  get: () => settingsStore.frostDisabledOnMobile,
+  set: (v: boolean) => settingsStore.setFrostDisabledOnMobile(v),
+});
 const gridIconSize = computed({
   get: () => settingsStore.gridIconSize,
   set: (v: number) => settingsStore.setGridIconSize(v),
@@ -200,7 +212,10 @@ const exampleDir = {
 </script>
 
 <template>
-  <UCard class="overflow-hidden" :ui="{ body: 'p-2 sm:p-2' }">
+  <UCard
+    class="overflow-hidden bg-white/60 dark:bg-white/5 frosted-glass"
+    :ui="{ body: 'p-2 sm:p-2' }"
+  >
     <UCollapsible v-model:open="isOpen">
       <UButton
         variant="ghost"
@@ -522,6 +537,60 @@ const exampleDir = {
                   <span class="text-sm text-gray-600 dark:text-gray-400">{{ listIconSize }}px</span>
                 </div>
               </UFormField>
+
+              <!-- Frosted glass -->
+              <UFormField
+                label="Frosted glass"
+                description="Blur behind cards, bars and popovers. Turn off to use solid surfaces."
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ frostEnabled ? "On" : "Off" }}
+                  </span>
+                  <USwitch v-model="frostEnabled" size="lg" />
+                </div>
+              </UFormField>
+
+              <UFormField
+                label="Disable blur on mobile"
+                description="Background blur can lag on phones. Keep surfaces solid on small screens."
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ frostDisabledOnMobile ? "On" : "Off" }}
+                  </span>
+                  <USwitch v-model="frostDisabledOnMobile" size="lg" />
+                </div>
+              </UFormField>
+
+              <div v-if="frostEnabled" class="space-y-1.5 pt-1">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    Frost strength
+                  </label>
+                  <span class="text-xs tabular-nums text-gray-500 dark:text-gray-400">
+                    {{ frostStrength }}px
+                  </span>
+                </div>
+
+                <div class="relative flex items-center gap-2">
+                  <Icon icon="mdi:blur" class="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                  <input
+                    type="range"
+                    :min="0"
+                    :max="24"
+                    :step="1"
+                    :value="frostStrength"
+                    @input="frostStrength = parseInt(($event.target as HTMLInputElement).value, 10)"
+                    class="w-full accent-primary h-1.5 rounded-full cursor-pointer"
+                  />
+                  <Icon icon="mdi:blur" class="w-4 h-4 text-gray-500 shrink-0" />
+                </div>
+
+                <p class="text-[11px] text-gray-400 dark:text-gray-500 leading-snug">
+                  0px is sharp, 24px is heavy frost. Stored only in this browser for now.
+                </p>
+              </div>
             </div>
 
             <!-- Right: Preview -->

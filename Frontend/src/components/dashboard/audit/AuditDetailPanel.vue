@@ -31,7 +31,7 @@ const copyEntityId = async () => {
 
 <template>
   <div
-    class="mt-2 rounded-md bg-white/40 dark:bg-white/5 border border-gray-200/60 dark:border-gray-700/60 px-4 py-3 space-y-3"
+    class="mt-2 rounded-md frosted-glass bg-white/40 dark:bg-white/5 border border-gray-200/60 dark:border-gray-700/60 px-4 py-3 space-y-3"
   >
     <!-- Diff panel -->
     <AuditDiffPanel v-if="metadata.type === 'diff'" :metadata="metadata" />

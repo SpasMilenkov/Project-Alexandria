@@ -130,7 +130,7 @@ defineExpose({ toggle, close, isOpen });
         <div
           v-if="isOpen"
           id="player-queue-panel"
-          class="bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+          class="bg-white/85 dark:bg-neutral-900/85 frosted-glass border border-black/[0.08] dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
           :style="panelStyle"
         >
           <!-- Header -->

@@ -566,7 +566,7 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
     >
       <div
         v-if="!isMobile && selectedDay"
-        class="flex items-center gap-3 flex-wrap rounded-lg bg-white/40 dark:bg-white/5 border border-neutral-200/70 dark:border-neutral-700/70 px-4 py-3"
+        class="flex items-center gap-3 flex-wrap rounded-lg frosted-glass bg-white/40 dark:bg-white/5 border border-neutral-200/70 dark:border-neutral-700/70 px-4 py-3"
       >
         <div class="flex items-center gap-2 shrink-0">
           <UIcon
@@ -643,7 +643,7 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
       leave-to-class="opacity-0"
     >
       <div v-if="isMobile && selectedDay" class="fixed inset-0 z-50 flex items-end">
-        <div class="absolute inset-0 bg-black/40" @click="selectedDay = null" />
+        <div class="absolute inset-0 bg-black/40 frosted-glass" @click="selectedDay = null" />
 
         <Transition
           enter-active-class="transition-transform duration-300 ease-out"
@@ -655,7 +655,7 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
         >
           <div
             v-if="selectedDay"
-            class="relative w-full rounded-t-2xl bg-white/95 dark:bg-neutral-900/95 shadow-2xl border-t border-neutral-200/70 dark:border-neutral-700/70 px-5 pt-3 pb-8 space-y-4"
+            class="relative w-full rounded-t-2xl frosted-glass bg-white/95 dark:bg-neutral-900/95 shadow-2xl border-t border-neutral-200/70 dark:border-neutral-700/70 px-5 pt-3 pb-8 space-y-4"
           >
             <div class="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600 mx-auto" />
 

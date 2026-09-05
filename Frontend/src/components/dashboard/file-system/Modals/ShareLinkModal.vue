@@ -141,9 +141,10 @@ const LINK_STATUS_BADGE_CLASS: Record<LinkStatus, string> = {
 
 // Row-level border/bg tint to make revoked visually distinct from mere expiry
 const LINK_STATUS_ROW_CLASS: Record<LinkStatus, string> = {
-  active: "bg-white/60 dark:bg-white/5 border-gray-200/70 dark:border-gray-700/70",
-  expired: "bg-white/60 dark:bg-white/5 border-gray-200/70 dark:border-gray-700/70",
-  "limit-reached": "bg-white/60 dark:bg-white/5 border-gray-200/70 dark:border-gray-700/70",
+  active: "frosted-glass bg-white/60 dark:bg-white/5 border-gray-200/70 dark:border-gray-700/70",
+  expired: "frosted-glass bg-white/60 dark:bg-white/5 border-gray-200/70 dark:border-gray-700/70",
+  "limit-reached":
+    "frosted-glass bg-white/60 dark:bg-white/5 border-gray-200/70 dark:border-gray-700/70",
   revoked: "bg-error/5 dark:bg-error/5 border-error/20 dark:border-error/20",
 };
 

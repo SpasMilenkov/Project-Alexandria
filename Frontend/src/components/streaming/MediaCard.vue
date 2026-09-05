@@ -122,7 +122,7 @@ const emit = defineEmits<{
         />
 
         <span
-          class="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[0.625rem] font-semibold tracking-wide bg-black/40 backdrop-blur-md text-white/80"
+          class="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[0.625rem] font-semibold tracking-wide bg-black/40 frosted-glass text-white/80"
         >
           <Icon :icon="typeIcon" class="w-3 h-3 flex-shrink-0" />
           {{ typeLabel }}
@@ -131,7 +131,7 @@ const emit = defineEmits<{
         <div class="absolute top-2 right-2 flex items-center gap-1.5">
           <button
             v-if="isAudio"
-            class="w-6 h-6 flex items-center justify-center rounded-md bg-black/40 backdrop-blur-md text-white/70 hover:text-white transition-colors"
+            class="w-6 h-6 flex items-center justify-center rounded-md bg-black/40 frosted-glass text-white/70 hover:text-white transition-colors"
             aria-label="View audio analysis"
             @click.stop="emit('info', file)"
           >
@@ -139,7 +139,7 @@ const emit = defineEmits<{
           </button>
           <span
             v-if="file.duration"
-            class="px-1.5 py-0.5 rounded-md text-[0.625rem] font-medium bg-black/40 backdrop-blur-md text-white/80 tabular-nums"
+            class="px-1.5 py-0.5 rounded-md text-[0.625rem] font-medium bg-black/40 frosted-glass text-white/80 tabular-nums"
           >
             {{ formatDuration(file.duration) }}
           </span>
@@ -150,7 +150,7 @@ const emit = defineEmits<{
           class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
         >
           <div
-            class="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center"
+            class="w-10 h-10 rounded-full bg-white/20 frosted-glass flex items-center justify-center"
           >
             <Icon icon="mdi:play" class="w-5 h-5 text-white ml-0.5" />
           </div>

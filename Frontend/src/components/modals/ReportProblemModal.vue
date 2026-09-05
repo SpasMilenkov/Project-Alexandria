@@ -52,7 +52,7 @@ const handleSubmit = async () => {
     :overlay="true"
     :ui="{
       content:
-        'bg-white/60 dark:bg-white/2 backdrop-blur-sm border border-gray-200/70 dark:border-gray-700/70',
+        'bg-white/60 dark:bg-white/2 frosted-glass border border-gray-200/70 dark:border-gray-700/70',
     }"
     @update:open="!$event && dismiss()"
   >

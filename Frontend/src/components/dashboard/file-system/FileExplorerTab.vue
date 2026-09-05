@@ -314,13 +314,13 @@
               class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
               aria-hidden="true"
             >
-              <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" />
+              <div class="absolute inset-0 bg-background/60 frosted-glass" />
               <div class="absolute inset-0 bg-primary/5 pulse-tint" />
               <div
                 class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
               />
               <div
-                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-white/60 dark:bg-white/5 shadow-sm"
+                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 frosted-glass bg-white/60 dark:bg-white/5 shadow-sm"
               >
                 <div class="relative flex items-center justify-center">
                   <span class="breathe absolute rounded-full border border-primary/20" />

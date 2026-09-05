@@ -17,7 +17,7 @@
       >
         <!-- Sticky Mode Switcher -->
         <div
-          class="sticky top-0 bg-elevated/80 backdrop-blur-md border-b border-default z-20 px-4 py-3 sm:px-6 sm:py-4"
+          class="sticky top-0 bg-elevated/80 frosted-glass border-b border-default z-20 px-4 py-3 sm:px-6 sm:py-4"
         >
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-center gap-2">

@@ -62,7 +62,7 @@
 
         <UFormField label="Preview">
           <div
-            class="flex items-center justify-center p-6 border border-gray-200/70 dark:border-gray-700/70 rounded-lg bg-gray-50/40 dark:bg-white/5"
+            class="flex items-center justify-center p-6 border border-gray-200/70 dark:border-gray-700/70 rounded-lg frosted-glass bg-gray-50/40 dark:bg-white/5"
           >
             <div class="flex flex-col gap-4 w-full max-w-xs">
               <div>
