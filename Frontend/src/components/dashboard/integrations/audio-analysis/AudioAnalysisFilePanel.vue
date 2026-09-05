@@ -122,10 +122,13 @@ const sortedBatches = computed(() =>
 );
 
 const fileStatusMeta: Record<string, { dot: string; label: string }> = {
+  Queued: { dot: "bg-amber-500", label: "Queued" },
+  Processing: { dot: "bg-blue-500", label: "Processing" },
+  Partial: { dot: "bg-amber-400", label: "Partial" },
+  Ready: { dot: "bg-emerald-500", label: "Ready" },
   Failed: { dot: "bg-red-500", label: "Failed" },
-  MissingOutput: { dot: "bg-red-400", label: "Missing output" },
-  Pending: { dot: "bg-amber-500", label: "Pending" },
-  Succeeded: { dot: "bg-emerald-500", label: "Succeeded" },
+  Cancelled: { dot: "bg-gray-400", label: "Cancelled" },
+  CancellationRequested: { dot: "bg-orange-400", label: "Cancelling" },
 };
 
 const batchStatusMeta: Record<string, { bg: string; label: string; text: string }> = {

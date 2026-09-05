@@ -1,6 +1,10 @@
 import { defineQueryOptions } from "@pinia/colada";
 
-import type { PreviewVolumeParams } from "@/api/previewsStats";
+import type {
+  PreviewJobTrendParams,
+  PreviewJobType,
+  PreviewVolumeParams,
+} from "@/api/previewsStats";
 
 import { previewsStatsApi } from "@/api/previewsStats";
 
@@ -16,5 +20,17 @@ export const previewsOverview = defineQueryOptions(() => ({
 export const previewsVolume = defineQueryOptions((params: PreviewVolumeParams) => ({
   key: [...ROOT, "volume", params.from, params.to, params.bucket],
   query: () => previewsStatsApi.getVolume(params),
+  staleTime: 15_000,
+}));
+
+export const previewsJobOverview = defineQueryOptions((type?: PreviewJobType) => ({
+  key: [...ROOT, "job-overview", type ?? null],
+  query: () => previewsStatsApi.getJobOverview(type),
+  staleTime: 15_000,
+}));
+
+export const previewsJobTrend = defineQueryOptions((params: PreviewJobTrendParams) => ({
+  key: [...ROOT, "job-trend", params.from, params.to, params.bucket, params.type ?? null],
+  query: () => previewsStatsApi.getJobTrend(params),
   staleTime: 15_000,
 }));

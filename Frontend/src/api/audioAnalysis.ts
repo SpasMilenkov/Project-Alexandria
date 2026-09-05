@@ -2,6 +2,7 @@ import { apiClient } from "@/api/client";
 
 export interface EnrichmentQueueDepthRow {
   backbone: string;
+  // Linked JobStatus name (Queued/Processing/Partial/Ready/Failed/...).
   status: string;
   count: number;
 }
@@ -57,6 +58,7 @@ export interface EnrichmentRowDto {
 export interface EnrichmentBatchAttemptDto {
   batchId: string;
   batchStatus: string;
+  // Linked JobStatus name (Queued/Processing/Partial/Ready/Failed/...).
   fileStatus: string;
   errorDetail: string | null;
   createdAt: string;

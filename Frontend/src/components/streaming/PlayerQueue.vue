@@ -93,7 +93,7 @@ onBeforeUnmount(() => {
   document.removeEventListener("click", onDocClick, { capture: true });
 });
 
-const fmtDuration = (secs: number): string => {
+const fmtDuration = (secs: number | null): string => {
   if (!secs || !isFinite(secs)) return "--:--";
   const m = Math.floor(secs / 60);
   const s = Math.floor(secs % 60);

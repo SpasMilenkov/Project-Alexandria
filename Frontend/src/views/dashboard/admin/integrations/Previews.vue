@@ -6,26 +6,44 @@ import {
   type ChartData,
   Chart as ChartJS,
   type ChartOptions,
+  Filler,
   Legend,
+  LineElement,
   LinearScale,
+  PointElement,
   Title,
   Tooltip,
 } from "chart.js";
 import { computed, ref, watch } from "vue";
-import { Bar } from "vue-chartjs";
+import { Bar, Line } from "vue-chartjs";
 import { useRoute, useRouter } from "vue-router";
 
-import type { PreviewStatsBucket } from "@/api/previewsStats";
+import type { PreviewJobType, PreviewStatsBucket } from "@/api/previewsStats";
 
-import { PREVIEW_STATS_BUCKET } from "@/api/previewsStats";
+import { PREVIEW_JOB_STATUS, PREVIEW_JOB_TYPE, PREVIEW_STATS_BUCKET } from "@/api/previewsStats";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
 import { useTheme } from "@/composables/useTheme";
 import { ServiceType } from "@/enums";
-import { previewsOverview, previewsVolume } from "@/queries/previewsStats";
+import {
+  previewsJobOverview,
+  previewsJobTrend,
+  previewsOverview,
+  previewsVolume,
+} from "@/queries/previewsStats";
 import { parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
 import { formatBytes } from "@/utils/size.utils";
 
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
+ChartJS.register(
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  PointElement,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Filler,
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -101,6 +119,44 @@ const { data: volume, isLoading: volumeLoading } = useQuery(
   () => volumeParams.value,
 );
 
+// Discrete preview jobs (P6): the active scope selects the backing job type,
+// absent scope combines both preview worker types.
+const scopeJobType = computed<PreviewJobType | undefined>(() => {
+  if (scope.value === "media") return PREVIEW_JOB_TYPE.MediaPreview;
+  if (scope.value === "docs") return PREVIEW_JOB_TYPE.DocumentPreview;
+  return undefined;
+});
+
+const jobTrendParams = computed(() => ({ ...volumeParams.value, type: scopeJobType.value }));
+
+const { data: jobOverview, isLoading: jobOverviewLoading } = useQuery(() =>
+  previewsJobOverview(scopeJobType.value),
+);
+const { data: jobTrend, isLoading: jobTrendLoading } = useQuery(
+  previewsJobTrend,
+  () => jobTrendParams.value,
+);
+
+const jobStatusCount = (status: number): number =>
+  jobOverview.value?.statusCounts.find((entry) => entry.status === status)?.count ?? 0;
+
+const queueDepth = computed(
+  () =>
+    jobStatusCount(PREVIEW_JOB_STATUS.Queued) +
+    jobStatusCount(PREVIEW_JOB_STATUS.Processing) +
+    jobStatusCount(PREVIEW_JOB_STATUS.CancellationRequested),
+);
+
+const failedAllTime = computed(() => jobStatusCount(PREVIEW_JOB_STATUS.Failed));
+
+const windowSuccessRate = computed(() => {
+  const points = jobTrend.value?.failureRate ?? [];
+  const total = points.reduce((sum, p) => sum + p.total, 0);
+  const failed = points.reduce((sum, p) => sum + p.failed, 0);
+  if (total === 0) return null;
+  return Math.round((1 - failed / total) * 1000) / 10;
+});
+
 const kindTotal = (kind: number): number =>
   overview.value?.byKind.find((entry) => entry.kind === kind)?.count ?? 0;
 
@@ -160,6 +216,39 @@ const volumeOptions = computed<ChartOptions<"bar">>(() => ({
       beginAtZero: true,
       grid: { color: gridColor.value },
       ticks: { color: tickColor.value, precision: 0 },
+    },
+  },
+}));
+
+const rateChartData = computed<ChartData<"line">>(() => ({
+  labels: (jobTrend.value?.failureRate ?? []).map((p) => bucketLabel(p.bucketStart)),
+  datasets: [
+    {
+      label: "Failure rate %",
+      data: (jobTrend.value?.failureRate ?? []).map((p) => p.failureRate),
+      borderColor: "#dc2626",
+      backgroundColor: "rgba(220, 38, 38, 0.15)",
+      tension: 0.3,
+      fill: true,
+      pointRadius: 2,
+    },
+  ],
+}));
+
+const rateOptions = computed<ChartOptions<"line">>(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: { intersect: false, mode: "index" as const },
+  },
+  scales: {
+    x: { grid: { color: gridColor.value }, ticks: { color: tickColor.value, maxRotation: 0 } },
+    y: {
+      beginAtZero: true,
+      max: 100,
+      grid: { color: gridColor.value },
+      ticks: { color: tickColor.value },
     },
   },
 }));
@@ -297,6 +386,78 @@ const incidentScopes = computed<IncidentScope[]>(() => {
           </div>
           <div v-else class="relative h-56">
             <Bar :data="volumeChartData" :options="volumeOptions" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+        >
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Queue depth
+          </p>
+          <USkeleton v-if="jobOverviewLoading" class="h-7 w-12 mt-1" />
+          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+            {{ queueDepth }}
+          </p>
+        </div>
+        <div
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+        >
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Failed jobs
+          </p>
+          <USkeleton v-if="jobOverviewLoading" class="h-7 w-12 mt-1" />
+          <p
+            v-else
+            class="text-2xl font-bold tabular-nums"
+            :class="
+              failedAllTime > 0
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-gray-900 dark:text-gray-100'
+            "
+          >
+            {{ failedAllTime }}
+          </p>
+        </div>
+        <div
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+        >
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Success rate (window)
+          </p>
+          <USkeleton v-if="jobTrendLoading" class="h-7 w-16 mt-1" />
+          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+            {{ windowSuccessRate === null ? "—" : `${windowSuccessRate}%` }}
+          </p>
+        </div>
+        <div
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
+        >
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Avg duration (30d)
+          </p>
+          <USkeleton v-if="jobOverviewLoading" class="h-7 w-20 mt-1" />
+          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+            {{ jobOverview?.duration ? `${Math.round(jobOverview.duration.avgMinutes)} min` : "—" }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Failure rate chart -->
+      <div class="space-y-3">
+        <div
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm p-4"
+        >
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Failure rate %</p>
+          <!-- Bounded height is mandatory with maintainAspectRatio:false -->
+          <div v-if="jobTrendLoading" class="h-56">
+            <USkeleton class="h-full w-full rounded-xl" />
+          </div>
+          <div v-else class="relative h-56">
+            <Line :data="rateChartData" :options="rateOptions" />
           </div>
         </div>
       </div>
