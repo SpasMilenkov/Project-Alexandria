@@ -16,6 +16,11 @@ public class TrackLyricsRepository(AlexandriaDbContext context) : ITrackLyricsRe
     public async Task<TrackLyrics?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         await _lyrics.FindAsync([id], ct);
 
+    public async Task<TrackLyrics?> GetByJobIdAsync(Guid jobId, CancellationToken ct = default) =>
+        await _lyrics
+            .Include(l => l.Job)
+            .FirstOrDefaultAsync(l => l.JobId == jobId, ct);
+
     public async Task<TrackLyrics?> FirstOrDefaultAsync(Expression<Func<TrackLyrics, bool>> predicate,
         CancellationToken ct = default) => await _lyrics.FirstOrDefaultAsync(predicate, ct);
 
@@ -67,7 +72,7 @@ public class TrackLyricsRepository(AlexandriaDbContext context) : ITrackLyricsRe
     {
         return await _lyrics.Where(l => l.Id == lyricsId && l.DeletedAt == null).Select(l => new LyricsSearchParams
         {
-            Name = l.TranspilationJob!.FileVersion.File.MediaMetadata!.Title,
+            Name = l.TranspilationJob!.FileVersion.File.MediaMetadata!.Title ?? string.Empty,
             AlbumName = l.TranspilationJob!.FileVersion.File.MediaMetadata!.Album,
             Artist = l.TranspilationJob!.FileVersion.File.MediaMetadata!.Artist,
             Duration = (int)Math.Round(l.TranspilationJob!.FileVersion.File.MediaMetadata!.Duration)

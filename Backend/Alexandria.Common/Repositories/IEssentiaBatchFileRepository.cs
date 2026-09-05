@@ -1,5 +1,4 @@
 using Alexandria.Data.Models;
-using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Enrichment;
 
 namespace Alexandria.Common.Repositories;
@@ -12,20 +11,8 @@ public interface IEssentiaBatchFileRepository : IRepository<EssentiaBatchFile>
     Task<IEnumerable<EssentiaBatchFile>> GetByBatchAsync(Guid batchId, CancellationToken ct = default);
 
     /// <summary>
-    /// Atomically transitions the batch-files for <paramref name="batchId"/> whose current status matches
-    /// <paramref name="currentStatus"/> to <paramref name="newStatus"/>, stamping <c>UpdatedAt</c>.
-    /// Returns the number of rows transitioned.
-    /// </summary>
-    Task<int> UpdateStatusForBatchAsync(
-        Guid batchId,
-        EssentiaBatchFileStatus currentStatus,
-        EssentiaBatchFileStatus newStatus,
-        Guid? updatedBy,
-        CancellationToken ct = default);
-
-    /// <summary>
     /// Auto-tag sweep backstop: distinct, non-deleted file IDs whose newest enrichment
-    /// outcome was a success (<c>EssentiaBatchFileStatus.Succeeded</c>) but which have no
+    /// outcome was a success (<c>JobStatus.Ready</c>) but which have no
     /// <c>Auto</c>-source <c>FileTag</c> at all. Covers files whose enrichment committed
     /// but whose tag sync was lost (worker crash between commit and enqueue). A file that
     /// has any <c>Auto</c> tag is assumed already synced — partial facet coverage is
@@ -35,7 +22,7 @@ public interface IEssentiaBatchFileRepository : IRepository<EssentiaBatchFile>
 
     /// <summary>
     /// Auto-tag sweep retry candidates: distinct, non-deleted file IDs whose newest
-    /// enrichment attempt (any outcome) is a <c>Failed</c>/<c>MissingOutput</c> batch-file
+    /// enrichment attempt (any outcome) is a <c>Failed</c> linked job
     /// that is older than <paramref name="attemptCutoff"/> (the retry cooldown), and whose
     /// current version is not client-encrypted. Encrypted files can never be enriched, so
     /// they are never re-queued.
@@ -49,7 +36,7 @@ public interface IEssentiaBatchFileRepository : IRepository<EssentiaBatchFile>
     Task<IReadOnlyList<EnrichmentQueueDepthDto>> GetQueueDepthAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Batch-files still <c>Pending</c> inside a dispatched batch that were created before
+    /// Batch-files still <c>Queued</c> inside a dispatched batch that were created before
     /// <paramref name="olderThan"/> — candidates for the admin "stuck" panel.
     /// </summary>
     Task<IReadOnlyList<EnrichmentStuckDto>> GetStuckAsync(DateTime olderThan, CancellationToken ct = default);

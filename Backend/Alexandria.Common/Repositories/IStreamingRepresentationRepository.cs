@@ -55,5 +55,5 @@ public interface IStreamingRepresentationRepository : IRepository<StreamingRepre
     /// </summary>
     Task MarkAllFailedAsync(List<Guid> representationIds, CancellationToken ct = default);
 
-    Task DeleteByJobIdAsync(Guid jobId, CancellationToken ct = default);
+    Task DeleteByTranspilation(Guid transpilationId, CancellationToken ct = default);
 }

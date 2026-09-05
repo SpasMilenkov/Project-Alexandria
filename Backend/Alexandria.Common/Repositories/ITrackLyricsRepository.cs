@@ -6,6 +6,8 @@ namespace Alexandria.Common.Repositories;
 
 public interface ITrackLyricsRepository : IRepository<TrackLyrics>
 {
+    Task<TrackLyrics?> GetByJobIdAsync(Guid jobId, CancellationToken ct = default);
+
     /// <summary>Current all-time row count per lyrics status.</summary>
     Task<IReadOnlyList<LyricsStatusCount>> GetStatusCountsAsync(CancellationToken ct = default);
 

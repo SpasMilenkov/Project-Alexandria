@@ -66,6 +66,7 @@ public class EssentiaBatchRepository(AlexandriaDbContext context) : IEssentiaBat
     public async Task<EssentiaBatch?> GetWithFilesAsync(Guid batchId, CancellationToken ct = default)
         => await _batches
             .Include(b => b.Files.Where(f => f.DeletedAt == null))
+            .ThenInclude(f => f.Job)
             .FirstOrDefaultAsync(b => b.Id == batchId, ct);
 
     public async Task<IEnumerable<EssentiaBatch>> GetDispatchedSinceAsync(DateTime cutoff,
@@ -104,10 +105,9 @@ public class EssentiaBatchRepository(AlexandriaDbContext context) : IEssentiaBat
                 DispatchedAt = b.DispatchedAt,
                 CompletedAt = b.CompletedAt,
                 CreatedAt = b.CreatedAt,
-                FilesCompleted = b.Files.Count(f => f.Status == EssentiaBatchFileStatus.Succeeded
-                                                    || f.Status == EssentiaBatchFileStatus.Failed
-                                                    || f.Status == EssentiaBatchFileStatus.MissingOutput),
-                FilesTotal = b.Files.Count(),
+                FilesCompleted = b.Files.Count(f => f.Job.Status == JobStatus.Ready
+                                                    || f.Job.Status == JobStatus.Failed),
+                FilesTotal = b.Files.Count,
             })
             .ToListAsync(ct);
     }

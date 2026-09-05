@@ -16,7 +16,7 @@ public interface IStreamingRepresentationService
 
     /// <summary>
     /// Bulk-creates one representation per lane produced by the transpiler.
-    /// All requests must carry the same <see cref="CreateStreamingRepresentationRequest.JobId"/>.
+    /// All requests must carry the same <see cref="CreateStreamingRepresentationRequest.TranspilationId"/>.
     /// Throws <see cref="TranspilationJobNotFoundException"/> when the job does not exist.
     /// </summary>
     Task<IEnumerable<StreamingRepresentationDto>> CreateRepresentationsAsync(
@@ -75,5 +75,5 @@ public interface IStreamingRepresentationService
     /// </summary>
     Task MarkAllFailedAsync(List<Guid> representationIds, CancellationToken ct = default);
 
-    Task DeleteByJobIdAsync(Guid jobId, CancellationToken ct = default);
+    Task DeleteByTranspilationIdAsync(Guid transpilationId, CancellationToken ct = default);
 }
