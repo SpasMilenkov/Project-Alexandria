@@ -52,16 +52,16 @@
     {
       "user": "lyrics_worker_user",
       "vhost": "${RABBITMQ_VHOST}",
-      "configure": "^(content-exchange|lyrics-queue)$",
-      "write": "^(content-exchange|lyrics-queue)$",
-      "read": "^(content-exchange|lyrics-queue)$"
+      "configure": "^(content-exchange|lyrics-queue|lyrics-parking-queue)$",
+      "write": "^(content-exchange|lyrics-queue|lyrics-parking-queue)$",
+      "read": "^(content-exchange|lyrics-queue|lyrics-parking-queue)$"
     },
     {
       "user": "media_metadata_worker_user",
       "vhost": "${RABBITMQ_VHOST}",
-      "configure": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue)$",
-      "write": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue)$",
-      "read": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue)$"
+      "configure": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue)$",
+      "write": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue)$",
+      "read": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue)$"
     },
     {
       "user": "essentia_worker_user",
