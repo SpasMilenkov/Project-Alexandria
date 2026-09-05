@@ -20,15 +20,15 @@ public partial class TranspilationJobHandler(
 {
     public async Task HandleAsync(Guid jobId, CancellationToken ct = default)
     {
-        var claimed = await jobService.TryClaimJobAsync(jobId, ct);
+        var claimed = await unitOfWork.Jobs.TryClaimJobAsync(jobId, ct);
         if (!claimed)
             return;
 
-        var job = await unitOfWork.TranspilationJobs.GetByIdAsync(jobId, ct);
-        if (job is null) throw new TranspilationJobNotFoundException(jobId);
+        var transpilation = await unitOfWork.TranspilationJobs.GetByJobIdAsync(jobId, ct);
+        if (transpilation is null) throw new TranspilationJobNotFoundException(jobId);
 
-        var mediaDir = job.IsVideo ? "v" : "a";
-        var codecStr = job.IsVideo ? "h264" : "opus";
+        var mediaDir = transpilation.IsVideo ? "v" : "a";
+        var codecStr = transpilation.IsVideo ? "h264" : "opus";
         var jobDir = Path.Combine(Path.GetTempPath(), jobId.ToString());
         var repDir = Path.Combine(jobDir, mediaDir, codecStr);
         var inputPath = Path.Combine(jobDir, "source");
@@ -39,27 +39,27 @@ public partial class TranspilationJobHandler(
         {
             Directory.CreateDirectory(repDir);
 
-            LogDownloadingSource(logger, jobId, job.VersionId);
+            LogDownloadingSource(logger, jobId, transpilation.VersionId);
 
-            var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == job.VersionId, ct) ??
+            var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == transpilation.VersionId, ct) ??
                           throw new VersionNotFoundException();
 
             await storage.DownloadContentObjectAsync(version.ContentObjectId, inputPath, ct);
 
-            LogTranspilationRunning(logger, jobId, job.IsVideo);
+            LogTranspilationRunning(logger, jobId, transpilation.IsVideo);
 
-            if (!string.IsNullOrEmpty(job.SegmentPrefix))
+            if (!string.IsNullOrEmpty(transpilation.SegmentPrefix))
             {
-                LogCleaningUpOldSegments(logger, jobId, job.SegmentPrefix);
-                await storage.DeleteStreamingOutputByPrefixAsync(job.SegmentPrefix, ct);
-                await representationService.DeleteByJobIdAsync(jobId, ct);
+                LogCleaningUpOldSegments(logger, jobId, transpilation.SegmentPrefix);
+                await storage.DeleteStreamingOutputByPrefixAsync(transpilation.SegmentPrefix, ct);
+                await representationService.DeleteByTranspilationIdAsync(transpilation.Id, ct);
             }
 
-            TranspilationOutput output = job.IsVideo
-                ? await videoTranspilation.TranspileAsync(jobId, inputPath, repDir, job.VideoRungs, ct)
-                : await audioTranspilation.TranspileAsync(jobId, inputPath, repDir, job.AudioRungs, ct);
+            var output = transpilation.IsVideo
+                ? await videoTranspilation.TranspileAsync(jobId, inputPath, repDir, transpilation.VideoRungs, ct)
+                : await audioTranspilation.TranspileAsync(jobId, inputPath, repDir, transpilation.AudioRungs, ct);
 
-            var segmentPrefix = $"{job.VersionId}/{mediaDir}/{codecStr}";
+            var segmentPrefix = $"{transpilation.VersionId}/{mediaDir}/{codecStr}";
 
             LogUploadingOutput(logger, jobId, segmentPrefix);
             await storage.UploadStreamingOutputAsync(output.RootDirectory, segmentPrefix, ct);
@@ -67,7 +67,7 @@ public partial class TranspilationJobHandler(
             var representations = await representationService.CreateRepresentationsAsync(
                 output.Lanes.Select(lane => new CreateStreamingRepresentationRequest
                 {
-                    JobId = jobId,
+                    TranspilationId = transpilation.Id,
                     Codec = lane.Codec,
                     BitrateKbps = lane.BitrateKbps,
                     Width = lane.Width,
@@ -78,20 +78,23 @@ public partial class TranspilationJobHandler(
 
             await representationService.MarkAllReadyAsync(representationIds, ct);
 
-            await jobService.UpdateStatusAsync(jobId, TranspilationStatus.Ready, progress: 100,
-                segmentPrefix: segmentPrefix, ct: ct);
+            // Persist the TranspilationJob-specific field before flipping Job.Status,
+            // so a Ready status is never observable before SegmentPrefix is in place.
+            transpilation.SegmentPrefix = segmentPrefix;
+            await unitOfWork.SaveChangesAsync(ct);
+
+            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Ready, 100, ct: ct);
 
             LogJobCompleted(logger, jobId);
         }
         catch (TranspilationCancelledException)
         {
             await representationService.MarkAllFailedAsync(representationIds, ct);
-            await jobService.UpdateStatusAsync(jobId, TranspilationStatus.Cancelled, ct: ct);
+            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Cancelled, ct: ct);
         }
         catch (Exception ex)
         {
             if (representationIds.Count > 0)
-            {
                 try
                 {
                     await representationService.MarkAllFailedAsync(representationIds, ct);
@@ -100,11 +103,10 @@ public partial class TranspilationJobHandler(
                 {
                     LogRepresentationMarkFailedError(logger, cleanupEx, jobId);
                 }
-            }
 
             try
             {
-                await jobService.UpdateStatusAsync(jobId, TranspilationStatus.Failed, errorDetail: ex.Message, ct: ct);
+                await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: ex.Message, ct: ct);
             }
             catch (Exception cleanupEx)
             {
@@ -114,17 +116,15 @@ public partial class TranspilationJobHandler(
         finally
         {
             if (Directory.Exists(jobDir))
-            {
                 try
                 {
-                    Directory.Delete(jobDir, recursive: true);
+                    Directory.Delete(jobDir, true);
                     LogLocalOutputCleaned(logger, jobId, jobDir);
                 }
                 catch (Exception cleanupEx)
                 {
                     LogLocalOutputCleanupFailed(logger, cleanupEx, jobId, jobDir);
                 }
-            }
         }
     }
 }

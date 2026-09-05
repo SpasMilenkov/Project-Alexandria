@@ -1,4 +1,7 @@
 using System.Text;
+using Alexandria.Common;
+using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Queueing;
 using Alexandria.Workers.MediaMetadata.Services;
@@ -54,6 +57,24 @@ public partial class TriggerConsumerWorker(
             arguments: null,
             cancellationToken: stoppingToken);
 
+        // Parking lot for poison triggers: messages that exhaust their staging
+        // attempts land here instead of looping forever, and surface once as a
+        // worker-cycle failure event (see the staging catch block below).
+        await _channel.QueueDeclareAsync(
+            queue: config.TriggerParkingQueueName,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: null,
+            cancellationToken: stoppingToken);
+
+        await _channel.QueueBindAsync(
+            queue: config.TriggerParkingQueueName,
+            exchange: exchangeName,
+            routingKey: config.TriggerParkingRoutingKey,
+            arguments: null,
+            cancellationToken: stoppingToken);
+
         var consumer = new AsyncEventingBasicConsumer(_channel);
 
         consumer.ReceivedAsync += async (_, eventArgs) =>
@@ -101,8 +122,38 @@ public partial class TriggerConsumerWorker(
             }
             catch (Exception ex)
             {
+                // Staging failed before any batch or Job row existed, so the
+                // monitoring dashboards have nothing to count here. Count
+                // deliveries via a header (plain requeue preserves nothing we
+                // can increment) and park poison triggers instead of looping.
+                var attempt = TriggerRetryPolicy.NextAttemptNumber(eventArgs.BasicProperties);
+                if (TriggerRetryPolicy.ShouldPark(attempt, config.TriggerMaxStagingAttempts))
+                {
+                    LogTriggerParked(logger, ex, fileId, attempt);
+                    try
+                    {
+                        await TriggerRetryPolicy.PublishWithAttemptsAsync(
+                            _channel, exchangeName, config.TriggerParkingRoutingKey,
+                            body, attempt, stoppingToken);
+                        await RecordTriggerFailureAsync(serviceProvider, ex, stoppingToken);
+                        await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                    }
+                    catch (Exception parkEx)
+                    {
+                        // Broker too sick to park: keep the message via requeue
+                        // rather than dropping it on the floor.
+                        LogParkFailed(logger, parkEx, fileId);
+                        await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
+                    }
+
+                    return;
+                }
+
                 LogStageError(logger, ex, fileId);
-                await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
+                await TriggerRetryPolicy.PublishWithAttemptsAsync(
+                    _channel, exchangeName, eventArgs.RoutingKey,
+                    body, attempt, stoppingToken);
+                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
             }
         };
 
@@ -115,6 +166,14 @@ public partial class TriggerConsumerWorker(
         LogConsumerStarted(logger, queueName, exchangeName);
 
         await Task.Delay(Timeout.Infinite, stoppingToken);
+    }
+
+    private static async Task RecordTriggerFailureAsync(
+        IServiceProvider serviceProvider, Exception ex, CancellationToken ct)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex, ct);
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)

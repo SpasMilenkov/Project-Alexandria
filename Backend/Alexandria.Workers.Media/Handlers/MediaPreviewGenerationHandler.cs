@@ -12,7 +12,31 @@ public class MediaPreviewGenerationHandler(
 {
     public async Task HandleAsync(string message, CancellationToken ct = default)
     {
-        var versionId = Guid.Parse(message);
+        if (!Guid.TryParse(message, out var jobId))
+            throw new InvalidOperationException($"Preview job message is not a valid job ID: {message}.");
+
+        var previewJob = await PreviewJobLifecycle.TryClaimAsync(unitOfWork, jobId, ct);
+        if (previewJob is null)
+        {
+            logger.LogInformation("Preview job {JobId} already claimed; skipping duplicate delivery.", jobId);
+            return;
+        }
+
+        try
+        {
+            await GenerateAsync(previewJob.VersionId, ct);
+            await PreviewJobLifecycle.CompleteAsync(unitOfWork, jobId, ct);
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested)
+        {
+            await PreviewJobLifecycle.FailAsync(unitOfWork, jobId, ex.Message, ct);
+            throw;
+        }
+    }
+
+    private async Task GenerateAsync(Guid versionId, CancellationToken ct)
+    {
+        var message = versionId.ToString();
         var version =
             await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == versionId && v.DeletedAt == null, ct);
 

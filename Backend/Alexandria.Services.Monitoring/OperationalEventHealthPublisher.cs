@@ -79,11 +79,14 @@ public class OperationalEventHealthPublisher(IServiceScopeFactory scopeFactory) 
     {
         serviceType = checkName switch
         {
-            "worker-mediapreviews" => ServiceType.MediaPreviews,
-            "worker-documentpreviews" => ServiceType.DocumentPreviews,
-            "worker-transpilation" => ServiceType.Transpilation,
-            "worker-lyrics" => ServiceType.Lyrics,
-            "worker-mediametadata" => ServiceType.MediaMetadata,
+            // Keeping this in sync with the appsettings is very important.
+            //Mismatch between the actual config and the map breaks service monitoring
+            // There is probably a smarter way to do this
+            "worker-mediaworker" => ServiceType.MediaPreviews,
+            "worker-documentworker" => ServiceType.DocumentPreviews,
+            "worker-transpilationworker" => ServiceType.Transpilation,
+            "worker-lyricsworker" => ServiceType.Lyrics,
+            "worker-mediametadataworker" => ServiceType.MediaMetadata,
             "postgres" or "storage" or "rabbitmq" => ServiceType.Api,
             _ => default
         };

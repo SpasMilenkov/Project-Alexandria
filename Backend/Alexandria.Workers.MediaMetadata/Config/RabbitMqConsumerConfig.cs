@@ -17,6 +17,24 @@ public class RabbitMqConsumerConfig
     public string TriggerQueueName { get; set; } = "media-metadata-trigger-queue";
 
     /// <summary>
+    /// Queue exhausted trigger messages are parked on after
+    /// <see cref="TriggerMaxStagingAttempts"/> staging failures.
+    /// </summary>
+    public string TriggerParkingQueueName { get; set; } = "media-metadata-trigger-parking-queue";
+
+    /// <summary>
+    /// Routing key (on the same exchange) exhausted triggers are published to.
+    /// Must not collide with the <c>media-metadata.enrich.#</c> trigger binding.
+    /// </summary>
+    public string TriggerParkingRoutingKey { get; set; } = "media-metadata.trigger.parking";
+
+    /// <summary>
+    /// How many staging attempts a trigger gets before it is parked and
+    /// surfaced as a worker-cycle failure instead of being requeued forever.
+    /// </summary>
+    public int TriggerMaxStagingAttempts { get; set; } = 5;
+
+    /// <summary>
     /// Queue the completion messages arrive on.
     /// </summary>
     public string ResultsQueueName { get; set; } = "media-metadata-results-queue";

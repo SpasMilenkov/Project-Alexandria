@@ -1,7 +1,8 @@
-using Alexandria.Common.Services;
+using Alexandria.Common;
+using Alexandria.Common.Config;
+using Alexandria.Common.Policies;
 using Alexandria.Data.Models.Enumerators;
-using Alexandria.Data.Models.Enumerators.Monitoring;
-using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Jobs;
 using Alexandria.Workers.MediaTranspilation.Handlers;
 
 namespace Alexandria.Workers.MediaTranspilation;
@@ -9,17 +10,14 @@ namespace Alexandria.Workers.MediaTranspilation;
 public partial class TranspilationPollingWorker(
     ILogger<TranspilationPollingWorker> logger,
     IConfiguration configuration,
-    IJobOutcomeTracker outcomeTracker,
     IServiceProvider serviceProvider) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         var pollingInterval = configuration.GetValue<int>("PollingIntervalSeconds");
         LogPollingWorkerStarting(logger, pollingInterval);
-
         using var timer = new PeriodicTimer(
             TimeSpan.FromSeconds(pollingInterval));
-
         while (await timer.WaitForNextTickAsync(ct))
         {
             await ProcessFailedJobsAsync(ct);
@@ -30,18 +28,20 @@ public partial class TranspilationPollingWorker(
     {
         try
         {
-            Console.WriteLine("PROCESSING JOBS");
             using var scope = serviceProvider.CreateScope();
-            var jobService = scope.ServiceProvider.GetRequiredService<ITranspilationJobService>();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var handler = scope.ServiceProvider.GetRequiredService<TranspilationJobHandler>();
 
-            var result = await jobService.FindJobsAsync(
-                new TranspilationJobQuery
+            var result = await unitOfWork.Jobs.FindJobsAsync(
+                new JobQuery
                 {
-                    Status = TranspilationStatus.Failed,
-                    PageSize = 10,
-                    IsSystem = true
+                    Status = JobStatus.Failed,
+                    Type = JobType.Transpilation,
+                    TriggeredByUserId = SystemConfig.SystemId,
+                    MaxRetryCount = JobRetryPolicy.MaxAutoRetries,
+                    PageSize = 10
                 }, ct);
+
             if (result.TotalCount == 0)
             {
                 LogNoPendingJobs(logger);
@@ -58,18 +58,15 @@ public partial class TranspilationPollingWorker(
                 try
                 {
                     await handler.HandleAsync(job.Id, ct);
-                    outcomeTracker.RecordSuccess(ServiceType.Transpilation);
                 }
                 catch (Exception ex)
                 {
-                    outcomeTracker.RecordFailure(ServiceType.Transpilation);
                     LogUnhandledJobError(logger, ex, job.Id);
                 }
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            outcomeTracker.RecordFailure(ServiceType.Transpilation);
             LogPollCycleError(logger, ex);
         }
     }

@@ -2,10 +2,8 @@ using System.Text;
 using System.Text.Json;
 using Alexandria.Common;
 using Alexandria.Common.Config;
-using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
-using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Messages;
 using Alexandria.Workers.MediaMetadata.Queueing;
@@ -31,7 +29,6 @@ public partial class ResultsConsumerWorker(
     IOptions<RabbitMqConsumerConfig> rabbitOptions,
     IOptions<EssentiaConfig> essentiaOptions,
     IConfiguration configuration,
-    IJobOutcomeTracker outcomeTracker,
     IAutoTagQueue autoTagQueue) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -110,11 +107,12 @@ public partial class ResultsConsumerWorker(
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
-    private async Task HandleCompletionAsync(CompletionMessage completion, CancellationToken ct)
+    internal async Task HandleCompletionAsync(CompletionMessage completion, CancellationToken ct)
     {
         using var scope = serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
+        // GetWithFilesAsync now needs .Include(f => f.Job) alongside .Include(b => b.Files)
         var batch = await unitOfWork.EssentiaBatches.GetWithFilesAsync(completion.BatchId, ct);
         if (batch is null)
         {
@@ -130,25 +128,22 @@ public partial class ResultsConsumerWorker(
 
         var config = essentiaOptions.Value;
         var localOutputDir = completion.OutputDir is null ? null : config.ToLocalPath(completion.OutputDir);
+        var outputDirMissing = localOutputDir is null || !Directory.Exists(localOutputDir);
         var succeededFileIds = new List<Guid>();
 
         foreach (var batchFile in batch.Files)
         {
-            if (localOutputDir is null || !Directory.Exists(localOutputDir))
+            if (outputDirMissing)
             {
-                batchFile.Status = EssentiaBatchFileStatus.MissingOutput;
-                batchFile.CompletedAt = DateTime.UtcNow;
-                outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
+                MarkFailed(batchFile, "output directory missing");
                 LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
                 continue;
             }
 
-            var jsonPath = Path.Combine(localOutputDir, $"{batchFile.FileId}.json");
+            var jsonPath = Path.Combine(localOutputDir!, $"{batchFile.FileId}.json");
             if (!File.Exists(jsonPath))
             {
-                batchFile.Status = EssentiaBatchFileStatus.MissingOutput;
-                batchFile.CompletedAt = DateTime.UtcNow;
-                outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
+                MarkFailed(batchFile, "output file missing");
                 LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
                 continue;
             }
@@ -166,8 +161,7 @@ public partial class ResultsConsumerWorker(
 
             if (output is null)
             {
-                batchFile.Status = EssentiaBatchFileStatus.MissingOutput;
-                batchFile.CompletedAt = DateTime.UtcNow;
+                MarkFailed(batchFile, "malformed per-file output");
                 LogMalformedPerFile(logger, batchFile.FileId, completion.BatchId);
                 continue;
             }
@@ -179,20 +173,17 @@ public partial class ResultsConsumerWorker(
             if (output.Success)
             {
                 await UpsertSuccessAsync(unitOfWork, batchFile.FileId, backbone, output, ct);
-                batchFile.Status = EssentiaBatchFileStatus.Succeeded;
-                batchFile.CompletedAt = DateTime.UtcNow;
+                batchFile.Job.Status = JobStatus.Ready;
+                batchFile.Job.ProgressPercent = 100;
+                batchFile.Job.CompletedAt = DateTime.UtcNow;
                 succeededFileIds.Add(batchFile.FileId);
-                outcomeTracker.RecordSuccess(ServiceType.MediaMetadata);
                 LogFileSucceeded(logger, batchFile.FileId, completion.BatchId);
             }
             else
             {
                 var error = string.IsNullOrWhiteSpace(output.Error) ? "unknown error" : output.Error;
                 await UpsertFailureAsync(unitOfWork, batchFile.FileId, backbone, output, error, ct);
-                batchFile.Status = EssentiaBatchFileStatus.Failed;
-                batchFile.CompletedAt = DateTime.UtcNow;
-                batchFile.ErrorDetail = error;
-                outcomeTracker.RecordFailure(ServiceType.MediaMetadata);
+                MarkFailed(batchFile, error);
                 LogFileFailed(logger, batchFile.FileId, completion.BatchId, error);
             }
         }
@@ -204,9 +195,6 @@ public partial class ResultsConsumerWorker(
 
         await unitOfWork.SaveChangesAsync(ct);
 
-        // Enqueue only after the batch (enrichment rows + status) has fully committed, so
-        // the sync drainer never reads uncommitted rows. Missed files are recovered by the
-        // AutoTagSweepWorker backstop.
         if (_autoTagEnabled)
         {
             foreach (var fileId in succeededFileIds)
@@ -229,6 +217,14 @@ public partial class ResultsConsumerWorker(
         Cleanup(batch, config, localOutputDir);
 
         LogBatchCompleted(logger, completion.BatchId, batch.Files.Count);
+        return;
+
+        static void MarkFailed(EssentiaBatchFile batchFile, string error)
+        {
+            batchFile.Job.Status = JobStatus.Failed;
+            batchFile.Job.ErrorDetail = error;
+            batchFile.Job.CompletedAt = DateTime.UtcNow;
+        }
     }
 
     private static async Task UpsertSuccessAsync(

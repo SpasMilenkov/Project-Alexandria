@@ -20,6 +20,13 @@ public partial class TriggerConsumerWorker
     [LoggerMessage(22205, LogLevel.Error, "Failed to stage file {FileId}; requeueing trigger")]
     private static partial void LogStageError(ILogger logger, Exception ex, Guid fileId);
 
+    [LoggerMessage(22208, LogLevel.Error,
+        "Staging failed {Attempts} times for file {FileId}; trigger parked, failure event recorded")]
+    private static partial void LogTriggerParked(ILogger logger, Exception ex, Guid fileId, int attempts);
+
+    [LoggerMessage(22209, LogLevel.Error, "Failed to park poison trigger for file {FileId}; requeueing")]
+    private static partial void LogParkFailed(ILogger logger, Exception ex, Guid fileId);
+
     [LoggerMessage(22206, LogLevel.Information,
         "Trigger consumer started, listening on queue {QueueName} via exchange {ExchangeName}")]
     private static partial void LogConsumerStarted(ILogger logger, string queueName, string exchangeName);
