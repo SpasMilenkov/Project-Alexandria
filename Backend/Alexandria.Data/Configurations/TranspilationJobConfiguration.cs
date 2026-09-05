@@ -10,23 +10,6 @@ public class TranspilationJobConfiguration : IEntityTypeConfiguration<Transpilat
     {
         builder.HasKey(e => e.Id);
 
-        builder.Property(e => e.Status)
-            .HasConversion<string>()
-            .HasMaxLength(ValidationConstants.StringLengths.ShortString)
-            .HasColumnType($"varchar({ValidationConstants.StringLengths.ShortString})")
-            .IsRequired();
-
-        builder.Property(e => e.ProgressPercent)
-            .HasDefaultValue(0)
-            .IsRequired();
-
-        builder.Property(e => e.RetryCount)
-            .HasDefaultValue(0)
-            .IsRequired();
-
-        builder.Property(e => e.ErrorDetail)
-            .HasColumnType("text")
-            .IsRequired(false);
 
         builder.Property(e => e.IsVideo)
             .IsRequired();
@@ -35,17 +18,14 @@ public class TranspilationJobConfiguration : IEntityTypeConfiguration<Transpilat
             .HasColumnType("timestamp with time zone")
             .IsRequired();
 
-        builder.Property(e => e.StartedAt)
-            .HasColumnType("timestamp with time zone")
-            .IsRequired(false);
-
-        builder.Property(e => e.CompletedAt)
-            .HasColumnType("timestamp with time zone")
-            .IsRequired(false);
-
         builder.HasOne(e => e.FileVersion)
             .WithMany()
             .HasForeignKey(e => e.VersionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(e => e.Job)
+            .WithMany()
+            .HasForeignKey(e => e.JobId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Property(e => e.SegmentPrefix)
@@ -55,12 +35,12 @@ public class TranspilationJobConfiguration : IEntityTypeConfiguration<Transpilat
 
         builder.HasMany(e => e.Representations)
             .WithOne(r => r.Job)
-            .HasForeignKey(r => r.JobId)
+            .HasForeignKey(r => r.TranspilationId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.VersionId, e.UserId }).IsUnique();
-        builder.HasIndex(e => e.Status);
         builder.HasIndex(e => e.CreatedAt);
+        builder.HasIndex(t => t.JobId).IsUnique();
 
         builder.ToTable("TranspilationJobs");
     }

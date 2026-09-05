@@ -6,4 +6,5 @@ public enum OperationalEventCode
     HealthcheckUnreachable,
     ErrorRateThresholdExceeded,
     UserReportedProblem,
+    WorkerCycleFailure
 }

@@ -4,19 +4,18 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Alexandria.Data.Configurations;
 
-public class TrackLyricsConfiguration: IEntityTypeConfiguration<TrackLyrics>
+public class TrackLyricsConfiguration : IEntityTypeConfiguration<TrackLyrics>
 {
-
     public void Configure(EntityTypeBuilder<TrackLyrics> builder)
     {
         builder.Property(e => e.PlainLyrics)
             .HasColumnType("text")
             .IsRequired(false);
-        
+
         builder.Property(e => e.SyncedLyrics)
             .HasColumnType("text")
             .IsRequired(false);
-        
+
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")
             .IsRequired();
@@ -31,13 +30,19 @@ public class TrackLyricsConfiguration: IEntityTypeConfiguration<TrackLyrics>
 
         builder.HasOne(e => e.TranspilationJob)
             .WithOne(e => e.TrackLyrics);
-        
+
+        builder.HasOne(e => e.Job)
+            .WithMany()
+            .HasForeignKey(e => e.JobId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(e => e.Id);
         builder.HasIndex(e => e.Status);
+        builder.HasIndex(e => e.JobId).IsUnique();
         builder.HasIndex(e => e.TranspilationJobId)
             .IsUnique()
             .HasFilter("\"DeletedAt\" IS NULL");
-        
+
         builder.ToTable("TrackLyrics");
     }
 }

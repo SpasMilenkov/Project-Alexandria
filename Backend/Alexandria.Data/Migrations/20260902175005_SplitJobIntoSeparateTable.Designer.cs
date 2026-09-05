@@ -4,6 +4,7 @@ using System.Numerics;
 using Alexandria.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using NpgsqlTypes;
 namespace Alexandria.Data.Migrations
 {
     [DbContext(typeof(AlexandriaDbContext))]
-    partial class AlexandriaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902175005_SplitJobIntoSeparateTable")]
+    partial class SplitJobIntoSeparateTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1177,56 +1180,6 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("Previews", (string)null);
                 });
 
-            modelBuilder.Entity("Alexandria.Data.Models.PreviewJob", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("NOW()");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("JobId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("VersionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("JobId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("VersionId", "Kind", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("PreviewJobs", (string)null);
-                });
-
             modelBuilder.Entity("Alexandria.Data.Models.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1618,9 +1571,6 @@ namespace Alexandria.Data.Migrations
                     b.Property<bool>("IsInstrumental")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("JobId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("PlainLyrics")
                         .HasColumnType("text");
 
@@ -1649,9 +1599,6 @@ namespace Alexandria.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Id");
-
-                    b.HasIndex("JobId")
-                        .IsUnique();
 
                     b.HasIndex("Status");
 
@@ -2142,33 +2089,6 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Version");
                 });
 
-            modelBuilder.Entity("Alexandria.Data.Models.PreviewJob", b =>
-                {
-                    b.HasOne("Alexandria.Data.Models.Job", "Job")
-                        .WithMany()
-                        .HasForeignKey("JobId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Alexandria.Data.Models.FileVersion", "Version")
-                        .WithMany()
-                        .HasForeignKey("VersionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Job");
-
-                    b.Navigation("User");
-
-                    b.Navigation("Version");
-                });
-
             modelBuilder.Entity("Alexandria.Data.Models.RefreshToken", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
@@ -2265,19 +2185,11 @@ namespace Alexandria.Data.Migrations
 
             modelBuilder.Entity("Alexandria.Data.Models.TrackLyrics", b =>
                 {
-                    b.HasOne("Alexandria.Data.Models.Job", "Job")
-                        .WithMany()
-                        .HasForeignKey("JobId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("Alexandria.Data.Models.TranspilationJob", "TranspilationJob")
                         .WithOne("TrackLyrics")
                         .HasForeignKey("Alexandria.Data.Models.TrackLyrics", "TranspilationJobId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Job");
 
                     b.Navigation("TranspilationJob");
                 });

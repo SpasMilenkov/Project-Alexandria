@@ -1,10 +1,10 @@
 namespace Alexandria.Data.Models.Enumerators;
 
-public enum TranspilationStatus
+public enum JobStatus
 {
     Queued,
     Processing,
-    Partial, // some representations completed, others failed
+    Partial,
     Ready,
     Failed,
     Cancelled,

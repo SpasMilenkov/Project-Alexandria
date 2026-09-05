@@ -39,11 +39,11 @@ public class StreamingRepresentationConfiguration : IEntityTypeConfiguration<Str
 
         builder.HasOne(e => e.Job)
             .WithMany(j => j.Representations)
-            .HasForeignKey(e => e.JobId)
+            .HasForeignKey(e => e.TranspilationId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // one row per codec per job, no duplicates
-        builder.HasIndex(e => new { e.JobId, e.Codec });
+        builder.HasIndex(e => new { JobId = e.TranspilationId, e.Codec });
         builder.HasIndex(e => e.Status);
 
         builder.ToTable("StreamRepresentations");

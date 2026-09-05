@@ -9,23 +9,26 @@ namespace Alexandria.Data.Models;
 public class TrackLyrics : IBase
 {
     public Guid Id { get; set; }
-    
+
     public string? PlainLyrics { get; set; }
     public string? SyncedLyrics { get; set; }
     public bool IsInstrumental { get; set; }
-    
+
     public LyricsProvider SourceProvider { get; set; }
     public bool Cached { get; set; }
     public string? ProviderTrackId { get; set; }
     public decimal? ConfidenceScore { get; set; }
     public LyricsStatus Status { get; set; }
     public DateTime? FetchedAt { get; set; }
-    
+
     //Navigation
 
     public Guid TranspilationJobId { get; set; }
     public TranspilationJob? TranspilationJob { get; set; }
-    
+
+    public Guid JobId { get; set; }
+    public Job Job { get; set; } = null!;
+
     // Base
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
