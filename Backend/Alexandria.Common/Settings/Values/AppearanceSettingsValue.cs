@@ -14,4 +14,16 @@ public class AppearanceSettingsValue
     [Range(12, 64)] public int GridIconSize { get; set; } = 48;
 
     [Range(12, 64)] public int ListIconSize { get; set; } = 20;
+
+    public bool BackgroundBlurEnabled { get; set; } = true;
+
+    [Range(0, 24)] public int BackgroundBlurAmount { get; set; } = 8;
+
+    public bool DisableBlurOnMobile { get; set; } = false;
+
+    public bool TransparencyEnabled { get; set; } = true;
+
+    [Range(10, 95)] public int SurfaceOpacity { get; set; } = 60;
+
+    public bool ThumbnailsEnabled { get; set; } = true;
 }

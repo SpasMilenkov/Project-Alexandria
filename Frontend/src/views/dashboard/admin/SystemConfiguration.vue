@@ -63,7 +63,7 @@ watch(isSaving, (saving) => {
       <UAlert
         color="neutral"
         variant="subtle"
-        class="mb-8 border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm"
+        class="mb-8 border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
         :ui="{ root: 'rounded-xl' }"
       >
         <template #icon>
@@ -85,7 +85,7 @@ watch(isSaving, (saving) => {
       <div class="grid gap-6">
         <!-- Upload Policy Card -->
         <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm overflow-hidden"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
         >
           <!-- Card header -->
           <div
@@ -196,7 +196,7 @@ watch(isSaving, (saving) => {
               'Audit Logging',
             ]"
             :key="section"
-            class="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700/60 bg-white/30 dark:bg-white/3 px-5 py-5 flex items-center gap-3"
+            class="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700/60 frosted-glass glass-surface px-5 py-5 flex items-center gap-3"
           >
             <Icon
               icon="mdi:lock-outline"

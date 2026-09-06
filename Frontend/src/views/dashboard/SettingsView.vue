@@ -1,15 +1,33 @@
 <script setup lang="ts">
+import { nextTick, watch } from "vue";
+import { useRoute } from "vue-router";
+
 import AppearanceSection from "@/components/dashboard/settings/AppearanceSection.vue";
 import AutoTaggingSection from "@/components/dashboard/settings/AutoTaggingSection.vue";
 import BehaviorSection from "@/components/dashboard/settings/BehaviorSection.vue";
 import { useSettingsStore } from "@/stores/settings";
 
 const settingsStore = useSettingsStore();
+const route = useRoute();
 const handleResetAll = () => {
   settingsStore.resetSettings();
 };
 
 const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
+
+// Sidebar sub-navigation lands here via /settings#section links.
+watch(
+  () => route.hash,
+  (hash) => {
+    if (!hash) {
+      return;
+    }
+    nextTick(() => {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth" });
+    });
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -34,9 +52,15 @@ const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
 
       <!-- Settings Sections -->
       <div class="space-y-6">
-        <AppearanceSection />
-        <BehaviorSection />
-        <AutoTaggingSection v-if="autoTaggingEnabled" />
+        <section id="appearance" class="scroll-mt-4">
+          <AppearanceSection />
+        </section>
+        <section id="behavior" class="scroll-mt-4">
+          <BehaviorSection />
+        </section>
+        <section v-if="autoTaggingEnabled" id="auto-tagging" class="scroll-mt-4">
+          <AutoTaggingSection />
+        </section>
       </div>
     </div>
   </div>

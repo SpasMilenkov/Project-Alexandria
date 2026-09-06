@@ -28,12 +28,31 @@
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
         >
-          <Icon
-            :icon="getFileIcon(props.data.fileName)"
-            :width="iconSize"
-            :height="iconSize"
-            class="shrink-0"
-          />
+          <div
+            class="shrink-0 flex items-center justify-center overflow-hidden rounded-md"
+            :style="{ width: `${thumbnailBox.width * 1.4}px`, height: `${thumbnailBox.height}px` }"
+          >
+            <img
+              v-if="showThumbnail"
+              :src="thumbnailUrl"
+              :alt="props.data.fileName"
+              :width="thumbnailBox.width"
+              :height="thumbnailBox.height"
+              loading="lazy"
+              decoding="async"
+              class="h-full w-full object-cover"
+              :class="{ invisible: !thumbnailLoaded }"
+              @load="onThumbnailLoad"
+              @error="onThumbnailError"
+            />
+            <Icon
+              v-if="!showThumbnail || !thumbnailLoaded"
+              :icon="getFileIcon(props.data.fileName)"
+              :width="iconSize"
+              :height="iconSize"
+              class="shrink-0"
+            />
+          </div>
           <span class="text-sm text-center line-clamp-2 w-full wrap-break-word">
             {{ props.data.fileName }}
           </span>
@@ -100,6 +119,7 @@ import { computed } from "vue";
 import type { TagDto } from "@/api/tag";
 
 import { type FileResult } from "@/api/file";
+import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { getFile, getVersionsForFile } from "@/queries/files";
 import { getPreview } from "@/queries/files";
 import { getTagsForFile } from "@/queries/tags";
@@ -137,6 +157,22 @@ const emit = defineEmits<{
 const iconSize = computed(() =>
   props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
 );
+
+// Version-scoped thumbnail URL: permanently cacheable, browser + nginx do the
+// work, no fetch layer. Non-image files 404 and fall through to the icon.
+const { thumbnailUrl, thumbnailLoaded, thumbnailErrored, onThumbnailLoad, onThumbnailError } =
+  useFileThumbnail(() => ({
+    fileId: props.data.fileId,
+    versionId: props.data.currentVersion.id,
+  }));
+
+// Landscape tile scaled off the icon size (4:3, Windows-style proportions).
+const thumbnailBox = computed(() => {
+  const width = Math.round(iconSize.value * 1.5);
+  return { height: Math.round((width * 3) / 4), width };
+});
+
+const showThumbnail = computed(() => settingsStore.thumbnailsEnabled && !thumbnailErrored.value);
 
 const prefetchDetails = useDebounceFn(() => {
   queryCache.refresh(queryCache.ensure(getFile(props.data.fileId)));

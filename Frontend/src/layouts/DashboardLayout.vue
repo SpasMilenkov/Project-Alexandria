@@ -8,6 +8,7 @@
       :max-size="24"
       :default-size="15"
       :ui="{
+        root: 'frosted-glass glass-surface',
         footer: 'border-t border-default py-2',
       }"
       mode="modal"
@@ -134,7 +135,8 @@
               :icon="item.icon"
               :label="item.label"
               :to="item.to"
-              :active="route.path === item.to"
+              :indented="item.indented"
+              :active="item.hash ? route.hash === item.hash : route.path === item.to"
             />
           </nav>
 
@@ -168,7 +170,7 @@
       </template>
     </UDashboardSidebar>
 
-    <UDashboardPanel :ui="{ body: 'sm:p-0 p-0' }">
+    <UDashboardPanel :ui="{ body: 'sm:p-0 p-0 ' }">
       <template #header>
         <UDashboardNavbar toggle-side="right">
           <template #right>
@@ -337,18 +339,46 @@ const adminMenuItems = computed<NavigationMenuItem[]>(() => [
   },
 ]);
 
-const settingsMenuItems: NavigationMenuItem[] = [
-  {
-    icon: "i-heroicons-cog-6-tooth",
-    label: "Settings",
-    to: "/settings",
-  },
-  {
-    icon: "i-heroicons-user-circle",
-    label: "My Account",
-    to: "/account",
-  },
-];
+const settingsMenuItems = computed<NavigationMenuItem[]>(() => {
+  const onSettings = route.path === "/settings";
+  const hash = route.hash;
+  const children: NavigationMenuItem[] = [
+    {
+      active: onSettings && (hash === "" || hash === "#appearance"),
+      icon: "mdi:palette-outline",
+      label: "Appearance",
+      to: "/settings#appearance",
+    },
+    {
+      active: onSettings && hash === "#behavior",
+      icon: "mdi:cog-outline",
+      label: "Behavior",
+      to: "/settings#behavior",
+    },
+  ];
+  if (import.meta.env.VITE_AUTOTAGGING_ENABLED === "true") {
+    children.push({
+      active: onSettings && hash === "#auto-tagging",
+      icon: "mdi:tag-multiple",
+      label: "Auto-tagging",
+      to: "/settings#auto-tagging",
+    });
+  }
+  return [
+    {
+      children,
+      defaultOpen: onSettings,
+      icon: "i-heroicons-cog-6-tooth",
+      label: "Settings",
+      to: "/settings",
+    },
+    {
+      icon: "i-heroicons-user-circle",
+      label: "My Account",
+      to: "/account",
+    },
+  ];
+});
 
 // Mobile navigation
 
@@ -385,6 +415,31 @@ const mobileAdminItems = [
 const mobileSettingsItems = [
   { icon: "i-heroicons-cog-6-tooth", label: "Settings", to: "/settings" },
   { icon: "i-heroicons-user-circle", label: "My Account", to: "/account" },
+  {
+    hash: "#appearance",
+    icon: "mdi:palette-outline",
+    indented: true,
+    label: "Appearance",
+    to: "/settings#appearance",
+  },
+  {
+    hash: "#behavior",
+    icon: "mdi:cog-outline",
+    indented: true,
+    label: "Behavior",
+    to: "/settings#behavior",
+  },
+  ...(import.meta.env.VITE_AUTOTAGGING_ENABLED === "true"
+    ? [
+        {
+          hash: "#auto-tagging",
+          icon: "mdi:tag-multiple",
+          indented: true,
+          label: "Auto-tagging",
+          to: "/settings#auto-tagging",
+        },
+      ]
+    : []),
 ];
 
 const handleLogout = async () => {

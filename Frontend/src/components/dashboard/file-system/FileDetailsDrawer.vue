@@ -4,11 +4,7 @@
     :title="detail?.fileName"
     :description="detail ? 'Created ' + formatDate(detail.createdAt) : undefined"
     :direction="isMobile ? 'bottom' : 'right'"
-    :ui="
-      isMobile
-        ? { container: 'h-[85vh] rounded-t-2xl' }
-        : { container: 'md:max-w-[40rem] lg:min-w-[40rem]' }
-    "
+    :ui="drawerUi"
     :handle-only="!isMobile"
   >
     <template #body>
@@ -199,7 +195,7 @@
         </div>
 
         <!-- Owner Section -->
-        <UCard :ui="isMobile ? { body: 'p-3' } : {}">
+        <UCard class="frosted-glass glass-surface" :ui="isMobile ? { body: 'p-3' } : {}">
           <template #header>
             <div class="flex items-center gap-2" :class="isMobile ? 'p-3 pb-0' : ''">
               <Icon icon="mdi-account" class="w-5 h-5 text-primary" />
@@ -266,6 +262,7 @@ import { getTagsForFile, searchTag } from "@/queries/tags";
 import { formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
 import { getFileTypeReadable, isAutoTagSupportedFileType } from "@/utils/mimetype.utils";
+import { glassDrawerContent } from "@/utils/modalUi";
 import { formatBytes } from "@/utils/size.utils";
 
 import FilePreview from "./FilePreview.vue";
@@ -273,6 +270,13 @@ import FileVersionHistory from "./FileVersionHistory.vue";
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");
+
+const drawerUi = computed(() => {
+  if (isMobile.value) {
+    return { content: glassDrawerContent, container: "h-[85vh] rounded-t-2xl" };
+  }
+  return { content: glassDrawerContent, container: "md:max-w-[40rem] lg:min-w-[40rem]" };
+});
 
 const toast = useToast();
 const { copy } = useClipboard();

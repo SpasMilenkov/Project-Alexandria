@@ -16,6 +16,12 @@ describe("useSettingsStore", () => {
     expect(store.backgroundImage).toBeNull();
     expect(store.backgroundImageKey).toBeNull();
     expect(store.backgroundImageOpacity).toBe(0.35);
+    expect(store.frostEnabled).toBe(true);
+    expect(store.frostStrength).toBe(8);
+    expect(store.frostDisabledOnMobile).toBe(false);
+    expect(store.transparencyEnabled).toBe(true);
+    expect(store.surfaceOpacity).toBe(60);
+    expect(store.thumbnailsEnabled).toBe(true);
     expect(store.gridIconSize).toBe(48);
     expect(store.listIconSize).toBe(20);
     expect(store.skipDeleteConfirmation).toBe(false);
@@ -111,6 +117,116 @@ describe("useSettingsStore", () => {
     });
   });
 
+  describe("frosted glass", () => {
+    it("setFrostEnabled toggles the value", () => {
+      const store = useSettingsStore();
+      store.setFrostEnabled(false);
+      expect(store.frostEnabled).toBe(false);
+      store.setFrostEnabled(true);
+      expect(store.frostEnabled).toBe(true);
+    });
+
+    it("setFrostStrength clamps to min 0", () => {
+      const store = useSettingsStore();
+      store.setFrostStrength(-5);
+      expect(store.frostStrength).toBe(0);
+    });
+
+    it("setFrostStrength clamps to max 24", () => {
+      const store = useSettingsStore();
+      store.setFrostStrength(100);
+      expect(store.frostStrength).toBe(24);
+    });
+
+    it("setFrostStrength rounds to whole pixels", () => {
+      const store = useSettingsStore();
+      store.setFrostStrength(12.7);
+      expect(store.frostStrength).toBe(13);
+    });
+
+    it("setFrostDisabledOnMobile toggles the value", () => {
+      const store = useSettingsStore();
+      store.setFrostDisabledOnMobile(true);
+      expect(store.frostDisabledOnMobile).toBe(true);
+    });
+
+    it("updateSettings applies frost fields", () => {
+      const store = useSettingsStore();
+      store.updateSettings({ frostEnabled: false, frostStrength: 16 });
+      expect(store.frostEnabled).toBe(false);
+      expect(store.frostStrength).toBe(16);
+    });
+  });
+
+  describe("surface transparency", () => {
+    it("setTransparencyEnabled toggles the value", () => {
+      const store = useSettingsStore();
+      store.setTransparencyEnabled(false);
+      expect(store.transparencyEnabled).toBe(false);
+      store.setTransparencyEnabled(true);
+      expect(store.transparencyEnabled).toBe(true);
+    });
+
+    it("setSurfaceOpacity clamps to min 10", () => {
+      const store = useSettingsStore();
+      store.setSurfaceOpacity(-5);
+      expect(store.surfaceOpacity).toBe(10);
+    });
+
+    it("setSurfaceOpacity clamps to max 95", () => {
+      const store = useSettingsStore();
+      store.setSurfaceOpacity(200);
+      expect(store.surfaceOpacity).toBe(95);
+    });
+
+    it("setSurfaceOpacity rounds to whole percent", () => {
+      const store = useSettingsStore();
+      store.setSurfaceOpacity(62.7);
+      expect(store.surfaceOpacity).toBe(63);
+    });
+
+    it("updateSettings applies transparency fields", () => {
+      const store = useSettingsStore();
+      store.updateSettings({ transparencyEnabled: false, surfaceOpacity: 80 });
+      expect(store.transparencyEnabled).toBe(false);
+      expect(store.surfaceOpacity).toBe(80);
+    });
+
+    it("getAppearanceSettings maps local names to the server wire shape", () => {
+      const store = useSettingsStore();
+      store.setFrostEnabled(false);
+      store.setFrostStrength(16);
+      store.setFrostDisabledOnMobile(true);
+      store.setTransparencyEnabled(false);
+      store.setSurfaceOpacity(80);
+      store.setThumbnailsEnabled(false);
+      const payload = store.getAppearanceSettings;
+      expect(payload.backgroundBlurEnabled).toBe(false);
+      expect(payload.backgroundBlurAmount).toBe(16);
+      expect(payload.disableBlurOnMobile).toBe(true);
+      expect(payload.transparencyEnabled).toBe(false);
+      expect(payload.surfaceOpacity).toBe(80);
+      expect(payload.thumbnailsEnabled).toBe(false);
+      expect(payload.accentColor).toBe("amber");
+    });
+  });
+
+  describe("file thumbnails", () => {
+    it("setThumbnailsEnabled toggles the value", () => {
+      const store = useSettingsStore();
+      store.setThumbnailsEnabled(false);
+      expect(store.thumbnailsEnabled).toBe(false);
+      store.setThumbnailsEnabled(true);
+      expect(store.thumbnailsEnabled).toBe(true);
+    });
+
+    it("updateSettings applies thumbnailsEnabled", () => {
+      const store = useSettingsStore();
+      store.updateSettings({ thumbnailsEnabled: false });
+      expect(store.thumbnailsEnabled).toBe(false);
+    });
+  });
+
   describe("gridIconSize", () => {
     it("setGridIconSize clamps to min 12", () => {
       const store = useSettingsStore();
@@ -197,12 +313,18 @@ describe("useSettingsStore", () => {
       const store = useSettingsStore();
       store.syncAppearanceFromServer({
         accentColor: "green",
+        backgroundBlurAmount: 12,
+        backgroundBlurEnabled: false,
         backgroundColor: "ink",
         backgroundImageKey: "img-key",
         backgroundImageOpacity: 0.5,
         backgroundImageUpdatedAt: "2024-06-01",
+        disableBlurOnMobile: true,
         gridIconSize: 32,
         listIconSize: 16,
+        surfaceOpacity: 80,
+        thumbnailsEnabled: false,
+        transparencyEnabled: false,
       });
       expect(store.accentColor).toBe("green");
       expect(store.backgroundColor).toBe("ink");
@@ -210,6 +332,12 @@ describe("useSettingsStore", () => {
       expect(store.backgroundImageOpacity).toBe(0.5);
       expect(store.gridIconSize).toBe(32);
       expect(store.listIconSize).toBe(16);
+      expect(store.frostEnabled).toBe(false);
+      expect(store.frostStrength).toBe(12);
+      expect(store.frostDisabledOnMobile).toBe(true);
+      expect(store.transparencyEnabled).toBe(false);
+      expect(store.surfaceOpacity).toBe(80);
+      expect(store.thumbnailsEnabled).toBe(false);
     });
 
     it("syncBehaviorFromServer updates behavior fields", () => {
@@ -227,12 +355,18 @@ describe("useSettingsStore", () => {
       store.syncFromServer(
         {
           accentColor: "red",
+          backgroundBlurAmount: 8,
+          backgroundBlurEnabled: true,
           backgroundColor: "cool",
           backgroundImageKey: null,
           backgroundImageOpacity: 0.3,
           backgroundImageUpdatedAt: null,
+          disableBlurOnMobile: false,
           gridIconSize: 24,
           listIconSize: 14,
+          surfaceOpacity: 60,
+          thumbnailsEnabled: true,
+          transparencyEnabled: true,
         },
         { skipDeleteConfirmation: true, toastLevel: "silent" },
       );
@@ -264,11 +398,23 @@ describe("useSettingsStore", () => {
       store.setBackgroundColor("midnight");
       store.setGridIconSize(64);
       store.setSkipDeleteConfirmation(true);
+      store.setFrostEnabled(false);
+      store.setFrostStrength(20);
+      store.setFrostDisabledOnMobile(true);
+      store.setTransparencyEnabled(false);
+      store.setSurfaceOpacity(90);
+      store.setThumbnailsEnabled(false);
       store.resetSettings();
       expect(store.accentColor).toBe("amber");
       expect(store.backgroundColor).toBe("parchment");
       expect(store.gridIconSize).toBe(48);
       expect(store.skipDeleteConfirmation).toBe(false);
+      expect(store.frostEnabled).toBe(true);
+      expect(store.frostStrength).toBe(8);
+      expect(store.frostDisabledOnMobile).toBe(false);
+      expect(store.transparencyEnabled).toBe(true);
+      expect(store.surfaceOpacity).toBe(60);
+      expect(store.thumbnailsEnabled).toBe(true);
     });
   });
 
@@ -278,9 +424,18 @@ describe("useSettingsStore", () => {
       store.setAccentColor("blue");
       store.setGridIconSize(64);
       store.setSkipDeleteConfirmation(true);
+      store.setFrostEnabled(false);
+      store.setTransparencyEnabled(false);
+      store.setSurfaceOpacity(90);
+      store.setThumbnailsEnabled(false);
       store.resetAppearanceSettings();
       expect(store.accentColor).toBe("amber");
       expect(store.gridIconSize).toBe(48);
+      expect(store.frostEnabled).toBe(true);
+      expect(store.frostStrength).toBe(8);
+      expect(store.transparencyEnabled).toBe(true);
+      expect(store.surfaceOpacity).toBe(60);
+      expect(store.thumbnailsEnabled).toBe(true);
       expect(store.skipDeleteConfirmation).toBe(true);
     });
   });

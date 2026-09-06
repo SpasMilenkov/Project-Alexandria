@@ -211,7 +211,7 @@ onUnmounted(() => {
   >
     <div
       ref="cardRef"
-      class="player-card bg-white/75 dark:bg-white/[0.06] backdrop-blur-sm border border-black/[0.08] dark:border-white/10 overflow-hidden"
+      class="player-card frosted-glass glass-surface border border-black/[0.08] dark:border-white/10 overflow-hidden"
       :class="[
         isStrip ? 'w-full rounded-t-xl' : 'rounded-2xl',
         {
@@ -462,7 +462,8 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--frost-blur));
+  -webkit-backdrop-filter: blur(var(--frost-blur));
   transition:
     background 160ms ease,
     transform 160ms ease;

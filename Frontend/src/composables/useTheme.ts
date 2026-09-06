@@ -1,4 +1,4 @@
-import { useDark } from "@vueuse/core";
+import { useDark, useMediaQuery } from "@vueuse/core";
 import { watchEffect } from "vue";
 
 import { AVAILABLE_BACKGROUNDS, AVAILABLE_COLORS, useSettingsStore } from "@/stores/settings";
@@ -79,6 +79,7 @@ const applyFlatBackground = (preset: (typeof AVAILABLE_BACKGROUNDS)[0], isDark: 
 export const useTheme = () => {
   const store = useSettingsStore();
   const isDark = useDark();
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   watchEffect(() => {
     if (typeof document === "undefined") return;
@@ -99,7 +100,16 @@ export const useTheme = () => {
     } else {
       applyFlatBackground(preset, isDark.value);
     }
+
+    document.documentElement.style.setProperty("--frost-blur", `${store.frostStrength}px`);
+    document.documentElement.style.setProperty("--glass-opacity", `${store.surfaceOpacity / 100}`);
+    document.documentElement.classList.toggle("frost-off", !store.frostEnabled);
+    document.documentElement.classList.toggle("transparency-off", !store.transparencyEnabled);
+    document.documentElement.classList.toggle(
+      "frost-off-mobile",
+      store.frostDisabledOnMobile && isMobile.value,
+    );
   });
 
-  return { isDark };
+  return { isDark, isMobile };
 };

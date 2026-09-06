@@ -16,7 +16,7 @@
         :as="integration.route ? 'RouterLink' : 'div'"
         @click="integration.route && router.push(integration.route)"
         :ui="{
-          root: 'nav-card group relative overflow-hidden rounded-sm border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm hover:bg-white/75 dark:hover:bg-white/10 transition-all duration-200 no-underline text-inherit cursor-pointer',
+          root: 'nav-card group relative overflow-hidden rounded-sm border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface hover:bg-white/75 dark:hover:bg-white/10 transition-all duration-200 no-underline text-inherit cursor-pointer',
           body: 'flex flex-col gap-4 p-5',
         }"
       >

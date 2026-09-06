@@ -2,7 +2,7 @@
   <UModal
     v-model:open="open"
     :title="isEditing ? 'Edit Rule' : 'Add Automation Rule'"
-    :ui="{ content: 'max-w-lg' }"
+    :ui="{ content: `${glassModalContent} max-w-lg` }"
   >
     <template #body>
       <div class="flex flex-col gap-6 p-1">
@@ -237,6 +237,7 @@ import {
   VideoRung,
 } from "@/api/policy";
 import { addRule, updateRule } from "@/mutations/policies";
+import { glassModalContent } from "@/utils/modalUi";
 
 const props = defineProps<{
   policyId: string;

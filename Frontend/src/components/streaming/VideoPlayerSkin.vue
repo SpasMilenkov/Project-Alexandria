@@ -482,7 +482,8 @@ onUnmounted(() => {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--frost-blur));
+  -webkit-backdrop-filter: blur(var(--frost-blur));
   transition:
     background 150ms ease,
     transform 150ms ease;
@@ -766,7 +767,8 @@ onUnmounted(() => {
 /* Resume prompt */
 .vps-resume-prompt {
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--frost-blur));
+  -webkit-backdrop-filter: blur(var(--frost-blur));
   pointer-events: auto;
   z-index: 11;
 }
@@ -824,7 +826,8 @@ onUnmounted(() => {
   padding: 0.5rem 0.75rem 0.5rem 0.5rem;
   border-radius: 0.625rem;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(var(--frost-blur));
+  -webkit-backdrop-filter: blur(var(--frost-blur));
   border: 1px solid rgba(255, 255, 255, 0.1);
   pointer-events: auto;
 }

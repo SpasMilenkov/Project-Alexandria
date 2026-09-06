@@ -5,6 +5,8 @@ import { computed, ref, watch } from "vue";
 
 import type { NavItem } from "@/types/nav-item";
 
+import { glassDrawerContent } from "@/utils/modalUi";
+
 interface EllipsisItem {
   key: "__ellipsis__";
   label: "…";
@@ -78,7 +80,7 @@ const handleNavigate = (key: string | null) => {
         direction="bottom"
         class="md:hidden"
         :ui="{
-          content: 'rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70',
+          content: `${glassDrawerContent} rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70`,
         }"
       >
         <template #content>
@@ -106,7 +108,7 @@ const handleNavigate = (key: string | null) => {
                 @click="handleNavigate(item.key)"
               >
                 <div
-                  class="flex items-center justify-center w-9 h-9 rounded-xl bg-white/40 dark:bg-white/5 border border-gray-200/70 dark:border-gray-700/70 shrink-0"
+                  class="flex items-center justify-center w-9 h-9 rounded-xl frosted-glass glass-surface border border-gray-200/70 dark:border-gray-700/70 shrink-0"
                 >
                   <UIcon
                     :name="item.icon ?? 'i-lucide-folder'"

@@ -180,7 +180,7 @@
       direction="bottom"
       class="md:hidden"
       :ui="{
-        content: 'rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70',
+        content: `${glassDrawerContent} rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70`,
       }"
     >
       <template #content>
@@ -314,13 +314,13 @@
               class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
               aria-hidden="true"
             >
-              <div class="absolute inset-0 bg-background/60 backdrop-blur-sm" />
+              <div class="absolute inset-0 bg-background/60 frosted-glass" />
               <div class="absolute inset-0 bg-primary/5 pulse-tint" />
               <div
                 class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
               />
               <div
-                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 bg-white/60 dark:bg-white/5 shadow-sm"
+                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 frosted-glass glass-surface shadow-sm"
               >
                 <div class="relative flex items-center justify-center">
                   <span class="breathe absolute rounded-full border border-primary/20" />
@@ -568,6 +568,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
 import { getFileIcon } from "@/utils/icon.utils";
 import { logger } from "@/utils/logger";
+import { glassDrawerContent } from "@/utils/modalUi";
 
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import DirectoryItem from "./DirectoryItem.vue";

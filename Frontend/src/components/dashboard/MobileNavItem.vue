@@ -3,7 +3,7 @@
     <button
       type="button"
       class="mobile-nav-item"
-      :class="{ 'mobile-nav-item--active': isExactActive || active }"
+      :class="{ 'mobile-nav-item--active': isExactActive || active, 'ml-6': indented }"
       @click="navigate"
     >
       <span class="mobile-nav-item__icon-wrap">
@@ -21,6 +21,7 @@ defineProps<{
   label: string;
   to: string;
   active?: boolean;
+  indented?: boolean;
 }>();
 </script>
 

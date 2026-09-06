@@ -8,6 +8,7 @@
         : ''
     "
     :close="{ onClick: () => emit('close', false) }"
+    :ui="{ content: glassModalContent }"
   >
     <template #body>
       <div class="space-y-4 p-1">
@@ -87,6 +88,7 @@ import type { UserDetailsDto } from "@/types/user";
 
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { type RestrictUserSchema, restrictUserSchema } from "@/schemas/user";
+import { glassModalContent } from "@/utils/modalUi";
 
 const props = defineProps<{
   open: boolean;

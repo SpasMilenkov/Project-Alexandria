@@ -2,7 +2,7 @@
   <UModal
     :close="{ onClick: () => emit('close', 'close') }"
     title="Search"
-    :ui="{ body: 'sm:p-2 ', header: 'hidden' }"
+    :ui="{ body: 'sm:p-2 ', header: 'hidden', content: glassModalContent }"
   >
     <template #body>
       <!-- @vue-expect-error -->
@@ -113,6 +113,7 @@ import {
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
+import { glassModalContent } from "@/utils/modalUi";
 
 const directoryStore = useDirectoryStore();
 const fileStore = useFileStore();

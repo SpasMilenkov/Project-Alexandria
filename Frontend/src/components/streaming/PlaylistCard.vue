@@ -1,6 +1,6 @@
 <template>
   <div
-    class="group relative rounded-xl border border-black/[0.07] dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-sm overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-black/[0.12] dark:hover:border-white/[0.14]"
+    class="group relative rounded-xl border border-black/[0.07] dark:border-white/[0.08] frosted-glass glass-surface overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-black/[0.12] dark:hover:border-white/[0.14]"
     @click="emit('open')"
   >
     <!-- Cover art -->

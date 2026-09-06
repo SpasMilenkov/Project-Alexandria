@@ -85,7 +85,7 @@ const handleDownload = () => {
 <template>
   <div class="min-h-screen bg-neutral flex flex-col items-center justify-center gap-5 p-6 w-full">
     <!-- Loading -->
-    <UCard v-if="isLoading" class="w-full max-w-md bg-white dark:bg-neutral-800" :ui="cardUi">
+    <UCard v-if="isLoading" class="w-full max-w-md frosted-glass glass-surface" :ui="cardUi">
       <div class="flex items-start gap-4">
         <USkeleton class="w-16 h-16 rounded-2xl shrink-0" />
         <div class="flex-1 space-y-2.5 pt-1">
@@ -112,7 +112,11 @@ const handleDownload = () => {
     </UCard>
 
     <!-- Error: not found -->
-    <UCard v-else-if="displayError === 'not-found'" class="w-full max-w-md" :ui="cardUi">
+    <UCard
+      v-else-if="displayError === 'not-found'"
+      class="w-full max-w-md frosted-glass glass-surface"
+      :ui="cardUi"
+    >
       <div class="flex flex-col items-center gap-4 text-center py-4">
         <div
           class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 dark:bg-neutral-800"
@@ -132,7 +136,11 @@ const handleDownload = () => {
     </UCard>
 
     <!-- Error: expired -->
-    <UCard v-else-if="displayError === 'expired'" class="w-full max-w-md" :ui="cardUi">
+    <UCard
+      v-else-if="displayError === 'expired'"
+      class="w-full max-w-md frosted-glass glass-surface"
+      :ui="cardUi"
+    >
       <div class="flex flex-col items-center gap-4 text-center py-4">
         <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-warning/10">
           <Icon icon="mdi:clock-alert-outline" class="w-8 h-8 text-warning" />
@@ -150,7 +158,11 @@ const handleDownload = () => {
     </UCard>
 
     <!-- Error: revoked — visually distinct from expiry; the action was deliberate -->
-    <UCard v-else-if="displayError === 'revoked'" class="w-full max-w-md" :ui="cardUi">
+    <UCard
+      v-else-if="displayError === 'revoked'"
+      class="w-full max-w-md frosted-glass glass-surface"
+      :ui="cardUi"
+    >
       <div class="flex flex-col items-center gap-4 text-center py-4">
         <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-error/10">
           <Icon icon="mdi:link-variant-remove" class="w-8 h-8 text-error" />
@@ -168,7 +180,11 @@ const handleDownload = () => {
     </UCard>
 
     <!-- Error: download cap exhausted -->
-    <UCard v-else-if="displayError === 'limit-reached'" class="w-full max-w-md" :ui="cardUi">
+    <UCard
+      v-else-if="displayError === 'limit-reached'"
+      class="w-full max-w-md frosted-glass glass-surface"
+      :ui="cardUi"
+    >
       <div class="flex flex-col items-center gap-4 text-center py-4">
         <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-warning/10">
           <Icon icon="mdi:download-off-outline" class="w-8 h-8 text-warning" />
@@ -188,7 +204,7 @@ const handleDownload = () => {
     <!-- Success -->
     <template v-else-if="metadata">
       <!-- Contextual header above card -->
-      <UCard class="w-full max-w-md bg-white dark:bg-neutral-950" :ui="cardUi">
+      <UCard class="w-full max-w-md frosted-glass glass-surface" :ui="cardUi">
         <!-- File identity -->
         <div class="flex items-start gap-4">
           <div

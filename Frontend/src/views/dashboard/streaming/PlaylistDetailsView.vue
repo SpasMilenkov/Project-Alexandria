@@ -123,7 +123,7 @@
       <!-- Track search panel -->
       <div
         v-if="showSearch"
-        class="mb-5 p-4 rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/40 dark:bg-white/3 backdrop-blur-sm"
+        class="mb-5 p-4 rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <p class="text-sm font-medium text-highlighted mb-3">Add tracks</p>
         <PlaylistTrackSearch
@@ -185,7 +185,7 @@
   </div>
 
   <!-- Edit modal -->
-  <UModal v-model:open="showEditModal" title="Edit Playlist">
+  <UModal v-model:open="showEditModal" title="Edit Playlist" :ui="{ content: glassModalContent }">
     <template #body>
       <PlaylistForm
         v-if="playlist"
@@ -198,7 +198,11 @@
   </UModal>
 
   <!-- Delete confirm modal -->
-  <UModal v-model:open="showDeleteModal" title="Delete Playlist">
+  <UModal
+    v-model:open="showDeleteModal"
+    title="Delete Playlist"
+    :ui="{ content: glassModalContent }"
+  >
     <template #body>
       <p class="text-sm text-default">
         Are you sure you want to delete
@@ -226,7 +230,11 @@
   </UModal>
 
   <!-- Remove item confirm modal -->
-  <UModal v-model:open="showRemoveItemModal" title="Remove Item">
+  <UModal
+    v-model:open="showRemoveItemModal"
+    title="Remove Item"
+    :ui="{ content: glassModalContent }"
+  >
     <template #body>
       <p class="text-sm text-default">Remove this item from the playlist?</p>
     </template>
@@ -273,6 +281,7 @@ import {
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS, getPlaylistCover } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
+import { glassModalContent } from "@/utils/modalUi";
 
 const store = usePlayerStore();
 const toast = useToast();

@@ -38,5 +38,11 @@ public class UpdateAppearanceValidator : Validator<UpdateAppearanceRequest>
 
         RuleFor(x => x.ListIconSize)
             .InclusiveBetween(12, 64);
+
+        RuleFor(x => x.BackgroundBlurAmount)
+            .InclusiveBetween(0, 24);
+
+        RuleFor(x => x.SurfaceOpacity)
+            .InclusiveBetween(10, 95);
     }
 }

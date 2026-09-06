@@ -1,10 +1,10 @@
 <template>
-  <div class="px-5 py-5 bg-elevated/40 border-t border-default">
+  <div class="px-5 py-5 frosted-glass bg-elevated/40 border-t border-default">
     <!-- Account overview cards -->
     <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 mb-5">
       <!-- Internal ID -->
       <div
-        class="rounded-lg border border-default bg-white/50 dark:bg-white/5 px-3.5 py-3 flex flex-col gap-1 min-w-0"
+        class="rounded-lg border border-default frosted-glass glass-surface px-3.5 py-3 flex flex-col gap-1 min-w-0"
       >
         <div class="flex items-center gap-1.5">
           <UIcon name="i-lucide-fingerprint" class="size-3.5 text-muted shrink-0" />
@@ -26,7 +26,7 @@
 
       <!-- Last modified -->
       <div
-        class="rounded-lg border border-default bg-white/50 dark:bg-white/5 px-3.5 py-3 flex flex-col gap-1"
+        class="rounded-lg border border-default frosted-glass glass-surface px-3.5 py-3 flex flex-col gap-1"
       >
         <div class="flex items-center gap-1.5">
           <UIcon name="i-lucide-pencil-line" class="size-3.5 text-muted shrink-0" />
@@ -57,7 +57,7 @@
         :class="
           user.isLockedOut
             ? 'border-warning/40 bg-amber-50/60 dark:bg-amber-900/10'
-            : 'border-default bg-white/50 dark:bg-white/5'
+            : 'border-default frosted-glass glass-surface'
         "
       >
         <div class="flex items-center gap-1.5">
@@ -96,7 +96,7 @@
         :class="
           user.deletedAt
             ? 'border-error/40 bg-red-50/60 dark:bg-red-900/10'
-            : 'border-default bg-white/50 dark:bg-white/5'
+            : 'border-default frosted-glass glass-surface'
         "
       >
         <div class="flex items-center gap-1.5">
@@ -128,7 +128,7 @@
 
       <!-- File count -->
       <div
-        class="rounded-lg border border-default bg-white/50 dark:bg-white/5 px-3.5 py-3 flex flex-col gap-1"
+        class="rounded-lg border border-default frosted-glass glass-surface px-3.5 py-3 flex flex-col gap-1"
       >
         <div class="flex items-center gap-1.5">
           <UIcon name="i-lucide-files" class="size-3.5 text-muted shrink-0" />
@@ -159,7 +159,7 @@
 
       <!-- Storage used -->
       <div
-        class="rounded-lg border border-default bg-white/50 dark:bg-white/5 px-3.5 py-3 flex flex-col gap-1"
+        class="rounded-lg border border-default frosted-glass glass-surface px-3.5 py-3 flex flex-col gap-1"
       >
         <div class="flex items-center gap-1.5">
           <UIcon name="i-lucide-hard-drive" class="size-3.5 text-muted flex-shrink-0" />

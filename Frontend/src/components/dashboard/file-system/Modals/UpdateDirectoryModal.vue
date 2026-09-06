@@ -7,6 +7,7 @@ import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { updateDirectory } from "@/mutations/directories";
 import { type UpdateDirectorySchema, updateDirectorySchema } from "@/schemas/directory";
 import { logger } from "@/utils/logger";
+import { glassModalContent } from "@/utils/modalUi";
 
 const props = defineProps<{
   directoryId: string;
@@ -34,7 +35,11 @@ const onSubmit = async (event: FormSubmitEvent<UpdateDirectorySchema>) => {
 </script>
 
 <template>
-  <UModal :close="{ onClick: () => emit('close', false) }" :title="`Update directory`">
+  <UModal
+    :close="{ onClick: () => emit('close', false) }"
+    :title="`Update directory`"
+    :ui="{ content: glassModalContent }"
+  >
     <template #body>
       <UForm
         :schema="updateDirectorySchema"

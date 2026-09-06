@@ -1,5 +1,8 @@
 <template>
-  <UModal :title="'How would you like to upload this archive?'">
+  <UModal
+    :title="'How would you like to upload this archive?'"
+    :ui="{ content: glassModalContent }"
+  >
     <template #body>
       <div class="flex flex-col gap-3 pb-2">
         <button
@@ -42,6 +45,8 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
+
+import { glassModalContent } from "@/utils/modalUi";
 
 const emit = defineEmits<{
   close: [value: "archive" | "file" | null];

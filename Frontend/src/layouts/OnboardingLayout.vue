@@ -4,7 +4,7 @@
   <div class="flex min-h-screen">
     <!-- LEFT PANEL ( only) -->
     <aside
-      class="relative hidden w-72 shrink-0 flex-col border-r border-gray-200/60 bg-gray-50/60 dark:border-gray-800/60 dark:bg-gray-900/40 lg:flex xl:w-80"
+      class="relative hidden w-72 shrink-0 flex-col border-r border-gray-200/60 frosted-glass glass-surface-strong dark:border-gray-800/60 lg:flex xl:w-80"
     >
       <div class="flex flex-1 flex-col px-8 py-10">
         <!-- App identity -->

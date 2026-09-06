@@ -4,11 +4,7 @@
     :description="'Created ' + formatDate(data.createdAt)"
     :direction="isMobile ? 'bottom' : 'right'"
     v-model:open="openDrawer"
-    :ui="
-      isMobile
-        ? { container: 'h-[85vh] rounded-t-2xl' }
-        : { container: 'md:max-w-[40rem] lg:min-w-[40rem]' }
-    "
+    :ui="drawerUi"
     :handle-only="!isMobile"
   >
     <!-- Grid View -->
@@ -322,6 +318,7 @@ import type { DirectorySummaryDto } from "@/api/directory";
 import PolicySection from "@/components/policy/PolicySection.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
+import { glassDrawerContent } from "@/utils/modalUi";
 
 const settingsStore = useSettingsStore();
 
@@ -330,6 +327,13 @@ const { copy } = useClipboard();
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");
+
+const drawerUi = computed(() => {
+  if (isMobile.value) {
+    return { content: glassDrawerContent, container: "h-[85vh] rounded-t-2xl" };
+  }
+  return { content: glassDrawerContent, container: "md:max-w-[40rem] lg:min-w-[40rem]" };
+});
 
 const copyWithFeedback = async (value: string, label: string) => {
   await copy(value);

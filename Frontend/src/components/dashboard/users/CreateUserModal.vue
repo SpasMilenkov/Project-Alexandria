@@ -1,5 +1,10 @@
 <template>
-  <UModal :open="open" :ui="{ header: 'p-0 sm:px-0' }" :close="false" :overlay="true">
+  <UModal
+    :open="open"
+    :ui="{ header: 'p-0 sm:px-0', content: glassModalContent }"
+    :close="false"
+    :overlay="true"
+  >
     <!-- Header -->
     <template #header>
       <div
@@ -189,7 +194,7 @@
               :class="
                 state.role === option.value
                   ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm'
-                  : 'border-default bg-white/40 dark:bg-white/5 hover:border-primary/40'
+                  : 'border-default frosted-glass glass-surface hover:border-primary/40'
               "
               @click="state.role = option.value"
             >
@@ -230,7 +235,7 @@
         <!-- Summary -->
         <div
           v-if="state.userName && state.email"
-          class="rounded-lg border border-default bg-elevated/40 p-4"
+          class="rounded-lg border border-default frosted-glass bg-elevated/40 p-4"
         >
           <p
             class="text-xs font-semibold uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5"
@@ -327,6 +332,7 @@ import { z } from "zod";
 import type { CreateUserSchema } from "@/schemas/user";
 
 import { UserRole } from "@/enums/UserRole";
+import { glassModalContent } from "@/utils/modalUi";
 
 const props = defineProps<{
   open: boolean;

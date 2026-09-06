@@ -4,7 +4,7 @@
     title="Advanced Search"
     fullscreen
     :scrollable="true"
-    :ui="{ body: 'p-0' }"
+    :ui="{ body: 'p-0', content: glassModalContent }"
   >
     <template #body>
       <!-- @vue-ignore -->
@@ -17,7 +17,7 @@
       >
         <!-- Sticky Mode Switcher -->
         <div
-          class="sticky top-0 bg-elevated/80 backdrop-blur-md border-b border-default z-20 px-4 py-3 sm:px-6 sm:py-4"
+          class="sticky top-0 bg-elevated/80 frosted-glass border-b border-default z-20 px-4 py-3 sm:px-6 sm:py-4"
         >
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-center gap-2">
@@ -544,6 +544,7 @@ import {
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
+import { glassModalContent } from "@/utils/modalUi";
 defineShortcuts({
   enter: () => handleSubmit(),
 });

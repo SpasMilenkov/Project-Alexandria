@@ -8,7 +8,11 @@
     leave-from-class="opacity-100"
     leave-to-class="opacity-0"
   >
-    <div v-if="open" class="fixed inset-0 z-20 bg-black/30 sm:hidden" @click="onClose" />
+    <div
+      v-if="open"
+      class="fixed inset-0 z-20 bg-black/30 frosted-glass sm:hidden"
+      @click="onClose"
+    />
   </Transition>
 
   <Transition
@@ -21,7 +25,7 @@
   >
     <aside
       v-if="open"
-      class="fixed inset-y-0 right-0 z-30 sm:static sm:inset-auto sm:z-auto sm:shrink-0 flex flex-col w-full sm:w-96 border-l border-gray-200/70 dark:border-gray-700/70 bg-white dark:bg-neutral-900 md:bg-white/60 md:dark:bg-white/[0.06] md:backdrop-blur-sm backdrop-blur-sm"
+      class="fixed inset-y-0 right-0 z-30 sm:static sm:inset-auto sm:z-auto sm:shrink-0 flex flex-col w-full sm:w-96 border-l border-gray-200/70 dark:border-gray-700/70 bg-white dark:bg-neutral-900 md:bg-white/60 md:dark:bg-white/[0.06] md:frosted-glass"
     >
       <!-- Header -->
       <div class="shrink-0 px-4 pt-4 pb-3 border-b border-gray-200/70 dark:border-gray-700/70">

@@ -13,6 +13,12 @@ export interface AppearanceSettings {
   backgroundImageOpacity: number;
   gridIconSize: number;
   listIconSize: number;
+  backgroundBlurEnabled: boolean;
+  backgroundBlurAmount: number;
+  disableBlurOnMobile: boolean;
+  transparencyEnabled: boolean;
+  surfaceOpacity: number;
+  thumbnailsEnabled: boolean;
 }
 
 export interface BehaviorSettings {

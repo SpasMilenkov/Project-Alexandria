@@ -25,7 +25,7 @@
         >
           <div
             v-if="!isAudioPlaying"
-            class="flex items-center justify-center w-16 h-16 bg-white/30 backdrop-blur-sm rounded-full hover:bg-white/40 hover:scale-110 transition-all"
+            class="flex items-center justify-center w-16 h-16 frosted-glass glass-surface rounded-full hover:bg-white/40 hover:scale-110 transition-all"
           >
             <Icon icon="mdi-play" class="w-10 h-10 text-white ml-1" />
           </div>
@@ -34,7 +34,7 @@
       </div>
 
       <div
-        class="px-3 py-2 bg-neutral-100 dark:bg-neutral-900/50 backdrop-blur-sm border-t border-neutral-200 dark:border-neutral-800"
+        class="px-3 py-2 frosted-glass glass-surface-strong border-t border-neutral-200 dark:border-neutral-800"
       >
         <div class="flex items-center gap-2">
           <button
@@ -78,7 +78,7 @@
             </button>
             <template #content>
               <div
-                class="flex flex-col items-center gap-2 p-3 bg-white dark:bg-neutral-900 rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800"
+                class="flex flex-col items-center gap-2 p-3 frosted-glass glass-surface-strong rounded-lg shadow-lg border border-neutral-200 dark:border-neutral-800"
               >
                 <span class="text-xs font-medium text-neutral-600 dark:text-white/70">
                   {{ Math.round(volume * 100) }}%
@@ -145,7 +145,7 @@
     <!-- PDF Preview -->
     <div
       v-else-if="pdfPreviewMimes.includes(mimeType) && previewUrl"
-      class="relative xl:w-xl h-220 bg-white dark:bg-neutral-900 rounded-lg overflow-hidden"
+      class="relative xl:w-xl h-220 frosted-glass glass-surface-strong rounded-lg overflow-hidden"
     >
       <embed :src="previewUrl" type="application/pdf" class="w-full h-full" />
     </div>
@@ -158,7 +158,7 @@
     <!-- Text Preview -->
     <div
       v-else-if="textPreview"
-      class="w-full p-6 bg-white dark:bg-neutral-900 rounded-lg border border-gray-200 dark:border-gray-700"
+      class="w-full p-6 frosted-glass glass-surface-strong rounded-lg border border-gray-200 dark:border-gray-700"
     >
       <p class="max-h-96 overflow-y-auto wrap-break-word">
         {{ textPreview }}

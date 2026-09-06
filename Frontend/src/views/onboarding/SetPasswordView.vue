@@ -2,7 +2,7 @@
   <div class="flex flex-1 items-center justify-center">
     <div class="w-full max-w-4xl">
       <div
-        class="overflow-hidden rounded-2xl border border-gray-200/60 bg-white/50 shadow-lg shadow-black/5 backdrop-blur-sm dark:border-gray-700/50 dark:bg-white/4"
+        class="overflow-hidden rounded-2xl border border-gray-200/60 shadow-lg shadow-black/5 frosted-glass glass-surface dark:border-gray-700/50"
       >
         <div class="flex flex-col lg:flex-row lg:min-h-120">
           <!-- LEFT: form pane -->
@@ -161,9 +161,7 @@
           </div>
 
           <!-- RIGHT: strength & requirements pane -->
-          <div
-            class="flex flex-col justify-center gap-8 bg-gray-50/40 p-8 dark:bg-white/2 lg:flex-1"
-          >
+          <div class="flex flex-col justify-center gap-8 frosted-glass glass-surface p-8 lg:flex-1">
             <!-- Strength meter -->
             <div>
               <p

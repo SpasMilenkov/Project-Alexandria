@@ -158,7 +158,7 @@ const changePage = (pageNumber: number) => {
     <!-- Sticky pagination bar — always visible below the calendar -->
     <div
       v-if="data && data.totalCount > activityStore.pageSize"
-      class="flex items-center justify-center px-6 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm shrink-0"
+      class="flex items-center justify-center px-6 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface shrink-0"
     >
       <UPagination
         v-model:page="activityStore.page"

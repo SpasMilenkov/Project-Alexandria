@@ -115,7 +115,11 @@
     </template>
   </UModal>
 
-  <UModal v-model:open="showDeleteModal" title="Delete Playlist">
+  <UModal
+    v-model:open="showDeleteModal"
+    title="Delete Playlist"
+    :ui="{ content: glassModalContent }"
+  >
     <template #body>
       <p class="text-sm text-default">
         Are you sure you want to delete
@@ -156,6 +160,7 @@ import PlaylistForm, { type PlaylistFormPayload } from "@/components/streaming/P
 import { createPlaylist, deletePlaylist, updatePlaylist } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
+import { glassModalContent } from "@/utils/modalUi";
 
 const router = useRouter();
 const toast = useToast();
