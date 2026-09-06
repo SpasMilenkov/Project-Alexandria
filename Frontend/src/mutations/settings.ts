@@ -28,7 +28,7 @@ export const updateBehavior = defineMutation({
     queryCache.invalidateQueries({ key: SETTINGS_QUERY_KEYS.behavior() });
 
     if (data) {
-      settingsStore.syncFromServer(settingsStore.getSettings, data);
+      settingsStore.syncFromServer(settingsStore.getAppearanceSettings, data);
     }
   },
 });

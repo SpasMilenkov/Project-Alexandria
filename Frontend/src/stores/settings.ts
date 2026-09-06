@@ -165,6 +165,9 @@ export interface UserSettings {
   frostDisabledOnMobile: boolean;
   frostEnabled: boolean;
   frostStrength: number;
+  transparencyEnabled: boolean;
+  surfaceOpacity: number;
+  thumbnailsEnabled: boolean;
   gridIconSize: number;
   listIconSize: number;
   skipDeleteConfirmation: boolean;
@@ -178,6 +181,9 @@ const DEFAULT_BACKGROUND_IMAGE_OPACITY = 0.35;
 const DEFAULT_FROST_ENABLED = true;
 const DEFAULT_FROST_STRENGTH = 8;
 const DEFAULT_FROST_DISABLED_ON_MOBILE = false;
+const DEFAULT_TRANSPARENCY_ENABLED = true;
+const DEFAULT_SURFACE_OPACITY = 60;
+const DEFAULT_THUMBNAILS_ENABLED = true;
 const DEFAULT_GRID_ICON_SIZE = 48;
 const DEFAULT_LIST_ICON_SIZE = 20;
 const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
@@ -205,6 +211,9 @@ export const useSettingsStore = defineStore(
     const frostEnabled = ref<boolean>(DEFAULT_FROST_ENABLED);
     const frostStrength = ref<number>(DEFAULT_FROST_STRENGTH);
     const frostDisabledOnMobile = ref<boolean>(DEFAULT_FROST_DISABLED_ON_MOBILE);
+    const transparencyEnabled = ref<boolean>(DEFAULT_TRANSPARENCY_ENABLED);
+    const surfaceOpacity = ref<number>(DEFAULT_SURFACE_OPACITY);
+    const thumbnailsEnabled = ref<boolean>(DEFAULT_THUMBNAILS_ENABLED);
     const gridIconSize = ref(DEFAULT_GRID_ICON_SIZE);
     const listIconSize = ref(DEFAULT_LIST_ICON_SIZE);
     const skipDeleteConfirmation = ref(DEFAULT_SKIP_DELETE_CONFIRMATION);
@@ -225,6 +234,9 @@ export const useSettingsStore = defineStore(
       frostDisabledOnMobile: frostDisabledOnMobile.value,
       frostEnabled: frostEnabled.value,
       frostStrength: frostStrength.value,
+      transparencyEnabled: transparencyEnabled.value,
+      surfaceOpacity: surfaceOpacity.value,
+      thumbnailsEnabled: thumbnailsEnabled.value,
       gridIconSize: gridIconSize.value,
       listIconSize: listIconSize.value,
       skipDeleteConfirmation: skipDeleteConfirmation.value,
@@ -238,6 +250,26 @@ export const useSettingsStore = defineStore(
         AVAILABLE_BACKGROUNDS[0],
     );
     const hasBackgroundImage = computed(() => Boolean(backgroundImage.value));
+
+    // Server wire shape for PUT /settings/appearance (field names differ from
+    // the local frost/transparency names).
+    const getAppearanceSettings = computed(
+      (): AppearanceSettings => ({
+        accentColor: accentColor.value,
+        backgroundBlurAmount: frostStrength.value,
+        backgroundBlurEnabled: frostEnabled.value,
+        backgroundColor: backgroundColor.value,
+        backgroundImageKey: backgroundImageKey.value,
+        backgroundImageOpacity: backgroundImageOpacity.value,
+        backgroundImageUpdatedAt: backgroundImageUpdatedAt.value,
+        disableBlurOnMobile: frostDisabledOnMobile.value,
+        gridIconSize: gridIconSize.value,
+        listIconSize: listIconSize.value,
+        surfaceOpacity: surfaceOpacity.value,
+        thumbnailsEnabled: thumbnailsEnabled.value,
+        transparencyEnabled: transparencyEnabled.value,
+      }),
+    );
 
     // Actions
     const setAccentColor = (v: ColorName) => {
@@ -262,6 +294,15 @@ export const useSettingsStore = defineStore(
     };
     const setFrostDisabledOnMobile = (v: boolean) => {
       frostDisabledOnMobile.value = v;
+    };
+    const setTransparencyEnabled = (v: boolean) => {
+      transparencyEnabled.value = v;
+    };
+    const setSurfaceOpacity = (v: number) => {
+      surfaceOpacity.value = Math.min(95, Math.max(10, Math.round(v)));
+    };
+    const setThumbnailsEnabled = (v: boolean) => {
+      thumbnailsEnabled.value = v;
     };
     const clearBackgroundImage = () => {
       backgroundImage.value = null;
@@ -304,6 +345,12 @@ export const useSettingsStore = defineStore(
       setBackgroundImageOpacity(appearance.backgroundImageOpacity);
       setGridIconSize(appearance.gridIconSize);
       setListIconSize(appearance.listIconSize);
+      setFrostEnabled(appearance.backgroundBlurEnabled);
+      setFrostStrength(appearance.backgroundBlurAmount);
+      setFrostDisabledOnMobile(appearance.disableBlurOnMobile);
+      setTransparencyEnabled(appearance.transparencyEnabled);
+      setSurfaceOpacity(appearance.surfaceOpacity);
+      setThumbnailsEnabled(appearance.thumbnailsEnabled);
     };
 
     const syncBehaviorFromServer = (behavior: BehaviorSettings) => {
@@ -335,6 +382,15 @@ export const useSettingsStore = defineStore(
       if (settings.frostDisabledOnMobile !== undefined) {
         setFrostDisabledOnMobile(settings.frostDisabledOnMobile);
       }
+      if (settings.transparencyEnabled !== undefined) {
+        setTransparencyEnabled(settings.transparencyEnabled);
+      }
+      if (settings.surfaceOpacity !== undefined) {
+        setSurfaceOpacity(settings.surfaceOpacity);
+      }
+      if (settings.thumbnailsEnabled !== undefined) {
+        setThumbnailsEnabled(settings.thumbnailsEnabled);
+      }
       if (settings.gridIconSize !== undefined) {
         setGridIconSize(settings.gridIconSize);
       }
@@ -360,6 +416,9 @@ export const useSettingsStore = defineStore(
       frostEnabled.value = DEFAULT_FROST_ENABLED;
       frostStrength.value = DEFAULT_FROST_STRENGTH;
       frostDisabledOnMobile.value = DEFAULT_FROST_DISABLED_ON_MOBILE;
+      transparencyEnabled.value = DEFAULT_TRANSPARENCY_ENABLED;
+      surfaceOpacity.value = DEFAULT_SURFACE_OPACITY;
+      thumbnailsEnabled.value = DEFAULT_THUMBNAILS_ENABLED;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
       skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
@@ -375,6 +434,9 @@ export const useSettingsStore = defineStore(
       frostEnabled.value = DEFAULT_FROST_ENABLED;
       frostStrength.value = DEFAULT_FROST_STRENGTH;
       frostDisabledOnMobile.value = DEFAULT_FROST_DISABLED_ON_MOBILE;
+      transparencyEnabled.value = DEFAULT_TRANSPARENCY_ENABLED;
+      surfaceOpacity.value = DEFAULT_SURFACE_OPACITY;
+      thumbnailsEnabled.value = DEFAULT_THUMBNAILS_ENABLED;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
     };
@@ -409,6 +471,10 @@ export const useSettingsStore = defineStore(
       frostDisabledOnMobile,
       frostEnabled,
       frostStrength,
+      transparencyEnabled,
+      surfaceOpacity,
+      thumbnailsEnabled,
+      getAppearanceSettings,
       getCurrentBackgroundPreset,
       getSettings,
       gridIconSize,
@@ -434,6 +500,9 @@ export const useSettingsStore = defineStore(
       setFrostDisabledOnMobile,
       setFrostEnabled,
       setFrostStrength,
+      setTransparencyEnabled,
+      setSurfaceOpacity,
+      setThumbnailsEnabled,
       setGridIconSize,
       setListIconSize,
       setSkipDeleteConfirmation,
@@ -458,6 +527,9 @@ export const useSettingsStore = defineStore(
         "frostEnabled",
         "frostStrength",
         "frostDisabledOnMobile",
+        "transparencyEnabled",
+        "surfaceOpacity",
+        "thumbnailsEnabled",
         "gridIconSize",
         "listIconSize",
         "skipDeleteConfirmation",
