@@ -14,6 +14,12 @@ public class UpdateAppearanceRequest
     public double BackgroundImageOpacity { get; set; }
     public int GridIconSize { get; set; }
     public int ListIconSize { get; set; }
+    public bool BackgroundBlurEnabled { get; set; }
+    public int BackgroundBlurAmount { get; set; }
+    public bool DisableBlurOnMobile { get; set; }
+    public bool TransparencyEnabled { get; set; }
+    public int SurfaceOpacity { get; set; }
+    public bool ThumbnailsEnabled { get; set; }
 }
 
 public class UpdateAppearanceEndpoint(IUserSettingsService settingsService)
@@ -37,6 +43,12 @@ public class UpdateAppearanceEndpoint(IUserSettingsService settingsService)
             BackgroundImageOpacity = req.BackgroundImageOpacity,
             GridIconSize = req.GridIconSize,
             ListIconSize = req.ListIconSize,
+            BackgroundBlurEnabled = req.BackgroundBlurEnabled,
+            BackgroundBlurAmount = req.BackgroundBlurAmount,
+            DisableBlurOnMobile = req.DisableBlurOnMobile,
+            TransparencyEnabled = req.TransparencyEnabled,
+            SurfaceOpacity = req.SurfaceOpacity,
+            ThumbnailsEnabled = req.ThumbnailsEnabled,
         }, userId, ct);
 
 

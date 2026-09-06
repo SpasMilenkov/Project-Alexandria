@@ -11,6 +11,12 @@ public class GetAppearanceResponse
     public double BackgroundImageOpacity { get; set; }
     public int GridIconSize { get; set; }
     public int ListIconSize { get; set; }
+    public bool BackgroundBlurEnabled { get; set; }
+    public int BackgroundBlurAmount { get; set; }
+    public bool DisableBlurOnMobile { get; set; }
+    public bool TransparencyEnabled { get; set; }
+    public int SurfaceOpacity { get; set; }
+    public bool ThumbnailsEnabled { get; set; }
 
     public static GetAppearanceResponse FromValue(AppearanceSettingsValue s) => new()
     {
@@ -21,5 +27,11 @@ public class GetAppearanceResponse
         BackgroundImageOpacity = s.BackgroundImageOpacity,
         GridIconSize = s.GridIconSize,
         ListIconSize = s.ListIconSize,
+        BackgroundBlurEnabled = s.BackgroundBlurEnabled,
+        BackgroundBlurAmount = s.BackgroundBlurAmount,
+        DisableBlurOnMobile = s.DisableBlurOnMobile,
+        TransparencyEnabled = s.TransparencyEnabled,
+        SurfaceOpacity = s.SurfaceOpacity,
+        ThumbnailsEnabled = s.ThumbnailsEnabled,
     };
 }
