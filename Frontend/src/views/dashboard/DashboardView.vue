@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useMediaQuery } from "@vueuse/core";
-import { glassModalContent } from "@/utils/modalUi";
 import { computed, onMounted, ref } from "vue";
 
 import type { ExplorerTab } from "@/types/explorer-tab";
@@ -9,6 +8,7 @@ import type { ExplorerTab } from "@/types/explorer-tab";
 import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
 import { useTabStore } from "@/stores/tab";
 import { logger } from "@/utils/logger";
+import { glassModalContent } from "@/utils/modalUi";
 
 defineShortcuts({
   meta_shift_n: () => tabStore.createTab(null),

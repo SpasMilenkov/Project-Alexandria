@@ -253,23 +253,21 @@ export const useSettingsStore = defineStore(
 
     // Server wire shape for PUT /settings/appearance (field names differ from
     // the local frost/transparency names).
-    const getAppearanceSettings = computed(
-      (): AppearanceSettings => ({
-        accentColor: accentColor.value,
-        backgroundBlurAmount: frostStrength.value,
-        backgroundBlurEnabled: frostEnabled.value,
-        backgroundColor: backgroundColor.value,
-        backgroundImageKey: backgroundImageKey.value,
-        backgroundImageOpacity: backgroundImageOpacity.value,
-        backgroundImageUpdatedAt: backgroundImageUpdatedAt.value,
-        disableBlurOnMobile: frostDisabledOnMobile.value,
-        gridIconSize: gridIconSize.value,
-        listIconSize: listIconSize.value,
-        surfaceOpacity: surfaceOpacity.value,
-        thumbnailsEnabled: thumbnailsEnabled.value,
-        transparencyEnabled: transparencyEnabled.value,
-      }),
-    );
+    const getAppearanceSettings = computed((): AppearanceSettings => ({
+      accentColor: accentColor.value,
+      backgroundBlurAmount: frostStrength.value,
+      backgroundBlurEnabled: frostEnabled.value,
+      backgroundColor: backgroundColor.value,
+      backgroundImageKey: backgroundImageKey.value,
+      backgroundImageOpacity: backgroundImageOpacity.value,
+      backgroundImageUpdatedAt: backgroundImageUpdatedAt.value,
+      disableBlurOnMobile: frostDisabledOnMobile.value,
+      gridIconSize: gridIconSize.value,
+      listIconSize: listIconSize.value,
+      surfaceOpacity: surfaceOpacity.value,
+      thumbnailsEnabled: thumbnailsEnabled.value,
+      transparencyEnabled: transparencyEnabled.value,
+    }));
 
     // Actions
     const setAccentColor = (v: ColorName) => {

@@ -99,7 +99,6 @@
 
 <script setup lang="ts">
 import { useDebounceFn } from "@vueuse/core";
-import { glassModalContent } from "@/utils/modalUi";
 import { reactive, ref } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";
@@ -114,6 +113,7 @@ import {
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
+import { glassModalContent } from "@/utils/modalUi";
 
 const directoryStore = useDirectoryStore();
 const fileStore = useFileStore();

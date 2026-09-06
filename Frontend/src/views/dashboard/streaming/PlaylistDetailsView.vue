@@ -185,11 +185,7 @@
   </div>
 
   <!-- Edit modal -->
-  <UModal
-    v-model:open="showEditModal"
-    title="Edit Playlist"
-    :ui="{ content: glassModalContent }"
-  >
+  <UModal v-model:open="showEditModal" title="Edit Playlist" :ui="{ content: glassModalContent }">
     <template #body>
       <PlaylistForm
         v-if="playlist"
@@ -266,7 +262,6 @@
 import { useQuery } from "@pinia/colada";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { glassModalContent } from "@/utils/modalUi";
 
 import type { PlaylistItemResponse } from "@/api/playlist";
 import type { UpdatePlaylistSchema } from "@/schemas/playlist";
@@ -286,6 +281,7 @@ import {
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS, getPlaylistCover } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
+import { glassModalContent } from "@/utils/modalUi";
 
 const store = usePlayerStore();
 const toast = useToast();

@@ -195,10 +195,7 @@
         </div>
 
         <!-- Owner Section -->
-        <UCard
-          class="frosted-glass glass-surface"
-          :ui="isMobile ? { body: 'p-3' } : {}"
-        >
+        <UCard class="frosted-glass glass-surface" :ui="isMobile ? { body: 'p-3' } : {}">
           <template #header>
             <div class="flex items-center gap-2" :class="isMobile ? 'p-3 pb-0' : ''">
               <Icon icon="mdi-account" class="w-5 h-5 text-primary" />
@@ -258,7 +255,6 @@ import type { SearchTagsSchema } from "@/schemas/tag";
 
 import { type FileResult } from "@/api/file";
 import { useAppToast } from "@/composables/useAppToast";
-import { glassDrawerContent } from "@/utils/modalUi";
 import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import { getFile } from "@/queries/files";
@@ -266,6 +262,7 @@ import { getTagsForFile, searchTag } from "@/queries/tags";
 import { formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
 import { getFileTypeReadable, isAutoTagSupportedFileType } from "@/utils/mimetype.utils";
+import { glassDrawerContent } from "@/utils/modalUi";
 import { formatBytes } from "@/utils/size.utils";
 
 import FilePreview from "./FilePreview.vue";

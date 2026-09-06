@@ -526,7 +526,6 @@
 import type { FormSubmitEvent } from "@nuxt/ui";
 
 import { useQuery } from "@pinia/colada";
-import { glassModalContent } from "@/utils/modalUi";
 import { computed, reactive, ref, shallowRef } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";
@@ -545,6 +544,7 @@ import {
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
+import { glassModalContent } from "@/utils/modalUi";
 defineShortcuts({
   enter: () => handleSubmit(),
 });

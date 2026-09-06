@@ -300,20 +300,17 @@ const exampleFile: FileResult = {
         <div class="pt-4 px-2 pb-6">
           <div class="space-y-8">
             <div class="flex items-center justify-between">
-                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Visual Settings
-                </h3>
-                <UButton
-                  label="Reset"
-                  color="error"
-                  variant="outline"
-                  size="xs"
-                  @click="settingsStore.resetAppearanceSettings()"
-                />
-              </div>
+              <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Visual Settings</h3>
+              <UButton
+                label="Reset"
+                color="error"
+                variant="outline"
+                size="xs"
+                @click="settingsStore.resetAppearanceSettings()"
+              />
+            </div>
 
-              <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
               <!-- Group: Colors -->
               <section aria-label="Colors" class="space-y-6 order-1">
                 <div>
@@ -731,49 +728,49 @@ const exampleFile: FileResult = {
                 </div>
               </section>
 
-            <!-- Live preview -->
-            <section aria-label="Live preview" class="space-y-4 order-2">
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Live preview</h3>
-                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                  Watch your settings apply the moment you change them.
-                </p>
-              </div>
-
-              <div class="flex flex-col gap-4">
-                <div
-                  class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 p-3 frosted-glass glass-surface"
-                >
-                  <p
-                    class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
-                  >
-                    Grid
+              <!-- Live preview -->
+              <section aria-label="Live preview" class="space-y-4 order-2">
+                <div>
+                  <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Live preview</h3>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                    Watch your settings apply the moment you change them.
                   </p>
-                  <div class="flex justify-center">
-                    <div class="max-w-40 min-w-36 max-h-40">
+                </div>
+
+                <div class="flex flex-col gap-4">
+                  <div
+                    class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 p-3 frosted-glass glass-surface"
+                  >
+                    <p
+                      class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
+                    >
+                      Grid
+                    </p>
+                    <div class="flex justify-center">
+                      <div class="max-w-40 min-w-36 max-h-40">
+                        <!-- Doesn't really need to be real. It is a stub anyway. -->
+                        <!-- @vue-expect-error -->
+                        <FileItem :data="exampleFile" :is-selected="false" view-mode="grid" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 p-3 frosted-glass glass-surface"
+                  >
+                    <p
+                      class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
+                    >
+                      List
+                    </p>
+                    <div class="min-h-12">
                       <!-- Doesn't really need to be real. It is a stub anyway. -->
                       <!-- @vue-expect-error -->
-                      <FileItem :data="exampleFile" :is-selected="false" view-mode="grid" />
+                      <FileItem :data="exampleFile" :is-selected="false" view-mode="list" />
                     </div>
                   </div>
                 </div>
-
-                <div
-                  class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 p-3 frosted-glass glass-surface"
-                >
-                  <p
-                    class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
-                  >
-                    List
-                  </p>
-                  <div class="min-h-12">
-                    <!-- Doesn't really need to be real. It is a stub anyway. -->
-                    <!-- @vue-expect-error -->
-                    <FileItem :data="exampleFile" :is-selected="false" view-mode="list" />
-                  </div>
-                </div>
-              </div>
-            </section>
+              </section>
             </div>
           </div>
         </div>

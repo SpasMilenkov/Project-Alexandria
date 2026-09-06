@@ -7,10 +7,10 @@ import { computed, ref } from "vue";
 import type { ShareLinkSummaryDto } from "@/api/shareLinks";
 
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
-import { glassModalContent } from "@/utils/modalUi";
 import { createShareLink, revokeShareLink } from "@/mutations/shareLinks";
 import { getShareLinksForFile } from "@/queries/shareLinks";
 import { getFileIcon } from "@/utils/icon.utils";
+import { glassModalContent } from "@/utils/modalUi";
 
 const { mutateAsync: createLink } = createShareLink();
 const { mutateAsync: revokeLink } = revokeShareLink();
@@ -144,8 +144,7 @@ const LINK_STATUS_BADGE_CLASS: Record<LinkStatus, string> = {
 const LINK_STATUS_ROW_CLASS: Record<LinkStatus, string> = {
   active: "frosted-glass glass-surface border-gray-200/70 dark:border-gray-700/70",
   expired: "frosted-glass glass-surface border-gray-200/70 dark:border-gray-700/70",
-  "limit-reached":
-    "frosted-glass glass-surface border-gray-200/70 dark:border-gray-700/70",
+  "limit-reached": "frosted-glass glass-surface border-gray-200/70 dark:border-gray-700/70",
   revoked: "bg-error/5 dark:bg-error/5 border-error/20 dark:border-error/20",
 };
 

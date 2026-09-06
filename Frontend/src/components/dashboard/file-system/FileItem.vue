@@ -172,9 +172,7 @@ const thumbnailBox = computed(() => {
   return { height: Math.round((width * 3) / 4), width };
 });
 
-const showThumbnail = computed(
-  () => settingsStore.thumbnailsEnabled && !thumbnailErrored.value,
-);
+const showThumbnail = computed(() => settingsStore.thumbnailsEnabled && !thumbnailErrored.value);
 
 const prefetchDetails = useDebounceFn(() => {
   queryCache.refresh(queryCache.ensure(getFile(props.data.fileId)));

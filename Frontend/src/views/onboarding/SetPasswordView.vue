@@ -161,9 +161,7 @@
           </div>
 
           <!-- RIGHT: strength & requirements pane -->
-          <div
-            class="flex flex-col justify-center gap-8 frosted-glass glass-surface p-8 lg:flex-1"
-          >
+          <div class="flex flex-col justify-center gap-8 frosted-glass glass-surface p-8 lg:flex-1">
             <!-- Strength meter -->
             <div>
               <p

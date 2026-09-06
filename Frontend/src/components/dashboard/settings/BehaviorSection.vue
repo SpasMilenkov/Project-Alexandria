@@ -41,10 +41,7 @@ const handleResetBehavior = () => {
 </script>
 
 <template>
-  <UCard
-    class="overflow-hidden frosted-glass glass-surface"
-    :ui="{ body: 'p-2 sm:p-2' }"
-  >
+  <UCard class="overflow-hidden frosted-glass glass-surface" :ui="{ body: 'p-2 sm:p-2' }">
     <UCollapsible v-model:open="isOpen">
       <UButton
         variant="ghost"

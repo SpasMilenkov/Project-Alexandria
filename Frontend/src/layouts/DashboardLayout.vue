@@ -1,5 +1,5 @@
 <template>
-  <UDashboardGroup storage-key="alexandria-sidebar" >
+  <UDashboardGroup storage-key="alexandria-sidebar">
     <UDashboardSidebar
       v-model:collapsed="isCollapsed"
       collapsible
@@ -9,8 +9,7 @@
       :default-size="15"
       :ui="{
         root: 'frosted-glass glass-surface',
-  footer: 'border-t border-default py-2',
-        
+        footer: 'border-t border-default py-2',
       }"
       mode="modal"
       toggle-side="right"
@@ -21,7 +20,7 @@
       </template>
 
       <template #default="{ collapsed }">
-        <div class="hidden lg:flex lg:flex-col lg:flex-1 gap-1 ">
+        <div class="hidden lg:flex lg:flex-col lg:flex-1 gap-1">
           <p
             v-if="!collapsed"
             class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"

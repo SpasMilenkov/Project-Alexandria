@@ -87,8 +87,8 @@ import { reactive, ref, shallowRef, watch } from "vue";
 import type { UserDetailsDto } from "@/types/user";
 
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
-import { glassModalContent } from "@/utils/modalUi";
 import { type RestrictUserSchema, restrictUserSchema } from "@/schemas/user";
+import { glassModalContent } from "@/utils/modalUi";
 
 const props = defineProps<{
   open: boolean;

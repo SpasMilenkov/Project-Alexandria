@@ -480,13 +480,13 @@ import { useDebounceFn } from "@vueuse/core";
 import { computed, onMounted, ref, watch } from "vue";
 
 import { useAppToast } from "@/composables/useAppToast";
-import { glassModalContentWide } from "@/utils/modalUi";
 import { copyDirectory, moveDirectories } from "@/mutations/directories";
 import { copyFiles, moveFiles } from "@/mutations/files";
 import { directorySearchApiSchema } from "@/schemas/search";
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
+import { glassModalContentWide } from "@/utils/modalUi";
 
 interface FileChip {
   id: string;

@@ -97,9 +97,7 @@
           </div>
 
           <!-- RIGHT: context pane -->
-          <div
-            class="flex flex-col justify-center gap-8 frosted-glass glass-surface p-8 lg:flex-1"
-          >
+          <div class="flex flex-col justify-center gap-8 frosted-glass glass-surface p-8 lg:flex-1">
             <div>
               <p
                 class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"

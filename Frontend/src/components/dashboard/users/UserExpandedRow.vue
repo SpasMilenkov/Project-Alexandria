@@ -54,7 +54,11 @@
       <!-- Access restriction -->
       <div
         class="rounded-lg border flex flex-col gap-1 px-3.5 py-3"
-        :class="user.isLockedOut ? 'border-warning/40 bg-amber-50/60 dark:bg-amber-900/10' : 'border-default frosted-glass glass-surface'"
+        :class="
+          user.isLockedOut
+            ? 'border-warning/40 bg-amber-50/60 dark:bg-amber-900/10'
+            : 'border-default frosted-glass glass-surface'
+        "
       >
         <div class="flex items-center gap-1.5">
           <UIcon
@@ -89,7 +93,11 @@
       <!-- Account standing -->
       <div
         class="rounded-lg border flex flex-col gap-1 px-3.5 py-3"
-        :class="user.deletedAt ? 'border-error/40 bg-red-50/60 dark:bg-red-900/10' : 'border-default frosted-glass glass-surface'"
+        :class="
+          user.deletedAt
+            ? 'border-error/40 bg-red-50/60 dark:bg-red-900/10'
+            : 'border-default frosted-glass glass-surface'
+        "
       >
         <div class="flex items-center gap-1.5">
           <UIcon

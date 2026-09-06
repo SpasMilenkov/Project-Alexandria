@@ -253,7 +253,7 @@
     </UDrawer>
 
     <!-- breadcrumb row -->
-     <div class="flex items-center gap-1 px-4 py-1.5">
+    <div class="flex items-center gap-1 px-4 py-1.5">
       <UButton
         size="xs"
         variant="ghost"
@@ -552,7 +552,6 @@ import type { NavItem } from "@/types/nav-item";
 
 import { type FileResult } from "@/api/file";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
-import { glassDrawerContent } from "@/utils/modalUi";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { type DropContents, useDropZone } from "@/composables/useDropZone";
@@ -569,6 +568,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
 import { getFileIcon } from "@/utils/icon.utils";
 import { logger } from "@/utils/logger";
+import { glassDrawerContent } from "@/utils/modalUi";
 
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import DirectoryItem from "./DirectoryItem.vue";

@@ -85,11 +85,7 @@ const handleDownload = () => {
 <template>
   <div class="min-h-screen bg-neutral flex flex-col items-center justify-center gap-5 p-6 w-full">
     <!-- Loading -->
-    <UCard
-      v-if="isLoading"
-      class="w-full max-w-md frosted-glass glass-surface"
-      :ui="cardUi"
-    >
+    <UCard v-if="isLoading" class="w-full max-w-md frosted-glass glass-surface" :ui="cardUi">
       <div class="flex items-start gap-4">
         <USkeleton class="w-16 h-16 rounded-2xl shrink-0" />
         <div class="flex-1 space-y-2.5 pt-1">
