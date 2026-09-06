@@ -197,7 +197,7 @@ const rawPayload = (row: EnrichmentRowDto) => JSON.stringify(row.payload, null, 
 
       <div
         v-if="isLoading"
-        class="h-40 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass animate-pulse"
+        class="h-40 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
       />
 
       <div
@@ -215,7 +215,7 @@ const rawPayload = (row: EnrichmentRowDto) => JSON.stringify(row.payload, null, 
 
       <div
         v-else
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-5 py-4 flex flex-col gap-4"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-5 py-4 flex flex-col gap-4"
       >
         <div class="flex flex-col gap-1.5">
           <div class="flex items-center gap-2">
@@ -319,7 +319,7 @@ const rawPayload = (row: EnrichmentRowDto) => JSON.stringify(row.payload, null, 
 
       <div
         v-if="isLoading"
-        class="h-40 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass animate-pulse"
+        class="h-40 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
       />
 
       <div
@@ -337,7 +337,7 @@ const rawPayload = (row: EnrichmentRowDto) => JSON.stringify(row.payload, null, 
 
       <div
         v-else
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-5 py-4 flex flex-col gap-2.5"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-5 py-4 flex flex-col gap-2.5"
       >
         <div class="flex items-center gap-3">
           <span class="text-sm font-medium text-gray-900 dark:text-gray-100 w-24 shrink-0">
@@ -404,7 +404,7 @@ const rawPayload = (row: EnrichmentRowDto) => JSON.stringify(row.payload, null, 
         <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Other analyzers</h2>
       </div>
       <div
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
       >
         <div
           v-for="row in otherEnrichments"
@@ -434,7 +434,7 @@ const rawPayload = (row: EnrichmentRowDto) => JSON.stringify(row.payload, null, 
 
       <div
         v-if="isLoading"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-5 space-y-3 animate-pulse"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-5 space-y-3 animate-pulse"
       >
         <div v-for="i in 3" :key="i" class="h-8 rounded-lg bg-black/5 dark:bg-white/5" />
       </div>
@@ -454,7 +454,7 @@ const rawPayload = (row: EnrichmentRowDto) => JSON.stringify(row.payload, null, 
 
       <div
         v-else
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
       >
         <div
           v-for="attempt in sortedBatches as EnrichmentBatchAttemptDto[]"

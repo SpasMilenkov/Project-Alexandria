@@ -231,7 +231,7 @@ const toggleRow = (id: string) => {
         >
           <div
             v-if="expandedRows.has(entry.id)"
-            class="frosted-glass bg-gray-50/60 dark:bg-white/[0.02] border-t border-black/[0.04] dark:border-white/[0.05] px-4 py-3"
+            class="frosted-glass glass-surface border-t border-black/[0.04] dark:border-white/[0.05] px-4 py-3"
           >
             <dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3">
               <div>

@@ -211,7 +211,7 @@ onUnmounted(() => {
   >
     <div
       ref="cardRef"
-      class="player-card bg-white/75 dark:bg-white/[0.06] frosted-glass border border-black/[0.08] dark:border-white/10 overflow-hidden"
+      class="player-card frosted-glass glass-surface border border-black/[0.08] dark:border-white/10 overflow-hidden"
       :class="[
         isStrip ? 'w-full rounded-t-xl' : 'rounded-2xl',
         {

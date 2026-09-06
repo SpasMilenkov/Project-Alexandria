@@ -141,7 +141,7 @@ const bannerStyle = computed(() => BANNER_STYLES[overall.value.color]);
 
         <!-- Per-service rows -->
         <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
         >
           <div v-for="row in rows" :key="row.service" class="px-5 py-4 space-y-2">
             <div class="flex items-center justify-between gap-3">

@@ -97,7 +97,7 @@ const handleRefresh = async () => {
       <ServiceHealthStrip />
 
       <div
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-6 py-5"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-6 py-5"
       >
         <ErrorCalendar @view-day="handleViewDay" />
       </div>

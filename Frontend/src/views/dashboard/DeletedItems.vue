@@ -116,7 +116,7 @@
 
             <!-- Rows -->
             <div
-              class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden bg-white/60 dark:bg-white/5 frosted-glass divide-y divide-gray-100/50 dark:divide-gray-800/50"
+              class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden frosted-glass glass-surface divide-y divide-gray-100/50 dark:divide-gray-800/50"
             >
               <div
                 v-for="dir in directoryResults"
@@ -186,7 +186,7 @@
 
             <!-- Rows -->
             <div
-              class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden bg-white/60 dark:bg-white/5 frosted-glass divide-y divide-gray-100/50 dark:divide-gray-800/50"
+              class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden frosted-glass glass-surface divide-y divide-gray-100/50 dark:divide-gray-800/50"
             >
               <div
                 v-for="file in fileResults"

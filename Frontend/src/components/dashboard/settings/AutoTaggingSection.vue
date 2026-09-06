@@ -36,7 +36,7 @@ const handleResetAutoTagging = () => {
 
 <template>
   <UCard
-    class="overflow-hidden bg-white/60 dark:bg-white/5 frosted-glass"
+    class="overflow-hidden frosted-glass glass-surface"
     :ui="{ body: 'p-2 sm:p-2' }"
   >
     <UCollapsible v-model:open="isOpen">

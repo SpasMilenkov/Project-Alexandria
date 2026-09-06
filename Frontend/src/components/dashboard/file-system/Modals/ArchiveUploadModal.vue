@@ -357,6 +357,7 @@ const mimeFromExtension = (fileName: string): string => {
     <!-- empty: archive picker -->
     <UploadEmptyState
       v-if="!archiveFile"
+      tall
       icon="i-lucide-archive"
       button-label="Select Archive"
       button-icon="i-lucide-file-archive"
@@ -389,7 +390,7 @@ const mimeFromExtension = (fileName: string): string => {
     >
       <!-- archive file row -->
       <div
-        class="flex items-center gap-3 px-3 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass bg-white/40 dark:bg-white/3"
+        class="flex items-center gap-3 px-3 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <UIcon name="i-lucide-file-archive" class="size-4 text-muted shrink-0" />
         <div class="flex-1 min-w-0">

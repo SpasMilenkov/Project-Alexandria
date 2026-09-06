@@ -359,7 +359,7 @@ const mediaFilterOptions = [
       <div
         v-for="group in groupedJobs"
         :key="group.versionId"
-        class="rounded-xl border border-black/[0.08] dark:border-white/[0.09] overflow-hidden bg-white/70 dark:bg-white/[0.04] frosted-glass"
+        class="rounded-xl border border-black/[0.08] dark:border-white/[0.09] overflow-hidden frosted-glass glass-surface"
       >
         <!-- Group header -->
         <button
@@ -495,7 +495,7 @@ const mediaFilterOptions = [
                   </button>
 
                   <template #content>
-                    <div class="p-4 w-60 space-y-3 bg-white/95 dark:bg-gray-900/95 frosted-glass">
+                    <div class="p-4 w-60 space-y-3 frosted-glass glass-surface-strong">
                       <p class="text-xs font-semibold text-gray-700 dark:text-white/70 m-0">
                         Adjust qualities
                       </p>

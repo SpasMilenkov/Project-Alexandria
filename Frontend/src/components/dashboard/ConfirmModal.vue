@@ -4,6 +4,7 @@
     :title="title"
     :description="description"
     :close="{ onClick: () => emit('close', false) }"
+    :ui="{ content: glassModalContent }"
   >
     <template #body>
       <div class="space-y-4 p-1">
@@ -42,6 +43,7 @@
 
 <script setup lang="ts">
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { glassModalContent } from "@/utils/modalUi";
 
 interface AlertProps {
   title: string;

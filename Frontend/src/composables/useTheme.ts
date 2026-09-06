@@ -102,7 +102,12 @@ export const useTheme = () => {
     }
 
     document.documentElement.style.setProperty("--frost-blur", `${store.frostStrength}px`);
+    document.documentElement.style.setProperty(
+      "--glass-opacity",
+      `${store.surfaceOpacity / 100}`,
+    );
     document.documentElement.classList.toggle("frost-off", !store.frostEnabled);
+    document.documentElement.classList.toggle("transparency-off", !store.transparencyEnabled);
     document.documentElement.classList.toggle(
       "frost-off-mobile",
       store.frostDisabledOnMobile && isMobile.value,

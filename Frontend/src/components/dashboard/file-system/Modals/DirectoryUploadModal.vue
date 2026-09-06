@@ -157,6 +157,7 @@ const clearFiles = () => {
     <!-- empty: folder picker -->
     <UploadEmptyState
       v-if="files.length === 0"
+      tall
       icon="i-lucide-folder-up"
       button-label="Select Folder"
       button-icon="i-lucide-folder-open"
@@ -179,7 +180,7 @@ const clearFiles = () => {
       class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden"
     >
       <div
-        class="flex items-center justify-between px-3 py-2 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass bg-white/40 dark:bg-white/3"
+        class="flex items-center justify-between px-3 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <span class="text-xs text-muted">
           {{ files.length }} {{ files.length === 1 ? "file" : "files" }}

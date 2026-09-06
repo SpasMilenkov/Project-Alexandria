@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
+import { glassModalBody, glassModalContentWide } from "@/utils/modalUi";
 
 defineProps<{
   title: string;
-  wide?: boolean;
   initialId?: string;
   initialName?: string;
   pickerDisabled?: boolean;
@@ -18,7 +18,7 @@ const selectedDirectoryId = defineModel<string | undefined>();
   <UModal
     :close="{ onClick: () => emit('close') }"
     :title="title"
-    :ui="wide ? { body: 'space-y-4', content: 'sm:max-w-2xl' } : { body: 'space-y-4' }"
+    :ui="{ body: glassModalBody, content: glassModalContentWide }"
   >
     <template #body>
       <slot name="intro" />

@@ -180,7 +180,7 @@
       direction="bottom"
       class="md:hidden"
       :ui="{
-        content: 'rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70',
+        content: `${glassDrawerContent} rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70`,
       }"
     >
       <template #content>
@@ -253,7 +253,7 @@
     </UDrawer>
 
     <!-- breadcrumb row -->
-    <div class="flex items-center gap-1 px-4 py-1.5">
+     <div class="flex items-center gap-1 px-4 py-1.5">
       <UButton
         size="xs"
         variant="ghost"
@@ -320,7 +320,7 @@
                 class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
               />
               <div
-                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 frosted-glass bg-white/60 dark:bg-white/5 shadow-sm"
+                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 frosted-glass glass-surface shadow-sm"
               >
                 <div class="relative flex items-center justify-center">
                   <span class="breathe absolute rounded-full border border-primary/20" />
@@ -552,6 +552,7 @@ import type { NavItem } from "@/types/nav-item";
 
 import { type FileResult } from "@/api/file";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
+import { glassDrawerContent } from "@/utils/modalUi";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { type DropContents, useDropZone } from "@/composables/useDropZone";

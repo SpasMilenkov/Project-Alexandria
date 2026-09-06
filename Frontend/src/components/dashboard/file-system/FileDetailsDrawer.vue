@@ -4,11 +4,7 @@
     :title="detail?.fileName"
     :description="detail ? 'Created ' + formatDate(detail.createdAt) : undefined"
     :direction="isMobile ? 'bottom' : 'right'"
-    :ui="
-      isMobile
-        ? { container: 'h-[85vh] rounded-t-2xl' }
-        : { container: 'md:max-w-[40rem] lg:min-w-[40rem]' }
-    "
+    :ui="drawerUi"
     :handle-only="!isMobile"
   >
     <template #body>
@@ -200,7 +196,7 @@
 
         <!-- Owner Section -->
         <UCard
-          class="bg-white/60 dark:bg-white/5 frosted-glass"
+          class="frosted-glass glass-surface"
           :ui="isMobile ? { body: 'p-3' } : {}"
         >
           <template #header>
@@ -262,6 +258,7 @@ import type { SearchTagsSchema } from "@/schemas/tag";
 
 import { type FileResult } from "@/api/file";
 import { useAppToast } from "@/composables/useAppToast";
+import { glassDrawerContent } from "@/utils/modalUi";
 import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import { getFile } from "@/queries/files";
@@ -276,6 +273,13 @@ import FileVersionHistory from "./FileVersionHistory.vue";
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");
+
+const drawerUi = computed(() => {
+  if (isMobile.value) {
+    return { content: glassDrawerContent, container: "h-[85vh] rounded-t-2xl" };
+  }
+  return { content: glassDrawerContent, container: "md:max-w-[40rem] lg:min-w-[40rem]" };
+});
 
 const toast = useToast();
 const { copy } = useClipboard();

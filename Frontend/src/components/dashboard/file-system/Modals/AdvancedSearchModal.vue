@@ -4,7 +4,7 @@
     title="Advanced Search"
     fullscreen
     :scrollable="true"
-    :ui="{ body: 'p-0' }"
+    :ui="{ body: 'p-0', content: glassModalContent }"
   >
     <template #body>
       <!-- @vue-ignore -->
@@ -526,6 +526,7 @@
 import type { FormSubmitEvent } from "@nuxt/ui";
 
 import { useQuery } from "@pinia/colada";
+import { glassModalContent } from "@/utils/modalUi";
 import { computed, reactive, ref, shallowRef } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";

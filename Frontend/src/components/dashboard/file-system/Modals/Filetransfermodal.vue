@@ -1,7 +1,7 @@
 <template>
   <UModal
     :ui="{
-      content: 'sm:max-w-2xl frosted-glass bg-white/85 dark:bg-neutral-900/85',
+      content: glassModalContentWide,
       header: 'border-b border-neutral-200/60 dark:border-neutral-700/60',
       footer: 'border-t border-neutral-200/60 dark:border-neutral-700/60',
     }"
@@ -37,7 +37,7 @@
         <div class="flex items-stretch gap-3">
           <!-- Origin panel -->
           <div
-            class="flex-1 min-w-0 flex flex-col gap-2 p-3 rounded-xl border border-neutral-200/60 dark:border-neutral-700/60 frosted-glass bg-white/50 dark:bg-white/5"
+            class="flex-1 min-w-0 flex flex-col gap-2 p-3 rounded-xl border border-neutral-200/60 dark:border-neutral-700/60 frosted-glass glass-surface"
           >
             <div class="flex items-center gap-1.5 mb-1">
               <Icon
@@ -111,7 +111,7 @@
             :class="
               destinationDirId
                 ? 'border-primary/40 bg-primary/5 dark:bg-primary/10'
-                : 'border-neutral-200/60 dark:border-neutral-700/60 frosted-glass bg-white/50 dark:bg-white/5'
+                : 'border-neutral-200/60 dark:border-neutral-700/60 frosted-glass glass-surface'
             "
           >
             <div class="flex items-center gap-1.5 mb-1">
@@ -146,7 +146,7 @@
                   v-if="destinationDirId !== undefined"
                   v-for="chip in visibleOriginChips"
                   :key="'dest-' + chip.id"
-                  class="flex items-center gap-2 px-2 py-1.5 rounded-lg frosted-glass bg-white/60 dark:bg-white/5 border border-primary/20"
+                  class="flex items-center gap-2 px-2 py-1.5 rounded-lg frosted-glass glass-surface border border-primary/20"
                 >
                   <Icon :icon="chip.icon" class="w-4 h-4 shrink-0 text-primary/70" />
                   <span class="text-xs truncate text-neutral-700 dark:text-neutral-200">{{
@@ -256,7 +256,7 @@
 
           <!-- Results / subdirectory list -->
           <div
-            class="flex flex-col rounded-xl border border-neutral-200/60 dark:border-neutral-700/60 overflow-hidden frosted-glass bg-white/40 dark:bg-white/3"
+            class="flex flex-col rounded-xl border border-neutral-200/60 dark:border-neutral-700/60 overflow-hidden frosted-glass glass-surface"
             style="min-height: 180px; max-height: 240px; overflow-y: auto"
           >
             <!-- Loading skeleton -->
@@ -480,6 +480,7 @@ import { useDebounceFn } from "@vueuse/core";
 import { computed, onMounted, ref, watch } from "vue";
 
 import { useAppToast } from "@/composables/useAppToast";
+import { glassModalContentWide } from "@/utils/modalUi";
 import { copyDirectory, moveDirectories } from "@/mutations/directories";
 import { copyFiles, moveFiles } from "@/mutations/files";
 import { directorySearchApiSchema } from "@/schemas/search";

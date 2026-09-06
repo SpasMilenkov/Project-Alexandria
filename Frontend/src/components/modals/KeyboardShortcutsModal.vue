@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { computed, onMounted, onUnmounted, ref } from "vue";
+
+import { glassModalContent } from "@/utils/modalUi";
 const emit = defineEmits<{ close: [] }>();
 
 interface Shortcut {
@@ -115,6 +117,7 @@ onMounted(() => {
     :ui="{
       header: 'border-b border-gray-200/70 dark:border-gray-700/70',
       body: 'p-0 flex-1 overflow-hidden flex flex-col',
+      content: glassModalContent,
     }"
   >
     <template #header>
@@ -136,7 +139,7 @@ onMounted(() => {
           icon="i-lucide-search"
           size="sm"
           class="w-56 shrink-0"
-          :ui="{ base: 'bg-white/60 dark:bg-white/5 frosted-glass' }"
+          :ui="{ base: 'frosted-glass glass-surface' }"
         />
         <UButton icon="i-heroicons-x-mark" size="sm" variant="subtle" @click="emit('close')" />
       </div>
@@ -153,7 +156,7 @@ onMounted(() => {
         >
           <nav
             v-if="!isFiltering"
-            class="w-52 shrink-0 border-r border-gray-200/70 dark:border-gray-700/70 bg-white/30 dark:bg-white/3 frosted-glass flex flex-col gap-1 p-3 overflow-y-auto"
+            class="w-52 shrink-0 border-r border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface flex flex-col gap-1 p-3 overflow-y-auto"
           >
             <p class="text-[10px] font-semibold uppercase tracking-widest text-muted px-2 mb-1">
               Categories
@@ -219,7 +222,7 @@ onMounted(() => {
 
             <!-- Shortcut rows -->
             <div
-              class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass overflow-hidden"
+              class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
             >
               <div
                 v-for="(shortcut, i) in section.shortcuts"

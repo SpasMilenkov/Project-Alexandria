@@ -16,7 +16,7 @@
       <!-- Stat cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Queue depth
@@ -27,7 +27,7 @@
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Failed jobs
@@ -46,7 +46,7 @@
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Success rate (window)
@@ -57,7 +57,7 @@
           </p>
         </div>
         <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-4 py-3"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
         >
           <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Avg duration (30d)
@@ -100,7 +100,7 @@
         </div>
 
         <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-4"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4"
         >
           <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Failure rate %</p>
           <!-- Bounded height is mandatory with maintainAspectRatio:false, else
@@ -114,7 +114,7 @@
         </div>
 
         <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-4"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4"
         >
           <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Jobs created</p>
           <div v-if="trendLoading" class="h-56">

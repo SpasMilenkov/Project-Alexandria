@@ -2,7 +2,7 @@
   <UModal
     :close="{ onClick: () => emit('close', 'close') }"
     title="Search"
-    :ui="{ body: 'sm:p-2 ', header: 'hidden' }"
+    :ui="{ body: 'sm:p-2 ', header: 'hidden', content: glassModalContent }"
   >
     <template #body>
       <!-- @vue-expect-error -->
@@ -99,6 +99,7 @@
 
 <script setup lang="ts">
 import { useDebounceFn } from "@vueuse/core";
+import { glassModalContent } from "@/utils/modalUi";
 import { reactive, ref } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";

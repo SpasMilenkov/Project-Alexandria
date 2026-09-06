@@ -538,7 +538,6 @@ const onDrop = (e: DragEvent) => {
   <UploadModalShell
     v-model="selectedDirectoryId"
     title="Upload Files"
-    wide
     :initial-id="directoryId"
     :initial-name="directoryName"
     :picker-disabled="isUploading"
@@ -954,7 +953,7 @@ const onDrop = (e: DragEvent) => {
       >
         <div
           v-if="isDragging"
-          class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/90 dark:bg-gray-900/90 frosted-glass rounded-lg border-2 border-dashed border-primary-500 shadow-sm"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center frosted-glass glass-surface-strong rounded-lg border-2 border-dashed border-primary-500 shadow-sm"
         >
           <UIcon name="i-lucide-download" class="size-8 text-primary mb-2" />
           <p class="text-sm font-medium text-primary">Drop files to add them</p>

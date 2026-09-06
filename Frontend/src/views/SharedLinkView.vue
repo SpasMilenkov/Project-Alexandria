@@ -87,7 +87,7 @@ const handleDownload = () => {
     <!-- Loading -->
     <UCard
       v-if="isLoading"
-      class="w-full max-w-md bg-white/60 dark:bg-white/5 frosted-glass"
+      class="w-full max-w-md frosted-glass glass-surface"
       :ui="cardUi"
     >
       <div class="flex items-start gap-4">
@@ -118,7 +118,7 @@ const handleDownload = () => {
     <!-- Error: not found -->
     <UCard
       v-else-if="displayError === 'not-found'"
-      class="w-full max-w-md bg-white/60 dark:bg-white/5 frosted-glass"
+      class="w-full max-w-md frosted-glass glass-surface"
       :ui="cardUi"
     >
       <div class="flex flex-col items-center gap-4 text-center py-4">
@@ -142,7 +142,7 @@ const handleDownload = () => {
     <!-- Error: expired -->
     <UCard
       v-else-if="displayError === 'expired'"
-      class="w-full max-w-md bg-white/60 dark:bg-white/5 frosted-glass"
+      class="w-full max-w-md frosted-glass glass-surface"
       :ui="cardUi"
     >
       <div class="flex flex-col items-center gap-4 text-center py-4">
@@ -164,7 +164,7 @@ const handleDownload = () => {
     <!-- Error: revoked — visually distinct from expiry; the action was deliberate -->
     <UCard
       v-else-if="displayError === 'revoked'"
-      class="w-full max-w-md bg-white/60 dark:bg-white/5 frosted-glass"
+      class="w-full max-w-md frosted-glass glass-surface"
       :ui="cardUi"
     >
       <div class="flex flex-col items-center gap-4 text-center py-4">
@@ -186,7 +186,7 @@ const handleDownload = () => {
     <!-- Error: download cap exhausted -->
     <UCard
       v-else-if="displayError === 'limit-reached'"
-      class="w-full max-w-md bg-white/60 dark:bg-white/5 frosted-glass"
+      class="w-full max-w-md frosted-glass glass-surface"
       :ui="cardUi"
     >
       <div class="flex flex-col items-center gap-4 text-center py-4">
@@ -208,7 +208,7 @@ const handleDownload = () => {
     <!-- Success -->
     <template v-else-if="metadata">
       <!-- Contextual header above card -->
-      <UCard class="w-full max-w-md bg-white/60 dark:bg-white/5 frosted-glass" :ui="cardUi">
+      <UCard class="w-full max-w-md frosted-glass glass-surface" :ui="cardUi">
         <!-- File identity -->
         <div class="flex items-start gap-4">
           <div

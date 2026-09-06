@@ -8,6 +8,7 @@
         : ''
     "
     :close="{ onClick: () => emit('close', false) }"
+    :ui="{ content: glassModalContent }"
   >
     <template #body>
       <div class="space-y-4 p-1">
@@ -86,6 +87,7 @@ import { reactive, ref, shallowRef, watch } from "vue";
 import type { UserDetailsDto } from "@/types/user";
 
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { glassModalContent } from "@/utils/modalUi";
 import { type RestrictUserSchema, restrictUserSchema } from "@/schemas/user";
 
 const props = defineProps<{

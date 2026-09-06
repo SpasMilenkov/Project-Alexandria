@@ -2,7 +2,7 @@
   <div class="flex h-full overflow-hidden">
     <section class="flex flex-col h-full overflow-hidden flex-1 min-w-0">
       <div
-        class="sticky top-0 z-10 px-2 pt-4 pb-3 mb-5 w-full justify-evenly bg-white/55 dark:bg-white/[0.03] frosted-glass border border-black/[0.08] dark:border-white/10"
+        class="sticky top-0 z-10 px-2 pt-4 pb-3 mb-5 w-full justify-evenly frosted-glass glass-surface border border-black/[0.08] dark:border-white/10"
       >
         <div class="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:flex sm:items-center sm:gap-8">
           <div class="flex items-center gap-3 order-1">
@@ -201,7 +201,10 @@
       :title="infoTitle"
       description="Audio analysis results"
       :direction="isMobile ? 'bottom' : 'right'"
-      :ui="{ container: 'md:max-w-[34rem] lg:min-w-[44rem]' }"
+      :ui="{
+        container: 'md:max-w-[34rem] lg:min-w-[44rem]',
+        content: glassDrawerContent,
+      }"
     >
       <template #body>
         <div class="p-1">
@@ -222,6 +225,7 @@ import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { LIBRARY_PAGE_SIZE } from "@/composables/useStreamingMediaContext";
 import { getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
+import { glassDrawerContent } from "@/utils/modalUi";
 
 import BlockSpinner from "../common/BlockSpinner.vue";
 import AudioAnalysisFilePanel from "../dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";

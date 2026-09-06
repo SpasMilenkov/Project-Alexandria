@@ -115,7 +115,11 @@
     </template>
   </UModal>
 
-  <UModal v-model:open="showDeleteModal" title="Delete Playlist">
+  <UModal
+    v-model:open="showDeleteModal"
+    title="Delete Playlist"
+    :ui="{ content: glassModalContent }"
+  >
     <template #body>
       <p class="text-sm text-default">
         Are you sure you want to delete
@@ -149,6 +153,7 @@ import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { fileApi } from "@/api/file";
+import { glassModalContent } from "@/utils/modalUi";
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
 import { streamingApi } from "@/api/streaming";
 import PlaylistCard from "@/components/streaming/PlaylistCard.vue";

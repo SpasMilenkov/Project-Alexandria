@@ -566,7 +566,7 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
     >
       <div
         v-if="!isMobile && selectedDay"
-        class="flex items-center gap-3 flex-wrap rounded-lg frosted-glass bg-white/40 dark:bg-white/5 border border-neutral-200/70 dark:border-neutral-700/70 px-4 py-3"
+        class="flex items-center gap-3 flex-wrap rounded-lg frosted-glass glass-surface border border-neutral-200/70 dark:border-neutral-700/70 px-4 py-3"
       >
         <div class="flex items-center gap-2 shrink-0">
           <UIcon
@@ -655,7 +655,7 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
         >
           <div
             v-if="selectedDay"
-            class="relative w-full rounded-t-2xl frosted-glass bg-white/95 dark:bg-neutral-900/95 shadow-2xl border-t border-neutral-200/70 dark:border-neutral-700/70 px-5 pt-3 pb-8 space-y-4"
+            class="relative w-full rounded-t-2xl frosted-glass glass-surface-strong shadow-2xl border-t border-neutral-200/70 dark:border-neutral-700/70 px-5 pt-3 pb-8 space-y-4"
           >
             <div class="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600 mx-auto" />
 

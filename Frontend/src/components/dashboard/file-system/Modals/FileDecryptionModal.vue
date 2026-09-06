@@ -6,7 +6,7 @@
   >
     <template #content>
       <div
-        class="bg-neutral-50 dark:bg-neutral-900 rounded-xl divide-y divide-neutral-200 dark:divide-neutral-800"
+        class="bg-default rounded-xl divide-y divide-neutral-200 dark:divide-neutral-800"
       >
         <!-- Header -->
         <div class="flex flex-col items-center gap-3 px-6 pt-7 pb-5 text-center">

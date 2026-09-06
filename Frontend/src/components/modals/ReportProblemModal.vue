@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 
 import { useAppToast } from "@/composables/useAppToast";
 import { useReportProblem } from "@/mutations/monitoring";
+import { glassModalContent } from "@/utils/modalUi";
 
 const MAX_DESCRIPTION_LENGTH = 2000;
 
@@ -51,8 +52,7 @@ const handleSubmit = async () => {
     :close="false"
     :overlay="true"
     :ui="{
-      content:
-        'bg-white/60 dark:bg-white/2 frosted-glass border border-gray-200/70 dark:border-gray-700/70',
+      content: `${glassModalContent} border border-gray-200/70 dark:border-gray-700/70`,
     }"
     @update:open="!$event && dismiss()"
   >

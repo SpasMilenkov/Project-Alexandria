@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useMediaQuery } from "@vueuse/core";
+import { glassModalContent } from "@/utils/modalUi";
 import { computed, onMounted, ref } from "vue";
 
 import type { ExplorerTab } from "@/types/explorer-tab";
@@ -265,7 +266,7 @@ onMounted(() => {
 
           <!-- Sheet panel -->
           <div
-            class="relative z-10 rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70 bg-neutral-100/85 dark:bg-neutral-900/85 frosted-glass pb-safe"
+            class="relative z-10 rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface-strong pb-safe"
           >
             <!-- Handle -->
             <div class="flex justify-center pt-3 pb-1">
@@ -349,7 +350,7 @@ onMounted(() => {
   <!-- Close all tabs confirmation modal (shared between desktop and mobile) -->
   <UModal v-model:open="isCloseAllModalOpen">
     <template #content>
-      <div class="p-6 space-y-4">
+      <div :class="`p-6 space-y-4 ${glassModalContent}`">
         <div class="space-y-1">
           <h3 class="text-base font-semibold text-gray-900 dark:text-white">Close all tabs?</h3>
           <p class="text-sm text-gray-500 dark:text-gray-400">

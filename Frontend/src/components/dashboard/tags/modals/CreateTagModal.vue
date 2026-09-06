@@ -1,5 +1,9 @@
 <template>
-  <UModal :close="{ onClick: () => emit('close', false) }" title="Create New Tag">
+  <UModal
+    :close="{ onClick: () => emit('close', false) }"
+    title="Create New Tag"
+    :ui="{ content: glassModalContent }"
+  >
     <template #body>
       <UForm :schema="createTagSchema" :state="state" class="space-y-5 w-full" @submit="onSubmit">
         <div class="grid grid-cols-2 gap-4">
@@ -60,7 +64,7 @@
 
         <UFormField label="Preview">
           <div
-            class="flex items-center justify-center p-6 border border-gray-200/70 dark:border-gray-700/70 rounded-lg frosted-glass bg-gray-50/40 dark:bg-white/5"
+            class="flex items-center justify-center p-6 border border-gray-200/70 dark:border-gray-700/70 rounded-lg frosted-glass glass-surface"
           >
             <div class="flex flex-col gap-4 w-full max-w-xs">
               <div>
@@ -109,6 +113,7 @@ import { createTag } from "@/mutations/tags";
 import { type CreateTagSchema, createTagSchema } from "@/schemas/tag";
 import { useSettingsStore } from "@/stores/settings";
 import { getIconByValue, iconOptions } from "@/utils/icon.utils";
+import { glassModalContent } from "@/utils/modalUi";
 
 import TagBadge from "../TagBadge.vue";
 import TagCard from "../TagCard.vue";

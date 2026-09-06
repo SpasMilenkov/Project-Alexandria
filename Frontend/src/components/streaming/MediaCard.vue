@@ -150,7 +150,7 @@ const emit = defineEmits<{
           class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
         >
           <div
-            class="w-10 h-10 rounded-full bg-white/20 frosted-glass flex items-center justify-center"
+            class="w-10 h-10 rounded-full frosted-glass glass-surface flex items-center justify-center"
           >
             <Icon icon="mdi:play" class="w-5 h-5 text-white ml-0.5" />
           </div>

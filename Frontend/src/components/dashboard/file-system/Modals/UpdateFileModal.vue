@@ -6,6 +6,7 @@ import { reactive } from "vue";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { updateFileMetadata } from "@/mutations/files";
 import { type UpdateFileMetadataSchema, updateFileMetadataSchema } from "@/schemas/file";
+import { glassModalContent } from "@/utils/modalUi";
 
 const { fileId, originalName } = defineProps<{
   fileId: string;
@@ -40,7 +41,11 @@ const onSubmit = async (event: FormSubmitEvent<UpdateFileMetadataSchema>) => {
 </script>
 
 <template>
-  <UModal :close="{ onClick: () => emit('close', false) }" title="Update file">
+  <UModal
+    :close="{ onClick: () => emit('close', false) }"
+    title="Update file"
+    :ui="{ content: glassModalContent }"
+  >
     <template #body>
       <UForm
         :schema="updateFileMetadataSchema"

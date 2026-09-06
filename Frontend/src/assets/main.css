@@ -3,6 +3,8 @@
 
 :root {
   --frost-blur: 8px;
+  --glass-opacity: 0.6;
+  --glass-opacity-strong: 0.85;
 }
 
 /* Singular frosted-glass surface. Backgrounds stay as per-component Tailwind
@@ -13,6 +15,56 @@
 @utility frosted-glass {
   backdrop-filter: blur(var(--frost-blur)) saturate(1.2);
   -webkit-backdrop-filter: blur(var(--frost-blur)) saturate(1.2);
+}
+
+/* Pure-CSS surface tints. These replace Tailwind translucent background utilities
+   on frosted surfaces (Tailwind opacity suffixes are precompiled and cannot
+   read a variable).
+   Card tier reads the user-adjustable --glass-opacity in light mode; dark mode
+   keeps the established subtle white 5% until the mass-migration visual pass.
+   Modal tier stays fixed at 85% for legibility over scrims. */
+.glass-surface {
+  background-color: color-mix(in srgb, white calc(var(--glass-opacity) * 100%), transparent);
+}
+
+.dark .glass-surface {
+  background-color: color-mix(in srgb, white 5%, transparent);
+}
+
+.glass-surface-strong {
+  background-color: color-mix(
+    in srgb,
+    white calc(var(--glass-opacity-strong) * 100%),
+    transparent
+  );
+}
+
+.dark .glass-surface-strong {
+  background-color: color-mix(
+    in srgb,
+    #171717 calc(var(--glass-opacity-strong) * 100%),
+    transparent
+  );
+}
+
+/* Frost off means fully solid: translucent sheets would turn unreadable once
+   the blur is gone. Same treatment when the transparency toggle is off. */
+html.frost-off .glass-surface,
+html.frost-off-mobile .glass-surface,
+html.transparency-off .glass-surface,
+html.frost-off .glass-surface-strong,
+html.frost-off-mobile .glass-surface-strong,
+html.transparency-off .glass-surface-strong {
+  background-color: #ffffff;
+}
+
+html.dark.frost-off .glass-surface,
+html.dark.frost-off-mobile .glass-surface,
+html.dark.transparency-off .glass-surface,
+html.dark.frost-off .glass-surface-strong,
+html.dark.frost-off-mobile .glass-surface-strong,
+html.dark.transparency-off .glass-surface-strong {
+  background-color: #171717;
 }
 
 /* Global off + mobile off: kill blur, fall back to solid surfaces so

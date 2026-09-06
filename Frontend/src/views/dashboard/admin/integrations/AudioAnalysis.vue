@@ -453,7 +453,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
       <div
         v-for="tile in kpiTiles"
         :key="tile.key"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-5 py-4 flex flex-col gap-2"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-5 py-4 flex flex-col gap-2"
       >
         <div class="flex items-center gap-1.5">
           <Icon
@@ -491,7 +491,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
         <div
           v-for="i in 2"
           :key="i"
-          class="h-32 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass animate-pulse"
+          class="h-32 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
         />
       </div>
 
@@ -499,7 +499,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
         <div
           v-for="group in queueByBackbone"
           :key="group.backbone"
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass overflow-hidden transition-shadow duration-200 hover:shadow-sm"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden transition-shadow duration-200 hover:shadow-sm"
         >
           <div
             class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2"
@@ -540,7 +540,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-else
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass"
+        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <Icon icon="mdi:waveform" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
         <div class="space-y-1 max-w-sm">
@@ -563,14 +563,14 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-if="stuckQuery.status.value === 'pending'"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-5 space-y-3 animate-pulse"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-5 space-y-3 animate-pulse"
       >
         <div v-for="i in 3" :key="i" class="h-8 rounded-lg bg-black/5 dark:bg-white/5" />
       </div>
 
       <div
         v-else-if="stuckSorted.length"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
       >
         <div
           v-for="row in stuckSorted"
@@ -601,7 +601,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-else
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass"
+        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <Icon icon="mdi:check-circle-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
         <div class="space-y-1 max-w-sm">
@@ -653,12 +653,12 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-if="failure.status.value === 'pending'"
-        class="h-72 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass animate-pulse"
+        class="h-72 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
       />
 
       <div
         v-else-if="failureEmpty"
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass"
+        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <Icon icon="mdi:chart-line" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
         <div class="space-y-1 max-w-sm">
@@ -673,7 +673,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-else
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-4 h-72"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4 h-72"
       >
         <Line :data="failureChartData" :options="failureChartOptions" />
       </div>
@@ -695,7 +695,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
         <div
           v-for="i in 2"
           :key="i"
-          class="h-28 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass animate-pulse"
+          class="h-28 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
         />
       </div>
 
@@ -706,7 +706,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
         <div
           v-for="row in durationQuery.data.value"
           :key="row.backbone"
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass px-5 py-4 transition-shadow duration-200 hover:shadow-sm"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-5 py-4 transition-shadow duration-200 hover:shadow-sm"
         >
           <div class="flex items-center gap-2 mb-3">
             <span
@@ -748,7 +748,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-else
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass"
+        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <Icon icon="mdi:timer-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
         <div class="space-y-1 max-w-sm">
@@ -771,12 +771,12 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-if="volume.status.value === 'pending'"
-        class="h-60 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass animate-pulse"
+        class="h-60 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
       />
 
       <div
         v-else-if="volumeEmpty"
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass"
+        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <Icon icon="mdi:chart-bar" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
         <div class="space-y-1 max-w-sm">
@@ -791,7 +791,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-else
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-4 h-60"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4 h-60"
       >
         <Bar :data="volumeChartData" :options="volumeChartOptions" />
       </div>
@@ -806,14 +806,14 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-if="recent.status.value === 'pending'"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass p-5 space-y-3 animate-pulse"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-5 space-y-3 animate-pulse"
       >
         <div v-for="i in 5" :key="i" class="h-8 rounded-lg bg-black/5 dark:bg-white/5" />
       </div>
 
       <div
         v-else-if="(recent.data.value ?? []).length"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass overflow-hidden"
+        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
       >
         <div
           class="hidden md:grid px-5 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 grid-cols-[1fr_90px_110px_100px_100px] gap-4 items-center"
@@ -911,7 +911,7 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
 
       <div
         v-else
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass"
+        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
       >
         <Icon icon="mdi:history" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
         <div class="space-y-1 max-w-sm">

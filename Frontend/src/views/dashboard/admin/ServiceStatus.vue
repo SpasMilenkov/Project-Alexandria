@@ -305,7 +305,7 @@ const formatCpuTime = (s: number) => {
             <!-- Summary counts -->
             <div class="grid grid-cols-3 gap-2">
               <div
-                class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass py-3 px-2 flex flex-col items-center gap-1"
+                class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface py-3 px-2 flex flex-col items-center gap-1"
               >
                 <span class="w-2 h-2 rounded-full bg-emerald-500 mb-0.5" />
                 <span class="text-xl font-bold text-gray-800 dark:text-gray-100">{{
@@ -314,7 +314,7 @@ const formatCpuTime = (s: number) => {
                 <span class="text-xs text-gray-500 dark:text-gray-400">Healthy</span>
               </div>
               <div
-                class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass py-3 px-2 flex flex-col items-center gap-1"
+                class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface py-3 px-2 flex flex-col items-center gap-1"
               >
                 <span class="w-2 h-2 rounded-full bg-amber-500 mb-0.5" />
                 <span class="text-xl font-bold text-gray-800 dark:text-gray-100">{{
@@ -323,7 +323,7 @@ const formatCpuTime = (s: number) => {
                 <span class="text-xs text-gray-500 dark:text-gray-400">Degraded</span>
               </div>
               <div
-                class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass py-3 px-2 flex flex-col items-center gap-1"
+                class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface py-3 px-2 flex flex-col items-center gap-1"
               >
                 <span class="w-2 h-2 rounded-full bg-red-500 mb-0.5" />
                 <span class="text-xl font-bold text-gray-800 dark:text-gray-100">{{
@@ -335,7 +335,7 @@ const formatCpuTime = (s: number) => {
 
             <!-- Meta info -->
             <div
-              class="flex flex-col rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass divide-y divide-gray-200/70 dark:divide-gray-700/70"
+              class="flex flex-col rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface divide-y divide-gray-200/70 dark:divide-gray-700/70"
             >
               <div class="px-4 py-2.5 flex items-center justify-between">
                 <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
@@ -369,7 +369,7 @@ const formatCpuTime = (s: number) => {
             <div
               v-for="group in groupedChecks"
               :key="group.key"
-              class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass overflow-hidden"
+              class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
             >
               <div
                 class="px-4 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2"
@@ -448,7 +448,7 @@ const formatCpuTime = (s: number) => {
 
         <div
           v-if="proc"
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 frosted-glass overflow-hidden"
+          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
         >
           <!-- Section header -->
           <div
