@@ -4,7 +4,7 @@
   <div class="flex min-h-screen">
     <!-- LEFT PANEL ( only) -->
     <aside
-      class="relative hidden w-72 shrink-0 flex-col border-r border-gray-200/60 frosted-glass glass-surface-strong dark:border-gray-800/60 lg:flex xl:w-80"
+      class="relative hidden w-72 shrink-0 flex-col border-r border-gray-200/60 bg-white dark:border-gray-800/60 dark:bg-neutral-900 lg:flex xl:w-80"
     >
       <div class="flex flex-1 flex-col px-8 py-10">
         <!-- App identity -->
@@ -64,7 +64,7 @@
                       'mt-0.5 text-xs transition-colors duration-200',
                       i === currentStep
                         ? 'text-gray-500 dark:text-gray-400'
-                        : 'text-gray-400/60 dark:text-gray-600',
+                        : 'text-gray-400 dark:text-gray-500',
                     ]"
                   >
                     {{ step.description }}

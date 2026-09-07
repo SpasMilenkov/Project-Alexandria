@@ -1,8 +1,9 @@
 import type { OnboardingStep } from "@/enums";
-import type { CreateUserSchema } from "@/schemas/user";
-import type { UpdateUserDto, UserDetailsDto, UserProfile, UserQueryDto } from "@/types/user";
+import type { CreateUserSchema, UpdateUserSchema } from "@/schemas/user";
+import type { UserDetailsDto, UserProfile, UserQueryDto } from "@/types/user";
 
 import { logger } from "@/utils/logger";
+import { gbToBytes } from "@/utils/size.utils";
 
 import type { PaginatedResponse } from "./directory";
 
@@ -10,8 +11,10 @@ import { apiClient } from "./client";
 
 export const userApi = {
   createUser: async (query: CreateUserSchema) => {
+    const { storageQuotaGb, ...rest } = query;
     const result = await apiClient.post<UserDetailsDto>("/users", {
-      ...query,
+      ...rest,
+      storageQuotaBytes: storageQuotaGb === undefined ? undefined : gbToBytes(storageQuotaGb),
     });
 
     return result.data;
@@ -78,8 +81,14 @@ export const userApi = {
     await apiClient.patch("/users/setup-profile");
   },
 
-  updateUser: async (userId: string, payload: UpdateUserDto): Promise<UserDetailsDto> => {
-    const result = await apiClient.patch<UserDetailsDto>(`/users/${userId}`, { payload });
+  updateUser: async (userId: string, payload: UpdateUserSchema): Promise<UserDetailsDto> => {
+    const { storageQuotaGb, ...rest } = payload;
+    const result = await apiClient.patch<UserDetailsDto>(`/users/${userId}`, {
+      payload: {
+        ...rest,
+        storageQuotaBytes: storageQuotaGb === undefined ? undefined : gbToBytes(storageQuotaGb),
+      },
+    });
     return result.data;
   },
 };

@@ -85,6 +85,12 @@ const router = createRouter({
       path: "/dashboard/admin/user-registry",
     },
     {
+      component: () => import("@/views/dashboard/admin/StorageOverview.vue"),
+      meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
+      name: "admin-storage",
+      path: "/dashboard/admin/storage",
+    },
+    {
       component: () => import("@/views/dashboard/admin/ServiceStatus.vue"),
       meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
       name: "service-status",

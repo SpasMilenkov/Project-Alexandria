@@ -63,3 +63,16 @@ export const formatBytes = (
 
   return `${value} ${unit}`;
 };
+
+export const BYTES_PER_GB = 1024 ** 3;
+
+export const gbToBytes = (gb: number): number => Math.round(gb * BYTES_PER_GB);
+
+export const bytesToGb = (bytes: number): number => Math.round((bytes / BYTES_PER_GB) * 100) / 100;
+
+export const parseQuotaGbInput = (value: unknown): number | undefined => {
+  if (value === "" || value === null || value === undefined) return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+  return parsed;
+};

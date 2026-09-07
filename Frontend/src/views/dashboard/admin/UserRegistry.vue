@@ -712,6 +712,18 @@ const openDelete = (ids: string[]) => (activeModal.value = { ids, type: "delete"
 
 // Submit handlers
 
+const serverErrorMessage = (err: unknown): string => {
+  const response = (err as { response?: { data?: { errors?: Record<string, string[]> } } })
+    ?.response;
+  const errors = response?.data?.errors;
+  if (errors) {
+    for (const messages of Object.values(errors)) {
+      if (messages.length > 0) return messages[0];
+    }
+  }
+  return "Please check the details and try again.";
+};
+
 const submitCreate = async (data: CreateUserSchema) => {
   try {
     await createUserMutation(data);
@@ -722,10 +734,10 @@ const submitCreate = async (data: CreateUserSchema) => {
       title: "Account created",
     });
     closeModal();
-  } catch {
+  } catch (err) {
     toast.add({
       color: "error",
-      description: "Please check the details and try again.",
+      description: serverErrorMessage(err),
       icon: "i-lucide-x-circle",
       title: "Could not create account",
     });
@@ -744,9 +756,10 @@ const submitEdit = async (data: UpdateUserSchema) => {
       title: "User updated",
     });
     closeModal();
-  } catch {
+  } catch (err) {
     toast.add({
       color: "error",
+      description: serverErrorMessage(err),
       icon: "i-lucide-x-circle",
       title: "Update failed",
     });

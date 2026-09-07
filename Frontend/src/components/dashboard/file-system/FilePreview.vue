@@ -151,7 +151,7 @@
     </div>
 
     <!-- Archive Preview -->
-    <div v-else-if="archivePreview">
+    <div v-else-if="archivePreviewItems">
       <UTree :items="archivePreviewItems" />
     </div>
 
@@ -286,7 +286,14 @@ const thumbnailSrc = computed(() =>
 const archivePreviewItems = computed(() => {
   if (!archivePreview.value) return undefined;
 
-  const tree: ArchiveData = JSON.parse(archivePreview.value);
+  let tree: ArchiveData;
+  try {
+    tree = JSON.parse(archivePreview.value) as ArchiveData;
+  } catch {
+    return undefined;
+  }
+  if (!tree || typeof tree.FileName !== "string" || !Array.isArray(tree.Entries)) return undefined;
+
   const rootNode = {
     children: [] as any[],
     defaultExpanded: true,
@@ -298,6 +305,7 @@ const archivePreviewItems = computed(() => {
   pathCache.set("", rootNode);
 
   tree.Entries.forEach((entry) => {
+    if (!entry || typeof entry.Key !== "string") return;
     const pathParts = entry.Key.split("/");
     let currentPath = "";
     let parentNode = rootNode;

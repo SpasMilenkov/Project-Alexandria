@@ -232,6 +232,22 @@
           </div>
         </UFormField>
 
+        <UFormField
+          label="Storage quota"
+          name="storageQuotaGb"
+          description="Empty for the 10 GB default. 0 means unlimited."
+        >
+          <UInput
+            :model-value="state.storageQuotaGb"
+            type="number"
+            min="0"
+            placeholder="10"
+            icon="i-lucide-hard-drive"
+            class="w-full"
+            @update:model-value="onQuotaInput"
+          />
+        </UFormField>
+
         <!-- Summary -->
         <div
           v-if="state.userName && state.email"
@@ -257,6 +273,7 @@
             <div class="min-w-0">
               <p class="text-sm font-medium text-default truncate">@{{ state.userName }}</p>
               <p class="text-xs text-muted truncate">{{ state.email }}</p>
+              <p class="text-xs text-muted truncate">Quota: {{ quotaSummaryLabel }}</p>
             </div>
             <UBadge
               :color="state.role === UserRole.Admin ? 'primary' : 'neutral'"
@@ -333,6 +350,7 @@ import type { CreateUserSchema } from "@/schemas/user";
 
 import { UserRole } from "@/enums/UserRole";
 import { glassModalContent } from "@/utils/modalUi";
+import { parseQuotaGbInput } from "@/utils/size.utils";
 
 const props = defineProps<{
   open: boolean;
@@ -390,6 +408,7 @@ const step1Schema = z
 
 const step2Schema = z.object({
   role: z.enum(UserRole).default(UserRole.User),
+  storageQuotaGb: z.number().min(0, "Quota cannot be negative").optional(),
 });
 
 //  Local state
@@ -407,6 +426,7 @@ const state = reactive<CreateUserSchema>({
   email: "",
   password: "",
   role: UserRole.User,
+  storageQuotaGb: undefined,
   userName: "",
 });
 
@@ -422,6 +442,7 @@ watch(
       email: "",
       password: "",
       role: UserRole.User,
+      storageQuotaGb: undefined,
       userName: "",
     });
     currentStep.value = 0;
@@ -507,6 +528,16 @@ const getStepCircleClass = (i: number) => {
 const handleFinalSubmit = (event: { data: Pick<CreateUserSchema, "role"> }) => {
   emit("submit", { ...state, role: event.data.role });
 };
+
+const onQuotaInput = (value: string | number) => {
+  state.storageQuotaGb = parseQuotaGbInput(value);
+};
+
+const quotaSummaryLabel = computed(() => {
+  if (state.storageQuotaGb === undefined) return "Default (10 GB)";
+  if (state.storageQuotaGb === 0) return "Unlimited";
+  return `${state.storageQuotaGb} GB`;
+});
 
 const handleEnter = (e: KeyboardEvent) => {
   if (!props.open || e.key !== "Enter") return;

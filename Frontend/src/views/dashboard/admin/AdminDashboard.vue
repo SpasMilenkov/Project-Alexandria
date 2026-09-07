@@ -146,7 +146,7 @@ const sections = [
       "Inspect per-user storage consumption, quotas, and archive distribution across volumes.",
     icon: "mdi:archive-outline",
     id: "storage",
-    route: "/admin/storage",
+    route: "/dashboard/admin/storage",
     tags: ["Quotas", "Usage", "Volumes"],
     title: "Storage Ledger",
   },

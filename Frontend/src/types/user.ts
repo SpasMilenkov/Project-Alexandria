@@ -10,12 +10,14 @@ export interface UserDetailsDto {
   createdAt: string;
   updatedAt: string | null;
   deletedAt: string | null;
+  storageQuota: number;
 }
 
 export interface UpdateUserDto {
   userName?: string | null;
   email?: string | null;
   role?: UserRole | null;
+  storageQuotaBytes?: number | null;
 }
 
 export interface UserQueryDto {

@@ -184,6 +184,7 @@
           <p class="text-sm font-medium text-default leading-tight tabular-nums">
             {{ storage !== undefined ? formatBytes(storage) : "—" }}
           </p>
+          <p class="text-xs text-muted tabular-nums">of {{ quotaLabel }} quota</p>
         </template>
       </div>
     </div>
@@ -253,6 +254,7 @@
 
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
+import { computed } from "vue";
 
 import type { UserDetailsDto } from "@/types/user";
 
@@ -281,4 +283,9 @@ const {
   isLoading: isStorageLoading,
   error: storageError,
 } = useQuery(getUserStorage({ deletedOnly: false, userId: props.user.id }));
+
+const quotaLabel = computed(() => {
+  if (props.user.storageQuota <= 0) return "unlimited";
+  return formatBytes(props.user.storageQuota);
+});
 </script>
