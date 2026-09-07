@@ -9,4 +9,5 @@ public sealed record DownloadMetadata
     public byte[]? EncryptionSalt { get; init; }
     public byte[]? IntegrityTag { get; init; }
     public string? EncryptionHint { get; init; }
+    public int? IterationCount { get; init; }
 }
