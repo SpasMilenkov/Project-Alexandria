@@ -9,4 +9,5 @@ public sealed class CreateStreamingRepresentationRequest
     public int? Width { get; init; }
     public int? Height { get; init; }
     public int? BitrateKbps { get; init; }
+    public long Size { get; init; }
 }

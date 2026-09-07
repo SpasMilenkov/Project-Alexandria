@@ -28,6 +28,7 @@ public static class StreamingRepresentationExtensions
             Width = request.Width,
             Height = request.Height,
             BitrateKbps = request.BitrateKbps,
+            Size = request.Size,
             Status = RepresentationStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };

@@ -223,4 +223,36 @@ public partial class S3Service
         "Streaming output upload complete: {FileCount} file(s) under prefix '{KeyPrefix}'")]
     private static partial void LogStreamingOutputUploaded(
         ILogger logger, string keyPrefix, int fileCount);
+
+    // Preview deletion
+
+    [LoggerMessage(1051, LogLevel.Information,
+        "Preview deleted: PreviewId={PreviewId}, FreedBytes={FreedBytes}")]
+    private static partial void LogPreviewDeleted(ILogger logger, Guid previewId, long freedBytes);
+
+    [LoggerMessage(1052, LogLevel.Information,
+        "Previews deleted by file: FileId={FileId}, Count={Count}, FreedBytes={FreedBytes}")]
+    private static partial void LogPreviewsDeletedByFile(
+        ILogger logger, Guid fileId, int count, long freedBytes);
+
+    [LoggerMessage(1053, LogLevel.Information,
+        "Preview object still referenced, keeping S3 object: PreviewId={PreviewId}, Key={Key}")]
+    private static partial void LogPreviewObjectShared(ILogger logger, Guid previewId, string key);
+
+    [LoggerMessage(1054, LogLevel.Debug,
+        "Preview object already absent in storage: {Bucket}/{Key}")]
+    private static partial void LogPreviewObjectNotFound(ILogger logger, string bucket, string key);
+
+    // Storage quota (warn-only)
+
+    [LoggerMessage(1055, LogLevel.Warning,
+        "Upload would exceed storage quota: UserId={UserId}, UsedBytes={UsedBytes}, " +
+        "ContentLength={ContentLength}, QuotaBytes={QuotaBytes}")]
+    private static partial void LogStorageQuotaExceeded(
+        ILogger logger, Guid userId, long usedBytes, long contentLength, long quotaBytes);
+
+    [LoggerMessage(1056, LogLevel.Debug,
+        "Storage quota check failed for user: UserId={UserId}")]
+    private static partial void LogStorageQuotaCheckFailed(
+        ILogger logger, Exception ex, Guid userId);
 }

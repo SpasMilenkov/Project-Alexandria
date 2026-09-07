@@ -48,9 +48,72 @@ public class MetricsService(HttpClient httpClient, IOptions<S3Config> config)
         return [.. await Task.WhenAll(tasks)];
     }
 
+    /// <summary>
+    /// Parses per-node assigned capacities from cluster layout series. Only the
+    /// connected series carries role_capacity AND connectivity; the disconnected_time
+    /// series repeats the same labels and must not be double counted.
+    /// </summary>
+    internal static IReadOnlyList<GarageNodeCapacity> ParseClusterNodes(string metricsText)
+    {
+        var nodes = new Dictionary<string, GarageNodeCapacity>();
+
+        foreach (var line in metricsText.Split('\n'))
+        {
+            if (!line.StartsWith("cluster_layout_node_connected", StringComparison.Ordinal))
+                continue;
+
+            var node = ParseNodeLine(line);
+            if (node is not null)
+                nodes[node.NodeId] = node;
+        }
+
+        return [.. nodes.Values];
+    }
+
+    internal static GarageNodeCapacity? ParseNodeLine(string line)
+    {
+        // cluster_layout_node_connected{id="07bf..",role_capacity="10000000000",...} 1
+        var braceStart = line.IndexOf('{');
+        var braceEnd = line.IndexOf('}');
+        if (braceStart < 0 || braceEnd <= braceStart)
+            return null;
+
+        var labels = line.Substring(braceStart + 1, braceEnd - braceStart - 1);
+        var nodeId = GetLabel(labels, "id");
+        var capacity = GetLabel(labels, "role_capacity");
+
+        if (nodeId == null || capacity == null || !long.TryParse(capacity, out var bytes))
+            return null;
+
+        var connected = line[(braceEnd + 1)..].Trim().Equals("1", StringComparison.Ordinal);
+
+        return new GarageNodeCapacity
+        {
+            NodeId = nodeId,
+            RoleCapacityBytes = bytes,
+            Connected = connected
+        };
+    }
+
+    private static string? GetLabel(string labels, string name)
+    {
+        var key = name + "=\"";
+        var start = labels.IndexOf(key, StringComparison.Ordinal);
+        if (start < 0)
+            return null;
+
+        start += key.Length;
+        var end = labels.IndexOf('"', start);
+        if (end <= start)
+            return null;
+
+        return labels.Substring(start, end - start);
+    }
+
     private static StorageInfo ParseStorageMetrics(string metricsText)
     {
         var storageInfo = new StorageInfo();
+        var nodes = new Dictionary<string, GarageNodeCapacity>();
 
         foreach (var line in metricsText.Split('\n'))
         {
@@ -71,7 +134,16 @@ public class MetricsService(HttpClient httpClient, IOptions<S3Config> config)
                 else if (line.Contains("volume=\"metadata\""))
                     storageInfo.MetadataTotalBytes = ExtractValue(line);
             }
+            else if (line.StartsWith("cluster_layout_node_connected", StringComparison.Ordinal))
+            {
+                var node = ParseNodeLine(line);
+                if (node is not null)
+                    nodes[node.NodeId] = node;
+            }
         }
+
+        storageInfo.GarageNodes = [.. nodes.Values];
+        storageInfo.GarageCapacityBytes = nodes.Values.Sum(n => n.RoleCapacityBytes);
 
         return storageInfo;
     }

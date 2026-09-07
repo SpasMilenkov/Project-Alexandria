@@ -596,6 +596,35 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .SumAsync(v => v.Size, ct);
     }
 
+    public async Task<Dictionary<Guid, long>> GetLiveSizeByOwnerAsync(CancellationToken ct = default)
+    {
+        return await context.Files
+            .Where(f => f.DeletedAt == null)
+            .Join(
+                context.FileVersions,
+                f => f.Id,
+                v => v.FileId,
+                (f, v) => new { f.OwnerId, v.Size }
+            )
+            .GroupBy(x => x.OwnerId)
+            .Select(g => new
+            {
+                OwnerId = g.Key,
+                TotalSize = g.Sum(x => x.Size)
+            })
+            .ToDictionaryAsync(x => x.OwnerId, x => x.TotalSize, ct);
+    }
+
+    public async Task<long> GetTotalTrashSizeAsync(CancellationToken ct = default)
+    {
+        return await context.FileVersions
+            .Where(v => _files
+                .Where(f => f.DeletedAt != null)
+                .Select(f => f.Id)
+                .Contains(v.FileId))
+            .SumAsync(v => (long?)v.Size, ct) ?? 0;
+    }
+
     public async Task<IEnumerable<FileSummary>> GetOldFilesAsync(Guid userId, CancellationToken ct = default)
     {
         return await _files.Where(f =>

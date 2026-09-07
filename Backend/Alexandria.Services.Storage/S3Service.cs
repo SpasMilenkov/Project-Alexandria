@@ -15,6 +15,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Extensions;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Metrics;
+using Alexandria.Dto.Previews;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Blake3;
@@ -166,6 +167,7 @@ public partial class S3Service(
 
                 existingPreview.Size = contentLength;
                 existingPreview.UpdatedBy = uploadedBy;
+                existingPreview.ObjectKey = objectName;
                 savedFile = await unitOfWork.Previews.UpdateAsync(existingPreview, ct);
             }
             else
@@ -179,7 +181,8 @@ public partial class S3Service(
                     Size = contentLength,
                     UpdatedBy = uploadedBy,
                     VersionId = versionId,
-                    Kind = kind
+                    Kind = kind,
+                    ObjectKey = objectName
                 };
 
                 savedFile = await unitOfWork.Previews.CreateAsync(fileEntity, ct);
@@ -355,6 +358,7 @@ public partial class S3Service(
                 existingPreviewRecord.Size = previewSize;
                 existingPreviewRecord.MimeType = GetMimeTypeFromFormat(metadataDto.FormatName);
                 existingPreviewRecord.UpdatedBy = SystemConfig.SystemId;
+                existingPreviewRecord.ObjectKey = previewKey;
 
                 await unitOfWork.Previews.UpdateAsync(existingPreviewRecord, ct);
             }
@@ -369,7 +373,8 @@ public partial class S3Service(
                     Size = previewSize,
                     Kind = PreviewKind.Preview,
                     UpdatedBy = SystemConfig.SystemId,
-                    VersionId = versionId
+                    VersionId = versionId,
+                    ObjectKey = previewKey
                 };
 
                 await unitOfWork.Previews.CreateAsync(preview, ct);
@@ -386,6 +391,7 @@ public partial class S3Service(
                 existingThumbnailRecord.Size = thumbnailSize;
                 existingThumbnailRecord.MimeType = "image/jpeg";
                 existingThumbnailRecord.UpdatedBy = SystemConfig.SystemId;
+                existingThumbnailRecord.ObjectKey = thumbnailKey;
 
                 await unitOfWork.Previews.UpdateAsync(existingThumbnailRecord, ct);
             }
@@ -400,7 +406,8 @@ public partial class S3Service(
                     Size = thumbnailSize,
                     Kind = PreviewKind.Thumbnail,
                     UpdatedBy = SystemConfig.SystemId,
-                    VersionId = versionId
+                    VersionId = versionId,
+                    ObjectKey = thumbnailKey
                 };
 
                 await unitOfWork.Previews.CreateAsync(thumbnail, ct);
@@ -808,6 +815,26 @@ public partial class S3Service(
         }
     }
 
+    /// <summary>
+    /// Warn-only quota check: logs when an upload would exceed the user's quota but never
+    /// blocks. Quota 0 means unlimited. Failures are swallowed so monitoring issues can
+    /// never break uploads.
+    /// TODO: block uploads over quota once quota UX ships.
+    /// </summary>
+    private async Task CheckStorageQuotaWarningAsync(Guid userId, long contentLength, CancellationToken ct)
+    {
+        try
+        {
+            var breakdown = await GetStorageBreakdown(userId, ct);
+            if (breakdown.QuotaBytes > 0 && breakdown.UsedBytes + contentLength > breakdown.QuotaBytes)
+                LogStorageQuotaExceeded(logger, userId, breakdown.UsedBytes, contentLength, breakdown.QuotaBytes);
+        }
+        catch (Exception ex)
+        {
+            LogStorageQuotaCheckFailed(logger, ex, userId);
+        }
+    }
+
     public async Task<(Guid, string)> InitiateFileUpload(
         string contentType,
         string clientHash,
@@ -820,6 +847,8 @@ public partial class S3Service(
         if (config.Value.TempBucket is null) throw new InvalidOperationException();
         var tmp = config.Value.TempBucket;
         var tempObjectKey = Guid.NewGuid().ToString();
+
+        await CheckStorageQuotaWarningAsync(userId, contentLength, ct);
 
         await unitOfWork.BeginTransactionAsync(ct);
         try
@@ -1191,14 +1220,35 @@ public partial class S3Service(
         var trashSize = await unitOfWork.Files.GetDeletedSizeAsync(userId, ct);
         var sizeByMimeType = await unitOfWork.Files.GetSizeByTypeAsync(userId, ct);
         var oldFiles = await unitOfWork.Files.GetOldFilesAsync(userId, ct);
+        var (previewsSize, previewsCount, previewsByKind) =
+            await unitOfWork.Previews.GetStorageByUserAsync(userId, ct);
+        var (transcodedSize, representationsCount) =
+            await unitOfWork.StreamingRepresentations.GetStorageByUserAsync(userId, ct);
+        var user = await unitOfWork.Users.GetByIdAsync(userId, ct);
+
+        var filesSize = sizeByMimeType.Values.Sum();
+        var quotaBytes = user?.StorageQuota ?? 0;
 
         return new StorageBreakdown
         {
             OldFiles = oldFiles,
             SizeByType = sizeByMimeType,
-            TrashSize = trashSize
+            TrashSize = trashSize,
+            FilesSize = filesSize,
+            PreviewsSize = previewsSize,
+            PreviewsCount = previewsCount,
+            PreviewsByKind = previewsByKind,
+            TranscodedSize = transcodedSize,
+            RepresentationsCount = representationsCount,
+            QuotaBytes = quotaBytes,
+            UsedBytes = filesSize + previewsSize + transcodedSize
         };
     }
+
+    public Task<PaginatedResult<UserPreviewDto>> GetMyPreviewsAsync(
+        Guid userId, Guid? fileId, DateTime? createdBefore, int page, int pageSize,
+        CancellationToken ct = default)
+        => unitOfWork.Previews.GetListByUserAsync(userId, fileId, createdBefore, page, pageSize, ct);
 
     public async Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default)
     {
@@ -1363,23 +1413,6 @@ public partial class S3Service(
             Expires = DateTime.UtcNow.Add(TimeSpan.FromMinutes(1)),
             Protocol = Protocol.HTTPS,
             ContentType = contentType,
-        };
-
-        return await publicS3.GetPreSignedURLAsync(request);
-    }
-
-    public async Task<string> GetPlaylistCoverUrlAsync(Guid playlistId, Guid userId, CancellationToken ct = default)
-    {
-        if (!await unitOfWork.Playlists.ExistsAsync(p => p.Id == playlistId && p.OwnerId == userId, ct))
-            throw new PlaylistNotFoundException(playlistId);
-
-        var request = new GetPreSignedUrlRequest
-        {
-            BucketName = config.Value.PreviewBucket,
-            Key = $"covers/{playlistId}",
-            Verb = HttpVerb.GET,
-            Expires = DateTime.UtcNow.Add(TimeSpan.FromMinutes(1)),
-            Protocol = Protocol.HTTPS,
         };
 
         return await publicS3.GetPreSignedURLAsync(request);
