@@ -1,7 +1,9 @@
 // AES-256-GCM decryption via native Web Crypto. Zero external dependencies.
-// Mirrors the encryption worker exactly: same PBKDF2 params (600k iterations,
-// SHA-256, 128-bit salt, 96-bit IV). The 16-byte auth tag is reattached to the
-// ciphertext tail before passing to SubtleCrypto, which expects them combined.
+// Uses the per-file PBKDF2 iteration count stored at upload time (SHA-256,
+// 128-bit salt, 96-bit IV). Falls back to the current default when the server
+// returns null for files encrypted before iteration counts were tracked.
+// The 16-byte auth tag is reattached to the ciphertext tail before passing
+// to SubtleCrypto, which expects them combined.
 
 export interface DecryptionWorkerIn {
   ciphertext: ArrayBuffer; // raw ciphertext WITHOUT the auth tag
@@ -9,6 +11,7 @@ export interface DecryptionWorkerIn {
   iv: string; // base64 — 96-bit nonce
   salt: string; // base64 — 128-bit PBKDF2 salt
   authTag: string; // base64 — 128-bit GCM auth tag stored separately
+  iterations?: number | null;
 }
 
 export interface DecryptionWorkerOut {
@@ -28,9 +31,21 @@ const fromBase64 = (b64: string): Uint8Array => {
   return bytes;
 };
 
+// Must stay in sync with encryption.worker.ts — the fallback covers files
+// whose IterationCount is null (encrypted before the column was tracked).
+const DEFAULT_PBKDF2_ITERATIONS = Number(import.meta.env.VITE_PBKDF2_ITERATIONS) || 800_000;
+
 self.onmessage = async ({ data }: MessageEvent<DecryptionWorkerIn>) => {
   try {
-    const { ciphertext, password, iv: ivB64, salt: saltB64, authTag: authTagB64 } = data;
+    const {
+      ciphertext,
+      password,
+      iv: ivB64,
+      salt: saltB64,
+      authTag: authTagB64,
+      iterations,
+    } = data;
+    const pbkdf2Iterations = iterations ?? DEFAULT_PBKDF2_ITERATIONS;
 
     const iv = fromBase64(ivB64);
     const salt = fromBase64(saltB64);
@@ -45,7 +60,7 @@ self.onmessage = async ({ data }: MessageEvent<DecryptionWorkerIn>) => {
     );
 
     const key = await crypto.subtle.deriveKey(
-      { hash: "SHA-256", iterations: 600_000, name: "PBKDF2", salt },
+      { hash: "SHA-256", iterations: pbkdf2Iterations, name: "PBKDF2", salt },
       keyMaterial,
       { length: 256, name: "AES-GCM" },
       false,

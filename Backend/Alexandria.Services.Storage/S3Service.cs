@@ -1297,7 +1297,8 @@ public partial class S3Service(
             EncryptionIv = downloadMetadata.EncryptionIv,
             EncryptionSalt = downloadMetadata.EncryptionSalt,
             IntegrityTag = downloadMetadata.IntegrityTag,
-            IsEncrypted = downloadMetadata.IsEncrypted
+            IsEncrypted = downloadMetadata.IsEncrypted,
+            IterationCount = downloadMetadata.IterationCount
         };
     }
 
@@ -1316,7 +1317,8 @@ public partial class S3Service(
             EncryptionIv = downloadInfo.EncryptionIv,
             EncryptionSalt = downloadInfo.EncryptionSalt,
             IntegrityTag = downloadInfo.IntegrityTag,
-            IsEncrypted = downloadInfo.IsEncrypted
+            IsEncrypted = downloadInfo.IsEncrypted,
+            IterationCount = downloadInfo.IterationCount
         };
     }
 

@@ -18,8 +18,6 @@ const appToast = useAppToast();
 
 // enums & constants
 
-const PBKDF2_ITERATIONS = Number(import.meta.env.VITE_PBKDF2_ITERATIONS) || 800_000;
-
 const ENCRYPTION_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
 const PASSWORD_MIN_LENGTH = 16;
 
@@ -104,6 +102,7 @@ interface FileUploadState {
   encryptionIv: string | null;
   encryptionSalt: string | null;
   encryptionAuthTag: string | null;
+  encryptionIterations: number | null;
 }
 
 type StageStatus = "pending" | "active" | "complete" | "error";
@@ -126,6 +125,7 @@ const createUploadState = (file: File): FileUploadState => ({
   confirmPasswordVisible: false,
   encryptionAuthTag: null,
   encryptionHint: "",
+  encryptionIterations: null,
   encryptionIv: null,
   encryptionSalt: null,
   errorAtStage: null,
@@ -376,6 +376,7 @@ const uploadSingle = async (state: FileUploadState) => {
     state.encryptionIv = result.iv;
     state.encryptionSalt = result.salt;
     state.encryptionAuthTag = result.authTag;
+    state.encryptionIterations = result.iterations;
   }
 
   updateProgress(state, 100);
@@ -420,7 +421,7 @@ const uploadSingle = async (state: FileUploadState) => {
     fileName: state.file.name,
     integrityTag: state.encryptionAuthTag ?? undefined,
     isEncrypted: state.isEncrypted,
-    iterationCount: state.isEncrypted ? PBKDF2_ITERATIONS : undefined,
+    iterationCount: state.isEncrypted ? (state.encryptionIterations ?? undefined) : undefined,
     uploadId: state.uploadId!,
   });
 
@@ -505,6 +506,7 @@ const retryFailed = async () => {
       u.encryptionIv = null;
       u.encryptionSalt = null;
       u.encryptionAuthTag = null;
+      u.encryptionIterations = null;
     });
   await startUpload();
 };

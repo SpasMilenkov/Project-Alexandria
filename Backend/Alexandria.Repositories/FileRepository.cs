@@ -1004,6 +1004,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 f.CurrentVersion.IsEncrypted,
                 f.CurrentVersion.EncryptionSalt,
                 f.CurrentVersion.IntegrityTag,
+                f.CurrentVersion.IterationCount,
                 f.CurrentVersion.ContentHash
             })
             .FirstOrDefaultAsync(ct);
@@ -1018,7 +1019,8 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             EncryptionIv = row.EncryptionIv,
             IsEncrypted = row.IsEncrypted,
             EncryptionSalt = row.EncryptionSalt,
-            IntegrityTag = row.IntegrityTag
+            IntegrityTag = row.IntegrityTag,
+            IterationCount = row.IterationCount
         }, row.ContentHash);
     }
 

@@ -281,6 +281,7 @@ public class FileVersionRepository : IFileVersionRepository
                 IsEncrypted = v.IsEncrypted,
                 EncryptionSalt = v.EncryptionSalt,
                 IntegrityTag = v.IntegrityTag,
+                IterationCount = v.IterationCount,
             }).FirstOrDefaultAsync(ct);
     }
 

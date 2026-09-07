@@ -5,6 +5,7 @@ export interface EncryptionResult {
   iv: string;
   salt: string;
   authTag: string;
+  iterations: number;
 }
 
 /**
