@@ -2,7 +2,7 @@
   <div class="flex flex-1 items-center justify-center">
     <div class="w-full max-w-4xl">
       <div
-        class="overflow-hidden rounded-2xl border border-gray-200/60 shadow-lg shadow-black/5 frosted-glass glass-surface dark:border-gray-700/50"
+        class="overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5 dark:border-gray-700/50 dark:bg-neutral-900"
       >
         <div class="flex flex-col lg:flex-row lg:min-h-120">
           <!-- LEFT: placeholder pane -->
@@ -21,7 +21,7 @@
                   <h1 class="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
                     Your profile
                   </h1>
-                  <p class="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
+                  <p class="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-500">
                     Personalize your account so others can identify you easily.
                   </p>
                 </div>
@@ -30,17 +30,17 @@
               <!-- Avatar placeholder -->
               <div class="mb-6 flex flex-col items-center text-center py-4">
                 <div
-                  class="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-300/70 frosted-glass glass-surface dark:border-gray-600/60"
+                  class="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-300/70 bg-neutral-100 dark:border-gray-600/60 dark:bg-neutral-800"
                 >
                   <Icon
                     icon="mdi:account-outline"
                     class="h-10 w-10 text-gray-300 dark:text-gray-600"
                   />
                 </div>
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p class="text-sm font-medium text-gray-600 dark:text-gray-500">
                   Profile setup coming soon
                 </p>
-                <p class="mt-1.5 max-w-xs text-xs leading-relaxed text-gray-400 dark:text-gray-500">
+                <p class="mt-1.5 max-w-xs text-xs leading-relaxed text-gray-500 dark:text-gray-500">
                   Avatar, display name, and preferences will be available in a future update.
                 </p>
               </div>
@@ -50,13 +50,13 @@
                 <div
                   v-for="feature in UPCOMING_FEATURES"
                   :key="feature.label"
-                  class="flex items-start gap-2.5 rounded-lg border border-gray-200/60 frosted-glass glass-surface px-3 py-3 dark:border-gray-700/40"
+                  class="flex items-start gap-2.5 rounded-lg border border-gray-200/60 bg-neutral-50 px-3 py-3 dark:border-gray-700/40 dark:bg-neutral-800"
                 >
                   <Icon
                     :icon="feature.icon"
-                    class="mt-0.5 h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500"
+                    class="mt-0.5 h-4 w-4 shrink-0 text-gray-500 dark:text-gray-500"
                   />
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <p class="text-sm font-medium text-gray-600 dark:text-gray-500">
                     {{ feature.label }}
                   </p>
                 </div>
@@ -97,10 +97,12 @@
           </div>
 
           <!-- RIGHT: context pane -->
-          <div class="flex flex-col justify-center gap-8 frosted-glass glass-surface p-8 lg:flex-1">
+          <div
+            class="flex flex-col justify-center gap-8 bg-neutral-50 p-8 dark:bg-neutral-800 lg:flex-1"
+          >
             <div>
               <p
-                class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
+                class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-500"
               >
                 Where your profile appears
               </p>
@@ -108,18 +110,18 @@
                 <div
                   v-for="context in PROFILE_CONTEXTS"
                   :key="context.label"
-                  class="flex items-start gap-4 rounded-xl border border-gray-200/60 frosted-glass glass-surface px-4 py-4 dark:border-gray-700/40"
+                  class="flex items-start gap-4 rounded-xl border border-gray-200/60 px-4 py-4 dark:border-gray-700/40"
                 >
                   <div
                     class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100/80 dark:bg-white/5"
                   >
-                    <Icon :icon="context.icon" class="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <Icon :icon="context.icon" class="h-4 w-4 text-gray-500 dark:text-gray-500" />
                   </div>
                   <div>
                     <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {{ context.label }}
                     </p>
-                    <p class="mt-0.5 text-xs leading-relaxed text-gray-400 dark:text-gray-500">
+                    <p class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-gray-500">
                       {{ context.desc }}
                     </p>
                   </div>

@@ -19,6 +19,11 @@ public class PreviewConfiguration : IEntityTypeConfiguration<Preview>
             .HasColumnType("uuid")
             .IsRequired(false);
 
+        builder.Property(e => e.ObjectKey)
+            .HasMaxLength(ValidationConstants.StringLengths.MediumString)
+            .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
+            .IsRequired();
+
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")

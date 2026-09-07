@@ -11,7 +11,10 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Alexandria.Services.User;
 
-public class UserManagementService(UserManager<ApplicationUser> userManager, IUnitOfWork unitOfWork)
+public class UserManagementService(
+    UserManager<ApplicationUser> userManager,
+    IUnitOfWork unitOfWork,
+    IStorageService storageService)
     : IUserManagementService
 {
     public async Task DeleteUsersAsync(Guid[] userIds, CancellationToken ct = default)
@@ -54,6 +57,21 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
             user.NormalizedEmail = userManager.NormalizeEmail(dto.Email);
         }
 
+        if (dto.StorageQuotaBytes.HasValue)
+        {
+            if (dto.StorageQuotaBytes.Value < 0)
+                throw new InvalidOperationException("Storage quota cannot be negative.");
+
+            if (dto.StorageQuotaBytes.Value > 0)
+            {
+                var usage = await storageService.GetStorageBreakdown(userId, ct);
+                if (dto.StorageQuotaBytes.Value < usage.UsedBytes)
+                    throw new StorageQuotaBelowUsageException(dto.StorageQuotaBytes.Value, usage.UsedBytes);
+            }
+
+            user.StorageQuota = dto.StorageQuotaBytes.Value;
+        }
+
         user.UpdatedAt = DateTime.UtcNow;
 
         var updateResult = await userManager.UpdateAsync(user);
@@ -83,6 +101,7 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt,
             DeletedAt = user.DeletedAt,
+            StorageQuota = user.StorageQuota,
         };
     }
 
@@ -95,7 +114,7 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
     }
 
     public async Task<UserDetailsDto> CreateUserAsync(string username, string email, string password, UserRole userRole,
-        CancellationToken ct = default)
+        long? storageQuotaBytes = null, CancellationToken ct = default)
     {
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser != null)
@@ -106,13 +125,22 @@ public class UserManagementService(UserManager<ApplicationUser> userManager, IUn
             });
         }
 
+        if (storageQuotaBytes.HasValue && storageQuotaBytes.Value < 0)
+        {
+            throw new UserCreationException("Invalid storage quota", new()
+            {
+                ["StorageQuotaBytes"] = ["Storage quota cannot be negative"]
+            });
+        }
+
         var user = new ApplicationUser
         {
             UserName = username,
             Email = email,
             EmailConfirmed = false,
             CreatedAt = DateTime.UtcNow,
-            Name = username
+            Name = username,
+            StorageQuota = storageQuotaBytes ?? ApplicationUser.DefaultStorageQuotaBytes
         };
 
         var result = await userManager.CreateAsync(user, password);

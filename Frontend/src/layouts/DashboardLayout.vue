@@ -328,6 +328,11 @@ const adminMenuItems = computed<NavigationMenuItem[]>(() => [
     to: "/dashboard/admin/user-registry",
   },
   {
+    icon: "i-heroicons-archive-box",
+    label: "Storage",
+    to: "/dashboard/admin/storage",
+  },
+  {
     icon: "material-symbols:vitals",
     label: "System Vitals",
     to: "/dashboard/admin/service-status",
@@ -400,6 +405,7 @@ const mobileStreamingItems = [
 const mobileAdminItems = [
   { icon: "i-heroicons-chart-bar", label: "Admin Dashboard", to: "/dashboard/admin" },
   { icon: "i-heroicons-users", label: "User Registry", to: "/dashboard/admin/user-registry" },
+  { icon: "i-heroicons-archive-box", label: "Storage", to: "/dashboard/admin/storage" },
   {
     icon: "i-material-symbols:vitals",
     label: "System Vitals",

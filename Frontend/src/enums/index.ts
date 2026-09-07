@@ -1,3 +1,4 @@
+import type { PreviewKind } from "./PreviewKind";
 import type { SortBy } from "./SortBy";
 import type { SortDirection } from "./SortDirection";
 import type { UserRole } from "./UserRole";
@@ -10,7 +11,7 @@ import { OperationalEventSeverity } from "./operational-event-severity";
 import { OperationalEventStatus } from "./operational-event-status";
 import { ServiceType } from "./service-type";
 
-export type { SortBy, SortDirection, UserRole };
+export type { SortBy, SortDirection, PreviewKind, UserRole };
 export {
   OnboardingStep,
   LyricsProvider,

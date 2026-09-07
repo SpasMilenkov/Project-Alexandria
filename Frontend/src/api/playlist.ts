@@ -106,9 +106,12 @@ export const playlistApi = {
     return result.data;
   },
 
-  getPlaylistCover: async (playlistId: string): Promise<string> => {
-    const result = await apiClient.get<string>(`/streaming/playlists/cover/${playlistId}`);
-    return result.data;
+  // Stable, cookie-authed cover URL served by nginx (see the /covers/
+  // location). The playlist updatedAt busts browser caches on re-upload
+  // while the bytes stay long-lived cached server-side.
+  getPlaylistCoverUrl: (playlistId: string, updatedAt?: string | null): string => {
+    const base = `/covers/${playlistId}`;
+    return updatedAt ? `${base}?v=${encodeURIComponent(updatedAt)}` : base;
   },
 
   update: async (id: string, req: UpdatePlaylistRequest): Promise<PlaylistResponse> => {

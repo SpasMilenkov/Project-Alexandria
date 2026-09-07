@@ -175,4 +175,66 @@ public class StreamingRepresentationRepository(AlexandriaDbContext context)
     {
         await _representations.Where(r => r.TranspilationId == transpilationId).ExecuteDeleteAsync(ct);
     }
+
+    public async Task<(long TotalSize, int Count)> GetStorageByUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var query = _representations
+            .AsNoTracking()
+            .Where(r => r.DeletedAt == null)
+            .Join(context.TranspilationJobs.AsNoTracking(),
+                r => r.TranspilationId, j => j.Id, (r, j) => new { Representation = r, Job = j })
+            .Where(x => x.Job.UserId == userId && x.Job.DeletedAt == null);
+
+        var totalSize = await query.SumAsync(x => (long?)x.Representation.Size, ct) ?? 0;
+        var count = await query.CountAsync(ct);
+
+        return (totalSize, count);
+    }
+
+    public async Task<Dictionary<Guid, long>> GetSizeByOwnerAsync(CancellationToken ct = default)
+    {
+        return await _representations
+            .AsNoTracking()
+            .Where(r => r.DeletedAt == null)
+            .Join(context.TranspilationJobs.AsNoTracking(),
+                r => r.TranspilationId, j => j.Id, (r, j) => new { Representation = r, Job = j })
+            .Where(x => x.Job.DeletedAt == null)
+            .GroupBy(x => x.Job.UserId)
+            .Select(g => new
+            {
+                UserId = g.Key,
+                TotalSize = g.Sum(x => x.Representation.Size)
+            })
+            .ToDictionaryAsync(x => x.UserId, x => x.TotalSize, ct);
+    }
+
+    public async Task<IReadOnlyList<StreamingRepresentation>> GetMissingSizesAsync(
+        int take, CancellationToken ct = default)
+    {
+        return await _representations
+            .AsNoTracking()
+            .Include(r => r.Job)
+            .ThenInclude(t => t.Job)
+            .Where(r => r.Size <= 0
+                        && r.DeletedAt == null
+                        && r.Status == RepresentationStatus.Ready
+                        && r.Job.DeletedAt == null
+                        && r.Job.SegmentPrefix != null
+                        && r.Job.Job.Status == JobStatus.Ready
+                        && r.Job.Job.DeletedAt == null)
+            .OrderBy(r => r.CreatedAt)
+            .ThenBy(r => r.Id)
+            .Take(take)
+            .ToListAsync(ct);
+    }
+
+    public async Task<bool> TryBackfillSizeAsync(
+        Guid representationId, long size, CancellationToken ct = default)
+    {
+        var rows = await _representations
+            .Where(r => r.Id == representationId && r.Size <= 0)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Size, size), ct);
+        return rows > 0;
+    }
 }

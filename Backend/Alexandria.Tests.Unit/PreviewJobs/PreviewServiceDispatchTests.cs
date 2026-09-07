@@ -23,6 +23,8 @@ public class PreviewServiceDispatchTests
     private readonly IFileVersionRepository _versions = Substitute.For<IFileVersionRepository>();
     private readonly IPreviewJobRepository _previewJobs = Substitute.For<IPreviewJobRepository>();
     private readonly IJobRepository _jobs = Substitute.For<IJobRepository>();
+    private readonly ITextPreviewService _textPreview = Substitute.For<ITextPreviewService>();
+    private readonly IArchivePreviewService _archivePreview = Substitute.For<IArchivePreviewService>();
     private readonly PreviewService _sut;
 
     private readonly Guid _versionId = Guid.NewGuid();
@@ -42,7 +44,7 @@ public class PreviewServiceDispatchTests
         var cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 100 });
         _sut = new PreviewService(
             _storage, _publisher, _unitOfWork,
-            Substitute.For<ITextPreviewService>(), Substitute.For<IArchivePreviewService>(), cache);
+            _textPreview, _archivePreview, cache);
     }
 
     private File StoredFile(string mimeType) =>
@@ -181,5 +183,57 @@ public class PreviewServiceDispatchTests
         await _jobs.Received(1).ClearErrorAsync(job.Id, Arg.Any<CancellationToken>());
         await _publisher.Received(1).PublishAsync(
             Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == job.Id.ToString()), "image.png");
+    }
+
+    [Fact]
+    public async Task getPreviewUrl_text_returns_textPreview_slot()
+    {
+        _files.VersionBelongsToUserAsync(_versionId, _userId, Arg.Any<CancellationToken>())
+            .Returns("hash");
+        _versions.IsEncryptedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(false);
+        _versions.IsPromotedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(true);
+        _storage.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(StoredFile("application/json"));
+        _storage.CategorizeFile("application/json").Returns(FileCategory.Text);
+        _storage.DownloadFile(_versionId, _userId, Arg.Any<CancellationToken>())
+            .Returns(new MemoryStream(Encoding.UTF8.GetBytes("{\"hello\":\"world\"}")));
+        _textPreview.GenerateTextPreviewAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<int>(),
+                Arg.Any<CancellationToken>())
+            .Returns(("{\"hello\":\"world\"}", "application/json"));
+
+        var result = await _sut.GetPreviewUrlAsync(_versionId, _userId, TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        result!.PreviewUrl.Should().BeNull();
+        result.TextPreview.Should().Be("{\"hello\":\"world\"}");
+        result.ArchivePreview.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task getPreviewUrl_archive_returns_archivePreview_slot()
+    {
+        var archiveJson = "{\"FileCount\":1,\"FileName\":\"a.zip\",\"Entries\":[]}";
+        _files.VersionBelongsToUserAsync(_versionId, _userId, Arg.Any<CancellationToken>())
+            .Returns("hash");
+        _versions.IsEncryptedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(false);
+        _versions.IsPromotedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(true);
+        _storage.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(StoredFile("application/zip"));
+        _storage.CategorizeFile("application/zip").Returns(FileCategory.Archive);
+        _storage.DownloadSeekableFile(_versionId, _userId, Arg.Any<CancellationToken>())
+            .Returns(new MemoryStream([1, 2, 3]));
+        _archivePreview.GenerateArchivePreviewAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((archiveJson, "application/json"));
+
+        var result = await _sut.GetPreviewUrlAsync(_versionId, _userId, TestContext.Current.CancellationToken);
+
+        result.Should().NotBeNull();
+        result!.PreviewUrl.Should().BeNull();
+        result.TextPreview.Should().BeNull();
+        result.ArchivePreview.Should().Be(archiveJson);
     }
 }

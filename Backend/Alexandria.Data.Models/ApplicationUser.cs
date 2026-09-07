@@ -5,6 +5,9 @@ namespace Alexandria.Data.Models;
 
 public class ApplicationUser : IdentityUser<Guid>, IBase
 {
+    /// <summary>Default quota for new accounts, in bytes (10 GB). 0 means unlimited.</summary>
+    public const long DefaultStorageQuotaBytes = 10_737_418_240L;
+
     public required string Name { get; set; }
     public DateTime? LockoutStartedAt { get; set; }
     public OnboardingStep OnboardinStep { get; set; }

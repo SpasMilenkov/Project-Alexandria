@@ -1154,6 +1154,11 @@ namespace Alexandria.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
                     b.Property<long>("Size")
                         .HasColumnType("bigint");
 

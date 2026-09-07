@@ -29,6 +29,8 @@ public static class ServiceExtensions
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
         services.AddScoped<IStorageService, S3Service>();
+        services.AddScoped<PreviewSizeBackfillService>();
+        services.AddScoped<RepresentationSizeBackfillService>();
         services.AddScoped<IFileRepository, FileRepository>();
         services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();
@@ -79,6 +81,7 @@ public static class ServiceExtensions
         services.AddScoped<IOperationalEventService, OperationalEventService>();
         services.AddScoped<ITranspilationStatsService, TranspilationStatsService>();
         services.AddScoped<IPreviewStatsService, PreviewStatsService>();
+        services.AddScoped<IAdminStorageStatsService, AdminStorageStatsService>();
         services.AddScoped<ILyricsStatsService, LyricsStatsService>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddSingleton<PromotionQueueService>();
@@ -91,6 +94,8 @@ public static class ServiceExtensions
         services.AddHostedService<PromotionScannerWorker>();
         services.AddHostedService<TempCleanupWorker>();
         services.AddHostedService<OrphanedCleanupWorker>();
+        services.AddHostedService<PreviewSizeBackfillWorker>();
+        services.AddHostedService<RepresentationSizeBackfillWorker>();
 
         services.AddMemoryCache();
 

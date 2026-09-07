@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getFileTypeReadable, groupMimeSizeRecord } from "@/utils/mimetype.utils";
+import {
+  getFileTypeReadable,
+  groupMimeSizeRecord,
+  isThumbnailSupportedMimeType,
+} from "@/utils/mimetype.utils";
 
 // Documents
 
@@ -191,5 +195,34 @@ describe("groupMimeSizeRecord – cross-office aggregation", () => {
 
     const idx = result.categories.indexOf("Presentations");
     expect(result.size[idx]).toBe(2400);
+  });
+});
+
+describe("isThumbnailSupportedMimeType", () => {
+  it("supports image, audio, video and office document MIMEs", () => {
+    expect(isThumbnailSupportedMimeType("image/png")).toBe(true);
+    expect(isThumbnailSupportedMimeType("audio/mpeg")).toBe(true);
+    expect(isThumbnailSupportedMimeType("video/mp4")).toBe(true);
+    expect(isThumbnailSupportedMimeType("application/pdf")).toBe(true);
+    expect(
+      isThumbnailSupportedMimeType(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects text, archive and unknown MIMEs", () => {
+    expect(isThumbnailSupportedMimeType("application/json")).toBe(false);
+    expect(isThumbnailSupportedMimeType("text/plain")).toBe(false);
+    expect(isThumbnailSupportedMimeType("application/zip")).toBe(false);
+    expect(isThumbnailSupportedMimeType("application/octet-stream")).toBe(false);
+  });
+
+  it("handles empty values and normalizes case and parameters", () => {
+    expect(isThumbnailSupportedMimeType(null)).toBe(false);
+    expect(isThumbnailSupportedMimeType(undefined)).toBe(false);
+    expect(isThumbnailSupportedMimeType("")).toBe(false);
+    expect(isThumbnailSupportedMimeType("IMAGE/PNG")).toBe(true);
+    expect(isThumbnailSupportedMimeType("image/png; charset=binary")).toBe(true);
   });
 });

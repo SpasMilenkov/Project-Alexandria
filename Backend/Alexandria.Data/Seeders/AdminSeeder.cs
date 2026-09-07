@@ -64,6 +64,7 @@ public class AdminSeeder(
             Email = adminEmail,
             UserName = adminName,
             EmailConfirmed = true,
+            StorageQuota = ApplicationUser.DefaultStorageQuotaBytes,
         };
 
         var createResult = await userManager.CreateAsync(admin,

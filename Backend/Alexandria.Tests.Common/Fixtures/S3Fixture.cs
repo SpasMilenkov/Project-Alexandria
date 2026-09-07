@@ -53,7 +53,7 @@ public class S3Fixture : IAsyncLifetime
             var objects = await Client.ListObjectsV2Async(
                 new() { BucketName = bucket }, ct);
 
-            if (objects.S3Objects.Count == 0)
+            if (objects.S3Objects is null || objects.S3Objects.Count == 0)
                 continue;
 
             await Client.DeleteObjectsAsync(

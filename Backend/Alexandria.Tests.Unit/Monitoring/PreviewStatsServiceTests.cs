@@ -32,7 +32,8 @@ public class PreviewStatsServiceTests
             MimeType = "image/png",
             Size = size,
             CreatedAt = createdAt,
-            VersionId = Guid.NewGuid()
+            VersionId = Guid.NewGuid(),
+            ObjectKey = kind == PreviewKind.Thumbnail ? "thumbnails/abc" : "previews/abc"
         };
 
     [Fact]

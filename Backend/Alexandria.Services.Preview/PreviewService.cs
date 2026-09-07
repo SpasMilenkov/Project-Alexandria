@@ -171,7 +171,7 @@ public class PreviewService(
                 var fileStream = await storageService.DownloadFile(versionId, fileData.OwnerId, ct);
                 var (data, _) =
                     await textPreviewService.GenerateTextPreviewAsync(fileStream, fileData.Name, 524288, ct);
-                return new PreviewResultDto(null, null, data);
+                return new PreviewResultDto(null, data);
 
             case FileCategory.Audio:
             case FileCategory.Video:

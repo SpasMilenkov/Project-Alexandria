@@ -293,6 +293,50 @@ export const isAutoTagSupportedFileType = (mimeType: string | null | undefined):
   return normalized.startsWith("audio/") || normalized === "application/ogg";
 };
 
+// Backend thumbnail allowlist, mirrors S3Service.CategorizeFile categories that
+// produce a Thumbnail artifact (Image, Audio, Video, Document, Spreadsheet,
+// Presentation, Pdf). Text, Archive and Unknown never produce one, so requesting
+// a thumbnail URL for those MIMEs only yields a 404 plus wasted backend work.
+const THUMBNAIL_SUPPORTED_MIMES: ReadonlySet<string> = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+  "image/tiff",
+  "image/svg+xml",
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/ogg",
+  "audio/flac",
+  "audio/aac",
+  "video/mp4",
+  "video/x-msvideo",
+  "video/x-matroska",
+  "video/webm",
+  "video/quicktime",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.oasis.opendocument.text",
+  "application/rtf",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.oasis.opendocument.presentation",
+  "application/pdf",
+]);
+
+export const isThumbnailSupportedMimeType = (mimeType: string | null | undefined): boolean => {
+  if (!mimeType) return false;
+  const normalized = mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
+  if (!normalized) return false;
+  return THUMBNAIL_SUPPORTED_MIMES.has(normalized);
+};
+
 export interface GroupedMimeSizeResult {
   categories: FileGroup[];
   size: number[];

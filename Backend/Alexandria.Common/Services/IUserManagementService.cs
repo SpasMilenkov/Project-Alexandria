@@ -7,7 +7,7 @@ namespace Alexandria.Common.Services;
 public interface IUserManagementService
 {
     Task<UserDetailsDto> CreateUserAsync(string username, string email, string password, UserRole userRole,
-        CancellationToken ct = default);
+        long? storageQuotaBytes = null, CancellationToken ct = default);
 
     Task<PaginatedResult<UserDetailsDto>> GetUsersAsync(UserQueryDto query, CancellationToken ct = default);
     Task DeleteUsersAsync(Guid[] userIds, CancellationToken ct = default);

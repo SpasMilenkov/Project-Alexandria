@@ -15,6 +15,7 @@ export const createUserSchema = z
     email: z.email("Invalid email address"),
     password: z.string().min(8, "Must be at least 8 characters"),
     role: z.enum(UserRole).default(UserRole.User),
+    storageQuotaGb: z.number().min(0, "Quota cannot be negative").optional(),
     userName: z
       .string()
       .min(2, "Must be at least 2 characters")
@@ -149,6 +150,7 @@ export const updateUserSchema = z.object({
     .max(256, "Email cannot exceed 256 characters")
     .optional(),
   role: z.enum(UserRole).optional(),
+  storageQuotaGb: z.number().min(0, "Quota cannot be negative").optional(),
   userName: z
     .string()
     .max(50, "Username cannot exceed 50 characters")

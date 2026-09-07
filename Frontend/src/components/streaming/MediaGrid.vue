@@ -217,13 +217,13 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { useQuery } from "@pinia/colada";
+import { useQuery, useQueryCache } from "@pinia/colada";
 import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { computed, ref, watch, watchEffect } from "vue";
 
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { LIBRARY_PAGE_SIZE } from "@/composables/useStreamingMediaContext";
-import { getFilesForStreaming } from "@/queries/streaming";
+import { STREAMING_QUERY_KEYS, getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 import { glassDrawerContent } from "@/utils/modalUi";
 
@@ -243,6 +243,7 @@ const lyricsOpen = ref(false);
 // Store
 
 const playerStore = usePlayerStore();
+const queryCache = useQueryCache();
 const mySourceId = computed(() => `library-${mediaType}`);
 
 // View mode (persisted to localStorage)
@@ -315,9 +316,19 @@ const onScroll = (event: Event) => {
 
 const onRefresh = () => {
   allItems.value = [];
-  const wasAlreadyOnFirstPage = page.value === 1;
   page.value = 1;
-  if (wasAlreadyOnFirstPage) refetchQuery();
+  // refresh() is a no-op on fresh entries, so mark page 1 stale first.
+  // Otherwise the clear above empties the grid with nothing repopulating it
+  // whenever the data is still within staleTime.
+  queryCache.invalidateQueries({
+    key: STREAMING_QUERY_KEYS.filesForStreaming({
+      isVideo: mediaType === "video",
+      page: 1,
+      pageSize: LIBRARY_PAGE_SIZE,
+      query: null,
+    }),
+  });
+  refetchQuery();
 };
 
 const onFileClick = (file: MediaFileDto) => {

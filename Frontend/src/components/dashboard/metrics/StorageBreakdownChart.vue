@@ -7,7 +7,7 @@
         </div>
         <div>
           <h3 class="font-semibold tracking-tight">Storage Breakdown</h3>
-          <p class="text-xs opacity-90 mt-0.5">Usage by file type</p>
+          <p class="text-xs opacity-90 mt-0.5">{{ subtitle ?? "Usage by file type" }}</p>
         </div>
         <div class="ml-auto text-right">
           <p class="text-xs opacity-90 uppercase tracking-widest font-medium">Total</p>
@@ -138,6 +138,7 @@ const props = defineProps<{
   labels: string[];
   data: number[];
   formattedSize: string[];
+  subtitle?: string;
 }>();
 
 const colorMode = useColorMode();

@@ -88,6 +88,15 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
                 ct);
     }
 
+    public async Task<(long TotalQuotaBytes, int UserCount)> GetTotalStorageQuotaAsync(
+        CancellationToken ct = default)
+    {
+        var live = context.Users.AsNoTracking().Where(u => u.DeletedAt == null);
+        var total = await live.SumAsync(u => (long?)u.StorageQuota, ct) ?? 0;
+        var count = await live.CountAsync(ct);
+        return (total, count);
+    }
+
     public async Task<PaginatedResult<UserDetailsDto>> GetUsersAsync(UserQueryDto query, CancellationToken ct = default)
     {
         var dbQuery =
@@ -190,6 +199,7 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
                 CreatedAt = x.user.CreatedAt,
                 UpdatedAt = x.user.UpdatedAt,
                 DeletedAt = x.user.DeletedAt,
+                StorageQuota = x.user.StorageQuota,
             })
             .ToListAsync(ct);
 

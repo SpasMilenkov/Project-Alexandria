@@ -3,11 +3,11 @@ import type { ContextMenuItem } from "@nuxt/ui";
 
 import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
-import { fileApi } from "@/api/file";
+import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatDuration } from "@/utils/date-formatters";
 
@@ -28,28 +28,14 @@ const typeIcon = computed(() => (isVideo.value ? "mdi:file-video" : "mdi:music-n
 const displayName = computed(() => file.title ?? file.fileName);
 const subtitle = computed(() => file.artist ?? file.mimeType);
 
-// Direct URL, no fetch, no query cache — browser + nginx cache the bytes,
-// permanently valid since it's scoped to a specific version.
-const thumbnail = computed(() =>
-  fileApi.getThumbnailUrlForVersion(file.fileId, file.currentVersionId),
-);
-
-const thumbnailLoaded = ref(false);
-const thumbnailErrored = ref(false);
-
-// reset when this card gets recycled onto a different file/version
-watch(thumbnail, () => {
-  thumbnailLoaded.value = false;
-  thumbnailErrored.value = false;
-});
-
-const onThumbnailLoad = () => {
-  thumbnailLoaded.value = true;
-};
-
-const onThumbnailError = () => {
-  thumbnailErrored.value = true;
-};
+// Version-scoped thumbnail URL via the shared composable: browser + nginx
+// cache the bytes, and the first <img> error per file heals the session with
+// one shared refresh before retrying once (see useFileThumbnail).
+const { thumbnailUrl, thumbnailLoaded, thumbnailErrored, onThumbnailLoad, onThumbnailError } =
+  useFileThumbnail(() => ({
+    fileId: file.fileId,
+    versionId: file.currentVersionId,
+  }));
 
 const showSpinner = computed(() => !thumbnailLoaded.value && !thumbnailErrored.value);
 const showFallbackIcon = computed(() => thumbnailErrored.value);
@@ -106,7 +92,7 @@ const emit = defineEmits<{
       >
         <img
           v-if="!showFallbackIcon"
-          :src="thumbnail"
+          :src="thumbnailUrl"
           :alt="displayName"
           class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
           :class="{ 'opacity-0': showSpinner }"
@@ -193,7 +179,7 @@ const emit = defineEmits<{
       >
         <img
           v-if="!showFallbackIcon"
-          :src="thumbnail"
+          :src="thumbnailUrl"
           :alt="displayName"
           class="w-full h-full object-cover"
           @load="onThumbnailLoad"

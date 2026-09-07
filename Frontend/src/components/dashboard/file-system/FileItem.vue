@@ -29,7 +29,7 @@
           @touchstart.passive="prefetchDetails"
         >
           <div
-            class="shrink-0 flex items-center justify-center overflow-hidden rounded-md"
+            class="relative shrink-0 flex items-center justify-center overflow-hidden rounded-md"
             :style="{ width: `${thumbnailBox.width * 1.4}px`, height: `${thumbnailBox.height}px` }"
           >
             <img
@@ -40,18 +40,22 @@
               :height="thumbnailBox.height"
               loading="lazy"
               decoding="async"
-              class="h-full w-full object-cover"
+              class="h-full w-full object-contain"
               :class="{ invisible: !thumbnailLoaded }"
               @load="onThumbnailLoad"
               @error="onThumbnailError"
             />
-            <Icon
+            <div
               v-if="!showThumbnail || !thumbnailLoaded"
-              :icon="getFileIcon(props.data.fileName)"
-              :width="iconSize"
-              :height="iconSize"
-              class="shrink-0"
-            />
+              class="absolute inset-0 flex items-center justify-center"
+            >
+              <Icon
+                :icon="getFileIcon(props.data.fileName)"
+                :width="iconSize"
+                :height="iconSize"
+                class="shrink-0"
+              />
+            </div>
           </div>
           <span class="text-sm text-center line-clamp-2 w-full wrap-break-word">
             {{ props.data.fileName }}
@@ -159,12 +163,20 @@ const iconSize = computed(() =>
 );
 
 // Version-scoped thumbnail URL: permanently cacheable, browser + nginx do the
-// work, no fetch layer. Non-image files 404 and fall through to the icon.
-const { thumbnailUrl, thumbnailLoaded, thumbnailErrored, onThumbnailLoad, onThumbnailError } =
-  useFileThumbnail(() => ({
-    fileId: props.data.fileId,
-    versionId: props.data.currentVersion.id,
-  }));
+// work, no fetch layer. MIME guard skips the <img> for text/archive/unknown
+// types that never produce a thumbnail backend-side (no 404 round-trip).
+const {
+  thumbnailUrl,
+  thumbnailLoaded,
+  thumbnailErrored,
+  canHaveThumbnail,
+  onThumbnailLoad,
+  onThumbnailError,
+} = useFileThumbnail(() => ({
+  fileId: props.data.fileId,
+  mimeType: props.data.mimeType,
+  versionId: props.data.currentVersion.id,
+}));
 
 // Landscape tile scaled off the icon size (4:3, Windows-style proportions).
 const thumbnailBox = computed(() => {
@@ -172,7 +184,9 @@ const thumbnailBox = computed(() => {
   return { height: Math.round((width * 3) / 4), width };
 });
 
-const showThumbnail = computed(() => settingsStore.thumbnailsEnabled && !thumbnailErrored.value);
+const showThumbnail = computed(
+  () => settingsStore.thumbnailsEnabled && canHaveThumbnail.value && !thumbnailErrored.value,
+);
 
 const prefetchDetails = useDebounceFn(() => {
   queryCache.refresh(queryCache.ensure(getFile(props.data.fileId)));

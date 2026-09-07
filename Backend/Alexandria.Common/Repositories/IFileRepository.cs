@@ -49,6 +49,16 @@ public interface IFileRepository : IRepository<File>
         CancellationToken ct);
 
     Task<long> GetDeletedSizeAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Live file bytes per owner (all versions of non-deleted files, mirroring
+    /// GetSizeByTypeAsync). No tracking.
+    /// </summary>
+    Task<Dictionary<Guid, long>> GetLiveSizeByOwnerAsync(CancellationToken ct = default);
+
+    /// <summary>Version bytes of deleted files, all owners. No tracking.</summary>
+    Task<long> GetTotalTrashSizeAsync(CancellationToken ct = default);
+
     Task<IEnumerable<FileSummary>> GetOldFilesAsync(Guid userId, CancellationToken ct = default);
     Task<Dictionary<string, long>> GetSizeByTypeAsync(Guid userId, CancellationToken ct = default);
     Task<int> RestoreFilesAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default);

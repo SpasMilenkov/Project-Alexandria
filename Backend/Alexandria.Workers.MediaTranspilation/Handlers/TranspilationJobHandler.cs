@@ -64,14 +64,20 @@ public partial class TranspilationJobHandler(
             LogUploadingOutput(logger, jobId, segmentPrefix);
             await storage.UploadStreamingOutputAsync(output.RootDirectory, segmentPrefix, ct);
 
+            // Local segment files are still on disk: attribute bytes to lanes now so
+            // new representations carry sizes from birth. Lanes without matching
+            // files stay at zero and are picked up by the size backfill.
+            var laneSizes = MeasureLaneSizes(output.RootDirectory);
+
             var representations = await representationService.CreateRepresentationsAsync(
-                output.Lanes.Select(lane => new CreateStreamingRepresentationRequest
+                output.Lanes.Select((lane, index) => new CreateStreamingRepresentationRequest
                 {
                     TranspilationId = transpilation.Id,
                     Codec = lane.Codec,
                     BitrateKbps = lane.BitrateKbps,
                     Width = lane.Width,
-                    Height = lane.Height
+                    Height = lane.Height,
+                    Size = laneSizes.GetValueOrDefault(index)
                 }).ToList(), ct);
 
             representationIds = representations.Select(r => r.Id).ToList();
@@ -126,5 +132,18 @@ public partial class TranspilationJobHandler(
                     LogLocalOutputCleanupFailed(logger, cleanupEx, jobId, jobDir);
                 }
         }
+    }
+
+    private static Dictionary<int, long> MeasureLaneSizes(string rootDirectory)
+    {
+        var sizes = new Dictionary<int, long>();
+        foreach (var file in Directory.GetFiles(rootDirectory, "*", SearchOption.AllDirectories))
+        {
+            if (!DashSegmentClassifier.TryGetLaneIndex(file, out var lane))
+                continue;
+            sizes[lane] = sizes.GetValueOrDefault(lane) + new FileInfo(file).Length;
+        }
+
+        return sizes;
     }
 }
