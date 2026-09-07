@@ -11,5 +11,6 @@ public static class ApplicationUserExtensions
         UserName = user.UserName,
         Email = user.Email,
         CreatedAt = user.CreatedAt,
+        StorageQuota = user.StorageQuota,
     };
 }

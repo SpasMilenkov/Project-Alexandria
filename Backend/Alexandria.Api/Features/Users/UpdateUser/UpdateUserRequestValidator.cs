@@ -29,6 +29,10 @@ sealed class UpdateUserRequestValidator : Validator<UpdateUserRequest>
             RuleFor(x => x.Payload.Role)
                 .IsInEnum().WithMessage("Invalid role specified.")
                 .When(x => x.Payload.Role.HasValue);
+
+            RuleFor(x => x.Payload.StorageQuotaBytes)
+                .GreaterThanOrEqualTo(0).WithMessage("Storage quota cannot be negative.")
+                .When(x => x.Payload.StorageQuotaBytes.HasValue);
         });
     }
 }

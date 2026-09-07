@@ -30,5 +30,9 @@ sealed class CreateUserValidator : Validator<CreateUserRequest>
 
         RuleFor(x => x.Role)
             .IsInEnum().WithMessage("Invalid user role specified");
+
+        RuleFor(x => x.StorageQuotaBytes)
+            .GreaterThanOrEqualTo(0).WithMessage("Storage quota cannot be negative")
+            .When(x => x.StorageQuotaBytes.HasValue);
     }
 }

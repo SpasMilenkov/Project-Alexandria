@@ -1,3 +1,4 @@
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Users;
 using FastEndpoints;
@@ -21,8 +22,17 @@ sealed class UpdateUserEndpoint(IUserManagementService userManagementService)
 
     public override async Task HandleAsync(UpdateUserRequest req, CancellationToken ct)
     {
-        var result = await userManagementService.UpdateUserAsync(req.UserId, req.Payload, ct);
-
-        await Send.OkAsync(result, ct);
+        try
+        {
+            var result = await userManagementService.UpdateUserAsync(req.UserId, req.Payload, ct);
+            await Send.OkAsync(result, ct);
+        }
+        catch (StorageQuotaBelowUsageException ex)
+        {
+            AddError(
+                x => x.Payload.StorageQuotaBytes,
+                $"Storage quota cannot be below current usage of {ex.UsedBytes} bytes.");
+            await Send.ErrorsAsync(statusCode: 400, cancellation: ct);
+        }
     }
 }

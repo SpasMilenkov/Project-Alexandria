@@ -13,4 +13,7 @@ public class UserDetailsDto
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
+
+    /// <summary>Designated quota in bytes. 0 means unlimited.</summary>
+    public long StorageQuota { get; set; }
 }
