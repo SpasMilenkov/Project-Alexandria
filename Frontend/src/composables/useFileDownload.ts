@@ -58,6 +58,7 @@ export const useFileDownload = () => {
     encryptionSalt: string | null;
     integrityTag: string | null;
     encryptionHint: string | null;
+    iterationCount?: number | null;
   }): Promise<void> => {
     if (!info.encryptionIv || !info.encryptionSalt || !info.integrityTag) {
       throw new Error("File is marked encrypted but is missing encryption metadata.");
@@ -72,7 +73,8 @@ export const useFileDownload = () => {
     const rawBytes = await response.arrayBuffer();
 
     // Capture metadata in closure — avoids passing large buffers as props.
-    const { encryptionIv, encryptionSalt, integrityTag, fileName, mimeType, encryptionHint } = info;
+    const { encryptionIv, encryptionSalt, integrityTag, fileName, mimeType, encryptionHint, iterationCount } =
+      info;
 
     const instance = decryptionModal.open({
       hint: encryptionHint ?? null,
@@ -84,6 +86,7 @@ export const useFileDownload = () => {
           encryptionIv,
           encryptionSalt,
           integrityTag,
+          iterationCount ?? null,
         );
 
         const blob = new Blob([plaintext], { type: mimeType });

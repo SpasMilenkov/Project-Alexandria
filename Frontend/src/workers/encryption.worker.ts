@@ -14,6 +14,7 @@ export interface EncryptionWorkerOut {
   iv: string;
   salt: string;
   authTag: string;
+  iterations: number;
 }
 
 export interface EncryptionWorkerError {
@@ -57,6 +58,7 @@ self.onmessage = async ({ data }: MessageEvent<EncryptionWorkerIn>) => {
     const result: EncryptionWorkerOut = {
       authTag: toBase64(authTag),
       ciphertext,
+      iterations: PBKDF2_ITERATIONS,
       iv: toBase64(iv.buffer),
       salt: toBase64(salt.buffer),
       type: "done",

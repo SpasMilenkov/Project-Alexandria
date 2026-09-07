@@ -20,6 +20,7 @@ export const decryptFile = (
   iv: string,
   salt: string,
   authTag: string,
+  iterations?: number | null,
 ): Promise<ArrayBuffer> =>
   new Promise((resolve, reject) => {
     const worker = new Worker(new URL("@/workers/decryption.worker.ts", import.meta.url), {
@@ -40,7 +41,7 @@ export const decryptFile = (
       reject(e);
     };
 
-    const payload: DecryptionWorkerIn = { authTag, ciphertext, iv, password, salt };
+    const payload: DecryptionWorkerIn = { authTag, ciphertext, iterations, iv, password, salt };
     // No transferable list for ciphertext — keep original buffer intact for retries.
     worker.postMessage(payload);
   });

@@ -93,6 +93,7 @@ export interface DownloadInfo {
   encryptionSalt: string | null;
   integrityTag: string | null;
   encryptionHint: string | null;
+  iterationCount: number | null;
 }
 
 export interface FinalizeFileUploadRequest {
