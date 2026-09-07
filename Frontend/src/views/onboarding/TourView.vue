@@ -27,7 +27,7 @@
 
       <!-- Two-pane card -->
       <div
-        class="overflow-hidden rounded-2xl border border-gray-200/60 shadow-lg shadow-black/5 frosted-glass glass-surface dark:border-gray-700/50"
+        class="overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5 dark:border-gray-700/50 dark:bg-neutral-900"
       >
         <div class="flex flex-col lg:flex-row lg:min-h-105">
           <!-- LEFT: content pane -->

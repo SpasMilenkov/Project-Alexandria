@@ -2,7 +2,7 @@
   <div class="flex flex-1 items-center justify-center">
     <div class="w-full max-w-4xl">
       <div
-        class="overflow-hidden rounded-2xl border border-gray-200/60 shadow-lg shadow-black/5 frosted-glass glass-surface dark:border-gray-700/50"
+        class="overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5 dark:border-gray-700/50 dark:bg-neutral-900"
       >
         <div class="flex flex-col lg:flex-row lg:min-h-120">
           <!-- LEFT: form pane -->
@@ -138,7 +138,7 @@
                       </p>
                       <p
                         v-if="serverError.hint"
-                        class="mt-0.5 text-xs text-red-500/80 dark:text-red-400/70"
+                        class="mt-0.5 text-xs text-red-600 dark:text-red-400"
                       >
                         {{ serverError.hint }}
                       </p>
@@ -161,11 +161,13 @@
           </div>
 
           <!-- RIGHT: strength & requirements pane -->
-          <div class="flex flex-col justify-center gap-8 frosted-glass glass-surface p-8 lg:flex-1">
+          <div
+            class="flex flex-col justify-center gap-8 bg-neutral-50 p-8 dark:bg-neutral-800 lg:flex-1"
+          >
             <!-- Strength meter -->
             <div>
               <p
-                class="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
+                class="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-300"
               >
                 Password strength
               </p>
@@ -183,7 +185,7 @@
               </div>
               <p
                 class="text-sm font-medium transition-colors duration-200"
-                :class="form.newPassword ? strength.textColor : 'text-gray-400 dark:text-gray-500'"
+                :class="form.newPassword ? strength.textColor : 'text-gray-400 dark:text-gray-400'"
               >
                 {{ form.newPassword ? strength.label : "Enter a password to see its strength" }}
               </p>
@@ -195,7 +197,7 @@
             <!-- Requirements -->
             <div>
               <p
-                class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500"
+                class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-400"
               >
                 Requirements
               </p>
@@ -207,7 +209,7 @@
                   :class="
                     req.met
                       ? 'text-green-600 dark:text-green-400'
-                      : 'text-gray-400 dark:text-gray-500'
+                      : 'text-gray-400 dark:text-gray-400'
                   "
                 >
                   <div
