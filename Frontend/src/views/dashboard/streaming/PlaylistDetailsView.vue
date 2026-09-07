@@ -32,10 +32,11 @@
         <!-- Background: blurred cover image or ambient tint -->
         <div class="absolute inset-0">
           <img
-            v-if="!isCoverUrlLoading && coverUrl"
+            v-if="coverUrl && !coverErrored"
             :src="coverUrl"
             :alt="playlist.name"
             class="w-full h-full object-cover blur-sm scale-125 opacity-25 dark:opacity-15"
+            @error="coverErrored = true"
           />
           <div
             v-else-if="playlist.ambientTheme"
@@ -53,10 +54,11 @@
             :style="coverShadowStyle"
           >
             <img
-              v-if="!isCoverUrlLoading && coverUrl"
+              v-if="coverUrl && !coverErrored"
               :src="coverUrl"
               :alt="playlist.name"
               class="w-full h-full object-cover"
+              @error="coverErrored = true"
             />
             <div
               v-else
@@ -266,6 +268,7 @@ import { useRoute, useRouter } from "vue-router";
 import type { PlaylistItemResponse } from "@/api/playlist";
 import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 
+import { fileApi } from "@/api/file";
 import { playlistApi } from "@/api/playlist";
 import { streamingApi } from "@/api/streaming";
 import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
@@ -279,7 +282,7 @@ import {
   reorderPlaylistItems,
   updatePlaylist,
 } from "@/mutations/playlists";
-import { PLAYLIST_QUERY_KEYS, getPlaylistCover } from "@/queries/playlist";
+import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
 import { glassModalContent } from "@/utils/modalUi";
 
@@ -323,10 +326,21 @@ const detailQuery = useQuery({
 
 const playlist = computed(() => detailQuery.data.value ?? null);
 
-const { data: coverUrl, isLoading: isCoverUrlLoading } = useQuery({
-  ...getPlaylistCover(playlistId.value),
-  enabled: computed(() => (playlist.value === null ? false : playlist.value.hasCover)),
-});
+const coverUrl = computed(() =>
+  playlist.value?.hasCover
+    ? playlistApi.getPlaylistCoverUrl(playlistId.value, playlist.value.updatedAt)
+    : null,
+);
+const coverErrored = ref(false);
+
+// A fresh upload bumps updatedAt (new ?v= cache-buster), so drop any latched
+// error then instead of hiding a cover that exists now.
+watch(
+  () => [playlistId.value, playlist.value?.updatedAt],
+  () => {
+    coverErrored.value = false;
+  },
+);
 
 // Ambient color helpers
 const coverShadowStyle = computed(() => {
@@ -443,15 +457,30 @@ const confirmRemoveItem = (itemId: string) => {
 };
 
 const handleUpdate = async (payload: UpdatePlaylistSchema) => {
-  await update({
-    id: playlistId.value,
-    req: {
-      name: payload.name,
-      description: payload.description,
-      hasCover: Boolean(payload.coverFile),
-    },
-  });
-  if (!updateState.value.error) showEditModal.value = false;
+  try {
+    // Upload the bytes before flagging the cover: the update bumps updatedAt
+    // (new ?v= cache-buster), and a cover URL fetched before the PUT lands
+    // reads a 404 that nginx then caches.
+    if (payload.coverFile) {
+      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
+        playlistId: playlistId.value,
+        mimeType: payload.coverFile.type,
+        fileSize: payload.coverFile.size,
+      });
+      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
+    }
+    await update({
+      id: playlistId.value,
+      req: {
+        name: payload.name,
+        description: payload.description,
+        hasCover: Boolean(payload.coverFile),
+      },
+    });
+    if (!updateState.value.error) showEditModal.value = false;
+  } catch {
+    toast.add({ title: "Failed to update playlist", color: "error" });
+  }
 };
 
 const handleDelete = async () => {

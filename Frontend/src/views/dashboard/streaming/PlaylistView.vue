@@ -283,6 +283,19 @@ const handleUpdate = async (payload: PlaylistFormPayload) => {
   const id = editTarget.value.id;
 
   try {
+    // Upload the bytes before flagging the cover: the update bumps updatedAt
+    // (new ?v= cache-buster), and a cover URL fetched before the PUT lands
+    // reads a 404 that nginx then caches.
+    if (payload.coverFile) {
+      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
+        playlistId: id,
+        mimeType: payload.coverFile.type,
+        fileSize: payload.coverFile.size,
+      });
+
+      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
+    }
+
     await update({
       id,
       req: {
@@ -292,18 +305,8 @@ const handleUpdate = async (payload: PlaylistFormPayload) => {
       },
     });
 
-    if (payload.coverFile) {
-      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
-        playlistId: id,
-        mimeType: payload.coverFile.type,
-        fileSize: payload.coverFile.size,
-      });
-
-      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
-
-      if (payload.ambientTheme) {
-        await playlistApi.update(id, { ambientTheme: payload.ambientTheme });
-      }
+    if (payload.ambientTheme) {
+      await playlistApi.update(id, { ambientTheme: payload.ambientTheme });
     }
 
     if (!updateState.value.error) {

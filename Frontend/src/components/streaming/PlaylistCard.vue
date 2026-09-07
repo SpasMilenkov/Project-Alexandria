@@ -6,10 +6,11 @@
     <!-- Cover art -->
     <div class="relative aspect-square w-full bg-gray-100/80 dark:bg-gray-800/50 overflow-hidden">
       <img
-        v-if="!isCoverUrlLoading && coverUrl"
+        v-if="coverUrl && !coverErrored"
         :src="coverUrl"
         :alt="playlist.name"
         class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        @error="coverErrored = true"
       />
       <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
         <UIcon name="mdi:playlist-music" class="w-10 h-10 text-gray-300 dark:text-white/20" />
@@ -71,12 +72,11 @@
 </template>
 
 <script setup lang="ts">
-import { useQuery } from "@pinia/colada";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 
 import type { PlaylistResponse } from "@/api/playlist";
 
-import { getPlaylistCover } from "@/queries/playlist";
+import { playlistApi } from "@/api/playlist";
 import { formatDate } from "@/utils/date-formatters";
 
 const props = defineProps<{
@@ -84,10 +84,21 @@ const props = defineProps<{
   isPlaying?: boolean;
 }>();
 
-const { data: coverUrl, isLoading: isCoverUrlLoading } = useQuery({
-  ...getPlaylistCover(props.playlist.id),
-  enabled: computed(() => props.playlist.hasCover),
-});
+const coverUrl = computed(() =>
+  props.playlist.hasCover
+    ? playlistApi.getPlaylistCoverUrl(props.playlist.id, props.playlist.updatedAt)
+    : null,
+);
+const coverErrored = ref(false);
+
+// A fresh upload bumps updatedAt (new ?v= cache-buster), so drop any latched
+// error then instead of hiding a cover that exists now.
+watch(
+  () => [props.playlist.id, props.playlist.updatedAt],
+  () => {
+    coverErrored.value = false;
+  },
+);
 
 const emit = defineEmits<{
   open: [];
