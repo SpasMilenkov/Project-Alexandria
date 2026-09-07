@@ -28,4 +28,12 @@ public class Preview : IBase
 
     public Guid VersionId { get; set; }
     public FileVersion? Version { get; set; }
+
+    /// <summary>
+    /// S3 key inside the preview bucket (e.g. "previews/abc123" or "thumbnails/abc123").
+    /// Tracked so preview artifacts can be deleted without touching job history.
+    /// </summary>
+    [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
+    [StringLength(ValidationConstants.StringLengths.MediumString)]
+    public required string ObjectKey { get; set; } = string.Empty;
 }
