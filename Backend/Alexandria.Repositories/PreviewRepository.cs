@@ -2,6 +2,8 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
+using Alexandria.Dto.Files;
+using Alexandria.Dto.Previews;
 using Alexandria.Dto.PreviewsStats;
 using Microsoft.EntityFrameworkCore;
 
@@ -62,12 +64,20 @@ public class PreviewRepository(AlexandriaDbContext context) : IPreviewRepository
 
     public void Remove(Preview entity)
     {
+        // DbSet.Remove walks the entity graph: a populated Version navigation
+        // (e.g. from an AsNoTracking Include, which materializes a distinct
+        // FileVersion instance per row) collides with an already-tracked
+        // FileVersion of the same id. Only the Preview row is deleted here.
+        entity.Version = null;
         _previews.Remove(entity);
     }
 
     public void RemoveRange(IEnumerable<Preview> entities)
     {
-        _previews.RemoveRange(entities);
+        var list = entities.ToList();
+        foreach (var entity in list)
+            entity.Version = null;
+        _previews.RemoveRange(list);
     }
 
     public async Task<int> CountAsync(Expression<Func<Preview, bool>>? predicate = null, CancellationToken ct = default)
@@ -115,5 +125,139 @@ public class PreviewRepository(AlexandriaDbContext context) : IPreviewRepository
             .AsNoTracking()
             .Where(p => p.CreatedAt >= from && p.CreatedAt < to)
             .ToListAsync(ct);
+    }
+
+    public async Task<(long TotalSize, int Count, IReadOnlyList<PreviewKindTotals> ByKind)> GetStorageByUserAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var query = _previews
+            .AsNoTracking()
+            .Where(p => p.DeletedAt == null)
+            .Join(context.FileVersions.AsNoTracking(),
+                p => p.VersionId, v => v.Id, (p, v) => new { Preview = p, Version = v })
+            .Join(context.Files.AsNoTracking(),
+                x => x.Version.FileId, f => f.Id, (x, f) => new { x.Preview, x.Version, File = f })
+            .Where(x => x.File.OwnerId == userId
+                        && x.File.DeletedAt == null
+                        && x.Version.DeletedAt == null);
+
+        var totalSize = await query.SumAsync(x => (long?)x.Preview.Size, ct) ?? 0;
+        var count = await query.CountAsync(ct);
+        var byKind = await query
+            .GroupBy(x => x.Preview.Kind)
+            .Select(g => new PreviewKindTotals(g.Key, g.Count(), g.Sum(x => x.Preview.Size)))
+            .ToListAsync(ct);
+
+        return (totalSize, count, byKind);
+    }
+
+    public async Task<Dictionary<Guid, long>> GetSizeByOwnerAsync(CancellationToken ct = default)
+    {
+        return await _previews
+            .AsNoTracking()
+            .Where(p => p.DeletedAt == null)
+            .Join(context.FileVersions.AsNoTracking(),
+                p => p.VersionId, v => v.Id, (p, v) => new { Preview = p, Version = v })
+            .Join(context.Files.AsNoTracking(),
+                x => x.Version.FileId, f => f.Id, (x, f) => new { x.Preview, x.Version, File = f })
+            .Where(x => x.File.DeletedAt == null && x.Version.DeletedAt == null)
+            .GroupBy(x => x.File.OwnerId)
+            .Select(g => new
+            {
+                OwnerId = g.Key,
+                TotalSize = g.Sum(x => x.Preview.Size)
+            })
+            .ToDictionaryAsync(x => x.OwnerId, x => x.TotalSize, ct);
+    }
+
+    public async Task<Preview?> GetWithFileAsync(Guid previewId, CancellationToken ct = default)
+    {
+        return await _previews
+            .AsNoTracking()
+            .Include(p => p.Version)
+            .ThenInclude(v => v!.File)
+            .FirstOrDefaultAsync(p => p.Id == previewId && p.DeletedAt == null, ct);
+    }
+
+    public async Task<IReadOnlyList<Preview>> GetByFileAsync(
+        Guid fileId, DateTime? createdBefore, CancellationToken ct = default)
+    {
+        var query = _previews
+            .AsNoTracking()
+            .Include(p => p.Version)
+            .Where(p => p.DeletedAt == null && p.Version != null && p.Version.FileId == fileId);
+
+        if (createdBefore.HasValue)
+            query = query.Where(p => p.CreatedAt < createdBefore.Value);
+
+        return await query.ToListAsync(ct);
+    }
+
+    public async Task<PaginatedResult<UserPreviewDto>> GetListByUserAsync(
+        Guid userId, Guid? fileId, DateTime? createdBefore, int page, int pageSize,
+        CancellationToken ct = default)
+    {
+        var query = _previews
+            .AsNoTracking()
+            .Where(p => p.DeletedAt == null)
+            .Join(context.FileVersions.AsNoTracking(),
+                p => p.VersionId, v => v.Id, (p, v) => new { Preview = p, Version = v })
+            .Join(context.Files.AsNoTracking(),
+                x => x.Version.FileId, f => f.Id, (x, f) => new { x.Preview, x.Version, File = f })
+            .Where(x => x.File.OwnerId == userId
+                        && x.File.DeletedAt == null
+                        && x.Version.DeletedAt == null);
+
+        if (fileId.HasValue)
+            query = query.Where(x => x.File.Id == fileId.Value);
+
+        if (createdBefore.HasValue)
+            query = query.Where(x => x.Preview.CreatedAt < createdBefore.Value);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(x => x.Preview.CreatedAt)
+            .ThenBy(x => x.Preview.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new UserPreviewDto(
+                x.Preview.Id,
+                x.File.Id,
+                x.File.Name,
+                x.Preview.Kind,
+                x.Preview.Size,
+                x.Preview.CreatedAt))
+            .ToListAsync(ct);
+
+        return new PaginatedResult<UserPreviewDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        };
+    }
+
+    public async Task<IReadOnlyList<Preview>> GetMissingSizesAsync(
+        int take, CancellationToken ct = default)
+    {
+        return await _previews
+            .Include(p => p.Version)
+            .Where(p => p.Size <= 0 && p.DeletedAt == null)
+            .OrderBy(p => p.CreatedAt)
+            .ThenBy(p => p.Id)
+            .Take(take)
+            .ToListAsync(ct);
+    }
+
+    public async Task<bool> TryBackfillSizeAsync(
+        Guid previewId, long size, CancellationToken ct = default)
+    {
+        var rows = await _previews
+            .Where(p => p.Id == previewId && p.Size <= 0)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.Size, size), ct);
+        return rows > 0;
     }
 }
