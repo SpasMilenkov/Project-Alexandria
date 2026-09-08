@@ -13,6 +13,8 @@ internal sealed class UpdateFileMetadataRequest
     public string? Name { get; set; }
     public string? Title { get; set; }
     public string? Artist { get; set; }
+    public string? Album { get; set; }
+    public string? Year { get; set; }
 }
 
 sealed class UpdateFileMetadataRequestValidator : Validator<UpdateFileMetadataRequest>
@@ -46,6 +48,22 @@ sealed class UpdateFileMetadataRequestValidator : Validator<UpdateFileMetadataRe
                 .MaximumLength(ValidationConstants.StringLengths.MediumString)
                 .WithMessage("Artist must be between 1 and 255 characters.");
         });
+
+        When(x => x.Album is not null, () =>
+        {
+            RuleFor(x => x.Album!)
+                .NotEmpty()
+                .MaximumLength(ValidationConstants.StringLengths.MediumString)
+                .WithMessage("Album must be between 1 and 255 characters.");
+        });
+
+        When(x => x.Year is not null, () =>
+        {
+            RuleFor(x => x.Year!)
+                .NotEmpty()
+                .MaximumLength(ValidationConstants.StringLengths.ShortString)
+                .WithMessage("Year must be between 1 and 50 characters.");
+        });
     }
 }
 
@@ -55,6 +73,8 @@ internal sealed class UpdateFileMetadataResponse
     public string Name { get; set; } = string.Empty;
     public string? Title { get; set; }
     public string? Artist { get; set; }
+    public string? Album { get; set; }
+    public string? Year { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public Guid UpdatedBy { get; set; }
 }
@@ -73,7 +93,7 @@ sealed class UpdateFileMetadataEndpoint(
         Summary(s =>
         {
             s.Summary = "Update file metadata";
-            s.Description = "Updates file metadata such as name, title and artist.";
+            s.Description = "Updates file metadata such as name, title, artist, album and year.";
             s.Responses[200] = "File metadata updated successfully";
             s.Responses[404] = "File not found";
             s.Responses[403] = "Forbidden - not the file owner";
@@ -109,6 +129,8 @@ sealed class UpdateFileMetadataEndpoint(
                 req.Name,
                 req.Title,
                 req.Artist,
+                req.Album,
+                req.Year,
                 ct);
 
             await Send.OkAsync(new UpdateFileMetadataResponse
@@ -117,6 +139,8 @@ sealed class UpdateFileMetadataEndpoint(
                 Name = updatedFile.Name,
                 Title = updatedFile.MediaMetadata?.Title,
                 Artist = updatedFile.MediaMetadata?.Artist,
+                Album = updatedFile.MediaMetadata?.Album,
+                Year = updatedFile.MediaMetadata?.Year,
                 UpdatedAt = updatedFile.UpdatedAt,
                 UpdatedBy = updatedFile.UpdatedBy ?? userId
             }, ct);

@@ -74,11 +74,13 @@ public class FileService(
         string? newName = null,
         string? newTitle = null,
         string? newArtist = null,
+        string? newAlbum = null,
+        string? newYear = null,
         CancellationToken ct = default)
     {
         logger.LogInformation(
-            "Updating file metadata: FileId={FileId}, NewName={NewName}, NewTitle={NewTitle}, NewArtist={NewArtist}, UpdatedBy={UpdatedBy}",
-            fileId, newName, newTitle, newArtist, updatedBy);
+            "Updating file metadata: FileId={FileId}, NewName={NewName}, NewTitle={NewTitle}, NewArtist={NewArtist}, NewAlbum={NewAlbum}, NewYear={NewYear}, UpdatedBy={UpdatedBy}",
+            fileId, newName, newTitle, newArtist, newAlbum, newYear, updatedBy);
 
         await unitOfWork.BeginTransactionAsync(ct);
 
@@ -98,25 +100,40 @@ public class FileService(
                 fileEntity.Name = newName;
             }
 
-            if (!string.IsNullOrEmpty(newTitle) || !string.IsNullOrEmpty(newArtist))
+            if (!string.IsNullOrEmpty(newTitle) || !string.IsNullOrEmpty(newArtist)
+                                                || !string.IsNullOrEmpty(newAlbum) || !string.IsNullOrEmpty(newYear))
             {
                 var metadata = await unitOfWork.MediaMetadata.FirstOrDefaultAsync(
                     m => m.FileId == fileId, ct);
 
-                if (metadata == null)
+                var isNew = metadata is null;
+                metadata ??= new Data.Models.MediaMetadata
                 {
-                    logger.LogWarning("No media metadata for title/artist update: FileId={FileId}", fileId);
-                    throw new InvalidOperationException($"Media metadata for file with ID {fileId} not found.");
-                }
+                    Id = Guid.NewGuid(),
+                    FileId = fileId,
+                };
 
                 if (!string.IsNullOrEmpty(newTitle))
                     metadata.Title = newTitle;
                 if (!string.IsNullOrEmpty(newArtist))
                     metadata.Artist = newArtist;
+                if (!string.IsNullOrEmpty(newAlbum))
+                    metadata.Album = newAlbum;
+                if (!string.IsNullOrEmpty(newYear))
+                    metadata.Year = newYear;
                 metadata.UpdatedBy = updatedBy;
                 metadata.UpdatedAt = DateTime.UtcNow;
 
-                await unitOfWork.MediaMetadata.UpdateAsync(metadata, ct);
+                if (isNew)
+                {
+                    logger.LogInformation(
+                        "No media metadata for file, creating row: FileId={FileId}", fileId);
+                    await unitOfWork.MediaMetadata.CreateAsync(metadata, ct);
+                }
+                else
+                {
+                    await unitOfWork.MediaMetadata.UpdateAsync(metadata, ct);
+                }
 
                 fileEntity.MediaMetadata = metadata;
             }

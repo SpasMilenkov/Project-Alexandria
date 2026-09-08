@@ -8,25 +8,29 @@ namespace Alexandria.Services.Storage.MediaMetadata;
 /// (Title, Artist, Album, Year, Genre). Per-field preserve-if-set: a stored
 /// non-empty value always wins over incoming automated output (this is what keeps
 /// user corrections alive across Media worker re-runs); an empty stored value takes
-/// the incoming one. Technical fields are never handled here.
+/// the incoming one. When <paramref name="allowOverwrite"/> is true, incoming output
+/// always wins. Technical fields are never handled here.
 /// </summary>
 internal static class MediaMetadataMerge
 {
-    public static void ApplyDescriptiveFields(MediaMetadataEntity existing, MediaMetadataDto incoming)
+    public static void ApplyDescriptiveFields(
+        MediaMetadataEntity existing,
+        MediaMetadataDto incoming,
+        bool allowOverwrite = false)
     {
-        if (string.IsNullOrWhiteSpace(existing.Title))
+        if (allowOverwrite || string.IsNullOrWhiteSpace(existing.Title))
             existing.Title = incoming.Title;
 
-        if (string.IsNullOrWhiteSpace(existing.Artist))
+        if (allowOverwrite || string.IsNullOrWhiteSpace(existing.Artist))
             existing.Artist = incoming.Artist;
 
-        if (string.IsNullOrWhiteSpace(existing.Album))
+        if (allowOverwrite || string.IsNullOrWhiteSpace(existing.Album))
             existing.Album = incoming.Album;
 
-        if (string.IsNullOrWhiteSpace(existing.Year))
+        if (allowOverwrite || string.IsNullOrWhiteSpace(existing.Year))
             existing.Year = incoming.Year;
 
-        if (string.IsNullOrWhiteSpace(existing.Genre))
+        if (allowOverwrite || string.IsNullOrWhiteSpace(existing.Genre))
             existing.Genre = incoming.Genre;
     }
 }

@@ -25,6 +25,8 @@ public interface IFileService
         string? newName = null,
         string? newTitle = null,
         string? newArtist = null,
+        string? newAlbum = null,
+        string? newYear = null,
         CancellationToken ct = default);
 
     Task<PaginatedResult<FileResult>> GetRootFilesAsync(

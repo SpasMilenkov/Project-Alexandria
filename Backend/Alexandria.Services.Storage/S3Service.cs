@@ -37,7 +37,8 @@ public partial class S3Service(
     ILogger<S3Service> logger,
     IPromotionQueue promotionQueue,
     IFileService fileService,
-    AuditContext auditContext)
+    AuditContext auditContext,
+    IUserSettingsService userSettingsService)
     : IStorageService
 {
     private static readonly HashSet<string> AllowedCoverTypes =
@@ -329,8 +330,11 @@ public partial class S3Service(
                 existingMetadata.Height = metadataDto.Height;
                 existingMetadata.HasAudio = metadataDto.HasAudio;
                 // Descriptive fields merge per-field: stored non-empty values (including
-                // user corrections) survive automated output; empty fields take it.
-                MediaMetadataMerge.ApplyDescriptiveFields(existingMetadata, metadataDto);
+                // user corrections) survive automated output unless the owner opted into
+                // automatic overwrite; empty fields always take it.
+                var behavior = await userSettingsService.GetBehaviorAsync(version.File.OwnerId, ct);
+                MediaMetadataMerge.ApplyDescriptiveFields(
+                    existingMetadata, metadataDto, behavior.AllowAutomaticMetadataOverwrite);
                 existingMetadata.UpdatedBy = SystemConfig.SystemId;
 
                 await unitOfWork.MediaMetadata.UpdateAsync(existingMetadata, ct);
