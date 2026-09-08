@@ -15,6 +15,8 @@ export interface UpdateFileMetadataResponse {
   name: string;
   title: string | null;
   artist: string | null;
+  album: string | null;
+  year: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
 }

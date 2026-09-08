@@ -173,6 +173,7 @@ export interface UserSettings {
   skipDeleteConfirmation: boolean;
   toastLevel: ToastLevel;
   allowAutoTagRegression: boolean;
+  allowAutomaticMetadataOverwrite: boolean;
 }
 const DEFAULT_ACCENT_COLOR = "amber";
 const DEFAULT_BACKGROUND = "parchment";
@@ -189,6 +190,7 @@ const DEFAULT_LIST_ICON_SIZE = 20;
 const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
 const DEFAULT_TOAST_LEVEL: ToastLevel = "all";
 const DEFAULT_ALLOW_AUTO_TAG_REGRESSION = false;
+const DEFAULT_ALLOW_AUTOMATIC_METADATA_OVERWRITE = false;
 const DEFAULT_UI_STATE = {
   isAppearanceSectionOpen: true,
   isAutoTaggingSectionOpen: true,
@@ -219,6 +221,7 @@ export const useSettingsStore = defineStore(
     const skipDeleteConfirmation = ref(DEFAULT_SKIP_DELETE_CONFIRMATION);
     const toastLevel = ref<ToastLevel>(DEFAULT_TOAST_LEVEL);
     const allowAutoTagRegression = ref(DEFAULT_ALLOW_AUTO_TAG_REGRESSION);
+    const allowAutomaticMetadataOverwrite = ref(DEFAULT_ALLOW_AUTOMATIC_METADATA_OVERWRITE);
     const isAppearanceSectionOpen = ref(DEFAULT_UI_STATE.isAppearanceSectionOpen);
     const isBehaviorSectionOpen = ref(DEFAULT_UI_STATE.isBehaviorSectionOpen);
     const isAutoTaggingSectionOpen = ref(DEFAULT_UI_STATE.isAutoTaggingSectionOpen);
@@ -242,6 +245,7 @@ export const useSettingsStore = defineStore(
       skipDeleteConfirmation: skipDeleteConfirmation.value,
       toastLevel: toastLevel.value,
       allowAutoTagRegression: allowAutoTagRegression.value,
+      allowAutomaticMetadataOverwrite: allowAutomaticMetadataOverwrite.value,
     }));
 
     const getCurrentBackgroundPreset = computed(
@@ -322,6 +326,9 @@ export const useSettingsStore = defineStore(
     const setAllowAutoTagRegression = (v: boolean) => {
       allowAutoTagRegression.value = v;
     };
+    const setAllowAutomaticMetadataOverwrite = (v: boolean) => {
+      allowAutomaticMetadataOverwrite.value = v;
+    };
     const setAppearanceSectionOpen = (v: boolean) => {
       isAppearanceSectionOpen.value = v;
     };
@@ -355,6 +362,7 @@ export const useSettingsStore = defineStore(
       setSkipDeleteConfirmation(behavior.skipDeleteConfirmation);
       setToastLevel(behavior.toastLevel);
       setAllowAutoTagRegression(behavior.allowAutoTagRegression);
+      setAllowAutomaticMetadataOverwrite(behavior.allowAutomaticMetadataOverwrite);
     };
 
     const syncFromServer = (appearance: AppearanceSettings, behavior: BehaviorSettings) => {
@@ -404,6 +412,9 @@ export const useSettingsStore = defineStore(
       if (settings.allowAutoTagRegression !== undefined) {
         setAllowAutoTagRegression(settings.allowAutoTagRegression);
       }
+      if (settings.allowAutomaticMetadataOverwrite !== undefined) {
+        setAllowAutomaticMetadataOverwrite(settings.allowAutomaticMetadataOverwrite);
+      }
     };
 
     const resetSettings = () => {
@@ -422,6 +433,7 @@ export const useSettingsStore = defineStore(
       skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
       toastLevel.value = DEFAULT_TOAST_LEVEL;
       allowAutoTagRegression.value = DEFAULT_ALLOW_AUTO_TAG_REGRESSION;
+      allowAutomaticMetadataOverwrite.value = DEFAULT_ALLOW_AUTOMATIC_METADATA_OVERWRITE;
     };
 
     const resetAppearanceSettings = () => {
@@ -460,6 +472,7 @@ export const useSettingsStore = defineStore(
       AVAILABLE_COLORS,
       accentColor,
       allowAutoTagRegression,
+      allowAutomaticMetadataOverwrite,
       backgroundColor,
       backgroundImage,
       backgroundImageKey,
@@ -489,6 +502,7 @@ export const useSettingsStore = defineStore(
       resetUIState,
       setAccentColor,
       setAllowAutoTagRegression,
+      setAllowAutomaticMetadataOverwrite,
       setAppearanceSectionOpen,
       setAutoTaggingSectionOpen,
       setBackgroundColor,
@@ -533,6 +547,7 @@ export const useSettingsStore = defineStore(
         "skipDeleteConfirmation",
         "toastLevel",
         "allowAutoTagRegression",
+        "allowAutomaticMetadataOverwrite",
         "isAppearanceSectionOpen",
         "isBehaviorSectionOpen",
         "isAutoTaggingSectionOpen",

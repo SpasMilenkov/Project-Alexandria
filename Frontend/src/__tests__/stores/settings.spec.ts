@@ -279,6 +279,38 @@ describe("useSettingsStore", () => {
     });
   });
 
+  describe("allowAutomaticMetadataOverwrite", () => {
+    it("defaults to false", () => {
+      const store = useSettingsStore();
+      expect(store.allowAutomaticMetadataOverwrite).toBe(false);
+    });
+
+    it("setAllowAutomaticMetadataOverwrite updates the value", () => {
+      const store = useSettingsStore();
+      store.setAllowAutomaticMetadataOverwrite(true);
+      expect(store.allowAutomaticMetadataOverwrite).toBe(true);
+      expect(store.getSettings.allowAutomaticMetadataOverwrite).toBe(true);
+    });
+
+    it("syncBehaviorFromServer applies the value", () => {
+      const store = useSettingsStore();
+      store.syncBehaviorFromServer({
+        skipDeleteConfirmation: false,
+        toastLevel: "all",
+        allowAutoTagRegression: false,
+        allowAutomaticMetadataOverwrite: true,
+      });
+      expect(store.allowAutomaticMetadataOverwrite).toBe(true);
+    });
+
+    it("resetSettings restores the default", () => {
+      const store = useSettingsStore();
+      store.setAllowAutomaticMetadataOverwrite(true);
+      store.resetSettings();
+      expect(store.allowAutomaticMetadataOverwrite).toBe(false);
+    });
+  });
+
   describe("UI section toggles", () => {
     it("setAppearanceSectionOpen updates the value", () => {
       const store = useSettingsStore();

@@ -24,6 +24,7 @@ const persistAutoTagging = useDebounceFn(async () => {
     skipDeleteConfirmation: settingsStore.skipDeleteConfirmation,
     toastLevel: settingsStore.toastLevel,
     allowAutoTagRegression: settingsStore.allowAutoTagRegression,
+    allowAutomaticMetadataOverwrite: settingsStore.allowAutomaticMetadataOverwrite,
   });
 }, 600);
 
