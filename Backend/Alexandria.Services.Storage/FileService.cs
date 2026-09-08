@@ -160,6 +160,53 @@ public class FileService(
         }
     }
 
+    public async Task<IReadOnlyList<FileMetadataUpdateResult>> BulkUpdateFileMetadataAsync(
+        Guid[] fileIds,
+        Guid updatedBy,
+        string? newTitle = null,
+        string? newArtist = null,
+        string? newAlbum = null,
+        string? newYear = null,
+        CancellationToken ct = default)
+    {
+        var results = new List<FileMetadataUpdateResult>(fileIds.Length);
+
+        foreach (var fileId in fileIds)
+        {
+            try
+            {
+                var file = await unitOfWork.Files.GetByIdAsync(fileId, ct);
+                if (file is null)
+                {
+                    results.Add(new FileMetadataUpdateResult(fileId, false, "File not found."));
+                    continue;
+                }
+
+                if (file.OwnerId != updatedBy)
+                {
+                    logger.LogWarning(
+                        "Bulk metadata update forbidden: FileId={FileId}, UpdatedBy={UpdatedBy}",
+                        fileId, updatedBy);
+                    results.Add(new FileMetadataUpdateResult(fileId, false, "Forbidden."));
+                    continue;
+                }
+
+                await UpdateFileMetadataAsync(
+                    fileId, updatedBy, null, newTitle, newArtist, newAlbum, newYear, ct);
+                results.Add(new FileMetadataUpdateResult(fileId, true, null));
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex,
+                    "Bulk metadata update failed for file: FileId={FileId}",
+                    fileId);
+                results.Add(new FileMetadataUpdateResult(fileId, false, ex.Message));
+            }
+        }
+
+        return results;
+    }
+
     public async Task<PaginatedResult<FileResult>> GetRootFilesAsync(Guid ownerId, int page = 1,
         int pageSize = 25,
         SortBy sortBy = SortBy.Name,

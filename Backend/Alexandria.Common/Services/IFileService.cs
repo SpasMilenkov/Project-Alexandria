@@ -6,6 +6,9 @@ using File = Alexandria.Data.Models.File;
 
 namespace Alexandria.Common.Services;
 
+/// <summary>Per-item outcome of a bulk metadata update (partial success expected).</summary>
+public sealed record FileMetadataUpdateResult(Guid FileId, bool Success, string? Error);
+
 public interface IFileService
 {
     Task FolderWithOwnershipExistsAsync(Guid? directoryId, Guid ownerId, CancellationToken ct = default);
@@ -23,6 +26,20 @@ public interface IFileService
         Guid fileId,
         Guid updatedBy,
         string? newName = null,
+        string? newTitle = null,
+        string? newArtist = null,
+        string? newAlbum = null,
+        string? newYear = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Applies the same partial metadata update to each file independently (per-item commit).
+    /// Ownership is enforced per item; failures are reported per item rather than aborting
+    /// the batch. Bulk edits are owner-scoped only (no admin override, unlike single edit).
+    /// </summary>
+    Task<IReadOnlyList<FileMetadataUpdateResult>> BulkUpdateFileMetadataAsync(
+        Guid[] fileIds,
+        Guid updatedBy,
         string? newTitle = null,
         string? newArtist = null,
         string? newAlbum = null,

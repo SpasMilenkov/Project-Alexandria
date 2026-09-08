@@ -123,4 +123,47 @@ public class UpdateFileMetadataTests
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
+
+    [Fact]
+    public async Task BulkUpdateFileMetadata_mixedBatch_reportsPartialSuccess()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var ownedId = Guid.NewGuid();
+        var foreignId = Guid.NewGuid();
+        var missingId = Guid.NewGuid();
+        var owned = new FileBuilder().WithId(ownedId).WithOwner(_userId).Build();
+        var foreign = new FileBuilder().WithId(foreignId).WithOwner(Guid.NewGuid()).Build();
+
+        _files.GetByIdAsync(ownedId, ct).Returns(owned);
+        _files.GetByIdAsync(foreignId, ct).Returns(foreign);
+        _files.GetByIdAsync(missingId, ct).Returns((FileEntity?)null);
+        _files.UpdateAsync(Arg.Any<FileEntity>(), ct).Returns(owned);
+        _metadata
+            .FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<MediaMetadataEntity, bool>>>(),
+                ct)
+            .Returns((MediaMetadataEntity?)null);
+
+        var results = await _sut.BulkUpdateFileMetadataAsync(
+            [ownedId, foreignId, missingId], _userId, newAlbum: "Bulk Album", ct: ct);
+
+        results.Should().HaveCount(3);
+        results[0].Should().Be(new FileMetadataUpdateResult(ownedId, true, null));
+        results[1].Success.Should().BeFalse();
+        results[1].Error.Should().NotBeNullOrEmpty();
+        results[2].Success.Should().BeFalse();
+        await _metadata.Received(1).CreateAsync(
+            Arg.Is<MediaMetadataEntity>(m => m.FileId == ownedId && m.Album == "Bulk Album"),
+            ct);
+    }
+
+    [Fact]
+    public async Task BulkUpdateFileMetadata_emptyList_returnsEmpty()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var results = await _sut.BulkUpdateFileMetadataAsync([], _userId, newTitle: "T", ct: ct);
+
+        results.Should().BeEmpty();
+    }
 }
