@@ -29,7 +29,7 @@
           @touchstart.passive="prefetchDetails"
         >
           <div
-            class="relative shrink-0 flex items-center justify-center overflow-hidden rounded-md "
+            class="relative shrink-0 flex items-center justify-center overflow-hidden rounded-md"
             :style="{ width: `${thumbnailBox.width * 1.4}px`, height: `${thumbnailBox.height}px` }"
           >
             <img
