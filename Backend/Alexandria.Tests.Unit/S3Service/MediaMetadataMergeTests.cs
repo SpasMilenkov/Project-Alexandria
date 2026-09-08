@@ -111,4 +111,30 @@ public class MediaMetadataMergeTests
         existing.Year.Should().BeNull();
         existing.Genre.Should().BeNull();
     }
+
+    [Fact]
+    public void ApplyDescriptiveFields_allowOverwrite_replacesNonEmpty()
+    {
+        var existing = Existing("T", "A", "Al", "2020", "G");
+        var incoming = Incoming();
+
+        MediaMetadataMerge.ApplyDescriptiveFields(existing, incoming, allowOverwrite: true);
+
+        existing.Title.Should().Be(incoming.Title);
+        existing.Artist.Should().Be(incoming.Artist);
+        existing.Album.Should().Be(incoming.Album);
+        existing.Year.Should().Be(incoming.Year);
+        existing.Genre.Should().Be(incoming.Genre);
+    }
+
+    [Fact]
+    public void ApplyDescriptiveFields_allowOverwriteFalse_isDefault()
+    {
+        var existing = Existing("T", "A", "Al", "2020", "G");
+
+        MediaMetadataMerge.ApplyDescriptiveFields(existing, Incoming());
+
+        existing.Title.Should().Be("T");
+        existing.Album.Should().Be("Al");
+    }
 }

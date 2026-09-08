@@ -24,7 +24,8 @@ public class CategorizeFileTests
             Substitute.For<ILogger<Services.Storage.S3Service>>(),
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
-            new AuditContext());
+            new AuditContext(),
+            Substitute.For<IUserSettingsService>());
     }
 
     public static IEnumerable<object[]> ImageCases()

@@ -55,7 +55,8 @@ public class InitiateUploadQuotaWarningTests
             Substitute.For<ILogger<Services.Storage.S3Service>>(),
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
-            new AuditContext());
+            new AuditContext(),
+            Substitute.For<IUserSettingsService>());
     }
 
     private void SeedUsage(long filesSize, long quota)
