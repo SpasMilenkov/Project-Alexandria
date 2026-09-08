@@ -549,7 +549,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         // Note: MimeType is marked as init-only, so it shouldn't be updated
 
         _files.Update(existingFile);
-        await context.SaveChangesAsync(ct);
 
         return existingFile;
     }
