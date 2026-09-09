@@ -73,8 +73,15 @@ export const useFileDownload = () => {
     const rawBytes = await response.arrayBuffer();
 
     // Capture metadata in closure — avoids passing large buffers as props.
-    const { encryptionIv, encryptionSalt, integrityTag, fileName, mimeType, encryptionHint, iterationCount } =
-      info;
+    const {
+      encryptionIv,
+      encryptionSalt,
+      integrityTag,
+      fileName,
+      mimeType,
+      encryptionHint,
+      iterationCount,
+    } = info;
 
     const instance = decryptionModal.open({
       hint: encryptionHint ?? null,

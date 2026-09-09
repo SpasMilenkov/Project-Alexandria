@@ -25,6 +25,7 @@ export interface BehaviorSettings {
   skipDeleteConfirmation: boolean;
   toastLevel: ToastLevel;
   allowAutoTagRegression: boolean;
+  allowAutomaticMetadataOverwrite: boolean;
 }
 
 export interface RequestUploadResponse {
@@ -50,6 +51,7 @@ const mapBehaviorFromServer = (raw: any): BehaviorSettings => ({
   skipDeleteConfirmation: raw.skipDeleteConfirmation,
   toastLevel: toastLevelFromServer[raw.toastLevel] ?? "all",
   allowAutoTagRegression: raw.allowAutoTagRegression,
+  allowAutomaticMetadataOverwrite: raw.allowAutomaticMetadataOverwrite ?? false,
 });
 
 export const settingsApi = {

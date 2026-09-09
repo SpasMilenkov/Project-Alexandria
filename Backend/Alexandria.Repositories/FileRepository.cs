@@ -549,7 +549,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         // Note: MimeType is marked as init-only, so it shouldn't be updated
 
         _files.Update(existingFile);
-        await context.SaveChangesAsync(ct);
 
         return existingFile;
     }
@@ -939,6 +938,8 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Artist = f.MediaMetadata!.Artist,
             Album = f.MediaMetadata.Album,
             Title = f.MediaMetadata.Title,
+            Genre = f.MediaMetadata.Genre,
+            Year = f.MediaMetadata.Year,
             Job = context.Set<TranspilationJob>()
                 .Where(j => j.UserId == userId
                             && j.IsVideo == isVideo
@@ -965,6 +966,8 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Artist = row.Artist,
             Album = row.Album,
             Title = row.Title,
+            Genre = row.Genre,
+            Year = row.Year,
             TranspilationJobId = row.Job!.Id,
             IsVideo = row.Job.IsVideo,
             SegmentPrefix = row.Job.SegmentPrefix
@@ -980,6 +983,8 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         public string? Artist { get; set; }
         public string? Album { get; set; }
         public string? Title { get; set; }
+        public string? Genre { get; set; }
+        public string? Year { get; set; }
         public StreamingJobRow? Job { get; set; }
     }
 
@@ -988,6 +993,68 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         public Guid Id { get; set; }
         public bool IsVideo { get; set; }
         public string? SegmentPrefix { get; set; }
+    }
+
+    public async Task<MediaFileDto?> GetStreamingFileAsync(
+        Guid userId, Guid fileId, CancellationToken ct = default)
+    {
+        var file = await _files
+            .Where(f => f.Id == fileId
+                        && f.OwnerId == userId
+                        && f.DeletedAt == null
+                        && f.CurrentVersionId != null)
+            .Select(f => new
+            {
+                f.Id,
+                f.Name,
+                f.MimeType,
+                CurrentVersionId = f.CurrentVersionId!.Value,
+                Metadata = f.MediaMetadata,
+                VersionIds = f.Versions
+                    .Where(v => v.DeletedAt == null)
+                    .Select(v => v.Id)
+                    .ToList()
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (file is null || file.VersionIds.Count == 0) return null;
+
+        var job = await context.Set<TranspilationJob>()
+            .Where(j => j.UserId == userId
+                        && j.DeletedAt == null
+                        && j.Job.DeletedAt == null
+                        && j.Job.Status == JobStatus.Ready
+                        && file.VersionIds.Contains(j.VersionId)
+                        && j.Representations.Any(r =>
+                            r.DeletedAt == null
+                            && r.Status == RepresentationStatus.Ready))
+            .OrderByDescending(j => j.VersionId == file.CurrentVersionId)
+            .Select(j => new StreamingJobRow
+            {
+                Id = j.Id,
+                IsVideo = j.IsVideo,
+                SegmentPrefix = j.SegmentPrefix
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (job is null) return null;
+
+        return new MediaFileDto
+        {
+            FileId = file.Id,
+            FileName = file.Name,
+            MimeType = file.MimeType,
+            CurrentVersionId = file.CurrentVersionId,
+            Duration = file.Metadata == null ? null : file.Metadata.Duration,
+            Artist = file.Metadata!.Artist,
+            Album = file.Metadata.Album,
+            Title = file.Metadata.Title,
+            Genre = file.Metadata.Genre,
+            Year = file.Metadata.Year,
+            TranspilationJobId = job.Id,
+            IsVideo = job.IsVideo,
+            SegmentPrefix = job.SegmentPrefix
+        };
     }
 
     public async Task<(DownloadMetadata fileMetadata, byte[] fileHash)?> GetDownloadMetadataAsync(

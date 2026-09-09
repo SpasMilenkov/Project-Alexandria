@@ -87,16 +87,15 @@ public class MediaMetadataRepository(AlexandriaDbContext context) : IMediaMetada
     {
         metadata.CreatedAt = DateTime.UtcNow;
         var entry = await _mediaMetadata.AddAsync(metadata, ct);
-        await context.SaveChangesAsync(ct);
         return entry.Entity;
     }
 
-    public async Task<MediaMetadata> UpdateAsync(MediaMetadata metadata, CancellationToken ct = default)
+    //TODO: migrate this to a proper update async implementation, leaving it like this rn since it is out of scope.
+    public Task<MediaMetadata> UpdateAsync(MediaMetadata metadata, CancellationToken ct = default)
     {
         metadata.UpdatedAt = DateTime.UtcNow;
         _mediaMetadata.Update(metadata);
-        await context.SaveChangesAsync(ct);
-        return metadata;
+        return Task.FromResult(metadata);
     }
 
     public async Task<double> GetFileDurationAsync(Guid fileId, CancellationToken ct = default)

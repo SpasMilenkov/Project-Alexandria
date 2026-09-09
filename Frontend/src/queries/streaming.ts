@@ -19,6 +19,7 @@ export const STREAMING_QUERY_KEYS = {
     query.isVideo,
     query.query ?? null,
   ],
+  streamingFile: (fileId: string) => [...STREAMING_QUERY_KEYS.root, "file", fileId],
 
   history: (query: StreamHistoryQuery) => [
     ...STREAMING_QUERY_KEYS.root,
@@ -62,6 +63,12 @@ export const getFilesForStreaming = defineQueryOptions((query: GetFilesForStream
   key: STREAMING_QUERY_KEYS.filesForStreaming(query),
   placeholderData: (prev) => prev,
   query: () => streamingApi.getFilesForStreaming(query),
+  staleTime: 30_000,
+}));
+
+export const getStreamingFile = defineQueryOptions((fileId: string) => ({
+  key: STREAMING_QUERY_KEYS.streamingFile(fileId),
+  query: () => streamingApi.getStreamingFile(fileId),
   staleTime: 30_000,
 }));
 

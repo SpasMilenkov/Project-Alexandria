@@ -136,6 +136,8 @@ export interface MediaFileDto {
   artist: string | null;
   album: string | null;
   title: string | null;
+  genre: string | null;
+  year: string | null;
 
   // Transpilation
   transpilationJobId: string;
@@ -152,6 +154,16 @@ export const streamingApi = {
     });
 
     return result.data;
+  },
+
+  getStreamingFile: async (fileId: string): Promise<MediaFileDto | null> => {
+    try {
+      const result = await apiClient.get<MediaFileDto>(`/streaming/files/${fileId}`);
+      return result.data;
+    } catch (error: any) {
+      if (error?.response?.status === 404) return null;
+      throw error;
+    }
   },
 
   getManifest: async (id: string): Promise<string> => {

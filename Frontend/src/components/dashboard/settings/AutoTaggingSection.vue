@@ -14,6 +14,11 @@ const allowAutoTagRegression = computed({
   set: (value: boolean) => settingsStore.setAllowAutoTagRegression(value),
 });
 
+const allowAutomaticMetadataOverwrite = computed({
+  get: () => settingsStore.allowAutomaticMetadataOverwrite,
+  set: (value: boolean) => settingsStore.setAllowAutomaticMetadataOverwrite(value),
+});
+
 const isOpen = computed({
   get: () => settingsStore.isAutoTaggingSectionOpen,
   set: (value: boolean) => settingsStore.setAutoTaggingSectionOpen(value),
@@ -24,10 +29,12 @@ const persistAutoTagging = useDebounceFn(async () => {
     skipDeleteConfirmation: settingsStore.skipDeleteConfirmation,
     toastLevel: settingsStore.toastLevel,
     allowAutoTagRegression: settingsStore.allowAutoTagRegression,
+    allowAutomaticMetadataOverwrite: settingsStore.allowAutomaticMetadataOverwrite,
   });
 }, 600);
 
 watch(() => settingsStore.allowAutoTagRegression, persistAutoTagging);
+watch(() => settingsStore.allowAutomaticMetadataOverwrite, persistAutoTagging);
 
 const handleResetAutoTagging = () => {
   settingsStore.resetAutoTaggingSettings();
@@ -74,6 +81,19 @@ const handleResetAutoTagging = () => {
               </span>
             </div>
             <USwitch v-model="allowAutoTagRegression" size="lg" />
+          </div>
+
+          <!-- Allow automatic metadata overwrite -->
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Allow automatic metadata overwrite</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                When off (default), automatic processing never replaces title, artist, album, year
+                or genre values already on a file, so your corrections survive re-runs. When on, the
+                latest automatic output always wins.
+              </span>
+            </div>
+            <USwitch v-model="allowAutomaticMetadataOverwrite" size="lg" />
           </div>
 
           <p class="text-xs text-gray-500 dark:text-gray-400">

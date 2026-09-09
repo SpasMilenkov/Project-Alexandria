@@ -15,6 +15,8 @@ export interface UpdateFileMetadataResponse {
   name: string;
   title: string | null;
   artist: string | null;
+  album: string | null;
+  year: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
 }
@@ -33,6 +35,24 @@ export interface AutoTagFileResponse {
   fileId: string;
   queued: boolean;
   message: string;
+}
+
+export interface BulkUpdateFileMetadataRequest {
+  fileIds: string[];
+  title?: string | null;
+  artist?: string | null;
+  album?: string | null;
+  year?: string | null;
+}
+
+export interface BulkUpdateFileMetadataItemResult {
+  fileId: string;
+  success: boolean;
+  error: string | null;
+}
+
+export interface BulkUpdateFileMetadataResponse {
+  results: BulkUpdateFileMetadataItemResult[];
 }
 
 export interface FileResult {
@@ -278,6 +298,16 @@ export const fileApi = {
 
   restoreVersion: async (id: string) => {
     await apiClient.patch(`/files/versions/restore/${id}`, {});
+  },
+
+  bulkUpdateFileMetadata: async (
+    data: BulkUpdateFileMetadataRequest,
+  ): Promise<BulkUpdateFileMetadataResponse> => {
+    const response = await apiClient.patch<BulkUpdateFileMetadataResponse>(
+      "/files/metadata/bulk",
+      data,
+    );
+    return response.data;
   },
 
   searchFiles: async (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {

@@ -50,7 +50,8 @@ public class DeletePreviewTests
             Substitute.For<ILogger<Services.Storage.S3Service>>(),
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
-            new AuditContext());
+            new AuditContext(),
+            Substitute.For<IUserSettingsService>());
     }
 
     private File OwnedFile(Guid? fileId = null, Guid? ownerId = null)

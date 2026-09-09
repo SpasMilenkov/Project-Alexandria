@@ -4,7 +4,38 @@
       <div
         class="sticky top-0 z-10 px-2 pt-4 pb-3 mb-5 w-full justify-evenly frosted-glass glass-surface border border-black/[0.08] dark:border-white/10"
       >
-        <div class="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:flex sm:items-center sm:gap-8">
+        <div v-if="selectionMode" class="flex items-center gap-2 sm:gap-3">
+          <UButton
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            aria-label="Exit selection"
+            @click="exitSelection"
+          />
+          <span class="text-xs text-gray-500 dark:text-white/30 tabular-nums whitespace-nowrap">
+            {{ selectedCount }} selected
+          </span>
+          <div class="flex-1" />
+          <UButton
+            label="Select all loaded"
+            color="neutral"
+            variant="outline"
+            size="xs"
+            @click="selectAllLoaded"
+          />
+          <UButton
+            label="Edit metadata"
+            color="primary"
+            size="xs"
+            :disabled="selectedCount === 0"
+            @click="bulkOpen = true"
+          />
+        </div>
+        <div
+          v-else
+          class="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:flex sm:items-center sm:gap-8"
+        >
           <div class="flex items-center gap-3 order-1">
             <h2
               class="text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/35 m-0"
@@ -82,6 +113,15 @@
                 <Icon icon="mdi:view-list-outline" class="w-4 h-4" />
               </button>
             </div>
+
+            <button
+              class="p-1.5 rounded-md text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-all duration-150"
+              aria-label="Select files"
+              title="Select files"
+              @click="enterSelection()"
+            >
+              <Icon icon="mdi:check-box-multiple-outline" class="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -151,7 +191,16 @@
         @scroll.passive="onScroll"
       >
         <template #default="{ item }">
-          <MediaCard :file="item" view-mode="list" @select="onFileClick" @info="onMediaInfo" />
+          <MediaCard
+            :file="item"
+            view-mode="list"
+            :selected="selectedIds.has(item.fileId)"
+            :selection-mode="selectionMode"
+            @select="onFileClick"
+            @info="onMediaInfo"
+            @toggle="onToggleSelect"
+            @longpress="onCardLongPress"
+          />
         </template>
       </RecycleScroller>
 
@@ -179,8 +228,12 @@
                   :key="file.fileId"
                   :file="file"
                   view-mode="grid"
+                  :selected="selectedIds.has(file.fileId)"
+                  :selection-mode="selectionMode"
                   @select="onFileClick"
                   @info="onMediaInfo"
+                  @toggle="onToggleSelect"
+                  @longpress="onCardLongPress"
                 />
               </div>
             </div>
@@ -196,6 +249,13 @@
 
     <LyricsPanel v-if="mediaType === 'audio'" v-model:open="lyricsOpen" />
 
+    <BulkMetadataDrawer
+      :open="bulkOpen"
+      :files="selectedFiles"
+      @close="bulkOpen = false"
+      @applied="onBulkApplied"
+    />
+
     <UDrawer
       v-model:open="infoOpen"
       :title="infoTitle"
@@ -208,6 +268,17 @@
     >
       <template #body>
         <div class="p-1">
+          <div class="flex justify-end pb-2">
+            <UButton
+              v-if="infoFile"
+              icon="mdi:arrow-expand"
+              label="Open full page"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="openTrackPage"
+            />
+          </div>
           <AudioAnalysisFilePanel v-if="infoFile" :file-id="infoFile.fileId" :enabled="infoOpen" />
         </div>
       </template>
@@ -218,8 +289,9 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
-import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
+import { breakpointsTailwind, onKeyStroke, useBreakpoints } from "@vueuse/core";
 import { computed, ref, watch, watchEffect } from "vue";
+import { useRouter } from "vue-router";
 
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { LIBRARY_PAGE_SIZE } from "@/composables/useStreamingMediaContext";
@@ -229,6 +301,7 @@ import { glassDrawerContent } from "@/utils/modalUi";
 
 import BlockSpinner from "../common/BlockSpinner.vue";
 import AudioAnalysisFilePanel from "../dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";
+import BulkMetadataDrawer from "./BulkMetadataDrawer.vue";
 import LyricsPanel from "./LyricsPanel.vue";
 import MediaCard from "./MediaCard.vue";
 
@@ -244,6 +317,7 @@ const lyricsOpen = ref(false);
 
 const playerStore = usePlayerStore();
 const queryCache = useQueryCache();
+const router = useRouter();
 const mySourceId = computed(() => `library-${mediaType}`);
 
 // View mode (persisted to localStorage)
@@ -266,6 +340,7 @@ watch(
   () => {
     allItems.value = [];
     page.value = 1;
+    exitSelection();
   },
 );
 
@@ -317,6 +392,7 @@ const onScroll = (event: Event) => {
 const onRefresh = () => {
   allItems.value = [];
   page.value = 1;
+  exitSelection();
   // refresh() is a no-op on fresh entries, so mark page 1 stale first.
   // Otherwise the clear above empties the grid with nothing repopulating it
   // whenever the data is still within staleTime.
@@ -367,6 +443,94 @@ const onMediaInfo = (file: MediaFileDto) => {
   infoFile.value = file;
   infoOpen.value = true;
 };
+
+const openTrackPage = () => {
+  if (!infoFile.value) return;
+  const fileId = infoFile.value.fileId;
+  infoOpen.value = false;
+  infoFile.value = null;
+  router.push(`/streaming/track/${fileId}`);
+};
+
+// Selection mode: id-based state owned here so recycled cards cannot drift.
+// Cards render purely from props; clicks flip meaning based on the mode.
+
+const selectionMode = ref(false);
+const selectedIds = ref(new Set<string>());
+const lastToggleIndex = ref<number | null>(null);
+const bulkOpen = ref(false);
+
+const selectedCount = computed(() => selectedIds.value.size);
+
+const selectedFiles = computed(() => {
+  const ids = selectedIds.value;
+  return allItems.value.filter((file) => ids.has(file.fileId));
+});
+
+const enterSelection = (file?: MediaFileDto) => {
+  selectionMode.value = true;
+  if (file) {
+    selectedIds.value = new Set(selectedIds.value).add(file.fileId);
+    lastToggleIndex.value = allItems.value.findIndex((f) => f.fileId === file.fileId);
+  }
+};
+
+const exitSelection = () => {
+  selectionMode.value = false;
+  selectedIds.value = new Set();
+  lastToggleIndex.value = null;
+};
+
+const onToggleSelect = (file: MediaFileDto, event: MouseEvent) => {
+  const currentIndex = allItems.value.findIndex((f) => f.fileId === file.fileId);
+  if (
+    selectionMode.value &&
+    event.shiftKey &&
+    lastToggleIndex.value !== null &&
+    currentIndex !== -1
+  ) {
+    const [start, end] = [
+      Math.min(lastToggleIndex.value, currentIndex),
+      Math.max(lastToggleIndex.value, currentIndex),
+    ];
+    const next = new Set(selectedIds.value);
+    for (let i = start; i <= end; i++) next.add(allItems.value[i].fileId);
+    selectedIds.value = next;
+    lastToggleIndex.value = currentIndex;
+    return;
+  }
+  const next = new Set(selectedIds.value);
+  if (next.has(file.fileId)) next.delete(file.fileId);
+  else next.add(file.fileId);
+  if (!selectionMode.value) selectionMode.value = true;
+  if (next.size === 0) {
+    exitSelection();
+    return;
+  }
+  selectedIds.value = next;
+  lastToggleIndex.value = currentIndex === -1 ? null : currentIndex;
+};
+
+const onCardLongPress = (file: MediaFileDto) => {
+  if (!selectionMode.value) enterSelection(file);
+  else if (!selectedIds.value.has(file.fileId)) onToggleSelect(file, new MouseEvent("click"));
+};
+
+const selectAllLoaded = () => {
+  selectionMode.value = true;
+  selectedIds.value = new Set(allItems.value.map((file) => file.fileId));
+  lastToggleIndex.value = null;
+};
+
+const onBulkApplied = () => {
+  bulkOpen.value = false;
+  exitSelection();
+};
+
+onKeyStroke("Escape", () => {
+  if (bulkOpen.value) return;
+  if (selectionMode.value) exitSelection();
+});
 
 // Grid layout
 

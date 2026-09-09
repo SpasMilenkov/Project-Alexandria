@@ -72,4 +72,11 @@ public interface IFileRepository : IRepository<File>
     Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
         string? query = null, Guid? playlistId = null, bool isVideo = false,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Single streamable file with its resolved transcode job and descriptive metadata,
+    /// or null when the file is missing, foreign, or has no Ready transcode.
+    /// Backs deep links to the track page.
+    /// </summary>
+    Task<MediaFileDto?> GetStreamingFileAsync(Guid userId, Guid fileId, CancellationToken ct = default);
 }

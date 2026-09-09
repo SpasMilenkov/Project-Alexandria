@@ -11,4 +11,12 @@ public class BehaviorSettingsValue
     /// (possibly lower) verdict is taken. Never affects user-removed tags.
     /// </summary>
     public bool AllowAutoTagRegression { get; set; } = false;
+
+    /// <summary>
+    /// When <c>false</c> (default), the automated media pipeline never overwrites a
+    /// non-empty descriptive metadata field (Title, Artist, Album, Year, Genre), so user
+    /// corrections survive re-runs. When <c>true</c>, incoming automated output always wins.
+    /// Technical fields (duration, codecs, dimensions) are never gated.
+    /// </summary>
+    public bool AllowAutomaticMetadataOverwrite { get; set; } = false;
 }

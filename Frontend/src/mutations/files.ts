@@ -1,8 +1,9 @@
 import { type QueryCache, defineMutation, useMutation, useQueryCache } from "@pinia/colada";
 
-import { fileApi } from "@/api/file";
+import { fileApi, type BulkUpdateFileMetadataRequest } from "@/api/file";
 import { INTEGRATIONS_QUERY_KEYS } from "@/queries/audioAnalysis";
 import { FILES_QUERY_KEYS } from "@/queries/files";
+import { STREAMING_QUERY_KEYS } from "@/queries/streaming";
 import { TAGS_QUERY_KEYS } from "@/queries/tags";
 import { type UpdateFileMetadataSchema } from "@/schemas/file";
 import { logger } from "@/utils/logger";
@@ -34,9 +35,28 @@ export const updateFileMetadata = defineMutation(() => {
         exact: true,
         key: INTEGRATIONS_QUERY_KEYS.file(data.id),
       });
+      // Artist/Album/Title edits show up in the streaming grid and track page.
+      queryCache.invalidateQueries({
+        exact: true,
+        key: STREAMING_QUERY_KEYS.streamingFile(data.id),
+      });
       // directoryId of the file is not tracked here, so we invalidate all listings.
       // If you add originId to this mutation's params you can narrow this down.
       queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.root });
+      queryCache.invalidateQueries({ key: STREAMING_QUERY_KEYS.root });
+    },
+  });
+});
+
+export const bulkUpdateFileMetadata = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return useMutation({
+    mutation: (data: BulkUpdateFileMetadataRequest) => fileApi.bulkUpdateFileMetadata(data),
+    onSettled() {
+      // Bulk edits land on grid subtitles and track pages; narrow per-file
+      // invalidation happens on the next read via stale queries.
+      queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.root });
+      queryCache.invalidateQueries({ key: STREAMING_QUERY_KEYS.root });
     },
   });
 });

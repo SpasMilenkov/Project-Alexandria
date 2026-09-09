@@ -130,6 +130,39 @@
           </div>
         </div>
 
+        <!-- Metadata Section -->
+        <div class="flex flex-col gap-3">
+          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Metadata</h4>
+          <div class="grid gap-3" :class="isMobile ? 'grid-cols-1' : 'grid-cols-2'">
+            <UFormField label="Title" name="metadata-title">
+              <UInput v-model="metadataForm.title" class="w-full" placeholder="Unchanged" />
+            </UFormField>
+            <UFormField label="Artist" name="metadata-artist">
+              <UInput v-model="metadataForm.artist" class="w-full" placeholder="Unchanged" />
+            </UFormField>
+            <UFormField label="Album" name="metadata-album">
+              <UInput v-model="metadataForm.album" class="w-full" placeholder="Unchanged" />
+            </UFormField>
+            <UFormField label="Year" name="metadata-year">
+              <UInput v-model="metadataForm.year" class="w-full" placeholder="Unchanged" />
+            </UFormField>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-500 m-0">
+            Blank fields keep their current values.
+          </p>
+          <div class="flex justify-end">
+            <UButton
+              label="Save metadata"
+              size="xs"
+              variant="outline"
+              color="neutral"
+              :loading="isSavingMetadata"
+              :disabled="!isMetadataDirty || isSavingMetadata"
+              @click="handleMetadataSave"
+            />
+          </div>
+        </div>
+
         <!-- File Preview Section -->
         <FilePreview
           v-if="!detail.currentVersion.isEncrypted"
@@ -255,10 +288,11 @@ import type { SearchTagsSchema } from "@/schemas/tag";
 
 import { type FileResult } from "@/api/file";
 import { useAppToast } from "@/composables/useAppToast";
-import { autoTagFile } from "@/mutations/files";
+import { autoTagFile, updateFileMetadata } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import { getFile } from "@/queries/files";
 import { getTagsForFile, searchTag } from "@/queries/tags";
+import { metadataYearSchema } from "@/schemas/file";
 import { formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
 import { getFileTypeReadable, isAutoTagSupportedFileType } from "@/utils/mimetype.utils";
@@ -331,6 +365,53 @@ const detail = computed(() => fileDetail.value ?? displayFile.value);
 const { mutateAsync: addTagMutate } = addTagToFile();
 const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
 const { mutateAsync: autoTagMutate, isLoading: isAutoTagging } = autoTagFile();
+const { mutateAsync: updateMetadataMutate, isLoading: isSavingMetadata } = updateFileMetadata();
+
+const blankMetadataForm = () => ({ title: "", artist: "", album: "", year: "" });
+const metadataForm = ref(blankMetadataForm());
+
+const isMetadataDirty = computed(
+  () =>
+    metadataForm.value.title.trim() !== "" ||
+    metadataForm.value.artist.trim() !== "" ||
+    metadataForm.value.album.trim() !== "" ||
+    metadataForm.value.year.trim() !== "",
+);
+
+const blankToUndefined = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+const handleMetadataSave = async () => {
+  if (!displayFile.value || !isMetadataDirty.value) return;
+  const year = blankToUndefined(metadataForm.value.year);
+  if (year !== undefined && !metadataYearSchema.safeParse(year).success) {
+    appToast.error("Invalid year", "Year must be a 4-digit year (e.g. 1999).");
+    return;
+  }
+  try {
+    await updateMetadataMutate({
+      id: displayFile.value.fileId,
+      title: blankToUndefined(metadataForm.value.title),
+      artist: blankToUndefined(metadataForm.value.artist),
+      album: blankToUndefined(metadataForm.value.album),
+      year,
+    });
+    metadataForm.value = blankMetadataForm();
+    refreshDetail();
+    appToast.success("Metadata saved");
+  } catch {
+    appToast.error("Failed to save metadata");
+  }
+};
+
+watch(
+  () => displayFile.value?.fileId,
+  () => {
+    metadataForm.value = blankMetadataForm();
+  },
+);
 
 const isAudioFile = computed(() =>
   detail.value ? isAutoTagSupportedFileType(detail.value.currentVersion.mimeType) : false,

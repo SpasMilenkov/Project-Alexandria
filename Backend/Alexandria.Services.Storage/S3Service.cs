@@ -16,6 +16,7 @@ using Alexandria.Dto.Extensions;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Metrics;
 using Alexandria.Dto.Previews;
+using Alexandria.Services.Storage.MediaMetadata;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Blake3;
@@ -36,7 +37,8 @@ public partial class S3Service(
     ILogger<S3Service> logger,
     IPromotionQueue promotionQueue,
     IFileService fileService,
-    AuditContext auditContext)
+    AuditContext auditContext,
+    IUserSettingsService userSettingsService)
     : IStorageService
 {
     private static readonly HashSet<string> AllowedCoverTypes =
@@ -327,15 +329,12 @@ public partial class S3Service(
                 existingMetadata.Width = metadataDto.Width;
                 existingMetadata.Height = metadataDto.Height;
                 existingMetadata.HasAudio = metadataDto.HasAudio;
-                existingMetadata.Title = string.IsNullOrWhiteSpace(existingMetadata.Title)
-                    ? metadataDto.Title
-                    : existingMetadata.Title;
-                existingMetadata.Artist = string.IsNullOrWhiteSpace(existingMetadata.Artist)
-                    ? metadataDto.Artist
-                    : existingMetadata.Artist;
-                existingMetadata.Album = metadataDto.Album;
-                existingMetadata.Year = metadataDto.Year;
-                existingMetadata.Genre = metadataDto.Genre;
+                // Descriptive fields merge per-field: stored non-empty values (including
+                // user corrections) survive automated output unless the owner opted into
+                // automatic overwrite; empty fields always take it.
+                var behavior = await userSettingsService.GetBehaviorAsync(version.File.OwnerId, ct);
+                MediaMetadataMerge.ApplyDescriptiveFields(
+                    existingMetadata, metadataDto, behavior.AllowAutomaticMetadataOverwrite);
                 existingMetadata.UpdatedBy = SystemConfig.SystemId;
 
                 await unitOfWork.MediaMetadata.UpdateAsync(existingMetadata, ct);

@@ -232,6 +232,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "chart-line",
     "chart-pie",
     "check",
+    "check-box-multiple-outline",
     "check-circle",
     "check-circle-outline",
     "chevron-down",

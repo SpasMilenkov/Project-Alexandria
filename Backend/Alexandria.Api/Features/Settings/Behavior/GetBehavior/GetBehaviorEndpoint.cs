@@ -23,6 +23,7 @@ public class GetBehaviorEndpoint : EndpointWithoutRequest<GetBehaviorResponse>
             SkipDeleteConfirmation = settings.SkipDeleteConfirmation,
             ToastLevel = settings.ToastLevel,
             AllowAutoTagRegression = settings.AllowAutoTagRegression,
+            AllowAutomaticMetadataOverwrite = settings.AllowAutomaticMetadataOverwrite,
         }, ct);
     }
 }
