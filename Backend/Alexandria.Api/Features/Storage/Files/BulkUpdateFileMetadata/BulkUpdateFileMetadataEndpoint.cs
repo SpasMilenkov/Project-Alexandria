@@ -1,5 +1,6 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
+using Alexandria.Common.Validation;
 using Alexandria.Data.Models;
 using FastEndpoints;
 using FluentValidation;
@@ -57,7 +58,8 @@ sealed class BulkUpdateFileMetadataRequestValidator : Validator<BulkUpdateFileMe
         {
             RuleFor(x => x.Year!)
                 .NotEmpty()
-                .MaximumLength(ValidationConstants.StringLengths.ShortString);
+                .Must(MetadataValidation.IsValidYear)
+                .WithMessage("Year must be a 4-digit year (e.g. 1999).");
         });
     }
 }
