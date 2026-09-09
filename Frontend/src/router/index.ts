@@ -187,6 +187,12 @@ const router = createRouter({
       path: "/streaming/playlists/:id",
     },
     {
+      component: () => import("@/views/dashboard/streaming/TrackDetailsView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "track-details",
+      path: "/streaming/track/:fileId",
+    },
+    {
       component: () => import("@/views/dashboard/streaming/VideoView.vue"),
       meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
       name: "videos",

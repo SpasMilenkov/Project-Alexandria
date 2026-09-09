@@ -3,7 +3,7 @@ import type { ContextMenuItem } from "@nuxt/ui";
 
 import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
-import { computed } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
@@ -11,9 +11,16 @@ import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatDuration } from "@/utils/date-formatters";
 
-const { file, viewMode } = defineProps<{
+const {
+  file,
+  viewMode,
+  selected = false,
+  selectionMode = false,
+} = defineProps<{
   file: MediaFileDto;
   viewMode: "grid" | "list";
+  selected?: boolean;
+  selectionMode?: boolean;
 }>();
 
 const store = usePlayerStore();
@@ -44,6 +51,21 @@ const showFallbackIcon = computed(() => thumbnailErrored.value);
 const queueIndex = computed(() => userQueue.value.findIndex((f) => f.fileId === file.fileId));
 const isQueued = computed(() => queueIndex.value !== -1);
 
+// Border/background follows selection first, then the now-playing state.
+const gridBorderClass = computed(() => {
+  if (selected) return "border-primary/60 ring-1 ring-primary/40";
+  if (isActive.value) return "border-primary/50 ring-1 ring-primary/20";
+  return "border-black/[0.08] dark:border-white/[0.08] hover:border-black/[0.15] dark:hover:border-white/[0.16]";
+});
+
+const listRowClass = computed(() => {
+  if (selected) return "bg-primary/[0.08] dark:bg-primary/[0.1]";
+  if (isActive.value) return "bg-primary/[0.06] dark:bg-primary/[0.08]";
+  return "hover:bg-black/[0.025] dark:hover:bg-white/[0.03]";
+});
+
+const checkboxVisible = computed(() => selectionMode || selected);
+
 // Context menu
 const contextItems = computed((): ContextMenuItem[][] => [
   [
@@ -71,7 +93,54 @@ const contextItems = computed((): ContextMenuItem[][] => [
 const emit = defineEmits<{
   info: [file: MediaFileDto];
   select: [file: MediaFileDto];
+  toggle: [file: MediaFileDto, event: MouseEvent];
+  longpress: [file: MediaFileDto];
 }>();
+
+// Long-press enters selection mode. The press timer loses to any scroll/drag
+// movement, and clicks landing right after a long-press are swallowed so the
+// release tap does not immediately toggle the card back.
+const LONG_PRESS_MS = 400;
+const LONG_PRESS_MOVE_PX = 10;
+const pressTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const pressOrigin = ref<{ x: number; y: number } | null>(null);
+const lastLongPressAt = ref(0);
+
+const clearPressTimer = () => {
+  if (pressTimer.value !== null) {
+    clearTimeout(pressTimer.value);
+    pressTimer.value = null;
+  }
+  pressOrigin.value = null;
+};
+
+onUnmounted(clearPressTimer);
+
+const onPressStart = (event: PointerEvent) => {
+  if (event.pointerType === "mouse" && event.button !== 0) return;
+  clearPressTimer();
+  pressOrigin.value = { x: event.clientX, y: event.clientY };
+  pressTimer.value = setTimeout(() => {
+    pressTimer.value = null;
+    pressOrigin.value = null;
+    lastLongPressAt.value = Date.now();
+    if (navigator.vibrate) navigator.vibrate(10);
+    emit("longpress", file);
+  }, LONG_PRESS_MS);
+};
+
+const onPressMove = (event: PointerEvent) => {
+  if (!pressOrigin.value) return;
+  const dx = event.clientX - pressOrigin.value.x;
+  const dy = event.clientY - pressOrigin.value.y;
+  if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_PX) clearPressTimer();
+};
+
+const onCardClick = (event: MouseEvent) => {
+  if (Date.now() - lastLongPressAt.value < 500) return;
+  if (selectionMode || event.ctrlKey || event.metaKey) emit("toggle", file, event);
+  else emit("select", file);
+};
 </script>
 
 <template>
@@ -79,12 +148,13 @@ const emit = defineEmits<{
   <UContextMenu v-if="viewMode === 'grid'" :items="contextItems" class="block w-full">
     <button
       class="group relative w-full text-left rounded-xl overflow-hidden border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-      :class="
-        isActive
-          ? 'border-primary/50 ring-1 ring-primary/20'
-          : 'border-black/[0.08] dark:border-white/[0.08] hover:border-black/[0.15] dark:hover:border-white/[0.16]'
-      "
-      @click="emit('select', file)"
+      :class="gridBorderClass"
+      @click="onCardClick($event)"
+      @pointerdown="onPressStart"
+      @pointermove="onPressMove"
+      @pointerup="clearPressTimer"
+      @pointerleave="clearPressTimer"
+      @pointercancel="clearPressTimer"
     >
       <div
         class="w-full relative overflow-hidden bg-gray-100 dark:bg-neutral-900"
@@ -108,11 +178,27 @@ const emit = defineEmits<{
         />
 
         <span
-          class="absolute top-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[0.625rem] font-semibold tracking-wide bg-black/40 frosted-glass text-white/80"
+          class="absolute top-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[0.625rem] font-semibold tracking-wide bg-black/40 frosted-glass text-white/80 transition-all duration-200"
+          :class="checkboxVisible ? 'left-9' : 'left-2 group-hover:left-9'"
         >
           <Icon :icon="typeIcon" class="w-3 h-3 flex-shrink-0" />
           {{ typeLabel }}
         </span>
+
+        <span
+          class="absolute top-2 left-2 transition-opacity duration-200 rounded-md bg-black/40 frosted-glass p-0.5"
+          :class="checkboxVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+          @click.stop="emit('toggle', file, $event)"
+        >
+          <UCheckbox
+            :model-value="selected"
+            tabindex="-1"
+            aria-label="Select file"
+            class="pointer-events-none"
+          />
+        </span>
+
+        <div v-if="selected" class="absolute inset-0 bg-primary/20 pointer-events-none" />
 
         <div class="absolute top-2 right-2 flex items-center gap-1.5">
           <button
@@ -167,12 +253,13 @@ const emit = defineEmits<{
   <UContextMenu v-else :items="contextItems" class="block w-full">
     <button
       class="group w-full text-left flex items-center gap-3 px-3 py-2.5 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-      :class="
-        isActive
-          ? 'bg-primary/[0.06] dark:bg-primary/[0.08]'
-          : 'hover:bg-black/[0.025] dark:hover:bg-white/[0.03]'
-      "
-      @click="emit('select', file)"
+      :class="listRowClass"
+      @click="onCardClick($event)"
+      @pointerdown="onPressStart"
+      @pointermove="onPressMove"
+      @pointerup="clearPressTimer"
+      @pointerleave="clearPressTimer"
+      @pointercancel="clearPressTimer"
     >
       <div
         class="w-9 h-9 rounded-lg overflow-hidden bg-gray-100 dark:bg-neutral-900 flex-shrink-0 relative"
@@ -196,7 +283,15 @@ const emit = defineEmits<{
           :class="isActive ? 'text-primary dark:text-primary' : 'text-gray-800 dark:text-white/85'"
         >
           <div class="w-5 flex-shrink-0 flex justify-center">
-            <div v-if="isActive" class="flex gap-0.5 items-end h-3.5">
+            <span v-if="checkboxVisible" @click.stop="emit('toggle', file, $event)">
+              <UCheckbox
+                :model-value="selected"
+                tabindex="-1"
+                aria-label="Select file"
+                class="pointer-events-none"
+              />
+            </span>
+            <div v-else-if="isActive" class="flex gap-0.5 items-end h-3.5">
               <div class="w-0.5 bg-primary rounded-full animate-eq-1"></div>
               <div class="w-0.5 bg-primary rounded-full animate-eq-2"></div>
               <div class="w-0.5 bg-primary rounded-full animate-eq-3"></div>
