@@ -374,4 +374,8 @@ public class FileService(
         string? query = null, Guid? playlistId = null, bool isVideo = false,
         CancellationToken ct = default)
         => await unitOfWork.Files.GetFilesForStreamingAsync(userId, page, pageSize, query, playlistId, isVideo, ct);
+
+    public async Task<MediaFileDto?> GetStreamingFileAsync(Guid userId, Guid fileId,
+        CancellationToken ct = default)
+        => await unitOfWork.Files.GetStreamingFileAsync(userId, fileId, ct);
 }

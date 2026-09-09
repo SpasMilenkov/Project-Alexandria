@@ -13,6 +13,8 @@ public sealed class MediaFileDto
     public string? Artist { get; set; }
     public string? Album { get; set; }
     public string? Title { get; set; }
+    public string? Genre { get; set; }
+    public string? Year { get; set; }
     public Guid TranspilationJobId { get; set; }
     public bool IsVideo { get; set; }
     public string? SegmentPrefix { get; set; }
