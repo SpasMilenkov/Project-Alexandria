@@ -191,54 +191,33 @@
 
   <UModal
     v-model:open="showCreateModal"
-    title="New Playlist"
-    :ui="{ body: ' sm:p-0 p-0 overflow-hidden bg-transparent!', content: 'lg:min-w-2xl max-w-3xl' }"
+    title="New playlist"
+    description="Give your next collection a personal touch."
+    :ui="playlistModalUi"
   >
     <template #body>
-      <div
-        class="relative transition-colors duration-500"
-        :style="
-          createAmbient
-            ? `background: linear-gradient(to left, ${createAmbient}35 65%, transparent 100%)`
-            : 'bg-neutral-500'
-        "
-      >
-        <PlaylistForm
-          :loading="isCreateLoading"
-          @submit="handleCreate"
-          @cancel="showCreateModal = false"
-          @ambient-change="createAmbient = $event"
-        />
-      </div>
+      <PlaylistForm
+        :loading="isCreateLoading"
+        @submit="handleCreate"
+        @cancel="showCreateModal = false"
+      />
     </template>
   </UModal>
 
   <UModal
     v-model:open="showEditModal"
-    title="Edit Playlist"
-    :ui="{
-      body: 'sm:p-0 p-0 overflow-hidden bg-transparent! min-h-90',
-      content: 'lg:min-w-2xl max-w-3xl',
-    }"
+    title="Edit playlist"
+    description="Update the details and artwork for your collection."
+    :ui="playlistModalUi"
   >
     <template #body>
-      <div
-        class="relative transition-colors duration-500 pb-6"
-        :style="
-          editAmbient
-            ? `background: linear-gradient(to left, ${editAmbient}35 65%, transparent 100%)`
-            : undefined
-        "
-      >
-        <PlaylistForm
-          v-if="editTarget"
-          :initial="editTarget"
-          :loading="isUpdateLoading"
-          @submit="handleUpdate"
-          @cancel="showEditModal = false"
-          @ambient-change="editAmbient = $event"
-        />
-      </div>
+      <PlaylistForm
+        v-if="editTarget"
+        :initial="editTarget"
+        :loading="isUpdateLoading"
+        @submit="handleUpdate"
+        @cancel="showEditModal = false"
+      />
     </template>
   </UModal>
 
@@ -292,7 +271,7 @@ import { PlaylistSort } from "@/enums/playlist-sort";
 import { createPlaylist, deletePlaylist, updatePlaylist } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent, playlistModalUi } from "@/utils/modalUi";
 import { parsePlaylistBrowseQuery, playlistBrowseQuery } from "@/utils/playlist-display.utils";
 
 const route = useRoute();
@@ -477,12 +456,6 @@ const confirmDelete = (playlist: PlaylistResponse) => {
   showDeleteModal.value = true;
 };
 
-const createAmbientBg = computed(() =>
-  createAmbient.value
-    ? `linear-gradient(to bottom right, ${createAmbient.value}28 0%, transparent 60%)`
-    : "transparent",
-);
-
 const navigateToPlaylist = (id: string) => {
   router.push(`/streaming/playlists/${id}`);
 };
@@ -566,22 +539,4 @@ const handleDelete = async () => {
     deleteTarget.value = null;
   }
 };
-
-const createAmbient = ref<string | null>(null);
-const editAmbient = ref<string | null>(null);
-
-watch(showCreateModal, (open) => {
-  if (!open) createAmbient.value = null;
-});
-
-watch(showEditModal, (open) => {
-  if (!open) editAmbient.value = null;
-  else editAmbient.value = editTarget.value?.ambientTheme ?? null;
-});
 </script>
-
-<style lang="css">
-.ambient-cover {
-  background: v-bind(createAmbientBg);
-}
-</style>
