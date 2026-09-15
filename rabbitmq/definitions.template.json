@@ -11,6 +11,7 @@
     { "name": "media_transpilation_worker", "password": "${TRANSPILATION_WORKER_PASS}", "tags": "" },
     { "name": "lyrics_worker_user", "password": "${LYRICS_WORKER_PASS}", "tags": "" },
     { "name": "media_metadata_worker_user", "password": "${MEDIA_METADATA_WORKER_PASS}", "tags": "" },
+    { "name": "playlist_worker_user", "password": "${PLAYLIST_WORKER_PASS}", "tags": "" },
     { "name": "essentia_worker_user", "password": "${ESSENTIA_WORKER_PASS}", "tags": "" }
   ],
   "permissions": [
@@ -57,11 +58,18 @@
       "read": "^(content-exchange|lyrics-queue|lyrics-parking-queue)$"
     },
     {
+      "user": "playlist_worker_user",
+      "vhost": "${RABBITMQ_VHOST}",
+      "configure": "^(content-exchange|playlist-queue)$",
+      "write": "^(content-exchange|playlist-queue)$",
+      "read": "^(content-exchange|playlist-queue)$"
+    },
+    {
       "user": "media_metadata_worker_user",
       "vhost": "${RABBITMQ_VHOST}",
-      "configure": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue)$",
-      "write": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue)$",
-      "read": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue)$"
+      "configure": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue|media-metadata-backfill-queue)$",
+      "write": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue|media-metadata-backfill-queue)$",
+      "read": "^(content-exchange|media-metadata-results-queue|media-metadata-trigger-queue|media-metadata-trigger-parking-queue|media-metadata-backfill-queue)$"
     },
     {
       "user": "essentia_worker_user",
@@ -90,7 +98,9 @@
     { "name": "classify-effnet-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "classify-maest-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "media-metadata-results-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
-    { "name": "media-metadata-trigger-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} }
+    { "name": "media-metadata-trigger-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "media-metadata-backfill-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "playlist-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} }
   ],
   "bindings": [
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "document-queue", "destination_type": "queue", "routing_key": "document.#", "arguments": {} },
@@ -101,6 +111,8 @@
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "classify-effnet-queue", "destination_type": "queue", "routing_key": "media-metadata.classify.audio.effnet", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "classify-maest-queue", "destination_type": "queue", "routing_key": "media-metadata.classify.audio.maest", "arguments": {} },
     { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-metadata-results-queue", "destination_type": "queue", "routing_key": "media-metadata.completed.#", "arguments": {} },
-    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-metadata-trigger-queue", "destination_type": "queue", "routing_key": "media-metadata.enrich.#", "arguments": {} }
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-metadata-trigger-queue", "destination_type": "queue", "routing_key": "media-metadata.enrich.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "media-metadata-backfill-queue", "destination_type": "queue", "routing_key": "media-metadata.enrich-backfill.#", "arguments": {} },
+    { "source": "content-exchange", "vhost": "${RABBITMQ_VHOST}", "destination": "playlist-queue", "destination_type": "queue", "routing_key": "playlist.sync.#", "arguments": {} }
   ]
 }
