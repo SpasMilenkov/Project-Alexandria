@@ -39,7 +39,6 @@ const { isBuffering, loadError } = usePlayerEngine(videoRef, containerRef, {
   getThumbnailUrl: () => audioBg.value,
 });
 
-void isBuffering;
 void loadError;
 
 type PlayerMode = "pip" | "strip";
@@ -221,6 +220,7 @@ onUnmounted(() => {
           'compact-strip': isCompactStrip,
           'theme-dark': isDark,
           'theme-light': !isDark,
+          'is-buffering': isBuffering,
         },
       ]"
       :style="cardStyle"
@@ -527,6 +527,39 @@ onUnmounted(() => {
 }
 .player-card.minimized .shaka-volume-bar-container {
   display: none;
+}
+
+/*
+  Strip buffering indicator.
+  Audio-only, so the big centered Shaka spinner overlay is out of place —
+  swap it for a small ring around the play button instead.
+*/
+.player-card.strip .shaka-spinner-container {
+  display: none !important;
+}
+.player-card.strip .shaka-play-button {
+  position: relative;
+  overflow: visible;
+}
+.player-card.strip.is-buffering .shaka-play-button::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  opacity: 0.7;
+  animation: shaka-btn-spin 0.7s linear infinite;
+  pointer-events: none;
+}
+.player-card.strip.is-buffering .shaka-play-button .material-icons-round {
+  opacity: 0.5;
+}
+
+@keyframes shaka-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Compact strip */
