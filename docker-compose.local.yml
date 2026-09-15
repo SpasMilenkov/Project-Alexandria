@@ -81,6 +81,7 @@ services:
       TRANSPILATION_WORKER_PASS: ${TRANSPILATION_WORKER_RABBITMQ_PASSWORD:?TRANSPILATION_WORKER_RABBITMQ_PASSWORD is required}
       MEDIA_METADATA_WORKER_PASS: ${MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD:?MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD is required}
       LYRICS_WORKER_PASS: ${LYRICS_WORKER_RABBITMQ_PASSWORD:?LYRICS_WORKER_RABBITMQ_PASSWORD is required}
+      PLAYLIST_WORKER_PASS: ${PLAYLIST_WORKER_RABBITMQ_PASSWORD:?PLAYLIST_WORKER_RABBITMQ_PASSWORD is required}
       ESSENTIA_WORKER_PASS: ${ESSENTIA_WORKER_RABBITMQ_PASSWORD:?ESSENTIA_WORKER_RABBITMQ_PASSWORD is required}
     volumes:
       - ./rabbitmq/definitions.template.json:/template/definitions.template.json:ro
@@ -633,6 +634,52 @@ services:
           memory: 1G
         reservations:
           memory: 512M
+
+  playlist-worker:
+    build:
+      context: ./Backend
+      dockerfile: Alexandria.Workers.Playlist/Dockerfile
+    container_name: alexandria-playlist-worker
+    labels:
+      - "logs.collect=true"
+    restart: always
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__UserName: ${RABBITMQ_PLAYLIST_WORKER:?RABBITMQ_PLAYLIST_WORKER is required}
+      RabbitMQ__Password: ${PLAYLIST_WORKER_RABBITMQ_PASSWORD:?PLAYLIST_WORKER_RABBITMQ_PASSWORD is required}
+      RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
+      RabbitMQ__Consumer__ExchangeName: content-exchange
+      RabbitMQ__Consumer__SyncQueueName: playlist-queue
+      RabbitMQ__Consumer__SyncRoutingKey: playlist.sync
+      ASPNETCORE_URLS: http://+:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      rabbitmq-config:
+        condition: service_completed_successfully
+    networks:
+      - data-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
 
   lyrics-worker:
     build:

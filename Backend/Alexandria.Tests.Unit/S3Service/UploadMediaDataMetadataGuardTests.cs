@@ -54,7 +54,8 @@ public class UploadMediaDataMetadataGuardTests
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
             new AuditContext(),
-            _settings);
+            _settings,
+            Substitute.For<IPublisherService>());
     }
 
     private void GivenVersionWithOwner()

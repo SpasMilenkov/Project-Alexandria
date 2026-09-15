@@ -1,5 +1,7 @@
+using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Exceptions.Policies;
+using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Policies;
 using Microsoft.Extensions.Logging;
@@ -10,6 +12,7 @@ namespace Alexandria.Services.Storage.Policies;
 public sealed partial class DirectoryPolicyService(
     IUnitOfWork unitOfWork,
     IDirectoryService directoryService,
+    IPublisherService publisher,
     ILogger<DirectoryPolicyService> logger)
     : IDirectoryPolicyService
 {
@@ -41,6 +44,9 @@ public sealed partial class DirectoryPolicyService(
 
             LogPolicyCreated(logger, entity.Id, request.DirectoryId);
 
+            // Never inline: the sweep runs in the worker process off this message.
+            await EnqueueBackfillAsync(entity.Id, ct);
+
             return DirectoryPolicyDto.FromEntity(entity);
         }
         catch (Exception ex)
@@ -67,6 +73,9 @@ public sealed partial class DirectoryPolicyService(
         await unitOfWork.SaveChangesAsync(ct);
 
         LogPolicyUpdated(logger, policyId);
+
+        // Update only widens or narrows inheritance; re-sweeping is idempotent.
+        await EnqueueBackfillAsync(policyId, ct);
 
         return DirectoryPolicyDto.FromEntity(policy);
     }
@@ -149,5 +158,24 @@ public sealed partial class DirectoryPolicyService(
         await unitOfWork.SaveChangesAsync(ct);
 
         LogRuleDeleted(logger, ruleId);
+    }
+
+    /// <summary>
+    /// Fire-and-forget backfill request scoped to the policy. A broker failure must
+    /// never fail policy creation: the sweep is a best-effort catch-up and the
+    /// failure is logged with the policy id for operators.
+    /// </summary>
+    private async Task EnqueueBackfillAsync(Guid policyId, CancellationToken ct)
+    {
+        try
+        {
+            await publisher.PublishAsync(
+                Encoding.UTF8.GetBytes(policyId.ToString()),
+                EnrichmentBackfill.BackfillRoutingKey);
+        }
+        catch (Exception ex)
+        {
+            LogBackfillEnqueueFailed(logger, ex, policyId);
+        }
     }
 }

@@ -26,6 +26,7 @@ export interface BehaviorSettings {
   toastLevel: ToastLevel;
   allowAutoTagRegression: boolean;
   allowAutomaticMetadataOverwrite: boolean;
+  autoPlaylistMinTracks: number;
 }
 
 export interface RequestUploadResponse {
@@ -52,6 +53,7 @@ const mapBehaviorFromServer = (raw: any): BehaviorSettings => ({
   toastLevel: toastLevelFromServer[raw.toastLevel] ?? "all",
   allowAutoTagRegression: raw.allowAutoTagRegression,
   allowAutomaticMetadataOverwrite: raw.allowAutomaticMetadataOverwrite ?? false,
+  autoPlaylistMinTracks: raw.autoPlaylistMinTracks ?? 10,
 });
 
 export const settingsApi = {

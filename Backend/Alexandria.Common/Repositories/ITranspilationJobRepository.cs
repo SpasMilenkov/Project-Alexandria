@@ -2,6 +2,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Files.Streaming.Playlist;
 
 namespace Alexandria.Common.Repositories;
 
@@ -52,4 +53,13 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
     /// </summary>
     Task<IReadOnlyList<TranspilationJob>> GetJobsTouchingWindowAsync(
         DateTime from, DateTime to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Owner-wide viable transcodes for playlist binding: live Ready jobs with a Ready
+    /// representation, on live versions of live files owned by <paramref name="ownerId"/>.
+    /// Same viability definition as the streaming grid, projected flat so the
+    /// version-selection rule runs in memory. No tracking, unbounded.
+    /// </summary>
+    Task<IReadOnlyList<ResolvableTranscodeRow>> GetResolvableJobsAsync(
+        Guid ownerId, CancellationToken ct = default);
 }

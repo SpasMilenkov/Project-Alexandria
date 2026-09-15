@@ -28,7 +28,7 @@
 }
 
 .dark .glass-surface {
-  background-color: color-mix(in srgb, white 5%, transparent);
+  background-color: color-mix(in srgb, #171717 calc(var(--glass-opacity) * 100%), transparent);
 }
 
 .glass-surface-strong {

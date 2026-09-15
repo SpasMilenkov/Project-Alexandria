@@ -2,6 +2,7 @@ using Alexandria.Common;
 using Alexandria.Common.Helpers;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
+using Alexandria.Services.Storage.Playlists;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -21,6 +22,7 @@ public partial class AutoTagSyncService(
     IUserSettingsService userSettingsService,
     IAutoTagDerivationService derivationService,
     IFileTagService fileTagService,
+    IPublisherService publisher,
     ILogger<AutoTagSyncService> logger) : IAutoTagSyncService
 {
     public async Task SyncFileAsync(Guid fileId, CancellationToken ct = default)
@@ -57,6 +59,8 @@ public partial class AutoTagSyncService(
 
         var behavior = await userSettingsService.GetBehaviorAsync(file.OwnerId, ct);
         await fileTagService.ApplyAutoTagsAsync(fileId, candidates, behavior.AllowAutoTagRegression, ct);
+
+        await PlaylistSyncNotifier.PublishFileChangedAsync(publisher, fileId, file.OwnerId, logger);
 
         LogAutoTagsSynced(logger, fileId, candidates.Count, file.OwnerId);
     }

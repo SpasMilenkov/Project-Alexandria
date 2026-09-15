@@ -148,7 +148,7 @@ public class TranspilationStatsServiceTests
             .ToList();
 
         _jobRepo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<JobType?>())
             .Returns(jobs.Select(j => j.Job).ToList());
 
         var result = await _sut.GetOverviewAsync(30, TestContext.Current.CancellationToken);

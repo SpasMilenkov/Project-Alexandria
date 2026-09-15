@@ -7,5 +7,6 @@ public enum ServiceType
     DocumentPreviews,
     Transpilation,
     Lyrics,
-    MediaMetadata
+    MediaMetadata,
+    Playlist
 }

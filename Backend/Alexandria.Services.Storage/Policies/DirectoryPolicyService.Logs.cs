@@ -27,4 +27,7 @@ public sealed partial class DirectoryPolicyService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Rule {RuleId} deleted.")]
     private static partial void LogRuleDeleted(ILogger logger, Guid ruleId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to enqueue backfill for policy {PolicyId}.")]
+    private static partial void LogBackfillEnqueueFailed(ILogger logger, Exception ex, Guid policyId);
 }

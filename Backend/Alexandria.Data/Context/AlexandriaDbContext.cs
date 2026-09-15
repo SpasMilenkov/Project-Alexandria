@@ -113,6 +113,8 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new EssentiaBatchFileConfiguration());
         builder.ApplyConfiguration(new OperationalEventConfiguration());
         builder.ApplyConfiguration(new JobConfiguration());
+        builder.ApplyConfiguration(new PlaylistConfiguration());
+        builder.ApplyConfiguration(new PlaylistItemConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

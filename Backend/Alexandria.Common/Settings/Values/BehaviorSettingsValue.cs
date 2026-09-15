@@ -19,4 +19,15 @@ public class BehaviorSettingsValue
     /// Technical fields (duration, codecs, dimensions) are never gated.
     /// </summary>
     public bool AllowAutomaticMetadataOverwrite { get; set; } = false;
+
+    public const int MinAutoPlaylistTracks = 1;
+    public const int MaxAutoPlaylistTracks = 100;
+
+    /// <summary>
+    /// Minimum streamable tracks for the reconciler to create a tag or genre
+    /// auto-playlist (default 10). Vocabulary-driven kinds explode into singletons
+    /// without this; artist/album playlists always materialize. Only gates creation:
+    /// existing playlists keep syncing below the threshold.
+    /// </summary>
+    public int AutoPlaylistMinTracks { get; set; } = 10;
 }

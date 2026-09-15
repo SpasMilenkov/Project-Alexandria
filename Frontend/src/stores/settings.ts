@@ -174,6 +174,7 @@ export interface UserSettings {
   toastLevel: ToastLevel;
   allowAutoTagRegression: boolean;
   allowAutomaticMetadataOverwrite: boolean;
+  autoPlaylistMinTracks: number;
 }
 const DEFAULT_ACCENT_COLOR = "amber";
 const DEFAULT_BACKGROUND = "parchment";
@@ -191,9 +192,11 @@ const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
 const DEFAULT_TOAST_LEVEL: ToastLevel = "all";
 const DEFAULT_ALLOW_AUTO_TAG_REGRESSION = false;
 const DEFAULT_ALLOW_AUTOMATIC_METADATA_OVERWRITE = false;
+const DEFAULT_AUTO_PLAYLIST_MIN_TRACKS = 10;
 const DEFAULT_UI_STATE = {
   isAppearanceSectionOpen: true,
   isAutoTaggingSectionOpen: true,
+  isAutoPlaylistsSectionOpen: true,
   isBehaviorSectionOpen: true,
   isSystemTagsVisible: false,
 };
@@ -222,9 +225,11 @@ export const useSettingsStore = defineStore(
     const toastLevel = ref<ToastLevel>(DEFAULT_TOAST_LEVEL);
     const allowAutoTagRegression = ref(DEFAULT_ALLOW_AUTO_TAG_REGRESSION);
     const allowAutomaticMetadataOverwrite = ref(DEFAULT_ALLOW_AUTOMATIC_METADATA_OVERWRITE);
+    const autoPlaylistMinTracks = ref(DEFAULT_AUTO_PLAYLIST_MIN_TRACKS);
     const isAppearanceSectionOpen = ref(DEFAULT_UI_STATE.isAppearanceSectionOpen);
     const isBehaviorSectionOpen = ref(DEFAULT_UI_STATE.isBehaviorSectionOpen);
     const isAutoTaggingSectionOpen = ref(DEFAULT_UI_STATE.isAutoTaggingSectionOpen);
+    const isAutoPlaylistsSectionOpen = ref(DEFAULT_UI_STATE.isAutoPlaylistsSectionOpen);
     const isSystemTagsVisible = ref(DEFAULT_UI_STATE.isSystemTagsVisible);
 
     // Getters
@@ -246,6 +251,7 @@ export const useSettingsStore = defineStore(
       toastLevel: toastLevel.value,
       allowAutoTagRegression: allowAutoTagRegression.value,
       allowAutomaticMetadataOverwrite: allowAutomaticMetadataOverwrite.value,
+      autoPlaylistMinTracks: autoPlaylistMinTracks.value,
     }));
 
     const getCurrentBackgroundPreset = computed(
@@ -329,6 +335,9 @@ export const useSettingsStore = defineStore(
     const setAllowAutomaticMetadataOverwrite = (v: boolean) => {
       allowAutomaticMetadataOverwrite.value = v;
     };
+    const setAutoPlaylistMinTracks = (v: number) => {
+      autoPlaylistMinTracks.value = v;
+    };
     const setAppearanceSectionOpen = (v: boolean) => {
       isAppearanceSectionOpen.value = v;
     };
@@ -337,6 +346,9 @@ export const useSettingsStore = defineStore(
     };
     const setAutoTaggingSectionOpen = (v: boolean) => {
       isAutoTaggingSectionOpen.value = v;
+    };
+    const setAutoPlaylistsSectionOpen = (v: boolean) => {
+      isAutoPlaylistsSectionOpen.value = v;
     };
     const setSystemTagsVisible = (v: boolean) => {
       isSystemTagsVisible.value = v;
@@ -363,6 +375,7 @@ export const useSettingsStore = defineStore(
       setToastLevel(behavior.toastLevel);
       setAllowAutoTagRegression(behavior.allowAutoTagRegression);
       setAllowAutomaticMetadataOverwrite(behavior.allowAutomaticMetadataOverwrite);
+      setAutoPlaylistMinTracks(behavior.autoPlaylistMinTracks);
     };
 
     const syncFromServer = (appearance: AppearanceSettings, behavior: BehaviorSettings) => {
@@ -415,6 +428,9 @@ export const useSettingsStore = defineStore(
       if (settings.allowAutomaticMetadataOverwrite !== undefined) {
         setAllowAutomaticMetadataOverwrite(settings.allowAutomaticMetadataOverwrite);
       }
+      if (settings.autoPlaylistMinTracks !== undefined) {
+        setAutoPlaylistMinTracks(settings.autoPlaylistMinTracks);
+      }
     };
 
     const resetSettings = () => {
@@ -434,6 +450,7 @@ export const useSettingsStore = defineStore(
       toastLevel.value = DEFAULT_TOAST_LEVEL;
       allowAutoTagRegression.value = DEFAULT_ALLOW_AUTO_TAG_REGRESSION;
       allowAutomaticMetadataOverwrite.value = DEFAULT_ALLOW_AUTOMATIC_METADATA_OVERWRITE;
+      autoPlaylistMinTracks.value = DEFAULT_AUTO_PLAYLIST_MIN_TRACKS;
     };
 
     const resetAppearanceSettings = () => {
@@ -460,10 +477,15 @@ export const useSettingsStore = defineStore(
       allowAutoTagRegression.value = DEFAULT_ALLOW_AUTO_TAG_REGRESSION;
     };
 
+    const resetAutoPlaylistSettings = () => {
+      autoPlaylistMinTracks.value = DEFAULT_AUTO_PLAYLIST_MIN_TRACKS;
+    };
+
     const resetUIState = () => {
       isAppearanceSectionOpen.value = DEFAULT_UI_STATE.isAppearanceSectionOpen;
       isBehaviorSectionOpen.value = DEFAULT_UI_STATE.isBehaviorSectionOpen;
       isAutoTaggingSectionOpen.value = DEFAULT_UI_STATE.isAutoTaggingSectionOpen;
+      isAutoPlaylistsSectionOpen.value = DEFAULT_UI_STATE.isAutoPlaylistsSectionOpen;
       isSystemTagsVisible.value = DEFAULT_UI_STATE.isSystemTagsVisible;
     };
 
@@ -473,6 +495,7 @@ export const useSettingsStore = defineStore(
       accentColor,
       allowAutoTagRegression,
       allowAutomaticMetadataOverwrite,
+      autoPlaylistMinTracks,
       backgroundColor,
       backgroundImage,
       backgroundImageKey,
@@ -492,10 +515,12 @@ export const useSettingsStore = defineStore(
       hasBackgroundImage,
       isAppearanceSectionOpen,
       isAutoTaggingSectionOpen,
+      isAutoPlaylistsSectionOpen,
       isBehaviorSectionOpen,
       isSystemTagsVisible,
       listIconSize,
       resetAppearanceSettings,
+      resetAutoPlaylistSettings,
       resetAutoTaggingSettings,
       resetBehaviorSettings,
       resetSettings,
@@ -503,7 +528,9 @@ export const useSettingsStore = defineStore(
       setAccentColor,
       setAllowAutoTagRegression,
       setAllowAutomaticMetadataOverwrite,
+      setAutoPlaylistMinTracks,
       setAppearanceSectionOpen,
+      setAutoPlaylistsSectionOpen,
       setAutoTaggingSectionOpen,
       setBackgroundColor,
       setBackgroundImage,

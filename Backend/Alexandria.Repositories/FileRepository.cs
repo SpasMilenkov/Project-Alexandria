@@ -7,6 +7,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Files.Streaming.Playlist;
 using Alexandria.Dto.Tags;
 using Alexandria.Repositories.Projections;
 using Microsoft.EntityFrameworkCore;
@@ -85,6 +86,30 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             TotalCount = totalCount,
             TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
         };
+    }
+
+    public async Task<IReadOnlyList<AutoPlaylistGroupingRow>> GetAutoPlaylistGroupingRowsAsync(
+        Guid ownerId, CancellationToken ct = default)
+    {
+        return await _files
+            .AsNoTracking()
+            .Where(f => f.OwnerId == ownerId && f.DeletedAt == null)
+            .Select(f => new AutoPlaylistGroupingRow(
+                f.Id,
+                f.MediaMetadata!.Artist,
+                f.MediaMetadata.Album,
+                f.MediaMetadata.Genre,
+                f.MediaMetadata.Year,
+                f.FileTags
+                    .Select(ft => new GroupingTagRef(
+                        ft.TagId,
+                        ft.Source,
+                        ft.Tag.Facet,
+                        ft.Tag.DeletedAt != null,
+                        ft.Tag.ParentId,
+                        ft.Tag.Parent!.Name))
+                    .ToList()))
+            .ToListAsync(ct);
     }
 
     public async Task<int> MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default)

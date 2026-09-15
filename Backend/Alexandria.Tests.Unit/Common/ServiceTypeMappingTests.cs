@@ -13,6 +13,7 @@ public class ServiceTypeMappingTests
     [InlineData(ServiceType.Transpilation, JobType.Transpilation)]
     [InlineData(ServiceType.Lyrics, JobType.LyricsFetch)]
     [InlineData(ServiceType.MediaMetadata, JobType.MetadataEnrichment)]
+    [InlineData(ServiceType.Playlist, JobType.PlaylistSync)]
     public void to_job_type_maps_worker_service_to_backing_job_type(ServiceType service, JobType expected)
     {
         service.ToJobType().Should().Be(expected);

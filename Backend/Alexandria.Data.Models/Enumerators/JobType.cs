@@ -6,5 +6,6 @@ public enum JobType
     DocumentPreview,
     MediaPreview,
     LyricsFetch,
-    MetadataEnrichment
+    MetadataEnrichment,
+    PlaylistSync
 }

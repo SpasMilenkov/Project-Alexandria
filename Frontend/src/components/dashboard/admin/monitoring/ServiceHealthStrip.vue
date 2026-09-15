@@ -6,24 +6,21 @@ import type { OperationalEvent } from "@/api/monitoring";
 
 import { useServiceDashboardRouting } from "@/composables/useServiceDashboardRouting";
 import { OperationalEventSeverity, ServiceType } from "@/enums";
-import { serviceUptimes, statusHistory, UPTIME_WINDOW_DAYS } from "@/queries/monitoring";
+import { UPTIME_WINDOW_DAYS, serviceUptimes, statusHistory } from "@/queries/monitoring";
 import { formatRelativeShort } from "@/utils/date-formatters";
-import { SERVICE_ICONS, SERVICE_LABELS, serviceHealth } from "@/utils/monitoring-display.utils";
+import {
+  MONITORED_SERVICES,
+  SERVICE_ICONS,
+  SERVICE_LABELS,
+  serviceHealth,
+} from "@/utils/monitoring-display.utils";
 import { buildDeepLink } from "@/utils/serviceDashboardRouting";
 
 // Fixed trailing window (Option A): the strip always shows the last 30 days
 const uptimeTo = new Date();
 const uptimeFrom = new Date();
 uptimeFrom.setDate(uptimeFrom.getDate() - UPTIME_WINDOW_DAYS);
-
-const SERVICES: ServiceType[] = [
-  ServiceType.Api,
-  ServiceType.MediaPreviews,
-  ServiceType.DocumentPreviews,
-  ServiceType.Transpilation,
-  ServiceType.Lyrics,
-  ServiceType.MediaMetadata,
-];
+const SERVICES = MONITORED_SERVICES;
 
 const { data: history, isLoading: historyLoading, error: historyError } = useQuery(statusHistory());
 const {

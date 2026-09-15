@@ -60,11 +60,8 @@
               class="w-full h-full object-cover"
               @error="coverErrored = true"
             />
-            <div
-              v-else
-              class="w-full h-full bg-gray-200/50 dark:bg-gray-700/40 flex items-center justify-center"
-            >
-              <UIcon name="mdi:playlist-music" class="w-12 h-12 text-muted" />
+            <div v-else class="w-full h-full">
+              <PlaylistCover :playlist="playlist" />
             </div>
           </div>
 
@@ -187,7 +184,12 @@
   </div>
 
   <!-- Edit modal -->
-  <UModal v-model:open="showEditModal" title="Edit Playlist" :ui="{ content: glassModalContent }">
+  <UModal
+    v-model:open="showEditModal"
+    title="Edit playlist"
+    description="Update the details and artwork for your collection."
+    :ui="playlistModalUi"
+  >
     <template #body>
       <PlaylistForm
         v-if="playlist"
@@ -271,6 +273,7 @@ import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 import { fileApi } from "@/api/file";
 import { playlistApi } from "@/api/playlist";
 import { streamingApi } from "@/api/streaming";
+import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
 import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
 import PlaylistItemRow from "@/components/streaming/PlaylistItemRow.vue";
 import PlaylistTrackSearch from "@/components/streaming/PlaylistTrackSearch.vue";
@@ -284,7 +287,7 @@ import {
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent, playlistModalUi } from "@/utils/modalUi";
 
 const store = usePlayerStore();
 const toast = useToast();

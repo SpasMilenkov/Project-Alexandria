@@ -5,12 +5,14 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Tags;
+using Alexandria.Services.Storage.Playlists;
 using Microsoft.Extensions.Logging;
 
 namespace Alexandria.Services.Storage;
 
 public partial class FileTagService(
     IUnitOfWork unitOfWork,
+    IPublisherService publisher,
     ILogger<FileTagService> logger) : IFileTagService
 {
     public async Task<Tag> CreateAsync(string name,
@@ -211,6 +213,8 @@ public partial class FileTagService(
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 
+            await PlaylistSyncNotifier.PublishFileChangedAsync(publisher, fileId, userId, logger);
+
             LogTagsAddedToFile(logger, tagIds.Count, fileId);
         }
         catch (Exception ex)
@@ -256,6 +260,8 @@ public partial class FileTagService(
 
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
+
+            await PlaylistSyncNotifier.PublishFileChangedAsync(publisher, fileId, userId, logger);
 
             LogTagRemovedFromFile(logger, tagId, fileId);
         }

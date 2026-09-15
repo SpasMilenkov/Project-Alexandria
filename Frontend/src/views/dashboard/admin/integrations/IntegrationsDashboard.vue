@@ -100,6 +100,16 @@ const integrations = [
   },
   {
     chapter: "Media Processing",
+    description: "Sync runs, failure-rate trends and throughput for the playlist worker.",
+    icon: "mdi:playlist-music",
+    id: "playlists",
+    live: true,
+    route: "/dashboard/admin/integrations/playlist",
+    tags: ["Sync runs", "Failure rate", "Volume"],
+    title: "Playlists",
+  },
+  {
+    chapter: "Media Processing",
     description: "Artifact volume and incidents across the media and document preview workers.",
     icon: "mdi:image-multiple-outline",
     id: "previews",

@@ -5,6 +5,7 @@ using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Monitoring;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.AutoTagging;
+using Alexandria.Services.Storage.Policies;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Queueing;
 using Alexandria.Workers.MediaMetadata.Services;
@@ -34,8 +35,10 @@ public static class ServiceExtensions
         {
             services.AddScoped<IAutoTagDerivationService, AutoTagDerivationService>();
             services.AddScoped<IAutoTagSyncService, AutoTagSyncService>();
+            services.AddScoped<IEnrichmentBackfillService, EnrichmentBackfillService>();
             services.AddHostedService<AutoTagSyncWorker>();
             services.AddHostedService<AutoTagSweepWorker>();
+            services.AddHostedService<EnrichmentBackfillWorker>();
         }
 
         services.Configure<EssentiaConfig>(configuration.GetSection("Essentia"));

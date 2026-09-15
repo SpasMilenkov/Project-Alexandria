@@ -64,6 +64,8 @@ public static class ServiceExtensions
         services.AddScoped<IStreamHistoryService, StreamHistoryService>();
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
+        services.AddScoped<IAutoPlaylistGroupingService, AutoPlaylistGroupingService>();
+        services.AddScoped<IPlaylistJobResolver, PlaylistJobResolver>();
         services.AddScoped<IPlaylistRepository, PlaylistRepository>();
         services.AddScoped<IPolicyRuleRepository, PolicyRuleRepository>();
         services.AddScoped<IDirectoryPolicyRepository, DirectoryPolicyRepository>();
@@ -80,6 +82,7 @@ public static class ServiceExtensions
         services.AddScoped<IOperationalEventRepository, OperationalEventRepository>();
         services.AddScoped<IOperationalEventService, OperationalEventService>();
         services.AddScoped<ITranspilationStatsService, TranspilationStatsService>();
+        services.AddScoped<IPlaylistStatsService, PlaylistStatsService>();
         services.AddScoped<IPreviewStatsService, PreviewStatsService>();
         services.AddScoped<IAdminStorageStatsService, AdminStorageStatsService>();
         services.AddScoped<ILyricsStatsService, LyricsStatsService>();

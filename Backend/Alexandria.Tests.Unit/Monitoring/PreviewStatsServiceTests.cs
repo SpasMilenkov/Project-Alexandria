@@ -123,7 +123,7 @@ public class PreviewStatsServiceTests
             .Returns(new List<JobStatusCount> { new(JobStatus.Queued, 1), new(JobStatus.Ready, 1) });
         var start = Utc(2026, 8, 21, 9);
         _jobRepo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<JobType?>())
             .Returns(new List<Job>
             {
                 new JobBuilder().WithStatus(JobStatus.Ready).WithType(JobType.MediaPreview)
@@ -153,7 +153,7 @@ public class PreviewStatsServiceTests
             .Returns(new List<JobStatusCount> { new(JobStatus.Queued, 2) });
         var start = Utc(2026, 8, 21, 9);
         _jobRepo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<JobType?>())
             .Returns(new List<Job>
             {
                 new JobBuilder().WithStatus(JobStatus.Ready).WithType(JobType.MediaPreview)
@@ -176,7 +176,7 @@ public class PreviewStatsServiceTests
     public async Task job_trend_buckets_failure_rate_and_volume()
     {
         _jobRepo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<JobType?>())
             .Returns(new List<Job>
             {
                 new JobBuilder().WithStatus(JobStatus.Ready).WithType(JobType.MediaPreview)
@@ -207,7 +207,7 @@ public class PreviewStatsServiceTests
         _jobRepo.GetStatusCountsAsync(Arg.Any<JobType?>(), Arg.Any<CancellationToken>())
             .Returns(new List<JobStatusCount>());
         _jobRepo.GetJobsTouchingWindowAsync(Arg.Any<DateTime>(), Arg.Any<DateTime>(),
-                Arg.Any<CancellationToken>())
+                Arg.Any<CancellationToken>(), Arg.Any<JobType?>())
             .Returns(new List<Job>());
 
         var result = await _sut.GetJobOverviewAsync(null, 30, TestContext.Current.CancellationToken);

@@ -30,6 +30,19 @@ public interface IEssentiaBatchFileRepository : IRepository<EssentiaBatchFile>
     Task<IEnumerable<Guid>> GetAutoTagRetryCandidatesAsync(DateTime attemptCutoff, CancellationToken ct = default);
 
     /// <summary>
+    /// Policy backfill candidates: live files sitting directly in one of
+    /// <paramref name="directoryIds"/>, created strictly before
+    /// <paramref name="predatingCutoff"/> (the policy's <c>CreatedAt</c>), with no
+    /// successful (<c>JobStatus.Ready</c>) enrichment job. Returns file id + MIME so
+    /// the caller can reuse the per-file enrich idempotency checks. Subtree expansion
+    /// is the caller's job (see the directory repository's subtree helper).
+    /// </summary>
+    Task<IReadOnlyList<EnrichmentBackfillCandidate>> GetEnrichmentBackfillCandidatesAsync(
+        IReadOnlyCollection<Guid> directoryIds,
+        DateTime predatingCutoff,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Live queue depth: batch-files belonging to non-terminal (dispatched) batches,
     /// counted per (backbone, file status).
     /// </summary>

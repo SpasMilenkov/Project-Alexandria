@@ -44,5 +44,6 @@ public interface IJobRepository : IRepository<Job>
     Task UpdateStatusForJobsAsync(
         IEnumerable<Guid> jobIds, JobStatus status, string? errorDetail = null, CancellationToken ct = default);
 
-    Task<IReadOnlyList<Job>> GetJobsTouchingWindowAsync(DateTime from, DateTime to, CancellationToken ct);
+    Task<IReadOnlyList<Job>> GetJobsTouchingWindowAsync(DateTime from, DateTime to, CancellationToken ct,
+        JobType? type = null);
 }

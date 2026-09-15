@@ -56,7 +56,8 @@ public class InitiateUploadQuotaWarningTests
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
             new AuditContext(),
-            Substitute.For<IUserSettingsService>());
+            Substitute.For<IUserSettingsService>(),
+            Substitute.For<IPublisherService>());
     }
 
     private void SeedUsage(long filesSize, long quota)

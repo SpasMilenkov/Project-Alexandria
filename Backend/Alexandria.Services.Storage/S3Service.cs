@@ -17,6 +17,7 @@ using Alexandria.Dto.Files;
 using Alexandria.Dto.Metrics;
 using Alexandria.Dto.Previews;
 using Alexandria.Services.Storage.MediaMetadata;
+using Alexandria.Services.Storage.Playlists;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Blake3;
@@ -38,7 +39,8 @@ public partial class S3Service(
     IPromotionQueue promotionQueue,
     IFileService fileService,
     AuditContext auditContext,
-    IUserSettingsService userSettingsService)
+    IUserSettingsService userSettingsService,
+    IPublisherService publisher)
     : IStorageService
 {
     private static readonly HashSet<string> AllowedCoverTypes =
@@ -413,6 +415,9 @@ public partial class S3Service(
             }
 
             await unitOfWork.CommitAsync(ct);
+
+            await PlaylistSyncNotifier.PublishFileChangedAsync(
+                publisher, version.FileId, version.File.OwnerId, logger);
 
             LogMediaDataUploadCompleted(logger, versionId, previewStream.Length);
         }

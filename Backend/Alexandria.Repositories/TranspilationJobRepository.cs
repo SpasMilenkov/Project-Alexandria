@@ -5,6 +5,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Files.Streaming.Playlist;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -249,6 +250,30 @@ public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspil
             .Where(j => (j.CreatedAt >= from && j.CreatedAt < to)
                         || (j.Job.CompletedAt != null
                             && j.Job.CompletedAt >= from && j.Job.CompletedAt < to))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ResolvableTranscodeRow>> GetResolvableJobsAsync(
+        Guid ownerId, CancellationToken ct = default)
+    {
+        return await _jobs
+            .AsNoTracking()
+            .Where(j => j.UserId == ownerId
+                        && j.DeletedAt == null
+                        && j.Job.DeletedAt == null
+                        && j.Job.Status == JobStatus.Ready
+                        && j.FileVersion.DeletedAt == null
+                        && j.FileVersion.File.DeletedAt == null
+                        && j.FileVersion.File.OwnerId == ownerId
+                        && j.Representations.Any(r =>
+                            r.DeletedAt == null
+                            && r.Status == RepresentationStatus.Ready))
+            .Select(j => new ResolvableTranscodeRow(
+                j.Id,
+                j.FileVersion.FileId,
+                j.VersionId,
+                j.Job.CompletedAt,
+                j.FileVersion.File.CurrentVersionId))
             .ToListAsync(ct);
     }
 }

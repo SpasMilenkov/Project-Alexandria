@@ -18,6 +18,14 @@ public interface IDirectoryRepository : IRepository<Directory>
 
     Task<List<Directory>> GetSubDirectoriesAsync(Guid directoryId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Full live subtree under <paramref name="directoryId"/> (breadth-first, not
+    /// including the root itself). Used by scoped sweeps (e.g. policy backfill) that
+    /// inherit into children; prefer the recursive-CTE updates for writes.
+    /// </summary>
+    Task<IEnumerable<Directory>> GetAllSubDirectoriesAsync(Guid directoryId,
+        CancellationToken ct = default);
+
     Task<PaginatedResult<DirectorySummaryDto>> GetRootDirectoriesAsync(
         Guid ownerId,
         int page = 1,

@@ -18,7 +18,7 @@ sealed class GetUptimeEndpoint(IOperationalEventService service)
     {
         Get("/monitoring/uptime");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(60);
+        ResponseCache(60, varyByQueryKeys: ["service", "from", "to"]);
     }
 
     public override async Task HandleAsync(GetUptimeRequest req, CancellationToken ct)

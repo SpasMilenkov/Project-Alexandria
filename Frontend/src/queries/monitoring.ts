@@ -1,9 +1,13 @@
 import { defineQueryOptions } from "@pinia/colada";
 
-import type { EventCalendarRange, OperationalEventsQuery } from "@/api/monitoring";
+import type { ServiceType } from "@/enums";
 
-import { monitoringApi } from "@/api/monitoring";
-import { ServiceType } from "@/enums";
+import {
+  type EventCalendarRange,
+  type OperationalEventsQuery,
+  monitoringApi,
+} from "@/api/monitoring";
+import { MONITORED_SERVICES } from "@/utils/monitoring-display.utils";
 
 const ROOT = ["monitoring"] as const;
 
@@ -42,14 +46,7 @@ export const statusHistory = defineQueryOptions(() => ({
 // Fixed trailing window (Option A): the strip always shows the last 30 days.
 export const UPTIME_WINDOW_DAYS = 30;
 
-const ALL_SERVICES: ServiceType[] = [
-  ServiceType.Api,
-  ServiceType.MediaPreviews,
-  ServiceType.DocumentPreviews,
-  ServiceType.Transpilation,
-  ServiceType.Lyrics,
-  ServiceType.MediaMetadata,
-];
+const ALL_SERVICES: ServiceType[] = MONITORED_SERVICES;
 
 export const serviceUptimes = defineQueryOptions((range: EventCalendarRange) => ({
   key: [...ROOT, "uptimes", range.from.toISOString(), range.to.toISOString()],

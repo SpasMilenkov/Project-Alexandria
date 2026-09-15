@@ -17,6 +17,11 @@ public class RabbitMqConsumerConfig
     public string TriggerQueueName { get; set; } = "media-metadata-trigger-queue";
 
     /// <summary>
+    /// Queue policy backfill requests arrive on (one policy id per message).
+    /// </summary>
+    public string BackfillQueueName { get; set; } = "media-metadata-backfill-queue";
+
+    /// <summary>
     /// Queue exhausted trigger messages are parked on after
     /// <see cref="TriggerMaxStagingAttempts"/> staging failures.
     /// </summary>
