@@ -3,6 +3,7 @@ import { nextTick, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import AppearanceSection from "@/components/dashboard/settings/AppearanceSection.vue";
+import AutoPlaylistsSection from "@/components/dashboard/settings/AutoPlaylistsSection.vue";
 import AutoTaggingSection from "@/components/dashboard/settings/AutoTaggingSection.vue";
 import BehaviorSection from "@/components/dashboard/settings/BehaviorSection.vue";
 import { useSettingsStore } from "@/stores/settings";
@@ -60,6 +61,9 @@ watch(
         </section>
         <section v-if="autoTaggingEnabled" id="auto-tagging" class="scroll-mt-4">
           <AutoTaggingSection />
+        </section>
+        <section id="auto-playlists" class="scroll-mt-4">
+          <AutoPlaylistsSection />
         </section>
       </div>
     </div>

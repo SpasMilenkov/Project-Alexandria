@@ -299,6 +299,7 @@ describe("useSettingsStore", () => {
         toastLevel: "all",
         allowAutoTagRegression: false,
         allowAutomaticMetadataOverwrite: true,
+        autoPlaylistMinTracks: 10,
       });
       expect(store.allowAutomaticMetadataOverwrite).toBe(true);
     });
@@ -308,6 +309,39 @@ describe("useSettingsStore", () => {
       store.setAllowAutomaticMetadataOverwrite(true);
       store.resetSettings();
       expect(store.allowAutomaticMetadataOverwrite).toBe(false);
+    });
+  });
+
+  describe("autoPlaylistMinTracks", () => {
+    it("defaults to 10", () => {
+      const store = useSettingsStore();
+      expect(store.autoPlaylistMinTracks).toBe(10);
+    });
+
+    it("setAutoPlaylistMinTracks updates the value", () => {
+      const store = useSettingsStore();
+      store.setAutoPlaylistMinTracks(5);
+      expect(store.autoPlaylistMinTracks).toBe(5);
+      expect(store.getSettings.autoPlaylistMinTracks).toBe(5);
+    });
+
+    it("syncBehaviorFromServer applies the value", () => {
+      const store = useSettingsStore();
+      store.syncBehaviorFromServer({
+        skipDeleteConfirmation: false,
+        toastLevel: "all",
+        allowAutoTagRegression: false,
+        allowAutomaticMetadataOverwrite: false,
+        autoPlaylistMinTracks: 3,
+      });
+      expect(store.autoPlaylistMinTracks).toBe(3);
+    });
+
+    it("resetAutoPlaylistSettings restores the default", () => {
+      const store = useSettingsStore();
+      store.setAutoPlaylistMinTracks(3);
+      store.resetAutoPlaylistSettings();
+      expect(store.autoPlaylistMinTracks).toBe(10);
     });
   });
 
@@ -377,6 +411,9 @@ describe("useSettingsStore", () => {
       store.syncBehaviorFromServer({
         skipDeleteConfirmation: true,
         toastLevel: "errors-only",
+        allowAutoTagRegression: false,
+        allowAutomaticMetadataOverwrite: false,
+        autoPlaylistMinTracks: 10,
       });
       expect(store.skipDeleteConfirmation).toBe(true);
       expect(store.toastLevel).toBe("errors-only");
