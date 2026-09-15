@@ -12,8 +12,8 @@
         class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         @error="coverErrored = true"
       />
-      <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
-        <UIcon name="mdi:playlist-music" class="w-10 h-10 text-gray-300 dark:text-white/20" />
+      <div v-else class="w-full h-full">
+        <PlaylistCover :playlist="playlist" />
       </div>
 
       <!-- Play overlay -->
@@ -36,6 +36,14 @@
     <!-- Body -->
     <div class="p-3 flex items-start justify-between gap-1.5">
       <div class="min-w-0 flex-1">
+        <UBadge
+          v-if="badgeLabel"
+          :label="badgeLabel"
+          color="neutral"
+          variant="subtle"
+          size="sm"
+          class="mb-1.5"
+        />
         <p class="font-medium text-sm text-gray-900 dark:text-white/90 truncate leading-tight">
           {{ playlist.name }}
         </p>
@@ -51,7 +59,7 @@
           </span>
           <span class="text-xs text-gray-300 dark:text-white/20">·</span>
           <span class="text-xs text-gray-400 dark:text-white/35">{{
-            formatDate(props.playlist.updatedAt ?? props.playlist.createdAt)
+            formatDate(playlist.updatedAt ?? playlist.createdAt)
           }}</span>
         </div>
       </div>
@@ -74,27 +82,27 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 
-import type { PlaylistResponse } from "@/api/playlist";
-
-import { playlistApi } from "@/api/playlist";
+import { type PlaylistResponse, playlistApi } from "@/api/playlist";
+import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
 import { formatDate } from "@/utils/date-formatters";
+import { playlistBadgeLabel } from "@/utils/playlist-display.utils";
 
-const props = defineProps<{
+const { playlist, isPlaying } = defineProps<{
   playlist: PlaylistResponse;
   isPlaying?: boolean;
 }>();
 
 const coverUrl = computed(() =>
-  props.playlist.hasCover
-    ? playlistApi.getPlaylistCoverUrl(props.playlist.id, props.playlist.updatedAt)
-    : null,
+  playlist.hasCover ? playlistApi.getPlaylistCoverUrl(playlist.id, playlist.updatedAt) : null,
 );
 const coverErrored = ref(false);
+
+const badgeLabel = computed(() => playlistBadgeLabel(playlist));
 
 // A fresh upload bumps updatedAt (new ?v= cache-buster), so drop any latched
 // error then instead of hiding a cover that exists now.
 watch(
-  () => [props.playlist.id, props.playlist.updatedAt],
+  () => [playlist.id, playlist.updatedAt],
   () => {
     coverErrored.value = false;
   },
