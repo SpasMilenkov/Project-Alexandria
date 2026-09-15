@@ -5,4 +5,5 @@ export enum ServiceType {
   Transpilation = 3,
   Lyrics = 4,
   MediaMetadata = 5,
+  Playlist = 6,
 }

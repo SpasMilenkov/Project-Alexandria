@@ -11,9 +11,10 @@ import {
 import { ServiceType } from "@/enums";
 import { errorCalendar } from "@/queries/monitoring";
 import {
+  MONITORED_SERVICES,
+  SERVICE_LABELS,
   SEVERITY_BADGE_COLORS,
   SEVERITY_LABELS,
-  SERVICE_LABELS,
 } from "@/utils/monitoring-display.utils";
 
 const emit = defineEmits<{ viewDay: [date: Date] }>();
@@ -87,14 +88,7 @@ const mobileMonthLabel = computed(() =>
 );
 
 // Service filter
-const SERVICES: ServiceType[] = [
-  ServiceType.Api,
-  ServiceType.MediaPreviews,
-  ServiceType.DocumentPreviews,
-  ServiceType.Transpilation,
-  ServiceType.Lyrics,
-  ServiceType.MediaMetadata,
-];
+const SERVICES: ServiceType[] = MONITORED_SERVICES;
 
 const FILTERS: { label: string; value: ServiceType | null }[] = [
   { label: "All", value: null },
