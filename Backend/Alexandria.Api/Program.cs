@@ -53,11 +53,11 @@ try
     }
 
     app.UseForwardedHeaders();
-    app.UseResponseCaching();
     app.UseCors("AllowOrigin");
     app.UseMiddleware<JwtFromCookieMiddleware>();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseResponseCaching();
     app.UseAlexandriaEndpoints();
 
 
