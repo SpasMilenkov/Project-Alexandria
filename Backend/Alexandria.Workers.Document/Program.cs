@@ -23,7 +23,7 @@ try
         .AddWorkerDatabase(builder.Configuration)
         .AddS3Storage(builder.Configuration)
         .AddRabbitMqConsumer(builder.Configuration)
-        .AddWorkerServices()
+        .AddWorkerServices(builder.Configuration)
         .AddHealthChecks();
 
 

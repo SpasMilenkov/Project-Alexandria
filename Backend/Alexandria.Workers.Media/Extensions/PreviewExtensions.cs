@@ -1,5 +1,6 @@
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators.Monitoring;
+using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Monitoring;
 using Alexandria.Services.Preview;
@@ -10,9 +11,12 @@ namespace Alexandria.Workers.Media.Extensions;
 
 public static class PreviewExtensions
 {
-    public static IServiceCollection AddWorkerServices(this IServiceCollection services)
+    public static IServiceCollection AddWorkerServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         services.AddCoreWorkerServices();
+        services.AddRabbitMqAsync(configuration);
 
         services.AddScoped<IMediaPreviewService, MediaPreviewService>();
         services.AddScoped<IImagePreviewService, ImagePreviewService>();
