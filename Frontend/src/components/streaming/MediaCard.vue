@@ -3,13 +3,14 @@ import type { ContextMenuItem } from "@nuxt/ui";
 
 import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
-import { computed, onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref, useTemplateRef } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatDuration } from "@/utils/date-formatters";
+import { MEDIA_CARD_METADATA_HEIGHT } from "@/utils/media-grid-layout";
 
 const {
   file,
@@ -34,10 +35,11 @@ const typeIcon = computed(() => (isVideo.value ? "mdi:file-video" : "mdi:music-n
 
 const displayName = computed(() => file.title ?? file.fileName);
 const subtitle = computed(() => file.artist ?? file.mimeType);
+const gridSubtitle = computed(
+  () => file.artist || file.album || (isVideo.value ? "Video" : "Unknown artist"),
+);
 
-// Version-scoped thumbnail URL via the shared composable: browser + nginx
-// cache the bytes, and the first <img> error per file heals the session with
-// one shared refresh before retrying once (see useFileThumbnail).
+// Version-scoped URLs preserve caching while the shared composable handles retries.
 const { thumbnailUrl, thumbnailLoaded, thumbnailErrored, onThumbnailLoad, onThumbnailError } =
   useFileThumbnail(() => ({
     fileId: file.fileId,
@@ -46,6 +48,20 @@ const { thumbnailUrl, thumbnailLoaded, thumbnailErrored, onThumbnailLoad, onThum
 
 const showSpinner = computed(() => !thumbnailLoaded.value && !thumbnailErrored.value);
 const showFallbackIcon = computed(() => thumbnailErrored.value);
+const thumbnailImage = useTemplateRef<HTMLImageElement>("thumbnailImage");
+
+// Recycled rows can receive late events from a detached image's pending request.
+const isCurrentThumbnail = (event: Event) =>
+  event.target === thumbnailImage.value &&
+  thumbnailImage.value?.getAttribute("src") === thumbnailUrl.value;
+
+const onArtworkLoad = (event: Event) => {
+  if (isCurrentThumbnail(event)) onThumbnailLoad();
+};
+
+const onArtworkError = (event: Event) => {
+  if (isCurrentThumbnail(event)) onThumbnailError();
+};
 
 // Queue state
 const queueIndex = computed(() => userQueue.value.findIndex((f) => f.fileId === file.fileId));
@@ -55,7 +71,7 @@ const isQueued = computed(() => queueIndex.value !== -1);
 const gridBorderClass = computed(() => {
   if (selected) return "border-primary/60 ring-1 ring-primary/40";
   if (isActive.value) return "border-primary/50 ring-1 ring-primary/20";
-  return "border-black/[0.08] dark:border-white/[0.08] hover:border-black/[0.15] dark:hover:border-white/[0.16]";
+  return "border-gray-200/70 dark:border-gray-700/70 hover:border-gray-400 dark:hover:border-gray-500";
 });
 
 const listRowClass = computed(() => {
@@ -141,15 +157,31 @@ const onCardClick = (event: MouseEvent) => {
   if (selectionMode || event.ctrlKey || event.metaKey) emit("toggle", file, event);
   else emit("select", file);
 };
+
+const onCardKeydown = (event: KeyboardEvent) => {
+  if (event.repeat) return;
+  onCardClick(
+    new MouseEvent("click", {
+      ctrlKey: event.ctrlKey,
+      metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
+    }),
+  );
+};
 </script>
 
 <template>
   <!-- GRID VIEW -->
-  <UContextMenu v-if="viewMode === 'grid'" :items="contextItems" class="block w-full">
-    <button
-      class="group relative w-full text-left rounded-xl overflow-hidden border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+  <UContextMenu v-if="viewMode === 'grid'" :items="contextItems" class="block w-full min-w-0">
+    <div
+      role="button"
+      tabindex="0"
+      :aria-label="`${selectionMode ? 'Select' : 'Play'} ${displayName}`"
+      class="group relative w-full cursor-pointer text-left rounded-xl overflow-hidden border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
       :class="gridBorderClass"
       @click="onCardClick($event)"
+      @keydown.enter.self.prevent="onCardKeydown"
+      @keydown.space.self.prevent="onCardKeydown"
       @pointerdown="onPressStart"
       @pointermove="onPressMove"
       @pointerup="clearPressTimer"
@@ -162,91 +194,99 @@ const onCardClick = (event: MouseEvent) => {
       >
         <img
           v-if="!showFallbackIcon"
+          :key="thumbnailUrl"
+          ref="thumbnailImage"
           :src="thumbnailUrl"
           :alt="displayName"
-          class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+          class="absolute inset-0 w-full h-full object-cover"
           :class="{ 'opacity-0': showSpinner }"
-          @load="onThumbnailLoad"
-          @error="onThumbnailError"
+          @load="onArtworkLoad"
+          @error="onArtworkError"
         />
-        <div v-if="showFallbackIcon" class="w-full h-full flex items-center justify-center">
-          <Icon :icon="typeIcon" class="w-8 h-8 text-gray-300 dark:text-white/15" />
+        <div
+          v-if="showSpinner"
+          class="absolute inset-0 flex items-center justify-center"
+          role="status"
+          aria-label="Loading artwork"
+        >
+          <Icon icon="mdi:loading" class="w-5 h-5 animate-spin text-gray-600 dark:text-gray-400" />
+        </div>
+        <div v-if="showFallbackIcon" class="absolute inset-0 flex items-center justify-center">
+          <Icon :icon="typeIcon" class="w-8 h-8 text-gray-500 dark:text-gray-400" />
         </div>
 
         <div
-          class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"
-        />
-
-        <span
-          class="absolute top-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[0.625rem] font-semibold tracking-wide bg-black/40 frosted-glass text-white/80 transition-all duration-200"
-          :class="checkboxVisible ? 'left-9' : 'left-2 group-hover:left-9'"
-        >
-          <Icon :icon="typeIcon" class="w-3 h-3 flex-shrink-0" />
-          {{ typeLabel }}
-        </span>
-
-        <span
-          class="absolute top-2 left-2 transition-opacity duration-200 rounded-md bg-black/40 frosted-glass p-0.5"
-          :class="checkboxVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+          class="absolute top-2 left-2 rounded-lg p-2 frosted-glass glass-surface-strong transition-opacity duration-150"
+          :class="{
+            'md:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100': !checkboxVisible,
+          }"
+          @pointerdown.stop
           @click.stop="emit('toggle', file, $event)"
         >
-          <UCheckbox
-            :model-value="selected"
-            tabindex="-1"
-            aria-label="Select file"
-            class="pointer-events-none"
-          />
-        </span>
-
-        <div v-if="selected" class="absolute inset-0 bg-primary/20 pointer-events-none" />
-
-        <div class="absolute top-2 right-2 flex items-center gap-1.5">
-          <button
-            v-if="isAudio"
-            class="w-6 h-6 flex items-center justify-center rounded-md bg-black/40 frosted-glass text-white/70 hover:text-white transition-colors"
-            aria-label="View audio analysis"
-            @click.stop="emit('info', file)"
-          >
-            <Icon icon="mdi:information-outline" class="w-3.5 h-3.5" />
-          </button>
-          <span
-            v-if="file.duration"
-            class="px-1.5 py-0.5 rounded-md text-[0.625rem] font-medium bg-black/40 frosted-glass text-white/80 tabular-nums"
-          >
-            {{ formatDuration(file.duration) }}
-          </span>
+          <UCheckbox :model-value="selected" :aria-label="`Select ${displayName}`" />
         </div>
 
         <div
-          v-if="isVideo && !isActive"
-          class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+          v-if="!isActive && !selectionMode"
+          class="absolute bottom-4 right-4 w-10 h-10 rounded-full frosted-glass glass-surface-strong flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-150 pointer-events-none"
+          aria-hidden="true"
         >
-          <div
-            class="w-10 h-10 rounded-full frosted-glass glass-surface flex items-center justify-center"
-          >
-            <Icon icon="mdi:play" class="w-5 h-5 text-white ml-0.5" />
-          </div>
-        </div>
-
-        <Transition name="fade">
-          <div
-            v-if="isActive"
-            class="absolute inset-0 bg-primary/25 flex items-center justify-center"
-          >
-            <AudioEqualizer />
-          </div>
-        </Transition>
-
-        <div class="absolute bottom-0 left-0 right-0 px-3 pb-2.5 pt-8">
-          <p class="text-[0.8125rem] font-semibold text-white/95 truncate leading-snug m-0">
-            {{ displayName }}
-          </p>
-          <p class="text-[0.6875rem] text-white/45 mt-0.5 m-0 truncate">
-            {{ subtitle }}
-          </p>
+          <Icon icon="mdi:play" class="w-5 h-5 text-gray-900 dark:text-gray-100" />
         </div>
       </div>
-    </button>
+
+      <div
+        class="p-4 flex flex-col gap-2 frosted-glass glass-surface"
+        :style="{ height: `${MEDIA_CARD_METADATA_HEIGHT}px` }"
+      >
+        <div class="min-w-0">
+          <p
+            class="text-sm leading-5 font-semibold truncate m-0"
+            :class="isActive ? 'text-primary' : 'text-gray-900 dark:text-gray-100'"
+            :title="displayName"
+          >
+            {{ displayName }}
+          </p>
+          <p
+            class="text-xs leading-5 text-gray-600 dark:text-gray-400 truncate m-0"
+            :title="gridSubtitle"
+          >
+            {{ gridSubtitle }}
+          </p>
+        </div>
+        <div class="flex items-center justify-between gap-2 h-8 shrink-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <div
+              v-if="isActive"
+              class="flex gap-0.5 items-end h-3.5"
+              role="status"
+              aria-label="Now playing"
+            >
+              <div class="w-0.5 bg-primary rounded-full animate-eq-1" />
+              <div class="w-0.5 bg-primary rounded-full animate-eq-2" />
+              <div class="w-0.5 bg-primary rounded-full animate-eq-3" />
+            </div>
+            <span
+              v-if="file.duration"
+              class="text-xs tabular-nums text-gray-600 dark:text-gray-400"
+            >
+              {{ formatDuration(file.duration) }}
+            </span>
+          </div>
+          <button
+            v-if="isAudio"
+            type="button"
+            class="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="View audio analysis"
+            title="View audio analysis"
+            @pointerdown.stop
+            @click.stop="emit('info', file)"
+          >
+            <Icon icon="mdi:information-outline" class="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
   </UContextMenu>
 
   <!-- LIST VIEW -->
@@ -266,12 +306,23 @@ const onCardClick = (event: MouseEvent) => {
       >
         <img
           v-if="!showFallbackIcon"
+          :key="thumbnailUrl"
+          ref="thumbnailImage"
           :src="thumbnailUrl"
           :alt="displayName"
           class="w-full h-full object-cover"
-          @load="onThumbnailLoad"
-          @error="onThumbnailError"
+          :class="{ 'opacity-0': showSpinner }"
+          @load="onArtworkLoad"
+          @error="onArtworkError"
         />
+        <div
+          v-if="showSpinner"
+          class="absolute inset-0 flex items-center justify-center"
+          role="status"
+          aria-label="Loading artwork"
+        >
+          <Icon icon="mdi:loading" class="w-4 h-4 animate-spin text-gray-600 dark:text-gray-400" />
+        </div>
         <div v-if="showFallbackIcon" class="w-full h-full flex items-center justify-center">
           <Icon :icon="typeIcon" class="w-3.5 h-3.5 text-gray-300 dark:text-white/15" />
         </div>
