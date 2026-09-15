@@ -10,6 +10,7 @@ export const PUBLIC_SERVICE_LABELS: Record<ServiceType, string> = {
   [ServiceType.Lyrics]: "Lyrics Lookup",
   [ServiceType.MediaMetadata]: "Audio Analysis",
   [ServiceType.MediaPreviews]: "Media Previews",
+  [ServiceType.Playlist]: "Playlists",
   [ServiceType.Transpilation]: "Video Streaming",
 };
 

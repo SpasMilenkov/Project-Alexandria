@@ -127,6 +127,12 @@ const router = createRouter({
       path: "/dashboard/admin/integrations/transpilation",
     },
     {
+      component: () => import("@/views/dashboard/admin/integrations/Playlist.vue"),
+      meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
+      name: "playlist-dashboard",
+      path: "/dashboard/admin/integrations/playlist",
+    },
+    {
       component: () => import("@/views/dashboard/admin/integrations/Previews.vue"),
       meta: { layout: "dashboard", requiresAdmin: true, requiresAuth: true },
       name: "previews-dashboard",

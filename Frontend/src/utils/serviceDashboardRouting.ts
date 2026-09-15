@@ -2,7 +2,7 @@ import type { LocationQuery } from "vue-router";
 
 import type { EventCalendarRange, OperationalEvent } from "@/api/monitoring";
 
-import { OperationalEventSeverity, ServiceType } from "@/enums";
+import { type OperationalEventSeverity, ServiceType } from "@/enums";
 
 // Services without a dedicated dashboard degrade to the generic filtered
 // timeline — never a dead link (D12).
@@ -14,6 +14,7 @@ export const SERVICE_DASHBOARD_ROUTES: Partial<Record<ServiceType, string>> = {
   [ServiceType.MediaPreviews]: "/dashboard/admin/integrations/previews",
   [ServiceType.DocumentPreviews]: "/dashboard/admin/integrations/previews",
   [ServiceType.Lyrics]: "/dashboard/admin/integrations/lyrics",
+  [ServiceType.Playlist]: "/dashboard/admin/integrations/playlist",
 };
 
 // What producers emit: everything already URL-string shaped.
@@ -57,13 +58,18 @@ const parseIsoDate = (raw: unknown): Date | undefined => {
 const firstQueryValue = (value: LocationQuery[string]): string | undefined =>
   Array.isArray(value) ? (value[0] as string | undefined) : (value as string | undefined);
 
+// Derived from the enum so new members stay parseable.
+const serviceTypeCount = Object.values(ServiceType).filter(
+  (value) => typeof value === "number",
+).length;
+
 // Inverse of the producers: turns route query into typed params. Invalid or
 // partial windows are dropped rather than guessed at.
 export const parseDeepLinkQuery = (query: LocationQuery): ParsedDeepLink => {
   const params: ParsedDeepLink = {};
 
   const serviceRaw = firstQueryValue(query.service);
-  const service = parseEnumValue<ServiceType>(serviceRaw, 6);
+  const service = parseEnumValue<ServiceType>(serviceRaw, serviceTypeCount);
   if (service !== undefined) params.service = service;
 
   const severityRaw = firstQueryValue(query.severity);

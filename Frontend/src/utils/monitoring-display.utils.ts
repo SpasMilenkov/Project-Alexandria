@@ -11,6 +11,7 @@ export const SERVICE_LABELS: Record<ServiceType, string> = {
   [ServiceType.Lyrics]: "Lyrics",
   [ServiceType.MediaMetadata]: "Media Metadata",
   [ServiceType.MediaPreviews]: "Media Previews",
+  [ServiceType.Playlist]: "Playlists",
   [ServiceType.Transpilation]: "Transpilation",
 };
 
@@ -20,8 +21,21 @@ export const SERVICE_ICONS: Record<ServiceType, string> = {
   [ServiceType.Lyrics]: "mdi:script-text-outline",
   [ServiceType.MediaMetadata]: "mdi:tag-text-outline",
   [ServiceType.MediaPreviews]: "mdi:image-multiple-outline",
+  [ServiceType.Playlist]: "mdi:playlist-music",
   [ServiceType.Transpilation]: "mdi:file-swap-outline",
 };
+
+// Single source for the surfaces that enumerate services; a new ServiceType
+// must appear here to show up in incident history.
+export const MONITORED_SERVICES: ServiceType[] = [
+  ServiceType.Api,
+  ServiceType.MediaPreviews,
+  ServiceType.DocumentPreviews,
+  ServiceType.Transpilation,
+  ServiceType.Lyrics,
+  ServiceType.MediaMetadata,
+  ServiceType.Playlist,
+];
 
 export const EVENT_CODE_LABELS: Record<OperationalEventCode, string> = {
   [OperationalEventCode.ErrorRateThresholdExceeded]: "Error Rate Threshold Exceeded",
