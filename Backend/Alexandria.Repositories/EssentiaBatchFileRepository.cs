@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Alexandria.Common.Policies;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
@@ -148,6 +149,45 @@ public class EssentiaBatchFileRepository(AlexandriaDbContext context) : IEssenti
             .Select(f => f.FileId)
             .Distinct()
             .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<EnrichmentBackfillCandidate>> GetEnrichmentBackfillCandidatesAsync(
+        IReadOnlyCollection<Guid> directoryIds,
+        DateTime predatingCutoff,
+        CancellationToken ct = default)
+    {
+        if (directoryIds.Count == 0) return [];
+
+        // Same two-query + in-memory diff shape as the backstop: scoped predating
+        // files first, then drop the ones with a successful enrichment job. The scope
+        // predicate is single-sourced from the shared backfill helper.
+        var scoped = await context.Files
+            .AsNoTracking()
+            .Where(EnrichmentBackfill.BuildScopeFilter(directoryIds, predatingCutoff))
+            .Select(f => new { f.Id, f.MimeType })
+            .ToListAsync(ct);
+
+        if (scoped.Count == 0) return [];
+
+        var candidateIds = scoped.Select(r => r.Id).ToList();
+
+        var readyFileIds = await _batchFiles
+            .Where(f => f.DeletedAt == null
+                        && f.Job.Status == JobStatus.Ready
+                        && f.File.DeletedAt == null
+                        && candidateIds.Contains(f.FileId))
+            .Select(f => f.FileId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var remaining = EnrichmentBackfill
+            .RemoveAlreadyEnriched(candidateIds, readyFileIds)
+            .ToHashSet();
+
+        return scoped
+            .Where(r => remaining.Contains(r.Id))
+            .Select(r => new EnrichmentBackfillCandidate(r.Id, r.MimeType))
+            .ToList();
     }
 
     public async Task<IReadOnlyList<EnrichmentQueueDepthDto>> GetQueueDepthAsync(CancellationToken ct = default)

@@ -207,12 +207,14 @@ public class JobRepository(AlexandriaDbContext context) : IJobRepository
                 .SetProperty(j => j.UpdatedAt, now), ct);
     }
 
-    public async Task<IReadOnlyList<Job>> GetJobsTouchingWindowAsync(DateTime from, DateTime to, CancellationToken ct)
+    public async Task<IReadOnlyList<Job>> GetJobsTouchingWindowAsync(DateTime from, DateTime to, CancellationToken ct,
+        JobType? type = null)
     {
         return await _jobs
             .AsNoTracking()
-            .Where(j => (j.CreatedAt >= from && j.CreatedAt < to)
-                        || (j.CompletedAt != null && j.CompletedAt >= from && j.CompletedAt < to))
+            .Where(j => (type == null || j.Type == type)
+                        && ((j.CreatedAt >= from && j.CreatedAt < to)
+                            || (j.CompletedAt != null && j.CompletedAt >= from && j.CompletedAt < to)))
             .ToListAsync(ct);
     }
 }
