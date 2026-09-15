@@ -45,7 +45,8 @@ public class GetStorageBreakdownTests
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
             new AuditContext(),
-            Substitute.For<IUserSettingsService>());
+            Substitute.For<IUserSettingsService>(),
+            Substitute.For<IPublisherService>());
     }
 
     private void SeedUsage(

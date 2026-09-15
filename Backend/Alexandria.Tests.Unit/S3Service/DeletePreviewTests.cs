@@ -51,7 +51,8 @@ public class DeletePreviewTests
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
             new AuditContext(),
-            Substitute.For<IUserSettingsService>());
+            Substitute.For<IUserSettingsService>(),
+            Substitute.For<IPublisherService>());
     }
 
     private File OwnedFile(Guid? fileId = null, Guid? ownerId = null)

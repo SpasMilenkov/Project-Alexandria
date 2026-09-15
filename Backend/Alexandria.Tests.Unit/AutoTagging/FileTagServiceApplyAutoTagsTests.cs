@@ -1,5 +1,6 @@
 using Alexandria.Common;
 using Alexandria.Common.Repositories;
+using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Autotag;
@@ -236,7 +237,8 @@ public class FileTagServiceApplyAutoTagsTests
         var unitOfWork = Substitute.For<IUnitOfWork>();
         var fileRepo = Substitute.For<IFileRepository>();
         unitOfWork.Files.Returns(fileRepo);
-        var service = new FileTagService(unitOfWork, NullLogger<FileTagService>.Instance);
+        var service = new FileTagService(unitOfWork, Substitute.For<IPublisherService>(),
+            NullLogger<FileTagService>.Instance);
 
         var act = async () => await service.ApplyAutoTagsAsync(Guid.NewGuid(),
             [Cand(NuMetalId, 0.8, TagFacet.Genre)], allowAutoTagRegression: false);
@@ -252,7 +254,7 @@ public class FileTagServiceApplyAutoTagsTests
         fileRepo.GetFileEntityWithTagsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(file);
 
-        return new FileTagService(unitOfWork, NullLogger<FileTagService>.Instance);
+        return new FileTagService(unitOfWork, Substitute.For<IPublisherService>(), NullLogger<FileTagService>.Instance);
     }
 
     private static File CreateFile(

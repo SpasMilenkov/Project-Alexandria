@@ -340,7 +340,8 @@ public class OperationalEventServiceTests
             ServiceType.DocumentPreviews,
             ServiceType.Transpilation,
             ServiceType.Lyrics,
-            ServiceType.MediaMetadata);
+            ServiceType.MediaMetadata,
+            ServiceType.Playlist);
         result.Should().OnlyContain(r => r.Days.Count == 7);
         result.Should().OnlyContain(r =>
             r.Days.All(d => d.Status == PublicServiceState.Healthy));

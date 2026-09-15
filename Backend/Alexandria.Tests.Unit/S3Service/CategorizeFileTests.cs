@@ -25,7 +25,8 @@ public class CategorizeFileTests
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
             new AuditContext(),
-            Substitute.For<IUserSettingsService>());
+            Substitute.For<IUserSettingsService>(),
+            Substitute.For<IPublisherService>());
     }
 
     public static IEnumerable<object[]> ImageCases()

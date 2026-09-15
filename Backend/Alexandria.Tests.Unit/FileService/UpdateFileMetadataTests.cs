@@ -28,6 +28,7 @@ public class UpdateFileMetadataTests
         _sut = new Services.Storage.FileService(
             _unitOfWork,
             Substitute.For<IDirectoryService>(),
+            Substitute.For<IPublisherService>(),
             Substitute.For<ILogger<Services.Storage.FileService>>());
     }
 

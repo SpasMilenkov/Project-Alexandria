@@ -181,6 +181,7 @@ public class AutoTagSyncServiceTests
             settings,
             derivation,
             fileTags,
+            Substitute.For<IPublisherService>(),
             NullLogger<AutoTagSyncService>.Instance);
 
         return (service, unitOfWork, derivation, settings, fileTags);
