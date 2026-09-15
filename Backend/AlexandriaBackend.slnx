@@ -21,6 +21,7 @@
       <Project Path="Alexandria.Workers.MediaMetadata\Alexandria.Workers.MediaMetadata.csproj"/>
       <Project Path="Alexandria.Workers.MediaTranspilation/Alexandria.Workers.MediaTranspilation.csproj"/>
       <Project Path="Alexandria.Workers.Media\Alexandria.Workers.Media.csproj"/>
+      <Project Path="Alexandria.Workers.Playlist\Alexandria.Workers.Playlist.csproj"/>
   </Folder>
 
     <Folder Name="/Solution Items/">
