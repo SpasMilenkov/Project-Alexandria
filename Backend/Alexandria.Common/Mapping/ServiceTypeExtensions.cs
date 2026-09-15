@@ -17,6 +17,7 @@ public static class ServiceTypeExtensions
         ServiceType.Transpilation => JobType.Transpilation,
         ServiceType.Lyrics => JobType.LyricsFetch,
         ServiceType.MediaMetadata => JobType.MetadataEnrichment,
+        ServiceType.Playlist => JobType.PlaylistSync,
         ServiceType.Api => null,
         _ => throw new ArgumentOutOfRangeException(nameof(serviceType), serviceType, null)
     };
