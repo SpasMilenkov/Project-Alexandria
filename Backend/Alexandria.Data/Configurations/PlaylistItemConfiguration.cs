@@ -25,6 +25,10 @@ public class PlaylistItemConfiguration : IEntityTypeConfiguration<PlaylistItem>
             .HasColumnType("uuid")
             .IsRequired(false);
 
+        builder.Property(e => e.RemovedByUser)
+            .HasDefaultValue(false)
+            .IsRequired();
+
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")
