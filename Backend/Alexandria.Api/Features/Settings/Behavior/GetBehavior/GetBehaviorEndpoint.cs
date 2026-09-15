@@ -24,6 +24,7 @@ public class GetBehaviorEndpoint : EndpointWithoutRequest<GetBehaviorResponse>
             ToastLevel = settings.ToastLevel,
             AllowAutoTagRegression = settings.AllowAutoTagRegression,
             AllowAutomaticMetadataOverwrite = settings.AllowAutomaticMetadataOverwrite,
+            AutoPlaylistMinTracks = settings.AutoPlaylistMinTracks
         }, ct);
     }
 }

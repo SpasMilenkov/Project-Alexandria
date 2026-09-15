@@ -11,6 +11,7 @@ public class UpdateBehaviorRequest
     public ToastLevel ToastLevel { get; set; }
     public bool AllowAutoTagRegression { get; set; }
     public bool AllowAutomaticMetadataOverwrite { get; set; }
+    public int AutoPlaylistMinTracks { get; set; }
 }
 
 public class UpdateBehaviorEndpoint(IUserSettingsService settingsService)
@@ -31,6 +32,7 @@ public class UpdateBehaviorEndpoint(IUserSettingsService settingsService)
             ToastLevel = req.ToastLevel,
             AllowAutoTagRegression = req.AllowAutoTagRegression,
             AllowAutomaticMetadataOverwrite = req.AllowAutomaticMetadataOverwrite,
+            AutoPlaylistMinTracks = req.AutoPlaylistMinTracks,
         }, userId, ct);
 
         var saved = await settingsService.GetBehaviorAsync(userId, ct);
@@ -41,6 +43,7 @@ public class UpdateBehaviorEndpoint(IUserSettingsService settingsService)
             ToastLevel = saved.ToastLevel,
             AllowAutoTagRegression = saved.AllowAutoTagRegression,
             AllowAutomaticMetadataOverwrite = saved.AllowAutomaticMetadataOverwrite,
+            AutoPlaylistMinTracks = saved.AutoPlaylistMinTracks,
         }, ct);
     }
 }

@@ -8,4 +8,5 @@ public class GetBehaviorResponse
     public ToastLevel ToastLevel { get; set; }
     public bool AllowAutoTagRegression { get; set; }
     public bool AllowAutomaticMetadataOverwrite { get; set; }
+    public int AutoPlaylistMinTracks { get; set; }
 }
