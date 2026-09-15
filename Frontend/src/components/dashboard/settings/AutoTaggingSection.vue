@@ -30,6 +30,7 @@ const persistAutoTagging = useDebounceFn(async () => {
     toastLevel: settingsStore.toastLevel,
     allowAutoTagRegression: settingsStore.allowAutoTagRegression,
     allowAutomaticMetadataOverwrite: settingsStore.allowAutomaticMetadataOverwrite,
+    autoPlaylistMinTracks: settingsStore.autoPlaylistMinTracks,
   });
 }, 600);
 
