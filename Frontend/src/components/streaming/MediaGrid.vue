@@ -126,22 +126,14 @@
         </div>
       </div>
 
-      <!-- Loading: Grid skeleton -->
+      <!-- Loading: Grid -->
       <div
         v-if="isInitialLoad && viewMode === 'grid'"
-        class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
+        class="flex-1 min-h-0 flex items-center justify-center"
+        role="status"
+        aria-label="Loading media library"
       >
-        <div
-          v-for="i in LIBRARY_PAGE_SIZE"
-          :key="i"
-          class="rounded-xl overflow-hidden border border-black/[0.06] dark:border-white/[0.06] animate-pulse"
-        >
-          <div class="aspect-video w-full bg-gray-200 dark:bg-white/4" />
-          <div class="px-3 py-2.5 space-y-1.5 bg-white dark:bg-white/2">
-            <div class="h-2.5 rounded bg-gray-200 dark:bg-white/6 w-3/4" />
-            <div class="h-2 rounded bg-gray-100 dark:bg-white/4 w-1/2" />
-          </div>
-        </div>
+        <BlockSpinner />
       </div>
 
       <!-- Loading: List skeleton -->
@@ -207,20 +199,22 @@
       <!-- Grid view -->
       <div
         v-else-if="viewMode === 'grid' && !isInitialLoad && allItems.length"
-        ref="gridContainerRef"
         class="flex-1 min-h-0"
       >
         <RecycleScroller
-          class="h-full"
+          class="h-full [scrollbar-gutter:stable]"
           :items="gridRows"
           :item-size="gridRowHeight"
           key-field="id"
           @scroll.passive="onScroll"
         >
+          <template #before>
+            <div ref="gridContainerRef" class="h-0 w-full" aria-hidden="true" />
+          </template>
           <template #default="{ item: row }">
-            <div class="pb-3" :style="{ height: `${gridRowHeight}px` }">
+            <div class="pb-4" :style="{ height: `${gridRowHeight}px` }">
               <div
-                class="grid h-full gap-x-3"
+                class="grid h-full gap-x-4 items-start"
                 :style="{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }"
               >
                 <MediaCard
@@ -297,6 +291,7 @@ import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { LIBRARY_PAGE_SIZE } from "@/composables/useStreamingMediaContext";
 import { STREAMING_QUERY_KEYS, getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
+import { getMediaGridLayout } from "@/utils/media-grid-layout";
 import { glassDrawerContent } from "@/utils/modalUi";
 
 import BlockSpinner from "../common/BlockSpinner.vue";
@@ -535,16 +530,10 @@ onKeyStroke("Escape", () => {
 // Grid layout
 
 const gridContainerRef = ref<HTMLElement | null>(null);
-const columnCount = ref(5);
 const containerWidth = ref(0);
-
-const gridRowHeight = computed(() => {
-  if (!containerWidth.value) return 240;
-  const gap = 12;
-  const colWidth = (containerWidth.value - (columnCount.value - 1) * gap) / columnCount.value;
-  const thumbHeight = Math.round(colWidth * (mediaType === "video" ? 9.5 / 16 : 1));
-  return thumbHeight;
-});
+const gridLayout = computed(() => getMediaGridLayout(containerWidth.value, mediaType));
+const columnCount = computed(() => gridLayout.value.columns);
+const gridRowHeight = computed(() => gridLayout.value.rowHeight);
 
 const gridRows = computed(() => {
   const cols = columnCount.value;
@@ -558,13 +547,8 @@ watchEffect((onCleanup) => {
   const el = gridContainerRef.value;
   if (!el) return;
   const ro = new ResizeObserver(([entry]) => {
-    const w = entry.contentRect.width;
-    containerWidth.value = w;
-    if (w < 640) columnCount.value = 1;
-    else if (w < 768) columnCount.value = 2;
-    else if (w < 1024) columnCount.value = 3;
-    else if (w < 1280) columnCount.value = 4;
-    else columnCount.value = 5;
+    // Measure inside the scroller so native scrollbar width cannot skew row heights.
+    containerWidth.value = entry.contentRect.width;
   });
   ro.observe(el);
   onCleanup(() => ro.disconnect());
