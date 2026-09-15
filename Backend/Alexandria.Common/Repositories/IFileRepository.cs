@@ -1,6 +1,7 @@
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Files.Streaming.Playlist;
 using Alexandria.Dto.Tags;
 using File = Alexandria.Data.Models.File;
 
@@ -34,6 +35,16 @@ public interface IFileRepository : IRepository<File>
 
     Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Unbounded fetch-once input for auto-playlist grouping: one row per live file
+    /// owned by <paramref name="ownerId"/>, with descriptive metadata and every tag
+    /// assignment projected (suppression/deleted filtering happens in the pure
+    /// grouping helper, not here). No tracking, no pagination: the reconciler needs
+    /// the whole owner scope, and the paginated UI search cap does not fit it.
+    /// </summary>
+    Task<IReadOnlyList<AutoPlaylistGroupingRow>> GetAutoPlaylistGroupingRowsAsync(
+        Guid ownerId, CancellationToken ct = default);
 
     Task MoveFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default);
     Task<int> MarkAsDeletedAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default);
