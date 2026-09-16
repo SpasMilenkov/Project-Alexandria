@@ -5,7 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AWS -->
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.18.2" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.103"/>
     <PackageVersion Include="SeekableS3Stream" Version="1.0.3" />
     <!-- FastEndpoints -->
     <PackageVersion Include="FastEndpoints" Version="8.3.0"/>
