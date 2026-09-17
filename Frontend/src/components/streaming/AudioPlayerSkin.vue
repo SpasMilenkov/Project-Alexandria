@@ -340,14 +340,13 @@ onUnmounted(() => {
           <Icon icon="mdi:skip-previous" class="w-6 h-6" />
         </button>
 
-        <!-- Shaka container: never moves, never unmounts -->
+        <!-- Automatic setup attributes would race with usePlayerEngine's manual attachment. -->
         <div
           ref="containerRef"
-          class="relative isolate"
+          class="audio-shaka-container relative isolate"
           :class="isStrip ? 'flex-1 min-w-0 h-full' : 'w-full h-full'"
-          data-shaka-player-container
         >
-          <video ref="videoRef" data-shaka-player playsinline disablepictureinpicture />
+          <video ref="videoRef" playsinline disablepictureinpicture />
         </div>
 
         <!-- Strip: next -->
@@ -490,7 +489,7 @@ onUnmounted(() => {
   transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
 }
-.player-card.strip [data-shaka-player-container] {
+.player-card.strip .audio-shaka-container {
   overflow: hidden;
 }
 .player-card.strip .shaka-tooltip {
@@ -655,14 +654,14 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
   }
-  .player-card.strip:not(.compact-strip) > div.relative > div[data-shaka-player-container] {
+  .player-card.strip:not(.compact-strip) > div.relative > div.audio-shaka-container {
     height: 72px !important;
     min-height: 72px;
     display: flex;
     align-items: center;
   }
 
-  .player-card.strip:not(.compact-strip) [data-shaka-player-container] {
+  .player-card.strip:not(.compact-strip) .audio-shaka-container {
     overflow: visible !important;
   }
 
@@ -756,12 +755,12 @@ onUnmounted(() => {
   opacity: 1;
   pointer-events: auto;
 }
-.player-card.strip.compact-strip:hover > div.relative > div[data-shaka-player-container] {
+.player-card.strip.compact-strip:hover > div.relative > div.audio-shaka-container {
   height: 68px !important;
   min-height: 68px;
 }
 
-.player-card.strip.compact-strip:hover [data-shaka-player-container] {
+.player-card.strip.compact-strip:hover .audio-shaka-container {
   overflow: visible !important;
 }
 
