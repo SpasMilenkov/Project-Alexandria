@@ -19,15 +19,15 @@
   "dependencies": {
     "@iconify/vue": "5.0.1",
     "@internationalized/date": "3.11.0",
-    "@nuxt/ui": "4.11.0",
+    "@nuxt/ui": "4.11.1",
     "@pinia/colada": "0.21.7",
     "@pinia/colada-plugin-retry": "0.2.3",
-    "@serwist/window": "9.5.6",
+    "@serwist/window": "9.5.12",
     "@tailwindcss/vite": "4.2.1",
     "@unhead/vue": "3.4.0",
     "@vueuse/core": "14.4.0",
     "@vueuse/integrations": "14.4.0",
-    "@zip.js/zip.js": "2.6.40",
+    "@zip.js/zip.js": "2.14.0",
     "axios": "1.18.1",
     "chart.js": "4.5.1",
     "hash-wasm": "4.12.0",
@@ -51,7 +51,7 @@
     "@iconify/utils": "3.1.0",
     "@pinia/colada-devtools": "0.4.4",
     "@playwright/test": "1.58.2",
-    "@serwist/vite": "9.5.6",
+    "@serwist/vite": "9.5.12",
     "@tsconfig/node22": "22.0.5",
     "@types/jsdom": "30.0.0",
     "@types/node": "26.2.0 ",
@@ -60,11 +60,11 @@
     "@vue/tsconfig": "0.7.0",
     "jiti": "2.6.1",
     "jsdom": "30.0.1",
-    "oxfmt": "0.64.0",
-    "oxlint": "1.79.0",
-    "serwist": "9.5.6",
+    "oxfmt": "0.67.0",
+    "oxlint": "1.82.0",
+    "serwist": "9.5.12",
     "typescript": "~5.8.3",
-    "vite": "7.3.6",
+    "vite": "8.2.2",
     "vite-plugin-vue-devtools": "8.2.1",
     "vitest": "4.1.7",
     "vue-tsc": "3.3.11"
@@ -72,5 +72,5 @@
   "engines": {
     "node": "^22.13.0 || >=24.15.0"
   },
-  "packageManager": "pnpm@11.14.0+sha512.66c1ac4c7d4762d6d7dde44c7f3e5a73591ed0a0806e751d4ed32d4f004f25b2285a906b1fd8a9e3e621df3b4e2858bf88e50e0cf626bedbe977fe434a5caf85"
+  "packageManager": "pnpm@12.4.2+sha512.08adc6613180275c7c9edada39dcf08c9c61ad4e7eaf330a4f3461f102b0f907423454d117f98e72d47fef0616070644d7bffc973a6a57f5090a6d7c368b07c9"
 }
