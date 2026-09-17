@@ -27,7 +27,7 @@
     "@unhead/vue": "3.4.0",
     "@vueuse/core": "14.4.0",
     "@vueuse/integrations": "14.4.0",
-    "@zip.js/zip.js": "2.6.40",
+    "@zip.js/zip.js": "2.14.0",
     "axios": "1.18.1",
     "chart.js": "4.5.1",
     "hash-wasm": "4.12.0",

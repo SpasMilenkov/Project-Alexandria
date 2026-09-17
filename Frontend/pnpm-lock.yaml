@@ -197,8 +197,8 @@ importers:
         specifier: 14.4.0
         version: 14.4.0(axios@1.18.1(debug@4.4.3))(fuse.js@7.5.0)(vue@3.5.41(typescript@5.8.3))
       '@zip.js/zip.js':
-        specifier: 2.6.40
-        version: 2.6.40
+        specifier: 2.14.0
+        version: 2.14.0
       axios:
         specifier: 1.18.1
         version: 1.18.1(debug@4.4.3)
@@ -2079,9 +2079,9 @@ packages:
     peerDependencies:
       vue: ^3.5.0
 
-  '@zip.js/zip.js@2.6.40':
-    resolution: {integrity: sha512-S23j3nNwrxnlNFViXV+JIJEosbB1CrntsIB8Zdsok9pWionK+2X09cJvFhvL1okkjp5Dv9wJp449rQ7IYh+snw==}
-    engines: {deno: '>=1.0.0', node: '>=16.5.0'}
+  '@zip.js/zip.js@2.14.0':
+    resolution: {integrity: sha512-7HIW+xGAl6LeTlgfLEKeRBPBskNtLSXRNXqb0QuUv6kYO7hhJvSda1UfYvyfyKJxod3q5GRvYZjjdtkxO1FMiQ==}
+    engines: {bun: '>=0.7.0', deno: '>=1.0.0', node: '>=18.0.0'}
 
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
@@ -5702,7 +5702,7 @@ snapshots:
     dependencies:
       vue: 3.5.41(typescript@5.8.3)
 
-  '@zip.js/zip.js@2.6.40': {}
+  '@zip.js/zip.js@2.14.0': {}
 
   abbrev@2.0.0: {}
 
