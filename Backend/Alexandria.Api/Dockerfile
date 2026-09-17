@@ -1,5 +1,5 @@
 # BUILD IMAGE
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine3.23-amd64@sha256:159049d8e4bb064f23ffda1143f6bfb8e64be6b9221a365fd8e344c5eeae81b4 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.401-alpine3.24-amd64@sha256:72d2c98e9b40abb6c19ee10893c1a86ec90dc2c2d86bd84c28622458d4f5bf5c AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
@@ -33,7 +33,7 @@ ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./Alexandria.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 # FINAL RUNTIME
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine3.23@sha256:8c7671a6f0f984d0c102ee70d61e8010857de032b320561dea97cc5781aea5f8 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.24-amd64@sha256:0eb381be9d708a3c190c4c3e16c5270529078653888578b84d6f479c2f9694f4 AS final
 WORKDIR /app
 EXPOSE 8080
 
