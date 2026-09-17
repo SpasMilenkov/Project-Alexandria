@@ -215,15 +215,9 @@ onUnmounted(() => {
         </div>
       </Transition>
 
-      <!-- Shaka container -->
-      <div ref="containerRef" class="vps-shaka-container" data-shaka-player-container>
-        <video
-          ref="videoRef"
-          class="vps-video"
-          data-shaka-player
-          playsinline
-          disablepictureinpicture
-        />
+      <!-- Automatic setup attributes would race with usePlayerEngine's manual attachment. -->
+      <div ref="containerRef" class="vps-shaka-container">
+        <video ref="videoRef" class="vps-video" playsinline disablepictureinpicture />
       </div>
     </div>
 
