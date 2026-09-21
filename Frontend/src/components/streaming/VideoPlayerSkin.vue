@@ -18,6 +18,7 @@ const {
   hasPrevious,
   repeatMode,
   shuffled,
+  shuffleBusy,
   isPlaying,
   currentTime,
   duration,
@@ -266,10 +267,17 @@ onUnmounted(() => {
         <button
           class="vps-btn"
           :class="shuffled ? 'vps-btn-active' : ''"
-          title="Shuffle"
+          :disabled="shuffleBusy"
+          :title="
+            shuffleBusy ? 'Starting shuffle…' : shuffled ? 'Disable shuffle' : 'Shuffle this source'
+          "
           @click="store.toggleShuffle()"
         >
-          <Icon icon="mdi:shuffle-variant" class="w-5 h-5" />
+          <Icon
+            :icon="shuffleBusy ? 'mdi:loading' : 'mdi:shuffle-variant'"
+            class="w-5 h-5"
+            :class="shuffleBusy ? 'animate-spin' : ''"
+          />
         </button>
         <button
           class="vps-btn"

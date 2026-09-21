@@ -15,8 +15,13 @@ import PlayerSettings from "./PlayerSettings.vue";
 
 const route = useRoute();
 const store = usePlayerStore();
-const { activeFile, isAudio, snapCorner, hasNext, hasPrevious, repeatMode, shuffled } =
+const { activeFile, isAudio, snapCorner, hasNext, hasPrevious, repeatMode, shuffled, shuffleBusy } =
   storeToRefs(store);
+
+const shuffleTitle = computed(() => {
+  if (shuffleBusy.value) return "Starting shuffle…";
+  return shuffled.value ? "Disable shuffle" : "Shuffle this source";
+});
 
 const isDark = useDark();
 
@@ -380,9 +385,13 @@ onUnmounted(() => {
                 ? 'text-primary'
                 : 'text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80'
             "
+            :disabled="shuffleBusy"
+            :title="shuffleTitle"
+            :aria-label="shuffleTitle"
             @click="store.toggleShuffle()"
           >
-            <Icon icon="mdi:shuffle-variant" class="w-5 h-5" />
+            <Icon v-if="shuffleBusy" icon="mdi:loading" class="w-5 h-5 animate-spin" />
+            <Icon v-else icon="mdi:shuffle-variant" class="w-5 h-5" />
           </button>
           <button
             class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"

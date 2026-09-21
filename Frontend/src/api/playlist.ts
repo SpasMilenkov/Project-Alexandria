@@ -18,6 +18,7 @@ export interface PlaylistItemResponse {
   id: string;
   position: number;
   transpilationJobId: string;
+  fileId: string;
   fileName: string;
   mimeType: string;
   segmentPrefix?: string;

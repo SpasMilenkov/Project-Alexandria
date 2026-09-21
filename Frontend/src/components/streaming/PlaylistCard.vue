@@ -113,6 +113,7 @@ const emit = defineEmits<{
   edit: [];
   delete: [];
   play: [];
+  addToQueue: [];
 }>();
 
 const menuItems = [
@@ -126,6 +127,11 @@ const menuItems = [
       label: "Play",
       icon: "mdi:play",
       onSelect: () => emit("play"),
+    },
+    {
+      label: "Add to queue",
+      icon: "mdi:playlist-plus",
+      onSelect: () => emit("addToQueue"),
     },
     {
       label: "Edit",
