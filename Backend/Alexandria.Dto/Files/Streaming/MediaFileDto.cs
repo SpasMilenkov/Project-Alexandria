@@ -7,8 +7,8 @@ public sealed class MediaFileDto
     public string MimeType { get; set; }
 
     public Guid CurrentVersionId { get; set; }
+    public Guid PlaybackVersionId { get; set; }
 
-    // public FileResult File { get; set; }
     public double? Duration { get; set; }
     public string? Artist { get; set; }
     public string? Album { get; set; }
@@ -16,6 +16,7 @@ public sealed class MediaFileDto
     public string? Genre { get; set; }
     public string? Year { get; set; }
     public Guid TranspilationJobId { get; set; }
+    public Guid? PlaylistItemId { get; set; }
     public bool IsVideo { get; set; }
     public string? SegmentPrefix { get; set; }
 }

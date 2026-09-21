@@ -86,11 +86,13 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
                 Items = p.PlaylistItems!
                     .Where(i => i.DeletedAt == null)
                     .OrderBy(i => i.Position)
+                    .ThenBy(i => i.Id)
                     .Select(i => new PlaylistItemDto
                     {
                         Id = i.Id,
                         Position = i.Position,
                         TranspilationJobId = i.TranspilationJobId,
+                        FileId = i.TranspilationJob!.FileVersion.FileId,
                         FileName = i.TranspilationJob!.FileVersion.File.Name,
                         MimeType = i.TranspilationJob!.FileVersion.File.MimeType,
                         SegmentPrefix = i.TranspilationJob!.SegmentPrefix,
@@ -264,6 +266,7 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
                 Id = i.Id,
                 Position = i.Position,
                 TranspilationJobId = i.TranspilationJobId,
+                FileId = i.TranspilationJob!.FileVersion.FileId,
                 FileName = i.TranspilationJob!.FileVersion.File.Name,
                 MimeType = i.TranspilationJob!.FileVersion.File.MimeType,
                 SegmentPrefix = i.TranspilationJob!.SegmentPrefix,

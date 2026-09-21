@@ -1,6 +1,8 @@
 using Alexandria.Data.Models;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Files.Streaming.Shuffle;
+using Alexandria.Dto.Files.Streaming.Stats;
 
 namespace Alexandria.Common.Repositories;
 
@@ -45,5 +47,28 @@ public interface IStreamHistoryRepository : IRepository<StreamHistory>
 
     /// <summary>Returns all sessions for a given stream history row, ordered by start time ascending.</summary>
     Task<PaginatedResult<StreamSessionDto>> GetSessionsAsync(Guid streamHistoryId, int page = 1, int pageSize = 25,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Projects one row per closed session in the range for the stats compute pass.
+    /// Single fetch, no paging: the caller buckets in memory.
+    /// </summary>
+    Task<IReadOnlyList<ListeningSessionRow>> GetListeningSessionRowsAsync(
+        Guid userId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default);
+
+    /// <summary>
+    /// Projects one lightweight row per history for the discovery metrics
+    /// (first-seen dates live outside the stats period).
+    /// </summary>
+    Task<IReadOnlyList<ListeningHistoryRef>> GetListeningHistoryRefsAsync(
+        Guid userId, CancellationToken ct = default, DateTime? beforeUtc = null);
+
+    /// <summary>
+    /// Lightweight closed-session rows for shuffle recency, scoped to the owner and
+    /// the supplied source files. Filters live rows, closed sessions, positive
+    /// listened time, and EndedAt within the cutoff. No paging; chunks file IDs.
+    /// </summary>
+    Task<IReadOnlyList<ShuffleListenRow>> GetShuffleListenRowsAsync(
+        Guid userId, IReadOnlyList<Guid> sourceFileIds, DateTime asOfUtc,
         CancellationToken ct = default);
 }
