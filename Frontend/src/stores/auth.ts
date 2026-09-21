@@ -44,6 +44,17 @@ export const useAuthStore = defineStore(
       }
     };
 
+    const clearPlayerState = async () => {
+      try {
+        const { usePlayerStore } = await import("@/stores/stream-player");
+        const { getActivePinia } = await import("pinia");
+        const pinia = getActivePinia();
+        if (pinia) usePlayerStore(pinia).clearOwnerState();
+      } catch (err: unknown) {
+        logger.error("Player teardown error:", err);
+      }
+    };
+
     const logout = async () => {
       try {
         const { useTabStore } = await import("@/stores/tab");
@@ -52,6 +63,10 @@ export const useAuthStore = defineStore(
 
         tabStore.closeAllTabs();
         // localStorage.removeItem('tab');
+        const { usePlayerStore } = await import("@/stores/stream-player");
+        const player = usePlayerStore();
+        await player.releaseShuffleSession();
+        player.clearOwnerState();
         await authApi.logout();
       } catch (err: unknown) {
         logger.error("Logout error:", err);
@@ -62,6 +77,7 @@ export const useAuthStore = defineStore(
 
     const clearSession = () => {
       user.value = null;
+      void clearPlayerState();
     };
 
     const clearError = () => {
