@@ -16,10 +16,12 @@ using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Promotions;
 using Alexandria.Services.Storage.SignedUrls;
 using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.Shuffle;
 using Alexandria.Services.User;
 using Alexandria.Services.User.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using IPolicyDispatcher = Alexandria.Common.Services.IPolicyDispatcher;
 
 namespace Alexandria.Infrastructure;
@@ -62,6 +64,9 @@ public static class ServiceExtensions
         services.AddScoped<ITranspilationJobRepository, TranspilationJobRepository>();
         services.AddScoped<ITranspilationJobService, TranspilationJobService>();
         services.AddScoped<IStreamHistoryService, StreamHistoryService>();
+        services.AddScoped<IShuffleService, ShuffleService>();
+        services.AddSingleton<ShuffleSessionStore>();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
         services.AddScoped<IAutoPlaylistGroupingService, AutoPlaylistGroupingService>();
