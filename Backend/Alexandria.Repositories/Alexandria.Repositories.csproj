@@ -11,4 +11,8 @@
         <ProjectReference Include="..\Alexandria.Data\Alexandria.Data.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
+    </ItemGroup>
+
 </Project>

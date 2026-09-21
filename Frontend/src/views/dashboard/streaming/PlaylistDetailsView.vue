@@ -92,6 +92,16 @@
                 @click="playAll"
               />
               <UButton
+                icon="mdi:playlist-plus"
+                label="Add all to queue"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                :loading="isAddingAllToQueue"
+                :disabled="!localItems.length"
+                @click="addAllToQueue"
+              />
+              <UButton
                 :icon="showSearch ? 'i-heroicons-x-mark' : 'i-heroicons-plus'"
                 :label="showSearch ? 'Cancel' : 'Add tracks'"
                 color="primary"
@@ -171,7 +181,7 @@
             @drag-end="onDragEnd"
             @drag-over="onDragOver"
             @drop="onDrop"
-            @play="playFromItem(item.transpilationJobId)"
+            @play="playFromItem(item.id, item.fileId)"
           />
         </div>
       </div>
@@ -272,7 +282,6 @@ import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 
 import { fileApi } from "@/api/file";
 import { playlistApi } from "@/api/playlist";
-import { streamingApi } from "@/api/streaming";
 import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
 import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
 import PlaylistItemRow from "@/components/streaming/PlaylistItemRow.vue";
@@ -288,27 +297,57 @@ import {
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
 import { glassModalContent, playlistModalUi } from "@/utils/modalUi";
+import {
+  findPlaylistItemIndex,
+  loadPlaylistAnchorPage,
+  loadPlaylistFirstPage,
+  playlistPageFetcher,
+} from "@/utils/player-source";
 
 const store = usePlayerStore();
 const toast = useToast();
 const { isDark } = useTheme();
 
 const isLoadingQueue = ref(false);
+const isAddingAllToQueue = ref(false);
+
+const addAllToQueue = async () => {
+  if (isAddingAllToQueue.value) return;
+  isAddingAllToQueue.value = true;
+  try {
+    const total = await store.appendPlaylist(playlistId.value);
+    if (total === 0) {
+      toast.add({ title: "Playlist is empty", color: "warning" });
+      return;
+    }
+    toast.add({
+      title: `Added ${total} track${total === 1 ? "" : "s"} to queue`,
+      color: "success",
+    });
+  } catch {
+    toast.add({ title: "Failed to queue playlist", color: "error" });
+  } finally {
+    isAddingAllToQueue.value = false;
+  }
+};
 
 const playAll = async () => {
   isLoadingQueue.value = true;
+  const descriptor = { isVideo: false, playlistId: playlistId.value };
   try {
-    const result = await streamingApi.getFilesForStreaming({
-      page: 1,
-      pageSize: 500,
-      playlistId: playlistId.value,
-      isVideo: false,
-    });
+    const result = await loadPlaylistFirstPage(playlistId.value);
     if (!result.items.length) {
       toast.add({ title: "Playlist is empty", color: "warning" });
       return;
     }
-    store.playNow(result.items);
+    store.setSource(
+      result.items,
+      descriptor,
+      1,
+      0,
+      result.totalPages,
+      playlistPageFetcher(playlistId.value),
+    );
   } catch {
     toast.add({ title: "Failed to load playlist", color: "error" });
   } finally {
@@ -394,21 +433,29 @@ const removeItemTarget = ref<string | null>(null);
 // Drag-and-drop state
 const draggedItemId = ref<string | null>(null);
 
-const playFromItem = async (transpilationJobId: string) => {
+const playFromItem = async (itemId: string, fileId: string) => {
   isLoadingQueue.value = true;
+  const descriptor = { isVideo: false, playlistId: playlistId.value };
   try {
-    const result = await streamingApi.getFilesForStreaming({
-      page: 1,
-      pageSize: 500,
-      playlistId: playlistId.value,
-      isVideo: false,
-    });
+    const result = await loadPlaylistAnchorPage(playlistId.value, fileId, itemId);
     if (!result.items.length) {
-      toast.add({ title: "Playlist is empty", color: "warning" });
+      toast.add({ title: "Playlist is empty", color: "error" });
       return;
     }
-    const idx = result.items.findIndex((f) => f.transpilationJobId === transpilationJobId);
-    store.playNow(result.items.slice(idx === -1 ? 0 : idx));
+    const index = findPlaylistItemIndex(result.items, itemId);
+    if (index === -1) {
+      toast.add({ title: "Track is no longer in this playlist", color: "warning" });
+      return;
+    }
+    store.setSource(
+      result.items,
+      descriptor,
+      result.currentPage,
+      index,
+      result.totalPages,
+      playlistPageFetcher(playlistId.value),
+      { fileId, playlistItemId: itemId },
+    );
   } catch {
     toast.add({ title: "Failed to load playlist", color: "error" });
   } finally {

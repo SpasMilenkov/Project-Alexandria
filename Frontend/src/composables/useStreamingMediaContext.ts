@@ -1,23 +1,18 @@
 import { onMounted } from "vue";
 
-import { streamingApi } from "@/api/streaming";
+import { useAuthStore } from "@/stores/auth";
 import { usePlayerStore } from "@/stores/stream-player";
 
 /**
- * Unified page size used by both the library grid (display) and the player
- * store (navigation window). Must be the same value in both places so that
- * cursorPage / cursorOffset coordinates are valid after a restore.
- */
-export const LIBRARY_PAGE_SIZE = 50;
-
-/**
- * Restores the player store's lazy-fetch context after a navigation or
- * hard reload destroys the MediaLibraryGrid that originally called setSource().
+ * Restores the player store after navigation or a hard reload destroys the
+ * component that originally started playback.
  *
- * Lives in the layout so it survives all route changes. Always restores
- * against the raw unfiltered library — search context is intentionally not
- * persisted because search results are enqueued as concrete files, not used
- * as a navigation source.
+ * Lives in the layout so it survives all route changes. The store owns the
+ * source descriptor and shuffle session handle; this composable only waits
+ * for an authenticated owner and hands control to the store, which reconnects
+ * the shuffle session or re-establishes the sequential window from the saved
+ * anchor. Search context is intentionally not persisted: search results live
+ * in the manual queue, not in a navigation source.
  *
  * Call once in the layout, guarded by streamingEnabled:
  *
@@ -25,22 +20,10 @@ export const LIBRARY_PAGE_SIZE = 50;
  */
 export const useStreamingMediaContext = () => {
   const player = usePlayerStore();
+  const auth = useAuthStore();
 
   onMounted(async () => {
-    if (!player.sourceId) return;
-
-    // sourceId convention: "library-video" | "library-audio"
-    const isVideo = player.sourceId.startsWith("library-video");
-
-    await player.restoreContext(
-      (page) =>
-        streamingApi.getFilesForStreaming({
-          page,
-          pageSize: LIBRARY_PAGE_SIZE,
-          isVideo,
-          query: null, // always raw library — search results live in the queue
-        }),
-      LIBRARY_PAGE_SIZE,
-    );
+    const ownerId = auth.user?.user.id ?? null;
+    await player.restorePlaybackContext(ownerId);
   });
 };

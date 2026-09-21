@@ -26,6 +26,8 @@ export interface GetFilesForStreamingQuery {
   page: number;
   pageSize: number;
   isVideo: boolean;
+  anchorFileId?: string | null;
+  anchorPlaylistItemId?: string | null;
 }
 
 export interface TranspilationJobQuery {
@@ -130,6 +132,7 @@ export interface MediaFileDto {
   fileName: string;
   mimeType: string;
   currentVersionId: string;
+  playbackVersionId?: string;
 
   // Media metadata
   duration: number | null;
@@ -141,6 +144,7 @@ export interface MediaFileDto {
 
   // Transpilation
   transpilationJobId: string;
+  playlistItemId?: string | null;
   isVideo: boolean;
   segmentPrefix: string | null;
 }

@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
+using Alexandria.Common.Exceptions.Playlist;
+using Alexandria.Common.Exceptions.Streaming;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
@@ -8,6 +10,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Files.Streaming.Playlist;
+using Alexandria.Dto.Files.Streaming.Shuffle;
 using Alexandria.Dto.Tags;
 using Alexandria.Repositories.Projections;
 using Microsoft.EntityFrameworkCore;
@@ -752,26 +755,25 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
     public async Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(
         Guid userId, int page, int pageSize, string? query = null, Guid? playlistId = null, bool isVideo = false,
-        CancellationToken ct = default)
+        Guid? anchorFileId = null, Guid? anchorPlaylistItemId = null, CancellationToken ct = default)
     {
+        if (playlistId.HasValue)
+        {
+            var playlistExists = await context.Playlists
+                .AnyAsync(p => p.Id == playlistId.Value && p.OwnerId == userId && p.DeletedAt == null, ct);
+            if (!playlistExists)
+                throw new PlaylistNotFoundException(playlistId.Value);
+        }
+
         // One round trip: every version with a Ready job (backed by Ready
         // representations) on this tab. Materialized once so the queries below
         // share an IN list instead of re-running the job join each time.
-        var viableVersionIds = (await context.Set<TranspilationJob>()
-                .Where(j =>
-                    j.UserId == userId
-                    && j.DeletedAt == null
-                    && j.Job.DeletedAt == null
-                    && j.Job.Status == JobStatus.Ready
-                    && j.IsVideo == isVideo
-                    && j.Representations.Any(r =>
-                        r.DeletedAt == null
-                        && r.Status == RepresentationStatus.Ready))
-                .Select(j => j.VersionId)
-                .ToListAsync(ct))
-            .ToHashSet();
+        var viableVersionIds = await StreamingSourceQueries.GetViableVersionIdsAsync(context, userId, isVideo, ct);
 
         if (viableVersionIds.Count == 0)
+        {
+            if (anchorFileId.HasValue || anchorPlaylistItemId.HasValue)
+                throw new StreamingAnchorNotFoundException();
             return new PaginatedResult<MediaFileDto>
             {
                 Items = [],
@@ -780,17 +782,19 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 TotalCount = 0,
                 TotalPages = 0
             };
+        }
 
         List<Guid>? playlistFileIds = null;
         if (playlistId.HasValue)
-            playlistFileIds = await context.Set<PlaylistItem>()
+            playlistFileIds = await context.PlaylistItems
                 .Where(pi => pi.PlaylistId == playlistId.Value && pi.DeletedAt == null)
                 .OrderBy(pi => pi.Position)
-                .Join(context.Set<TranspilationJob>(),
+                .ThenBy(pi => pi.Id)
+                .Join(context.TranspilationJobs,
                     pi => pi.TranspilationJobId,
                     tj => tj.Id,
                     (pi, tj) => tj.VersionId)
-                .Join(context.Set<FileVersion>(),
+                .Join(context.FileVersions,
                     vId => vId,
                     fv => fv.Id,
                     (_, fv) => fv.FileId)
@@ -828,7 +832,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                     .ToListAsync(ct))
                 .ToHashSet();
 
-            var metadataRankedIds = (await context.Set<MediaMetadata>()
+            var metadataRankedIds = (await context.MediaMetadata
                     .FromSqlInterpolated($@"
                         SELECT *
                         FROM ""MediaMetadata""
@@ -901,37 +905,161 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             };
         }
 
-        var dbQuery = StreamableFiles(userId, viableVersionIds);
+        if (playlistId.HasValue)
+            return await GetPlaylistPageAsync(
+                userId, playlistId.Value, isVideo, page, pageSize, viableVersionIds,
+                anchorFileId, anchorPlaylistItemId, ct);
 
-        if (playlistFileIds == null)
-            dbQuery = dbQuery.OrderByDescending(f => f.CreatedAt);
-        else
-            dbQuery = dbQuery.Where(f => playlistFileIds.Contains(f.Id));
+        var libraryQuery = StreamableFiles(userId, viableVersionIds)
+            .OrderByDescending(f => f.CreatedAt)
+            .ThenBy(f => f.Id);
 
-        var count = await dbQuery.CountAsync(ct);
-        var items = (await SelectStreamingRows(
-                    dbQuery.Skip((page - 1) * pageSize).Take(pageSize),
+        var effectivePage = page;
+        if (anchorFileId.HasValue || anchorPlaylistItemId.HasValue)
+        {
+            if (anchorPlaylistItemId.HasValue || !anchorFileId.HasValue)
+                throw new StreamingAnchorNotFoundException();
+            effectivePage = await ResolveLibraryAnchorPageAsync(
+                userId, viableVersionIds, anchorFileId.Value, pageSize, ct);
+        }
+
+        var libraryCount = await libraryQuery.CountAsync(ct);
+        var libraryItems = (await SelectStreamingRows(
+                    libraryQuery.Skip((effectivePage - 1) * pageSize).Take(pageSize),
                     userId, isVideo, viableVersionIds)
                 .ToListAsync(ct))
             .Where(r => r.Job != null)
             .Select(ToMediaFileDto)
             .ToList();
 
-        if (playlistFileIds != null)
+        return new PaginatedResult<MediaFileDto>
         {
-            var positionMap = playlistFileIds.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
-            items = items.OrderBy(m => positionMap.GetValueOrDefault(m.FileId, int.MaxValue)).ToList();
-        }
+            Items = libraryItems,
+            CurrentPage = effectivePage,
+            PageSize = pageSize,
+            TotalCount = libraryCount,
+            TotalPages = (int)Math.Ceiling(libraryCount / (double)pageSize)
+        };
+    }
+
+    private async Task<PaginatedResult<MediaFileDto>> GetPlaylistPageAsync(
+        Guid userId, Guid playlistId, bool isVideo, int page, int pageSize,
+        HashSet<Guid> viableVersionIds, Guid? anchorFileId, Guid? anchorPlaylistItemId,
+        CancellationToken ct)
+    {
+        var eligible = StreamingSourceQueries.EligiblePlaylistItems(context, userId, playlistId, isVideo);
+
+        var effectivePage = page;
+        if (anchorFileId.HasValue || anchorPlaylistItemId.HasValue)
+            effectivePage = await ResolvePlaylistAnchorPageAsync(
+                eligible, anchorFileId, anchorPlaylistItemId, pageSize, ct);
+
+        var totalCount = await eligible.CountAsync(ct);
+        if (totalCount == 0)
+            return new PaginatedResult<MediaFileDto>
+            {
+                Items = [],
+                CurrentPage = effectivePage,
+                PageSize = pageSize,
+                TotalCount = 0,
+                TotalPages = 0
+            };
+
+        var pageItems = await eligible
+            .OrderBy(pi => pi.Position)
+            .ThenBy(pi => pi.Id)
+            .Skip((effectivePage - 1) * pageSize)
+            .Take(pageSize)
+            .Select(pi => new PlaylistStreamingRow
+            {
+                ItemId = pi.Id,
+                Position = pi.Position,
+                FileId = pi.TranspilationJob!.FileVersion.FileId,
+                FileName = pi.TranspilationJob!.FileVersion.File.Name,
+                MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
+                CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
+                PlaybackVersionId = pi.TranspilationJob.VersionId,
+                Duration = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
+                    ? null
+                    : pi.TranspilationJob!.FileVersion.File.MediaMetadata.Duration,
+                Artist = pi.TranspilationJob!.FileVersion.File.MediaMetadata!.Artist,
+                Album = pi.TranspilationJob!.FileVersion.File.MediaMetadata.Album,
+                Title = pi.TranspilationJob!.FileVersion.File.MediaMetadata.Title,
+                Genre = pi.TranspilationJob!.FileVersion.File.MediaMetadata.Genre,
+                Year = pi.TranspilationJob!.FileVersion.File.MediaMetadata.Year,
+                JobId = pi.TranspilationJobId,
+                IsVideo = pi.TranspilationJob!.IsVideo,
+                SegmentPrefix = pi.TranspilationJob!.SegmentPrefix,
+            })
+            .AsNoTracking()
+            .ToListAsync(ct);
 
         return new PaginatedResult<MediaFileDto>
         {
-            Items = items,
-            CurrentPage = page,
+            Items = pageItems.Select(ToMediaFileDto).ToList(),
+            CurrentPage = effectivePage,
             PageSize = pageSize,
-            TotalCount = count,
-            TotalPages = (int)Math.Ceiling(count / (double)pageSize)
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
         };
     }
+
+    private async Task<int> ResolveLibraryAnchorPageAsync(
+        Guid userId, HashSet<Guid> viableVersionIds, Guid anchorFileId, int pageSize,
+        CancellationToken ct)
+    {
+        var anchor = await StreamableFiles(userId, viableVersionIds)
+            .Where(f => f.Id == anchorFileId)
+            .Select(f => new { f.CreatedAt, f.Id })
+            .FirstOrDefaultAsync(ct);
+        if (anchor is null)
+            throw new StreamingAnchorNotFoundException();
+
+        var preceding = await StreamableFiles(userId, viableVersionIds)
+            .CountAsync(f => f.CreatedAt > anchor.CreatedAt
+                             || (f.CreatedAt == anchor.CreatedAt && f.Id.CompareTo(anchor.Id) < 0), ct);
+
+        return preceding / pageSize + 1;
+    }
+
+    private static async Task<int> ResolvePlaylistAnchorPageAsync(
+        IQueryable<PlaylistItem> eligible, Guid? anchorFileId, Guid? anchorPlaylistItemId,
+        int pageSize, CancellationToken ct)
+    {
+        PlaylistAnchorKey anchor;
+        if (anchorPlaylistItemId.HasValue)
+        {
+            if (!anchorFileId.HasValue)
+                throw new StreamingAnchorNotFoundException();
+            anchor = await eligible
+                         .Where(pi => pi.Id == anchorPlaylistItemId.Value
+                                      && pi.TranspilationJob!.FileVersion.FileId == anchorFileId.Value)
+                         .Select(pi => new PlaylistAnchorKey(pi.Position, pi.Id))
+                         .FirstOrDefaultAsync(ct)
+                     ?? throw new StreamingAnchorNotFoundException();
+        }
+        else if (anchorFileId.HasValue)
+        {
+            anchor = await eligible
+                         .Where(pi => pi.TranspilationJob!.FileVersion.FileId == anchorFileId.Value)
+                         .OrderBy(pi => pi.Position)
+                         .ThenBy(pi => pi.Id)
+                         .Select(pi => new PlaylistAnchorKey(pi.Position, pi.Id))
+                         .FirstOrDefaultAsync(ct)
+                     ?? throw new StreamingAnchorNotFoundException();
+        }
+        else
+        {
+            throw new StreamingAnchorNotFoundException();
+        }
+
+        var preceding = await eligible
+            .CountAsync(pi => pi.Position < anchor.Position
+                              || (pi.Position == anchor.Position && pi.Id.CompareTo(anchor.ItemId) < 0), ct);
+
+        return preceding / pageSize + 1;
+    }
+
 
     // Files that can actually appear in the grid: owned, alive, with a pinned
     // current version and at least one viable version. The CurrentVersionId
@@ -965,15 +1093,17 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Title = f.MediaMetadata.Title,
             Genre = f.MediaMetadata.Genre,
             Year = f.MediaMetadata.Year,
-            Job = context.Set<TranspilationJob>()
+            Job = context.TranspilationJobs
                 .Where(j => j.UserId == userId
                             && j.IsVideo == isVideo
                             && viableVersionIds.Contains(j.VersionId)
                             && f.Versions.Any(v => v.DeletedAt == null && v.Id == j.VersionId))
                 .OrderByDescending(j => j.VersionId == f.CurrentVersionId)
+                .ThenBy(j => j.Id)
                 .Select(j => new StreamingJobRow
                 {
                     Id = j.Id,
+                    VersionId = j.VersionId,
                     IsVideo = j.IsVideo,
                     SegmentPrefix = j.SegmentPrefix
                 })
@@ -987,6 +1117,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             FileName = row.Name,
             MimeType = row.MimeType,
             CurrentVersionId = row.CurrentVersionId,
+            PlaybackVersionId = row.Job!.VersionId,
             Duration = row.Duration,
             Artist = row.Artist,
             Album = row.Album,
@@ -994,30 +1125,270 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Genre = row.Genre,
             Year = row.Year,
             TranspilationJobId = row.Job!.Id,
+            PlaylistItemId = null,
             IsVideo = row.Job.IsVideo,
             SegmentPrefix = row.Job.SegmentPrefix
         };
 
-    private sealed class StreamingFileRow
+    private static MediaFileDto ToMediaFileDto(PlaylistStreamingRow row) =>
+        new MediaFileDto
+        {
+            FileId = row.FileId,
+            FileName = row.FileName,
+            MimeType = row.MimeType,
+            CurrentVersionId = row.CurrentVersionId,
+            PlaybackVersionId = row.PlaybackVersionId,
+            Duration = row.Duration,
+            Artist = row.Artist,
+            Album = row.Album,
+            Title = row.Title,
+            Genre = row.Genre,
+            Year = row.Year,
+            TranspilationJobId = row.JobId,
+            PlaylistItemId = row.ItemId,
+            IsVideo = row.IsVideo,
+            SegmentPrefix = row.SegmentPrefix
+        };
+
+    internal IQueryable<ShuffleCandidate> ShuffleLibraryCandidatesQuery(
+        Guid userId, bool isVideo, HashSet<Guid> viableVersionIds) =>
+        StreamableFiles(userId, viableVersionIds)
+            .OrderByDescending(f => f.CreatedAt)
+            .ThenBy(f => f.Id)
+            .Select(f => new ShuffleCandidate
+            {
+                Entry = new PlaybackSourceEntryRef
+                {
+                    FileId = f.Id,
+                    PlaylistItemId = null,
+                    TranspilationJobId = context.TranspilationJobs
+                        .Where(j => j.UserId == userId
+                                    && j.IsVideo == isVideo
+                                    && viableVersionIds.Contains(j.VersionId)
+                                    && f.Versions.Any(v => v.DeletedAt == null && v.Id == j.VersionId))
+                        .OrderByDescending(j => j.VersionId == f.CurrentVersionId)
+                        .ThenBy(j => j.Id)
+                        .Select(j => j.Id)
+                        .FirstOrDefault(),
+                },
+                DurationSeconds = f.MediaMetadata == null ? null : (double?)f.MediaMetadata.Duration,
+            });
+
+    internal IQueryable<ShuffleCandidate> ShufflePlaylistCandidatesQuery(
+        Guid userId, Guid playlistId, bool isVideo) =>
+        StreamingSourceQueries.EligiblePlaylistItems(context, userId, playlistId, isVideo)
+            .OrderBy(pi => pi.Position)
+            .ThenBy(pi => pi.Id)
+            .Select(pi => new ShuffleCandidate
+            {
+                Entry = new PlaybackSourceEntryRef
+                {
+                    FileId = pi.TranspilationJob!.FileVersion.FileId,
+                    PlaylistItemId = pi.Id,
+                    TranspilationJobId = pi.TranspilationJobId,
+                },
+                DurationSeconds = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
+                    ? null
+                    : (double?)pi.TranspilationJob!.FileVersion.File.MediaMetadata.Duration,
+            });
+
+    public async Task<IReadOnlyList<ShuffleCandidate>> GetShuffleCandidatesAsync(
+        Guid userId, PlaybackSourceDto source, CancellationToken ct = default)
     {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string MimeType { get; set; } = string.Empty;
-        public Guid CurrentVersionId { get; set; }
-        public double? Duration { get; set; }
-        public string? Artist { get; set; }
-        public string? Album { get; set; }
-        public string? Title { get; set; }
-        public string? Genre { get; set; }
-        public string? Year { get; set; }
-        public StreamingJobRow? Job { get; set; }
+        if (source.PlaylistId.HasValue)
+        {
+            var playlistExists = await context.Playlists
+                .AnyAsync(p => p.Id == source.PlaylistId.Value && p.OwnerId == userId && p.DeletedAt == null, ct);
+            if (!playlistExists)
+                return [];
+            return await ShufflePlaylistCandidatesQuery(userId, source.PlaylistId.Value, source.IsVideo)
+                .AsNoTracking()
+                .ToListAsync(ct);
+        }
+
+        var viableVersionIds =
+            await StreamingSourceQueries.GetViableVersionIdsAsync(context, userId, source.IsVideo, ct);
+        if (viableVersionIds.Count == 0)
+            return [];
+        return await ShuffleLibraryCandidatesQuery(userId, source.IsVideo, viableVersionIds)
+            .AsNoTracking()
+            .ToListAsync(ct);
     }
 
-    private sealed class StreamingJobRow
+    public async Task<IReadOnlyList<MediaFileDto>> GetPlaybackEntriesAsync(
+        Guid userId, PlaybackSourceDto source, IReadOnlyList<PlaybackSourceEntryRef> entryRefs,
+        CancellationToken ct = default)
     {
-        public Guid Id { get; set; }
-        public bool IsVideo { get; set; }
-        public string? SegmentPrefix { get; set; }
+        if (entryRefs.Count == 0)
+            return [];
+
+        if (source.PlaylistId.HasValue)
+            return await GetPlaylistPlaybackEntriesAsync(userId, source, entryRefs, ct);
+
+        return await GetLibraryPlaybackEntriesAsync(userId, source.IsVideo, entryRefs, ct);
+    }
+
+    private async Task<IReadOnlyList<MediaFileDto>> GetLibraryPlaybackEntriesAsync(
+        Guid userId, bool isVideo, IReadOnlyList<PlaybackSourceEntryRef> entryRefs,
+        CancellationToken ct)
+    {
+        var requestedIds = entryRefs.Select(r => r.FileId).Distinct().ToList();
+        var rows = await _files
+            .AsNoTracking()
+            .Where(f => f.OwnerId == userId
+                        && f.DeletedAt == null
+                        && f.CurrentVersionId != null
+                        && requestedIds.Contains(f.Id))
+            .Select(f => new LibraryPlaybackRow
+            {
+                Id = f.Id,
+                Name = f.Name,
+                MimeType = f.MimeType,
+                CurrentVersionId = f.CurrentVersionId!.Value,
+                Duration = f.MediaMetadata == null ? null : (double?)f.MediaMetadata.Duration,
+                Artist = f.MediaMetadata!.Artist,
+                Album = f.MediaMetadata.Album,
+                Title = f.MediaMetadata.Title,
+                Genre = f.MediaMetadata.Genre,
+                Year = f.MediaMetadata.Year,
+                LiveVersionIds = f.Versions.Where(v => v.DeletedAt == null).Select(v => v.Id).ToList(),
+            })
+            .ToListAsync(ct);
+
+        var fileRows = rows.ToDictionary(r => r.Id);
+        if (fileRows.Count == 0)
+            return [];
+
+        var versionIds = fileRows.Values.SelectMany(r => r.LiveVersionIds).Distinct().ToList();
+        var jobs = await context.TranspilationJobs
+            .AsNoTracking()
+            .Where(j => j.UserId == userId
+                        && j.IsVideo == isVideo
+                        && j.DeletedAt == null
+                        && j.Job.DeletedAt == null
+                        && j.Job.Status == JobStatus.Ready
+                        && versionIds.Contains(j.VersionId)
+                        && j.Representations.Any(r => r.DeletedAt == null && r.Status == RepresentationStatus.Ready))
+            .Select(j => new { j.Id, j.VersionId, j.IsVideo, j.SegmentPrefix })
+            .ToListAsync(ct);
+        var jobsByVersion = new Dictionary<Guid, StreamingJobRow>();
+        foreach (var job in jobs)
+            jobsByVersion.TryAdd(job.VersionId, new StreamingJobRow
+            {
+                Id = job.Id,
+                VersionId = job.VersionId,
+                IsVideo = job.IsVideo,
+                SegmentPrefix = job.SegmentPrefix,
+            });
+
+        var seen = new HashSet<Guid>();
+        var ordered = new List<MediaFileDto>(entryRefs.Count);
+        foreach (var entry in entryRefs)
+        {
+            if (!seen.Add(entry.FileId))
+                continue;
+            if (!fileRows.TryGetValue(entry.FileId, out var row))
+                continue;
+
+            var chosen = ResolveLibraryJob(row, jobsByVersion);
+            if (chosen is null)
+                continue;
+
+            ordered.Add(new MediaFileDto
+            {
+                FileId = row.Id,
+                FileName = row.Name,
+                MimeType = row.MimeType,
+                CurrentVersionId = row.CurrentVersionId,
+                PlaybackVersionId = chosen.VersionId,
+                Duration = row.Duration,
+                Artist = row.Artist,
+                Album = row.Album,
+                Title = row.Title,
+                Genre = row.Genre,
+                Year = row.Year,
+                TranspilationJobId = chosen.Id,
+                PlaylistItemId = null,
+                IsVideo = chosen.IsVideo,
+                SegmentPrefix = chosen.SegmentPrefix,
+            });
+        }
+
+        return ordered;
+    }
+
+    private static StreamingJobRow? ResolveLibraryJob(
+        LibraryPlaybackRow row, Dictionary<Guid, StreamingJobRow> jobsByVersion)
+    {
+        if (row.LiveVersionIds.Contains(row.CurrentVersionId)
+            && jobsByVersion.TryGetValue(row.CurrentVersionId, out var currentJob))
+            return currentJob;
+
+        foreach (var versionId in row.LiveVersionIds.OrderBy(v => v))
+        {
+            if (jobsByVersion.TryGetValue(versionId, out var fallback))
+                return fallback;
+        }
+
+        return null;
+    }
+
+    private async Task<IReadOnlyList<MediaFileDto>> GetPlaylistPlaybackEntriesAsync(
+        Guid userId, PlaybackSourceDto source, IReadOnlyList<PlaybackSourceEntryRef> entryRefs,
+        CancellationToken ct)
+    {
+        var playlistId = source.PlaylistId!.Value;
+        var playlistExists = await context.Playlists
+            .AnyAsync(p => p.Id == playlistId && p.OwnerId == userId && p.DeletedAt == null, ct);
+        if (!playlistExists)
+            return [];
+
+        var requestedItemIds = entryRefs
+            .Where(r => r.PlaylistItemId.HasValue)
+            .Select(r => r.PlaylistItemId!.Value)
+            .Distinct()
+            .ToList();
+        if (requestedItemIds.Count == 0)
+            return [];
+
+        var rows = await StreamingSourceQueries.EligiblePlaylistItems(context, userId, playlistId, source.IsVideo)
+            .Where(pi => requestedItemIds.Contains(pi.Id))
+            .Select(pi => new PlaylistStreamingRow
+            {
+                ItemId = pi.Id,
+                Position = pi.Position,
+                FileId = pi.TranspilationJob!.FileVersion.FileId,
+                FileName = pi.TranspilationJob!.FileVersion.File.Name,
+                MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
+                CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
+                PlaybackVersionId = pi.TranspilationJob.VersionId,
+                Duration = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
+                    ? null
+                    : (double?)pi.TranspilationJob!.FileVersion.File.MediaMetadata.Duration,
+                Artist = pi.TranspilationJob!.FileVersion.File.MediaMetadata!.Artist,
+                Album = pi.TranspilationJob!.FileVersion.File.MediaMetadata.Album,
+                Title = pi.TranspilationJob!.FileVersion.File.MediaMetadata.Title,
+                Genre = pi.TranspilationJob!.FileVersion.File.MediaMetadata.Genre,
+                Year = pi.TranspilationJob!.FileVersion.File.MediaMetadata.Year,
+                JobId = pi.TranspilationJobId,
+                IsVideo = pi.TranspilationJob!.IsVideo,
+                SegmentPrefix = pi.TranspilationJob!.SegmentPrefix,
+            })
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        var byItem = rows.ToDictionary(r => r.ItemId);
+        var ordered = new List<MediaFileDto>(entryRefs.Count);
+
+        foreach (var entry in entryRefs)
+        {
+            if (!entry.PlaylistItemId.HasValue)
+                continue;
+            if (byItem.TryGetValue(entry.PlaylistItemId.Value, out var row))
+                ordered.Add(ToMediaFileDto(row));
+        }
+
+        return ordered;
     }
 
     public async Task<MediaFileDto?> GetStreamingFileAsync(
@@ -1044,7 +1415,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         if (file is null || file.VersionIds.Count == 0) return null;
 
-        var job = await context.Set<TranspilationJob>()
+        var job = await context.TranspilationJobs
             .Where(j => j.UserId == userId
                         && j.DeletedAt == null
                         && j.Job.DeletedAt == null
@@ -1054,9 +1425,11 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                             r.DeletedAt == null
                             && r.Status == RepresentationStatus.Ready))
             .OrderByDescending(j => j.VersionId == file.CurrentVersionId)
+            .ThenBy(j => j.Id)
             .Select(j => new StreamingJobRow
             {
                 Id = j.Id,
+                VersionId = j.VersionId,
                 IsVideo = j.IsVideo,
                 SegmentPrefix = j.SegmentPrefix
             })
@@ -1070,6 +1443,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             FileName = file.Name,
             MimeType = file.MimeType,
             CurrentVersionId = file.CurrentVersionId,
+            PlaybackVersionId = job.VersionId,
             Duration = file.Metadata == null ? null : file.Metadata.Duration,
             Artist = file.Metadata!.Artist,
             Album = file.Metadata.Album,

@@ -288,11 +288,11 @@ import { computed, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
-import { LIBRARY_PAGE_SIZE } from "@/composables/useStreamingMediaContext";
 import { STREAMING_QUERY_KEYS, getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 import { getMediaGridLayout } from "@/utils/media-grid-layout";
 import { glassDrawerContent } from "@/utils/modalUi";
+import { LIBRARY_PAGE_SIZE, type SourceDescriptor } from "@/utils/player-source";
 
 import BlockSpinner from "../common/BlockSpinner.vue";
 import AudioAnalysisFilePanel from "../dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";
@@ -313,7 +313,10 @@ const lyricsOpen = ref(false);
 const playerStore = usePlayerStore();
 const queryCache = useQueryCache();
 const router = useRouter();
-const mySourceId = computed(() => `library-${mediaType}`);
+const libraryDescriptor = computed<SourceDescriptor>(() => ({
+  isVideo: mediaType === "video",
+  playlistId: null,
+}));
 
 // View mode (persisted to localStorage)
 
@@ -413,7 +416,7 @@ const onFileClick = (file: MediaFileDto) => {
 
   playerStore.setSource(
     pageItems,
-    mySourceId.value,
+    libraryDescriptor.value,
     sourcePage,
     indexInPage,
     data.value?.totalPages ?? 1,
@@ -424,6 +427,7 @@ const onFileClick = (file: MediaFileDto) => {
         isVideo: mediaType === "video",
         query: null,
       }),
+    { fileId: file.fileId },
   );
 };
 

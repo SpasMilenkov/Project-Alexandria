@@ -87,7 +87,7 @@ public interface IFileService
 
     Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
         string? query = null, Guid? playlistId = null, bool isVideo = false,
-        CancellationToken ct = default);
+        Guid? anchorFileId = null, Guid? anchorPlaylistItemId = null, CancellationToken ct = default);
 
     Task<MediaFileDto?> GetStreamingFileAsync(Guid userId, Guid fileId, CancellationToken ct = default);
 }

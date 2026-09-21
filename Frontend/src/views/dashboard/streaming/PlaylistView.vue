@@ -183,6 +183,7 @@
             @edit="openEditModal(playlist)"
             @delete="confirmDelete(playlist)"
             @play="playPlaylist(playlist.id)"
+            @add-to-queue="addPlaylistToQueue(playlist.id)"
           />
         </div>
       </div>
@@ -263,7 +264,6 @@ import type { PlaylistKindFilter, PlaylistOriginFilter } from "@/utils/playlist-
 
 import { fileApi } from "@/api/file";
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
-import { streamingApi } from "@/api/streaming";
 import PlaylistCard from "@/components/streaming/PlaylistCard.vue";
 import PlaylistForm, { type PlaylistFormPayload } from "@/components/streaming/PlaylistForm.vue";
 import { AutoGroupKind } from "@/enums/auto-group-kind";
@@ -272,6 +272,7 @@ import { createPlaylist, deletePlaylist, updatePlaylist } from "@/mutations/play
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
 import { glassModalContent, playlistModalUi } from "@/utils/modalUi";
+import { loadPlaylistFirstPage, playlistPageFetcher } from "@/utils/player-source";
 import { parsePlaylistBrowseQuery, playlistBrowseQuery } from "@/utils/playlist-display.utils";
 
 const route = useRoute();
@@ -417,13 +418,9 @@ const playPlaylist = async (playlistId: string) => {
   if (loadingPlaylistId.value === playlistId) return;
 
   loadingPlaylistId.value = playlistId;
+  const descriptor = { isVideo: false, playlistId };
   try {
-    const result = await streamingApi.getFilesForStreaming({
-      page: 1,
-      pageSize: 500,
-      playlistId,
-      isVideo: false,
-    });
+    const result = await loadPlaylistFirstPage(playlistId);
 
     if (!result.items.length) {
       toast.add({
@@ -434,7 +431,14 @@ const playPlaylist = async (playlistId: string) => {
       return;
     }
 
-    store.playNow(result.items);
+    store.setSource(
+      result.items,
+      descriptor,
+      1,
+      0,
+      result.totalPages,
+      playlistPageFetcher(playlistId),
+    );
   } catch {
     toast.add({
       title: "Failed to load playlist",
@@ -449,6 +453,36 @@ const playPlaylist = async (playlistId: string) => {
 const openEditModal = (playlist: PlaylistResponse) => {
   editTarget.value = playlist;
   showEditModal.value = true;
+};
+
+const addingPlaylistId = ref<string | null>(null);
+
+const addPlaylistToQueue = async (playlistId: string) => {
+  if (addingPlaylistId.value === playlistId) return;
+  addingPlaylistId.value = playlistId;
+  try {
+    const total = await store.appendPlaylist(playlistId);
+    if (total === 0) {
+      toast.add({
+        title: "Playlist is empty",
+        description: "Add some tracks before queueing.",
+        color: "warning",
+      });
+      return;
+    }
+    toast.add({
+      title: `Added ${total} track${total === 1 ? "" : "s"} to queue`,
+      color: "success",
+    });
+  } catch {
+    toast.add({
+      title: "Failed to queue playlist",
+      description: "Could not fetch tracks. Please try again.",
+      color: "error",
+    });
+  } finally {
+    addingPlaylistId.value = null;
+  }
 };
 
 const confirmDelete = (playlist: PlaylistResponse) => {

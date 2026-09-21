@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { usePlayerStore } from "@/stores/stream-player";
+import { isNearBottom } from "@/utils/player-shuffle-buffer";
 
 const store = usePlayerStore();
 const {
@@ -15,6 +16,15 @@ const {
   queueEnded,
   userQueue,
   isExpandingSource,
+  shufflePosition,
+  shuffleTotalCount,
+  shuffleSessionId,
+  shuffleRestoring,
+  shuffleLoadingMore,
+  shuffleError,
+  shuffleNotice,
+  isPlaylistSource,
+  activePlaybackOrigin,
 } = storeToRefs(store);
 
 const userQueueCount = computed(() => userQueue.value.length);
@@ -65,6 +75,10 @@ watch(currentIndex, () => {
   if (isOpen.value) nextTick(() => scrollToActive(true));
 });
 
+watch(shufflePosition, () => {
+  if (isOpen.value) nextTick(() => scrollToActive(true));
+});
+
 const scrollToActive = (smooth = true) => {
   if (!listRef.value) return;
   const active = listRef.value.querySelector<HTMLElement>("[data-active='true']");
@@ -73,6 +87,13 @@ const scrollToActive = (smooth = true) => {
 
 const onResize = () => {
   if (isOpen.value) reposition();
+};
+
+const onListScroll = (event: Event) => {
+  const target = event.target as HTMLElement | null;
+  if (!target) return;
+  if (!isNearBottom(target.scrollTop, target.clientHeight, target.scrollHeight)) return;
+  void store.loadMoreShuffle();
 };
 
 const onDocClick = (e: MouseEvent) => {
@@ -179,15 +200,40 @@ defineExpose({ toggle, close, isOpen });
           </div>
 
           <!-- Track list -->
-          <ol ref="listRef" class="overflow-y-auto overscroll-contain flex-1 py-1.5" role="listbox">
+          <div
+            v-if="shuffleNotice"
+            class="mx-3 mt-2 mb-1 px-3 py-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] flex items-start gap-2"
+          >
+            <p class="text-[11px] text-gray-600 dark:text-white/60 flex-1">{{ shuffleNotice }}</p>
+            <button
+              class="w-5 h-5 flex items-center justify-center text-gray-400 dark:text-white/30 hover:text-gray-700 dark:hover:text-white/70 transition-colors"
+              title="Dismiss"
+              @click.stop="store.dismissShuffleNotice()"
+            >
+              <Icon icon="mdi:close" class="w-3 h-3" />
+            </button>
+          </div>
+          <ol
+            ref="listRef"
+            class="overflow-y-auto overscroll-contain flex-1 py-1.5"
+            role="listbox"
+            @scroll="onListScroll"
+          >
             <!-- Playlist / user queue section -->
             <template v-if="userQueueCount > 0">
-              <li class="px-5 pt-2 pb-1 select-none">
+              <li class="px-5 pt-2 pb-1 select-none flex items-center justify-between">
                 <span
                   class="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-white/25"
                 >
-                  Playing from playlist
+                  Up next
                 </span>
+                <button
+                  class="text-[10px] font-medium text-gray-400 dark:text-white/30 hover:text-gray-700 dark:hover:text-white/70 transition-colors"
+                  title="Clear queue"
+                  @click.stop="store.clearUserQueue()"
+                >
+                  Clear
+                </button>
               </li>
               <li
                 v-for="item in upNextItems.filter((i) => i.kind === 'queue')"
@@ -233,7 +279,7 @@ defineExpose({ toggle, close, isOpen });
                 <span
                   class="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-white/25"
                 >
-                  Then from library
+                  {{ isPlaylistSource ? "Then from playlist" : "Then from library" }}
                 </span>
               </li>
               <li
@@ -248,7 +294,9 @@ defineExpose({ toggle, close, isOpen });
             <!-- Source list section -->
             <li
               v-for="item in upNextItems.filter((i) => i.kind === 'source')"
-              :key="`s-${item.sourceIndex}`"
+              :key="
+                shuffled ? `s-${shuffleSessionId}-${item.sourceIndex}` : `s-${item.sourceIndex}`
+              "
               role="option"
               class="queue-row group relative flex items-center gap-3 px-3 py-2 mx-1.5 rounded-xl cursor-pointer select-none transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
               @click="store.playFromSource(item.sourceIndex)"
@@ -283,7 +331,38 @@ defineExpose({ toggle, close, isOpen });
             </li>
 
             <li
-              v-if="!upNextItems.length"
+              v-if="shuffleLoadingMore"
+              class="flex items-center justify-center gap-2 py-3 text-gray-300 dark:text-white/20"
+            >
+              <Icon icon="mdi:loading" class="w-3.5 h-3.5 animate-spin" />
+              <span class="text-xs">Loading more…</span>
+            </li>
+
+            <li
+              v-if="shuffleRestoring"
+              class="flex items-center justify-center gap-2 py-3 text-gray-300 dark:text-white/20"
+            >
+              <Icon icon="mdi:loading" class="w-3.5 h-3.5 animate-spin" />
+              <span class="text-xs">Reconnecting shuffle…</span>
+            </li>
+
+            <li
+              v-if="shuffleError"
+              class="flex flex-col items-center justify-center gap-2 py-4 px-4"
+            >
+              <span class="text-xs text-gray-500 dark:text-white/40 text-center">{{
+                shuffleError
+              }}</span>
+              <button
+                class="text-[11px] font-medium text-primary hover:opacity-80 transition-opacity"
+                @click="store.retryShuffle()"
+              >
+                Retry
+              </button>
+            </li>
+
+            <li
+              v-if="!upNextItems.length && !shuffleRestoring && !shuffleError"
               class="flex flex-col items-center justify-center gap-2 py-10 text-gray-300 dark:text-white/20"
             >
               <Icon icon="mdi:playlist-remove" class="w-8 h-8" />
@@ -319,6 +398,9 @@ defineExpose({ toggle, close, isOpen });
                 </span>
                 <template v-if="userQueueCount > 1">
                   · {{ currentIndex + 1 }} of {{ userQueueCount }}
+                </template>
+                <template v-else-if="shuffled && shuffleTotalCount > 0">
+                  · {{ shuffleTotalCount }} tracks in shuffle
                 </template>
               </p>
             </template>

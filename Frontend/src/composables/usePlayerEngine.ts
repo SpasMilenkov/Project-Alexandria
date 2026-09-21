@@ -1,6 +1,6 @@
 // oxlint-disable max-statements
 // oxlint-disable max-lines-per-function
-import { onMounted, onUnmounted, watch, ref, type Ref } from "vue";
+import { onMounted, onUnmounted, watch, computed, ref, type Ref } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
@@ -8,6 +8,7 @@ import { attemptRefresh } from "@/api/client";
 import { streamingApi } from "@/api/streaming";
 import { closeSession, startSession } from "@/mutations/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
+import { ListeningHistoryTracker } from "@/utils/listening-history-tracker";
 
 const REFRESH_INTERVAL_MS = 10 * 30 * 1_000;
 const VIDEO_AUTOPLAY_COUNTDOWN_SECONDS = 5;
@@ -46,8 +47,22 @@ export const usePlayerEngine = (
   options: PlayerEngineOptions = {},
 ) => {
   const store = usePlayerStore();
-  const { mutate: endSession } = closeSession();
+  const { mutateAsync: endSessionAsync } = closeSession();
   const { mutateAsync: openSessionAsync } = startSession();
+
+  const historyTracker = new ListeningHistoryTracker({
+    startSession: async (fileId, startPositionSeconds) =>
+      openSessionAsync({ fileId, startPositionSeconds }),
+    closeSession: (sessionId, payload) => endSessionAsync({ sessionId, req: payload }),
+    verifyClosed: async (sessionId, fileId) => {
+      const history = await streamingApi.getHistoryByFile(fileId).catch(() => null);
+      if (!history) return false;
+      const sessions = await streamingApi.getSessions(history.id).catch(() => null);
+      return sessions?.items.some((s) => s.id === sessionId && s.endedAt !== null) ?? false;
+    },
+    currentFileId: () => store.activeFile?.fileId ?? null,
+  });
+  store.registerHistoryFlush(() => historyTracker.flush());
 
   const playerReady = ref(false);
   const isBuffering = ref(false);
@@ -65,7 +80,6 @@ export const usePlayerEngine = (
   // Consumed and cleared inside the loadedmetadata handler once duration is known.
   let pendingResumePosition: number | null = null;
 
-  const activeSessionId = ref<string | null>(null);
   const listenedSeconds = ref(0);
   let listenTicker: ReturnType<typeof setInterval> | null = null;
   let refreshTicker: ReturnType<typeof setInterval> | null = null;
@@ -99,28 +113,20 @@ export const usePlayerEngine = (
   };
 
   const closeActiveSession = () => {
-    if (!activeSessionId.value || !videoRef.value) return;
+    if (!videoRef.value) return;
     stopListenTicker();
-    endSession({
-      sessionId: activeSessionId.value,
-      req: {
-        endPositionSeconds: Math.floor(videoRef.value.currentTime),
-        listenedSeconds: listenedSeconds.value,
-      },
+    historyTracker.closeActive({
+      endPositionSeconds: Math.floor(videoRef.value.currentTime),
+      listenedSeconds: listenedSeconds.value,
     });
-    activeSessionId.value = null;
     listenedSeconds.value = 0;
   };
 
-  const openNewSession = async () => {
+  const openNewSession = () => {
     if (!store.activeFile || !videoRef.value) return;
     closeActiveSession();
     listenedSeconds.value = 0;
-    const session = await openSessionAsync({
-      fileId: store.activeFile.fileId,
-      startPositionSeconds: Math.floor(videoRef.value.currentTime),
-    });
-    activeSessionId.value = session?.id ?? null;
+    historyTracker.openNew(store.activeFile.fileId, Math.floor(videoRef.value.currentTime));
     startListenTicker();
   };
 
@@ -316,7 +322,7 @@ export const usePlayerEngine = (
               store.startAutoplayCountdown(VIDEO_AUTOPLAY_COUNTDOWN_SECONDS, () => store.next());
             }
           } else {
-            if (store.autoplay && canAdvance) store.next();
+            if (store.autoplay && canAdvance) store.handleTrackEnded();
           }
         });
 
@@ -413,7 +419,7 @@ export const usePlayerEngine = (
       if (!shakaPlayer) return;
 
       const [manifestUrl, history] = await Promise.all([
-        streamingApi.getManifest(file.currentVersionId),
+        streamingApi.getManifest(file.playbackVersionId ?? file.currentVersionId),
         streamingApi.getHistoryByFile(file.fileId).catch(() => null),
       ]);
 
@@ -449,6 +455,7 @@ export const usePlayerEngine = (
       isFirstLoad = false;
     } catch (err: any) {
       loadError.value = err?.message ?? "Failed to load stream.";
+      if (err?.response?.status === 404) await store.handleActiveFileUnavailable();
     }
   };
 
@@ -469,6 +476,7 @@ export const usePlayerEngine = (
   onUnmounted(async () => {
     clearMediaSession();
     closeActiveSession();
+    store.registerHistoryFlush(null);
     store.cancelAutoplay();
     stopRefreshTicker();
     store.unregisterEngine();
@@ -490,5 +498,7 @@ export const usePlayerEngine = (
     resumePrompt,
     acceptResumePrompt,
     dismissResumePrompt,
+    flushListeningHistory: () => historyTracker.flush(),
+    historyFailure: computed(() => historyTracker.failureMessage),
   };
 };

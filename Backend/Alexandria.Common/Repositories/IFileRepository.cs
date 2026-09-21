@@ -2,6 +2,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Files.Streaming.Playlist;
+using Alexandria.Dto.Files.Streaming.Shuffle;
 using Alexandria.Dto.Tags;
 using File = Alexandria.Data.Models.File;
 
@@ -82,7 +83,7 @@ public interface IFileRepository : IRepository<File>
 
     Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
         string? query = null, Guid? playlistId = null, bool isVideo = false,
-        CancellationToken ct = default);
+        Guid? anchorFileId = null, Guid? anchorPlaylistItemId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Single streamable file with its resolved transcode job and descriptive metadata,
@@ -90,4 +91,19 @@ public interface IFileRepository : IRepository<File>
     /// Backs deep links to the track page.
     /// </summary>
     Task<MediaFileDto?> GetStreamingFileAsync(Guid userId, Guid fileId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Unbounded lightweight shuffle candidates in canonical order, one per eligible
+    /// occurrence before shuffle deduplication. No paging or Take.
+    /// </summary>
+    Task<IReadOnlyList<ShuffleCandidate>> GetShuffleCandidatesAsync(
+        Guid userId, PlaybackSourceDto source, CancellationToken ct = default);
+
+    /// <summary>
+    /// Batch hydration for shuffle reads: media DTOs for only the supplied references.
+    /// Missing or newly ineligible entries are omitted; order follows the supplied refs.
+    /// </summary>
+    Task<IReadOnlyList<MediaFileDto>> GetPlaybackEntriesAsync(
+        Guid userId, PlaybackSourceDto source, IReadOnlyList<PlaybackSourceEntryRef> entryRefs,
+        CancellationToken ct = default);
 }
