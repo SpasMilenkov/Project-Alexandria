@@ -36,7 +36,7 @@ watch(
 
 const isEllipsis = (item: VisibleItem): item is EllipsisItem => item.key === "__ellipsis__";
 
-const currentItem = computed(() => props.items.at(-1));
+const currentItem = computed(() => props.items[props.items.length - 1]);
 
 const visibleItems = computed((): VisibleItem[] => {
   if (props.items.length <= COLLAPSE_THRESHOLD) return props.items;
@@ -63,7 +63,7 @@ const handleNavigate = (key: string | null) => {
 
 <template>
   <div class="flex items-center min-w-0 flex-1">
-    <div class="flex items-center min-w-0 flex-1 md:hidden">
+    <div class="flex items-center min-w-0 flex-1 @3xl/explorer:hidden">
       <button
         class="flex items-center gap-2 min-w-0 flex-1 px-1 py-1 rounded-md hover:bg-gray-100/60 dark:hover:bg-gray-800/60 transition-colors text-left"
         @click="isDrawerOpen = true"
@@ -78,7 +78,6 @@ const handleNavigate = (key: string | null) => {
       <UDrawer
         v-model:open="isDrawerOpen"
         direction="bottom"
-        class="md:hidden"
         :ui="{
           content: `${glassDrawerContent} rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70`,
         }"
@@ -137,8 +136,8 @@ const handleNavigate = (key: string | null) => {
       </UDrawer>
     </div>
 
-    <div class="hidden md:flex items-center min-w-0 flex-1">
-      <template v-for="(item, index) in visibleItems" :key="item.key">
+    <div class="hidden @3xl/explorer:flex items-center min-w-0 flex-1 overflow-x-auto">
+      <template v-for="(item, index) in visibleItems" :key="String(item.key)">
         <UDropdownMenu
           v-if="isEllipsis(item)"
           :items="ellipsisMenuItems(item.hidden)"
