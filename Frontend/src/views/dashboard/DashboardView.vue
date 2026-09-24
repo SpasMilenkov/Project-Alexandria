@@ -144,10 +144,10 @@ onMounted(() => {
       v-model="tabStore.activeTabId"
       :items="items"
       variant="link"
-      class="w-full flex-1 flex flex-col min-h-0 h-full"
+      class="w-full min-w-0 flex-1 flex flex-col min-h-0 h-full"
       :ui="{
-        content: 'flex flex-1 min-h-0',
-        list: 'sticky top-0 z-10 bg-background/80 frosted-glass shrink-0',
+        content: 'flex flex-1 min-h-0 min-w-0',
+        list: 'sticky top-0 z-10 bg-background/80 frosted-glass shrink-0 max-w-full overflow-x-auto overflow-y-hidden',
       }"
     >
       <template #list-leading>
@@ -205,11 +205,9 @@ onMounted(() => {
           :key="tabStore.activeTabId"
         />
       </div>
-
-      <!-- Bottom tab bar -->
       <div
         @contextmenu="openManageSheet"
-        class="fixed bottom-0 inset-x-0 z-40 h-14 flex items-center gap-1 px-2 border-t border-gray-200/70 dark:border-gray-700/70 bg-background/80 frosted-glass"
+        class="fixed bottom-0 inset-x-0 z-20 h-14 flex items-center gap-1 px-2 border-t border-gray-200/70 dark:border-gray-700/70 bg-background/80 frosted-glass"
       >
         <!-- Visible tab pills (max 3) -->
         <button
