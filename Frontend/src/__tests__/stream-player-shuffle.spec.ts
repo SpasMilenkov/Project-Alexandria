@@ -1,18 +1,18 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ShuffleSessionResponse } from "@/api/shuffle";
-import type { MediaFileDto } from "@/api/streaming";
-
-import { shuffleApi } from "@/api/shuffle";
-import { streamingApi } from "@/api/streaming";
+import { type ShuffleSessionResponse, shuffleApi } from "@/api/shuffle";
+import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 
 vi.mock("@/api/shuffle", () => ({
   SHUFFLE_BATCH_LIMIT: 50,
   httpStatus: (err: unknown) =>
     (err as { response?: { status?: number } })?.response?.status ?? null,
-  isAuthError: () => false,
+  isAuthError: (err: unknown) => {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    return status === 401 || status === 403;
+  },
   shuffleApi: {
     newRequestId: vi.fn(() => "req-1"),
     createSession: vi.fn(),
@@ -120,7 +120,7 @@ describe("stream-player-shuffle", () => {
 
     expect(store.shuffled).toBe(false);
     expect(store.shuffleSessionId).toBeNull();
-    expect(store.shuffleError).toMatch(/no longer available/);
+    expect(store.shuffleError).toMatch(/no longer available/u);
     expect(store.activeFile?.fileId).toBe("a");
     expect(store.sourceList).toHaveLength(2);
   });
@@ -265,22 +265,16 @@ describe("stream-player-shuffle", () => {
     expect(store.queueEnded).toBe(false);
   });
 
-  it("replays with a fresh cycle and ends empty snapshots", async () => {
+  it("continues an exhausted library shuffle with a fresh cycle", async () => {
     const store = startSequentialSource(["a"]);
     createMock.mockResolvedValueOnce(makeSession("sess-1", ["a"], { anchorPosition: 0 }));
     await store.toggleShuffle();
+    createMock.mockResolvedValueOnce(makeSession("sess-2", ["b"]));
     await store.next();
-    expect(store.queueEnded).toBe(true);
-
-    createMock.mockResolvedValueOnce(makeSession("sess-2", ["a"]));
-    await store.restartQueue();
     expect(store.shuffleSessionId).toBe("sess-2");
+    expect(store.activeFile?.fileId).toBe("b");
+    expect(createMock.mock.calls[1][0]).toMatchObject({ avoidFirstFileId: "a" });
     expect(store.queueEnded).toBe(false);
-
-    createMock.mockResolvedValueOnce(makeSession("sess-3", []));
-    store.shufflePosition = 0;
-    await store.restartQueue();
-    expect(store.queueEnded).toBe(true);
   });
 
   it("caps buffered shuffle metadata at ten ranges", async () => {
@@ -338,7 +332,7 @@ describe("stream-player-shuffle", () => {
 
   it("ignores a shuffle creation that resolves after the source changes", async () => {
     const store = startSequentialSource(["a"]);
-    let resolveCreate!: (value: ShuffleSessionResponse) => void;
+    let resolveCreate: (value: ShuffleSessionResponse) => void = () => undefined;
     createMock.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -389,10 +383,7 @@ describe("stream-player-shuffle", () => {
     createMock.mockResolvedValueOnce(makeSession("sess-1", ["a", "b"], { anchorPosition: 0 }));
     await store.toggleShuffle();
 
-    store.handleTrackEnded();
-    store.handleTrackEnded();
-    await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await Promise.all([store.handleTrackEnded(), store.handleTrackEnded()]);
     expect(store.shufflePosition).toBe(1);
   });
 
@@ -440,15 +431,16 @@ describe("stream-player-shuffle", () => {
 
     expect(store.shuffleSessionId).toBe("sess-1");
     expect(store.shuffled).toBe(true);
-    expect(store.activeFile?.fileId).toBe("b");
-    expect(store.shuffleNotice).toMatch(/previous shuffle/);
+    expect(store.activeFile?.fileId).toBe("c");
+    expect(getMock).toHaveBeenCalledWith("sess-1", 2, 50);
+    expect(store.shuffleNotice).toMatch(/previous shuffle/u);
     expect(store.parkedContext).toBeNull();
     expect(store.queueEnded).toBe(false);
   });
 
   it("mints a fresh cycle when the parked session is gone", async () => {
-    const store = startSequentialSource(["a"]);
-    createMock.mockResolvedValueOnce(makeSession("sess-1", ["a"], { anchorPosition: 0 }));
+    const store = startSequentialSource(["a", "b"]);
+    createMock.mockResolvedValueOnce(makeSession("sess-1", ["a", "b"], { anchorPosition: 0 }));
     await store.toggleShuffle();
 
     const files = [makeFile("x")];
@@ -463,10 +455,10 @@ describe("stream-player-shuffle", () => {
 
     expect(store.shuffleSessionId).toBe("sess-2");
     expect(store.activeFile?.fileId).toBe("q");
-    expect(store.shuffleNotice).toMatch(/fresh cycle/);
+    expect(store.shuffleNotice).toMatch(/fresh cycle/u);
   });
 
-  it("replaces the park on a second switch and releases the old handle", async () => {
+  it("keeps the park across successive sequential playlist switches", async () => {
     const store = startSequentialSource(["a"]);
     createMock.mockResolvedValueOnce(makeSession("sess-1", ["a"], { anchorPosition: 0 }));
     await store.toggleShuffle();
@@ -483,8 +475,8 @@ describe("stream-player-shuffle", () => {
       items: second,
       totalPages: 1,
     }));
-    expect(store.parkedContext).toBeNull();
-    expect(deleteMock).toHaveBeenCalledWith("sess-1");
+    expect(store.parkedContext?.sessionId).toBe("sess-1");
+    expect(deleteMock).not.toHaveBeenCalledWith("sess-1");
   });
 
   it("repeat-all wraps the playlist in place and keeps the park", async () => {
@@ -509,25 +501,15 @@ describe("stream-player-shuffle", () => {
 
   it("appends a playlist to the queue and cold-starts when idle", async () => {
     const store = usePlayerStore();
-    vi.mocked(streamingApi.getFilesForStreaming)
-      .mockResolvedValueOnce({
-        items: [makeFile("p1"), makeFile("p2")],
-        currentPage: 1,
-        pageSize: 500,
-        totalCount: 2,
-        totalPages: 1,
-        hasPrevious: false,
-        hasNext: false,
-      })
-      .mockResolvedValueOnce({
-        items: [],
-        currentPage: 2,
-        pageSize: 500,
-        totalCount: 2,
-        totalPages: 1,
-        hasPrevious: false,
-        hasNext: false,
-      });
+    vi.mocked(streamingApi.getFilesForStreaming).mockResolvedValueOnce({
+      items: [makeFile("p1"), makeFile("p2")],
+      currentPage: 1,
+      pageSize: 500,
+      totalCount: 2,
+      totalPages: 1,
+      hasPrevious: false,
+      hasNext: false,
+    });
 
     const total = await store.appendPlaylist("pl-9");
 
@@ -563,5 +545,221 @@ describe("stream-player-shuffle", () => {
 
     expect(store.shuffleEntries.size).toBe(100);
     expect(store.shuffleLoadingMore).toBe(false);
+  });
+
+  it("uses repeat-one only for natural completion while explicit Next advances", async () => {
+    const store = startSequentialSource(["a", "b"]);
+    const play = vi.fn();
+    const seek = vi.fn();
+    store.registerEngine({
+      play,
+      pause: vi.fn(),
+      seek,
+      setVolume: vi.fn(),
+      selectVariant: vi.fn(),
+      setPlaybackRate: vi.fn(),
+    });
+    store.toggleLoop();
+    store.toggleLoop();
+
+    await store.next();
+    expect(store.activeFile?.fileId).toBe("b");
+
+    await store.handleTrackEnded();
+    expect(seek).toHaveBeenCalledWith(0);
+    expect(play).toHaveBeenCalled();
+    expect(store.activeFile?.fileId).toBe("b");
+  });
+
+  it("continues audio naturally even when the legacy autoplay preference is off", async () => {
+    const store = usePlayerStore();
+    const playlist = [makeFile("playlist-last")];
+    store.setSource(playlist, { isVideo: false, playlistId: "pl-1" }, 1, 0, 1, async () => ({
+      items: playlist,
+      totalPages: 1,
+    }));
+    store.autoplay = false;
+    createMock.mockResolvedValueOnce(makeSession("library-1", ["library-next"]));
+
+    await store.handleTrackEnded();
+    expect(store.activeFile?.fileId).toBe("library-next");
+
+    expect(createMock.mock.calls[0][0]).toMatchObject({
+      source: { isVideo: false, playlistId: null },
+      avoidFirstFileId: "playlist-last",
+    });
+  });
+
+  it("uses the final manual queue track as the library avoid-first file", async () => {
+    const store = startSequentialSource(["source-last"]);
+    store.enqueue(makeFile("manual-last"));
+    await store.next();
+    expect(store.activeFile?.fileId).toBe("manual-last");
+
+    createMock.mockResolvedValueOnce(makeSession("library-1", ["library-next"]));
+    await store.next();
+
+    expect(createMock.mock.calls[0][0]).toMatchObject({ avoidFirstFileId: "manual-last" });
+    expect(store.activeFile?.fileId).toBe("library-next");
+  });
+
+  it("keeps a library park through playlist shuffle toggles", async () => {
+    const store = startSequentialSource(["a", "b"]);
+    createMock.mockResolvedValueOnce(makeSession("library-1", ["a", "b"], { anchorPosition: 0 }));
+    await store.toggleShuffle();
+
+    const playlist = [makeFile("x", "item-x"), makeFile("y", "item-y")];
+    store.setSource(playlist, { isVideo: false, playlistId: "pl-1" }, 1, 0, 1, async () => ({
+      items: playlist,
+      totalPages: 1,
+    }));
+    createMock.mockResolvedValueOnce(
+      makeSession("playlist-1", ["x", "y"], {
+        source: { isVideo: false, playlistId: "pl-1" },
+        anchorPosition: 0,
+      }),
+    );
+    await store.toggleShuffle();
+    expect(store.parkedContext?.sessionId).toBe("library-1");
+
+    vi.mocked(streamingApi.getFilesForStreaming).mockResolvedValueOnce({
+      items: playlist,
+      currentPage: 1,
+      pageSize: 50,
+      totalCount: 2,
+      totalPages: 1,
+      hasPrevious: false,
+      hasNext: false,
+    });
+    await store.toggleShuffle();
+
+    expect(store.shuffled).toBe(false);
+    expect(store.parkedContext?.sessionId).toBe("library-1");
+    expect(deleteMock).toHaveBeenCalledWith("playlist-1");
+    expect(deleteMock).not.toHaveBeenCalledWith("library-1");
+  });
+
+  it("replaces the saved shuffle when a newer shuffle is interrupted", async () => {
+    const store = startSequentialSource(["a", "b"]);
+    createMock.mockResolvedValueOnce(makeSession("library-1", ["a", "b"], { anchorPosition: 0 }));
+    await store.toggleShuffle();
+
+    const firstPlaylist = [makeFile("x", "item-x")];
+    store.setSource(firstPlaylist, { isVideo: false, playlistId: "pl-1" }, 1, 0, 1, async () => ({
+      items: firstPlaylist,
+      totalPages: 1,
+    }));
+    createMock.mockResolvedValueOnce(
+      makeSession("playlist-1", ["x"], {
+        source: { isVideo: false, playlistId: "pl-1" },
+        anchorPosition: 0,
+      }),
+    );
+    await store.toggleShuffle();
+
+    const secondPlaylist = [makeFile("z", "item-z")];
+    store.setSource(secondPlaylist, { isVideo: false, playlistId: "pl-2" }, 1, 0, 1, async () => ({
+      items: secondPlaylist,
+      totalPages: 1,
+    }));
+
+    expect(store.parkedContext?.sessionId).toBe("playlist-1");
+    expect(deleteMock).toHaveBeenCalledWith("library-1");
+  });
+
+  it("falls back to the library when an expired parked playlist was deleted", async () => {
+    const store = usePlayerStore();
+    const playlist = [makeFile("p1", "item-1"), makeFile("p2", "item-2")];
+    store.setSource(
+      playlist,
+      { isVideo: false, playlistId: "deleted-playlist" },
+      1,
+      0,
+      1,
+      async () => ({ items: playlist, totalPages: 1 }),
+    );
+    createMock.mockResolvedValueOnce(
+      makeSession("playlist-1", ["p1", "p2"], {
+        source: { isVideo: false, playlistId: "deleted-playlist" },
+        anchorPosition: 0,
+      }),
+    );
+    await store.toggleShuffle();
+    store.setSource([makeFile("x")], { isVideo: false, playlistId: "pl-2" }, 1, 0, 1, async () => ({
+      items: [makeFile("x")],
+      totalPages: 1,
+    }));
+
+    getMock.mockRejectedValueOnce({ response: { status: 404 } });
+    createMock.mockRejectedValueOnce({ response: { status: 404 } });
+    createMock.mockResolvedValueOnce(makeSession("library-1", ["library-next"]));
+    await store.next();
+
+    expect(store.activeFile?.fileId).toBe("library-next");
+    const lastCreateCall = createMock.mock.calls[createMock.mock.calls.length - 1];
+    expect(lastCreateCall?.[0]).toMatchObject({
+      source: { isVideo: false, playlistId: null },
+    });
+  });
+
+  it("continues through empty sequential pages before falling back", async () => {
+    const store = usePlayerStore();
+    const first = [makeFile("a")];
+    const fetchPage = vi.fn((page: number) => {
+      if (page === 2) return { items: [], totalPages: 3 };
+      return { items: [makeFile("c")], totalPages: 3 };
+    });
+    store.setSource(first, { isVideo: false, playlistId: "pl-1" }, 1, 0, 3, fetchPage);
+
+    await store.next();
+
+    expect(fetchPage.mock.calls.map((call) => call[0])).toEqual([2, 3]);
+    expect(store.activeFile?.fileId).toBe("c");
+  });
+
+  it("shows an empty-library error and retries without losing continuation context", async () => {
+    const store = usePlayerStore();
+    const playlist = [makeFile("x")];
+    store.setSource(playlist, { isVideo: false, playlistId: "pl-1" }, 1, 0, 1, async  () => ({
+      items: playlist,
+      totalPages: 1,
+    }));
+    createMock.mockResolvedValueOnce(makeSession("empty-library", []));
+    await store.next();
+
+    expect(store.queueEnded).toBe(true);
+    expect(store.queueStatus).toBe("error");
+    expect(store.shuffleError).toMatch(/No playable music/u);
+    expect(deleteMock).toHaveBeenCalledWith("empty-library");
+
+    createMock.mockResolvedValueOnce(makeSession("library-2", ["ready"]));
+    await store.retryShuffle();
+    expect(store.activeFile?.fileId).toBe("ready");
+    expect(store.queueEnded).toBe(false);
+  });
+
+  it("ignores a library continuation that resolves after a source replacement", async () => {
+    const store = startSequentialSource(["a"]);
+    let resolveCreate: (value: ShuffleSessionResponse) => void = () => undefined;
+    createMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    const continuing = store.next();
+    await vi.waitFor(() => expect(createMock).toHaveBeenCalledTimes(1));
+
+    const replacement = [makeFile("replacement")];
+    store.setSource(replacement, { isVideo: false, playlistId: "pl-new" }, 1, 0, 1, async () => ({
+      items: replacement,
+      totalPages: 1,
+    }));
+    resolveCreate(makeSession("late-library", ["late"]));
+    await continuing;
+
+    expect(store.activeFile?.fileId).toBe("replacement");
+    expect(store.shuffleSessionId).toBeNull();
+    expect(deleteMock).toHaveBeenCalledWith("late-library");
   });
 });
