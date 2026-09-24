@@ -299,10 +299,18 @@
     </Transition>
 
     <!-- content area -->
-    <UContextMenu :items="backgroundContextMenuItems" class="flex-1 flex flex-col min-h-0 min-w-0">
+    <UContextMenu
+      :items="explorerMenuItems"
+      :ui="{ content: 'lg:min-w-56' }"
+      class="flex-1 flex flex-col min-h-0 min-w-0"
+      v-model:open="contextMenuOpen"
+      @update:open="handleMenuOpenChange"
+    >
       <div
         ref="containerRef"
         class="flex-1 overflow-auto relative"
+        @contextmenu.capture="handleContextMenuCapture"
+        @pointerdown.capture="handleContextMenuPointerDown"
         @dragenter="onDragEnter"
         @dragleave="onDragLeave"
         @dragover="onDragOver"
@@ -354,17 +362,8 @@
                   :data="dir"
                   :view-mode="viewMode"
                   :is-selected="isDirectorySelected(dir.id)"
-                  :selected-count="selectedCount"
-                  @download="handleDownload('dir', dir.id)"
                   @navigate="handleNavigate"
-                  @open="handleNavigate"
-                  @rename="handleDirectoryRename"
-                  @move="openTransferModal('move')"
                   @click="handleItemClick($event, dir.id, 'directory')"
-                  @copy="openTransferModal('copy')"
-                  @delete="handleDelete"
-                  @contextmenu="handleItemClick($event, dir.id, 'directory')"
-                  @open-details="activeDetailsDirectory = $event"
                   :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
                 />
               </div>
@@ -398,19 +397,11 @@
                   :data="file"
                   :view-mode="viewMode"
                   :is-selected="isFileSelected(file.fileId)"
-                  :selected-count="selectedCount"
                   @open-details="activeDetailsFile = $event"
                   @tooltip-enter="handleTooltipEnter"
                   @tooltip-leave="handleTooltipLeave"
                   :described-by="tooltipDescribedBy(file.fileId)"
-                  @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
-                  @download="handleDownload('file', file.fileId)"
                   @click="handleItemClick($event, file.fileId, 'file')"
-                  @copy="openTransferModal('copy')"
-                  @delete="handleDelete"
-                  @move="openTransferModal('move')"
-                  @share="handleShare(file.fileId, file.fileName)"
-                  @contextmenu="handleItemClick($event, file.fileId, 'file')"
                   :class="{
                     'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
                   }"
@@ -450,17 +441,8 @@
                 :data="dir"
                 :view-mode="viewMode"
                 :is-selected="isDirectorySelected(dir.id)"
-                :selected-count="selectedCount"
-                @download="handleDownload('dir', dir.id)"
                 @navigate="handleNavigate"
-                @open="handleNavigate"
-                @rename="handleDirectoryRename"
-                @move="openTransferModal('move')"
                 @click="handleItemClick($event, dir.id, 'directory')"
-                @copy="openTransferModal('copy')"
-                @delete="handleDelete"
-                @contextmenu="handleItemClick($event, dir.id, 'directory')"
-                @open-details="activeDetailsDirectory = $event"
                 :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
               />
               <div
@@ -497,19 +479,11 @@
                 :view-mode="viewMode"
                 :tags="tagsData?.items"
                 :is-selected="isFileSelected(file.fileId)"
-                :selected-count="selectedCount"
                 @open-details="activeDetailsFile = $event"
                 @tooltip-enter="handleTooltipEnter"
                 @tooltip-leave="handleTooltipLeave"
                 :described-by="tooltipDescribedBy(file.fileId)"
-                @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
-                @download="handleDownload('file', file.fileId)"
                 @click="handleItemClick($event, file.fileId, 'file')"
-                @copy="handleCopy"
-                @delete="handleDelete"
-                @move="handleCut"
-                @share="handleShare(file.fileId, file.fileName)"
-                @contextmenu="handleItemClick($event, file.fileId, 'file')"
                 :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
               />
             </div>
@@ -608,6 +582,12 @@ import { glassDrawerContent } from "@/utils/modalUi";
 
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import DirectoryItem from "./DirectoryItem.vue";
+import {
+  type ExplorerMenuActions,
+  type ExplorerMenuSnapshot,
+  buildExplorerMenuItems,
+  resolveContextMenuTarget,
+} from "@/utils/explorerContextMenu";
 import FileDetailsDrawer from "./FileDetailsDrawer.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
@@ -896,39 +876,112 @@ const handleSorting = () => {
   dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
 };
 
-const backgroundContextMenuItems = computed(() => [
-  [
-    {
-      icon: "i-mdi-file-upload-outline",
-      label: "Upload File",
-      onSelect: () => handleFileUpload("File"),
-    },
-    {
-      icon: "i-mdi-folder-upload-outline",
-      label: "Upload Folder",
-      onSelect: () => handleFileUpload("Directory"),
-    },
-    {
-      icon: "i-formkit-zip",
-      label: "Upload Archive",
-      onSelect: () => handleFileUpload("Archive"),
-    },
-  ],
-  [
-    {
-      icon: "i-mdi-folder-plus",
-      label: "New Folder",
-      onSelect: () => createNewDirectory(),
-    },
-  ],
-  [
-    {
-      icon: "i-mdi-refresh",
-      label: "Refresh",
-      onSelect: () => refreshDir(),
-    },
-  ],
-]);
+// shared context menu — one controller for row and background menus. The
+// snapshot captured below freezes target and selection at open time so later
+// changes cannot retarget the dispatched actions.
+const menuSnapshot = ref<ExplorerMenuSnapshot | null>(null);
+const contextMenuOpen = ref(false);
+const menuAnchorRow = ref<Element | null>(null);
+
+const backgroundSnapshot = (): ExplorerMenuSnapshot => ({
+  directoryIds: [...selectedDirectories.value],
+  fileIds: [...selectedFiles.value],
+  kind: "background",
+  targetDirectory: null,
+  targetFile: null,
+  totalCount: selectedCount.value,
+});
+
+const explorerMenuActions: ExplorerMenuActions = {
+  copySelection: () => openTransferModal("copy"),
+  createDirectory: () => createNewDirectory(),
+  deleteSelection: () => handleDelete(),
+  downloadDirectory: (directoryId) => handleDownload("dir", directoryId),
+  downloadFile: (fileId) => handleDownload("file", fileId),
+  moveSelection: () => openTransferModal("move"),
+  openDirectory: (directoryId) => handleNavigate(directoryId),
+  openDirectoryDetails: (directory) => {
+    activeDetailsDirectory.value = directory;
+  },
+  openFileDetails: (file) => {
+    activeDetailsFile.value = file;
+  },
+  refresh: () => refreshDir(),
+  renameDirectory: (directoryId) => handleDirectoryRename(directoryId),
+  renameFile: (fileId, originalName) => handleFileRename(fileId, originalName),
+  shareFile: (fileId, fileName) => handleShare(fileId, fileName),
+  uploadArchive: () => handleFileUpload("Archive"),
+  uploadDirectory: () => handleFileUpload("Directory"),
+  uploadFile: () => handleFileUpload("File"),
+};
+
+const explorerMenuItems = computed(() =>
+  buildExplorerMenuItems(menuSnapshot.value ?? backgroundSnapshot(), explorerMenuActions),
+);
+
+const captureMenuTarget = (event: Event) => {
+  // A context menu replaces the tooltip; never show both side by side.
+  fileTooltip.dismiss();
+  const resolved = resolveContextMenuTarget(event.target);
+  if (resolved.kind === "background") {
+    menuSnapshot.value = backgroundSnapshot();
+    menuAnchorRow.value = null;
+    return;
+  }
+
+  // Right-click rules: an unselected row becomes the selection; an existing
+  // multi-selection is preserved. Ordinary/additive/range clicks are untouched.
+  const selected =
+    resolved.kind === "file"
+      ? isFileSelected(resolved.id ?? "")
+      : isDirectorySelected(resolved.id ?? "");
+  if (!selected && resolved.id) {
+    clearSelection();
+    toggleSelect(resolved.id, resolved.kind);
+    lastSelected.value = resolved.id;
+  }
+
+  const targetFile =
+    resolved.kind === "file"
+      ? (filesList.value.find((file) => file.fileId === resolved.id) ?? null)
+      : null;
+  const targetDirectory =
+    resolved.kind === "directory"
+      ? (directoriesList.value.find((dir) => dir.id === resolved.id) ?? null)
+      : null;
+  menuSnapshot.value = {
+    directoryIds: [...selectedDirectories.value],
+    fileIds: [...selectedFiles.value],
+    kind: resolved.kind,
+    targetDirectory,
+    targetFile,
+    totalCount: selectedCount.value,
+  };
+  menuAnchorRow.value = resolved.row;
+};
+
+const handleContextMenuCapture = (event: Event) => {
+  captureMenuTarget(event);
+};
+
+const handleContextMenuPointerDown = (event: PointerEvent) => {
+  if (event.button === 2 || event.pointerType === "touch") captureMenuTarget(event);
+};
+
+const handleMenuOpenChange = (isOpen: boolean) => {
+  if (isOpen) return;
+  const row = menuAnchorRow.value;
+  menuAnchorRow.value = null;
+  if (row instanceof HTMLElement && row.isConnected && document.activeElement === document.body) {
+    row.focus();
+  }
+};
+
+const closeContextMenu = () => {
+  contextMenuOpen.value = false;
+  menuSnapshot.value = null;
+  menuAnchorRow.value = null;
+};
 
 // mobile upload sheet
 
@@ -1336,18 +1389,8 @@ const createNewDirectory = async () => {
 const handleItemClick = (event: MouseEvent, id: string, type: "file" | "directory") => {
   const isCtrlOrCmd = event.ctrlKey || event.metaKey;
   const isShift = event.shiftKey;
-  const isRightClick = event.button === 2;
 
   fileTooltip.dismiss();
-
-  if (isRightClick) {
-    if (!isFileSelected(id) && !isDirectorySelected(id)) {
-      clearSelection();
-      toggleSelect(id, type);
-      lastSelected.value = id;
-    }
-    return;
-  }
 
   if (isShift && lastSelected.value) {
     selectRange(lastSelected.value, id);
@@ -1429,14 +1472,17 @@ const activeDetailsDirectory = ref<DirectorySummaryDto | null>(null);
 watch(currentDirId, () => {
   activeDetailsDirectory.value = null;
   fileTooltip.release();
+  closeContextMenu();
 });
 
 // A deleted folder disappears from the listing after refresh. Close the
 // shared drawer when its target is gone so actions cannot retarget stale data.
 watch(directoriesList, (list) => {
+  if (!dirHasLoaded.value) return;
   const target = activeDetailsDirectory.value;
-  if (!target || !dirHasLoaded.value) return;
-  if (!list.some((dir) => dir.id === target.id)) activeDetailsDirectory.value = null;
+  if (target && !list.some((dir) => dir.id === target.id)) activeDetailsDirectory.value = null;
+  const menuTarget = menuSnapshot.value?.targetDirectory;
+  if (menuTarget && !list.some((dir) => dir.id === menuTarget.id)) closeContextMenu();
 });
 
 // shared rich file tooltip — one controller for every FileItem. Rows report
@@ -1498,9 +1544,13 @@ watch(viewMode, () => {
 
 // A removed file must never keep a stale anchored tooltip.
 watch(filesList, (list) => {
+  if (!fileHasLoaded.value) return;
   const target = fileTooltip.file.value;
-  if (!target || !fileHasLoaded.value) return;
-  if (!list.some((file) => file.fileId === target.fileId)) fileTooltip.release();
+  if (target && !list.some((file) => file.fileId === target.fileId)) fileTooltip.release();
+  const menuTarget = menuSnapshot.value?.targetFile;
+  if (menuTarget && !list.some((file) => file.fileId === menuTarget.fileId)) {
+    closeContextMenu();
+  }
 });
 const handleOpenDetailsSelected = () => {
   const fileCount = selectedFiles.value.size;
@@ -1579,6 +1629,7 @@ onUnmounted(() => {
   isDisposed.value = true;
   activeDetailsDirectory.value = null;
   fileTooltip.release();
+  closeContextMenu();
   if (labelTimer) clearInterval(labelTimer);
 });
 </script>

@@ -1,10 +1,10 @@
 <template>
-  <UContextMenu
+  <div
     v-if="viewMode === 'grid'"
-    :items="contextMenuItems"
-    :ui="{ content: 'lg:min-w-56' }"
+    class="relative group"
+    tabindex="0"
+    :data-file-id="data.fileId"
   >
-    <div class="relative group" tabindex="0">
         <button
           type="button"
           class="w-full flex flex-col items-center gap-2 p-4 rounded-lg transition-colors cursor-pointer"
@@ -15,7 +15,6 @@
           ]"
           @click="handleClick"
           @dblclick="handleDoubleClick"
-          @contextmenu="emit('contextmenu', $event)"
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
           @pointerenter="handlePointerEnter"
@@ -57,11 +56,14 @@
             {{ props.data.fileName }}
           </span>
         </button>
-    </div>
-  </UContextMenu>
+  </div>
 
-  <UContextMenu v-else :items="contextMenuItems">
-    <div class="relative group" tabindex="0">
+  <div
+    v-else
+    class="relative group"
+    tabindex="0"
+    :data-file-id="data.fileId"
+  >
         <button
           type="button"
           class="w-full flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer text-left border-b last:border-b-0"
@@ -72,7 +74,6 @@
           ]"
           @click="handleClick"
           @dblclick="handleDoubleClick"
-          @contextmenu="emit('contextmenu', $event)"
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
           @pointerenter="handlePointerEnter"
@@ -92,8 +93,7 @@
             {{ formatBytes(Number(props.data.currentVersion.size)) }}
           </span>
         </button>
-    </div>
-  </UContextMenu>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -121,7 +121,6 @@ const props = defineProps<{
   data: FileResult;
   viewMode: "grid" | "list";
   isSelected: boolean;
-  selectedCount?: number;
   tags: TagDto[] | undefined;
   describedBy?: string | null;
 }>();
@@ -129,13 +128,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   click: [event: MouseEvent];
   "open-details": [file: FileResult];
-  rename: [fileId: string, originalName: string];
-  delete: [fileIds: string[]];
-  move: [fileIds: string[]];
-  copy: [fileIds: string[]];
-  download: [fileIds: string[]];
-  share: [fileIds: string[]];
-  contextmenu: [fileId: PointerEvent];
   "tooltip-enter": [file: FileResult, anchor: HTMLElement, kind: FileTooltipEnterKind];
   "tooltip-leave": [kind: FileTooltipEnterKind];
 }>();
@@ -179,122 +171,11 @@ const prefetchDetails = useDebounceFn(() => {
   );
 }, 150);
 
-const canRename = (): boolean => true;
-const canMove = (): boolean => true;
-const canCopy = (): boolean => true;
-const canDownload = (): boolean => true;
-const canShare = (): boolean => true;
-const canDelete = (): boolean => true;
-
-const singleSelectMenuItems = [
-  [
-    {
-      icon: "i-mdi-information-outline",
-      label: "View details",
-      kbds: [{ value: "alt" }, { value: "enter" }],
-      onSelect: () => emit("open-details", props.data),
-    },
-    {
-      disabled: !canDownload(),
-      icon: "i-mdi-download-outline",
-      kbds: [{ value: "D" }],
-      label: "Download",
-      onSelect: () => emit("download", [props.data.fileId]),
-    },
-  ],
-  [
-    {
-      disabled: !canRename(),
-      icon: "i-mdi-pencil-outline",
-      kbds: ["R"],
-      label: "Rename",
-      onSelect: () => emit("rename", props.data.fileId, props.data.fileName),
-    },
-    {
-      disabled: !canMove(),
-      icon: "i-mdi-folder-move-outline",
-      label: "Move to…",
-      kbds: ["⌘", "X"],
-      onSelect: () => emit("move", [props.data.fileId]),
-    },
-    {
-      disabled: !canCopy(),
-      icon: "i-mdi-content-copy",
-      kbds: ["⌘", "C"],
-      label: "Copy to…",
-      onSelect: () => emit("copy", [props.data.fileId]),
-    },
-  ],
-  [
-    {
-      disabled: !canShare(),
-      icon: "i-mdi-share-variant-outline",
-      label: "Share",
-      onSelect: () => emit("share", [props.data.fileId]),
-    },
-  ],
-  [
-    {
-      color: "error" as const,
-      disabled: !canDelete(),
-      icon: "i-mdi-delete-outline",
-      kbds: ["Del"],
-      label: "Delete",
-      onSelect: () => emit("delete", [props.data.fileId]),
-    },
-  ],
-];
-
-const contextMenuItems = computed(() => {
-  const isMultiSelect = (props.selectedCount ?? 0) > 1;
-  const count = props.selectedCount ?? 1;
-
-  if (!isMultiSelect) return singleSelectMenuItems;
-
-  return [
-    [{ label: `${count} items selected`, type: "label" as const }],
-    [
-      {
-        disabled: !canDownload(),
-        icon: "i-mdi-download-multiple-outline",
-        label: "Download all",
-        onSelect: () => emit("download", []),
-      },
-    ],
-    [
-      {
-        disabled: !canMove(),
-        icon: "i-mdi-folder-move-outline",
-        label: "Move all to…",
-        onSelect: () => emit("move", []),
-      },
-      {
-        disabled: !canCopy(),
-        icon: "i-mdi-content-copy",
-        label: "Copy all to…",
-        onSelect: () => emit("copy", []),
-      },
-      {
-        disabled: !canShare(),
-        icon: "i-mdi-share-variant-outline",
-        label: "Share all",
-        onSelect: () => emit("share", []),
-      },
-    ],
-    [
-      {
-        color: "error" as const,
-        disabled: !canDelete(),
-        icon: "i-mdi-delete-sweep-outline",
-        label: `Delete ${count} items`,
-        onSelect: () => emit("delete", []),
-      },
-    ],
-  ];
-});
-
 const handleClick = (event: MouseEvent) => emit("click", event);
 const handleDoubleClick = () => emit("open-details", props.data);
+
+// Row actions live in the shared explorer-owned context menu. Rows forward
+// click and tooltip intent and keep no menu trees or menu-building state.
 
 const handlePointerEnter = (event: PointerEvent) => {
   if (event.pointerType === "touch") return;
