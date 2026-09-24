@@ -20,7 +20,7 @@
       </template>
 
       <template #default="{ collapsed }">
-        <div class="hidden lg:flex lg:flex-col lg:flex-1 gap-1">
+        <div class="hidden lg:flex lg:flex-col lg:flex-1 gap-1 min-w-0 overflow-x-hidden">
           <p
             v-if="!collapsed"
             class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
@@ -70,7 +70,7 @@
           />
         </div>
 
-        <div class="flex flex-col flex-1 lg:hidden overflow-y-auto">
+        <div class="flex flex-col flex-1 min-w-0 lg:hidden overflow-y-auto overflow-x-hidden">
           <div class="px-3 pt-5 pb-1">
             <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
               Your Library
@@ -128,13 +128,14 @@
               Account
             </p>
           </div>
-          <nav class="flex flex-col gap-0.5 px-3">
+          <nav class="flex flex-col gap-0.5 px-3 min-w-0">
             <MobileNavItem
               v-for="item in mobileSettingsItems"
-              :key="item.to"
+              :key="item.label"
               :icon="item.icon"
               :label="item.label"
               :to="item.to"
+              :action="item.action"
               :indented="item.indented"
               :active="item.hash ? route.hash === item.hash : route.path === item.to"
             />
@@ -170,20 +171,30 @@
       </template>
     </UDashboardSidebar>
 
-    <UDashboardPanel :ui="{ body: 'sm:p-0 p-0 ' }">
+    <UDashboardPanel :ui="{ body: 'sm:p-0 p-0 gap-0 overflow-hidden' }">
       <template #header>
-        <UDashboardNavbar toggle-side="right">
+        <UDashboardNavbar toggle-side="right" :ui="{ left: 'flex-1 min-w-0' }">
+          <template #left>
+            <UButton
+              v-if="player.playerDismissed && player.hasActiveFile && player.isAudio"
+              label="Resume music"
+              icon="mdi:music-note"
+              color="primary"
+              variant="soft"
+              size="sm"
+              @click="player.resumePlayer()"
+            />
+            <MobilePlayerIsland
+              v-if="
+                MobilePlayerIsland &&
+                streamingEnabled &&
+                player.isAudio &&
+                player.hasActiveFile &&
+                !player.playerDismissed
+              "
+            />
+          </template>
           <template #right>
-            <OnlineStatusIndicator />
-            <UTooltip text="Report a problem">
-              <UButton
-                icon="i-lucide-life-buoy"
-                size="xl"
-                variant="ghost"
-                color="neutral"
-                @click="openReportProblemModal"
-              />
-            </UTooltip>
             <UTooltip text="Show app shortcuts">
               <UButton
                 class="md:block hidden"
@@ -202,20 +213,22 @@
       </template>
 
       <template #body>
-        <div class="flex flex-col h-full">
-          <div class="flex-1 min-h-0 overflow-y-auto h-full">
-            <slot />
+        <div class="flex flex-col flex-1 min-h-0 min-w-0">
+          <div class="flex min-h-0 flex-1 flex-row min-w-0 overflow-hidden">
+            <div class="flex-1 min-w-0 overflow-y-auto h-full">
+              <slot />
+            </div>
+            <div class="hidden md:contents">
+              <LyricsPanel v-model:open="player.lyricsOpen" />
+            </div>
           </div>
 
           <template v-if="streamingEnabled">
+            <component :is="AudioEngineHost" v-if="AudioEngineHost" />
             <component
               :is="AudioSkin"
-              v-if="
-                AudioSkin &&
-                !player.activeFile?.isVideo &&
-                player.hasActiveFile &&
-                !route.path.includes('streaming/videos')
-              "
+              class="shrink-0"
+              v-if="AudioSkin && player.isAudio && player.hasActiveFile && !player.playerDismissed"
               :style="{ visibility: player.hasActiveFile ? 'visible' : 'hidden' }"
             />
           </template>
@@ -235,6 +248,7 @@ import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.
 import MobileNavItem from "@/components/dashboard/MobileNavItem.vue";
 import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 import ReportProblemModal from "@/components/modals/ReportProblemModal.vue";
+import LyricsPanel from "@/components/streaming/LyricsPanel.vue";
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext";
@@ -253,6 +267,12 @@ if (streamingEnabled) {
 
 const AudioSkin = streamingEnabled
   ? defineAsyncComponent(() => import("@/components/streaming/AudioPlayerSkin.vue"))
+  : null;
+const AudioEngineHost = streamingEnabled
+  ? defineAsyncComponent(() => import("@/components/streaming/AudioEngineHost.vue"))
+  : null;
+const MobilePlayerIsland = streamingEnabled
+  ? defineAsyncComponent(() => import("@/components/streaming/MobilePlayerIsland.vue"))
   : null;
 
 const player = usePlayerStore();
@@ -382,6 +402,13 @@ const settingsMenuItems = computed<NavigationMenuItem[]>(() => {
       label: "My Account",
       to: "/account",
     },
+    {
+      icon: "i-lucide-life-buoy",
+      label: "Report a problem",
+      onSelect: () => {
+        void openReportProblemModal();
+      },
+    },
   ];
 });
 
@@ -418,9 +445,25 @@ const mobileAdminItems = [
   },
 ];
 
-const mobileSettingsItems = [
+interface MobileSettingsItem {
+  icon: string;
+  label: string;
+  to?: string;
+  action?: () => void;
+  hash?: string;
+  indented?: boolean;
+};
+
+const mobileSettingsItems: MobileSettingsItem[] = [
   { icon: "i-heroicons-cog-6-tooth", label: "Settings", to: "/settings" },
   { icon: "i-heroicons-user-circle", label: "My Account", to: "/account" },
+  {
+    icon: "i-lucide-life-buoy",
+    label: "Report a problem",
+    action: () => {
+      void openReportProblemModal();
+    },
+  },
   {
     hash: "#appearance",
     icon: "mdi:palette-outline",

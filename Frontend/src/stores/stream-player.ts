@@ -7,29 +7,29 @@ import type { MediaFileDto } from "@/api/streaming";
 
 import {
   SHUFFLE_BATCH_LIMIT,
+  type ShuffleSessionResponse,
   httpStatus,
   isAuthError,
   shuffleApi,
-  type ShuffleSessionResponse,
 } from "@/api/shuffle";
 import {
+  SHUFFLE_RANGE_SIZE,
+  type ScannedRange,
   alignRangeStart,
   isRangeCovered,
   markRangeScanned,
   rangeKey,
   rangesToRetain,
   shouldPrefetchRange,
-  SHUFFLE_RANGE_SIZE,
-  type ScannedRange,
 } from "@/utils/player-shuffle-buffer";
 import {
+  type SourceAnchor,
+  type SourceDescriptor,
   appendPlaylistToQueue,
   describeSource,
   fetchAnchorPage,
   fetchSequentialPage,
   sameSource,
-  type SourceAnchor,
-  type SourceDescriptor,
 } from "@/utils/player-source";
 
 export interface VariantTrack {
@@ -42,15 +42,25 @@ export interface VariantTrack {
   active: boolean;
 }
 
-type EngineControls = {
+interface EngineControls {
   play: () => void;
   pause: () => void;
   seek: (seconds: number) => void;
+  setVolume: (volume: number) => void;
   selectVariant: (id: number | null) => void;
   setPlaybackRate: (rate: number) => void;
-};
+}
 
 type HistoryFlushFn = () => Promise<void>;
+
+export type AdvancementReason = "explicit" | "natural";
+
+export interface ParkedShuffleContext {
+  descriptor: SourceDescriptor;
+  sessionId: string;
+  position: number;
+  totalCount: number;
+}
 
 type UpNextItem =
   | { kind: "queue"; file: MediaFileDto; queueIndex: number }
@@ -61,10 +71,10 @@ type UpNextItem =
  * Callers pass fetchPage + pageSize when starting playback from a
  * paginated sequential source.
  */
-type Cursor = {
+interface Cursor {
   fetchPage: (page: number) => Promise<{ items: MediaFileDto[]; totalPages: number }>;
   pageSize: number;
-};
+}
 
 const MAX_WINDOW_PAGES = 3;
 const NOTICE_TIMEOUT_MS = 8000;
@@ -72,6 +82,9 @@ const NOTICE_TIMEOUT_MS = 8000;
 let _engine: EngineControls | null = null;
 let _cursor: Cursor | null = null;
 let _historyFlush: HistoryFlushFn | null = null;
+let _engineOwnerSequence = 0;
+let _engineToken = 0;
+let _historyFlushToken = 0;
 
 export const usePlayerStore = defineStore(
   "player",
@@ -84,6 +97,14 @@ export const usePlayerStore = defineStore(
     const autoplay = ref(true);
     const videoAutoplay = ref(true);
     const playerMode = ref<"expanded" | "pip" | "strip">("pip");
+    const playerDismissed = ref(false);
+    // Lyrics side panel visibility. Runtime only: it reopens from the strip,
+    // the music grid, or the mobile sheet, never from a reload.
+    const lyricsOpen = ref(false);
+    // Bumped whenever transient player surfaces (popovers, card, sheet) must
+    // close, e.g. metadata navigation. Hosts watch it and collapse without
+    // touching playback or queue state.
+    const transientEpoch = ref(0);
     const activePlaylistId = ref<string | null>(null);
     const repeatMode = ref<"off" | "all" | "one">("off");
     const userQueue = ref<MediaFileDto[]>([]);
@@ -100,6 +121,7 @@ export const usePlayerStore = defineStore(
     const shufflePosition = ref(-1);
     const shuffleTotalCount = ref(0);
     const shuffled = ref(false);
+    const parkedContext = ref<ParkedShuffleContext | null>(null);
 
     // Runtime sequential window (not persisted)
     const sourceList = ref<MediaFileDto[]>([]);
@@ -115,12 +137,7 @@ export const usePlayerStore = defineStore(
     const shuffleLoadingMore = ref(false);
     const shuffleError = ref<string | null>(null);
     const shuffleNotice = ref<string | null>(null);
-    const parkedContext = ref<{
-      descriptor: SourceDescriptor;
-      sessionId: string;
-      position: number;
-      totalCount: number;
-    } | null>(null);
+    const continuationPending = ref(false);
     const inflightRanges = new Map<string, Promise<void>>();
     const generation = ref(0);
     let navChain: Promise<void> = Promise.resolve();
@@ -134,6 +151,11 @@ export const usePlayerStore = defineStore(
     const currentTime = ref(0);
     const duration = ref(0);
     const isPlaying = ref(false);
+
+    // Runtime engine status (owned by the dashboard engine host; skins consume)
+    const engineBuffering = ref(false);
+    const engineLoadError = ref<string | null>(null);
+    const engineReady = ref(false);
 
     // Runtime quality state
     const variantTracks = ref<VariantTrack[]>([]);
@@ -157,18 +179,35 @@ export const usePlayerStore = defineStore(
 
     const hasNext = computed(() => {
       if (userQueue.value.length > 0) return true;
-      if (parkedContext.value) return true;
+      if (parkedContext.value && isAudio.value) return true;
       if (shuffled.value && shuffleSessionId.value) {
         if (shufflePosition.value < shuffleTotalCount.value - 1) return true;
-        return repeatMode.value !== "off" && shuffleTotalCount.value > 0;
+        if (repeatMode.value !== "off" && shuffleTotalCount.value > 0) return true;
+        return isAudio.value && !queueEnded.value;
       }
-      return (
+      const sequentialNext =
         isExpandingSource.value ||
         currentIndex.value < sourceList.value.length - 1 ||
         windowEndPage.value < totalPages.value ||
         (sourceList.value.length === 0 && cursorPage.value < totalPages.value) ||
-        (repeatMode.value !== "off" && totalPages.value > 0)
-      );
+        (repeatMode.value !== "off" && totalPages.value > 0);
+      if (sequentialNext) return true;
+      return isAudio.value && !queueEnded.value;
+    });
+
+    const queueStatus = computed<"ready" | "loading" | "error" | "empty">(() => {
+      if (
+        continuationPending.value ||
+        shuffleBusy.value ||
+        shuffleRestoring.value ||
+        shuffleLoadingMore.value ||
+        isExpandingSource.value
+      ) {
+        return "loading";
+      }
+      if (shuffleError.value) return "error";
+      if (queueEnded.value) return "empty";
+      return "ready";
     });
 
     const hasPrevious = computed(() => {
@@ -211,25 +250,45 @@ export const usePlayerStore = defineStore(
     const isAudio = computed(() => activeFile.value?.mimeType.startsWith("audio/") ?? false);
     const isStrip = computed(() => playerMode.value === "strip");
 
-    // Engine bridge
-    const registerEngine = (controls: EngineControls) => {
+    // Engine bridge. Registration is ownership-aware: each engine instance
+    // receives a token, and only the current token holder can be unregistered
+    // or have its history callback cleared. A stale view unmounting late can
+    // never disconnect a newer engine.
+    const registerEngine = (controls: EngineControls): number => {
+      _engineOwnerSequence++;
+      _engineToken = _engineOwnerSequence;
       _engine = controls;
+      return _engineToken;
     };
-    const unregisterEngine = () => {
+    const unregisterEngine = (token?: number) => {
+      if (token !== undefined && token !== _engineToken) return;
       _engine = null;
     };
-    const registerHistoryFlush = (fn: HistoryFlushFn | null) => {
+    const registerHistoryFlush = (fn: HistoryFlushFn | null, token?: number): number => {
+      if (fn === null) {
+        if (token !== undefined && token !== _historyFlushToken) return _historyFlushToken;
+        _historyFlush = null;
+        return _historyFlushToken;
+      }
+      _engineOwnerSequence++;
+      _historyFlushToken = _engineOwnerSequence;
       _historyFlush = fn;
+      return _historyFlushToken;
     };
 
     // Playback controls
     const play = () => {
       queueEnded.value = false;
+      playerDismissed.value = false;
       _engine?.play();
     };
 
     const playNow = (files: MediaFileDto[]) => {
       if (!files.length) return;
+      bumpGeneration();
+      isExpandingSource.value = false;
+      continuationPending.value = false;
+      playerDismissed.value = false;
       userQueue.value = [...files.slice(1), ...userQueue.value];
       activeFile.value = files[0];
       activePlaybackOrigin.value = "manual";
@@ -242,7 +301,11 @@ export const usePlayerStore = defineStore(
 
     const togglePlay = () => {
       if (!_engine) return;
-      isPlaying.value ? _engine.pause() : _engine.play();
+      if (isPlaying.value) {
+        _engine.pause();
+      } else {
+        _engine.play();
+      }
     };
 
     // Quality controls
@@ -271,10 +334,44 @@ export const usePlayerStore = defineStore(
     const setPlaybackRateState = (rate: number) => {
       playbackRate.value = rate;
     };
+    const setEngineBuffering = (v: boolean) => {
+      engineBuffering.value = v;
+    };
+    const setEngineLoadError = (message: string | null) => {
+      engineLoadError.value = message;
+    };
+    const setEngineReady = (v: boolean) => {
+      engineReady.value = v;
+    };
     const setPlayerMode = (mode: "expanded" | "pip" | "strip") => {
       playerMode.value = mode;
     };
+    // Close hides player controls while retaining the active track, position,
+    // manual queue, and source context. Resume reopens and continues playback.
+    const closePlayer = () => {
+      cancelAutoplay();
+      _engine?.pause();
+      setIsPlaying(false);
+      playerDismissed.value = true;
+    };
+    const resumePlayer = () => {
+      playerDismissed.value = false;
+      play();
+    };
+    const setLyricsOpen = (open: boolean) => {
+      lyricsOpen.value = open;
+    };
+    const toggleLyrics = () => {
+      lyricsOpen.value = !lyricsOpen.value;
+    };
+    const closeTransientSurfaces = () => {
+      transientEpoch.value++;
+    };
     const clearActiveFile = () => {
+      bumpGeneration();
+      isExpandingSource.value = false;
+      continuationPending.value = false;
+      playerDismissed.value = false;
       activeFile.value = null;
     };
     const setSnapCorner = (c: "tl" | "tr" | "bl" | "br") => {
@@ -282,6 +379,7 @@ export const usePlayerStore = defineStore(
     };
     const setVolume = (v: number) => {
       volume.value = Math.max(0, Math.min(1, v));
+      _engine?.setVolume(volume.value);
     };
 
     // Autoplay countdown
@@ -370,6 +468,28 @@ export const usePlayerStore = defineStore(
       rebuiltSession = false;
     };
 
+    const parkActiveAudioShuffle = () => {
+      if (
+        !shuffled.value ||
+        !shuffleSessionId.value ||
+        !sourceDescriptor.value ||
+        sourceDescriptor.value.isVideo ||
+        shuffleTotalCount.value <= 0
+      ) {
+        return;
+      }
+      const displaced = parkedContext.value;
+      parkedContext.value = {
+        descriptor: { ...sourceDescriptor.value },
+        sessionId: shuffleSessionId.value,
+        position: shufflePosition.value,
+        totalCount: shuffleTotalCount.value,
+      };
+      if (displaced && displaced.sessionId !== shuffleSessionId.value) {
+        void releaseSession(displaced.sessionId).catch(() => undefined);
+      }
+    };
+
     const releaseSession = async (sessionId: string | null) => {
       if (!sessionId) return;
       try {
@@ -437,28 +557,10 @@ export const usePlayerStore = defineStore(
       fetchPage: Cursor["fetchPage"],
       anchor?: SourceAnchor,
     ) => {
-      const previousSession = shuffleSessionId.value;
-      const previousDescriptor = sourceDescriptor.value;
-      const previousShuffled = shuffled.value;
       bumpGeneration();
-      const displaced = parkedContext.value;
-      parkedContext.value = null;
-      if (
-        previousShuffled &&
-        previousSession &&
-        previousDescriptor &&
-        shuffleTotalCount.value > 0
-      ) {
-        parkedContext.value = {
-          descriptor: { ...previousDescriptor },
-          sessionId: previousSession,
-          position: shufflePosition.value,
-          totalCount: shuffleTotalCount.value,
-        };
-      }
-      if (displaced && displaced.sessionId !== parkedContext.value?.sessionId) {
-        void releaseSession(displaced.sessionId).catch(() => undefined);
-      }
+      isExpandingSource.value = false;
+      parkActiveAudioShuffle();
+      playerDismissed.value = false;
       sourceDescriptor.value = { ...descriptor };
       activePlaylistId.value = descriptor.playlistId;
       sourceList.value = [...pageItems];
@@ -473,6 +575,7 @@ export const usePlayerStore = defineStore(
       const anchorFile = pageItems[activeIndexInPage] ?? null;
       sourceAnchor.value = anchor ?? (anchorFile ? toAnchor(descriptor, anchorFile) : null);
       clearShuffleState();
+      continuationPending.value = false;
       queueEnded.value = false;
       endedOccurrence++;
       _cursor = { fetchPage, pageSize: pageItems.length || 20 };
@@ -489,6 +592,7 @@ export const usePlayerStore = defineStore(
       currentIndex.value = index;
       const file = sourceList.value[index] ?? null;
       activeFile.value = file;
+      if (file) playerDismissed.value = false;
       activePlaybackOrigin.value = "source";
       if (file && sourceDescriptor.value)
         sourceAnchor.value = toAnchor(sourceDescriptor.value, file);
@@ -509,41 +613,48 @@ export const usePlayerStore = defineStore(
     const _expandForward = async (): Promise<boolean> => {
       if (!_cursor || isExpandingSource.value) return false;
       if (windowEndPage.value >= totalPages.value) return false;
+      const gen = generation.value;
       isExpandingSource.value = true;
       try {
-        const nextPage = windowEndPage.value + 1;
-        const { items, totalPages: tp } = await _cursor.fetchPage(nextPage);
-        totalPages.value = tp;
-        const identity = (file: MediaFileDto) => file.playlistItemId ?? file.fileId;
-        const existing = new Set(sourceList.value.map(identity));
-        const fresh = items.filter((f) => !existing.has(identity(f)));
-        if (!fresh.length) {
+        while (windowEndPage.value < totalPages.value) {
+          const nextPage = windowEndPage.value + 1;
+          const { items, totalPages: tp } = await _cursor.fetchPage(nextPage);
+          if (gen !== generation.value) return false;
+          totalPages.value = tp;
+          const identity = (file: MediaFileDto) => file.playlistItemId ?? file.fileId;
+          const existing = new Set(sourceList.value.map(identity));
+          const fresh = items.filter((f) => !existing.has(identity(f)));
           windowEndPage.value = nextPage;
-          return false;
+          if (fresh.length) {
+            sourceList.value = [...sourceList.value, ...fresh];
+            const maxItems = MAX_WINDOW_PAGES * _cursor.pageSize;
+            if (
+              sourceList.value.length > maxItems &&
+              windowStartPage.value < windowEndPage.value
+            ) {
+              const trim = sourceList.value.length - maxItems;
+              sourceList.value = sourceList.value.slice(trim);
+              windowStartPage.value++;
+              currentIndex.value = Math.max(0, currentIndex.value - trim);
+            }
+            return true;
+          }
         }
-        sourceList.value = [...sourceList.value, ...fresh];
-        windowEndPage.value = nextPage;
-        // Trim the front when the window exceeds MAX_WINDOW_PAGES
-        const maxItems = MAX_WINDOW_PAGES * _cursor.pageSize;
-        if (sourceList.value.length > maxItems && windowStartPage.value < windowEndPage.value) {
-          const trim = sourceList.value.length - maxItems;
-          sourceList.value = sourceList.value.slice(trim);
-          windowStartPage.value++;
-          currentIndex.value = Math.max(0, currentIndex.value - trim);
-        }
-        return true;
+        return false;
       } finally {
-        isExpandingSource.value = false;
+        if (gen === generation.value) isExpandingSource.value = false;
       }
     };
 
     const _expandBackward = async (): Promise<boolean> => {
       if (!_cursor || isExpandingSource.value) return false;
       if (windowStartPage.value <= 1) return false;
+      const gen = generation.value;
       isExpandingSource.value = true;
       try {
         const prevPage = windowStartPage.value - 1;
         const { items, totalPages: tp } = await _cursor.fetchPage(prevPage);
+        if (gen !== generation.value) return false;
         totalPages.value = tp;
         const identity = (file: MediaFileDto) => file.playlistItemId ?? file.fileId;
         const existing = new Set(sourceList.value.map(identity));
@@ -563,7 +674,7 @@ export const usePlayerStore = defineStore(
         }
         return true;
       } finally {
-        isExpandingSource.value = false;
+        if (gen === generation.value) isExpandingSource.value = false;
       }
     };
 
@@ -583,6 +694,7 @@ export const usePlayerStore = defineStore(
       if (!file) return;
       userQueue.value = userQueue.value.slice(index + 1);
       activeFile.value = file;
+      playerDismissed.value = false;
       activePlaybackOrigin.value = "manual";
       endedOccurrence++;
       handledEndedOccurrence = -1;
@@ -662,10 +774,11 @@ export const usePlayerStore = defineStore(
       try {
         const start = shufflePosition.value + 1;
         for (let s = start; s < shuffleTotalCount.value; s++) {
-          if (shuffleEntries.value.has(s)) continue;
-          const covered = shuffleScanned.value;
-          await ensureShufflePosition(s);
-          if (shuffleScanned.value !== covered) break;
+          if (!shuffleEntries.value.has(s)) {
+            const covered = shuffleScanned.value;
+            await ensureShufflePosition(s);
+            if (shuffleScanned.value !== covered) break;
+          }
         }
       } catch (err: unknown) {
         handleRangeError(err);
@@ -686,6 +799,7 @@ export const usePlayerStore = defineStore(
     const commitShufflePosition = (position: number, file: MediaFileDto) => {
       shufflePosition.value = position;
       activeFile.value = file;
+      playerDismissed.value = false;
       activePlaybackOrigin.value = "source";
       if (sourceDescriptor.value) sourceAnchor.value = toAnchor(sourceDescriptor.value, file);
       queueEnded.value = false;
@@ -732,7 +846,7 @@ export const usePlayerStore = defineStore(
       const anchor = sourceAnchor.value;
       shuffleBusy.value = true;
       try {
-        let response: ShuffleSessionResponse;
+        let response: ShuffleSessionResponse | null = null;
         try {
           response = await shuffleApi.createSession({
             requestId: shuffleApi.newRequestId(),
@@ -751,7 +865,7 @@ export const usePlayerStore = defineStore(
           shufflePosition.value = -1;
           activePlaybackOrigin.value = "manual";
         }
-        if (gen !== generation.value) return;
+        if (response === null || gen !== generation.value) return;
         const previousSession = shuffleSessionId.value;
         shuffleSessionId.value = response.sessionId;
         shuffleTotalCount.value = response.totalCount;
@@ -816,7 +930,6 @@ export const usePlayerStore = defineStore(
 
     // Shuffle transitions
     const enableShuffle = async () => {
-      dropParkedContext(true);
       const gen = generation.value;
       let descriptor = sourceDescriptor.value;
       if (!descriptor && activeFile.value) {
@@ -840,7 +953,7 @@ export const usePlayerStore = defineStore(
           shuffleRetry = enableShuffle;
           return;
         }
-        let response: ShuffleSessionResponse;
+        let response: ShuffleSessionResponse | null = null;
         try {
           response = await shuffleApi.createSession({
             requestId: shuffleApi.newRequestId(),
@@ -870,7 +983,7 @@ export const usePlayerStore = defineStore(
             return;
           }
         }
-        if (gen !== generation.value) return;
+        if (response === null || gen !== generation.value) return;
         const previousSession = shuffleSessionId.value;
         sourceDescriptor.value = { ...descriptor };
         activePlaylistId.value = descriptor.playlistId;
@@ -901,7 +1014,6 @@ export const usePlayerStore = defineStore(
       const anchor = sourceAnchor.value;
       if (!descriptor || !anchor) {
         clearShuffleState();
-        dropParkedContext(true);
         shuffled.value = false;
         return;
       }
@@ -929,14 +1041,13 @@ export const usePlayerStore = defineStore(
         activeFile.value = preservedFile;
         activePlaybackOrigin.value = preservedOrigin;
         shuffled.value = false;
-        dropParkedContext(true);
         if (sessionToRelease) await releaseSession(sessionToRelease).catch(() => undefined);
       } finally {
         shuffleBusy.value = false;
       }
     };
 
-    const fetchSequentialPageSafe = async (descriptor: SourceDescriptor, page: number) =>
+    const fetchSequentialPageSafe = (descriptor: SourceDescriptor, page: number) =>
       fetchSequentialPage(descriptor, page);
 
     const fetchAnchorPageSafe = async (descriptor: SourceDescriptor, anchor: SourceAnchor) => {
@@ -947,7 +1058,10 @@ export const usePlayerStore = defineStore(
             ? f.playlistItemId === anchor.playlistItemId
             : f.fileId === anchor.fileId,
         );
-        if (anchorIndex === -1) throw new Error("anchor-absent");
+        if (anchorIndex === -1) {
+          await disableToFirstPage(descriptor);
+          return null;
+        }
         return { ...page, anchorIndex };
       } catch (err: unknown) {
         if (isAuthError(err)) return null;
@@ -983,7 +1097,6 @@ export const usePlayerStore = defineStore(
         activeFile.value = preserved;
         activePlaybackOrigin.value = "manual";
         shuffled.value = false;
-        dropParkedContext(true);
         showNotice(
           "The previous track is no longer in this source. Kept playing it from the queue.",
         );
@@ -1004,87 +1117,214 @@ export const usePlayerStore = defineStore(
       await enableShuffle();
     };
 
-    const maybeResumeParked = async (): Promise<boolean> => {
-      const park = parkedContext.value;
-      parkedContext.value = null;
-      if (!park) return false;
-      const gen = generation.value;
-      try {
-        const response = await shuffleApi.getSession(
-          park.sessionId,
-          Math.max(0, park.position),
-          SHUFFLE_BATCH_LIMIT,
-        );
-        if (gen !== generation.value) {
-          parkedContext.value = park;
-          return false;
-        }
-        if (!sameSource(response.source, park.descriptor)) return false;
-        shuffleSessionId.value = response.sessionId;
-        shuffleTotalCount.value = response.totalCount;
-        sourceDescriptor.value = { ...park.descriptor };
-        activePlaylistId.value = park.descriptor.playlistId;
-        seedBuffer(response);
-        rebuiltSession = false;
-        shuffled.value = true;
-        shuffleRetry = null;
-        const resumeFrom = Math.max(0, Math.min(park.position, response.totalCount - 1));
-        shufflePosition.value = resumeFrom - 1;
-        showNotice("Back to your previous shuffle.");
-        await nextShuffled();
-        return true;
-      } catch (err: unknown) {
-        if (gen !== generation.value) return false;
-        if (isAuthError(err)) {
-          parkedContext.value = park;
-          return true;
-        }
-        if (httpStatus(err) === 404) {
-          return resumeParkedFresh(park, gen);
-        }
-        parkedContext.value = park;
-        shuffleError.value = "Could not resume the previous shuffle. Retry when ready.";
-        shuffleRetry = () => maybeResumeParked().then(() => undefined);
-        return true;
-      }
+    const adoptContinuationSession = (
+      response: ShuffleSessionResponse,
+      descriptor: SourceDescriptor,
+      position: number,
+    ) => {
+      shuffleSessionId.value = response.sessionId;
+      shuffleTotalCount.value = response.totalCount;
+      shufflePosition.value = position;
+      sourceDescriptor.value = { ...descriptor };
+      activePlaylistId.value = descriptor.playlistId;
+      seedBuffer(response);
+      rebuiltSession = false;
+      shuffled.value = true;
+      shuffleRetry = null;
+      queueEnded.value = false;
     };
 
-    const resumeParkedFresh = async (
-      park: NonNullable<typeof parkedContext.value>,
-      gen: number,
+    const advanceWithinShuffle = async (): Promise<boolean> => {
+      const gen = generation.value;
+      const sessionId = shuffleSessionId.value;
+      let position = shufflePosition.value + 1;
+      while (position < shuffleTotalCount.value) {
+        const file = await ensureShufflePosition(position);
+        if (gen !== generation.value || sessionId !== shuffleSessionId.value) return false;
+        if (file) {
+          commitShufflePosition(position, file);
+          play();
+          return true;
+        }
+        position++;
+      }
+      return false;
+    };
+
+    const continueWithLibraryShuffle = async (
+      avoidFirstFileId: string | null,
     ): Promise<boolean> => {
+      const descriptor: SourceDescriptor = { isVideo: false, playlistId: null };
+      const gen = generation.value;
+      const previousSession = shuffleSessionId.value;
+      continuationPending.value = true;
+      shuffleError.value = null;
       try {
+        const historyOk = await flushHistoryForCycle();
+        if (gen !== generation.value) return false;
+        if (!historyOk) {
+          shuffleRetry = () => continueWithLibraryShuffle(avoidFirstFileId).then(() => undefined);
+          return true;
+        }
         const response = await shuffleApi.createSession({
           requestId: shuffleApi.newRequestId(),
-          source: { isVideo: park.descriptor.isVideo, playlistId: park.descriptor.playlistId },
+          source: descriptor,
+          avoidFirstFileId,
           limit: SHUFFLE_BATCH_LIMIT,
         });
         if (gen !== generation.value) {
           void releaseSession(response.sessionId).catch(() => undefined);
           return false;
         }
-        shuffleSessionId.value = response.sessionId;
-        shuffleTotalCount.value = response.totalCount;
-        sourceDescriptor.value = { ...park.descriptor };
-        activePlaylistId.value = park.descriptor.playlistId;
-        seedBuffer(response);
-        rebuiltSession = false;
-        shuffled.value = true;
-        shuffleRetry = null;
-        shufflePosition.value = -1;
-        showNotice("Previous shuffle expired. Started a fresh cycle.");
-        await nextShuffled();
+        if (response.totalCount === 0) {
+          void releaseSession(response.sessionId).catch(() => undefined);
+          queueEnded.value = true;
+          if (previousSession) void releaseSession(previousSession).catch(() => undefined);
+          if (gen !== generation.value) return false;
+          clearShuffleState();
+          shuffleError.value = "No playable music is available in your library.";
+          shuffleRetry = () => continueWithLibraryShuffle(avoidFirstFileId).then(() => undefined);
+          return true;
+        }
+        adoptContinuationSession(response, descriptor, -1);
+        const advanced = await advanceWithinShuffle();
+        if (gen !== generation.value) return false;
+        if (advanced) {
+          showNotice("Continuing with a fresh library shuffle.");
+        } else {
+          queueEnded.value = true;
+          shuffleError.value = "No playable music is available in your library.";
+          shuffleRetry = () => continueWithLibraryShuffle(avoidFirstFileId).then(() => undefined);
+        }        if (previousSession && previousSession !== response.sessionId) {
+          await releaseSession(previousSession).catch(() => undefined);
+        }
         return true;
       } catch (err: unknown) {
         if (gen !== generation.value) return false;
         if (!isAuthError(err)) {
-          shuffleError.value = "Could not resume the previous shuffle. Retry when ready.";
-          shuffleRetry = () => {
-            const retryGen = generation.value;
-            return resumeParkedFresh(park, retryGen).then(() => undefined);
-          };
+          shuffleError.value =
+            "Could not continue from your library. Check your connection and retry.";
+          shuffleRetry = () => continueWithLibraryShuffle(avoidFirstFileId).then(() => undefined);
         }
         return true;
+      } finally {
+        if (gen === generation.value) continuationPending.value = false;
+      }
+    };
+
+    const resumeParkedFresh = async (
+      park: ParkedShuffleContext,
+      avoidFirstFileId: string | null,
+      gen: number,
+    ): Promise<boolean> => {
+      let createdSessionId: string | null = null;
+      const previousSession = shuffleSessionId.value;
+      try {
+        const historyOk = await flushHistoryForCycle();
+        if (gen !== generation.value) return false;
+        if (!historyOk) {
+          shuffleRetry = () =>
+            resumeParkedFresh(park, avoidFirstFileId, generation.value).then(() => undefined);
+          return true;
+        }
+        const response = await shuffleApi.createSession({
+          requestId: shuffleApi.newRequestId(),
+          source: { isVideo: false, playlistId: park.descriptor.playlistId },
+          avoidFirstFileId,
+          limit: SHUFFLE_BATCH_LIMIT,
+        });
+        createdSessionId = response.sessionId;
+        if (gen !== generation.value) {
+          void releaseSession(response.sessionId).catch(() => undefined);
+          return false;
+        }
+        if (response.totalCount === 0) {
+          await releaseSession(response.sessionId).catch(() => undefined);
+          if (park.descriptor.playlistId !== null) {
+            dropParkedContext(false);
+            return continueWithLibraryShuffle(avoidFirstFileId);
+          }
+          queueEnded.value = true;
+          shuffleError.value = "No playable music is available in your library.";
+          shuffleRetry = () => maybeResumeParked(avoidFirstFileId).then(() => undefined);
+          return true;
+        }
+        adoptContinuationSession(response, park.descriptor, -1);
+        if (previousSession && previousSession !== response.sessionId) {
+          void releaseSession(previousSession).catch(() => undefined);
+        }
+        if (gen !== generation.value) return false;
+        const advanced = await advanceWithinShuffle();
+        if (gen !== generation.value) return false;
+        if (!advanced) {
+          parkedContext.value = null;
+          return continueWithLibraryShuffle(avoidFirstFileId);
+        }
+        parkedContext.value = null;
+        showNotice("Previous shuffle expired. Started a fresh cycle.");
+        return true;
+      } catch (err: unknown) {
+        if (gen !== generation.value) return false;
+        if (createdSessionId) await releaseSession(createdSessionId).catch(() => undefined);
+        if (isAuthError(err)) return true;
+        if (httpStatus(err) === 404) {
+          dropParkedContext(false);
+          return continueWithLibraryShuffle(avoidFirstFileId);
+        }
+        shuffleError.value = "Could not resume the previous shuffle. Retry when ready.";
+        shuffleRetry = () => maybeResumeParked(avoidFirstFileId).then(() => undefined);
+        return true;
+      }
+    };
+
+    const maybeResumeParked = async (avoidFirstFileId: string | null): Promise<boolean> => {
+      const park = parkedContext.value;
+      if (!park) return false;
+      const gen = generation.value;
+      continuationPending.value = true;
+      shuffleError.value = null;
+      try {
+        const previousSession = shuffleSessionId.value;
+        const nextPosition = Math.max(0, park.position + 1);
+        if (nextPosition >= park.totalCount) {
+          dropParkedContext(true);
+          return continueWithLibraryShuffle(avoidFirstFileId);
+        }
+        const response = await shuffleApi.getSession(
+          park.sessionId,
+          nextPosition,
+          SHUFFLE_BATCH_LIMIT,
+        );
+        if (gen !== generation.value) return false;
+        if (!sameSource(response.source, park.descriptor)) {
+          dropParkedContext(true);
+          return continueWithLibraryShuffle(avoidFirstFileId);
+        }
+        adoptContinuationSession(response, park.descriptor, park.position);
+        if (previousSession && previousSession !== response.sessionId) {
+          void releaseSession(previousSession).catch(() => undefined);
+        }
+        if (gen !== generation.value) return false;
+        const advanced = await advanceWithinShuffle();
+        if (gen !== generation.value) return false;
+        if (!advanced) {
+          parkedContext.value = null;
+          return continueWithLibraryShuffle(avoidFirstFileId);
+        }
+        parkedContext.value = null;
+        showNotice("Back to your previous shuffle.");
+        return true;
+      } catch (err: unknown) {
+        if (gen !== generation.value) return false;
+        if (isAuthError(err)) return true;
+        if (httpStatus(err) === 404) {
+          return resumeParkedFresh(park, avoidFirstFileId, gen);
+        }
+        shuffleError.value = "Could not resume the previous shuffle. Retry when ready.";
+        shuffleRetry = () => maybeResumeParked(avoidFirstFileId).then(() => undefined);
+        return true;
+      } finally {
+        if (gen === generation.value) continuationPending.value = false;
       }
     };
 
@@ -1094,6 +1334,7 @@ export const usePlayerStore = defineStore(
       if (!activeFile.value && userQueue.value.length > before) {
         const file = userQueue.value.shift()!;
         activeFile.value = file;
+        playerDismissed.value = false;
         activePlaybackOrigin.value = "manual";
         endedOccurrence++;
         handledEndedOccurrence = -1;
@@ -1115,12 +1356,8 @@ export const usePlayerStore = defineStore(
           };
           return false;
         }
-        const avoid =
-          (shufflePosition.value >= 0 ? shuffleEntries.value.get(shufflePosition.value) : null)
-            ?.fileId ??
-          sourceAnchor.value?.fileId ??
-          null;
-        let response: ShuffleSessionResponse;
+        const avoid = activeFile.value?.fileId ?? null;
+        let response: ShuffleSessionResponse | null = null;
         try {
           response = await shuffleApi.createSession({
             requestId: shuffleApi.newRequestId(),
@@ -1138,8 +1375,13 @@ export const usePlayerStore = defineStore(
           return false;
         }
         if (gen !== generation.value) return false;
+        if (response === null) return false;
         if (response.totalCount === 0) {
+          if (!descriptor.isVideo && descriptor.playlistId !== null) {
+            return continueWithLibraryShuffle(avoid);
+          }
           queueEnded.value = true;
+          shuffleError.value = "No playable music is available in your library.";
           return true;
         }
         const previousSession = shuffleSessionId.value;
@@ -1180,12 +1422,52 @@ export const usePlayerStore = defineStore(
       return op;
     };
 
-    const next = () => enqueueNavigation(nextInternal);
+    const next = (reason: AdvancementReason = "explicit") =>
+      enqueueNavigation(() => nextInternal(reason));
 
-    const nextInternal = async () => {
+    // Reload the first sequential window for Repeat All. Returns false when the
+    // caller must stop: stale generation or a surfaced retryable error.
+    const reloadSequentialStart = async (
+      navGeneration: number,
+      reason: AdvancementReason,
+    ): Promise<boolean> => {
+      if (!_cursor) return true;
+      isExpandingSource.value = true;
+      try {
+        let page = 1;
+        let wrappedItems: MediaFileDto[] = [];
+        let wrappedTotalPages = totalPages.value;
+        let wrappedPage = 1;
+        while (page <= Math.max(1, wrappedTotalPages) && wrappedItems.length === 0) {
+          const result = await _cursor.fetchPage(page);
+          if (navGeneration !== generation.value) return false;
+          wrappedItems = result.items;
+          wrappedTotalPages = result.totalPages;
+          wrappedPage = page;
+          page++;
+        }
+        totalPages.value = wrappedTotalPages;
+        sourceList.value = wrappedItems;
+        windowStartPage.value = wrappedPage;
+        windowEndPage.value = wrappedPage;
+      } catch (err: unknown) {
+        if (navGeneration === generation.value) isExpandingSource.value = false;
+        if (isAuthError(err)) return false;
+        if (navGeneration !== generation.value) return false;
+        shuffleError.value = "Could not load the next track. Check your connection and retry.";
+        shuffleRetry = () => next(reason);
+        return false;
+      } finally {
+        if (navGeneration === generation.value) isExpandingSource.value = false;
+      }
+      return true;
+    };
+
+    const nextInternal = async (reason: AdvancementReason) => {
+      const navGeneration = generation.value;
       clearCountdown();
 
-      if (repeatMode.value === "one") {
+      if (reason === "natural" && repeatMode.value === "one") {
         seek(0);
         play();
         endedOccurrence++;
@@ -1213,7 +1495,16 @@ export const usePlayerStore = defineStore(
         currentIndex.value >= sourceList.value.length - 5 &&
         windowEndPage.value < totalPages.value
       ) {
-        await _expandForward();
+        try {
+          await _expandForward();
+        } catch (err: unknown) {
+          if (isAuthError(err)) return;
+          if (navGeneration !== generation.value) return;
+          shuffleError.value = "Could not load the next track. Check your connection and retry.";
+          shuffleRetry = () => next(reason);
+          return;
+        }
+        if (navGeneration !== generation.value) return;
       }
 
       if (currentIndex.value < sourceList.value.length - 1) {
@@ -1223,7 +1514,17 @@ export const usePlayerStore = defineStore(
 
       // Still at the end — try one more expansion before giving up
       if (windowEndPage.value < totalPages.value) {
-        const ok = await _expandForward();
+        let ok = false;
+        try {
+          ok = await _expandForward();
+        } catch (err: unknown) {
+          if (isAuthError(err)) return;
+          if (navGeneration !== generation.value) return;
+          shuffleError.value = "Could not load the next track. Check your connection and retry.";
+          shuffleRetry = () => next(reason);
+          return;
+        }
+        if (navGeneration !== generation.value) return;
         if (ok && currentIndex.value < sourceList.value.length - 1) {
           commitSequentialIndex(currentIndex.value + 1);
           return;
@@ -1231,47 +1532,60 @@ export const usePlayerStore = defineStore(
       }
 
       if (repeatMode.value === "all") {
-        if (_cursor) {
-          isExpandingSource.value = true;
-          try {
-            const { items, totalPages: tp } = await _cursor.fetchPage(1);
-            totalPages.value = tp;
-            sourceList.value = items;
-            windowStartPage.value = 1;
-            windowEndPage.value = 1;
-          } finally {
-            isExpandingSource.value = false;
+        const previousFile = activeFile.value;
+        if (!(await reloadSequentialStart(navGeneration, reason))) return;
+        if (navGeneration !== generation.value) return;
+        if (sourceList.value.length === 0) {
+          const lastFileId = previousFile?.fileId ?? null;
+          const endedAudio = previousFile?.mimeType.startsWith("audio/") ?? false;
+          if (endedAudio) {
+            await continueWithLibraryShuffle(lastFileId);
+          } else {
+            queueEnded.value = true;
           }
+          return;
         }
         commitSequentialIndex(0);
-      } else if (!(await maybeResumeParked())) {
-        queueEnded.value = true;
+        if (activeFile.value === previousFile) {
+          seek(0);
+          play();
+        }
+        return;
       }
+
+      const lastFileId = activeFile.value?.fileId ?? null;
+      const endedAudio = activeFile.value?.mimeType.startsWith("audio/") ?? false;
+      if (endedAudio && (await maybeResumeParked(lastFileId))) return;
+      if (navGeneration !== generation.value) return;
+      if (endedAudio) {
+        await continueWithLibraryShuffle(lastFileId);
+        return;
+      }
+      queueEnded.value = true;
     };
 
     const nextShuffled = async () => {
-      let position = shufflePosition.value + 1;
-      while (position < shuffleTotalCount.value) {
-        let file: MediaFileDto | null = null;
-        try {
-          file = await ensureShufflePosition(position);
-        } catch (err: unknown) {
-          shuffleRetry = nextShuffled;
-          handleRangeError(err);
-          return;
-        }
-        if (file) {
-          commitShufflePosition(position, file);
-          play();
-          return;
-        }
-        position++;
+      const navGeneration = generation.value;
+      try {
+        if (await advanceWithinShuffle()) return;
+      } catch (err: unknown) {
+        shuffleRetry = nextShuffled;
+        handleRangeError(err);
+        return;
       }
+      if (navGeneration !== generation.value) return;
       if (repeatMode.value === "all") {
         await repeatAllCycle();
         return;
       }
-      if (await maybeResumeParked()) return;
+      const lastFileId = activeFile.value?.fileId ?? null;
+      const endedAudio = activeFile.value?.mimeType.startsWith("audio/") ?? false;
+      if (endedAudio && (await maybeResumeParked(lastFileId))) return;
+      if (navGeneration !== generation.value) return;
+      if (endedAudio) {
+        await continueWithLibraryShuffle(lastFileId);
+        return;
+      }
       queueEnded.value = true;
     };
 
@@ -1319,10 +1633,10 @@ export const usePlayerStore = defineStore(
       }
     };
 
-    const handleTrackEnded = () => {
-      if (handledEndedOccurrence === endedOccurrence) return;
+    const handleTrackEnded = (): Promise<void> => {
+      if (handledEndedOccurrence === endedOccurrence) return Promise.resolve();
       handledEndedOccurrence = endedOccurrence;
-      void next();
+      return next("natural");
     };
 
     const handleActiveFileUnavailable = async () => {
@@ -1335,6 +1649,10 @@ export const usePlayerStore = defineStore(
 
     const restartQueue = async () => {
       queueEnded.value = false;
+      if (shuffleError.value) {
+        await retryShuffle();
+        return;
+      }
       if (shuffled.value && sourceDescriptor.value) {
         await repeatAllCycle();
         return;
@@ -1349,6 +1667,7 @@ export const usePlayerStore = defineStore(
 
     const setActiveFile = (file: MediaFileDto) => {
       activeFile.value = file;
+      playerDismissed.value = false;
       endedOccurrence++;
       handledEndedOccurrence = -1;
       if (shuffled.value && shuffleSessionId.value) {
@@ -1364,14 +1683,14 @@ export const usePlayerStore = defineStore(
         return;
       }
       const idx = sourceList.value.findIndex((f) => f.fileId === file.fileId);
-      if (idx !== -1) {
-        currentIndex.value = idx;
-        activePlaybackOrigin.value = "source";
-        if (sourceDescriptor.value) sourceAnchor.value = toAnchor(sourceDescriptor.value, file);
-        updateCursor();
-      } else {
+      if (idx === -1) {
         activePlaybackOrigin.value = "manual";
+        return;
       }
+      currentIndex.value = idx;
+      activePlaybackOrigin.value = "source";
+      if (sourceDescriptor.value) sourceAnchor.value = toAnchor(sourceDescriptor.value, file);
+      updateCursor();
     };
 
     // Session restore + owner lifecycle
@@ -1503,6 +1822,8 @@ export const usePlayerStore = defineStore(
     const clearOwnerState = () => {
       bumpGeneration();
       clearActiveFile();
+      lyricsOpen.value = false;
+      playerDismissed.value = false;
       userQueue.value = [];
       sourceDescriptor.value = null;
       activePlaylistId.value = null;
@@ -1565,6 +1886,16 @@ export const usePlayerStore = defineStore(
       windowEndPage,
       isPlaylistSource,
 
+      // Runtime presentation
+      playerDismissed,
+      lyricsOpen,
+      transientEpoch,
+
+      // Runtime engine status
+      engineBuffering,
+      engineLoadError,
+      engineReady,
+
       // Runtime shuffle
       shuffleEntries,
       shuffleScanned,
@@ -1574,6 +1905,8 @@ export const usePlayerStore = defineStore(
       shuffleError,
       shuffleNotice,
       parkedContext,
+      continuationPending,
+      queueStatus,
 
       // Computed
       upNextItems,
@@ -1626,6 +1959,9 @@ export const usePlayerStore = defineStore(
       setCurrentTime,
       setDuration,
       setIsPlaying,
+      setEngineBuffering,
+      setEngineLoadError,
+      setEngineReady,
       setVariantTracks,
       setActiveVariantId,
       setAbrEnabled,
@@ -1633,6 +1969,11 @@ export const usePlayerStore = defineStore(
 
       // Standard actions
       setPlayerMode,
+      closePlayer,
+      resumePlayer,
+      setLyricsOpen,
+      toggleLyrics,
+      closeTransientSurfaces,
       clearActiveFile,
       setSnapCorner,
       setVolume,
@@ -1671,6 +2012,7 @@ export const usePlayerStore = defineStore(
         "autoplay",
         "videoAutoplay",
         "playerMode",
+        "playerDismissed",
         "repeatMode",
         "totalPages",
         "playbackOwnerId",
@@ -1680,6 +2022,7 @@ export const usePlayerStore = defineStore(
         "shuffleSessionId",
         "shufflePosition",
         "shuffleTotalCount",
+        "parkedContext",
       ],
     },
   },
