@@ -80,7 +80,7 @@
                   : 'text-gray-400 dark:text-white/30 hover:text-gray-500 dark:hover:text-white/50'
               "
               aria-label="Toggle lyrics"
-              @click="lyricsOpen = !lyricsOpen"
+              @click="playerStore.toggleLyrics()"
             >
               <Icon icon="mdi:script-text-outline" class="w-4 h-4" />
             </button>
@@ -241,8 +241,6 @@
       </div>
     </section>
 
-    <LyricsPanel v-if="mediaType === 'audio'" v-model:open="lyricsOpen" />
-
     <BulkMetadataDrawer
       :open="bulkOpen"
       :files="selectedFiles"
@@ -297,7 +295,6 @@ import { LIBRARY_PAGE_SIZE, type SourceDescriptor } from "@/utils/player-source"
 import BlockSpinner from "../common/BlockSpinner.vue";
 import AudioAnalysisFilePanel from "../dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";
 import BulkMetadataDrawer from "./BulkMetadataDrawer.vue";
-import LyricsPanel from "./LyricsPanel.vue";
 import MediaCard from "./MediaCard.vue";
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
@@ -306,11 +303,14 @@ const isMobile = breakpoints.smaller("md");
 // Props
 
 const { mediaType } = defineProps<{ mediaType: "video" | "audio" }>();
-const lyricsOpen = ref(false);
 
 // Store
 
 const playerStore = usePlayerStore();
+// Lyrics live in the shared dashboard side panel (desktop) or the mobile
+// sheet, toggled through the player store. This grid owns no lyrics instance.
+const lyricsOpen = computed(() => playerStore.lyricsOpen);
+
 const queryCache = useQueryCache();
 const router = useRouter();
 const libraryDescriptor = computed<SourceDescriptor>(() => ({
