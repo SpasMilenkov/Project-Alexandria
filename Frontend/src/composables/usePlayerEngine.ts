@@ -1,11 +1,9 @@
 // oxlint-disable max-statements
 // oxlint-disable max-lines-per-function
-import { onMounted, onUnmounted, watch, computed, ref, type Ref } from "vue";
-
-import type { MediaFileDto } from "@/api/streaming";
+import { type Ref, computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import { attemptRefresh } from "@/api/client";
-import { streamingApi } from "@/api/streaming";
+import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { closeSession, startSession } from "@/mutations/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 import { ListeningHistoryTracker } from "@/utils/listening-history-tracker";
@@ -18,6 +16,8 @@ const RESUME_MIN_POSITION = 5; // seconds from start — no prompt before this p
 export interface PlayerEngineOptions {
   getThumbnailUrl?: () => string | null | undefined;
   shakaUiConfig?: Record<string, unknown>;
+  mediaKind?: "audio" | "video";
+  headless?: boolean;
 }
 
 const BASE_SHAKA_UI_CONFIG = {
@@ -51,7 +51,7 @@ export const usePlayerEngine = (
   const { mutateAsync: openSessionAsync } = startSession();
 
   const historyTracker = new ListeningHistoryTracker({
-    startSession: async (fileId, startPositionSeconds) =>
+    startSession: (fileId, startPositionSeconds) =>
       openSessionAsync({ fileId, startPositionSeconds }),
     closeSession: (sessionId, payload) => endSessionAsync({ sessionId, req: payload }),
     verifyClosed: async (sessionId, fileId) => {
@@ -62,15 +62,18 @@ export const usePlayerEngine = (
     },
     currentFileId: () => store.activeFile?.fileId ?? null,
   });
-  store.registerHistoryFlush(() => historyTracker.flush());
+  const historyFlushToken = store.registerHistoryFlush(() => historyTracker.flush());
 
-  const playerReady = ref(false);
-  const isBuffering = ref(false);
-  const loadError = ref<string | null>(null);
+  // Engine status lives in the store so every presentation surface (strip,
+  // pill, card, sheet) consumes the same source instead of a per-view copy.
+  const playerReady = computed(() => store.engineReady);
+  const isBuffering = computed(() => store.engineBuffering);
+  const loadError = computed(() => store.engineLoadError);
   const resumePrompt = ref<{ positionSeconds: number } | null>(null);
 
   let shakaPlayer: any = null;
   let shakaUi: any = null;
+  let engineToken: number | null = null;
   let shakaInitPromise: Promise<void> | null = null;
   let isFirstLoad = true;
   let currentManifestUrl = "";
@@ -79,6 +82,29 @@ export const usePlayerEngine = (
   // Set in loadFile once we know there's a candidate resume position.
   // Consumed and cleared inside the loadedmetadata handler once duration is known.
   let pendingResumePosition: number | null = null;
+  let pendingLoadSequence = 0;
+
+  // Monotonic load generation. Every loadFile captures its own sequence and
+  // delayed play attempts verify it, so a superseded load can never restart
+  // playback after a newer source took over.
+  let loadSequenceCounter = 0;
+
+  // Delayed play with a staleness guard. AbortError (a newer load or pause won
+  // the race) stays silent; genuine blocks surface for the UI to report.
+  const delayedPlay = (element: HTMLVideoElement | null, sequence: number) => {
+    if (!element) return;
+    setTimeout(() => {
+      if (sequence !== loadSequenceCounter) return;
+      const attempt = element.play();
+      if (attempt && typeof attempt.catch === "function") {
+        attempt.catch((err: unknown) => {
+          if ((err as { name?: string })?.name === "AbortError") return;
+          if (sequence !== loadSequenceCounter) return;
+          store.setEngineLoadError("Playback was blocked. Press play to retry.");
+        });
+      }
+    }, 50);
+  };
 
   const listenedSeconds = ref(0);
   let listenTicker: ReturnType<typeof setInterval> | null = null;
@@ -181,10 +207,10 @@ export const usePlayerEngine = (
       if (store.hasPrevious) store.previous();
     });
     navigator.mediaSession.setActionHandler("nexttrack", () => {
-      if (store.hasNext) store.next();
+      if (store.isAudio || store.hasNext) store.next();
     });
     navigator.mediaSession.setActionHandler("seekto", (details) => {
-      if (videoRef.value && details.seekTime != null) {
+      if (videoRef.value && details.seekTime !== null && details.seekTime !== undefined) {
         videoRef.value.currentTime = details.seekTime;
         syncPositionState();
       }
@@ -231,7 +257,7 @@ export const usePlayerEngine = (
         shaka.polyfill?.installAll?.();
 
         if (!shaka.Player.isBrowserSupported()) {
-          loadError.value = "Browser doesn't support adaptive streaming.";
+          store.setEngineLoadError("Browser doesn't support adaptive streaming.");
           return;
         }
 
@@ -276,11 +302,11 @@ export const usePlayerEngine = (
             // acceptResumePrompt() or dismissResumePrompt(), both of which
             // call play() themselves.
             el.pause();
-          } else {
+          } else if (!isFirstLoad) {
             // No resume prompt: autoplay if this isn't the initial page load.
-            if (!isFirstLoad) {
-              setTimeout(() => el.play(), 50);
-            }
+            // The pending sequence was captured with the resume position, so a
+            // superseded load never autoplays over a newer source.
+            delayedPlay(el, pendingLoadSequence);
           }
         });
 
@@ -319,18 +345,24 @@ export const usePlayerEngine = (
           if (isVideoFile) {
             resumePrompt.value = null;
             if (store.videoAutoplay && canAdvance) {
-              store.startAutoplayCountdown(VIDEO_AUTOPLAY_COUNTDOWN_SECONDS, () => store.next());
+              store.startAutoplayCountdown(VIDEO_AUTOPLAY_COUNTDOWN_SECONDS, () =>
+                store.next("natural"),
+              );
             }
           } else {
-            if (store.autoplay && canAdvance) store.handleTrackEnded();
+            store.handleTrackEnded();
           }
         });
 
-        shakaUi = new shaka.ui.Overlay(shakaPlayer, containerRef.value, videoRef.value);
-        shakaUi.configure(options.shakaUiConfig ?? AUDIO_SHAKA_UI_CONFIG);
+        // Headless hosts (dashboard audio engine) drive transport through the
+        // store bridge, so no generated Shaka controls are created for them.
+        if (!options.headless && containerRef.value) {
+          shakaUi = new shaka.ui.Overlay(shakaPlayer, containerRef.value, videoRef.value);
+          shakaUi.configure(options.shakaUiConfig ?? AUDIO_SHAKA_UI_CONFIG);
+        }
 
         shakaPlayer.addEventListener("buffering", (e: any) => {
-          isBuffering.value = e.buffering;
+          store.setEngineBuffering(e.buffering);
         });
 
         shakaPlayer.addEventListener("adaptation", syncVariantTracks);
@@ -347,15 +379,15 @@ export const usePlayerEngine = (
               await shakaPlayer.load(currentManifestUrl, resumeAt);
               if (!wasPaused) videoRef.value.play();
             } catch {
-              loadError.value = "Session expired. Please refresh the page.";
+              store.setEngineLoadError("Session expired. Please refresh the page.");
             }
             return;
           }
-          loadError.value = err?.message ?? "Playback error.";
-          isBuffering.value = false;
+          store.setEngineLoadError(err?.message ?? "Playback error.");
+          store.setEngineBuffering(false);
         });
 
-        playerReady.value = true;
+        store.setEngineReady(true);
         startRefreshTicker();
 
         if (videoRef.value) {
@@ -365,11 +397,14 @@ export const usePlayerEngine = (
           });
         }
 
-        store.registerEngine({
+        engineToken = store.registerEngine({
           play: () => videoRef.value?.play(),
           pause: () => videoRef.value?.pause(),
           seek: (t) => {
             if (videoRef.value) videoRef.value.currentTime = t;
+          },
+          setVolume: (v) => {
+            if (videoRef.value) videoRef.value.volume = v;
           },
           setPlaybackRate: (rate) => {
             if (videoRef.value) videoRef.value.playbackRate = rate;
@@ -390,7 +425,7 @@ export const usePlayerEngine = (
           },
         });
       } catch (err: any) {
-        loadError.value = err?.message ?? "Player failed to initialize.";
+        store.setEngineLoadError(err?.message ?? "Player failed to initialize.");
         shakaInitPromise = null;
         throw err;
       }
@@ -402,9 +437,16 @@ export const usePlayerEngine = (
   // Core load function
 
   const loadFile = async (file: MediaFileDto | null) => {
+    // Media-kind guard first: an idle engine for the other kind touches no
+    // shared state, so it can never clear or disturb the active engine.
+    const fileIsAudio = file?.mimeType.startsWith("audio/") ?? false;
+    if (file && options.mediaKind === "audio" && !fileIsAudio) return;
+    if (file && options.mediaKind === "video" && fileIsAudio) return;
+
+    const loadSequence = ++loadSequenceCounter;
     closeActiveSession();
     store.cancelAutoplay();
-    loadError.value = null;
+    store.setEngineLoadError(null);
     resumePrompt.value = null;
     pendingResumePosition = null;
     currentManifestUrl = "";
@@ -417,6 +459,7 @@ export const usePlayerEngine = (
     try {
       await initShaka();
       if (!shakaPlayer) return;
+      if (loadSequence !== loadSequenceCounter) return;
 
       const [manifestUrl, history] = await Promise.all([
         streamingApi.getManifest(file.playbackVersionId ?? file.currentVersionId),
@@ -424,7 +467,7 @@ export const usePlayerEngine = (
       ]);
 
       if (!manifestUrl) {
-        loadError.value = "Failed to resolve stream URL.";
+        store.setEngineLoadError("Failed to resolve stream URL.");
         return;
       }
 
@@ -438,13 +481,15 @@ export const usePlayerEngine = (
         // Audio: seek directly on first load, start from 0 on subsequent loads.
         const startTime = isFirstLoad ? savedPosition : 0;
         await shakaPlayer.load(manifestUrl, startTime > 0 ? startTime : null);
-        if (!isFirstLoad) setTimeout(() => videoRef.value?.play(), 50);
+        if (loadSequence !== loadSequenceCounter) return;
+        if (!isFirstLoad) delayedPlay(videoRef.value, loadSequence);
       } else {
         // Video: always load from 0. If there's a saved position worth resuming,
         // store it so the loadedmetadata handler can evaluate it once duration
         // is known and show the prompt (or skip it if we're near the end).
         if (savedPosition > RESUME_MIN_POSITION) {
           pendingResumePosition = savedPosition;
+          pendingLoadSequence = loadSequence;
         }
         await shakaPlayer.load(manifestUrl, null);
         // loadedmetadata will handle autoplay / resume prompt from here.
@@ -454,7 +499,8 @@ export const usePlayerEngine = (
       updateMediaSession(file);
       isFirstLoad = false;
     } catch (err: any) {
-      loadError.value = err?.message ?? "Failed to load stream.";
+      if (loadSequence !== loadSequenceCounter) return;
+      store.setEngineLoadError(err?.message ?? "Failed to load stream.");
       if (err?.response?.status === 404) await store.handleActiveFileUnavailable();
     }
   };
@@ -476,10 +522,10 @@ export const usePlayerEngine = (
   onUnmounted(async () => {
     clearMediaSession();
     closeActiveSession();
-    store.registerHistoryFlush(null);
+    store.registerHistoryFlush(null, historyFlushToken);
     store.cancelAutoplay();
     stopRefreshTicker();
-    store.unregisterEngine();
+    if (engineToken !== null) store.unregisterEngine(engineToken);
     if (shakaUi) {
       shakaUi.destroy();
       shakaUi = null;

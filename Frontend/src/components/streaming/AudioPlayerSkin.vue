@@ -1,59 +1,152 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { useQuery } from "@pinia/colada";
-import { useDark } from "@vueuse/core";
 import { storeToRefs } from "pinia";
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { computed, onUnmounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
-import { fileApi } from "@/api/file";
-import { usePlayerEngine } from "@/composables/usePlayerEngine";
+import { useAppToast } from "@/composables/useAppToast";
+import { usePlayerModeTransition } from "@/composables/usePlayerModeTransition";
 import { usePlayerStore } from "@/stores/stream-player";
 
+import PlayerArtwork from "./PlayerArtwork.vue";
 import PlayerQueue from "./PlayerQueue.vue";
 import PlayerSettings from "./PlayerSettings.vue";
 
-const route = useRoute();
+const router = useRouter();
 const store = usePlayerStore();
-const { activeFile, isAudio, snapCorner, hasNext, hasPrevious, repeatMode, shuffled, shuffleBusy } =
-  storeToRefs(store);
+const {
+  activeFile,
+  isAudio,
+  snapCorner,
+  hasNext,
+  hasPrevious,
+  repeatMode,
+  shuffled,
+  shuffleBusy,
+  isPlaying,
+  currentTime,
+  duration,
+  volume,
+  engineBuffering,
+  engineLoadError,
+  lyricsOpen,
+} = storeToRefs(store);
+
+const trackDetailsTo = computed(() =>
+  activeFile.value
+    ? { name: "track-details" as const, params: { fileId: activeFile.value.fileId } }
+    : null,
+);
+
+const trackMenuItems = [
+  [
+    {
+      label: "Track details",
+      icon: "mdi:information-outline",
+      onSelect: () => {
+        store.closeTransientSurfaces();
+        if (trackDetailsTo.value) void router.push(trackDetailsTo.value);
+      },
+    },
+  ],
+];
+
+const goToTrackDetails = () => {
+  store.closeTransientSurfaces();
+};
+
+const toast = useAppToast();
+
+watch(engineLoadError, (message) => {
+  if (message) toast.error("Audio playback failed", message);
+});
 
 const shuffleTitle = computed(() => {
   if (shuffleBusy.value) return "Starting shuffle…";
   return shuffled.value ? "Disable shuffle" : "Shuffle this source";
 });
 
-const isDark = useDark();
+const playPauseIcon = computed(() => {
+  if (isPlaying.value) return "mdi:pause";
+  return "mdi:play";
+});
 
+const playPauseLabel = computed(() => {
+  if (isPlaying.value) return "Pause";
+  return "Play";
+});
+
+const repeatIcon = computed(() => {
+  if (repeatMode.value === "one") return "mdi:repeat-once";
+  return "mdi:repeat";
+});
+
+const shuffleToggleClass = computed(() => {
+  if (shuffled.value) return "text-primary";
+  return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
+});
+
+const repeatToggleClass = computed(() => {
+  if (repeatMode.value === "all" || repeatMode.value === "one") return "text-primary";
+  return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
+});
+
+const muteLabel = computed(() => {
+  if (isMuted.value) return "Unmute";
+  return "Mute";
+});
+
+const lyricsToggleClass = computed(() => {
+  if (lyricsOpen.value) return "text-primary";
+  return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
+});
 const cardRef = ref<HTMLDivElement | null>(null);
-const containerRef = ref<HTMLDivElement | null>(null);
-const videoRef = ref<HTMLVideoElement | null>(null);
+const layoutRef = ref<HTMLDivElement | null>(null);
 
-const audioBg = computed(
-  () =>
-    fileApi.getThumbnailUrlForVersion(
-      activeFile.value?.fileId,
-      activeFile.value?.currentVersionId,
-    ) ?? null,
-);
+const formatTime = (seconds: number) => {
+  if (!isFinite(seconds) || seconds < 0) return "0:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+};
+
+const onSeekInput = (e: Event) => {
+  store.seek(Number((e.target as HTMLInputElement).value));
+};
+
+const premuteVolume = ref(1);
+const isMuted = computed(() => volume.value === 0);
+
+const volumeIcon = computed(() => {
+  if (volume.value === 0) return "mdi:volume-off";
+  if (volume.value < 0.5) return "mdi:volume-medium";
+  return "mdi:volume-high";
+});
+
+const toggleMute = () => {
+  if (isMuted.value) {
+    store.setVolume(premuteVolume.value > 0 ? premuteVolume.value : 1);
+  } else {
+    premuteVolume.value = volume.value;
+    store.setVolume(0);
+  }
+};
+
+const onVolumeInput = (e: Event) => {
+  store.setVolume(Number((e.target as HTMLInputElement).value));
+};
+
 const activeFileName = computed(
   () => activeFile.value?.title ?? activeFile.value?.fileName ?? null,
 );
+const activeArtistName = computed(() => activeFile.value?.artist ?? null);
 
-const { isBuffering, loadError } = usePlayerEngine(videoRef, containerRef, {
-  getThumbnailUrl: () => audioBg.value,
-});
-
-void loadError;
+const isBuffering = engineBuffering;
 
 type PlayerMode = "pip" | "strip";
 const playerMode = ref<PlayerMode>("strip");
 const isMinimized = computed(() => playerMode.value === "pip");
 const isStrip = computed(() => playerMode.value === "strip");
-
-const isCompactStrip = computed(
-  () => isStrip.value && route.path !== "/streaming/music" && !route.path.includes("/streaming"),
-);
 
 // Drag / snap (pip mode)
 
@@ -83,7 +176,10 @@ const nearestCorner = (): "tl" | "tr" | "bl" | "br" => {
   const cy = cardPos.value.y + cardHeight() / 2;
   const right = cx > window.innerWidth / 2;
   const bottom = cy > window.innerHeight / 2;
-  return right && bottom ? "br" : right ? "tr" : bottom ? "bl" : "tl";
+  if (right && bottom) return "br";
+  if (right) return "tr";
+  if (bottom) return "bl";
+  return "tl";
 };
 
 const snapTo = (c: "tl" | "tr" | "bl" | "br") => {
@@ -94,7 +190,7 @@ const snapTo = (c: "tl" | "tr" | "bl" | "br") => {
 // Mouse drag
 
 const onMouseDown = (e: MouseEvent) => {
-  if (!isMinimized.value) return;
+  if (!isMinimized.value || isSwitching.value) return;
   e.stopPropagation();
   const rect = cardRef.value!.getBoundingClientRect();
   dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -125,7 +221,7 @@ const onMouseUp = () => {
 // Touch drag (mobile)
 
 const onTouchStart = (e: TouchEvent) => {
-  if (!isMinimized.value) return;
+  if (!isMinimized.value || isSwitching.value) return;
   e.stopPropagation();
   const touch = e.touches[0];
   const rect = cardRef.value!.getBoundingClientRect();
@@ -155,10 +251,6 @@ const onTouchEnd = () => {
   window.removeEventListener("touchend", onTouchEnd);
 };
 
-const onResize = () => {
-  if (isMinimized.value && !isDragging.value) snapTo(snapCorner.value);
-};
-
 const cardStyle = computed(() => {
   if (playerMode.value !== "pip") return {};
   return {
@@ -166,39 +258,46 @@ const cardStyle = computed(() => {
     top: `${cardPos.value.y}px`,
     left: `${cardPos.value.x}px`,
     width: `${CARD_W}px`,
-    zIndex: 9999,
-    transition: isDragging.value
-      ? "none"
-      : "top 420ms cubic-bezier(0.34,1.4,0.64,1), left 420ms cubic-bezier(0.34,1.4,0.64,1)",
+    transition:
+      isDragging.value || isSwitching.value
+        ? "none"
+        : "top 420ms cubic-bezier(0.34,1.4,0.64,1), left 420ms cubic-bezier(0.34,1.4,0.64,1)",
   };
 });
 
-// Mode toggle: strip <-> pip
+const modeIcon = computed(() => {
+  if (playerMode.value === "strip") return "mdi:picture-in-picture-bottom-right";
+  return "mdi:dock-bottom";
+});
 
-const modeIcon = computed(() =>
-  playerMode.value === "strip" ? "mdi:picture-in-picture-bottom-right" : "mdi:dock-bottom",
-);
+const cardVariantClass = computed(() => {
+  if (isStrip.value) return "w-full rounded-t-xl";
+  return "rounded-2xl";
+});
 
-const cycleMode = async () => {
-  if (playerMode.value === "strip") {
-    playerMode.value = "pip";
-    await nextTick();
-    requestAnimationFrame(() => snapTo("br"));
-  } else {
-    playerMode.value = "strip";
-  }
-};
+const dragCursorClass = computed(() => {
+  if (isDragging.value) return "cursor-grabbing";
+  return "cursor-grab";
+});
+
+const playerAreaClass = computed(() => {
+  if (isStrip.value) return "h-[88px]";
+  return "";
+});
+
+const { isSwitching, toggle: cycleMode } = usePlayerModeTransition({
+  card: cardRef,
+  layout: layoutRef,
+  mode: playerMode,
+  positionFloating: () => {
+    if (!isDragging.value) snapTo(snapCorner.value);
+  },
+  beforeChange: () => store.closeTransientSurfaces(),
+});
 
 watch(playerMode, (m) => store.setPlayerMode(m), { immediate: true });
 
-onMounted(async () => {
-  await nextTick();
-  requestAnimationFrame(() => snapTo(snapCorner.value));
-  window.addEventListener("resize", onResize);
-});
-
 onUnmounted(() => {
-  window.removeEventListener("resize", onResize);
   window.removeEventListener("mousemove", onMouseMove);
   window.removeEventListener("mouseup", onMouseUp);
   window.removeEventListener("touchmove", onTouchMove);
@@ -208,71 +307,65 @@ onUnmounted(() => {
 
 <template>
   <div
+    ref="layoutRef"
+    class="relative isolate hidden md:block w-full"
     :class="{
       'h-0': playerMode === 'pip',
-      ' w-full z-[9999]': playerMode === 'strip',
+      'z-40': isMinimized || isSwitching,
+      'z-30': isStrip && !isSwitching,
     }"
   >
     <div
       ref="cardRef"
-      class="player-card frosted-glass glass-surface border border-black/[0.08] dark:border-white/10 overflow-hidden"
+      class="@container player-card frosted-glass glass-surface border border-black/[0.08] dark:border-white/10 overflow-hidden"
       :class="[
-        isStrip ? 'w-full rounded-t-xl' : 'rounded-2xl',
+        cardVariantClass,
         {
           minimized: isMinimized,
           strip: isStrip,
           'is-dragging': isDragging,
-          'compact-strip': isCompactStrip,
-          'theme-dark': isDark,
-          'theme-light': !isDark,
-          'is-buffering': isBuffering,
         },
       ]"
       :style="cardStyle"
     >
-      <!--
-        PiP header: only the essentials to keep it uncluttered.
-        Shuffle / loop / settings live in the expanded strip; in pip the
-        user just needs track identity, skip controls, queue, mode & close.
-      -->
+      <!-- Floating header: drag handle, identity, dock and close -->
       <div
         v-show="isMinimized"
         class="flex items-center justify-between px-3 py-2 border-b border-gray-200/70 dark:border-white/[0.07] select-none"
-        :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
-        @mousedown="onMouseDown"
-        @touchstart.prevent="onTouchStart"
       >
-        <div class="min-w-0">
-          <p class="font-semibold truncate text-sm text-gray-800 dark:text-white/90">
+        <div class="flex items-center gap-1 min-w-0">
+          <span
+            aria-hidden="true"
+            class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80 touch-none select-none"
+            :class="dragCursorClass"
+            @mousedown="onMouseDown"
+            @touchstart.prevent="onTouchStart"
+          >
+            <Icon icon="mdi:grip-vertical" class="w-5 h-5" />
+          </span>
+          <p
+            class="font-semibold truncate text-sm text-gray-800 dark:text-white/90"
+            :title="activeFileName ?? 'Unknown'"
+          >
             {{ activeFileName ?? "Unknown" }}
           </p>
         </div>
 
-        <div class="flex items-center gap-1 shrink-0" @mousedown.stop @touchstart.stop>
-          <button
-            class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            :disabled="!hasPrevious"
-            @click="store.previous()"
-          >
-            <Icon icon="mdi:skip-previous" class="w-5 h-5" />
-          </button>
-          <button
-            class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            :disabled="!hasNext"
-            @click="store.next()"
-          >
-            <Icon icon="mdi:skip-next" class="w-5 h-5" />
-          </button>
-          <PlayerQueue />
+        <div class="flex items-center gap-1 shrink-0">
           <button
             class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
+            title="Dock to strip"
+            aria-label="Dock to strip"
+            data-player-mode-toggle="pip"
             @click="cycleMode"
           >
             <Icon :icon="modeIcon" class="w-5 h-5" />
           </button>
           <button
             class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-            @click="store.clearActiveFile()"
+            title="Close player"
+            aria-label="Close player"
+            @click="store.closePlayer()"
           >
             <Icon icon="mdi:close" class="w-5 h-5" />
           </button>
@@ -281,144 +374,279 @@ onUnmounted(() => {
 
       <!--
         Player area.
-        Pip: bg-black, aspect-video (shows artwork or video element).
-        Strip: flex row, fixed height, no overflow-hidden so Shaka tooltips survive.
+        Pip: artwork with overlaid transport, seek row, and utility row.
+        Strip: the grid zone below spans the full row width.
       -->
-      <div
-        class="relative"
-        :class="
-          isStrip
-            ? 'flex items-stretch h-[102px] shaka-audio-only'
-            : 'bg-black rounded-b-2xl aspect-video overflow-hidden'
-        "
-      >
-        <!-- Audio artwork overlay (pip only) -->
-        <Transition name="overlay-fade">
-          <div
-            v-if="isAudio && audioBg && !isStrip"
-            class="absolute inset-0 overflow-hidden pointer-events-none"
-            aria-hidden="true"
-          >
-            <img
-              :src="audioBg"
-              alt=""
-              class="absolute inset-0 w-full h-full object-cover scale-110 blur-sm opacity-40"
-            />
-            <img :src="audioBg" alt="" class="absolute inset-0 w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-black/25" />
-          </div>
-        </Transition>
-
-        <!-- Strip: cover art + track name -->
-        <div
-          v-show="isStrip"
-          class="flex gap-2.5 px-3 w-52 flex-shrink-0 border-r border-black/[0.06] dark:border-white/[0.07]"
-          :class="isCompactStrip ? 'items-start py-2' : 'items-center py-0'"
-        >
-          <div
-            class="w-9 h-9 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0"
-          >
-            <img
-              v-if="audioBg"
-              :src="audioBg"
+      <div class="relative" :class="playerAreaClass">
+        <!-- Floating body -->
+        <div v-if="!isStrip" class="flex flex-col">
+          <div data-player-artwork-frame class="relative aspect-video overflow-hidden bg-black">
+            <PlayerArtwork
+              :file="activeFile"
               :alt="activeFileName ?? ''"
-              class="w-full h-full object-cover"
+              icon-class="w-12 h-12 text-gray-400 dark:text-white/30"
             />
-            <div v-else class="w-full h-full flex items-center justify-center">
-              <Icon icon="mdi:music-note" class="w-5 h-5 text-gray-400 dark:text-white/30" />
+            <div
+              class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none"
+              aria-hidden="true"
+            />
+            <div class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 pb-2">
+              <button
+                class="w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                :disabled="!hasPrevious"
+                title="Previous"
+                aria-label="Previous"
+                @click="store.previous()"
+              >
+                <Icon icon="mdi:skip-previous" class="w-6 h-6" />
+              </button>
+              <button
+                class="w-12 h-12 rounded-full flex items-center justify-center bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                :disabled="!activeFile"
+                :title="playPauseLabel"
+                :aria-label="playPauseLabel"
+                data-player-transport-focus
+                @click="store.togglePlay()"
+              >
+                <Icon v-if="isBuffering" icon="mdi:loading" class="w-6 h-6 animate-spin" />
+                <Icon v-else :icon="playPauseIcon" class="w-6 h-6" />
+              </button>
+              <button
+                class="w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                :disabled="!hasNext"
+                title="Next"
+                aria-label="Next"
+                @click="store.next()"
+              >
+                <Icon icon="mdi:skip-next" class="w-6 h-6" />
+              </button>
             </div>
           </div>
-          <p
-            class="text-xs font-semibold truncate max-w-[120px] text-gray-800 dark:text-white/85 m-0"
-          >
-            {{ activeFileName ?? "Unknown" }}
-          </p>
+          <div class="flex items-center gap-2 px-3 pt-2">
+            <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
+              formatTime(currentTime)
+            }}</span>
+            <input
+              type="range"
+              class="transport-seek flex-1 min-w-0 accent-primary"
+              :max="duration || 0"
+              :step="0.5"
+              :value="currentTime"
+              aria-label="Seek"
+              @input="onSeekInput"
+            />
+            <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
+              formatTime(duration)
+            }}</span>
+          </div>
+          <div class="flex items-center justify-center gap-0.5 px-3 pb-2">
+            <button
+              class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+              :class="shuffleToggleClass"
+              :disabled="shuffleBusy"
+              :title="shuffleTitle"
+              :aria-label="shuffleTitle"
+              @click="store.toggleShuffle()"
+            >
+              <Icon v-if="shuffleBusy" icon="mdi:loading" class="w-4 h-4 animate-spin" />
+              <Icon v-else icon="mdi:shuffle-variant" class="w-4 h-4" />
+            </button>
+            <button
+              class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+              :class="repeatToggleClass"
+              title="Repeat"
+              aria-label="Repeat"
+              @click="store.toggleLoop()"
+            >
+              <Icon :icon="repeatIcon" class="w-4 h-4" />
+            </button>
+            <PlayerQueue />
+            <PlayerSettings />
+          </div>
         </div>
 
-        <!-- Strip: prev -->
-        <button
-          v-show="isStrip"
-          class="w-9 flex-shrink-0 flex items-center justify-center text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          :disabled="!hasPrevious"
-          @click="store.previous()"
-        >
-          <Icon icon="mdi:skip-previous" class="w-6 h-6" />
-        </button>
-
-        <!-- Automatic setup attributes would race with usePlayerEngine's manual attachment. -->
+        <!-- Strip zones: artwork and details, centered transport and seek, utilities -->
         <div
-          ref="containerRef"
-          class="audio-shaka-container relative isolate"
-          :class="isStrip ? 'flex-1 min-w-0 h-full' : 'w-full h-full'"
+          v-if="isStrip"
+          id="audio-strip"
+          class="h-[88px] grid grid-cols-[minmax(0,1fr)_minmax(280px,420px)_minmax(0,1fr)] items-center gap-4 px-4"
         >
-          <video ref="videoRef" playsinline disablepictureinpicture />
-        </div>
+          <div class="flex items-center gap-4 min-w-0">
+            <RouterLink
+              v-if="trackDetailsTo"
+              :to="trackDetailsTo"
+              data-player-artwork-frame
+              class="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0"
+              aria-label="Open track details"
+              @click="goToTrackDetails"
+            >
+              <PlayerArtwork
+                :file="activeFile"
+                :alt="activeFileName ?? ''"
+                icon-class="w-6 h-6 text-gray-400 dark:text-white/30"
+              />
+            </RouterLink>
+            <div
+              v-else
+              data-player-artwork-frame
+              class="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0"
+            >
+              <PlayerArtwork :file="null" />
+            </div>
+            <div class="flex-1 min-w-0 max-w-60">
+              <RouterLink
+                v-if="trackDetailsTo"
+                :to="trackDetailsTo"
+                class="block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 m-0 hover:text-primary transition-colors"
+                :title="activeFileName ?? 'Unknown'"
+                @click="goToTrackDetails"
+              >
+                {{ activeFileName ?? "Unknown" }}
+              </RouterLink>
+              <p v-else class="text-sm font-semibold truncate text-gray-900 dark:text-gray-100 m-0">
+                Unknown
+              </p>
+              <p
+                v-if="activeArtistName"
+                class="text-xs truncate text-gray-600 dark:text-gray-400 m-0"
+                :title="activeArtistName"
+              >
+                {{ activeArtistName }}
+              </p>
+            </div>
+          </div>
 
-        <!-- Strip: next -->
-        <button
-          v-show="isStrip"
-          class="w-9 flex-shrink-0 flex items-center justify-center text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-          :disabled="!hasNext"
-          @click="store.next()"
-        >
-          <Icon icon="mdi:skip-next" class="w-6 h-6" />
-        </button>
+          <div class="flex flex-col justify-center gap-1 min-w-0">
+            <div class="flex items-center justify-center gap-2">
+              <button
+                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+                :class="shuffleToggleClass"
+                :disabled="shuffleBusy"
+                :title="shuffleTitle"
+                :aria-label="shuffleTitle"
+                @click="store.toggleShuffle()"
+              >
+                <Icon v-if="shuffleBusy" icon="mdi:loading" class="w-5 h-5 animate-spin" />
+                <Icon v-else icon="mdi:shuffle-variant" class="w-5 h-5" />
+              </button>
+              <button
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-700 dark:text-white/85 hover:text-gray-950 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                :disabled="!hasPrevious"
+                title="Previous"
+                aria-label="Previous"
+                @click="store.previous()"
+              >
+                <Icon icon="mdi:skip-previous" class="w-6 h-6" />
+              </button>
+              <button
+                class="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                :disabled="!activeFile"
+                :title="playPauseLabel"
+                :aria-label="playPauseLabel"
+                data-player-transport-focus
+                @click="store.togglePlay()"
+              >
+                <Icon v-if="isBuffering" icon="mdi:loading" class="w-6 h-6 animate-spin" />
+                <Icon v-else :icon="playPauseIcon" class="w-6 h-6" />
+              </button>
+              <button
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-700 dark:text-white/85 hover:text-gray-950 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                :disabled="!hasNext"
+                title="Next"
+                aria-label="Next"
+                @click="store.next()"
+              >
+                <Icon icon="mdi:skip-next" class="w-6 h-6" />
+              </button>
+              <button
+                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+                :class="repeatToggleClass"
+                title="Repeat"
+                aria-label="Repeat"
+                @click="store.toggleLoop()"
+              >
+                <Icon :icon="repeatIcon" class="w-5 h-5" />
+              </button>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
+                formatTime(currentTime)
+              }}</span>
+              <input
+                type="range"
+                class="transport-seek flex-1 min-w-0 accent-primary"
+                :max="duration || 0"
+                :step="0.5"
+                :value="currentTime"
+                aria-label="Seek"
+                @input="onSeekInput"
+              />
+              <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
+                formatTime(duration)
+              }}</span>
+            </div>
+          </div>
 
-        <!-- Compact strip: close button (always visible at 40px height) -->
-        <button
-          v-show="isCompactStrip"
-          class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-          @click="store.clearActiveFile()"
-        >
-          <Icon icon="mdi:close" class="w-5 h-5" />
-        </button>
-
-        <!-- Strip: secondary controls + pip toggle + close -->
-        <div
-          v-show="isStrip && !isCompactStrip"
-          class="flex items-center px-3 gap-0.5 border-l border-black/[0.06] dark:border-white/[0.07]"
-        >
-          <button
-            class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
-            :class="
-              shuffled
-                ? 'text-primary'
-                : 'text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80'
-            "
-            :disabled="shuffleBusy"
-            :title="shuffleTitle"
-            :aria-label="shuffleTitle"
-            @click="store.toggleShuffle()"
-          >
-            <Icon v-if="shuffleBusy" icon="mdi:loading" class="w-5 h-5 animate-spin" />
-            <Icon v-else icon="mdi:shuffle-variant" class="w-5 h-5" />
-          </button>
-          <button
-            class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
-            :class="
-              repeatMode === 'all' || repeatMode === 'one'
-                ? 'text-primary'
-                : 'text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80'
-            "
-            @click="store.toggleLoop()"
-          >
-            <Icon :icon="repeatMode === 'one' ? 'mdi:repeat-once' : 'mdi:repeat'" class="w-5 h-5" />
-          </button>
-
-          <PlayerQueue />
-          <PlayerSettings />
-          <button
-            class="w-10 h-10 flex items-center justify-center text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/90 transition-colors"
-            @click="cycleMode"
-          >
-            <Icon :icon="modeIcon" class="w-5 h-5" />
-          </button>
-          <button
-            class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-            @click="store.clearActiveFile()"
-          >
-            <Icon icon="mdi:close" class="w-5 h-5" />
-          </button>
+          <div class="flex items-center justify-end gap-0.5 min-w-0">
+            <div class="hidden @min-[800px]:flex items-center flex-shrink-0">
+              <button
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
+                :title="muteLabel"
+                :aria-label="muteLabel"
+                @click="toggleMute"
+              >
+                <Icon :icon="volumeIcon" class="w-5 h-5" />
+              </button>
+              <input
+                type="range"
+                class="volume-slider w-20 flex-shrink-0 accent-primary"
+                :min="0"
+                :max="1"
+                :step="0.02"
+                :value="volume"
+                aria-label="Volume"
+                @input="onVolumeInput"
+              />
+            </div>
+            <PlayerQueue />
+            <PlayerSettings />
+            <button
+              class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+              :class="lyricsToggleClass"
+              title="Lyrics"
+              aria-label="Lyrics"
+              :aria-pressed="lyricsOpen"
+              @click="store.toggleLyrics()"
+            >
+              <Icon icon="mdi:script-text-outline" class="w-5 h-5" />
+            </button>
+            <UDropdownMenu :items="trackMenuItems" :content="{ align: 'end' }">
+              <button
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
+                title="More options"
+                aria-label="More options"
+              >
+                <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
+              </button>
+            </UDropdownMenu>
+            <button
+              class="hidden @min-[1100px]:flex w-10 h-10 rounded-lg items-center justify-center text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/90 transition-colors"
+              title="Mini player"
+              aria-label="Mini player"
+              data-player-mode-toggle="strip"
+              @click="cycleMode"
+            >
+              <Icon :icon="modeIcon" class="w-5 h-5" />
+            </button>
+            <button
+              class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              title="Close player"
+              aria-label="Close player"
+              @click="store.closePlayer()"
+            >
+              <Icon icon="mdi:close" class="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -426,12 +654,53 @@ onUnmounted(() => {
 </template>
 
 <style>
-@import "shaka-player/dist/controls.css";
+.player-card.player-motion-live,
+.player-card.player-motion-snapshot {
+  background: transparent !important;
+  border-color: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.player-card.player-motion-live {
+  position: relative;
+  z-index: 2;
+}
+
+.player-motion-live [data-player-artwork] {
+  visibility: hidden;
+}
+
+.player-motion-live [data-player-artwork-frame],
+.player-motion-snapshot [data-player-artwork-frame] {
+  background: transparent !important;
+}
+
+.player-motion-snapshot,
+.player-motion-snapshot * {
+  animation: none !important;
+  transition: none !important;
+}
+
+.player-motion-artwork {
+  object-fit: cover;
+  overflow: hidden;
+}
 
 .player-card {
   --seek-base: rgba(255, 255, 255, 0.18);
   --seek-buffered: rgba(255, 255, 255, 0.35);
   --seek-played: var(--ui-primary);
+}
+
+.player-card .seek-time {
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-card .transport-seek,
+.player-card .volume-slider {
+  cursor: pointer;
 }
 
 .player-card .shaka-video-container {
@@ -631,13 +900,13 @@ onUnmounted(() => {
   height: 3px;
   border-radius: 2px;
 }
-.overlay-fade-enter-active,
-.overlay-fade-leave-active {
-  transition: opacity 220ms ease;
-}
-.overlay-fade-enter-from,
-.overlay-fade-leave-to {
-  opacity: 0;
+
+@media (prefers-reduced-motion: reduce) {
+  .player-card,
+  .player-card * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 @media (max-width: 756px) {
