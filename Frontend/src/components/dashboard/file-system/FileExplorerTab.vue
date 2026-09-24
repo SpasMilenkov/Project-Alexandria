@@ -364,8 +364,8 @@
                   @copy="openTransferModal('copy')"
                   @delete="handleDelete"
                   @contextmenu="handleItemClick($event, dir.id, 'directory')"
+                  @open-details="activeDetailsDirectory = $event"
                   :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
-                  :ref="(el: any) => trackDirItemRef(dir.id, el)"
                 />
               </div>
               <div
@@ -457,12 +457,8 @@
                 @copy="openTransferModal('copy')"
                 @delete="handleDelete"
                 @contextmenu="handleItemClick($event, dir.id, 'directory')"
+                @open-details="activeDetailsDirectory = $event"
                 :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
-                :ref="
-                  (el: any) => {
-                    if (el) dirItemRefs[dir.id] = el;
-                  }
-                "
               />
               <div
                 v-if="directoriesData?.hasNext"
@@ -535,6 +531,16 @@
       @file-trashed="handleFileTrashed"
       @file-restored="refreshDir"
     />
+
+    <!-- shared folder details drawer — single instance for all DirectoryItem triggers -->
+    <FolderDetailsDrawer
+      v-model:directory="activeDetailsDirectory"
+      @navigate="handleNavigate"
+      @rename="handleDirectoryRename"
+      @move="openTransferModal('move')"
+      @download="(ids) => handleDownload('dir', ids[0])"
+      @delete="handleDelete"
+    />
   </div>
 </template>
 
@@ -550,6 +556,7 @@ import type { SearchTagsSchema } from "@/schemas/tag";
 import type { NavItem } from "@/types/nav-item";
 
 import { type FileResult } from "@/api/file";
+import type { DirectorySummaryDto } from "@/api/directory";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
@@ -574,6 +581,7 @@ import { glassDrawerContent } from "@/utils/modalUi";
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import DirectoryItem from "./DirectoryItem.vue";
 import FileDetailsDrawer from "./FileDetailsDrawer.vue";
+import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
 import FileItem from "./FileItem.vue";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import ArchiveUploadModal from "./Modals/ArchiveUploadModal.vue";
@@ -635,8 +643,15 @@ const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
 
-//copy tracking
-const copyMode = ref(true);
+//copy tracking lives in the shared session-only file store alongside the
+//clipboard selection so a cut started in one tab still moves when pasted in
+//another tab (the directory store persists, so it cannot own the mode)
+const copyMode = computed({
+  get: () => fileStore.copyMode,
+  set: (val: boolean) => {
+    fileStore.copyMode = val;
+  },
+});
 
 // skeleton tracking
 
@@ -947,7 +962,10 @@ const mobileOverflowItems = computed(() => [
 const createDirectoryModal = useLazyModal<{ parentId: string | null }, boolean>(
   CreateDirectoryModal,
 );
-const updateDirectoryModal = useLazyModal<{ directoryId: string }, boolean>(UpdateDirectoryModal);
+const updateDirectoryModal = useLazyModal<
+  { currentName: string; directoryId: string },
+  boolean
+>(UpdateDirectoryModal);
 const fileUploadModal = useLazyModal<
   { directoryId?: string; directoryName?: string; droppedFiles?: File[] },
   boolean
@@ -1064,7 +1082,11 @@ const gridStyle = computed(() => {
 });
 
 const handleDirectoryRename = async (directoryId: string) => {
-  const instance = updateDirectoryModal.open({ directoryId });
+  const dir = directoriesList.value.find((d) => d.id === directoryId);
+  const instance = updateDirectoryModal.open({
+    currentName: dir?.name ?? "",
+    directoryId,
+  });
   const shouldRefresh = await instance.result;
   if (isDisposed.value) return;
   if (shouldRefresh) {
@@ -1180,8 +1202,8 @@ const handleCut = async () => {
     });
     directoryStore.selectedDirectories = [];
     directoryStore.modificationOriginDirId = null;
-    copyMode.value = true;
   }
+  copyMode.value = true;
 };
 
 const isCutFile = (id: string) => !copyMode.value && fileStore.selectedFiles.includes(id);
@@ -1368,26 +1390,22 @@ const handleFileTrashed = (fileId: string) => {
   refreshDir();
 };
 
-const dirItemRefs = ref<Record<string, { openDetails: () => void }>>({});
+// shared folder details drawer state — one drawer instance for every DirectoryItem
+const activeDetailsDirectory = ref<DirectorySummaryDto | null>(null);
 
-const trackDirItemRef = (dirId: string, el: unknown) => {
-  if (el) {
-    dirItemRefs.value[dirId] = el as { openDetails: () => void };
-    return;
-  }
-  delete dirItemRefs.value[dirId];
-};
+// Navigating away unmounts the listing, so the shared folder target closes
+// with its explorer instead of lingering over unrelated content.
+watch(currentDirId, () => {
+  activeDetailsDirectory.value = null;
+});
 
-watch(
-  directoriesList,
-  (list) => {
-    const liveIds = new Set(list.map((dir) => dir.id));
-    for (const id of Object.keys(dirItemRefs.value)) {
-      if (!liveIds.has(id)) delete dirItemRefs.value[id];
-    }
-  },
-  { deep: false },
-);
+// A deleted folder disappears from the listing after refresh. Close the
+// shared drawer when its target is gone so actions cannot retarget stale data.
+watch(directoriesList, (list) => {
+  const target = activeDetailsDirectory.value;
+  if (!target || !dirHasLoaded.value) return;
+  if (!list.some((dir) => dir.id === target.id)) activeDetailsDirectory.value = null;
+});
 const handleOpenDetailsSelected = () => {
   const fileCount = selectedFiles.value.size;
   const dirCount = selectedDirectories.value.size;
@@ -1403,7 +1421,8 @@ const handleOpenDetailsSelected = () => {
 
   if (dirCount === 1) {
     const [dirId] = selectedDirectories.value;
-    dirItemRefs.value[dirId]?.openDetails();
+    const dir = directoriesList.value.find((d) => d.id === dirId);
+    if (dir) activeDetailsDirectory.value = dir;
   }
 };
 
@@ -1462,7 +1481,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   isDisposed.value = true;
-  for (const id of Object.keys(dirItemRefs.value)) delete dirItemRefs.value[id];
+  activeDetailsDirectory.value = null;
   if (labelTimer) clearInterval(labelTimer);
 });
 </script>
