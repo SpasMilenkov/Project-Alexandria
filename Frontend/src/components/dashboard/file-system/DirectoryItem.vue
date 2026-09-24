@@ -485,7 +485,9 @@ const contextMenuItems = computed(() => {
   ];
 });
 
-defineShortcuts(extractShortcuts(contextMenuItems.value));
+// Folder actions stay available through context menus and quick-action tiles.
+// Keyboard shortcuts are owned once by the explorer and apply to the current
+// selection, so rows must not register global shortcuts of their own.
 
 // Permission check stubs
 

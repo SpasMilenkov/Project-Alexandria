@@ -1,9 +1,12 @@
 <template>
-  <div class="flex flex-col h-full w-full flex-1" @click="handleContainerClick">
+  <div
+    class="@container/explorer flex flex-col min-h-0 min-w-0 h-full w-full flex-1"
+    @click="handleContainerClick"
+  >
     <!-- Toolbar -->
-    <div class="flex flex-col w-full border-b border-b-primary">
+    <div class="flex flex-col w-full shrink-0 border-b border-b-primary">
       <!-- Desktop toolbar -->
-      <div class="hidden md:flex items-center gap-2 p-3 w-full h-full">
+      <div class="hidden @3xl/explorer:flex items-center gap-2 p-3 w-full h-full">
         <!-- Upload split button -->
         <div class="flex border border-primary rounded-md overflow-hidden shrink-0">
           <UButton
@@ -138,8 +141,8 @@
         </UButton>
       </div>
 
-      <!-- Mobile toolbar — 3 controls only -->
-      <div class="flex md:hidden items-center gap-2 px-3 py-2 w-full">
+      <!-- Compact toolbar also handles space taken by side panels. -->
+      <div class="flex @3xl/explorer:hidden items-center gap-2 px-3 py-2 w-full">
         <!-- Upload — opens action sheet -->
         <UButton
           color="primary"
@@ -178,7 +181,6 @@
     <UDrawer
       v-model:open="isMobileUploadSheetOpen"
       direction="bottom"
-      class="md:hidden"
       :ui="{
         content: `${glassDrawerContent} rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70`,
       }"
@@ -253,7 +255,7 @@
     </UDrawer>
 
     <!-- breadcrumb row -->
-    <div class="flex items-center gap-1 px-4 py-1.5">
+    <div class="flex items-center gap-1 px-4 py-1.5 shrink-0 min-w-0">
       <UButton
         size="xs"
         variant="ghost"
@@ -288,7 +290,7 @@
     <Transition name="fade-status">
       <div
         v-if="isBackgroundLoading"
-        class="flex md:hidden items-center gap-1.5 px-4 py-1 text-xs text-gray-400 dark:text-gray-500 select-none"
+        class="flex @3xl/explorer:hidden items-center gap-1.5 px-4 py-1 text-xs text-gray-400 dark:text-gray-500 select-none"
         aria-live="polite"
       >
         <BlocksSpinner :size="11" aria-label="Refreshing" class="opacity-50" />
@@ -297,7 +299,7 @@
     </Transition>
 
     <!-- content area -->
-    <UContextMenu :items="backgroundContextMenuItems" class="flex-1 flex flex-col min-h-0">
+    <UContextMenu :items="backgroundContextMenuItems" class="flex-1 flex flex-col min-h-0 min-w-0">
       <div
         ref="containerRef"
         class="flex-1 overflow-auto relative"
@@ -306,7 +308,7 @@
         @dragover="onDragOver"
         @drop="handleDropEvent"
       >
-        <div ref="containerRef" class="flex-1 overflow-auto relative">
+        <div class="flex-1 overflow-auto relative">
           <!-- drop zone overlay -->
           <Transition name="dropzone">
             <div
@@ -345,7 +347,7 @@
               <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
                 Folders
               </h3>
-              <div class="grid gap-3" :class="gridColumns">
+              <div class="grid gap-3" :style="gridStyle">
                 <DirectoryItem
                   v-for="dir in directoriesList"
                   :key="dir.id"
@@ -363,11 +365,7 @@
                   @delete="handleDelete"
                   @contextmenu="handleItemClick($event, dir.id, 'directory')"
                   :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
-                  :ref="
-                    (el: any) => {
-                      if (el) dirItemRefs[dir.id] = el;
-                    }
-                  "
+                  :ref="(el: any) => trackDirItemRef(dir.id, el)"
                 />
               </div>
               <div
@@ -392,7 +390,7 @@
               >
                 Files
               </h3>
-              <div class="grid gap-3" :class="gridColumns">
+              <div class="grid gap-3" :style="gridStyle">
                 <FileItem
                   v-for="file in filesList"
                   :key="file.fileId"
@@ -544,7 +542,8 @@
 import type { BreadcrumbItem, DropdownMenuItem } from "@nuxt/ui";
 
 import { Icon } from "@iconify/vue";
-import { useQuery } from "@pinia/colada";
+import { useQuery, useQueryCache } from "@pinia/colada";
+import { useEventListener } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { SearchTagsSchema } from "@/schemas/tag";
@@ -555,8 +554,10 @@ import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { type DropContents, useDropZone } from "@/composables/useDropZone";
+import { useExplorerCommandGuard } from "@/composables/useExplorerCommands";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useFileExplorer } from "@/composables/useFileExplorer";
+import { useLazyModal } from "@/composables/useLazyOverlay";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { copyDirectory, deleteDirectory, moveDirectories } from "@/mutations/directories";
@@ -622,6 +623,7 @@ const {
   selectRange,
 } = useFileExplorer();
 const { downloadFile, downloadBulk } = useFileDownload();
+const { canHandleCommand } = useExplorerCommandGuard(tabId);
 
 const { mutateAsync: copyFilesMutate } = copyFiles();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
@@ -720,6 +722,19 @@ const searchFilters = computed<SearchTagsSchema>(() => ({
 }));
 const { data: tagsData } = useQuery(() => searchTag(searchFilters.value));
 
+const queryCache = useQueryCache();
+const isDisposed = ref(false);
+
+const invalidateDir = (dirId: string | null) => {
+  if (dirId) {
+    queryCache.invalidateQueries({ key: ["directories", "sub-directories", dirId] });
+    queryCache.invalidateQueries({ key: ["files", "sub-files", dirId] });
+    return;
+  }
+  queryCache.invalidateQueries({ key: ["directories", "root-sub-directories"] });
+  queryCache.invalidateQueries({ key: ["files", "root-sub-files"] });
+};
+
 // drop zone
 
 const chooseUploadMethod = async (
@@ -727,14 +742,18 @@ const chooseUploadMethod = async (
   files: File[] | null,
 ): Promise<boolean> => {
   const choice = await zipUploadChoiceModal.open().result;
-  if (!choice) return false; // user cancelled
+  if (!choice) return false;
 
-  const instance =
-    choice === "archive"
-      ? await archiveUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
-      : await fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] });
-
-  return instance ?? false;
+  if (choice === "archive") {
+    const archiveResult = await archiveUploadModal.open({
+      ...uploadProps,
+      droppedFiles: files ?? [],
+    }).result;
+    return archiveResult ?? false;
+  }
+  const fileResult = await fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
+    .result;
+  return fileResult ?? false;
 };
 
 const {
@@ -757,21 +776,33 @@ const dropIcon = computed(() =>
 );
 const dropLabel = computed(() => (dragHasDirectory.value ? "Drop folder here" : "Drop files here"));
 
-const openUploadModal = (dropResult: DropContents, uploadProps: UploadProps) => {
-  switch (dropResult.dropType) {
-    case "dir":
-      return directoryUploadModal.open({ ...uploadProps, droppedFiles: dropResult.entries });
-    case "file":
-      return fileUploadModal.open({ ...uploadProps, droppedFiles: dropResult.entries });
-    case "zip":
-      return chooseUploadMethod(uploadProps, dropResult.entries);
-    case "none":
-      return false;
+const openUploadModal = async (
+  dropResult: DropContents,
+  uploadProps: UploadProps,
+): Promise<boolean> => {
+  if (dropResult.dropType === "dir") {
+    const dirResult = await directoryUploadModal.open({
+      ...uploadProps,
+      droppedFiles: dropResult.entries,
+    }).result;
+    return dirResult ?? false;
   }
+  if (dropResult.dropType === "file") {
+    const fileResult = await fileUploadModal.open({
+      ...uploadProps,
+      droppedFiles: dropResult.entries,
+    }).result;
+    return fileResult ?? false;
+  }
+  if (dropResult.dropType === "zip") {
+    return chooseUploadMethod(uploadProps, dropResult.entries);
+  }
+  return false;
 };
 
 const handleDropEvent = async (event: DragEvent) => {
   const dropResult = await onDrop(event);
+  const targetDirId = currentDirId.value ?? null;
 
   const uploadProps = {
     directoryId: currentDirId.value ?? undefined,
@@ -780,6 +811,10 @@ const handleDropEvent = async (event: DragEvent) => {
   const shouldRefresh = await openUploadModal(dropResult, uploadProps);
 
   if (shouldRefresh) {
+    if (isDisposed.value) {
+      invalidateDir(targetDirId);
+      return;
+    }
     appToast.success("Upload complete");
     refreshDir();
   }
@@ -907,21 +942,46 @@ const mobileOverflowItems = computed(() => [
   { icon: "mdi:folder-plus", label: "New Folder", onSelect: () => createNewDirectory() },
 ]);
 
-// modals
+// modals use lazy registrations created on open with destroyOnClose
 
-const overlay = useOverlay();
-const createDirectoryModal = overlay.create(CreateDirectoryModal);
-const updateDirectoryModal = overlay.create(UpdateDirectoryModal);
-const fileUploadModal = overlay.create(FileUploadModal);
-const directoryUploadModal = overlay.create(DirectoryUploadModal);
-const archiveUploadModal = overlay.create(ArchiveUploadModal);
-const advancedSearchModal = overlay.create(AdvancedSearchModal);
-const quickSearchModal = overlay.create(QuickSearchModal);
-const confirmModal = overlay.create(ConfirmModal);
-const zipUploadChoiceModal = overlay.create(ZipUploadChoiceModal);
-const updateFileModal = overlay.create(UpdateFileModal);
-const fileTransferModal = overlay.create(FileTransferModal);
-const shareLinkModal = overlay.create(ShareLinkModal);
+const createDirectoryModal = useLazyModal<{ parentId: string | null }, boolean>(
+  CreateDirectoryModal,
+);
+const updateDirectoryModal = useLazyModal<{ directoryId: string }, boolean>(UpdateDirectoryModal);
+const fileUploadModal = useLazyModal<
+  { directoryId?: string; directoryName?: string; droppedFiles?: File[] },
+  boolean
+>(FileUploadModal, { persistOnDispose: true });
+const directoryUploadModal = useLazyModal<
+  { directoryId?: string; directoryName?: string; droppedFiles?: unknown[] },
+  boolean
+>(DirectoryUploadModal, { persistOnDispose: true });
+const archiveUploadModal = useLazyModal<
+  { directoryId?: string; directoryName?: string; droppedFiles?: File[] },
+  boolean
+>(ArchiveUploadModal, { persistOnDispose: true });
+const advancedSearchModal = useLazyModal<Record<string, never>, string>(AdvancedSearchModal);
+const quickSearchModal = useLazyModal<Record<string, never>, string>(QuickSearchModal);
+const confirmModal = useLazyModal<Record<string, unknown>, boolean>(ConfirmModal);
+const zipUploadChoiceModal = useLazyModal<Record<string, never>, "archive" | "file" | null>(
+  ZipUploadChoiceModal,
+);
+const updateFileModal = useLazyModal<{ fileId: string; originalName: string }, boolean>(
+  UpdateFileModal,
+);
+const fileTransferModal = useLazyModal<
+  {
+    dirChips: unknown[];
+    directories: string[];
+    fileChips: unknown[];
+    files: string[];
+    mode: "move" | "copy";
+    originDirId: string | null;
+    originDirName: string | undefined;
+  },
+  string | false
+>(FileTransferModal);
+const shareLinkModal = useLazyModal<{ fileId: string; fileName: string }, boolean>(ShareLinkModal);
 
 const openTransferModal = async (mode: "move" | "copy") => {
   // Build rich chip metadata from what we already have rendered
@@ -957,6 +1017,10 @@ const openTransferModal = async (mode: "move" | "copy") => {
 
   const destId = await instance.result;
   if (destId) {
+    if (isDisposed.value) {
+      invalidateDir(currentDirId.value ?? null);
+      return;
+    }
     appToast.success(mode === "move" ? "Items moved" : "Items copied");
     refreshDir();
     clearSelection();
@@ -966,6 +1030,7 @@ const openTransferModal = async (mode: "move" | "copy") => {
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
   const result = await instance.result;
+  if (isDisposed.value) return;
   if (result === "close") return;
   else if (result === "root") handleNavigate(null);
   else if (typeof result === "string") handleNavigate(result);
@@ -975,6 +1040,7 @@ const quickSearch = async () => {
   const instance = quickSearchModal.open();
   const result = await instance.result;
 
+  if (isDisposed.value) return;
   if (result === "close") return;
   else if (result === "root") handleNavigate(null);
   else if (result === "advanced") advancedSearch();
@@ -988,13 +1054,19 @@ const handleContainerClick = (event: MouseEvent) => {
   if (!target.closest("button")) clearSelection();
 };
 
-const gridColumns = computed(
-  () => "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8",
-);
+const gridStyle = computed(() => {
+  // Keep the thumbnail and tile padding inside each column at every icon size.
+  const thumbnailWidth = Math.round(settingsStore.gridIconSize * 1.5) * 1.4;
+  const minWidth = Math.max(120, Math.ceil((thumbnailWidth + 32) / 8) * 8);
+  return {
+    gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${minWidth}px), 1fr))`,
+  };
+});
 
 const handleDirectoryRename = async (directoryId: string) => {
   const instance = updateDirectoryModal.open({ directoryId });
   const shouldRefresh = await instance.result;
+  if (isDisposed.value) return;
   if (shouldRefresh) {
     appToast.success("Directory updated successfully");
   }
@@ -1002,7 +1074,9 @@ const handleDirectoryRename = async (directoryId: string) => {
 
 const handleFileRename = async (fileId: string, originalName: string) => {
   const instance = updateFileModal.open({ fileId, originalName });
-  if (await instance.result) appToast.success("File updated successfully");
+  const shouldRefresh = await instance.result;
+  if (isDisposed.value) return;
+  if (shouldRefresh) appToast.success("File updated successfully");
 };
 
 const handleShare = (fileId: string, fileName: string) => {
@@ -1029,6 +1103,8 @@ const handleCopy = () => {
 };
 
 const handleDelete = async () => {
+  if (selectedFiles.value.size === 0 && selectedDirectories.value.size === 0) return;
+
   if (selectedFiles.value.size > 0) {
     await deleteFilesMutate({
       ids: [...selectedFiles.value],
@@ -1070,6 +1146,7 @@ const handleDelete = async () => {
           title: "Delete directories?",
         });
         const confirmed = await instance.result;
+        if (isDisposed.value) return;
         if (confirmed) {
           await Promise.all(
             failedDirs.map((id) =>
@@ -1081,6 +1158,7 @@ const handleDelete = async () => {
     }
   }
 
+  if (isDisposed.value) return;
   appToast.info("Items deleted");
 };
 
@@ -1148,6 +1226,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   const option = uploadOptions.value.find((opt) => opt.label === type);
   if (option) selectedUploadType.value = { icon: option.icon, label: option.label };
 
+  const targetDirId = currentDirId.value ?? null;
   const uploadProps = {
     directoryId: currentDirId.value ?? undefined,
     directoryName: currentDirName.value,
@@ -1169,6 +1248,10 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   }
 
   const shouldRefresh = await instance.result;
+  if (isDisposed.value) {
+    if (shouldRefresh) invalidateDir(targetDirId);
+    return;
+  }
   if (shouldRefresh) {
     logger.log("refreshing");
     refreshDir();
@@ -1191,6 +1274,7 @@ const breadcrumbs = computed(() => {
 const createNewDirectory = async () => {
   const instance = createDirectoryModal.open({ parentId: currentDirId.value });
   const shouldRefresh = await instance.result;
+  if (isDisposed.value) return;
   if (shouldRefresh) {
     appToast.success("Directory creation successful");
   } else if (directoryStore.error) {
@@ -1285,6 +1369,25 @@ const handleFileTrashed = (fileId: string) => {
 };
 
 const dirItemRefs = ref<Record<string, { openDetails: () => void }>>({});
+
+const trackDirItemRef = (dirId: string, el: unknown) => {
+  if (el) {
+    dirItemRefs.value[dirId] = el as { openDetails: () => void };
+    return;
+  }
+  delete dirItemRefs.value[dirId];
+};
+
+watch(
+  directoriesList,
+  (list) => {
+    const liveIds = new Set(list.map((dir) => dir.id));
+    for (const id of Object.keys(dirItemRefs.value)) {
+      if (!liveIds.has(id)) delete dirItemRefs.value[id];
+    }
+  },
+  { deep: false },
+);
 const handleOpenDetailsSelected = () => {
   const fileCount = selectedFiles.value.size;
   const dirCount = selectedDirectories.value.size;
@@ -1304,46 +1407,62 @@ const handleOpenDetailsSelected = () => {
   }
 };
 
+// Single explorer shortcut owner per D5. Every command applies to the current
+// selection and runs only when this explorer may handle input.
+const guarded = (command: () => void) => (event: KeyboardEvent) => {
+  if (!canHandleCommand(event)) return;
+  command();
+};
+
 // oxlint-disable-next-line sort-keys
 defineShortcuts({
   // already present
-  Delete: () => handleDelete(),
-  Escape: () => cancelCut(),
-  alt_arrowleft: () => canGoBack.value && navigateBack(),
-  alt_arrowright: () => canGoForward.value && navigateForward(),
-  "meta_/": () => quickSearch(),
-  meta_c: () => {
+  Delete: guarded(() => handleDelete()),
+  Escape: guarded(() => cancelCut()),
+  alt_arrowleft: guarded(() => {
+    if (canGoBack.value) navigateBack();
+  }),
+  alt_arrowright: guarded(() => {
+    if (canGoForward.value) navigateForward();
+  }),
+  "meta_/": guarded(() => quickSearch()),
+  meta_c: guarded(() => {
     copyMode.value = true;
     handleCopy();
-  },
-  meta_v: () => (copyMode.value ? handlePaste() : handleCut()),
-  meta_x: () => {
+  }),
+  meta_v: guarded(() => {
+    if (copyMode.value) handlePaste();
+    else handleCut();
+  }),
+  meta_x: guarded(() => {
     copyMode.value = false;
     handleCopy();
-  },
-  shift_k: () => quickSearch(),
-  shift_l: () => advancedSearch(),
+  }),
+  shift_k: guarded(() => quickSearch()),
+  shift_l: guarded(() => advancedSearch()),
 
   // new — single-key, input-safe
-  r: () => handleRenameSelected(),
-  d: () => handleDownloadSelected(),
-  n: () => createNewDirectory(),
+  r: guarded(() => handleRenameSelected()),
+  d: guarded(() => handleDownloadSelected()),
+  n: guarded(() => createNewDirectory()),
 
   // new — F-key
-  F2: () => handleRenameSelected(),
+  F2: guarded(() => handleRenameSelected()),
 
   // alt key usage
-  alt_enter: () => handleOpenDetailsSelected(),
+  alt_enter: guarded(() => handleOpenDetailsSelected()),
 });
 
+useEventListener(containerRef, "mousedown", handleMouseNavigate);
+
 onMounted(() => {
-  containerRef.value?.addEventListener("mousedown", handleMouseNavigate);
   const tab = tabStore.getTab(tabId);
   navigateTo(tab?.activeDirId);
 });
 
 onUnmounted(() => {
-  containerRef.value?.removeEventListener("mousedown", handleMouseNavigate);
+  isDisposed.value = true;
+  for (const id of Object.keys(dirItemRefs.value)) delete dirItemRefs.value[id];
   if (labelTimer) clearInterval(labelTimer);
 });
 </script>
