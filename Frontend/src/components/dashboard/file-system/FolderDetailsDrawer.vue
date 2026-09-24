@@ -288,7 +288,7 @@ const drawerUi = computed(() => {
   return { content: glassDrawerContent, container: "md:max-w-[40rem] lg:min-w-[40rem]" };
 });
 
-const props = defineProps<{
+const { directory } = defineProps<{
   directory: DirectorySummaryDto | null;
 }>();
 
@@ -305,7 +305,7 @@ const emit = defineEmits<{
 // doesn't blank out mid-animation when the parent nulls the active directory.
 const displayDirectory = ref<DirectorySummaryDto | null>(null);
 watch(
-  () => props.directory,
+  () => directory,
   (dir) => {
     if (dir) displayDirectory.value = dir;
   },
@@ -313,7 +313,7 @@ watch(
 );
 
 const isOpen = computed({
-  get: () => props.directory !== null,
+  get: () => directory !== null,
   set: (val: boolean) => {
     if (!val) emit("update:directory", null);
   },

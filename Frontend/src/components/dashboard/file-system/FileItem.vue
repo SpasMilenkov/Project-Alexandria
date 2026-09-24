@@ -5,15 +5,6 @@
     :ui="{ content: 'lg:min-w-56' }"
   >
     <div class="relative group" tabindex="0">
-      <UTooltip
-        :disabled="isMobile"
-        :delay-duration="600"
-        :content="{ side: 'bottom', align: 'center' }"
-        :ui="{
-          content:
-            'ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto',
-        }"
-      >
         <button
           type="button"
           class="w-full flex flex-col items-center gap-2 p-4 rounded-lg transition-colors cursor-pointer"
@@ -27,6 +18,11 @@
           @contextmenu="emit('contextmenu', $event)"
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
+          @pointerenter="handlePointerEnter"
+          @pointerleave="handlePointerLeave"
+          @focus="handleFocus"
+          @blur="handleBlur"
+          :aria-describedby="describedBy ?? undefined"
         >
           <div
             class="relative shrink-0 flex items-center justify-center overflow-hidden rounded-md"
@@ -61,25 +57,11 @@
             {{ props.data.fileName }}
           </span>
         </button>
-
-        <template #content>
-          <FileTooltipCard :data="props.data" />
-        </template>
-      </UTooltip>
     </div>
   </UContextMenu>
 
   <UContextMenu v-else :items="contextMenuItems">
     <div class="relative group" tabindex="0">
-      <UTooltip
-        :disabled="isMobile"
-        :delay-duration="600"
-        :content="{ side: 'top', align: 'center' }"
-        :ui="{
-          content:
-            'z-50 ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto',
-        }"
-      >
         <button
           type="button"
           class="w-full flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer text-left border-b last:border-b-0"
@@ -93,6 +75,11 @@
           @contextmenu="emit('contextmenu', $event)"
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
+          @pointerenter="handlePointerEnter"
+          @pointerleave="handlePointerLeave"
+          @focus="handleFocus"
+          @blur="handleBlur"
+          :aria-describedby="describedBy ?? undefined"
         >
           <Icon
             :icon="getFileIcon(props.data.fileName)"
@@ -105,11 +92,6 @@
             {{ formatBytes(Number(props.data.currentVersion.size)) }}
           </span>
         </button>
-
-        <template #content>
-          <FileTooltipCard :data="props.data" />
-        </template>
-      </UTooltip>
     </div>
   </UContextMenu>
 </template>
@@ -117,12 +99,13 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQueryCache } from "@pinia/colada";
-import { breakpointsTailwind, useBreakpoints, useDebounceFn } from "@vueuse/core";
+import { useDebounceFn } from "@vueuse/core";
 import { computed } from "vue";
 
 import type { TagDto } from "@/api/tag";
 
 import { type FileResult } from "@/api/file";
+import { type FileTooltipEnterKind } from "@/composables/useFileTooltip";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { getFile, getVersionsForFile } from "@/queries/files";
 import { getPreview } from "@/queries/files";
@@ -131,11 +114,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { getFileIcon } from "@/utils/icon.utils";
 import { formatBytes } from "@/utils/size.utils";
 
-import FileTooltipCard from "./FileTooltipCard.vue";
-
 const settingsStore = useSettingsStore();
-const breakpoints = useBreakpoints(breakpointsTailwind);
-const isMobile = breakpoints.smaller("md");
 const queryCache = useQueryCache();
 
 const props = defineProps<{
@@ -144,6 +123,7 @@ const props = defineProps<{
   isSelected: boolean;
   selectedCount?: number;
   tags: TagDto[] | undefined;
+  describedBy?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -156,6 +136,8 @@ const emit = defineEmits<{
   download: [fileIds: string[]];
   share: [fileIds: string[]];
   contextmenu: [fileId: PointerEvent];
+  "tooltip-enter": [file: FileResult, anchor: HTMLElement, kind: FileTooltipEnterKind];
+  "tooltip-leave": [kind: FileTooltipEnterKind];
 }>();
 
 const iconSize = computed(() =>
@@ -313,6 +295,23 @@ const contextMenuItems = computed(() => {
 
 const handleClick = (event: MouseEvent) => emit("click", event);
 const handleDoubleClick = () => emit("open-details", props.data);
+
+const handlePointerEnter = (event: PointerEvent) => {
+  if (event.pointerType === "touch") return;
+  if (event.currentTarget instanceof HTMLElement) {
+    emit("tooltip-enter", props.data, event.currentTarget, "pointer");
+  }
+};
+
+const handlePointerLeave = () => emit("tooltip-leave", "pointer");
+
+const handleFocus = (event: FocusEvent) => {
+  if (event.currentTarget instanceof HTMLElement) {
+    emit("tooltip-enter", props.data, event.currentTarget, "focus");
+  }
+};
+
+const handleBlur = () => emit("tooltip-leave", "focus");
 </script>
 
 <style scoped></style>

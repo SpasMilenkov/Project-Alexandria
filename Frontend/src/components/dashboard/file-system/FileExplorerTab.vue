@@ -400,6 +400,9 @@
                   :is-selected="isFileSelected(file.fileId)"
                   :selected-count="selectedCount"
                   @open-details="activeDetailsFile = $event"
+                  @tooltip-enter="handleTooltipEnter"
+                  @tooltip-leave="handleTooltipLeave"
+                  :described-by="tooltipDescribedBy(file.fileId)"
                   @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
                   @download="handleDownload('file', file.fileId)"
                   @click="handleItemClick($event, file.fileId, 'file')"
@@ -496,6 +499,9 @@
                 :is-selected="isFileSelected(file.fileId)"
                 :selected-count="selectedCount"
                 @open-details="activeDetailsFile = $event"
+                @tooltip-enter="handleTooltipEnter"
+                @tooltip-leave="handleTooltipLeave"
+                :described-by="tooltipDescribedBy(file.fileId)"
                 @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
                 @download="handleDownload('file', file.fileId)"
                 @click="handleItemClick($event, file.fileId, 'file')"
@@ -541,6 +547,27 @@
       @download="(ids) => handleDownload('dir', ids[0])"
       @delete="handleDelete"
     />
+
+    <!-- shared rich file tooltip — single controller for all FileItem triggers -->
+    <UTooltip
+      :reference="tooltipAnchor ?? undefined"
+      v-model:open="tooltipOpen"
+      :delay-duration="600"
+      :disabled="explorerIsMobile"
+      :content="fileTooltipContent"
+      :ui="fileTooltipUi"
+    >
+      <template #content>
+        <div
+          v-if="tooltipFile"
+          id="explorer-file-tooltip"
+          @mouseenter="fileTooltip.contentEnter()"
+          @mouseleave="fileTooltip.contentLeave()"
+        >
+          <FileTooltipCard :data="tooltipFile" />
+        </div>
+      </template>
+    </UTooltip>
   </div>
 </template>
 
@@ -549,7 +576,7 @@ import type { BreadcrumbItem, DropdownMenuItem } from "@nuxt/ui";
 
 import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
-import { useEventListener } from "@vueuse/core";
+import { breakpointsTailwind, useBreakpoints, useEventListener } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import type { SearchTagsSchema } from "@/schemas/tag";
@@ -564,6 +591,7 @@ import { type DropContents, useDropZone } from "@/composables/useDropZone";
 import { useExplorerCommandGuard } from "@/composables/useExplorerCommands";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useFileExplorer } from "@/composables/useFileExplorer";
+import { type FileTooltipEnterKind, useFileTooltip } from "@/composables/useFileTooltip";
 import { useLazyModal } from "@/composables/useLazyOverlay";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
@@ -581,6 +609,7 @@ import { glassDrawerContent } from "@/utils/modalUi";
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import DirectoryItem from "./DirectoryItem.vue";
 import FileDetailsDrawer from "./FileDetailsDrawer.vue";
+import FileTooltipCard from "./FileTooltipCard.vue";
 import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
 import FileItem from "./FileItem.vue";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
@@ -1309,6 +1338,8 @@ const handleItemClick = (event: MouseEvent, id: string, type: "file" | "director
   const isShift = event.shiftKey;
   const isRightClick = event.button === 2;
 
+  fileTooltip.dismiss();
+
   if (isRightClick) {
     if (!isFileSelected(id) && !isDirectorySelected(id)) {
       clearSelection();
@@ -1397,6 +1428,7 @@ const activeDetailsDirectory = ref<DirectorySummaryDto | null>(null);
 // with its explorer instead of lingering over unrelated content.
 watch(currentDirId, () => {
   activeDetailsDirectory.value = null;
+  fileTooltip.release();
 });
 
 // A deleted folder disappears from the listing after refresh. Close the
@@ -1405,6 +1437,70 @@ watch(directoriesList, (list) => {
   const target = activeDetailsDirectory.value;
   if (!target || !dirHasLoaded.value) return;
   if (!list.some((dir) => dir.id === target.id)) activeDetailsDirectory.value = null;
+});
+
+// shared rich file tooltip — one controller for every FileItem. Rows report
+// hover/focus intent with their trigger anchor; placement mirrors the previous
+// per-row controllers (bottom in grid, top in list).
+const explorerBreakpoints = useBreakpoints(breakpointsTailwind);
+const explorerIsMobile = explorerBreakpoints.smaller("md");
+const fileTooltip = useFileTooltip({ disabled: explorerIsMobile });
+
+// Template bindings do not unwrap nested refs, so the shared tooltip state
+// is aliased to top-level bindings for the template below.
+const tooltipAnchor = fileTooltip.anchor;
+const tooltipFile = fileTooltip.file;
+const tooltipOpen = fileTooltip.open;
+
+const fileTooltipContent = computed(() => {
+  if (viewMode.value === "grid") return { align: "center" as const, side: "bottom" as const };
+  return { align: "center" as const, side: "top" as const };
+});
+
+const fileTooltipUi = computed(() => {
+  // Controlled opens always report `instant-open` (Reka only marks `delayed-open`
+  // on its internal trigger path), so both states carry the enter animation.
+  if (viewMode.value === "grid") {
+    return {
+      content:
+        "ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=instant-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto",
+    };
+  }
+  return {
+    content:
+      "z-50 ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=instant-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto",
+  };
+});
+
+const handleTooltipEnter = (
+  file: FileResult,
+  anchor: HTMLElement,
+  kind: FileTooltipEnterKind,
+) => {
+  fileTooltip.enter(file, anchor, kind);
+};
+
+const handleTooltipLeave = (kind: FileTooltipEnterKind) => {
+  fileTooltip.leave(kind);
+};
+
+const tooltipDescribedBy = (fileId: string) => {
+  if (fileTooltip.open.value && fileTooltip.file.value?.fileId === fileId) {
+    return "explorer-file-tooltip";
+  }
+  return null;
+};
+
+// View changes remount row triggers, so the shared anchor would dangle.
+watch(viewMode, () => {
+  fileTooltip.release();
+});
+
+// A removed file must never keep a stale anchored tooltip.
+watch(filesList, (list) => {
+  const target = fileTooltip.file.value;
+  if (!target || !fileHasLoaded.value) return;
+  if (!list.some((file) => file.fileId === target.fileId)) fileTooltip.release();
 });
 const handleOpenDetailsSelected = () => {
   const fileCount = selectedFiles.value.size;
@@ -1482,6 +1578,7 @@ onMounted(() => {
 onUnmounted(() => {
   isDisposed.value = true;
   activeDetailsDirectory.value = null;
+  fileTooltip.release();
   if (labelTimer) clearInterval(labelTimer);
 });
 </script>
