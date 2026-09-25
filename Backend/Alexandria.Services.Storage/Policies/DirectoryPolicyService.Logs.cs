@@ -30,4 +30,7 @@ public sealed partial class DirectoryPolicyService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to enqueue backfill for policy {PolicyId}.")]
     private static partial void LogBackfillEnqueueFailed(ILogger logger, Exception ex, Guid policyId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Skipping backfill for policy {PolicyId}: autotagging is disabled.")]
+    private static partial void LogBackfillSkippedDisabled(ILogger logger, Guid policyId);
 }

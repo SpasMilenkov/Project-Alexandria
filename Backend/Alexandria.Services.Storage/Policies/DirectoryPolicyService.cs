@@ -4,6 +4,7 @@ using Alexandria.Common.Exceptions.Policies;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Policies;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using DirectoryNotFoundException = Alexandria.Common.Exceptions.Directories.DirectoryNotFoundException;
 
@@ -13,9 +14,12 @@ public sealed partial class DirectoryPolicyService(
     IUnitOfWork unitOfWork,
     IDirectoryService directoryService,
     IPublisherService publisher,
+    IConfiguration configuration,
     ILogger<DirectoryPolicyService> logger)
     : IDirectoryPolicyService
 {
+    private readonly bool _autoTaggingEnabled =
+        bool.TryParse(configuration["Features:Autotagging"], out var enabled) && enabled;
     public async Task<DirectoryPolicyDto?> GetPolicyAsync(Guid directoryId, Guid ownerId,
         CancellationToken ct = default)
     {
@@ -161,12 +165,20 @@ public sealed partial class DirectoryPolicyService(
     }
 
     /// <summary>
-    /// Fire-and-forget backfill request scoped to the policy. A broker failure must
-    /// never fail policy creation: the sweep is a best-effort catch-up and the
-    /// failure is logged with the policy id for operators.
+    /// Fire-and-forget backfill request scoped to the policy. Skipped entirely while
+    /// autotagging is disabled: with no consumer running, publishing would only burn a
+    /// broker round trip in the request for a sweep that ends in (0, 0, 0). A broker
+    /// failure must never fail policy creation: the sweep is a best-effort catch-up and
+    /// the failure is logged with the policy id for operators.
     /// </summary>
     private async Task EnqueueBackfillAsync(Guid policyId, CancellationToken ct)
     {
+        if (!_autoTaggingEnabled)
+        {
+            LogBackfillSkippedDisabled(logger, policyId);
+            return;
+        }
+
         try
         {
             await publisher.PublishAsync(
