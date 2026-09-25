@@ -37,7 +37,7 @@ public static class RabbitMqExtensions
 
         services.AddSingleton<IChannelPool>(sp =>
             new ChannelPool(
-                sp.GetRequiredService<Lazy<Task<IConnection>>>().Value.GetAwaiter().GetResult(),
+                sp.GetRequiredService<Lazy<Task<IConnection>>>(),
                 maxSize: configuration.GetValue("RabbitMQ:ChannelPoolSize", 10)
             ));
 

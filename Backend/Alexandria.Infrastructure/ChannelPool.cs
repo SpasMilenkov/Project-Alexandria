@@ -3,7 +3,7 @@ using RabbitMQ.Client;
 
 namespace Alexandria.Infrastructure;
 
-public sealed class ChannelPool(IConnection connection, int maxSize = 10) : IChannelPool, IDisposable
+public sealed class ChannelPool(Lazy<Task<IConnection>> connectionLazy, int maxSize = 10) : IChannelPool, IDisposable
 {
     private readonly ConcurrentBag<IChannel> _channels = new();
     private readonly SemaphoreSlim _semaphore = new(maxSize, maxSize);
@@ -21,6 +21,10 @@ public sealed class ChannelPool(IConnection connection, int maxSize = 10) : ICha
             // Channel is closed, dispose and create new one
             channel.Dispose();
         }
+
+        // The connection resolves here, not in the constructor, so merely
+        // constructing the pool never blocks on the broker.
+        var connection = await connectionLazy.Value;
 
         // Create new channel if under max size
         return await connection.CreateChannelAsync(cancellationToken: cancellationToken);
