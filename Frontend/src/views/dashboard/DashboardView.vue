@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useMediaQuery } from "@vueuse/core";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, useId } from "vue";
 
-import type { ExplorerTab } from "@/types/explorer-tab";
-
+import ExplorerTabStrip from "@/components/dashboard/file-system/ExplorerTabStrip.vue";
 import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
 import { useTabStore } from "@/stores/tab";
 import { logger } from "@/utils/logger";
@@ -21,15 +20,7 @@ defineShortcuts({
 
 const tabStore = useTabStore();
 const isMobile = useMediaQuery("(max-width: 767px)");
-
-// Desktop UTabs items
-const items = computed(() =>
-  tabStore.tabs.map((tab: ExplorerTab) => ({
-    icon: "i-heroicons-folder",
-    label: tab.title,
-    value: tab.id,
-  })),
-);
+const panelId = `explorer-panel-${useId()}`;
 
 const hasNoTabs = computed(() => tabStore.tabs.length === 0);
 
@@ -138,62 +129,27 @@ onMounted(() => {
   </div>
 
   <template v-else>
-    <!-- Desktop: UTabs -->
-    <UTabs
-      v-if="!isMobile"
-      v-model="tabStore.activeTabId"
-      :items="items"
-      variant="link"
-      class="w-full min-w-0 flex-1 flex flex-col min-h-0 h-full"
-      :ui="{
-        content: 'flex flex-1 min-h-0 min-w-0',
-        list: 'sticky top-0 z-10 bg-background/80 frosted-glass shrink-0 max-w-full overflow-x-auto overflow-y-hidden',
-      }"
-    >
-      <template #list-leading>
-        <UButton
-          v-if="tabStore.tabs.length > 1"
-          icon="mdi:folder-remove-outline"
-          variant="ghost"
-          color="error"
-          aria-label="Close all tabs"
-          title="Close all tabs"
-          @click="openCloseAllModal"
-        />
-      </template>
-      <template #list-trailing>
-        <UButton
-          icon="i-heroicons-plus"
-          variant="ghost"
-          color="neutral"
-          aria-label="New tab"
-          title="New tab (⌘⇧N)"
-          class="hover:text-primary"
-          @click="tabStore.createTab(null)"
-        />
-      </template>
-      <!-- @vue-ignore -->
-      <template #label="{ item }">
-        <span class="max-w-[160px] truncate block">{{ item.label }}</span>
-      </template>
-
-      <template #trailing="{ item }">
-        <UButton
-          v-if="tabStore.tabs.length > 1"
-          icon="i-heroicons-x-mark"
-          variant="ghost"
-          color="neutral"
-          title="Close tab"
-          aria-label="Close tab"
-          class="hover:text-primary"
-          @click.stop="tabStore.closeTab(item.value)"
-        />
-      </template>
-
-      <template #content="{ item }">
-        <FileExplorer v-if="item.value" :tab-id="item.value" :key="item.value" />
-      </template>
-    </UTabs>
+    <div v-if="!isMobile" class="w-full min-w-0 flex-1 flex flex-col min-h-0 h-full">
+      <ExplorerTabStrip
+        :tabs="tabStore.tabs"
+        :active-tab-id="tabStore.activeTabId"
+        :panel-id="panelId"
+        @activate="tabStore.activeTabId = $event"
+        @close="tabStore.closeTab"
+        @close-all="openCloseAllModal"
+        @create="tabStore.createTab(null)"
+      />
+      <div
+        v-if="tabStore.activeTabId"
+        :id="panelId"
+        role="tabpanel"
+        :aria-labelledby="`${panelId}-tab-${tabStore.activeTabId}`"
+        tabindex="0"
+        class="flex flex-1 min-h-0 min-w-0"
+      >
+        <FileExplorer :tab-id="tabStore.activeTabId" :key="tabStore.activeTabId" />
+      </div>
+    </div>
 
     <!-- Mobile: active tab only + bottom bar -->
     <template v-else>
