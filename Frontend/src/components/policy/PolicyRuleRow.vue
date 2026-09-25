@@ -15,7 +15,10 @@
     </div>
 
     <div
-      class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+      class="flex items-center gap-1 transition-opacity shrink-0"
+      :class="
+        isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+      "
     >
       <UButton
         icon="i-mdi-pencil-outline"
@@ -40,17 +43,28 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
+import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { computed, ref } from "vue";
 
-import { PolicyActionType, PolicyTriggerType, type PolicyRuleDto } from "@/api/policy";
+import {
+  PolicyActionType,
+  type PolicyRuleDto,
+  PolicyTriggerType,
+} from "@/api/policy";
+import { useAppToast } from "@/composables/useAppToast";
 import { deleteRule } from "@/mutations/policies";
 
-const props = defineProps<{
+const { directoryId, rule } = defineProps<{
   rule: PolicyRuleDto;
   directoryId: string;
 }>();
 
 const emit = defineEmits<{ edit: [] }>();
+
+const breakpoints = useBreakpoints(breakpointsTailwind);
+const isMobile = breakpoints.smaller("md");
+
+const appToast = useAppToast();
 
 const { mutateAsync: deleteRuleMutation } = deleteRule();
 const isDeleting = ref(false);
@@ -58,14 +72,17 @@ const isDeleting = ref(false);
 const handleDelete = async () => {
   isDeleting.value = true;
   try {
-    await deleteRuleMutation({ ruleId: props.rule.id, directoryId: props.directoryId });
+    await deleteRuleMutation({ ruleId: rule.id, directoryId });
+    appToast.success("Rule removed");
+  } catch (err) {
+    appToast.error("Failed to remove rule", err);
   } finally {
     isDeleting.value = false;
   }
 };
 
 const actionIcon = computed(() => {
-  switch (props.rule.actionType) {
+  switch (rule.actionType) {
     case PolicyActionType.Transcode:
       return "mdi:film-open-outline";
     case PolicyActionType.Backup:
@@ -78,7 +95,7 @@ const actionIcon = computed(() => {
 });
 
 const actionColorClass = computed(() => {
-  switch (props.rule.actionType) {
+  switch (rule.actionType) {
     case PolicyActionType.Transcode:
       return "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400";
     case PolicyActionType.Backup:
@@ -91,7 +108,7 @@ const actionColorClass = computed(() => {
 });
 
 const actionLabel = computed(() => {
-  switch (props.rule.actionType) {
+  switch (rule.actionType) {
     case PolicyActionType.Transcode:
       return "Transcode media";
     case PolicyActionType.Backup:
@@ -99,18 +116,18 @@ const actionLabel = computed(() => {
     case PolicyActionType.AutoTag:
       return "Auto-tag";
     default:
-      return props.rule.actionType;
+      return rule.actionType;
   }
 });
 
 const triggerLabel = computed(() => {
-  switch (props.rule.triggerType) {
+  switch (rule.triggerType) {
     case PolicyTriggerType.AnyFile:
       return "Any file";
     case PolicyTriggerType.FileGroup:
-      return `.${props.rule.triggerValue} files`;
+      return `.${rule.triggerValue} files`;
     default:
-      return props.rule.triggerValue;
+      return rule.triggerValue;
   }
 });
 </script>

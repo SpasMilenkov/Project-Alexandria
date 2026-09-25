@@ -104,6 +104,7 @@ import { ref } from "vue";
 
 import type { PolicyRuleDto } from "@/api/policy";
 
+import { useAppToast } from "@/composables/useAppToast";
 import { createPolicy, deletePolicy, updatePolicy } from "@/mutations/policies";
 import { getPolicyByDirectory } from "@/queries/policies";
 
@@ -115,6 +116,8 @@ const props = defineProps<{
 }>();
 
 const { data: policy, isLoading } = useQuery(getPolicyByDirectory(props.directoryId));
+
+const appToast = useAppToast();
 
 const { mutateAsync: createPolicyMutation, isLoading: isCreating } = createPolicy();
 const { mutateAsync: updatePolicyMutation, isLoading: isUpdating } = updatePolicy();
@@ -134,26 +137,40 @@ const openEditModal = (rule: PolicyRuleDto) => {
 };
 
 const handleCreatePolicy = async () => {
-  await createPolicyMutation({
-    directoryId: props.directoryId,
-    inheritedByChildren: false,
-  });
+  try {
+    await createPolicyMutation({
+      directoryId: props.directoryId,
+      inheritedByChildren: false,
+    });
+    appToast.success("Automation enabled");
+  } catch (err) {
+    appToast.error("Failed to enable automation", err);
+  }
 };
 
 const toggleInheritance = async () => {
   if (!policy.value) return;
-  await updatePolicyMutation({
-    policyId: policy.value.id,
-    directoryId: props.directoryId,
-    inheritedByChildren: !policy.value.inheritedByChildren,
-  });
+  try {
+    await updatePolicyMutation({
+      policyId: policy.value.id,
+      directoryId: props.directoryId,
+      inheritedByChildren: !policy.value.inheritedByChildren,
+    });
+  } catch (err) {
+    appToast.error("Failed to update automation", err);
+  }
 };
 
 const handleDeletePolicy = async () => {
   if (!policy.value) return;
-  await deletePolicyMutation({
-    policyId: policy.value.id,
-    directoryId: props.directoryId,
-  });
+  try {
+    await deletePolicyMutation({
+      policyId: policy.value.id,
+      directoryId: props.directoryId,
+    });
+    appToast.success("Automation removed");
+  } catch (err) {
+    appToast.error("Failed to remove automation", err);
+  }
 };
 </script>
