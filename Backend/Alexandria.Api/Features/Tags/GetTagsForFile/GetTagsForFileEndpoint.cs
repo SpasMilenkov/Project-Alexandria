@@ -11,7 +11,6 @@ public class GetTagsForFileEndpoint(IFileTagService tagService)
     public override void Configure()
     {
         Get("/files/{FileId}/tags");
-        ResponseCache(30);
         Summary(s =>
         {
             s.Summary = "Get all tags for a file";
