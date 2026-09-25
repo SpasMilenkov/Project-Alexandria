@@ -17,6 +17,8 @@
           @dblclick="handleDoubleClick"
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
+          @touchend="cancelPrefetch"
+          @touchcancel="cancelPrefetch"
           @pointerenter="handlePointerEnter"
           @pointerleave="handlePointerLeave"
           @focus="handleFocus"
@@ -76,6 +78,8 @@
           @dblclick="handleDoubleClick"
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
+          @touchend="cancelPrefetch"
+          @touchcancel="cancelPrefetch"
           @pointerenter="handlePointerEnter"
           @pointerleave="handlePointerLeave"
           @focus="handleFocus"
@@ -100,9 +104,7 @@
 import { Icon } from "@iconify/vue";
 import { useQueryCache } from "@pinia/colada";
 import { useDebounceFn } from "@vueuse/core";
-import { computed } from "vue";
-
-import type { TagDto } from "@/api/tag";
+import { computed, onUnmounted } from "vue";
 
 import { type FileResult } from "@/api/file";
 import { type FileTooltipEnterKind } from "@/composables/useFileTooltip";
@@ -121,7 +123,6 @@ const props = defineProps<{
   data: FileResult;
   viewMode: "grid" | "list";
   isSelected: boolean;
-  tags: TagDto[] | undefined;
   describedBy?: string | null;
 }>();
 
@@ -171,6 +172,18 @@ const prefetchDetails = useDebounceFn(() => {
   );
 }, 150);
 
+// The four requests above only warm the details drawer, which fetches them for
+// real on open. A pending warmup is cancelled as soon as interest moves away
+// (pointer/focus leave, touch end) or the row unmounts, so no delayed request
+// begins after disposal.
+const cancelPrefetch = () => {
+  prefetchDetails.cancel();
+};
+
+onUnmounted(() => {
+  cancelPrefetch();
+});
+
 const handleClick = (event: MouseEvent) => emit("click", event);
 const handleDoubleClick = () => emit("open-details", props.data);
 
@@ -184,7 +197,10 @@ const handlePointerEnter = (event: PointerEvent) => {
   }
 };
 
-const handlePointerLeave = () => emit("tooltip-leave", "pointer");
+const handlePointerLeave = () => {
+  cancelPrefetch();
+  emit("tooltip-leave", "pointer");
+};
 
 const handleFocus = (event: FocusEvent) => {
   if (event.currentTarget instanceof HTMLElement) {
@@ -192,7 +208,10 @@ const handleFocus = (event: FocusEvent) => {
   }
 };
 
-const handleBlur = () => emit("tooltip-leave", "focus");
+const handleBlur = () => {
+  cancelPrefetch();
+  emit("tooltip-leave", "focus");
+};
 </script>
 
 <style scoped></style>

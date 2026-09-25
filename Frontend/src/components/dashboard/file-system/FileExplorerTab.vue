@@ -393,7 +393,6 @@
                 <FileItem
                   v-for="file in filesList"
                   :key="file.fileId"
-                  :tags="tagsData?.items"
                   :data="file"
                   :view-mode="viewMode"
                   :is-selected="isFileSelected(file.fileId)"
@@ -477,7 +476,6 @@
                 :key="file.fileId"
                 :data="file"
                 :view-mode="viewMode"
-                :tags="tagsData?.items"
                 :is-selected="isFileSelected(file.fileId)"
                 @open-details="activeDetailsFile = $event"
                 @tooltip-enter="handleTooltipEnter"
@@ -553,7 +551,6 @@ import { useQuery, useQueryCache } from "@pinia/colada";
 import { breakpointsTailwind, useBreakpoints, useEventListener } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
-import type { SearchTagsSchema } from "@/schemas/tag";
 import type { NavItem } from "@/types/nav-item";
 
 import { type FileResult } from "@/api/file";
@@ -571,7 +568,6 @@ import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { copyDirectory, deleteDirectory, moveDirectories } from "@/mutations/directories";
 import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
-import { searchTag } from "@/queries/tags";
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useSettingsStore } from "@/stores/settings";
@@ -735,17 +731,6 @@ watch(
   { immediate: true },
 );
 
-// tags
-
-const tagCurrentPage = ref(1);
-const tagPageSize = ref(25);
-const searchFilters = computed<SearchTagsSchema>(() => ({
-  ownerScope: "all",
-  page: tagCurrentPage.value,
-  pageSize: tagPageSize.value,
-}));
-const { data: tagsData } = useQuery(() => searchTag(searchFilters.value));
-
 const queryCache = useQueryCache();
 const isDisposed = ref(false);
 
@@ -893,12 +878,36 @@ const backgroundSnapshot = (): ExplorerMenuSnapshot => ({
 });
 
 const explorerMenuActions: ExplorerMenuActions = {
-  copySelection: () => openTransferModal("copy"),
+  copySelection: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    openTransferModal("copy", snap.fileIds, snap.directoryIds);
+  },
   createDirectory: () => createNewDirectory(),
-  deleteSelection: () => handleDelete(),
-  downloadDirectory: (directoryId) => handleDownload("dir", directoryId),
-  downloadFile: (fileId) => handleDownload("file", fileId),
-  moveSelection: () => openTransferModal("move"),
+  deleteSelection: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    handleDelete(snap.fileIds, snap.directoryIds);
+  },
+  downloadDirectory: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    downloadBulk(snap.fileIds, snap.directoryIds);
+  },
+  downloadFile: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    if (snap.fileIds.length === 1 && snap.directoryIds.length === 0) {
+      downloadFile(snap.fileIds[0]);
+    } else {
+      downloadBulk(snap.fileIds, snap.directoryIds);
+    }
+  },
+  moveSelection: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    openTransferModal("move", snap.fileIds, snap.directoryIds);
+  },
   openDirectory: (directoryId) => handleNavigate(directoryId),
   openDirectoryDetails: (directory) => {
     activeDetailsDirectory.value = directory;
@@ -1083,9 +1092,13 @@ const fileTransferModal = useLazyModal<
 >(FileTransferModal);
 const shareLinkModal = useLazyModal<{ fileId: string; fileName: string }, boolean>(ShareLinkModal);
 
-const openTransferModal = async (mode: "move" | "copy") => {
+const openTransferModal = async (
+  mode: "move" | "copy",
+  fileIds: string[] = [...selectedFiles.value],
+  dirIds: string[] = [...selectedDirectories.value],
+) => {
   // Build rich chip metadata from what we already have rendered
-  const fileChips = [...selectedFiles.value].map((id) => {
+  const fileChips = fileIds.map((id) => {
     const f = filesList.value.find((file) => file.fileId === id);
     return {
       icon: f ? getFileIcon(f.fileName) : "mdi:file-outline",
@@ -1095,7 +1108,7 @@ const openTransferModal = async (mode: "move" | "copy") => {
     };
   });
 
-  const dirChips = [...selectedDirectories.value].map((id) => {
+  const dirChips = dirIds.map((id) => {
     const d = directoriesList.value.find((dir) => dir.id === id);
     return {
       icon: "mdi:folder-outline",
@@ -1107,9 +1120,9 @@ const openTransferModal = async (mode: "move" | "copy") => {
 
   const instance = fileTransferModal.open({
     dirChips,
-    directories: [...selectedDirectories.value],
+    directories: [...dirIds],
     fileChips,
-    files: [...selectedFiles.value],
+    files: [...fileIds],
     mode,
     originDirId: currentDirId.value,
     originDirName: currentDirName.value,
@@ -1206,18 +1219,20 @@ const handleCopy = () => {
   appToast.info("Items selected");
 };
 
-const handleDelete = async () => {
-  if (selectedFiles.value.size === 0 && selectedDirectories.value.size === 0) return;
+const handleDelete = async (
+  fileIds: string[] = [...selectedFiles.value],
+  dirIds: string[] = [...selectedDirectories.value],
+) => {
+  if (fileIds.length === 0 && dirIds.length === 0) return;
 
-  if (selectedFiles.value.size > 0) {
+  if (fileIds.length > 0) {
     await deleteFilesMutate({
-      ids: [...selectedFiles.value],
+      ids: fileIds,
       directoryId: currentDirId.value ?? undefined,
     });
   }
 
-  if (selectedDirectories.value.size > 0) {
-    const dirIds = Array.from(selectedDirectories.value);
+  if (dirIds.length > 0) {
     const results = await Promise.allSettled(
       dirIds.map((id) =>
         deleteDirectoryMutate({ id, options: { force: false }, originId: currentDirId.value }),
@@ -1583,7 +1598,6 @@ const guarded = (command: () => void) => (event: KeyboardEvent) => {
 defineShortcuts({
   // already present
   Delete: guarded(() => handleDelete()),
-  Escape: guarded(() => cancelCut()),
   alt_arrowleft: guarded(() => {
     if (canGoBack.value) navigateBack();
   }),
@@ -1619,6 +1633,31 @@ defineShortcuts({
 });
 
 useEventListener(containerRef, "mousedown", handleMouseNavigate);
+
+// Escape lives outside defineShortcuts on purpose: the shortcut registry
+// preventDefaults on match even when our guard would reject the press, which
+// blocks Reka's menu/drawer/modal dismissal (it bails on default-prevented
+// keys). This listener checks eligibility first and never prevents default,
+// so ineligible presses reach Reka and native behavior untouched.
+const handleEscapeKey = (event: KeyboardEvent) => {
+  if (event.defaultPrevented || !canHandleCommand(event)) return;
+  // Drawers can keep focus on their trigger, outside the dialog element.
+  if (
+    contextMenuOpen.value ||
+    activeDetailsFile.value ||
+    activeDetailsDirectory.value ||
+    isMobileUploadSheetOpen.value
+  ) {
+    return;
+  }
+  cancelCut();
+  clearSelection();
+  lastSelected.value = "";
+};
+
+useEventListener(window, "keydown", (event) => {
+  if (event.key === "Escape") handleEscapeKey(event);
+});
 
 onMounted(() => {
   const tab = tabStore.getTab(tabId);

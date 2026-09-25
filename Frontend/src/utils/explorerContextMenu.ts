@@ -16,7 +16,7 @@ interface ExplorerMenuSnapshot {
 
 interface ExplorerMenuActions {
   openFileDetails: (file: FileResult) => void;
-  downloadFile: (fileId: string) => void;
+  downloadFile: () => void;
   renameFile: (fileId: string, originalName: string) => void;
   moveSelection: () => void;
   copySelection: () => void;
@@ -25,7 +25,7 @@ interface ExplorerMenuActions {
   openDirectoryDetails: (directory: DirectorySummaryDto) => void;
   openDirectory: (directoryId: string) => void;
   renameDirectory: (directoryId: string) => void;
-  downloadDirectory: (directoryId: string) => void;
+  downloadDirectory: () => void;
   uploadFile: () => void;
   uploadDirectory: () => void;
   uploadArchive: () => void;
@@ -139,7 +139,7 @@ const buildFileItems = (
             icon: "i-mdi-download-outline",
             kbds: [{ value: "D" }],
             label: "Download",
-            onSelect: () => actions.downloadFile(target.fileId),
+            onSelect: () => actions.downloadFile(),
           },
         ],
         [
@@ -193,7 +193,7 @@ const buildFileItems = (
           disabled: !canDownload(),
           icon: "i-mdi-download-multiple-outline",
           label: "Download all",
-          onSelect: () => actions.downloadFile(target.fileId),
+          onSelect: () => actions.downloadFile(),
         },
       ],
       [
@@ -282,7 +282,7 @@ const buildDirectoryItems = (
           icon: "i-mdi-download-outline",
           label: "Download",
           kbds: ["D"],
-          onSelect: () => actions.downloadDirectory(target.id),
+          onSelect: () => actions.downloadDirectory(),
         },
       ],
       [
@@ -319,7 +319,7 @@ const buildDirectoryItems = (
         icon: "i-mdi-download-multiple-outline",
         label: `Download ${count} items`,
         kbds: ["D"],
-        onSelect: () => actions.downloadDirectory(target.id),
+        onSelect: () => actions.downloadDirectory(),
       },
     ],
     [
