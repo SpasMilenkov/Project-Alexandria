@@ -25,6 +25,7 @@ describe("useFileStore", () => {
     expect(store.downloadProgress).toBe(0);
     expect(store.selectedFiles).toHaveLength(0);
     expect(store.modificationOriginDirId).toBeNull();
+    expect(store.copyMode).toBe(true);
     expect(store.isUploading).toBe(false);
     expect(store.isDownloading).toBe(false);
     expect(store.error).toBeNull();
@@ -54,6 +55,15 @@ describe("useFileStore", () => {
     store.isUploading = false;
     store.isDownloading = true;
     expect(store.isProcessing).toBe(true);
+  });
+
+  it("shares copy mode across usages so cross-tab cuts still move", () => {
+    const firstTab = useFileStore();
+    const secondTab = useFileStore();
+    firstTab.copyMode = false;
+    expect(secondTab.copyMode).toBe(false);
+    secondTab.copyMode = true;
+    expect(firstTab.copyMode).toBe(true);
   });
 
   describe("downloadFile", () => {
