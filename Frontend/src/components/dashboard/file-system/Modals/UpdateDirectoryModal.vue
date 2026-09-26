@@ -9,8 +9,9 @@ import { type UpdateDirectorySchema, updateDirectorySchema } from "@/schemas/dir
 import { logger } from "@/utils/logger";
 import { glassModalContent } from "@/utils/modalUi";
 
-const props = defineProps<{
+const { directoryId, currentName } = defineProps<{
   directoryId: string;
+  currentName: string;
 }>();
 
 const { mutateAsync, state: mutationState } = updateDirectory();
@@ -20,8 +21,8 @@ const emit = defineEmits<{ close: [boolean] }>();
 useModalBackGuard(() => emit("close", false));
 
 const state = reactive({
-  directoryId: props.directoryId,
-  name: "",
+  directoryId,
+  name: currentName,
 });
 
 const onSubmit = async (event: FormSubmitEvent<UpdateDirectorySchema>) => {

@@ -1,9 +1,12 @@
 <template>
-  <div class="flex flex-col h-full w-full flex-1" @click="handleContainerClick">
+  <div
+    class="@container/explorer flex flex-col min-h-0 min-w-0 h-full w-full flex-1"
+    @click="handleContainerClick"
+  >
     <!-- Toolbar -->
-    <div class="flex flex-col w-full border-b border-b-primary">
+    <div class="flex flex-col w-full shrink-0 border-b border-b-primary">
       <!-- Desktop toolbar -->
-      <div class="hidden md:flex items-center gap-2 p-3 w-full h-full">
+      <div class="hidden @3xl/explorer:flex items-center gap-2 p-3 w-full h-full">
         <!-- Upload split button -->
         <div class="flex border border-primary rounded-md overflow-hidden shrink-0">
           <UButton
@@ -138,8 +141,8 @@
         </UButton>
       </div>
 
-      <!-- Mobile toolbar — 3 controls only -->
-      <div class="flex md:hidden items-center gap-2 px-3 py-2 w-full">
+      <!-- Compact toolbar also handles space taken by side panels. -->
+      <div class="flex @3xl/explorer:hidden items-center gap-2 px-3 py-2 w-full">
         <!-- Upload — opens action sheet -->
         <UButton
           color="primary"
@@ -178,7 +181,6 @@
     <UDrawer
       v-model:open="isMobileUploadSheetOpen"
       direction="bottom"
-      class="md:hidden"
       :ui="{
         content: `${glassDrawerContent} rounded-t-2xl border-t border-gray-200/70 dark:border-gray-700/70`,
       }"
@@ -253,7 +255,7 @@
     </UDrawer>
 
     <!-- breadcrumb row -->
-    <div class="flex items-center gap-1 px-4 py-1.5">
+    <div class="flex items-center gap-1 px-4 py-1.5 shrink-0 min-w-0">
       <UButton
         size="xs"
         variant="ghost"
@@ -288,7 +290,7 @@
     <Transition name="fade-status">
       <div
         v-if="isBackgroundLoading"
-        class="flex md:hidden items-center gap-1.5 px-4 py-1 text-xs text-gray-400 dark:text-gray-500 select-none"
+        class="flex @3xl/explorer:hidden items-center gap-1.5 px-4 py-1 text-xs text-gray-400 dark:text-gray-500 select-none"
         aria-live="polite"
       >
         <BlocksSpinner :size="11" aria-label="Refreshing" class="opacity-50" />
@@ -297,16 +299,24 @@
     </Transition>
 
     <!-- content area -->
-    <UContextMenu :items="backgroundContextMenuItems" class="flex-1 flex flex-col min-h-0">
+    <UContextMenu
+      :items="explorerMenuItems"
+      :ui="{ content: 'lg:min-w-56' }"
+      class="flex-1 flex flex-col min-h-0 min-w-0"
+      v-model:open="contextMenuOpen"
+      @update:open="handleMenuOpenChange"
+    >
       <div
         ref="containerRef"
         class="flex-1 overflow-auto relative"
+        @contextmenu.capture="handleContextMenuCapture"
+        @pointerdown.capture="handleContextMenuPointerDown"
         @dragenter="onDragEnter"
         @dragleave="onDragLeave"
         @dragover="onDragOver"
         @drop="handleDropEvent"
       >
-        <div ref="containerRef" class="flex-1 overflow-auto relative">
+        <div class="flex-1 overflow-auto relative">
           <!-- drop zone overlay -->
           <Transition name="dropzone">
             <div
@@ -345,29 +355,16 @@
               <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
                 Folders
               </h3>
-              <div class="grid gap-3" :class="gridColumns">
+              <div class="grid gap-3" :style="gridStyle">
                 <DirectoryItem
                   v-for="dir in directoriesList"
                   :key="dir.id"
                   :data="dir"
                   :view-mode="viewMode"
                   :is-selected="isDirectorySelected(dir.id)"
-                  :selected-count="selectedCount"
-                  @download="handleDownload('dir', dir.id)"
                   @navigate="handleNavigate"
-                  @open="handleNavigate"
-                  @rename="handleDirectoryRename"
-                  @move="openTransferModal('move')"
                   @click="handleItemClick($event, dir.id, 'directory')"
-                  @copy="openTransferModal('copy')"
-                  @delete="handleDelete"
-                  @contextmenu="handleItemClick($event, dir.id, 'directory')"
                   :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
-                  :ref="
-                    (el: any) => {
-                      if (el) dirItemRefs[dir.id] = el;
-                    }
-                  "
                 />
               </div>
               <div
@@ -392,24 +389,18 @@
               >
                 Files
               </h3>
-              <div class="grid gap-3" :class="gridColumns">
+              <div class="grid gap-3" :style="gridStyle">
                 <FileItem
                   v-for="file in filesList"
                   :key="file.fileId"
-                  :tags="tagsData?.items"
                   :data="file"
                   :view-mode="viewMode"
                   :is-selected="isFileSelected(file.fileId)"
-                  :selected-count="selectedCount"
                   @open-details="activeDetailsFile = $event"
-                  @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
-                  @download="handleDownload('file', file.fileId)"
+                  @tooltip-enter="handleTooltipEnter"
+                  @tooltip-leave="handleTooltipLeave"
+                  :described-by="tooltipDescribedBy(file.fileId)"
                   @click="handleItemClick($event, file.fileId, 'file')"
-                  @copy="openTransferModal('copy')"
-                  @delete="handleDelete"
-                  @move="openTransferModal('move')"
-                  @share="handleShare(file.fileId, file.fileName)"
-                  @contextmenu="handleItemClick($event, file.fileId, 'file')"
                   :class="{
                     'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
                   }"
@@ -449,22 +440,9 @@
                 :data="dir"
                 :view-mode="viewMode"
                 :is-selected="isDirectorySelected(dir.id)"
-                :selected-count="selectedCount"
-                @download="handleDownload('dir', dir.id)"
                 @navigate="handleNavigate"
-                @open="handleNavigate"
-                @rename="handleDirectoryRename"
-                @move="openTransferModal('move')"
                 @click="handleItemClick($event, dir.id, 'directory')"
-                @copy="openTransferModal('copy')"
-                @delete="handleDelete"
-                @contextmenu="handleItemClick($event, dir.id, 'directory')"
                 :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
-                :ref="
-                  (el: any) => {
-                    if (el) dirItemRefs[dir.id] = el;
-                  }
-                "
               />
               <div
                 v-if="directoriesData?.hasNext"
@@ -498,18 +476,12 @@
                 :key="file.fileId"
                 :data="file"
                 :view-mode="viewMode"
-                :tags="tagsData?.items"
                 :is-selected="isFileSelected(file.fileId)"
-                :selected-count="selectedCount"
                 @open-details="activeDetailsFile = $event"
-                @rename="(fileId, originalName) => handleFileRename(fileId, originalName)"
-                @download="handleDownload('file', file.fileId)"
+                @tooltip-enter="handleTooltipEnter"
+                @tooltip-leave="handleTooltipLeave"
+                :described-by="tooltipDescribedBy(file.fileId)"
                 @click="handleItemClick($event, file.fileId, 'file')"
-                @copy="handleCopy"
-                @delete="handleDelete"
-                @move="handleCut"
-                @share="handleShare(file.fileId, file.fileName)"
-                @contextmenu="handleItemClick($event, file.fileId, 'file')"
                 :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
               />
             </div>
@@ -537,6 +509,37 @@
       @file-trashed="handleFileTrashed"
       @file-restored="refreshDir"
     />
+
+    <!-- shared folder details drawer — single instance for all DirectoryItem triggers -->
+    <FolderDetailsDrawer
+      v-model:directory="activeDetailsDirectory"
+      @navigate="handleNavigate"
+      @rename="handleDirectoryRename"
+      @move="openTransferModal('move')"
+      @download="(ids) => handleDownload('dir', ids[0])"
+      @delete="handleDelete"
+    />
+
+    <!-- shared rich file tooltip — single controller for all FileItem triggers -->
+    <UTooltip
+      :reference="tooltipAnchor ?? undefined"
+      v-model:open="tooltipOpen"
+      :delay-duration="600"
+      :disabled="explorerIsMobile"
+      :content="fileTooltipContent"
+      :ui="fileTooltipUi"
+    >
+      <template #content>
+        <div
+          v-if="tooltipFile"
+          id="explorer-file-tooltip"
+          @mouseenter="fileTooltip.contentEnter()"
+          @mouseleave="fileTooltip.contentLeave()"
+        >
+          <FileTooltipCard :data="tooltipFile" />
+        </div>
+      </template>
+    </UTooltip>
   </div>
 </template>
 
@@ -544,24 +547,27 @@
 import type { BreadcrumbItem, DropdownMenuItem } from "@nuxt/ui";
 
 import { Icon } from "@iconify/vue";
-import { useQuery } from "@pinia/colada";
+import { useQuery, useQueryCache } from "@pinia/colada";
+import { breakpointsTailwind, useBreakpoints, useEventListener } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
-import type { SearchTagsSchema } from "@/schemas/tag";
 import type { NavItem } from "@/types/nav-item";
 
 import { type FileResult } from "@/api/file";
+import type { DirectorySummaryDto } from "@/api/directory";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { type DropContents, useDropZone } from "@/composables/useDropZone";
+import { useExplorerCommandGuard } from "@/composables/useExplorerCommands";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useFileExplorer } from "@/composables/useFileExplorer";
+import { type FileTooltipEnterKind, useFileTooltip } from "@/composables/useFileTooltip";
+import { useLazyModal } from "@/composables/useLazyOverlay";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { copyDirectory, deleteDirectory, moveDirectories } from "@/mutations/directories";
 import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
-import { searchTag } from "@/queries/tags";
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useSettingsStore } from "@/stores/settings";
@@ -572,7 +578,15 @@ import { glassDrawerContent } from "@/utils/modalUi";
 
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import DirectoryItem from "./DirectoryItem.vue";
+import {
+  type ExplorerMenuActions,
+  type ExplorerMenuSnapshot,
+  buildExplorerMenuItems,
+  resolveContextMenuTarget,
+} from "@/utils/explorerContextMenu";
 import FileDetailsDrawer from "./FileDetailsDrawer.vue";
+import FileTooltipCard from "./FileTooltipCard.vue";
+import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
 import FileItem from "./FileItem.vue";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import ArchiveUploadModal from "./Modals/ArchiveUploadModal.vue";
@@ -622,6 +636,7 @@ const {
   selectRange,
 } = useFileExplorer();
 const { downloadFile, downloadBulk } = useFileDownload();
+const { canHandleCommand } = useExplorerCommandGuard(tabId);
 
 const { mutateAsync: copyFilesMutate } = copyFiles();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
@@ -633,8 +648,15 @@ const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
 
-//copy tracking
-const copyMode = ref(true);
+//copy tracking lives in the shared session-only file store alongside the
+//clipboard selection so a cut started in one tab still moves when pasted in
+//another tab (the directory store persists, so it cannot own the mode)
+const copyMode = computed({
+  get: () => fileStore.copyMode,
+  set: (val: boolean) => {
+    fileStore.copyMode = val;
+  },
+});
 
 // skeleton tracking
 
@@ -709,16 +731,18 @@ watch(
   { immediate: true },
 );
 
-// tags
+const queryCache = useQueryCache();
+const isDisposed = ref(false);
 
-const tagCurrentPage = ref(1);
-const tagPageSize = ref(25);
-const searchFilters = computed<SearchTagsSchema>(() => ({
-  ownerScope: "all",
-  page: tagCurrentPage.value,
-  pageSize: tagPageSize.value,
-}));
-const { data: tagsData } = useQuery(() => searchTag(searchFilters.value));
+const invalidateDir = (dirId: string | null) => {
+  if (dirId) {
+    queryCache.invalidateQueries({ key: ["directories", "sub-directories", dirId] });
+    queryCache.invalidateQueries({ key: ["files", "sub-files", dirId] });
+    return;
+  }
+  queryCache.invalidateQueries({ key: ["directories", "root-sub-directories"] });
+  queryCache.invalidateQueries({ key: ["files", "root-sub-files"] });
+};
 
 // drop zone
 
@@ -727,14 +751,18 @@ const chooseUploadMethod = async (
   files: File[] | null,
 ): Promise<boolean> => {
   const choice = await zipUploadChoiceModal.open().result;
-  if (!choice) return false; // user cancelled
+  if (!choice) return false;
 
-  const instance =
-    choice === "archive"
-      ? await archiveUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
-      : await fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] });
-
-  return instance ?? false;
+  if (choice === "archive") {
+    const archiveResult = await archiveUploadModal.open({
+      ...uploadProps,
+      droppedFiles: files ?? [],
+    }).result;
+    return archiveResult ?? false;
+  }
+  const fileResult = await fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
+    .result;
+  return fileResult ?? false;
 };
 
 const {
@@ -757,21 +785,33 @@ const dropIcon = computed(() =>
 );
 const dropLabel = computed(() => (dragHasDirectory.value ? "Drop folder here" : "Drop files here"));
 
-const openUploadModal = (dropResult: DropContents, uploadProps: UploadProps) => {
-  switch (dropResult.dropType) {
-    case "dir":
-      return directoryUploadModal.open({ ...uploadProps, droppedFiles: dropResult.entries });
-    case "file":
-      return fileUploadModal.open({ ...uploadProps, droppedFiles: dropResult.entries });
-    case "zip":
-      return chooseUploadMethod(uploadProps, dropResult.entries);
-    case "none":
-      return false;
+const openUploadModal = async (
+  dropResult: DropContents,
+  uploadProps: UploadProps,
+): Promise<boolean> => {
+  if (dropResult.dropType === "dir") {
+    const dirResult = await directoryUploadModal.open({
+      ...uploadProps,
+      droppedFiles: dropResult.entries,
+    }).result;
+    return dirResult ?? false;
   }
+  if (dropResult.dropType === "file") {
+    const fileResult = await fileUploadModal.open({
+      ...uploadProps,
+      droppedFiles: dropResult.entries,
+    }).result;
+    return fileResult ?? false;
+  }
+  if (dropResult.dropType === "zip") {
+    return chooseUploadMethod(uploadProps, dropResult.entries);
+  }
+  return false;
 };
 
 const handleDropEvent = async (event: DragEvent) => {
   const dropResult = await onDrop(event);
+  const targetDirId = currentDirId.value ?? null;
 
   const uploadProps = {
     directoryId: currentDirId.value ?? undefined,
@@ -780,6 +820,10 @@ const handleDropEvent = async (event: DragEvent) => {
   const shouldRefresh = await openUploadModal(dropResult, uploadProps);
 
   if (shouldRefresh) {
+    if (isDisposed.value) {
+      invalidateDir(targetDirId);
+      return;
+    }
     appToast.success("Upload complete");
     refreshDir();
   }
@@ -817,39 +861,136 @@ const handleSorting = () => {
   dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
 };
 
-const backgroundContextMenuItems = computed(() => [
-  [
-    {
-      icon: "i-mdi-file-upload-outline",
-      label: "Upload File",
-      onSelect: () => handleFileUpload("File"),
-    },
-    {
-      icon: "i-mdi-folder-upload-outline",
-      label: "Upload Folder",
-      onSelect: () => handleFileUpload("Directory"),
-    },
-    {
-      icon: "i-formkit-zip",
-      label: "Upload Archive",
-      onSelect: () => handleFileUpload("Archive"),
-    },
-  ],
-  [
-    {
-      icon: "i-mdi-folder-plus",
-      label: "New Folder",
-      onSelect: () => createNewDirectory(),
-    },
-  ],
-  [
-    {
-      icon: "i-mdi-refresh",
-      label: "Refresh",
-      onSelect: () => refreshDir(),
-    },
-  ],
-]);
+// shared context menu — one controller for row and background menus. The
+// snapshot captured below freezes target and selection at open time so later
+// changes cannot retarget the dispatched actions.
+const menuSnapshot = ref<ExplorerMenuSnapshot | null>(null);
+const contextMenuOpen = ref(false);
+const menuAnchorRow = ref<Element | null>(null);
+
+const backgroundSnapshot = (): ExplorerMenuSnapshot => ({
+  directoryIds: [...selectedDirectories.value],
+  fileIds: [...selectedFiles.value],
+  kind: "background",
+  targetDirectory: null,
+  targetFile: null,
+  totalCount: selectedCount.value,
+});
+
+const explorerMenuActions: ExplorerMenuActions = {
+  copySelection: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    openTransferModal("copy", snap.fileIds, snap.directoryIds);
+  },
+  createDirectory: () => createNewDirectory(),
+  deleteSelection: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    handleDelete(snap.fileIds, snap.directoryIds);
+  },
+  downloadDirectory: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    downloadBulk(snap.fileIds, snap.directoryIds);
+  },
+  downloadFile: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    if (snap.fileIds.length === 1 && snap.directoryIds.length === 0) {
+      downloadFile(snap.fileIds[0]);
+    } else {
+      downloadBulk(snap.fileIds, snap.directoryIds);
+    }
+  },
+  moveSelection: () => {
+    const snap = menuSnapshot.value;
+    if (!snap) return;
+    openTransferModal("move", snap.fileIds, snap.directoryIds);
+  },
+  openDirectory: (directoryId) => handleNavigate(directoryId),
+  openDirectoryDetails: (directory) => {
+    activeDetailsDirectory.value = directory;
+  },
+  openFileDetails: (file) => {
+    activeDetailsFile.value = file;
+  },
+  refresh: () => refreshDir(),
+  renameDirectory: (directoryId) => handleDirectoryRename(directoryId),
+  renameFile: (fileId, originalName) => handleFileRename(fileId, originalName),
+  shareFile: (fileId, fileName) => handleShare(fileId, fileName),
+  uploadArchive: () => handleFileUpload("Archive"),
+  uploadDirectory: () => handleFileUpload("Directory"),
+  uploadFile: () => handleFileUpload("File"),
+};
+
+const explorerMenuItems = computed(() =>
+  buildExplorerMenuItems(menuSnapshot.value ?? backgroundSnapshot(), explorerMenuActions),
+);
+
+const captureMenuTarget = (event: Event) => {
+  // A context menu replaces the tooltip; never show both side by side.
+  fileTooltip.dismiss();
+  const resolved = resolveContextMenuTarget(event.target);
+  if (resolved.kind === "background") {
+    menuSnapshot.value = backgroundSnapshot();
+    menuAnchorRow.value = null;
+    return;
+  }
+
+  // Right-click rules: an unselected row becomes the selection; an existing
+  // multi-selection is preserved. Ordinary/additive/range clicks are untouched.
+  const selected =
+    resolved.kind === "file"
+      ? isFileSelected(resolved.id ?? "")
+      : isDirectorySelected(resolved.id ?? "");
+  if (!selected && resolved.id) {
+    clearSelection();
+    toggleSelect(resolved.id, resolved.kind);
+    lastSelected.value = resolved.id;
+  }
+
+  const targetFile =
+    resolved.kind === "file"
+      ? (filesList.value.find((file) => file.fileId === resolved.id) ?? null)
+      : null;
+  const targetDirectory =
+    resolved.kind === "directory"
+      ? (directoriesList.value.find((dir) => dir.id === resolved.id) ?? null)
+      : null;
+  menuSnapshot.value = {
+    directoryIds: [...selectedDirectories.value],
+    fileIds: [...selectedFiles.value],
+    kind: resolved.kind,
+    targetDirectory,
+    targetFile,
+    totalCount: selectedCount.value,
+  };
+  menuAnchorRow.value = resolved.row;
+};
+
+const handleContextMenuCapture = (event: Event) => {
+  captureMenuTarget(event);
+};
+
+const handleContextMenuPointerDown = (event: PointerEvent) => {
+  if (event.button === 2 || event.pointerType === "touch") captureMenuTarget(event);
+};
+
+const handleMenuOpenChange = (isOpen: boolean) => {
+  if (isOpen) return;
+  const row = menuAnchorRow.value;
+  menuAnchorRow.value = null;
+  if (row instanceof HTMLElement && row.isConnected && document.activeElement === document.body) {
+    row.focus();
+  }
+};
+
+const closeContextMenu = () => {
+  contextMenuOpen.value = false;
+  menuSnapshot.value = null;
+  menuAnchorRow.value = null;
+};
 
 // mobile upload sheet
 
@@ -907,25 +1048,57 @@ const mobileOverflowItems = computed(() => [
   { icon: "mdi:folder-plus", label: "New Folder", onSelect: () => createNewDirectory() },
 ]);
 
-// modals
+// modals use lazy registrations created on open with destroyOnClose
 
-const overlay = useOverlay();
-const createDirectoryModal = overlay.create(CreateDirectoryModal);
-const updateDirectoryModal = overlay.create(UpdateDirectoryModal);
-const fileUploadModal = overlay.create(FileUploadModal);
-const directoryUploadModal = overlay.create(DirectoryUploadModal);
-const archiveUploadModal = overlay.create(ArchiveUploadModal);
-const advancedSearchModal = overlay.create(AdvancedSearchModal);
-const quickSearchModal = overlay.create(QuickSearchModal);
-const confirmModal = overlay.create(ConfirmModal);
-const zipUploadChoiceModal = overlay.create(ZipUploadChoiceModal);
-const updateFileModal = overlay.create(UpdateFileModal);
-const fileTransferModal = overlay.create(FileTransferModal);
-const shareLinkModal = overlay.create(ShareLinkModal);
+const createDirectoryModal = useLazyModal<{ parentId: string | null }, boolean>(
+  CreateDirectoryModal,
+);
+const updateDirectoryModal = useLazyModal<
+  { currentName: string; directoryId: string },
+  boolean
+>(UpdateDirectoryModal);
+const fileUploadModal = useLazyModal<
+  { directoryId?: string; directoryName?: string; droppedFiles?: File[] },
+  boolean
+>(FileUploadModal, { persistOnDispose: true });
+const directoryUploadModal = useLazyModal<
+  { directoryId?: string; directoryName?: string; droppedFiles?: unknown[] },
+  boolean
+>(DirectoryUploadModal, { persistOnDispose: true });
+const archiveUploadModal = useLazyModal<
+  { directoryId?: string; directoryName?: string; droppedFiles?: File[] },
+  boolean
+>(ArchiveUploadModal, { persistOnDispose: true });
+const advancedSearchModal = useLazyModal<Record<string, never>, string>(AdvancedSearchModal);
+const quickSearchModal = useLazyModal<Record<string, never>, string>(QuickSearchModal);
+const confirmModal = useLazyModal<Record<string, unknown>, boolean>(ConfirmModal);
+const zipUploadChoiceModal = useLazyModal<Record<string, never>, "archive" | "file" | null>(
+  ZipUploadChoiceModal,
+);
+const updateFileModal = useLazyModal<{ fileId: string; originalName: string }, boolean>(
+  UpdateFileModal,
+);
+const fileTransferModal = useLazyModal<
+  {
+    dirChips: unknown[];
+    directories: string[];
+    fileChips: unknown[];
+    files: string[];
+    mode: "move" | "copy";
+    originDirId: string | null;
+    originDirName: string | undefined;
+  },
+  string | false
+>(FileTransferModal);
+const shareLinkModal = useLazyModal<{ fileId: string; fileName: string }, boolean>(ShareLinkModal);
 
-const openTransferModal = async (mode: "move" | "copy") => {
+const openTransferModal = async (
+  mode: "move" | "copy",
+  fileIds: string[] = [...selectedFiles.value],
+  dirIds: string[] = [...selectedDirectories.value],
+) => {
   // Build rich chip metadata from what we already have rendered
-  const fileChips = [...selectedFiles.value].map((id) => {
+  const fileChips = fileIds.map((id) => {
     const f = filesList.value.find((file) => file.fileId === id);
     return {
       icon: f ? getFileIcon(f.fileName) : "mdi:file-outline",
@@ -935,7 +1108,7 @@ const openTransferModal = async (mode: "move" | "copy") => {
     };
   });
 
-  const dirChips = [...selectedDirectories.value].map((id) => {
+  const dirChips = dirIds.map((id) => {
     const d = directoriesList.value.find((dir) => dir.id === id);
     return {
       icon: "mdi:folder-outline",
@@ -947,9 +1120,9 @@ const openTransferModal = async (mode: "move" | "copy") => {
 
   const instance = fileTransferModal.open({
     dirChips,
-    directories: [...selectedDirectories.value],
+    directories: [...dirIds],
     fileChips,
-    files: [...selectedFiles.value],
+    files: [...fileIds],
     mode,
     originDirId: currentDirId.value,
     originDirName: currentDirName.value,
@@ -957,6 +1130,10 @@ const openTransferModal = async (mode: "move" | "copy") => {
 
   const destId = await instance.result;
   if (destId) {
+    if (isDisposed.value) {
+      invalidateDir(currentDirId.value ?? null);
+      return;
+    }
     appToast.success(mode === "move" ? "Items moved" : "Items copied");
     refreshDir();
     clearSelection();
@@ -966,6 +1143,7 @@ const openTransferModal = async (mode: "move" | "copy") => {
 const advancedSearch = async () => {
   const instance = advancedSearchModal.open();
   const result = await instance.result;
+  if (isDisposed.value) return;
   if (result === "close") return;
   else if (result === "root") handleNavigate(null);
   else if (typeof result === "string") handleNavigate(result);
@@ -975,6 +1153,7 @@ const quickSearch = async () => {
   const instance = quickSearchModal.open();
   const result = await instance.result;
 
+  if (isDisposed.value) return;
   if (result === "close") return;
   else if (result === "root") handleNavigate(null);
   else if (result === "advanced") advancedSearch();
@@ -988,13 +1167,23 @@ const handleContainerClick = (event: MouseEvent) => {
   if (!target.closest("button")) clearSelection();
 };
 
-const gridColumns = computed(
-  () => "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8",
-);
+const gridStyle = computed(() => {
+  // Keep the thumbnail and tile padding inside each column at every icon size.
+  const thumbnailWidth = Math.round(settingsStore.gridIconSize * 1.5) * 1.4;
+  const minWidth = Math.max(120, Math.ceil((thumbnailWidth + 32) / 8) * 8);
+  return {
+    gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, ${minWidth}px), 1fr))`,
+  };
+});
 
 const handleDirectoryRename = async (directoryId: string) => {
-  const instance = updateDirectoryModal.open({ directoryId });
+  const dir = directoriesList.value.find((d) => d.id === directoryId);
+  const instance = updateDirectoryModal.open({
+    currentName: dir?.name ?? "",
+    directoryId,
+  });
   const shouldRefresh = await instance.result;
+  if (isDisposed.value) return;
   if (shouldRefresh) {
     appToast.success("Directory updated successfully");
   }
@@ -1002,7 +1191,9 @@ const handleDirectoryRename = async (directoryId: string) => {
 
 const handleFileRename = async (fileId: string, originalName: string) => {
   const instance = updateFileModal.open({ fileId, originalName });
-  if (await instance.result) appToast.success("File updated successfully");
+  const shouldRefresh = await instance.result;
+  if (isDisposed.value) return;
+  if (shouldRefresh) appToast.success("File updated successfully");
 };
 
 const handleShare = (fileId: string, fileName: string) => {
@@ -1028,16 +1219,20 @@ const handleCopy = () => {
   appToast.info("Items selected");
 };
 
-const handleDelete = async () => {
-  if (selectedFiles.value.size > 0) {
+const handleDelete = async (
+  fileIds: string[] = [...selectedFiles.value],
+  dirIds: string[] = [...selectedDirectories.value],
+) => {
+  if (fileIds.length === 0 && dirIds.length === 0) return;
+
+  if (fileIds.length > 0) {
     await deleteFilesMutate({
-      ids: [...selectedFiles.value],
+      ids: fileIds,
       directoryId: currentDirId.value ?? undefined,
     });
   }
 
-  if (selectedDirectories.value.size > 0) {
-    const dirIds = Array.from(selectedDirectories.value);
+  if (dirIds.length > 0) {
     const results = await Promise.allSettled(
       dirIds.map((id) =>
         deleteDirectoryMutate({ id, options: { force: false }, originId: currentDirId.value }),
@@ -1070,6 +1265,7 @@ const handleDelete = async () => {
           title: "Delete directories?",
         });
         const confirmed = await instance.result;
+        if (isDisposed.value) return;
         if (confirmed) {
           await Promise.all(
             failedDirs.map((id) =>
@@ -1081,6 +1277,7 @@ const handleDelete = async () => {
     }
   }
 
+  if (isDisposed.value) return;
   appToast.info("Items deleted");
 };
 
@@ -1102,8 +1299,8 @@ const handleCut = async () => {
     });
     directoryStore.selectedDirectories = [];
     directoryStore.modificationOriginDirId = null;
-    copyMode.value = true;
   }
+  copyMode.value = true;
 };
 
 const isCutFile = (id: string) => !copyMode.value && fileStore.selectedFiles.includes(id);
@@ -1148,6 +1345,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   const option = uploadOptions.value.find((opt) => opt.label === type);
   if (option) selectedUploadType.value = { icon: option.icon, label: option.label };
 
+  const targetDirId = currentDirId.value ?? null;
   const uploadProps = {
     directoryId: currentDirId.value ?? undefined,
     directoryName: currentDirName.value,
@@ -1169,6 +1367,10 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
   }
 
   const shouldRefresh = await instance.result;
+  if (isDisposed.value) {
+    if (shouldRefresh) invalidateDir(targetDirId);
+    return;
+  }
   if (shouldRefresh) {
     logger.log("refreshing");
     refreshDir();
@@ -1191,6 +1393,7 @@ const breadcrumbs = computed(() => {
 const createNewDirectory = async () => {
   const instance = createDirectoryModal.open({ parentId: currentDirId.value });
   const shouldRefresh = await instance.result;
+  if (isDisposed.value) return;
   if (shouldRefresh) {
     appToast.success("Directory creation successful");
   } else if (directoryStore.error) {
@@ -1201,16 +1404,8 @@ const createNewDirectory = async () => {
 const handleItemClick = (event: MouseEvent, id: string, type: "file" | "directory") => {
   const isCtrlOrCmd = event.ctrlKey || event.metaKey;
   const isShift = event.shiftKey;
-  const isRightClick = event.button === 2;
 
-  if (isRightClick) {
-    if (!isFileSelected(id) && !isDirectorySelected(id)) {
-      clearSelection();
-      toggleSelect(id, type);
-      lastSelected.value = id;
-    }
-    return;
-  }
+  fileTooltip.dismiss();
 
   if (isShift && lastSelected.value) {
     selectRange(lastSelected.value, id);
@@ -1284,7 +1479,94 @@ const handleFileTrashed = (fileId: string) => {
   refreshDir();
 };
 
-const dirItemRefs = ref<Record<string, { openDetails: () => void }>>({});
+// shared folder details drawer state — one drawer instance for every DirectoryItem
+const activeDetailsDirectory = ref<DirectorySummaryDto | null>(null);
+
+// Navigating away unmounts the listing, so the shared folder target closes
+// with its explorer instead of lingering over unrelated content.
+watch(currentDirId, () => {
+  activeDetailsDirectory.value = null;
+  fileTooltip.release();
+  closeContextMenu();
+});
+
+// A deleted folder disappears from the listing after refresh. Close the
+// shared drawer when its target is gone so actions cannot retarget stale data.
+watch(directoriesList, (list) => {
+  if (!dirHasLoaded.value) return;
+  const target = activeDetailsDirectory.value;
+  if (target && !list.some((dir) => dir.id === target.id)) activeDetailsDirectory.value = null;
+  const menuTarget = menuSnapshot.value?.targetDirectory;
+  if (menuTarget && !list.some((dir) => dir.id === menuTarget.id)) closeContextMenu();
+});
+
+// shared rich file tooltip — one controller for every FileItem. Rows report
+// hover/focus intent with their trigger anchor; placement mirrors the previous
+// per-row controllers (bottom in grid, top in list).
+const explorerBreakpoints = useBreakpoints(breakpointsTailwind);
+const explorerIsMobile = explorerBreakpoints.smaller("md");
+const fileTooltip = useFileTooltip({ disabled: explorerIsMobile });
+
+// Template bindings do not unwrap nested refs, so the shared tooltip state
+// is aliased to top-level bindings for the template below.
+const tooltipAnchor = fileTooltip.anchor;
+const tooltipFile = fileTooltip.file;
+const tooltipOpen = fileTooltip.open;
+
+const fileTooltipContent = computed(() => {
+  if (viewMode.value === "grid") return { align: "center" as const, side: "bottom" as const };
+  return { align: "center" as const, side: "top" as const };
+});
+
+const fileTooltipUi = computed(() => {
+  // Controlled opens always report `instant-open` (Reka only marks `delayed-open`
+  // on its internal trigger path), so both states carry the enter animation.
+  if (viewMode.value === "grid") {
+    return {
+      content:
+        "ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=instant-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto",
+    };
+  }
+  return {
+    content:
+      "z-50 ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=instant-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto",
+  };
+});
+
+const handleTooltipEnter = (
+  file: FileResult,
+  anchor: HTMLElement,
+  kind: FileTooltipEnterKind,
+) => {
+  fileTooltip.enter(file, anchor, kind);
+};
+
+const handleTooltipLeave = (kind: FileTooltipEnterKind) => {
+  fileTooltip.leave(kind);
+};
+
+const tooltipDescribedBy = (fileId: string) => {
+  if (fileTooltip.open.value && fileTooltip.file.value?.fileId === fileId) {
+    return "explorer-file-tooltip";
+  }
+  return null;
+};
+
+// View changes remount row triggers, so the shared anchor would dangle.
+watch(viewMode, () => {
+  fileTooltip.release();
+});
+
+// A removed file must never keep a stale anchored tooltip.
+watch(filesList, (list) => {
+  if (!fileHasLoaded.value) return;
+  const target = fileTooltip.file.value;
+  if (target && !list.some((file) => file.fileId === target.fileId)) fileTooltip.release();
+  const menuTarget = menuSnapshot.value?.targetFile;
+  if (menuTarget && !list.some((file) => file.fileId === menuTarget.fileId)) {
+    closeContextMenu();
+  }
+});
 const handleOpenDetailsSelected = () => {
   const fileCount = selectedFiles.value.size;
   const dirCount = selectedDirectories.value.size;
@@ -1300,50 +1582,93 @@ const handleOpenDetailsSelected = () => {
 
   if (dirCount === 1) {
     const [dirId] = selectedDirectories.value;
-    dirItemRefs.value[dirId]?.openDetails();
+    const dir = directoriesList.value.find((d) => d.id === dirId);
+    if (dir) activeDetailsDirectory.value = dir;
   }
+};
+
+// Single explorer shortcut owner per D5. Every command applies to the current
+// selection and runs only when this explorer may handle input.
+const guarded = (command: () => void) => (event: KeyboardEvent) => {
+  if (!canHandleCommand(event)) return;
+  command();
 };
 
 // oxlint-disable-next-line sort-keys
 defineShortcuts({
   // already present
-  Delete: () => handleDelete(),
-  Escape: () => cancelCut(),
-  alt_arrowleft: () => canGoBack.value && navigateBack(),
-  alt_arrowright: () => canGoForward.value && navigateForward(),
-  "meta_/": () => quickSearch(),
-  meta_c: () => {
+  Delete: guarded(() => handleDelete()),
+  alt_arrowleft: guarded(() => {
+    if (canGoBack.value) navigateBack();
+  }),
+  alt_arrowright: guarded(() => {
+    if (canGoForward.value) navigateForward();
+  }),
+  "meta_/": guarded(() => quickSearch()),
+  meta_c: guarded(() => {
     copyMode.value = true;
     handleCopy();
-  },
-  meta_v: () => (copyMode.value ? handlePaste() : handleCut()),
-  meta_x: () => {
+  }),
+  meta_v: guarded(() => {
+    if (copyMode.value) handlePaste();
+    else handleCut();
+  }),
+  meta_x: guarded(() => {
     copyMode.value = false;
     handleCopy();
-  },
-  shift_k: () => quickSearch(),
-  shift_l: () => advancedSearch(),
+  }),
+  shift_k: guarded(() => quickSearch()),
+  shift_l: guarded(() => advancedSearch()),
 
   // new — single-key, input-safe
-  r: () => handleRenameSelected(),
-  d: () => handleDownloadSelected(),
-  n: () => createNewDirectory(),
+  r: guarded(() => handleRenameSelected()),
+  d: guarded(() => handleDownloadSelected()),
+  n: guarded(() => createNewDirectory()),
 
   // new — F-key
-  F2: () => handleRenameSelected(),
+  F2: guarded(() => handleRenameSelected()),
 
   // alt key usage
-  alt_enter: () => handleOpenDetailsSelected(),
+  alt_enter: guarded(() => handleOpenDetailsSelected()),
+});
+
+useEventListener(containerRef, "mousedown", handleMouseNavigate);
+
+// Escape lives outside defineShortcuts on purpose: the shortcut registry
+// preventDefaults on match even when our guard would reject the press, which
+// blocks Reka's menu/drawer/modal dismissal (it bails on default-prevented
+// keys). This listener checks eligibility first and never prevents default,
+// so ineligible presses reach Reka and native behavior untouched.
+const handleEscapeKey = (event: KeyboardEvent) => {
+  if (event.defaultPrevented || !canHandleCommand(event)) return;
+  // Drawers can keep focus on their trigger, outside the dialog element.
+  if (
+    contextMenuOpen.value ||
+    activeDetailsFile.value ||
+    activeDetailsDirectory.value ||
+    isMobileUploadSheetOpen.value
+  ) {
+    return;
+  }
+  cancelCut();
+  clearSelection();
+  lastSelected.value = "";
+};
+
+useEventListener(window, "keydown", (event) => {
+  if (event.key === "Escape") handleEscapeKey(event);
 });
 
 onMounted(() => {
-  containerRef.value?.addEventListener("mousedown", handleMouseNavigate);
   const tab = tabStore.getTab(tabId);
   navigateTo(tab?.activeDirId);
 });
 
 onUnmounted(() => {
-  containerRef.value?.removeEventListener("mousedown", handleMouseNavigate);
+  isDisposed.value = true;
+  activeDetailsDirectory.value = null;
+  fileTooltip.release();
+  closeContextMenu();
   if (labelTimer) clearInterval(labelTimer);
 });
 </script>

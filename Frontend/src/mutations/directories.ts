@@ -44,6 +44,9 @@ export const updateDirectory = defineMutation(() => {
         exact: true,
         key: DIRECTORY_QUERY_KEYS.byId(data.directoryId),
       });
+      // The renamed directory's parent listing is not tracked here, so all
+      // directory listings are invalidated. Mirrors updateFileMetadata.
+      queryCache.invalidateQueries({ key: DIRECTORY_QUERY_KEYS.root });
     },
   });
 });

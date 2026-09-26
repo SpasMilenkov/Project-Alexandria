@@ -28,6 +28,9 @@ export const useFileStore = defineStore("file", () => {
   const modificationOriginDirId = ref<string | null>(null);
   const downloadProgress = ref<number>(0);
   const selectedFiles = ref<string[]>([]);
+  // true → paste copies; false → paste moves (cut). Shared so a cut started
+  // in one explorer still moves when pasted in another tab.
+  const copyMode = ref(true);
   const isUploading = ref(false);
   const isDownloading = ref(false);
   const error = ref<string | null>(null);
@@ -101,6 +104,7 @@ export const useFileStore = defineStore("file", () => {
     downloadProgress,
     selectedFiles,
     modificationOriginDirId,
+    copyMode,
     isUploading,
     isDownloading,
     error,

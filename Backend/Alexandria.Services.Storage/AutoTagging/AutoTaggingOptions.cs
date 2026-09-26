@@ -2,7 +2,7 @@ namespace Alexandria.Services.Storage.AutoTagging;
 
 /// <summary>
 /// Options for the auto-tagging derivation layer, bound from the <c>Tagging</c>
-/// configuration section (wired in Phase 5). Values here are the locked defaults.
+/// configuration section. Values here are the locked defaults.
 /// </summary>
 public sealed class AutoTaggingOptions
 {

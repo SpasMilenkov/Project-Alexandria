@@ -28,8 +28,11 @@ sealed class BulkDownloadInitEndpoint(IMemoryCache cache) : Endpoint<BulkDownloa
         cache.Set(
             $"bulk-dl:{token}",
             req,
-            TimeSpan.FromSeconds(30)
-        );
+            new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30),
+                Size = 1,
+            });
 
         await Send.OkAsync(new BulkDownloadInitResponse { Token = token }, ct);
     }

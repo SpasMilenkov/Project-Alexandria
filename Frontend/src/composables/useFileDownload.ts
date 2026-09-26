@@ -2,6 +2,7 @@ import { apiClient } from "@/api/client";
 import { fileApi } from "@/api/file";
 import FileDecryptionModal from "@/components/dashboard/file-system/Modals/FileDecryptionModal.vue";
 import { decryptFile } from "@/composables/useDecrypt";
+import { useLazyModal } from "@/composables/useLazyOverlay";
 import { logger } from "@/utils/logger";
 
 /**
@@ -19,9 +20,10 @@ import { logger } from "@/utils/logger";
  *      stays open for another attempt without re-fetching the bytes.
  */
 export const useFileDownload = () => {
-  const overlay = useOverlay();
-  // Create once per composable instance; the overlay handles mounting/unmounting.
-  const decryptionModal = overlay.create(FileDecryptionModal);
+  const decryptionModal = useLazyModal<
+    { hint: string | null; onAttempt: (password: string) => Promise<void> },
+    void
+  >(FileDecryptionModal);
 
   // Helpers
 

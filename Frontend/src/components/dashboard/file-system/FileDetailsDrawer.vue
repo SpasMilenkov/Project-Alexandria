@@ -78,7 +78,7 @@
             />
           </div>
 
-          <USkeleton v-if="fileTagsLoading" class="h-8 w-48 rounded-full" />
+          <USkeleton v-if="fileTagsLoading && !fileTags" class="h-8 w-48 rounded-full" />
 
           <div
             v-else
@@ -474,7 +474,11 @@ const tagOptions = computed(() =>
   })),
 );
 
-const { data: fileTags, isLoading: fileTagsLoading } = useQuery(() => ({
+const {
+  data: fileTags,
+  isLoading: fileTagsLoading,
+  refresh: refreshFileTags,
+} = useQuery(() => ({
   ...getTagsForFile(displayFile.value?.fileId ?? ""),
   enabled: isOpen.value,
 }));
@@ -508,8 +512,21 @@ watch(selectedTagId, (tagId) => {
 
 const refreshOnRemove = async (id: string) => {
   if (!displayFile.value) return;
-  await removeTagMutateAsync({ fileId: displayFile.value.fileId, tagId: id });
-  refreshFileTag();
+  const fileId = displayFile.value.fileId;
+  const previousTags = displayFile.value.tags;
+  displayFile.value = {
+    ...displayFile.value,
+    tags: previousTags.filter((tag) => tag.id !== id),
+  };
+  try {
+    await removeTagMutateAsync({ fileId, tagId: id });
+    refreshFileTags();
+    refreshFileTag();
+  } catch {
+    if (displayFile.value?.fileId === fileId) {
+      displayFile.value = { ...displayFile.value, tags: previousTags };
+    }
+  }
 };
 
 watch(

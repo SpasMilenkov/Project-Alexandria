@@ -50,15 +50,15 @@
     </dl>
 
     <!-- Tags -->
-    <template v-if="data.tags && data.tags.length > 0">
+    <template v-if="tooltipTags.length > 0">
       <div class="tooltip-card__divider" />
       <div class="tooltip-card__tags">
-        <span v-for="tag in data.tags.slice(0, 4)" :key="tag.id" class="tooltip-card__tag">
+        <span v-for="tag in tooltipTags.slice(0, 4)" :key="tag.id" class="tooltip-card__tag">
           <Icon v-if="tag.icon" :icon="getIconByValue(tag.icon)" class="size-3" />
           {{ tag.name }}
         </span>
-        <span v-if="data.tags.length > 4" class="tooltip-card__tag tooltip-card__tag--overflow">
-          +{{ data.tags.length - 4 }}
+        <span v-if="tooltipTags.length > 4" class="tooltip-card__tag tooltip-card__tag--overflow">
+          +{{ tooltipTags.length - 4 }}
         </span>
       </div>
     </template>
@@ -67,10 +67,13 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
+import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
 import type { FileResult } from "@/api/file";
+import type { TagDto } from "@/api/tag";
 
+import { getTagsForFile } from "@/queries/tags";
 import { formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
 import { getFileTypeReadable } from "@/utils/mimetype.utils";
@@ -79,6 +82,13 @@ import { formatBytes } from "@/utils/size.utils";
 const props = defineProps<{
   data: FileResult;
 }>();
+
+// Authoritative tag source with the listing snapshot as instant fallback.
+// Row hover already warms this query, so tooltip reads are usually cached and
+// tag edits converge here without refetching the whole file listing.
+const { data: fileTags } = useQuery(() => getTagsForFile(props.data.fileId));
+
+const tooltipTags = computed((): TagDto[] => fileTags.value?.tags ?? props.data.tags ?? []);
 
 const readableType = computed(() =>
   getFileTypeReadable(props.data.currentVersion.mimeType, props.data.fileName),

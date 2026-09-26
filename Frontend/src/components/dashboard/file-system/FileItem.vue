@@ -1,19 +1,10 @@
 <template>
-  <UContextMenu
+  <div
     v-if="viewMode === 'grid'"
-    :items="contextMenuItems"
-    :ui="{ content: 'lg:min-w-56' }"
+    class="relative group"
+    tabindex="0"
+    :data-file-id="data.fileId"
   >
-    <div class="relative group" tabindex="0">
-      <UTooltip
-        :disabled="isMobile"
-        :delay-duration="600"
-        :content="{ side: 'bottom', align: 'center' }"
-        :ui="{
-          content:
-            'ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto',
-        }"
-      >
         <button
           type="button"
           class="w-full flex flex-col items-center gap-2 p-4 rounded-lg transition-colors cursor-pointer"
@@ -24,9 +15,15 @@
           ]"
           @click="handleClick"
           @dblclick="handleDoubleClick"
-          @contextmenu="emit('contextmenu', $event)"
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
+          @touchend="cancelPrefetch"
+          @touchcancel="cancelPrefetch"
+          @pointerenter="handlePointerEnter"
+          @pointerleave="handlePointerLeave"
+          @focus="handleFocus"
+          @blur="handleBlur"
+          :aria-describedby="describedBy ?? undefined"
         >
           <div
             class="relative shrink-0 flex items-center justify-center overflow-hidden rounded-md"
@@ -61,25 +58,14 @@
             {{ props.data.fileName }}
           </span>
         </button>
+  </div>
 
-        <template #content>
-          <FileTooltipCard :data="props.data" />
-        </template>
-      </UTooltip>
-    </div>
-  </UContextMenu>
-
-  <UContextMenu v-else :items="contextMenuItems">
-    <div class="relative group" tabindex="0">
-      <UTooltip
-        :disabled="isMobile"
-        :delay-duration="600"
-        :content="{ side: 'top', align: 'center' }"
-        :ui="{
-          content:
-            'z-50 ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto',
-        }"
-      >
+  <div
+    v-else
+    class="relative group"
+    tabindex="0"
+    :data-file-id="data.fileId"
+  >
         <button
           type="button"
           class="w-full flex items-center gap-3 px-4 py-2 transition-colors cursor-pointer text-left border-b last:border-b-0"
@@ -90,9 +76,15 @@
           ]"
           @click="handleClick"
           @dblclick="handleDoubleClick"
-          @contextmenu="emit('contextmenu', $event)"
           @mouseenter="prefetchDetails"
           @touchstart.passive="prefetchDetails"
+          @touchend="cancelPrefetch"
+          @touchcancel="cancelPrefetch"
+          @pointerenter="handlePointerEnter"
+          @pointerleave="handlePointerLeave"
+          @focus="handleFocus"
+          @blur="handleBlur"
+          :aria-describedby="describedBy ?? undefined"
         >
           <Icon
             :icon="getFileIcon(props.data.fileName)"
@@ -105,24 +97,17 @@
             {{ formatBytes(Number(props.data.currentVersion.size)) }}
           </span>
         </button>
-
-        <template #content>
-          <FileTooltipCard :data="props.data" />
-        </template>
-      </UTooltip>
-    </div>
-  </UContextMenu>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQueryCache } from "@pinia/colada";
-import { breakpointsTailwind, useBreakpoints, useDebounceFn } from "@vueuse/core";
-import { computed } from "vue";
-
-import type { TagDto } from "@/api/tag";
+import { useDebounceFn } from "@vueuse/core";
+import { computed, onUnmounted } from "vue";
 
 import { type FileResult } from "@/api/file";
+import { type FileTooltipEnterKind } from "@/composables/useFileTooltip";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { getFile, getVersionsForFile } from "@/queries/files";
 import { getPreview } from "@/queries/files";
@@ -131,31 +116,21 @@ import { useSettingsStore } from "@/stores/settings";
 import { getFileIcon } from "@/utils/icon.utils";
 import { formatBytes } from "@/utils/size.utils";
 
-import FileTooltipCard from "./FileTooltipCard.vue";
-
 const settingsStore = useSettingsStore();
-const breakpoints = useBreakpoints(breakpointsTailwind);
-const isMobile = breakpoints.smaller("md");
 const queryCache = useQueryCache();
 
 const props = defineProps<{
   data: FileResult;
   viewMode: "grid" | "list";
   isSelected: boolean;
-  selectedCount?: number;
-  tags: TagDto[] | undefined;
+  describedBy?: string | null;
 }>();
 
 const emit = defineEmits<{
   click: [event: MouseEvent];
   "open-details": [file: FileResult];
-  rename: [fileId: string, originalName: string];
-  delete: [fileIds: string[]];
-  move: [fileIds: string[]];
-  copy: [fileIds: string[]];
-  download: [fileIds: string[]];
-  share: [fileIds: string[]];
-  contextmenu: [fileId: PointerEvent];
+  "tooltip-enter": [file: FileResult, anchor: HTMLElement, kind: FileTooltipEnterKind];
+  "tooltip-leave": [kind: FileTooltipEnterKind];
 }>();
 
 const iconSize = computed(() =>
@@ -197,122 +172,46 @@ const prefetchDetails = useDebounceFn(() => {
   );
 }, 150);
 
-const canRename = (): boolean => true;
-const canMove = (): boolean => true;
-const canCopy = (): boolean => true;
-const canDownload = (): boolean => true;
-const canShare = (): boolean => true;
-const canDelete = (): boolean => true;
+// The four requests above only warm the details drawer, which fetches them for
+// real on open. A pending warmup is cancelled as soon as interest moves away
+// (pointer/focus leave, touch end) or the row unmounts, so no delayed request
+// begins after disposal.
+const cancelPrefetch = () => {
+  prefetchDetails.cancel();
+};
 
-const singleSelectMenuItems = [
-  [
-    {
-      icon: "i-mdi-information-outline",
-      label: "View details",
-      kbds: [{ value: "alt" }, { value: "enter" }],
-      onSelect: () => emit("open-details", props.data),
-    },
-    {
-      disabled: !canDownload(),
-      icon: "i-mdi-download-outline",
-      kbds: [{ value: "D" }],
-      label: "Download",
-      onSelect: () => emit("download", [props.data.fileId]),
-    },
-  ],
-  [
-    {
-      disabled: !canRename(),
-      icon: "i-mdi-pencil-outline",
-      kbds: ["R"],
-      label: "Rename",
-      onSelect: () => emit("rename", props.data.fileId, props.data.fileName),
-    },
-    {
-      disabled: !canMove(),
-      icon: "i-mdi-folder-move-outline",
-      label: "Move to…",
-      kbds: ["⌘", "X"],
-      onSelect: () => emit("move", [props.data.fileId]),
-    },
-    {
-      disabled: !canCopy(),
-      icon: "i-mdi-content-copy",
-      kbds: ["⌘", "C"],
-      label: "Copy to…",
-      onSelect: () => emit("copy", [props.data.fileId]),
-    },
-  ],
-  [
-    {
-      disabled: !canShare(),
-      icon: "i-mdi-share-variant-outline",
-      label: "Share",
-      onSelect: () => emit("share", [props.data.fileId]),
-    },
-  ],
-  [
-    {
-      color: "error" as const,
-      disabled: !canDelete(),
-      icon: "i-mdi-delete-outline",
-      kbds: ["Del"],
-      label: "Delete",
-      onSelect: () => emit("delete", [props.data.fileId]),
-    },
-  ],
-];
-
-const contextMenuItems = computed(() => {
-  const isMultiSelect = (props.selectedCount ?? 0) > 1;
-  const count = props.selectedCount ?? 1;
-
-  if (!isMultiSelect) return singleSelectMenuItems;
-
-  return [
-    [{ label: `${count} items selected`, type: "label" as const }],
-    [
-      {
-        disabled: !canDownload(),
-        icon: "i-mdi-download-multiple-outline",
-        label: "Download all",
-        onSelect: () => emit("download", []),
-      },
-    ],
-    [
-      {
-        disabled: !canMove(),
-        icon: "i-mdi-folder-move-outline",
-        label: "Move all to…",
-        onSelect: () => emit("move", []),
-      },
-      {
-        disabled: !canCopy(),
-        icon: "i-mdi-content-copy",
-        label: "Copy all to…",
-        onSelect: () => emit("copy", []),
-      },
-      {
-        disabled: !canShare(),
-        icon: "i-mdi-share-variant-outline",
-        label: "Share all",
-        onSelect: () => emit("share", []),
-      },
-    ],
-    [
-      {
-        color: "error" as const,
-        disabled: !canDelete(),
-        icon: "i-mdi-delete-sweep-outline",
-        label: `Delete ${count} items`,
-        onSelect: () => emit("delete", []),
-      },
-    ],
-  ];
+onUnmounted(() => {
+  cancelPrefetch();
 });
 
 const handleClick = (event: MouseEvent) => emit("click", event);
 const handleDoubleClick = () => emit("open-details", props.data);
+
+// Row actions live in the shared explorer-owned context menu. Rows forward
+// click and tooltip intent and keep no menu trees or menu-building state.
+
+const handlePointerEnter = (event: PointerEvent) => {
+  if (event.pointerType === "touch") return;
+  if (event.currentTarget instanceof HTMLElement) {
+    emit("tooltip-enter", props.data, event.currentTarget, "pointer");
+  }
+};
+
+const handlePointerLeave = () => {
+  cancelPrefetch();
+  emit("tooltip-leave", "pointer");
+};
+
+const handleFocus = (event: FocusEvent) => {
+  if (event.currentTarget instanceof HTMLElement) {
+    emit("tooltip-enter", props.data, event.currentTarget, "focus");
+  }
+};
+
+const handleBlur = () => {
+  cancelPrefetch();
+  emit("tooltip-leave", "focus");
+};
 </script>
 
 <style scoped></style>

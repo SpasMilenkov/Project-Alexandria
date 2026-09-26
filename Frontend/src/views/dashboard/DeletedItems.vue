@@ -205,7 +205,6 @@
                 <FileItem
                   :data="file"
                   :is-selected="false"
-                  :tags="file.tags"
                   view-mode="list"
                   @click="handleItemClick"
                   @file-restored="refreshData"

@@ -1,5 +1,12 @@
 <template>
-  <RouterLink :to="to" custom v-slot="{ navigate, isExactActive }">
+  <button v-if="action" type="button" class="mobile-nav-item" @click="action">
+    <span class="mobile-nav-item__icon-wrap">
+      <UIcon :name="icon" class="size-4.5" />
+    </span>
+    <span class="mobile-nav-item__label">{{ label }}</span>
+    <UIcon name="i-heroicons-chevron-right" class="size-4 text-muted ml-auto opacity-90" />
+  </button>
+  <RouterLink v-else :to="to ?? '/'" custom v-slot="{ navigate, isExactActive }">
     <button
       type="button"
       class="mobile-nav-item"
@@ -19,7 +26,8 @@
 defineProps<{
   icon: string;
   label: string;
-  to: string;
+  to?: string;
+  action?: () => void;
   active?: boolean;
   indented?: boolean;
 }>();
