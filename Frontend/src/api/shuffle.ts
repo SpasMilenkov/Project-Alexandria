@@ -37,6 +37,9 @@ export interface CreateShuffleSessionRequest {
 
 export const SHUFFLE_BATCH_LIMIT = 50;
 
+/** Single range size shared by sequential pages and shuffle reads. */
+export const RANGE_SIZE = SHUFFLE_BATCH_LIMIT;
+
 export const isAuthError = (err: unknown): boolean => {
   const status = (err as { response?: { status?: number } })?.response?.status;
   return status === 401 || status === 403;
@@ -45,6 +48,20 @@ export const isAuthError = (err: unknown): boolean => {
 export const httpStatus = (err: unknown): number | null => {
   const status = (err as { response?: { status?: number } })?.response?.status;
   return typeof status === "number" ? status : null;
+};
+
+/** Builds the client error shape the 404 recovery paths match on. */
+export const sourceUnavailable = (): unknown => ({ response: { status: 404 } });
+
+/** Names which field a 409 response blames: requestId, anchorFileId, or null. */
+export const conflictField = (err: unknown): string | null => {
+  const errors = (err as { response?: { data?: { errors?: Record<string, string[]> } } })?.response
+    ?.data?.errors;
+  if (!errors || typeof errors !== "object") return null;
+  const keys = Object.keys(errors);
+  if (keys.some((key) => key.toLowerCase().includes("requestid"))) return "requestId";
+  if (keys.some((key) => key.toLowerCase().includes("anchorfileid"))) return "anchorFileId";
+  return null;
 };
 
 const newRequestId = (): string => {
