@@ -144,12 +144,12 @@
               <button
                 class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
                 :class="shuffleToggleClass"
-                :disabled="shuffleBusy"
+                :disabled="orderBusy"
                 :title="shuffleTitle"
                 :aria-label="shuffleTitle"
                 @click="store.toggleShuffle()"
               >
-                <Icon v-if="shuffleBusy" icon="mdi:loading" class="w-5 h-5 animate-spin" />
+                <Icon v-if="orderBusy" icon="mdi:loading" class="w-5 h-5 animate-spin" />
                 <Icon v-else icon="mdi:shuffle-variant" class="w-5 h-5" />
               </button>
               <button
@@ -302,8 +302,8 @@ const {
   hasNext,
   hasPrevious,
   repeatMode,
-  shuffled,
-  shuffleBusy,
+  context,
+  orderBusy,
   isPlaying,
   engineBuffering: isBuffering,
   currentTime,
@@ -332,9 +332,14 @@ const progress = computed(() => {
   if (!duration.value) return 0;
   return Math.max(0, Math.min(100, (currentTime.value / duration.value) * 100));
 });
+const isShuffled = computed(() => context.value?.shuffled ?? false);
+
 const shuffleTitle = computed(() => {
-  if (shuffleBusy.value) return "Starting shuffle…";
-  return shuffled.value ? "Disable shuffle" : "Shuffle this source";
+  if (orderBusy.value) return "Starting shuffle…";
+  const label = context.value?.label ?? null;
+  if (!label) return "Shuffle (applies to the next thing you play)";
+  if (isShuffled.value) return `Disable shuffle for ${label}`;
+  return `Shuffle ${label}`;
 });
 
 const playPauseIcon = computed(() => {
@@ -353,7 +358,7 @@ const repeatIcon = computed(() => {
 });
 
 const shuffleToggleClass = computed(() => {
-  if (shuffled.value) return "text-primary";
+  if (isShuffled.value) return "text-primary";
   return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
 });
 

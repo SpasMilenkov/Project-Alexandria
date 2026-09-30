@@ -173,8 +173,8 @@ onClickOutside(wrapperRef, () => {
 
 // Player actions
 //
-// Search results are NEVER passed to setSource — they go into the queue only.
-// Navigation (next/prev) always follows the library source cursor.
+// Search results are always interrupts: playNow leaves the context cursor
+// untouched, and queue adds never disturb the active context.
 
 const playNow = (file: MediaFileDto) => {
   playerStore.playNow([file]);
@@ -183,11 +183,11 @@ const playNow = (file: MediaFileDto) => {
 };
 
 const enqueue = (file: MediaFileDto) => {
-  playerStore.enqueue(file);
+  void playerStore.addToQueue([file]);
 };
 
 const enqueueAll = () => {
-  results.value.forEach((f) => playerStore.enqueue(f));
+  void playerStore.addToQueue([...results.value]);
   isOpen.value = false;
   clear();
 };

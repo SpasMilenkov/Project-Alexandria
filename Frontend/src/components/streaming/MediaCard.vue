@@ -25,7 +25,7 @@ const {
 }>();
 
 const store = usePlayerStore();
-const { activeFile, userQueue } = storeToRefs(store);
+const { activeFile, queueEntries } = storeToRefs(store);
 
 const isActive = computed(() => activeFile.value?.fileId === file.fileId);
 const isAudio = computed(() => !file.isVideo);
@@ -64,7 +64,9 @@ const onArtworkError = (event: Event) => {
 };
 
 // Queue state
-const queueIndex = computed(() => userQueue.value.findIndex((f) => f.fileId === file.fileId));
+const queueIndex = computed(() =>
+  queueEntries.value.findIndex((entry) => entry.file.fileId === file.fileId),
+);
 const isQueued = computed(() => queueIndex.value !== -1);
 
 // Border/background follows selection first, then the now-playing state.
@@ -86,7 +88,7 @@ const checkboxVisible = computed(() => selectionMode || selected);
 const contextItems = computed((): ContextMenuItem[][] => [
   [
     {
-      label: "Play now",
+      label: "Play",
       icon: "i-mdi-play",
       onSelect: () => emit("select", file),
     },
@@ -96,12 +98,12 @@ const contextItems = computed((): ContextMenuItem[][] => [
       ? {
           label: "Remove from queue",
           icon: "i-mdi-playlist-minus",
-          onSelect: () => store.dequeueAt(queueIndex.value),
+          onSelect: () => store.removeFromQueue(queueIndex.value),
         }
       : {
           label: "Add to queue",
           icon: "i-mdi-playlist-plus",
-          onSelect: () => store.enqueue(file),
+          onSelect: () => store.addToQueue([file]),
         },
   ],
 ]);

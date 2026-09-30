@@ -17,8 +17,8 @@ const {
   hasNext,
   hasPrevious,
   repeatMode,
-  shuffled,
-  shuffleBusy,
+  context,
+  orderBusy,
   isPlaying,
   currentTime,
   duration,
@@ -43,6 +43,7 @@ const thumbnailUrl = computed(() => preview.value?.thumbnailUrl ?? null);
 const { isBuffering, loadError, resumePrompt, acceptResumePrompt, dismissResumePrompt } =
   usePlayerEngine(videoRef, containerRef, {
     getThumbnailUrl: () => thumbnailUrl.value,
+    mediaKind: "video",
     shakaUiConfig: {
       ...VIDEO_SHAKA_UI_CONFIG,
       controlPanelElements: [],
@@ -50,7 +51,7 @@ const { isBuffering, loadError, resumePrompt, acceptResumePrompt, dismissResumeP
     },
   });
 
-const hasFile = computed(() => activeFile.value !== null);
+const hasFile = computed(() => activeFile.value?.isVideo ?? false);
 const displayTitle = computed(() => activeFile.value?.title ?? activeFile.value?.fileName ?? null);
 const displayArtist = computed(() => activeFile.value?.artist ?? null);
 
@@ -132,6 +133,14 @@ const volumeIcon = computed(() => {
 const RING_CIRCUMFERENCE = 2 * Math.PI * 16;
 const AUTOPLAY_SECONDS = 5;
 
+const shuffleHint = computed(() => {
+  if (orderBusy.value) return "Starting shuffle…";
+  const label = context.value?.label ?? null;
+  if (!label) return "Shuffle (applies to the next thing you play)";
+  if (context.value?.shuffled) return `Disable shuffle for ${label}`;
+  return `Shuffle ${label}`;
+});
+
 const countdownDashoffset = computed(() => {
   if (autoplayCountdown.value === null) return RING_CIRCUMFERENCE;
   const fraction = autoplayCountdown.value / AUTOPLAY_SECONDS;
@@ -142,7 +151,6 @@ const countdownDashoffset = computed(() => {
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", onFullscreenChange);
-  if (store.isAudio) store.activeFile = null;
 });
 
 onUnmounted(() => {
@@ -266,17 +274,15 @@ onUnmounted(() => {
         <!-- Secondary controls -->
         <button
           class="vps-btn"
-          :class="shuffled ? 'vps-btn-active' : ''"
-          :disabled="shuffleBusy"
-          :title="
-            shuffleBusy ? 'Starting shuffle…' : shuffled ? 'Disable shuffle' : 'Shuffle this source'
-          "
+          :class="context?.shuffled ? 'vps-btn-active' : ''"
+          :disabled="orderBusy"
+          :title="shuffleHint"
           @click="store.toggleShuffle()"
         >
           <Icon
-            :icon="shuffleBusy ? 'mdi:loading' : 'mdi:shuffle-variant'"
+            :icon="orderBusy ? 'mdi:loading' : 'mdi:shuffle-variant'"
             class="w-5 h-5"
-            :class="shuffleBusy ? 'animate-spin' : ''"
+            :class="orderBusy ? 'animate-spin' : ''"
           />
         </button>
         <button

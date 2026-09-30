@@ -1,5 +1,3 @@
-// oxlint-disable max-statements
-// oxlint-disable max-lines-per-function
 import { type Ref, computed, onMounted, onUnmounted, ref, watch } from "vue";
 
 import { attemptRefresh } from "@/api/client";
@@ -9,14 +7,13 @@ import { usePlayerStore } from "@/stores/stream-player";
 import { ListeningHistoryTracker } from "@/utils/listening-history-tracker";
 
 const REFRESH_INTERVAL_MS = 10 * 30 * 1_000;
-const VIDEO_AUTOPLAY_COUNTDOWN_SECONDS = 5;
-const RESUME_CUTOFF_FROM_END = 10; // seconds before end — no prompt past this point
-const RESUME_MIN_POSITION = 5; // seconds from start — no prompt before this point
+const RESUME_CUTOFF_FROM_END = 10;
+const RESUME_MIN_POSITION = 5;
 
 export interface PlayerEngineOptions {
   getThumbnailUrl?: () => string | null | undefined;
   shakaUiConfig?: Record<string, unknown>;
-  mediaKind?: "audio" | "video";
+  mediaKind: "audio" | "video";
   headless?: boolean;
 }
 
@@ -44,7 +41,7 @@ export const VIDEO_SHAKA_UI_CONFIG = {
 export const usePlayerEngine = (
   videoRef: Ref<HTMLVideoElement | null>,
   containerRef: Ref<HTMLElement | null>,
-  options: PlayerEngineOptions = {},
+  options: PlayerEngineOptions,
 ) => {
   const store = usePlayerStore();
   const { mutateAsync: endSessionAsync } = closeSession();
@@ -60,12 +57,18 @@ export const usePlayerEngine = (
       const sessions = await streamingApi.getSessions(history.id).catch(() => null);
       return sessions?.items.some((s) => s.id === sessionId && s.endedAt !== null) ?? false;
     },
-    currentFileId: () => store.activeFile?.fileId ?? null,
+    currentFileId: () => store.nowPlaying?.file.fileId ?? null,
   });
-  const historyFlushToken = store.registerHistoryFlush(() => historyTracker.flush());
+  const disposeHistoryFlush = store.registerHistoryFlush(() => historyTracker.flush());
+  const disposeVideoSurface =
+    options.mediaKind === "video" && !options.headless ? store.registerVideoSurface() : null;
 
-  // Engine status lives in the store so every presentation surface (strip,
-  // pill, card, sheet) consumes the same source instead of a per-view copy.
+  // Every engine hears store changes, but only the one whose kind matches the
+  // playing file may report back. Otherwise a paused audio element keeps
+  // writing transport state, media session and ended events over the video.
+  const isActiveEngine = () =>
+    (store.nowPlaying?.file.mimeType.startsWith("audio/") ?? true) === (options.mediaKind === "audio");
+
   const playerReady = computed(() => store.engineReady);
   const isBuffering = computed(() => store.engineBuffering);
   const loadError = computed(() => store.engineLoadError);
@@ -73,24 +76,20 @@ export const usePlayerEngine = (
 
   let shakaPlayer: any = null;
   let shakaUi: any = null;
-  let engineToken: number | null = null;
   let shakaInitPromise: Promise<void> | null = null;
-  let isFirstLoad = true;
+  let disposeEngine: (() => void) | null = null;
+  let loadedInstanceId: number | null = null;
+  let loadedFileId: string | null = null;
+  let loadedVersionId: string | null = null;
   let currentManifestUrl = "";
+  let ownsMediaSession = false;
 
-  // Holds the saved position across the loadFile -> loadedmetadata boundary.
-  // Set in loadFile once we know there's a candidate resume position.
-  // Consumed and cleared inside the loadedmetadata handler once duration is known.
   let pendingResumePosition: number | null = null;
   let pendingLoadSequence = 0;
+  let pendingRestored = false;
 
-  // Monotonic load generation. Every loadFile captures its own sequence and
-  // delayed play attempts verify it, so a superseded load can never restart
-  // playback after a newer source took over.
   let loadSequenceCounter = 0;
 
-  // Delayed play with a staleness guard. AbortError (a newer load or pause won
-  // the race) stays silent; genuine blocks surface for the UI to report.
   const delayedPlay = (element: HTMLVideoElement | null, sequence: number) => {
     if (!element) return;
     setTimeout(() => {
@@ -109,8 +108,6 @@ export const usePlayerEngine = (
   const listenedSeconds = ref(0);
   let listenTicker: ReturnType<typeof setInterval> | null = null;
   let refreshTicker: ReturnType<typeof setInterval> | null = null;
-
-  // Session tracking
 
   const startRefreshTicker = () => {
     if (refreshTicker !== null) return;
@@ -149,14 +146,12 @@ export const usePlayerEngine = (
   };
 
   const openNewSession = () => {
-    if (!store.activeFile || !videoRef.value) return;
+    if (!store.nowPlaying || !videoRef.value) return;
     closeActiveSession();
     listenedSeconds.value = 0;
-    historyTracker.openNew(store.activeFile.fileId, Math.floor(videoRef.value.currentTime));
+    historyTracker.openNew(store.nowPlaying.file.fileId, Math.floor(videoRef.value.currentTime));
     startListenTicker();
   };
-
-  // Resume prompt controls
 
   const acceptResumePrompt = () => {
     if (resumePrompt.value && videoRef.value) {
@@ -171,8 +166,6 @@ export const usePlayerEngine = (
     videoRef.value?.play();
   };
 
-  // Quality management
-
   const syncVariantTracks = () => {
     if (!shakaPlayer) return;
     const tracks = shakaPlayer.getVariantTracks();
@@ -180,8 +173,6 @@ export const usePlayerEngine = (
     const active = tracks.find((t: any) => t.active);
     store.setActiveVariantId(store.abrEnabled ? null : (active?.id ?? null));
   };
-
-  // Media Session API
 
   const syncPositionState = () => {
     if (!("mediaSession" in navigator) || !videoRef.value) return;
@@ -195,6 +186,7 @@ export const usePlayerEngine = (
   const updateMediaSession = (file: MediaFileDto | null) => {
     if (!("mediaSession" in navigator) || !file) return;
     const thumbnailUrl = options.getThumbnailUrl?.();
+    ownsMediaSession = true;
     navigator.mediaSession.metadata = new MediaMetadata({
       title: file.title ?? file.fileName,
       artist: file.artist ?? undefined,
@@ -207,7 +199,7 @@ export const usePlayerEngine = (
       if (store.hasPrevious) store.previous();
     });
     navigator.mediaSession.setActionHandler("nexttrack", () => {
-      if (store.isAudio || store.hasNext) store.next();
+      if (store.hasNext) store.next();
     });
     navigator.mediaSession.setActionHandler("seekto", (details) => {
       if (videoRef.value && details.seekTime !== null && details.seekTime !== undefined) {
@@ -230,7 +222,8 @@ export const usePlayerEngine = (
   };
 
   const clearMediaSession = () => {
-    if (!("mediaSession" in navigator)) return;
+    if (!("mediaSession" in navigator) || !ownsMediaSession) return;
+    ownsMediaSession = false;
     navigator.mediaSession.metadata = null;
     navigator.mediaSession.playbackState = "none";
     (
@@ -245,8 +238,6 @@ export const usePlayerEngine = (
       ] as const
     ).forEach((a) => navigator.mediaSession.setActionHandler(a, null));
   };
-
-  // Shaka init
 
   const initShaka = () => {
     if (shakaInitPromise) return shakaInitPromise;
@@ -273,14 +264,9 @@ export const usePlayerEngine = (
         shakaPlayer = new shaka.Player();
         await shakaPlayer.attach(videoRef.value);
 
-        // loadedmetadata fires once the browser knows the duration.
-        // This is the earliest safe place to:
-        //   1. push the real duration into the store (fixes the 0:00 bug)
-        //   2. decide whether to show the resume prompt (needs duration to
-        //      guard against prompting near the end of short videos)
         videoRef.value?.addEventListener("loadedmetadata", () => {
           const el = videoRef.value;
-          if (!el) return;
+          if (!el || !isActiveEngine()) return;
 
           const dur = el.duration;
           if (dur && isFinite(dur)) {
@@ -289,73 +275,68 @@ export const usePlayerEngine = (
 
           const pos = pendingResumePosition;
           pendingResumePosition = null;
+          const wasRestored = pendingRestored;
+          pendingRestored = false;
 
-          if (
+          if (wasRestored) {
+            el.pause();
+          } else if (
             pos !== null &&
             dur &&
             isFinite(dur) &&
             pos > RESUME_MIN_POSITION &&
             pos < dur - RESUME_CUTOFF_FROM_END
           ) {
-            resumePrompt.value = { positionSeconds: pos };
-            // Hold playback — the user's button choice will call
-            // acceptResumePrompt() or dismissResumePrompt(), both of which
-            // call play() themselves.
-            el.pause();
-          } else if (!isFirstLoad) {
-            // No resume prompt: autoplay if this isn't the initial page load.
-            // The pending sequence was captured with the resume position, so a
-            // superseded load never autoplays over a newer source.
+            if (options.headless) {
+              el.currentTime = pos;
+              delayedPlay(el, pendingLoadSequence);
+            } else {
+              resumePrompt.value = { positionSeconds: pos };
+              el.pause();
+            }
+          } else {
             delayedPlay(el, pendingLoadSequence);
           }
         });
 
         videoRef.value?.addEventListener("playing", () => {
+          if (!isActiveEngine()) {
+            videoRef.value?.pause();
+            return;
+          }
           store.setIsPlaying(true);
-          store.cancelAutoplay();
           openNewSession();
           syncPositionState();
         });
 
         videoRef.value?.addEventListener("pause", () => {
-          store.setIsPlaying(false);
           closeActiveSession();
+          if (!isActiveEngine()) return;
+          store.setIsPlaying(false);
           syncPositionState();
         });
 
         videoRef.value?.addEventListener("timeupdate", () => {
+          if (!isActiveEngine()) return;
           store.setCurrentTime(videoRef.value?.currentTime ?? 0);
-          // Keep duration in sync for live streams or sources that update it.
           const dur = videoRef.value?.duration;
           if (dur && isFinite(dur)) store.setDuration(dur);
           syncPositionState();
         });
 
         videoRef.value?.addEventListener("ratechange", () => {
+          if (!isActiveEngine()) return;
           store.setPlaybackRateState(videoRef.value?.playbackRate ?? 1);
         });
 
         videoRef.value?.addEventListener("ended", () => {
-          store.setIsPlaying(false);
           closeActiveSession();
-
-          const isVideoFile = !store.activeFile?.mimeType.startsWith("audio/");
-          const canAdvance = store.hasNext || store.repeatMode === "all";
-
-          if (isVideoFile) {
-            resumePrompt.value = null;
-            if (store.videoAutoplay && canAdvance) {
-              store.startAutoplayCountdown(VIDEO_AUTOPLAY_COUNTDOWN_SECONDS, () =>
-                store.next("natural"),
-              );
-            }
-          } else {
-            store.handleTrackEnded();
-          }
+          resumePrompt.value = null;
+          if (!isActiveEngine()) return;
+          store.setIsPlaying(false);
+          if (loadedInstanceId !== null) store.handleTrackEnded(loadedInstanceId);
         });
 
-        // Headless hosts (dashboard audio engine) drive transport through the
-        // store bridge, so no generated Shaka controls are created for them.
         if (!options.headless && containerRef.value) {
           shakaUi = new shaka.ui.Overlay(shakaPlayer, containerRef.value, videoRef.value);
           shakaUi.configure(options.shakaUiConfig ?? AUDIO_SHAKA_UI_CONFIG);
@@ -397,7 +378,7 @@ export const usePlayerEngine = (
           });
         }
 
-        engineToken = store.registerEngine({
+        disposeEngine = store.registerEngine(options.mediaKind, {
           play: () => videoRef.value?.play(),
           pause: () => videoRef.value?.pause(),
           seek: (t) => {
@@ -434,27 +415,54 @@ export const usePlayerEngine = (
     return shakaInitPromise;
   };
 
-  // Core load function
+  // A file of the other kind took over: stop this element, cancel pending
+  // loads, and drop its claim on the shared media session.
+  const releaseForeign = () => {
+    loadSequenceCounter += 1;
+    closeActiveSession();
+    resumePrompt.value = null;
+    pendingResumePosition = null;
+    pendingRestored = false;
+    loadedInstanceId = null;
+    videoRef.value?.pause();
+    clearMediaSession();
+  };
 
-  const loadFile = async (file: MediaFileDto | null) => {
-    // Media-kind guard first: an idle engine for the other kind touches no
-    // shared state, so it can never clear or disturb the active engine.
+  const loadFile = async (file: MediaFileDto | null, instanceId: number | null, restored: boolean) => {
     const fileIsAudio = file?.mimeType.startsWith("audio/") ?? false;
-    if (file && options.mediaKind === "audio" && !fileIsAudio) return;
-    if (file && options.mediaKind === "video" && fileIsAudio) return;
+    if (file && (options.mediaKind === "audio") !== fileIsAudio) {
+      releaseForeign();
+      return;
+    }
 
     const loadSequence = ++loadSequenceCounter;
     closeActiveSession();
-    store.cancelAutoplay();
     store.setEngineLoadError(null);
     resumePrompt.value = null;
     pendingResumePosition = null;
+    pendingRestored = restored;
     currentManifestUrl = "";
     store.setVariantTracks([]);
     store.setActiveVariantId(null);
     store.setAbrEnabled(true);
 
-    if (!file) return;
+    if (!file || instanceId === null) {
+      loadedInstanceId = null;
+      loadedFileId = null;
+      loadedVersionId = null;
+      return;
+    }
+
+    const versionId = file.playbackVersionId ?? file.currentVersionId;
+    if (loadedFileId === file.fileId && loadedVersionId === versionId && shakaPlayer) {
+      loadedInstanceId = instanceId;
+      if (videoRef.value) {
+        videoRef.value.currentTime = 0;
+        delayedPlay(videoRef.value, loadSequence);
+      }
+      updateMediaSession(file);
+      return;
+    }
 
     try {
       await initShaka();
@@ -470,45 +478,60 @@ export const usePlayerEngine = (
         store.setEngineLoadError("Failed to resolve stream URL.");
         return;
       }
+      if (loadSequence !== loadSequenceCounter) return;
 
       currentManifestUrl = manifestUrl;
+      loadedInstanceId = instanceId;
+      loadedFileId = file.fileId;
+      loadedVersionId = versionId;
       shakaPlayer.configure("abr.enabled", true);
 
-      const isAudio = file.mimeType.startsWith("audio/");
       const savedPosition = history?.positionSeconds ?? 0;
 
-      if (isAudio) {
-        // Audio: seek directly on first load, start from 0 on subsequent loads.
-        const startTime = isFirstLoad ? savedPosition : 0;
-        await shakaPlayer.load(manifestUrl, startTime > 0 ? startTime : null);
-        if (loadSequence !== loadSequenceCounter) return;
-        if (!isFirstLoad) delayedPlay(videoRef.value, loadSequence);
-      } else {
-        // Video: always load from 0. If there's a saved position worth resuming,
-        // store it so the loadedmetadata handler can evaluate it once duration
-        // is known and show the prompt (or skip it if we're near the end).
-        if (savedPosition > RESUME_MIN_POSITION) {
-          pendingResumePosition = savedPosition;
-          pendingLoadSequence = loadSequence;
-        }
+      if (restored) {
+        await shakaPlayer.load(manifestUrl, savedPosition > 0 ? savedPosition : null);
+      } else if (fileIsAudio) {
         await shakaPlayer.load(manifestUrl, null);
-        // loadedmetadata will handle autoplay / resume prompt from here.
+        if (loadSequence !== loadSequenceCounter) return;
+        delayedPlay(videoRef.value, loadSequence);
+      } else {
+        pendingLoadSequence = loadSequence;
+        if (savedPosition > RESUME_MIN_POSITION) pendingResumePosition = savedPosition;
+        await shakaPlayer.load(manifestUrl, null);
       }
 
       syncVariantTracks();
       updateMediaSession(file);
-      isFirstLoad = false;
     } catch (err: any) {
       if (loadSequence !== loadSequenceCounter) return;
+      // Report the instance this load was for. loadedInstanceId is only set
+      // after the manifest resolves, so it is stale or null on a failed load.
+      const notFound =
+        err?.response?.status === 404 || (err?.code === 1001 && err?.data?.[1] === 404);
+      if (notFound) {
+        await store.reportUnavailable(instanceId);
+        return;
+      }
       store.setEngineLoadError(err?.message ?? "Failed to load stream.");
-      if (err?.response?.status === 404) await store.handleActiveFileUnavailable();
     }
   };
 
   watch(
-    () => store.activeFile,
-    (file) => loadFile(file),
+    () => store.nowPlaying?.instanceId ?? null,
+    (instanceId) => {
+      const playing = store.nowPlaying;
+      void loadFile(playing?.file ?? null, instanceId, playing?.restored ?? false);
+    },
     { immediate: true },
+  );
+
+  // Both elements share one volume, so switching kinds never jumps loudness.
+  watch(
+    () => store.volume,
+    (value) => {
+      const element = videoRef.value;
+      if (element && element.volume !== value) element.volume = value;
+    },
   );
 
   const onVisibilityChange = () => {
@@ -522,10 +545,10 @@ export const usePlayerEngine = (
   onUnmounted(async () => {
     clearMediaSession();
     closeActiveSession();
-    store.registerHistoryFlush(null, historyFlushToken);
-    store.cancelAutoplay();
+    disposeHistoryFlush();
+    disposeVideoSurface?.();
+    disposeEngine?.();
     stopRefreshTicker();
-    if (engineToken !== null) store.unregisterEngine(engineToken);
     if (shakaUi) {
       shakaUi.destroy();
       shakaUi = null;
