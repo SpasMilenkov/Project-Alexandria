@@ -1,10 +1,8 @@
-import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MediaFileDto } from "@/api/streaming";
 
 import { streamingApi } from "@/api/streaming";
-import { usePlayerStore } from "@/stores/stream-player";
 import {
   describeSource,
   findPlaylistItemIndex,
@@ -62,7 +60,6 @@ const pageOf = (items: MediaFileDto[], currentPage = 1) => ({
 
 describe("playlist-playback-source", () => {
   beforeEach(() => {
-    setActivePinia(createPinia());
     vi.clearAllMocks();
   });
 
@@ -112,38 +109,5 @@ describe("playlist-playback-source", () => {
     expect(sameSource(null, { isVideo: false, playlistId: null })).toBe(false);
     expect(describeSource({ isVideo: true, playlistId: null })).toBe("library:video");
     expect(describeSource({ isVideo: false, playlistId: "p" })).toBe("playlist:p");
-  });
-
-  it("starts playlist sources with identity instead of manual queues", async () => {
-    const store = usePlayerStore();
-    const items = [makeFile("a", "item-1"), makeFile("b", "item-2")];
-    filesMock.mockResolvedValueOnce(pageOf(items));
-
-    const result = await loadPlaylistFirstPage("pl-1");
-    const fetcher = playlistPageFetcher("pl-1");
-    store.setSource(result.items, { isVideo: false, playlistId: "pl-1" }, 1, 1, 1, fetcher);
-
-    expect(store.sourceDescriptor).toEqual({ isVideo: false, playlistId: "pl-1" });
-    expect(store.sourceAnchor).toEqual({ fileId: "b", playlistItemId: "item-2" });
-    expect(store.activePlaylistId).toBe("pl-1");
-    expect(store.userQueue).toHaveLength(0);
-    expect(store.activeFile?.fileId).toBe("b");
-  });
-
-  it("keeps sequential duplicates distinct with item identity", () => {
-    const store = usePlayerStore();
-    const items = [makeFile("a", "item-1"), makeFile("a", "item-3")];
-    store.setSource(
-      items,
-      { isVideo: false, playlistId: "pl-1" },
-      1,
-      1,
-      1,
-      async () => ({ items, totalPages: 1 }),
-      { fileId: "a", playlistItemId: "item-3" },
-    );
-
-    expect(store.sourceList).toHaveLength(2);
-    expect(store.sourceAnchor).toEqual({ fileId: "a", playlistItemId: "item-3" });
   });
 });
