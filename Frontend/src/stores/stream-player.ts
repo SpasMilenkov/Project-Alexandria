@@ -1,3 +1,4 @@
+// oxlint-disable max-statements max-lines-per-function
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
 
@@ -128,10 +129,10 @@ export const usePlayerStore = defineStore(
       () => (state.context.value?.ref.playlistId ?? null) !== null,
     );
     const sourceId = computed(() => {
-      const ref = state.context.value?.ref ?? null;
-      if (!ref) return null;
-      if (ref.playlistId) return `playlist:${ref.playlistId}`;
-      if (ref.isVideo) return "library:video";
+      const sourceContext = state.context.value?.ref ?? null;
+      if (!sourceContext) return null;
+      if (sourceContext.playlistId) return `playlist:${sourceContext.playlistId}`;
+      if (sourceContext.isVideo) return "library:video";
       return "library:audio";
     });
     const playingFrom = computed(() => {
