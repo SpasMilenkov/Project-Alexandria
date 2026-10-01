@@ -1,3 +1,4 @@
+// oxlint-disable max-statements max-lines-per-function
 import type { MediaFileDto } from "@/api/streaming";
 
 import { shuffleApi } from "@/api/shuffle";
@@ -142,6 +143,7 @@ export const createIntents = (deps: IntentDeps) => {
       return startContext(ref, { label, startAt: file });
     }
     if (current.shuffled) {
+      // oxlint-disable-next-line require-await
       return transitions.run(async () => {
         orders.patch({ anchor: toAnchor(ref, file) });
         commitFile(file, "context");
@@ -169,6 +171,7 @@ export const createIntents = (deps: IntentDeps) => {
   const playNow = (files: MediaFileDto[]): Promise<void> => {
     const [first, ...rest] = files;
     if (!first) return Promise.resolve();
+    // oxlint-disable-next-line require-await
     return transitions.run(async () => {
       if (rest.length) queue.add(rest, null, true);
       commitFile(first, "interrupt", { markHeard: false });
@@ -196,6 +199,7 @@ export const createIntents = (deps: IntentDeps) => {
     );
 
   const skipToQueue = (index: number): Promise<void> =>
+    // oxlint-disable-next-line require-await
     transitions.run(async () => {
       const entry = state.queueEntries.value[index];
       if (!entry) return;
@@ -204,6 +208,7 @@ export const createIntents = (deps: IntentDeps) => {
     });
 
   const addToQueue = (files: MediaFileDto[], options: AddToQueueOptions = {}): Promise<void> =>
+    // oxlint-disable-next-line require-await
     transitions.run(async () => {
       if (!files.length) return;
       const idle = state.nowPlaying.value === null;
@@ -220,16 +225,19 @@ export const createIntents = (deps: IntentDeps) => {
   };
 
   const removeFromQueue = (index: number): Promise<void> =>
+    // oxlint-disable-next-line require-await
     transitions.run(async () => {
       queue.removeAt(index);
     });
 
   const clearQueue = (): Promise<void> =>
+    // oxlint-disable-next-line require-await
     transitions.run(async () => {
       queue.clear();
     });
 
   const shuffleQueue = (): Promise<void> =>
+    // oxlint-disable-next-line require-await
     transitions.run(async () => {
       queue.shuffle();
     });

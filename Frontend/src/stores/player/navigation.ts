@@ -23,7 +23,7 @@ export interface NavigationDeps {
 }
 
 export const createNavigation = (deps: NavigationDeps) => {
-  const { state, transitions, engine, history, queue, orders, commit, order, resumeCore } = deps;
+  const { state, transitions, engine, history, queue, orders, commit, resumeCore } = deps;
   const commitFile = commit.commit;
 
   const fileKind = (): MediaKind => state.mediaKind(state.nowPlaying.value?.file ?? null);
@@ -128,6 +128,7 @@ export const createNavigation = (deps: NavigationDeps) => {
   };
 
   const previous = (): Promise<void> =>
+    // oxlint-disable-next-line require-await
     transitions.run(async () => {
       if (state.transport.currentTime.value > PREVIOUS_RESTART_SECONDS) {
         restartCurrent();
