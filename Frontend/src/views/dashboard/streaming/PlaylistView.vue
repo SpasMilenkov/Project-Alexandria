@@ -4,79 +4,86 @@
       class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70"
       aria-labelledby="playlists-heading"
     >
+      <!-- Collapsing header: `top` is the negative height of the collapsible
+           block, so as you scroll the title and filters slide out of view 1:1
+           and only the status row stays pinned. No scroll listener, and no
+           layout change that could feed back into the scroll position. -->
       <header
-        class="sticky top-0 z-10 rounded-t-2xl border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface-strong p-4 sm:px-6"
+        class="sticky z-10 rounded-t-2xl border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface-strong px-4 sm:px-6"
+        :style="headerStyle"
       >
-        <div class="flex items-start justify-between gap-4">
-          <div class="min-w-0">
-            <h1
-              id="playlists-heading"
-              class="text-xl font-semibold text-gray-900 dark:text-gray-100"
-            >
-              Playlists
-            </h1>
-            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              Your collections and automatic mixes.
-            </p>
+        <div ref="collapsibleRef" class="border-b border-gray-200/70 dark:border-gray-700/70 py-4">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <h1
+                id="playlists-heading"
+                class="text-xl font-semibold text-gray-900 dark:text-gray-100"
+              >
+                Playlists
+              </h1>
+              <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Your collections and automatic mixes.
+              </p>
+            </div>
+            <UButton
+              icon="i-heroicons-plus"
+              label="New playlist"
+              color="primary"
+              variant="solid"
+              class="shrink-0"
+              @click="showCreateModal = true"
+            />
           </div>
-          <UButton
-            icon="i-heroicons-plus"
-            label="New playlist"
-            color="primary"
-            variant="solid"
-            class="shrink-0"
-            @click="showCreateModal = true"
-          />
-        </div>
 
-        <div class="mt-4 flex flex-col gap-4 md:flex-row md:items-end">
-          <div class="min-w-0">
-            <p
-              id="playlist-origin-label"
-              class="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100"
-            >
-              Collection
-            </p>
-            <div
-              role="group"
-              aria-labelledby="playlist-origin-label"
-              class="inline-flex max-w-full gap-1 rounded-lg bg-black/5 dark:bg-white/5 p-1"
-            >
-              <UButton
-                v-for="option in originOptions"
-                :key="option.value"
-                :label="option.label"
-                :aria-pressed="originFilter === option.value"
-                :color="originFilter === option.value ? 'primary' : 'neutral'"
-                :variant="originFilter === option.value ? 'soft' : 'ghost'"
-                size="sm"
-                @click="originFilter = option.value"
-              />
+          <div class="mt-4 flex flex-col gap-4 md:flex-row md:items-end">
+            <div class="min-w-0">
+              <p
+                id="playlist-origin-label"
+                class="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100"
+              >
+                Collection
+              </p>
+              <div
+                role="group"
+                aria-labelledby="playlist-origin-label"
+                class="inline-flex max-w-full gap-1 rounded-lg bg-black/5 dark:bg-white/5 p-1"
+              >
+                <UButton
+                  v-for="option in originOptions"
+                  :key="option.value"
+                  :label="option.label"
+                  :aria-pressed="originFilter === option.value"
+                  :color="originFilter === option.value ? 'primary' : 'neutral'"
+                  :variant="originFilter === option.value ? 'soft' : 'ghost'"
+                  size="sm"
+                  @click="originFilter = option.value"
+                />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 md:w-80">
+              <UFormField label="Kind" name="playlist-kind">
+                <USelect
+                  v-model="kindFilter"
+                  :items="kindFilterOptions"
+                  aria-label="Playlist kind"
+                  class="w-full"
+                />
+              </UFormField>
+              <UFormField label="Sort by" name="playlist-sort">
+                <USelect
+                  v-model="sort"
+                  :items="sortOptions"
+                  aria-label="Sort playlists"
+                  class="w-full"
+                />
+              </UFormField>
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-4 md:w-80">
-            <UFormField label="Kind" name="playlist-kind">
-              <USelect
-                v-model="kindFilter"
-                :items="kindFilterOptions"
-                aria-label="Playlist kind"
-                class="w-full"
-              />
-            </UFormField>
-            <UFormField label="Sort by" name="playlist-sort">
-              <USelect
-                v-model="sort"
-                :items="sortOptions"
-                aria-label="Sort playlists"
-                class="w-full"
-              />
-            </UFormField>
-          </div>
         </div>
 
-        <div
-          class="mt-4 flex flex-wrap items-center gap-4 border-t border-gray-200/70 dark:border-gray-700/70 pt-4"
-        >
+        <!-- Pinned bar: keeps paging and "Clear filters" reachable even while
+             the filter controls above are scrolled out of view. -->
+        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
           <div class="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0">
             <p
               class="text-sm text-gray-600 dark:text-gray-400 tabular-nums"
@@ -182,8 +189,8 @@
             @open="navigateToPlaylist(playlist.id)"
             @edit="openEditModal(playlist)"
             @delete="confirmDelete(playlist)"
-            @play="playPlaylist(playlist.id)"
-            @add-to-queue="addPlaylistToQueue(playlist.id)"
+            @play="playPlaylist(playlist)"
+            @add-to-queue="addPlaylistToQueue(playlist.id, playlist.name)"
           />
         </div>
       </div>
@@ -257,6 +264,7 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
+import { useElementSize } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -272,7 +280,6 @@ import { createPlaylist, deletePlaylist, updatePlaylist } from "@/mutations/play
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
 import { glassModalContent, playlistModalUi } from "@/utils/modalUi";
-import { loadPlaylistFirstPage, playlistPageFetcher } from "@/utils/player-source";
 import { parsePlaylistBrowseQuery, playlistBrowseQuery } from "@/utils/playlist-display.utils";
 
 const route = useRoute();
@@ -280,6 +287,16 @@ const router = useRouter();
 const toast = useToast();
 const store = usePlayerStore();
 const queryCache = useQueryCache();
+
+// The header pins itself `collapsibleHeight` px above the top edge, so
+// everything inside the collapsible block scrolls away and the rest stays.
+// border-box so the block's padding and bottom border count toward the offset;
+// ceil so a fractional height never leaves a hairline peeking out.
+const collapsibleRef = ref<HTMLElement | null>(null);
+const { height: collapsibleHeight } = useElementSize(collapsibleRef, undefined, {
+  box: "border-box",
+});
+const headerStyle = computed(() => ({ top: `-${Math.ceil(collapsibleHeight.value)}px` }));
 
 const initialBrowse = parsePlaylistBrowseQuery(route.query);
 const page = ref(initialBrowse.page);
@@ -414,37 +431,12 @@ const deleteTarget = ref<PlaylistResponse | null>(null);
 // Used to show a loading indicator on the card.
 const loadingPlaylistId = ref<string | null>(null);
 
-const playPlaylist = async (playlistId: string) => {
-  if (loadingPlaylistId.value === playlistId) return;
+const playPlaylist = async (playlist: PlaylistResponse) => {
+  if (loadingPlaylistId.value === playlist.id) return;
 
-  loadingPlaylistId.value = playlistId;
-  const descriptor = { isVideo: false, playlistId };
+  loadingPlaylistId.value = playlist.id;
   try {
-    const result = await loadPlaylistFirstPage(playlistId);
-
-    if (!result.items.length) {
-      toast.add({
-        title: "Playlist is empty",
-        description: "Add some tracks before playing.",
-        color: "warning",
-      });
-      return;
-    }
-
-    store.setSource(
-      result.items,
-      descriptor,
-      1,
-      0,
-      result.totalPages,
-      playlistPageFetcher(playlistId),
-    );
-  } catch {
-    toast.add({
-      title: "Failed to load playlist",
-      description: "Could not fetch tracks. Please try again.",
-      color: "error",
-    });
+    await store.startContext({ isVideo: false, playlistId: playlist.id }, { label: playlist.name });
   } finally {
     loadingPlaylistId.value = null;
   }
@@ -457,11 +449,11 @@ const openEditModal = (playlist: PlaylistResponse) => {
 
 const addingPlaylistId = ref<string | null>(null);
 
-const addPlaylistToQueue = async (playlistId: string) => {
+const addPlaylistToQueue = async (playlistId: string, label?: string) => {
   if (addingPlaylistId.value === playlistId) return;
   addingPlaylistId.value = playlistId;
   try {
-    const total = await store.appendPlaylist(playlistId);
+    const total = await store.addPlaylistToQueue(playlistId, label ?? null);
     if (total === 0) {
       toast.add({
         title: "Playlist is empty",
