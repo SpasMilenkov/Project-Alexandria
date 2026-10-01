@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { useQuery } from "@pinia/colada";
 import { useDark } from "@vueuse/core";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 
+import { fileApi } from "@/api/file";
 import { VIDEO_SHAKA_UI_CONFIG, usePlayerEngine } from "@/composables/usePlayerEngine";
-import { getPreview } from "@/queries/files";
 import { usePlayerStore } from "@/stores/stream-player";
 
 import PlayerSettings from "./PlayerSettings.vue";
@@ -33,15 +32,19 @@ const rootRef = ref<HTMLDivElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
 const videoRef = ref<HTMLVideoElement | null>(null);
 
-const { data: preview } = useQuery(() =>
-  activeFile.value?.fileId
-    ? getPreview(activeFile.value.fileId)
-    : { key: ["preview", "none"], query: () => Promise.resolve(null) },
-);
-const thumbnailUrl = computed(() => preview.value?.thumbnailUrl ?? null);
+const thumbnailUrl = computed(() => {
+  const file = activeFile.value;
+  if (!file) return null;
+  return fileApi.getThumbnailUrlForVersion(file.fileId, file.playbackVersionId ?? file.currentVersionId);
+});
 
-const { isBuffering, loadError, resumePrompt, acceptResumePrompt, dismissResumePrompt } =
-  usePlayerEngine(videoRef, containerRef, {
+const {
+  isBuffering,
+  loadError,
+  resumePrompt,
+  acceptResumePrompt,
+  dismissResumePrompt,
+} = usePlayerEngine(videoRef, containerRef, {
     getThumbnailUrl: () => thumbnailUrl.value,
     mediaKind: "video",
     shakaUiConfig: {
@@ -230,8 +233,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Control bar -->
-    <div class="vps-controls">
+    <div v-if="hasFile" class="vps-controls">
       <!-- Seek bar -->
       <div class="vps-seek" @click="onProgressClick">
         <div class="vps-seek-track">
