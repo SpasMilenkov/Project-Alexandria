@@ -107,7 +107,7 @@ defineExpose({ scrollToActive });
     </div>
 
     <!-- Resume chip -->
-    <div v-if="snapshot" class="mx-3 mt-2 flex">
+    <div v-if="snapshot" class="mx-3 mt-2 flex justify-center">
       <button
         class="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-primary/10 dark:bg-primary/[0.12] text-primary dark:text-primary hover:opacity-80 transition-opacity"
         :title="`Resume ${snapshot.label}`"
