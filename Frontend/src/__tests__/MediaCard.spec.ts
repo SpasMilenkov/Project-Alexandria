@@ -13,7 +13,11 @@ vi.mock("@/stores/stream-player", async () => {
   const { defineStore } = await import("pinia");
   return {
     usePlayerStore: defineStore("test-player", {
-      state: () => ({ activeFile: null, userQueue: [] }),
+      state: () => ({ activeFile: null, queueEntries: [] }),
+      actions: {
+        addToQueue() {},
+        removeFromQueue() {},
+      },
     }),
   };
 });

@@ -1,4 +1,4 @@
-import { onMounted } from "vue";
+import { watch } from "vue";
 
 import { useAuthStore } from "@/stores/auth";
 import { usePlayerStore } from "@/stores/stream-player";
@@ -22,8 +22,14 @@ export const useStreamingMediaContext = () => {
   const player = usePlayerStore();
   const auth = useAuthStore();
 
-  onMounted(async () => {
-    const ownerId = auth.user?.user.id ?? null;
-    await player.restorePlaybackContext(ownerId);
-  });
+  // Auth can resolve after mount; restore is idempotent per owner (R5), so
+  // re-running when the owner id settles is safe and required. Without this,
+  // a persisted context never gets its order rebuilt and context clicks fail.
+  watch(
+    () => auth.user?.user.id ?? null,
+    (ownerId) => {
+      void player.restore(ownerId);
+    },
+    { immediate: true },
+  );
 };

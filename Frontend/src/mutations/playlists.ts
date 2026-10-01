@@ -8,6 +8,7 @@ import {
   playlistApi,
 } from "@/api/playlist";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
+import { usePlayerStore } from "@/stores/stream-player";
 
 export const createPlaylist = defineMutation(() => {
   const queryCache = useQueryCache();
@@ -36,6 +37,9 @@ export const deletePlaylist = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({
     mutation: (id: string) => playlistApi.delete(id),
+    onSuccess(_data, id) {
+      usePlayerStore().contextSourceChanged(id, { deleted: true });
+    },
     onSettled() {
       queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.root });
     },
@@ -47,6 +51,9 @@ export const addPlaylistItem = defineMutation(() => {
   return useMutation({
     mutation: ({ playlistId, req }: { playlistId: string; req: AddPlaylistItemRequest }) =>
       playlistApi.addItem(playlistId, req),
+    onSuccess(_data, vars) {
+      usePlayerStore().contextSourceChanged(vars.playlistId, {});
+    },
     onSettled(_data, _error, vars) {
       queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.detail(vars.playlistId) });
       // itemCount on the list card changes
@@ -60,6 +67,9 @@ export const removePlaylistItem = defineMutation(() => {
   return useMutation({
     mutation: ({ playlistId, itemId }: { playlistId: string; itemId: string }) =>
       playlistApi.removeItem(playlistId, itemId),
+    onSuccess(_data, vars) {
+      usePlayerStore().contextSourceChanged(vars.playlistId, { removedItemId: vars.itemId });
+    },
     onSettled(_data, _error, vars) {
       queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.detail(vars.playlistId) });
       queryCache.invalidateQueries({ key: [...PLAYLIST_QUERY_KEYS.root, "list"] });
@@ -72,6 +82,9 @@ export const reorderPlaylistItems = defineMutation(() => {
   return useMutation({
     mutation: ({ playlistId, req }: { playlistId: string; req: ReorderPlaylistItemsRequest }) =>
       playlistApi.reorderItems(playlistId, req),
+    onSuccess(_data, vars) {
+      usePlayerStore().contextSourceChanged(vars.playlistId, {});
+    },
     onSettled(_data, _error, vars) {
       // only the detail carries ordered items, list cards are unaffected
       queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.detail(vars.playlistId) });
