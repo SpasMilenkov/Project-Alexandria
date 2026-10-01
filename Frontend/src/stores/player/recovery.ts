@@ -138,6 +138,7 @@ export const createRecovery = (deps: RecoveryDeps) => {
       return Promise.resolve();
     }
     orders.armRebuild();
+    // oxlint-disable-next-line max-statements
     return transitions.replace(async (guard) => {
       state.nowPlaying.value = { ...playing, instanceId: commit.restamp(), restored: true };
       const expired =

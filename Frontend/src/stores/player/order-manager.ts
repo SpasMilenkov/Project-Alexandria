@@ -10,10 +10,10 @@ import {
 
 import { createSequentialOrder, locateAnchor } from "./order/sequential";
 import {
+  type OpenedShuffle,
   isSessionGone,
   openShuffle,
   releaseShuffleSession,
-  type OpenedShuffle,
 } from "./order/shuffle";
 import type { PlayerState } from "./state";
 import type { Guard } from "./transitions";

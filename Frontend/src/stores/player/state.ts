@@ -23,6 +23,7 @@ export interface NoticeAction {
   run: () => void;
 }
 
+// oxlint-disable-next-line max-statements
 export const createPlayerState = () => {
   const transport = createTransport();
   const nowPlaying = ref<NowPlaying | null>(null);

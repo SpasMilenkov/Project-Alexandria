@@ -35,9 +35,11 @@ const asNumber = (value: unknown): number | null => {
 
 const asBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 
+
 const isFile = (value: unknown): value is MediaFileDto =>
   typeof value === "object" && value !== null && typeof (value as MediaFileDto).fileId === "string";
 
+// oxlint-disable-next-line max-statements
 export const migrateLegacyPlayer = (state: PlayerState, restamp: () => number) => {
   let raw: string | null = null;
   try {
