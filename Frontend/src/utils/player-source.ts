@@ -17,6 +17,15 @@ export const sameSource = (a: SourceDescriptor | null, b: SourceDescriptor | nul
   return a.isVideo === b.isVideo && (a.playlistId ?? null) === (b.playlistId ?? null);
 };
 
+export const AUDIO_LIBRARY_REF: SourceDescriptor = { isVideo: false, playlistId: null };
+export const VIDEO_LIBRARY_REF: SourceDescriptor = { isVideo: true, playlistId: null };
+
+export const AUDIO_LIBRARY_LABEL = "Music library";
+export const VIDEO_LIBRARY_LABEL = "Video library";
+
+export const libraryLabel = (ref: SourceDescriptor): string =>
+  ref.isVideo ? VIDEO_LIBRARY_LABEL : AUDIO_LIBRARY_LABEL;
+
 export const describeSource = (descriptor: SourceDescriptor): string =>
   descriptor.playlistId
     ? `playlist:${descriptor.playlistId}`
@@ -30,6 +39,8 @@ export const descriptorForFile = (file: MediaFileDto): SourceDescriptor => ({
 export interface PageResult {
   items: MediaFileDto[];
   totalPages: number;
+  totalCount: number;
+  currentPage: number;
 }
 
 export const fetchSequentialPage = async (
@@ -44,14 +55,19 @@ export const fetchSequentialPage = async (
     playlistId: descriptor.playlistId,
     query: null,
   } satisfies GetFilesForStreamingQuery);
-  return { items: result.items, totalPages: result.totalPages };
+  return {
+    items: result.items,
+    totalPages: result.totalPages,
+    totalCount: result.totalCount,
+    currentPage: result.currentPage,
+  };
 };
 
 export const fetchAnchorPage = async (
   descriptor: SourceDescriptor,
   anchor: SourceAnchor,
   pageSize: number = LIBRARY_PAGE_SIZE,
-): Promise<PageResult & { currentPage: number }> => {
+): Promise<PageResult> => {
   const result = await streamingApi.getFilesForStreaming({
     page: 1,
     pageSize,
@@ -61,10 +77,41 @@ export const fetchAnchorPage = async (
     anchorFileId: anchor.fileId,
     anchorPlaylistItemId: anchor.playlistItemId ?? null,
   } satisfies GetFilesForStreamingQuery);
-  return { items: result.items, totalPages: result.totalPages, currentPage: result.currentPage };
+  return {
+    items: result.items,
+    totalPages: result.totalPages,
+    totalCount: result.totalCount,
+    currentPage: result.currentPage,
+  };
 };
 
 export const entryIdentity = (file: MediaFileDto): string => file.playlistItemId ?? file.fileId;
+
+export const anchorMatches = (file: MediaFileDto, anchor: SourceAnchor): boolean =>
+  anchor.playlistItemId
+    ? file.playlistItemId === anchor.playlistItemId
+    : file.fileId === anchor.fileId;
+
+export const indexOfAnchor = (items: MediaFileDto[], anchor: SourceAnchor): number =>
+  items.findIndex((file) => anchorMatches(file, anchor));
+
+export const positionOf = (currentPage: number, indexInPage: number): number =>
+  (currentPage - 1) * LIBRARY_PAGE_SIZE + indexInPage;
+
+export const anchorForFile = (file: MediaFileDto): SourceAnchor =>
+  file.playlistItemId
+    ? { fileId: file.fileId, playlistItemId: file.playlistItemId }
+    : { fileId: file.fileId };
+
+export const isAudioFile = (file: MediaFileDto | null): boolean =>
+  (file?.mimeType ?? "").startsWith("audio/");
+
+export const toAnchor = (ref: SourceDescriptor, file: MediaFileDto): SourceAnchor => {
+  if (ref.playlistId && file.playlistItemId) {
+    return { fileId: file.fileId, playlistItemId: file.playlistItemId };
+  }
+  return { fileId: file.fileId };
+};
 
 export const shuffleRowKey = (sessionId: string, position: number): string =>
   `${sessionId}:${position}`;
@@ -110,13 +157,14 @@ export const playlistPageFetcher =
 
 export const APPEND_PAGE_SIZE = 500;
 
-export const appendPlaylistToQueue = async (
-  playlistId: string,
-  enqueue: (file: MediaFileDto) => void,
-): Promise<number> => {
+/**
+ * Collects a playlist's playable tracks in playlist order so the queue can be
+ * assigned once instead of pushed item by item.
+ */
+export const fetchPlaylistTracks = async (playlistId: string): Promise<MediaFileDto[]> => {
+  const collected: MediaFileDto[] = [];
   let page = 1;
   let totalPages = 1;
-  let totalCount = 0;
   do {
     const result = await streamingApi.getFilesForStreaming({
       page,
@@ -126,9 +174,8 @@ export const appendPlaylistToQueue = async (
       query: null,
     });
     totalPages = result.totalPages;
-    totalCount = result.totalCount;
-    for (const item of result.items) enqueue(item);
+    collected.push(...result.items);
     page++;
   } while (page <= totalPages);
-  return totalCount;
+  return collected;
 };
