@@ -1,47 +1,36 @@
 <template>
   <div class="flex flex-col h-full w-full">
-    <!-- Header -->
-    <div
-      class="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-200/70 dark:border-gray-700/70"
-    >
-      <div class="flex items-center gap-2.5 min-w-0">
-        <UIcon name="i-lucide-trash-2" class="w-5 h-5 text-muted shrink-0" />
-        <h1 class="text-xl font-semibold truncate">Deleted Items</h1>
-        <UBadge v-if="totalCount > 0" color="neutral" variant="subtle" size="sm">
-          {{ totalCount }}
-        </UBadge>
-      </div>
-
-      <!-- Controls: day filter + icon-only refresh -->
-      <div class="flex items-center gap-2 shrink-0">
-        <USelect v-model="daysFilter" :items="daysFilterOptions" size="sm" class="w-36" />
-        <UTooltip text="Refresh">
-          <UButton
-            variant="ghost"
-            color="neutral"
-            size="sm"
-            icon="i-lucide-refresh-cw"
-            :loading="isLoading"
-            @click="refreshData"
-          />
-        </UTooltip>
-      </div>
-    </div>
-
-    <!-- Content -->
     <div class="flex-1 overflow-auto">
-      <div class="px-6 py-5 space-y-4">
-        <!-- Search bar — full-width, prominent -->
+      <div class="px-4 sm:px-6 py-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="min-w-0">
+            <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Deleted items</h1>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ subtitle }}</p>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <USelect v-model="daysFilter" :items="daysFilterOptions" size="sm" class="w-40" />
+            <UTooltip text="Refresh">
+              <UButton
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                icon="i-lucide-refresh-cw"
+                aria-label="Refresh"
+                :loading="isLoading"
+                @click="refreshData"
+              />
+            </UTooltip>
+          </div>
+        </div>
+
         <UInput
           v-model="searchQuery"
-          placeholder="Search deleted items by name..."
+          placeholder="Search deleted items by name"
+          icon="i-lucide-search"
           size="lg"
           class="w-full"
-          @keyup.enter="handleSearch"
         >
-          <template #leading>
-            <UIcon name="i-lucide-search" class="w-4 h-4 text-muted" />
-          </template>
           <template #trailing>
             <UButton
               v-if="searchQuery"
@@ -49,202 +38,197 @@
               color="neutral"
               size="xs"
               icon="i-lucide-x"
+              aria-label="Clear search"
               @click="clearSearch"
             />
           </template>
         </UInput>
 
-        <!-- Loading state -->
-        <div v-if="isLoading" class="flex flex-col items-center justify-center py-20 gap-3">
-          <UIcon name="i-lucide-loader-circle" class="w-7 h-7 animate-spin text-muted" />
-          <p class="text-sm text-muted">Loading deleted items…</p>
+        <div
+          v-if="hasResults && !isLoading"
+          class="sticky top-0 z-10 flex items-center justify-between gap-4 px-4 py-2 rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
+        >
+          <UCheckbox
+            :model-value="masterState"
+            :label="selectionLabel"
+            size="sm"
+            :disabled="isMutating"
+            @update:model-value="toggleSelectAll"
+          />
+
+          <Transition
+            enter-active-class="transition-all duration-200 ease-out"
+            leave-active-class="transition-all duration-150 ease-in"
+            enter-from-class="opacity-0 scale-95"
+            leave-to-class="opacity-0 scale-95"
+          >
+            <div v-if="selectedCount > 0" class="flex items-center gap-2">
+              <UButton
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                :disabled="isMutating"
+                @click="clearSelection"
+              >
+                Clear
+              </UButton>
+              <UButton
+                size="xs"
+                color="primary"
+                variant="solid"
+                icon="i-lucide-rotate-ccw"
+                :loading="isMutating"
+                @click="restoreSelected"
+              >
+                Restore
+              </UButton>
+            </div>
+          </Transition>
         </div>
 
-        <!-- Empty state -->
         <div
-          v-else-if="!hasResults"
-          class="flex flex-col items-center justify-center py-20 text-center gap-3"
+          v-if="isLoading"
+          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden divide-y divide-gray-100/50 dark:divide-gray-800/50"
         >
-          <UIcon name="i-lucide-trash-2" class="w-12 h-12 text-muted" />
-          <div class="space-y-1">
-            <p class="text-sm font-medium">No Deleted Items</p>
-            <p class="text-xs text-muted max-w-xs">{{ emptyStateMessage }}</p>
+          <div v-for="n in 6" :key="n" class="flex items-center gap-4 px-4 py-3">
+            <USkeleton class="w-4 h-4 rounded shrink-0" />
+            <USkeleton class="w-8 h-8 rounded-lg shrink-0" />
+            <USkeleton class="h-4 flex-1" />
+            <USkeleton class="h-4 w-20" />
           </div>
         </div>
 
-        <!-- Results -->
-        <template v-else>
-          <!-- Deleted Directories -->
-          <section v-if="directoryResults.length > 0">
-            <!-- Section header -->
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="flex items-center gap-1.5">
-                <UIcon name="i-lucide-folder" class="w-4 h-4 text-muted" />
-                <span class="text-xs font-semibold uppercase tracking-widest text-muted">
-                  Directories ({{ directoryResults.length }})
-                </span>
-              </div>
-              <div class="flex items-center gap-2">
-                <UCheckbox
-                  :model-value="isAllDirectoriesSelected"
-                  @update:model-value="toggleSelectAllDirectories"
-                  label="Select all"
-                  size="sm"
-                  :disabled="isMutating"
-                />
-                <Transition
-                  enter-active-class="transition-all duration-200 ease-out"
-                  leave-active-class="transition-all duration-150 ease-in"
-                  enter-from-class="opacity-0 scale-95"
-                  leave-to-class="opacity-0 scale-95"
-                >
-                  <UButton
-                    v-if="selectedDirectories.size > 0"
-                    size="xs"
-                    color="primary"
-                    variant="soft"
-                    icon="i-lucide-rotate-ccw"
-                    :loading="restoreDirectoriesIsLoading"
-                    :disabled="isMutating"
-                    @click="restoreSelectedDirectories"
-                  >
-                    Restore ({{ selectedDirectories.size }})
-                  </UButton>
-                </Transition>
-              </div>
-            </div>
+        <div v-else-if="hasError" class="flex flex-col items-center gap-2 py-16 text-center">
+          <UIcon
+            name="i-lucide-triangle-alert"
+            class="w-12 h-12 text-gray-400 dark:text-gray-600"
+          />
+          <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+            Couldn't load deleted items
+          </h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Something went wrong while loading. Try again in a moment.
+          </p>
+          <UButton class="mt-2" color="neutral" variant="outline" size="sm" @click="refreshData">
+            Try again
+          </UButton>
+        </div>
 
-            <!-- Rows -->
+        <div v-else-if="!hasResults" class="flex flex-col items-center gap-2 py-16 text-center">
+          <UIcon name="i-lucide-trash-2" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+          <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+            {{ emptyState.title }}
+          </h2>
+          <p class="max-w-xs text-sm text-gray-600 dark:text-gray-400">
+            {{ emptyState.message }}
+          </p>
+          <UButton
+            v-if="emptyState.action"
+            class="mt-2"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="emptyState.action"
+          >
+            {{ emptyState.actionLabel }}
+          </UButton>
+        </div>
+
+        <template v-else>
+          <section v-if="directoryResults.length > 0">
+            <h2
+              class="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            >
+              <UIcon name="i-lucide-folder" class="w-4 h-4 text-gray-500 dark:text-gray-500" />
+              Folders ({{ directoryResults.length }})
+            </h2>
             <div
-              class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden frosted-glass glass-surface divide-y divide-gray-100/50 dark:divide-gray-800/50"
+              class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden divide-y divide-gray-100/50 dark:divide-gray-800/50"
             >
               <div
                 v-for="dir in directoryResults"
                 :key="dir.id"
-                class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/60 dark:hover:bg-white/5 transition-colors"
+                class="flex items-center gap-3 px-4 py-2 transition-colors"
+                :class="rowClass(selectedDirectories.has(dir.id))"
               >
                 <UCheckbox
                   :model-value="selectedDirectories.has(dir.id)"
+                  size="sm"
+                  :disabled="isMutating"
+                  :aria-label="`Select ${dir.name}`"
                   @update:model-value="
                     (checked: boolean | 'indeterminate') =>
                       toggleDirectorySelection(dir.id, checked)
                   "
-                  size="sm"
-                  :disabled="isMutating"
                 />
                 <DirectoryItem
                   :data="dir"
                   view-mode="list"
                   :is-selected="false"
+                  class="flex-1 min-w-0"
                   @click="handleItemClick"
                   @navigate="handleNavigate"
-                  class="flex-1 min-w-0"
                 />
               </div>
             </div>
           </section>
 
-          <!-- Deleted Files -->
           <section v-if="fileResults.length > 0">
-            <!-- Section header -->
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="flex items-center gap-1.5">
-                <UIcon name="i-lucide-file" class="w-4 h-4 text-muted" />
-                <span class="text-xs font-semibold uppercase tracking-widest text-muted">
-                  Files ({{ fileResults.length }})
-                </span>
-              </div>
-              <div class="flex items-center gap-2">
-                <UCheckbox
-                  :model-value="isAllFilesSelected"
-                  @update:model-value="toggleSelectAllFiles"
-                  label="Select all"
-                  size="sm"
-                  :disabled="isMutating"
-                />
-                <Transition
-                  enter-active-class="transition-all duration-200 ease-out"
-                  leave-active-class="transition-all duration-150 ease-in"
-                  enter-from-class="opacity-0 scale-95"
-                  leave-to-class="opacity-0 scale-95"
-                >
-                  <UButton
-                    v-if="selectedFiles.size > 0"
-                    size="xs"
-                    color="primary"
-                    variant="soft"
-                    icon="i-lucide-rotate-ccw"
-                    :loading="restoreFilesLoading"
-                    :disabled="isMutating"
-                    @click="restoreSelectedFiles"
-                  >
-                    Restore ({{ selectedFiles.size }})
-                  </UButton>
-                </Transition>
-              </div>
-            </div>
-
-            <!-- Rows -->
+            <h2
+              class="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            >
+              <UIcon name="i-lucide-file" class="w-4 h-4 text-gray-500 dark:text-gray-500" />
+              Files ({{ fileResults.length }})
+            </h2>
             <div
-              class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden frosted-glass glass-surface divide-y divide-gray-100/50 dark:divide-gray-800/50"
+              class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden divide-y divide-gray-100/50 dark:divide-gray-800/50"
             >
               <div
                 v-for="file in fileResults"
                 :key="file.fileId"
-                class="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/60 dark:hover:bg-white/5 transition-colors"
+                class="flex items-center gap-3 px-4 py-2 transition-colors"
+                :class="rowClass(selectedFiles.has(file.fileId))"
               >
                 <UCheckbox
                   :model-value="selectedFiles.has(file.fileId)"
+                  size="sm"
+                  :disabled="isMutating"
+                  :aria-label="`Select ${file.name}`"
                   @update:model-value="
                     (checked: boolean | 'indeterminate') =>
                       toggleFileSelection(file.fileId, checked)
                   "
-                  size="sm"
-                  :disabled="isMutating"
                 />
                 <FileItem
                   :data="file"
                   :is-selected="false"
                   view-mode="list"
+                  class="flex-1 min-w-0"
                   @click="handleItemClick"
                   @file-restored="refreshData"
-                  class="flex-1 min-w-0"
                 />
               </div>
             </div>
           </section>
 
-          <!-- Pagination -->
-          <div v-if="totalPages > 1" class="flex items-center justify-between pt-2">
-            <!-- Count — hidden on mobile -->
-            <p class="hidden md:block text-xs text-muted tabular-nums">
-              Showing {{ (currentPage - 1) * pageSize + 1 }}–{{
-                Math.min(currentPage * pageSize, totalCount)
-              }}
-              of {{ totalCount }} items
-            </p>
-            <!-- Prev / page indicator / next — centered on mobile -->
-            <div class="flex items-center gap-2 mx-auto md:mx-0">
-              <UButton
-                size="sm"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-chevron-left"
-                :disabled="currentPage <= 1 || isMutating"
-                @click="goToPage(currentPage - 1)"
-              />
-              <span class="text-xs text-muted tabular-nums min-w-[5rem] text-center">
-                Page {{ currentPage }} of {{ totalPages }}
-              </span>
-              <UButton
-                size="sm"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-chevron-right"
-                :disabled="currentPage >= totalPages || isMutating"
-                @click="goToPage(currentPage + 1)"
-              />
-            </div>
+          <div
+            v-if="totalPages > 1"
+            class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2"
+          >
+            <p class="text-xs text-gray-500 dark:text-gray-500 tabular-nums">{{ rangeText }}</p>
+            <UPagination
+              :page="currentPage"
+              :total="totalCount"
+              :items-per-page="pageSize"
+              :sibling-count="1"
+              :disabled="isMutating"
+              size="sm"
+              color="neutral"
+              variant="ghost"
+              active-color="primary"
+              active-variant="subtle"
+              @update:page="goToPage"
+            />
           </div>
         </template>
       </div>
@@ -254,6 +238,7 @@
 
 <script setup lang="ts">
 import { getLocalTimeZone, today } from "@internationalized/date";
+import { watchDebounced } from "@vueuse/core";
 import { computed, onMounted, ref, watch } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";
@@ -288,15 +273,18 @@ const {
   isLoading: restoreDirectoriesIsLoading,
 } = restoreDirectories();
 
+const DEFAULT_DAYS = 30;
+
 // State
 const isLoading = ref(false);
+const hasError = ref(false);
 const fileResults = ref<FileResult[]>([]);
 const directoryResults = ref<DirectorySummaryDto[]>([]);
 const totalCount = ref(0);
 const currentPage = ref(1);
 const pageSize = ref(20);
 const searchQuery = ref("");
-const daysFilter = ref(30);
+const daysFilter = ref(DEFAULT_DAYS);
 const selectedFiles = ref<Set<string>>(new Set());
 const selectedDirectories = ref<Set<string>>(new Set());
 
@@ -304,7 +292,7 @@ const selectedDirectories = ref<Set<string>>(new Set());
 const daysFilterOptions = [
   { label: "Last 7 days", value: 7 },
   { label: "Last 14 days", value: 14 },
-  { label: "Last 30 days", value: 30 },
+  { label: "Last 30 days", value: DEFAULT_DAYS },
 ];
 
 const sortBy = ref(SortBy.UpdatedAt);
@@ -317,31 +305,82 @@ const hasResults = computed(
 
 const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value));
 
-const emptyStateMessage = computed(() => {
-  if (searchQuery.value) {
-    return `No deleted items matching "${searchQuery.value}" in the last ${daysFilter.value} days.`;
-  }
-  return `No items have been deleted in the last ${daysFilter.value} days.`;
-});
-
-const isAllDirectoriesSelected = computed(
-  () =>
-    directoryResults.value.length > 0 &&
-    selectedDirectories.value.size === directoryResults.value.length,
-);
-
-const isAllFilesSelected = computed(
-  () => fileResults.value.length > 0 && selectedFiles.value.size === fileResults.value.length,
-);
-
 const isMutating = computed(() => restoreFilesLoading.value || restoreDirectoriesIsLoading.value);
 
+const subtitle = computed(() => {
+  if (isLoading.value) {
+    return "Loading deleted items";
+  }
+  const noun = totalCount.value === 1 ? "item" : "items";
+  return `${totalCount.value} ${noun} deleted in the last ${daysFilter.value} days`;
+});
+
+const rangeText = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value + 1;
+  const end = Math.min(currentPage.value * pageSize.value, totalCount.value);
+  return `Showing ${start} to ${end} of ${totalCount.value}`;
+});
+
+const selectedCount = computed(() => selectedFiles.value.size + selectedDirectories.value.size);
+const itemCount = computed(() => fileResults.value.length + directoryResults.value.length);
+
+const masterState = computed<boolean | "indeterminate">(() => {
+  if (selectedCount.value === 0) {
+    return false;
+  }
+  if (selectedCount.value === itemCount.value) {
+    return true;
+  }
+  return "indeterminate";
+});
+
+const selectionLabel = computed(() =>
+  selectedCount.value > 0 ? `${selectedCount.value} selected` : "Select all",
+);
+
+const emptyState = computed(() => {
+  const lookedBack = `in the last ${daysFilter.value} days`;
+  if (searchQuery.value) {
+    return {
+      action: () => clearSearch(),
+      actionLabel: "Clear search",
+      message: `Nothing matching "${searchQuery.value}" was deleted ${lookedBack}.`,
+      title: "No matches",
+    };
+  }
+  if (daysFilter.value !== DEFAULT_DAYS) {
+    return {
+      action: () => {
+        daysFilter.value = DEFAULT_DAYS;
+      },
+      actionLabel: `Look back ${DEFAULT_DAYS} days`,
+      message: `Nothing has been deleted ${lookedBack}.`,
+      title: "No deleted items",
+    };
+  }
+  return {
+    action: null,
+    actionLabel: "",
+    message: `Nothing has been deleted ${lookedBack}. Deleted items show up here so you can restore them.`,
+    title: "Trash is empty",
+  };
+});
+
 // Methods
+const rowClass = (isSelected: boolean) =>
+  isSelected ? "bg-primary/10" : "hover:bg-gray-50 dark:hover:bg-white/5";
+
 const calculateDeletedAfterDate = (): string => {
   const now = today(getLocalTimeZone());
   const pastDate = now.subtract({ days: daysFilter.value });
   return pastDate.toString();
 };
+
+const clearSelection = () => {
+  selectedFiles.value = new Set();
+  selectedDirectories.value = new Set();
+};
+
 const toggleDirectorySelection = (id: string, checked: boolean | "indeterminate") => {
   if (checked === "indeterminate") return;
   const newSet = new Set(selectedDirectories.value);
@@ -358,20 +397,19 @@ const toggleFileSelection = (id: string, checked: boolean | "indeterminate") => 
   selectedFiles.value = newSet;
 };
 
-const toggleSelectAllDirectories = (checked: boolean | "indeterminate") => {
-  selectedDirectories.value =
-    checked === true ? new Set(directoryResults.value.map((d) => d.id)) : new Set();
-};
-
-const toggleSelectAllFiles = (checked: boolean | "indeterminate") => {
-  selectedFiles.value =
-    checked === true ? new Set(fileResults.value.map((f) => f.fileId)) : new Set();
+const toggleSelectAll = () => {
+  if (selectedCount.value === itemCount.value) {
+    clearSelection();
+    return;
+  }
+  selectedDirectories.value = new Set(directoryResults.value.map((d) => d.id));
+  selectedFiles.value = new Set(fileResults.value.map((f) => f.fileId));
 };
 
 const fetchDeletedItems = async () => {
   isLoading.value = true;
-  selectedFiles.value = new Set();
-  selectedDirectories.value = new Set();
+  hasError.value = false;
+  clearSelection();
 
   try {
     const deletedAfter = calculateDeletedAfterDate();
@@ -432,6 +470,7 @@ const fetchDeletedItems = async () => {
       (directoriesResult.success && directoriesResult.data ? directoriesResult.data.totalCount : 0);
   } catch (error) {
     logger.error("Error fetching deleted items:", error);
+    hasError.value = true;
     if (settingsStore.toastLevel !== "silent") {
       toast.add({
         color: "error",
@@ -450,8 +489,6 @@ const handleSearch = () => {
 };
 const clearSearch = () => {
   searchQuery.value = "";
-  currentPage.value = 1;
-  fetchDeletedItems();
 };
 const goToPage = (page: number) => {
   if (page >= 1 && page <= totalPages.value) {
@@ -471,17 +508,17 @@ const handleNavigate = (_directoryId: string) => {
   }
 };
 
-const restoreSelectedFiles = () => {
-  if (selectedFiles.value.size === 0) return;
-  restoreFilesMutate(Array.from(selectedFiles.value));
-};
-
-const restoreSelectedDirectories = () => {
-  if (selectedDirectories.value.size === 0) return;
-  restoreDirectoriesMutate(Array.from(selectedDirectories.value));
+const restoreSelected = () => {
+  if (selectedFiles.value.size > 0) {
+    restoreFilesMutate(Array.from(selectedFiles.value));
+  }
+  if (selectedDirectories.value.size > 0) {
+    restoreDirectoriesMutate(Array.from(selectedDirectories.value));
+  }
 };
 
 // Watchers
+watchDebounced(searchQuery, handleSearch, { debounce: 300 });
 watch(daysFilter, () => {
   currentPage.value = 1;
   fetchDeletedItems();
@@ -503,7 +540,7 @@ watch(restoreDirectoriesError, (err) => {
   if (err)
     toast.add({
       color: "error",
-      description: "Failed to restore the selected directories. Please try again.",
+      description: "Failed to restore the selected folders. Please try again.",
       title: "Restore Failed",
     });
 });
@@ -516,5 +553,3 @@ watch(restoreDirectoriesIsLoading, (loading) => {
 
 onMounted(() => fetchDeletedItems());
 </script>
-
-<style scoped></style>
