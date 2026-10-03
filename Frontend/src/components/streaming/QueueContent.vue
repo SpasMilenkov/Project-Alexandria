@@ -142,7 +142,11 @@ defineExpose({ scrollToActive });
     </div>
 
     <!-- Track list -->
-    <ol ref="listRef" class="overflow-y-auto overscroll-contain flex-1 min-h-0 py-1.5" role="listbox">
+    <ol
+      ref="listRef"
+      class="overflow-y-auto overscroll-contain flex-1 min-h-0 py-1.5"
+      role="listbox"
+    >
       <!-- Forward history -->
       <template v-if="historyItems.length > 0">
         <li class="px-5 pt-2 pb-1 select-none">
@@ -282,7 +286,9 @@ defineExpose({ scrollToActive });
       </li>
 
       <li v-if="error" class="flex flex-col items-center justify-center gap-2 py-4 px-4">
-        <span class="text-xs text-gray-500 dark:text-white/40 text-center">{{ error.message }}</span>
+        <span class="text-xs text-gray-500 dark:text-white/40 text-center">{{
+          error.message
+        }}</span>
         <button
           class="text-[11px] font-medium text-primary hover:opacity-80 transition-opacity"
           @click="store.retryError()"

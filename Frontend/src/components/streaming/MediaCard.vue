@@ -17,27 +17,38 @@ const {
   viewMode,
   selected = false,
   selectionMode = false,
+  progressPercent = null,
+  watched = false,
 } = defineProps<{
   file: MediaFileDto;
   viewMode: "grid" | "list";
   selected?: boolean;
   selectionMode?: boolean;
+  progressPercent?: number | null;
+  watched?: boolean;
 }>();
 
 const store = usePlayerStore();
-const { activeFile, queueEntries } = storeToRefs(store);
+const { activeFile, queueEntries, isPlaying } = storeToRefs(store);
 
 const isActive = computed(() => activeFile.value?.fileId === file.fileId);
+const isActivePlaying = computed(() => isActive.value && isPlaying.value);
 const isAudio = computed(() => !file.isVideo);
 const isVideo = computed(() => file.isVideo);
 const typeLabel = computed(() => (isVideo.value ? "Video" : "Audio"));
 const typeIcon = computed(() => (isVideo.value ? "mdi:file-video" : "mdi:music-note"));
 
 const displayName = computed(() => file.title ?? file.fileName);
-const subtitle = computed(() => file.artist ?? file.mimeType);
-const gridSubtitle = computed(
-  () => file.artist || file.album || (isVideo.value ? "Video" : "Unknown artist"),
-);
+const subtitle = computed(() => {
+  if (watched) return "Watched";
+  return file.artist ?? file.mimeType;
+});
+const gridSubtitle = computed(() => {
+  if (watched) return "Watched";
+  return file.artist || file.album || (isVideo.value ? "Video" : "Unknown artist");
+});
+
+const showProgress = computed(() => progressPercent !== null && progressPercent > 0 && !watched);
 
 // Version-scoped URLs preserve caching while the shared composable handles retries.
 const { thumbnailUrl, thumbnailLoaded, thumbnailErrored, onThumbnailLoad, onThumbnailError } =
@@ -235,6 +246,20 @@ const onCardKeydown = (event: KeyboardEvent) => {
         >
           <Icon icon="mdi:play" class="w-5 h-5 text-gray-900 dark:text-gray-100" />
         </div>
+
+        <div
+          v-if="isVideo && file.duration"
+          class="absolute right-2 bottom-2 px-1.5 py-px rounded text-[11px] tabular-nums bg-black/70 text-white pointer-events-none"
+        >
+          {{ formatDuration(file.duration) }}
+        </div>
+        <span
+          v-if="showProgress"
+          class="absolute left-0 right-0 bottom-0 h-[3px] bg-white/25 pointer-events-none"
+          aria-hidden="true"
+        >
+          <span class="block h-full bg-primary" :style="{ width: `${progressPercent}%` }" />
+        </span>
       </div>
 
       <div
@@ -259,7 +284,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
         <div class="flex items-center justify-between gap-2 h-8 shrink-0">
           <div class="flex items-center gap-2 min-w-0">
             <div
-              v-if="isActive"
+              v-if="isActive && isAudio"
               class="flex gap-0.5 items-end h-3.5"
               role="status"
               aria-label="Now playing"
@@ -268,8 +293,16 @@ const onCardKeydown = (event: KeyboardEvent) => {
               <div class="w-0.5 bg-primary rounded-full animate-eq-2" />
               <div class="w-0.5 bg-primary rounded-full animate-eq-3" />
             </div>
+            <Icon
+              v-else-if="isActive"
+              icon="mdi:eye-outline"
+              class="w-4 h-4 text-primary shrink-0"
+              :class="isActivePlaying ? 'animate-blink' : ''"
+              role="status"
+              aria-label="Now playing"
+            />
             <span
-              v-if="file.duration"
+              v-if="file.duration && !isVideo"
               class="text-xs tabular-nums text-gray-600 dark:text-gray-400"
             >
               {{ formatDuration(file.duration) }}
@@ -344,11 +377,17 @@ const onCardKeydown = (event: KeyboardEvent) => {
                 class="pointer-events-none"
               />
             </span>
-            <div v-else-if="isActive" class="flex gap-0.5 items-end h-3.5">
+            <div v-if="isActive && isAudio" class="flex gap-0.5 items-end h-3.5">
               <div class="w-0.5 bg-primary rounded-full animate-eq-1"></div>
               <div class="w-0.5 bg-primary rounded-full animate-eq-2"></div>
               <div class="w-0.5 bg-primary rounded-full animate-eq-3"></div>
             </div>
+            <Icon
+              v-else-if="isActive"
+              icon="mdi:eye-outline"
+              class="w-4 h-4 text-primary shrink-0"
+              :class="isActivePlaying ? 'animate-blink' : ''"
+            />
             <svg
               v-else
               class="w-4 h-4 text-gray-600 group-hover:text-gray-400"
@@ -438,5 +477,23 @@ const onCardKeydown = (event: KeyboardEvent) => {
 }
 .animate-eq-3 {
   animation: eq3 0.8s ease-in-out infinite 0.4s;
+}
+@keyframes blink-eye {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.animate-blink {
+  animation: blink-eye 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blink {
+    animation: none;
+  }
 }
 </style>

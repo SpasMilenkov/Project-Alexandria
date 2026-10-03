@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { useDark } from "@vueuse/core";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 
 import { fileApi } from "@/api/file";
 import { VIDEO_SHAKA_UI_CONFIG, usePlayerEngine } from "@/composables/usePlayerEngine";
+import { useTheme } from "@/composables/useTheme";
 import { usePlayerStore } from "@/stores/stream-player";
 
 import PlayerSettings from "./PlayerSettings.vue";
 
+const { railOpen = false } = defineProps<{ railOpen?: boolean }>();
+
+const emit = defineEmits<{
+  toggleRail: [];
+}>();
+
 const store = usePlayerStore();
+const { isDark } = useTheme();
 const {
   activeFile,
   hasNext,
@@ -26,8 +33,6 @@ const {
   volume,
 } = storeToRefs(store);
 
-const isDark = useDark();
-
 const rootRef = ref<HTMLDivElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
 const videoRef = ref<HTMLVideoElement | null>(null);
@@ -35,7 +40,10 @@ const videoRef = ref<HTMLVideoElement | null>(null);
 const thumbnailUrl = computed(() => {
   const file = activeFile.value;
   if (!file) return null;
-  return fileApi.getThumbnailUrlForVersion(file.fileId, file.playbackVersionId ?? file.currentVersionId);
+  return fileApi.getThumbnailUrlForVersion(
+    file.fileId,
+    file.playbackVersionId ?? file.currentVersionId,
+  );
 });
 
 const {
@@ -44,19 +52,24 @@ const {
   resumePrompt,
   acceptResumePrompt,
   dismissResumePrompt,
+  toggleShakaFullscreen,
 } = usePlayerEngine(videoRef, containerRef, {
-    getThumbnailUrl: () => thumbnailUrl.value,
-    mediaKind: "video",
-    shakaUiConfig: {
-      ...VIDEO_SHAKA_UI_CONFIG,
-      controlPanelElements: [],
-      overflowMenuButtons: [],
-    },
-  });
+  getThumbnailUrl: () => thumbnailUrl.value,
+  mediaKind: "video",
+  shakaUiConfig: {
+    ...VIDEO_SHAKA_UI_CONFIG,
+    controlPanelElements: [],
+    overflowMenuButtons: [],
+  },
+});
 
 const hasFile = computed(() => activeFile.value?.isVideo ?? false);
 const displayTitle = computed(() => activeFile.value?.title ?? activeFile.value?.fileName ?? null);
 const displayArtist = computed(() => activeFile.value?.artist ?? null);
+
+const overlayVisible = computed(
+  () => !isPlaying.value || resumePrompt.value !== null || autoplayCountdown.value !== null,
+);
 
 const handlePlayToggle = () => {
   if (resumePrompt.value) {
@@ -90,10 +103,17 @@ const onProgressClick = (e: MouseEvent) => {
 const isFullscreen = ref(false);
 
 const toggleFullscreen = () => {
-  if (!document.fullscreenElement) {
+  // Route through Shaka so the button, the F key, and double-tap all enter
+  // and exit the same fullscreen element. Shaka owns exit while it owns the
+  // element; the root fallback only covers the not-yet-loaded edge.
+  if (document.fullscreenElement) {
+    if (!toggleShakaFullscreen()) {
+      document.exitFullscreen();
+    }
+    return;
+  }
+  if (!toggleShakaFullscreen()) {
     rootRef.value?.requestFullscreen();
-  } else {
-    document.exitFullscreen();
   }
 };
 
@@ -150,21 +170,119 @@ const countdownDashoffset = computed(() => {
   return RING_CIRCUMFERENCE * (1 - fraction);
 });
 
+const onToggleRail = () => emit("toggleRail");
+
+// Compact overflow menu (narrow screens): secondary toggles collapse into a
+// pull-up menu so the strip fits 320px viewports.
+
+const showMore = ref(false);
+const moreBtnRef = ref<HTMLButtonElement | null>(null);
+const moreMenuRef = ref<HTMLDivElement | null>(null);
+
+const closeMore = () => {
+  showMore.value = false;
+};
+
+// Compact volume popup (narrow screens): the horizontal slider does not fit,
+// so the icon alone stays visible and opens a vertical slider on tap.
+
+const showVolPop = ref(false);
+const volPopBtnRef = ref<HTMLButtonElement | null>(null);
+const volPopRef = ref<HTMLDivElement | null>(null);
+
+const closeVolPop = () => {
+  showVolPop.value = false;
+};
+
+const toggleVolPop = () => {
+  showVolPop.value = !showVolPop.value;
+  if (showVolPop.value) closeMore();
+};
+
+const toggleMore = () => {
+  showMore.value = !showMore.value;
+  if (showMore.value) closeVolPop();
+};
+
+const REPEAT_STATE_LABELS: Record<string, string> = { off: "Off", all: "All", one: "One" };
+
+const shuffleState = computed(() => {
+  if (context.value?.shuffled) return "On";
+  return "Off";
+});
+
+const repeatState = computed(() => REPEAT_STATE_LABELS[repeatMode.value] ?? repeatMode.value);
+
+const autoplayState = computed(() => {
+  if (videoAutoplay.value) return "On";
+  return "Off";
+});
+
+const railState = computed(() => {
+  if (railOpen) return "Shown";
+  return "Hidden";
+});
+
+const moreShuffle = () => {
+  store.toggleShuffle();
+  closeMore();
+};
+
+const moreRepeat = () => {
+  store.toggleLoop();
+  closeMore();
+};
+
+const moreAutoplay = () => {
+  store.toggleVideoAutoplay();
+  closeMore();
+};
+
+const moreRail = () => {
+  onToggleRail();
+  closeMore();
+};
+
+const onMoreDocClick = (e: MouseEvent) => {
+  if (!showMore.value && !showVolPop.value) return;
+  const target = e.target as Node;
+  const inMore = moreMenuRef.value?.contains(target) || moreBtnRef.value?.contains(target);
+  const inVol = volPopRef.value?.contains(target) || volPopBtnRef.value?.contains(target);
+  if (!inMore) closeMore();
+  if (!inVol) closeVolPop();
+};
+
+const onMoreKeydown = (e: KeyboardEvent) => {
+  if (e.key !== "Escape") return;
+  closeMore();
+  closeVolPop();
+};
+
 // Lifecycle
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", onFullscreenChange);
+  document.addEventListener("click", onMoreDocClick, { capture: true });
+  document.addEventListener("keydown", onMoreKeydown);
 });
 
 onUnmounted(() => {
   document.removeEventListener("fullscreenchange", onFullscreenChange);
+  document.removeEventListener("click", onMoreDocClick, { capture: true });
+  document.removeEventListener("keydown", onMoreKeydown);
 });
+
+defineExpose({ toggleFullscreen });
 </script>
 
 <template>
-  <div ref="rootRef" class="vps-root" :class="isDark ? 'vps-dark' : 'vps-light'">
-    <!-- Video area -->
-    <div class="vps-video-area">
+  <div
+    ref="rootRef"
+    class="vps-root border border-gray-200/70 dark:border-gray-700/70"
+    :class="isDark ? 'vps-dark' : 'vps-light'"
+  >
+    <!-- Stage -->
+    <div class="vps-stage">
       <!-- No-file placeholder -->
       <Transition name="vps-fade">
         <div v-if="!hasFile" class="vps-placeholder">
@@ -187,6 +305,247 @@ onUnmounted(() => {
           <p>{{ loadError }}</p>
         </div>
       </Transition>
+
+      <!-- Automatic setup attributes would race with usePlayerEngine's manual attachment. -->
+      <div ref="containerRef" class="vps-shaka-container">
+        <video ref="videoRef" class="vps-video" playsinline disablepictureinpicture />
+      </div>
+
+      <!-- Hover overlay: title gradient + floating dock -->
+      <div v-if="hasFile" class="vps-overlay" :class="{ 'vps-overlay-show': overlayVisible }">
+        <div class="vps-top">
+          <p class="vps-top-title">{{ displayTitle }}</p>
+          <p v-if="displayArtist" class="vps-top-meta">{{ displayArtist }}</p>
+        </div>
+        <div class="vps-dock">
+          <div class="vps-seekrow">
+            <span class="vps-time">{{ formattedTime(currentTime) }}</span>
+            <div class="vps-seek" @click="onProgressClick">
+              <div class="vps-seek-track">
+                <div class="vps-seek-played" :style="{ width: `${progressPercent}%` }" />
+              </div>
+              <div class="vps-seek-thumb" :style="{ left: `${progressPercent}%` }" />
+            </div>
+            <span class="vps-time vps-time-right">{{ formattedTime(duration) }}</span>
+          </div>
+
+          <div class="vps-row">
+            <div class="vps-group vps-left">
+              <button class="vps-btn" :title="isMuted ? 'Unmute' : 'Mute'" @click="toggleMute">
+                <Icon :icon="volumeIcon" class="w-5 h-5" />
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.02"
+                :value="volume"
+                :style="{ '--vps-vol': `${volume * 100}%` }"
+                class="vps-volume-slider"
+                title="Volume"
+                aria-label="Volume"
+                @input="onVolumeInput"
+              />
+            </div>
+
+            <div class="vps-group vps-mid">
+              <div class="vps-vol-compact">
+                <button
+                  ref="volPopBtnRef"
+                  type="button"
+                  class="vps-btn"
+                  title="Volume"
+                  aria-label="Volume"
+                  :aria-expanded="showVolPop"
+                  @click="toggleVolPop"
+                >
+                  <Icon :icon="volumeIcon" class="w-5 h-5" />
+                </button>
+                <Transition name="vps-fade">
+                  <div v-if="showVolPop" ref="volPopRef" class="vps-vol-pop">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.02"
+                      :value="volume"
+                      :style="{ '--vps-vol': `${volume * 100}%` }"
+                      class="vps-volume-vertical"
+                      title="Volume"
+                      aria-label="Volume"
+                      aria-orientation="vertical"
+                      @input="onVolumeInput"
+                    />
+                  </div>
+                </Transition>
+              </div>
+              <button
+                class="vps-btn vps-collapse"
+                :class="context?.shuffled ? 'vps-btn-active' : ''"
+                :disabled="orderBusy"
+                :title="shuffleHint"
+                aria-label="Shuffle"
+                @click="store.toggleShuffle()"
+              >
+                <Icon
+                  :icon="orderBusy ? 'mdi:loading' : 'mdi:shuffle-variant'"
+                  class="w-5 h-5"
+                  :class="orderBusy ? 'animate-spin' : ''"
+                />
+              </button>
+              <button
+                class="vps-btn"
+                :disabled="!hasPrevious"
+                title="Previous"
+                aria-label="Previous"
+                @click="store.previous()"
+              >
+                <Icon icon="mdi:skip-previous" class="w-5 h-5" />
+              </button>
+              <button
+                class="vps-btn vps-btn-play"
+                :title="isPlaying ? 'Pause' : 'Play'"
+                :aria-label="isPlaying ? 'Pause' : 'Play'"
+                @click="handlePlayToggle"
+              >
+                <Icon :icon="isPlaying ? 'mdi:pause' : 'mdi:play'" class="w-6 h-6" />
+              </button>
+              <button
+                class="vps-btn"
+                :disabled="!hasNext"
+                title="Next"
+                aria-label="Next"
+                @click="store.next()"
+              >
+                <Icon icon="mdi:skip-next" class="w-5 h-5" />
+              </button>
+              <button
+                class="vps-btn vps-collapse"
+                :class="repeatMode !== 'off' ? 'vps-btn-active' : ''"
+                title="Repeat"
+                aria-label="Repeat"
+                @click="store.toggleLoop()"
+              >
+                <Icon
+                  :icon="repeatMode === 'one' ? 'mdi:repeat-once' : 'mdi:repeat'"
+                  class="w-5 h-5"
+                />
+              </button>
+            </div>
+
+            <div class="vps-group vps-right">
+              <button
+                class="vps-btn vps-collapse"
+                :class="videoAutoplay ? 'vps-btn-active' : ''"
+                title="Autoplay"
+                aria-label="Autoplay"
+                :aria-pressed="videoAutoplay"
+                @click="store.toggleVideoAutoplay()"
+              >
+                <Icon icon="mdi:playlist-play" class="w-5 h-5" />
+              </button>
+              <PlayerSettings />
+              <button
+                class="vps-btn vps-collapse"
+                :class="railOpen ? 'vps-btn-active' : ''"
+                title="Up next"
+                aria-label="Up next"
+                :aria-pressed="railOpen"
+                @click="onToggleRail"
+              >
+                <Icon icon="lucide:list" class="w-5 h-5" />
+              </button>
+              <button
+                class="vps-btn"
+                :title="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
+                :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
+                @click="toggleFullscreen"
+              >
+                <Icon
+                  :icon="isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'"
+                  class="w-5 h-5"
+                />
+              </button>
+              <div class="vps-more-wrap">
+                <button
+                  ref="moreBtnRef"
+                  type="button"
+                  class="vps-btn"
+                  title="More controls"
+                  aria-label="More controls"
+                  aria-haspopup="menu"
+                  :aria-expanded="showMore"
+                  @click="toggleMore"
+                >
+                  <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
+                </button>
+                <Transition name="vps-fade">
+                  <div
+                    v-if="showMore"
+                    ref="moreMenuRef"
+                    class="vps-more"
+                    role="menu"
+                    aria-label="More controls"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="vps-more-row"
+                      :class="context?.shuffled ? 'vps-more-row-active' : ''"
+                      :disabled="orderBusy"
+                      @click="moreShuffle"
+                    >
+                      <Icon
+                        :icon="orderBusy ? 'mdi:loading' : 'mdi:shuffle-variant'"
+                        class="w-5 h-5 shrink-0"
+                        :class="orderBusy ? 'animate-spin' : ''"
+                      />
+                      <span class="flex-1 text-left">Shuffle</span>
+                      <span class="vps-more-state">{{ shuffleState }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="vps-more-row"
+                      :class="repeatMode !== 'off' ? 'vps-more-row-active' : ''"
+                      @click="moreRepeat"
+                    >
+                      <Icon
+                        :icon="repeatMode === 'one' ? 'mdi:repeat-once' : 'mdi:repeat'"
+                        class="w-5 h-5 shrink-0"
+                      />
+                      <span class="flex-1 text-left">Repeat</span>
+                      <span class="vps-more-state">{{ repeatState }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="vps-more-row"
+                      :class="videoAutoplay ? 'vps-more-row-active' : ''"
+                      @click="moreAutoplay"
+                    >
+                      <Icon icon="mdi:playlist-play" class="w-5 h-5 shrink-0" />
+                      <span class="flex-1 text-left">Autoplay</span>
+                      <span class="vps-more-state">{{ autoplayState }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="vps-more-row"
+                      :class="railOpen ? 'vps-more-row-active' : ''"
+                      @click="moreRail"
+                    >
+                      <Icon icon="lucide:list" class="w-5 h-5 shrink-0" />
+                      <span class="flex-1 text-left">Up next</span>
+                      <span class="vps-more-state">{{ railState }}</span>
+                    </button>
+                  </div>
+                </Transition>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Resume prompt -->
       <Transition name="vps-fade">
@@ -226,119 +585,6 @@ onUnmounted(() => {
           <button class="vps-autoplay-now" @click="store.next()">Play now</button>
         </div>
       </Transition>
-
-      <!-- Automatic setup attributes would race with usePlayerEngine's manual attachment. -->
-      <div ref="containerRef" class="vps-shaka-container">
-        <video ref="videoRef" class="vps-video" playsinline disablepictureinpicture />
-      </div>
-    </div>
-
-    <div v-if="hasFile" class="vps-controls">
-      <!-- Seek bar -->
-      <div class="vps-seek" @click="onProgressClick">
-        <div class="vps-seek-track">
-          <div class="vps-seek-played" :style="{ width: `${progressPercent}%` }" />
-        </div>
-        <div class="vps-seek-thumb" :style="{ left: `${progressPercent}%` }" />
-      </div>
-
-      <!-- Main row -->
-      <div class="vps-row">
-        <!-- Time -->
-        <span class="vps-time">
-          {{ formattedTime(currentTime) }} / {{ formattedTime(duration) }}
-        </span>
-
-        <!-- Transport -->
-        <div class="vps-transport">
-          <button
-            class="vps-btn"
-            :disabled="!hasPrevious"
-            title="Previous"
-            @click="store.previous()"
-          >
-            <Icon icon="mdi:skip-previous" class="w-5 h-5" />
-          </button>
-          <button
-            class="vps-btn vps-btn-play"
-            :title="isPlaying ? 'Pause' : 'Play'"
-            @click="handlePlayToggle"
-          >
-            <Icon :icon="isPlaying ? 'mdi:pause' : 'mdi:play'" class="w-6 h-6" />
-          </button>
-          <button class="vps-btn" :disabled="!hasNext" title="Next" @click="store.next()">
-            <Icon icon="mdi:skip-next" class="w-5 h-5" />
-          </button>
-        </div>
-
-        <div class="vps-spacer" />
-
-        <!-- Secondary controls -->
-        <button
-          class="vps-btn"
-          :class="context?.shuffled ? 'vps-btn-active' : ''"
-          :disabled="orderBusy"
-          :title="shuffleHint"
-          @click="store.toggleShuffle()"
-        >
-          <Icon
-            :icon="orderBusy ? 'mdi:loading' : 'mdi:shuffle-variant'"
-            class="w-5 h-5"
-            :class="orderBusy ? 'animate-spin' : ''"
-          />
-        </button>
-        <button
-          class="vps-btn"
-          :class="repeatMode !== 'off' ? 'vps-btn-active' : ''"
-          title="Repeat"
-          @click="store.toggleLoop()"
-        >
-          <Icon :icon="repeatMode === 'one' ? 'mdi:repeat-once' : 'mdi:repeat'" class="w-5 h-5" />
-        </button>
-        <button
-          class="vps-btn"
-          :class="videoAutoplay ? 'vps-btn-active' : ''"
-          title="Autoplay"
-          @click="store.toggleVideoAutoplay()"
-        >
-          <Icon icon="mdi:playlist-play" class="w-5 h-5" />
-        </button>
-
-        <!-- Volume -->
-        <button class="vps-btn" :title="isMuted ? 'Unmute' : 'Mute'" @click="toggleMute">
-          <Icon :icon="volumeIcon" class="w-5 h-5" />
-        </button>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.02"
-          :value="volume"
-          :style="{ '--vps-vol': `${volume * 100}%` }"
-          class="vps-volume-slider"
-          title="Volume"
-          @input="onVolumeInput"
-        />
-
-        <!-- Fullscreen -->
-        <button
-          class="vps-btn"
-          :title="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
-          @click="toggleFullscreen"
-        >
-          <Icon :icon="isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'" class="w-5 h-5" />
-        </button>
-
-        <PlayerSettings />
-      </div>
-
-      <!-- Track info -->
-      <Transition name="vps-fade">
-        <div v-if="displayTitle" class="vps-info">
-          <span class="vps-title">{{ displayTitle }}</span>
-          <span v-if="displayArtist" class="vps-artist">{{ displayArtist }}</span>
-        </div>
-      </Transition>
     </div>
   </div>
 </template>
@@ -348,105 +594,49 @@ onUnmounted(() => {
 
 /* Root */
 .vps-root {
-  position: relative; /* anchor for fullscreen overlay controls */
+  position: relative;
   width: 100%;
   display: flex;
   flex-direction: column;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   overflow: hidden;
-}
-
-/* Video area */
-.vps-video-area {
-  position: relative;
-  width: 100%;
-  /*
-   * Responsive height: grow with width (16:9) but never exceed 65 vh.
-   * Using min() keeps the video from becoming a thin strip on landscape
-   * phones or short browser windows — the video stays proportional to
-   * whichever axis is the constraint.
-   */
-  height: min(56.25vw, 65vh);
   background: #000;
-  overflow: hidden;
-  flex-shrink: 0;
-  flex: 1;
 }
 
-/* Fullscreen  */
-/*
- * In fullscreen the video area expands to cover the entire root.
- * The control bar becomes a gradient overlay pinned to the bottom,
- * so the video always fills 100 % of the screen — no black void.
- */
 .vps-root:fullscreen,
 .vps-root:-webkit-full-screen {
   border-radius: 0;
-  /* root itself fills the viewport — browser guarantees this in fullscreen */
+  border: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
 }
 
-.vps-root:fullscreen .vps-video-area,
-.vps-root:-webkit-full-screen .vps-video-area {
+.vps-root:fullscreen .vps-stage,
+.vps-root:-webkit-full-screen .vps-stage {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  flex-shrink: unset;
+  max-height: none;
+  min-height: 0;
+  aspect-ratio: auto;
 }
 
-.vps-root:fullscreen .vps-controls,
-.vps-root:-webkit-full-screen .vps-controls {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 30;
-  /* gradient so controls are readable over any video frame */
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.92) 0%,
-    rgba(0, 0, 0, 0.55) 55%,
-    transparent 100%
-  ) !important;
-  border-top: none !important;
-  padding-bottom: 1.5rem;
-}
-
-/* Force white palette on controls regardless of light/dark theme */
-.vps-root:fullscreen .vps-btn,
-.vps-root:-webkit-full-screen .vps-btn {
-  color: rgba(255, 255, 255, 0.55) !important;
-}
-.vps-root:fullscreen .vps-btn:hover:not(:disabled),
-.vps-root:-webkit-full-screen .vps-btn:hover:not(:disabled) {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-.vps-root:fullscreen .vps-time,
-.vps-root:-webkit-full-screen .vps-time {
-  color: rgba(255, 255, 255, 0.55) !important;
-}
-.vps-root:fullscreen .vps-seek-track,
-.vps-root:-webkit-full-screen .vps-seek-track {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
-.vps-root:fullscreen .vps-title,
-.vps-root:-webkit-full-screen .vps-title {
-  color: rgba(255, 255, 255, 0.9) !important;
-}
-.vps-root:fullscreen .vps-artist,
-.vps-root:-webkit-full-screen .vps-artist {
-  color: rgba(255, 255, 255, 0.45) !important;
-}
-.vps-root:fullscreen .vps-volume-slider,
-.vps-root:-webkit-full-screen .vps-volume-slider {
-  /* unset any light theme override */
-  background: linear-gradient(
-    to right,
-    var(--ui-primary, #6366f1) 0%,
-    var(--ui-primary, #6366f1) var(--vps-vol, 100%),
-    rgba(255, 255, 255, 0.2) var(--vps-vol, 100%)
-  ) !important;
+/* Stage */
+.vps-stage {
+  position: relative;
+  width: 100%;
+  height: min(56.25vw, 62vh);
+  min-height: 20rem;
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    color-mix(in srgb, var(--ui-primary, #6366f1) 32%, #000000) 0%,
+    #000000 78%
+  );
+  overflow: hidden;
+  color: #fff;
 }
 
 /* Shaka container */
@@ -471,11 +661,6 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   display: block;
-  /*
-   * object-fit: contain keeps the native aspect ratio and adds letterbox
-   * bars rather than stretching — correct behaviour at every window size
-   * and in fullscreen.
-   */
   object-fit: contain;
 }
 
@@ -509,34 +694,96 @@ onUnmounted(() => {
   position: absolute !important;
 }
 
-/* Control bar */
-.vps-controls {
+/* Hover overlay */
+.vps-overlay {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
-  padding: 0.75rem 1rem;
-  border-top: 1px solid;
+  justify-content: space-between;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  pointer-events: none;
+  z-index: 12;
+}
+
+.vps-stage:hover .vps-overlay,
+.vps-stage:focus-within .vps-overlay,
+.vps-overlay-show {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .vps-overlay {
+    opacity: 1;
+  }
+}
+
+.vps-top {
+  padding: 1rem 1.25rem 2.5rem;
+  background: linear-gradient(rgba(0, 0, 0, 0.65), transparent);
+}
+
+.vps-top-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vps-top-meta {
+  font-size: 0.75rem;
+  color: #c4c9d2;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Floating dock */
+.vps-dock {
+  pointer-events: auto;
+  max-width: 720px;
+  width: calc(100% - 2rem);
+  margin: 0 auto 1rem;
+  padding: 0.625rem 1rem 0.5rem;
+  border-radius: 1rem;
+  background: rgba(16, 16, 20, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Seek row */
+.vps-seekrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.vps-time {
+  font-size: 0.75rem;
+  color: #c4c9d2;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.375rem;
   flex-shrink: 0;
 }
 
-.vps-dark .vps-controls {
-  background: #0a0a0a;
-  border-color: rgba(255, 255, 255, 0.1);
+.vps-time-right {
+  text-align: right;
 }
 
-.vps-light .vps-controls {
-  background: #fff;
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-/* Seek bar */
 .vps-seek {
   position: relative;
-  width: 100%;
+  flex: 1;
   height: 1.25rem;
   display: flex;
   align-items: center;
   cursor: pointer;
+  min-width: 0;
 }
 
 .vps-seek-track {
@@ -545,14 +792,12 @@ onUnmounted(() => {
   height: 4px;
   border-radius: 2px;
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.25);
   transition: height 100ms ease;
 }
 
-.vps-dark .vps-seek-track {
-  background: rgba(255, 255, 255, 0.12);
-}
-.vps-light .vps-seek-track {
-  background: rgba(0, 0, 0, 0.12);
+.vps-seek:hover .vps-seek-track {
+  height: 6px;
 }
 
 .vps-seek-played {
@@ -562,7 +807,6 @@ onUnmounted(() => {
   height: 100%;
   background: var(--ui-primary, #6366f1);
   border-radius: 2px;
-  transition: width 80ms linear;
 }
 
 .vps-seek-thumb {
@@ -582,39 +826,27 @@ onUnmounted(() => {
 .vps-seek:hover .vps-seek-thumb {
   opacity: 1;
 }
-.vps-seek:hover .vps-seek-track {
-  height: 5px;
-}
 
-/* Row */
+/* Control row: three zones */
 .vps-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 0.25rem;
 }
 
-.vps-spacer {
-  flex: 1;
-}
-
-.vps-time {
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-  margin-right: 0.25rem;
-}
-
-.vps-dark .vps-time {
-  color: rgba(255, 255, 255, 0.45);
-}
-.vps-light .vps-time {
-  color: rgba(0, 0, 0, 0.45);
-}
-
-.vps-transport {
+.vps-group {
   display: flex;
   align-items: center;
   gap: 0.125rem;
+  min-width: 0;
+}
+
+.vps-mid {
+  justify-content: center;
+}
+
+.vps-right {
+  justify-content: flex-end;
 }
 
 /* Buttons */
@@ -626,36 +858,35 @@ onUnmounted(() => {
   height: 2.25rem;
   border-radius: 0.5rem;
   flex-shrink: 0;
+  color: #c4c9d2;
   transition:
     color 120ms ease,
     background 120ms ease;
 }
 
-.vps-dark .vps-btn {
-  color: rgba(255, 255, 255, 0.45);
-}
-.vps-light .vps-btn {
-  color: rgba(0, 0, 0, 0.45);
-}
-
-.vps-dark .vps-btn:hover:not(:disabled) {
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.vps-light .vps-btn:hover:not(:disabled) {
-  color: rgba(0, 0, 0, 0.85);
-  background: rgba(0, 0, 0, 0.06);
+.vps-btn:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .vps-btn:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
 .vps-btn-play {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--ui-primary, #6366f1);
+  color: #fff;
+  margin: 0 0.375rem;
+}
+
+.vps-btn-play:hover:not(:disabled) {
+  background: var(--ui-primary, #6366f1);
+  color: #fff;
+  filter: brightness(1.1);
 }
 
 .vps-btn-active {
@@ -665,7 +896,7 @@ onUnmounted(() => {
 /* Volume slider */
 .vps-volume-slider {
   --vps-vol: 100%;
-  width: 72px;
+  width: 80px;
   height: 4px;
   border-radius: 2px;
   cursor: pointer;
@@ -673,28 +904,11 @@ onUnmounted(() => {
   -webkit-appearance: none;
   outline: none;
   flex-shrink: 0;
-  transition: width 120ms ease;
-}
-
-.vps-volume-slider:hover {
-  width: 88px;
-}
-
-.vps-dark .vps-volume-slider {
   background: linear-gradient(
     to right,
     var(--ui-primary, #6366f1) 0%,
     var(--ui-primary, #6366f1) var(--vps-vol),
-    rgba(255, 255, 255, 0.15) var(--vps-vol)
-  );
-}
-
-.vps-light .vps-volume-slider {
-  background: linear-gradient(
-    to right,
-    var(--ui-primary, #6366f1) 0%,
-    var(--ui-primary, #6366f1) var(--vps-vol),
-    rgba(0, 0, 0, 0.12) var(--vps-vol)
+    rgba(255, 255, 255, 0.25) var(--vps-vol)
   );
 }
 
@@ -729,6 +943,143 @@ onUnmounted(() => {
 
 .vps-volume-slider:hover::-moz-range-thumb {
   opacity: 1;
+}
+
+/* Light theme: frosted light strip instead of the dark glass.
+   The top title bar intentionally stays dark in both modes. */
+.vps-light .vps-dock {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.vps-light .vps-time {
+  color: #4b5563;
+}
+
+.vps-light .vps-seek-track {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.vps-light .vps-btn {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.vps-light .vps-btn:hover:not(:disabled) {
+  color: #000;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.vps-light .vps-volume-slider {
+  background: linear-gradient(
+    to right,
+    var(--ui-primary, #6366f1) 0%,
+    var(--ui-primary, #6366f1) var(--vps-vol),
+    rgba(0, 0, 0, 0.15) var(--vps-vol)
+  );
+}
+
+.vps-light .vps-volume-slider::-webkit-slider-thumb {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.vps-light .vps-volume-slider::-moz-range-thumb {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Compact volume popup */
+.vps-vol-compact {
+  display: none;
+  position: relative;
+  align-items: center;
+}
+
+.vps-vol-pop {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(100% + 10px);
+  padding: 12px 8px;
+  border-radius: 12px;
+  background: rgba(20, 20, 24, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+}
+
+.vps-light .vps-vol-pop {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.vps-volume-vertical {
+  --vps-vol: 100%;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 28px;
+  height: 120px;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+
+.vps-volume-vertical::-webkit-slider-runnable-track {
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to top,
+    var(--ui-primary, #6366f1) 0%,
+    var(--ui-primary, #6366f1) var(--vps-vol),
+    rgba(255, 255, 255, 0.25) var(--vps-vol)
+  );
+}
+
+.vps-volume-vertical::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.vps-volume-vertical::-moz-range-track {
+  width: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.vps-volume-vertical::-moz-range-progress {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--ui-primary, #6366f1);
+}
+
+.vps-volume-vertical::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  border: none;
+}
+
+.vps-light .vps-volume-vertical::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to top,
+    var(--ui-primary, #6366f1) 0%,
+    var(--ui-primary, #6366f1) var(--vps-vol),
+    rgba(0, 0, 0, 0.15) var(--vps-vol)
+  );
+}
+
+.vps-light .vps-volume-vertical::-moz-range-track {
+  background: rgba(0, 0, 0, 0.15);
 }
 
 /* Overlay prompts */
@@ -780,7 +1131,7 @@ onUnmounted(() => {
   backdrop-filter: blur(var(--frost-blur));
   -webkit-backdrop-filter: blur(var(--frost-blur));
   pointer-events: auto;
-  z-index: 11;
+  z-index: 14;
 }
 
 .vps-resume-label {
@@ -827,9 +1178,9 @@ onUnmounted(() => {
 /* Autoplay countdown banner */
 .vps-autoplay-banner {
   position: absolute;
-  bottom: 0.75rem;
+  bottom: 6rem;
   right: 0.75rem;
-  z-index: 20;
+  z-index: 13;
   display: flex;
   align-items: center;
   gap: 0.625rem;
@@ -915,41 +1266,6 @@ onUnmounted(() => {
   background: color-mix(in srgb, var(--ui-primary, #6366f1) 85%, #fff);
 }
 
-/* Track info */
-.vps-info {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  min-width: 0;
-  margin-top: 0.125rem;
-}
-
-.vps-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.vps-dark .vps-title {
-  color: rgba(255, 255, 255, 0.9);
-}
-.vps-light .vps-title {
-  color: #1a1a1a;
-}
-
-.vps-artist {
-  font-size: 0.75rem;
-  flex-shrink: 0;
-}
-.vps-dark .vps-artist {
-  color: rgba(255, 255, 255, 0.4);
-}
-.vps-light .vps-artist {
-  color: rgba(0, 0, 0, 0.45);
-}
-
 /* Transitions */
 .vps-fade-enter-active,
 .vps-fade-leave-active {
@@ -970,5 +1286,108 @@ onUnmounted(() => {
 .vps-slide-up-leave-to {
   opacity: 0;
   transform: translateY(0.5rem);
+}
+
+/* Compact overflow menu */
+.vps-more-wrap {
+  display: none;
+  position: relative;
+  align-items: center;
+}
+
+.vps-more {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(20, 20, 24, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  z-index: 30;
+}
+
+.vps-more-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #e4e4e7;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.vps-more-row:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.vps-more-row:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vps-more-row-active {
+  color: var(--ui-primary, #6366f1);
+}
+
+.vps-more-state {
+  font-size: 12px;
+  font-weight: 400;
+  color: #a1a1aa;
+  font-variant-numeric: tabular-nums;
+}
+
+.vps-more-row-active .vps-more-state {
+  color: var(--ui-primary, #6366f1);
+}
+
+.vps-light .vps-more {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+}
+
+.vps-light .vps-more-row {
+  color: #27272a;
+}
+
+.vps-light .vps-more-row:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.vps-light .vps-more-state {
+  color: #71717a;
+}
+
+@media (max-width: 760px) {
+  .vps-left {
+    display: none;
+  }
+  .vps-vol-compact {
+    display: flex;
+  }
+  .vps-row {
+    grid-template-columns: 1fr auto;
+  }
+  .vps-dock {
+    width: calc(100% - 1rem);
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .vps-collapse {
+    display: none;
+  }
+  .vps-more-wrap {
+    display: flex;
+  }
 }
 </style>

@@ -22,12 +22,15 @@ import type { MediaFileDto } from "@/api/streaming";
 
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 
-const { file, alt = "", iconClass = "w-5 h-5 text-gray-400 dark:text-white/30" } =
-  defineProps<{
-    file: MediaFileDto | null;
-    alt?: string;
-    iconClass?: string;
-  }>();
+const {
+  file,
+  alt = "",
+  iconClass = "w-5 h-5 text-gray-400 dark:text-white/30",
+} = defineProps<{
+  file: MediaFileDto | null;
+  alt?: string;
+  iconClass?: string;
+}>();
 
 const { thumbnailUrl, thumbnailErrored, canHaveThumbnail, onThumbnailLoad, onThumbnailError } =
   useFileThumbnail(() => ({

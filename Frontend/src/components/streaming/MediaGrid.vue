@@ -36,9 +36,9 @@
           v-else
           class="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:flex sm:items-center sm:gap-8"
         >
-          <div class="flex items-center gap-3 order-1">
+          <div class="flex items-center gap-3 order-1 min-w-0">
             <h2
-              class="text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/35 m-0"
+              class="text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/35 m-0 truncate"
             >
               Available Media
             </h2>
@@ -56,7 +56,7 @@
           />
 
           <div
-            class="flex items-center gap-1.5 order-2 justify-end sm:order-3 sm:justify-start sm:shrink-0"
+            class="flex items-center gap-1.5 flex-wrap order-2 justify-end sm:order-3 sm:justify-start sm:shrink-0"
           >
             <button
               class="p-1.5 rounded-md text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
@@ -188,6 +188,8 @@
             view-mode="list"
             :selected="selectedIds.has(item.fileId)"
             :selection-mode="selectionMode"
+            :progress-percent="progressFor(item)"
+            :watched="watchedFor(item)"
             @select="onFileClick"
             @info="onMediaInfo"
             @toggle="onToggleSelect"
@@ -224,6 +226,8 @@
                   view-mode="grid"
                   :selected="selectedIds.has(file.fileId)"
                   :selection-mode="selectionMode"
+                  :progress-percent="progressFor(file)"
+                  :watched="watchedFor(file)"
                   @select="onFileClick"
                   @info="onMediaInfo"
                   @toggle="onToggleSelect"
@@ -286,6 +290,7 @@ import { computed, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 
 import { type MediaFileDto } from "@/api/streaming";
+import { isWatchedEntry, progressPercentOf, useVideoHistory } from "@/composables/useVideoHistory";
 import { STREAMING_QUERY_KEYS, getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 import { getMediaGridLayout } from "@/utils/media-grid-layout";
@@ -412,6 +417,17 @@ const onFileClick = (file: MediaFileDto) => {
     libraryLabel(libraryDescriptor.value),
   );
 };
+
+// Watch progress for video tiles (resume bars, Watched labels).
+// The query stays disabled for audio grids.
+
+const { historyByFileId } = useVideoHistory(() => mediaType === "video");
+
+const progressFor = (file: MediaFileDto): number | null =>
+  progressPercentOf(historyByFileId.value.get(file.fileId), file.duration);
+
+const watchedFor = (file: MediaFileDto): boolean =>
+  isWatchedEntry(historyByFileId.value.get(file.fileId));
 
 // Audio analysis drawer
 
