@@ -31,6 +31,14 @@ const shortcutSections: ShortcutSection[] = [
       { description: "Cut selected files and folders", keys: ["meta", "X"] },
       { description: "Paste copied or cut items", keys: ["meta", "V"] },
       { description: "Delete selected items", keys: ["Delete"] },
+      { description: "Rename selected item", keys: ["R"] },
+      { description: "Rename selected item", keys: ["F2"] },
+      { description: "Download selected items", keys: ["D"] },
+      { description: "Create new folder", keys: ["N"] },
+      { description: "Open details for selected item", keys: ["alt", "Enter"] },
+      { description: "Go back", keys: ["alt", "ArrowLeft"] },
+      { description: "Go forward", keys: ["alt", "ArrowRight"] },
+      { description: "Clear selection / cancel cut", keys: ["Escape"] },
     ],
     title: "File Explorer",
   },
@@ -39,6 +47,7 @@ const shortcutSections: ShortcutSection[] = [
     id: "search",
     shortcuts: [
       { description: "Quick search", keys: ["shift", "K"] },
+      { description: "Quick search", keys: ["meta", "/"] },
       { description: "Advanced search", keys: ["shift", "L"] },
     ],
     title: "Search",
@@ -62,17 +71,31 @@ const shortcutSections: ShortcutSection[] = [
     ],
     title: "Tags",
   },
+  {
+    icon: "mdi:keyboard-outline",
+    id: "general",
+    shortcuts: [{ description: "Show keyboard shortcuts", keys: ["meta", "K"] }],
+    title: "General",
+  },
 ];
 
 const macKeys: Record<string, string> = {
+  ArrowLeft: "\u2190",
+  ArrowRight: "\u2192",
   Delete: "\u232B",
+  Enter: "\u23CE",
   Escape: "Esc",
+  alt: "\u2325",
   meta: "\u2318",
   shift: "\u21E7",
 };
 const windowsKeys: Record<string, string> = {
+  ArrowLeft: "←",
+  ArrowRight: "→",
   Delete: "Del",
+  Enter: "Enter",
   Escape: "Esc",
+  alt: "Alt",
   meta: "Ctrl",
   shift: "Shift",
 };
