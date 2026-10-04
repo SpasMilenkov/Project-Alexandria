@@ -17,6 +17,7 @@
         <UIcon :name="icon" class="size-4.5" />
       </span>
       <span class="mobile-nav-item__label">{{ label }}</span>
+      <span v-if="dot" class="mobile-nav-item__dot" title="Changed from default" />
       <UIcon name="i-heroicons-chevron-right" class="size-4 text-muted ml-auto opacity-90" />
     </button>
   </RouterLink>
@@ -30,6 +31,7 @@ defineProps<{
   action?: () => void;
   active?: boolean;
   indented?: boolean;
+  dot?: boolean;
 }>();
 </script>
 
@@ -86,6 +88,14 @@ defineProps<{
   transition:
     background 0.15s ease,
     color 0.15s ease;
+}
+
+.mobile-nav-item__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--ui-primary);
 }
 
 .mobile-nav-item__label {

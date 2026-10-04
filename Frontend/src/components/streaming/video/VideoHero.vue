@@ -148,6 +148,7 @@ const onRestart = () => emit("restart");
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 .hero-btn {
@@ -171,6 +172,7 @@ const onRestart = () => emit("restart");
 .hero-btn-primary {
   background: var(--ui-primary);
   color: #fff;
+  border-radius: var(--ui-radius);
 }
 .hero-btn-primary:hover {
   filter: brightness(1.1);

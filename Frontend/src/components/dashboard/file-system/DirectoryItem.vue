@@ -68,10 +68,7 @@
       <span class="hidden sm:block text-xs text-gray-500 dark:text-gray-500 tabular-nums shrink-0">
         {{ modifiedLabel }}
       </span>
-      <Icon
-        icon="mdi:chevron-right"
-        class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-500"
-      />
+      <Icon icon="mdi:chevron-right" class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-500" />
     </button>
   </div>
 </template>

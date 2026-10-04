@@ -137,6 +137,7 @@
               :to="item.to"
               :action="item.action"
               :indented="item.indented"
+              :dot="item.dot"
               :active="item.hash ? route.hash === item.hash : route.path === item.to"
             />
           </nav>
@@ -255,6 +256,7 @@ import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext
 import { OnboardingStep } from "@/enums";
 import router from "@/router";
 import { useAuthStore } from "@/stores/auth";
+import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/stream-player";
 
 const streamingEnabled = import.meta.env.VITE_STREAMING_ENABLED === "true";
@@ -281,6 +283,7 @@ useSettingsSync();
 useOnboardingGuard(OnboardingStep.Done);
 
 const authStore = useAuthStore();
+const settingsStore = useSettingsStore();
 const route = useRoute();
 
 const isCollapsed = ref(false);
@@ -370,12 +373,14 @@ const settingsMenuItems = computed<NavigationMenuItem[]>(() => {
   const children: NavigationMenuItem[] = [
     {
       active: onSettings && (hash === "" || hash === "#appearance"),
+      class: settingsStore.isAppearanceModified ? "settings-nav-modified" : undefined,
       icon: "mdi:palette-outline",
       label: "Appearance",
       to: "/settings#appearance",
     },
     {
       active: onSettings && hash === "#behavior",
+      class: settingsStore.isBehaviorModified ? "settings-nav-modified" : undefined,
       icon: "mdi:cog-outline",
       label: "Behavior",
       to: "/settings#behavior",
@@ -384,11 +389,19 @@ const settingsMenuItems = computed<NavigationMenuItem[]>(() => {
   if (import.meta.env.VITE_AUTOTAGGING_ENABLED === "true") {
     children.push({
       active: onSettings && hash === "#auto-tagging",
+      class: settingsStore.isAutoTaggingModified ? "settings-nav-modified" : undefined,
       icon: "mdi:tag-multiple",
       label: "Auto-tagging",
       to: "/settings#auto-tagging",
     });
   }
+  children.push({
+    active: onSettings && hash === "#auto-playlists",
+    class: settingsStore.isAutoPlaylistsModified ? "settings-nav-modified" : undefined,
+    icon: "mdi:playlist-music",
+    label: "Auto-playlists",
+    to: "/settings#auto-playlists",
+  });
   return [
     {
       children,
@@ -452,9 +465,10 @@ interface MobileSettingsItem {
   action?: () => void;
   hash?: string;
   indented?: boolean;
-};
+  dot?: boolean;
+}
 
-const mobileSettingsItems: MobileSettingsItem[] = [
+const mobileSettingsItems = computed<MobileSettingsItem[]>(() => [
   { icon: "i-heroicons-cog-6-tooth", label: "Settings", to: "/settings" },
   { icon: "i-heroicons-user-circle", label: "My Account", to: "/account" },
   {
@@ -465,6 +479,7 @@ const mobileSettingsItems: MobileSettingsItem[] = [
     },
   },
   {
+    dot: settingsStore.isAppearanceModified,
     hash: "#appearance",
     icon: "mdi:palette-outline",
     indented: true,
@@ -472,6 +487,7 @@ const mobileSettingsItems: MobileSettingsItem[] = [
     to: "/settings#appearance",
   },
   {
+    dot: settingsStore.isBehaviorModified,
     hash: "#behavior",
     icon: "mdi:cog-outline",
     indented: true,
@@ -481,6 +497,7 @@ const mobileSettingsItems: MobileSettingsItem[] = [
   ...(import.meta.env.VITE_AUTOTAGGING_ENABLED === "true"
     ? [
         {
+          dot: settingsStore.isAutoTaggingModified,
           hash: "#auto-tagging",
           icon: "mdi:tag-multiple",
           indented: true,
@@ -489,10 +506,34 @@ const mobileSettingsItems: MobileSettingsItem[] = [
         },
       ]
     : []),
-];
+  {
+    dot: settingsStore.isAutoPlaylistsModified,
+    hash: "#auto-playlists",
+    icon: "mdi:playlist-music",
+    indented: true,
+    label: "Auto-playlists",
+    to: "/settings#auto-playlists",
+  },
+]);
 
 const handleLogout = async () => {
   await authStore.logout();
   router.push("/auth");
 };
 </script>
+
+<style scoped>
+.settings-nav-modified {
+  position: relative;
+}
+
+.settings-nav-modified::after {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 9999px;
+  background: var(--ui-primary);
+}
+</style>

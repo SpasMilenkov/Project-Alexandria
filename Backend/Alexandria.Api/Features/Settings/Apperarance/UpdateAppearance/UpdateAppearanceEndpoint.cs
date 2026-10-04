@@ -20,6 +20,8 @@ public class UpdateAppearanceRequest
     public bool TransparencyEnabled { get; set; }
     public int SurfaceOpacity { get; set; }
     public bool ThumbnailsEnabled { get; set; }
+    public string FontFamily { get; set; } = default!;
+    public double CornerRadius { get; set; }
 }
 
 public class UpdateAppearanceEndpoint(IUserSettingsService settingsService)
@@ -49,6 +51,8 @@ public class UpdateAppearanceEndpoint(IUserSettingsService settingsService)
             TransparencyEnabled = req.TransparencyEnabled,
             SurfaceOpacity = req.SurfaceOpacity,
             ThumbnailsEnabled = req.ThumbnailsEnabled,
+            FontFamily = req.FontFamily,
+            CornerRadius = req.CornerRadius,
         }, userId, ct);
 
 

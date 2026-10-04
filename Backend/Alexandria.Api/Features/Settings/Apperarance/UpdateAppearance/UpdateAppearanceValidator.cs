@@ -18,6 +18,8 @@ public class UpdateAppearanceValidator : Validator<UpdateAppearanceRequest>
         "linen", "midnight", "charcoal", "ink", "cool"
     ];
 
+    private static readonly string[] ValidFonts = ["system", "serif", "mono"];
+
     public UpdateAppearanceValidator()
     {
         RuleFor(x => x.AccentColor)
@@ -44,5 +46,13 @@ public class UpdateAppearanceValidator : Validator<UpdateAppearanceRequest>
 
         RuleFor(x => x.SurfaceOpacity)
             .InclusiveBetween(10, 95);
+
+        RuleFor(x => x.FontFamily)
+            .NotEmpty()
+            .Must(v => ValidFonts.Contains(v))
+            .WithMessage("Invalid font family.");
+
+        RuleFor(x => x.CornerRadius)
+            .InclusiveBetween(0, 1);
     }
 }

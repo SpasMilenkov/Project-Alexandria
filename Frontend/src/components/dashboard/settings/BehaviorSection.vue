@@ -19,6 +19,16 @@ const toastLevel = computed({
   set: (value: ToastLevel) => settingsStore.setToastLevel(value),
 });
 
+const toastChip = computed(() => {
+  if (toastLevel.value === "errors-only") {
+    return "Errors only";
+  }
+  if (toastLevel.value === "silent") {
+    return "Silent";
+  }
+  return "All notifications";
+});
+
 const isOpen = computed({
   get: () => settingsStore.isBehaviorSectionOpen,
   set: (value: boolean) => settingsStore.setBehaviorSectionOpen(value),
@@ -52,9 +62,24 @@ const handleResetBehavior = () => {
         class="justify-between"
         :trailing-icon="isOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
       >
-        <div class="flex items-center gap-2">
-          <Icon icon="mdi:cog-outline" class="w-5 h-5 text-muted" />
-          <h2 class="text-lg font-semibold">Behavior</h2>
+        <div class="flex items-center gap-2 min-w-0">
+          <Icon icon="mdi:cog-outline" class="w-5 h-5 text-muted shrink-0" />
+          <h2 class="text-lg font-semibold shrink-0">Behavior</h2>
+          <span class="hidden md:block text-xs text-gray-500 dark:text-gray-400 truncate"
+            >Confirmation prompts and notifications</span
+          >
+          <span v-if="!isOpen" class="flex flex-wrap items-center gap-1.5 ml-1">
+            <span
+              class="inline-flex items-center h-6 px-2.5 rounded-full bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400"
+            >
+              {{ skipDeleteConfirmation ? "Delete prompts off" : "Confirms deletes" }}
+            </span>
+            <span
+              class="inline-flex items-center h-6 px-2.5 rounded-full bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400"
+            >
+              {{ toastChip }}
+            </span>
+          </span>
         </div>
       </UButton>
 
@@ -67,11 +92,12 @@ const handleResetBehavior = () => {
               color="error"
               variant="outline"
               size="xs"
+              :disabled="!settingsStore.isBehaviorModified"
               @click="handleResetBehavior"
             />
           </div>
 
-          <div class="space-y-6">
+          <div class="space-y-6 px-2">
             <!-- Skip delete confirmation -->
             <div class="flex items-start justify-between gap-4">
               <div class="flex flex-col gap-1">
@@ -81,6 +107,16 @@ const handleResetBehavior = () => {
                 </span>
               </div>
               <USwitch v-model="skipDeleteConfirmation" size="lg" />
+            </div>
+            <div
+              v-if="skipDeleteConfirmation"
+              class="mt-3 flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3"
+            >
+              <Icon icon="mdi:alert-circle-outline" class="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+              <span class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                Deleting a folder with files in it will no longer ask first. Disabling confirmations
+                can lead to accidental data loss.
+              </span>
             </div>
 
             <USeparator />
@@ -94,39 +130,44 @@ const handleResetBehavior = () => {
                 </span>
               </div>
 
-              <div class="flex flex-col gap-2">
+              <div class="grid gap-2.5 sm:grid-cols-3">
                 <button
                   v-for="level in TOAST_LEVELS"
                   :key="level.value"
                   type="button"
-                  class="flex items-center gap-3 p-3 rounded-lg border text-left transition-colors cursor-pointer"
+                  :aria-pressed="toastLevel === level.value"
+                  class="relative flex flex-col items-start gap-2.5 p-3.5 rounded-xl border text-left transition-all cursor-pointer"
                   :class="
                     toastLevel === level.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-stone-200 dark:border-stone-700 hover:border-stone-400 dark:hover:border-stone-500'
+                      ? 'border-primary ring-1 ring-primary bg-primary/10'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'
                   "
                   @click="toastLevel = level.value"
                 >
-                  <Icon
-                    :icon="level.icon"
-                    class="w-5 h-5 shrink-0"
-                    :class="
-                      toastLevel === level.value
-                        ? 'text-primary'
-                        : 'text-gray-500 dark:text-gray-400'
-                    "
-                  />
-                  <div class="flex flex-col gap-0.5 min-w-0">
+                  <span
+                    class="w-8 h-8 grid place-items-center rounded-lg bg-gray-100 dark:bg-neutral-800"
+                  >
+                    <Icon
+                      :icon="level.icon"
+                      class="w-4.5 h-4.5 shrink-0"
+                      :class="
+                        toastLevel === level.value
+                          ? 'text-primary'
+                          : 'text-gray-500 dark:text-gray-400'
+                      "
+                    />
+                  </span>
+                  <span class="flex flex-col gap-0.5 min-w-0">
                     <span class="text-sm font-medium leading-none">{{ level.label }}</span>
                     <span class="text-xs text-gray-500 dark:text-gray-400">{{
                       level.description
                     }}</span>
-                  </div>
+                  </span>
                   <!-- mdi:check-circle stays filled — it marks an active/selected state, which is correct -->
                   <Icon
                     v-if="toastLevel === level.value"
                     icon="mdi:check-circle"
-                    class="w-4 h-4 text-primary ml-auto shrink-0"
+                    class="absolute top-3 right-3 w-4 h-4 text-primary shrink-0"
                   />
                 </button>
               </div>
@@ -134,7 +175,7 @@ const handleResetBehavior = () => {
           </div>
 
           <p class="text-xs text-gray-500 dark:text-gray-400">
-            Disabling confirmations can lead to accidental data loss. Use with caution.
+            Critical operations such as login, uploads and file restoration are always shown.
           </p>
         </div>
       </template>
