@@ -437,7 +437,7 @@
               <ListPlaceholder v-if="showDirSkeleton" />
               <div
                 v-else-if="directoriesList.length > 0"
-                class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
+                class="flex flex-col gap-0.5"
               >
                 <h3
                   class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2"
@@ -472,7 +472,7 @@
               <ListPlaceholder v-if="showFileSkeleton" />
               <div
                 v-else-if="filesList.length > 0"
-                class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
+                class="flex flex-col gap-0.5"
                 :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
               >
                 <h3

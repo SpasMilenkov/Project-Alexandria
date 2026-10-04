@@ -185,7 +185,8 @@
             v-for="playlist in playlists"
             :key="playlist.id"
             :playlist="playlist"
-            :is-playing="loadingPlaylistId === playlist.id"
+            :is-playing="playingPlaylistId === playlist.id"
+            :is-loading="loadingPlaylistId === playlist.id"
             @open="navigateToPlaylist(playlist.id)"
             @edit="openEditModal(playlist)"
             @delete="confirmDelete(playlist)"
@@ -430,6 +431,10 @@ const deleteTarget = ref<PlaylistResponse | null>(null);
 // Tracks which playlist is currently being loaded into the queue.
 // Used to show a loading indicator on the card.
 const loadingPlaylistId = ref<string | null>(null);
+
+// The playlist the player is currently sourced from, so its card keeps a
+// visible playing state after the load finishes.
+const playingPlaylistId = computed(() => store.context?.ref.playlistId ?? null);
 
 const playPlaylist = async (playlist: PlaylistResponse) => {
   if (loadingPlaylistId.value === playlist.id) return;
