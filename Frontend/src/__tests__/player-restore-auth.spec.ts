@@ -4,11 +4,12 @@ import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h } from "vue";
 
-import { shuffleApi } from "@/api/shuffle";
 import type { MediaFileDto, PaginatedResponse } from "@/api/streaming";
+import type { OnboardingStep } from "@/enums";
+
+import { shuffleApi } from "@/api/shuffle";
 import { streamingApi } from "@/api/streaming";
 import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext";
-import type { OnboardingStep } from "@/enums";
 import { useAuthStore } from "@/stores/auth";
 import { usePlayerStore } from "@/stores/stream-player";
 
@@ -33,29 +34,31 @@ const LIBRARY = Array.from({ length: 113 }, (_, i) => libFile(i + 1));
 const libraryRef = { isVideo: false, playlistId: null };
 
 const installFakes = () => {
-  vi.spyOn(streamingApi, "getFilesForStreaming").mockImplementation(async (query: {
-    page: number;
-    pageSize: number;
-    anchorFileId?: string | null;
-    anchorPlaylistItemId?: string | null;
-  }): Promise<PaginatedResponse<MediaFileDto>> => {
-    const all = [...LIBRARY];
-    let page = query.page;
-    if (query.anchorFileId) {
-      const index = all.findIndex((f) => f.fileId === query.anchorFileId);
-      if (index === -1) throw { response: { status: 404, data: {} } };
-      page = Math.floor(index / query.pageSize) + 1;
-    }
-    return {
-      items: all.slice((page - 1) * query.pageSize, page * query.pageSize),
-      currentPage: page,
-      pageSize: query.pageSize,
-      totalCount: all.length,
-      totalPages: Math.ceil(all.length / query.pageSize),
-      hasPrevious: page > 1,
-      hasNext: page < Math.ceil(all.length / query.pageSize),
-    };
-  });
+  vi.spyOn(streamingApi, "getFilesForStreaming").mockImplementation(
+    async (query: {
+      page: number;
+      pageSize: number;
+      anchorFileId?: string | null;
+      anchorPlaylistItemId?: string | null;
+    }): Promise<PaginatedResponse<MediaFileDto>> => {
+      const all = [...LIBRARY];
+      let page = query.page;
+      if (query.anchorFileId) {
+        const index = all.findIndex((f) => f.fileId === query.anchorFileId);
+        if (index === -1) throw { response: { status: 404, data: {} } };
+        page = Math.floor(index / query.pageSize) + 1;
+      }
+      return {
+        items: all.slice((page - 1) * query.pageSize, page * query.pageSize),
+        currentPage: page,
+        pageSize: query.pageSize,
+        totalCount: all.length,
+        totalPages: Math.ceil(all.length / query.pageSize),
+        hasPrevious: page > 1,
+        hasNext: page < Math.ceil(all.length / query.pageSize),
+      };
+    },
+  );
   vi.spyOn(shuffleApi, "createSession").mockRejectedValue(new Error("no shuffle in this spec"));
   vi.spyOn(shuffleApi, "getSession").mockRejectedValue(new Error("no shuffle in this spec"));
   vi.spyOn(shuffleApi, "deleteSession").mockResolvedValue(undefined);

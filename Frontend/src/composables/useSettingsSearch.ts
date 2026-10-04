@@ -113,10 +113,7 @@ const buildSearchIndex = (
       if (settingsStore.cornerRadius <= 0.25) {
         return "Soft";
       }
-      if (settingsStore.cornerRadius <= 0.5) {
-        return "Round";
-      }
-      return "Full";
+      return "Round";
     },
   },
   {

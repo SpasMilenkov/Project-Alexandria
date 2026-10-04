@@ -208,7 +208,6 @@ const radiusOptions = [
   { label: "Sharp", value: 0 },
   { label: "Soft", value: 0.25 },
   { label: "Round", value: 0.5 },
-  { label: "Full", value: 1 },
 ];
 
 const selectedColorLabel = computed(() => {

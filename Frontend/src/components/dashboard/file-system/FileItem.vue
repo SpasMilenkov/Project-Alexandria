@@ -82,9 +82,7 @@
       @blur="handleBlur"
       :aria-describedby="describedBy ?? undefined"
     >
-      <span
-        class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-500/10 shrink-0"
-      >
+      <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-500/10 shrink-0">
         <Icon
           :icon="getFileIcon(props.data.fileName)"
           :width="iconSize"
@@ -153,9 +151,7 @@ const iconSize = computed(() =>
 
 const fileExtension = computed(() => getFileExtension(props.data.fileName));
 
-const modifiedLabel = computed(() =>
-  formatDate(props.data.updatedAt || props.data.createdAt),
-);
+const modifiedLabel = computed(() => formatDate(props.data.updatedAt || props.data.createdAt));
 
 // Version-scoped thumbnail URL: permanently cacheable, browser + nginx do the
 // work, no fetch layer. MIME guard skips the <img> for text/archive/unknown

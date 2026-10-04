@@ -126,93 +126,50 @@ const buildFileItems = (
   const count = snapshot.totalCount;
 
   if (!isMultiSelect) {
-      return [
-        [
-          {
-            icon: "i-mdi-information-outline",
-            label: "View details",
-            kbds: [{ value: "alt" }, { value: "enter" }],
-            onSelect: () => actions.openFileDetails(target),
-          },
-          {
-            disabled: !canDownload(),
-            icon: "i-mdi-download-outline",
-            kbds: [{ value: "D" }],
-            label: "Download",
-            onSelect: () => actions.downloadFile(),
-          },
-        ],
-        [
-          {
-            disabled: !canRename(),
-            icon: "i-mdi-pencil-outline",
-            kbds: ["R"],
-            label: "Rename",
-            onSelect: () => actions.renameFile(target.fileId, target.fileName),
-          },
-          {
-            disabled: !canMove(),
-            icon: "i-mdi-folder-move-outline",
-            label: "Move to…",
-            kbds: ["⌘", "X"],
-            onSelect: () => actions.moveSelection(),
-          },
-          {
-            disabled: !canCopy(),
-            icon: "i-mdi-content-copy",
-            kbds: ["⌘", "C"],
-            label: "Copy to…",
-            onSelect: () => actions.copySelection(),
-          },
-        ],
-        [
-          {
-            disabled: !canShare(),
-            icon: "i-mdi-share-variant-outline",
-            label: "Share",
-            onSelect: () => actions.shareFile(target.fileId, target.fileName),
-          },
-        ],
-        [
-          {
-            color: "error" as const,
-            disabled: !canDelete(),
-            icon: "i-mdi-delete-outline",
-            kbds: ["Del"],
-            label: "Delete",
-            onSelect: () => actions.deleteSelection(),
-          },
-        ],
-      ];
-    }
-
     return [
-      [{ label: `${count} items selected`, type: "label" as const }],
       [
         {
+          icon: "i-mdi-information-outline",
+          label: "View details",
+          kbds: [{ value: "alt" }, { value: "enter" }],
+          onSelect: () => actions.openFileDetails(target),
+        },
+        {
           disabled: !canDownload(),
-          icon: "i-mdi-download-multiple-outline",
-          label: "Download all",
+          icon: "i-mdi-download-outline",
+          kbds: [{ value: "D" }],
+          label: "Download",
           onSelect: () => actions.downloadFile(),
         },
       ],
       [
         {
+          disabled: !canRename(),
+          icon: "i-mdi-pencil-outline",
+          kbds: ["R"],
+          label: "Rename",
+          onSelect: () => actions.renameFile(target.fileId, target.fileName),
+        },
+        {
           disabled: !canMove(),
           icon: "i-mdi-folder-move-outline",
-          label: "Move all to…",
+          label: "Move to…",
+          kbds: ["⌘", "X"],
           onSelect: () => actions.moveSelection(),
         },
         {
           disabled: !canCopy(),
           icon: "i-mdi-content-copy",
-          label: "Copy all to…",
+          kbds: ["⌘", "C"],
+          label: "Copy to…",
           onSelect: () => actions.copySelection(),
         },
+      ],
+      [
         {
           disabled: !canShare(),
           icon: "i-mdi-share-variant-outline",
-          label: "Share all",
+          label: "Share",
           onSelect: () => actions.shareFile(target.fileId, target.fileName),
         },
       ],
@@ -220,12 +177,55 @@ const buildFileItems = (
         {
           color: "error" as const,
           disabled: !canDelete(),
-          icon: "i-mdi-delete-sweep-outline",
-          label: `Delete ${count} items`,
+          icon: "i-mdi-delete-outline",
+          kbds: ["Del"],
+          label: "Delete",
           onSelect: () => actions.deleteSelection(),
         },
       ],
     ];
+  }
+
+  return [
+    [{ label: `${count} items selected`, type: "label" as const }],
+    [
+      {
+        disabled: !canDownload(),
+        icon: "i-mdi-download-multiple-outline",
+        label: "Download all",
+        onSelect: () => actions.downloadFile(),
+      },
+    ],
+    [
+      {
+        disabled: !canMove(),
+        icon: "i-mdi-folder-move-outline",
+        label: "Move all to…",
+        onSelect: () => actions.moveSelection(),
+      },
+      {
+        disabled: !canCopy(),
+        icon: "i-mdi-content-copy",
+        label: "Copy all to…",
+        onSelect: () => actions.copySelection(),
+      },
+      {
+        disabled: !canShare(),
+        icon: "i-mdi-share-variant-outline",
+        label: "Share all",
+        onSelect: () => actions.shareFile(target.fileId, target.fileName),
+      },
+    ],
+    [
+      {
+        color: "error" as const,
+        disabled: !canDelete(),
+        icon: "i-mdi-delete-sweep-outline",
+        label: `Delete ${count} items`,
+        onSelect: () => actions.deleteSelection(),
+      },
+    ],
+  ];
 };
 
 const buildDirectoryItems = (

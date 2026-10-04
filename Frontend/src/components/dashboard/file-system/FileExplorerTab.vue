@@ -435,10 +435,7 @@
             <!-- list view -->
             <div v-else class="flex flex-col">
               <ListPlaceholder v-if="showDirSkeleton" />
-              <div
-                v-else-if="directoriesList.length > 0"
-                class="flex flex-col gap-0.5"
-              >
+              <div v-else-if="directoriesList.length > 0" class="flex flex-col gap-0.5">
                 <h3
                   class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2"
                 >

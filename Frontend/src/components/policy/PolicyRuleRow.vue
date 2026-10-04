@@ -46,11 +46,7 @@ import { Icon } from "@iconify/vue";
 import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { computed, ref } from "vue";
 
-import {
-  PolicyActionType,
-  type PolicyRuleDto,
-  PolicyTriggerType,
-} from "@/api/policy";
+import { PolicyActionType, type PolicyRuleDto, PolicyTriggerType } from "@/api/policy";
 import { useAppToast } from "@/composables/useAppToast";
 import { deleteRule } from "@/mutations/policies";
 

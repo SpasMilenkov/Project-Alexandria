@@ -63,9 +63,7 @@ describe("tag file mutations", () => {
           captured.add = addTagToFile();
           captured.remove = removeTagFromFile();
           const cache = useQueryCache();
-          captured.invalidate = vi
-            .spyOn(cache, "invalidateQueries")
-            .mockImplementation(() => {});
+          captured.invalidate = vi.spyOn(cache, "invalidateQueries").mockImplementation(() => {});
           return () => null;
         },
       }),

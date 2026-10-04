@@ -598,7 +598,7 @@ defineExpose({ toggleFullscreen });
   width: 100%;
   display: flex;
   flex-direction: column;
-  border-radius: 1rem;
+  border-radius: var(--ui-radius);
   overflow: hidden;
   background: #000;
 }

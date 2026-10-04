@@ -200,6 +200,8 @@ describe("useSettingsStore", () => {
       store.setTransparencyEnabled(false);
       store.setSurfaceOpacity(80);
       store.setThumbnailsEnabled(false);
+      store.setFontFamily("serif");
+      store.setCornerRadius(1);
       const payload = store.getAppearanceSettings;
       expect(payload.backgroundBlurEnabled).toBe(false);
       expect(payload.backgroundBlurAmount).toBe(16);
@@ -207,7 +209,36 @@ describe("useSettingsStore", () => {
       expect(payload.transparencyEnabled).toBe(false);
       expect(payload.surfaceOpacity).toBe(80);
       expect(payload.thumbnailsEnabled).toBe(false);
+      expect(payload.fontFamily).toBe("serif");
+      expect(payload.cornerRadius).toBe(1);
       expect(payload.accentColor).toBe("amber");
+    });
+  });
+
+  describe("interface font and corner radius", () => {
+    it("setFontFamily switches between known fonts", () => {
+      const store = useSettingsStore();
+      store.setFontFamily("mono");
+      expect(store.fontFamily).toBe("mono");
+      store.setFontFamily("serif");
+      expect(store.fontFamily).toBe("serif");
+    });
+
+    it("setCornerRadius clamps to the 0 to 1 range", () => {
+      const store = useSettingsStore();
+      store.setCornerRadius(-2);
+      expect(store.cornerRadius).toBe(0);
+      store.setCornerRadius(5);
+      expect(store.cornerRadius).toBe(1);
+      store.setCornerRadius(0.5);
+      expect(store.cornerRadius).toBe(0.5);
+    });
+
+    it("updateSettings applies fontFamily and cornerRadius", () => {
+      const store = useSettingsStore();
+      store.updateSettings({ fontFamily: "mono", cornerRadius: 1 });
+      expect(store.fontFamily).toBe("mono");
+      expect(store.cornerRadius).toBe(1);
     });
   });
 
@@ -385,7 +416,9 @@ describe("useSettingsStore", () => {
         backgroundImageKey: "img-key",
         backgroundImageOpacity: 0.5,
         backgroundImageUpdatedAt: "2024-06-01",
+        cornerRadius: 1,
         disableBlurOnMobile: true,
+        fontFamily: "serif",
         gridIconSize: 32,
         listIconSize: 16,
         surfaceOpacity: 80,
@@ -404,6 +437,8 @@ describe("useSettingsStore", () => {
       expect(store.transparencyEnabled).toBe(false);
       expect(store.surfaceOpacity).toBe(80);
       expect(store.thumbnailsEnabled).toBe(false);
+      expect(store.fontFamily).toBe("serif");
+      expect(store.cornerRadius).toBe(1);
     });
 
     it("syncBehaviorFromServer updates behavior fields", () => {
@@ -430,7 +465,9 @@ describe("useSettingsStore", () => {
           backgroundImageKey: null,
           backgroundImageOpacity: 0.3,
           backgroundImageUpdatedAt: null,
+          cornerRadius: 0.25,
           disableBlurOnMobile: false,
+          fontFamily: "system",
           gridIconSize: 24,
           listIconSize: 14,
           surfaceOpacity: 60,
@@ -497,6 +534,8 @@ describe("useSettingsStore", () => {
       store.setTransparencyEnabled(false);
       store.setSurfaceOpacity(90);
       store.setThumbnailsEnabled(false);
+      store.setFontFamily("mono");
+      store.setCornerRadius(1);
       store.resetAppearanceSettings();
       expect(store.accentColor).toBe("amber");
       expect(store.gridIconSize).toBe(48);
@@ -505,6 +544,8 @@ describe("useSettingsStore", () => {
       expect(store.transparencyEnabled).toBe(true);
       expect(store.surfaceOpacity).toBe(60);
       expect(store.thumbnailsEnabled).toBe(true);
+      expect(store.fontFamily).toBe("system");
+      expect(store.cornerRadius).toBe(0.25);
       expect(store.skipDeleteConfirmation).toBe(true);
     });
   });

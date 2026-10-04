@@ -7,8 +7,9 @@ import type { OrderManager } from "./order-manager";
 import type { createQueue } from "./queue";
 import type { PlayerState } from "./state";
 import type { Guard, createTransitions } from "./transitions";
-import { PREVIOUS_RESTART_SECONDS } from "./transport";
 import type { AdvancementReason, MediaKind, Order } from "./types";
+
+import { PREVIOUS_RESTART_SECONDS } from "./transport";
 
 export interface NavigationDeps {
   state: PlayerState;
@@ -144,26 +145,29 @@ export const createNavigation = (deps: NavigationDeps) => {
 
   const playAgain = (): Promise<void> => {
     orders.armRebuild();
-    return transitions.replace(async (guard) => {
-      const current = state.context.value;
-      if (!current) {
-        const head = queue.takeHead();
-        if (head) commitFile(head.file, "queue", { markHeard: false });
-        return;
-      }
-      state.queueEnded.value = false;
-      state.clearError();
-      state.startCycle();
-      if (current.shuffled) {
-        await orders.open(guard, current.ref, { label: current.label, shuffle: true });
-      } else {
-        orders.patch({ cursor: -1 });
-      }
-      if ((await orders.advanceCursor(guard)) !== "advanced") stopEmpty(playAgain);
-    }, {
-      message: "Could not start a new cycle. Check your connection and retry.",
-      retry: playAgain,
-    });
+    return transitions.replace(
+      async (guard) => {
+        const current = state.context.value;
+        if (!current) {
+          const head = queue.takeHead();
+          if (head) commitFile(head.file, "queue", { markHeard: false });
+          return;
+        }
+        state.queueEnded.value = false;
+        state.clearError();
+        state.startCycle();
+        if (current.shuffled) {
+          await orders.open(guard, current.ref, { label: current.label, shuffle: true });
+        } else {
+          orders.patch({ cursor: -1 });
+        }
+        if ((await orders.advanceCursor(guard)) !== "advanced") stopEmpty(playAgain);
+      },
+      {
+        message: "Could not start a new cycle. Check your connection and retry.",
+        retry: playAgain,
+      },
+    );
   };
 
   return { next, previous, playAgain, resolveNext, fileKind };

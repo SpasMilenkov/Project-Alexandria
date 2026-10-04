@@ -1,15 +1,11 @@
+import type * as vueUse from "@vueuse/core";
+
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
-import {
-  PolicyActionType,
-  type PolicyRuleDto,
-  PolicyTriggerType,
-} from "@/api/policy";
-import type * as vueUse from "@vueuse/core";
-
+import { PolicyActionType, type PolicyRuleDto, PolicyTriggerType } from "@/api/policy";
 import PolicyRuleRow from "@/components/policy/PolicyRuleRow.vue";
 
 const deleteFn = vi.fn();

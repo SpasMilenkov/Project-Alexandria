@@ -123,7 +123,7 @@ const subtitleOf = (entry: HistoryEntry) => {
       </div>
 
       <div
-        class="inline-flex self-start sm:self-auto gap-1 p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800"
+        class="inline-flex self-start sm:self-auto gap-1 p-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800"
         role="group"
         aria-label="Filter by status"
       >
@@ -195,7 +195,7 @@ const subtitleOf = (entry: HistoryEntry) => {
             class="group w-full flex items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
           >
             <div
-              class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+              class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-400"
             >
               <Icon :icon="statusOf(entry).icon" class="w-4 h-4" />
             </div>

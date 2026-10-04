@@ -67,7 +67,8 @@ export const usePlayerEngine = (
   // playing file may report back. Otherwise a paused audio element keeps
   // writing transport state, media session and ended events over the video.
   const isActiveEngine = () =>
-    (store.nowPlaying?.file.mimeType.startsWith("audio/") ?? true) === (options.mediaKind === "audio");
+    (store.nowPlaying?.file.mimeType.startsWith("audio/") ?? true) ===
+    (options.mediaKind === "audio");
 
   const playerReady = computed(() => store.engineReady);
   const isBuffering = computed(() => store.engineBuffering);
@@ -159,6 +160,17 @@ export const usePlayerEngine = (
     }
     resumePrompt.value = null;
     videoRef.value?.play();
+  };
+
+  // Fullscreen through Shaka so the button, double-tap, and Shaka's own
+  // gestures all enter and exit the same element. Returns false when the
+  // Shaka UI is not ready yet so callers can fall back.
+  const toggleShakaFullscreen = (): boolean => {
+    const controls = shakaUi?.getControls?.() ?? null;
+    const toggle = controls?.toggleFullScreen;
+    if (typeof toggle !== "function") return false;
+    toggle.call(controls);
+    return true;
   };
 
   const dismissResumePrompt = () => {
@@ -428,7 +440,11 @@ export const usePlayerEngine = (
     clearMediaSession();
   };
 
-  const loadFile = async (file: MediaFileDto | null, instanceId: number | null, restored: boolean) => {
+  const loadFile = async (
+    file: MediaFileDto | null,
+    instanceId: number | null,
+    restored: boolean,
+  ) => {
     const fileIsAudio = file?.mimeType.startsWith("audio/") ?? false;
     if (file && (options.mediaKind === "audio") !== fileIsAudio) {
       releaseForeign();
@@ -567,6 +583,7 @@ export const usePlayerEngine = (
     resumePrompt,
     acceptResumePrompt,
     dismissResumePrompt,
+    toggleShakaFullscreen,
     flushListeningHistory: () => historyTracker.flush(),
     historyFailure: computed(() => historyTracker.failureMessage),
   };

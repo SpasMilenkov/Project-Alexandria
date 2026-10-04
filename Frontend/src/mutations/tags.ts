@@ -27,10 +27,7 @@ export const deleteTag = defineMutation({
  * detail backing its fallback. Hover tooltips read the same tags-for-file
  * query, so listings are left alone and tag edits stay two exact refetches.
  */
-const invalidateFileTagState = (
-  queryCache: ReturnType<typeof useQueryCache>,
-  fileId: string,
-) => {
+const invalidateFileTagState = (queryCache: ReturnType<typeof useQueryCache>, fileId: string) => {
   queryCache.invalidateQueries({ exact: true, key: TAGS_QUERY_KEYS.getTagsForFile(fileId) });
   queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(fileId) });
 };

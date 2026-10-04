@@ -1,8 +1,9 @@
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { shuffleApi } from "@/api/shuffle";
 import type { MediaFileDto, PaginatedResponse } from "@/api/streaming";
+
+import { shuffleApi } from "@/api/shuffle";
 import { streamingApi } from "@/api/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 
@@ -40,7 +41,12 @@ const playlistFile = (index: number): MediaFileDto => ({
   segmentPrefix: null,
 });
 
-const videoFile = (id: string): MediaFileDto => ({ ...libFile(1), fileId: id, mimeType: "video/mp4", isVideo: true });
+const videoFile = (id: string): MediaFileDto => ({
+  ...libFile(1),
+  fileId: id,
+  mimeType: "video/mp4",
+  isVideo: true,
+});
 
 const LIBRARY = Array.from({ length: 113 }, (_, i) => libFile(i + 1));
 const PLAYLIST = Array.from({ length: 10 }, (_, i) => playlistFile(i + 1));
@@ -78,123 +84,133 @@ const installFakes = () => {
   failGet = null;
   failSessionIds.clear();
 
-  vi.spyOn(streamingApi, "getFilesForStreaming").mockImplementation(async (query: {
-    page: number;
-    pageSize: number;
-    playlistId?: string | null;
-    anchorFileId?: string | null;
-    anchorPlaylistItemId?: string | null;
-  }): Promise<PaginatedResponse<MediaFileDto>> => {
-    if (query.playlistId === "gone") throw notFound();
-    const all = query.playlistId ? sourceFiles({ isVideo: false, playlistId: query.playlistId }) : [...LIBRARY];
-    let page = query.page;
-    if (query.anchorFileId || query.anchorPlaylistItemId) {
-      const index = all.findIndex((f) =>
-        query.anchorPlaylistItemId
-          ? f.playlistItemId === query.anchorPlaylistItemId
-          : f.fileId === query.anchorFileId,
-      );
-      if (index === -1) throw notFound();
-      page = Math.floor(index / query.pageSize) + 1;
-    }
-    const totalCount = all.length;
-    const totalPages = Math.max(1, Math.ceil(totalCount / query.pageSize));
-    return {
-      items: all.slice((page - 1) * query.pageSize, page * query.pageSize),
-      currentPage: page,
-      pageSize: query.pageSize,
-      totalCount,
-      totalPages,
-      hasPrevious: page > 1,
-      hasNext: page < totalPages,
-    };
-  });
+  vi.spyOn(streamingApi, "getFilesForStreaming").mockImplementation(
+    async (query: {
+      page: number;
+      pageSize: number;
+      playlistId?: string | null;
+      anchorFileId?: string | null;
+      anchorPlaylistItemId?: string | null;
+    }): Promise<PaginatedResponse<MediaFileDto>> => {
+      if (query.playlistId === "gone") throw notFound();
+      const all = query.playlistId
+        ? sourceFiles({ isVideo: false, playlistId: query.playlistId })
+        : [...LIBRARY];
+      let page = query.page;
+      if (query.anchorFileId || query.anchorPlaylistItemId) {
+        const index = all.findIndex((f) =>
+          query.anchorPlaylistItemId
+            ? f.playlistItemId === query.anchorPlaylistItemId
+            : f.fileId === query.anchorFileId,
+        );
+        if (index === -1) throw notFound();
+        page = Math.floor(index / query.pageSize) + 1;
+      }
+      const totalCount = all.length;
+      const totalPages = Math.max(1, Math.ceil(totalCount / query.pageSize));
+      return {
+        items: all.slice((page - 1) * query.pageSize, page * query.pageSize),
+        currentPage: page,
+        pageSize: query.pageSize,
+        totalCount,
+        totalPages,
+        hasPrevious: page > 1,
+        hasNext: page < totalPages,
+      };
+    },
+  );
 
-  vi.spyOn(shuffleApi, "createSession").mockImplementation(async (req: {
-    requestId: string;
-    source: { isVideo: boolean; playlistId: string | null };
-    anchorFileId?: string | null;
-    anchorPlaylistItemId?: string | null;
-    avoidFirstFileId?: string | null;
-  }) => {
-    if (failCreate) {
-      const err = failCreate;
-      failCreate = null;
-      throw err;
-    }
-    if (req.source.playlistId === "gone") throw notFound();
-    const all = sourceFiles(req.source);
-    if (req.anchorFileId) {
-      const present = all.some((f) =>
-        req.anchorPlaylistItemId
-          ? f.playlistItemId === req.anchorPlaylistItemId && f.fileId === req.anchorFileId
-          : f.fileId === req.anchorFileId,
-      );
-      if (!present) throw conflictOn("anchorFileId");
-    }
-    let order = [...all];
-    const seen = new Set<string>();
-    order = order.filter((f) => {
-      if (seen.has(f.fileId)) return false;
-      seen.add(f.fileId);
-      return true;
-    });
-    if (req.anchorFileId) {
-      const anchor = order.find((f) =>
-        req.anchorPlaylistItemId ? f.playlistItemId === req.anchorPlaylistItemId : f.fileId === req.anchorFileId,
-      );
-      order = [anchor as MediaFileDto, ...order.filter((f) => f !== anchor)];
-    }
-    if (req.avoidFirstFileId && order.length > 1 && order[0]?.fileId === req.avoidFirstFileId) {
-      const first = order.shift() as MediaFileDto;
-      order.push(first);
-    }
-    sessionSequence += 1;
-    createdSessions += 1;
-    const sessionId = `session-${sessionSequence}`;
-    sessions.set(sessionId, { source: req.source, order });
-    return {
-      sessionId,
-      source: req.source,
-      algorithmVersion: 1,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-      totalCount: order.length,
-      anchorPosition: req.anchorFileId ? 0 : null,
-      offset: 0,
-      scannedCount: Math.min(50, order.length),
-      nextOffset: order.length > 50 ? 50 : null,
-      items: order.slice(0, 50).map((file, index) => ({ position: index, file })),
-    };
-  });
+  vi.spyOn(shuffleApi, "createSession").mockImplementation(
+    async (req: {
+      requestId: string;
+      source: { isVideo: boolean; playlistId: string | null };
+      anchorFileId?: string | null;
+      anchorPlaylistItemId?: string | null;
+      avoidFirstFileId?: string | null;
+    }) => {
+      if (failCreate) {
+        const err = failCreate;
+        failCreate = null;
+        throw err;
+      }
+      if (req.source.playlistId === "gone") throw notFound();
+      const all = sourceFiles(req.source);
+      if (req.anchorFileId) {
+        const present = all.some((f) =>
+          req.anchorPlaylistItemId
+            ? f.playlistItemId === req.anchorPlaylistItemId && f.fileId === req.anchorFileId
+            : f.fileId === req.anchorFileId,
+        );
+        if (!present) throw conflictOn("anchorFileId");
+      }
+      let order = [...all];
+      const seen = new Set<string>();
+      order = order.filter((f) => {
+        if (seen.has(f.fileId)) return false;
+        seen.add(f.fileId);
+        return true;
+      });
+      if (req.anchorFileId) {
+        const anchor = order.find((f) =>
+          req.anchorPlaylistItemId
+            ? f.playlistItemId === req.anchorPlaylistItemId
+            : f.fileId === req.anchorFileId,
+        );
+        order = [anchor as MediaFileDto, ...order.filter((f) => f !== anchor)];
+      }
+      if (req.avoidFirstFileId && order.length > 1 && order[0]?.fileId === req.avoidFirstFileId) {
+        const first = order.shift() as MediaFileDto;
+        order.push(first);
+      }
+      sessionSequence += 1;
+      createdSessions += 1;
+      const sessionId = `session-${sessionSequence}`;
+      sessions.set(sessionId, { source: req.source, order });
+      return {
+        sessionId,
+        source: req.source,
+        algorithmVersion: 1,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+        totalCount: order.length,
+        anchorPosition: req.anchorFileId ? 0 : null,
+        offset: 0,
+        scannedCount: Math.min(50, order.length),
+        nextOffset: order.length > 50 ? 50 : null,
+        items: order.slice(0, 50).map((file, index) => ({ position: index, file })),
+      };
+    },
+  );
 
-  vi.spyOn(shuffleApi, "getSession").mockImplementation(async (sessionId: string, offset: number) => {
-    if (failGet) {
-      const err = failGet;
-      failGet = null;
-      throw err;
-    }
-    if (failSessionIds.has(sessionId)) throw notFound();
-    const session = sessions.get(sessionId);
-    if (!session) throw notFound();
-    const items = session.order.slice(offset, offset + 50).map((file, index) => ({
-      position: offset + index,
-      file,
-    }));
-    return {
-      sessionId,
-      source: session.source,
-      algorithmVersion: 1,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-      totalCount: session.order.length,
-      anchorPosition: null,
-      offset,
-      scannedCount: Math.min(50, session.order.length - offset),
-      nextOffset: offset + 50 < session.order.length ? offset + 50 : null,
-      items,
-    };
-  });
+  vi.spyOn(shuffleApi, "getSession").mockImplementation(
+    async (sessionId: string, offset: number) => {
+      if (failGet) {
+        const err = failGet;
+        failGet = null;
+        throw err;
+      }
+      if (failSessionIds.has(sessionId)) throw notFound();
+      const session = sessions.get(sessionId);
+      if (!session) throw notFound();
+      const items = session.order.slice(offset, offset + 50).map((file, index) => ({
+        position: offset + index,
+        file,
+      }));
+      return {
+        sessionId,
+        source: session.source,
+        algorithmVersion: 1,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+        totalCount: session.order.length,
+        anchorPosition: null,
+        offset,
+        scannedCount: Math.min(50, session.order.length - offset),
+        nextOffset: offset + 50 < session.order.length ? offset + 50 : null,
+        items,
+      };
+    },
+  );
 
   vi.spyOn(shuffleApi, "deleteSession").mockImplementation(async (sessionId: string) => {
     sessions.delete(sessionId);
@@ -343,7 +359,10 @@ describe("player behavior", () => {
     const store = usePlayerStore();
     const first = store.startContext(playlistRef, { label: "A", shuffle: true });
     await Promise.resolve();
-    const second = store.startContext({ isVideo: false, playlistId: "pl-2" }, { label: "B", shuffle: true });
+    const second = store.startContext(
+      { isVideo: false, playlistId: "pl-2" },
+      { label: "B", shuffle: true },
+    );
     await Promise.all([first, second]);
     expect(store.context?.label).toBe("B");
     expect(sessions.size).toBe(1);
@@ -387,7 +406,10 @@ describe("player behavior", () => {
 
   it("S40 plays a duplicated file once per shuffled cycle", async () => {
     const store = usePlayerStore();
-    await store.startContext({ isVideo: false, playlistId: "dup" }, { label: "DUP", shuffle: true });
+    await store.startContext(
+      { isVideo: false, playlistId: "dup" },
+      { label: "DUP", shuffle: true },
+    );
     const total = store.context?.total ?? 0;
     expect(total).toBe(1);
     expect(playingIds()).toBe("pf-1");

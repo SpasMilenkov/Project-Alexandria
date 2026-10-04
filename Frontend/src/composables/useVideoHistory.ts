@@ -26,12 +26,7 @@ const byLastAccessedDesc = (a: StreamHistoryResponse, b: StreamHistoryResponse):
   new Date(b.lastAccessedAt).getTime() - new Date(a.lastAccessedAt).getTime();
 
 export const useVideoHistory = (enabled: () => boolean = () => true) => {
-  const {
-    data,
-    isLoading,
-    error,
-    refresh,
-  } = useQuery(() => ({
+  const { data, isLoading, error, refresh } = useQuery(() => ({
     ...getHistory({ currentPage: 1, pageSize: VIDEO_HISTORY_PAGE_SIZE }),
     enabled: enabled(),
   }));

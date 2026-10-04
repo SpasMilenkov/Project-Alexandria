@@ -44,7 +44,10 @@ describe("PolicySection automation setup", () => {
     deleteFn.mockReset();
     errorToast.mockClear();
     successToast.mockClear();
-    mockUseQuery.mockReturnValue({ data: ref<DirectoryPolicyDto | null>(null), isLoading: ref(false) });
+    mockUseQuery.mockReturnValue({
+      data: ref<DirectoryPolicyDto | null>(null),
+      isLoading: ref(false),
+    });
   });
 
   const mountSection = () =>

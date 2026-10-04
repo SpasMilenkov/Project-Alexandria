@@ -1,5 +1,6 @@
-import { RANGE_SIZE, httpStatus } from "@/api/shuffle";
 import type { MediaFileDto } from "@/api/streaming";
+
+import { RANGE_SIZE, httpStatus } from "@/api/shuffle";
 import {
   type SourceAnchor,
   type SourceDescriptor,
@@ -9,6 +10,7 @@ import {
 } from "@/utils/player-source";
 
 import type { RangeBufferHooks, RangeResult } from "../types";
+
 import { createRangeBuffer } from "./range-buffer";
 
 export interface AnchorLookup {

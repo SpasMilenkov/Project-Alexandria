@@ -219,7 +219,7 @@ onUnmounted(() => {
   aspect-ratio: 16 / 9;
   max-height: 62vh;
   min-height: 20rem;
-  border-radius: 1rem;
+  border-radius: var(--ui-radius);
   overflow: hidden;
   background: radial-gradient(
     120% 100% at 50% 0%,

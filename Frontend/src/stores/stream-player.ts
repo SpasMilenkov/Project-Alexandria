@@ -2,6 +2,8 @@
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
 
+import type { MediaKind, Order, UpNextItem } from "./player/types";
+
 import { createAutoplayCountdown } from "./player/autoplay-countdown";
 import { createCommit } from "./player/commit";
 import { createEngineBridge } from "./player/engine-bridge";
@@ -15,7 +17,6 @@ import { createRecovery } from "./player/recovery";
 import { createPlayerState } from "./player/state";
 import { createTransitions, type RunOptions } from "./player/transitions";
 import { type VariantTrack } from "./player/transport";
-import type { MediaKind, Order, UpNextItem } from "./player/types";
 
 const UPCOMING_LIMIT = 30;
 
@@ -78,7 +79,11 @@ export const usePlayerStore = defineStore(
       if (state.queueEntries.value.length > 0) return true;
       if (state.repeatMode.value !== "off") return true;
       const playing = state.nowPlaying.value;
-      if (playing && state.mediaKind(playing.file) === "audio" && state.afterContextEnds.value !== "stop") {
+      if (
+        playing &&
+        state.mediaKind(playing.file) === "audio" &&
+        state.afterContextEnds.value !== "stop"
+      ) {
         return true;
       }
       const current = state.context.value;
@@ -125,9 +130,7 @@ export const usePlayerStore = defineStore(
     const hasActiveFile = computed(() => state.nowPlaying.value !== null);
     const hasPrevious = computed(() => state.nowPlaying.value !== null);
     const isStrip = computed(() => state.playerMode.value === "strip");
-    const isPlaylistSource = computed(
-      () => (state.context.value?.ref.playlistId ?? null) !== null,
-    );
+    const isPlaylistSource = computed(() => (state.context.value?.ref.playlistId ?? null) !== null);
     const sourceId = computed(() => {
       const sourceContext = state.context.value?.ref ?? null;
       if (!sourceContext) return null;
@@ -153,7 +156,13 @@ export const usePlayerStore = defineStore(
         items.push({ kind: "history", file: entry.file, queueIndex, position: -1, group: null });
       }
       state.queueEntries.value.forEach((entry, queueIndex) => {
-        items.push({ kind: "queue", file: entry.file, queueIndex, position: queueIndex, group: entry.group });
+        items.push({
+          kind: "queue",
+          file: entry.file,
+          queueIndex,
+          position: queueIndex,
+          group: entry.group,
+        });
       });
       const current = state.context.value;
       const active = order();
