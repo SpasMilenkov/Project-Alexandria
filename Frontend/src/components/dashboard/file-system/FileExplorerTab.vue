@@ -348,14 +348,99 @@
             </div>
           </Transition>
 
-          <!-- grid view -->
-          <div v-if="viewMode === 'grid'" class="p-4">
-            <GridPlaceholder v-if="showDirSkeleton" />
-            <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
-              <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
-                Folders
-              </h3>
-              <div class="grid gap-3" :style="gridStyle">
+          <!-- empty state: no folders or files, and nothing still loading -->
+          <ExplorerEmptyState
+            v-if="isExplorerEmpty"
+            @upload="handleFileUpload('File')"
+            @new-folder="createNewDirectory"
+          />
+
+          <template v-else>
+            <!-- grid view -->
+            <div v-if="viewMode === 'grid'" class="p-4">
+              <GridPlaceholder v-if="showDirSkeleton" />
+              <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
+                <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
+                  Folders
+                </h3>
+                <div class="grid gap-3" :style="gridStyle">
+                  <DirectoryItem
+                    v-for="dir in directoriesList"
+                    :key="dir.id"
+                    :data="dir"
+                    :view-mode="viewMode"
+                    :is-selected="isDirectorySelected(dir.id)"
+                    @navigate="handleNavigate"
+                    @click="handleItemClick($event, dir.id, 'directory')"
+                    :class="{
+                      'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id),
+                    }"
+                  />
+                </div>
+                <div
+                  v-if="directoriesData?.hasNext"
+                  class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+                >
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    size="sm"
+                    label="Show more folders"
+                    class="w-full"
+                    @click="loadMoreDirs"
+                  />
+                </div>
+              </div>
+
+              <GridPlaceholder v-if="showFileSkeleton" />
+              <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
+                <h3
+                  class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2 pt-2"
+                >
+                  Files
+                </h3>
+                <div class="grid gap-3" :style="gridStyle">
+                  <FileItem
+                    v-for="file in filesList"
+                    :key="file.fileId"
+                    :data="file"
+                    :view-mode="viewMode"
+                    :is-selected="isFileSelected(file.fileId)"
+                    @open-details="activeDetailsFile = $event"
+                    @tooltip-enter="handleTooltipEnter"
+                    @tooltip-leave="handleTooltipLeave"
+                    :described-by="tooltipDescribedBy(file.fileId)"
+                    @click="handleItemClick($event, file.fileId, 'file')"
+                    :class="{
+                      'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
+                    }"
+                  />
+                </div>
+                <div
+                  v-if="filesData?.hasNext"
+                  class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+                >
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    size="sm"
+                    label="Show more files"
+                    class="w-full"
+                    @click="loadMoreFiles"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- list view -->
+            <div v-else class="flex flex-col">
+              <ListPlaceholder v-if="showDirSkeleton" />
+              <div v-else-if="directoriesList.length > 0" class="flex flex-col gap-0.5">
+                <h3
+                  class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2"
+                >
+                  Folders
+                </h3>
                 <DirectoryItem
                   v-for="dir in directoriesList"
                   :key="dir.id"
@@ -366,30 +451,33 @@
                   @click="handleItemClick($event, dir.id, 'directory')"
                   :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
                 />
+                <div
+                  v-if="directoriesData?.hasNext"
+                  class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
+                >
+                  <UButton
+                    variant="ghost"
+                    color="neutral"
+                    size="sm"
+                    label="Show more folders"
+                    class="w-full"
+                    @click="loadMoreDirs"
+                  />
+                </div>
               </div>
-              <div
-                v-if="directoriesData?.hasNext"
-                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
-              >
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  size="sm"
-                  label="Show more folders"
-                  class="w-full"
-                  @click="loadMoreDirs"
-                />
-              </div>
-            </div>
 
-            <GridPlaceholder v-if="showFileSkeleton" />
-            <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
-              <h3
-                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2 pt-2"
+              <ListPlaceholder v-if="showFileSkeleton" />
+              <div
+                v-else-if="filesList.length > 0"
+                class="flex flex-col gap-0.5"
+                :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
               >
-                Files
-              </h3>
-              <div class="grid gap-3" :style="gridStyle">
+                <h3
+                  class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pb-2"
+                  :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
+                >
+                  Files
+                </h3>
                 <FileItem
                   v-for="file in filesList"
                   :key="file.fileId"
@@ -401,14 +489,12 @@
                   @tooltip-leave="handleTooltipLeave"
                   :described-by="tooltipDescribedBy(file.fileId)"
                   @click="handleItemClick($event, file.fileId, 'file')"
-                  :class="{
-                    'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
-                  }"
+                  :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
                 />
               </div>
               <div
                 v-if="filesData?.hasNext"
-                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
+                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
               >
                 <UButton
                   variant="ghost"
@@ -420,85 +506,7 @@
                 />
               </div>
             </div>
-          </div>
-
-          <!-- list view -->
-          <div v-else class="flex flex-col">
-            <ListPlaceholder v-if="showDirSkeleton" />
-            <div
-              v-else-if="directoriesList.length > 0"
-              class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
-            >
-              <h3
-                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2"
-              >
-                Folders
-              </h3>
-              <DirectoryItem
-                v-for="dir in directoriesList"
-                :key="dir.id"
-                :data="dir"
-                :view-mode="viewMode"
-                :is-selected="isDirectorySelected(dir.id)"
-                @navigate="handleNavigate"
-                @click="handleItemClick($event, dir.id, 'directory')"
-                :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
-              />
-              <div
-                v-if="directoriesData?.hasNext"
-                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-              >
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  size="sm"
-                  label="Show more folders"
-                  class="w-full"
-                  @click="loadMoreDirs"
-                />
-              </div>
-            </div>
-
-            <ListPlaceholder v-if="showFileSkeleton" />
-            <div
-              v-else-if="filesList.length > 0"
-              class="divide-y divide-gray-100/50 dark:divide-gray-800/50"
-              :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
-            >
-              <h3
-                class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pb-2"
-                :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
-              >
-                Files
-              </h3>
-              <FileItem
-                v-for="file in filesList"
-                :key="file.fileId"
-                :data="file"
-                :view-mode="viewMode"
-                :is-selected="isFileSelected(file.fileId)"
-                @open-details="activeDetailsFile = $event"
-                @tooltip-enter="handleTooltipEnter"
-                @tooltip-leave="handleTooltipLeave"
-                :described-by="tooltipDescribedBy(file.fileId)"
-                @click="handleItemClick($event, file.fileId, 'file')"
-                :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
-              />
-            </div>
-            <div
-              v-if="filesData?.hasNext"
-              class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-            >
-              <UButton
-                variant="ghost"
-                color="neutral"
-                size="sm"
-                label="Show more files"
-                class="w-full"
-                @click="loadMoreFiles"
-              />
-            </div>
-          </div>
+          </template>
         </div>
       </div>
     </UContextMenu>
@@ -551,10 +559,10 @@ import { useQuery, useQueryCache } from "@pinia/colada";
 import { breakpointsTailwind, useBreakpoints, useEventListener } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 
+import type { DirectorySummaryDto } from "@/api/directory";
 import type { NavItem } from "@/types/nav-item";
 
 import { type FileResult } from "@/api/file";
-import type { DirectorySummaryDto } from "@/api/directory";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
@@ -572,22 +580,23 @@ import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
-import { getFileIcon } from "@/utils/icon.utils";
-import { logger } from "@/utils/logger";
-import { glassDrawerContent } from "@/utils/modalUi";
-
-import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
-import DirectoryItem from "./DirectoryItem.vue";
 import {
   type ExplorerMenuActions,
   type ExplorerMenuSnapshot,
   buildExplorerMenuItems,
   resolveContextMenuTarget,
 } from "@/utils/explorerContextMenu";
+import { getFileIcon } from "@/utils/icon.utils";
+import { logger } from "@/utils/logger";
+import { glassDrawerContent } from "@/utils/modalUi";
+
+import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
+import DirectoryItem from "./DirectoryItem.vue";
+import ExplorerEmptyState from "./ExplorerEmptyState.vue";
 import FileDetailsDrawer from "./FileDetailsDrawer.vue";
+import FileItem from "./FileItem.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
-import FileItem from "./FileItem.vue";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
 import ArchiveUploadModal from "./Modals/ArchiveUploadModal.vue";
 import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
@@ -680,6 +689,14 @@ watch(
 
 const showDirSkeleton = computed(() => areDirectoriesLoading.value && !dirHasLoaded.value);
 const showFileSkeleton = computed(() => areFilesLoading.value && !fileHasLoaded.value);
+
+const isExplorerEmpty = computed(
+  () =>
+    !showDirSkeleton.value &&
+    !showFileSkeleton.value &&
+    directoriesList.value.length === 0 &&
+    filesList.value.length === 0,
+);
 
 const isBackgroundLoading = computed(
   () =>
@@ -1053,10 +1070,9 @@ const mobileOverflowItems = computed(() => [
 const createDirectoryModal = useLazyModal<{ parentId: string | null }, boolean>(
   CreateDirectoryModal,
 );
-const updateDirectoryModal = useLazyModal<
-  { currentName: string; directoryId: string },
-  boolean
->(UpdateDirectoryModal);
+const updateDirectoryModal = useLazyModal<{ currentName: string; directoryId: string }, boolean>(
+  UpdateDirectoryModal,
+);
 const fileUploadModal = useLazyModal<
   { directoryId?: string; directoryName?: string; droppedFiles?: File[] },
   boolean
@@ -1533,11 +1549,7 @@ const fileTooltipUi = computed(() => {
   };
 });
 
-const handleTooltipEnter = (
-  file: FileResult,
-  anchor: HTMLElement,
-  kind: FileTooltipEnterKind,
-) => {
+const handleTooltipEnter = (file: FileResult, anchor: HTMLElement, kind: FileTooltipEnterKind) => {
   fileTooltip.enter(file, anchor, kind);
 };
 

@@ -6,18 +6,22 @@
     <div
       v-for="i in folderCount"
       :key="`folder-row-${i}`"
-      class="skeleton-row flex items-center gap-3 px-4 py-2.5"
+      class="skeleton-row flex items-center gap-3 mx-2 px-2 py-2"
       :style="{ '--delay': `${i * 35}ms` }"
     >
-      <!-- Icon -->
+      <!-- Tile -->
       <div class="skeleton-block w-8 h-8 rounded-lg shrink-0" />
-      <!-- Name + meta stacked -->
-      <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+      <!-- Name -->
+      <div class="flex-1 min-w-0 flex items-center gap-2">
         <div class="skeleton-block rounded h-3" :style="{ width: rowWidth(i, 'folder') }" />
-        <div class="skeleton-block rounded h-2.5 w-24" />
+        <div class="skeleton-block rounded h-5 w-10 shrink-0 opacity-60" />
       </div>
-      <!-- Action dots -->
-      <div class="skeleton-block w-6 h-6 rounded-full shrink-0 opacity-50" />
+      <!-- Modified -->
+      <div class="skeleton-block rounded h-3 w-16 shrink-0 hidden sm:block" />
+      <!-- Size -->
+      <div class="skeleton-block rounded h-3 w-12 shrink-0" />
+      <!-- Chevron -->
+      <div class="skeleton-block w-4 h-4 rounded-full shrink-0 opacity-50" />
     </div>
   </div>
 
@@ -28,20 +32,20 @@
     <div
       v-for="i in fileCount"
       :key="`file-row-${i}`"
-      class="skeleton-row flex items-center gap-3 px-4 py-2.5"
+      class="skeleton-row flex items-center gap-3 mx-2 px-2 py-2"
       :style="{ '--delay': `${(i + folderCount) * 35}ms` }"
     >
-      <!-- Thumbnail -->
+      <!-- Tile -->
       <div class="skeleton-block w-8 h-8 rounded-lg shrink-0" />
-      <!-- Name -->
-      <div class="flex flex-col gap-1.5 flex-1 min-w-0">
+      <!-- Name + extension -->
+      <div class="flex-1 min-w-0 flex items-center gap-2">
         <div class="skeleton-block rounded h-3" :style="{ width: rowWidth(i, 'file') }" />
-        <div class="skeleton-block rounded h-2.5 w-20" />
+        <div class="skeleton-block rounded h-5 w-10 shrink-0 opacity-60" />
       </div>
-      <!-- Size pill -->
-      <div class="skeleton-block w-12 h-5 rounded-full shrink-0 opacity-60" />
-      <!-- Action dots -->
-      <div class="skeleton-block w-6 h-6 rounded-full shrink-0 opacity-50" />
+      <!-- Modified -->
+      <div class="skeleton-block rounded h-3 w-16 shrink-0 hidden sm:block" />
+      <!-- Size -->
+      <div class="skeleton-block rounded h-3 w-12 shrink-0" />
     </div>
   </div>
 </template>

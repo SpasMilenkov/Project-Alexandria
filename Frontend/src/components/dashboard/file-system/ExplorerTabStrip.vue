@@ -119,9 +119,8 @@ const handleKeydown = (event: KeyboardEvent) => {
     data-explorer-tab-strip
     class="sticky top-0 z-10 flex h-14 min-w-0 w-full shrink-0 items-start border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
   >
-    <div class="flex h-10 w-10 shrink-0 items-center justify-center mt-1">
+    <div v-if="tabs.length > 1" class="flex h-10 w-10 shrink-0 items-center justify-center mt-1">
       <UButton
-        v-if="tabs.length > 1"
         icon="i-heroicons-folder-minus"
         variant="ghost"
         color="error"

@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
+import { getLocalTimeZone, today } from "@internationalized/date";
 import { useQuery } from "@pinia/colada";
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 
 import type { TranspilationJobQuery, TranspilationJobResponse } from "@/api/streaming";
 
 import { AudioRung, VideoRung } from "@/api/policy";
 import { useAppToast } from "@/composables/useAppToast";
-import { TranspilationStatus } from "@/enums/transpilation-status";
+import { JobStatus } from "@/enums/job-status";
 import { stopTranspilationJob } from "@/mutations/streaming";
 import { getTranspilationJobs } from "@/queries/streaming";
 
@@ -15,18 +16,117 @@ const toast = useAppToast();
 
 const currentPage = ref(1);
 const pageSize = ref(50);
-const statusFilter = ref<TranspilationStatus | undefined>(undefined);
+const statusFilter = ref<JobStatus | undefined>(undefined);
 const isVideoFilter = ref<boolean | undefined>(undefined);
+
+const filtersOpen = ref(false);
+
+// Structural day value shared with the calendar components. The nominal
+// CalendarDate class carries a private brand, so annotate structurally.
+interface DayValue {
+  day: number;
+  month: number;
+  year: number;
+}
+
+const createdFrom = ref<DayValue | null>(null);
+const createdTo = ref<DayValue | null>(null);
+const completedFrom = ref<DayValue | null>(null);
+const completedTo = ref<DayValue | null>(null);
+const minRetries = ref(0);
+
+const isFiltered = computed(
+  () =>
+    statusFilter.value !== undefined ||
+    isVideoFilter.value !== undefined ||
+    createdFrom.value !== null ||
+    createdTo.value !== null ||
+    completedFrom.value !== null ||
+    completedTo.value !== null ||
+    minRetries.value > 0,
+);
+
+const startIso = (value: DayValue | null): string | undefined => {
+  if (!value) return undefined;
+  return new Date(Date.UTC(value.year, value.month - 1, value.day, 0, 0, 0)).toISOString();
+};
+
+const endIso = (value: DayValue | null): string | undefined => {
+  if (!value) return undefined;
+  return new Date(Date.UTC(value.year, value.month - 1, value.day, 23, 59, 59, 999)).toISOString();
+};
+
+const dayTime = (value: DayValue) => Date.UTC(value.year, value.month - 1, value.day);
+
+const createdRangeValid = computed(() => {
+  if (!createdFrom.value || !createdTo.value) return true;
+  return dayTime(createdFrom.value) <= dayTime(createdTo.value);
+});
+
+const completedRangeValid = computed(() => {
+  if (!completedFrom.value || !completedTo.value) return true;
+  return dayTime(completedFrom.value) <= dayTime(completedTo.value);
+});
+
+const advancedParams = computed(() => ({
+  createdAfter: createdRangeValid.value ? startIso(createdFrom.value) : undefined,
+  createdBefore: createdRangeValid.value ? endIso(createdTo.value) : undefined,
+  completedAfter: completedRangeValid.value ? startIso(completedFrom.value) : undefined,
+  completedBefore: completedRangeValid.value ? endIso(completedTo.value) : undefined,
+  minRetryCount: minRetries.value > 0 ? minRetries.value : undefined,
+}));
 
 const query = computed<TranspilationJobQuery>(() => ({
   currentPage: currentPage.value,
   pageSize: pageSize.value,
   status: statusFilter.value,
   isVideo: isVideoFilter.value,
+  ...advancedParams.value,
 }));
 
 const { data, isLoading, error, refetch } = useQuery(() => getTranspilationJobs(query.value));
 const { mutateAsync: updateJobStatus } = stopTranspilationJob();
+
+const COUNT_STATUSES = [
+  JobStatus.Queued,
+  JobStatus.Partial,
+  JobStatus.Processing,
+  JobStatus.Ready,
+  JobStatus.Failed,
+  JobStatus.Cancelled,
+];
+
+const allCountQuery = useQuery(() =>
+  getTranspilationJobs({
+    currentPage: 1,
+    pageSize: 1,
+    isVideo: isVideoFilter.value,
+    ...advancedParams.value,
+  }),
+);
+
+const statusCountQueries = COUNT_STATUSES.map((status) =>
+  useQuery(() =>
+    getTranspilationJobs({
+      currentPage: 1,
+      pageSize: 1,
+      status,
+      isVideo: isVideoFilter.value,
+      ...advancedParams.value,
+    }),
+  ),
+);
+
+const allCount = computed(() => allCountQuery.data.value?.totalCount);
+const statusCounts = computed(() => {
+  const out = new Map<JobStatus, number>();
+  COUNT_STATUSES.forEach((status, index) => {
+    const total = statusCountQueries[index].data.value?.totalCount;
+    if (total !== undefined) out.set(status, total);
+  });
+  return out;
+});
+const failedCount = computed(() => statusCounts.value.get(JobStatus.Failed) ?? 0);
 
 const isRefreshing = ref(false);
 
@@ -39,32 +139,127 @@ const handleRefresh = async () => {
   }
 };
 
-const patchJobStatus = (jobId: string, status: TranspilationStatus) => {
-  if (!data.value) return;
-  const item = data.value.items.find((j) => j.id === jobId);
-  if (item) item.status = status;
+const selectStatus = (status: JobStatus | undefined) => {
+  statusFilter.value = status;
+  currentPage.value = 1;
 };
 
-const groupedJobs = computed(() => {
-  const jobs = data.value?.items ?? [];
+const selectMedia = (isVideo: boolean | undefined) => {
+  isVideoFilter.value = isVideo;
+  currentPage.value = 1;
+};
+
+const clearFilters = () => {
+  statusFilter.value = undefined;
+  isVideoFilter.value = undefined;
+  resetAdvanced();
+  currentPage.value = 1;
+};
+
+const resetAdvanced = () => {
+  createdFrom.value = null;
+  createdTo.value = null;
+  completedFrom.value = null;
+  completedTo.value = null;
+  minRetries.value = 0;
+};
+
+const advancedFilterCount = computed(() => {
+  let count = 0;
+  if (createdFrom.value) count++;
+  if (createdTo.value) count++;
+  if (completedFrom.value) count++;
+  if (completedTo.value) count++;
+  if (minRetries.value > 0) count++;
+  return count;
+});
+
+interface ActiveChip {
+  key: string;
+  label: string;
+}
+
+const formatShortDay = (value: DayValue) =>
+  new Date(Date.UTC(value.year, value.month - 1, value.day)).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+
+const activeChips = computed<ActiveChip[]>(() => {
+  const chips: ActiveChip[] = [];
+  if (createdFrom.value)
+    chips.push({ key: "ca", label: `Created from ${formatShortDay(createdFrom.value)}` });
+  if (createdTo.value)
+    chips.push({ key: "cb", label: `Created until ${formatShortDay(createdTo.value)}` });
+  if (completedFrom.value)
+    chips.push({ key: "da", label: `Completed from ${formatShortDay(completedFrom.value)}` });
+  if (completedTo.value)
+    chips.push({ key: "db", label: `Completed until ${formatShortDay(completedTo.value)}` });
+  if (minRetries.value > 0) chips.push({ key: "rt", label: `${minRetries.value}+ retries` });
+  return chips;
+});
+
+const removeChip = (key: string) => {
+  if (key === "ca") createdFrom.value = null;
+  else if (key === "cb") createdTo.value = null;
+  else if (key === "da") completedFrom.value = null;
+  else if (key === "db") completedTo.value = null;
+  else minRetries.value = 0;
+};
+
+const applyPreset = (days: number) => {
+  createdFrom.value = today(getLocalTimeZone()).subtract({ days });
+  createdTo.value = null;
+};
+
+const jobs = computed(() => data.value?.items ?? []);
+
+const hasLive = computed(() => jobs.value.some((job) => job.status === JobStatus.Processing));
+
+interface JobGroup {
+  versionId: string;
+  fileName?: string;
+  versionNumber?: number;
+  isVideo: boolean;
+  jobs: TranspilationJobResponse[];
+}
+
+const groups = computed<JobGroup[]>(() => {
   const map = new Map<string, TranspilationJobResponse[]>();
-  for (const job of jobs) {
-    const existing = map.get(job.versionId) ?? [];
-    existing.push(job);
-    map.set(job.versionId, existing);
+  for (const job of jobs.value) {
+    const existing = map.get(job.versionId);
+    if (existing) existing.push(job);
+    else map.set(job.versionId, [job]);
   }
-  return [...map.entries()].map(([versionId, jobs]) => ({
+  return [...map.entries()].map(([versionId, items]) => ({
     versionId,
-    fileName: jobs[0].fileName,
-    versionNumber: jobs[0].versionNumber,
-    isVideo: jobs[0].isVideo,
-    jobs,
+    fileName: items[0].fileName,
+    versionNumber: items[0].versionNumber,
+    isVideo: items[0].isVideo,
+    jobs: items,
   }));
 });
 
-const collapsed = reactive<Record<string, boolean>>({});
-const toggleGroup = (versionId: string) => {
-  collapsed[versionId] = !collapsed[versionId];
+const ATTENTION = new Set<JobStatus>([
+  JobStatus.Queued,
+  JobStatus.Partial,
+  JobStatus.Processing,
+  JobStatus.Failed,
+  JobStatus.CancellationRequested,
+]);
+
+const hasAttention = (group: JobGroup) => group.jobs.some((job) => ATTENTION.has(job.status));
+
+const openOverrides = reactive<Record<string, boolean>>({});
+const isGroupOpen = (group: JobGroup) => openOverrides[group.versionId] ?? hasAttention(group);
+const toggleGroup = (group: JobGroup) => {
+  openOverrides[group.versionId] = !isGroupOpen(group);
+};
+
+const groupSummary = (group: JobGroup) => {
+  const counts = new Map<JobStatus, number>();
+  for (const job of group.jobs) counts.set(job.status, (counts.get(job.status) ?? 0) + 1);
+  return [...counts.entries()].map(([status, count]) => ({ status, count }));
 };
 
 const expandedError = reactive<Record<string, boolean>>({});
@@ -87,9 +282,36 @@ const pendingAudioRungs = reactive<Record<string, AudioRung[]>>({});
 const pendingVideoRungs = reactive<Record<string, VideoRung[]>>({});
 
 const initRequeueRungs = (job: TranspilationJobResponse) => {
-  if (!pendingAudioRungs[job.id]) pendingAudioRungs[job.id] = [...(job.audioRungs ?? [])];
-  if (!pendingVideoRungs[job.id]) pendingVideoRungs[job.id] = [...(job.videoRungs ?? [])];
+  pendingAudioRungs[job.id] = [...(job.audioRungs ?? [])];
+  pendingVideoRungs[job.id] = [...(job.videoRungs ?? [])];
 };
+
+watch(jobs, (next) => {
+  const live = new Set(next.map((job) => job.id));
+  for (const id of Object.keys(pendingAudioRungs)) {
+    if (!live.has(id)) delete pendingAudioRungs[id];
+  }
+  for (const id of Object.keys(pendingVideoRungs)) {
+    if (!live.has(id)) delete pendingVideoRungs[id];
+  }
+  for (const id of Object.keys(requeuePopoverOpen)) {
+    if (!live.has(id)) delete requeuePopoverOpen[id];
+  }
+  for (const id of Object.keys(expandedError)) {
+    if (!live.has(id)) delete expandedError[id];
+  }
+  for (const id of Object.keys(openOverrides)) {
+    if (!live.has(id)) delete openOverrides[id];
+  }
+});
+
+watch(
+  [statusFilter, isVideoFilter, createdFrom, createdTo, completedFrom, completedTo, minRetries],
+  () => {
+    for (const id of Object.keys(openOverrides)) delete openOverrides[id];
+    currentPage.value = 1;
+  },
+);
 
 const toggleAudioRung = (jobId: string, rung: AudioRung) => {
   const arr = pendingAudioRungs[jobId] ?? [];
@@ -127,16 +349,12 @@ const videoRungOptions = [
 const handleCancel = async (job: TranspilationJobResponse) => {
   actionInProgress.value = job.id;
   const targetStatus =
-    job.status === TranspilationStatus.Processing
-      ? TranspilationStatus.CancellationRequested
-      : TranspilationStatus.Cancelled;
+    job.status === JobStatus.Processing ? JobStatus.CancellationRequested : JobStatus.Cancelled;
   try {
     await updateJobStatus({ jobId: job.id, status: targetStatus });
-    patchJobStatus(job.id, targetStatus);
+    await refetch();
     toast.info(
-      targetStatus === TranspilationStatus.CancellationRequested
-        ? "Cancellation requested"
-        : "Job cancelled",
+      targetStatus === JobStatus.CancellationRequested ? "Cancellation requested" : "Job cancelled",
     );
   } catch (err) {
     toast.error("Failed to cancel job", err);
@@ -150,12 +368,12 @@ const handleRequeue = async (job: TranspilationJobResponse) => {
   try {
     await updateJobStatus({
       jobId: job.id,
-      status: TranspilationStatus.Queued,
+      status: JobStatus.Queued,
       audioRungs: job.isVideo ? undefined : pendingAudioRungs[job.id],
       videoRungs: job.isVideo ? pendingVideoRungs[job.id] : undefined,
     });
-    patchJobStatus(job.id, TranspilationStatus.Queued);
     requeuePopoverOpen[job.id] = false;
+    await refetch();
     toast.success("Job requeued");
   } catch (err) {
     toast.error("Failed to requeue job", err);
@@ -164,46 +382,51 @@ const handleRequeue = async (job: TranspilationJobResponse) => {
   }
 };
 
-type StatusConfig = { label: string; icon: string; chipClass: string; barClass: string };
+interface StatusConfig {
+  label: string;
+  icon: string;
+  chipClass: string;
+  barClass: string;
+}
 
-const statusConfig: Record<TranspilationStatus, StatusConfig> = {
-  [TranspilationStatus.Queued]: {
+const statusConfig: Record<JobStatus, StatusConfig> = {
+  [JobStatus.Queued]: {
     label: "Queued",
     icon: "mdi:clock-outline",
     chipClass: "bg-gray-200/80 dark:bg-white/10 text-gray-500 dark:text-white/50",
     barClass: "bg-gray-400 dark:bg-white/30",
   },
-  [TranspilationStatus.Partial]: {
+  [JobStatus.Partial]: {
     label: "Partial",
-    icon: "mdi:progress-clock",
+    icon: "mdi:clock-alert-outline",
     chipClass: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
     barClass: "bg-amber-400 dark:bg-amber-500",
   },
-  [TranspilationStatus.Processing]: {
+  [JobStatus.Processing]: {
     label: "Processing",
     icon: "mdi:loading",
     chipClass: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400",
     barClass: "bg-primary",
   },
-  [TranspilationStatus.CancellationRequested]: {
+  [JobStatus.CancellationRequested]: {
     label: "Cancelling",
     icon: "mdi:loading",
     chipClass: "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400",
     barClass: "bg-orange-400 dark:bg-orange-500",
   },
-  [TranspilationStatus.Cancelled]: {
+  [JobStatus.Cancelled]: {
     label: "Cancelled",
-    icon: "mdi:cancel",
+    icon: "mdi:close-circle",
     chipClass: "bg-gray-200/80 dark:bg-white/[0.07] text-gray-400 dark:text-white/35",
     barClass: "bg-gray-300 dark:bg-white/20",
   },
-  [TranspilationStatus.Ready]: {
+  [JobStatus.Ready]: {
     label: "Ready",
     icon: "mdi:check-circle-outline",
     chipClass: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
     barClass: "bg-emerald-400 dark:bg-emerald-500",
   },
-  [TranspilationStatus.Failed]: {
+  [JobStatus.Failed]: {
     label: "Failed",
     icon: "mdi:alert-circle-outline",
     chipClass: "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
@@ -211,18 +434,40 @@ const statusConfig: Record<TranspilationStatus, StatusConfig> = {
   },
 };
 
-const canCancel = (status: TranspilationStatus) =>
-  status === TranspilationStatus.Queued ||
-  status === TranspilationStatus.Processing ||
-  status === TranspilationStatus.Partial;
+const canCancel = (status: JobStatus) =>
+  status === JobStatus.Queued || status === JobStatus.Processing || status === JobStatus.Partial;
 
-const canRequeue = (status: TranspilationStatus) =>
-  status === TranspilationStatus.Failed ||
-  status === TranspilationStatus.Cancelled ||
-  status === TranspilationStatus.Ready;
+const canRequeue = (status: JobStatus) =>
+  status === JobStatus.Failed || status === JobStatus.Cancelled || status === JobStatus.Ready;
 
-const isSpinning = (status: TranspilationStatus) =>
-  status === TranspilationStatus.Processing || status === TranspilationStatus.CancellationRequested;
+const isSpinning = (status: JobStatus) =>
+  status === JobStatus.Processing || status === JobStatus.CancellationRequested;
+
+const showProgress = (status: JobStatus) =>
+  status !== JobStatus.Ready && status !== JobStatus.Cancelled;
+
+const VIDEO_RUNG_LABELS: Record<number, string> = {
+  0: "360p",
+  1: "480p",
+  2: "720p",
+  3: "1080p",
+  4: "1440p",
+  5: "2160p",
+};
+
+const AUDIO_RUNG_LABELS: Record<number, string> = {
+  0: "96k",
+  1: "128k",
+  2: "192k",
+  3: "256k",
+  4: "320k",
+};
+
+const rungChips = (job: TranspilationJobResponse): string[] => {
+  if (job.isVideo)
+    return (job.videoRungs ?? []).map((rung) => VIDEO_RUNG_LABELS[rung] ?? `${rung}`);
+  return (job.audioRungs ?? []).map((rung) => AUDIO_RUNG_LABELS[rung] ?? `${rung}`);
+};
 
 const formatDate = (iso?: string) =>
   iso
@@ -231,35 +476,31 @@ const formatDate = (iso?: string) =>
       )
     : "—";
 
-const formatRungs = (job: TranspilationJobResponse) => {
-  if (job.isVideo) {
-    const labels: Record<number, string> = {
-      0: "360p",
-      1: "480p",
-      2: "720p",
-      3: "1080p",
-      4: "1440p",
-      5: "2160p",
-    };
-    return (job.videoRungs ?? []).map((r) => labels[r] ?? `${r}`).join(", ") || "—";
-  }
-  const labels: Record<number, string> = { 0: "96k", 1: "128k", 2: "192k", 3: "256k", 4: "320k" };
-  return (job.audioRungs ?? []).map((r) => labels[r] ?? `${r}`).join(", ") || "—";
+const formatRelative = (iso?: string) => {
+  if (!iso) return "—";
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 8) return `${days} d ago`;
+  return formatDate(iso);
 };
 
 const statusFilterOptions = [
   { label: "All", value: undefined },
-  { label: "Queued", value: TranspilationStatus.Queued },
-  { label: "Partial", value: TranspilationStatus.Partial },
-  { label: "Processing", value: TranspilationStatus.Processing },
-  { label: "Ready", value: TranspilationStatus.Ready },
-  { label: "Failed", value: TranspilationStatus.Failed },
-  { label: "Cancelled", value: TranspilationStatus.Cancelled },
+  { label: "Queued", value: JobStatus.Queued },
+  { label: "Partial", value: JobStatus.Partial },
+  { label: "Processing", value: JobStatus.Processing },
+  { label: "Ready", value: JobStatus.Ready },
+  { label: "Failed", value: JobStatus.Failed },
+  { label: "Cancelled", value: JobStatus.Cancelled },
 ];
 
 const mediaFilterOptions = [
   { label: "All", value: undefined, icon: "mdi:all-inclusive" },
-  { label: "Video", value: true, icon: "mdi:file-video-outline" },
+  { label: "Video", value: true, icon: "lucide:video" },
   { label: "Audio", value: false, icon: "mdi:music-note-outline" },
 ];
 </script>
@@ -267,50 +508,62 @@ const mediaFilterOptions = [
 <template>
   <div class="px-6 py-8">
     <!-- Page header -->
-    <div class="flex items-center justify-between mb-6 gap-4 flex-wrap">
-      <div class="flex items-center gap-2">
-        <div>
-          <h1 class="text-lg font-semibold text-gray-800 dark:text-white/90 m-0">
-            Transpilation Jobs
-          </h1>
-          <p class="text-xs text-gray-400 dark:text-white/30 mt-0.5 m-0">
-            {{ groupedJobs.length }} file{{ groupedJobs.length !== 1 ? "s" : "" }},
-            {{ data?.totalCount ?? 0 }} job{{ (data?.totalCount ?? 0) !== 1 ? "s" : "" }}
-          </p>
-        </div>
+    <div class="flex items-center gap-3 mb-6 flex-wrap">
+      <div>
+        <h1 class="text-lg font-semibold text-gray-800 dark:text-white/90 m-0">
+          Transpilation Jobs
+        </h1>
+        <p class="text-xs text-gray-400 dark:text-white/30 mt-0.5 m-0">
+          {{ groups.length }} file{{ groups.length !== 1 ? "s" : "" }},
+          {{ data?.totalCount ?? 0 }} job{{ (data?.totalCount ?? 0) !== 1 ? "s" : "" }}
+        </p>
+      </div>
+      <span
+        v-if="hasLive && !isLoading"
+        class="inline-flex items-center gap-2 h-7 px-3 rounded-full bg-black/[0.04] dark:bg-white/[0.06] text-xs text-gray-600 dark:text-white/50"
+      >
+        <span class="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        Updating live
+      </span>
+      <span class="flex-1" />
+      <button
+        class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] hover:text-gray-600 dark:hover:text-white/55 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        :disabled="isRefreshing || isLoading"
+        :title="isRefreshing ? 'Refreshing…' : 'Refresh jobs'"
+        @click="handleRefresh"
+      >
+        <Icon icon="mdi:refresh" class="w-4 h-4" :class="{ 'animate-spin': isRefreshing }" />
+      </button>
+    </div>
+
+    <!-- Filters with live counts -->
+    <div v-if="!error && (isLoading || groups.length > 0 || isFiltered)">
+      <div class="filter-tabs" role="tablist" aria-label="Status">
         <button
-          class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] hover:text-gray-600 dark:hover:text-white/55 transition-colors disabled:opacity-40 disabled:cursor-not-allowed mt-0.5"
-          :disabled="isRefreshing || isLoading"
-          :title="isRefreshing ? 'Refreshing…' : 'Refresh jobs'"
-          @click="handleRefresh"
+          v-for="opt in statusFilterOptions"
+          :key="String(opt.value)"
+          role="tab"
+          :aria-selected="statusFilter === opt.value"
+          class="filter-tab"
+          :class="{ 'filter-tab-on': statusFilter === opt.value }"
+          @click="selectStatus(opt.value)"
         >
-          <Icon icon="mdi:refresh" class="w-4 h-4" :class="{ 'animate-spin': isRefreshing }" />
+          {{ opt.label }}
+          <em>{{
+            opt.value === undefined ? (allCount ?? "") : (statusCounts.get(opt.value) ?? "")
+          }}</em>
+          <span
+            v-if="statusFilter === opt.value"
+            class="absolute left-0 right-0 bottom-0 h-0.5 rounded-full bg-primary"
+          />
         </button>
       </div>
 
-      <!-- Filters — scroll horizontally on mobile, side by side on desktop -->
       <div class="filters-toolbar">
-        <div class="flex items-center gap-1 filter-group flex-wrap sm:flex-nowrap">
-          <button
-            v-for="opt in statusFilterOptions"
-            :key="String(opt.value)"
-            class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
-            :class="
-              statusFilter === opt.value
-                ? 'bg-primary text-white'
-                : 'bg-black/[0.04] dark:bg-white/[0.06] text-gray-600 dark:text-white/50 hover:bg-black/[0.07] dark:hover:bg-white/[0.09]'
-            "
-            @click="
-              statusFilter = opt.value;
-              currentPage = 1;
-            "
-          >
-            {{ opt.label }}
-          </button>
-        </div>
-
         <div
-          class="flex items-center flex-wrap sm:flex-nowrap gap-1 filter-group border-l border-black/[0.06] dark:border-white/[0.07]"
+          class="flex items-center flex-wrap sm:flex-nowrap gap-1 filter-group"
+          role="group"
+          aria-label="Media type"
         >
           <button
             v-for="opt in mediaFilterOptions"
@@ -321,56 +574,326 @@ const mediaFilterOptions = [
                 ? 'bg-primary text-white'
                 : 'bg-black/[0.04] dark:bg-white/[0.06] text-gray-600 dark:text-white/50 hover:bg-black/[0.07] dark:hover:bg-white/[0.09]'
             "
-            @click="
-              isVideoFilter = opt.value;
-              currentPage = 1;
-            "
+            @click="selectMedia(opt.value)"
           >
             <Icon :icon="opt.icon" class="w-3.5 h-3.5" />
             {{ opt.label }}
           </button>
         </div>
+
+        <button
+          class="flex items-center gap-1.5 h-[38px] px-3 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap shrink-0"
+          :class="
+            filtersOpen || advancedFilterCount > 0
+              ? 'border-primary/60 bg-primary/10 text-primary'
+              : 'border-black/[0.08] dark:border-white/[0.09] text-gray-600 dark:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
+          "
+          :aria-expanded="filtersOpen"
+          @click="filtersOpen = !filtersOpen"
+        >
+          <Icon icon="lucide:filter" class="w-3.5 h-3.5" />
+          Filters
+          <span
+            v-if="advancedFilterCount > 0"
+            class="min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[11px] font-bold inline-grid place-items-center tabular-nums"
+          >
+            {{ advancedFilterCount }}
+          </span>
+        </button>
+
+        <span
+          v-for="chip in activeChips"
+          :key="chip.key"
+          class="inline-flex items-center gap-1 h-7 pl-3 pr-1 rounded-full bg-black/[0.04] dark:bg-white/[0.06] text-xs text-gray-700 dark:text-white/70 whitespace-nowrap"
+        >
+          {{ chip.label }}
+          <button
+            class="w-5 h-5 rounded-full grid place-items-center text-gray-400 dark:text-white/30 hover:text-gray-700 dark:hover:text-white/70 transition-colors"
+            :aria-label="`Remove filter ${chip.label}`"
+            @click="removeChip(chip.key)"
+          >
+            <Icon icon="lucide:x" class="w-3 h-3" />
+          </button>
+        </span>
+        <button
+          v-if="activeChips.length > 0"
+          class="px-2.5 h-7 rounded-lg text-xs font-medium text-gray-500 dark:text-white/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors whitespace-nowrap"
+          @click="resetAdvanced"
+        >
+          Clear all
+        </button>
+      </div>
+
+      <!-- More filters panel -->
+      <div
+        v-if="filtersOpen"
+        class="rounded-xl border border-black/[0.08] dark:border-white/[0.09] frosted-glass glass-surface p-4 sm:p-6 mb-4"
+      >
+        <div class="flex items-center gap-2 mb-6">
+          <p class="text-sm font-semibold text-gray-700 dark:text-white/70 m-0">More filters</p>
+          <span class="flex-1" />
+          <button
+            class="px-2.5 h-7 rounded-lg text-xs font-medium text-gray-500 dark:text-white/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="advancedFilterCount === 0"
+            @click="resetAdvanced"
+          >
+            Reset
+          </button>
+          <button
+            class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors"
+            aria-label="Close filters"
+            @click="filtersOpen = false"
+          >
+            <Icon icon="lucide:x" class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="filter-grid">
+          <div class="flex flex-col gap-3">
+            <p class="text-[13px] font-semibold text-gray-700 dark:text-white/70 m-0">Created</p>
+            <div class="grid grid-cols-2 gap-3">
+              <UFormField name="createdFrom">
+                <!-- @vue-ignore -->
+                <UInputDate v-model="createdFrom" class="w-full">
+                  <template #trailing>
+                    <UPopover>
+                      <UButton
+                        color="neutral"
+                        variant="link"
+                        size="sm"
+                        icon="i-lucide-calendar"
+                        aria-label="Created from"
+                        class="px-0"
+                      />
+                      <template #content>
+                        <!-- @vue-ignore -->
+                        <UCalendar v-model="createdFrom" />
+                      </template>
+                    </UPopover>
+                  </template>
+                </UInputDate>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">From</p>
+              </UFormField>
+              <UFormField name="createdTo">
+                <!-- @vue-ignore -->
+                <UInputDate v-model="createdTo" class="w-full">
+                  <template #trailing>
+                    <UPopover>
+                      <UButton
+                        color="neutral"
+                        variant="link"
+                        size="sm"
+                        icon="i-lucide-calendar"
+                        aria-label="Created until"
+                        class="px-0"
+                      />
+                      <template #content>
+                        <!-- @vue-ignore -->
+                        <UCalendar v-model="createdTo" />
+                      </template>
+                    </UPopover>
+                  </template>
+                </UInputDate>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Until</p>
+              </UFormField>
+            </div>
+            <p v-if="!createdRangeValid" class="text-xs text-red-500 dark:text-red-400 m-0">
+              The From date is after the To date.
+            </p>
+            <div class="flex gap-2 flex-wrap">
+              <button
+                class="h-7 px-2.5 rounded-lg border border-black/[0.08] dark:border-white/[0.09] text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-xs transition-colors"
+                @click="applyPreset(0)"
+              >
+                Today
+              </button>
+              <button
+                class="h-7 px-2.5 rounded-lg border border-black/[0.08] dark:border-white/[0.09] text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-xs transition-colors"
+                @click="applyPreset(7)"
+              >
+                Last 7 days
+              </button>
+              <button
+                class="h-7 px-2.5 rounded-lg border border-black/[0.08] dark:border-white/[0.09] text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-xs transition-colors"
+                @click="applyPreset(30)"
+              >
+                Last 30 days
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <p class="text-[13px] font-semibold text-gray-700 dark:text-white/70 m-0">Completed</p>
+            <div class="grid grid-cols-2 gap-3">
+              <UFormField name="completedFrom">
+                <!-- @vue-ignore -->
+                <UInputDate v-model="completedFrom" class="w-full">
+                  <template #trailing>
+                    <UPopover>
+                      <UButton
+                        color="neutral"
+                        variant="link"
+                        size="sm"
+                        icon="i-lucide-calendar"
+                        aria-label="Completed from"
+                        class="px-0"
+                      />
+                      <template #content>
+                        <!-- @vue-ignore -->
+                        <UCalendar v-model="completedFrom" />
+                      </template>
+                    </UPopover>
+                  </template>
+                </UInputDate>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">From</p>
+              </UFormField>
+              <UFormField name="completedTo">
+                <!-- @vue-ignore -->
+                <UInputDate v-model="completedTo" class="w-full">
+                  <template #trailing>
+                    <UPopover>
+                      <UButton
+                        color="neutral"
+                        variant="link"
+                        size="sm"
+                        icon="i-lucide-calendar"
+                        aria-label="Completed until"
+                        class="px-0"
+                      />
+                      <template #content>
+                        <!-- @vue-ignore -->
+                        <UCalendar v-model="completedTo" />
+                      </template>
+                    </UPopover>
+                  </template>
+                </UInputDate>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Until</p>
+              </UFormField>
+            </div>
+            <p v-if="!completedRangeValid" class="text-xs text-red-500 dark:text-red-400 m-0">
+              The From date is after the To date.
+            </p>
+            <p class="text-xs text-gray-400 dark:text-white/30 m-0">
+              Jobs that are still running are left out.
+            </p>
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <p class="text-[13px] font-semibold text-gray-700 dark:text-white/70 m-0">Retries</p>
+            <div
+              class="inline-flex items-center gap-1 self-start p-0.5 rounded-[10px] border border-black/[0.08] dark:border-white/[0.09]"
+            >
+              <button
+                class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="minRetries <= 0"
+                aria-label="Fewer"
+                @click="minRetries--"
+              >
+                <Icon icon="lucide:minus" class="w-3.5 h-3.5" />
+              </button>
+              <span
+                class="min-w-[84px] text-center text-xs tabular-nums text-gray-600 dark:text-white/50"
+              >
+                {{ minRetries > 0 ? `At least ${minRetries}` : "Any" }}
+              </span>
+              <button
+                class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors"
+                aria-label="More"
+                @click="minRetries++"
+              >
+                <Icon icon="lucide:plus" class="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p class="text-xs text-gray-400 dark:text-white/30 m-0">
+              Show jobs retried this many times or more.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Loading skeletons -->
-    <div v-if="isLoading" class="space-y-3">
-      <div
-        v-for="i in 5"
-        :key="i"
-        class="h-14 rounded-xl bg-gray-100/60 dark:bg-white/[0.03] animate-pulse"
-      />
+    <!-- Loading state -->
+    <div v-if="isLoading" class="flex items-center justify-center py-20">
+      <Icon icon="mdi:loading" class="w-6 h-6 animate-spin text-gray-400 dark:text-white/35" />
     </div>
 
     <!-- Error state -->
     <div v-else-if="error" class="flex flex-col items-center gap-2.5 py-20 text-center">
       <Icon icon="mdi:alert-circle-outline" class="w-9 h-9 text-red-400" />
-      <p class="text-sm text-gray-500 dark:text-white/40 m-0">Failed to load jobs</p>
+      <p class="text-sm font-medium text-gray-700 dark:text-white/70 m-0">Could not load jobs</p>
+      <p class="text-xs text-gray-400 dark:text-white/30 m-0">
+        The jobs service did not respond. Check the connection and try again.
+      </p>
+      <button
+        class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-black/[0.05] dark:bg-white/[0.07] text-gray-600 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.10] transition-colors"
+        @click="handleRefresh"
+      >
+        <Icon icon="mdi:refresh" class="w-3.5 h-3.5" />
+        Try again
+      </button>
     </div>
 
-    <!-- Empty state -->
-    <div v-else-if="!groupedJobs.length" class="flex flex-col items-center gap-3 py-20 text-center">
+    <!-- Empty states -->
+    <div v-else-if="!groups.length" class="flex flex-col items-center gap-3 py-20 text-center">
       <Icon icon="mdi:cog-outline" class="w-10 h-10 text-gray-300 dark:text-white/[0.18]" />
-      <p class="text-sm text-gray-500 dark:text-white/40 m-0">No jobs found</p>
+      <p class="text-sm font-medium text-gray-700 dark:text-white/70 m-0">
+        {{ isFiltered ? "No jobs match these filters" : "No transpilation jobs yet" }}
+      </p>
+      <p class="text-xs text-gray-400 dark:text-white/30 m-0">
+        {{
+          isFiltered
+            ? "Try different filters."
+            : "Jobs appear here when a file is queued for streaming."
+        }}
+      </p>
+      <button
+        v-if="isFiltered"
+        class="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-black/[0.05] dark:bg-white/[0.07] text-gray-600 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.10] transition-colors"
+        @click="clearFilters"
+      >
+        Clear filters
+      </button>
     </div>
 
     <!-- Job groups -->
     <div v-else class="space-y-3">
       <div
-        v-for="group in groupedJobs"
+        v-if="statusFilter === undefined && failedCount > 0"
+        class="flex items-center gap-3 px-4 py-3 rounded-xl border border-red-200/60 dark:border-red-500/20 bg-red-50/80 dark:bg-red-500/[0.07]"
+      >
+        <Icon
+          icon="mdi:alert-circle-outline"
+          class="w-4 h-4 shrink-0 text-red-500 dark:text-red-400"
+        />
+        <span class="text-xs text-gray-700 dark:text-white/70">
+          {{ failedCount }} job{{ failedCount !== 1 ? "s" : "" }} failed and may need a retry.
+        </span>
+        <span class="flex-1" />
+        <button
+          class="px-2.5 py-1 rounded-lg text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-100/60 dark:hover:bg-red-500/10 transition-colors shrink-0"
+          @click="selectStatus(JobStatus.Failed)"
+        >
+          Review failed
+        </button>
+      </div>
+
+      <div
+        v-for="group in groups"
         :key="group.versionId"
         class="rounded-xl border border-black/[0.08] dark:border-white/[0.09] overflow-hidden frosted-glass glass-surface"
       >
         <!-- Group header -->
         <button
           class="w-full flex items-center gap-3 px-4 py-3 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors text-left border-b border-black/[0.06] dark:border-white/[0.06]"
-          @click="toggleGroup(group.versionId)"
+          :aria-expanded="isGroupOpen(group)"
+          @click="toggleGroup(group)"
         >
-          <Icon
-            :icon="group.isVideo ? 'mdi:file-video-outline' : 'mdi:music-box-outline'"
-            class="w-4 h-4 shrink-0 text-primary"
-          />
-          <div class="flex-1 min-w-0">
+          <span
+            class="flex items-center justify-center w-9 h-9 rounded-[10px] bg-black/[0.04] dark:bg-white/[0.06] text-gray-500 dark:text-white/40 shrink-0"
+          >
+            <Icon :icon="group.isVideo ? 'lucide:video' : 'mdi:music-note'" class="w-4 h-4" />
+          </span>
+          <span class="flex-1 min-w-0">
             <span class="text-sm font-medium text-gray-700 dark:text-white/80 truncate block">
               {{ group.fileName ?? group.versionId }}
             </span>
@@ -378,46 +901,61 @@ const mediaFilterOptions = [
               v-if="group.fileName && group.versionNumber != null"
               class="text-xs text-gray-400 dark:text-white/30"
             >
-              Version {{ group.versionNumber }}
+              Version {{ group.versionNumber }}, {{ group.jobs.length }} run{{
+                group.jobs.length !== 1 ? "s" : ""
+              }}
             </span>
-          </div>
-          <span class="text-xs text-gray-400 dark:text-white/30 shrink-0">
-            {{ group.jobs.length }} run{{ group.jobs.length !== 1 ? "s" : "" }}
+          </span>
+          <span class="hidden sm:flex items-center gap-3 flex-wrap justify-end">
+            <span
+              v-for="item in groupSummary(group)"
+              :key="item.status"
+              class="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-white/40 tabular-nums"
+            >
+              <span class="w-2 h-2 rounded-full" :class="statusConfig[item.status].barClass" />
+              {{ item.count }} {{ statusConfig[item.status].label.toLowerCase() }}
+            </span>
           </span>
           <Icon
             icon="mdi:chevron-down"
             class="w-4 h-4 text-gray-400 dark:text-white/30 transition-transform duration-200 shrink-0"
-            :class="{ 'rotate-180': !collapsed[group.versionId] }"
+            :class="{ 'rotate-180': isGroupOpen(group) }"
           />
         </button>
 
         <!-- Job rows -->
         <div
-          v-show="!collapsed[group.versionId]"
+          v-if="isGroupOpen(group)"
           class="divide-y divide-black/[0.04] dark:divide-white/[0.05]"
         >
           <div
             v-for="job in group.jobs"
             :key="job.id"
-            class="border-b border-black/[0.04] dark:border-white/[0.05] last:border-b-0"
+            class="job-grid px-4 py-3 hover:bg-black/[0.01] dark:hover:bg-white/[0.02] transition-colors"
           >
-            <!-- Single job row: wraps into two lines on mobile via job-row class -->
-            <div
-              class="job-row px-4 py-3 hover:bg-black/[0.01] dark:hover:bg-white/[0.02] transition-colors"
+            <span
+              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium w-fit"
+              :class="statusConfig[job.status].chipClass"
             >
-              <span
-                class="job-status inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium shrink-0"
-                :class="statusConfig[job.status].chipClass"
-              >
-                <Icon
-                  :icon="statusConfig[job.status].icon"
-                  class="w-3.5 h-3.5 shrink-0"
-                  :class="{ 'animate-spin': isSpinning(job.status) }"
-                />
-                {{ statusConfig[job.status].label }}
-              </span>
+              <Icon
+                :icon="statusConfig[job.status].icon"
+                class="w-3.5 h-3.5 shrink-0"
+                :class="{ 'animate-spin': isSpinning(job.status) }"
+              />
+              {{ statusConfig[job.status].label }}
+            </span>
 
-              <div class="job-progress flex items-center gap-2 w-28 shrink-0">
+            <div class="job-mid min-w-0 flex flex-col gap-2">
+              <div class="flex gap-1.5 flex-wrap">
+                <span
+                  v-for="chip in rungChips(job)"
+                  :key="chip"
+                  class="h-[22px] px-2 rounded-md bg-black/[0.04] dark:bg-white/[0.06] text-gray-500 dark:text-white/40 text-xs inline-flex items-center tabular-nums"
+                >
+                  {{ chip }}
+                </span>
+              </div>
+              <div v-if="showProgress(job.status)" class="flex items-center gap-2 max-w-90">
                 <div class="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all duration-500"
@@ -426,136 +964,125 @@ const mediaFilterOptions = [
                   />
                 </div>
                 <span
-                  class="text-xs tabular-nums text-gray-400 dark:text-white/30 w-7 text-right shrink-0"
+                  class="text-xs tabular-nums text-gray-400 dark:text-white/30 w-8 text-right shrink-0"
                 >
                   {{ job.progressPercent }}%
                 </span>
               </div>
+            </div>
 
-              <span
-                class="job-rungs text-xs text-gray-500 dark:text-white/40 truncate flex-1 font-mono"
-              >
-                {{ formatRungs(job) }}
-              </span>
-
+            <div
+              class="job-meta flex items-center gap-3 text-xs text-gray-400 dark:text-white/30 whitespace-nowrap tabular-nums"
+            >
               <span
                 v-if="job.retryCount > 0"
-                class="job-retry inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 shrink-0 tabular-nums"
+                class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"
                 title="Retry count"
               >
                 <Icon icon="mdi:refresh" class="w-3.5 h-3.5" />
                 {{ job.retryCount }}
               </span>
+              <span :title="formatDate(job.createdAt)">{{ formatRelative(job.createdAt) }}</span>
+            </div>
 
-              <span class="job-date text-xs text-gray-400 dark:text-white/30 shrink-0 tabular-nums">
-                {{ formatDate(job.createdAt) }}
-              </span>
-
+            <div class="job-actions flex items-center gap-2 justify-end">
               <button
                 v-if="job.errorDetail"
-                class="job-error-toggle inline-flex items-center gap-1 text-xs text-red-500 dark:text-red-400 shrink-0 hover:text-red-600 dark:hover:text-red-300 transition-colors"
+                class="inline-flex items-center text-xs text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors shrink-0"
                 @click="toggleError(job.id)"
               >
-                <Icon icon="mdi:alert-circle-outline" class="w-3.5 h-3.5 shrink-0" />
-                <span>{{ expandedError[job.id] ? "Hide error" : "Show error" }}</span>
-                <Icon
-                  icon="mdi:chevron-down"
-                  class="w-3.5 h-3.5 transition-transform duration-150"
-                  :class="{ 'rotate-180': expandedError[job.id] }"
-                />
+                {{ expandedError[job.id] ? "Hide error" : "Show error" }}
               </button>
 
-              <div class="job-actions flex items-center gap-1 shrink-0 ml-auto">
+              <button
+                v-if="canCancel(job.status)"
+                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium border border-black/[0.08] dark:border-white/[0.09] text-gray-700 dark:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                :disabled="actionInProgress === job.id"
+                @click="handleCancel(job)"
+              >
+                <Icon
+                  :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:close-circle'"
+                  class="w-3.5 h-3.5"
+                  :class="{ 'animate-spin': actionInProgress === job.id }"
+                />
+                Cancel
+              </button>
+
+              <UPopover v-if="canRequeue(job.status)" v-model:open="requeuePopoverOpen[job.id]">
                 <button
-                  v-if="canCancel(job.status)"
-                  class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-gray-500 dark:text-white/40 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium border border-black/[0.08] dark:border-white/[0.09] text-gray-700 dark:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   :disabled="actionInProgress === job.id"
-                  @click="handleCancel(job)"
+                  @click="initRequeueRungs(job)"
                 >
                   <Icon
-                    :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:cancel'"
+                    :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:refresh'"
                     class="w-3.5 h-3.5"
                     :class="{ 'animate-spin': actionInProgress === job.id }"
                   />
-                  Cancel
+                  Requeue
                 </button>
 
-                <UPopover v-if="canRequeue(job.status)" v-model:open="requeuePopoverOpen[job.id]">
-                  <button
-                    class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-gray-500 dark:text-white/40 hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    :disabled="actionInProgress === job.id"
-                    @click="initRequeueRungs(job)"
-                  >
-                    <Icon
-                      :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:refresh'"
-                      class="w-3.5 h-3.5"
-                      :class="{ 'animate-spin': actionInProgress === job.id }"
-                    />
-                    Requeue
-                  </button>
-
-                  <template #content>
-                    <div class="p-4 w-60 space-y-3 frosted-glass glass-surface-strong">
-                      <p class="text-xs font-semibold text-gray-700 dark:text-white/70 m-0">
-                        Adjust qualities
-                      </p>
-                      <div class="flex flex-wrap gap-1.5">
-                        <template v-if="job.isVideo">
-                          <button
-                            v-for="rung in videoRungOptions"
-                            :key="rung.value"
-                            class="px-2 py-0.5 rounded text-xs border transition-all"
-                            :class="
-                              pendingVideoRungs[job.id]?.includes(rung.value)
-                                ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
-                                : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/40 hover:border-gray-300 dark:hover:border-white/20'
-                            "
-                            @click="toggleVideoRung(job.id, rung.value)"
-                          >
-                            {{ rung.label }}
-                          </button>
-                        </template>
-                        <template v-else>
-                          <button
-                            v-for="rung in audioRungOptions"
-                            :key="rung.value"
-                            class="px-2 py-0.5 rounded text-xs border transition-all"
-                            :class="
-                              pendingAudioRungs[job.id]?.includes(rung.value)
-                                ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
-                                : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/40 hover:border-gray-300 dark:hover:border-white/20'
-                            "
-                            @click="toggleAudioRung(job.id, rung.value)"
-                          >
-                            {{ rung.label }}
-                          </button>
-                        </template>
-                      </div>
-                      <div
-                        class="flex justify-end pt-1 border-t border-gray-200/70 dark:border-white/[0.08]"
-                      >
+                <template #content>
+                  <div class="p-4 w-60 space-y-3 frosted-glass glass-surface-strong">
+                    <p class="text-xs font-semibold text-gray-700 dark:text-white/70 m-0">
+                      Adjust qualities
+                    </p>
+                    <div class="flex flex-wrap gap-1.5">
+                      <template v-if="job.isVideo">
                         <button
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          :disabled="
-                            actionInProgress === job.id ||
-                            (job.isVideo
-                              ? !pendingVideoRungs[job.id]?.length
-                              : !pendingAudioRungs[job.id]?.length)
+                          v-for="rung in videoRungOptions"
+                          :key="rung.value"
+                          class="px-2 py-0.5 rounded text-xs border transition-all"
+                          :class="
+                            pendingVideoRungs[job.id]?.includes(rung.value)
+                              ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
+                              : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/40 hover:border-gray-300 dark:hover:border-white/20'
                           "
-                          @click="handleRequeue(job)"
+                          @click="toggleVideoRung(job.id, rung.value)"
                         >
-                          <Icon
-                            :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:refresh'"
-                            class="w-3.5 h-3.5"
-                            :class="{ 'animate-spin': actionInProgress === job.id }"
-                          />
-                          Requeue
+                          {{ rung.label }}
                         </button>
-                      </div>
+                      </template>
+                      <template v-else>
+                        <button
+                          v-for="rung in audioRungOptions"
+                          :key="rung.value"
+                          class="px-2 py-0.5 rounded text-xs border transition-all"
+                          :class="
+                            pendingAudioRungs[job.id]?.includes(rung.value)
+                              ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
+                              : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/40 hover:border-gray-300 dark:hover:border-white/20'
+                          "
+                          @click="toggleAudioRung(job.id, rung.value)"
+                        >
+                          {{ rung.label }}
+                        </button>
+                      </template>
                     </div>
-                  </template>
-                </UPopover>
-              </div>
+                    <div
+                      class="flex justify-end pt-1 border-t border-gray-200/70 dark:border-white/[0.08]"
+                    >
+                      <button
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        :disabled="
+                          actionInProgress === job.id ||
+                          (job.isVideo
+                            ? !pendingVideoRungs[job.id]?.length
+                            : !pendingAudioRungs[job.id]?.length)
+                        "
+                        @click="handleRequeue(job)"
+                      >
+                        <Icon
+                          :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:refresh'"
+                          class="w-3.5 h-3.5"
+                          :class="{ 'animate-spin': actionInProgress === job.id }"
+                        />
+                        Requeue
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </UPopover>
             </div>
 
             <!-- Error detail panel -->
@@ -567,10 +1094,10 @@ const mediaFilterOptions = [
             >
               <div
                 v-if="job.errorDetail && expandedError[job.id]"
-                class="mx-4 mb-3 rounded-lg border border-red-200/60 dark:border-red-500/20 bg-red-50/80 dark:bg-red-500/[0.07] overflow-hidden"
+                class="job-error-panel rounded-[10px] border border-red-200/60 dark:border-red-500/20 bg-red-50/80 dark:bg-red-500/[0.07] overflow-hidden"
               >
                 <div
-                  class="flex items-center justify-between px-3 py-2 border-b border-red-200/40 dark:border-red-500/15"
+                  class="flex items-center justify-between pl-3 pr-2 py-1.5 border-b border-red-200/40 dark:border-red-500/15"
                 >
                   <span class="text-xs font-medium text-red-600 dark:text-red-400"
                     >Error detail</span
@@ -584,7 +1111,7 @@ const mediaFilterOptions = [
                   </button>
                 </div>
                 <pre
-                  class="px-3 py-2.5 text-xs text-red-700 dark:text-red-300 whitespace-pre-wrap break-all font-mono leading-relaxed m-0 max-h-48 overflow-y-auto"
+                  class="px-3 py-3 text-xs text-red-700 dark:text-red-300 whitespace-pre-wrap break-all font-mono leading-relaxed m-0 max-h-44 overflow-y-auto"
                   >{{ job.errorDetail }}</pre>
               </div>
             </Transition>
@@ -620,12 +1147,79 @@ const mediaFilterOptions = [
 </template>
 
 <style scoped>
-/* Filters toolbar: side by side on desktop, two scrollable rows on mobile */
+/* Status tabs: underline style with horizontal scroll on mobile */
+.filter-tabs {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgb(0 0 0 / 0.06);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dark .filter-tabs {
+  border-bottom-color: rgb(255 255 255 / 0.07);
+}
+
+.filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: rgb(75 85 99);
+  transition: color 0.15s;
+}
+
+.dark .filter-tab {
+  color: rgb(255 255 255 / 0.4);
+}
+
+.filter-tab:hover {
+  color: rgb(17 24 39);
+}
+
+.dark .filter-tab:hover {
+  color: rgb(255 255 255 / 0.7);
+}
+
+.filter-tab-on {
+  font-weight: 600;
+  color: rgb(17 24 39);
+}
+
+.dark .filter-tab-on {
+  color: rgb(255 255 255 / 0.9);
+}
+
+.filter-tab em {
+  font-style: normal;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* More-filters panel grid */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2rem;
+}
+
+/* Filters toolbar: side by side on desktop, wraps on mobile */
 .filters-toolbar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+  margin-bottom: 1rem;
 }
 
 @media (max-width: 639px) {
@@ -654,58 +1248,32 @@ const mediaFilterOptions = [
   }
 }
 
-/* Job row: single flex line on desktop, wraps into two lines on mobile */
-.job-row {
-  display: flex;
+/* Job row grid: badge | qualities+progress | meta | actions */
+.job-grid {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr) auto auto;
+  gap: 0.5rem 1rem;
   align-items: center;
-  gap: 1rem;
+}
+
+.job-error-panel {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 639px) {
-  .job-row {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    row-gap: 0.5rem;
+  .job-grid {
+    grid-template-columns: 1fr auto;
   }
 
-  /* Line 1: status chip + progress bar (progress takes remaining space) */
-  .job-status {
-    order: 1;
-    flex-shrink: 0;
+  .job-mid,
+  .job-meta,
+  .job-error-panel {
+    grid-column: 1 / -1;
   }
 
-  .job-progress {
-    order: 2;
-    flex: 1;
-    min-width: 0;
-    width: auto !important; /* override the w-28 fixed width */
-  }
-
-  /* Actions stay on line 1, pushed to the right */
   .job-actions {
-    order: 3;
-    margin-left: auto;
-  }
-
-  /* Line 2: rungs + retry + error toggle — full width, smaller meta */
-  .job-rungs {
-    order: 4;
-    width: 100%;
-    flex: none;
-  }
-
-  .job-retry {
-    order: 5;
-  }
-
-  /* Date is low-value on mobile — hide it */
-  .job-date {
-    display: none;
-  }
-
-  .job-error-toggle {
-    order: 6;
-    margin-left: auto;
+    grid-row: 1;
+    grid-column: 2;
   }
 }
 </style>

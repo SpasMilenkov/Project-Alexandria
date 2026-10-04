@@ -55,9 +55,7 @@ describe("directory details shared ownership", () => {
   it("creates no drawer controller per row", () => {
     const wrapper = mountRow(makeDir("d1"));
     expect(findDrawer(wrapper).exists()).toBe(false);
-    expect(
-      (wrapper.vm as unknown as Record<string, unknown>).openDetails,
-    ).toBeUndefined();
+    expect((wrapper.vm as unknown as Record<string, unknown>).openDetails).toBeUndefined();
   });
 
   it("creates no menu controller per row and marks the target", () => {

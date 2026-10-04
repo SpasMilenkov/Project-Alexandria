@@ -1,4 +1,4 @@
-import type { ColorName } from "@/stores/settings";
+import type { ColorName, FontName } from "@/stores/settings";
 
 import { apiClient } from "./client";
 
@@ -19,6 +19,8 @@ export interface AppearanceSettings {
   transparencyEnabled: boolean;
   surfaceOpacity: number;
   thumbnailsEnabled: boolean;
+  fontFamily: FontName;
+  cornerRadius: number;
 }
 
 export interface BehaviorSettings {

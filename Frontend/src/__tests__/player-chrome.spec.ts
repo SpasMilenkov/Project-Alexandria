@@ -1,8 +1,9 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { shuffleApi } from "@/api/shuffle";
 import type { MediaFileDto } from "@/api/streaming";
+
+import { shuffleApi } from "@/api/shuffle";
 import { streamingApi } from "@/api/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 
@@ -28,37 +29,38 @@ const playlistRef = { isVideo: false, playlistId: "pl-1" };
 beforeEach(() => {
   setActivePinia(createPinia());
   localStorage.clear();
-  vi.spyOn(streamingApi, "getFilesForStreaming").mockImplementation(async (query: {
-    page: number;
-    pageSize: number;
-  }) => ({
-    items: [file("pf-1"), file("pf-2")],
-    currentPage: query.page,
-    pageSize: query.pageSize,
-    totalCount: 2,
-    totalPages: 1,
-    hasPrevious: false,
-    hasNext: false,
-  }));
-  vi.spyOn(shuffleApi, "createSession").mockImplementation(async (req: {
-    requestId: string;
-    source: { isVideo: boolean; playlistId: string | null };
-  }) => ({
-    sessionId: "session-1",
-    source: req.source,
-    algorithmVersion: 1,
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-    totalCount: 2,
-    anchorPosition: null,
-    offset: 0,
-    scannedCount: 2,
-    nextOffset: null,
-    items: [
-      { position: 0, file: file("pf-1") },
-      { position: 1, file: file("pf-2") },
-    ],
-  }));
+  vi.spyOn(streamingApi, "getFilesForStreaming").mockImplementation(
+    async (query: { page: number; pageSize: number }) => ({
+      items: [file("pf-1"), file("pf-2")],
+      currentPage: query.page,
+      pageSize: query.pageSize,
+      totalCount: 2,
+      totalPages: 1,
+      hasPrevious: false,
+      hasNext: false,
+    }),
+  );
+  vi.spyOn(shuffleApi, "createSession").mockImplementation(
+    async (req: {
+      requestId: string;
+      source: { isVideo: boolean; playlistId: string | null };
+    }) => ({
+      sessionId: "session-1",
+      source: req.source,
+      algorithmVersion: 1,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+      totalCount: 2,
+      anchorPosition: null,
+      offset: 0,
+      scannedCount: 2,
+      nextOffset: null,
+      items: [
+        { position: 0, file: file("pf-1") },
+        { position: 1, file: file("pf-2") },
+      ],
+    }),
+  );
   vi.spyOn(shuffleApi, "getSession").mockImplementation(async (sessionId: string) => ({
     sessionId,
     source: { isVideo: false, playlistId: "pl-1" },

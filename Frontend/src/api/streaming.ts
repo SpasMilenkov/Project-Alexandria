@@ -1,4 +1,4 @@
-import type { TranspilationStatus } from "@/enums/transpilation-status";
+import type { JobStatus } from "@/enums/job-status";
 
 import type { PaginatedResponse } from "./directory";
 import type { AudioRung, VideoRung } from "./policy";
@@ -31,7 +31,7 @@ export interface GetFilesForStreamingQuery {
 }
 
 export interface TranspilationJobQuery {
-  status?: TranspilationStatus;
+  status?: JobStatus;
   isVideo?: boolean;
   versionId?: string;
   createdAfter?: string;
@@ -64,7 +64,7 @@ export interface CloseSessionRequest {
 
 export interface UpdateTranspilationJobRequest {
   jobId: string;
-  status: TranspilationStatus;
+  status: JobStatus;
   audioRungs?: AudioRung[];
   videoRungs?: VideoRung[];
 }
@@ -111,7 +111,7 @@ export interface StreamingRepresentationResponse {
 export interface TranspilationJobResponse {
   id: string;
   versionId: string;
-  status: TranspilationStatus;
+  status: JobStatus;
   isVideo: boolean;
   progressPercent: number;
   retryCount: number;

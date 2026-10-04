@@ -1,8 +1,8 @@
 <template>
-  <UCard class="frosted-glass glass-surface" :ui="{ body: 'p-6' }">
+  <UCard class="frosted-glass glass-surface" :ui="{ body: compact ? 'p-3 sm:p-4' : 'p-6' }">
     <template #header>
       <div class="flex items-center justify-between gap-2">
-        <span class="font-semibold text-sm text-gray-700 dark:text-gray-300">Details</span>
+        <span class="font-semibold text-sm text-gray-700 dark:text-gray-300">{{ title }}</span>
         <div class="flex items-center gap-2">
           <UButton
             v-if="isEditing"
@@ -29,22 +29,25 @@
     <div v-if="!isEditing" class="flex flex-col gap-4">
       <div>
         <p class="text-xs text-gray-500 dark:text-gray-500 mb-1">Title</p>
-        <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <p
+          class="font-semibold text-gray-900 dark:text-gray-100 wrap-break-word"
+          :class="compact ? 'text-lg' : 'text-xl'"
+        >
           {{ file.title || "Untitled" }}
         </p>
       </div>
 
       <div>
         <p class="text-xs text-gray-500 dark:text-gray-500 mb-1">Artist</p>
-        <p class="text-base font-medium text-gray-800 dark:text-gray-200">
+        <p class="text-base font-medium text-gray-800 dark:text-gray-200 wrap-break-word">
           {{ file.artist || "Unknown artist" }}
         </p>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
-        <div>
+        <div class="min-w-0">
           <p class="text-xs text-gray-500 dark:text-gray-500 mb-1">Album</p>
-          <p class="text-sm text-gray-700 dark:text-gray-300">
+          <p class="text-sm text-gray-700 dark:text-gray-300 wrap-break-word">
             {{ file.album || "Unknown album" }}
           </p>
         </div>
@@ -165,25 +168,46 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 
-import type { MediaFileDto } from "@/api/streaming";
-
 import { useAppToast } from "@/composables/useAppToast";
 import { updateFileMetadata } from "@/mutations/files";
 import { updateFileMetadataSchema } from "@/schemas/file";
 
-const { file } = defineProps<{ file: MediaFileDto }>();
+interface EditableMediaMetadata {
+  fileId: string;
+  title?: string | null;
+  artist?: string | null;
+  album?: string | null;
+  year?: string | number | null;
+  genre?: string | null;
+}
+
+const {
+  file,
+  title = "Details",
+  compact = false,
+} = defineProps<{
+  file: EditableMediaMetadata;
+  /** Card heading. Override it where "Details" would clash with another section. */
+  title?: string;
+  /** Tighter padding for mobile / drawer contexts. */
+  compact?: boolean;
+}>();
+
+const emit = defineEmits<{ saved: [] }>();
 
 const appToast = useAppToast();
 const { mutateAsync, state: mutationState, isLoading: isSaving } = updateFileMetadata();
 
 const isEditing = ref(false);
 
+const yearToString = (year: EditableMediaMetadata["year"]) => (year == null ? "" : String(year));
+
 const form = reactive({
   id: file.fileId,
   title: file.title ?? "",
   artist: file.artist ?? "",
   album: file.album ?? "",
-  year: file.year ?? "",
+  year: yearToString(file.year),
 });
 
 const snapshot = () =>
@@ -198,10 +222,11 @@ const pristine = ref(snapshot());
 const isDirty = computed(() => snapshot() !== pristine.value);
 
 const resetForm = () => {
+  form.id = file.fileId;
   form.title = file.title ?? "";
   form.artist = file.artist ?? "";
   form.album = file.album ?? "";
-  form.year = file.year ?? "";
+  form.year = yearToString(file.year);
   pristine.value = snapshot();
 };
 
@@ -212,11 +237,19 @@ const toggleEditing = () => {
   isEditing.value = !isEditing.value;
 };
 
+// Switching to a different file: throw away any edit in progress.
 watch(
   () => file.fileId,
   () => {
     resetForm();
     isEditing.value = false;
+  },
+);
+
+watch(
+  () => [file.title, file.artist, file.album, file.year],
+  () => {
+    if (!isDirty.value) resetForm();
   },
 );
 
@@ -235,5 +268,6 @@ const onSubmit = async () => {
   pristine.value = snapshot();
   isEditing.value = false;
   appToast.success("Details saved");
+  emit("saved");
 };
 </script>

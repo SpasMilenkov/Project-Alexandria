@@ -26,6 +26,24 @@ export const AVAILABLE_COLORS = [
 
 export type ColorName = (typeof AVAILABLE_COLORS)[number]["name"];
 
+export const AVAILABLE_FONTS = [
+  { label: "System", name: "system" },
+  { label: "Serif", name: "serif" },
+  { label: "Mono", name: "mono" },
+] as const;
+
+export type FontName = (typeof AVAILABLE_FONTS)[number]["name"];
+
+const FONT_STACKS: Record<FontName, string> = {
+  mono: 'ui-monospace, "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace',
+  serif: 'Georgia, "Times New Roman", "Nimbus Roman", serif',
+  system:
+    'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+};
+
+export const resolveFontStack = (name: string): string =>
+  FONT_STACKS[name as FontName] ?? FONT_STACKS.system;
+
 export interface BackgroundPreset {
   name: string;
   label: string;
@@ -168,6 +186,8 @@ export interface UserSettings {
   transparencyEnabled: boolean;
   surfaceOpacity: number;
   thumbnailsEnabled: boolean;
+  fontFamily: FontName;
+  cornerRadius: number;
   gridIconSize: number;
   listIconSize: number;
   skipDeleteConfirmation: boolean;
@@ -186,6 +206,8 @@ const DEFAULT_FROST_DISABLED_ON_MOBILE = false;
 const DEFAULT_TRANSPARENCY_ENABLED = true;
 const DEFAULT_SURFACE_OPACITY = 60;
 const DEFAULT_THUMBNAILS_ENABLED = true;
+const DEFAULT_FONT_FAMILY: FontName = "system";
+const DEFAULT_CORNER_RADIUS = 0.25;
 const DEFAULT_GRID_ICON_SIZE = 48;
 const DEFAULT_LIST_ICON_SIZE = 20;
 const DEFAULT_SKIP_DELETE_CONFIRMATION = false;
@@ -219,6 +241,8 @@ export const useSettingsStore = defineStore(
     const transparencyEnabled = ref<boolean>(DEFAULT_TRANSPARENCY_ENABLED);
     const surfaceOpacity = ref<number>(DEFAULT_SURFACE_OPACITY);
     const thumbnailsEnabled = ref<boolean>(DEFAULT_THUMBNAILS_ENABLED);
+    const fontFamily = ref<FontName>(DEFAULT_FONT_FAMILY);
+    const cornerRadius = ref<number>(DEFAULT_CORNER_RADIUS);
     const gridIconSize = ref(DEFAULT_GRID_ICON_SIZE);
     const listIconSize = ref(DEFAULT_LIST_ICON_SIZE);
     const skipDeleteConfirmation = ref(DEFAULT_SKIP_DELETE_CONFIRMATION);
@@ -245,6 +269,8 @@ export const useSettingsStore = defineStore(
       transparencyEnabled: transparencyEnabled.value,
       surfaceOpacity: surfaceOpacity.value,
       thumbnailsEnabled: thumbnailsEnabled.value,
+      fontFamily: fontFamily.value,
+      cornerRadius: cornerRadius.value,
       gridIconSize: gridIconSize.value,
       listIconSize: listIconSize.value,
       skipDeleteConfirmation: skipDeleteConfirmation.value,
@@ -261,6 +287,37 @@ export const useSettingsStore = defineStore(
     );
     const hasBackgroundImage = computed(() => Boolean(backgroundImage.value));
 
+    const isAppearanceModified = computed(
+      () =>
+        accentColor.value !== DEFAULT_ACCENT_COLOR ||
+        backgroundColor.value !== DEFAULT_BACKGROUND ||
+        backgroundImageKey.value !== DEFAULT_BACKGROUND_IMAGE ||
+        backgroundImageOpacity.value !== DEFAULT_BACKGROUND_IMAGE_OPACITY ||
+        frostEnabled.value !== DEFAULT_FROST_ENABLED ||
+        frostStrength.value !== DEFAULT_FROST_STRENGTH ||
+        frostDisabledOnMobile.value !== DEFAULT_FROST_DISABLED_ON_MOBILE ||
+        transparencyEnabled.value !== DEFAULT_TRANSPARENCY_ENABLED ||
+        surfaceOpacity.value !== DEFAULT_SURFACE_OPACITY ||
+        thumbnailsEnabled.value !== DEFAULT_THUMBNAILS_ENABLED ||
+        fontFamily.value !== DEFAULT_FONT_FAMILY ||
+        cornerRadius.value !== DEFAULT_CORNER_RADIUS ||
+        gridIconSize.value !== DEFAULT_GRID_ICON_SIZE ||
+        listIconSize.value !== DEFAULT_LIST_ICON_SIZE,
+    );
+    const isBehaviorModified = computed(
+      () =>
+        skipDeleteConfirmation.value !== DEFAULT_SKIP_DELETE_CONFIRMATION ||
+        toastLevel.value !== DEFAULT_TOAST_LEVEL,
+    );
+    const isAutoTaggingModified = computed(
+      () =>
+        allowAutoTagRegression.value !== DEFAULT_ALLOW_AUTO_TAG_REGRESSION ||
+        allowAutomaticMetadataOverwrite.value !== DEFAULT_ALLOW_AUTOMATIC_METADATA_OVERWRITE,
+    );
+    const isAutoPlaylistsModified = computed(
+      () => autoPlaylistMinTracks.value !== DEFAULT_AUTO_PLAYLIST_MIN_TRACKS,
+    );
+
     // Server wire shape for PUT /settings/appearance (field names differ from
     // the local frost/transparency names).
     const getAppearanceSettings = computed((): AppearanceSettings => ({
@@ -276,6 +333,8 @@ export const useSettingsStore = defineStore(
       listIconSize: listIconSize.value,
       surfaceOpacity: surfaceOpacity.value,
       thumbnailsEnabled: thumbnailsEnabled.value,
+      fontFamily: fontFamily.value,
+      cornerRadius: cornerRadius.value,
       transparencyEnabled: transparencyEnabled.value,
     }));
 
@@ -311,6 +370,14 @@ export const useSettingsStore = defineStore(
     };
     const setThumbnailsEnabled = (v: boolean) => {
       thumbnailsEnabled.value = v;
+    };
+    const setFontFamily = (v: FontName) => {
+      if (AVAILABLE_FONTS.some((f) => f.name === v)) {
+        fontFamily.value = v;
+      }
+    };
+    const setCornerRadius = (v: number) => {
+      cornerRadius.value = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
     };
     const clearBackgroundImage = () => {
       backgroundImage.value = null;
@@ -368,6 +435,8 @@ export const useSettingsStore = defineStore(
       setTransparencyEnabled(appearance.transparencyEnabled);
       setSurfaceOpacity(appearance.surfaceOpacity);
       setThumbnailsEnabled(appearance.thumbnailsEnabled);
+      setFontFamily(appearance.fontFamily);
+      setCornerRadius(appearance.cornerRadius);
     };
 
     const syncBehaviorFromServer = (behavior: BehaviorSettings) => {
@@ -410,6 +479,12 @@ export const useSettingsStore = defineStore(
       if (settings.thumbnailsEnabled !== undefined) {
         setThumbnailsEnabled(settings.thumbnailsEnabled);
       }
+      if (settings.fontFamily !== undefined) {
+        setFontFamily(settings.fontFamily);
+      }
+      if (settings.cornerRadius !== undefined) {
+        setCornerRadius(settings.cornerRadius);
+      }
       if (settings.gridIconSize !== undefined) {
         setGridIconSize(settings.gridIconSize);
       }
@@ -444,6 +519,8 @@ export const useSettingsStore = defineStore(
       transparencyEnabled.value = DEFAULT_TRANSPARENCY_ENABLED;
       surfaceOpacity.value = DEFAULT_SURFACE_OPACITY;
       thumbnailsEnabled.value = DEFAULT_THUMBNAILS_ENABLED;
+      fontFamily.value = DEFAULT_FONT_FAMILY;
+      cornerRadius.value = DEFAULT_CORNER_RADIUS;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
       skipDeleteConfirmation.value = DEFAULT_SKIP_DELETE_CONFIRMATION;
@@ -464,6 +541,8 @@ export const useSettingsStore = defineStore(
       transparencyEnabled.value = DEFAULT_TRANSPARENCY_ENABLED;
       surfaceOpacity.value = DEFAULT_SURFACE_OPACITY;
       thumbnailsEnabled.value = DEFAULT_THUMBNAILS_ENABLED;
+      fontFamily.value = DEFAULT_FONT_FAMILY;
+      cornerRadius.value = DEFAULT_CORNER_RADIUS;
       gridIconSize.value = DEFAULT_GRID_ICON_SIZE;
       listIconSize.value = DEFAULT_LIST_ICON_SIZE;
     };
@@ -492,6 +571,7 @@ export const useSettingsStore = defineStore(
     return {
       AVAILABLE_BACKGROUNDS,
       AVAILABLE_COLORS,
+      AVAILABLE_FONTS,
       accentColor,
       allowAutoTagRegression,
       allowAutomaticMetadataOverwrite,
@@ -508,11 +588,19 @@ export const useSettingsStore = defineStore(
       transparencyEnabled,
       surfaceOpacity,
       thumbnailsEnabled,
+      fontFamily,
+      cornerRadius,
+      setFontFamily,
+      setCornerRadius,
       getAppearanceSettings,
       getCurrentBackgroundPreset,
       getSettings,
       gridIconSize,
       hasBackgroundImage,
+      isAppearanceModified,
+      isAutoTaggingModified,
+      isAutoPlaylistsModified,
+      isBehaviorModified,
       isAppearanceSectionOpen,
       isAutoTaggingSectionOpen,
       isAutoPlaylistsSectionOpen,
@@ -569,6 +657,8 @@ export const useSettingsStore = defineStore(
         "transparencyEnabled",
         "surfaceOpacity",
         "thumbnailsEnabled",
+        "fontFamily",
+        "cornerRadius",
         "gridIconSize",
         "listIconSize",
         "skipDeleteConfirmation",

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from "@nuxt/ui";
+
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";

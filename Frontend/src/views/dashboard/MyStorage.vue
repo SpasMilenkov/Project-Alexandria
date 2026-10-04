@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-full w-full flex-1">
     <!-- Header -->
-    <div class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between">
+    <div class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between frosted-glass glass-surface">
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-lg border border-dashed opacity-50">
           <UIcon name="mdi:chart-pie" class="w-4 h-4" />
@@ -165,7 +165,7 @@
               <div
                 v-for="file in myStorageData.oldFiles"
                 :key="file.id"
-                class="group flex items-start gap-3 p-4 rounded-lg border border-dashed hover:border-solid hover:border-primary/40 transition-all cursor-pointer bg-black/1 dark:bg-white/1 hover:bg-black/3 dark:hover:bg-white/3"
+                class="group flex items-start gap-3 p-4 rounded-lg border border-gray-200/70 dark:border-gray-700/70 hover:border-primary/40 transition-all cursor-pointer frosted-glass glass-surface"
               >
                 <div
                   class="p-2 rounded-md border opacity-50 group-hover:opacity-80 transition-opacity shrink-0"
@@ -259,7 +259,7 @@
             <div
               v-for="group in previewGroups"
               :key="group.fileId"
-              class="rounded-lg border border-dashed p-4 space-y-3 bg-black/1 dark:bg-white/1"
+              class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 p-4 space-y-3 frosted-glass glass-surface"
             >
               <div class="flex items-center gap-3 min-w-0">
                 <div class="p-2 rounded-md border opacity-50 shrink-0">
@@ -284,7 +284,7 @@
                   @click="deleteTarget = { group, kind: 'file' }"
                 />
               </div>
-              <div class="divide-y divide-dashed opacity-divide">
+              <div class="divide-y divide-gray-200/70 dark:divide-gray-700/70">
                 <div
                   v-for="preview in group.items"
                   :key="preview.previewId"

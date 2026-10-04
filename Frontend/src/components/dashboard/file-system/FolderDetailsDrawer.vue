@@ -255,10 +255,7 @@
             </UButton>
           </div>
         </UCard>
-        <PolicySection
-          :key="displayDirectory.id"
-          :directory-id="displayDirectory.id"
-        />
+        <PolicySection :key="displayDirectory.id" :directory-id="displayDirectory.id" />
       </div>
     </template>
   </UDrawer>

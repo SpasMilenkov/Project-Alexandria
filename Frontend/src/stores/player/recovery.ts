@@ -4,11 +4,12 @@ import type { createAutoplayCountdown } from "./autoplay-countdown";
 import type { createCommit } from "./commit";
 import type { createEngineBridge } from "./engine-bridge";
 import type { createHistory } from "./history";
-import { isSessionGone } from "./order/shuffle";
 import type { OrderManager } from "./order-manager";
 import type { PlayerState } from "./state";
 import type { Guard, RunOptions, createTransitions } from "./transitions";
 import type { AdvancementReason, MediaKind, Order } from "./types";
+
+import { isSessionGone } from "./order/shuffle";
 
 const MAX_UNAVAILABLE_STREAK = 5;
 
@@ -34,7 +35,10 @@ export const createRecovery = (deps: RecoveryDeps) => {
 
   const boundaryError = (err: unknown, options: RunOptions) => {
     if (isAuthError(err)) return;
-    state.setError(options.message ?? "Something went wrong.", options.retry ?? (() => Promise.resolve()));
+    state.setError(
+      options.message ?? "Something went wrong.",
+      options.retry ?? (() => Promise.resolve()),
+    );
   };
 
   const clearBusy = () => {
@@ -62,25 +66,28 @@ export const createRecovery = (deps: RecoveryDeps) => {
 
   const reportUnavailable = (instanceId: number): Promise<void> => {
     orders.armRebuild();
-    return transitions.run(async (guard) => {
-      const current = state.nowPlaying.value;
-      if (!current || current.instanceId !== instanceId) return;
-      state.markHeard(current.file);
-      unavailableStreak += 1;
-      if (unavailableStreak >= MAX_UNAVAILABLE_STREAK) {
-        state.queueEnded.value = true;
-        state.setError("Several tracks in a row could not be played.", () =>
-          deps.next("explicit", fileKind()),
-        );
-        return;
-      }
-      // Already inside a transition: next() would queue behind this very task.
-      // Explicit, not natural: Repeat one must not restart a track that cannot load.
-      await deps.resolveNext("explicit", guard, fileKind());
-    }, {
-      message: "Could not advance. Check your connection and retry.",
-      retry: () => deps.next("explicit"),
-    });
+    return transitions.run(
+      async (guard) => {
+        const current = state.nowPlaying.value;
+        if (!current || current.instanceId !== instanceId) return;
+        state.markHeard(current.file);
+        unavailableStreak += 1;
+        if (unavailableStreak >= MAX_UNAVAILABLE_STREAK) {
+          state.queueEnded.value = true;
+          state.setError("Several tracks in a row could not be played.", () =>
+            deps.next("explicit", fileKind()),
+          );
+          return;
+        }
+        // Already inside a transition: next() would queue behind this very task.
+        // Explicit, not natural: Repeat one must not restart a track that cannot load.
+        await deps.resolveNext("explicit", guard, fileKind());
+      },
+      {
+        message: "Could not advance. Check your connection and retry.",
+        retry: () => deps.next("explicit"),
+      },
+    );
   };
 
   const contextSourceChanged = (
@@ -100,22 +107,26 @@ export const createRecovery = (deps: RecoveryDeps) => {
     if (current.shuffled) {
       if (change.removedItemId) {
         const active = order();
-        const removed = active?.locate((file) => file.playlistItemId === change.removedItemId) ?? null;
+        const removed =
+          active?.locate((file) => file.playlistItemId === change.removedItemId) ?? null;
         if (removed) state.markHeard(removed);
       }
       return Promise.resolve();
     }
-    return transitions.replace(async (guard) => {
-      const live = state.context.value;
-      if (!live || !live.anchor) return;
-      const previousCursor = live.cursor;
-      orders.releaseActive(false);
-      orders.setSequential(live.ref);
-      if (await orders.seedAtAnchor(guard, live.ref, live.anchor)) return;
-      orders.patch({ cursor: Math.max(-1, previousCursor - 1), anchor: null });
-    }, {
-      message: "Could not refresh that playlist. Check your connection and retry.",
-    });
+    return transitions.replace(
+      async (guard) => {
+        const live = state.context.value;
+        if (!live || !live.anchor) return;
+        const previousCursor = live.cursor;
+        orders.releaseActive(false);
+        orders.setSequential(live.ref);
+        if (await orders.seedAtAnchor(guard, live.ref, live.anchor)) return;
+        orders.patch({ cursor: Math.max(-1, previousCursor - 1), anchor: null });
+      },
+      {
+        message: "Could not refresh that playlist. Check your connection and retry.",
+      },
+    );
   };
 
   const restore = (ownerId: string | null): Promise<void> => {
@@ -139,52 +150,55 @@ export const createRecovery = (deps: RecoveryDeps) => {
     }
     orders.armRebuild();
     // oxlint-disable-next-line max-statements
-    return transitions.replace(async (guard) => {
-      state.nowPlaying.value = { ...playing, instanceId: commit.restamp(), restored: true };
-      const expired =
-        current.expiresAt !== null && new Date(current.expiresAt).getTime() <= Date.now();
-      if (current.shuffled) {
-        if (current.sessionId && !expired) {
-          try {
-            await orders.open(guard, current.ref, {
-              label: current.label,
-              shuffle: true,
-              sessionId: current.sessionId,
-            });
-            state.restoredFor.value = ownerId;
-            return;
-          } catch (err: unknown) {
-            if (isAuthError(err)) return;
-            if (!isSessionGone(err)) throw err;
+    return transitions.replace(
+      async (guard) => {
+        state.nowPlaying.value = { ...playing, instanceId: commit.restamp(), restored: true };
+        const expired =
+          current.expiresAt !== null && new Date(current.expiresAt).getTime() <= Date.now();
+        if (current.shuffled) {
+          if (current.sessionId && !expired) {
+            try {
+              await orders.open(guard, current.ref, {
+                label: current.label,
+                shuffle: true,
+                sessionId: current.sessionId,
+              });
+              state.restoredFor.value = ownerId;
+              return;
+            } catch (err: unknown) {
+              if (isAuthError(err)) return;
+              if (!isSessionGone(err)) throw err;
+            }
           }
+          if (await orders.rebuildShuffle(guard)) {
+            state.restoredFor.value = ownerId;
+          } else if (state.context.value === null) {
+            state.restoredFor.value = ownerId;
+          }
+          return;
         }
-        if (await orders.rebuildShuffle(guard)) {
+        orders.releaseActive(false);
+        orders.setSequential(current.ref);
+        if (!current.anchor) {
           state.restoredFor.value = ownerId;
-        } else if (state.context.value === null) {
-          state.restoredFor.value = ownerId;
+          return;
         }
-        return;
-      }
-      orders.releaseActive(false);
-      orders.setSequential(current.ref);
-      if (!current.anchor) {
+        if (await orders.seedAtAnchor(guard, current.ref, current.anchor)) {
+          state.restoredFor.value = ownerId;
+          return;
+        }
+        if (await orders.seedFirstPage(guard, current.ref)) {
+          const live = state.nowPlaying.value;
+          if (live) state.nowPlaying.value = { ...live, origin: "interrupt" };
+          state.showNotice("That track left the source. Playing the rest in order.");
+        }
         state.restoredFor.value = ownerId;
-        return;
-      }
-      if (await orders.seedAtAnchor(guard, current.ref, current.anchor)) {
-        state.restoredFor.value = ownerId;
-        return;
-      }
-      if (await orders.seedFirstPage(guard, current.ref)) {
-        const live = state.nowPlaying.value;
-        if (live) state.nowPlaying.value = { ...live, origin: "interrupt" };
-        state.showNotice("That track left the source. Playing the rest in order.");
-      }
-      state.restoredFor.value = ownerId;
-    }, {
-      message: "Could not restore playback. Retry when ready.",
-      retry: () => restore(ownerId),
-    });
+      },
+      {
+        message: "Could not restore playback. Retry when ready.",
+        retry: () => restore(ownerId),
+      },
+    );
   };
 
   const clearOwnerState = () => {

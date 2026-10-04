@@ -1,4 +1,4 @@
-import  {type Component, onScopeDispose } from "vue";
+import { type Component, onScopeDispose } from "vue";
 
 interface OpenOptions {
   persistOnDispose?: boolean;

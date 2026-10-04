@@ -17,6 +17,8 @@ public class GetAppearanceResponse
     public bool TransparencyEnabled { get; set; }
     public int SurfaceOpacity { get; set; }
     public bool ThumbnailsEnabled { get; set; }
+    public string FontFamily { get; set; } = default!;
+    public double CornerRadius { get; set; }
 
     public static GetAppearanceResponse FromValue(AppearanceSettingsValue s) => new()
     {
@@ -33,5 +35,7 @@ public class GetAppearanceResponse
         TransparencyEnabled = s.TransparencyEnabled,
         SurfaceOpacity = s.SurfaceOpacity,
         ThumbnailsEnabled = s.ThumbnailsEnabled,
+        FontFamily = s.FontFamily,
+        CornerRadius = s.CornerRadius,
     };
 }

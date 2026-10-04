@@ -346,7 +346,7 @@ onUnmounted(() => {
             @mousedown="onMouseDown"
             @touchstart.prevent="onTouchStart"
           >
-            <Icon icon="mdi:grip-vertical" class="w-5 h-5" />
+            <Icon icon="lucide:grip-vertical" class="w-5 h-5" />
           </span>
           <p
             class="font-semibold truncate text-sm text-gray-800 dark:text-white/90"

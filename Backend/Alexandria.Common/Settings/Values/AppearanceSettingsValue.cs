@@ -26,4 +26,8 @@ public class AppearanceSettingsValue
     [Range(10, 95)] public int SurfaceOpacity { get; set; } = 60;
 
     public bool ThumbnailsEnabled { get; set; } = true;
+
+    public string FontFamily { get; set; } = "system";
+
+    [Range(0, 1)] public double CornerRadius { get; set; } = 0.25;
 }

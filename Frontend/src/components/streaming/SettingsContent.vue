@@ -168,45 +168,47 @@ const END_OPTIONS = [
       </div>
     </div>
 
-    <div class="mx-4 border-t border-gray-200/70 dark:border-gray-700/70" />
+    <template v-if="isAudioOnly">
+      <div class="mx-4 border-t border-gray-200/70 dark:border-gray-700/70" />
 
-    <!-- When a playlist ends -->
-    <div class="p-4 pt-3">
-      <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed select-none mb-3">
-        When a playlist ends
-      </p>
-      <div class="flex flex-col gap-0.5">
-        <button
-          v-for="option in END_OPTIONS"
-          :key="option.value"
-          class="flex items-center gap-3 w-full px-2 py-2 rounded-xl text-left transition-all duration-200 ease-out"
-          :class="
-            afterContextEnds === option.value
-              ? 'bg-primary/10'
-              : 'hover:bg-gray-100/60 dark:hover:bg-white/[0.05]'
-          "
-          @click="store.setAfterContextEnds(option.value)"
-        >
-          <span
-            class="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 transition-all duration-200 ease-out"
+      <!-- When a playlist ends: audio queue continuation has no effect on video -->
+      <div class="p-4 pt-3">
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed select-none mb-3">
+          When a playlist ends
+        </p>
+        <div class="flex flex-col gap-0.5">
+          <button
+            v-for="option in END_OPTIONS"
+            :key="option.value"
+            class="flex items-center gap-3 w-full px-2 py-2 rounded-xl text-left transition-all duration-200 ease-out"
             :class="
               afterContextEnds === option.value
-                ? 'border-primary bg-primary'
-                : 'border-gray-300 dark:border-white/20'
+                ? 'bg-primary/10'
+                : 'hover:bg-gray-100/60 dark:hover:bg-white/[0.05]'
             "
-          />
-          <span
-            class="text-[13px] font-medium"
-            :class="
-              afterContextEnds === option.value
-                ? 'text-primary'
-                : 'text-gray-800 dark:text-white/80'
-            "
+            @click="store.setAfterContextEnds(option.value)"
           >
-            {{ option.label }}
-          </span>
-        </button>
+            <span
+              class="w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 transition-all duration-200 ease-out"
+              :class="
+                afterContextEnds === option.value
+                  ? 'border-primary bg-primary'
+                  : 'border-gray-300 dark:border-white/20'
+              "
+            />
+            <span
+              class="text-[13px] font-medium"
+              :class="
+                afterContextEnds === option.value
+                  ? 'text-primary'
+                  : 'text-gray-800 dark:text-white/80'
+              "
+            >
+              {{ option.label }}
+            </span>
+          </button>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>

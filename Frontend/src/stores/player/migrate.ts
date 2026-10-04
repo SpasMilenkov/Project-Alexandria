@@ -1,9 +1,11 @@
 import type { MediaFileDto } from "@/api/streaming";
+
 import { LIBRARY_PAGE_SIZE } from "@/utils/player-source";
 
-import { releaseShuffleSession } from "./order/shuffle";
 import type { PlayerState } from "./state";
 import type { AfterContextEnds } from "./types";
+
+import { releaseShuffleSession } from "./order/shuffle";
 
 interface LegacyPersisted {
   activeFile?: MediaFileDto | null;
@@ -35,7 +37,6 @@ const asNumber = (value: unknown): number | null => {
 
 const asBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 
-
 const isFile = (value: unknown): value is MediaFileDto =>
   typeof value === "object" && value !== null && typeof (value as MediaFileDto).fileId === "string";
 
@@ -65,10 +66,19 @@ export const migrateLegacyPlayer = (state: PlayerState, restamp: () => number) =
 
   const volume = asNumber(legacy.volume);
   if (volume !== null) state.transport.volume.value = Math.max(0, Math.min(1, volume));
-  if (legacy.snapCorner === "tl" || legacy.snapCorner === "tr" || legacy.snapCorner === "bl" || legacy.snapCorner === "br") {
+  if (
+    legacy.snapCorner === "tl" ||
+    legacy.snapCorner === "tr" ||
+    legacy.snapCorner === "bl" ||
+    legacy.snapCorner === "br"
+  ) {
     state.snapCorner.value = legacy.snapCorner;
   }
-  if (legacy.playerMode === "expanded" || legacy.playerMode === "pip" || legacy.playerMode === "strip") {
+  if (
+    legacy.playerMode === "expanded" ||
+    legacy.playerMode === "pip" ||
+    legacy.playerMode === "strip"
+  ) {
     state.playerMode.value = legacy.playerMode;
   }
   if (legacy.repeatMode === "off" || legacy.repeatMode === "all" || legacy.repeatMode === "one") {

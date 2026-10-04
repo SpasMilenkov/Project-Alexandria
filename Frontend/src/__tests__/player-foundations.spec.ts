@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
+import type { RangeResult } from "@/stores/player/types";
+
 import { RANGE_SIZE, SHUFFLE_BATCH_LIMIT, conflictField, shuffleApi } from "@/api/shuffle";
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { createAutoplayCountdown } from "@/stores/player/autoplay-countdown";
@@ -11,9 +13,8 @@ import { locateAnchor } from "@/stores/player/order/sequential";
 import { openShuffle } from "@/stores/player/order/shuffle";
 import { createQueue } from "@/stores/player/queue";
 import { Stale, createTransitions } from "@/stores/player/transitions";
-import type { RangeResult } from "@/stores/player/types";
-import { LIBRARY_PAGE_SIZE, indexOfAnchor, positionOf } from "@/utils/player-source";
 import { SHUFFLE_RANGE_SIZE } from "@/utils/player-shuffle-buffer";
+import { LIBRARY_PAGE_SIZE, indexOfAnchor, positionOf } from "@/utils/player-source";
 
 const file = (fileId: string, playlistItemId: string | null = null): MediaFileDto => ({
   fileId,
@@ -255,8 +256,22 @@ describe("player foundations", () => {
 
   it("keeps engine slots per kind and flushes every tracker", async () => {
     const bridge = createEngineBridge();
-    const audio = { play: vi.fn(), pause: vi.fn(), seek: vi.fn(), setVolume: vi.fn(), selectVariant: vi.fn(), setPlaybackRate: vi.fn() };
-    const video = { play: vi.fn(), pause: vi.fn(), seek: vi.fn(), setVolume: vi.fn(), selectVariant: vi.fn(), setPlaybackRate: vi.fn() };
+    const audio = {
+      play: vi.fn(),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setVolume: vi.fn(),
+      selectVariant: vi.fn(),
+      setPlaybackRate: vi.fn(),
+    };
+    const video = {
+      play: vi.fn(),
+      pause: vi.fn(),
+      seek: vi.fn(),
+      setVolume: vi.fn(),
+      selectVariant: vi.fn(),
+      setPlaybackRate: vi.fn(),
+    };
     const disposeAudio = bridge.registerEngine("audio", audio);
     bridge.registerEngine("video", video);
     bridge.play("audio");

@@ -1,7 +1,12 @@
 import { useDark, useMediaQuery } from "@vueuse/core";
 import { watchEffect } from "vue";
 
-import { AVAILABLE_BACKGROUNDS, AVAILABLE_COLORS, useSettingsStore } from "@/stores/settings";
+import {
+  AVAILABLE_BACKGROUNDS,
+  AVAILABLE_COLORS,
+  resolveFontStack,
+  useSettingsStore,
+} from "@/stores/settings";
 
 /** Convert a 6-digit hex color string to "r,g,b" */
 const hexToRgbChannels = (hex: string): string => {
@@ -88,6 +93,12 @@ export const useTheme = () => {
       "--ui-primary",
       `rgb(${resolveAccentRGB(store.accentColor)})`,
     );
+
+    document.documentElement.style.setProperty("--ui-radius", `${store.cornerRadius}rem`);
+
+    const fontStack = resolveFontStack(store.fontFamily);
+    document.documentElement.style.setProperty("--font-sans", fontStack);
+    document.documentElement.style.setProperty("--default-font-family", fontStack);
 
     const preset = resolvePreset(store.backgroundColor);
 

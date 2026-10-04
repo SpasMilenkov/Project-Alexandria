@@ -1,12 +1,17 @@
+import type { MediaFileDto } from "@/api/streaming";
+
 // oxlint-disable max-lines-per-function max-statements
 import { isAuthError } from "@/api/shuffle";
-import type { MediaFileDto } from "@/api/streaming";
 import {
   type SourceAnchor,
   type SourceDescriptor,
   fetchSequentialPage,
   toAnchor,
 } from "@/utils/player-source";
+
+import type { PlayerState } from "./state";
+import type { Guard } from "./transitions";
+import type { Order, Origin, RangeBufferHooks } from "./types";
 
 import { createSequentialOrder, locateAnchor } from "./order/sequential";
 import {
@@ -15,9 +20,6 @@ import {
   openShuffle,
   releaseShuffleSession,
 } from "./order/shuffle";
-import type { PlayerState } from "./state";
-import type { Guard } from "./transitions";
-import type { Order, Origin, RangeBufferHooks } from "./types";
 
 export type AdvanceOutcome = "advanced" | "exhausted" | "stopped";
 
@@ -159,7 +161,13 @@ export const createOrderManager = (deps: OrderDeps) => {
           }),
           discardOpened,
         );
-    await adoptShuffle(opened, ref, options.label, options.anchor ?? null, options.sessionId != null);
+    await adoptShuffle(
+      opened,
+      ref,
+      options.label,
+      options.anchor ?? null,
+      options.sessionId != null,
+    );
     return opened;
   };
 
@@ -171,10 +179,12 @@ export const createOrderManager = (deps: OrderDeps) => {
     avoidFirstFileId: string | null,
     requestId?: string,
   ): Promise<OpenedShuffle> =>
-    open(guard, ref, { label, shuffle: true, anchor, avoidFirstFileId, requestId }).then((opened) => {
-      if (!opened) throw new Error("shuffle order missing");
-      return opened;
-    });
+    open(guard, ref, { label, shuffle: true, anchor, avoidFirstFileId, requestId }).then(
+      (opened) => {
+        if (!opened) throw new Error("shuffle order missing");
+        return opened;
+      },
+    );
 
   const releaseActive = (releaseSession: boolean) => {
     const sessionId = state.context.value?.sessionId ?? null;
@@ -188,7 +198,12 @@ export const createOrderManager = (deps: OrderDeps) => {
   };
 
   const patch = (
-    fields: Partial<{ cursor: number; total: number; anchor: SourceAnchor | null; shuffled: boolean }>,
+    fields: Partial<{
+      cursor: number;
+      total: number;
+      anchor: SourceAnchor | null;
+      shuffled: boolean;
+    }>,
   ) => {
     const current = state.context.value;
     if (current) state.context.value = { ...current, ...fields };

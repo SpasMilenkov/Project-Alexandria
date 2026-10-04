@@ -1,5 +1,6 @@
-import { RANGE_SIZE } from "@/api/shuffle";
 import type { MediaFileDto } from "@/api/streaming";
+
+import { RANGE_SIZE } from "@/api/shuffle";
 import {
   type ScannedRange,
   alignRangeStart,
@@ -17,7 +18,10 @@ export interface RangeOrder extends Order {
 }
 
 const merge = (ranges: ScannedRange[]): ScannedRange[] =>
-  ranges.reduce<ScannedRange[]>((merged, range) => markRangeScanned(merged, range.from, range.to), []);
+  ranges.reduce<ScannedRange[]>(
+    (merged, range) => markRangeScanned(merged, range.from, range.to),
+    [],
+  );
 
 const retainRanges = (
   entries: Map<number, MediaFileDto>,

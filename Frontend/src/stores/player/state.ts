@@ -14,6 +14,7 @@ import type {
   RepeatMode,
   ShufflePreference,
 } from "./types";
+
 import { createTransport } from "./transport";
 
 const NOTICE_TIMEOUT_MS = 8000;
@@ -92,7 +93,12 @@ export const createPlayerState = () => {
     noticeSequence += 1;
     notices.value = [
       ...notices.value,
-      { id: noticeSequence, message, actionLabel: action?.label ?? null, onAction: action?.run ?? null },
+      {
+        id: noticeSequence,
+        message,
+        actionLabel: action?.label ?? null,
+        onAction: action?.run ?? null,
+      },
     ];
     if (noticeTimer !== null) clearTimeout(noticeTimer);
     noticeTimer = setTimeout(dismissNotices, NOTICE_TIMEOUT_MS);
