@@ -4,6 +4,8 @@ using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Files.Streaming.Shuffle;
+using Alexandria.Dto.Files.Streaming.Stats;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -136,6 +138,108 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
             TotalCount = totalCount,
             TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
         };
+    }
+
+    public async Task<IReadOnlyList<ListeningSessionRow>> GetListeningSessionRowsAsync(
+        Guid userId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
+    {
+        return await _sessions
+            .AsNoTracking()
+            .Where(s => s.StreamHistory.UserId == userId
+                        && s.StartedAt >= fromUtc
+                        && s.StartedAt < toUtc
+                        && s.EndedAt != null
+                        && s.ListenedSeconds > 0
+                        && s.StreamHistory.File.MimeType.StartsWith("audio/")
+                        && s.DeletedAt == null
+                        && s.StreamHistory.DeletedAt == null
+                        && s.StreamHistory.File.DeletedAt == null)
+            .OrderBy(s => s.StartedAt).ThenBy(s => s.Id)
+            .Select(s => new ListeningSessionRow(
+                s.Id,
+                s.StreamHistory.FileId,
+                s.StreamHistory.File.Name,
+                s.StreamHistory.File.MediaMetadata != null && s.StreamHistory.File.MediaMetadata.DeletedAt == null
+                    ? s.StreamHistory.File.MediaMetadata.Title
+                    : null,
+                s.StreamHistory.File.MediaMetadata != null && s.StreamHistory.File.MediaMetadata.DeletedAt == null
+                    ? s.StreamHistory.File.MediaMetadata.Artist
+                    : null,
+                s.StartedAt,
+                s.ListenedSeconds,
+                s.ReachedCompletionThreshold))
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<ListeningHistoryRef>> GetListeningHistoryRefsAsync(
+        Guid userId, CancellationToken ct = default, DateTime? beforeUtc = null)
+    {
+        var cutoff = beforeUtc ?? DateTime.UtcNow;
+        // Materialize only the three history fields. Record construction, grouping and
+        // conditional aggregates run in memory, outside EF's SQL translation boundary.
+        var rows = await ListeningHistoryRowsQuery(userId).ToListAsync(ct);
+        return BuildListeningHistoryRefs(rows, cutoff);
+    }
+
+    internal IQueryable<ListeningHistorySessionRow> ListeningHistoryRowsQuery(Guid userId)
+    {
+        return _sessions
+            .AsNoTracking()
+            .Where(s => s.StreamHistory.UserId == userId && s.DeletedAt == null
+                                                         && s.EndedAt != null && s.ListenedSeconds > 0
+                                                         && s.StreamHistory.DeletedAt == null &&
+                                                         s.StreamHistory.File.DeletedAt == null
+                                                         && s.StreamHistory.File.MimeType.StartsWith("audio/"))
+            .Select(s => new ListeningHistorySessionRow(s.StreamHistory.FileId,
+                s.StreamHistory.File.MediaMetadata != null && s.StreamHistory.File.MediaMetadata.DeletedAt == null
+                    ? s.StreamHistory.File.MediaMetadata.Artist
+                    : null,
+                s.StartedAt));
+    }
+
+    internal static IReadOnlyList<ListeningHistoryRef> BuildListeningHistoryRefs(
+        IEnumerable<ListeningHistorySessionRow> rows, DateTime cutoff)
+    {
+        return rows.GroupBy(s => new { s.FileId, s.Artist })
+            .Select(g => new ListeningHistoryRef(g.Key.FileId, g.Key.Artist,
+                g.Min(s => s.StartedAt),
+                g.Where(s => s.StartedAt < cutoff).Select(s => (DateTime?)s.StartedAt).Max()))
+            .OrderBy(h => h.HistoryCreatedAt).ThenBy(h => h.FileId)
+            .ToList();
+    }
+
+    internal sealed record ListeningHistorySessionRow(Guid FileId, string? Artist, DateTime StartedAt);
+
+    public async Task<IReadOnlyList<ShuffleListenRow>> GetShuffleListenRowsAsync(
+        Guid userId, IReadOnlyList<Guid> sourceFileIds, DateTime asOfUtc,
+        CancellationToken ct = default)
+    {
+        if (sourceFileIds.Count == 0)
+            return [];
+
+        return await ShuffleListenRowsQuery(userId, sourceFileIds, asOfUtc).ToListAsync(ct);
+    }
+
+    internal IQueryable<ShuffleListenRow> ShuffleListenRowsQuery(
+        Guid userId, IReadOnlyList<Guid> fileIds, DateTime asOfUtc)
+    {
+        return _sessions
+            .AsNoTracking()
+            .Where(s => s.StreamHistory.UserId == userId
+                        && fileIds.Contains(s.StreamHistory.FileId)
+                        && s.EndedAt != null
+                        && s.ListenedSeconds > 0
+                        && s.EndedAt <= asOfUtc
+                        && s.DeletedAt == null
+                        && s.StreamHistory.DeletedAt == null
+                        && s.StreamHistory.File.DeletedAt == null
+                        && s.StreamHistory.File.OwnerId == userId)
+            .Select(s => new ShuffleListenRow
+            {
+                FileId = s.StreamHistory.FileId,
+                ListenedSeconds = s.ListenedSeconds,
+                EndedAtUtc = s.EndedAt!.Value,
+            });
     }
 
     // IRepository passthrough members
