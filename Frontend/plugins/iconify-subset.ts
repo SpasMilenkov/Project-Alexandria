@@ -182,7 +182,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "script-text-outline",
     "music-note",
     "music-note-off",
-    "grip-vertical",
+    "gift-outline",
     "play-circle-outline",
     "playlist-remove",
     "chevron-left",

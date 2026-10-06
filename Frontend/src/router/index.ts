@@ -192,6 +192,26 @@ const router = createRouter({
       name: "playlist-details",
       path: "/streaming/playlists/:id",
     },
+
+    {
+      component: () => import("@/views/dashboard/streaming/wrapped/StatsHubView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "stats-hub",
+      path: "/stats",
+    },
+
+    {
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "timeline",
+      path: "/stats/timeline",
+
+      redirect: (to) => ({
+        path: "/stats",
+        query: { ...to.query, view: "timeline" },
+        hash: to.hash,
+      }),
+    },
+
     {
       component: () => import("@/views/dashboard/streaming/wrapped/WrappedView.vue"),
       meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
