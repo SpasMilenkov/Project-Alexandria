@@ -20,7 +20,7 @@ internal sealed class StreamingFileRow
 internal sealed class StreamingHistoryRow
 {
     public long PositionSeconds { get; set; }
-    public int TimesCompleted { get; set; }
+    public bool HasFinished { get; set; }
     public DateTime LastAccessedAt { get; set; }
 }
 

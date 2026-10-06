@@ -1022,6 +1022,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
                 CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
                 PlaybackVersionId = pi.TranspilationJob.VersionId,
+                CreatedAt = pi.TranspilationJob!.FileVersion.File.CreatedAt,
                 Duration = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
                     ? null
                     : pi.TranspilationJob!.FileVersion.File.MediaMetadata.Duration,
@@ -1033,6 +1034,16 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 JobId = pi.TranspilationJobId,
                 IsVideo = pi.TranspilationJob!.IsVideo,
                 SegmentPrefix = pi.TranspilationJob!.SegmentPrefix,
+                History = context.StreamHistories
+                    .Where(h => h.UserId == userId
+                                && h.FileId == pi.TranspilationJob!.FileVersion.FileId)
+                    .Select(h => new StreamingHistoryRow
+                    {
+                        PositionSeconds = h.PositionSeconds,
+                        HasFinished = h.HasFinished,
+                        LastAccessedAt = h.LastAccessedAt
+                    })
+                    .FirstOrDefault(),
             })
             .AsNoTracking()
             .ToListAsync(ct);
@@ -1130,12 +1141,22 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Name = f.Name,
             MimeType = f.MimeType,
             CurrentVersionId = f.CurrentVersionId!.Value,
+            CreatedAt = f.CreatedAt,
             Duration = f.MediaMetadata == null ? null : f.MediaMetadata.Duration,
             Artist = f.MediaMetadata!.Artist,
             Album = f.MediaMetadata.Album,
             Title = f.MediaMetadata.Title,
             Genre = f.MediaMetadata.Genre,
             Year = f.MediaMetadata.Year,
+            History = context.StreamHistories
+                .Where(h => h.UserId == userId && h.FileId == f.Id)
+                .Select(h => new StreamingHistoryRow
+                {
+                    PositionSeconds = h.PositionSeconds,
+                    HasFinished = h.HasFinished,
+                    LastAccessedAt = h.LastAccessedAt
+                })
+                .FirstOrDefault(),
             Job = context.TranspilationJobs
                 .Where(j => j.UserId == userId
                             && j.IsVideo == isVideo
@@ -1170,7 +1191,11 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             TranspilationJobId = row.Job!.Id,
             PlaylistItemId = null,
             IsVideo = row.Job.IsVideo,
-            SegmentPrefix = row.Job.SegmentPrefix
+            SegmentPrefix = row.Job.SegmentPrefix,
+            PositionSeconds = row.History?.PositionSeconds,
+            HasFinished = row.History?.HasFinished,
+            LastAccessedAt = row.History?.LastAccessedAt,
+            CreatedAt = row.CreatedAt
         };
 
     private static MediaFileDto ToMediaFileDto(PlaylistStreamingRow row) =>
@@ -1190,7 +1215,11 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             TranspilationJobId = row.JobId,
             PlaylistItemId = row.ItemId,
             IsVideo = row.IsVideo,
-            SegmentPrefix = row.SegmentPrefix
+            SegmentPrefix = row.SegmentPrefix,
+            PositionSeconds = row.History?.PositionSeconds,
+            HasFinished = row.History?.HasFinished,
+            LastAccessedAt = row.History?.LastAccessedAt,
+            CreatedAt = row.CreatedAt
         };
 
     internal IQueryable<ShuffleCandidate> ShuffleLibraryCandidatesQuery(
@@ -1288,6 +1317,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 Name = f.Name,
                 MimeType = f.MimeType,
                 CurrentVersionId = f.CurrentVersionId!.Value,
+                CreatedAt = f.CreatedAt,
                 Duration = f.MediaMetadata == null ? null : (double?)f.MediaMetadata.Duration,
                 Artist = f.MediaMetadata!.Artist,
                 Album = f.MediaMetadata.Album,
@@ -1295,6 +1325,15 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 Genre = f.MediaMetadata.Genre,
                 Year = f.MediaMetadata.Year,
                 LiveVersionIds = f.Versions.Where(v => v.DeletedAt == null).Select(v => v.Id).ToList(),
+                History = context.StreamHistories
+                    .Where(h => h.UserId == userId && h.FileId == f.Id)
+                    .Select(h => new StreamingHistoryRow
+                    {
+                        PositionSeconds = h.PositionSeconds,
+                        HasFinished = h.HasFinished,
+                        LastAccessedAt = h.LastAccessedAt
+                    })
+                    .FirstOrDefault(),
             })
             .ToListAsync(ct);
 
@@ -1354,6 +1393,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 PlaylistItemId = null,
                 IsVideo = chosen.IsVideo,
                 SegmentPrefix = chosen.SegmentPrefix,
+                PositionSeconds = row.History?.PositionSeconds,
+                HasFinished = row.History?.HasFinished,
+                LastAccessedAt = row.History?.LastAccessedAt,
+                CreatedAt = row.CreatedAt,
             });
         }
 
@@ -1405,6 +1448,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
                 CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
                 PlaybackVersionId = pi.TranspilationJob.VersionId,
+                CreatedAt = pi.TranspilationJob!.FileVersion.File.CreatedAt,
                 Duration = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
                     ? null
                     : (double?)pi.TranspilationJob!.FileVersion.File.MediaMetadata.Duration,
@@ -1416,6 +1460,16 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 JobId = pi.TranspilationJobId,
                 IsVideo = pi.TranspilationJob!.IsVideo,
                 SegmentPrefix = pi.TranspilationJob!.SegmentPrefix,
+                History = context.StreamHistories
+                    .Where(h => h.UserId == userId
+                                && h.FileId == pi.TranspilationJob!.FileVersion.FileId)
+                    .Select(h => new StreamingHistoryRow
+                    {
+                        PositionSeconds = h.PositionSeconds,
+                        HasFinished = h.HasFinished,
+                        LastAccessedAt = h.LastAccessedAt
+                    })
+                    .FirstOrDefault(),
             })
             .AsNoTracking()
             .ToListAsync(ct);
@@ -1448,7 +1502,17 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 f.Name,
                 f.MimeType,
                 CurrentVersionId = f.CurrentVersionId!.Value,
+                f.CreatedAt,
                 Metadata = f.MediaMetadata,
+                History = context.StreamHistories
+                    .Where(h => h.UserId == userId && h.FileId == f.Id)
+                    .Select(h => new StreamingHistoryRow
+                    {
+                        PositionSeconds = h.PositionSeconds,
+                        HasFinished = h.HasFinished,
+                        LastAccessedAt = h.LastAccessedAt
+                    })
+                    .FirstOrDefault(),
                 VersionIds = f.Versions
                     .Where(v => v.DeletedAt == null)
                     .Select(v => v.Id)
@@ -1495,7 +1559,11 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Year = file.Metadata.Year,
             TranspilationJobId = job.Id,
             IsVideo = job.IsVideo,
-            SegmentPrefix = job.SegmentPrefix
+            SegmentPrefix = job.SegmentPrefix,
+            PositionSeconds = file.History?.PositionSeconds,
+            HasFinished = file.History?.HasFinished,
+            LastAccessedAt = file.History?.LastAccessedAt,
+            CreatedAt = file.CreatedAt
         };
     }
 
