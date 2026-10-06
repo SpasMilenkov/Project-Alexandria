@@ -60,6 +60,7 @@ export interface StartSessionRequest {
 export interface CloseSessionRequest {
   endPositionSeconds: number;
   listenedSeconds: number;
+  playbackFinished?: boolean;
 }
 
 export interface UpdateTranspilationJobRequest {

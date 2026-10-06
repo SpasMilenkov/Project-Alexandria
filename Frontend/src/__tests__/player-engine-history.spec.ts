@@ -171,3 +171,31 @@ describe("player-engine-history", () => {
     });
   });
 });
+
+describe("player-engine-history finishing", () => {
+  it("preserves finishing when retrying a failed close", async () => {
+    const ctx = setup();
+    ctx.setCurrentFile("a");
+    ctx.tracker.openNew("a", 590);
+    await vi.waitFor(() => expect(ctx.calls.starts).toHaveLength(1));
+
+    ctx.failNextCloses(1);
+    ctx.tracker.closeActive({
+      endPositionSeconds: 600,
+      listenedSeconds: 10,
+      playbackFinished: true,
+    });
+
+    await expect(ctx.tracker.flush()).rejects.toThrow();
+    await ctx.tracker.flush();
+
+    expect(ctx.calls.closes).toEqual([
+      {
+        sessionId: "session-a",
+        endPositionSeconds: 600,
+        listenedSeconds: 10,
+        playbackFinished: true,
+      },
+    ]);
+  });
+});
