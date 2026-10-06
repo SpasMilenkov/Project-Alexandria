@@ -71,6 +71,7 @@ public static class ServiceExtensions
         services.AddScoped<IListeningStatsService, ListeningStatsService>();
         services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();
         services.AddScoped<ISummaryGenerator, WrappedSummaryGenerator>();
+        services.AddScoped<IOverviewSummaryService, OverviewSummaryService>();
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
         services.AddScoped<IAutoPlaylistGroupingService, AutoPlaylistGroupingService>();
