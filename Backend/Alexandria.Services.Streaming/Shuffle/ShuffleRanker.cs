@@ -1,3 +1,4 @@
+using Alexandria.Common;
 using Alexandria.Dto.Files.Streaming.Shuffle;
 
 namespace Alexandria.Services.Streaming.Shuffle;
@@ -8,18 +9,10 @@ public static class ShuffleRanker
     public const double BaseWeight = 1.0;
     public const double RecencyGain = 3.0;
     public const double HalfLifeDays = 7.0;
-    public const double MeaningfulListenSeconds = 30.0;
+    public const double MeaningfulListenSeconds = ListeningPlayQualification.MinimumSeconds;
 
     public static double ComputeThreshold(double? durationSeconds)
-    {
-        if (!durationSeconds.HasValue
-            || double.IsNaN(durationSeconds.Value)
-            || double.IsInfinity(durationSeconds.Value)
-            || durationSeconds.Value <= 0)
-            return MeaningfulListenSeconds;
-
-        return Math.Min(MeaningfulListenSeconds, durationSeconds.Value / 2);
-    }
+        => ListeningPlayQualification.Threshold(durationSeconds);
 
     public static double ComputeWeight(DateTime? lastHeardUtc, DateTime asOfUtc)
     {
@@ -33,12 +26,11 @@ public static class ShuffleRanker
     public static DateTime? GetLastHeard(
         IEnumerable<ShuffleListenRow> rowsForFile, double? durationSeconds, DateTime asOfUtc)
     {
-        var threshold = ComputeThreshold(durationSeconds);
         DateTime? lastHeard = null;
 
         foreach (var row in rowsForFile)
         {
-            if (row.ListenedSeconds < threshold)
+            if (!ListeningPlayQualification.IsQualified(row.ListenedSeconds, durationSeconds))
                 continue;
             if (lastHeard.HasValue && row.EndedAtUtc <= lastHeard.Value)
                 continue;
