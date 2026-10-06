@@ -25,7 +25,7 @@ export const STREAMING_QUERY_KEYS = {
     ...STREAMING_QUERY_KEYS.root,
     "history",
     query.fileId ?? null,
-    query.completed ?? null,
+    query.qualified ?? null,
     query.lastAccessedAfter ?? null,
     query.lastAccessedBefore ?? null,
     query.currentPage,

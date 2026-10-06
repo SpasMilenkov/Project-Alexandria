@@ -56,7 +56,7 @@ const resumeCandidate = computed(() => {
   if (items.length === 0) return null;
   const byId = new Map(items.map((file) => [file.fileId, file]));
   for (const entry of recentEntries.value.slice(0, 10)) {
-    const isResumable = entry.positionSeconds > 5 && (entry.timesCompleted ?? 0) === 0;
+    const isResumable = entry.positionSeconds > 5 && !entry.hasFinished;
     if (isResumable) {
       const file = byId.get(entry.fileId);
       if (file) return { file, positionSeconds: entry.positionSeconds };

@@ -45,7 +45,7 @@ export interface TranspilationJobQuery {
 
 export interface StreamHistoryQuery {
   fileId?: string;
-  completed?: boolean;
+  qualified?: boolean;
   lastAccessedAfter?: string;
   lastAccessedBefore?: string;
   currentPage: number;
@@ -79,8 +79,9 @@ export interface StreamHistoryResponse {
   positionSeconds: number;
   maxPositionReachedSeconds: number;
   totalListenedSeconds: number;
-  timesCompleted: number;
-  lastCompletedAt: string | null;
+  qualifiedPlayCount: number;
+  lastPlayedAt: string | null;
+  hasFinished: boolean;
   lastAccessedAt: string;
   createdAt: string;
   updatedAt: string | null;
@@ -92,7 +93,8 @@ export interface StreamSessionResponse {
   startPositionSeconds: number;
   endPositionSeconds: number;
   listenedSeconds: number;
-  reachedCompletionThreshold: boolean;
+  isQualifiedPlay: boolean;
+  playbackFinished: boolean;
   startedAt: string;
   endedAt: string | null;
 }
@@ -148,6 +150,7 @@ export interface MediaFileDto {
   playlistItemId?: string | null;
   isVideo: boolean;
   segmentPrefix: string | null;
+  hasFinished?: boolean | null;
 }
 
 export const streamingApi = {
