@@ -64,6 +64,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<EssentiaBatchFile> EssentiaBatchFiles { get; set; }
     public DbSet<OperationalEvent> OperationalEvents { get; set; }
     public DbSet<Job> Jobs { get; set; }
+    public DbSet<OverviewSummary> OverviewSummaries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -115,6 +116,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new JobConfiguration());
         builder.ApplyConfiguration(new PlaylistConfiguration());
         builder.ApplyConfiguration(new PlaylistItemConfiguration());
+        builder.ApplyConfiguration(new OverviewSummaryConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
