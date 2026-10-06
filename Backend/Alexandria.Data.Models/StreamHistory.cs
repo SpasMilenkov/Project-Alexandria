@@ -11,8 +11,9 @@ public class StreamHistory : IBase
     public long PositionSeconds { get; set; }
     public long MaxPositionReachedSeconds { get; set; }
     public long TotalListenedSeconds { get; set; }
-    public int TimesCompleted { get; set; }
-    public DateTime? LastCompletedAt { get; set; }
+    public int QualifiedPlayCount { get; set; }
+    public DateTime? LastPlayedAt { get; set; }
+    public bool HasFinished { get; set; }
 
     public ICollection<StreamSession> Sessions { get; set; } = [];
 
@@ -22,5 +23,5 @@ public class StreamHistory : IBase
     public DateTime? DeletedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
 
-    public bool HasCompleted => TimesCompleted > 0;
+    public bool HasQualifiedPlays => QualifiedPlayCount > 0;
 }

@@ -9,7 +9,8 @@ public sealed class StreamSessionDto
     public long StartPositionSeconds { get; init; }
     public long EndPositionSeconds { get; init; }
     public long ListenedSeconds { get; init; }
-    public bool ReachedCompletionThreshold { get; init; }
+    public bool IsQualifiedPlay { get; init; }
+    public bool PlaybackFinished { get; init; }
     public DateTime StartedAt { get; init; }
     public DateTime? EndedAt { get; init; }
 
@@ -20,7 +21,8 @@ public sealed class StreamSessionDto
         StartPositionSeconds = entity.StartPositionSeconds,
         EndPositionSeconds = entity.EndPositionSeconds,
         ListenedSeconds = entity.ListenedSeconds,
-        ReachedCompletionThreshold = entity.ReachedCompletionThreshold,
+        IsQualifiedPlay = entity.IsQualifiedPlay,
+        PlaybackFinished = entity.PlaybackFinished,
         StartedAt = entity.StartedAt,
         EndedAt = entity.EndedAt,
     };

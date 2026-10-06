@@ -21,7 +21,11 @@ public class StreamSessionConfiguration : IEntityTypeConfiguration<StreamSession
             .HasDefaultValue(0L)
             .IsRequired();
 
-        builder.Property(e => e.ReachedCompletionThreshold)
+        builder.Property(e => e.IsQualifiedPlay)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(e => e.PlaybackFinished)
             .HasDefaultValue(false)
             .IsRequired();
 
@@ -43,7 +47,7 @@ public class StreamSessionConfiguration : IEntityTypeConfiguration<StreamSession
 
         // useful for the drop-off analysis query: where in files do people stop?
         builder.HasIndex(e => e.StreamHistoryId);
-        builder.HasIndex(e => e.ReachedCompletionThreshold);
+        builder.HasIndex(e => e.IsQualifiedPlay);
 
         builder.ToTable("StreamSession");
     }
