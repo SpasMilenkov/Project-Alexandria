@@ -123,13 +123,16 @@
             <div>
               <input
                 type="range"
-                class="w-full accent-primary"
+                class="audio-player-range w-full"
+                :style="{ '--player-range-fill': `${progress}%` }"
                 :max="duration || 0"
                 :step="0.5"
                 :value="currentTime"
                 aria-label="Seek"
+                :aria-valuetext="`${formatTime(currentTime)} of ${formatTime(duration)}`"
                 @input="onSeekInput"
               />
+
               <div class="flex justify-between">
                 <span class="seek-time text-gray-500 dark:text-gray-500">{{
                   formatTime(currentTime)
@@ -232,14 +235,17 @@
                 >
                   <input
                     type="range"
-                    class="volume-vertical accent-primary"
+                    class="audio-player-range audio-player-range--vertical"
+                    :style="{ '--player-range-fill': `${volume * 100}%` }"
                     :min="0"
                     :max="1"
                     :step="0.02"
                     :value="volume"
                     aria-label="Volume"
+                    :aria-valuetext="`${Math.round(volume * 100)} percent`"
                     @input="onVolumeInput"
                   />
+
                   <button
                     class="w-8 h-8 flex-shrink-0 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                     :title="muteLabel"
@@ -286,6 +292,7 @@ import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
+import "@/assets/player-range.css";
 import LyricsContent from "@/components/streaming/LyricsContent.vue";
 import PlayerArtwork from "@/components/streaming/PlayerArtwork.vue";
 import QueueContent from "@/components/streaming/QueueContent.vue";
@@ -554,14 +561,6 @@ onBeforeUnmount(() => {
 .seek-time {
   font-size: 0.6875rem;
   font-variant-numeric: tabular-nums;
-}
-
-.volume-vertical {
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 2rem;
-  height: 6rem;
-  cursor: pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {
