@@ -1,37 +1,32 @@
+using System.Text.Json.Serialization;
+
 namespace Builder.Models;
-
-public enum Environment
-{
-    Development,
-    LocalPreview,
-    Deployment
-}
-
-public enum S3Provider
-{
-    Garage,
-    MinIO,
-    RustFS
-}
 
 public class InstallationConfig
 {
-    public Environment Environment { get; set; }
-    public S3Provider S3Provider { get; set; }
+    public int SchemaVersion { get; set; } = 2;
+    public string ProjectName { get; set; } = string.Empty;
+    public string SourceVersion { get; set; } = "unknown";
+    public string Stage { get; set; } = "draft";
+    public string GenerationId { get; set; } = string.Empty;
+    public bool PreserveFixedContainerNames { get; set; }
+    public Dictionary<string, string> VolumeNames { get; set; } = new();
+    public PublicEndpoint PublicEndpoint { get; set; } = new();
+    public CertificateSettings Certificates { get; set; } = new();
+    public StorageSettings Storage { get; set; } = new();
+    public string? ModelSourceDirectory { get; set; }
+    public bool AllowModelDownloads { get; set; }
     public FeatureSelection Features { get; set; } = new();
     public Dictionary<string, int> Ports { get; set; } = new();
     public Dictionary<string, int> OriginalPorts { get; set; } = new();
+    [JsonIgnore]
     public Dictionary<string, string> Credentials { get; set; } = new();
-    public string InstallPath { get; set; } = string.Empty;
-    public string ProjectSourcePath { get; set; } = string.Empty;
-    public DateTime InstalledAt { get; set; }
-}
 
-public class PortCheckResult
-{
-    public int Port { get; set; }
-    public bool IsAvailable { get; set; }
-    public string ServiceName { get; set; } = string.Empty;
-    public string ProcessBlocking { get; set; } = string.Empty;
-    public int SuggestedAlternative { get; set; }
+    [JsonIgnore]
+    public Dictionary<string, string> EnvironmentValues { get; set; } = new();
+    // Where the generated stack lives (docker-compose.yml, .env, garage.toml)
+    public string InstallPath { get; set; } = string.Empty;
+    // The repository checkout used as the read-only build source.
+    public string SourceRoot { get; set; } = string.Empty;
+    public DateTimeOffset InstalledAt { get; set; }
 }

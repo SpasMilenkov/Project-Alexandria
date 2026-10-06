@@ -3,11 +3,14 @@ using System.Text.Json.Serialization;
 namespace Builder.Models;
 
 [JsonSerializable(typeof(InstallationConfig))]
+[JsonSerializable(typeof(GenerationCheckpoint))]
+[JsonSerializable(typeof(PublicEndpoint))]
+[JsonSerializable(typeof(CertificateSettings))]
 [JsonSerializable(typeof(FeatureSelection))]
 [JsonSerializable(typeof(SystemResources))]
 [JsonSerializable(typeof(PortMapping))]
-[JsonSerializable(typeof(Environment))]
-[JsonSerializable(typeof(S3Provider))]
+[JsonSerializable(typeof(GarageCredentialSet))]
+[JsonSerializable(typeof(UiPreferences))]
 [JsonSerializable(typeof(Dictionary<string, int>))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(List<PortMapping>))]

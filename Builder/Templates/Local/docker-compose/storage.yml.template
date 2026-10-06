@@ -1,0 +1,127 @@
+  postgres:
+    image: postgres:16-alpine@sha256:4327b9fd295502f326f44153a1045a7170ddbfffed1c3829798328556cfd09e2
+    container_name: alexandria-local-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:?POSTGRES_EXPORTER_PASSWORD is required}
+
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+      - {{SOURCE_ROOT}}/scripts/postgres/init:/docker-entrypoint-initdb.d:ro
+
+    networks:
+      - data-net
+
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  garage:
+    image: dxflrs/garage:v2.2.0@sha256:45a61ce3f7c9c24fc23d9ed2b09b27ed560ab87b34605d175d5c588f539c24e4
+    container_name: alexandria-local-garage
+    restart: unless-stopped
+
+    environment:
+      RUST_LOG: garage=info
+
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+      - garage_local_meta_data:/var/lib/garage/meta
+      - garage_local_storage_data:/var/lib/garage/data
+
+    networks:
+      - app-net # nginx proxies S3 requests from browser
+      - data-net # api and workers talk to it directly
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  garage-init:
+    build:
+      context: {{SOURCE_ROOT}}
+      dockerfile: scripts/garage-init/Dockerfile
+    container_name: alexandria-garage-init
+    restart: no
+
+    depends_on:
+      garage:
+        condition: service_started
+
+    environment:
+      GARAGE_CAPACITY: ${GARAGE_CAPACITY:-}
+      GARAGE_CAPACITY_CHANGE_REQUESTED: "${GARAGE_CAPACITY_CHANGE_REQUESTED:-false}"
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
+      ALEXANDRIA_GENERATION_ID: ${ALEXANDRIA_GENERATION_ID:?ALEXANDRIA_GENERATION_ID is required}
+      GARAGE_FORCE_CREDENTIAL_EXPORT: "${GARAGE_FORCE_CREDENTIAL_EXPORT:-false}"
+
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_local_meta_data:/var/lib/garage/meta
+      - ./init-output:/output
+      - {{SOURCE_ROOT}}/scripts/garage-init/cors.json:/config/cors.json:ro
+
+    networks:
+      - data-net
+
+  rabbitmq-config:
+    image: alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+    container_name: alexandria-rabbitmq-config
+    restart: "no"
+
+    volumes:
+      - ./rabbitmq/definitions.json:/input/definitions.json:ro
+      - rabbitmq_definitions:/output
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - umask 077 && cp /input/definitions.json /output/definitions.json.tmp && chown 100:101 /output/definitions.json.tmp && chmod 0600 /output/definitions.json.tmp && mv /output/definitions.json.tmp /output/definitions.json
+
+  rabbitmq:
+    image: rabbitmq:4.2.5-management-alpine@sha256:b618738ea52cb6d0073ee9f0412ede133411ecacd7afa40f17be748a6d9a9ee1
+    container_name: alexandria-local-rabbitmq
+    restart: unless-stopped
+
+    depends_on:
+      rabbitmq-config:
+        condition: service_completed_successfully
+
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-dev_admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-alexandria}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,error},{default,error}] disk_free_limit 2147483648
+
+    volumes:
+      - rabbitmq_local_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - {{SOURCE_ROOT}}/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - rabbitmq_definitions:/etc/rabbitmq/definitions:ro
+
+    networks:
+      - data-net
+{{RABBITMQ_ESSENTIA_NET}}
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

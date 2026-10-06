@@ -1,0 +1,172 @@
+  api:
+    build:
+      context: {{SOURCE_ROOT}}/Backend
+      dockerfile: Alexandria.Api/Dockerfile
+    container_name: alexandria-api
+    labels:
+      - "logs.collect=true"
+    restart: on-failure:3
+
+    environment:
+      Serilog__MinimumLevel__Default: Information
+      Serilog__MinimumLevel__Override__Microsoft.AspNetCore: Warning
+      Serilog__MinimumLevel__Override__System: Warning
+      Serilog__WriteTo__0__Name: Console
+      ConnectionStrings__AlexandriaPostgres: ${DB_CONNECTION_STRING:?DB_CONNECTION_STRING is required}
+      S3Storage__Provider: Garage
+      S3Storage__Endpoint: http://garage:3900
+      S3Storage__Region: garage
+      S3Storage__UploadBucket: alexandria-files
+      S3Storage__PreviewBucket: alexandria-previews
+      S3Storage__TempBucket: alexandria-temp
+      S3Storage__ImagesBucket: alexandria-images
+      S3Storage__StreamingBucket: alexandria-streaming
+      S3Storage__ProviderSettings__Garage__Region: garage
+      S3Storage__ProviderSettings__Garage__ForcePathStyle: "true"
+      S3Storage__AccessKey: ${GARAGE_S3_ACCESS_KEY:?GARAGE_S3_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_SECRET_KEY:?GARAGE_S3_SECRET_KEY is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      S3Storage__ProviderSettings__Garage__MetricsToken: ${GARAGE_S3_METRICS_TOKEN:?GARAGE_S3_METRICS_TOKEN is required}
+      S3Storage__ProviderSettings__Garage__MetricsUrl: http://garage:3903/metrics
+      S3Storage__BaseUrl: ${BASE_URL:?BASE_URL is required}
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__UserName: ${API_RABBITMQ_USER:?API_RABBITMQ_USER is required}
+      RabbitMQ__ChannelPoolSize: "10"
+      RabbitMQ__Password: ${API_RABBITMQ_PASSWORD:?API_RABBITMQ_PASSWORD is required}
+      RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
+      Jwt__Secret: ${JWT_SECRET:?JWT_SECRET is required}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Csrf__SecretKey: ${CSRF_SECRET:?CSRF_SECRET is required}
+      HealthChecks__Database__Enabled: "true"
+      HealthChecks__Storage__Enabled: "true"
+      HealthChecks__MessageBroker__Enabled: "true"
+      HealthChecks__Workers__0__Name: DocumentWorker
+      HealthChecks__Workers__0__Url: http://document-worker:8080/health
+      HealthChecks__Workers__0__Enabled: "${DOCUMENT_PREVIEWS_ENABLED:-false}"
+      HealthChecks__Workers__1__Name: MediaWorker
+      HealthChecks__Workers__1__Url: http://media-worker:8080/health
+      HealthChecks__Workers__1__Enabled: "${MEDIA_WORKER_ENABLED:-false}"
+      HealthChecks__Workers__2__Name: TranspilationWorker
+      HealthChecks__Workers__2__Url: http://transpilation-worker:8080/health
+      HealthChecks__Workers__2__Enabled: "${STREAMING_ENABLED:-false}"
+      HealthChecks__Workers__3__Name: LyricsWorker
+      HealthChecks__Workers__3__Url: http://lyrics-worker:8080/health
+      HealthChecks__Workers__3__Enabled: "${LYRICS_ENABLED:-false}"
+      HealthChecks__Workers__4__Name: MediaMetadataWorker
+      HealthChecks__Workers__4__Url: http://media-metadata-worker:8080/health
+      HealthChecks__Workers__4__Enabled: "${METADATA_WORKER_ENABLED:-false}"
+      HealthChecks__Workers__5__Name: PlaylistWorker
+      HealthChecks__Workers__5__Url: http://playlist-worker:8080/health
+      HealthChecks__Workers__5__Enabled: "${PLAYLIST_WORKER_ENABLED:-false}"
+      Features__DocumentPreviews: "${DOCUMENT_PREVIEWS_ENABLED:-false}"
+      Features__MediaPreviews: "${MEDIA_PROCESSING_ENABLED:-false}"
+      Features__AdaptiveStreaming: "${STREAMING_ENABLED:-false}"
+      Features__AudioAnalysis: "${AUDIO_ANALYSIS_ENABLED:-false}"
+      Features__Lyrics: "${LYRICS_ENABLED:-false}"
+      Features__Autotagging: "${AUTOTAGGING_ENABLED:-false}"
+      ADMIN__EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL is required}
+      ADMIN__PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      ADMIN__NAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required}
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGINS__0:?CORS_ALLOWED_ORIGINS__0 is required}
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+
+    networks:
+      - app-net # nginx reaches it here
+      - data-net # reaches postgres, garage, rabbitmq
+{{API_OBSERVABILITY_NET}}
+
+    healthcheck:
+      test: ["CMD", "dotnet", "Alexandria.Api.dll", "--healthcheck", "http://127.0.0.1:8080/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  frontend:
+    build:
+      context: {{SOURCE_ROOT}}/Frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_STREAMING_ENABLED: "true"
+        VITE_PBKDF2_ITERATIONS: "${PBKDF2_ITERATION_COUNT:?PBKDF2_ITERATION_COUNT is required}"
+        VITE_AUTOTAGGING_ENABLED: "${AUTOTAGGING_ENABLED:?AUTOTAGGING_ENABLED is required}"
+    container_name: alexandria-frontend
+    restart: always
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    networks:
+      - app-net
+
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  nginx:
+    build:
+      context: {{SOURCE_ROOT}}/nginx
+      dockerfile: Dockerfile
+    container_name: alexandria-nginx
+    restart: unless-stopped
+
+    ports:
+      - "{{HTTPS_PORT}}:443"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs/server.crt:/etc/nginx/certs/server.crt:ro
+      - ./nginx/certs/server.key:/etc/nginx/certs/server.key:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8081/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+    depends_on:
+      frontend:
+        condition: service_started
+      api:
+        condition: service_healthy # wait for the healthcheck to pass
+
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+
+    networks:
+      - frontend-net # faces the outside world
+      - app-net # reaches frontend, api, garage
+{{NGINX_OBSERVABILITY_NET}}
