@@ -1,4 +1,5 @@
-import { type Ref, computed, onMounted, onUnmounted, ref, watch } from "vue";
+// oxlint-disable max-statements max-lines-per-function
+import { type Ref, computed, onUnmounted, ref, watch } from "vue";
 
 import { attemptRefresh } from "@/api/client";
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
@@ -550,14 +551,6 @@ export const usePlayerEngine = (
     },
   );
 
-  const onVisibilityChange = () => {
-    if (document.hidden) closeActiveSession();
-  };
-
-  onMounted(() => {
-    document.addEventListener("visibilitychange", onVisibilityChange);
-  });
-
   onUnmounted(async () => {
     clearMediaSession();
     closeActiveSession();
@@ -573,7 +566,6 @@ export const usePlayerEngine = (
       await shakaPlayer.destroy();
       shakaPlayer = null;
     }
-    document.removeEventListener("visibilitychange", onVisibilityChange);
   });
 
   return {
