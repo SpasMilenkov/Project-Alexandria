@@ -36,6 +36,7 @@ public static class ServiceExtensions
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
         services.AddScoped<IStreamHistoryRepository, StreamHistoryRepository>();
+        services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();
         services.AddScoped<IStreamingRepresentationRepository, StreamingRepresentationRepository>();
         services.AddScoped<ITranspilationJobRepository, TranspilationJobRepository>();
         services.AddScoped<IPolicyRuleRepository, PolicyRuleRepository>();

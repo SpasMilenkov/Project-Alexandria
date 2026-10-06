@@ -31,9 +31,12 @@ public interface IUnitOfWork : IDisposable
     IFileEnrichmentRepository FileEnrichments { get; }
     IOperationalEventRepository OperationalEvents { get; }
     IJobRepository Jobs { get; }
+    IOverviewSummaryRepository OverviewSummaries { get; }
 
     public Task BeginTransactionAsync(CancellationToken cancellationToken = default);
+
     public Task CommitAsync(CancellationToken cancellationToken = default);
+
     public Task RollbackAsync(CancellationToken cancellationToken = default);
     public Task SaveChangesAsync(CancellationToken cancellationToken = default);
     public ValueTask DisposeAsync();

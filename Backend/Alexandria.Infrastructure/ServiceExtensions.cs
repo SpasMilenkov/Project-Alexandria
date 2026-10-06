@@ -68,6 +68,7 @@ public static class ServiceExtensions
         services.AddSingleton<ShuffleSessionStore>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IListeningStatsService, ListeningStatsService>();
+        services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
         services.AddScoped<IAutoPlaylistGroupingService, AutoPlaylistGroupingService>();
