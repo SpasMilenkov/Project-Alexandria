@@ -131,7 +131,6 @@
 </template>
 
 <script setup lang="ts">
-import { useToast } from "@nuxt/ui/composables/useToast";
 import { useQuery } from "@pinia/colada";
 import { useIntersectionObserver } from "@vueuse/core";
 import { isAxiosError } from "axios";

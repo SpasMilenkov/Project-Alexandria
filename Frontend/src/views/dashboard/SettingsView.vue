@@ -325,41 +325,42 @@ const {
               class="fixed z-[70] max-h-105 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-default shadow-lg p-1.5"
               :style="resultsStyle"
             >
-            <div
-              v-if="searchResults.length === 0"
-              class="px-3 py-6 text-center text-sm text-gray-600 dark:text-gray-400"
-            >
-              No settings match that search
-            </div>
-            <button
-              v-for="(entry, index) in searchResults"
-              :id="`settings-result-${index}`"
-              :key="`${entry.section}-${entry.title}`"
-              type="button"
-              role="option"
-              :aria-selected="index === searchActive"
-              class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors"
-              :class="
-                index === searchActive
-                  ? 'bg-gray-100 dark:bg-neutral-800 ring-1 ring-primary'
-                  : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
-              "
-              @mousedown.prevent="goToEntry(entry)"
-              @mousemove="searchActive = index"
-            >
-              <span
-                class="text-sm font-medium text-gray-900 dark:text-gray-100"
-                v-html="highlight(entry.title)"
-              />
-              <span class="text-xs text-gray-500 dark:text-gray-400 truncate">{{
-                entry.desc
-              }}</span>
-              <span
-                v-if="entry.value()"
-                class="ml-auto shrink-0 text-xs text-gray-600 dark:text-gray-400"
-                >{{ entry.value() }}</span
+              <div
+                v-if="searchResults.length === 0"
+                class="px-3 py-6 text-center text-sm text-gray-600 dark:text-gray-400"
               >
-            </button>
+                No settings match that search
+              </div>
+
+              <button
+                v-for="(entry, index) in searchResults"
+                :id="`settings-result-${index}`"
+                :key="`${entry.section}-${entry.title}`"
+                type="button"
+                role="option"
+                :aria-selected="index === searchActive"
+                class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors"
+                :class="
+                  index === searchActive
+                    ? 'bg-gray-100 dark:bg-neutral-800 ring-1 ring-primary'
+                    : 'hover:bg-gray-100 dark:hover:bg-neutral-800'
+                "
+                @mousedown.prevent="goToEntry(entry)"
+                @mousemove="searchActive = index"
+              >
+                <span
+                  class="text-sm font-medium text-gray-900 dark:text-gray-100"
+                  v-html="highlight(entry.title)"
+                />
+                <span class="text-xs text-gray-500 dark:text-gray-400 truncate">{{
+                  entry.desc
+                }}</span>
+                <span
+                  v-if="entry.value()"
+                  class="ml-auto shrink-0 text-xs text-gray-600 dark:text-gray-400"
+                  >{{ entry.value() }}</span
+                >
+              </button>
             </div>
           </Teleport>
         </div>
