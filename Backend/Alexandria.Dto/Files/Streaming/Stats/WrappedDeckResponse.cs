@@ -14,6 +14,7 @@ public sealed record WrappedSummaryFacts
 {
     public long Seconds { get; init; }
     public int Sessions { get; init; }
+    public int QualifiedPlayCount { get; init; }
     public int Tracks { get; init; }
     public int Artists { get; init; }
     public int ActiveDays { get; init; }

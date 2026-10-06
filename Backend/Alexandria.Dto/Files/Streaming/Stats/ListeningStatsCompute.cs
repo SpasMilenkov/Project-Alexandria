@@ -14,7 +14,9 @@ public sealed record ListeningSessionRow(
     string? Artist,
     DateTime StartedAt,
     long ListenedSeconds,
-    bool ReachedCompletionThreshold);
+    bool PlaybackFinished,
+    double? DurationSeconds = null,
+    bool? QualifiedPlay = null);
 
 /// <summary>
 /// Whole-history lightweight ref feeding the discovery metrics. One row per
@@ -32,7 +34,8 @@ public sealed record RankedArtist(
     string Key,
     string DisplayName,
     long TotalListenedSeconds,
-    int SessionCount);
+    int SessionCount,
+    int QualifiedPlayCount = 0);
 
 /// <summary>One ranked song entry, ordered by total listened seconds descending.</summary>
 public sealed record RankedSong(
@@ -40,10 +43,11 @@ public sealed record RankedSong(
     string DisplayTitle,
     string? DisplayArtist,
     long TotalListenedSeconds,
-    int SessionCount);
+    int SessionCount,
+    int QualifiedPlayCount = 0);
 
-/// <summary>Replay extreme: most sessions on one file.</summary>
-public sealed record ReplayExtreme(Guid FileId, int SessionCount, int ActiveDays = 0);
+/// <summary>Replay extreme: most qualified plays on one file.</summary>
+public sealed record ReplayExtreme(Guid FileId, int QualifiedPlayCount, int ActiveDays = 0);
 
 /// <summary>Duration extreme: most seconds on one file.</summary>
 public sealed record DurationExtreme(Guid FileId, long TotalListenedSeconds);
@@ -87,6 +91,7 @@ public sealed record RawListeningStats(
     double CompletionRate,
     int CompletedSessions)
 {
+    public int QualifiedPlayCount { get; init; }
     public ListeningInsights Insights { get; init; } = new();
 }
 
