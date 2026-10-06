@@ -14,4 +14,8 @@
         <PackageReference Include="System.Threading.RateLimiting"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
+    </ItemGroup>
+
 </Project>
