@@ -6,6 +6,7 @@ using Alexandria.Dto.Files.Streaming;
 using Alexandria.Tests.Common.Builders;
 using Alexandria.Tests.Common.Fixtures;
 using AwesomeAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -138,5 +139,57 @@ public class StreamingSourceTests(AlexandriaFixture fixture) : FullStackTestBase
             $"{Route}?playlistId={Guid.NewGuid()}&page=1&pageSize=2&isVideo=false",
             cancellationToken: ct);
         foreign.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Search_returns_ranked_owned_matches_with_pagination()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
+        var ct = TestContext.Current.CancellationToken;
+
+        var first = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "track-a.mp3", SeedBase.AddMinutes(1), 120.0, ct: ct);
+
+        var second = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "track-b.mp3", SeedBase.AddMinutes(2), 120.0, ct: ct);
+
+        var fallback = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "harbor-mixtape.mp3", SeedBase.AddMinutes(3), 120.0, ct: ct);
+
+        var (_, foreignOwnerId) = await CreateOtherUserAsync();
+
+        var foreign = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, foreignOwnerId, "harbor-nights.mp3", SeedBase.AddMinutes(4), 120.0, ct: ct);
+
+        foreach (var (seed, title) in new[]
+                 {
+                     (first, "Neon Harbor One"),
+                     (second, "Neon Harbor Two"),
+                     (foreign, "Harbor Nights"),
+                 })
+        {
+            var metadata = await db.MediaMetadata.SingleAsync(m => m.FileId == seed.FileId, ct);
+
+            metadata.Title = title;
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        var page1 = await GetPageAsync("page=1&pageSize=2&isVideo=false&query=harbor");
+
+        page1.TotalCount.Should().Be(3);
+
+        page1.Items.Select(i => i.FileId).Should()
+            .BeEquivalentTo([first.FileId, second.FileId]);
+
+        page1.Items.Select(i => i.FileId).Should()
+            .NotContain(fallback.FileId)
+            .And.NotContain(foreign.FileId);
+
+        var page2 = await GetPageAsync("page=2&pageSize=2&isVideo=false&query=harbor");
+
+        page2.TotalCount.Should().Be(3);
+        page2.Items.Select(i => i.FileId).Should().Equal(fallback.FileId);
     }
 }

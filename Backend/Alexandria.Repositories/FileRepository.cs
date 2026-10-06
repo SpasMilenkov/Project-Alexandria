@@ -823,55 +823,98 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
             var fileNamePattern = $"%{searchTerm}%";
 
-            var streamableIds = (await _files
-                    .Where(f =>
-                        f.OwnerId == userId
-                        && f.DeletedAt == null
-                        && f.Versions.Any(v => v.DeletedAt == null && viableVersionIds.Contains(v.Id)))
-                    .Select(f => f.Id)
-                    .ToListAsync(ct))
-                .ToHashSet();
+            // Ranked candidate IDs in one database round trip per statement:
+            // metadata matches first by relevance score, then filename-only
+            // matches in stable file order. Owner, streamable-version, and
+            // playlist filters all apply inside SQL alongside LIMIT/OFFSET so
+            // matching rows from other users are never materialized.
+            var viableIds = viableVersionIds.ToList();
+            var playlistIds = playlistFileIds ?? [];
+            var hasPlaylistFilter = playlistFileIds is not null;
+            var offset = (page - 1) * pageSize;
 
-            var metadataRankedIds = (await context.MediaMetadata
-                    .FromSqlInterpolated($@"
-                        SELECT *
-                        FROM ""MediaMetadata""
-                        WHERE
-                            {searchTerm} <% ""NormalizedSearch""
-                            OR ""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
-                            OR lower(""Title"") LIKE {fileNamePattern}
-                        ORDER BY
-                            CASE WHEN lower(""Title"") LIKE {fileNamePattern} THEN 8.0 ELSE 0.0 END +
-                            word_similarity({searchTerm}, ""NormalizedSearch"") * 2.0 +
-                            ts_rank(""SearchVector"", to_tsquery('simple', {tsqueryTerm})) DESC")
-                    .AsNoTracking()
-                    .ToListAsync(ct))
-                .Select(m => m.FileId)
-                .Where(streamableIds.Contains)
-                .ToList();
+            var totalCount = (int)await context.Database.SqlQuery<long>($@"
+                WITH ranked AS (
+                    SELECT f.""Id"" AS ""FileId""
+                    FROM ""MediaMetadata"" AS m
+                    JOIN ""Files"" AS f ON f.""Id"" = m.""FileId""
+                    WHERE f.""OwnerId"" = {userId}
+                        AND f.""DeletedAt"" IS NULL
+                        AND ({searchTerm} <% m.""NormalizedSearch""
+                            OR m.""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                            OR lower(m.""Title"") LIKE {fileNamePattern})
+                        AND EXISTS (
+                            SELECT 1 FROM ""FileVersions"" AS v
+                            WHERE v.""FileId"" = f.""Id""
+                                AND v.""DeletedAt"" IS NULL
+                                AND v.""Id"" = ANY({viableIds}))
+                        AND (NOT {hasPlaylistFilter} OR f.""Id"" = ANY({playlistIds}))
+                    UNION ALL
+                    SELECT f.""Id""
+                    FROM ""Files"" AS f
+                    WHERE f.""OwnerId"" = {userId}
+                        AND f.""DeletedAt"" IS NULL
+                        AND f.""Name"" ILIKE {fileNamePattern}
+                        AND EXISTS (
+                            SELECT 1 FROM ""FileVersions"" AS v
+                            WHERE v.""FileId"" = f.""Id""
+                                AND v.""DeletedAt"" IS NULL
+                                AND v.""Id"" = ANY({viableIds}))
+                        AND (NOT {hasPlaylistFilter} OR f.""Id"" = ANY({playlistIds}))
+                        AND NOT EXISTS (
+                            SELECT 1 FROM ""MediaMetadata"" AS m
+                            WHERE m.""FileId"" = f.""Id""
+                                AND ({searchTerm} <% m.""NormalizedSearch""
+                                    OR m.""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                                    OR lower(m.""Title"") LIKE {fileNamePattern}))
+                )
+                SELECT COUNT(*) AS ""Value"" FROM ranked").SingleAsync(ct);
 
-            var metadataIdSet = metadataRankedIds.ToHashSet();
-            var filenameOnlyIds = await _files
-                .Where(f =>
-                    f.OwnerId == userId
-                    && f.DeletedAt == null
-                    && f.Versions.Any(v => v.DeletedAt == null && viableVersionIds.Contains(v.Id))
-                    && EF.Functions.ILike(f.Name, fileNamePattern))
-                .Select(f => f.Id)
-                .ToListAsync(ct);
-
-            var orderedSearchIds = metadataRankedIds
-                .Concat(filenameOnlyIds.Except(metadataIdSet))
-                .ToList();
-
-            if (playlistFileIds != null)
-            {
-                var playlistSet = playlistFileIds.ToHashSet();
-                orderedSearchIds = orderedSearchIds.Where(playlistSet.Contains).ToList();
-            }
-
-            var totalCount = orderedSearchIds.Count;
-            var pageIds = orderedSearchIds.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            var pageIds = totalCount == 0
+                ? []
+                : await context.Database.SqlQuery<Guid>($@"
+                WITH ranked AS (
+                    SELECT f.""Id"" AS ""FileId"",
+                        0 AS ""Source"",
+                        (CASE WHEN lower(m.""Title"") LIKE {fileNamePattern} THEN 8.0 ELSE 0.0 END +
+                            word_similarity({searchTerm}, m.""NormalizedSearch"") * 2.0 +
+                            ts_rank(m.""SearchVector"", to_tsquery('simple', {tsqueryTerm}))) AS ""Rank""
+                    FROM ""MediaMetadata"" AS m
+                    JOIN ""Files"" AS f ON f.""Id"" = m.""FileId""
+                    WHERE f.""OwnerId"" = {userId}
+                        AND f.""DeletedAt"" IS NULL
+                        AND ({searchTerm} <% m.""NormalizedSearch""
+                            OR m.""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                            OR lower(m.""Title"") LIKE {fileNamePattern})
+                        AND EXISTS (
+                            SELECT 1 FROM ""FileVersions"" AS v
+                            WHERE v.""FileId"" = f.""Id""
+                                AND v.""DeletedAt"" IS NULL
+                                AND v.""Id"" = ANY({viableIds}))
+                        AND (NOT {hasPlaylistFilter} OR f.""Id"" = ANY({playlistIds}))
+                    UNION ALL
+                    SELECT f.""Id"", 1, NULL
+                    FROM ""Files"" AS f
+                    WHERE f.""OwnerId"" = {userId}
+                        AND f.""DeletedAt"" IS NULL
+                        AND f.""Name"" ILIKE {fileNamePattern}
+                        AND EXISTS (
+                            SELECT 1 FROM ""FileVersions"" AS v
+                            WHERE v.""FileId"" = f.""Id""
+                                AND v.""DeletedAt"" IS NULL
+                                AND v.""Id"" = ANY({viableIds}))
+                        AND (NOT {hasPlaylistFilter} OR f.""Id"" = ANY({playlistIds}))
+                        AND NOT EXISTS (
+                            SELECT 1 FROM ""MediaMetadata"" AS m
+                            WHERE m.""FileId"" = f.""Id""
+                                AND ({searchTerm} <% m.""NormalizedSearch""
+                                    OR m.""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                                    OR lower(m.""Title"") LIKE {fileNamePattern}))
+                )
+                SELECT ranked.""FileId"" AS ""Value""
+                FROM ranked
+                ORDER BY ranked.""Source"", ranked.""Rank"" DESC NULLS LAST, ranked.""FileId""
+                LIMIT {pageSize} OFFSET {offset}").ToListAsync(ct);
 
             if (pageIds.Count == 0)
                 return new PaginatedResult<MediaFileDto>
