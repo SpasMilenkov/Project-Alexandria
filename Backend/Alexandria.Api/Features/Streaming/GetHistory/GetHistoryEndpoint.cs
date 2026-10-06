@@ -10,7 +10,7 @@ namespace Alexandria.Api.Features.Streaming.GetHistory;
 internal sealed class GetStreamHistoryRequest
 {
     public Guid? FileId { get; init; }
-    public bool? Completed { get; init; }
+    public bool? Qualified { get; init; }
     public DateTime? LastAccessedAfter { get; init; }
     public DateTime? LastAccessedBefore { get; init; }
     public int CurrentPage { get; init; } = 1;
@@ -46,7 +46,7 @@ internal sealed class GetStreamHistoryEndpoint(IStreamHistoryService historyServ
         await Send.OkAsync(await historyService.FindAsync(userId, new StreamHistoryQuery
         {
             FileId = req.FileId,
-            Completed = req.Completed,
+            Qualified = req.Qualified,
             LastAccessedAfter = req.LastAccessedAfter,
             LastAccessedBefore = req.LastAccessedBefore,
             CurrentPage = req.CurrentPage,

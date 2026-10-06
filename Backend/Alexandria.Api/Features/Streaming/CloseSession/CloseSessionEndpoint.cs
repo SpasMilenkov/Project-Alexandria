@@ -11,6 +11,7 @@ internal sealed class CloseSessionEndpointRequest
     public Guid SessionId { get; init; }
     public long EndPositionSeconds { get; init; }
     public long ListenedSeconds { get; init; }
+    public bool PlaybackFinished { get; init; }
 }
 
 internal sealed class CloseSessionValidator : Validator<CloseSessionEndpointRequest>
@@ -39,6 +40,7 @@ internal sealed class CloseSessionEndpoint(IStreamHistoryService historyService)
         {
             EndPositionSeconds = req.EndPositionSeconds,
             ListenedSeconds = req.ListenedSeconds,
+            PlaybackFinished = req.PlaybackFinished,
         }, userId, ct);
 
         await Send.OkAsync(result, ct);
