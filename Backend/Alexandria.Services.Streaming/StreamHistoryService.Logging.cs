@@ -22,8 +22,4 @@ public sealed partial class StreamHistoryService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Closing session {SessionId} for user {UserId}")]
     private partial void LogClosingSession(Guid sessionId, Guid userId);
-
-    [LoggerMessage(Level = LogLevel.Information,
-        Message = "Session {SessionId} reached completion threshold for history {HistoryId}")]
-    private partial void LogSessionCompleted(Guid sessionId, Guid historyId);
 }

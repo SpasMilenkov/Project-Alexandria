@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
+import "@/assets/player-range.css";
 import { useAppToast } from "@/composables/useAppToast";
 import { usePlayerModeTransition } from "@/composables/usePlayerModeTransition";
 import { usePlayerStore } from "@/stores/stream-player";
@@ -114,6 +115,17 @@ const formatTime = (seconds: number) => {
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
+
+const seekProgress = computed(() => {
+  if (
+    !Number.isFinite(duration.value) ||
+    duration.value <= 0 ||
+    !Number.isFinite(currentTime.value)
+  )
+    return 0;
+
+  return Math.max(0, Math.min(100, (currentTime.value / duration.value) * 100));
+});
 
 const onSeekInput = (e: Event) => {
   store.seek(Number((e.target as HTMLInputElement).value));
@@ -433,11 +445,13 @@ onUnmounted(() => {
             }}</span>
             <input
               type="range"
-              class="transport-seek flex-1 min-w-0 accent-primary"
+              class="audio-player-range transport-seek flex-1 min-w-0"
+              :style="{ '--player-range-fill': `${seekProgress}%` }"
               :max="duration || 0"
               :step="0.5"
               :value="currentTime"
               aria-label="Seek"
+              :aria-valuetext="`${formatTime(currentTime)} of ${formatTime(duration)}`"
               @input="onSeekInput"
             />
             <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
@@ -579,11 +593,13 @@ onUnmounted(() => {
               }}</span>
               <input
                 type="range"
-                class="transport-seek flex-1 min-w-0 accent-primary"
+                class="audio-player-range transport-seek flex-1 min-w-0"
+                :style="{ '--player-range-fill': `${seekProgress}%` }"
                 :max="duration || 0"
                 :step="0.5"
                 :value="currentTime"
                 aria-label="Seek"
+                :aria-valuetext="`${formatTime(currentTime)} of ${formatTime(duration)}`"
                 @input="onSeekInput"
               />
               <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
@@ -604,15 +620,18 @@ onUnmounted(() => {
               </button>
               <input
                 type="range"
-                class="volume-slider w-20 flex-shrink-0 accent-primary"
+                class="audio-player-range volume-slider w-20 flex-shrink-0"
+                :style="{ '--player-range-fill': `${volume * 100}%` }"
                 :min="0"
                 :max="1"
                 :step="0.02"
                 :value="volume"
                 aria-label="Volume"
+                :aria-valuetext="`${Math.round(volume * 100)} percent`"
                 @input="onVolumeInput"
               />
             </div>
+
             <PlayerQueue />
             <PlayerSettings />
             <button

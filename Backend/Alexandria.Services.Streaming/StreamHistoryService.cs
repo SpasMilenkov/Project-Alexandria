@@ -64,9 +64,8 @@ public sealed partial class StreamHistoryService(
         }
         else
         {
-            history.LastAccessedAt = DateTime.UtcNow;
-            history.PositionSeconds = request.StartPositionSeconds;
-            await unitOfWork.StreamingHistories.UpdateAsync(history, ct);
+            await unitOfWork.StreamingHistories.UpdatePositionAsync(
+                history.Id, userId, request.StartPositionSeconds, ct);
         }
 
         var session = await unitOfWork.StreamingHistories.CreateSessionAsync(new StreamSession
@@ -91,38 +90,31 @@ public sealed partial class StreamHistoryService(
         var session = await unitOfWork.StreamingHistories.GetSessionByIdAsync(sessionId, ct)
                       ?? throw new StreamSessionNotFoundException(sessionId);
 
-        if (session.EndedAt.HasValue)
-            throw new StreamSessionAlreadyClosedException(sessionId);
-
         var history = await unitOfWork.StreamingHistories.GetByIdAndUserIdAsync(session.StreamHistoryId, userId, ct)
                       ?? throw new StreamHistoryNotFoundException(session.StreamHistoryId);
+
+        if (session.EndedAt.HasValue)
+            return StreamHistoryDto.FromEntity(history);
 
         session.EndPositionSeconds = request.EndPositionSeconds;
         session.ListenedSeconds = request.ListenedSeconds;
         session.EndedAt = DateTime.UtcNow;
 
         var fileDurationSeconds = await unitOfWork.MediaMetadata.GetFileDurationAsync(history.FileId, ct);
-        session.ReachedCompletionThreshold = fileDurationSeconds > 0
-                                             && request.EndPositionSeconds >= fileDurationSeconds *
-                                             StreamingConstants.CompletionThresholdRatio;
+        session.IsQualifiedPlay = ListeningPlayQualification.IsQualified(request.ListenedSeconds, fileDurationSeconds);
+        session.PlaybackFinished = HasFinished(request, fileDurationSeconds);
 
-        await unitOfWork.StreamingHistories.UpdateSessionAsync(session, ct);
+        var updated = await unitOfWork.StreamingHistories.CloseSessionAsync(session, userId, ct);
 
-        history.PositionSeconds = request.EndPositionSeconds;
-        history.TotalListenedSeconds += request.ListenedSeconds;
-        history.LastAccessedAt = DateTime.UtcNow;
-
-        if (request.EndPositionSeconds > history.MaxPositionReachedSeconds)
-            history.MaxPositionReachedSeconds = request.EndPositionSeconds;
-
-        if (session.ReachedCompletionThreshold)
-        {
-            history.TimesCompleted++;
-            history.LastCompletedAt = DateTime.UtcNow;
-            LogSessionCompleted(sessionId, history.Id);
-        }
-
-        var updated = await unitOfWork.StreamingHistories.UpdateAsync(history, ct);
         return StreamHistoryDto.FromEntity(updated);
+    }
+
+    private static bool HasFinished(CloseSessionRequest request, double durationSeconds)
+    {
+        if (!request.PlaybackFinished || request.ListenedSeconds <= 0) return false;
+
+        if (!double.IsFinite(durationSeconds) || durationSeconds <= 0) return true;
+
+        return request.EndPositionSeconds >= durationSeconds - StreamingConstants.FinishPositionToleranceSeconds;
     }
 }

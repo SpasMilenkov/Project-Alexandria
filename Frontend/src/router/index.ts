@@ -192,8 +192,28 @@ const router = createRouter({
       name: "playlist-details",
       path: "/streaming/playlists/:id",
     },
+
     {
-      component: () => import("@/views/dashboard/streaming/WrappedView.vue"),
+      component: () => import("@/views/dashboard/streaming/wrapped/StatsHubView.vue"),
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "stats-hub",
+      path: "/stats",
+    },
+
+    {
+      meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
+      name: "timeline",
+      path: "/stats/timeline",
+
+      redirect: (to) => ({
+        path: "/stats",
+        query: { ...to.query, view: "timeline" },
+        hash: to.hash,
+      }),
+    },
+
+    {
+      component: () => import("@/views/dashboard/streaming/wrapped/WrappedView.vue"),
       meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
       name: "wrapped",
       path: "/stats/wrapped/:year?",
@@ -201,7 +221,7 @@ const router = createRouter({
     ...(import.meta.env.DEV
       ? [
           {
-            component: () => import("@/views/dashboard/streaming/WrappedGalleryView.vue"),
+            component: () => import("@/views/dashboard/streaming/wrapped/WrappedGalleryView.vue"),
             meta: { layout: "dashboard" as const, requiresAdmin: false, requiresAuth: false },
             name: "wrapped-gallery",
             path: "/stats/wrapped-gallery",

@@ -23,6 +23,7 @@
     "sort-keys": "off",
     "prefer-destructuring": "off",
     "one-var": "off",
+    "no-underscore-dangle": "off",
     "eslint/sort-imports": [
       "warn",
       {
@@ -33,11 +34,13 @@
     "max-lines": [
       "warn",
       {
-        "max": 500
+        "max": 500,
+        "skipBlankLines": true
       }
     ],
-    "max-statements": ["warn", { "max": 20, "ignoreTopLevelFunctions": true }],
-    "max-lines-per-function": ["warn", { "skipBlankLines": true, "skipComments": true, "max": 100 }]
+    "max-params": ["warn", { "max": 5 }],
+    "max-statements": ["warn", { "max": 25, "ignoreTopLevelFunctions": true }],
+    "max-lines-per-function": ["warn", { "skipBlankLines": true, "skipComments": true, "max": 200 }]
   },
 
   "settings": {

@@ -36,8 +36,9 @@ public interface IStreamHistoryService
     /// <summary>
     /// Closes an open session, recording the end position and listened seconds. Updates the
     /// parent <see cref="StreamHistory"/> summary fields (position, max reached, total listened,
-    /// completion count). Throws <see cref="StreamSessionNotFoundException"/> or
-    /// <see cref="StreamSessionAlreadyClosedException"/> when appropriate.
+    /// qualified-play count and finish status). Repeated closes return the saved history
+    /// without counting again. Throws <see cref="StreamSessionNotFoundException"/> or
+    /// <see cref="StreamHistoryNotFoundException"/> when the session or owned history is missing.
     /// </summary>
     Task<StreamHistoryDto> CloseSessionAsync(Guid sessionId, CloseSessionRequest request, Guid userId,
         CancellationToken ct = default);

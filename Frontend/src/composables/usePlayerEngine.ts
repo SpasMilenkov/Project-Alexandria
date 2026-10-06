@@ -1,4 +1,5 @@
-import { type Ref, computed, onMounted, onUnmounted, ref, watch } from "vue";
+// oxlint-disable max-statements max-lines-per-function
+import { type Ref, computed, onUnmounted, ref, watch } from "vue";
 
 import { attemptRefresh } from "@/api/client";
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
@@ -107,6 +108,7 @@ export const usePlayerEngine = (
   };
 
   const listenedSeconds = ref(0);
+  let playbackSessionOpen = false;
   let listenTicker: ReturnType<typeof setInterval> | null = null;
   let refreshTicker: ReturnType<typeof setInterval> | null = null;
 
@@ -124,7 +126,7 @@ export const usePlayerEngine = (
   const startListenTicker = () => {
     if (listenTicker !== null) return;
     listenTicker = setInterval(() => {
-      if (videoRef.value && !videoRef.value.paused && !isBuffering.value) {
+      if (videoRef.value && !videoRef.value.paused && !videoRef.value.seeking && !isBuffering.value) {
         listenedSeconds.value++;
       }
     }, 1_000);
@@ -136,21 +138,33 @@ export const usePlayerEngine = (
     listenTicker = null;
   };
 
-  const closeActiveSession = () => {
+  const closeActiveSession = (playbackFinished = false) => {
+    if (!playbackSessionOpen) return;
+
+    playbackSessionOpen = false;
     if (!videoRef.value) return;
     stopListenTicker();
     historyTracker.closeActive({
       endPositionSeconds: Math.floor(videoRef.value.currentTime),
       listenedSeconds: listenedSeconds.value,
+      playbackFinished: playbackFinished || videoRef.value.ended,
     });
     listenedSeconds.value = 0;
   };
 
   const openNewSession = () => {
     if (!store.nowPlaying || !videoRef.value) return;
+
+    if (playbackSessionOpen) {
+      startListenTicker();
+
+      return;
+    }
+
     closeActiveSession();
     listenedSeconds.value = 0;
     historyTracker.openNew(store.nowPlaying.file.fileId, Math.floor(videoRef.value.currentTime));
+    playbackSessionOpen = true;
     startListenTicker();
   };
 
@@ -328,6 +342,14 @@ export const usePlayerEngine = (
           syncPositionState();
         });
 
+        videoRef.value?.addEventListener("seeking", stopListenTicker);
+
+        videoRef.value?.addEventListener("seeked", () => {
+          if (playbackSessionOpen && !videoRef.value?.paused && !isBuffering.value) {
+            startListenTicker();
+          }
+        });
+
         videoRef.value?.addEventListener("timeupdate", () => {
           if (!isActiveEngine()) return;
           store.setCurrentTime(videoRef.value?.currentTime ?? 0);
@@ -342,7 +364,7 @@ export const usePlayerEngine = (
         });
 
         videoRef.value?.addEventListener("ended", () => {
-          closeActiveSession();
+          closeActiveSession(true);
           resumePrompt.value = null;
           if (!isActiveEngine()) return;
           store.setIsPlaying(false);
@@ -356,6 +378,12 @@ export const usePlayerEngine = (
 
         shakaPlayer.addEventListener("buffering", (e: any) => {
           store.setEngineBuffering(e.buffering);
+
+          if (e.buffering) {
+            stopListenTicker();
+          } else if (playbackSessionOpen && !videoRef.value?.paused && !videoRef.value?.seeking) {
+            startListenTicker();
+          }
         });
 
         shakaPlayer.addEventListener("adaptation", syncVariantTracks);
@@ -550,14 +578,6 @@ export const usePlayerEngine = (
     },
   );
 
-  const onVisibilityChange = () => {
-    if (document.hidden) closeActiveSession();
-  };
-
-  onMounted(() => {
-    document.addEventListener("visibilitychange", onVisibilityChange);
-  });
-
   onUnmounted(async () => {
     clearMediaSession();
     closeActiveSession();
@@ -573,7 +593,6 @@ export const usePlayerEngine = (
       await shakaPlayer.destroy();
       shakaPlayer = null;
     }
-    document.removeEventListener("visibilitychange", onVisibilityChange);
   });
 
   return {

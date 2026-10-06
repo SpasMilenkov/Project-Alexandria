@@ -34,6 +34,7 @@
         <ProjectReference Include="..\Alexandria.Workers.MediaMetadata\Alexandria.Workers.MediaMetadata.csproj"/>
         <ProjectReference Include="..\Alexandria.Workers.Playlist\Alexandria.Workers.Playlist.csproj"/>
         <ProjectReference Include="..\Alexandria.Common\Alexandria.Common.csproj"/>
+        <ProjectReference Include="..\Alexandria.Infrastructure\Alexandria.Infrastructure.csproj"/>
         <ProjectReference Include="..\Alexandria.Data.Models\Alexandria.Data.Models.csproj"/>
         <ProjectReference Include="..\Alexandria.Dto\Alexandria.Dto.csproj"/>
         <ProjectReference Include="..\Alexandria.Repositories\Alexandria.Repositories.csproj"/>

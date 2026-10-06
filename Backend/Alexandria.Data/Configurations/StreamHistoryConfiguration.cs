@@ -22,12 +22,16 @@ public class StreamHistoryConfiguration : IEntityTypeConfiguration<StreamHistory
             .HasDefaultValue(0L)
             .IsRequired();
 
-        builder.Property(e => e.TimesCompleted)
+        builder.Property(e => e.QualifiedPlayCount)
             .HasDefaultValue(0)
             .IsRequired();
 
-        builder.Property(e => e.LastCompletedAt)
+        builder.Property(e => e.LastPlayedAt)
             .HasColumnType("timestamp with time zone");
+
+        builder.Property(e => e.HasFinished)
+            .HasDefaultValue(false)
+            .IsRequired();
 
         builder.Property(e => e.LastAccessedAt)
             .HasColumnType("timestamp with time zone")
@@ -37,7 +41,7 @@ public class StreamHistoryConfiguration : IEntityTypeConfiguration<StreamHistory
             .HasColumnType("timestamp with time zone")
             .IsRequired();
 
-        builder.Ignore(e => e.HasCompleted);
+        builder.Ignore(e => e.HasQualifiedPlays);
 
         builder.HasOne(e => e.User)
             .WithMany()

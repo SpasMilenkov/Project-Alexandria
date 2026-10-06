@@ -823,55 +823,98 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
             var fileNamePattern = $"%{searchTerm}%";
 
-            var streamableIds = (await _files
-                    .Where(f =>
-                        f.OwnerId == userId
-                        && f.DeletedAt == null
-                        && f.Versions.Any(v => v.DeletedAt == null && viableVersionIds.Contains(v.Id)))
-                    .Select(f => f.Id)
-                    .ToListAsync(ct))
-                .ToHashSet();
+            // Ranked candidate IDs in one database round trip per statement:
+            // metadata matches first by relevance score, then filename-only
+            // matches in stable file order. Owner, streamable-version, and
+            // playlist filters all apply inside SQL alongside LIMIT/OFFSET so
+            // matching rows from other users are never materialized.
+            var viableIds = viableVersionIds.ToList();
+            var playlistIds = playlistFileIds ?? [];
+            var hasPlaylistFilter = playlistFileIds is not null;
+            var offset = (page - 1) * pageSize;
 
-            var metadataRankedIds = (await context.MediaMetadata
-                    .FromSqlInterpolated($@"
-                        SELECT *
-                        FROM ""MediaMetadata""
-                        WHERE
-                            {searchTerm} <% ""NormalizedSearch""
-                            OR ""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
-                            OR lower(""Title"") LIKE {fileNamePattern}
-                        ORDER BY
-                            CASE WHEN lower(""Title"") LIKE {fileNamePattern} THEN 8.0 ELSE 0.0 END +
-                            word_similarity({searchTerm}, ""NormalizedSearch"") * 2.0 +
-                            ts_rank(""SearchVector"", to_tsquery('simple', {tsqueryTerm})) DESC")
-                    .AsNoTracking()
-                    .ToListAsync(ct))
-                .Select(m => m.FileId)
-                .Where(streamableIds.Contains)
-                .ToList();
+            var totalCount = (int)await context.Database.SqlQuery<long>($@"
+                WITH ranked AS (
+                    SELECT f.""Id"" AS ""FileId""
+                    FROM ""MediaMetadata"" AS m
+                    JOIN ""Files"" AS f ON f.""Id"" = m.""FileId""
+                    WHERE f.""OwnerId"" = {userId}
+                        AND f.""DeletedAt"" IS NULL
+                        AND ({searchTerm} <% m.""NormalizedSearch""
+                            OR m.""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                            OR lower(m.""Title"") LIKE {fileNamePattern})
+                        AND EXISTS (
+                            SELECT 1 FROM ""FileVersions"" AS v
+                            WHERE v.""FileId"" = f.""Id""
+                                AND v.""DeletedAt"" IS NULL
+                                AND v.""Id"" = ANY({viableIds}))
+                        AND (NOT {hasPlaylistFilter} OR f.""Id"" = ANY({playlistIds}))
+                    UNION ALL
+                    SELECT f.""Id""
+                    FROM ""Files"" AS f
+                    WHERE f.""OwnerId"" = {userId}
+                        AND f.""DeletedAt"" IS NULL
+                        AND f.""Name"" ILIKE {fileNamePattern}
+                        AND EXISTS (
+                            SELECT 1 FROM ""FileVersions"" AS v
+                            WHERE v.""FileId"" = f.""Id""
+                                AND v.""DeletedAt"" IS NULL
+                                AND v.""Id"" = ANY({viableIds}))
+                        AND (NOT {hasPlaylistFilter} OR f.""Id"" = ANY({playlistIds}))
+                        AND NOT EXISTS (
+                            SELECT 1 FROM ""MediaMetadata"" AS m
+                            WHERE m.""FileId"" = f.""Id""
+                                AND ({searchTerm} <% m.""NormalizedSearch""
+                                    OR m.""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                                    OR lower(m.""Title"") LIKE {fileNamePattern}))
+                )
+                SELECT COUNT(*) AS ""Value"" FROM ranked").SingleAsync(ct);
 
-            var metadataIdSet = metadataRankedIds.ToHashSet();
-            var filenameOnlyIds = await _files
-                .Where(f =>
-                    f.OwnerId == userId
-                    && f.DeletedAt == null
-                    && f.Versions.Any(v => v.DeletedAt == null && viableVersionIds.Contains(v.Id))
-                    && EF.Functions.ILike(f.Name, fileNamePattern))
-                .Select(f => f.Id)
-                .ToListAsync(ct);
-
-            var orderedSearchIds = metadataRankedIds
-                .Concat(filenameOnlyIds.Except(metadataIdSet))
-                .ToList();
-
-            if (playlistFileIds != null)
-            {
-                var playlistSet = playlistFileIds.ToHashSet();
-                orderedSearchIds = orderedSearchIds.Where(playlistSet.Contains).ToList();
-            }
-
-            var totalCount = orderedSearchIds.Count;
-            var pageIds = orderedSearchIds.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            var pageIds = totalCount == 0
+                ? []
+                : await context.Database.SqlQuery<Guid>($@"
+                WITH ranked AS (
+                    SELECT f.""Id"" AS ""FileId"",
+                        0 AS ""Source"",
+                        (CASE WHEN lower(m.""Title"") LIKE {fileNamePattern} THEN 8.0 ELSE 0.0 END +
+                            word_similarity({searchTerm}, m.""NormalizedSearch"") * 2.0 +
+                            ts_rank(m.""SearchVector"", to_tsquery('simple', {tsqueryTerm}))) AS ""Rank""
+                    FROM ""MediaMetadata"" AS m
+                    JOIN ""Files"" AS f ON f.""Id"" = m.""FileId""
+                    WHERE f.""OwnerId"" = {userId}
+                        AND f.""DeletedAt"" IS NULL
+                        AND ({searchTerm} <% m.""NormalizedSearch""
+                            OR m.""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                            OR lower(m.""Title"") LIKE {fileNamePattern})
+                        AND EXISTS (
+                            SELECT 1 FROM ""FileVersions"" AS v
+                            WHERE v.""FileId"" = f.""Id""
+                                AND v.""DeletedAt"" IS NULL
+                                AND v.""Id"" = ANY({viableIds}))
+                        AND (NOT {hasPlaylistFilter} OR f.""Id"" = ANY({playlistIds}))
+                    UNION ALL
+                    SELECT f.""Id"", 1, NULL
+                    FROM ""Files"" AS f
+                    WHERE f.""OwnerId"" = {userId}
+                        AND f.""DeletedAt"" IS NULL
+                        AND f.""Name"" ILIKE {fileNamePattern}
+                        AND EXISTS (
+                            SELECT 1 FROM ""FileVersions"" AS v
+                            WHERE v.""FileId"" = f.""Id""
+                                AND v.""DeletedAt"" IS NULL
+                                AND v.""Id"" = ANY({viableIds}))
+                        AND (NOT {hasPlaylistFilter} OR f.""Id"" = ANY({playlistIds}))
+                        AND NOT EXISTS (
+                            SELECT 1 FROM ""MediaMetadata"" AS m
+                            WHERE m.""FileId"" = f.""Id""
+                                AND ({searchTerm} <% m.""NormalizedSearch""
+                                    OR m.""SearchVector"" @@ to_tsquery('simple', {tsqueryTerm})
+                                    OR lower(m.""Title"") LIKE {fileNamePattern}))
+                )
+                SELECT ranked.""FileId"" AS ""Value""
+                FROM ranked
+                ORDER BY ranked.""Source"", ranked.""Rank"" DESC NULLS LAST, ranked.""FileId""
+                LIMIT {pageSize} OFFSET {offset}").ToListAsync(ct);
 
             if (pageIds.Count == 0)
                 return new PaginatedResult<MediaFileDto>
@@ -979,6 +1022,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
                 CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
                 PlaybackVersionId = pi.TranspilationJob.VersionId,
+                CreatedAt = pi.TranspilationJob!.FileVersion.File.CreatedAt,
                 Duration = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
                     ? null
                     : pi.TranspilationJob!.FileVersion.File.MediaMetadata.Duration,
@@ -990,6 +1034,16 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 JobId = pi.TranspilationJobId,
                 IsVideo = pi.TranspilationJob!.IsVideo,
                 SegmentPrefix = pi.TranspilationJob!.SegmentPrefix,
+                History = context.StreamHistories
+                    .Where(h => h.UserId == userId
+                                && h.FileId == pi.TranspilationJob!.FileVersion.FileId)
+                    .Select(h => new StreamingHistoryRow
+                    {
+                        PositionSeconds = h.PositionSeconds,
+                        HasFinished = h.HasFinished,
+                        LastAccessedAt = h.LastAccessedAt
+                    })
+                    .FirstOrDefault(),
             })
             .AsNoTracking()
             .ToListAsync(ct);
@@ -1087,12 +1141,22 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Name = f.Name,
             MimeType = f.MimeType,
             CurrentVersionId = f.CurrentVersionId!.Value,
+            CreatedAt = f.CreatedAt,
             Duration = f.MediaMetadata == null ? null : f.MediaMetadata.Duration,
             Artist = f.MediaMetadata!.Artist,
             Album = f.MediaMetadata.Album,
             Title = f.MediaMetadata.Title,
             Genre = f.MediaMetadata.Genre,
             Year = f.MediaMetadata.Year,
+            History = context.StreamHistories
+                .Where(h => h.UserId == userId && h.FileId == f.Id)
+                .Select(h => new StreamingHistoryRow
+                {
+                    PositionSeconds = h.PositionSeconds,
+                    HasFinished = h.HasFinished,
+                    LastAccessedAt = h.LastAccessedAt
+                })
+                .FirstOrDefault(),
             Job = context.TranspilationJobs
                 .Where(j => j.UserId == userId
                             && j.IsVideo == isVideo
@@ -1127,7 +1191,11 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             TranspilationJobId = row.Job!.Id,
             PlaylistItemId = null,
             IsVideo = row.Job.IsVideo,
-            SegmentPrefix = row.Job.SegmentPrefix
+            SegmentPrefix = row.Job.SegmentPrefix,
+            PositionSeconds = row.History?.PositionSeconds,
+            HasFinished = row.History?.HasFinished,
+            LastAccessedAt = row.History?.LastAccessedAt,
+            CreatedAt = row.CreatedAt
         };
 
     private static MediaFileDto ToMediaFileDto(PlaylistStreamingRow row) =>
@@ -1147,7 +1215,11 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             TranspilationJobId = row.JobId,
             PlaylistItemId = row.ItemId,
             IsVideo = row.IsVideo,
-            SegmentPrefix = row.SegmentPrefix
+            SegmentPrefix = row.SegmentPrefix,
+            PositionSeconds = row.History?.PositionSeconds,
+            HasFinished = row.History?.HasFinished,
+            LastAccessedAt = row.History?.LastAccessedAt,
+            CreatedAt = row.CreatedAt
         };
 
     internal IQueryable<ShuffleCandidate> ShuffleLibraryCandidatesQuery(
@@ -1245,6 +1317,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 Name = f.Name,
                 MimeType = f.MimeType,
                 CurrentVersionId = f.CurrentVersionId!.Value,
+                CreatedAt = f.CreatedAt,
                 Duration = f.MediaMetadata == null ? null : (double?)f.MediaMetadata.Duration,
                 Artist = f.MediaMetadata!.Artist,
                 Album = f.MediaMetadata.Album,
@@ -1252,6 +1325,15 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 Genre = f.MediaMetadata.Genre,
                 Year = f.MediaMetadata.Year,
                 LiveVersionIds = f.Versions.Where(v => v.DeletedAt == null).Select(v => v.Id).ToList(),
+                History = context.StreamHistories
+                    .Where(h => h.UserId == userId && h.FileId == f.Id)
+                    .Select(h => new StreamingHistoryRow
+                    {
+                        PositionSeconds = h.PositionSeconds,
+                        HasFinished = h.HasFinished,
+                        LastAccessedAt = h.LastAccessedAt
+                    })
+                    .FirstOrDefault(),
             })
             .ToListAsync(ct);
 
@@ -1311,6 +1393,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 PlaylistItemId = null,
                 IsVideo = chosen.IsVideo,
                 SegmentPrefix = chosen.SegmentPrefix,
+                PositionSeconds = row.History?.PositionSeconds,
+                HasFinished = row.History?.HasFinished,
+                LastAccessedAt = row.History?.LastAccessedAt,
+                CreatedAt = row.CreatedAt,
             });
         }
 
@@ -1362,6 +1448,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
                 CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
                 PlaybackVersionId = pi.TranspilationJob.VersionId,
+                CreatedAt = pi.TranspilationJob!.FileVersion.File.CreatedAt,
                 Duration = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
                     ? null
                     : (double?)pi.TranspilationJob!.FileVersion.File.MediaMetadata.Duration,
@@ -1373,6 +1460,16 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 JobId = pi.TranspilationJobId,
                 IsVideo = pi.TranspilationJob!.IsVideo,
                 SegmentPrefix = pi.TranspilationJob!.SegmentPrefix,
+                History = context.StreamHistories
+                    .Where(h => h.UserId == userId
+                                && h.FileId == pi.TranspilationJob!.FileVersion.FileId)
+                    .Select(h => new StreamingHistoryRow
+                    {
+                        PositionSeconds = h.PositionSeconds,
+                        HasFinished = h.HasFinished,
+                        LastAccessedAt = h.LastAccessedAt
+                    })
+                    .FirstOrDefault(),
             })
             .AsNoTracking()
             .ToListAsync(ct);
@@ -1405,7 +1502,17 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 f.Name,
                 f.MimeType,
                 CurrentVersionId = f.CurrentVersionId!.Value,
+                f.CreatedAt,
                 Metadata = f.MediaMetadata,
+                History = context.StreamHistories
+                    .Where(h => h.UserId == userId && h.FileId == f.Id)
+                    .Select(h => new StreamingHistoryRow
+                    {
+                        PositionSeconds = h.PositionSeconds,
+                        HasFinished = h.HasFinished,
+                        LastAccessedAt = h.LastAccessedAt
+                    })
+                    .FirstOrDefault(),
                 VersionIds = f.Versions
                     .Where(v => v.DeletedAt == null)
                     .Select(v => v.Id)
@@ -1452,7 +1559,11 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Year = file.Metadata.Year,
             TranspilationJobId = job.Id,
             IsVideo = job.IsVideo,
-            SegmentPrefix = job.SegmentPrefix
+            SegmentPrefix = job.SegmentPrefix,
+            PositionSeconds = file.History?.PositionSeconds,
+            HasFinished = file.History?.HasFinished,
+            LastAccessedAt = file.History?.LastAccessedAt,
+            CreatedAt = file.CreatedAt
         };
     }
 

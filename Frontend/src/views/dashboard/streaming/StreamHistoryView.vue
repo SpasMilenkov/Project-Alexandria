@@ -10,10 +10,10 @@ import { formatDate, formatDuration } from "@/utils/date-formatters";
 
 const pageSize = 20;
 const currentPage = ref(1);
-const completedFilter = ref<boolean | undefined>(undefined);
+const qualifiedFilter = ref<boolean | undefined>(undefined);
 
 const query = computed<StreamHistoryQuery>(() => ({
-  completed: completedFilter.value,
+  qualified: qualifiedFilter.value,
   currentPage: currentPage.value,
   pageSize,
 }));
@@ -25,13 +25,13 @@ type DateInput = Parameters<typeof formatDate>[0];
 
 const filterDefs: { label: string; value: boolean | undefined }[] = [
   { label: "All", value: undefined },
-  { label: "In progress", value: false },
-  { label: "Completed", value: true },
+  { label: "Brief listens", value: false },
+  { label: "Played", value: true },
 ];
 
 const filterOptions = computed(() =>
   filterDefs.map((def) => {
-    const isActive = completedFilter.value === def.value;
+    const isActive = qualifiedFilter.value === def.value;
     return {
       ...def,
       color: (isActive ? "primary" : "neutral") as "neutral" | "primary",
@@ -43,7 +43,7 @@ const filterOptions = computed(() =>
 );
 
 const setFilter = (value: boolean | undefined) => {
-  completedFilter.value = value;
+  qualifiedFilter.value = value;
   currentPage.value = 1;
 };
 
@@ -62,11 +62,11 @@ const rangeText = computed(() => {
 });
 
 const emptyState = computed(() => {
-  if (completedFilter.value === true) {
-    return { canReset: true, title: "Nothing completed yet" };
+  if (qualifiedFilter.value === true) {
+    return { canReset: true, title: "No plays yet" };
   }
-  if (completedFilter.value === false) {
-    return { canReset: true, title: "Nothing in progress" };
+  if (qualifiedFilter.value === false) {
+    return { canReset: true, title: "No brief listens" };
   }
   return { canReset: false, title: "No history yet" };
 });
@@ -93,21 +93,21 @@ const formatWhen = (value: DateInput) => {
 };
 
 const statusOf = (entry: HistoryEntry) => {
-  if (entry.timesCompleted > 1) {
+  if (entry.qualifiedPlayCount > 1) {
     return {
       color: "success" as const,
       icon: "mdi:check-circle-outline",
-      label: `Completed ${entry.timesCompleted}×`,
+      label: `${entry.qualifiedPlayCount} plays`,
     };
   }
-  if (entry.timesCompleted === 1) {
-    return { color: "success" as const, icon: "mdi:check-circle-outline", label: "Completed" };
+  if (entry.qualifiedPlayCount === 1) {
+    return { color: "success" as const, icon: "mdi:check-circle-outline", label: "Played" };
   }
-  return { color: "warning" as const, icon: "mdi:play-circle-outline", label: "In progress" };
+  return { color: "warning" as const, icon: "mdi:play-circle-outline", label: "Brief listens" };
 };
 
 const subtitleOf = (entry: HistoryEntry) => {
-  if (entry.timesCompleted > 0) {
+  if (entry.qualifiedPlayCount > 0) {
     return `Listened ${formatDuration(entry.totalListenedSeconds)}`;
   }
   return `Resume at ${formatDuration(entry.positionSeconds)}`;
@@ -251,16 +251,16 @@ const subtitleOf = (entry: HistoryEntry) => {
               </div>
 
               <div>
-                <dt class="text-xs text-gray-600 dark:text-gray-400">Times completed</dt>
+                <dt class="text-xs text-gray-600 dark:text-gray-400">Plays</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">
-                  {{ entry.timesCompleted }}
+                  {{ entry.qualifiedPlayCount }}
                 </dd>
               </div>
 
               <div>
-                <dt class="text-xs text-gray-600 dark:text-gray-400">Last completed</dt>
+                <dt class="text-xs text-gray-600 dark:text-gray-400">Last played</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  <span v-if="entry.lastCompletedAt">{{ formatWhen(entry.lastCompletedAt) }}</span>
+                  <span v-if="entry.lastPlayedAt">{{ formatWhen(entry.lastPlayedAt) }}</span>
                   <span v-else class="text-gray-500 dark:text-gray-500">Never</span>
                 </dd>
               </div>

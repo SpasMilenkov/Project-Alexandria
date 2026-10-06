@@ -12,7 +12,8 @@ public class StreamSession : IBase
     // real playback time, not wall-clock (end - start); seeks excluded
     public long ListenedSeconds { get; set; }
 
-    public bool ReachedCompletionThreshold { get; set; }
+    public bool IsQualifiedPlay { get; set; }
+    public bool PlaybackFinished { get; set; }
 
     public DateTime StartedAt { get; set; }
     public DateTime? EndedAt { get; set; }

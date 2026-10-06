@@ -1,7 +1,9 @@
 <template>
   <div class="flex flex-col h-full w-full flex-1">
     <!-- Header -->
-    <div class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between frosted-glass glass-surface">
+    <div
+      class="flex w-full gap-3 px-6 py-4 border-b items-center justify-between frosted-glass glass-surface"
+    >
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-lg border border-dashed opacity-50">
           <UIcon name="mdi:chart-pie" class="w-4 h-4" />

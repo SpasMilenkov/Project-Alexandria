@@ -17,6 +17,7 @@ using Alexandria.Services.Storage.Promotions;
 using Alexandria.Services.Storage.SignedUrls;
 using Alexandria.Services.Streaming;
 using Alexandria.Services.Streaming.Shuffle;
+using Alexandria.Services.Streaming.Wrapped;
 using Alexandria.Services.User;
 using Alexandria.Services.User.Settings;
 using Microsoft.Extensions.Configuration;
@@ -68,6 +69,9 @@ public static class ServiceExtensions
         services.AddSingleton<ShuffleSessionStore>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<IListeningStatsService, ListeningStatsService>();
+        services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();
+        services.AddScoped<ISummaryGenerator, WrappedSummaryGenerator>();
+        services.AddScoped<IOverviewSummaryService, OverviewSummaryService>();
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
         services.AddScoped<IPlaylistService, PlaylistService>();
         services.AddScoped<IAutoPlaylistGroupingService, AutoPlaylistGroupingService>();
@@ -102,6 +106,7 @@ public static class ServiceExtensions
         services.AddHostedService<PromotionQueueWorker>();
         services.AddHostedService<PromotionScannerWorker>();
         services.AddHostedService<TempCleanupWorker>();
+        services.AddHostedService<OverviewSummaryFinalizeWorker>();
         services.AddHostedService<OrphanedCleanupWorker>();
         services.AddHostedService<PreviewSizeBackfillWorker>();
         services.AddHostedService<RepresentationSizeBackfillWorker>();

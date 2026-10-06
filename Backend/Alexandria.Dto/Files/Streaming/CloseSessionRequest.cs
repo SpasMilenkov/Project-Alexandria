@@ -6,4 +6,5 @@ public sealed class CloseSessionRequest
 
     // actual played seconds, reported by the client (excludes seek jumps)
     public long ListenedSeconds { get; init; }
+    public bool PlaybackFinished { get; init; }
 }

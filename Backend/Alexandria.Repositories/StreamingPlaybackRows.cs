@@ -6,6 +6,7 @@ internal sealed class StreamingFileRow
     public string Name { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
     public Guid CurrentVersionId { get; set; }
+    public DateTime CreatedAt { get; set; }
     public double? Duration { get; set; }
     public string? Artist { get; set; }
     public string? Album { get; set; }
@@ -13,6 +14,14 @@ internal sealed class StreamingFileRow
     public string? Genre { get; set; }
     public string? Year { get; set; }
     public StreamingJobRow? Job { get; set; }
+    public StreamingHistoryRow? History { get; set; }
+}
+
+internal sealed class StreamingHistoryRow
+{
+    public long PositionSeconds { get; set; }
+    public bool HasFinished { get; set; }
+    public DateTime LastAccessedAt { get; set; }
 }
 
 internal sealed class StreamingJobRow
@@ -32,6 +41,7 @@ internal sealed class PlaylistStreamingRow
     public string MimeType { get; set; } = string.Empty;
     public Guid CurrentVersionId { get; set; }
     public Guid PlaybackVersionId { get; set; }
+    public DateTime CreatedAt { get; set; }
     public double? Duration { get; set; }
     public string? Artist { get; set; }
     public string? Album { get; set; }
@@ -41,6 +51,7 @@ internal sealed class PlaylistStreamingRow
     public Guid JobId { get; set; }
     public bool IsVideo { get; set; }
     public string? SegmentPrefix { get; set; }
+    public StreamingHistoryRow? History { get; set; }
 }
 
 internal sealed class LibraryPlaybackRow
@@ -49,6 +60,7 @@ internal sealed class LibraryPlaybackRow
     public string Name { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
     public Guid CurrentVersionId { get; set; }
+    public DateTime CreatedAt { get; set; }
     public double? Duration { get; set; }
     public string? Artist { get; set; }
     public string? Album { get; set; }
@@ -56,6 +68,7 @@ internal sealed class LibraryPlaybackRow
     public string? Genre { get; set; }
     public string? Year { get; set; }
     public List<Guid> LiveVersionIds { get; set; } = [];
+    public StreamingHistoryRow? History { get; set; }
 }
 
 internal sealed record PlaylistAnchorKey(int Position, Guid ItemId);

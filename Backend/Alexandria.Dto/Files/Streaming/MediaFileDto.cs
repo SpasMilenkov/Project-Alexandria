@@ -19,4 +19,11 @@ public sealed class MediaFileDto
     public Guid? PlaylistItemId { get; set; }
     public bool IsVideo { get; set; }
     public string? SegmentPrefix { get; set; }
+
+    // Watch progress for the requesting user, left-joined from StreamHistory.
+    // Null when the user has no history row for the file.
+    public long? PositionSeconds { get; set; }
+    public bool? HasFinished { get; set; }
+    public DateTimeOffset? LastAccessedAt { get; set; }
+    public DateTimeOffset? CreatedAt { get; set; }
 }

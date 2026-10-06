@@ -379,8 +379,9 @@ public class FileService(
 
     public async Task<PaginatedResult<MediaFileDto>> GetFilesForStreamingAsync(Guid userId, int page, int pageSize,
         string? query = null, Guid? playlistId = null, bool isVideo = false,
-        CancellationToken ct = default)
-        => await unitOfWork.Files.GetFilesForStreamingAsync(userId, page, pageSize, query, playlistId, isVideo, ct);
+        Guid? anchorFileId = null, Guid? anchorPlaylistItemId = null, CancellationToken ct = default)
+        => await unitOfWork.Files.GetFilesForStreamingAsync(userId, page, pageSize, query, playlistId, isVideo,
+            anchorFileId, anchorPlaylistItemId, ct);
 
     public async Task<MediaFileDto?> GetStreamingFileAsync(Guid userId, Guid fileId,
         CancellationToken ct = default)

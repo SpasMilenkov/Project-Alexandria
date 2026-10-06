@@ -100,7 +100,7 @@
                   variant="solid"
                   square
                   aria-label="Play all"
-                  class="size-14 rounded-full shadow-lg transition-transform hover:scale-105"
+                  class="size-14 rounded-full justify-center shadow-lg transition-transform hover:scale-105"
                   :ui="{ leadingIcon: 'size-6' }"
                   :loading="isLoadingQueue"
                   :disabled="!localItems.length"
@@ -115,7 +115,7 @@
                   variant="ghost"
                   square
                   aria-label="Shuffle"
-                  class="size-10 rounded-full"
+                  class="size-10 rounded-full justify-center"
                   :disabled="!localItems.length || isLoadingQueue"
                   @click="shuffleAll"
                 />
@@ -128,7 +128,7 @@
                   variant="ghost"
                   square
                   aria-label="More actions"
-                  class="size-10 rounded-full"
+                  class="size-10 rounded-full justify-center"
                 />
               </UDropdownMenu>
             </div>

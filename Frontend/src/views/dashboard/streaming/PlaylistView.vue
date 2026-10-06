@@ -301,7 +301,7 @@ const headerStyle = computed(() => ({ top: `-${Math.ceil(collapsibleHeight.value
 
 const initialBrowse = parsePlaylistBrowseQuery(route.query);
 const page = ref(initialBrowse.page);
-const pageSize = 10;
+const pageSize = 30;
 
 // Browse state initializes from the route query and stays synced there, so
 // drilling into a playlist and back (or reloading) restores page + filters.

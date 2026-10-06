@@ -37,8 +37,11 @@ public interface IStreamHistoryRepository : IRepository<StreamHistory>
     /// <summary>Creates and persists a new session row, returning the saved instance.</summary>
     Task<StreamSession> CreateSessionAsync(StreamSession session, CancellationToken ct = default);
 
-    /// <summary>Persists changes to an existing session row and returns the updated instance.</summary>
-    Task<StreamSession> UpdateSessionAsync(StreamSession session, CancellationToken ct = default);
+    /// <summary>Updates playback position and access time without rewriting listening counters.</summary>
+    Task UpdatePositionAsync(Guid historyId, Guid userId, long positionSeconds, CancellationToken ct = default);
+
+    /// <summary>Closes a session and updates its history atomically. Repeated closes return the saved history.</summary>
+    Task<StreamHistory> CloseSessionAsync(StreamSession session, Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Returns the session with the given id, or <c>null</c> if not found.

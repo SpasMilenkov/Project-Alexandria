@@ -1,0 +1,1314 @@
+{
+  "tiers": [
+    "<2h",
+    "2-3h",
+    "3-6h",
+    "6-12h",
+    "12-20h",
+    "20-40h",
+    "40-80h",
+    "80-120h",
+    "120h+"
+  ],
+  "anchors": [
+    {
+      "id": "hobbit_1977_rankin_bass",
+      "franchise": "middle_earth",
+      "name": "The Hobbit (1977 animated)",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 77,
+      "durationLabel": "1h 17m",
+      "exact": true,
+      "copy": "Enough time for the 1977 animated Hobbit, from Bag End to the Lonely Mountain."
+    },
+    {
+      "id": "ghibli_totoro",
+      "franchise": "ghibli",
+      "name": "My Neighbor Totoro",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 86,
+      "durationLabel": "1h 26m",
+      "exact": true,
+      "copy": "Enough time to wait at a rainy bus stop for the Catbus."
+    },
+    {
+      "id": "pixar_up",
+      "franchise": "pixar",
+      "name": "Up",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 96,
+      "durationLabel": "1h 36m",
+      "exact": true,
+      "copy": "Enough time to float a house all the way to Paradise Falls."
+    },
+    {
+      "id": "rotk_1980_animated",
+      "franchise": "middle_earth",
+      "name": "The Return of the King (1980 animated)",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 98,
+      "durationLabel": "about 1h 38m",
+      "exact": false,
+      "copy": "Long enough for the 1980 animated Return of the King. Yes, there was one.",
+      "note": "Sources range 96-98 min."
+    },
+    {
+      "id": "sw_clone_wars_film",
+      "franchise": "star_wars",
+      "name": "Star Wars: The Clone Wars (2008)",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 98,
+      "durationLabel": "1h 38m",
+      "exact": true,
+      "copy": "Enough time for the Clone Wars to begin, cartoon-style."
+    },
+    {
+      "id": "sw_holiday_special",
+      "franchise": "star_wars",
+      "name": "The Star Wars Holiday Special (1978)",
+      "category": "tv",
+      "tier": "<2h",
+      "durationMinutes": 98,
+      "durationLabel": "about 1h 38m",
+      "exact": false,
+      "copy": "Longer than the Star Wars Holiday Special, which Lucasfilm would like you to forget.",
+      "note": "Sources range 96-98 min (no commercials)."
+    },
+    {
+      "id": "pixar_wall_e",
+      "franchise": "pixar",
+      "name": "WALL-E",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 98,
+      "durationLabel": "1h 38m",
+      "exact": true,
+      "copy": "Long enough to clean up a planet, one cube at a time."
+    },
+    {
+      "id": "pixar_nemo",
+      "franchise": "pixar",
+      "name": "Finding Nemo",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 100,
+      "durationLabel": "1h 40m",
+      "exact": true,
+      "copy": "Long enough to cross the whole ocean looking for one small fish."
+    },
+    {
+      "id": "pixar_coco",
+      "franchise": "pixar",
+      "name": "Coco",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 105,
+      "durationLabel": "1h 45m",
+      "exact": true,
+      "copy": "Enough time to cross the marigold bridge and make it back by sunrise."
+    },
+    {
+      "id": "gagarin_vostok_1",
+      "name": "Yuri Gagarin's Vostok 1 flight",
+      "category": "space",
+      "tier": "<2h",
+      "durationMinutes": 108,
+      "durationLabel": "1h 48m",
+      "exact": true,
+      "copy": "Long enough to circle the Earth once with Yuri Gagarin, April 12, 1961.",
+      "event": {
+        "date": "1961-04-12"
+      }
+    },
+    {
+      "id": "spiderverse_into",
+      "franchise": "marvel",
+      "name": "Spider-Man: Into the Spider-Verse",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 117,
+      "durationLabel": "1h 57m",
+      "exact": true,
+      "copy": "Enough time for Miles Morales to take the leap."
+    },
+    {
+      "id": "ghibli_howl",
+      "franchise": "ghibli",
+      "name": "Howl's Moving Castle",
+      "category": "animation",
+      "tier": "<2h",
+      "durationMinutes": 119,
+      "durationLabel": "1h 59m",
+      "exact": true,
+      "copy": "Long enough to ride Howl's castle across the hills."
+    },
+    {
+      "id": "marathon_world_record_sawe_2026",
+      "name": "Sabastian Sawe's marathon world record (London, 2026)",
+      "category": "sport",
+      "tier": "<2h",
+      "durationMinutes": 119.5,
+      "durationLabel": "1h 59m 30s",
+      "exact": true,
+      "copy": "As long as it took Sabastian Sawe to run the first sub-two-hour marathon in a record-eligible race, London, April 26, 2026.",
+      "event": {
+        "date": "2026-04-26",
+        "place": "London"
+      }
+    },
+    {
+      "id": "kipchoge_vienna_2019",
+      "name": "Kipchoge's 1:59:40 in Vienna (INEOS 1:59, not record-eligible)",
+      "category": "sport",
+      "tier": "<2h",
+      "durationMinutes": 119.67,
+      "durationLabel": "1h 59m 40s",
+      "exact": true,
+      "copy": "As long as Eliud Kipchoge's sub-two-hour marathon in Vienna, October 12, 2019.",
+      "event": {
+        "date": "2019-10-12",
+        "place": "Vienna"
+      }
+    },
+    {
+      "id": "marathon_world_record_kelvin_kiptum",
+      "name": "Kelvin Kiptum's marathon world record (Chicago, 2023)",
+      "category": "sport",
+      "tier": "2-3h",
+      "durationMinutes": 120.58,
+      "durationLabel": "2h 00m 35s",
+      "exact": true,
+      "copy": "As long as it took Kelvin Kiptum to set the marathon world record in Chicago on October 8, 2023.",
+      "event": {
+        "date": "2023-10-08",
+        "place": "Chicago"
+      }
+    },
+    {
+      "id": "ghibli_spirited_away",
+      "franchise": "ghibli",
+      "name": "Spirited Away",
+      "category": "animation",
+      "tier": "2-3h",
+      "durationMinutes": 125,
+      "durationLabel": "2h 5m",
+      "exact": true,
+      "copy": "Enough time to work a shift at the bathhouse and still find your way home."
+    },
+    {
+      "id": "harry_potter_deathly_hallows_2",
+      "name": "Harry Potter and the Deathly Hallows – Part 2",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 130,
+      "durationLabel": "2h 10m",
+      "exact": true,
+      "copy": "Longer than the final battle for Hogwarts.",
+      "franchise": "harry_potter"
+    },
+    {
+      "id": "bakshi_lotr_1978",
+      "franchise": "middle_earth",
+      "name": "The Lord of the Rings (1978 animated)",
+      "category": "animation",
+      "tier": "2-3h",
+      "durationMinutes": 133,
+      "durationLabel": "2h 13m",
+      "exact": true,
+      "copy": "Longer than Ralph Bakshi's 1978 Lord of the Rings, rotoscoped orcs and all."
+    },
+    {
+      "id": "sw_rogue_one",
+      "franchise": "star_wars",
+      "name": "Rogue One",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 133,
+      "durationLabel": "2h 13m",
+      "exact": true,
+      "copy": "Long enough to steal the Death Star plans and not make it home."
+    },
+    {
+      "id": "hp_fantastic_beasts_1",
+      "franchise": "harry_potter",
+      "name": "Fantastic Beasts and Where to Find Them",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 133,
+      "durationLabel": "2h 13m",
+      "exact": true,
+      "copy": "Long enough to chase a Niffler through 1920s New York."
+    },
+    {
+      "id": "war_of_the_rohirrim",
+      "franchise": "middle_earth",
+      "name": "The War of the Rohirrim",
+      "category": "animation",
+      "tier": "2-3h",
+      "durationMinutes": 134,
+      "durationLabel": "2h 14m",
+      "exact": true,
+      "copy": "Enough time to hold the Hornburg before Helm's Deep had a name."
+    },
+    {
+      "id": "ghibli_mononoke",
+      "franchise": "ghibli",
+      "name": "Princess Mononoke",
+      "category": "animation",
+      "tier": "2-3h",
+      "durationMinutes": 134,
+      "durationLabel": "2h 14m",
+      "exact": false,
+      "copy": "Long enough to decide the fate of the forest alongside San.",
+      "note": "Sources split 133 (JP release) vs 134 (US release)."
+    },
+    {
+      "id": "sw_solo",
+      "franchise": "star_wars",
+      "name": "Solo: A Star Wars Story",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 135,
+      "durationLabel": "2h 15m",
+      "exact": true,
+      "copy": "Enough time to make the Kessel Run in under twelve parsecs."
+    },
+    {
+      "id": "dune_1984",
+      "franchise": "dune",
+      "name": "Dune (1984)",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 137,
+      "durationLabel": "2h 17m",
+      "exact": true,
+      "copy": "Longer than David Lynch's 1984 Dune, a cult classic its own director disowned."
+    },
+    {
+      "id": "harry_potter_order_phoenix",
+      "name": "Harry Potter and the Order of the Phoenix",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 138,
+      "durationLabel": "2h 18m",
+      "exact": true,
+      "copy": "Long enough to survive a whole year of Umbridge.",
+      "franchise": "harry_potter"
+    },
+    {
+      "id": "spiderverse_across",
+      "franchise": "marvel",
+      "name": "Spider-Man: Across the Spider-Verse",
+      "category": "animation",
+      "tier": "2-3h",
+      "durationMinutes": 140,
+      "durationLabel": "2h 20m",
+      "exact": true,
+      "copy": "Long enough to swing across the whole Spider-Verse."
+    },
+    {
+      "id": "harry_potter_prisoner_azkaban",
+      "name": "Harry Potter and the Prisoner of Azkaban",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 142,
+      "durationLabel": "2h 22m",
+      "exact": true,
+      "copy": "Long enough to meet Sirius, Lupin, and one very suspicious rat.",
+      "franchise": "harry_potter"
+    },
+    {
+      "id": "hobbit_battle_five_armies_theatrical",
+      "name": "The Hobbit: The Battle of the Five Armies — theatrical",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 144,
+      "durationLabel": "2h 24m",
+      "exact": true,
+      "copy": "Almost long enough to win a war over a mountain of gold.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "harry_potter_deathly_hallows_1",
+      "name": "Harry Potter and the Deathly Hallows – Part 1",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 146,
+      "durationLabel": "2h 26m",
+      "exact": true,
+      "copy": "Long enough to camp in a forest with Harry, Ron, and Hermione.",
+      "franchise": "harry_potter"
+    },
+    {
+      "id": "mcu_infinity_war",
+      "franchise": "marvel",
+      "name": "Avengers: Infinity War",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 149,
+      "durationLabel": "2h 29m",
+      "exact": true,
+      "copy": "Long enough to lose half the universe."
+    },
+    {
+      "id": "apollo_11_moonwalk",
+      "name": "Armstrong and Aldrin's moonwalk",
+      "category": "space",
+      "tier": "2-3h",
+      "durationMinutes": 151.67,
+      "durationLabel": "2h 31m 40s",
+      "exact": true,
+      "copy": "Longer than Armstrong and Aldrin spent walking on the Moon in July 1969.",
+      "event": {
+        "date": "1969-07-20"
+      },
+      "franchise": "apollo"
+    },
+    {
+      "id": "harry_potter_sorcerers_stone",
+      "name": "Harry Potter and the Sorcerer's Stone",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 152,
+      "durationLabel": "2h 32m",
+      "exact": true,
+      "copy": "Enough time to get your letter and survive your first year at Hogwarts.",
+      "franchise": "harry_potter"
+    },
+    {
+      "id": "dune_part_one",
+      "name": "Dune: Part One",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 155,
+      "durationLabel": "2h 35m",
+      "exact": true,
+      "copy": "Long enough to cross Arrakis. Water not included.",
+      "franchise": "dune"
+    },
+    {
+      "id": "harry_potter_goblet_fire",
+      "name": "Harry Potter and the Goblet of Fire",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 157,
+      "durationLabel": "2h 37m",
+      "exact": true,
+      "copy": "Enough time to survive three Triwizard tasks and one graveyard.",
+      "franchise": "harry_potter"
+    },
+    {
+      "id": "titanic_sinking",
+      "name": "Titanic: iceberg impact to fully submerged",
+      "category": "historical_event",
+      "tier": "2-3h",
+      "durationMinutes": 160,
+      "durationLabel": "about 2h 40m",
+      "exact": false,
+      "copy": "About as long as it took the Titanic to go under after hitting the iceberg at 11:40 PM on April 14, 1912.",
+      "event": {
+        "date": "1912-04-14",
+        "place": "North Atlantic"
+      }
+    },
+    {
+      "id": "harry_potter_chamber_secrets",
+      "name": "Harry Potter and the Chamber of Secrets",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 161,
+      "durationLabel": "2h 41m",
+      "exact": true,
+      "copy": "Long enough to find the Chamber and regret opening it.",
+      "franchise": "harry_potter"
+    },
+    {
+      "id": "hobbit_desolation_smaug_theatrical",
+      "name": "The Hobbit: The Desolation of Smaug — theatrical",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 161,
+      "durationLabel": "2h 41m",
+      "exact": true,
+      "copy": "Enough time to wake a dragon and immediately regret it.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "dune_part_two",
+      "franchise": "dune",
+      "name": "Dune: Part Two",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 166,
+      "durationLabel": "2h 46m",
+      "exact": true,
+      "copy": "Long enough for Paul to ride a sandworm and start a holy war."
+    },
+    {
+      "id": "hobbit_unexpected_journey_theatrical",
+      "name": "The Hobbit: An Unexpected Journey — theatrical",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 169,
+      "durationLabel": "2h 49m",
+      "exact": true,
+      "copy": "Long enough to get swept out of the Shire by thirteen dwarves.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "concorde_ny_london_record",
+      "name": "Concorde, New York to London — fastest flight",
+      "category": "travel",
+      "tier": "2-3h",
+      "durationMinutes": 172.98,
+      "durationLabel": "2h 52m 59s",
+      "exact": true,
+      "copy": "Long enough to cross the Atlantic on Concorde's fastest-ever flight, February 7, 1996.",
+      "event": {
+        "date": "1996-02-07"
+      }
+    },
+    {
+      "id": "oppenheimer",
+      "name": "Oppenheimer",
+      "category": "movie",
+      "tier": "2-3h",
+      "durationMinutes": 180,
+      "durationLabel": "3h",
+      "exact": true,
+      "copy": "Enough time to split the atom, cinematically."
+    },
+    {
+      "id": "mcu_endgame",
+      "franchise": "marvel",
+      "name": "Avengers: Endgame",
+      "category": "movie",
+      "tier": "3-6h",
+      "durationMinutes": 181,
+      "durationLabel": "3h 1m",
+      "exact": true,
+      "copy": "Longer than Avengers: Endgame, time heist included."
+    },
+    {
+      "id": "killers_flower_moon",
+      "name": "Killers of the Flower Moon",
+      "category": "movie",
+      "tier": "3-6h",
+      "durationMinutes": 206,
+      "durationLabel": "3h 26m",
+      "exact": true,
+      "copy": "Longer than Scorsese's Killers of the Flower Moon."
+    },
+    {
+      "id": "fellowship_extended",
+      "name": "The Lord of the Rings: The Fellowship of the Ring — extended edition",
+      "category": "movie",
+      "tier": "3-6h",
+      "durationMinutes": 228,
+      "durationLabel": "3h 48m",
+      "exact": true,
+      "copy": "Long enough to form the Fellowship and still be on the road.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "two_towers_extended",
+      "name": "The Lord of the Rings: The Two Towers — extended edition",
+      "category": "movie",
+      "tier": "3-6h",
+      "durationMinutes": 235,
+      "durationLabel": "3h 55m",
+      "exact": true,
+      "copy": "Enough time for Helm's Deep and every long night leading up to it.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "return_king_extended",
+      "name": "The Lord of the Rings: The Return of the King — extended edition",
+      "category": "movie",
+      "tier": "3-6h",
+      "durationMinutes": 263,
+      "durationLabel": "4h 23m",
+      "exact": true,
+      "copy": "Long enough to walk all the way to Mount Doom.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "before_trilogy",
+      "name": "The Before Trilogy",
+      "category": "movie_series",
+      "tier": "3-6h",
+      "durationMinutes": 290,
+      "durationLabel": "4h 50m",
+      "exact": true,
+      "copy": "Enough time to follow Jesse and Céline across eighteen years, from a train to a Greek summer."
+    },
+    {
+      "id": "hp_cursed_child_play",
+      "franchise": "harry_potter",
+      "name": "Harry Potter and the Cursed Child (original two-part West End production)",
+      "category": "theatre",
+      "tier": "3-6h",
+      "durationMinutes": 315,
+      "durationLabel": "5h 15m",
+      "exact": true,
+      "copy": "Longer than the original two-part Cursed Child, intermissions included.",
+      "source": "Official running times: Part One 2h40m + Part Two 2h35m, intervals included"
+    },
+    {
+      "id": "chernobyl_miniseries",
+      "name": "Chernobyl — complete miniseries",
+      "category": "tv",
+      "tier": "3-6h",
+      "durationMinutes": 330,
+      "durationLabel": "5h 30m",
+      "exact": true,
+      "copy": "Longer than all of Chernobyl. Heavy, but you made it."
+    },
+    {
+      "id": "back_to_future_trilogy",
+      "name": "Back to the Future trilogy",
+      "category": "movie_series",
+      "tier": "3-6h",
+      "durationMinutes": 343,
+      "durationLabel": "5h 43m",
+      "exact": true,
+      "copy": "Enough for Marty to hit 1955, 2015, and 1885 and still make it home.",
+      "franchise": "back_to_the_future"
+    },
+    {
+      "id": "breaking_bad_s1",
+      "name": "Breaking Bad — Season 1",
+      "category": "tv",
+      "tier": "3-6h",
+      "durationMinutes": 346,
+      "durationLabel": "about 5h 46m",
+      "exact": false,
+      "copy": "Long enough to watch a chemistry teacher break bad. Season one, done.",
+      "franchise": "breaking_bad"
+    },
+    {
+      "id": "star_wars_original_trilogy",
+      "name": "Original Star Wars trilogy",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 376,
+      "durationLabel": "6h 16m",
+      "exact": true,
+      "copy": "Enough time to blow up two Death Stars.",
+      "franchise": "star_wars"
+    },
+    {
+      "id": "toy_story_1_4",
+      "name": "Toy Story 1–4",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 376,
+      "durationLabel": "6h 16m",
+      "exact": true,
+      "copy": "Long enough to follow Woody and Buzz from Andy's room to the open road.",
+      "franchise": "pixar"
+    },
+    {
+      "id": "queens_gambit",
+      "name": "The Queen's Gambit",
+      "category": "tv",
+      "tier": "6-12h",
+      "durationMinutes": 397,
+      "durationLabel": "about 6h 37m",
+      "exact": false,
+      "copy": "Enough time for an orphan to take on the best chess players in the world."
+    },
+    {
+      "id": "stranger_things_s1",
+      "name": "Stranger Things — Season 1",
+      "category": "tv",
+      "tier": "6-12h",
+      "durationMinutes": 400,
+      "durationLabel": "about 6h 40m",
+      "exact": false,
+      "copy": "Long enough to find Will, meet Eleven, and face the Demogorgon. Season one.",
+      "franchise": "stranger_things"
+    },
+    {
+      "id": "star_wars_prequel_trilogy",
+      "name": "Star Wars prequel trilogy",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 418,
+      "durationLabel": "6h 58m",
+      "exact": true,
+      "copy": "From a boy on Tatooine to Darth Vader.",
+      "franchise": "star_wars"
+    },
+    {
+      "id": "star_wars_sequel_trilogy",
+      "name": "Star Wars sequel trilogy",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 432,
+      "durationLabel": "7h 12m",
+      "exact": true,
+      "copy": "Enough time to follow Rey from scavenger to Skywalker.",
+      "franchise": "star_wars"
+    },
+    {
+      "id": "dark_knight_trilogy",
+      "name": "The Dark Knight trilogy",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 457,
+      "durationLabel": "about 7h 37m",
+      "exact": false,
+      "copy": "Long enough to watch Batman rise, fall, and rise again.",
+      "franchise": "batman"
+    },
+    {
+      "id": "true_detective_s1",
+      "name": "True Detective — Season 1",
+      "category": "tv",
+      "tier": "6-12h",
+      "durationMinutes": 458,
+      "durationLabel": "7h 38m",
+      "exact": true,
+      "copy": "Long enough to chase the Yellow King through Louisiana."
+    },
+    {
+      "id": "hobbit_trilogy_theatrical",
+      "name": "The Hobbit trilogy — theatrical",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 474,
+      "durationLabel": "7h 54m",
+      "exact": true,
+      "copy": "There and back again, with a dragon in the middle.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "standard_workday",
+      "name": "A standard eight-hour workday",
+      "category": "everyday",
+      "tier": "6-12h",
+      "durationMinutes": 480,
+      "durationLabel": "8h",
+      "exact": true,
+      "copy": "A full workday, soundtracked from clock-in to clock-out."
+    },
+    {
+      "id": "hp_sorcerers_stone_audiobook",
+      "franchise": "harry_potter",
+      "name": "Sorcerer's Stone audiobook (Jim Dale)",
+      "category": "audiobook",
+      "tier": "6-12h",
+      "durationMinutes": 498,
+      "durationLabel": "8h 18m",
+      "exact": true,
+      "copy": "Long enough to hear Sorcerer's Stone read aloud, every voice included.",
+      "source": "Audible listing, Jim Dale narration"
+    },
+    {
+      "id": "john_wick_1_4",
+      "name": "John Wick 1–4",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 523,
+      "durationLabel": "about 8h 43m",
+      "exact": false,
+      "copy": "Enough time to watch one man take on the entire underworld, four times.",
+      "franchise": "john_wick"
+    },
+    {
+      "id": "hobbit_trilogy_extended",
+      "name": "The Hobbit trilogy — extended editions",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 532,
+      "durationLabel": "8h 52m",
+      "exact": true,
+      "copy": "The complete extended Hobbit. Second breakfast included.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "lotr_trilogy_theatrical",
+      "name": "The Lord of the Rings trilogy — theatrical",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 558,
+      "durationLabel": "about 9h 18m",
+      "exact": false,
+      "copy": "Long enough to carry the Ring from the Shire to Mordor.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "godfather_trilogy_1901_1980",
+      "name": "The Godfather Trilogy: 1901–1980",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 583,
+      "durationLabel": "9h 43m",
+      "exact": true,
+      "copy": "Nearly ten hours of Corleone family business.",
+      "franchise": "godfather"
+    },
+    {
+      "id": "band_of_brothers",
+      "name": "Band of Brothers",
+      "category": "tv",
+      "tier": "6-12h",
+      "durationMinutes": 594,
+      "durationLabel": "9h 54m",
+      "exact": true,
+      "copy": "Long enough to follow Easy Company from Toccoa to Berchtesgaden."
+    },
+    {
+      "id": "indiana_jones_all_five",
+      "name": "All five Indiana Jones movies",
+      "category": "movie_series",
+      "tier": "6-12h",
+      "durationMinutes": 636,
+      "durationLabel": "10h 36m",
+      "exact": true,
+      "copy": "Every Indiana Jones adventure, from the lost Ark to the Dial of Destiny.",
+      "franchise": "indiana_jones"
+    },
+    {
+      "id": "trucker_daily_driving_limit",
+      "name": "A long-haul trucker's legal daily driving limit (US)",
+      "category": "everyday",
+      "tier": "6-12h",
+      "durationMinutes": 660,
+      "durationLabel": "11h",
+      "exact": true,
+      "copy": "Longer than a long-haul trucker is legally allowed to drive in a day."
+    },
+    {
+      "id": "isner_mahut_2010",
+      "name": "Isner vs. Mahut, Wimbledon 2010",
+      "category": "sport",
+      "tier": "6-12h",
+      "durationMinutes": 665,
+      "durationLabel": "11h 5m",
+      "exact": true,
+      "copy": "Longer than the 2010 Wimbledon match that took three days to finish.",
+      "event": {
+        "date": "2010-06-22"
+      }
+    },
+    {
+      "id": "lax_tokyo_nonstop",
+      "name": "Nonstop flight from Los Angeles to Tokyo",
+      "category": "travel",
+      "tier": "6-12h",
+      "durationMinutes": 690,
+      "durationRangeMinutes": [
+        660,
+        720
+      ],
+      "durationLabel": "about 11–12h",
+      "exact": false,
+      "copy": "Enough music to fly nonstop from Los Angeles to Tokyo."
+    },
+    {
+      "id": "hospital_twelve_hour_shift",
+      "name": "A 12-hour hospital shift",
+      "category": "everyday",
+      "tier": "12-20h",
+      "durationMinutes": 720,
+      "durationLabel": "12h",
+      "exact": true,
+      "copy": "A full 12-hour hospital shift, start to finish, with a soundtrack."
+    },
+    {
+      "id": "lotr_trilogy_extended",
+      "name": "The Lord of the Rings trilogy — extended editions",
+      "category": "movie_series",
+      "tier": "12-20h",
+      "durationMinutes": 726,
+      "durationLabel": "about 12h 06m",
+      "exact": false,
+      "copy": "The extended Lord of the Rings. No skipping, no shortcuts.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "trucker_fourteen_hour_window",
+      "name": "A trucker's 14-hour on-duty window (US)",
+      "category": "everyday",
+      "tier": "12-20h",
+      "durationMinutes": 840,
+      "durationLabel": "14h",
+      "exact": true,
+      "copy": "A trucker's entire legal on-duty day, with a soundtrack."
+    },
+    {
+      "id": "two_workdays",
+      "name": "Two standard workdays",
+      "category": "everyday",
+      "tier": "12-20h",
+      "durationMinutes": 960,
+      "durationLabel": "16h",
+      "exact": true,
+      "copy": "Two full workdays without a single moment of silence."
+    },
+    {
+      "id": "middle_earth_theatrical_six",
+      "name": "The Hobbit + The Lord of the Rings theatrical trilogies",
+      "category": "movie_series",
+      "tier": "12-20h",
+      "durationMinutes": 1032,
+      "durationLabel": "17h 12m",
+      "exact": true,
+      "copy": "Every Peter Jackson Middle-earth film, from the Shire to Mount Doom and back.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "mission_impossible_1_8",
+      "name": "Mission: Impossible 1–8",
+      "category": "movie_series",
+      "tier": "12-20h",
+      "durationMinutes": 1105,
+      "durationLabel": "about 18h 25m",
+      "exact": false,
+      "copy": "Every Mission: Impossible. This playlist will not self-destruct.",
+      "franchise": "mission_impossible"
+    },
+    {
+      "id": "harry_potter_all_eight",
+      "name": "All eight Harry Potter movies",
+      "category": "movie_series",
+      "tier": "12-20h",
+      "durationMinutes": 1179,
+      "durationLabel": "19h 39m",
+      "exact": true,
+      "copy": "Hogwarts, first year to final battle. All eight films.",
+      "franchise": "harry_potter"
+    },
+    {
+      "id": "star_wars_skywalker_saga",
+      "name": "Star Wars Skywalker Saga — Episodes I–IX",
+      "category": "movie_series",
+      "tier": "20-40h",
+      "durationMinutes": 1226,
+      "durationLabel": "about 20h 26m",
+      "exact": false,
+      "copy": "The entire Skywalker Saga, all nine episodes.",
+      "franchise": "star_wars"
+    },
+    {
+      "id": "middle_earth_extended_six",
+      "name": "All six extended Hobbit + Lord of the Rings films",
+      "category": "movie_series",
+      "tier": "20-40h",
+      "durationMinutes": 1236,
+      "durationRangeMinutes": [
+        1220,
+        1251
+      ],
+      "durationLabel": "about 20½h",
+      "exact": false,
+      "copy": "Every extended Middle-earth film. Hobbit-sized meals recommended.",
+      "franchise": "middle_earth"
+    },
+    {
+      "id": "hp_goblet_audiobook",
+      "franchise": "harry_potter",
+      "name": "Goblet of Fire audiobook (Jim Dale)",
+      "category": "audiobook",
+      "tier": "20-40h",
+      "durationMinutes": 1236,
+      "durationLabel": "20h 36m",
+      "exact": true,
+      "copy": "Longer than it takes to hear Goblet of Fire read aloud, cover to cover.",
+      "source": "Audible listing and MusicBrainz (20:36:11), Jim Dale narration"
+    },
+    {
+      "id": "dune_audiobook",
+      "franchise": "dune",
+      "name": "Dune audiobook (2007 full-cast)",
+      "category": "audiobook",
+      "tier": "20-40h",
+      "durationMinutes": 1262,
+      "durationLabel": "21h 2m",
+      "exact": true,
+      "copy": "Enough for the entire Dune audiobook, sandworms and all.",
+      "source": "Audible/Amazon listing, Macmillan Audio 2007 full-cast edition"
+    },
+    {
+      "id": "three_workdays",
+      "name": "Three standard workdays",
+      "category": "everyday",
+      "tier": "20-40h",
+      "durationMinutes": 1440,
+      "durationLabel": "24h",
+      "exact": true,
+      "copy": "Three workdays of nonstop music."
+    },
+    {
+      "id": "one_earth_day",
+      "name": "One Earth day",
+      "category": "time",
+      "tier": "20-40h",
+      "durationMinutes": 1440,
+      "durationLabel": "24h",
+      "exact": true,
+      "copy": "A full day, sunrise to sunrise, with no silence."
+    },
+    {
+      "id": "le_mans_24h",
+      "name": "24 Hours of Le Mans",
+      "category": "sport",
+      "tier": "20-40h",
+      "durationMinutes": 1440,
+      "durationLabel": "about 24h",
+      "exact": false,
+      "copy": "Long enough for the whole 24 Hours of Le Mans: day, night, and day again."
+    },
+    {
+      "id": "martian_sol",
+      "name": "One Martian day — one sol",
+      "category": "space",
+      "tier": "20-40h",
+      "durationMinutes": 1479.59,
+      "durationLabel": "24h 39m 35s",
+      "exact": true,
+      "copy": "Longer than a full day on Mars."
+    },
+    {
+      "id": "star_wars_live_action_11",
+      "name": "All 11 live-action Star Wars theatrical films",
+      "category": "movie_series",
+      "tier": "20-40h",
+      "durationMinutes": 1494,
+      "durationLabel": "about 24h 54m",
+      "exact": false,
+      "copy": "More than a full day's worth of lightsabers.",
+      "franchise": "star_wars"
+    },
+    {
+      "id": "lindbergh_solo_1927",
+      "name": "Lindbergh's solo flight, New York to Paris",
+      "category": "travel",
+      "tier": "20-40h",
+      "durationMinutes": 2010,
+      "durationLabel": "about 33½h",
+      "exact": false,
+      "copy": "Enough time to fly solo from New York to Paris, like Lindbergh in May 1927.",
+      "event": {
+        "date": "1927-05-20"
+      }
+    },
+    {
+      "id": "nurse_three_twelves",
+      "name": "Three 12-hour nursing shifts",
+      "category": "everyday",
+      "tier": "20-40h",
+      "durationMinutes": 2160,
+      "durationLabel": "36h",
+      "exact": true,
+      "copy": "A nurse's three 12-hour shifts, back to back, with a soundtrack."
+    },
+    {
+      "id": "route_66_drive",
+      "name": "Driving the entire historic Route 66 without sightseeing",
+      "category": "travel",
+      "tier": "20-40h",
+      "durationMinutes": 2220,
+      "durationRangeMinutes": [
+        2040,
+        2400
+      ],
+      "durationLabel": "about 34–40h",
+      "exact": false,
+      "copy": "Enough time to drive Route 66, Chicago to California, without stopping to sightsee."
+    },
+    {
+      "id": "standard_workweek",
+      "name": "A standard five-day workweek",
+      "category": "everyday",
+      "tier": "40-80h",
+      "durationMinutes": 2400,
+      "durationLabel": "40h",
+      "exact": true,
+      "copy": "A full workweek, with a soundtrack."
+    },
+    {
+      "id": "empire_builder_seattle_chicago",
+      "name": "Amtrak Empire Builder: Seattle to Chicago",
+      "category": "travel",
+      "tier": "40-80h",
+      "durationMinutes": 2715,
+      "durationLabel": "about 45h 15m",
+      "exact": false,
+      "copy": "Longer than riding the Empire Builder across the whole country."
+    },
+    {
+      "id": "full_weekend",
+      "name": "A full weekend from Friday 6 PM to Sunday 6 PM",
+      "category": "everyday",
+      "tier": "40-80h",
+      "durationMinutes": 2880,
+      "durationLabel": "48h",
+      "exact": true,
+      "copy": "An entire weekend, Friday night to Sunday night, nonstop."
+    },
+    {
+      "id": "weekly_sleep_hours",
+      "name": "Every hour you sleep in a week (8h x 7)",
+      "category": "everyday",
+      "tier": "40-80h",
+      "durationMinutes": 3360,
+      "durationLabel": "56h",
+      "exact": true,
+      "copy": "Every hour you'd sleep this week, awake and listening."
+    },
+    {
+      "id": "two_half_days",
+      "name": "Two and a half Earth days",
+      "category": "time",
+      "tier": "40-80h",
+      "durationMinutes": 3600,
+      "durationLabel": "60h",
+      "exact": true,
+      "copy": "Two and a half days without hitting pause."
+    },
+    {
+      "id": "trucker_weekly_limit",
+      "name": "A trucker's weekly on-duty limit (US, 70h / 8 days)",
+      "category": "everyday",
+      "tier": "40-80h",
+      "durationMinutes": 4200,
+      "durationLabel": "70h",
+      "exact": true,
+      "copy": "As many hours as a trucker may legally work in eight days."
+    },
+    {
+      "id": "three_earth_days",
+      "name": "Three full Earth days",
+      "category": "time",
+      "tier": "40-80h",
+      "durationMinutes": 4320,
+      "durationLabel": "72h",
+      "exact": true,
+      "copy": "Three days and three nights of music."
+    },
+    {
+      "id": "apollo_11_launch_lunar_orbit",
+      "name": "Apollo 11: launch to lunar orbit",
+      "category": "space",
+      "tier": "40-80h",
+      "durationMinutes": 4550,
+      "durationLabel": "about 75h 50m",
+      "exact": false,
+      "copy": "About as long as Apollo 11 took to reach the Moon's orbit.",
+      "event": {
+        "date": "1969-07-16"
+      },
+      "franchise": "apollo"
+    },
+    {
+      "id": "ten_workdays",
+      "name": "Ten eight-hour workdays",
+      "category": "everyday",
+      "tier": "40-80h",
+      "durationMinutes": 4800,
+      "durationLabel": "80h",
+      "exact": true,
+      "copy": "Ten workdays, with music playing the whole time."
+    },
+    {
+      "id": "two_workweeks",
+      "name": "Two 40-hour workweeks",
+      "category": "everyday",
+      "tier": "80-120h",
+      "durationMinutes": 4800,
+      "durationLabel": "80h",
+      "exact": true,
+      "copy": "Two full workweeks of listening."
+    },
+    {
+      "id": "apollo_13_explosion_splashdown",
+      "name": "Apollo 13: explosion to splashdown",
+      "category": "space",
+      "tier": "80-120h",
+      "durationMinutes": 5220,
+      "durationLabel": "about 87h",
+      "exact": false,
+      "copy": "Longer than Apollo 13's trip from 'Houston, we've had a problem' to splashdown, April 1970.",
+      "event": {
+        "date": "1970-04-13"
+      },
+      "franchise": "apollo"
+    },
+    {
+      "id": "four_earth_days",
+      "name": "Four Earth days",
+      "category": "time",
+      "tier": "80-120h",
+      "durationMinutes": 5760,
+      "durationLabel": "96h",
+      "exact": true,
+      "copy": "Four days, around the clock."
+    },
+    {
+      "id": "apollo_11_launch_moon_landing",
+      "name": "Apollo 11: launch to Moon landing",
+      "category": "space",
+      "tier": "80-120h",
+      "durationMinutes": 6165.67,
+      "durationLabel": "102h 45m 40s",
+      "exact": true,
+      "copy": "Long enough to launch Apollo 11 and touch down on the Moon.",
+      "event": {
+        "date": "1969-07-16"
+      },
+      "note": "Corrected from 6167.18 (102h 47m 11s). Launch 13:32:00 UTC Jul 16, touchdown 20:17:40 UTC Jul 20.",
+      "franchise": "apollo"
+    },
+    {
+      "id": "five_earth_days",
+      "name": "Five Earth days",
+      "category": "time",
+      "tier": "80-120h",
+      "durationMinutes": 7200,
+      "durationLabel": "120h",
+      "exact": true,
+      "copy": "Five days with no off switch."
+    },
+    {
+      "id": "ever_given_suez_2021",
+      "name": "Ever Given blocking the Suez Canal",
+      "category": "historical_event",
+      "tier": "120h+",
+      "durationMinutes": 8640,
+      "durationLabel": "about 6 days",
+      "exact": false,
+      "copy": "Longer than one ship held up global trade in the Suez Canal in March 2021.",
+      "event": {
+        "date": "2021-03-23"
+      }
+    },
+    {
+      "id": "month_of_workweeks",
+      "name": "One month of 40-hour workweeks",
+      "category": "everyday",
+      "tier": "120h+",
+      "durationMinutes": 9600,
+      "durationLabel": "about 160h",
+      "exact": false,
+      "copy": "A month of full-time work, soundtracked."
+    },
+    {
+      "id": "one_continuous_week",
+      "name": "One continuous week",
+      "category": "time",
+      "tier": "120h+",
+      "durationMinutes": 10080,
+      "durationLabel": "168h",
+      "exact": true,
+      "copy": "A whole week of nonstop sound, all 168 hours."
+    },
+    {
+      "id": "apollo_11_full_mission",
+      "name": "Apollo 11: launch to splashdown",
+      "category": "space",
+      "tier": "120h+",
+      "durationMinutes": 11718.58,
+      "durationLabel": "195h 18m 35s",
+      "exact": true,
+      "copy": "Longer than the entire Apollo 11 mission, launch to splashdown, July 1969.",
+      "event": {
+        "date": "1969-07-16"
+      },
+      "franchise": "apollo"
+    },
+    {
+      "id": "voyager_nonstop_1986",
+      "name": "Voyager's nonstop flight around the world",
+      "category": "travel",
+      "tier": "120h+",
+      "durationMinutes": 12963.73,
+      "durationLabel": "9 days 3 min 44 sec",
+      "exact": true,
+      "copy": "Enough time to fly around the world without refueling, like Voyager in December 1986.",
+      "event": {
+        "date": "1986-12-14"
+      }
+    },
+    {
+      "id": "two_months_workweeks",
+      "name": "One 40-hour workweek every week for two months",
+      "category": "everyday",
+      "tier": "120h+",
+      "durationMinutes": 19200,
+      "durationLabel": "about 320h",
+      "exact": false,
+      "copy": "Two months of nine-to-fives."
+    },
+    {
+      "id": "two_continuous_weeks",
+      "name": "Two continuous weeks",
+      "category": "time",
+      "tier": "120h+",
+      "durationMinutes": 20160,
+      "durationLabel": "336h",
+      "exact": true,
+      "copy": "Two weeks straight, longer than most vacations."
+    },
+    {
+      "id": "thirty_days",
+      "name": "30 continuous days",
+      "category": "time",
+      "tier": "120h+",
+      "durationMinutes": 43200,
+      "durationLabel": "720h",
+      "exact": true,
+      "copy": "A whole month without a single quiet moment."
+    },
+    {
+      "id": "chilean_miners_2010",
+      "name": "Chilean miners trapped underground",
+      "category": "historical_event",
+      "tier": "120h+",
+      "durationMinutes": 99360,
+      "durationLabel": "69 days",
+      "exact": true,
+      "copy": "Longer than the 33 Chilean miners spent underground in 2010.",
+      "event": {
+        "date": "2010-08-05"
+      }
+    },
+    {
+      "id": "full_working_year",
+      "name": "One year of full-time work at 40 hours per week",
+      "category": "everyday",
+      "tier": "120h+",
+      "durationMinutes": 124800,
+      "durationLabel": "2,080h",
+      "exact": true,
+      "copy": "A full year of nine-to-fives."
+    },
+    {
+      "id": "pregnancy_forty_weeks",
+      "name": "A full-term pregnancy: 40 weeks",
+      "category": "everyday",
+      "tier": "120h+",
+      "durationMinutes": 403200,
+      "durationLabel": "6,720h",
+      "exact": true,
+      "copy": "As long as a pregnancy lasts. Forty weeks."
+    },
+    {
+      "id": "one_continuous_year",
+      "name": "One continuous 365-day year",
+      "category": "time",
+      "tier": "120h+",
+      "durationMinutes": 525600,
+      "durationLabel": "8,760h",
+      "exact": true,
+      "copy": "A full year without a moment of silence."
+    }
+  ]
+}

@@ -100,7 +100,7 @@
                 :icon="item.icon"
                 :label="item.label"
                 :to="item.to"
-                :active="route.path === item.to"
+                :active="item.to === '/stats' ? isListeningRoute : route.path === item.to"
               />
             </nav>
           </template>
@@ -331,13 +331,24 @@ const libraryMenuItems: NavigationMenuItem[] = [
   },
 ];
 
-const streamingMenuItems: NavigationMenuItem[] = [
+const streamingDestinations = [
   { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
   { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
   { icon: "mdi:film-open-outline", label: "Videos", to: "/streaming/videos" },
   { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
   { icon: "mdi:history", label: "History", to: "/streaming/history" },
+  { icon: "mdi:chart-line", label: "Your listening", to: "/stats" },
 ];
+
+const isListeningRoute = computed(() => route.path === "/stats" || route.path.startsWith("/stats/wrapped"));
+
+const streamingMenuItems = computed<NavigationMenuItem[]>(() =>
+  streamingDestinations.map((item) => {
+    if (item.to === "/stats") return { ...item, active: isListeningRoute.value };
+
+    return item;
+  }),
+);
 
 const adminMenuItems = computed<NavigationMenuItem[]>(() => [
   {
@@ -434,13 +445,7 @@ const mobileMainItems = [
   { icon: "i-heroicons-trash", label: "Trash", to: "/dashboard/trash" },
 ];
 
-const mobileStreamingItems = [
-  { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
-  { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
-  { icon: "mdi:film-open-outline", label: "Videos", to: "/streaming/videos" },
-  { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
-  { icon: "mdi:history", label: "History", to: "/streaming/history" },
-];
+const mobileStreamingItems = streamingDestinations;
 
 const mobileAdminItems = [
   { icon: "i-heroicons-chart-bar", label: "Admin Dashboard", to: "/dashboard/admin" },

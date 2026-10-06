@@ -8,7 +8,7 @@ import { getHistory } from "@/queries/streaming";
 export const VIDEO_HISTORY_PAGE_SIZE = 100;
 
 export const isWatchedEntry = (entry: StreamHistoryResponse | undefined): boolean =>
-  (entry?.timesCompleted ?? 0) > 0;
+  entry?.hasFinished ?? false;
 
 export const progressPercentOf = (
   entry: StreamHistoryResponse | undefined,

@@ -19,7 +19,7 @@ namespace Alexandria.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.2")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -984,6 +984,63 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("OperationalEvents", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.OverviewSummary", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FinalizedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("PeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Kind", "PeriodStart", "PeriodEnd")
+                        .IsUnique()
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    b.ToTable("OverviewSummaries", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1425,10 +1482,15 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid>("FileId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("HasFinished")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime>("LastAccessedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("LastCompletedAt")
+                    b.Property<DateTime?>("LastPlayedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("MaxPositionReachedSeconds")
@@ -1441,7 +1503,7 @@ namespace Alexandria.Data.Migrations
                         .HasColumnType("bigint")
                         .HasDefaultValue(0L);
 
-                    b.Property<int>("TimesCompleted")
+                    b.Property<int>("QualifiedPlayCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
@@ -1495,12 +1557,17 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTime?>("EndedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsQualifiedPlay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<long>("ListenedSeconds")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
                         .HasDefaultValue(0L);
 
-                    b.Property<bool>("ReachedCompletionThreshold")
+                    b.Property<bool>("PlaybackFinished")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
@@ -1523,7 +1590,7 @@ namespace Alexandria.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ReachedCompletionThreshold");
+                    b.HasIndex("IsQualifiedPlay");
 
                     b.HasIndex("StreamHistoryId");
 
@@ -2158,6 +2225,17 @@ namespace Alexandria.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("File");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.OverviewSummary", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>

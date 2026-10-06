@@ -33,6 +33,7 @@ public sealed class UnitOfWork(
     IFileEnrichmentRepository fileEnrichments,
     IOperationalEventRepository operationalEvents,
     IJobRepository jobs,
+    IOverviewSummaryRepository overviewSummaries,
     AlexandriaDbContext dbContext) : IUnitOfWork
 {
     public IFileRepository Files { get; } = files;
@@ -62,6 +63,7 @@ public sealed class UnitOfWork(
     public IFileEnrichmentRepository FileEnrichments { get; } = fileEnrichments;
     public IOperationalEventRepository OperationalEvents { get; } = operationalEvents;
     public IJobRepository Jobs { get; } = jobs;
+    public IOverviewSummaryRepository OverviewSummaries { get; } = overviewSummaries;
     private IDbContextTransaction? _transaction;
 
     private bool _disposed;

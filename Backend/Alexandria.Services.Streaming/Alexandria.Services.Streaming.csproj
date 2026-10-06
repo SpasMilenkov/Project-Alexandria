@@ -14,4 +14,10 @@
         <PackageReference Include="System.Threading.RateLimiting"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
+        <EmbeddedResource Include="./Wrapped/Data/duration-dataset.json" Link="Resources/duration-dataset.json"
+                          LogicalName="Alexandria.Wrapped.DurationDataset.json"/>
+    </ItemGroup>
+
 </Project>
