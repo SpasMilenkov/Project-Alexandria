@@ -1,5 +1,10 @@
 global using Spectre.Console;
+using Builder.Services;
+using Builder.UI;
 using Builder.Workflow;
+
+// Resolve the persisted look before anything renders (locked decision D28)
+Theme.Use(Themes.Resolve(UiPreferencesStore.Load()));
 
 var flow = new MainFlow();
 

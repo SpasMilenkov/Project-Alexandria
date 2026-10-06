@@ -1,30 +1,35 @@
 namespace Builder.UI;
 
+// Facade over the active theme. Resolved once at startup from the persisted
+// preference (locked decision D28); the legacy token properties (Di, Ac, ...)
+// keep every existing call site compiling while migration to Ui helpers
+// proceeds phase by phase.
 public static class Theme
 {
-    // Core palette — muted base with selective accents
-    public static readonly Color Fg = Color.Grey;
-    public static readonly Color FgBright = Color.White;
-    public static readonly Color Accent = Color.Teal;
-    public static readonly Color Success = Color.Green3_1;
-    public static readonly Color Warning = Color.DarkOrange;
-    public static readonly Color Error = Color.Red3_1;
-    public static readonly Color Dim = Color.Grey42;
-    public static readonly Color Border = Color.Grey35;
+    private static ThemeDefinition _active = Themes.Default;
 
-    // Reusable styles
-    public static readonly Style AccentStyle = new(Accent);
-    public static readonly Style DimStyle = new(Dim);
-    public static readonly Style BorderStyle = new(Border);
-    public static readonly Style SuccessStyle = new(Success);
-    public static readonly Style WarningStyle = new(Warning);
-    public static readonly Style ErrorStyle = new(Error);
+    public static ThemeDefinition Active => _active;
 
-    // Markup helpers
-    public static string Ac => Accent.ToMarkup();
-    public static string Di => Dim.ToMarkup();
-    public static string Su => Success.ToMarkup();
-    public static string Wa => Warning.ToMarkup();
-    public static string Er => Error.ToMarkup();
-    public static string Bo => Border.ToMarkup();
+    public static void Use(ThemeDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        _active = definition;
+    }
+
+    public static string Ac => _active.Ac;
+    public static string As => _active.As;
+    public static string Di => _active.Di;
+    public static string Su => _active.Su;
+    public static string Wa => _active.Wa;
+    public static string Er => _active.Er;
+
+    public static Spectre.Console.Style AccentStyle => _active.AccentStyle;
+    public static Spectre.Console.Style DimStyle => _active.DimStyle;
+    public static Spectre.Console.Style BorderStyle => _active.BorderStyle;
+    public static Spectre.Console.Style SuccessStyle => _active.SuccessStyle;
+    public static Spectre.Console.Style WarningStyle => _active.WarningStyle;
+    public static Spectre.Console.Style ErrorStyle => _active.ErrorStyle;
+
+    // Legacy color accessors still referenced by pre-migration call sites
+    public static Spectre.Console.Color Border => _active.BorderColor;
 }

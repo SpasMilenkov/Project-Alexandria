@@ -1,18 +1,22 @@
+using System.Text.Json;
 using Builder.Models;
-using Environment = Builder.Models.Environment;
 
 namespace Builder.Services;
 
 public interface IConfigurationService
 {
-    InstallationConfig CreateConfiguration(Environment env, FeatureSelection features, Dictionary<string, string> credentials, Dictionary<string, int> ports);
+    InstallationConfig CreateConfiguration(FeatureSelection features, Dictionary<string, string> credentials, Dictionary<string, int> ports);
+
     string GenerateDockerCompose(InstallationConfig config);
-    string GenerateComposeOverride(InstallationConfig config);
-    string GenerateEnvFile(InstallationConfig config);
-    string GenerateGarageConfig(InstallationConfig config);
-    string GeneratePrometheusConfig();
+
+    string GenerateGarageToml(InstallationConfig config);
+
+    string GeneratePrometheusYml();
+
     void WriteAllConfigFiles(InstallationConfig config, string outputPath);
+
     void SaveConfiguration(InstallationConfig config, string path);
+
     InstallationConfig? LoadConfiguration(string path);
 }
 
@@ -26,137 +30,152 @@ public class ConfigurationService : IConfigurationService
     }
 
     public InstallationConfig CreateConfiguration(
-        Environment env,
         FeatureSelection features,
         Dictionary<string, string> credentials,
         Dictionary<string, int> ports)
     {
         return new InstallationConfig
         {
-            Environment = env,
-            S3Provider = S3Provider.Garage,
             Features = features,
             Credentials = credentials,
             Ports = ports,
-            InstalledAt = DateTime.UtcNow
         };
     }
 
+    // Assembles the final compose file from per-selection fragments. The
+    // emitted file stays credential-free: every secret is a ${VAR} reference
+    // resolved from the generated .env at compose time (locked decisions D2/D12).
     public string GenerateDockerCompose(InstallationConfig config)
     {
-        var baseTemplate = _templateService.LoadTemplate("docker-compose/base.yml");
+        var features = config.Features;
+
+        var taggingEnabled =
+            features.IsEnabled(FeatureCatalog.AudioTaggingFast.Id) ||
+            features.IsEnabled(FeatureCatalog.AudioTaggingDeep.Id);
+
         var tokens = BuildTokenDictionary(config);
 
-        // Always-included services
+        // Conditional network attachments; empty token expands to nothing
+        tokens["API_OBSERVABILITY_NET"] = features.IsEnabled(FeatureCatalog.Monitoring.Id)
+            ? "      - observability-net # exposes /metrics to prometheus"
+            : string.Empty;
+
+        tokens["RABBITMQ_ESSENTIA_NET"] = taggingEnabled || features.IsEnabled(FeatureCatalog.Monitoring.Id)
+            ? "      - essentia-net"
+            : string.Empty;
+
         var serviceTemplates = new List<string>
         {
-            "docker-compose/postgres.yml",
-            "docker-compose/garage.yml",
-            "docker-compose/garage-init.yml",
-            "docker-compose/rabbitmq.yml",
-            "docker-compose/api.yml",
-            "docker-compose/document-worker.yml",
-            "docker-compose/frontend.yml",
-            "docker-compose/postgres-backup.yml",
+            "docker-compose/storage.yml.template",
+            "docker-compose/apps.yml.template",
         };
 
-        // Optional services
-        if (config.Features.MediaProcessing)
-            serviceTemplates.Add("docker-compose/media-worker.yml");
+        if (features.IsEnabled(FeatureCatalog.DocumentPreviews.Id))
+            serviceTemplates.Add("docker-compose/document-worker.yml.template");
 
-        if (config.Features.Monitoring)
-        {
-            serviceTemplates.Add("docker-compose/prometheus.yml");
-            serviceTemplates.Add("docker-compose/grafana.yml");
-        }
+        if (features.IsEnabled(FeatureCatalog.MediaProcessing.Id))
+            serviceTemplates.Add("docker-compose/media-worker.yml.template");
 
-        // Load and process each service template
-        var services = new List<string>();
-        foreach (var templatePath in serviceTemplates)
-        {
-            var template = _templateService.LoadTemplate(templatePath);
-            services.Add(_templateService.ReplaceTokens(template, tokens));
-        }
+        if (features.IsEnabled(FeatureCatalog.AdaptiveStreaming.Id))
+            serviceTemplates.Add("docker-compose/transpilation-worker.yml.template");
 
-        var allServices = string.Join("\n\n", services);
-        var volumes = GenerateVolumes(config);
+        if (taggingEnabled)
+            serviceTemplates.Add("docker-compose/media-metadata-worker.yml.template");
 
-        tokens["SERVICES"] = allServices;
-        tokens["VOLUMES"] = volumes;
+        if (features.IsEnabled(FeatureCatalog.Lyrics.Id))
+            serviceTemplates.Add("docker-compose/lyrics-worker.yml.template");
+
+        if (features.IsEnabled(FeatureCatalog.AudioTaggingFast.Id))
+            serviceTemplates.Add("docker-compose/essentia-effnet-worker.yml.template");
+
+        if (features.IsEnabled(FeatureCatalog.AudioTaggingDeep.Id))
+            serviceTemplates.Add("docker-compose/essentia-maest-worker.yml.template");
+
+        if (features.IsEnabled(FeatureCatalog.Monitoring.Id))
+            serviceTemplates.Add("docker-compose/monitoring.yml.template");
+
+        var services = serviceTemplates
+            .Select(path => _templateService.ReplaceTokens(_templateService.LoadTemplate(path), tokens))
+            .ToList();
+
+        tokens["SERVICES"] = string.Join("\n", services);
+        tokens["VOLUMES"] = GenerateVolumes(features);
+        tokens["NETWORKS"] = GenerateNetworks(features, taggingEnabled);
+
+        var baseTemplate = _templateService.LoadTemplate("docker-compose/base.yml.template");
 
         return _templateService.ReplaceTokens(baseTemplate, tokens);
     }
 
-    public string GenerateComposeOverride(InstallationConfig config)
+    public string GenerateGarageToml(InstallationConfig config)
     {
-        var localPreviewTemplates = new TemplateService("LocalPreview");
-        var template = localPreviewTemplates.LoadTemplate("docker-compose.override.yml");
-        var tokens = BuildTokenDictionary(config);
-        return localPreviewTemplates.ReplaceTokens(template, tokens);
-    }
+        var template = _templateService.LoadTemplate("config/garage.toml.template");
 
-    public string GenerateEnvFile(InstallationConfig config)
-    {
-        var template = _templateService.LoadTemplate("Config/env.template");
-        var tokens = BuildTokenDictionary(config);
+        var tokens = new Dictionary<string, string>
+        {
+            ["RPC_SECRET"] = config.Credentials.GetValueOrDefault("GARAGE_RPC_SECRET", string.Empty),
+            ["ADMIN_TOKEN"] = config.Credentials.GetValueOrDefault("GARAGE_ADMIN_TOKEN", string.Empty),
+            ["METRICS_TOKEN"] = config.Credentials.GetValueOrDefault("GARAGE_METRICS_TOKEN", string.Empty),
+            ["GENERATED_AT"] = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm 'UTC'"),
+        };
+
         return _templateService.ReplaceTokens(template, tokens);
     }
 
-    public string GenerateGarageConfig(InstallationConfig config)
+    // Credential-free scrape config; the Garage token is delivered through
+    // its own mounted secrets file (locked decision D12)
+    public string GeneratePrometheusYml()
     {
-        var template = _templateService.LoadTemplate("Config/garage.prod.toml.template");
-        var tokens = BuildTokenDictionary(config);
-        return _templateService.ReplaceTokens(template, tokens);
-    }
-
-    public string GeneratePrometheusConfig()
-    {
-        return _templateService.LoadTemplate("Config/prometheus.yml.template");
+        return _templateService.LoadTemplate("config/prometheus.yml.template");
     }
 
     public void WriteAllConfigFiles(InstallationConfig config, string outputPath)
     {
-        // docker-compose.yml
-        var composeContent = GenerateDockerCompose(config);
-        File.WriteAllText(Path.Combine(outputPath, "docker-compose.yml"), composeContent);
+        Directory.CreateDirectory(outputPath);
+        Directory.CreateDirectory(Path.Combine(outputPath, "init-output"));
 
-        // .env
-        var envContent = GenerateEnvFile(config);
-        File.WriteAllText(Path.Combine(outputPath, ".env"), envContent);
+        File.WriteAllText(Path.Combine(outputPath, "docker-compose.yml"), GenerateDockerCompose(config));
+        File.WriteAllText(Path.Combine(outputPath, "garage.toml"), GenerateGarageToml(config));
 
-        // garage.prod.toml
-        var garageConfig = GenerateGarageConfig(config);
-        File.WriteAllText(Path.Combine(outputPath, "garage.prod.toml"), garageConfig);
-
-        // backups directory
-        var backupsDir = Path.Combine(outputPath, "backups");
-        if (!Directory.Exists(backupsDir))
-            Directory.CreateDirectory(backupsDir);
-
-        // prometheus.yml (if monitoring enabled)
-        if (config.Features.Monitoring)
+        if (config.Features.IsEnabled(FeatureCatalog.Monitoring.Id))
         {
-            var prometheusConfig = GeneratePrometheusConfig();
-            File.WriteAllText(Path.Combine(outputPath, "prometheus.yml"), prometheusConfig);
+            var prometheusDir = Path.Combine(outputPath, "prometheus");
+
+            Directory.CreateDirectory(prometheusDir);
+            Directory.CreateDirectory(Path.Combine(prometheusDir, "secrets"));
+
+            File.WriteAllText(
+                Path.Combine(prometheusDir, "prometheus.yml"),
+                GeneratePrometheusYml());
+
+            WriteSecretFile(
+                Path.Combine(prometheusDir, "secrets", "garage-metrics-token"),
+                config.Credentials.GetValueOrDefault("GARAGE_METRICS_TOKEN", string.Empty));
         }
 
-        // docker-compose.override.yml (Local Preview only — exposes debug ports)
-        if (config.Environment == Environment.LocalPreview)
-        {
-            var overrideContent = GenerateComposeOverride(config);
-            File.WriteAllText(Path.Combine(outputPath, "docker-compose.override.yml"), overrideContent);
-        }
-
-        // alexandria-config.json
         SaveConfiguration(config, outputPath);
+    }
+
+    private static void WriteSecretFile(string path, string content)
+    {
+        File.WriteAllText(path, content + Environment.NewLine);
+
+        // Owner-only read/write so other local users cannot read the token
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(
+                path,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
     }
 
     public void SaveConfiguration(InstallationConfig config, string path)
     {
-        var json = System.Text.Json.JsonSerializer.Serialize(
+        var json = JsonSerializer.Serialize(
             config,
             AlexandriaJsonContext.Default.InstallationConfig
         );
+
         File.WriteAllText(Path.Combine(path, "alexandria-config.json"), json);
     }
 
@@ -166,7 +185,8 @@ public class ConfigurationService : IConfigurationService
         if (!File.Exists(configPath)) return null;
 
         var json = File.ReadAllText(configPath);
-        return System.Text.Json.JsonSerializer.Deserialize(
+
+        return JsonSerializer.Deserialize(
             json,
             AlexandriaJsonContext.Default.InstallationConfig
         );
@@ -174,44 +194,117 @@ public class ConfigurationService : IConfigurationService
 
     private Dictionary<string, string> BuildTokenDictionary(InstallationConfig config)
     {
-        var tokens = new Dictionary<string, string>(config.Credentials);
+        var tokens = new Dictionary<string, string>();
 
-        // Add port tokens
         foreach (var (key, value) in config.Ports)
         {
             tokens[key] = value.ToString();
         }
 
-        // Add environment
-        tokens["ENVIRONMENT"] = config.Environment.ToString().ToLowerInvariant();
+        // Generated artifacts live target-relative; only repo-static assets
+        // need the checkout prefix when installing outside the source tree
+        tokens["SOURCE_ROOT"] = IsExternalTarget(config) ? config.SourceRoot : ".";
 
         return tokens;
     }
 
-    private string GenerateVolumes(InstallationConfig config)
+    private static bool IsExternalTarget(InstallationConfig config)
     {
+        if (string.IsNullOrWhiteSpace(config.InstallPath) || string.IsNullOrWhiteSpace(config.SourceRoot))
+        {
+            return false;
+        }
+
+        return !string.Equals(
+            Path.GetFullPath(config.InstallPath).TrimEnd(Path.DirectorySeparatorChar),
+            Path.GetFullPath(config.SourceRoot).TrimEnd(Path.DirectorySeparatorChar),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GenerateVolumes(FeatureSelection features)
+    {
+        var taggingEnabled =
+            features.IsEnabled(FeatureCatalog.AudioTaggingFast.Id) ||
+            features.IsEnabled(FeatureCatalog.AudioTaggingDeep.Id);
+
         var volumes = new List<string>
         {
-            "  postgres_data:",
+            "  postgres_local_data:",
             "    driver: local",
-            "  garage_meta_data:",
+            "  garage_local_meta_data:",
             "    driver: local",
-            "  garage_storage_data:",
+            "  garage_local_storage_data:",
             "    driver: local",
-            "  rabbitmq_data:",
+            "  rabbitmq_local_data:",
+            "    driver: local",
+            "  rabbitmq_definitions:",
             "    driver: local",
         };
 
-        if (config.Features.Monitoring)
+        if (features.IsEnabled(FeatureCatalog.DocumentPreviews.Id))
+        {
+            volumes.AddRange(["  document_worker_scratch:", "    driver: local"]);
+        }
+
+        if (features.IsEnabled(FeatureCatalog.MediaProcessing.Id))
+        {
+            volumes.AddRange(["  media_worker_scratch:", "    driver: local"]);
+        }
+
+        if (features.IsEnabled(FeatureCatalog.AdaptiveStreaming.Id))
+        {
+            volumes.AddRange(["  transpilation_worker_scratch:", "    driver: local"]);
+        }
+
+        if (taggingEnabled)
+        {
+            volumes.AddRange(["  media_audio_data:", "    driver: local"]);
+        }
+
+        if (taggingEnabled || features.IsEnabled(FeatureCatalog.Lyrics.Id))
+        {
+            volumes.AddRange(["  media_metadata_worker_scratch:", "    driver: local"]);
+        }
+
+        if (features.IsEnabled(FeatureCatalog.Monitoring.Id))
         {
             volumes.AddRange([
-                "  prometheus_data:",
+                "  prometheus_local_data:",
                 "    driver: local",
-                "  grafana_data:",
+                "  grafana_local_data:",
+                "    driver: local",
+                "  alloy_local_data:",
+                "    driver: local",
+                "  loki_local_data:",
                 "    driver: local",
             ]);
         }
 
         return string.Join("\n", volumes);
+    }
+
+    private static string GenerateNetworks(FeatureSelection features, bool taggingEnabled)
+    {
+        var networks = new List<string>
+        {
+            "  frontend-net:",
+            "    driver: bridge",
+            "  app-net:",
+            "    driver: bridge",
+            "  data-net:",
+            "    driver: bridge",
+        };
+
+        if (taggingEnabled || features.IsEnabled(FeatureCatalog.Monitoring.Id))
+        {
+            networks.AddRange(["  essentia-net:", "    driver: bridge"]);
+        }
+
+        if (features.IsEnabled(FeatureCatalog.Monitoring.Id))
+        {
+            networks.AddRange(["  observability-net:", "    driver: bridge"]);
+        }
+
+        return string.Join("\n", networks);
     }
 }

@@ -1,0 +1,207 @@
+  prometheus:
+    image: prom/prometheus:v3.13.2@sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69
+    container_name: alexandria-prometheus
+    restart: unless-stopped
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/secrets/garage-metrics-token:/etc/prometheus/secrets/garage-metrics-token:ro
+      - prometheus_local_data:/prometheus
+
+    ports:
+      - "127.0.0.1:9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+
+    networks:
+      - data-net
+      - essentia-net
+      - observability-net
+
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  grafana:
+    image: grafana/grafana:12.4.2
+    container_name: alexandria-grafana
+    restart: unless-stopped
+
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+    volumes:
+      - grafana_local_data:/var/lib/grafana
+      - {{SOURCE_ROOT}}/grafana/provisioning:/etc/grafana/provisioning
+    # dashboard stays on the machine — bound to loopback only, not the network
+
+    ports:
+      - "127.0.0.1:{{GRAFANA_PORT}}:3000"
+
+    networks:
+      - observability-net
+
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.5@sha256:763aecf1c32c2be8a1a75f9abfc2fc461005c9dbbaa39cb356b354aac1296dbe
+    container_name: alexandria-cadvisor
+    restart: unless-stopped
+    privileged: true
+
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+
+    networks:
+      - observability-net
+
+    deploy:
+      resources:
+        limits:
+          memory: 150M
+        reservations:
+          memory: 64M
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e
+    container_name: alexandria-postgres-exporter
+    restart: unless-stopped
+
+    environment:
+      DATA_SOURCE_URI: "postgres:${DB_PORT:-5432}/${DB_NAME:?DB_NAME is required}?sslmode=disable"
+      DATA_SOURCE_USER: postgres_exporter
+      DATA_SOURCE_PASS: ${POSTGRES_EXPORTER_PASSWORD:?POSTGRES_EXPORTER_PASSWORD is required}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - data-net
+      - observability-net
+
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9187/metrics || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  alloy:
+    image: grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33
+    container_name: alexandria-alloy
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+
+    volumes:
+      - {{SOURCE_ROOT}}/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy_local_data:/var/lib/alloy/data
+
+    depends_on:
+      loki:
+        condition: service_healthy
+
+    networks:
+      - observability-net
+
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  loki:
+    image: grafana/loki:3.7.6@sha256:efd47c67f9bac88ca29bcf8cb997d9ab29d1848bd0aff579282295542a745952
+    container_name: alexandria-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+
+    volumes:
+      - {{SOURCE_ROOT}}/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_local_data:/loki
+
+    networks:
+      - observability-net
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+
+    healthcheck:
+      test: ["CMD", "/usr/bin/loki", "-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"

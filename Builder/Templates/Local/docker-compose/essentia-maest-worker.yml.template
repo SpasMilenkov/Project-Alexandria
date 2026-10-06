@@ -1,0 +1,35 @@
+  essentia-maest-worker:
+    build:
+      context: {{SOURCE_ROOT}}/classificators/essentia
+      dockerfile: Dockerfile
+    container_name: alexandria-essentia-maest
+    restart: unless-stopped
+
+    environment:
+      RABBITMQ_URL: amqp://essentia_worker_user:${ESSENTIA_WORKER_RABBITMQ_PASSWORD:?ESSENTIA_WORKER_RABBITMQ_PASSWORD is required}@rabbitmq:5672/${RABBITMQ_VHOST:-alexandria}
+      EXCHANGE_NAME: content-exchange
+      RESULT_ROUTING_KEY: media-metadata.completed
+      QUEUE_NAME: classify-maest-queue
+      BACKBONE: maest
+      ESSENTIA_MODEL_DIR: /app/models
+      VERIFY_MODELS: "true"
+      PREFETCH_COUNT: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      HOME: /tmp
+
+    volumes:
+      - {{SOURCE_ROOT}}/classificators/essentia/models:/app/models:ro
+      - media_audio_data:/data
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+    networks:
+      - essentia-net
+
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 2G

@@ -14,11 +14,15 @@ public interface ISystemChecker
     bool IsGitInstalled();
     string GetDockerVersion();
     string GetDockerComposeVersion();
+
     string GetGitVersion();
+
     SystemResources GetSystemResources();
-    List<PortCheckResult> CheckPorts(List<int> ports);
+
     bool IsPortAvailable(int port);
+
     string GetProcessUsingPort(int port);
+
     (string command, string url) GetDockerInstallInstructions();
 }
 
@@ -128,25 +132,6 @@ public class SystemChecker : ISystemChecker
         }
 
         return ("winget install Docker.DockerDesktop", "https://docs.docker.com/desktop/install/windows-install/");
-    }
-
-    public List<PortCheckResult> CheckPorts(List<int> ports)
-    {
-        var results = new List<PortCheckResult>();
-
-        foreach (var port in ports)
-        {
-            var isAvailable = IsPortAvailable(port);
-            var result = new PortCheckResult
-            {
-                Port = port,
-                IsAvailable = isAvailable,
-                ProcessBlocking = isAvailable ? string.Empty : GetProcessUsingPort(port)
-            };
-            results.Add(result);
-        }
-
-        return results;
     }
 
     public bool IsPortAvailable(int port)

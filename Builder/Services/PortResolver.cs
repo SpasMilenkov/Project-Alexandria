@@ -1,34 +1,41 @@
 using System.Net.NetworkInformation;
 using Builder.Models;
-using Environment = Builder.Models.Environment;
 
 namespace Builder.Services;
 
 public interface IPortResolver
 {
-    List<PortMapping> ResolveAll(FeatureSelection features, Environment environment, ISystemChecker systemChecker);
+    List<PortMapping> ResolveAll(FeatureSelection features, ISystemChecker systemChecker);
+
     List<PortMapping> AutoRemap(List<PortMapping> mappings);
 }
 
 public class PortResolver : IPortResolver
 {
-    private static readonly int[] FrontendFallbacks = [8080, 3000, 8888];
+    private static readonly int[] FrontendFallbacks = [8080, 8081, 8888];
+    private readonly ISystemChecker _fallbackChecker;
 
-    public List<PortMapping> ResolveAll(FeatureSelection features, Environment environment, ISystemChecker systemChecker)
+    public PortResolver() : this(new SystemChecker())
     {
-        var mappings = new List<PortMapping>();
+    }
 
-        mappings.Add(CreateMapping("Frontend", "FRONTEND_PORT", features.FrontendPort, systemChecker));
+    // Availability probes during remap must honor the injected checker -
+    // touching real sockets made behavior host-dependent (fragile in tests)
+    public PortResolver(ISystemChecker fallbackChecker)
+    {
+        _fallbackChecker = fallbackChecker;
+    }
 
-        if (features.Monitoring)
-            mappings.Add(CreateMapping("Grafana", "GRAFANA_PORT", features.GrafanaPort, systemChecker));
-
-        // Local Preview exposes additional debug ports
-        if (environment == Environment.LocalPreview)
+    public List<PortMapping> ResolveAll(FeatureSelection features, ISystemChecker systemChecker)
+    {
+        var mappings = new List<PortMapping>
         {
-            mappings.Add(CreateMapping("PostgreSQL", "POSTGRES_PORT", features.PostgresPort, systemChecker));
-            mappings.Add(CreateMapping("RabbitMQ Mgmt", "RABBITMQ_MANAGEMENT_PORT", features.RabbitmqManagementPort, systemChecker));
-        }
+            CreateMapping("HTTP", "HTTP_PORT", 80, systemChecker),
+            CreateMapping("HTTPS", "HTTPS_PORT", 443, systemChecker),
+        };
+
+        if (features.IsEnabled(FeatureCatalog.Monitoring.Id))
+            mappings.Add(CreateMapping("Grafana", "GRAFANA_PORT", 3000, systemChecker));
 
         return mappings;
     }
@@ -62,7 +69,7 @@ public class PortResolver : IPortResolver
         };
     }
 
-    private static int? FindAvailablePort(int defaultPort, List<PortMapping> existingMappings)
+    private int? FindAvailablePort(int defaultPort, List<PortMapping> existingMappings)
     {
         var usedPorts = existingMappings.Select(m => m.AssignedPort).ToHashSet();
 
@@ -70,30 +77,23 @@ public class PortResolver : IPortResolver
         {
             foreach (var fallback in FrontendFallbacks)
             {
-                if (!usedPorts.Contains(fallback) && IsPortAvailable(fallback))
+                if (!usedPorts.Contains(fallback) && _fallbackChecker.IsPortAvailable(fallback))
                     return fallback;
             }
         }
 
         for (var candidate = defaultPort + 1; candidate < defaultPort + 100; candidate++)
         {
-            if (!usedPorts.Contains(candidate) && IsPortAvailable(candidate))
+            if (!usedPorts.Contains(candidate) && _fallbackChecker.IsPortAvailable(candidate))
                 return candidate;
         }
 
         for (var candidate = 49152; candidate <= 65535; candidate++)
         {
-            if (!usedPorts.Contains(candidate) && IsPortAvailable(candidate))
+            if (!usedPorts.Contains(candidate) && _fallbackChecker.IsPortAvailable(candidate))
                 return candidate;
         }
 
         return null;
-    }
-
-    private static bool IsPortAvailable(int port)
-    {
-        var ipGlobalProperties = IPGlobalProperties.GetIPGlobalProperties();
-        var tcpListeners = ipGlobalProperties.GetActiveTcpListeners();
-        return !tcpListeners.Any(endpoint => endpoint.Port == port);
     }
 }

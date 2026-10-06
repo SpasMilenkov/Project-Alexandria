@@ -6,37 +6,62 @@ namespace Builder.Services;
 public interface ICredentialService
 {
     Dictionary<string, string> GenerateAllCredentials(FeatureSelection features);
+
     string GenerateHexSecret(int bytes = 32);
+
     string GeneratePassword(int length = 24);
-    string GenerateAccessKey(int length = 20);
 }
 
+// Random secret source only. Garage S3 keys are intentionally NOT produced
+// here: they are created inside the cluster by garage-init and merged into
+// the .env afterwards (locked decision D6).
 public class CredentialService : ICredentialService
 {
     private const string PasswordChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
-    private const string AccessKeyChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     public Dictionary<string, string> GenerateAllCredentials(FeatureSelection features)
     {
         var credentials = new Dictionary<string, string>
         {
+            // Database
             ["DB_PASSWORD"] = GeneratePassword(),
+
+            // Garage cluster secrets (S3 application keys come from garage-init)
             ["GARAGE_RPC_SECRET"] = GenerateHexSecret(),
             ["GARAGE_ADMIN_TOKEN"] = GenerateHexSecret(),
             ["GARAGE_METRICS_TOKEN"] = GenerateHexSecret(),
-            ["GARAGE_S3_ACCESS_KEY"] = GenerateAccessKey(),
-            ["GARAGE_S3_SECRET_KEY"] = GeneratePassword(),
+
+            // RabbitMQ — one identity per consumer, rendered into broker
+            // definitions by the rabbitmq-config container
             ["RABBITMQ_USER"] = "alexandria",
             ["RABBITMQ_PASSWORD"] = GeneratePassword(),
             ["RABBITMQ_VHOST"] = "alexandria",
-            ["JWT_SECRET"] = GenerateHexSecret(),
+            ["API_RABBITMQ_USER"] = "api_user",
+            ["API_RABBITMQ_PASSWORD"] = GeneratePassword(),
+            ["RABBITMQ_DOCUMENT_WORKER"] = "document_worker_user",
+            ["DOCUMENT_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
+            ["RABBITMQ_MEDIA_WORKER"] = "media_worker_user",
+            ["MEDIA_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
+            ["RABBITMQ_TRANSPILATION_WORKER"] = "media_transpilation_worker",
+            ["TRANSPILATION_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
+            ["RABBITMQ_MEDIA_METADATA_WORKER"] = "media_metadata_worker_user",
+            ["MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
+            ["RABBITMQ_LYRICS_WORKER"] = "lyrics_worker",
+            ["LYRICS_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
+            ["ESSENTIA_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
+
+            // Application secrets
+            ["JWT_SECRET"] = GenerateHexSecret(64),
             ["JWT_ISSUER"] = "alexandria",
             ["JWT_AUDIENCE"] = "alexandria-users",
-            ["CSRF_SECRET"] = GenerateHexSecret(),
-            ["CORS_ALLOWED_ORIGINS"] = "",
+            ["CSRF_SECRET"] = GenerateHexSecret(16),
+
+            // Monitoring
+            ["GRAFANA_USER"] = "admin",
+            ["POSTGRES_EXPORTER_PASSWORD"] = GeneratePassword(),
         };
 
-        if (features.Monitoring)
+        if (features.IsEnabled(FeatureCatalog.Monitoring.Id))
         {
             credentials["GRAFANA_ADMIN_PASSWORD"] = GeneratePassword();
         }
@@ -52,11 +77,6 @@ public class CredentialService : ICredentialService
     public string GeneratePassword(int length = 24)
     {
         return GenerateFromCharset(PasswordChars, length);
-    }
-
-    public string GenerateAccessKey(int length = 20)
-    {
-        return GenerateFromCharset(AccessKeyChars, length);
     }
 
     private static string GenerateFromCharset(string charset, int length)

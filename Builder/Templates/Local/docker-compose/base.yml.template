@@ -1,0 +1,8 @@
+services:
+{{SERVICES}}
+
+volumes:
+{{VOLUMES}}
+
+networks:
+{{NETWORKS}}

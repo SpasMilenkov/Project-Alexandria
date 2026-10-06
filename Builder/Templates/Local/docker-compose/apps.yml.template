@@ -1,0 +1,121 @@
+  api:
+    build:
+      context: {{SOURCE_ROOT}}/Backend
+      dockerfile: Alexandria.Api/Dockerfile
+    container_name: alexandria-api
+    labels:
+      - "logs.collect=true"
+    restart: on-failure:3
+
+    environment:
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}; GssEncryptionMode=Disable"
+      S3Storage__AccessKey: ${GARAGE_S3_ACCESS_KEY:?GARAGE_S3_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_SECRET_KEY:?GARAGE_S3_SECRET_KEY is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      S3Storage__ProviderSettings__Garage__MetricsToken: ${GARAGE_S3_METRICS_TOKEN:?GARAGE_S3_METRICS_TOKEN is required}
+      S3Storage__BaseUrl: ${BASE_URL:?BASE_URL is required}
+      RabbitMQ__UserName: ${API_RABBITMQ_USER:?API_RABBITMQ_USER is required}
+      RabbitMQ__Password: ${API_RABBITMQ_PASSWORD:?API_RABBITMQ_PASSWORD is required}
+      RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
+      Jwt__Secret: ${JWT_SECRET:?JWT_SECRET is required}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Csrf__SecretKey: ${CSRF_SECRET:?CSRF_SECRET is required}
+      Features__Autotagging: "${AUTOTAGGING_ENABLED:-false}"
+      ADMIN__EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL is required}
+      ADMIN__PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      ADMIN__NAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required}
+      CORS_ALLOWED_ORIGINS__0: ${CORS_ALLOWED_ORIGINS__0:?CORS_ALLOWED_ORIGINS__0 is required}
+      CORS_ALLOWED_ORIGINS__1: ${CORS_ALLOWED_ORIGINS__1:?CORS_ALLOWED_ORIGINS__1 is required}
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+
+    networks:
+      - app-net # nginx reaches it here
+      - data-net # reaches postgres, garage, rabbitmq
+{{API_OBSERVABILITY_NET}}
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  frontend:
+    build:
+      context: {{SOURCE_ROOT}}/Frontend
+      dockerfile: Dockerfile
+    container_name: alexandria-frontend
+    restart: always
+
+    environment:
+      VITE_PBKDF2_ITERATIONS: ${PBKDF2_ITERATION_COUNT}
+      VITE_STREAMING_ENABLED: ${STREAMING_ENABLED}
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    networks:
+      - app-net
+
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+
+  nginx:
+    build:
+      context: {{SOURCE_ROOT}}/nginx
+      dockerfile: Dockerfile
+    container_name: alexandria-nginx
+    restart: unless-stopped
+
+    ports:
+      - "{{HTTP_PORT}}:80"
+      - "{{HTTPS_PORT}}:443"
+
+    volumes:
+      - {{SOURCE_ROOT}}/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - {{SOURCE_ROOT}}/nginx/certs:/etc/nginx/certs:ro
+
+    depends_on:
+      frontend:
+        condition: service_started
+      api:
+        condition: service_healthy # wait for the healthcheck to pass
+
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+
+    networks:
+      - frontend-net # faces the outside world
+      - app-net # reaches frontend, api, garage

@@ -1,7 +1,7 @@
 using Builder.Services;
 using Builder.UI;
-using Builder.Workflow.Steps;
-using Environment = Builder.Models.Environment;
+using Builder.UI.Shell;
+using Builder.UI.Shell.Screens;
 
 namespace Builder.Workflow;
 
@@ -12,7 +12,9 @@ public class MainFlow
     private readonly IResourceCalculator _resourceCalculator;
     private readonly IPortResolver _portResolver;
     private readonly IDockerService _dockerService;
-    private readonly InstallationContext _context;
+    private readonly IConfigurationService _configService;
+
+    public InstallationContext Context { get; } = new();
 
     public MainFlow()
     {
@@ -21,89 +23,40 @@ public class MainFlow
         _resourceCalculator = new ResourceCalculator();
         _portResolver = new PortResolver();
         _dockerService = new DockerService();
-        _context = new InstallationContext();
+        _configService = new ConfigurationService(new TemplateService("Local"));
     }
 
     public void ExecuteFlow()
     {
-        // WelcomeStep always runs first to determine environment
-        var welcome = new WelcomeStep();
-        welcome.Execute(_context);
+        var context = Context;
 
-        if (_context.ShouldAbort)
-        {
-            ExitMessage();
-            return;
-        }
+        using var shell = new Shell(context);
 
-        // Build remaining steps based on chosen environment
-        var steps = BuildSteps(_context.Config.Environment);
+        shell.OnAbort = () => Cleanup();
 
-        foreach (var step in steps)
-        {
-            step.Execute(_context);
-
-            if (_context.ShouldAbort)
-            {
-                ExitMessage();
-                return;
-            }
-        }
+        shell.RunAll(
+        [
+            ("Welcome", s => IntroScreen.Run(s, UiPreferencesStore.Save)),
+            ("Features", s => FeaturesScreen.Run(s, _resourceCalculator)),
+            ("System check", s => SystemCheckScreen.Run(s, _systemChecker, _resourceCalculator)),
+            ("Ports", s => PortsScreen.Run(s, _portResolver, _systemChecker)),
+            ("Your account", s => AccountScreen.Run(s)),
+            ("Where to install", s => TargetDirScreen.Run(s)),
+            ("Summary", s => SummaryScreen.Run(s, _credentialService, _resourceCalculator)),
+            ("Installing", s => DeployScreen.Run(s, _configService, _dockerService)),
+            ("Done", s => SuccessScreen.Run(s)),
+        ]);
     }
+
 
     public void Cleanup()
     {
-        if (!string.IsNullOrEmpty(_context.InstallPath) && Directory.Exists(_context.InstallPath))
+        var context = Context;
+
+        if (!string.IsNullOrEmpty(context.InstallPath) && Directory.Exists(context.InstallPath))
         {
-            AnsiConsole.MarkupLine($"\n[{Theme.Wa}]Cleaning up...[/]");
-            _dockerService.ComposeDown(_context.InstallPath);
+            AnsiConsole.MarkupLine($"\n[yellow]Cleaning up...[/]");
+            _dockerService.ComposeDown(context.InstallPath);
         }
-    }
-
-    private static void ExitMessage()
-    {
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[{Theme.Di}]Exiting Alexandria Installer.[/]");
-    }
-
-    private List<WizardStep> BuildSteps(Environment env)
-    {
-        var templateService = new TemplateService("Production");
-        var configService = new ConfigurationService(templateService);
-
-        return env switch
-        {
-            Environment.Deployment => BuildDeploymentSteps(configService),
-            Environment.LocalPreview => BuildLocalPreviewSteps(configService),
-            _ => []
-        };
-    }
-
-    private List<WizardStep> BuildDeploymentSteps(IConfigurationService configService)
-    {
-        return
-        [
-            new FeatureSelectionStep(),
-            new SystemCheckStep(_systemChecker, _resourceCalculator),
-            new PortResolutionStep(_portResolver, _systemChecker),
-            new ConfigSummaryStep(_credentialService, _resourceCalculator),
-            new InstallPathStep(),
-            new DeploymentStep(configService, _dockerService),
-            new SuccessStep(),
-        ];
-    }
-
-    private List<WizardStep> BuildLocalPreviewSteps(IConfigurationService configService)
-    {
-        return
-        [
-            new FeatureSelectionStep(),
-            new SystemCheckStep(_systemChecker, _resourceCalculator),
-            new PortResolutionStep(_portResolver, _systemChecker),
-            new ConfigSummaryStep(_credentialService, _resourceCalculator),
-            new InstallPathStep(),
-            new DeploymentStep(configService, _dockerService),
-            new SuccessStep(),
-        ];
     }
 }

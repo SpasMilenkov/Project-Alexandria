@@ -1,0 +1,57 @@
+  media-worker:
+    build:
+      context: {{SOURCE_ROOT}}/Backend
+      dockerfile: Alexandria.Workers.Media/Dockerfile
+    container_name: alexandria-media-worker
+    labels:
+      - "logs.collect=true"
+    restart: always
+
+    volumes:
+      - media_worker_scratch:/tmp/worker-scratch
+
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
+      RabbitMQ__UserName: ${RABBITMQ_MEDIA_WORKER:?RABBITMQ_MEDIA_WORKER is required}
+      RabbitMQ__Password: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      ASPNETCORE_URLS: http://+:8080
+      TMPDIR: /tmp/worker-scratch
+      RabbitMQ__Consumer__QueueName: media-queue
+      RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      rabbitmq-config:
+        condition: service_completed_successfully
+
+    networks:
+      - data-net
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
