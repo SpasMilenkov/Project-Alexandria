@@ -40,7 +40,8 @@ public sealed record WrappedComparison(
     bool Exact,
     WrappedDurationRelationship Relationship,
     string Copy,
-    string CatalogVersion);
+    string CatalogVersion,
+    string? Description = null);
 
 public sealed record WrappedRhythm(
     WrappedTimeScene? Scene,

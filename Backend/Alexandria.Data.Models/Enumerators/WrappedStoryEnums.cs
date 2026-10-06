@@ -39,7 +39,10 @@ public enum WrappedDurationCategory
     Everyday = 5,
     Travel = 6,
     Time = 7,
-    Space = 8
+    Space = 8,
+    Animation = 9,
+    Theatre = 10,
+    Audiobook = 11
 }
 
 public enum WrappedDurationRelationship
