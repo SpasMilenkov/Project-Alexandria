@@ -22,7 +22,11 @@
           </div>
         </div>
 
-        <div class="flex shrink-0 flex-wrap items-center gap-2" role="group" aria-label="Wrapped controls">
+        <div
+          class="flex shrink-0 flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Wrapped controls"
+        >
           <USelect
             :model-value="year"
             :items="yearOptions"
@@ -85,7 +89,7 @@
       </div>
       <div
         v-else-if="!deck?.deck.cards.length"
-        class="flex flex-col items-center py-16 text-center "
+        class="flex flex-col items-center py-16 text-center"
       >
         <UIcon name="mdi:music-note" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
         <h2 class="mt-4 font-semibold text-gray-900 dark:text-gray-100">{{ emptyState.title }}</h2>
@@ -213,9 +217,7 @@ const moreActions = computed(() => [
 
 const periodLabel = computed(() => {
   if (!isLatestYear.value)
-    return isFinal.value
-      ? "Your final record for this year"
-      : "A chapter from your year in music";
+    return isFinal.value ? "Your final record for this year" : "A chapter from your year in music";
 
   if (!deck.value?.generatedAt) return "Your soundtrack so far";
 

@@ -345,7 +345,9 @@ const streamingDestinations = [
   { icon: "mdi:chart-line", label: "Your listening", to: "/stats" },
 ];
 
-const isListeningRoute = computed(() => route.path === "/stats" || route.path.startsWith("/stats/wrapped"));
+const isListeningRoute = computed(
+  () => route.path === "/stats" || route.path.startsWith("/stats/wrapped"),
+);
 
 const streamingMenuItems = computed<NavigationMenuItem[]>(() =>
   streamingDestinations.map((item) => {

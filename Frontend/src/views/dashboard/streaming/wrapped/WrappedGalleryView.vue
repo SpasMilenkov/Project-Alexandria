@@ -56,7 +56,6 @@ import { computed, ref } from "vue";
 import WrappedExperience from "@/components/streaming/wrapped/WrappedExperience.vue";
 import WrappedExportButton from "@/components/streaming/wrapped/WrappedExportButton.vue";
 import WrappedPaletteSwitcher from "@/components/streaming/wrapped/WrappedPaletteSwitcher.vue";
-
 import { useWrappedPalette } from "@/composables/useWrappedPalette";
 import { wrappedFixtures } from "@/utils/wrapped-fixtures";
 

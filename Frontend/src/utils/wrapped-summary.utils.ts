@@ -1,7 +1,4 @@
-import type {
-  OverviewSummaryDtoResponse,
-  WrappedDeckResponse,
-} from "@/api/stats";
+import type { OverviewSummaryDtoResponse, WrappedDeckResponse } from "@/api/stats";
 
 export const SUMMARY_KIND_WRAPPED = "Wrapped";
 
@@ -35,5 +32,4 @@ export const summaryToWrappedDeck = (
   };
 };
 
-export const summaryYear = (periodStart: string): number =>
-  new Date(periodStart).getUTCFullYear();
+export const summaryYear = (periodStart: string): number => new Date(periodStart).getUTCFullYear();

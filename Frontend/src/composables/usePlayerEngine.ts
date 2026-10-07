@@ -126,7 +126,12 @@ export const usePlayerEngine = (
   const startListenTicker = () => {
     if (listenTicker !== null) return;
     listenTicker = setInterval(() => {
-      if (videoRef.value && !videoRef.value.paused && !videoRef.value.seeking && !isBuffering.value) {
+      if (
+        videoRef.value &&
+        !videoRef.value.paused &&
+        !videoRef.value.seeking &&
+        !isBuffering.value
+      ) {
         listenedSeconds.value++;
       }
     }, 1_000);

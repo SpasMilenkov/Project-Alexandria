@@ -4,8 +4,8 @@ import type { SortDirection } from "./SortDirection";
 import type { UserRole } from "./UserRole";
 
 import { AutoGroupKind } from "./auto-group-kind";
-import { JobStatus } from "./job-status";
 import { HomeShortcutGroup, HomeWidgetSize, HomeWidgetType } from "./home-widget";
+import { JobStatus } from "./job-status";
 import { LyricsProvider } from "./lyrics-provider";
 import { LyricsStatus } from "./lyrics-status";
 import { OnboardingStep } from "./OnboardingStep";
