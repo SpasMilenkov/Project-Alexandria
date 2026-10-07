@@ -117,9 +117,8 @@ const queryParams = computed<OperationalEventsQuery>(() => ({
   to: dateRange?.to,
 }));
 
-const { data, isLoading, error, asyncStatus } = useQuery(
-  operationalEvents,
-  () => queryParams.value,
+const { data, isLoading, error, asyncStatus } = useQuery(() =>
+  operationalEvents(queryParams.value),
 );
 
 const isAuthError = (err: unknown): boolean => {

@@ -205,9 +205,8 @@ const trendParams = computed(() => {
 });
 
 const { data: overview, isLoading: overviewLoading } = useQuery(transpilationOverview());
-const { data: trend, isLoading: trendLoading } = useQuery(
-  transpilationTrend,
-  () => trendParams.value,
+const { data: trend, isLoading: trendLoading } = useQuery(() =>
+  transpilationTrend(trendParams.value),
 );
 
 const statusCount = (status: number): number =>

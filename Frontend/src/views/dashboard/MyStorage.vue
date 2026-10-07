@@ -430,7 +430,7 @@ const {
   isLoading: myPreviewsLoading,
   error: myPreviewsError,
   refresh: refreshPreviews,
-} = useQuery(myPreviews, () => previewFilters.value);
+} = useQuery(() => myPreviews(previewFilters.value));
 
 const accumulatedPreviews = ref<UserPreview[]>([]);
 
