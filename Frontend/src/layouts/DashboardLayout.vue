@@ -310,6 +310,11 @@ defineShortcuts({
 // Desktop navigation
 const libraryMenuItems: NavigationMenuItem[] = [
   {
+    icon: "i-heroicons-home",
+    label: "Home",
+    to: "/home",
+  },
+  {
     icon: "i-heroicons-folder",
     label: "File Explorer",
     to: "/dashboard",
@@ -439,6 +444,7 @@ const settingsMenuItems = computed<NavigationMenuItem[]>(() => {
 // Mobile navigation
 
 const mobileMainItems = [
+  { icon: "i-heroicons-home", label: "Home", to: "/home" },
   { icon: "i-heroicons-folder", label: "File Explorer", to: "/dashboard" },
   { icon: "i-heroicons-tag", label: "Tags and Categories", to: "/dashboard/tags" },
   { icon: "i-heroicons-clock", label: "Access History", to: "/access-history" },

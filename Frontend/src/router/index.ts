@@ -37,6 +37,12 @@ const router = createRouter({
       props: true,
     },
     {
+      component: () => import("@/views/dashboard/HomeView.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
+      name: "home",
+      path: "/home",
+    },
+    {
       component: () => import("@/views/dashboard/SettingsView.vue"),
       meta: { layout: "dashboard", requiresAuth: true },
       name: "settings",
