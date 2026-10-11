@@ -5,7 +5,6 @@ using Alexandria.Common.Queues;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
-using Alexandria.Dto.Files;
 using Alexandria.Dto.PreviewsStats;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -66,7 +65,6 @@ public class InitiateUploadQuotaWarningTests
         _files.GetDeletedSizeAsync(_userId, ct).Returns(0L);
         _files.GetSizeByTypeAsync(_userId, ct)
             .Returns(new Dictionary<string, long> { ["video/mp4"] = filesSize });
-        _files.GetOldFilesAsync(_userId, ct).Returns(new List<FileSummary>());
         _previews.GetStorageByUserAsync(_userId, ct)
             .Returns((0L, 0, new List<PreviewKindTotals>()));
         _representations.GetStorageByUserAsync(_userId, ct).Returns((0L, 0));
@@ -89,7 +87,7 @@ public class InitiateUploadQuotaWarningTests
     }
 
     [Fact]
-    public async Task initiate_under_quota_succeeds()
+    public async Task initiate_under_quota_succeeds_without_loading_cleanup_files()
     {
         var ct = TestContext.Current.CancellationToken;
         SeedUsage(filesSize: 100L, quota: ApplicationUser.DefaultStorageQuotaBytes);
@@ -99,5 +97,7 @@ public class InitiateUploadQuotaWarningTests
 
         uploadId.Should().NotBeEmpty();
         await _uploads.Received(1).AddAsync(Arg.Any<Upload>(), ct);
+        await _files.Received(1).GetSizeByTypeAsync(_userId, ct);
+        await _files.DidNotReceive().GetOldFilesAsync(_userId, ct);
     }
 }

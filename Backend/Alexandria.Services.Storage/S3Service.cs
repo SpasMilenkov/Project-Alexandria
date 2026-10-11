@@ -829,7 +829,7 @@ public partial class S3Service(
     {
         try
         {
-            var breakdown = await GetStorageBreakdown(userId, ct: ct);
+            var breakdown = await GetStorageBreakdown(userId, summary: true, ct: ct);
             if (breakdown.QuotaBytes > 0 && breakdown.UsedBytes + contentLength > breakdown.QuotaBytes)
                 LogStorageQuotaExceeded(logger, userId, breakdown.UsedBytes, contentLength, breakdown.QuotaBytes);
         }
