@@ -22,7 +22,8 @@ public static class DirectoryMappings
                 UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
                 OwnerUserDto: dir.Owner?.ToUserDto(),
                 Files: dir.Files?.Select(f => f.ToFileSummary()).ToList() ?? [],
-                Directories: dir.Children?.Select(c => c.ToSummaryDto()).ToList() ?? []
+                Directories: dir.Children?.Select(c => c.ToSummaryDto()).ToList() ?? [],
+                IsStarred: dir.IsStarred
             );
         }
 
@@ -36,7 +37,8 @@ public static class DirectoryMappings
                 ParentId: dir.ParentId ?? Guid.Empty,
                 CreatedAt: dir.CreatedAt,
                 UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
-                OwnerUserDto: dir.Owner?.ToUserDto() ?? new UserDto()
+                OwnerUserDto: dir.Owner?.ToUserDto() ?? new UserDto(),
+                IsStarred: dir.IsStarred
             );
         }
     }

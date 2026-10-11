@@ -17,6 +17,12 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
 {
     private static readonly SearchValues<char> SInvalidChars = SearchValues.Create("/\\:*?\"<>|");
 
+    public Task<bool> SetDirectoryFavoriteAsync(Guid directoryId, Guid userId, bool isStarred,
+        CancellationToken ct = default)
+    {
+        return unitOfWork.Directories.SetDirectoryFavoriteAsync(directoryId, userId, isStarred, ct);
+    }
+
     /// <inheritdoc/>
     public async Task<DirectorySummaryDto> CreateDirectoryAsync(string name, Guid ownerId, Guid? parentId = null,
         CancellationToken ct = default)

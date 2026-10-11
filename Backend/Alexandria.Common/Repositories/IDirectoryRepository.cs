@@ -53,6 +53,9 @@ public interface IDirectoryRepository : IRepository<Directory>
         CancellationToken ct = default);
 
     Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, CancellationToken ct = default);
+    Task<bool> SetDirectoryFavoriteAsync(Guid directoryId, Guid userId, bool isStarred,
+        CancellationToken ct = default);
+
     Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId, CancellationToken ct = default);
     Task MoveDirectoriesAsync(Guid[] ids, Guid? destinationId, Guid userId, CancellationToken ct = default);
     Task<int> RestoreDirectoriesAsync(Guid[] ids, Guid userId, CancellationToken ct = default);
