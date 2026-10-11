@@ -16,6 +16,7 @@ public class Directory : IBase
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public bool IsStarred { get; set; }
     public Guid? UpdatedBy { get; set; }
     public List<File>? Files { get; set; }
     public ApplicationUser? Owner { get; set; }

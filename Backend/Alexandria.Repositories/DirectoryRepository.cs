@@ -595,7 +595,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                  )
                  SELECT
                      "Id", "Name", "NormalizedName", "SearchVector",
-                     "ParentId", "CreatedAt", "UpdatedAt", "DeletedAt",
+                     "ParentId", "CreatedAt", "UpdatedAt", "DeletedAt", "IsStarred",
                      "UpdatedBy", "OwnerId"
                  FROM RecursiveDirs;
                  """)
