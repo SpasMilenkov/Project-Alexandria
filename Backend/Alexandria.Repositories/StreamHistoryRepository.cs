@@ -220,17 +220,13 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
     public async Task<IReadOnlyList<ListeningSessionRow>> GetListeningSessionRowsAsync(
         Guid userId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
     {
-        return await _sessions
-            .AsNoTracking()
-            .Where(s => s.StreamHistory.UserId == userId
-                        && s.StartedAt >= fromUtc
-                        && s.StartedAt < toUtc
-                        && s.EndedAt != null
-                        && s.ListenedSeconds > 0
-                        && s.StreamHistory.File.MimeType.StartsWith("audio/")
-                        && s.DeletedAt == null
-                        && s.StreamHistory.DeletedAt == null
-                        && s.StreamHistory.File.DeletedAt == null)
+        return await ListeningSessionRowsQuery(_sessions.AsNoTracking(), userId, fromUtc, toUtc).ToListAsync(ct);
+    }
+
+    internal static IQueryable<ListeningSessionRow> ListeningSessionRowsQuery(
+        IQueryable<StreamSession> sessions, Guid userId, DateTime fromUtc, DateTime toUtc)
+    {
+        return ListeningSessionsInRange(sessions, userId, fromUtc, toUtc)
             .OrderBy(s => s.StartedAt).ThenBy(s => s.Id)
             .Select(s => new ListeningSessionRow(
                 s.Id,
@@ -248,8 +244,67 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
                 s.StreamHistory.File.MediaMetadata != null && s.StreamHistory.File.MediaMetadata.DeletedAt == null
                     ? s.StreamHistory.File.MediaMetadata.Duration
                     : (double?)null,
-                s.IsQualifiedPlay))
-            .ToListAsync(ct);
+                s.IsQualifiedPlay));
+    }
+
+    private static IQueryable<StreamSession> ListeningSessionsInRange(
+        IQueryable<StreamSession> sessions, Guid userId, DateTime fromUtc, DateTime toUtc)
+    {
+        return sessions
+            .Where(s => s.StreamHistory.UserId == userId
+                        && s.StartedAt >= fromUtc
+                        && s.StartedAt < toUtc
+                        && s.EndedAt != null
+                        && s.ListenedSeconds > 0
+                        && s.StreamHistory.File.MimeType.StartsWith("audio/")
+                        && s.DeletedAt == null
+                        && s.StreamHistory.DeletedAt == null
+                        && s.StreamHistory.File.DeletedAt == null);
+    }
+
+    public async Task<IReadOnlyList<TopSongRankingRow>> GetTopSongsAsync(
+        Guid userId, DateTime fromUtc, DateTime toUtc, int limit, CancellationToken ct = default)
+    {
+        return await TopSongsQuery(userId, fromUtc, toUtc, limit).ToListAsync(ct);
+    }
+
+    internal IQueryable<TopSongRankingRow> TopSongsQuery(
+        Guid userId, DateTime fromUtc, DateTime toUtc, int limit)
+    {
+        var playableFileIds = PlayableAudioFileIdsQuery(
+            StreamingSourceQueries.ViableJobs(context, userId, false), userId);
+
+        return TopSongRankingsQuery(_sessions.AsNoTracking(), playableFileIds, userId, fromUtc, toUtc, limit);
+    }
+
+    internal static IQueryable<Guid> PlayableAudioFileIdsQuery(IQueryable<TranspilationJob> viableJobs, Guid userId)
+    {
+        return viableJobs
+            .Where(j => j.FileVersion.DeletedAt == null
+                        && j.FileVersion.File.OwnerId == userId
+                        && j.FileVersion.File.DeletedAt == null
+                        && j.FileVersion.File.CurrentVersionId != null)
+            .Select(j => j.FileVersion.FileId);
+    }
+
+    internal static IQueryable<TopSongRankingRow> TopSongRankingsQuery(
+        IQueryable<StreamSession> sessions, IQueryable<Guid> playableFileIds,
+        Guid userId, DateTime fromUtc, DateTime toUtc, int limit)
+    {
+        return ListeningSessionsInRange(sessions, userId, fromUtc, toUtc)
+            .Where(s => playableFileIds.Contains(s.StreamHistory.FileId))
+            .GroupBy(s => s.StreamHistory.FileId)
+            .Select(g => new TopSongRankingRow
+            {
+                FileId = g.Key,
+                QualifiedPlayCount = g.Count(s => s.IsQualifiedPlay),
+                TotalListenedSeconds = g.Sum(s => s.ListenedSeconds)
+            })
+            .Where(s => s.QualifiedPlayCount > 0)
+            .OrderByDescending(s => s.QualifiedPlayCount)
+            .ThenByDescending(s => s.TotalListenedSeconds)
+            .ThenBy(s => s.FileId)
+            .Take(limit);
     }
 
     public async Task<IReadOnlyList<ListeningHistoryRef>> GetListeningHistoryRefsAsync(
