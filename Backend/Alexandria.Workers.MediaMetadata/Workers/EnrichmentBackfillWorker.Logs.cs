@@ -11,7 +11,7 @@ public partial class EnrichmentBackfillWorker
     private static partial void LogBackfillDrained(ILogger logger, Guid policyId, int published, int candidates);
 
     [LoggerMessage(22702, LogLevel.Warning,
-        "Discarding malformed backfill message '{Message}': not a policy id")]
+        "Discarding malformed backfill message '{Message}': expected policy id, rule id, and cutoff")]
     private static partial void LogMalformedMessage(ILogger logger, string message);
 
     [LoggerMessage(22703, LogLevel.Error, "Enrichment backfill failed for policy {PolicyId}")]

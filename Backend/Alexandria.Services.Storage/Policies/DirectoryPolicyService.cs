@@ -1,8 +1,10 @@
-using System.Text;
+using System.Text.Json;
 using Alexandria.Common;
 using Alexandria.Common.Exceptions.Policies;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Enrichment;
 using Alexandria.Dto.Policies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -18,8 +20,11 @@ public sealed partial class DirectoryPolicyService(
     ILogger<DirectoryPolicyService> logger)
     : IDirectoryPolicyService
 {
+    private static readonly JsonSerializerOptions BackfillJsonOptions = new(JsonSerializerDefaults.Web);
+
     private readonly bool _autoTaggingEnabled =
         bool.TryParse(configuration["Features:Autotagging"], out var enabled) && enabled;
+
     public async Task<DirectoryPolicyDto?> GetPolicyAsync(Guid directoryId, Guid ownerId,
         CancellationToken ct = default)
     {
@@ -48,9 +53,6 @@ public sealed partial class DirectoryPolicyService(
 
             LogPolicyCreated(logger, entity.Id, request.DirectoryId);
 
-            // Never inline: the sweep runs in the worker process off this message.
-            await EnqueueBackfillAsync(entity.Id, ct);
-
             return DirectoryPolicyDto.FromEntity(entity);
         }
         catch (Exception ex)
@@ -78,8 +80,10 @@ public sealed partial class DirectoryPolicyService(
 
         LogPolicyUpdated(logger, policyId);
 
-        // Update only widens or narrows inheritance; re-sweeping is idempotent.
-        await EnqueueBackfillAsync(policyId, ct);
+        var cutoff = new DateTimeOffset(policy.UpdatedAt ?? DateTime.UtcNow);
+
+        foreach (var rule in policy.Rules.Where(r => r.DeletedAt == null && r.ActionType == PolicyActionType.AutoTag))
+            await EnqueueBackfillAsync(new EnrichmentBackfillRequest(policyId, rule.Id, cutoff));
 
         return DirectoryPolicyDto.FromEntity(policy);
     }
@@ -126,6 +130,10 @@ public sealed partial class DirectoryPolicyService(
 
         LogRuleAdded(logger, entity.Id, policyId);
 
+        if (entity.ActionType == PolicyActionType.AutoTag)
+            await EnqueueBackfillAsync(new EnrichmentBackfillRequest(
+                policyId, entity.Id, new DateTimeOffset(entity.CreatedAt)));
+
         return PolicyRuleDto.FromEntity(entity);
     }
 
@@ -150,6 +158,10 @@ public sealed partial class DirectoryPolicyService(
 
         LogRuleUpdated(logger, ruleId);
 
+        if (rule.ActionType == PolicyActionType.AutoTag)
+            await EnqueueBackfillAsync(new EnrichmentBackfillRequest(
+                rule.PolicyId, rule.Id, new DateTimeOffset(rule.UpdatedAt ?? DateTime.UtcNow)));
+
         return PolicyRuleDto.FromEntity(rule);
     }
 
@@ -165,29 +177,25 @@ public sealed partial class DirectoryPolicyService(
     }
 
     /// <summary>
-    /// Fire-and-forget backfill request scoped to the policy. Skipped entirely while
-    /// autotagging is disabled: with no consumer running, publishing would only burn a
-    /// broker round trip in the request for a sweep that ends in (0, 0, 0). A broker
-    /// failure must never fail policy creation: the sweep is a best-effort catch-up and
-    /// the failure is logged with the policy id for operators.
+    /// Backfill is best-effort: a broker failure must not fail a saved rule or policy edit.
     /// </summary>
-    private async Task EnqueueBackfillAsync(Guid policyId, CancellationToken ct)
+    private async Task EnqueueBackfillAsync(EnrichmentBackfillRequest request)
     {
         if (!_autoTaggingEnabled)
         {
-            LogBackfillSkippedDisabled(logger, policyId);
+            LogBackfillSkippedDisabled(logger, request.PolicyId);
             return;
         }
 
         try
         {
             await publisher.PublishAsync(
-                Encoding.UTF8.GetBytes(policyId.ToString()),
+                JsonSerializer.SerializeToUtf8Bytes(request, BackfillJsonOptions),
                 EnrichmentBackfill.BackfillRoutingKey);
         }
         catch (Exception ex)
         {
-            LogBackfillEnqueueFailed(logger, ex, policyId);
+            LogBackfillEnqueueFailed(logger, ex, request.PolicyId);
         }
     }
 }

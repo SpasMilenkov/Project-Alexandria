@@ -5,11 +5,9 @@ namespace Alexandria.Common.Services;
 public interface IEnrichmentBackfillService
 {
     /// <summary>
-    /// Retroactively enriches files that predate <paramref name="policyId"/> and lack a
-    /// successful enrichment job, scoped to the policy's directory (+ subtree when
-    /// inherited). Each file goes through the normal enrich trigger path; completion
-    /// reuses the existing results-consumer → auto-tag flow. Missing/deleted policies
-    /// and a disabled autotagging flag yield an empty result, never an error.
+    /// Enriches matching files that predate the requested cutoff and lack successful
+    /// enrichment, scoped to the live AutoTag rule's policy directory and inherited
+    /// subtree. Missing/deleted rules or policies and disabled autotagging are skipped.
     /// </summary>
-    Task<EnrichmentBackfillResult> BackfillPolicyAsync(Guid policyId, CancellationToken ct = default);
+    Task<EnrichmentBackfillResult> BackfillRuleAsync(EnrichmentBackfillRequest request, CancellationToken ct = default);
 }
