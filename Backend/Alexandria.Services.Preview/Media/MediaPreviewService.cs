@@ -81,9 +81,20 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
         LogFfprobeCompleted(logger, inputPath);
 
+        return MapMetadata(probeData);
+    }
+
+    internal static MediaMetadataDto MapMetadata(FFprobeOutput probeData)
+    {
         var videoStream = probeData.Streams?.FirstOrDefault(s => s.CodecType == "video");
         var audioStream = probeData.Streams?.FirstOrDefault(s => s.CodecType == "audio");
-        var tags = probeData.Format?.Tags;
+        var tags = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (probeData.Format?.Tags is { } formatTags)
+        {
+            foreach (var (key, value) in formatTags)
+                tags[key] = value;
+        }
 
         return new MediaMetadataDto
         {
@@ -100,11 +111,11 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
             HasEmbeddedArtwork = probeData.Streams?.Any(s =>
                 s.CodecType == "video" &&
                 (s.Disposition?.AttachedPic ?? 0) == 1) ?? false,
-            Title = tags?.GetValueOrDefault("title"),
-            Artist = tags?.GetValueOrDefault("artist"),
-            Album = tags?.GetValueOrDefault("album"),
-            Year = tags?.GetValueOrDefault("date"),
-            Genre = tags?.GetValueOrDefault("genre")
+            Title = tags.GetValueOrDefault("title"),
+            Artist = tags.GetValueOrDefault("artist"),
+            Album = tags.GetValueOrDefault("album"),
+            Year = tags.GetValueOrDefault("date"),
+            Genre = tags.GetValueOrDefault("genre")
         };
     }
 
