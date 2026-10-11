@@ -81,7 +81,7 @@ public class GetStorageBreakdownTests
             1000L, 3, byKind, 5000L, 4,
             new ApplicationUser { Name = "user", StorageQuota = 10_737_418_240L });
 
-        var result = await _sut.GetStorageBreakdown(_userId, TestContext.Current.CancellationToken);
+        var result = await _sut.GetStorageBreakdown(_userId, ct: TestContext.Current.CancellationToken);
 
         result.FilesSize.Should().Be(1000L);
         result.PreviewsSize.Should().Be(1000L);
@@ -96,6 +96,29 @@ public class GetStorageBreakdownTests
     }
 
     [Fact]
+    public async Task GetStorageBreakdown_summary_skips_cleanup_and_preserves_full_response_accounting()
+    {
+        SeedUsage(
+            new Dictionary<string, long> { ["image/png"] = 200L },
+            100L, 1,
+            new List<PreviewKindTotals> { new(PreviewKind.Thumbnail, 1, 100L) },
+            300L, 2,
+            new ApplicationUser { Name = "user", StorageQuota = 1000L });
+        var ct = TestContext.Current.CancellationToken;
+
+        var summary = await _sut.GetStorageBreakdown(_userId, summary: true, ct: ct);
+
+        summary.OldFiles.Should().BeEmpty();
+        await _files.DidNotReceive().GetOldFilesAsync(_userId, ct);
+
+        var full = await _sut.GetStorageBreakdown(_userId, ct: ct);
+
+        full.OldFiles.Should().ContainSingle();
+        await _files.Received(1).GetOldFilesAsync(_userId, ct);
+        summary.Should().BeEquivalentTo(full, options => options.Excluding(value => value.OldFiles));
+    }
+
+    [Fact]
     public async Task missing_user_reports_zero_quota_but_still_sums_used()
     {
         SeedUsage(
@@ -104,7 +127,7 @@ public class GetStorageBreakdownTests
             new List<PreviewKindTotals> { new(PreviewKind.Thumbnail, 1, 100L) },
             300L, 2, null);
 
-        var result = await _sut.GetStorageBreakdown(_userId, TestContext.Current.CancellationToken);
+        var result = await _sut.GetStorageBreakdown(_userId, ct: TestContext.Current.CancellationToken);
 
         result.QuotaBytes.Should().Be(0L);
         result.UsedBytes.Should().Be(600L);
@@ -118,7 +141,7 @@ public class GetStorageBreakdownTests
             0L, 0, new List<PreviewKindTotals>(), 0L, 0,
             new ApplicationUser { Name = "user", StorageQuota = 10_737_418_240L });
 
-        var result = await _sut.GetStorageBreakdown(_userId, TestContext.Current.CancellationToken);
+        var result = await _sut.GetStorageBreakdown(_userId, ct: TestContext.Current.CancellationToken);
 
         result.FilesSize.Should().Be(0L);
         result.UsedBytes.Should().Be(0L);

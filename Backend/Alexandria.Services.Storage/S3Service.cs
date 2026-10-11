@@ -829,7 +829,7 @@ public partial class S3Service(
     {
         try
         {
-            var breakdown = await GetStorageBreakdown(userId, ct);
+            var breakdown = await GetStorageBreakdown(userId, ct: ct);
             if (breakdown.QuotaBytes > 0 && breakdown.UsedBytes + contentLength > breakdown.QuotaBytes)
                 LogStorageQuotaExceeded(logger, userId, breakdown.UsedBytes, contentLength, breakdown.QuotaBytes);
         }
@@ -1219,11 +1219,13 @@ public partial class S3Service(
         return await publicS3.GetPreSignedURLAsync(request);
     }
 
-    public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
+    public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false, CancellationToken ct = default)
     {
         var trashSize = await unitOfWork.Files.GetDeletedSizeAsync(userId, ct);
         var sizeByMimeType = await unitOfWork.Files.GetSizeByTypeAsync(userId, ct);
-        var oldFiles = await unitOfWork.Files.GetOldFilesAsync(userId, ct);
+        IEnumerable<FileSummary> oldFiles = [];
+        if (!summary)
+            oldFiles = await unitOfWork.Files.GetOldFilesAsync(userId, ct);
         var (previewsSize, previewsCount, previewsByKind) =
             await unitOfWork.Previews.GetStorageByUserAsync(userId, ct);
         var (transcodedSize, representationsCount) =

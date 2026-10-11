@@ -5,7 +5,12 @@ using FastEndpoints;
 
 namespace Alexandria.Api.Features.Storage.Metrics.Storage.MyStorage;
 
-sealed class StorageBreakdownEndpoint(IStorageService storageService) : EndpointWithoutRequest<StorageBreakdown>
+sealed class StorageBreakdownRequest
+{
+    public bool Summary { get; set; }
+}
+
+sealed class StorageBreakdownEndpoint(IStorageService storageService) : Endpoint<StorageBreakdownRequest, StorageBreakdown>
 {
     public override void Configure()
     {
@@ -13,10 +18,10 @@ sealed class StorageBreakdownEndpoint(IStorageService storageService) : Endpoint
         Policies(Common.Auth.Policies.RequireUser);
     }
 
-    public override async Task HandleAsync(CancellationToken ct)
+    public override async Task HandleAsync(StorageBreakdownRequest req, CancellationToken ct)
     {
         var userId = User.GetUserId();
 
-        await Send.OkAsync(await storageService.GetStorageBreakdown(userId, ct), ct);
+        await Send.OkAsync(await storageService.GetStorageBreakdown(userId, req.Summary, ct), ct);
     }
 }
