@@ -17,6 +17,7 @@ public interface IUnitOfWork : IDisposable
     IUploadRepository Uploads { get; }
     IUserRepository Users { get; }
     IUserSettingsRepository UserSettings { get; }
+    IHomeWidgetRepository HomeWidgets { get; }
     IAdminSettingsRepository AdminSettings { get; }
     IStreamingRepresentationRepository StreamingRepresentations { get; }
     ITranspilationJobRepository TranspilationJobs { get; }

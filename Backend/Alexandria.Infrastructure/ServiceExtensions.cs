@@ -57,6 +57,7 @@ public static class ServiceExtensions
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
+        services.AddScoped<IHomeWidgetRepository, HomeWidgetRepository>();
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IAdminSettingsService, AdminSettingsService>();

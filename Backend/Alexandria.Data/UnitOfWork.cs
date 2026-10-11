@@ -19,6 +19,7 @@ public sealed class UnitOfWork(
     IUploadRepository uploads,
     IUserRepository users,
     IUserSettingsRepository userSettings,
+    IHomeWidgetRepository homeWidgets,
     IAdminSettingsRepository adminSettings,
     IStreamingRepresentationRepository streamingRepresentations,
     ITranspilationJobRepository transpilationJobs,
@@ -49,6 +50,7 @@ public sealed class UnitOfWork(
     public IUploadRepository Uploads { get; } = uploads;
     public IUserRepository Users { get; } = users;
     public IUserSettingsRepository UserSettings { get; } = userSettings;
+    public IHomeWidgetRepository HomeWidgets { get; } = homeWidgets;
     public IAdminSettingsRepository AdminSettings { get; } = adminSettings;
     public IStreamingRepresentationRepository StreamingRepresentations { get; } = streamingRepresentations;
     public ITranspilationJobRepository TranspilationJobs { get; } = transpilationJobs;

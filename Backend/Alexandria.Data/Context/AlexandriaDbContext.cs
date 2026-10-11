@@ -47,6 +47,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<Upload> Uploads { get; set; }
     public DbSet<UserSettings> UserSettings { get; set; }
+    public DbSet<HomeWidget> HomeWidgets { get; set; }
     public DbSet<AdminSettings> AdminSettings { get; set; }
     public DbSet<TranspilationJob> TranspilationJobs { get; set; }
     public DbSet<StreamHistory> StreamHistories { get; set; }
@@ -99,6 +100,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new AuditLogConfiguration());
         builder.ApplyConfiguration(new UploadConfiguration());
         builder.ApplyConfiguration(new UserSettingsConfiguration());
+        builder.ApplyConfiguration(new HomeWidgetConfiguration());
         builder.ApplyConfiguration(new AdminSettingsConfiguration());
         builder.ApplyConfiguration(new StreamHistoryConfiguration());
         builder.ApplyConfiguration(new TranspilationJobConfiguration());
