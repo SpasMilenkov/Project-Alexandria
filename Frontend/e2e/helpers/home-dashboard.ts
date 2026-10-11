@@ -54,6 +54,7 @@ export const fixture = async (
   initial: HomeDocument = seed(),
   appearance: Record<string, unknown> = {},
   timeZones?: (route: Route) => Promise<void>,
+  apiHandler?: (route: Route) => Promise<boolean>,
 ) => {
   const state = { saved: initial, writes: [] as HomeDocument[], failNextSave: false };
 
@@ -74,6 +75,8 @@ export const fixture = async (
 
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
+    if (apiHandler && (await apiHandler(route))) return;
+
     let body: unknown = {};
 
     if (path === "/api/settings/home") {

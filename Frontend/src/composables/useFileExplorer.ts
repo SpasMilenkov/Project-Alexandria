@@ -92,7 +92,13 @@ export const useFileExplorer = () => {
       if (dirPagination.value.paginationParams.page === 1) {
         directoriesList.value = [...newData.items];
       } else {
-        directoriesList.value.push(...newData.items);
+        const loaded = new Map(directoriesList.value.map((directory) => [directory.id, directory]));
+
+        for (const directory of newData.items) {
+          loaded.set(directory.id, directory);
+        }
+
+        directoriesList.value = [...loaded.values()];
       }
     },
     { immediate: true },

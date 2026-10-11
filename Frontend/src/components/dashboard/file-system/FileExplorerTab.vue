@@ -521,6 +521,8 @@
     <!-- shared folder details drawer — single instance for all DirectoryItem triggers -->
     <FolderDetailsDrawer
       v-model:directory="activeDetailsDirectory"
+      :favorite-pending="isFavoritePending"
+      @favorite="handleDirectoryFavorite"
       @navigate="handleNavigate"
       @rename="handleDirectoryRename"
       @move="openTransferModal('move')"
@@ -574,7 +576,12 @@ import { type FileTooltipEnterKind, useFileTooltip } from "@/composables/useFile
 import { useLazyModal } from "@/composables/useLazyOverlay";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
-import { copyDirectory, deleteDirectory, moveDirectories } from "@/mutations/directories";
+import {
+  copyDirectory,
+  deleteDirectory,
+  moveDirectories,
+  setDirectoryFavorite,
+} from "@/mutations/directories";
 import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
@@ -653,6 +660,9 @@ const { mutateAsync: moveFilesMutate } = moveFiles();
 const { mutateAsync: moveDirectoriesMutate } = moveDirectories();
 const { mutateAsync: deleteFilesMutate } = deleteFiles();
 const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
+
+const { mutateAsync: favoriteDirectoryMutate, isLoading: isFavoritePending } =
+  setDirectoryFavorite();
 
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
@@ -920,6 +930,10 @@ const explorerMenuActions: ExplorerMenuActions = {
       downloadBulk(snap.fileIds, snap.directoryIds);
     }
   },
+  favoriteDirectory: (directory) => {
+    void handleDirectoryFavorite(directory);
+  },
+  isFavoritePending: () => isFavoritePending.value,
   moveSelection: () => {
     const snap = menuSnapshot.value;
     if (!snap) return;
@@ -1511,10 +1525,46 @@ watch(currentDirId, () => {
 watch(directoriesList, (list) => {
   if (!dirHasLoaded.value) return;
   const target = activeDetailsDirectory.value;
-  if (target && !list.some((dir) => dir.id === target.id)) activeDetailsDirectory.value = null;
+
+  if (target) {
+    activeDetailsDirectory.value = list.find((dir) => dir.id === target.id) ?? null;
+  }
+
   const menuTarget = menuSnapshot.value?.targetDirectory;
   if (menuTarget && !list.some((dir) => dir.id === menuTarget.id)) closeContextMenu();
 });
+
+const handleDirectoryFavorite = async (directory: DirectorySummaryDto) => {
+  if (isFavoritePending.value) return;
+
+  try {
+    const result = await favoriteDirectoryMutate({
+      directoryId: directory.id,
+      isStarred: !directory.isStarred,
+    });
+
+    if (isDisposed.value) return;
+
+    directoriesList.value = directoriesList.value.map((item) => {
+      if (item.id === result.directoryId) return { ...item, isStarred: result.isStarred };
+
+      return item;
+    });
+
+    if (activeDetailsDirectory.value?.id === result.directoryId) {
+      activeDetailsDirectory.value = {
+        ...activeDetailsDirectory.value,
+        isStarred: result.isStarred,
+      };
+    }
+
+    appToast.success(
+      result.isStarred ? "Folder added to favorites" : "Folder removed from favorites",
+    );
+  } catch (error) {
+    appToast.error("Could not update folder favorites", error);
+  }
+};
 
 // shared rich file tooltip — one controller for every FileItem. Rows report
 // hover/focus intent with their trigger anchor; placement mirrors the previous

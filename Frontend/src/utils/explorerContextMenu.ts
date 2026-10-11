@@ -25,6 +25,8 @@ interface ExplorerMenuActions {
   openDirectoryDetails: (directory: DirectorySummaryDto) => void;
   openDirectory: (directoryId: string) => void;
   renameDirectory: (directoryId: string) => void;
+  favoriteDirectory: (directory: DirectorySummaryDto) => void;
+  isFavoritePending: () => boolean;
   downloadDirectory: () => void;
   uploadFile: () => void;
   uploadDirectory: () => void;
@@ -251,6 +253,12 @@ const buildDirectoryItems = (
           icon: "i-mdi-folder-open",
           label: "Open",
           onSelect: () => actions.openDirectory(target.id),
+        },
+        {
+          disabled: actions.isFavoritePending(),
+          icon: target.isStarred ? "i-mdi-star" : "i-mdi-star-outline",
+          label: target.isStarred ? "Remove from favorites" : "Add to favorites",
+          onSelect: () => actions.favoriteDirectory(target),
         },
       ],
       [

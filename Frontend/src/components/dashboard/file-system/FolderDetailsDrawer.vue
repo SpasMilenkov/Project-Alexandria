@@ -53,6 +53,14 @@
               <Icon icon="mdi:folder-open" class="w-4 h-4 shrink-0" />
               <span>Directory</span>
             </div>
+
+            <div
+              v-if="displayDirectory.isStarred"
+              class="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
+            >
+              <Icon icon="mdi:star" class="w-4 h-4 shrink-0" />
+              <span>Favorite folder</span>
+            </div>
           </div>
         </div>
 
@@ -191,6 +199,17 @@
               Open Directory
             </UButton>
 
+            <UButton
+              :icon="displayDirectory.isStarred ? 'i-mdi-star' : 'i-mdi-star-outline'"
+              :loading="favoritePending"
+              color="neutral"
+              variant="outline"
+              block
+              @click="emit('favorite', displayDirectory)"
+            >
+              {{ displayDirectory.isStarred ? "Remove from favorites" : "Add to favorites" }}
+            </UButton>
+
             <!-- Secondary action tiles -->
             <div class="grid grid-cols-3 gap-2">
               <button
@@ -287,6 +306,7 @@ const drawerUi = computed(() => {
 
 const { directory } = defineProps<{
   directory: DirectorySummaryDto | null;
+  favoritePending?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -296,6 +316,7 @@ const emit = defineEmits<{
   move: [directoryIds: string];
   download: [directoryIds: string[]];
   delete: [directoryIds: string[]];
+  favorite: [directory: DirectorySummaryDto];
 }>();
 
 // Keeps the last directory rendered during the close transition, so the drawer

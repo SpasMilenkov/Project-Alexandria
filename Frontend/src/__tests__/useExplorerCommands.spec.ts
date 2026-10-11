@@ -7,6 +7,7 @@ import type { DirectorySummaryDto } from "@/api/directory";
 const makeDir = (id: string): DirectorySummaryDto => ({
   createdAt: new Date().toISOString(),
   id,
+  isStarred: false,
   name: `Dir ${id}`,
   ownerUserDto: { email: "owner@test.com", id: "owner", name: "Owner" },
   parentId: null,
