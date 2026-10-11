@@ -25,6 +25,13 @@ const normalizeSearchKey = (req: SearchDirectoryRequest) => ({
 export const DIRECTORY_QUERY_KEYS = {
   byId: (id: string) => [...DIRECTORY_QUERY_KEYS.root, "by-id", id] as const,
   directoryPath: (id: string) => [...DIRECTORY_QUERY_KEYS.root, "path", id],
+  favorites: (userId: string, page: number, pageSize: number) => [
+    ...DIRECTORY_QUERY_KEYS.root,
+    "favorites",
+    userId,
+    page,
+    pageSize,
+  ],
   root: ["directories"] as const,
   rootDirectories: (params: PaginationParams) => [
     ...DIRECTORY_QUERY_KEYS.root,
@@ -81,3 +88,19 @@ export const searchDirectory = defineQueryOptions((req: SearchDirectoryRequest) 
   key: DIRECTORY_QUERY_KEYS.searchDirectory(req),
   query: () => directoryApi.searchDirectory(req),
 }));
+
+export const favoriteDirectories = defineQueryOptions(
+  ({ userId, page = 0, pageSize = 20 }: { userId: string; page?: number; pageSize?: number }) => ({
+    enabled: Boolean(userId),
+    key: DIRECTORY_QUERY_KEYS.favorites(userId, page, pageSize),
+    query: () =>
+      directoryApi.searchDirectory({
+        isDeleted: false,
+        isStarred: true,
+        ownerId: userId,
+        page,
+        pageSize,
+      }),
+    staleTime: 30_000,
+  }),
+);
