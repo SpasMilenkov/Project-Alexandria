@@ -96,14 +96,20 @@ public class OperationalEventRepository(AlexandriaDbContext context) : IOperatio
 
     public async Task<List<OperationalEvent>> GetCurrentStatusPerServiceAsync(CancellationToken ct)
     {
-        return await context.OperationalEvents
+        return await CurrentStatusPerServiceQuery(context.OperationalEvents.AsNoTracking()).ToListAsync(ct);
+    }
+
+    internal static IQueryable<OperationalEvent> CurrentStatusPerServiceQuery(IQueryable<OperationalEvent> events)
+    {
+        return events
             .Where(e => e.Status == OperationalEventStatus.Active)
             .GroupBy(e => e.ServiceType)
             .Select(g => g
-                .OrderByDescending(e => e.Severity)
+                .OrderByDescending(e => e.Severity == OperationalEventSeverity.Failure)
+                .ThenByDescending(e => e.Severity == OperationalEventSeverity.PartialFailure)
                 .ThenByDescending(e => e.CreatedAt)
-                .First())
-            .ToListAsync(ct);
+                .ThenBy(e => e.Id)
+                .First());
     }
 
     /// <inheritdoc/>
