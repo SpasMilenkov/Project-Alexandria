@@ -6,7 +6,7 @@ import { isThumbnailSupportedMimeType } from "@/utils/mimetype.utils";
 
 export interface FileThumbnailSource {
   fileId: string;
-  versionId: string;
+  versionId?: string;
   mimeType?: string | null;
 }
 
@@ -18,7 +18,8 @@ export interface FileThumbnailSource {
 const MAX_RETRIES = 5;
 const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 30_000, 60_000];
 
-// Version-scoped thumbnail URL: permanently cacheable. Non-image files 404 and fall through to the icon.
+// Known versions use permanently cacheable URLs. File-only sources resolve the current version server-side.
+// Non-image files 404 and fall through to the icon.
 // When mimeType is provided and outside the backend thumbnail allowlist
 // (text, archives, unknown), canHaveThumbnail is false so callers can skip
 // mounting the <img> entirely instead of firing a doomed request.
@@ -39,7 +40,11 @@ export const useFileThumbnail = (source: () => FileThumbnailSource) => {
   onScopeDispose(clearRetryTimer);
 
   const thumbnailUrl = computed(() => {
-    const base = fileApi.getThumbnailUrlForVersion(source().fileId, source().versionId);
+    const { fileId, versionId } = source();
+    const base = versionId
+      ? fileApi.getThumbnailUrlForVersion(fileId, versionId)
+      : fileApi.getThumbnailUrl(fileId);
+
     return retryCount.value > 0 ? `${base}?retry=${retryCount.value}` : base;
   });
 
