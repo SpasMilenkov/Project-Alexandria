@@ -1,245 +1,131 @@
 ---
 title: Installation
-description: Deploy Alexandria in production or preview it locally using the interactive TUI installer.
+description: Set up Alexandria on a private LAN with the source-based Ubuntu x64 installer.
 ---
 
-import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
+
+Alexandria Builder is an interactive terminal installer for a private local network. It builds the application from a local source checkout, generates protected settings and certificates, initializes storage and messaging, and checks the selected services before reporting success.
+
+<Aside type="caution">
+Ubuntu 24.04 on x64 (glibc) is the initial deployment target. Native-bundle execution and all 11 clean source-image builds have passed on this host. PC/Android application checks and Grafana metrics are confirmed; the maintainer accepts manual client trust of automatically generated certificates. Preview Loki log ingestion has a deferred failure despite passing readiness. Final delivery acceptance remains open. Other Linux distributions, Windows, macOS and ARM are not advertised as supported, and no published installer download is assumed.
+</Aside>
+
+## Before you start
+
+Have the following available on the installation host:
+
+- A complete Alexandria source checkout, including `Backend/`, `Frontend/`, `Builder/`, scripts and configuration assets. Keep this checkout available after installation: generated Compose also mounts some source files.
+- A working local Docker engine and the `docker compose` plugin, accessible to your account. A remote SSH/TCP Docker context cannot mount these local folders and is unsupported.
+- The .NET 10 SDK to run Builder from source. A native executable, when supplied with its matching `Templates/Local` folder, runs without a .NET runtime but still needs the source checkout for Docker builds.
+- A stable LAN IPv4 address or a DNS name that resolves on every client, plus one available TCP port for HTTPS (443 by default). IPv6 and localhost are not supported as the public address.
+- Space for Docker images, stored files, temporary processing, models and backups. Docker's data filesystem and the installation settings filesystem can be different disks.
+
+Builder checks prerequisites and explains failures; it does not install missing tools. Git is useful for obtaining and tracking source but Builder does not clone a repository for you. Developer hot reload is a separate [development workflow](/guides/set-up-development-environment/).
+
+Initial image builds need Internet access to image registries and package repositories unless every required layer and dependency is already cached. Lyrics lookup needs outbound HTTPS to `lrclib.net`. Ordinary local browsing and file storage do not require exposing the server to the Internet. The installer does not change router forwarding, firewall rules or client trust stores.
+
+## Resource planning
+
+Use the wizard's measured Docker CPU/memory and disk information together with its feature estimate. Unknown measurements are shown as unknown; host RAM is not necessarily the RAM allocated to a Docker VM.
+
+| Selection | Additional RAM planning allowance |
+| --- | --- |
+| Core stack, including media metadata and playlists | 4096 MB total |
+| Document previews | 1024 MB |
+| Adaptive streaming conversion | 1024 MB |
+| Audio analysis coordinator and one classifier | 3072 MB |
+| Lyrics | 512 MB |
+| Monitoring | 1536 MB |
+
+These figures include planning headroom; they are not measured minimum requirements or a reservation. Media and inference jobs can use substantial CPU. Classifiers process one job at a time with an eight-core CPU limit and a 2 GB memory cap. Allow at least two CPU cores and additional disk space beyond your intended stored-file capacity; low resources produce warnings, and a successful preflight does not guarantee every workload will fit.
+
+## Run Builder
+
+From the source checkout, using your existing SDK and restored dependencies:
+
+```bash
+dotnet run --project 'Builder/Builder.csproj' --no-restore
+```
+
+For a supplied native bundle, keep the executable and `Templates/Local` directory together and run its executable from a terminal. Do not copy the executable alone. The Builder README describes native publication with the existing Ubuntu-specific runtime packs. The published executable has been tested outside the checkout with source and settings paths containing spaces.
+
+Use the keyboard hints shown on each screen. Back navigation retains entered choices; `Ctrl+C` cancels work and restores the terminal. During deployment, cancellation stops child commands while retaining data and services already started. Closing the completed installer leaves Alexandria running.
+
+## Choose source and installation folders
+
+The source folder contains code and build assets. The installation settings folder contains the generated `docker-compose.yml`, `.env`, `garage.toml`, `alexandria-config.json`, proxy/certificate files, model cache and installer logs. They may be separate folders. Relative paths resolve from the directory where Builder was launched; the wizard shows the resolved paths before proceeding. Use real directories, not symlink or junction paths, for the settings folder.
+
+Choose permanent locations before deploying, for example `~/alexandria/source` and `~/alexandria/settings`. Keep both available: runtime configuration mounts still refer to the source tree. Ordinary repair is not a relocation facility; moving an existing installation requires preserving its project/volume identity and reconciling saved paths and Docker ownership labels. A folder copy alone is insufficient.
+
+Uploaded files, database records and other persistent service state live in Docker-managed named volumes, outside the settings folder. Choosing an installation folder does not choose or move Docker's data disk. New installations get separate project/volume identities. Rerun Builder with the same settings folder to repair an existing installation; selecting it does not authorize a reset. Ambiguous legacy identity or missing owned volumes blocks repair for review.
 
 <Aside type="danger">
-This is still just a concept, for now the only way to get Alexandria up and running is through a [manual install](../manual-installation). Deployment on local private networks is recommended for now.
+Back up both the settings folder and its data volumes. Copying the settings folder alone does not back up uploaded files or the database. Keep `.env`, certificate private keys and backup archives private.
 </Aside>
 
-The Alexandria installer is an interactive TUI that guides you through deploying the entire stack. It handles feature selection, system validation, credential generation, port conflict resolution, and Docker Compose orchestration — all in one command.
+## Choose capabilities
 
+There are six independent toggles and one audio-model choice:
 
+| Toggle | Default | Effect |
+| --- | --- | --- |
+| Media previews | On | Thumbnails, images and short media previews; core descriptive audio/video metadata remains available when off. |
+| Document previews | On | Adds the document-preview worker for formats such as PDF. |
+| Adaptive streaming | On | Creates new converted audio/video representations. Disabling it retains existing playback, representations and playlists. |
+| Automatic tagging | On | Master switch for analysis with the selected audio model. Off omits the analysis coordinator and classifier. |
+| Lyrics fetching | On | Adds lyrics lookup; requires access to the external provider. |
+| Monitoring dashboard | Off | Adds metrics, logs and Grafana at the same HTTPS address under `/monitoring/`. |
 
-<Aside type="tip">
-  **TL;DR**: Download the installer binary, run it, pick your deployment mode, answer a few prompts, and the installer handles the rest. No manual config editing required.
-</Aside>
+The audio-model choice is **Off**, **Effnet** (default) or **MAEST**. At most one classifier is installed. Model Off disables analysis even if automatic tagging is on. Core storage, media metadata and playlist synchronization remain installed with every toggle off. Previously queued optional jobs are retained for re-enabling; disabling a feature is not a queue purge.
 
-## Prerequisites
+### Supply audio models
 
-Before running the installer, ensure your system meets these requirements:
+Builder defaults to copying existing local assets into the installation's `models/` folder.
+On the Audio models screen, choose **Existing local files (offline)** or explicitly select
+**Download missing or corrupt models (HTTPS)**. Downloads start during installation after
+the final summary, use only `essentia.upf.edu`, and require no Python or additional host tools.
+Both modes verify pinned sizes and SHA-256 before promoting a file, reuse verified caches,
+and discard unverified partial transfers. The choice is saved for repair; selecting offline
+again disables model downloads. Cancellation retains verified assets for retry.
 
-- **Docker** with **Docker Compose** (v2)
-- **Git** — required for production deployments only
-- **2+ CPU cores** — single-core systems will experience degraded performance
-- **4 GB RAM** recommended (2 GB absolute minimum for the base stack)
-- **10 GB free disk space**
+| Model | Required files | Asset size, decimal |
+| --- | --- | --- |
+| Off | None | 0 |
+| Effnet | 17 | 24,056,930 bytes, about 24 MB |
+| MAEST | 17 | 370,003,909 bytes, about 370 MB |
 
-<Aside type="caution">
-  The installer checks all prerequisites automatically and will guide you through installing anything that's missing.
-</Aside>
+MAEST also uses shared Effnet embeddings and mood heads; supplying only its genre model is insufficient. The checkout's `classificators/essentia/model-requirements.tsv` and `classificators/essentia/models/models.sha256` define the required assets. Point the wizard to an existing matching model folder, keep a verified installation cache, enable model downloads explicitly, or choose Off. Permission to pull container images does not enable model downloads.
 
-## Deployment Modes
-
-The installer offers three modes:
-
-| Mode | Who it's for | Git required | Debug ports exposed |
-|------|-------------|-------------|-------------------|
-| **Production deploy** | Deploying to a server or VM | Yes | No |
-| **Local preview** | Testing the full stack on your dev machine | No | Yes (PostgreSQL, RabbitMQ Management) |
-| **Development** | Active development with hot reload | No | N/A — uses `docker-compose.dev.yml` directly |
-
-Selecting **Development** exits the installer with instructions to use the dev compose file manually. See the [Development Setup](/guides/set-up-development-environment/) guide for that workflow.
-
-## Running the Installer
-
-<Steps>
-
-1. **Download the installer**
-
-   The installer is an AOT-compiled binary — no .NET runtime needed on the target machine.
-
-   <Tabs>
-     <TabItem label="Linux">
-       ```bash
-       curl -LO https://github.com/SpasMilenkov/Project-Alexandria/releases/latest/download/alexandria-installer-linux-x64
-       ```
-     </TabItem>
-
-     <TabItem label="macOS">
-       ```bash
-       curl -LO https://github.com/SpasMilenkov/Project-Alexandria/releases/latest/download/alexandria-installer-osx-x64
-       ```
-     </TabItem>
-
-     <TabItem label="Windows">
-       ```powershell
-       Invoke-WebRequest -Uri https://github.com/SpasMilenkov/Project-Alexandria/releases/latest/download/alexandria-installer-win-x64.exe -OutFile alexandria-installer.exe
-       ```
-     </TabItem>
-   </Tabs>
-
-2. **Make it executable** (Linux and macOS only)
-
-   ```bash
-   chmod +x alexandria-installer-*
-   ```
-
-3. **Run the installer**
-
-   ```bash
-   ./alexandria-installer-linux-x64
-   ```
-
-   The TUI will launch and guide you through each step.
-
-</Steps>
-
-## Installer Walkthrough
-
-### Feature Selection
-
-After choosing your deployment mode, the installer asks which optional features to enable:
-
-| Option | Default | Notes |
-|--------|---------|-------|
-| Media processing | Yes | Adds the media-worker and media-metadata-worker services for audio/video transcoding and lyrics fetching. Requires ~1 GB extra RAM and 4 CPU cores recommended. |
-| Monitoring | No | Adds Prometheus + Grafana dashboards. Requires ~512 MB extra RAM. |
-| Frontend port | 80 (prod) / 3000 (preview) | The port Nginx serves the frontend on. Any value 1–65535. |
-| Grafana port | 3000 or 3001 | Shown only when monitoring is enabled. Defaults to 3001 if the frontend is on 3000. |
-| PostgreSQL port | 5432 | Local preview only — exposes the database to your host machine. |
-| RabbitMQ Management port | 15672 | Local preview only — exposes the RabbitMQ management UI. |
-
-### System Check
-
-The installer validates your environment:
-
-| Check | Minimum | Blocks installation? |
-|-------|---------|---------------------|
-| Docker installed | Required | Yes |
-| Docker daemon running | Required | Yes |
-| Docker Compose installed | Required | Yes |
-| Git installed | Required | Production only |
-| CPU cores | 2 | No (warning only) |
-| RAM | 2048 MB base | Yes in production if below 50% of calculated minimum |
-| Disk space | 10 GB free | No (warning only) |
-
-RAM requirements scale with your feature choices:
-
-| Configuration | Minimum RAM |
-|--------------|-------------|
-| Base stack (no optional features) | 2560 MB |
-| + Media processing | 3584 MB |
-| + Monitoring | 3072 MB |
-| + Both | 4096 MB |
-
-<Aside type="caution">
-  In production mode, the installer will hard-block if your system's RAM is below 50% of the calculated minimum. In local preview mode, it only shows a warning.
-</Aside>
-
-### Port Resolution
-
-The installer checks each port against your system's active TCP listeners. If a port is already in use, you'll see:
-
-- **Auto-remap** — the installer finds the next available port automatically
-- **Choose manually** — enter a specific port for each conflicted service
-- **Cancel** — abort the installation
-
-Auto-remap searches `defaultPort+1` through `defaultPort+99` first, then falls back to the ephemeral range (49152–65535). For the frontend on port 80, it first tries the common alternatives: 8080, 3000, 8888.
-
-### Config Summary
-
-Before proceeding, the installer shows a summary of your configuration and generates all credentials using a cryptographically secure random number generator. Credentials are shown partially masked during install — the full values are written to `alexandria-config.json` after a successful deployment.
-
-You must explicitly confirm before the installer proceeds.
-
-### Install Path
-
-<Tabs>
-  <TabItem label="Production">
-    The installer prompts for an install directory, defaulting to `~/alexandria`. If a previous installation is detected (`alexandria-config.json` exists), you'll be warned that configuration files will be overwritten while data volumes are preserved.
-  </TabItem>
-
-  <TabItem label="Local Preview">
-    The installer auto-detects the repository root by searching for `Backend/`, `Frontend/`, and `docker-compose.template.yml` markers. It shows the detected path and asks for confirmation. You can override with a custom path if needed.
-  </TabItem>
-</Tabs>
-
-### Deployment
-
-The installer executes these steps with live progress indicators:
-
-1. **Generates configuration** — writes `docker-compose.yml`, `.env`, `garage.prod.toml`, and optional files to the install path
-2. **Clones repository** (production only) — either detects the local repo or clones from GitHub
-3. **Builds Docker images** — runs `docker compose build` with streaming output
-4. **Starts services** — runs `docker compose up -d`
-5. **Runs health checks** — waits up to 5 minutes for all containers to report healthy
-
-<Aside type="caution">
-  The first build can take several minutes depending on your internet connection and machine specs. Do not interrupt the process.
-</Aside>
-
-If the build or startup fails, the installer offers to show container logs or abort.
-
-### Success
-
-On success, you'll see:
-
-- Access URLs for all services (frontend, Grafana, and debug ports if in local preview mode)
-- Full unmasked credentials for all services
-- Any ports that were remapped from their defaults
-- The path to `alexandria-config.json`
-- Quick-reference commands for managing the stack
-
-## Post-Install Commands
-
-From your install directory:
-
-| Command | Purpose |
-|---------|---------|
-| `docker compose logs -f` | Stream logs from all services |
-| `docker compose ps` | Check container status |
-| `docker compose restart` | Restart all services |
-| `docker compose down` | Stop and remove containers (data volumes preserved) |
-| `docker compose down -v` | Stop containers **and delete all data volumes** |
-
-<Aside type="caution">
-  `docker compose down` preserves your data volumes. Only use the `-v` flag if you want a complete data wipe.
-</Aside>
-
-## Troubleshooting
-
-### Health checks timed out
-
-Services may still be starting. Check their status:
+An optional model-sourcing script already exists. With Python 3 available, run it from the
+source checkout to explicitly permit missing model downloads, then select its output folder
+in Builder:
 
 ```bash
-docker compose ps
-docker compose logs api
-docker compose logs frontend
+bash classificators/essentia/download-models.sh '/absolute/path/to/model-cache' effnet --download
 ```
 
-The API and worker services depend on PostgreSQL and RabbitMQ being ready. If those are still initializing, the dependent services will retry automatically.
+Use `maest` instead of `effnet` for that backbone. The helper reuses verified cached assets,
+checks pinned sizes and SHA-256 hashes, and promotes only verified downloads. Without
+`--download`, it only prepares existing local files. This helper is an alternative to the
+wizard's download choice, useful when preparing a cache in advance.
 
-### Port conflicts not resolved
+## Set storage, network and HTTPS
 
-If the installer's port detection missed a conflict (e.g., a service started after the check), find what's using the port and either stop it or re-run the installer with a different port:
+New Garage layouts default to **10 decimal GB** and require at least **1 GB**. This is an object-store layout capacity, not disk preallocation, available disk space or a per-user quota. Repair reads and preserves the actual capacity. Resizing an existing layout or moving its data disk requires a separate operation; a conflicting capacity request stops rather than silently resizing data.
 
-```bash
-# Linux / macOS
-lsof -i :80
+Choose one stable host address and HTTPS port. If a port is busy, choose an available alternative in the wizard and use the resulting full address everywhere. The generated origin drives browser/API access, signed object URLs, CORS and monitoring. Application, storage, database, broker and monitoring ports stay internal; Grafana has no separate host port.
 
-# Windows
-netstat -ano | findstr :80
-```
+Builder generates an installation-owned local certificate authority and a server certificate for the chosen address, or accepts a valid matching imported PEM certificate/key. Repairs reuse the trust identity. A generated certificate does not become trusted on other devices automatically: follow `nginx/CLIENT-TRUST.txt`, verify its fingerprint and import only the public trust certificate on each client. See [first steps](/getting-started/first-steps/).
 
-### Build failed
+## Review and deploy
 
-The installer offers "Show logs" when a build fails. You can also check manually:
+Review folders, selected services, resource estimates, storage, address and administrator account before confirming. Passwords are held in protected `.env` settings; `alexandria-config.json` records non-secret installation metadata. Established passwords and keys are preserved during repair.
 
-```bash
-docker compose logs
-```
+Deployment proceeds through configuration validation, model preparation when enabled, image builds, storage/messaging initialization, storage-key persistence, database/admin initialization and service startup. Builder then checks the exact selected services, monitoring when enabled, the HTTPS origin and fresh administrator authentication. Services without healthchecks are qualified by running process state. Existing-account repair preserves the account and asks you to verify current browser sign-in yourself.
 
-Common causes: insufficient disk space, Docker daemon out of memory, or network issues pulling base images.
+After verifying the Garage keys in protected `.env`, Builder deletes `init-output/garage-credentials.env`. A receipt containing only the generation ID prevents normal restarts from exporting another secret copy. If persistence fails, the protected handoff is retained for recovery.
 
-### Existing installation detected
+On completion, `INSTALLATION.txt` records the exact address, public certificate fingerprint, configuration/data/log locations and correctly quoted commands for this project. It contains no passwords. Follow [first steps](/getting-started/first-steps/) to trust clients and confirm access; use [operations and backups](/guides/operations/) for ongoing management.
 
-If you re-run the installer in a directory with an existing `alexandria-config.json`, it will warn you. Configuration files are overwritten but **data volumes are preserved** — your documents and database are safe.
-
-## Next Steps
-
-- [Installer Configuration Reference](/reference/installer-configuration/) — understand every generated file, credential, and port
-- [Development Setup](/guides/set-up-development-environment/) — set up a hot-reload development environment
+If a stage fails, the screen offers its log, container status, service logs, a stage-specific retry/resume, summary review and exit preserving services. Before any containers exist, the installer build log is the useful evidence. The [manual Compose and recovery guide](/getting-started/manual-installation/) explains named failures and targeted recovery.

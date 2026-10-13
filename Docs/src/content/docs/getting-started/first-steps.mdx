@@ -1,0 +1,48 @@
+---
+title: First steps after installation
+description: Trust your LAN certificate, sign in and confirm your selected Alexandria features.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Open `INSTALLATION.txt` in your installation settings folder. It records the exact HTTPS address, administrator email, project, volume names and operational commands. Keep `nginx/CLIENT-TRUST.txt` alongside it. Server checks and successful installer authentication do not establish certificate trust or browser access on another device.
+
+## Trust the public certificate
+
+For Builder-generated certificates, transfer only `nginx/certs/local-ca.crt` to each client. Verify its SHA-256 fingerprint against `CLIENT-TRUST.txt` through a trusted channel before importing it. Never transfer `local-ca.key`, `server.key` or `.env` to a client.
+
+On Android, use Settings → Security → Encryption & credentials → Install a certificate → CA certificate; menu names vary by device. On desktop, import the public CA into the operating system or browser's trusted certificate authorities. Firefox may use its own Authorities store. For an imported certificate, follow its issuer's instructions. An imported self-signed certificate may need its public `server.crt` trusted explicitly; some Android browsers require a local CA instead.
+
+Visit the exact address in `INSTALLATION.txt`, including any custom port. If a certificate warning remains, check the fingerprint, hostname/IP, expiry and trust store before continuing. Do not bypass the warning. The chosen DNS name must resolve on every client; reserve the server's LAN IPv4 address if you use an IP directly.
+
+Builder changes no client trust stores, firewall rules or router settings. If the server works locally but a second device cannot connect, check LAN reachability, the host firewall's chosen TCP port, DNS and Wi-Fi client isolation.
+
+## Sign in and check a second device
+
+Sign in with the administrator account selected during setup. Builder verifies fresh administrator authentication over HTTPS. A repaired installation preserves its existing account and current password; it does not verify that password again or reset it from a newly entered bootstrap value.
+
+On the server and on another trusted LAN device:
+
+1. Sign in, refresh the page and open a direct library link. Sign out and sign in again.
+2. Upload a small disposable file, download it and confirm the contents match. Include an encrypted file to check the browser's HTTPS-dependent cryptography path.
+3. For enabled capabilities, check an image/media preview, a document preview and converted audio/video playback after processing completes. Check covers and playlists under your signed-in account.
+4. If monitoring is enabled, open `/monitoring/` at the same HTTPS origin. Grafana uses its own saved account; confirm the dashboards, metrics and logs load.
+
+<Aside type="note">
+Media jobs run asynchronously. No new adaptive conversion is scheduled when that feature is off; existing representations and playlists stay available. Missing lyrics may mean the provider returned no match. Check the specific service evidence if an enabled capability remains unavailable.
+</Aside>
+
+## Application settings and storage
+
+Builder owns deployment configuration: project identity, folders, services, network origin, certificates, secrets, model cache and Garage layout capacity. Application preferences and policy remain in the application database:
+
+| Setting | Where to change it |
+| --- | --- |
+| Appearance, notifications and behavior | `/settings` |
+| Automatic tag regression, metadata overwrite and automatic-playlist threshold | `/settings` |
+| Upload validation and hash-match policy | `/dashboard/admin/system-configuration` |
+| Per-user storage quota | Administrator user registry |
+
+New users default to a **10 GiB** quota. This differs from Garage's default **10 decimal GB** layout capacity; neither is the host's free disk space. Automatic tag regression and metadata overwrite default off, and the automatic-playlist threshold defaults to 10. Trusted-upload validation skipping and hash-match upload skipping default off. Do not invent environment overrides for database-owned settings.
+
+Record the source revision and secure a consistent backup before storing important data or upgrading. [Operations and backups](/guides/operations/) covers safe stop/start, repair and restore; the [manual guide](/getting-started/manual-installation/) explains the separate reference Compose workflow.
