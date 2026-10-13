@@ -2,22 +2,51 @@ import { type Locator, type Page, expect } from "@playwright/test";
 
 export const openControls = async (page: Page) => {
   const button = page.getByRole("button", { name: "Layout controls", exact: true });
-  const drawer = page.getByRole("dialog", { name: "Layout controls", exact: true });
+  const panel = page.getByRole("complementary", { name: "Dashboard editing panel", exact: true });
 
-  if ((await button.isVisible()) && !(await drawer.isVisible())) await button.click();
+  if ((await button.isVisible()) && !(await panel.isVisible())) await button.click();
 };
 
 export const closeControls = async (page: Page) => {
-  const drawer = page.getByRole("dialog", { name: "Layout controls", exact: true });
+  const button = page.getByRole("button", { name: "Back to layout", exact: true });
 
-  if (await drawer.isVisible()) {
-    await drawer.getByRole("button", { name: "Back to layout", exact: true }).click();
+  if (await button.isVisible()) await button.click();
+};
 
-    await expect(drawer).not.toBeVisible();
+export const openWidgetTab = async (page: Page, tab: "Style" | "Options" | "Layout") => {
+  const inspector = page.getByRole("region", { name: "Widget editing controls", exact: true });
+
+  if (!(await inspector.isVisible())) {
+    await closeControls(page);
+    const selected = page.locator('[data-widget-id][data-selected="true"]');
+    const widget = (await selected.count())
+      ? selected.first()
+      : page.locator("[data-widget-id]").first();
+    await widget.focus();
+    await widget.press("Enter");
+    await openControls(page);
   }
+
+  await inspector.getByRole("tab", { name: tab, exact: true }).click();
+};
+
+export const dashboardSettings = async (page: Page) => {
+  await openControls(page);
+  const back = page.getByRole("button", { name: "Back to dashboard settings", exact: true });
+
+  if (await back.isVisible()) await back.click();
+};
+
+export const closeWidgetSettings = async (page: Page) => {
+  await openWidgetTab(page, "Layout");
+  await closeControls(page);
 };
 
 export const selectWidget = async (page: Page, widget: Locator) => {
+  const closeCatalogue = page.getByRole("button", { name: "Close widget catalogue", exact: true });
+
+  if (await closeCatalogue.isVisible()) await closeCatalogue.click();
+
   await closeControls(page);
   await widget.focus();
   await widget.press("Enter");
@@ -77,9 +106,15 @@ export const dragWidget = async (page: Page, origin: Locator, x: number, y: numb
 };
 
 export const dragCatalogue = async (page: Page, type: number, x: number, y: number) => {
+  const cataloguePanel = page.getByRole("region", { name: "Widget catalogue", exact: true });
+
+  if (!(await cataloguePanel.isVisible()))
+    await page.getByRole("button", { name: "Add widget", exact: true }).click();
   const grid = page.locator('[aria-label="Home widgets"]');
 
-  await grid.scrollIntoViewIfNeeded();
+  await grid.evaluate((element) => {
+    element.closest(".home-canvas")?.scrollTo({ top: 0 });
+  });
 
   const catalogue = page.locator(`[data-catalogue-widget="${type}"]`);
   const source = (await catalogue.boundingBox())!;
@@ -101,6 +136,8 @@ export const dragCatalogue = async (page: Page, type: number, x: number, y: numb
 };
 
 export const dragTouchWidget = async (page: Page, widget: Locator, x: number, y: number) => {
+  await widget.tap();
+  await closeControls(page);
   await widget.scrollIntoViewIfNeeded();
 
   const bounds = (await widget.boundingBox())!;
