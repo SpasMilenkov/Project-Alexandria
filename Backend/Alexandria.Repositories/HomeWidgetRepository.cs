@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
-using Alexandria.Data.Models.Enumerators;
+using Alexandria.Data.Models.Enumerators.Widgets;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;

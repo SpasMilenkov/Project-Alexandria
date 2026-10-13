@@ -20,6 +20,7 @@ using Alexandria.Services.Streaming.Shuffle;
 using Alexandria.Services.Streaming.Wrapped;
 using Alexandria.Services.User;
 using Alexandria.Services.User.Settings;
+using Alexandria.Services.User.Widgets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -58,6 +59,7 @@ public static class ServiceExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
         services.AddScoped<IHomeWidgetRepository, HomeWidgetRepository>();
+        services.AddScoped<IHomeWidgetService, HomeWidgetService>();
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IAdminSettingsService, AdminSettingsService>();

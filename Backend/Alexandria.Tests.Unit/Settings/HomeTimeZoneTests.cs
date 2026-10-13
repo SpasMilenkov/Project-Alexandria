@@ -1,4 +1,8 @@
+using System.Text.Json;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Settings.Values;
+using Alexandria.Common.Widgets;
+using Alexandria.Data.Models.Enumerators.Widgets;
 using AwesomeAssertions;
 
 namespace Alexandria.Tests.Unit.Settings;
@@ -27,10 +31,11 @@ public class HomeTimeZoneTests
     [InlineData("Etc/UTC")]
     public void Validate_resolvableZoneOrAlias_acceptsSettings(string identifier)
     {
-        var settings = new HomeSettingsValue();
-        settings.Desktop.Widgets[0].Options.TimeZone = identifier;
+        var options = JsonSerializer.SerializeToElement(new { timeZone = identifier }, new JsonSerializerOptions());
 
-        HomeSettingsValidation.Validate(settings).Should().BeEmpty();
+        var result = HomeWidgetOptionsCodec.Normalize(HomeWidgetType.Clock, 1, options, "Widget");
+
+        result.GetProperty("timeZone").GetString().Should().Be(identifier);
     }
 
     [Theory]
@@ -43,11 +48,11 @@ public class HomeTimeZoneTests
     [InlineData("../Europe/Bucharest")]
     public void Validate_unknownZoneOrNonIanaInput_reportsOptionPath(string? identifier)
     {
-        var settings = new HomeSettingsValue();
-        settings.Desktop.Widgets[0].Options.TimeZone = identifier!;
+        var options = JsonSerializer.SerializeToElement(new { timeZone = identifier }, new JsonSerializerOptions());
+        var action = () => HomeWidgetOptionsCodec.Normalize(HomeWidgetType.Clock, 1, options, "Widget");
 
-        HomeSettingsValidation.Validate(settings).SelectMany(error => error.MemberNames).Should()
-            .Contain("Desktop.Widgets[0].Options.TimeZone");
+        action.Should().Throw<HomeWidgetValidationException>().Which.Errors.SelectMany(error => error.MemberNames)
+            .Should().Contain("Widget.Options.timeZone");
     }
 
     [Fact]
@@ -57,19 +62,12 @@ public class HomeTimeZoneTests
     }
 
     [Fact]
-    public void NormalizeStored_unavailableZone_preservesWidgetAndPreferenceInBothLayouts()
+    public void Normalize_unavailableStoredZone_preservesPreference_when_not_changing_zone()
     {
-        var settings = new HomeSettingsValue { Mobile = HomeSettingsValue.CreateDefaultLayout(4) };
-        settings.Desktop.Widgets[0].Options.TimeZone = "Europe/RemovedZone";
-        settings.Mobile.Widgets[0].Options.TimeZone = "Asia/RemovedZone";
+        var options = JsonSerializer.SerializeToElement(new { timeZone = "Europe/RemovedZone" }, new JsonSerializerOptions());
+        var normalized = HomeWidgetOptionsCodec.Normalize(HomeWidgetType.Clock, 1, options, "Widget", validateTimeZone: false);
 
-        var normalized = HomeSettingsValidation.NormalizeStored(settings);
-
-        normalized.Desktop.Widgets.Should().HaveCount(2);
-        normalized.Mobile!.Widgets.Should().HaveCount(2);
-        normalized.Desktop.Widgets[0].Options.TimeZone.Should().Be("Europe/RemovedZone");
-        normalized.Mobile.Widgets[0].Options.TimeZone.Should().Be("Asia/RemovedZone");
-        HomeSettingsValidation.Validate(normalized).Should().NotBeEmpty();
+        normalized.GetProperty("timeZone").GetString().Should().Be("Europe/RemovedZone");
     }
 
     private static bool IsResolvableIanaZone(string identifier)

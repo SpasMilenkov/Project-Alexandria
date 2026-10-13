@@ -1,4 +1,4 @@
-using Alexandria.Data.Models.Enumerators;
+using Alexandria.Data.Models.Enumerators.Widgets;
 
 namespace Alexandria.Data.Models;
 

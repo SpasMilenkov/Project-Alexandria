@@ -1,5 +1,5 @@
 using Alexandria.Data.Models;
-using Alexandria.Data.Models.Enumerators;
+using Alexandria.Data.Models.Enumerators.Widgets;
 
 namespace Alexandria.Common.Repositories;
 
