@@ -238,7 +238,7 @@ import type { AxiosError } from "axios";
 
 import { Icon } from "@iconify/vue";
 import { computed, reactive, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
@@ -248,10 +248,11 @@ import { changePasswordSchema } from "@/schemas/user";
 useOnboardingGuard(OnboardingStep.SetPassword);
 
 const router = useRouter();
+const route = useRoute();
 const { mutate, error: mutationError, status } = changeInitialPassword();
 
 watch(status, (s) => {
-  if (s === "success") router.push({ name: "setup-profile" });
+  if (s === "success") router.replace({ name: "setup-profile", query: route.query });
 });
 
 const form = reactive({ confirmPassword: "", initialPassword: "", newPassword: "" });
