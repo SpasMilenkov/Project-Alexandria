@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { useEventListener } from "@vueuse/core";
+import { computed, nextTick, ref, watch } from "vue";
 
 import type { HomeWidgetType } from "@/enums/home-widget";
-import type { HomeLayout, HomeWidget } from "@/types/home";
+import type { HomeLayout, HomeWidget, HomeWidgetOptions } from "@/types/home";
 
 import HomeWidgetCard from "@/components/dashboard/home/HomeWidgetCard.vue";
 import HomeWidgetResizeHandles from "@/components/dashboard/home/HomeWidgetResizeHandles.vue";
+import HomeWidgetToolbar from "@/components/dashboard/home/HomeWidgetToolbar.vue";
 import { HOME_WIDGET_REGISTRY } from "@/components/dashboard/home/registry";
 import { useHomeGridDrag } from "@/composables/useHomeGridDrag";
 import { useHomeGridMotion } from "@/composables/useHomeGridMotion";
 import {
   HOME_GRID_MAX_ROWS,
   homeSpatialOrder,
-  homeWidgetFootprint,
   previewHomePlacement,
   projectHomeLayout,
 } from "@/utils/home-grid";
@@ -20,9 +21,10 @@ import {
   type HomeResizeEdge,
   homeArrowOffset,
   homeDragFromControl,
+  homeEditorKeyboardBlocked,
   homeResizeByCells,
 } from "@/utils/home-grid-input";
-import { createHomeWidget } from "@/utils/home-layout";
+import { MAX_HOME_WIDGETS, createHomeWidget } from "@/utils/home-layout";
 
 const {
   layout,
@@ -30,23 +32,31 @@ const {
   disabled,
   selectedId,
   mobile = false,
+  hoveredId = null,
 } = defineProps<{
   layout: HomeLayout;
   editing: boolean;
   disabled: boolean;
   selectedId: string | null;
   mobile?: boolean;
+  hoveredId?: string | null;
 }>();
 
 const emit = defineEmits<{
-  select: [instanceId: string];
-  place: [widget: HomeWidget];
-  nudge: [instanceId: string, x: number, y: number];
+  select: [instanceId: string, silent?: boolean];
+  deselect: [];
+  place: [widget: HomeWidget, group?: string];
+  nudge: [instanceId: string, x: number, y: number, group?: string];
+  resize: [instanceId: string, x: number, y: number, group?: string];
+  duplicate: [instanceId: string];
+  options: [instanceId: string, options: Partial<HomeWidgetOptions>];
+  remove: [instanceId: string];
   announce: [message: string];
   dragging: [active: boolean];
 }>();
 
 const board = ref<HTMLElement | null>(null);
+let canvasPointerDown = false;
 
 const renderedLayout = computed(() => {
   if (mobile && layout.columns === 12) return projectHomeLayout(layout, 4);
@@ -55,17 +65,26 @@ const renderedLayout = computed(() => {
 });
 
 const widgets = computed(() => [...renderedLayout.value.widgets].sort(homeSpatialOrder));
+const selectedWidget = computed(() =>
+  widgets.value.find((widget) => widget.instanceId === selectedId),
+);
 
 const drag = useHomeGridDrag({
   board: () => board.value,
   layout: () => layout,
   enabled: () => editing && !disabled,
-  select: (id) => emit("select", id),
+  select: (id) => emit("select", id, true),
   place: (widget) => emit("place", widget),
   announce: (message) => emit("announce", message),
 });
 
 const { active, candidate, preview, resizing } = drag;
+
+const cardSelect = (widget: HomeWidget) => {
+  if (drag.consumeSuppressClick()) return;
+
+  emit("select", widget.instanceId, drag.hasSession());
+};
 
 const motion = useHomeGridMotion({
   board: () => board.value,
@@ -73,6 +92,17 @@ const motion = useHomeGridMotion({
   context: () => `${mobile}:${renderedLayout.value.columns}`,
   active: () => active.value,
 });
+
+const beginPointer = (event: PointerEvent) => {
+  motion.cancel();
+  canvasPointerDown = event.target === event.currentTarget;
+};
+
+const clickCanvas = () => {
+  if (editing && canvasPointerDown) emit("deselect");
+
+  canvasPointerDown = false;
+};
 
 const previewById = computed(
   () => new Map(preview.value?.widgets.map((widget) => [widget.instanceId, widget])),
@@ -123,12 +153,54 @@ const keyDown = (widget: HomeWidget, event: KeyboardEvent) => {
 
   if (offset) {
     event.preventDefault();
-    emit("nudge", widget.instanceId, offset.x, offset.y);
+    const group = `${widget.instanceId}:${event.shiftKey}:${event.key}`;
+
+    if (event.shiftKey) emit("resize", widget.instanceId, offset.x, offset.y, group);
+    else emit("nudge", widget.instanceId, offset.x, offset.y, group);
   } else if (event.key === "Enter" || event.key === " ") {
     event.preventDefault();
     emit("select", widget.instanceId);
   }
 };
+
+useEventListener(window, "keydown", (event) => {
+  if (
+    event.key !== "Delete" ||
+    event.defaultPrevented ||
+    event.repeat ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    !editing ||
+    disabled
+  )
+    return;
+
+  if (homeEditorKeyboardBlocked(event)) return;
+
+  const instanceId = drag.widgetId.value ?? selectedId;
+
+  if (!instanceId) return;
+
+  event.preventDefault();
+  drag.cancel();
+
+  if (!layout.widgets.some((widget) => widget.instanceId === instanceId)) {
+    emit("announce", "Placement cancelled.");
+
+    return;
+  }
+
+  emit("remove", instanceId);
+
+  void nextTick().then(() => {
+    const cards = board.value?.querySelectorAll<HTMLElement>("[data-widget-id]") ?? [];
+    const next = [...cards].find((card) => card.dataset.widgetId === selectedId);
+
+    (next ?? board.value)?.focus();
+  });
+});
 
 const resizeByKey = (widget: HomeWidget, edge: HomeResizeEdge, x: number, y: number) => {
   if (!editing || disabled || active.value) return;
@@ -138,7 +210,7 @@ const resizeByKey = (widget: HomeWidget, edge: HomeResizeEdge, x: number, y: num
   if (resized.width === widget.width && resized.height === widget.height) return;
 
   if (previewHomePlacement(layout, resized)) {
-    emit("place", resized);
+    emit("place", resized, `${widget.instanceId}:${edge}:${x}:${y}`);
     emit("announce", `Widget resized to ${resized.width} columns by ${resized.height} rows.`);
   } else {
     emit("announce", "That size does not fit. Your layout has not changed.");
@@ -150,9 +222,7 @@ const startCatalogueDrag = (type: HomeWidgetType, event: PointerEvent) => {
 
   motion.cancel();
 
-  const widget = createHomeWidget(type, crypto.randomUUID());
-  Object.assign(widget, homeWidgetFootprint(widget.size, layout.columns));
-  widget.options = { ...HOME_WIDGET_REGISTRY[type].defaultOptions };
+  const widget = createHomeWidget(type, crypto.randomUUID(), layout.columns);
 
   drag.start(widget, event, true);
 };
@@ -169,11 +239,13 @@ defineExpose({ startCatalogueDrag, cancel: drag.cancel });
     ref="board"
     class="home-grid relative isolate"
     aria-label="Home widgets"
+    :tabindex="editing ? -1 : undefined"
     :data-grid-columns="renderedLayout.columns"
     :data-editing="editing"
     :data-dragging="active"
     :data-resizing="active && resizing"
-    @pointerdown.capture="motion.cancel"
+    @pointerdown.capture="beginPointer"
+    @click.self="clickCanvas"
     :style="{
       gridTemplateColumns: `repeat(${renderedLayout.columns}, minmax(0, 1fr))`,
       gridTemplateRows: `repeat(${rows}, 4rem)`,
@@ -193,7 +265,11 @@ defineExpose({ startCatalogueDrag, cancel: drag.cancel });
       :data-motion-position="motionPosition(renderedPosition(widget))"
       :data-motion-hidden="active && !resizing && candidate?.instanceId === widget.instanceId"
       class="relative z-[1] min-h-0 min-w-0 rounded-2xl"
-      :class="{ invisible: active && !resizing && candidate?.instanceId === widget.instanceId }"
+      :class="{
+        invisible: active && !resizing && candidate?.instanceId === widget.instanceId,
+        'outline-2 outline-dashed outline-primary outline-offset-2':
+          editing && hoveredId === widget.instanceId,
+      }"
       :style="slotStyle(renderedPosition(widget))"
     >
       <HomeWidgetCard
@@ -202,7 +278,7 @@ defineExpose({ startCatalogueDrag, cancel: drag.cancel });
         :disabled="disabled"
         :selected="selectedId === widget.instanceId"
         class="h-full"
-        @select="emit('select', widget.instanceId)"
+        @select="cardSelect(widget)"
         @pointer="drag.start(widget, $event)"
         @key="keyDown(widget, $event)"
       />
@@ -220,6 +296,18 @@ defineExpose({ startCatalogueDrag, cancel: drag.cancel });
         Escape cancels the active gesture.
       </p>
     </div>
+
+    <HomeWidgetToolbar
+      v-if="editing && !disabled && !active && selectedWidget"
+      :key="selectedWidget.instanceId"
+      :widget="selectedWidget"
+      :columns="renderedLayout.columns"
+      :can-duplicate="layout.widgets.length < MAX_HOME_WIDGETS"
+      @duplicate="emit('duplicate', selectedWidget.instanceId)"
+      @remove="emit('remove', selectedWidget.instanceId)"
+      @options="emit('options', selectedWidget.instanceId, $event)"
+      @move="drag.start(selectedWidget, $event, false, null, true)"
+    />
 
     <div
       v-if="active && candidate"
