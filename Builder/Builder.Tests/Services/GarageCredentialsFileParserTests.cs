@@ -73,6 +73,21 @@ public class GarageCredentialsFileParserTests
     }
 
     [Fact]
+    public void Parse_duplicateCredential_rejectsAmbiguousHandoffWithoutExposingValues()
+    {
+        var action = () => GarageCredentialsFileParser.Parse(ValidFileContent + "\nGARAGE_S3_SECRET_KEY=hidden-duplicate-secret");
+
+        var exception = action.Should().Throw<FormatException>().Which;
+        exception.Message.Should().NotContain("hidden-duplicate-secret");
+    }
+
+    [Fact]
+    public void Parse_pendingCredential_doesNotAcceptIncompleteHandoff()
+    {
+        GarageCredentialsFileParser.Parse(ValidFileContent.Replace("master_secret", "placeholder")).Should().BeNull();
+    }
+
+    [Fact]
     public void ToEnvValues_mapsMasterPreviewStreamingOntoConsumerVariableNames()
     {
         var credentials = GarageCredentialsFileParser.Parse(ValidFileContent)!;

@@ -23,11 +23,13 @@ public class ConfigurationServiceTests
                 ["HTTPS_PORT"] = 443,
                 ["GRAFANA_PORT"] = 3000,
             },
-            Credentials = new Dictionary<string, string>
+            ProjectName = "alexandria-test",
+            PublicEndpoint = new PublicEndpoint { Host = "192.0.2.10", HttpsPort = 443 },
+            EnvironmentValues = new Dictionary<string, string>
             {
                 ["GARAGE_RPC_SECRET"] = "rpc-secret-value",
                 ["GARAGE_ADMIN_TOKEN"] = "admin-token-value",
-                ["GARAGE_METRICS_TOKEN"] = "metrics-token-value",
+                ["GARAGE_S3_METRICS_TOKEN"] = "metrics-token-value",
             },
             InstallPath = "/opt/alexandria",
             SourceRoot = "/opt/alexandria",
@@ -59,7 +61,7 @@ public class ConfigurationServiceTests
 
         var compose = sut.GenerateDockerCompose(config);
 
-        compose.Should().NotContain("  media-worker:");
+        compose.Should().Contain("  media-worker:");
         compose.Should().NotContain("  document-worker:");
         compose.Should().NotContain("  transpilation-worker:");
         compose.Should().NotContain("  lyrics-worker:");
@@ -71,7 +73,7 @@ public class ConfigurationServiceTests
     }
 
     [Fact]
-    public void GenerateDockerCompose_allFeaturesEnabled_includesEveryService()
+    public void GenerateDockerCompose_maximalMaest_includesItsServicesAndOmitsEffnet()
     {
         var sut = CreateSut();
 
@@ -90,7 +92,7 @@ public class ConfigurationServiceTests
         compose.Should().Contain("  transpilation-worker:");
         compose.Should().Contain("  lyrics-worker:");
         compose.Should().Contain("  media-metadata-worker:");
-        compose.Should().Contain("  essentia-effnet-worker:");
+        compose.Should().NotContain("  essentia-effnet-worker:");
         compose.Should().Contain("  essentia-maest-worker:");
         compose.Should().Contain("  prometheus:");
         compose.Should().Contain("  grafana:");
@@ -117,8 +119,8 @@ public class ConfigurationServiceTests
 
         var compose = sut.GenerateDockerCompose(CreateConfig());
 
-        compose.Should().Contain("context: ./Backend");
-        compose.Should().Contain("context: .\n");
+        compose.Should().Contain("context: './Backend'");
+        compose.Should().Contain("context: '.'\n");
     }
 
     [Fact]
@@ -131,9 +133,11 @@ public class ConfigurationServiceTests
 
         var compose = sut.GenerateDockerCompose(config);
 
-        compose.Should().Contain("context: /home/user/repos/Project-Alexandria/Backend");
-        compose.Should().Contain("/home/user/repos/Project-Alexandria/nginx/nginx.conf");
-        compose.Should().NotContain("context: ./Backend");
+        compose.Should().Contain("context: '/home/user/repos/Project-Alexandria/Backend'");
+        compose.Should().Contain("context: '/home/user/repos/Project-Alexandria/nginx'");
+        compose.Should().Contain("./nginx/nginx.conf:/etc/nginx/nginx.conf:ro");
+        compose.Should().NotContain("/home/user/repos/Project-Alexandria/nginx/nginx.conf");
+        compose.Should().NotContain("context: './Backend'");
     }
 
     [Fact]
@@ -147,10 +151,14 @@ public class ConfigurationServiceTests
     }
 
     [Fact]
-    public void GenerateDockerCompose_taggingWithoutMonitoring_keepsEssentiaNetworkForRabbitmqMetricsPath()
+    public void GenerateDockerCompose_analysisWithoutMonitoring_keepsClassifierNetworkForRabbitmq()
     {
         var sut = CreateSut();
-        var config = CreateConfig(f => f.SetEnabled(FeatureCatalog.AudioTaggingFast.Id, true));
+        var config = CreateConfig(f =>
+        {
+            f.SetAudioBackbone("effnet");
+            f.SetEnabled(FeatureCatalog.Autotagging.Id, true);
+        });
 
         var compose = sut.GenerateDockerCompose(config);
 

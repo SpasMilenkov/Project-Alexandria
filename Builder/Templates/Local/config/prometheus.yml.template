@@ -15,6 +15,10 @@ scrape_configs:
   - job_name: cadvisor
     static_configs:
       - targets: ['cadvisor:8080']
+    metric_relabel_configs:
+      - source_labels: [container_label_com_docker_compose_project]
+        regex: '{{COMPOSE_PROJECT_NAME}}'
+        action: keep
 
   - job_name: postgres-exporter
     static_configs:
@@ -31,7 +35,17 @@ scrape_configs:
       type: Bearer
       credentials_file: /etc/prometheus/secrets/garage-metrics-token
 
+  # Keep OpenTelemetry metric and label names compatible with the bundled dashboards.
   - job_name: alexandria-api
+    metric_name_validation_scheme: legacy
     metrics_path: /metrics
     static_configs:
       - targets: ['api:8080']
+
+  - job_name: loki
+    static_configs:
+      - targets: ['loki:3100']
+
+  - job_name: alloy
+    static_configs:
+      - targets: ['alloy:12345']

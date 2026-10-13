@@ -12,13 +12,18 @@ public class InstallationConfigJsonTests
         Ports = new Dictionary<string, int> { ["HTTP_PORT"] = 8080, ["HTTPS_PORT"] = 8443 },
         OriginalPorts = new Dictionary<string, int> { ["HTTP_PORT"] = 80 },
         Credentials = new Dictionary<string, string> { ["DB_PASSWORD"] = "secret" },
+        EnvironmentValues = new Dictionary<string, string> { ["ADMIN_PASSWORD"] = "runtime-secret" },
+        ProjectName = "alexandria-stable-identity",
+        GenerationId = "generation-identity",
+        Stage = "storage-ready",
         InstallPath = "/opt/alexandria",
         SourceRoot = "/home/user/repos/Project-Alexandria",
+        AllowModelDownloads = true,
         InstalledAt = new DateTimeOffset(2026, 8, 25, 12, 0, 0, TimeSpan.Zero),
     };
 
     [Fact]
-    public void RoundTrip_preservesPortsCredentialsAndPaths()
+    public void RoundTrip_preservesNonsecretStateAndOmitsRuntimeSecrets()
     {
         var config = CreateSut();
 
@@ -30,11 +35,26 @@ public class InstallationConfigJsonTests
         restored.Should().NotBeNull();
         restored!.Ports.Should().BeEquivalentTo(config.Ports);
         restored.OriginalPorts.Should().BeEquivalentTo(config.OriginalPorts);
-        restored.Credentials.Should().BeEquivalentTo(config.Credentials);
+        restored.Credentials.Should().BeEmpty();
+        restored.EnvironmentValues.Should().BeEmpty();
+        restored.ProjectName.Should().Be(config.ProjectName);
+        restored.GenerationId.Should().Be(config.GenerationId);
+        restored.Stage.Should().Be(config.Stage);
+        restored.SchemaVersion.Should().Be(2);
+        json.Should().NotContain("Credentials").And.NotContain("EnvironmentValues").And.NotContain("runtime-secret");
         restored.InstallPath.Should().Be(config.InstallPath);
         restored.SourceRoot.Should().Be(config.SourceRoot);
+        restored.AllowModelDownloads.Should().BeTrue();
         restored.InstalledAt.Should().Be(config.InstalledAt);
         restored.Features.IsEnabled(FeatureCatalog.Monitoring.Id).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Deserialize_metadataWithoutDownloadChoice_defaultsToOffline()
+    {
+        var config = JsonSerializer.Deserialize("{}", AlexandriaJsonContext.Default.InstallationConfig);
+
+        config!.AllowModelDownloads.Should().BeFalse();
     }
 
     [Fact]

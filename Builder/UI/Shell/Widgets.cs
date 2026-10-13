@@ -19,13 +19,11 @@ public sealed class TextFieldSpec
 
 public static class Widgets
 {
-    private const string Cursor = "▏";
-
     public static string AskText(Shell shell, IRenderable header, TextFieldSpec spec)
     {
-        var buffer = spec.Initial;
-        var untouched = buffer.Length > 0; // first keystroke replaces the suggestion
+        var editor = new TextEditor(spec.Initial, spec.Secret);
         string? error = null;
+        var previousSuppression = shell.GlobalsSuppressed;
 
         shell.GlobalsSuppressed = true;
 
@@ -33,14 +31,13 @@ public static class Widgets
         {
             while (true)
             {
-                var shown = spec.Secret ? new string('•', buffer.Length) : Markup.Escape(buffer);
-
                 var body = new Rows(
                     header,
                     new Rule().RuleStyle(Theme.Active.BorderStyle),
                     new Markup($"[{Theme.Active.Ac}]▸[/] [bold]{Markup.Escape(spec.Label)}[/]"),
-                    new Markup($"[{Theme.Active.Ac}]{shown}{Cursor}[/]" +
-                               (spec.Hint is null ? string.Empty : $"  [dim]{Markup.Escape(spec.Hint)}[/]")),
+                    editor,
+                    new Markup(spec.Hint is null ? string.Empty : $"[dim]{Markup.Escape(spec.Hint)}[/]"),
+                    new Markup("[dim]Enter accepts · Esc back · Ctrl+U clears[/]"),
                     ErrorLine(error));
 
                 shell.SetMain(body);
@@ -52,43 +49,32 @@ public static class Widgets
                     continue;
                 }
 
-            switch (key.Key)
-            {
-                case ConsoleKey.Enter:
-                    error = spec.Validator?.Invoke(buffer);
-
-                    if (error is null)
-                    {
-                        return buffer;
-                    }
-
-                    break;
-                case ConsoleKey.Backspace when buffer.Length > 0:
-                    buffer = buffer[..^1];
+                if (editor.HandleKey(key))
+                {
                     error = null;
-                    break;
-                case ConsoleKey.Escape:
-                    shell.SignalEscape();
+                }
 
-                    return buffer;
-                default:
-                    if (!char.IsControl(key.KeyChar))
-                    {
-                        buffer = untouched
-                            ? key.KeyChar.ToString()
-                            : buffer + key.KeyChar;
+                switch (key.Key)
+                {
+                    case ConsoleKey.Enter:
+                        error = spec.Validator?.Invoke(editor.Value);
 
-                        untouched = false;
-                        error = null;
-                    }
+                        if (error is null)
+                        {
+                            return editor.Value;
+                        }
 
-                    break;
-            }
+                        break;
+                    case ConsoleKey.Escape:
+                        shell.SignalEscape();
+
+                        return editor.Value;
+                }
             }
         }
         finally
         {
-            shell.GlobalsSuppressed = false;
+            shell.GlobalsSuppressed = previousSuppression;
         }
     }
 

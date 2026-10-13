@@ -7,6 +7,13 @@ public interface IKeySource
 {
     ConsoleKeyInfo Wait();
 
+    ConsoleKeyInfo Wait(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return Wait();
+    }
+
     ConsoleKeyInfo? Poll();
 }
 
@@ -16,8 +23,36 @@ public sealed class ConsoleKeySource : IKeySource
 
     public ConsoleKeyInfo Wait() => Console.ReadKey(intercept: true);
 
+    public ConsoleKeyInfo Wait(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var key = Poll();
+
+            if (key.HasValue)
+            {
+                return key.Value;
+            }
+
+            cancellationToken.WaitHandle.WaitOne(50);
+        }
+    }
+
     public ConsoleKeyInfo? Poll()
     {
         return Console.KeyAvailable ? Console.ReadKey(intercept: true) : null;
+    }
+}
+
+internal sealed class CancellableKeySource(IKeySource inner, CancellationToken cancellationToken) : IKeySource
+{
+    public ConsoleKeyInfo Wait() => inner.Wait(cancellationToken);
+
+    public ConsoleKeyInfo? Poll()
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return inner.Poll();
     }
 }

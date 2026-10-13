@@ -15,7 +15,7 @@ public class FeaturesScreenTests
     [Fact]
     public void Run_confirmImmediately_keepsCatalogDefaults()
     {
-        using var h = new ShellHarness(new FakeKeys().Enter());
+        using var h = new ShellHarness(new FakeKeys().Enter().Enter());
 
         var outcome = FeaturesScreen.Run(h.Shell, new ResourceCalculator());
         var expected = FeatureSelection.FromDefaults();
@@ -35,10 +35,10 @@ public class FeaturesScreenTests
     }
 
     [Fact]
-    public void Run_spaceOnDeepTagging_enablesIt()
+    public void Run_selectMaest_replacesEffnet()
     {
-        // highlight order matches FeatureCatalog.All; Deep sits four rows down
-        using var h = new ShellHarness(new FakeKeys().Down().Down().Down().Down().Space().Enter());
+        // The model choice follows the feature toggles. Effnet is the default.
+        using var h = new ShellHarness(new FakeKeys().Enter().Down().Enter());
 
         FeaturesScreen.Run(h.Shell, new ResourceCalculator());
 
@@ -51,7 +51,7 @@ public class FeaturesScreenTests
         // Adaptive streaming sits two rows below the highlight start; the
         // detail pane re-renders on every move, so the component list for it
         // must appear before Enter confirms the defaults
-        using var h = new ShellHarness(new FakeKeys().Down().Down().Enter());
+        using var h = new ShellHarness(new FakeKeys().Down().Down().Enter().Enter());
 
         var outcome = FeaturesScreen.Run(h.Shell, new ResourceCalculator());
 
@@ -66,8 +66,8 @@ public class FeaturesScreenTests
         var calculator = new ResourceCalculator();
         var before = calculator.CountServices(FeatureSelection.FromDefaults());
 
-        // Monitoring is the last row: seven Downs, Space to switch on, Enter
-        using var h = new ShellHarness(new FakeKeys().Down().Down().Down().Down().Down().Down().Down().Space().Enter());
+        // Monitoring is the last of six feature toggles.
+        using var h = new ShellHarness(new FakeKeys().Down().Down().Down().Down().Down().Space().Enter().Enter());
 
         FeaturesScreen.Run(h.Shell, calculator);
 
@@ -75,4 +75,45 @@ public class FeaturesScreenTests
 
         (after - before).Should().Be(6); // prometheus, grafana, cadvisor, exporter, alloy, loki
     }
+
+    [Fact]
+    public void Run_backAndForward_retainsChangesInTheSameConfiguration()
+    {
+        using var harness = new ShellHarness(new FakeKeys().Space().Press(ConsoleKey.Escape).Enter().Enter());
+
+        FeaturesScreen.Run(harness.Shell, new ResourceCalculator()).Should().Be(ScreenOutcome.Back);
+        FeaturesScreen.Run(harness.Shell, new ResourceCalculator()).Should().Be(ScreenOutcome.Continue);
+
+        harness.Context.Features.IsEnabled(FeatureCatalog.MediaProcessing.Id).Should().BeFalse();
+        harness.Context.Config.Features.Should().BeSameAs(harness.Context.Features);
+    }
+    [Fact]
+    public void Run_escapeFromModelChoice_retainsTogglesBeforeReturningToModelChoice()
+    {
+        using var harness = new ShellHarness(new FakeKeys().Space().Enter()
+            .Press(ConsoleKey.Escape).Enter().Down().Enter());
+
+        FeaturesScreen.Run(harness.Shell, new ResourceCalculator()).Should().Be(ScreenOutcome.Continue);
+
+        harness.Context.Features.IsEnabled(FeatureCatalog.MediaProcessing.Id).Should().BeFalse();
+        harness.Context.Features.AudioBackbone.Should().Be("maest");
+        harness.Context.Features.IsEnabled(FeatureCatalog.AudioTaggingFast.Id).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Run_legacyDualChoice_explainsHistoricalBehaviorAndConfirmsOneModel()
+    {
+        using var harness = new ShellHarness(new FakeKeys().Enter().Enter());
+        harness.Context.Features = new FeatureSelection
+        {
+            Enabled = ["audio-tagging-fast", "audio-tagging-deep", "autotagging"],
+        };
+
+        FeaturesScreen.Run(harness.Shell, new ResourceCalculator()).Should().Be(ScreenOutcome.Continue);
+
+        harness.Output.Should().Contain("This saved setup selected both models");
+        harness.Context.Features.HasLegacyDualAudioSelection.Should().BeFalse();
+        harness.Context.Features.AudioBackbone.Should().Be("effnet");
+    }
+
 }

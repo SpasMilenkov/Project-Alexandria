@@ -17,19 +17,17 @@ public class EnvGeneratorTests
     };
 
     [Fact]
-    public void BuildValues_coversEveryRequiredVariableOfGeneratedCompose()
+    public void EffectiveConfiguration_persistedArtifacts_coverEveryRequiredVariableOfGeneratedCompose()
     {
         foreach (var monitoring in new[] { true, false })
         {
-            var features = FeatureSelection.FromDefaults();
-
-            features.SetEnabled(FeatureCatalog.Monitoring.Id, monitoring);
-
-            var credentials = CredentialSource.GenerateAllCredentials(features);
-            var values = EnvGenerator.BuildValues(features, credentials, CreateAdmin(), null);
-
-            var compose = new ConfigurationService(new TemplateService("Local"))
-                .GenerateDockerCompose(new InstallationConfig { Features = features });
+            using var fixture = new ConfigurationArtifactFixture(monitoring);
+            fixture.Context.Config.Features = FeatureSelection.FromDefaults();
+            fixture.Context.Features.SetEnabled(FeatureCatalog.Monitoring.Id, monitoring);
+            var config = fixture.Resolve();
+            fixture.Generate(config);
+            var values = EnvGenerator.Parse(File.ReadAllText(Path.Combine(fixture.Target, ".env")));
+            var compose = File.ReadAllText(Path.Combine(fixture.Target, "docker-compose.yml"));
 
             var requiredVars = Regex.Matches(compose, @"\$\{([A-Z_][A-Z0-9_]*):\?")
                 .Select(m => m.Groups[1].Value)
@@ -40,6 +38,12 @@ public class EnvGeneratorTests
 
             values.Keys.Should().Contain(requiredVars,
                 because: $"every hard-required compose variable must exist in the generated .env (monitoring={monitoring})");
+
+            foreach (var variable in requiredVars)
+            {
+                values[variable].Should().NotBeNullOrWhiteSpace(
+                    because: $"required compose variable {variable} must be nonempty (monitoring={monitoring})");
+            }
         }
     }
 
@@ -106,8 +110,8 @@ public class EnvGeneratorTests
 
         var rendered = EnvGenerator.Render(values);
 
-        rendered.Should().Contain("DB_PORT=5432");
-        rendered.Should().Contain($"ADMIN_EMAIL={CreateAdmin().Email}");
+        rendered.Should().Contain("DB_PORT='5432'");
+        rendered.Should().Contain($"ADMIN_EMAIL='{CreateAdmin().Email}'");
         rendered.Should().Contain("# --- Garage S3 storage ---");
     }
 

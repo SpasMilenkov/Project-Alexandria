@@ -46,6 +46,51 @@ public class SystemCheckScreenTests
     }
 
     [Fact]
+    public void Run_unsupportedHost_stopsBeforeDockerProbe()
+    {
+        var checker = HealthyChecker();
+        checker.GetHostPlatformError().Returns("Detected Windows x64. This installer supports glibc-based Linux x64 hosts only.");
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+
+        var outcome = SystemCheckScreen.Run(harness.Shell, checker, new ResourceCalculator());
+
+        outcome.Should().Be(ScreenOutcome.Abort);
+        harness.Output.Should().Contain("Host platform unsupported").And.Contain("Windows x64");
+        checker.DidNotReceive().IsDockerInstalled();
+        checker.DidNotReceive().GetDockerPlatformError();
+        checker.DidNotReceive().GetSystemResources();
+    }
+
+    [Fact]
+    public void Run_unsupportedDaemon_stopsBeforeResourceChecks()
+    {
+        var checker = HealthyChecker();
+        checker.GetDockerPlatformError().Returns("This installer requires a local Linux amd64 Docker daemon. Detected linux aarch64.");
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+
+        var outcome = SystemCheckScreen.Run(harness.Shell, checker, new ResourceCalculator());
+
+        outcome.Should().Be(ScreenOutcome.Abort);
+        harness.Output.Should().Contain("Docker platform unsupported").And.Contain("aarch64");
+        checker.DidNotReceive().GetSystemResources();
+    }
+
+    [Fact]
+    public void Run_remoteContext_stopsBeforeDaemonProbe()
+    {
+        var checker = HealthyChecker();
+        checker.GetDockerContextError().Returns("Remote Docker connections are unsupported.");
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+
+        var outcome = SystemCheckScreen.Run(harness.Shell, checker, new ResourceCalculator());
+
+        outcome.Should().Be(ScreenOutcome.Abort);
+        harness.Output.Should().Contain("Remote Docker connections");
+        checker.DidNotReceive().IsDockerDaemonRunning();
+        checker.DidNotReceive().GetDockerPlatformError();
+    }
+
+    [Fact]
     public void Run_dockerMissing_showsInstructionsAndAborts()
     {
         var checker = Substitute.For<ISystemChecker>();

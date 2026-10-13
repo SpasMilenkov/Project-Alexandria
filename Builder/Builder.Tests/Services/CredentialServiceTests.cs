@@ -46,7 +46,7 @@ public class CredentialServiceTests
 
         var password = sut.GeneratePassword();
 
-        password.Should().MatchRegex("^[A-Za-z0-9!@#$%^&*]{24}$");
+        password.Should().MatchRegex("^[A-Za-z0-9_-]{24}$");
     }
 
     [Fact]
@@ -72,6 +72,8 @@ public class CredentialServiceTests
             "TRANSPILATION_WORKER_RABBITMQ_PASSWORD",
             "MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD",
             "LYRICS_WORKER_RABBITMQ_PASSWORD",
+            "RABBITMQ_PLAYLIST_WORKER",
+            "PLAYLIST_WORKER_RABBITMQ_PASSWORD",
             "ESSENTIA_WORKER_RABBITMQ_PASSWORD",
             "JWT_SECRET",
             "JWT_ISSUER",
@@ -81,6 +83,19 @@ public class CredentialServiceTests
         };
 
         credentials.Keys.Should().Contain(expectedKeys);
+        credentials["RABBITMQ_LYRICS_WORKER"].Should().Be("lyrics_worker_user");
+        credentials["RABBITMQ_PLAYLIST_WORKER"].Should().Be("playlist_worker_user");
+        credentials["PLAYLIST_WORKER_RABBITMQ_PASSWORD"].Should().NotBeNullOrEmpty();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void GeneratePassword_nonpositiveLength_rejectsEmptyCredentials(int length)
+    {
+        var action = () => CreateSut().GeneratePassword(length);
+
+        action.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]

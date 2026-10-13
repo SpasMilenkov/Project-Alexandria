@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Builder.Models;
 
 namespace Builder.Services;
@@ -16,10 +15,6 @@ public static class GarageCredentialsFileParser
     private const string StreamingKeyIdKey = "GARAGE_STREAMING_KEY_ID";
     private const string StreamingSecretKey = "GARAGE_STREAMING_SECRET";
 
-    private static readonly Regex LinePattern = new(
-        @"^\s*(?<key>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<value>.*)\s*$",
-        RegexOptions.Compiled);
-
     public static GarageCredentialSet? Parse(string fileContent)
     {
         if (string.IsNullOrWhiteSpace(fileContent))
@@ -27,26 +22,7 @@ public static class GarageCredentialsFileParser
             return null;
         }
 
-        var values = new Dictionary<string, string>();
-
-        foreach (var rawLine in fileContent.Replace("\r\n", "\n").Split('\n'))
-        {
-            var line = rawLine.Trim();
-
-            if (line.Length == 0 || line.StartsWith('#'))
-            {
-                continue;
-            }
-
-            var match = LinePattern.Match(line);
-
-            if (!match.Success)
-            {
-                throw new FormatException($"Unrecognized line in garage credentials file: '{Truncate(line)}'");
-            }
-
-            values[match.Groups["key"].Value] = match.Groups["value"].Value;
-        }
+        var values = EnvGenerator.Parse(fileContent);
 
         var credentials = new GarageCredentialSet(
             AccessKey: GetValue(values, AccessKeyKey),
@@ -76,11 +52,11 @@ public static class GarageCredentialsFileParser
 
     private static string GetValue(Dictionary<string, string> values, string key)
     {
-        return values.TryGetValue(key, out var value) ? value : string.Empty;
-    }
+        if (!values.TryGetValue(key, out var value) || value.Equals("placeholder", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
 
-    private static string Truncate(string line)
-    {
-        return line.Length <= 60 ? line : line[..57] + "...";
+        return value;
     }
 }

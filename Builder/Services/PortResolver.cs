@@ -12,7 +12,7 @@ public interface IPortResolver
 
 public class PortResolver : IPortResolver
 {
-    private static readonly int[] FrontendFallbacks = [8080, 8081, 8888];
+    private static readonly int[] HttpsFallbacks = [8443, 9443];
     private readonly ISystemChecker _fallbackChecker;
 
     public PortResolver() : this(new SystemChecker())
@@ -30,12 +30,8 @@ public class PortResolver : IPortResolver
     {
         var mappings = new List<PortMapping>
         {
-            CreateMapping("HTTP", "HTTP_PORT", 80, systemChecker),
             CreateMapping("HTTPS", "HTTPS_PORT", 443, systemChecker),
         };
-
-        if (features.IsEnabled(FeatureCatalog.Monitoring.Id))
-            mappings.Add(CreateMapping("Grafana", "GRAFANA_PORT", 3000, systemChecker));
 
         return mappings;
     }
@@ -73,9 +69,9 @@ public class PortResolver : IPortResolver
     {
         var usedPorts = existingMappings.Select(m => m.AssignedPort).ToHashSet();
 
-        if (defaultPort == 80)
+        if (defaultPort == 443)
         {
-            foreach (var fallback in FrontendFallbacks)
+            foreach (var fallback in HttpsFallbacks)
             {
                 if (!usedPorts.Contains(fallback) && _fallbackChecker.IsPortAvailable(fallback))
                     return fallback;

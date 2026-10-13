@@ -11,13 +11,31 @@
       - media_worker_scratch:/tmp/worker-scratch
 
     environment:
+      Serilog__MinimumLevel__Default: Information
+      Serilog__MinimumLevel__Override__Microsoft.AspNetCore: Warning
+      Serilog__MinimumLevel__Override__System: Warning
+      Serilog__WriteTo__0__Name: Console
       DOTNET_ENVIRONMENT: Production
-      ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
+      ConnectionStrings__AlexandriaPostgres: ${DB_CONNECTION_STRING:?DB_CONNECTION_STRING is required}
+      S3Storage__Provider: Garage
+      S3Storage__Endpoint: http://garage:3900
+      S3Storage__Region: garage
+      S3Storage__UploadBucket: alexandria-files
+      S3Storage__PreviewBucket: alexandria-previews
+      S3Storage__TempBucket: alexandria-temp
+      S3Storage__ImagesBucket: alexandria-images
+      S3Storage__StreamingBucket: alexandria-streaming
+      S3Storage__ProviderSettings__Garage__Region: garage
+      S3Storage__ProviderSettings__Garage__ForcePathStyle: "true"
       S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
       RabbitMQ__UserName: ${RABBITMQ_MEDIA_WORKER:?RABBITMQ_MEDIA_WORKER is required}
+      RabbitMQ__ChannelPoolSize: "10"
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__Port: "5672"
       RabbitMQ__Password: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      Features__MediaPreviews: "${MEDIA_PROCESSING_ENABLED:-false}"
       ASPNETCORE_URLS: http://+:8080
       TMPDIR: /tmp/worker-scratch
       RabbitMQ__Consumer__QueueName: media-queue
@@ -37,7 +55,7 @@
       - data-net
 
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      test: ["CMD", "dotnet", "Alexandria.Workers.Media.dll", "--healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3

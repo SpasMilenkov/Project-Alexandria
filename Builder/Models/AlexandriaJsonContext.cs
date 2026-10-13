@@ -3,6 +3,9 @@ using System.Text.Json.Serialization;
 namespace Builder.Models;
 
 [JsonSerializable(typeof(InstallationConfig))]
+[JsonSerializable(typeof(GenerationCheckpoint))]
+[JsonSerializable(typeof(PublicEndpoint))]
+[JsonSerializable(typeof(CertificateSettings))]
 [JsonSerializable(typeof(FeatureSelection))]
 [JsonSerializable(typeof(SystemResources))]
 [JsonSerializable(typeof(PortMapping))]

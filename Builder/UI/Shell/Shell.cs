@@ -2,6 +2,7 @@ using Builder.Models;
 using Builder.Services;
 using Builder.Workflow;
 using Builder.UI.Shell.Screens;
+using System.Runtime.ExceptionServices;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -30,6 +31,7 @@ public sealed class Shell : IDisposable
     private const int SidebarCompactWidth = 25;
     private IRenderable? _mainPanel;
 
+    private readonly object _frameGate = new();
     private readonly Layout _layout;
     private readonly IKeySource _keys;
     private LiveDisplayContext? _liveContext;
@@ -46,7 +48,7 @@ public sealed class Shell : IDisposable
     public Shell(InstallationContext context, IKeySource? keys = null)
     {
         Context = context;
-        _keys = keys ?? ConsoleKeySource.Instance;
+        _keys = new CancellableKeySource(keys ?? ConsoleKeySource.Instance, context.Cancellation.Token);
         _layout = BuildLayout();
     }
 
@@ -88,17 +90,19 @@ public sealed class Shell : IDisposable
         {
             // Graceful unwind; cleanup already ran through OnAbort
         }
+        catch (OperationCanceledException) when (Context.Cancellation.IsCancellationRequested)
+        {
+            Context.ShouldAbort = true;
+        }
         finally
         {
             StopFrameTimer();
-            _liveContext = null;
+            lock (_frameGate) _liveContext = null;
         }
     }
 
     private void RunLive(IReadOnlyList<(string Title, Func<Shell, ScreenOutcome> Screen)> screens)
     {
-        StartFrameTimer();
-
         // Crop/Top keeps an oversized frame from spilling into alt-buffer
         // scrollback - the freshest rows stay visible, nothing scrolls
         AnsiConsole.Live(_layout)
@@ -107,7 +111,8 @@ public sealed class Shell : IDisposable
             .Cropping(VerticalOverflowCropping.Top)
             .Start(liveContext =>
             {
-                _liveContext = liveContext;
+                lock (_frameGate) _liveContext = liveContext;
+                StartFrameTimer();
 
                 try
                 {
@@ -116,6 +121,10 @@ public sealed class Shell : IDisposable
                 catch (ShellAbortException)
                 {
                     // unwinding only
+                }
+                finally
+                {
+                    StopFrameTimer();
                 }
             });
     }
@@ -129,9 +138,14 @@ public sealed class Shell : IDisposable
         catch (ShellAbortException)
         {
         }
+        catch (OperationCanceledException) when (Context.Cancellation.IsCancellationRequested)
+        {
+            Context.ShouldAbort = true;
+        }
     }
 
     private CancellationTokenSource? _frameTimerCts;
+    private Task? _frameTask;
     private int _lastWidth = -1;
     private int _lastHeight = -1;
 
@@ -147,7 +161,7 @@ public sealed class Shell : IDisposable
 
         var token = _frameTimerCts.Token;
 
-        Task.Run(async () =>
+        _frameTask = Task.Run(async () =>
         {
             using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(120));
 
@@ -155,8 +169,11 @@ public sealed class Shell : IDisposable
             {
                 while (await timer.WaitForNextTickAsync(token))
                 {
-                    CheckResize();
-                    Refresh();
+                    lock (_frameGate)
+                    {
+                        CheckResize();
+                        Refresh();
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -167,9 +184,23 @@ public sealed class Shell : IDisposable
 
     private void StopFrameTimer()
     {
-        _frameTimerCts?.Cancel();
-        _frameTimerCts?.Dispose();
+        var cancellation = _frameTimerCts;
+        var frameTask = _frameTask;
         _frameTimerCts = null;
+        _frameTask = null;
+        cancellation?.Cancel();
+
+        try
+        {
+            frameTask?.GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            cancellation?.Dispose();
+        }
     }
 
     // D40: resizes are invisible to a blocking ReadKey loop - the heartbeat
@@ -231,6 +262,7 @@ public sealed class Shell : IDisposable
             switch (outcome)
             {
                 case ScreenOutcome.Abort:
+                    Context.ShouldAbort = true;
                     return;
                 case ScreenOutcome.Back when i > 0:
                     i -= 1;
@@ -240,6 +272,8 @@ public sealed class Shell : IDisposable
                     break;
             }
         }
+
+        Context.Completed = true;
     }
 
     public int StepIndex { get; private set; }
@@ -250,30 +284,39 @@ public sealed class Shell : IDisposable
 
     public void SetMain(IRenderable renderable)
     {
-        _mainContent = renderable;
-        ComposeFrame();
+        lock (_frameGate)
+        {
+            _mainContent = renderable;
+            ComposeFrame();
 
-        if (UseLive)
-        {
-            _liveContext?.Refresh();
-        }
-        else if (_mainPanel is not null)
-        {
-            // Dry mode: emit the composed frame so output is observable
-            AnsiConsole.Write(_mainPanel);
+            if (UseLive)
+            {
+                _liveContext?.Refresh();
+            }
+            else if (_mainPanel is not null)
+            {
+                // Dry mode: emit the composed frame so output is observable
+                AnsiConsole.Write(_mainPanel);
+            }
         }
     }
 
     public void SetSidebar(SidebarModel model)
     {
-        _sidebar = model;
-        Refresh();
+        lock (_frameGate)
+        {
+            _sidebar = model;
+            Refresh();
+        }
     }
 
     public void UpdateSidebarStats(Action<List<(string Label, string Value)>> mutate)
     {
-        mutate(_sidebar.Stats);
-        Refresh();
+        lock (_frameGate)
+        {
+            mutate(_sidebar.Stats);
+            Refresh();
+        }
     }
 
     // Returns true when the key was consumed as a global command
@@ -282,6 +325,8 @@ public sealed class Shell : IDisposable
         if (key.Key == ConsoleKey.C && key.Modifiers.HasFlag(ConsoleModifiers.Control))
         {
             AbortRequested = true;
+            Context.ShouldAbort = true;
+            Context.Cancellation.Cancel();
             OnAbort?.Invoke();
             throw ShellAbortException.Instance;
         }
@@ -303,6 +348,47 @@ public sealed class Shell : IDisposable
 
     public bool AbortRequested { get; private set; }
 
+    public T RunResponsive<T>(Func<T> operation, Action? onTick = null)
+    {
+        var work = Task.Run(operation);
+        ExceptionDispatchInfo? inputFailure = null;
+
+        try
+        {
+            while (!work.IsCompleted)
+            {
+                var key = Keys.Poll();
+
+                if (key.HasValue) HandleGlobalKey(key.Value);
+
+                onTick?.Invoke();
+                Task.WaitAny([work], 50);
+            }
+        }
+        catch (Exception error)
+        {
+            inputFailure = ExceptionDispatchInfo.Capture(error);
+            Context.Cancellation.Cancel();
+        }
+
+        T result = default!;
+
+        try
+        {
+            result = work.GetAwaiter().GetResult();
+        }
+        catch when (inputFailure is not null)
+        {
+            // Drain the worker before the input exception unwinds the terminal.
+        }
+
+        inputFailure?.Throw();
+        Context.Cancellation.Token.ThrowIfCancellationRequested();
+        onTick?.Invoke();
+
+        return result;
+    }
+
     private bool _escapeRequested;
 
     // Widgets signal Esc; screens consume it to step back one screen (D38)
@@ -321,29 +407,32 @@ public sealed class Shell : IDisposable
 
     private void CycleTheme()
     {
-        var all = Themes.All;
-        var nextIndex = 0;
-
-        for (var i = 0; i < all.Count; i++)
+        lock (_frameGate)
         {
-            if (ReferenceEquals(all[i], Theme.Active))
+            var all = Themes.All;
+            var nextIndex = 0;
+
+            for (var i = 0; i < all.Count; i++)
             {
-                nextIndex = (i + 1) % all.Count;
-                break;
+                if (ReferenceEquals(all[i], Theme.Active))
+                {
+                    nextIndex = (i + 1) % all.Count;
+                    break;
+                }
             }
+
+            var next = all[nextIndex];
+
+            Theme.Use(next);
+
+            var saved = ThemeSaver?.Invoke(next.Id) ?? UiPreferencesStore.Save(next.Id);
+
+            _sidebar.SaveWarning = saved
+                ? null
+                : $"Look not saved - resets on next start";
+
+            Refresh();
         }
-
-        var next = all[nextIndex];
-
-        Theme.Use(next);
-
-        var saved = ThemeSaver?.Invoke(next.Id) ?? UiPreferencesStore.Save(next.Id);
-
-        _sidebar.SaveWarning = saved
-            ? null
-            : $"Look not saved - resets on next start";
-
-        Refresh();
     }
 
     private Layout BuildLayout()
@@ -360,17 +449,23 @@ public sealed class Shell : IDisposable
 
     public void Refresh()
     {
-        ComposeFrame();
-        _liveContext?.Refresh();
+        lock (_frameGate)
+        {
+            ComposeFrame();
+            _liveContext?.Refresh();
+        }
     }
 
     private void RefreshSidebarModel()
     {
-        _sidebar.StepLabel = TotalSteps > 0
-            ? $"Step {StepIndex} / {TotalSteps} - {ScreenTitle}"
-            : ScreenTitle;
+        lock (_frameGate)
+        {
+            _sidebar.StepLabel = TotalSteps > 0
+                ? $"Step {StepIndex} / {TotalSteps} - {ScreenTitle}"
+                : ScreenTitle;
 
-        ComposeFrame();
+            ComposeFrame();
+        }
     }
 
     // Content measure cap: on wide terminals the main pane's inner block is
@@ -623,6 +718,6 @@ public sealed class Shell : IDisposable
 
     public void Dispose()
     {
-        // Live session disposes through its own scope; nothing owned here yet
+        StopFrameTimer();
     }
 }

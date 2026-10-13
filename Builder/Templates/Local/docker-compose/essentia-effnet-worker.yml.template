@@ -6,7 +6,7 @@
     restart: unless-stopped
 
     environment:
-      RABBITMQ_URL: amqp://essentia_worker_user:${ESSENTIA_WORKER_RABBITMQ_PASSWORD:?ESSENTIA_WORKER_RABBITMQ_PASSWORD is required}@rabbitmq:5672/${RABBITMQ_VHOST:-alexandria}
+      RABBITMQ_URL: ${ESSENTIA_RABBITMQ_URL:?ESSENTIA_RABBITMQ_URL is required}
       EXCHANGE_NAME: content-exchange
       RESULT_ROUTING_KEY: media-metadata.completed
       QUEUE_NAME: classify-effnet-queue
@@ -18,7 +18,7 @@
       HOME: /tmp
 
     volumes:
-      - {{SOURCE_ROOT}}/classificators/essentia/models:/app/models:ro
+      - ./models:/app/models:ro
       - media_audio_data:/data
 
     depends_on:

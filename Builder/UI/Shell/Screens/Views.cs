@@ -89,79 +89,31 @@ public static class Views
         return new Markup($"  {icon} {Markup.Escape(label)}{extra}");
     }
 
-    private static readonly Dictionary<string, double> MemoryWeightsGb = new()
-    {
-        [FeatureCatalog.MediaProcessing.Id] = 1,
-        [FeatureCatalog.DocumentPreviews.Id] = 1,
-        [FeatureCatalog.AdaptiveStreaming.Id] = 1,
-        [FeatureCatalog.AudioTaggingFast.Id] = 2,
-        [FeatureCatalog.AudioTaggingDeep.Id] = 2,
-        [FeatureCatalog.Lyrics.Id] = 0.5,
-        [FeatureCatalog.Monitoring.Id] = 1.5,
-    };
-
     public static IRenderable MemoryChart(FeatureSelection features)
     {
-        var items = new List<BarChartItem>
-        {
-            new("Core system", 2.5, Theme.Active.ChartColors[^1]),
-        };
-
-        var colorIndex = 0;
-
-        foreach (var (featureId, gb) in EnabledFeatureWeights(features))
-        {
-            var color = Theme.Active.ChartColors[colorIndex % Theme.Active.ChartColors.Count];
-
-            colorIndex++;
-
-            var feature = FeatureCatalog.All.First(f => f.Id == featureId);
-
-            items.Add(new BarChartItem(feature.Label, gb, color));
-        }
+        var estimates = ServiceCatalog.Resolve(features).MemoryEstimates;
+        var items = estimates.Select((estimate, index) => new BarChartItem(
+            estimate.Label, estimate.MemoryMb / 1024.0,
+            Theme.Active.ChartColors[index % Theme.Active.ChartColors.Count])).ToArray();
 
         return new BarChart()
             .Width(56)
-            .Label("[dim]gigabytes of memory[/]")
+            .Label("[dim]gigabytes of memory, including headroom[/]")
             .CenterLabel()
-            .WithMaxValue(6)
+            .WithMaxValue(Math.Max(6, estimates.Max(estimate => estimate.MemoryMb / 1024.0)))
             .AddItems(items);
     }
 
     public static IRenderable MemoryBreakdown(FeatureSelection features)
     {
-        var items = new List<IBreakdownChartItem>
-        {
-            new BreakdownChartItem("Core system", 2.5, Theme.Active.ChartColors[^1]),
-        };
-
-        var colorIndex = 0;
-
-        foreach (var (featureId, gb) in EnabledFeatureWeights(features))
-        {
-            var color = Theme.Active.ChartColors[colorIndex % Theme.Active.ChartColors.Count];
-
-            colorIndex++;
-
-            var feature = FeatureCatalog.All.First(f => f.Id == featureId);
-
-            items.Add(new BreakdownChartItem($"{feature.Label} ({gb:0.#} GB)", gb, color));
-        }
+        var items = ServiceCatalog.Resolve(features).MemoryEstimates.Select((estimate, index) =>
+            new BreakdownChartItem($"{estimate.Label} ({estimate.MemoryMb / 1024.0:0.#} GB)",
+                estimate.MemoryMb / 1024.0,
+                Theme.Active.ChartColors[index % Theme.Active.ChartColors.Count])).ToArray();
 
         return new BreakdownChart()
             .Width(56)
             .AddItems(items);
-    }
-
-    private static IEnumerable<(string Id, double Gb)> EnabledFeatureWeights(FeatureSelection features)
-    {
-        foreach (var (id, gb) in MemoryWeightsGb)
-        {
-            if (features.IsEnabled(id))
-            {
-                yield return (id, gb);
-            }
-        }
     }
 
     public static IRenderable FileTree(FeatureSelection features)
@@ -188,8 +140,7 @@ public static class Views
 
     public static IRenderable SuccessGrid(InstallationContext context)
     {
-        var httpPort = context.Config.Ports.GetValueOrDefault("HTTP_PORT", 80);
-        var address = httpPort == 80 ? "http://localhost" : $"http://localhost:{httpPort}";
+        var address = context.Config.PublicEndpoint.Origin;
 
         var grid = new Grid().AddColumn(new GridColumn().PadRight(3)).AddColumn();
 
@@ -199,11 +150,9 @@ public static class Views
 
         if (context.Features.IsEnabled(FeatureCatalog.Monitoring.Id))
         {
-            var grafanaPort = context.Config.Ports.GetValueOrDefault("GRAFANA_PORT", 3000);
-
             grid.AddRow(
                 new Markup($"[{Theme.Active.Ac}]Monitoring[/]"),
-                new Markup($"[{Theme.Active.Ac}]http://localhost:{grafanaPort}[/]"));
+                new Markup($"[{Theme.Active.Ac}]{Markup.Escape(address)}/monitoring/[/]"));
         }
 
         grid.AddRow(
@@ -212,15 +161,15 @@ public static class Views
 
         grid.AddRow(
             new Markup($"[{Theme.Active.Ac}]Stop later[/]"),
-            new Markup($"[dim]cd[/] {Markup.Escape(context.InstallPath)} [dim]&&[/] docker compose down"));
+            new Markup(Markup.Escape(InstallationCommands.Compose(context.Config, "stop"))));
 
         grid.AddRow(
             new Markup($"[{Theme.Active.Ac}]Start again[/]"),
-            new Markup($"[dim]cd[/] {Markup.Escape(context.InstallPath)} [dim]&&[/] docker compose up -d"));
+            new Markup(Markup.Escape(InstallationCommands.Compose(context.Config, "up -d --no-build --pull never"))));
 
         grid.AddRow(
             new Markup($"[{Theme.Active.Ac}]See activity[/]"),
-            new Markup($"[dim]cd[/] {Markup.Escape(context.InstallPath)} [dim]&&[/] docker compose logs -f"));
+            new Markup(Markup.Escape(InstallationCommands.Compose(context.Config, "logs -f"))));
 
         return grid;
     }

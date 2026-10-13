@@ -6,5 +6,6 @@ public sealed class InstallFeature
     public required string Label { get; init; }
     public required string Description { get; init; }
     public required string Cost { get; init; }
+    public string? EnvironmentFlag { get; init; }
     public bool DefaultEnabled { get; init; }
 }

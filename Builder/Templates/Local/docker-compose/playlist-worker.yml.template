@@ -1,0 +1,73 @@
+  playlist-worker:
+    build:
+      context: {{SOURCE_ROOT}}/Backend
+      dockerfile: Alexandria.Workers.Playlist/Dockerfile
+    container_name: alexandria-playlist-worker
+    labels:
+      - "logs.collect=true"
+    restart: always
+
+    environment:
+      Serilog__MinimumLevel__Default: Information
+      Serilog__MinimumLevel__Override__Microsoft.AspNetCore: Warning
+      Serilog__MinimumLevel__Override__System: Warning
+      Serilog__WriteTo__0__Name: Console
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__AlexandriaPostgres: ${DB_CONNECTION_STRING:?DB_CONNECTION_STRING is required}
+      S3Storage__Provider: Garage
+      S3Storage__Endpoint: http://garage:3900
+      S3Storage__Region: garage
+      S3Storage__UploadBucket: alexandria-files
+      S3Storage__PreviewBucket: alexandria-previews
+      S3Storage__TempBucket: alexandria-temp
+      S3Storage__ImagesBucket: alexandria-images
+      S3Storage__StreamingBucket: alexandria-streaming
+      S3Storage__ProviderSettings__Garage__Region: garage
+      S3Storage__ProviderSettings__Garage__ForcePathStyle: "true"
+      S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
+      S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
+      RabbitMQ__UserName: ${RABBITMQ_PLAYLIST_WORKER:?RABBITMQ_PLAYLIST_WORKER is required}
+      RabbitMQ__Password: ${PLAYLIST_WORKER_RABBITMQ_PASSWORD:?PLAYLIST_WORKER_RABBITMQ_PASSWORD is required}
+      S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
+      ASPNETCORE_URLS: http://+:8080
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Consumer__ExchangeName: content-exchange
+      RabbitMQ__Consumer__SyncQueueName: playlist-queue
+      RabbitMQ__Consumer__SyncRoutingKey: playlist.sync
+      RabbitMQ__Consumer__PrefetchCount: "10"
+      RabbitMQ__Consumer__SweepIntervalSeconds: "900"
+      RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      rabbitmq-config:
+        condition: service_completed_successfully
+
+    networks:
+      - data-net
+
+    healthcheck:
+      test: ["CMD", "dotnet", "Alexandria.Workers.Playlist.dll", "--healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M

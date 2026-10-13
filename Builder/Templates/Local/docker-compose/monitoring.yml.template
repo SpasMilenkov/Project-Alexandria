@@ -1,4 +1,9 @@
   prometheus:
+    user: "0:0"
+    cap_drop: [ALL]
+    cap_add: [DAC_OVERRIDE]
+    security_opt:
+      - no-new-privileges:true
     image: prom/prometheus:v3.13.2@sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69
     container_name: alexandria-prometheus
     restart: unless-stopped
@@ -8,15 +13,13 @@
       - ./prometheus/secrets/garage-metrics-token:/etc/prometheus/secrets/garage-metrics-token:ro
       - prometheus_local_data:/prometheus
 
-    ports:
-      - "127.0.0.1:9090:9090"
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=2GB'
 
     networks:
       - data-net
-      - essentia-net
       - observability-net
 
     deploy:
@@ -40,7 +43,7 @@
         max-file: "5"
 
   grafana:
-    image: grafana/grafana:12.4.2
+    image: grafana/grafana:12.4.2@sha256:83749231c3835e390a3144e5e940203e42b9589761f20ef3169c716e734ad505
     container_name: alexandria-grafana
     restart: unless-stopped
 
@@ -48,14 +51,23 @@
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:?GRAFANA_PASSWORD is required}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
+      - GF_NEWS_NEWS_FEED_ENABLED=false
+      - GF_PLUGINS_PREINSTALL_DISABLED=true
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:?GRAFANA_ROOT_URL is required}
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_SECURITY_COOKIE_SECURE=true
+      - GF_SECURITY_COOKIE_SAMESITE=lax
+      - GF_AUTH_LOGIN_COOKIE_NAME=alexandria_grafana_session
+      - GF_SECURITY_CONTENT_SECURITY_POLICY=true
 
     volumes:
       - grafana_local_data:/var/lib/grafana
-      - {{SOURCE_ROOT}}/grafana/provisioning:/etc/grafana/provisioning
-    # dashboard stays on the machine — bound to loopback only, not the network
-
-    ports:
-      - "127.0.0.1:{{GRAFANA_PORT}}:3000"
+      - {{SOURCE_ROOT}}/grafana/provisioning:/etc/grafana/provisioning:ro
 
     networks:
       - observability-net
@@ -63,6 +75,13 @@
     depends_on:
       prometheus:
         condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/monitoring/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
     deploy:
       resources:
@@ -77,12 +96,17 @@
     restart: unless-stopped
     privileged: true
 
+    command:
+      - --docker_only=true
+      - --store_container_labels=false
+      - --whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service
+      - --housekeeping_interval=30s
+
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
-      - /dev/disk:/dev/disk:ro
 
     networks:
       - observability-net
@@ -142,6 +166,8 @@
     image: grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33
     container_name: alexandria-alloy
     restart: unless-stopped
+    environment:
+      ALLOY_DOCKER_PROJECT: ${COMPOSE_PROJECT_NAME:?COMPOSE_PROJECT_NAME is required}
     command:
       - run
       - /etc/alloy/config.alloy
@@ -155,7 +181,7 @@
 
     depends_on:
       loki:
-        condition: service_healthy
+        condition: service_started
 
     networks:
       - observability-net
@@ -192,13 +218,6 @@
           memory: 256M
         reservations:
           memory: 128M
-
-    healthcheck:
-      test: ["CMD", "/usr/bin/loki", "-health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
 
     logging:
       driver: local

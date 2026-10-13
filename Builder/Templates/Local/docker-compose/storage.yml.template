@@ -1,11 +1,11 @@
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:4327b9fd295502f326f44153a1045a7170ddbfffed1c3829798328556cfd09e2
     container_name: alexandria-local-postgres
     restart: unless-stopped
 
     environment:
-      POSTGRES_DB: alexandria_dev
-      POSTGRES_USER: alexandria_user
+      POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME is required}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
       POSTGRES_EXPORTER_PASSWORD: ${POSTGRES_EXPORTER_PASSWORD:?POSTGRES_EXPORTER_PASSWORD is required}
@@ -18,14 +18,14 @@
       - data-net
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U alexandria_user -d alexandria_dev"]
+      test: ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
       interval: 5s
       timeout: 3s
       retries: 3
       start_period: 10s
 
   garage:
-    image: dxflrs/garage:v2.2.0
+    image: dxflrs/garage:v2.2.0@sha256:45a61ce3f7c9c24fc23d9ed2b09b27ed560ab87b34605d175d5c588f539c24e4
     container_name: alexandria-local-garage
     restart: unless-stopped
 
@@ -64,10 +64,14 @@
 
     depends_on:
       garage:
-        condition: service_healthy
+        condition: service_started
 
     environment:
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      GARAGE_CAPACITY: ${GARAGE_CAPACITY:-}
+      GARAGE_CAPACITY_CHANGE_REQUESTED: "${GARAGE_CAPACITY_CHANGE_REQUESTED:-false}"
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
+      ALEXANDRIA_GENERATION_ID: ${ALEXANDRIA_GENERATION_ID:?ALEXANDRIA_GENERATION_ID is required}
+      GARAGE_FORCE_CREDENTIAL_EXPORT: "${GARAGE_FORCE_CREDENTIAL_EXPORT:-false}"
 
     volumes:
       - ./garage.toml:/etc/garage.toml:ro
@@ -79,32 +83,19 @@
       - data-net
 
   rabbitmq-config:
-    image: alpine:3.20
+    image: alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
     container_name: alexandria-rabbitmq-config
     restart: "no"
 
-    environment:
-      RABBITMQ_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
-      RABBITMQ_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
-      API_RABBITMQ_USER: ${API_RABBITMQ_USER:?API_RABBITMQ_USER is required}
-      API_RABBITMQ_PASS: ${API_RABBITMQ_PASSWORD:?API_RABBITMQ_PASSWORD is required}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-alexandria}
-      DOCUMENT_WORKER_PASS: ${DOCUMENT_WORKER_RABBITMQ_PASSWORD:?DOCUMENT_WORKER_RABBITMQ_PASSWORD is required}
-      MEDIA_WORKER_PASS: ${MEDIA_WORKER_RABBITMQ_PASSWORD:?MEDIA_WORKER_RABBITMQ_PASSWORD is required}
-      TRANSPILATION_WORKER_PASS: ${TRANSPILATION_WORKER_RABBITMQ_PASSWORD:?TRANSPILATION_WORKER_RABBITMQ_PASSWORD is required}
-      MEDIA_METADATA_WORKER_PASS: ${MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD:?MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD is required}
-      LYRICS_WORKER_PASS: ${LYRICS_WORKER_RABBITMQ_PASSWORD:?LYRICS_WORKER_RABBITMQ_PASSWORD is required}
-      ESSENTIA_WORKER_PASS: ${ESSENTIA_WORKER_RABBITMQ_PASSWORD:?ESSENTIA_WORKER_RABBITMQ_PASSWORD is required}
-
     volumes:
-      - {{SOURCE_ROOT}}/rabbitmq/definitions.template.json:/template/definitions.template.json:ro
+      - ./rabbitmq/definitions.json:/input/definitions.json:ro
       - rabbitmq_definitions:/output
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - apk add --no-cache gettext > /dev/null && envsubst < /template/definitions.template.json > /output/definitions.json
+      - umask 077 && cp /input/definitions.json /output/definitions.json.tmp && chown 100:101 /output/definitions.json.tmp && chmod 0600 /output/definitions.json.tmp && mv /output/definitions.json.tmp /output/definitions.json
 
   rabbitmq:
-    image: rabbitmq:4.2.5-management-alpine
+    image: rabbitmq:4.2.5-management-alpine@sha256:b618738ea52cb6d0073ee9f0412ede133411ecacd7afa40f17be748a6d9a9ee1
     container_name: alexandria-local-rabbitmq
     restart: unless-stopped
 
@@ -120,7 +111,7 @@
 
     volumes:
       - rabbitmq_local_data:/var/lib/rabbitmq
-      - {{SOURCE_ROOT}}/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - {{SOURCE_ROOT}}/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
       - rabbitmq_definitions:/etc/rabbitmq/definitions:ro
 

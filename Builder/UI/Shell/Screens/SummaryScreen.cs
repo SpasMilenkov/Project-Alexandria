@@ -10,16 +10,11 @@ public static class SummaryScreen
 {
     public static ScreenOutcome Run(
         Shell shell,
-        ICredentialService credentials,
         IResourceCalculator calculator)
     {
         var context = shell.Context;
 
-        context.Config.Credentials = credentials.GenerateAllCredentials(context.Features);
-
-        var ramGb = calculator.CalculateMinimumRamMb(context.Features) / 1024.0;
-        var httpPort = context.Config.Ports.GetValueOrDefault("HTTP_PORT", 80);
-        var address = httpPort == 80 ? "http://localhost" : $"http://localhost:{httpPort}";
+        var address = context.Config.PublicEndpoint.Origin;
 
         // D49: breakdown is the default - it reads as shares of a whole
         var showBarChart = false;
@@ -39,10 +34,11 @@ public static class SummaryScreen
                     new Padder(BuildConfigTable(calculator, context, address), new Padding(0, 0, 2, 1)),
                     Views.Title(chartCaption),
                     new Padder(chart, new Padding(0, 0, 2, 1)),
-                    Views.Note("Rough estimate of steady-state memory for the selected features."),
+                    Views.Note("Planning estimate including memory headroom; actual use varies with workload."),
+                    new Rows(StorageSummary.Describe(context.Config, context.Resources).Select(Views.Note)),
                     Views.Title("Files that will be created"),
                     new Padder(Views.FileTree(context.Features), new Padding(0, 0, 2, 1)),
-                    Views.Note("Passwords are created automatically. You can change them later in the .env file."),
+                    Views.Note("Setup preserves established credentials. Changing a stored service password requires that service's credential rotation procedure."),
                     SourceReadNote(context) ?? new Markup(string.Empty));
 
             return new Rows(
@@ -93,11 +89,7 @@ public static class SummaryScreen
     // relationship explicit so the model is never a surprise (F9a)
     private static IRenderable? SourceReadNote(InstallationContext context)
     {
-        if (string.IsNullOrWhiteSpace(context.SourceRoot) ||
-            string.Equals(
-                Path.GetFullPath(context.InstallPath).TrimEnd(Path.DirectorySeparatorChar),
-                Path.GetFullPath(context.SourceRoot).TrimEnd(Path.DirectorySeparatorChar),
-                StringComparison.OrdinalIgnoreCase))
+        if (!context.UsingExternalTarget)
         {
             return null;
         }
@@ -117,9 +109,53 @@ public static class SummaryScreen
             .AddColumn("");
 
         configTable.AddRow("Admin account", Markup.Escape(context.AdminAccount.Email));
-        configTable.AddRow("Services", $"{calculator.CountServices(context.Features)} will run");
+        configTable.AddRow("Installation", context.IsRepair ? "Repair existing setup" : "New setup");
+
+        if (!string.IsNullOrEmpty(context.Config.ProjectName))
+        {
+            configTable.AddRow("Docker project", Markup.Escape(context.Config.ProjectName));
+        }
+
+        if (context.Config.PreserveFixedContainerNames)
+        {
+            configTable.AddRow("Legacy adoption", "Keep the verified project and existing data volumes");
+            configTable.AddRow("Data volumes", string.Join("\n", context.Config.VolumeNames.Select(pair => Markup.Escape(pair.Value))));
+        }
+
+        if (context.IsRepair)
+        {
+            configTable.AddRow("Current services", context.ExistingStackReady ? "Running and ready" : "Readiness will be checked during repair");
+        }
+
+        var capabilities = ServiceCatalog.Resolve(context.Features);
+
+        configTable.AddRow("Services", $"{capabilities.RunningServiceCount} ongoing + {capabilities.OneShotServiceIds.Count} setup jobs");
         configTable.AddRow("Memory needed", $"about {calculator.CalculateMinimumRamMb(context.Features) / 1024.0:0.#} GB");
+
+        foreach (var assets in capabilities.ModelAssets)
+        {
+            var details = $"{capabilities.AudioBackbone}; verified local cache in models; checksums verified again at worker startup";
+
+            if (!string.IsNullOrEmpty(context.SourceRoot) && File.Exists(Path.Combine(context.SourceRoot, "classificators", "essentia", "model-requirements.tsv")))
+            {
+                var plan = new ModelPreparationService().CreatePlan(context.SourceRoot, context.InstallPath,
+                    capabilities.AudioBackbone, context.Config.ModelSourceDirectory);
+                details += $"; {plan.ExpectedBytes / (1024.0 * 1024):0.##} MB, {plan.Assets.Count} files";
+            }
+
+            configTable.AddRow(assets.Name, Markup.Escape(details));
+        }
+        if (capabilities.AudioAnalysisEnabled)
+        {
+            configTable.AddRow("Model sourcing", context.Config.AllowModelDownloads
+                ? "Reuse verified local files; download missing or corrupt files from essentia.upf.edu (HTTPS)"
+                : "Existing local files only; model downloads disabled");
+            configTable.AddRow("Audio processing", "One inference job at a time; up to 8 CPU cores and 2 GB worker memory");
+        }
+
         configTable.AddRow("Address", address);
+        configTable.AddRow("Certificate", context.Config.Certificates.Mode == CertificateSettings.ImportedMode ? "Import your PEM certificate and key" : "Installation local CA; trust public CA on each client");
+        configTable.AddRow("Network exposure", "One HTTPS port; previous HTTP and monitoring ports close");
 
         return configTable;
     }
@@ -134,23 +170,21 @@ public static class SummaryScreen
             .AddColumn("[bold]What it does[/]")
             .AddColumn("[bold]Memory[/]");
 
-        foreach (var group in ServiceCatalog.All.GroupBy(s => s.Group))
+        var capabilities = ServiceCatalog.Resolve(features);
+
+        foreach (var group in capabilities.Services.GroupBy(service => service.Group))
         {
-            var enabled = group.Where(s => s.IsEnabled(features)).ToList();
-
-            if (enabled.Count == 0)
-            {
-                continue;
-            }
-
-            foreach (var service in enabled)
+            foreach (var service in group)
             {
                 table.AddRow(
                     Markup.Escape(service.Name),
                     Markup.Escape(service.Description),
-                    service.OneShot ? "[dim]once, during setup[/]" : $"~{service.MemoryGb:0.#} GB");
+                    service.OneShot ? "[dim]once, during setup[/]" : $"~{service.MemoryMb} MB");
             }
         }
+
+        table.AddRow("Memory headroom", "Allowance included in the total planning estimate.",
+            $"{capabilities.Services.Where(service => !service.OneShot).Sum(service => service.MemoryHeadroomMb)} MB");
 
         return table;
     }

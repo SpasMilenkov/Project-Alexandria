@@ -14,11 +14,11 @@ public sealed class ShellHarness : IDisposable
     private readonly IAnsiConsole _original;
 
     public TestConsole Console { get; }
-    public FakeKeys Keys { get; }
+    public IKeySource Keys { get; }
     public InstallationContext Context { get; }
     public Shell Shell { get; }
 
-    public ShellHarness(FakeKeys keys)
+    public ShellHarness(IKeySource keys)
     {
         Keys = keys;
         _original = AnsiConsole.Console;
@@ -28,6 +28,8 @@ public sealed class ShellHarness : IDisposable
         AnsiConsole.Console = Console;
 
         Context = new InstallationContext();
+        Context.Config.PublicEndpoint = new Builder.Models.PublicEndpoint { Host = "192.0.2.10", HttpsPort = 443 };
+        Context.Config.ProjectName = "builder-ui-test";
 
         Shell = new Shell(Context, keys)
         {

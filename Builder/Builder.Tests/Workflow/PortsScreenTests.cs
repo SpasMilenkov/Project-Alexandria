@@ -14,13 +14,9 @@ public class PortsScreenTests
     private static ISystemChecker CheckerWith(params int[] busyPorts)
     {
         var checker = Substitute.For<ISystemChecker>();
-
         checker.IsPortAvailable(Arg.Any<int>()).Returns(true);
 
-        foreach (var port in busyPorts)
-        {
-            checker.IsPortAvailable(port).Returns(false);
-        }
+        foreach (var port in busyPorts) checker.IsPortAvailable(port).Returns(false);
 
         checker.GetProcessUsingPort(Arg.Any<int>()).Returns("some-process");
 
@@ -28,80 +24,92 @@ public class PortsScreenTests
     }
 
     [Fact]
-    public void Run_allPortsFree_storesDefaults()
+    public void Run_freeDefault_publishesOnlyHttpsAndKeepsLanHost()
     {
-        using var h = new ShellHarness(new FakeKeys().Enter());
+        using var harness = new ShellHarness(new FakeKeys().Enter().Enter().Enter());
+        var checker = CheckerWith();
 
-        h.Context.Features.SetEnabled(FeatureCatalog.Monitoring.Id, false);
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
 
-        var outcome = PortsScreen.Run(h.Shell, new PortResolver(CheckerWith()), CheckerWith());
-
-        outcome.Should().Be(ScreenOutcome.Continue);
-        h.Context.Config.Ports["HTTP_PORT"].Should().Be(80);
-        h.Context.Config.Ports["HTTPS_PORT"].Should().Be(443);
+        harness.Context.Config.Ports.Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, int>("HTTPS_PORT", 443));
+        harness.Context.Config.PublicEndpoint.Origin.Should().Be("https://192.0.2.10");
+        harness.Output.Should().Contain("one");
+        harness.Output.Should().Contain("internal services stay private");
     }
 
     [Fact]
-    public void Run_allPortsFree_escapeReturnsBack()
+    public void Run_hostCaptureEscape_returnsBackWithoutSubmitting()
     {
-        using var h = new ShellHarness(new FakeKeys().Press(ConsoleKey.Escape));
+        using var harness = new ShellHarness(new FakeKeys().Press(ConsoleKey.Escape));
 
-        h.Context.Features.SetEnabled(FeatureCatalog.Monitoring.Id, false);
-
-        var outcome = PortsScreen.Run(h.Shell, new PortResolver(CheckerWith()), CheckerWith());
-
-        outcome.Should().Be(ScreenOutcome.Back);
+        PortsScreen.Run(harness.Shell, new PortResolver(CheckerWith()), CheckerWith()).Should().Be(ScreenOutcome.Back);
     }
 
     [Fact]
-    public void Run_conflictWithAutoRemap_fallsBackTo8080()
+    public void Run_busy443_autoRemapShows8443BeforeConfirmation()
     {
-        // 80 is busy; everything else free. Auto-remap should land on 8080.
-        var checker = CheckerWith(80);
-        using var h = new ShellHarness(new FakeKeys().Enter().Enter()); // choose remap, then confirm assignment
+        var checker = CheckerWith(443);
+        using var harness = new ShellHarness(new FakeKeys().Enter().Enter().Enter());
 
-        h.Context.Features.SetEnabled(FeatureCatalog.Monitoring.Id, false);
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
 
-        var outcome = PortsScreen.Run(h.Shell, new PortResolver(checker), checker);
-
-        outcome.Should().Be(ScreenOutcome.Continue);
-        h.Context.Config.Ports["HTTP_PORT"].Should().Be(8080);
-        h.Context.Config.OriginalPorts["HTTP_PORT"].Should().Be(80);
-
-        // The chosen assignment must be shown, not silently stored
-        h.Output.Should().Contain("8080");
-        h.Output.Should().Contain("Here are the ports Alexandria will use");
+        harness.Context.Config.PublicEndpoint.Origin.Should().Be("https://192.0.2.10:8443");
+        harness.Context.Config.OriginalPorts["HTTPS_PORT"].Should().Be(443);
+        harness.Output.Should().Contain("https://192.0.2.10:8443");
     }
 
     [Fact]
-    public void Run_explainsWhatPortsAre_inPlainLanguage()
+    public void Run_defaultFree_stillAllowsCustomPort()
     {
-        using var h = new ShellHarness(new FakeKeys().Enter());
+        var checker = CheckerWith();
+        using var harness = new ShellHarness(new FakeKeys().Enter().Down().Enter()
+            .Press(ConsoleKey.U, 'u', ctrl: true).Text("9000").Enter().Enter());
 
-        h.Context.Features.SetEnabled(FeatureCatalog.Monitoring.Id, false);
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
 
-        PortsScreen.Run(h.Shell, new PortResolver(), CheckerWith());
-
-        h.Output.Should().Contain("numbered"); // explainer present (wrap-safe words)
-        h.Output.Should().Contain("slots");
-        h.Output.Should().NotContain("door");
+        harness.Context.Config.Ports.Should().ContainSingle();
+        harness.Context.Config.PublicEndpoint.Origin.Should().Be("https://192.0.2.10:9000");
     }
 
     [Fact]
-    public void Run_manualEntry_acceptsOnlyFreePorts()
+    public void Run_manualBusyPort_rejectsUntilFreePortEntered()
     {
-        var checker = CheckerWith(80);
+        var checker = CheckerWith(443, 9000);
+        using var harness = new ShellHarness(new FakeKeys().Enter().Down().Enter()
+            .Press(ConsoleKey.U, 'u', ctrl: true).Text("9000").Enter()
+            .Press(ConsoleKey.U, 'u', ctrl: true).Text("9443").Enter().Enter());
 
-        using var harness = new ShellHarness(new FakeKeys()
-            .Down().Enter()                       // choose "I will type free ports"
-            .Text("9000").Enter()                 // manual port for HTTP
-            .Enter());                            // confirm final assignment
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
 
-        harness.Context.Features.SetEnabled(FeatureCatalog.Monitoring.Id, false);
+        harness.Context.Config.PublicEndpoint.HttpsPort.Should().Be(9443);
+        harness.Output.Should().Contain("already in use");
+    }
 
-        var outcome = PortsScreen.Run(harness.Shell, new PortResolver(checker), checker);
+    [Fact]
+    public void Run_repairWithBoundSavedPort_keepsItsAssignment()
+    {
+        var checker = CheckerWith(443, 9443);
+        using var harness = new ShellHarness(new FakeKeys().Enter().Enter().Enter());
+        harness.Context.IsRepair = true;
+        harness.Context.OwnedHttpsPort = 9443;
+        harness.Context.Config.Ports = new() { ["HTTP_PORT"] = 80, ["HTTPS_PORT"] = 9443, ["GRAFANA_PORT"] = 3000 };
 
-        outcome.Should().Be(ScreenOutcome.Continue);
-        harness.Context.Config.Ports["HTTP_PORT"].Should().Be(9000);
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
+
+        harness.Context.Config.Ports.Should().ContainSingle();
+        harness.Context.Config.PublicEndpoint.HttpsPort.Should().Be(9443);
+    }
+
+    [Fact]
+    public void Run_returnToDraft_keepsCustomHostAndPort()
+    {
+        var checker = CheckerWith();
+        using var harness = new ShellHarness(new FakeKeys().Enter().Enter().Enter());
+        harness.Context.Config.PublicEndpoint = new PublicEndpoint { Host = "alexandria.example", HttpsPort = 9443 };
+        harness.Context.Config.Ports = new() { ["HTTPS_PORT"] = 9443 };
+
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
+
+        harness.Context.Config.PublicEndpoint.Origin.Should().Be("https://alexandria.example:9443");
     }
 }

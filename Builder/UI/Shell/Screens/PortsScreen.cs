@@ -6,168 +6,90 @@ namespace Builder.UI.Shell.Screens;
 
 public static class PortsScreen
 {
-    // D5 copy: lowest possible tech barrier, no metaphors
-    private const string PortExplainer =
-        "Programs on your computer talk to each other through numbered slots " +
-        "called ports. Alexandria needs three free ones: two for the website " +
-        "(one regular, one secure) and one for the monitoring dashboard if you " +
-        "enabled it. If another program already uses a number, we simply pick " +
-        "a different one.";
-
-    public static ScreenOutcome Run(
-        Shell shell,
-        IPortResolver resolver,
-        ISystemChecker checker)
+    public static ScreenOutcome Run(Shell shell, IPortResolver resolver, ISystemChecker checker)
     {
         var context = shell.Context;
-        var mappings = resolver.ResolveAll(context.Features, checker);
-
-        context.PortMappings = mappings;
-
-        IRenderable Table()
-        {
-            var grid = new Grid().AddColumn().AddColumn().AddColumn();
-
-            foreach (var m in mappings)
-            {
-                var port = m.AssignedPort != m.DefaultPort
-                    ? $"[{Theme.Active.Wa}]{m.DefaultPort} → {m.AssignedPort}[/]"
-                    : $":{m.AssignedPort}";
-
-                var status = m.IsConflicted
-                    ? $"[{Theme.Active.Er}]in use[/]"
-                    : $"[{Theme.Active.Su}]free[/]";
-
-                grid.AddRow(
-                    new Markup($"[bold]{m.ServiceName}[/]"),
-                    new Markup(port),
-                    new Markup(status));
-            }
-
-            return grid;
-        }
-
-        IRenderable Header(string note) => new Rows(
-            Views.Title("Ports"),
-            Views.Note(PortExplainer),
-            Views.Note(note),
-            Table());
-
-        var conflicts = mappings.Where(m => m.IsConflicted).ToList();
-
-        if (conflicts.Count == 0)
-        {
-            shell.SetMain(new Rows(
-                Header("All ports are free."),
-                new Rule().RuleStyle(Theme.Active.BorderStyle),
-                Views.Note("Press Enter to continue - Esc takes you back.")));
-
-            if (IntroScreen.WaitEnter(shell))
-            {
-                return ScreenOutcome.Back;
-            }
-        }
-        else
-        {
-            var resolution = Widgets.AskSingleSelect(
-                shell,
-                Header($"{conflicts.Count} port(s) are busy"),
-                "How should we handle the busy ports?",
-                ["Pick different ports for me", "I will type free ports", "Cancel setup"],
-                s => s);
-
-            // Esc on the resolution menu goes back a screen (D38)
-            if (resolution is null)
-            {
-                return ScreenOutcome.Back;
-            }
-
-            switch (resolution)
-            {
-                case "Pick different ports for me":
-                    resolver.AutoRemap(mappings);
-
-                    if (mappings.Any(m => m.IsConflicted))
-                    {
-                        shell.Context.ShouldAbort = true;
-
-                        return ScreenOutcome.Abort;
-                    }
-
-                    break;
-
-                case "I will type free ports":
-                    foreach (var conflict in conflicts)
-                    {
-                        if (!TryManualPort(shell, conflict, checker, () => Header("Type a free port")))
-                        {
-                            return ScreenOutcome.Back;
-                        }
-
-                        conflict.IsConflicted = false;
-                    }
-
-                    break;
-
-                default:
-                    context.ShouldAbort = true;
-
-                    return ScreenOutcome.Abort;
-            }
-
-            // Show the final assignment so "pick for me" is never a leap of
-            // faith, and Esc still offers a way back
-            shell.SetMain(new Rows(
-                Header("Here are the ports Alexandria will use."),
-                new Rule().RuleStyle(Theme.Active.BorderStyle),
-                Views.Note("Press Enter to continue - Esc takes you back.")));
-
-            if (IntroScreen.WaitEnter(shell))
-            {
-                return ScreenOutcome.Back;
-            }
-        }
-
-        context.Config.Ports = mappings.ToDictionary(m => m.PortKey, m => m.AssignedPort);
-
-        context.Config.OriginalPorts = mappings
-            .Where(m => m.AssignedPort != m.DefaultPort)
-            .ToDictionary(m => m.PortKey, m => m.DefaultPort);
-
-        return ScreenOutcome.Continue;
-    }
-
-    // Returns false when the user pressed Esc to go back (D38)
-    private static bool TryManualPort(Shell shell, PortMapping mapping, ISystemChecker checker, Func<IRenderable> header)
-    {
-        var raw = Widgets.AskText(
-            shell,
-            header(),
+        var endpoint = context.Config.PublicEndpoint;
+        var suggestedHost = string.IsNullOrEmpty(endpoint.Host) ? PublicEndpoint.SuggestHost() : endpoint.Host;
+        var host = Widgets.AskText(shell, new Rows(
+            Views.Title("Access from your network"),
+            Views.Note("Alexandria uses one secure HTTPS port for the website, API, files, and optional monitoring."),
+            Views.Note("Use this computer's LAN IPv4 address or a DNS name that your devices can resolve. Keep the address stable.")),
             new TextFieldSpec
             {
-                Label = $"Port for {mapping.ServiceName} (was {mapping.DefaultPort})",
-                Initial = (mapping.DefaultPort + 1).ToString(),
-                Hint = "1-65535",
+                Label = "LAN address or DNS name",
+                Initial = context.PublicHostDraft ?? suggestedHost,
+                Hint = "For example, 192.168.0.106. Enter a host only, without https:// or a port.",
+                Validator = value => PublicEndpoint.TryNormalizeHost(value, out _, out var error) ? null : error,
+            });
+        context.PublicHostDraft = host;
+
+        if (shell.TakeEscape()) return ScreenOutcome.Back;
+
+        PublicEndpoint.TryNormalizeHost(host, out host, out _);
+        var mappings = resolver.ResolveAll(context.Features, checker);
+        var mapping = mappings.Single();
+        var savedPort = context.Config.Ports.GetValueOrDefault("HTTPS_PORT", endpoint.HttpsPort);
+
+        if (savedPort is < 1 or > 65535) throw new InvalidOperationException("The saved HTTPS port is invalid. Inspect the installation metadata before repair.");
+
+        mapping.AssignedPort = savedPort;
+        mapping.IsConflicted = !IsAvailable(savedPort);
+        context.PortMappings = mappings;
+
+        IRenderable Header(string message) => new Rows(
+            Views.Title("One secure port"),
+            Views.Note("A port is a numbered network connection. Alexandria publishes one; its internal services stay private."),
+            Views.Note(message),
+            new Markup(Markup.Escape(new PublicEndpoint { Host = host, HttpsPort = mapping.AssignedPort }.Origin)));
+
+        var options = mapping.IsConflicted
+            ? new[] { "Pick a free HTTPS port", "Choose another port" }
+            : new[] { "Keep this HTTPS port", "Choose another port" };
+        var choice = Widgets.AskSingleSelect(shell,
+            Header(mapping.IsConflicted ? $"Port {savedPort} is busy. The first fallback is 8443." : "Keep this address or choose a different port."),
+            "HTTPS port", options, value => value);
+
+        if (choice is null) return ScreenOutcome.Back;
+
+        if (choice == "Pick a free HTTPS port")
+        {
+            resolver.AutoRemap(mappings);
+
+            if (mapping.IsConflicted) throw new InvalidOperationException("No available HTTPS port was found. Free a port and retry setup.");
+        }
+        else if (choice == "Choose another port")
+        {
+            var raw = Widgets.AskText(shell, Header("Choose the port your devices will use."), new TextFieldSpec
+            {
+                Label = "HTTPS port",
+                Initial = mapping.AssignedPort.ToString(),
+                Hint = "1–65535; 8443 is a convenient alternative to 443.",
                 Validator = value =>
                 {
-                    if (!int.TryParse(value, out var port) || port is < 1 or > 65535)
-                    {
-                        return "Enter a number between 1 and 65535";
-                    }
+                    if (!int.TryParse(value, out var port) || port is < 1 or > 65535) return "Enter a number between 1 and 65535.";
 
-                    return checker.IsPortAvailable(port)
-                        ? null
-                        : $"Port {port} is already in use";
+                    return IsAvailable(port) ? null : $"Port {port} is already in use.";
                 },
             });
 
-        if (shell.TakeEscape())
-        {
-            return false;
+            if (shell.TakeEscape()) return ScreenOutcome.Back;
+
+            mapping.AssignedPort = int.Parse(raw);
+            mapping.IsConflicted = false;
         }
 
-        mapping.AssignedPort = int.Parse(raw);
+        context.Config.PublicEndpoint = new PublicEndpoint { Host = host, HttpsPort = mapping.AssignedPort };
+        context.Config.Ports = new Dictionary<string, int> { ["HTTPS_PORT"] = mapping.AssignedPort };
+        context.Config.OriginalPorts = mapping.AssignedPort == 443
+            ? new Dictionary<string, int>()
+            : new Dictionary<string, int> { ["HTTPS_PORT"] = 443 };
+        shell.SetMain(new Rows(Header("Your devices will use this HTTPS address."),
+            Views.Note("Any previous HTTP or separate monitoring port will close when the new configuration starts."),
+            Views.Note("Press Enter to continue; Esc returns to your choices.")));
 
-        return true;
+        return IntroScreen.WaitEnter(shell) ? ScreenOutcome.Back : ScreenOutcome.Continue;
+
+        bool IsAvailable(int port) => context.IsRepair && context.OwnedHttpsPort == port || checker.IsPortAvailable(port);
     }
 }

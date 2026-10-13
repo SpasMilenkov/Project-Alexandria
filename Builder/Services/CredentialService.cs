@@ -17,7 +17,7 @@ public interface ICredentialService
 // the .env afterwards (locked decision D6).
 public class CredentialService : ICredentialService
 {
-    private const string PasswordChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    private const string PasswordChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
 
     public Dictionary<string, string> GenerateAllCredentials(FeatureSelection features)
     {
@@ -46,8 +46,11 @@ public class CredentialService : ICredentialService
             ["TRANSPILATION_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
             ["RABBITMQ_MEDIA_METADATA_WORKER"] = "media_metadata_worker_user",
             ["MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
-            ["RABBITMQ_LYRICS_WORKER"] = "lyrics_worker",
+            ["RABBITMQ_LYRICS_WORKER"] = "lyrics_worker_user",
             ["LYRICS_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
+            ["RABBITMQ_PLAYLIST_WORKER"] = "playlist_worker_user",
+            ["PLAYLIST_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
+            ["RABBITMQ_ESSENTIA_WORKER"] = "essentia_worker_user",
             ["ESSENTIA_WORKER_RABBITMQ_PASSWORD"] = GeneratePassword(),
 
             // Application secrets
@@ -81,12 +84,13 @@ public class CredentialService : ICredentialService
 
     private static string GenerateFromCharset(string charset, int length)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(length);
+
         var result = new char[length];
-        var bytes = RandomNumberGenerator.GetBytes(length);
 
         for (var i = 0; i < length; i++)
         {
-            result[i] = charset[bytes[i] % charset.Length];
+            result[i] = charset[RandomNumberGenerator.GetInt32(charset.Length)];
         }
 
         return new string(result);
