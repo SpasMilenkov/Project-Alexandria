@@ -1,7 +1,5 @@
 <template>
-  <main
-    class="mx-auto w-full max-w-5xl px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-6 md:py-8"
-  >
+  <main class="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 md:py-8">
     <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p
@@ -15,57 +13,37 @@
         </h1>
 
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Your daily rhythm and the years worth keeping.
+          Your recent months, annual recaps, and daily listening history.
         </p>
       </div>
 
       <UButton
-        :to="`/stats/wrapped/${currentYear}`"
+        :to="{ query: route.query, hash: '#timeline' }"
         color="neutral"
         variant="outline"
-        icon="mdi:gift-outline"
+        icon="mdi:calendar-clock-outline"
         class="self-start shrink-0"
+        @click="startSectionJump"
       >
-        {{ currentYear }} Wrapped
+        Jump to timeline
       </UButton>
     </header>
 
-    <nav
-      aria-label="Listening sections"
-      class="frosted-glass glass-surface-strong fixed inset-x-0 bottom-0 z-20 flex justify-center gap-2 border-t border-gray-200/70 px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] dark:border-gray-700/70 md:static md:mx-auto md:mb-6 md:w-fit md:justify-start md:rounded-full md:border md:p-2"
-    >
-      <RouterLink
-        v-for="section in sections"
-        :key="section.value"
-        v-slot="{ href, navigate }"
-        custom
-        :to="{ path: '/stats', query: { ...route.query, view: section.value }, hash: route.hash }"
-      >
-        <a
-          :href="href"
-          :aria-current="activeSection === section.value ? 'page' : undefined"
-          class="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:min-h-10 md:flex-none motion-reduce:transition-none"
-          :class="
-            activeSection === section.value
-              ? 'bg-primary/10 text-primary'
-              : 'text-gray-600 hover:bg-gray-100/50 dark:text-gray-400 dark:hover:bg-gray-800/50'
-          "
-          @click="navigate"
-        >
-          <UIcon :name="section.icon" class="h-4 w-4" />
-          {{ section.label }}
-        </a>
-      </RouterLink>
-    </nav>
+    <div :key="userId" class="space-y-8">
+      <div id="recaps" ref="recapsSection" class="scroll-mt-8" tabindex="-1">
+        <ListeningRecaps />
+      </div>
 
-    <KeepAlive :key="userId">
-      <component :is="activePanel" />
-    </KeepAlive>
+      <div id="timeline" ref="timelineSection" class="scroll-mt-8" tabindex="-1">
+        <ListeningTimeline />
+      </div>
+    </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { useEventListener, useResizeObserver } from "@vueuse/core";
+import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import ListeningRecaps from "@/components/streaming/wrapped/ListeningRecaps.vue";
@@ -77,16 +55,46 @@ const auth = useAuthStore();
 
 const userId = computed(() => auth.user?.user.id);
 
-const currentYear = new Date().getUTCFullYear();
+const timelineSection = useTemplateRef("timelineSection");
+const recapsSection = useTemplateRef("recapsSection");
+const followingJump = ref(false);
 
-const sections = [
-  { value: "timeline", label: "Timeline", icon: "mdi:calendar-clock-outline" },
-  { value: "recaps", label: "Recaps", icon: "mdi:gift-outline" },
-];
+const alignSection = (focus = false) => {
+  if (!followingJump.value) return;
 
-const activeSection = computed(() => (route.query.view === "timeline" ? "timeline" : "recaps"));
+  const target = route.hash === "#recaps" ? recapsSection.value : timelineSection.value;
 
-const panels = { timeline: ListeningTimeline, recaps: ListeningRecaps };
+  target?.scrollIntoView({ block: "start" });
+  if (focus) target?.focus({ preventScroll: true });
+};
 
-const activePanel = computed(() => panels[activeSection.value]);
+const startSectionJump = async () => {
+  followingJump.value = true;
+  await nextTick();
+
+  alignSection(true);
+};
+
+useResizeObserver([recapsSection, timelineSection], () => alignSection());
+
+useEventListener(
+  ["wheel", "touchstart", "pointerdown", "keydown"],
+  () => {
+    followingJump.value = false;
+  },
+  { passive: true },
+);
+
+watch(
+  () => [route.query.view, route.hash],
+  async () => {
+    if (route.query.view !== "timeline" && route.hash !== "#timeline" && route.hash !== "#recaps") {
+      followingJump.value = false;
+      return;
+    }
+
+    await startSectionJump();
+  },
+  { immediate: true, flush: "post" },
+);
 </script>

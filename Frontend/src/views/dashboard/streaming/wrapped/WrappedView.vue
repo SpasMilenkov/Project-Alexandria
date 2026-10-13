@@ -8,11 +8,11 @@
           <p
             class="text-xs font-semibold tracking-[0.16em] text-gray-600 uppercase dark:text-gray-400"
           >
-            Your year, on record
+            {{ month ? "Your month, on record" : "Your year, on record" }}
           </p>
 
           <h1 class="mt-2 text-3xl font-black tracking-tight text-gray-900 dark:text-gray-100">
-            {{ year }} Wrapped
+            {{ month ? monthLabel : year }} Wrapped
           </h1>
 
           <div class="mt-2 flex flex-wrap items-center gap-2">
@@ -28,11 +28,21 @@
           aria-label="Wrapped controls"
         >
           <USelect
+            v-if="!month"
             :model-value="year"
             :items="yearOptions"
             class="w-24"
             aria-label="Wrapped year"
             @update:model-value="goToYear"
+          />
+
+          <USelect
+            v-else
+            :model-value="month"
+            :items="monthOptions"
+            class="w-44"
+            aria-label="Wrapped month"
+            @update:model-value="goToMonth"
           />
 
           <WrappedPaletteSwitcher v-if="hasDeck" v-model="palette" />
@@ -47,9 +57,9 @@
             />
           </UDropdownMenu>
 
-          <div v-if="hasDeck" class="ml-auto md:ml-0">
+          <div v-if="hasDeck && !month" class="ml-auto md:ml-0">
             <WrappedExportButton
-              :key="`${userId}-${year}`"
+              :key="`${userId}-${month ?? year}`"
               :response="deck!"
               :year="year"
               :palette="palette"
@@ -84,7 +94,7 @@
         <p class="font-semibold text-gray-900 dark:text-gray-100">This recap uses a newer format</p>
 
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Update the app to view this year's Wrapped.
+          Update the app to view this recap.
         </p>
       </div>
       <div
@@ -98,7 +108,7 @@
           {{ emptyState.description }}
         </p>
 
-        <UButton v-if="isLatestYear" class="mt-6" to="/streaming/music" color="primary">{{
+        <UButton v-if="month || isLatestYear" class="mt-6" to="/streaming/music" color="primary">{{
           emptyState.actionLabel
         }}</UButton>
         <UButton v-else class="mt-6" color="primary" @click="goToYear(currentYear)">{{
@@ -107,9 +117,11 @@
       </div>
       <WrappedExperience
         v-else
-        :key="`${userId}-${year}`"
+        :key="`${userId}-${month ?? year}`"
         :response="deck!"
         :year="year"
+        :period-label="month ? monthLabel : undefined"
+        :month="month ?? undefined"
         :palette="palette"
       />
     </main>
@@ -118,6 +130,7 @@
 
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
+import { useNow } from "@vueuse/core";
 import { isAxiosError } from "axios";
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -127,7 +140,8 @@ import WrappedExperience from "@/components/streaming/wrapped/WrappedExperience.
 import WrappedExportButton from "@/components/streaming/wrapped/WrappedExportButton.vue";
 import WrappedPaletteSwitcher from "@/components/streaming/wrapped/WrappedPaletteSwitcher.vue";
 import { useWrappedPalette } from "@/composables/useWrappedPalette";
-import { getSummary } from "@/queries/stats";
+import { HomeRecapPeriod } from "@/enums/home-widget";
+import { getSummary, getWrapped } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
 import {
   MIN_WRAPPED_YEAR,
@@ -135,6 +149,13 @@ import {
   wrappedEmptyState,
   yearRange,
 } from "@/utils/wrapped-display.utils";
+import {
+  parseWrappedMonth,
+  wrappedMonth,
+  wrappedMonthLabel,
+  wrappedMonthLocation,
+  wrappedMonthRange,
+} from "@/utils/wrapped-month";
 import { SUMMARY_KIND_WRAPPED, summaryToWrappedDeck } from "@/utils/wrapped-summary.utils";
 
 const route = useRoute();
@@ -144,9 +165,27 @@ const { palette, paletteStyle } = useWrappedPalette();
 
 const userId = computed(() => auth.user?.user.id);
 
+const now = useNow({ interval: 60_000 });
 const currentYear = new Date().getUTCFullYear();
+const month = computed(() => parseWrappedMonth(route.query.month, now.value));
+const monthLabel = computed(() => (month.value ? wrappedMonthLabel(month.value) : ""));
+const monthRange = computed(() => (month.value ? wrappedMonthRange(month.value, now.value) : null));
+const monthOptions = computed(() =>
+  Array.from({ length: 12 }, (_, offset) => {
+    const date = new Date(
+      Date.UTC(now.value.getUTCFullYear(), now.value.getUTCMonth() - offset, 1),
+    );
+    const value = wrappedMonth(HomeRecapPeriod.CurrentMonth, date);
 
-const year = computed(() => parseWrappedYear(route.params.year, currentYear));
+    return { label: wrappedMonthLabel(value), value };
+  }),
+);
+
+const year = computed(() => {
+  if (month.value) return Number(month.value.slice(0, 4));
+
+  return parseWrappedYear(route.params.year, currentYear);
+});
 
 const range = computed(() => yearRange(year.value));
 
@@ -157,21 +196,50 @@ const yearOptions = Array.from({ length: currentYear - MIN_WRAPPED_YEAR + 1 }, (
   value: currentYear - index,
 }));
 
-const emptyState = computed(() => wrappedEmptyState(year.value, currentYear));
+const emptyState = computed(() => {
+  if (month.value)
+    return {
+      title: `No recorded listening in ${monthLabel.value}`,
+      description: "There are no recorded Alexandria listening sessions for this month.",
+      actionLabel: "Browse music",
+    };
+
+  return wrappedEmptyState(year.value, currentYear);
+});
 
 // Omit the current end boundary so every refresh resolves a fresh server-side "now".
-const { data, status, asyncStatus, error, refetch } = useQuery(() =>
-  getSummary({
+const annualQuery = useQuery(() => ({
+  ...getSummary({
     kind: SUMMARY_KIND_WRAPPED,
     from: range.value.from,
     to: isLatestYear.value ? undefined : range.value.to,
     userId: userId.value,
   }),
-);
+  enabled: Boolean(userId.value) && !month.value,
+}));
 
-const deck = computed(() => (data.value ? summaryToWrappedDeck(data.value) : undefined));
+const monthlyQuery = useQuery(() => ({
+  ...getWrapped({ userId: userId.value, from: monthRange.value?.from, to: monthRange.value?.to }),
+  enabled: Boolean(userId.value) && Boolean(month.value),
+}));
 
-const isFinal = computed(() => Boolean(data.value?.isFinal));
+const activeQuery = computed(() => (month.value ? monthlyQuery : annualQuery));
+const status = computed(() => activeQuery.value.status.value);
+const asyncStatus = computed(() => activeQuery.value.asyncStatus.value);
+const error = computed(() => activeQuery.value.error.value);
+const refetch = () => activeQuery.value.refetch();
+
+const deck = computed(() => {
+  if (month.value) return monthlyQuery.data.value;
+
+  return annualQuery.data.value ? summaryToWrappedDeck(annualQuery.data.value) : undefined;
+});
+
+const isFinal = computed(() => {
+  if (month.value) return Boolean(monthRange.value?.isFinal);
+
+  return Boolean(annualQuery.data.value?.isFinal);
+});
 
 const isPending = computed(() => status.value === "pending");
 
@@ -191,7 +259,12 @@ const authWaiting = computed(() => !userId.value || isAuthError(error.value));
 const visibleError = computed(() => error.value && !isAuthError(error.value));
 
 const unsupportedPayload = computed(
-  () => !isPending.value && !authWaiting.value && !visibleError.value && data.value && !deck.value,
+  () =>
+    !isPending.value &&
+    !authWaiting.value &&
+    !visibleError.value &&
+    annualQuery.data.value &&
+    !deck.value,
 );
 
 const hasDeck = computed(
@@ -213,9 +286,22 @@ const moreActions = computed(() => [
       void refetch();
     },
   },
+  ...(month.value
+    ? [
+        {
+          label: "View annual Wrapped",
+          icon: "i-heroicons-calendar",
+          onSelect: () => {
+            goToYear(year.value);
+          },
+        },
+      ]
+    : []),
 ]);
 
 const periodLabel = computed(() => {
+  if (month.value) return isFinal.value ? "Your month in music" : "Your month in music so far";
+
   if (!isLatestYear.value)
     return isFinal.value ? "Your final record for this year" : "A chapter from your year in music";
 
@@ -234,5 +320,12 @@ const goToYear = (next: number) => {
   if (next < MIN_WRAPPED_YEAR || next > currentYear) return;
 
   void router.push({ name: "wrapped", params: { year: String(next) } });
+};
+
+const goToMonth = (next: string) => {
+  const parsed = parseWrappedMonth(next, now.value);
+  if (!parsed) return;
+
+  void router.push(wrappedMonthLocation(parsed));
 };
 </script>
