@@ -56,6 +56,9 @@ services:
     depends_on:
       garage:
         condition: service_healthy
+    environment:
+      # Fixed generation without a persisted receipt: credentials are exported on every run.
+      ALEXANDRIA_GENERATION_ID: ${ALEXANDRIA_GENERATION_ID:-manual-local}
     volumes:
       - ./garage.local.toml:/etc/garage.toml:ro
       - garage_local_meta_data:/var/lib/garage/meta
