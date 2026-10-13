@@ -34,6 +34,7 @@ public static class ServiceExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
+        services.AddScoped<IHomeWidgetRepository, HomeWidgetRepository>();
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
         services.AddScoped<IStreamHistoryRepository, StreamHistoryRepository>();
         services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();

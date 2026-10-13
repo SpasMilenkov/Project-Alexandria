@@ -180,7 +180,7 @@ const {
   isLoading: rankingLoading,
   error: rankingError,
   refresh: refreshRanking,
-} = useQuery(userStorageRanking, () => 10);
+} = useQuery(() => userStorageRanking(10));
 
 const refreshAll = () => {
   refresh();

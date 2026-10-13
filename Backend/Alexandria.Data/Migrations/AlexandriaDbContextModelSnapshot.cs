@@ -336,6 +336,11 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsStarred")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -758,6 +763,77 @@ namespace Alexandria.Data.Migrations
                             t.HasCheckConstraint("CK_FileEntry_EncryptionSalt_Length", "\"EncryptionSalt\" IS NULL OR octet_length(\"EncryptionSalt\") = 16");
 
                             t.HasCheckConstraint("CK_FileEntry_IntegrityTag_Length", "\"IntegrityTag\" IS NULL OR octet_length(\"IntegrityTag\") = 16");
+                        });
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.HomeWidget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Layout")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OptionsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("Options");
+
+                    b.Property<int>("OptionsVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<bool?>("ShowTitle")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Width")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("X")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Y")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Layout");
+
+                    b.ToTable("HomeWidgets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_HomeWidgets_HorizontalBounds", "\"Width\" >= 1 AND \"X\" >= 0 AND\n((\"Layout\" = 0 AND \"Width\" <= 12 AND \"X\" <= 12 - \"Width\") OR\n (\"Layout\" = 1 AND \"Width\" <= 4 AND \"X\" <= 4 - \"Width\"))");
+
+                            t.HasCheckConstraint("CK_HomeWidgets_Layout", "\"Layout\" IN (0, 1)");
+
+                            t.HasCheckConstraint("CK_HomeWidgets_OptionsObject", "jsonb_typeof(\"Options\") = 'object'");
+
+                            t.HasCheckConstraint("CK_HomeWidgets_OptionsVersion", "\"OptionsVersion\" >= 1");
+
+                            t.HasCheckConstraint("CK_HomeWidgets_VerticalBounds", "\"Height\" BETWEEN 1 AND 12 AND \"Y\" >= 0 AND \"Y\" <= 256 - \"Height\"");
                         });
                 });
 
@@ -2203,6 +2279,15 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("ContentObject");
 
                     b.Navigation("File");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.HomeWidget", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.Job", b =>

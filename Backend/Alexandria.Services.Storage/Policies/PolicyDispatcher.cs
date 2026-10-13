@@ -1,7 +1,6 @@
 using Alexandria.Common;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
-using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Policies;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +34,7 @@ public sealed partial class PolicyDispatcher(
         foreach (var rule in policy.Rules.OrderBy(r => r.Priority))
         {
             if (ev.IsNewVersion && !rule.ApplyOnNewVersion) continue;
-            if (!RuleTriggerMatches(rule, ev)) continue;
+            if (!PolicyRuleTrigger.Matches(rule.TriggerType, rule.TriggerValue, ev.MimeType)) continue;
 
             try
             {
@@ -57,15 +56,5 @@ public sealed partial class PolicyDispatcher(
                 LogRuleDispatchFailed(logger, ex, rule.Id, ev.FileId);
             }
         }
-    }
-
-    private static bool RuleTriggerMatches(PolicyRuleDto rule, FileFinalizedEvent ev)
-    {
-        return rule.TriggerType switch
-        {
-            PolicyTriggerType.AnyFile => true,
-            PolicyTriggerType.FileGroup => FileGroups.MatchesMimeType(rule.TriggerValue, ev.MimeType),
-            _ => false
-        };
     }
 }

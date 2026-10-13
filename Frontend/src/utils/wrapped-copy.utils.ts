@@ -24,8 +24,10 @@ const storyNotes: Partial<Record<number, string>> = {
   [WrappedCardType.BusiestDay]:
     "Your biggest day with music, shown alongside the quieter days around it. Choose a day to revisit your listening.",
   [WrappedCardType.LongestSitting]: "The time you settled in for your longest listen.",
-  [WrappedCardType.Discoveries]: "Songs you played in Alexandria for the first time during this chapter.",
-  [WrappedCardType.NewArtists]: "New voices that joined your Alexandria rotation during this chapter.",
+  [WrappedCardType.Discoveries]:
+    "Songs you played in Alexandria for the first time during this chapter.",
+  [WrappedCardType.NewArtists]:
+    "New voices that joined your Alexandria rotation during this chapter.",
   [WrappedCardType.LoyalListener]: "The familiar favorites you kept making time for.",
   [WrappedCardType.Exploration]:
     "A mix of fresh finds and familiar favorites. A song is a fresh find when you play it in Alexandria for the first time.",

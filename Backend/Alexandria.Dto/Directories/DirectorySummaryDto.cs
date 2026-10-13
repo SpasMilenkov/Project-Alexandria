@@ -8,4 +8,5 @@ public record DirectorySummaryDto(
     Guid? ParentId,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    UserDto OwnerUserDto);
+    UserDto OwnerUserDto,
+    bool IsStarred);

@@ -26,6 +26,7 @@ export interface FileSummary {
 
 export interface DirectorySummaryDto {
   id: string;
+  isStarred: boolean;
   name: string;
   parentId: string;
   createdAt: string;
@@ -40,6 +41,7 @@ export interface RootContentDto {
 
 export interface DirectoryDto {
   id: string;
+  isStarred: boolean;
   name: string;
   parentId: string;
   createdAt: string;
@@ -55,6 +57,11 @@ export interface CreateDirectoryResponse {
 
 export interface UpdateDirectoryResponse {
   directory: DirectoryDto;
+}
+
+export interface DirectoryFavoriteResponse {
+  directoryId: string;
+  isStarred: boolean;
 }
 
 export interface GetDirectoryResponse {
@@ -136,6 +143,18 @@ export interface PaginatedResponse<T> {
 
 // oxlint-disable-next-line sort-keys
 export const directoryApi = {
+  setFavorite: async (
+    directoryId: string,
+    isStarred: boolean,
+  ): Promise<DirectoryFavoriteResponse> => {
+    const response = await apiClient.patch<DirectoryFavoriteResponse>(
+      `/directories/${directoryId}/favorite`,
+      { isStarred },
+    );
+
+    return response.data;
+  },
+
   // Create a new directory
   createDirectory: async (data: CreateDirectorySchema): Promise<CreateDirectoryResponse> => {
     const response = await apiClient.post<CreateDirectoryResponse>("/directories", data);

@@ -228,7 +228,7 @@ public class FakeStorageService : IStorageService
     //     CancellationToken ct = default)
     //     => Task.FromResult(new UploadResult(objectName, "fake-checksum", 0, Guid.NewGuid()));
 
-    public Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
+    public Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false, CancellationToken ct = default)
         => Task.FromResult(new StorageBreakdown
         {
             SizeByType = new Dictionary<string, long>(),

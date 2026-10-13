@@ -80,7 +80,7 @@ const trendParams = computed(() => {
 });
 
 const { data: overview, isLoading: overviewLoading } = useQuery(lyricsOverview());
-const { data: trend, isLoading: trendLoading } = useQuery(lyricsTrend, () => trendParams.value);
+const { data: trend, isLoading: trendLoading } = useQuery(() => lyricsTrend(trendParams.value));
 
 const statusCount = (status: number): number =>
   overview.value?.statusCounts.find((entry) => entry.status === status)?.count ?? 0;

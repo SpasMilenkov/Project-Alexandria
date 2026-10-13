@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import { useAuthStore } from "@/stores/auth";
+import { getSignInDestination } from "@/utils/home-landing";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -35,6 +36,12 @@ const router = createRouter({
       name: "dashboard",
       path: "/dashboard/:dirId?",
       props: true,
+    },
+    {
+      component: () => import("@/views/dashboard/HomeView.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
+      name: "home",
+      path: "/home",
     },
     {
       component: () => import("@/views/dashboard/SettingsView.vue"),
@@ -163,6 +170,12 @@ const router = createRouter({
       path: "/onboarding/tour",
     },
     {
+      component: () => import("@/views/dashboard/streaming/MediaOverviewView.vue"),
+      meta: { layout: "dashboard", requiresAuth: true },
+      name: "media-overview",
+      path: "/media",
+    },
+    {
       component: () => import("@/views/dashboard/streaming/MusicView.vue"),
       meta: { layout: "dashboard", requiresAdmin: false, requiresAuth: true },
       name: "music",
@@ -244,16 +257,16 @@ const router = createRouter({
 });
 
 // Navigation Guard
-router.beforeEach((to, from) => {
+router.beforeEach((to) => {
   const authStore = useAuthStore();
   const { isAuthenticated, isAdmin } = authStore;
 
   if (to.meta.requiresAuth && !isAuthenticated) {
     return { path: "/auth", query: { redirect: to.fullPath } };
-  } else if (to.meta.guestOnly && isAuthenticated) {
-    return (to.query.redirect as string) || "/dashboard";
+  } else if (isAuthenticated && (to.meta.guestOnly || to.name === "index")) {
+    return getSignInDestination(router, authStore.user?.onboardingStep, to.query.redirect);
   } else if (to.meta.requiresAdmin && !isAdmin) {
-    return { path: "/dashboard" };
+    return { path: "/home" };
   }
 });
 

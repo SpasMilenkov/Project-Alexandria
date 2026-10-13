@@ -59,6 +59,14 @@ public interface IStreamHistoryRepository : IRepository<StreamHistory>
     Task<IReadOnlyList<ListeningSessionRow>> GetListeningSessionRowsAsync(
         Guid userId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default);
 
+    /// <summary>Aggregates and limits qualified-play rankings for playable owner-scoped audio files.</summary>
+    Task<IReadOnlyList<TopSongRankingRow>> GetTopSongsAsync(
+        Guid userId, DateTime fromUtc, DateTime toUtc, int limit, CancellationToken ct = default);
+
+    /// <summary>Ranks familiar playable audio using persisted history aggregates and an inactivity cutoff.</summary>
+    Task<IReadOnlyList<JumpBackInRankingRow>> GetJumpBackInAsync(
+        Guid userId, DateTime inactiveBeforeUtc, int limit, CancellationToken ct = default);
+
     /// <summary>
     /// Projects one lightweight row per history for the discovery metrics
     /// (first-seen dates live outside the stats period).

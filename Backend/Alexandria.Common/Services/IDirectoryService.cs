@@ -11,6 +11,9 @@ namespace Alexandria.Common.Services;
 /// </summary>
 public interface IDirectoryService
 {
+    Task<bool> SetDirectoryFavoriteAsync(Guid directoryId, Guid userId, bool isStarred,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Creates a new directory under the specified parent, or at the root level if no parent is given.
     /// </summary>

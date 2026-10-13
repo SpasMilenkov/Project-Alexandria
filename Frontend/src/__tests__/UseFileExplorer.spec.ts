@@ -64,6 +64,7 @@ const withSetup = <T>(composable: () => T): T => {
 const makeDir = (id: string): DirectorySummaryDto => ({
   createdAt: new Date().toISOString(),
   id,
+  isStarred: false,
   name: `Dir ${id}`,
   ownerUserDto: { email: "owner@test.com", id: "owner", name: "Owner" },
   parentId: "root",
@@ -372,6 +373,22 @@ describe("useFileExplorer", () => {
 
       expect(directoriesList.value).toHaveLength(2);
       expect(directoriesList.value.map((d) => d.id)).toEqual(["d1", "d2"]);
+    });
+
+    it("updates favorite state on a refetched page without duplicating loaded folders", async () => {
+      const { directoriesList, dirPagination } = withSetup(() => useFileExplorer());
+      mockDirData.value = { hasNext: true, items: [makeDir("d1")] };
+      await nextTick();
+
+      dirPagination.value.paginationParams.page = 2;
+      mockDirData.value = { hasNext: false, items: [makeDir("d2")] };
+      await nextTick();
+
+      mockDirData.value = { hasNext: false, items: [{ ...makeDir("d2"), isStarred: true }] };
+      await nextTick();
+
+      expect(directoriesList.value.map((directory) => directory.id)).toEqual(["d1", "d2"]);
+      expect(directoriesList.value[1].isStarred).toBe(true);
     });
 
     it("replaces (does not append) when navigating to a new folder resets page to 1", async () => {

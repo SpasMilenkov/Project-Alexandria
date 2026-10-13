@@ -219,10 +219,9 @@ export const statsApi = {
     from?: string,
     to?: string,
   ): Promise<OverviewSummaryDtoResponse> => {
-    const result = await apiClient.get<OverviewSummaryDtoResponse>(
-      `/stats/summaries/${kind}`,
-      { params: { from, to } },
-    );
+    const result = await apiClient.get<OverviewSummaryDtoResponse>(`/stats/summaries/${kind}`, {
+      params: { from, to },
+    });
 
     return result.data;
   },

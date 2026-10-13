@@ -15,6 +15,13 @@ public class DirectoryBuilder
     private DateTime? _updatedAt = null;
     private DateTime? _deletedAt = null;
     private Guid? _updatedBy = null;
+    private bool _isStarred;
+
+    public DirectoryBuilder WithStarred(bool isStarred = true)
+    {
+        _isStarred = isStarred;
+        return this;
+    }
 
     public DirectoryBuilder WithId(Guid id)
     {
@@ -73,6 +80,7 @@ public class DirectoryBuilder
         CreatedAt = _createdAt,
         UpdatedAt = _updatedAt,
         DeletedAt = _deletedAt,
+        IsStarred = _isStarred,
         UpdatedBy = _updatedBy,
         NormalizedName = _name.ToLowerInvariant(),
         // SearchVector is a DB-computed column — not set for in-memory test use

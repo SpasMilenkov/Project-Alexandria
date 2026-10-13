@@ -1,5 +1,8 @@
 <template>
-  <div ref="root" class="grid grid-cols-1 gap-6 text-gray-700 sm:grid-cols-2 xl:grid-cols-3 dark:text-gray-300">
+  <div
+    ref="root"
+    class="grid grid-cols-1 gap-6 text-gray-700 sm:grid-cols-2 xl:grid-cols-3 dark:text-gray-300"
+  >
     <div v-for="month in months" :key="month.key" role="grid" :aria-label="month.label">
       <p class="mb-3 text-xs font-semibold text-gray-900 dark:text-gray-100">{{ month.label }}</p>
 
@@ -14,10 +17,7 @@
       </div>
 
       <div v-for="row in 6" :key="row" class="mb-1 grid grid-cols-7 gap-1" role="row">
-        <template
-          v-for="(cell, offset) in month.cells.slice((row - 1) * 7, row * 7)"
-          :key="offset"
-        >
+        <template v-for="(cell, offset) in month.cells.slice((row - 1) * 7, row * 7)" :key="offset">
           <button
             v-if="cell?.inRange"
             type="button"

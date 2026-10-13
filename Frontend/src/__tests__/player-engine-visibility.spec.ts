@@ -254,9 +254,11 @@ it.each(["audio", "video"] as const)(
     const { wrapper, media, pause } = createEngine(mediaKind);
     let resolveStart: (session: { id: string }) => void = () => undefined;
 
-    mocks.start.mockReturnValueOnce(new Promise<{ id: string }>((resolve) => {
-      resolveStart = resolve;
-    }));
+    mocks.start.mockReturnValueOnce(
+      new Promise<{ id: string }>((resolve) => {
+        resolveStart = resolve;
+      }),
+    );
 
     try {
       await vi.advanceTimersByTimeAsync(100);

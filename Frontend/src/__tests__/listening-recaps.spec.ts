@@ -223,7 +223,6 @@ describe("annual recap overview", () => {
     expect(wrapper.text()).toContain("Could not load past recaps");
     expect(wrapper.get("dl").text()).toContain("17");
   });
-
 });
 
 describe("annual recap finalization and display", () => {

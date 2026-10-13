@@ -28,6 +28,15 @@
       <span class="text-sm text-center line-clamp-2 w-full wrap-break-word font-medium">
         {{ data.name }}
       </span>
+
+      <Icon
+        v-if="data.isStarred"
+        icon="mdi:star"
+        class="absolute right-2 top-2 w-4 h-4 text-gray-600 dark:text-gray-400"
+        role="img"
+        aria-hidden="false"
+        aria-label="Favorite folder"
+      />
     </button>
   </div>
 
@@ -65,6 +74,16 @@
         />
       </span>
       <span class="flex-1 truncate font-medium">{{ data.name }}</span>
+
+      <Icon
+        v-if="data.isStarred"
+        icon="mdi:star"
+        class="w-4 h-4 shrink-0 text-gray-600 dark:text-gray-400"
+        role="img"
+        aria-hidden="false"
+        aria-label="Favorite folder"
+      />
+
       <span class="hidden sm:block text-xs text-gray-500 dark:text-gray-500 tabular-nums shrink-0">
         {{ modifiedLabel }}
       </span>

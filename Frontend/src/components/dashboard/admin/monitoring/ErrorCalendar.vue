@@ -120,7 +120,7 @@ const range = computed(() => ({
   to: new Date(Date.UTC(selectedYear.value + 1, 0, 1)),
 }));
 
-const { data, isLoading, error } = useQuery(errorCalendar, () => range.value);
+const { data, isLoading, error } = useQuery(() => errorCalendar(range.value));
 
 const isAuthError = (err: unknown): boolean => {
   if (!err) return false;

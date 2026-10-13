@@ -13,8 +13,8 @@ public class DirectoryConfiguration : IEntityTypeConfiguration<Directory>
             .HasMaxLength(ValidationConstants.StringLengths.MediumString)
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})");
 
-        // builder.Property(e => e.IsStarred)
-        //     .HasDefaultValue(false);
+        builder.Property(e => e.IsStarred)
+            .HasDefaultValue(false);
 
         builder.Property(e => e.NormalizedName)
             .HasComputedColumnSql(

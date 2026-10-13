@@ -25,6 +25,18 @@ const invalidateDirectoryListings = (queryCache: QueryCache, parentId: string | 
 
 // Mutations
 
+export const setDirectoryFavorite = defineMutation(() => {
+  const queryCache = useQueryCache();
+
+  return useMutation({
+    mutation: ({ directoryId, isStarred }: { directoryId: string; isStarred: boolean }) =>
+      directoryApi.setFavorite(directoryId, isStarred),
+    onSettled: () => {
+      queryCache.invalidateQueries({ key: DIRECTORY_QUERY_KEYS.root });
+    },
+  });
+});
+
 export const createDirectory = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({
@@ -73,6 +85,9 @@ export const moveDirectories = defineMutation(() => {
     ) {
       invalidateDirectoryListings(queryCache, originId);
       invalidateDirectoryListings(queryCache, destinationId);
+
+      queryCache.invalidateQueries({ key: [...DIRECTORY_QUERY_KEYS.root, "favorites"] });
+      queryCache.invalidateQueries({ key: [...DIRECTORY_QUERY_KEYS.root, "search"] });
 
       for (const id of directoryIds) {
         queryCache.invalidateQueries({ exact: true, key: DIRECTORY_QUERY_KEYS.byId(id) });
@@ -123,6 +138,8 @@ export const deleteDirectory = defineMutation(() => {
     ) {
       invalidateDirectoryListings(queryCache, originId);
       queryCache.invalidateQueries({ exact: true, key: DIRECTORY_QUERY_KEYS.byId(id) });
+      queryCache.invalidateQueries({ key: [...DIRECTORY_QUERY_KEYS.root, "favorites"] });
+      queryCache.invalidateQueries({ key: [...DIRECTORY_QUERY_KEYS.root, "search"] });
     },
   });
 });

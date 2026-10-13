@@ -59,6 +59,12 @@ const mapBehaviorFromServer = (raw: any): BehaviorSettings => ({
 });
 
 export const settingsApi = {
+  getHomeTimeZones: async (): Promise<string[]> => {
+    const result = await apiClient.get<string[]>("/settings/home/time-zones");
+
+    return result.data;
+  },
+
   confirmBackgroundImageUpload: async (objectKey: string): Promise<AppearanceSettings> => {
     const result = await apiClient.put<AppearanceSettings>(
       "/settings/appearance/background-image/confirm",

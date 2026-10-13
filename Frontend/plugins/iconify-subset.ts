@@ -6,6 +6,14 @@ import { getIcons } from "@iconify/utils";
 const ICON_SUBSETS: Record<string, string[]> = {
   formkit: ["zip"],
   heroicons: [
+    "arrow-up",
+    "arrow-left",
+    "arrow-down",
+    "bars-3",
+    "device-phone-mobile",
+    "film",
+    "list-bullet",
+    "musical-note",
     "archive-box",
     "arrow-path",
     "arrow-right",

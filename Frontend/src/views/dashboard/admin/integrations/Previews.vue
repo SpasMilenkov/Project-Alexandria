@@ -114,9 +114,8 @@ const volumeParams = computed(() => {
 });
 
 const { data: overview, isLoading: overviewLoading } = useQuery(previewsOverview());
-const { data: volume, isLoading: volumeLoading } = useQuery(
-  previewsVolume,
-  () => volumeParams.value,
+const { data: volume, isLoading: volumeLoading } = useQuery(() =>
+  previewsVolume(volumeParams.value),
 );
 
 // Discrete preview jobs (P6): the active scope selects the backing job type,
@@ -132,9 +131,8 @@ const jobTrendParams = computed(() => ({ ...volumeParams.value, type: scopeJobTy
 const { data: jobOverview, isLoading: jobOverviewLoading } = useQuery(() =>
   previewsJobOverview(scopeJobType.value),
 );
-const { data: jobTrend, isLoading: jobTrendLoading } = useQuery(
-  previewsJobTrend,
-  () => jobTrendParams.value,
+const { data: jobTrend, isLoading: jobTrendLoading } = useQuery(() =>
+  previewsJobTrend(jobTrendParams.value),
 );
 
 const jobStatusCount = (status: number): number =>

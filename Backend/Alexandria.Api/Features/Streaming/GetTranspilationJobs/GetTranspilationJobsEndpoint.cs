@@ -13,12 +13,12 @@ internal sealed class GetTranspilationJobsRequest
     public JobStatus? Status { get; init; }
     public bool? IsVideo { get; init; }
     public Guid? VersionId { get; init; }
-    public DateTime? CreatedAfter { get; init; }
-    public DateTime? CreatedBefore { get; init; }
-    public DateTime? CompletedAfter { get; init; }
-    public DateTime? CompletedBefore { get; init; }
+    public DateTimeOffset? CreatedAfter { get; init; }
+    public DateTimeOffset? CreatedBefore { get; init; }
+    public DateTimeOffset? CompletedAfter { get; init; }
+    public DateTimeOffset? CompletedBefore { get; init; }
     public int? MinRetryCount { get; init; }
-    public int CurrentPage { get; init; } = 0;
+    public int CurrentPage { get; init; } = 1;
     public int PageSize { get; init; } = 25;
 }
 
@@ -27,7 +27,7 @@ internal sealed class GetTranspilationJobsRequestValidator : Validator<GetTransp
     public GetTranspilationJobsRequestValidator()
     {
         RuleFor(x => x.CurrentPage)
-            .GreaterThanOrEqualTo(0);
+            .GreaterThanOrEqualTo(1);
 
         RuleFor(x => x.PageSize)
             .InclusiveBetween(1, 100);
@@ -68,10 +68,10 @@ internal sealed class GetTranspilationJobsEndpoint(ITranspilationJobService jobS
                 UserId = userId,
                 Status = req.Status,
                 IsVideo = req.IsVideo,
-                CreatedAfter = req.CreatedAfter,
-                CreatedBefore = req.CreatedBefore,
-                CompletedAfter = req.CompletedAfter,
-                CompletedBefore = req.CompletedBefore,
+                CreatedAfter = req.CreatedAfter?.UtcDateTime,
+                CreatedBefore = req.CreatedBefore?.UtcDateTime,
+                CompletedAfter = req.CompletedAfter?.UtcDateTime,
+                CompletedBefore = req.CompletedBefore?.UtcDateTime,
                 MinRetryCount = req.MinRetryCount,
                 CurrentPage = req.CurrentPage,
                 PageSize = req.PageSize
@@ -88,10 +88,10 @@ internal sealed class GetTranspilationJobsEndpoint(ITranspilationJobService jobS
             Status = req.Status,
             IsVideo = isVideo,
             VersionId = req.VersionId,
-            CreatedAfter = req.CreatedAfter,
-            CreatedBefore = req.CreatedBefore,
-            CompletedAfter = req.CompletedAfter,
-            CompletedBefore = req.CompletedBefore,
+            CreatedAfter = req.CreatedAfter?.UtcDateTime,
+            CreatedBefore = req.CreatedBefore?.UtcDateTime,
+            CompletedAfter = req.CompletedAfter?.UtcDateTime,
+            CompletedBefore = req.CompletedBefore?.UtcDateTime,
             MinRetryCount = req.MinRetryCount,
             CurrentPage = req.CurrentPage,
             PageSize = req.PageSize

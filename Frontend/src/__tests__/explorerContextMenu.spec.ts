@@ -33,6 +33,7 @@ const makeFile = (fileId: string): FileResult => ({
 const makeDir = (id: string): DirectorySummaryDto => ({
   createdAt: "2026-01-01T00:00:00.000Z",
   id,
+  isStarred: false,
   name: `Dir ${id}`,
   ownerUserDto: { email: "owner@test.com", id: "owner", name: "Owner" },
   parentId: "root",
@@ -45,6 +46,8 @@ const spies = {
   deleteSelection: vi.fn(),
   downloadDirectory: vi.fn(),
   downloadFile: vi.fn(),
+  favoriteDirectory: vi.fn(),
+  isFavoritePending: vi.fn(() => false),
   moveSelection: vi.fn(),
   openDirectory: vi.fn(),
   openDirectoryDetails: vi.fn(),
@@ -164,6 +167,7 @@ describe("buildExplorerMenuItems", () => {
     expect(labels(items)).toEqual([
       "View details",
       "Open",
+      "Add to favorites",
       "Rename",
       "Move to…",
       "Copy to…",
@@ -189,6 +193,26 @@ describe("buildExplorerMenuItems", () => {
     ]);
     findItem(items, "Download 2 items").onSelect?.();
     expect(spies.downloadDirectory).toHaveBeenCalledTimes(1);
+  });
+
+  it("dispatches the favorite action with the captured directory", () => {
+    const snapshot = dirSnapshot();
+    const items = buildExplorerMenuItems(snapshot, makeActions());
+
+    findItem(items, "Add to favorites").onSelect?.();
+
+    expect(spies.favoriteDirectory).toHaveBeenCalledWith(snapshot.targetDirectory);
+  });
+
+  it("offers removal for favorite folders and disables the action while saving", () => {
+    const snapshot = dirSnapshot();
+    snapshot.targetDirectory!.isStarred = true;
+    spies.isFavoritePending.mockReturnValue(true);
+
+    const items = flatten(buildExplorerMenuItems(snapshot, makeActions()));
+    const action = items.find((item) => item.label === "Remove from favorites");
+
+    expect(action).toMatchObject({ disabled: true, icon: "i-mdi-star" });
   });
 
   it("freezes actions to the opening snapshot", () => {

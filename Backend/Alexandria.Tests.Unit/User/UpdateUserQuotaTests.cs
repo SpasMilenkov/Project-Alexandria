@@ -118,7 +118,7 @@ public class UpdateUserQuotaTests
     {
         var ct = TestContext.Current.CancellationToken;
         StoredUserFound(StoredUser());
-        _storage.GetStorageBreakdown(_userId, ct).Returns(BreakdownWith(1000L));
+        _storage.GetStorageBreakdown(_userId, true, ct).Returns(BreakdownWith(1000L));
 
         var act = () => _sut.UpdateUserAsync(
             _userId, new UpdateUserDto { StorageQuotaBytes = 500L }, ct);
@@ -134,13 +134,14 @@ public class UpdateUserQuotaTests
         var ct = TestContext.Current.CancellationToken;
         var user = StoredUser();
         StoredUserFound(user);
-        _storage.GetStorageBreakdown(_userId, ct).Returns(BreakdownWith(1000L));
+        _storage.GetStorageBreakdown(_userId, true, ct).Returns(BreakdownWith(1000L));
 
         var result = await _sut.UpdateUserAsync(
             _userId, new UpdateUserDto { StorageQuotaBytes = 2000L }, ct);
 
         result.StorageQuota.Should().Be(2000L);
         user.StorageQuota.Should().Be(2000L);
+        await _storage.Received(1).GetStorageBreakdown(_userId, true, ct);
         await _userManager.Received(1).UpdateAsync(user);
     }
 
@@ -156,7 +157,7 @@ public class UpdateUserQuotaTests
 
         result.StorageQuota.Should().Be(0L);
         await _storage.DidNotReceive().GetStorageBreakdown(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -171,7 +172,7 @@ public class UpdateUserQuotaTests
 
         result.StorageQuota.Should().Be(777L);
         await _storage.DidNotReceive().GetStorageBreakdown(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

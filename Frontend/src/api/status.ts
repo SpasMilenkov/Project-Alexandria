@@ -128,8 +128,10 @@ export interface ServerResourcesResponse {
 }
 
 export const statusApi = {
-  getMyStorage: async (): Promise<StorageBreakdown> => {
-    const result = await apiClient.get<StorageBreakdown>("/storage/my-storage");
+  getMyStorage: async (summary = false): Promise<StorageBreakdown> => {
+    const result = await apiClient.get<StorageBreakdown>("/storage/my-storage", {
+      params: summary ? { summary: true } : undefined,
+    });
     return result.data;
   },
 

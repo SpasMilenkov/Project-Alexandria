@@ -10,5 +10,6 @@ public record DirectoryDto(
     DateTime UpdatedAt,
     UserDto OwnerUserDto,
     List<FileSummary> Files,
-    List<DirectorySummaryDto> Directories
+    List<DirectorySummaryDto> Directories,
+    bool IsStarred
 );

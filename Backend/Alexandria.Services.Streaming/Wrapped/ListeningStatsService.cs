@@ -1,6 +1,7 @@
 using Alexandria.Common;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Stats;
+using Alexandria.Dto.Files.Streaming.Shuffle;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -46,6 +47,51 @@ public sealed class ListeningStatsService(IUnitOfWork unitOfWork) : IListeningSt
             KnownArtistShare = raw.Insights.KnownArtistShare, HasPriorHistory = raw.Insights.HasPriorHistory,
             HistoryFrom = raw.Insights.HistoryFrom
         };
+    }
+
+    public async Task<TopSongsResponse> GetTopSongsAsync(
+        Guid userId, DateTime fromUtc, DateTime toUtc, int limit, CancellationToken ct = default)
+    {
+        var ranking = await unitOfWork.StreamingHistories
+            .GetTopSongsAsync(userId, fromUtc, toUtc, limit, ct);
+
+        if (ranking.Count == 0)
+            return new TopSongsResponse(fromUtc, toUtc, []);
+
+        var references = ranking.Select(s => new PlaybackSourceEntryRef { FileId = s.FileId }).ToList();
+        var playableFiles = await unitOfWork.Files.GetPlaybackEntriesAsync(
+            userId, new PlaybackSourceDto { IsVideo = false }, references, ct);
+        var filesById = playableFiles.ToDictionary(f => f.FileId);
+
+        var items = ranking
+            .Where(s => filesById.ContainsKey(s.FileId))
+            .Select(s => new TopSongDto(filesById[s.FileId], s.QualifiedPlayCount, s.TotalListenedSeconds))
+            .ToList();
+
+        return new TopSongsResponse(fromUtc, toUtc, items);
+    }
+
+    public async Task<JumpBackInResponse> GetJumpBackInAsync(
+        Guid userId, DateTime asOfUtc, int inactiveDays, int limit, CancellationToken ct = default)
+    {
+        var inactiveBefore = asOfUtc.AddDays(-inactiveDays);
+        var ranking = await unitOfWork.StreamingHistories.GetJumpBackInAsync(userId, inactiveBefore, limit, ct);
+
+        if (ranking.Count == 0)
+            return new JumpBackInResponse(inactiveDays, inactiveBefore, []);
+
+        var references = ranking.Select(s => new PlaybackSourceEntryRef { FileId = s.FileId }).ToList();
+        var playableFiles = await unitOfWork.Files.GetPlaybackEntriesAsync(
+            userId, new PlaybackSourceDto { IsVideo = false }, references, ct);
+        var filesById = playableFiles.ToDictionary(f => f.FileId);
+
+        var items = ranking
+            .Where(s => filesById.ContainsKey(s.FileId))
+            .Select(s => new JumpBackInSongDto(
+                filesById[s.FileId], s.QualifiedPlayCount, s.TotalListenedSeconds, s.LastPlayedAt))
+            .ToList();
+
+        return new JumpBackInResponse(inactiveDays, inactiveBefore, items);
     }
 
     public async Task<TimelineResponse> GetTimelineAsync(

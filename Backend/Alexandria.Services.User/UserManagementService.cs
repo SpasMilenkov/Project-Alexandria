@@ -64,7 +64,7 @@ public class UserManagementService(
 
             if (dto.StorageQuotaBytes.Value > 0)
             {
-                var usage = await storageService.GetStorageBreakdown(userId, ct);
+                var usage = await storageService.GetStorageBreakdown(userId, summary: true, ct: ct);
                 if (dto.StorageQuotaBytes.Value < usage.UsedBytes)
                     throw new StorageQuotaBelowUsageException(dto.StorageQuotaBytes.Value, usage.UsedBytes);
             }

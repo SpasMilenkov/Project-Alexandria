@@ -38,11 +38,14 @@
             v-if="!collapsed"
             class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
           >
-            Media Streaming
+            Media
           </p>
           <UNavigationMenu
+            v-model="mediaMenuValue"
             :collapsed="collapsed"
             :items="streamingMenuItems"
+            popover
+            aria-label="Media navigation"
             orientation="vertical"
           />
 
@@ -90,7 +93,7 @@
           <template v-if="streamingEnabled">
             <div class="px-3 pt-6 pb-1">
               <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
-                Streaming
+                Media
               </p>
             </div>
             <nav class="flex flex-col gap-0.5 px-3">
@@ -310,6 +313,11 @@ defineShortcuts({
 // Desktop navigation
 const libraryMenuItems: NavigationMenuItem[] = [
   {
+    icon: "i-heroicons-home",
+    label: "Home",
+    to: "/home",
+  },
+  {
     icon: "i-heroicons-folder",
     label: "File Explorer",
     to: "/dashboard",
@@ -332,6 +340,7 @@ const libraryMenuItems: NavigationMenuItem[] = [
 ];
 
 const streamingDestinations = [
+  { icon: "mdi:play-circle-outline", label: "Overview", to: "/media" },
   { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
   { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
   { icon: "mdi:film-open-outline", label: "Videos", to: "/streaming/videos" },
@@ -340,15 +349,32 @@ const streamingDestinations = [
   { icon: "mdi:chart-line", label: "Your listening", to: "/stats" },
 ];
 
-const isListeningRoute = computed(() => route.path === "/stats" || route.path.startsWith("/stats/wrapped"));
-
-const streamingMenuItems = computed<NavigationMenuItem[]>(() =>
-  streamingDestinations.map((item) => {
-    if (item.to === "/stats") return { ...item, active: isListeningRoute.value };
-
-    return item;
-  }),
+const isListeningRoute = computed(
+  () => route.path === "/stats" || route.path.startsWith("/stats/wrapped"),
 );
+
+const mediaMenuValue = computed<string[]>({
+  get: () => (settingsStore.isMediaSectionOpen ? ["media"] : []),
+  set: (values) => settingsStore.setMediaSectionOpen(values.includes("media")),
+});
+
+const streamingMenuItems = computed<NavigationMenuItem[]>(() => [
+  {
+    value: "media",
+    icon: "mdi:play-circle-outline",
+    label: "Overview",
+    to: "/media",
+    active:
+      route.path === "/media" || route.path.startsWith("/streaming/") || isListeningRoute.value,
+    children: streamingDestinations
+      .filter((item) => item.to !== "/media")
+      .map((item) => {
+        if (item.to === "/stats") return { ...item, active: isListeningRoute.value };
+
+        return item;
+      }),
+  },
+]);
 
 const adminMenuItems = computed<NavigationMenuItem[]>(() => [
   {
@@ -439,6 +465,7 @@ const settingsMenuItems = computed<NavigationMenuItem[]>(() => {
 // Mobile navigation
 
 const mobileMainItems = [
+  { icon: "i-heroicons-home", label: "Home", to: "/home" },
   { icon: "i-heroicons-folder", label: "File Explorer", to: "/dashboard" },
   { icon: "i-heroicons-tag", label: "Tags and Categories", to: "/dashboard/tags" },
   { icon: "i-heroicons-clock", label: "Access History", to: "/access-history" },

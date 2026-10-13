@@ -1,6 +1,8 @@
 using System.Text;
+using System.Text.Json;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
+using Alexandria.Dto.Enrichment;
 using Alexandria.Workers.MediaMetadata.Config;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
@@ -9,12 +11,9 @@ using RabbitMQ.Client.Events;
 namespace Alexandria.Workers.MediaMetadata.Workers;
 
 /// <summary>
-/// Drains backfill requests published on policy create/update (one policy id per
-/// message) and runs the enrichment backfill for that policy's scope. Each file goes
-/// out over the normal enrich trigger path, so completion reuses the existing
-/// results-consumer flow. Registered only while <c>Features:Autotagging</c> is
-/// enabled; while disabled, requests wait durably in the queue instead of being
-/// dropped. Malformed bodies are discarded; transient failures requeue.
+/// Drains rule-scoped backfill requests through the normal enrichment path.
+/// Registered only while autotagging is enabled. Malformed bodies are discarded;
+/// transient failures requeue.
 /// </summary>
 public partial class EnrichmentBackfillWorker(
     ILogger<EnrichmentBackfillWorker> logger,
@@ -22,6 +21,8 @@ public partial class EnrichmentBackfillWorker(
     IServiceProvider serviceProvider,
     IOptions<RabbitMqConsumerConfig> rabbitOptions) : BackgroundService
 {
+    private static readonly JsonSerializerOptions BackfillJsonOptions = new(JsonSerializerDefaults.Web);
+
     private IChannel? _channel;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -62,7 +63,19 @@ public partial class EnrichmentBackfillWorker(
         {
             var message = Encoding.UTF8.GetString(eventArgs.Body.ToArray());
 
-            if (!Guid.TryParse(message, out var policyId))
+            EnrichmentBackfillRequest? request;
+
+            try
+            {
+                request = JsonSerializer.Deserialize<EnrichmentBackfillRequest>(message, BackfillJsonOptions);
+            }
+            catch (JsonException)
+            {
+                request = null;
+            }
+
+            if (request is null || request.PolicyId == Guid.Empty || request.RuleId == Guid.Empty
+                || request.Cutoff == default)
             {
                 LogMalformedMessage(logger, message);
                 await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: false, stoppingToken);
@@ -74,15 +87,15 @@ public partial class EnrichmentBackfillWorker(
                 using var scope = serviceProvider.CreateScope();
                 var backfill = scope.ServiceProvider.GetRequiredService<IEnrichmentBackfillService>();
 
-                var result = await backfill.BackfillPolicyAsync(policyId, stoppingToken);
-                LogBackfillDrained(logger, policyId, result.Published, result.Candidates);
+                var result = await backfill.BackfillRuleAsync(request, stoppingToken);
+                LogBackfillDrained(logger, request.PolicyId, result.Published, result.Candidates);
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
             }
             catch (Exception ex)
             {
                 // Backfill is idempotent per file, so redelivery only re-publishes
                 // triggers the shared guard would have skipped anyway.
-                LogBackfillError(logger, ex, policyId);
+                LogBackfillError(logger, ex, request.PolicyId);
                 await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
             }
         };

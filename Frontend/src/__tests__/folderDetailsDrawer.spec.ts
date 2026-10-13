@@ -10,6 +10,7 @@ import FolderDetailsDrawer from "@/components/dashboard/file-system/FolderDetail
 const makeDir = (id: string, name?: string): DirectorySummaryDto => ({
   createdAt: "2026-01-01T00:00:00.000Z",
   id,
+  isStarred: false,
   name: name ?? `Dir ${id}`,
   ownerUserDto: { email: "owner@test.com", id: "owner", name: "Owner" },
   parentId: null,
@@ -83,6 +84,17 @@ describe("directory details shared ownership", () => {
     await wrapper.find("button").trigger("dblclick");
     expect(wrapper.emitted("navigate")?.[0]).toEqual(["d1", "Projects"]);
   });
+
+  it("shows a favorite indicator in both explorer views", async () => {
+    const wrapper = mountRow({ ...makeDir("d1"), isStarred: true });
+
+    expect(wrapper.find('[aria-label="Favorite folder"]').exists()).toBe(true);
+    await wrapper.setProps({ viewMode: "grid" });
+    expect(wrapper.find('[aria-label="Favorite folder"]').exists()).toBe(true);
+
+    await wrapper.setProps({ data: makeDir("d1") });
+    expect(wrapper.find('[aria-label="Favorite folder"]').exists()).toBe(false);
+  });
 });
 
 describe("FolderDetailsDrawer", () => {
@@ -127,6 +139,22 @@ describe("FolderDetailsDrawer", () => {
     await clickByText(wrapper, "Open Directory");
     expect(wrapper.emitted("update:directory")?.[0]).toEqual([null]);
     expect(wrapper.emitted("navigate")?.[0]).toEqual(["d1", "Projects"]);
+  });
+
+  it("shows favorite status and forwards the action without closing", async () => {
+    const directory = { ...makeDir("d1"), isStarred: true };
+    const wrapper = mountDrawer(directory);
+
+    expect(wrapper.text()).toContain("Favorite folder");
+    await clickByText(wrapper, "Remove from favorites");
+
+    expect(wrapper.emitted("favorite")?.[0]).toEqual([directory]);
+    expect(wrapper.emitted("update:directory")).toBeUndefined();
+
+    await wrapper.setProps({ directory: { ...directory, isStarred: false } });
+
+    expect(wrapper.text()).not.toContain("Favorite folder");
+    expect(wrapper.text()).toContain("Add to favorites");
   });
 
   it("emits rename, move, download and delete with captured ids", async () => {

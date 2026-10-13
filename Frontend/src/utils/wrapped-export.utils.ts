@@ -519,14 +519,8 @@ export const renderWrappedExport = async (
 
     if (card.type === Type.ReturningFavorite)
       cursor =
-        text(
-          "A quiet stretch, then a familiar favorite.",
-          left,
-          cursor,
-          width,
-          18,
-          colors.muted,
-        ) + 8;
+        text("A quiet stretch, then a familiar favorite.", left, cursor, width, 18, colors.muted) +
+        8;
 
     if (card.type === Type.MostReplayed && replayMarks(facts.count).unit > 1) {
       const tally = replayMarks(facts.count);

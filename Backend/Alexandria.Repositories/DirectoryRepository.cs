@@ -200,7 +200,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Id = d.OwnerId,
                     Name = d.Owner.Name,
                     Email = d.Owner.Email
-                })).ToListAsync(cancellationToken: ct);
+                }, d.IsStarred)).ToListAsync(cancellationToken: ct);
 
         return new PaginatedResult<DirectorySummaryDto>
         {
@@ -278,6 +278,12 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         //When file and directory sharing comes later on this will be optional in combination
         //with the new access policies for Now users have no access to directories of other users
         dbQuery = dbQuery.Where(d => d.OwnerId == userId);
+
+        if (query.IsStarred)
+        {
+            dbQuery = dbQuery.Where(d => d.IsStarred);
+        }
+
         if (query.IsDeleted)
         {
             dbQuery = dbQuery.Where(d => d.DeletedAt != null);
@@ -406,7 +412,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Id = d.Owner.Id,
                     Email = d.Owner.Email,
                     Name = d.Owner.Name
-                }
+                },
+                d.IsStarred
             ))
             .ToListAsync(ct);
 
@@ -465,7 +472,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Id = d.Owner.Id,
                     Email = d.Owner.Email,
                     Name = d.Owner.Name
-                }))
+                }, d.IsStarred))
             .ToListAsync(ct);
 
         return new PaginatedResult<DirectorySummaryDto>
@@ -564,6 +571,16 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         return newName;
     }
 
+    public async Task<bool> SetDirectoryFavoriteAsync(Guid directoryId, Guid userId, bool isStarred,
+        CancellationToken ct = default)
+    {
+        var affected = await context.Directories
+            .Where(d => d.Id == directoryId && d.OwnerId == userId && d.DeletedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(d => d.IsStarred, isStarred), ct);
+
+        return affected == 1;
+    }
+
     public async Task CopyDirectoryAsync(Guid directoryId, Guid? destinationId, Guid userId,
         CancellationToken ct = default)
     {
@@ -595,7 +612,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                  )
                  SELECT
                      "Id", "Name", "NormalizedName", "SearchVector",
-                     "ParentId", "CreatedAt", "UpdatedAt", "DeletedAt",
+                     "ParentId", "CreatedAt", "UpdatedAt", "DeletedAt", "IsStarred",
                      "UpdatedBy", "OwnerId"
                  FROM RecursiveDirs;
                  """)

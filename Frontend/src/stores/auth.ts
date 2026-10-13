@@ -6,6 +6,7 @@ import { computed, ref } from "vue";
 import type { LoginSchema } from "@/schemas/auth";
 
 import { type AuthResponse, authApi } from "@/api/auth";
+import { useHomeStore } from "@/stores/home";
 import { logger } from "@/utils/logger";
 
 export const useAuthStore = defineStore(
@@ -27,6 +28,7 @@ export const useAuthStore = defineStore(
       try {
         const response = await authApi.login(credentials);
         user.value = response;
+        useHomeStore().setOwner(response.user?.id ?? null);
 
         return { success: true };
       } catch (err: unknown) {
@@ -72,11 +74,13 @@ export const useAuthStore = defineStore(
         logger.error("Logout error:", err);
       } finally {
         user.value = null;
+        useHomeStore().setOwner(null);
       }
     };
 
     const clearSession = () => {
       user.value = null;
+      useHomeStore().setOwner(null);
       void clearPlayerState();
     };
 

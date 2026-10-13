@@ -34,6 +34,12 @@ RUN dotnet publish "./Alexandria.Api.csproj" -c $BUILD_CONFIGURATION -o /app/pub
 
 # FINAL RUNTIME
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-alpine3.24-amd64@sha256:0eb381be9d708a3c190c4c3e16c5270529078653888578b84d6f479c2f9694f4 AS final
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8
+
+RUN apk add --no-cache icu-data-full icu-libs tzdata
+
 WORKDIR /app
 EXPOSE 8080
 

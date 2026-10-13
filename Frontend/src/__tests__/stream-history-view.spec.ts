@@ -41,16 +41,17 @@ vi.mock("@pinia/colada", () => ({
   },
 }));
 
-const mountHistory = () => mount(StreamHistoryView, {
-  global: {
-    stubs: {
-      Button: { template: "<button><slot /></button>" },
-      Badge: { template: "<span><slot /></span>" },
-      Collapsible: { template: "<section><slot /><slot name='content' /></section>" },
-      Icon: true,
+const mountHistory = () =>
+  mount(StreamHistoryView, {
+    global: {
+      stubs: {
+        Button: { template: "<button><slot /></button>" },
+        Badge: { template: "<span><slot /></span>" },
+        Collapsible: { template: "<section><slot /><slot name='content' /></section>" },
+        Icon: true,
+      },
     },
-  },
-});
+  });
 
 describe("stream history qualified plays", () => {
   it("labels a qualified play without claiming the song was completed", () => {
@@ -75,7 +76,11 @@ describe("stream history qualified plays", () => {
 
       await played.trigger("click");
 
-      expect(mocks.history).toHaveBeenLastCalledWith({ qualified: true, currentPage: 1, pageSize: 20 });
+      expect(mocks.history).toHaveBeenLastCalledWith({
+        qualified: true,
+        currentPage: 1,
+        pageSize: 20,
+      });
     } finally {
       wrapper.unmount();
     }

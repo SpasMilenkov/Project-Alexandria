@@ -14,13 +14,15 @@ const activityStore = useActivityStore();
 const authStore = useAuthStore();
 const { getMessage, getRenderedMetadata } = useAuditMessage();
 
-const { data, refresh, isLoading, error } = useQuery(personalPaginated, () => ({
-  page: activityStore.page,
-  pageSize: activityStore.pageSize,
-  sortBy: "timestamp",
-  sortDirection: SortDirection.Desc,
-  userId: authStore.user?.user.id,
-}));
+const { data, refresh, isLoading, error } = useQuery(() =>
+  personalPaginated({
+    page: activityStore.page,
+    pageSize: activityStore.pageSize,
+    sortBy: "timestamp",
+    sortDirection: SortDirection.Desc,
+    userId: authStore.user?.user.id,
+  }),
+);
 
 // Suppress transient auth errors (401s from token refresh cycles) — these
 // resolve automatically and should never surface a banner to the user.

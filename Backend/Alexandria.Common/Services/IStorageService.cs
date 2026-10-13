@@ -98,7 +98,7 @@ public interface IStorageService
         CancellationToken ct = default
     );
 
-    Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default);
+    Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false, CancellationToken ct = default);
 
     /// <summary>
     /// A user's preview artifacts over live files, optionally scoped to one file and/or

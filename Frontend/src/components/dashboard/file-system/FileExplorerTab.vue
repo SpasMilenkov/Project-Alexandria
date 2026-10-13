@@ -521,6 +521,8 @@
     <!-- shared folder details drawer — single instance for all DirectoryItem triggers -->
     <FolderDetailsDrawer
       v-model:directory="activeDetailsDirectory"
+      :favorite-pending="isFavoritePending"
+      @favorite="handleDirectoryFavorite"
       @navigate="handleNavigate"
       @rename="handleDirectoryRename"
       @move="openTransferModal('move')"
@@ -566,15 +568,21 @@ import { type FileResult } from "@/api/file";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
-import { type DropContents, useDropZone } from "@/composables/useDropZone";
+import { useDropZone } from "@/composables/useDropZone";
 import { useExplorerCommandGuard } from "@/composables/useExplorerCommands";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useFileExplorer } from "@/composables/useFileExplorer";
 import { type FileTooltipEnterKind, useFileTooltip } from "@/composables/useFileTooltip";
 import { useLazyModal } from "@/composables/useLazyOverlay";
+import { useUploadLauncher } from "@/composables/useUploadLauncher";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
-import { copyDirectory, deleteDirectory, moveDirectories } from "@/mutations/directories";
+import {
+  copyDirectory,
+  deleteDirectory,
+  moveDirectories,
+  setDirectoryFavorite,
+} from "@/mutations/directories";
 import { copyFiles, deleteFiles, moveFiles } from "@/mutations/files";
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
@@ -598,16 +606,12 @@ import FileItem from "./FileItem.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
 import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
-import ArchiveUploadModal from "./Modals/ArchiveUploadModal.vue";
 import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
-import DirectoryUploadModal from "./Modals/DirectoryUploadModal.vue";
 import FileTransferModal from "./Modals/Filetransfermodal.vue";
-import FileUploadModal from "./Modals/FileUploadModal.vue";
 import QuickSearchModal from "./Modals/QuickSearchModal.vue";
 import ShareLinkModal from "./Modals/ShareLinkModal.vue";
 import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
 import UpdateFileModal from "./Modals/UpdateFileModal.vue";
-import ZipUploadChoiceModal from "./Modals/ZipUploadChoiceModal.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -653,6 +657,9 @@ const { mutateAsync: moveFilesMutate } = moveFiles();
 const { mutateAsync: moveDirectoriesMutate } = moveDirectories();
 const { mutateAsync: deleteFilesMutate } = deleteFiles();
 const { mutateAsync: deleteDirectoryMutate } = deleteDirectory();
+
+const { mutateAsync: favoriteDirectoryMutate, isLoading: isFavoritePending } =
+  setDirectoryFavorite();
 
 const { data: directoriesData, isLoading: areDirectoriesLoading } = directoriesQuery;
 const { data: filesData, isLoading: areFilesLoading } = filesQuery;
@@ -763,24 +770,7 @@ const invalidateDir = (dirId: string | null) => {
 
 // drop zone
 
-const chooseUploadMethod = async (
-  uploadProps: { directoryId: string | undefined; directoryName: string | undefined },
-  files: File[] | null,
-): Promise<boolean> => {
-  const choice = await zipUploadChoiceModal.open().result;
-  if (!choice) return false;
-
-  if (choice === "archive") {
-    const archiveResult = await archiveUploadModal.open({
-      ...uploadProps,
-      droppedFiles: files ?? [],
-    }).result;
-    return archiveResult ?? false;
-  }
-  const fileResult = await fileUploadModal.open({ ...uploadProps, droppedFiles: files ?? [] })
-    .result;
-  return fileResult ?? false;
-};
+const uploadLauncher = useUploadLauncher();
 
 const {
   containerRef,
@@ -792,39 +782,10 @@ const {
   onDrop,
 } = useDropZone();
 
-interface UploadProps {
-  directoryId: string | undefined;
-  directoryName: string | undefined;
-}
-
 const dropIcon = computed(() =>
   dragHasDirectory.value ? "mdi:folder-upload-outline" : "mdi:cloud-upload-outline",
 );
 const dropLabel = computed(() => (dragHasDirectory.value ? "Drop folder here" : "Drop files here"));
-
-const openUploadModal = async (
-  dropResult: DropContents,
-  uploadProps: UploadProps,
-): Promise<boolean> => {
-  if (dropResult.dropType === "dir") {
-    const dirResult = await directoryUploadModal.open({
-      ...uploadProps,
-      droppedFiles: dropResult.entries,
-    }).result;
-    return dirResult ?? false;
-  }
-  if (dropResult.dropType === "file") {
-    const fileResult = await fileUploadModal.open({
-      ...uploadProps,
-      droppedFiles: dropResult.entries,
-    }).result;
-    return fileResult ?? false;
-  }
-  if (dropResult.dropType === "zip") {
-    return chooseUploadMethod(uploadProps, dropResult.entries);
-  }
-  return false;
-};
 
 const handleDropEvent = async (event: DragEvent) => {
   const dropResult = await onDrop(event);
@@ -834,7 +795,7 @@ const handleDropEvent = async (event: DragEvent) => {
     directoryId: currentDirId.value ?? undefined,
     directoryName: currentDirName.value,
   };
-  const shouldRefresh = await openUploadModal(dropResult, uploadProps);
+  const shouldRefresh = await uploadLauncher.openDrop(dropResult, uploadProps);
 
   if (shouldRefresh) {
     if (isDisposed.value) {
@@ -920,6 +881,10 @@ const explorerMenuActions: ExplorerMenuActions = {
       downloadBulk(snap.fileIds, snap.directoryIds);
     }
   },
+  favoriteDirectory: (directory) => {
+    void handleDirectoryFavorite(directory);
+  },
+  isFavoritePending: () => isFavoritePending.value,
   moveSelection: () => {
     const snap = menuSnapshot.value;
     if (!snap) return;
@@ -1073,24 +1038,9 @@ const createDirectoryModal = useLazyModal<{ parentId: string | null }, boolean>(
 const updateDirectoryModal = useLazyModal<{ currentName: string; directoryId: string }, boolean>(
   UpdateDirectoryModal,
 );
-const fileUploadModal = useLazyModal<
-  { directoryId?: string; directoryName?: string; droppedFiles?: File[] },
-  boolean
->(FileUploadModal, { persistOnDispose: true });
-const directoryUploadModal = useLazyModal<
-  { directoryId?: string; directoryName?: string; droppedFiles?: unknown[] },
-  boolean
->(DirectoryUploadModal, { persistOnDispose: true });
-const archiveUploadModal = useLazyModal<
-  { directoryId?: string; directoryName?: string; droppedFiles?: File[] },
-  boolean
->(ArchiveUploadModal, { persistOnDispose: true });
 const advancedSearchModal = useLazyModal<Record<string, never>, string>(AdvancedSearchModal);
 const quickSearchModal = useLazyModal<Record<string, never>, string>(QuickSearchModal);
 const confirmModal = useLazyModal<Record<string, unknown>, boolean>(ConfirmModal);
-const zipUploadChoiceModal = useLazyModal<Record<string, never>, "archive" | "file" | null>(
-  ZipUploadChoiceModal,
-);
 const updateFileModal = useLazyModal<{ fileId: string; originalName: string }, boolean>(
   UpdateFileModal,
 );
@@ -1367,22 +1317,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
     directoryName: currentDirName.value,
   };
 
-  let instance;
-  switch (type) {
-    case "File":
-      instance = fileUploadModal.open(uploadProps);
-      break;
-    case "Directory":
-      instance = directoryUploadModal.open(uploadProps);
-      break;
-    case "Archive":
-      instance = archiveUploadModal.open(uploadProps);
-      break;
-    default:
-      instance = fileUploadModal.open(uploadProps);
-  }
-
-  const shouldRefresh = await instance.result;
+  const shouldRefresh = await uploadLauncher.open(type, uploadProps);
   if (isDisposed.value) {
     if (shouldRefresh) invalidateDir(targetDirId);
     return;
@@ -1511,10 +1446,46 @@ watch(currentDirId, () => {
 watch(directoriesList, (list) => {
   if (!dirHasLoaded.value) return;
   const target = activeDetailsDirectory.value;
-  if (target && !list.some((dir) => dir.id === target.id)) activeDetailsDirectory.value = null;
+
+  if (target) {
+    activeDetailsDirectory.value = list.find((dir) => dir.id === target.id) ?? null;
+  }
+
   const menuTarget = menuSnapshot.value?.targetDirectory;
   if (menuTarget && !list.some((dir) => dir.id === menuTarget.id)) closeContextMenu();
 });
+
+const handleDirectoryFavorite = async (directory: DirectorySummaryDto) => {
+  if (isFavoritePending.value) return;
+
+  try {
+    const result = await favoriteDirectoryMutate({
+      directoryId: directory.id,
+      isStarred: !directory.isStarred,
+    });
+
+    if (isDisposed.value) return;
+
+    directoriesList.value = directoriesList.value.map((item) => {
+      if (item.id === result.directoryId) return { ...item, isStarred: result.isStarred };
+
+      return item;
+    });
+
+    if (activeDetailsDirectory.value?.id === result.directoryId) {
+      activeDetailsDirectory.value = {
+        ...activeDetailsDirectory.value,
+        isStarred: result.isStarred,
+      };
+    }
+
+    appToast.success(
+      result.isStarred ? "Folder added to favorites" : "Folder removed from favorites",
+    );
+  } catch (error) {
+    appToast.error("Could not update folder favorites", error);
+  }
+};
 
 // shared rich file tooltip — one controller for every FileItem. Rows report
 // hover/focus intent with their trigger anchor; placement mirrors the previous

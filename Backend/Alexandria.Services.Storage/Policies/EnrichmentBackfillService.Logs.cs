@@ -4,6 +4,10 @@ namespace Alexandria.Services.Storage.Policies;
 
 public sealed partial class EnrichmentBackfillService
 {
+    [LoggerMessage(Level = LogLevel.Information,
+        Message = "Backfill skipped for rule {RuleId} in policy {PolicyId}: live AutoTag rule not found.")]
+    private static partial void LogRuleNotFound(ILogger logger, Guid ruleId, Guid policyId);
+
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Backfill skipped for policy {PolicyId}: policy not found or deleted.")]
     private static partial void LogPolicyNotFound(ILogger logger, Guid policyId);
