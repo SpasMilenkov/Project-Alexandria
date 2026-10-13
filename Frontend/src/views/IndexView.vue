@@ -21,7 +21,7 @@
         </div>
 
         <div class="pt-6">
-          <UButton @click="router.push('/dashboard')" size="xl" color="primary" variant="solid">
+          <UButton to="/home" size="xl" color="primary" variant="solid">
             Enter your library
             <template #trailing>
               <Icon icon="heroicons:arrow-right" class="w-5 h-5" />
@@ -35,8 +35,6 @@
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-
-import router from "@/router";
 </script>
 
 <style scoped></style>
