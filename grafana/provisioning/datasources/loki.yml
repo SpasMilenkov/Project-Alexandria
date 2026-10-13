@@ -2,9 +2,11 @@ apiVersion: 1
 
 datasources:
   - name: Loki
+    uid: alexandria-loki
     type: loki
     access: proxy
     url: http://loki:3100
+    editable: false
     jsonData:
       timeout: 60
       maxLines: 1000
