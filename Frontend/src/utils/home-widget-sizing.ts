@@ -3,8 +3,23 @@ import type { HomeLayout } from "@/types/home";
 import { HomeWidgetSize, HomeWidgetType } from "@/enums/home-widget";
 
 const minimums: Record<HomeWidgetType, { desktop: number; mobile: number; height: number }> = {
-  [HomeWidgetType.Clock]: { desktop: 3, mobile: 2, height: 2 },
+  [HomeWidgetType.Greeting]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.Storage]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.RecentFiles]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.Clock]: { desktop: 2, mobile: 2, height: 2 },
   [HomeWidgetType.LibraryShortcuts]: { desktop: 3, mobile: 2, height: 2 },
+  [HomeWidgetType.QuickAccess]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.QuickUpload]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.Player]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.SystemStatus]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.TopSongs]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.RecentActivity]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.TranscodingJobs]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.LatestRecap]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.Collections]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.Countdown]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.FocusTimer]: { desktop: 2, mobile: 2, height: 2 },
+  [HomeWidgetType.DailyCover]: { desktop: 2, mobile: 2, height: 2 },
 };
 
 export const homeWidgetMinimum = (type: HomeWidgetType, columns: HomeLayout["columns"]) => {

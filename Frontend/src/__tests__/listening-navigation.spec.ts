@@ -1,11 +1,13 @@
 import { flushPromises, mount } from "@vue/test-utils";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryHistory, createRouter } from "vue-router";
 
 import appRouter from "@/router";
 import StatsHubView from "@/views/dashboard/streaming/wrapped/StatsHubView.vue";
 
 const mounted = vi.hoisted(() => ({ timeline: vi.fn(), recaps: vi.fn() }));
+const scroll = vi.fn();
+const originalScroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView");
 
 vi.mock("@/stores/auth", () => ({
   useAuthStore: () => ({ user: { user: { id: "listener" } } }),
@@ -54,7 +56,20 @@ const createListeningRouter = () =>
       }),
   });
 
-afterEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+    configurable: true,
+    value: scroll,
+  });
+});
+
+afterEach(() => {
+  vi.clearAllMocks();
+
+  if (originalScroll)
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalScroll);
+  else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+});
 
 describe("Your listening navigation", () => {
   it("preserves the legacy timeline destination, query and hash", async () => {
@@ -66,7 +81,7 @@ describe("Your listening navigation", () => {
     expect(router.currentRoute.value.hash).toBe("#calendar");
   });
 
-  it("keeps existing recap links and mounts only their section", async () => {
+  it("shows recaps followed by the timeline without section tabs", async () => {
     const router = createListeningRouter();
 
     await router.push("/stats");
@@ -74,31 +89,52 @@ describe("Your listening navigation", () => {
     const wrapper = mount(StatsHubView, { global: { plugins: [router] } });
 
     expect(wrapper.text()).toContain("Recap collection");
-    expect(wrapper.findAll('a[aria-current="page"]')).toHaveLength(1);
-    expect(wrapper.get('a[aria-current="page"]').text()).toBe("Recaps");
+    expect(wrapper.text()).toContain("Range 0");
+    expect(wrapper.text().indexOf("Recap collection")).toBeLessThan(
+      wrapper.text().indexOf("Range 0"),
+    );
+    expect(wrapper.find('[aria-label="Listening sections"]').exists()).toBe(false);
     expect(mounted.recaps).toHaveBeenCalledOnce();
-    expect(mounted.timeline).not.toHaveBeenCalled();
+    expect(mounted.timeline).toHaveBeenCalledOnce();
     wrapper.unmount();
   });
 
-  it("keeps the timeline range through section switches and browser Back", async () => {
+  it("keeps the timeline range through legacy query changes and browser Back", async () => {
     const router = createListeningRouter();
 
     await router.push("/stats?view=timeline&source=bookmark");
 
     const wrapper = mount(StatsHubView, { global: { plugins: [router] } });
 
+    await flushPromises();
+    expect(scroll).toHaveBeenCalledWith({ block: "start" });
     await wrapper.get("button").trigger("click");
-    await wrapper.get('a[href*="view=recaps"]').trigger("click");
+    await router.push("/stats?view=recaps&source=bookmark");
     await flushPromises();
     expect(router.currentRoute.value.query.source).toBe("bookmark");
     expect(wrapper.text()).toContain("Recap collection");
     router.back();
     await flushPromises();
     expect(wrapper.text()).toContain("Range 1");
-    expect(wrapper.findAll('a[aria-current="page"]')).toHaveLength(1);
-    expect(wrapper.get('a[aria-current="page"]').text()).toBe("Timeline");
     expect(mounted.timeline).toHaveBeenCalledOnce();
+    expect(mounted.recaps).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it("jumps to the timeline anchor while keeping both sections mounted", async () => {
+    const router = createListeningRouter();
+
+    await router.push("/stats?source=bookmark");
+    const wrapper = mount(StatsHubView, { global: { plugins: [router] } });
+
+    await wrapper.get('a[href$="#timeline"]').trigger("click");
+    await flushPromises();
+
+    expect(router.currentRoute.value.hash).toBe("#timeline");
+    expect(router.currentRoute.value.query.source).toBe("bookmark");
+    expect(scroll).toHaveBeenCalledWith({ block: "start" });
+    expect(mounted.timeline).toHaveBeenCalledOnce();
+    expect(mounted.recaps).toHaveBeenCalledOnce();
     wrapper.unmount();
   });
 });

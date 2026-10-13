@@ -3,7 +3,10 @@
     <WrappedHero
       v-if="sections.hero"
       :card="sections.hero"
-      :eyebrow="`${year} · a soundtrack only you could make`"
+      :eyebrow="`${periodLabel ?? year} · a soundtrack only you could make`"
+      :month="month"
+      :daily-series="dailySeries"
+      :through="response.to"
     />
 
     <dl
@@ -20,7 +23,7 @@
       </div>
     </dl>
 
-    <div v-if="sections.artists || sections.songs" class="grid items-start gap-6 md:grid-cols-2">
+    <div v-if="sections.artists || sections.songs" class="grid gap-6 md:grid-cols-2">
       <WrappedCountdown v-if="sections.artists" :card="sections.artists" />
       <WrappedCountdown v-if="sections.songs" :card="sections.songs" />
     </div>
@@ -61,13 +64,15 @@ import WrappedTimeOfDay from "@/components/streaming/wrapped/WrappedTimeOfDay.vu
 import { useTheme } from "@/composables/useTheme";
 import { wrappedPaletteKey } from "@/composables/useWrappedPalette";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
+import { factsFor, formatWrappedDuration } from "@/utils/wrapped-art.utils";
 import { type WrappedPalette, wrappedCssColors } from "@/utils/wrapped-palette.utils";
 import { buildWrappedSections } from "@/utils/wrapped-sections.utils";
 
 const props = defineProps<{
   response: WrappedDeckResponse;
   year: number;
+  periodLabel?: string;
+  month?: string;
   palette?: WrappedPalette | null;
 }>();
 
@@ -80,6 +85,12 @@ provide(wrappedPaletteKey, palette);
 const paletteStyle = computed(() => wrappedCssColors(isDark.value, palette.value));
 
 const sections = computed(() => buildWrappedSections(props.response.deck.cards));
+
+const dailySeries = computed(() => {
+  const bookends = props.response.deck.cards.find((card) => card.type === WrappedCardType.Bookends);
+
+  return bookends ? factsFor(bookends).series : [];
+});
 
 const seed = computed(() => props.response.visualIdentity ?? String(props.year));
 

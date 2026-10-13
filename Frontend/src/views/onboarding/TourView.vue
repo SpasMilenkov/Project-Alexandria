@@ -165,21 +165,29 @@
 import { Icon } from "@iconify/vue";
 import { useDark } from "@vueuse/core";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
 import { finishTour } from "@/mutations/user";
+import { useAuthStore } from "@/stores/auth";
+import { getHomeLandingDestination } from "@/utils/home-landing";
 
 useOnboardingGuard(OnboardingStep.Tour);
 
 const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
 const isDark = useDark();
 
 const { mutate, error: mutationError, status } = finishTour();
 
 watch(status, (s) => {
-  if (s === "success") router.push({ name: "dashboard" });
+  if (s !== "success") return;
+
+  if (authStore.user) authStore.user.onboardingStep = OnboardingStep.Done;
+
+  void router.replace(getHomeLandingDestination(router, route.query.redirect));
 });
 
 const serverError = computed(() => {

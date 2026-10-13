@@ -3,9 +3,13 @@ import { computed, watch } from "vue";
 
 import { updateHomeSettings } from "@/mutations/home";
 import { HOME_QUERY_KEYS, homeSettings, homeTimeZones } from "@/queries/home";
+import { HOME_MEDIA_QUERY_KEYS } from "@/queries/home-media";
+import { HOME_STATUS_ACTIVITY_QUERY_KEYS } from "@/queries/home-status-activity";
+import { HOME_TOP_SONGS_QUERY_KEYS } from "@/queries/home-top-songs";
+import { HOME_WIDGET_QUERY_KEYS } from "@/queries/home-widgets";
 import { useAuthStore } from "@/stores/auth";
 import { useHomeStore } from "@/stores/home";
-import { cloneHomeSettings } from "@/utils/home-layout";
+import { buildHomeChanges } from "@/utils/home-widget-persistence";
 
 export const useHomeSettings = () => {
   const auth = useAuthStore();
@@ -19,9 +23,23 @@ export const useHomeSettings = () => {
       store.setOwner(nextOwner || null);
 
       if (previousOwner) {
-        cache.cancelQueries({ key: HOME_QUERY_KEYS.settings(previousOwner) });
-        for (const entry of cache.getEntries({ key: HOME_QUERY_KEYS.settings(previousOwner) })) {
-          cache.remove(entry);
+        const keys = [
+          HOME_QUERY_KEYS.settings(previousOwner),
+          HOME_WIDGET_QUERY_KEYS.storageOwner(previousOwner),
+          HOME_WIDGET_QUERY_KEYS.filesOwner(previousOwner),
+          HOME_WIDGET_QUERY_KEYS.foldersOwner(previousOwner),
+          HOME_STATUS_ACTIVITY_QUERY_KEYS.statusOwner(previousOwner),
+          HOME_STATUS_ACTIVITY_QUERY_KEYS.activityOwner(previousOwner),
+          HOME_TOP_SONGS_QUERY_KEYS.owner(previousOwner),
+          HOME_MEDIA_QUERY_KEYS.jobsOwner(previousOwner),
+          HOME_MEDIA_QUERY_KEYS.recapOwner(previousOwner),
+          HOME_MEDIA_QUERY_KEYS.collectionsOwner(previousOwner),
+        ];
+
+        for (const key of keys) {
+          cache.cancelQueries({ key });
+
+          for (const entry of cache.getEntries({ key })) cache.remove(entry);
         }
       }
     },
@@ -47,13 +65,13 @@ export const useHomeSettings = () => {
   );
 
   const save = () => {
-    if (!store.draft || !userId.value)
+    if (!store.draft || !store.baseline || !userId.value)
       return Promise.reject(new Error("Open customization before saving."));
 
     return mutation.mutateAsync({
       ownerId: userId.value,
       epoch: store.ownerEpoch,
-      value: cloneHomeSettings(store.draft),
+      changes: buildHomeChanges(store.baseline, store.draft),
     });
   };
 

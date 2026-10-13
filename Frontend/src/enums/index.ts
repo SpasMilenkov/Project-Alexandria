@@ -4,7 +4,28 @@ import type { SortDirection } from "./SortDirection";
 import type { UserRole } from "./UserRole";
 
 import { AutoGroupKind } from "./auto-group-kind";
-import { HomeShortcutGroup, HomeWidgetSize, HomeWidgetType } from "./home-widget";
+import {
+  HomeClockHourFormat,
+  HomeClockStyle,
+  HomeGreetingColorMode,
+  HomeGreetingDecoration,
+  HomeGreetingStyle,
+  HomeHorizontalAlignment,
+  HomeLayoutKind,
+  HomeLibraryDestination,
+  HomeLibraryStyle,
+  HomeQuickAccessStyle,
+  HomeQuickUploadStyle,
+  HomeRecapPeriod,
+  HomeRecapStyle,
+  HomeRecentFilesSource,
+  HomeRecentFilesStyle,
+  HomeShortcutGroup,
+  HomeStorageStyle,
+  HomeVerticalAlignment,
+  HomeWidgetSize,
+  HomeWidgetType,
+} from "./home-widget";
 import { JobStatus } from "./job-status";
 import { LyricsProvider } from "./lyrics-provider";
 import { LyricsStatus } from "./lyrics-status";
@@ -18,8 +39,25 @@ import { WrappedCardType } from "./wrapped-card-type";
 
 export type { SortBy, SortDirection, PreviewKind, UserRole };
 export {
+  HomeGreetingColorMode,
+  HomeGreetingStyle,
+  HomeGreetingDecoration,
+  HomeQuickAccessStyle,
+  HomeQuickUploadStyle,
+  HomeRecapPeriod,
+  HomeRecapStyle,
+  HomeRecentFilesSource,
+  HomeRecentFilesStyle,
+  HomeStorageStyle,
   AutoGroupKind,
   HomeShortcutGroup,
+  HomeClockHourFormat,
+  HomeClockStyle,
+  HomeHorizontalAlignment,
+  HomeLayoutKind,
+  HomeLibraryStyle,
+  HomeLibraryDestination,
+  HomeVerticalAlignment,
   HomeWidgetSize,
   HomeWidgetType,
   PlaylistSort,

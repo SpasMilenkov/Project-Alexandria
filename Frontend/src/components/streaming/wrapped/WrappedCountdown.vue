@@ -1,6 +1,6 @@
 <template>
   <section
-    class="min-w-0 overflow-hidden rounded-3xl border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
+    class="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
   >
     <header class="px-6 pt-6">
       <p class="text-xs tracking-[0.16em] uppercase" :style="{ color: inks[0] }">
@@ -122,7 +122,7 @@
     </ol>
 
     <p
-      class="border-t border-gray-200/70 px-6 py-4 text-xs leading-relaxed text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
+      class="mt-auto border-t border-gray-200/70 px-6 py-4 text-xs leading-relaxed text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
     >
       {{
         isTrack

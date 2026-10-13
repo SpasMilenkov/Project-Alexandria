@@ -17,7 +17,7 @@ interface GridDragOptions {
   board: () => HTMLElement | null;
   layout: () => HomeLayout;
   enabled: () => boolean;
-  select: (instanceId: string) => void;
+  select: (instanceId: string, silent?: boolean) => void;
   place: (widget: HomeWidget) => void;
   announce: (message: string) => void;
 }
@@ -31,11 +31,55 @@ interface PointerSession {
   startBoardPoint: { x: number; y: number };
 }
 
+interface SessionOriginArgs {
+  options: GridDragOptions;
+  widget: HomeWidget;
+  event: PointerEvent;
+  board: HTMLElement;
+  bounds: DOMRect;
+  catalogue: boolean;
+}
+
+const resolveSessionOrigin = ({
+  options,
+  widget,
+  event,
+  board,
+  bounds,
+  catalogue,
+}: SessionOriginArgs) => {
+  if (catalogue) {
+    board.focus({ preventScroll: true });
+
+    return {
+      offset: {
+        x: (((bounds.width + 16) / options.layout().columns) * widget.width - 16) / 2,
+        y: 32,
+      },
+      target: null as HTMLElement | null,
+    };
+  }
+
+  if (!(event.currentTarget instanceof HTMLElement))
+    return { offset: { x: 0, y: 0 }, target: null as HTMLElement | null };
+
+  const card = board.querySelector<HTMLElement>(
+    `[data-widget-id="${CSS.escape(widget.instanceId)}"]`,
+  );
+  const origin = (card ?? event.currentTarget).getBoundingClientRect();
+
+  return {
+    offset: { x: event.clientX - origin.left, y: event.clientY - origin.top },
+    target: event.currentTarget,
+  };
+};
+
 export const useHomeGridDrag = (options: GridDragOptions) => {
   const session = shallowRef<PointerSession | null>(null);
   const candidate = shallowRef<HomeWidget | null>(null);
   const active = ref(false);
   const inside = ref(false);
+  const suppressClick = ref(false);
   let frame = 0;
   let point = { x: 0, y: 0 };
   let boardWidth = 0;
@@ -63,26 +107,34 @@ export const useHomeGridDrag = (options: GridDragOptions) => {
     if (!board || !source) return;
 
     const bounds = board.getBoundingClientRect();
-    inside.value = Boolean(source.edge) || homeCanvasContains(board, point);
+    inside.value = Boolean(source.edge) || homeCanvasContains(board, point, bounds);
+    let next = source.widget;
+
     if (source.edge) {
-      candidate.value = homePointerResize(
+      next = homePointerResize(bounds, options.layout().columns, source.widget, source.edge, {
+        point,
+        startBoardPoint: source.startBoardPoint,
+      });
+    } else {
+      next = homePointerPosition(
         bounds,
         options.layout().columns,
         source.widget,
-        source.edge,
-        { point, startBoardPoint: source.startBoardPoint },
+        point,
+        source.offset,
       );
-
-      return;
     }
 
-    candidate.value = homePointerPosition(
-      bounds,
-      options.layout().columns,
-      source.widget,
-      point,
-      source.offset,
-    );
+    const current = candidate.value;
+    if (
+      current?.x === next.x &&
+      current.y === next.y &&
+      current.width === next.width &&
+      current.height === next.height
+    )
+      return;
+
+    candidate.value = next;
   };
 
   const scrollFrame = () => {
@@ -99,6 +151,7 @@ export const useHomeGridDrag = (options: GridDragOptions) => {
     event: PointerEvent,
     catalogue = false,
     edge: HomeResizeEdge | null = null,
+    fromToolbar = false,
   ) => {
     const board = options.board();
     if (
@@ -106,25 +159,15 @@ export const useHomeGridDrag = (options: GridDragOptions) => {
       !board ||
       event.button !== 0 ||
       !event.isPrimary ||
-      (!edge && homeDragFromControl(event.target))
+      (!catalogue && !edge && !fromToolbar && homeDragFromControl(event.target))
     )
       return;
 
     cancel();
-    const bounds = board.getBoundingClientRect();
-    let offset = { x: 0, y: 0 };
+    suppressClick.value = false;
 
-    if (catalogue) {
-      offset = {
-        x: (((bounds.width + 16) / options.layout().columns) * widget.width - 16) / 2,
-        y: 32,
-      };
-    } else if (event.currentTarget instanceof HTMLElement) {
-      const origin = event.currentTarget.getBoundingClientRect();
-      offset = { x: event.clientX - origin.left, y: event.clientY - origin.top };
-      event.currentTarget.focus({ preventScroll: true });
-      options.select(widget.instanceId);
-    }
+    const bounds = board.getBoundingClientRect();
+    const origin = resolveSessionOrigin({ options, widget, event, board, bounds, catalogue });
 
     if (event.pointerType === "mouse") event.preventDefault();
     point = { x: event.clientX, y: event.clientY };
@@ -132,11 +175,16 @@ export const useHomeGridDrag = (options: GridDragOptions) => {
       pointerId: event.pointerId,
       widget: { ...widget, options: { ...widget.options } },
       start: point,
-      offset,
+      offset: origin.offset,
       edge,
       startBoardPoint: { x: point.x - bounds.left, y: point.y - bounds.top },
     };
     boardWidth = bounds.width;
+
+    if (origin.target) {
+      origin.target.focus({ preventScroll: true });
+      options.select(widget.instanceId, true);
+    }
   };
 
   useEventListener(
@@ -151,7 +199,6 @@ export const useHomeGridDrag = (options: GridDragOptions) => {
         return;
 
       if (event.pointerType === "mouse") event.preventDefault();
-      updatePosition();
       if (!active.value) {
         active.value = true;
         frame = requestAnimationFrame(scrollFrame);
@@ -175,6 +222,8 @@ export const useHomeGridDrag = (options: GridDragOptions) => {
           );
       } else options.announce("That placement does not fit. Your layout has not changed.");
     }
+
+    if (active.value) suppressClick.value = true;
 
     cancel();
   });
@@ -206,8 +255,23 @@ export const useHomeGridDrag = (options: GridDragOptions) => {
   watch(options.layout, cancel);
   onUnmounted(cancel);
 
-  const startResize = (widget: HomeWidget, edge: HomeResizeEdge, event: PointerEvent) =>
-    start(widget, event, false, edge);
+  return {
+    active,
+    candidate,
+    inside,
+    preview,
+    resizing,
+    widgetId: computed(() => session.value?.widget.instanceId ?? null),
+    start,
+    startResize: (widget: HomeWidget, edge: HomeResizeEdge, event: PointerEvent) =>
+      start(widget, event, false, edge),
+    cancel,
+    hasSession: () => session.value !== null,
+    consumeSuppressClick: () => {
+      const suppressed = suppressClick.value;
+      suppressClick.value = false;
 
-  return { active, candidate, inside, preview, resizing, start, startResize, cancel };
+      return suppressed;
+    },
+  };
 };

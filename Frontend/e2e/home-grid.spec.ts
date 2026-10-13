@@ -5,7 +5,7 @@ import { removeWidget } from "./helpers/home-grid-editor.js";
 
 const verifyRightPlacement = async (page: Page) => {
   const grid = page.locator('[aria-label="Home widgets"]');
-  const clock = page.locator('[data-widget-id="default-clock"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
   const library = page.locator('[data-widget-id="default-library"]');
 
   await expect(grid).toHaveAttribute("data-grid-columns", "12");
@@ -25,7 +25,7 @@ const verifyRightPlacement = async (page: Page) => {
 
 const verifySharedProjection = async (page: Page, desktopX: number) => {
   const grid = page.locator('[aria-label="Home widgets"]');
-  const clock = page.locator('[data-widget-id="default-clock"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
 
   await page.setViewportSize({ width: 390, height: 844 });
 
@@ -68,7 +68,7 @@ test("saved cell geometry keeps a medium clock on the right and preserves vacant
   await page.getByRole("button", { name: "Done", exact: true }).click();
 
   await expect(page.getByRole("button", { name: "Customize", exact: true })).toBeVisible();
-  expect(state.saved.schemaVersion).toBe(1);
+  expect(state.saved.initialized).toBe(true);
   expect(state.saved.desktop.widgets[0]).toMatchObject({ x: 6, y: 0, width: 6, height: 4 });
 
   await page.reload();
@@ -86,13 +86,23 @@ test("separate mobile geometry remains independent through edits and reload", as
   initial.useSeparateMobileLayout = true;
   initial.mobile = {
     columns: 4,
-    widgets: [{ ...initial.desktop.widgets[0]!, size: 0, x: 2, y: 2, width: 2, height: 3 }],
+    widgets: [
+      {
+        ...initial.desktop.widgets[0]!,
+        instanceId: "mobile-clock",
+        size: 0,
+        x: 2,
+        y: 2,
+        width: 2,
+        height: 3,
+      },
+    ],
   };
 
   await page.setViewportSize({ width: 390, height: 844 });
 
   const state = await fixture(page, initial);
-  const clock = page.locator('[data-widget-id="default-clock"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
   const grid = page.locator('[aria-label="Home widgets"]');
   const gridBounds = (await grid.boundingBox())!;
 

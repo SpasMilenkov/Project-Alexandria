@@ -8,13 +8,17 @@ import type { OverviewSummaryDtoResponse, OverviewSummaryHeaderDtoResponse } fro
 
 import AnnualRecapCard from "@/components/streaming/wrapped/AnnualRecapCard.vue";
 import ListeningRecaps from "@/components/streaming/wrapped/ListeningRecaps.vue";
+import MonthlyRecapCard from "@/components/streaming/wrapped/MonthlyRecapCard.vue";
 import RecapLandscape from "@/components/streaming/wrapped/RecapLandscape.vue";
+import { HomeRecapPeriod } from "@/enums/home-widget";
 import { annualRecapHeaders, annualRecapMonths } from "@/utils/listening-recaps.utils";
+import { wrappedMonth, wrappedMonthLabel, wrappedMonthRange } from "@/utils/wrapped-month";
 
 const api = vi.hoisted(() => ({
   getSummary: vi.fn(),
   listSummaries: vi.fn(),
   finalizeSummary: vi.fn(),
+  getWrapped: vi.fn(),
 }));
 
 vi.mock("@/api/stats", () => ({ statsApi: api }));
@@ -115,7 +119,10 @@ const mountRecaps = (component: typeof ListeningRecaps | typeof AnnualRecapCard,
         PiniaColada,
         createRouter({
           history: createMemoryHistory(),
-          routes: [{ path: "/:pathMatch(.*)*", component: { template: "<div />" } }],
+          routes: [
+            { name: "wrapped", path: "/stats/wrapped/:year?", component: { template: "<div />" } },
+            { path: "/:pathMatch(.*)*", component: { template: "<div />" } },
+          ],
         }),
       ],
 
@@ -141,6 +148,17 @@ beforeEach(() => {
   api.getSummary.mockImplementation((_kind: string, from: string) =>
     Promise.resolve(summary(new Date(from).getUTCFullYear())),
   );
+
+  api.getWrapped.mockImplementation((from: string, to?: string) => {
+    const value = summary(new Date(from).getUTCFullYear());
+
+    return Promise.resolve({
+      from,
+      to: to ?? new Date().toISOString(),
+      deck: value.payload.deck,
+      summary: value.payload.summary,
+    });
+  });
 });
 
 afterEach(() => {
@@ -174,7 +192,7 @@ describe("annual recap overview", () => {
     expect(months.reduce((total, month) => total + month.seconds, 0)).toBe(3711);
   });
 
-  it("shows current listening even with no archived summaries", async () => {
+  it("features current and previous months with annual access even without archived summaries", async () => {
     const wrapper = mountRecaps(ListeningRecaps);
 
     await flushPromises();
@@ -182,11 +200,18 @@ describe("annual recap overview", () => {
     expect(wrapper.text()).toContain("No archived years yet");
     expect(wrapper.get("dl").text()).toContain("17");
 
-    expect(api.getSummary).toHaveBeenCalledWith(
-      "Wrapped",
-      `${year}-01-01T00:00:00.000Z`,
-      undefined,
+    const current = wrappedMonth(HomeRecapPeriod.CurrentMonth);
+    const previous = wrappedMonth(HomeRecapPeriod.PreviousMonth);
+
+    expect(wrapper.text()).toContain(wrappedMonthLabel(current));
+    expect(wrapper.text()).toContain(wrappedMonthLabel(previous));
+    expect(wrapper.findAllComponents(MonthlyRecapCard)).toHaveLength(2);
+    expect(api.getWrapped).toHaveBeenCalledWith(wrappedMonthRange(current).from, undefined);
+    expect(api.getWrapped).toHaveBeenCalledWith(
+      wrappedMonthRange(previous).from,
+      wrappedMonthRange(previous).to,
     );
+    expect(api.getSummary).not.toHaveBeenCalled();
   });
 
   it("defers past payload requests until the card approaches the viewport", async () => {
@@ -214,7 +239,7 @@ describe("annual recap overview", () => {
     expect(wrapper.findComponent(RecapLandscape).props("series")[0].seconds).toBe(7200);
   });
 
-  it("keeps this year's hero usable when the archive request fails", async () => {
+  it("keeps recent months usable when the archive request fails", async () => {
     api.listSummaries.mockRejectedValue(new Error("Archive unavailable"));
 
     const wrapper = mountRecaps(ListeningRecaps);
@@ -222,6 +247,47 @@ describe("annual recap overview", () => {
     await flushPromises();
     expect(wrapper.text()).toContain("Could not load past recaps");
     expect(wrapper.get("dl").text()).toContain("17");
+  });
+
+  it("keeps the previous month usable when the current month fails and retries it independently", async () => {
+    const current = wrappedMonth(HomeRecapPeriod.CurrentMonth);
+    const from = wrappedMonthRange(current).from;
+    const load = api.getWrapped.getMockImplementation()!;
+
+    api.getWrapped.mockImplementation((start: string, to?: string) => {
+      if (start === from) return Promise.reject(new Error("Current month unavailable"));
+
+      return load(start, to);
+    });
+
+    const wrapper = mountRecaps(ListeningRecaps);
+
+    await flushPromises();
+    const [currentCard, previousCard] = wrapper.findAllComponents(MonthlyRecapCard);
+
+    expect(currentCard!.text()).toContain("Could not load this month");
+    expect(previousCard!.get("dl").text()).toContain("17");
+
+    api.getWrapped.mockImplementation(load);
+    await currentCard!.get("button").trigger("click");
+    await flushPromises();
+
+    expect(currentCard!.get("dl").text()).toContain("17");
+    expect(api.getWrapped).toHaveBeenCalledTimes(3);
+  });
+
+  it("shows quiet monthly empty states without invented totals", async () => {
+    api.getWrapped.mockResolvedValue({ from: "", to: "", deck: { cards: [] } });
+    const wrapper = mountRecaps(ListeningRecaps);
+
+    await flushPromises();
+    const cards = wrapper.findAllComponents(MonthlyRecapCard);
+
+    expect(cards.every((card) => card.text().includes("No recorded listening"))).toBe(true);
+    expect(cards[0]!.text()).toContain("Browse music");
+    expect(cards[1]!.text()).not.toContain("Browse music");
+    expect(wrapper.find("dl").exists()).toBe(false);
+    expect(wrapper.text()).toContain(`${year} so far`);
   });
 });
 

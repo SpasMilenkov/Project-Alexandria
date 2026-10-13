@@ -30,7 +30,7 @@ describe("Home resize geometry", () => {
     expect(homeResizeByCells(widget, 12, "bottom-right", -100, -100)).toMatchObject({
       x: 3,
       y: 4,
-      width: 3,
+      width: 2,
       height: 2,
     });
     expect(homeResizeByCells(widget, 12, "top-left", -100, -100)).toMatchObject({
@@ -49,6 +49,22 @@ describe("Home resize geometry", () => {
     expect(homeResizeByCells({ ...widget, y: 20 }, 12, "top", 0, -100)).toMatchObject({
       y: 12,
       height: 12,
+    });
+  });
+
+  it("shrinks clocks from top-left to 2×2 while preserving the opposite edges and library minima", () => {
+    const layout = defaultHomeLayout();
+    const clock = { ...layout.widgets[0]!, x: 3, y: 4 };
+
+    expect(homeResizeByCells(clock, 12, "top-left", 100, 100)).toMatchObject({
+      x: 7,
+      y: 6,
+      width: 2,
+      height: 2,
+    });
+    expect(homeResizeByCells(layout.widgets[1]!, 12, "bottom-right", -100, -100)).toMatchObject({
+      width: 3,
+      height: 2,
     });
   });
 

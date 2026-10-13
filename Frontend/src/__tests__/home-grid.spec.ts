@@ -22,7 +22,9 @@ describe("Home spatial layout", () => {
 
     expect(position).toEqual({ x: 0, y: 0, width: 6, height: 4 });
     expect(placeHomeWidget(layout, { ...added, ...position! })).toBe(true);
-    expect(layout.widgets.find((widget) => widget.instanceId === "default-clock")!.x).toBe(6);
+    expect(
+      layout.widgets.find((widget) => widget.instanceId === original.widgets[0]!.instanceId)!.x,
+    ).toBe(6);
     layout.widgets = layout.widgets.filter((widget) => widget.instanceId !== added.instanceId);
     expect(layout).toEqual(original);
   });
@@ -34,7 +36,9 @@ describe("Home spatial layout", () => {
     const candidate = { ...layout.widgets[0]!, x: 6, y: 4 };
     const preview = previewHomePlacement(layout, candidate)!;
 
-    expect(preview.widgets.find((widget) => widget.instanceId === "default-library")!.y).toBe(8);
+    expect(
+      preview.widgets.find((widget) => widget.instanceId === original.widgets[1]!.instanceId)!.y,
+    ).toBe(8);
     expect(preview.widgets.find((widget) => widget.instanceId === "lower")).toMatchObject({
       x: 6,
       y: 14,
@@ -95,8 +99,8 @@ describe("Home spatial layout", () => {
     expect(desktop).toEqual(original);
     expect(mobile.columns).toBe(4);
     expect(mobile.widgets.map((widget) => widget.instanceId)).toEqual([
-      "default-library",
-      "default-clock",
+      desktop.widgets[1]!.instanceId,
+      desktop.widgets[0]!.instanceId,
     ]);
     expect(mobile.widgets[1]).toMatchObject({ width: 4, height: 4, y: 6 });
     mobile.widgets[1]!.options.timeZone = "UTC";

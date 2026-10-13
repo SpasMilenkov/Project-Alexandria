@@ -138,7 +138,7 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { computed, watch } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
@@ -147,10 +147,11 @@ import { setupProfile } from "@/mutations/user";
 useOnboardingGuard(OnboardingStep.CompleteProfile);
 
 const router = useRouter();
+const route = useRoute();
 const { mutate, error: mutationError, status } = setupProfile();
 
 watch(status, (s) => {
-  if (s === "success") router.push({ name: "tour" });
+  if (s === "success") router.replace({ name: "tour", query: route.query });
 });
 
 const serverError = computed(() => {

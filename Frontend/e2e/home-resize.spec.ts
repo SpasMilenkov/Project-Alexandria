@@ -1,7 +1,12 @@
 import { type Locator, type Page, expect, test } from "@playwright/test";
 
 import { fixture, seed } from "./helpers/home-dashboard.js";
-import { resizePoints, resizeTouchWidget, resizeWidget } from "./helpers/home-grid-editor.js";
+import {
+  openWidgetTab,
+  resizePoints,
+  resizeTouchWidget,
+  resizeWidget,
+} from "./helpers/home-grid-editor.js";
 
 const rectangle = (widget: Locator) =>
   widget.locator("..").evaluate((element) => ({
@@ -10,21 +15,57 @@ const rectangle = (widget: Locator) =>
   }));
 
 const verifyWideClock = async (clock: Locator) => {
+  const time = (await clock.locator(".clock-quiet-time").boundingBox())!;
+  const caption = (await clock.locator(".clock-details").boundingBox())!;
+
+  expect(time.y + time.height).toBeLessThanOrEqual(caption.y + 1);
   expect(
-    await clock
-      .locator(".clock-content")
-      .evaluate((element) => getComputedStyle(element).flexDirection),
-  ).toBe("row");
-  expect(await clock.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await clock.evaluate(
+      (element) =>
+        element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight,
+    ),
+  ).toBe(true);
 };
 
 const restoreSmallPreset = async (page: Page, clock: Locator) => {
   await page.getByRole("button", { name: "Customize", exact: true }).click();
-  await page.getByRole("combobox", { name: "Widget size" }).click();
-  await page.getByRole("option", { name: "Small", exact: true }).click();
+  await openWidgetTab(page, "Layout");
+  await page.getByRole("button", { name: "Small widget", exact: true }).click();
 
   expect(await rectangle(clock)).toEqual({ column: "1 / span 3", row: "1 / span 3" });
 };
+
+for (const [edge, dx, dy, width, height] of [
+  ["bottom-right", 3.35, -1.7, 9, 2],
+  ["right", 1.35, 0, 7, 4],
+] as const) {
+  test(`fractional ${edge} resize releases keep selection and handle focus`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1100 });
+    const initial = seed();
+    initial.desktop.widgets = [initial.desktop.widgets[0]!];
+    const state = await fixture(page, initial);
+    const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
+    await page.getByRole("button", { name: "Customize", exact: true }).click();
+    await resizeWidget(page, clock, edge, dx, dy);
+
+    expect(await rectangle(clock)).toEqual({
+      column: `1 / span ${width}`,
+      row: `1 / span ${height}`,
+    });
+    await expect(clock).toHaveAttribute("data-selected", "true");
+    const handle = clock.locator("..").locator(`[data-resize-edge="${edge}"]`);
+    await expect(handle).toBeFocused();
+    await handle.press("ArrowRight");
+    expect((await rectangle(clock)).column).toBe(`1 / span ${width + 1}`);
+
+    const canvas = page.locator('[aria-label="Home widgets"]');
+    const bounds = (await canvas.boundingBox())!;
+    await canvas.click({ position: { x: bounds.width - 16, y: bounds.height - 16 } });
+    await expect(clock).toHaveAttribute("data-selected", "false");
+    await expect(page.locator("[data-resize-edge]")).toHaveCount(0);
+    expect(state.writes).toHaveLength(0);
+  });
+}
 
 test("corner resizing previews adaptive content and saves custom geometry through reload and presets", async ({
   page,
@@ -32,13 +73,16 @@ test("corner resizing previews adaptive content and saves custom geometry throug
   await page.setViewportSize({ width: 1440, height: 1100 });
 
   const state = await fixture(page);
-  const clock = page.locator('[data-widget-id="default-clock"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
   await resizeWidget(page, clock, "bottom-right", 3, -2);
 
   expect(await rectangle(clock)).toEqual({ column: "1 / span 9", row: "1 / span 2" });
-  await expect(page.getByRole("combobox", { name: "Widget size" })).toContainText("Custom");
+  await openWidgetTab(page, "Layout");
+  await expect(
+    page.getByRole("group", { name: "Widget size" }).locator('[aria-pressed="true"]'),
+  ).toHaveCount(0);
 
   await verifyWideClock(clock);
 
@@ -75,7 +119,7 @@ test("top and left handles anchor opposite edges and keyboard handles resize wit
 
   await fixture(page, initial);
 
-  const clock = page.locator('[data-widget-id="default-clock"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
   await resizeWidget(page, clock, "top-left", -2, -2);
@@ -108,8 +152,8 @@ test("resize collisions preview before release and Escape restores the unmodifie
   await page.setViewportSize({ width: 1440, height: 1100 });
 
   const state = await fixture(page);
-  const clock = page.locator('[data-widget-id="default-clock"]');
-  const library = page.locator('[data-widget-id="default-library"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
+  const library = page.locator('[data-widget-id][aria-label="Library shortcuts"]');
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
 
@@ -143,7 +187,7 @@ test("an overflowing resize collision is rejected without partially editing the 
   initial.desktop.widgets[1]!.y = 254;
   initial.desktop.widgets[1]!.height = 2;
   const state = await fixture(page, initial);
-  const clock = page.locator('[data-widget-id="default-clock"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
 
@@ -171,7 +215,7 @@ test("shortcut content adapts between a wide strip and a tall narrow arrangement
 
   await fixture(page, initial);
 
-  const library = page.locator('[data-widget-id="default-library"]');
+  const library = page.locator('[data-widget-id][aria-label="Library shortcuts"]');
   const links = library.getByRole("link");
 
   await expect(links).toHaveCount(4);
@@ -216,15 +260,31 @@ test("touch corner resizing saves independent mobile dimensions and displaced wi
     initial.mobile = {
       columns: 4,
       widgets: [
-        { ...initial.desktop.widgets[0]!, x: 0, y: 0, width: 2, height: 3, size: 0 },
-        { ...initial.desktop.widgets[1]!, x: 2, y: 0, width: 2, height: 3, size: 0 },
+        {
+          ...initial.desktop.widgets[0]!,
+          instanceId: "mobile-clock",
+          x: 0,
+          y: 0,
+          width: 2,
+          height: 3,
+          size: 0,
+        },
+        {
+          ...initial.desktop.widgets[1]!,
+          instanceId: "mobile-library",
+          x: 2,
+          y: 0,
+          width: 2,
+          height: 3,
+          size: 0,
+        },
       ],
     };
     const state = await fixture(page, initial);
 
     await page.getByRole("button", { name: "Customize", exact: true }).tap();
 
-    const clock = page.locator('[data-widget-id="default-clock"]');
+    const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
 
     await resizeTouchWidget(page, clock, "bottom-right", 2, 1);
 

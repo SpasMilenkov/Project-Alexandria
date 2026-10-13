@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import type { AuthFormField, FormSubmitEvent } from "@nuxt/ui";
 
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
-import { OnboardingStep } from "@/enums";
 import { type LoginSchema, loginSchema } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth";
+import { getSignInDestination } from "@/utils/home-landing";
 
 const toast = useToast();
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
 const fields: AuthFormField[] = [
   {
@@ -43,20 +44,10 @@ const onSubmit = async (payload: FormSubmitEvent<LoginSchema>) => {
     });
     return;
   }
-  switch (authStore.user?.onboardingStep) {
-    case OnboardingStep.SetPassword:
-      router.push("/onboarding/set-password");
-      break;
-    case OnboardingStep.CompleteProfile:
-      router.push("/onboarding/setup-profile");
-      break;
-    case OnboardingStep.Tour:
-      router.push("/onboarding/tour");
-      break;
-    case OnboardingStep.Done:
-      router.push("/dashboard");
-      break;
-  }
+
+  await router.replace(
+    getSignInDestination(router, authStore.user?.onboardingStep, route.query.redirect),
+  );
 };
 </script>
 

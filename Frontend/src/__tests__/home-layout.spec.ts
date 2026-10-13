@@ -3,17 +3,20 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import type { HomeSettings } from "@/types/home";
 
-import { HomeWidgetSize } from "@/enums/home-widget";
+import { HomeWidgetSize, HomeWidgetType } from "@/enums/home-widget";
 import { useHomeStore } from "@/stores/home";
+import { placeHomeWidget } from "@/utils/home-grid";
 import {
   defaultHomeLayout,
-  moveHomeWidget,
   selectedHomeLayout,
   setSeparateMobileLayout,
+  updateHomeWidgetOptions,
 } from "@/utils/home-layout";
 
 const settings = (): HomeSettings => ({
-  schemaVersion: 1,
+  initialized: true,
+  showWidgetTitles: false,
+  showHeaderGreeting: true,
   useSeparateMobileLayout: false,
   desktop: defaultHomeLayout(),
   mobile: null,
@@ -30,24 +33,29 @@ describe("Home layout drafts", () => {
     expect(selectedHomeLayout(value, "mobile")).toBe(value.mobile);
     expect(value.mobile!.columns).toBe(4);
     expect(value.desktop.columns).toBe(12);
-    expect(value.mobile!.widgets.map((widget) => widget.instanceId)).toEqual(
-      value.desktop.widgets.map((widget) => widget.instanceId),
+    expect(value.mobile!.widgets.map((widget) => widget.type)).toEqual(
+      value.desktop.widgets.map((widget) => widget.type),
     );
+    expect(
+      new Set(
+        [...value.desktop.widgets, ...value.mobile!.widgets].map((widget) => widget.instanceId),
+      ).size,
+    ).toBe(4);
     expect(value.mobile).not.toBe(value.desktop);
   });
 
   it("deep-copies the current desktop draft and keeps mobile options independent", () => {
     const value = settings();
     value.desktop.widgets[0]!.options.timeZone = "UTC";
-    moveHomeWidget(value.desktop, "default-library", 0);
+    placeHomeWidget(value.desktop, { ...value.desktop.widgets[1]!, y: 0 });
     setSeparateMobileLayout(value, true);
     value.mobile!.widgets[1]!.options.timeZone = "Asia/Tokyo";
     value.mobile!.widgets[0]!.size = HomeWidgetSize.Small;
     value.mobile!.widgets.pop();
 
-    expect(value.desktop.widgets.map((widget) => widget.instanceId)).toEqual([
-      "default-library",
-      "default-clock",
+    expect(value.desktop.widgets.map((widget) => widget.type)).toEqual([
+      HomeWidgetType.LibraryShortcuts,
+      HomeWidgetType.Clock,
     ]);
     expect(value.desktop.widgets[1]!.options.timeZone).toBe("UTC");
     expect(value.desktop.widgets[0]!.size).toBe(HomeWidgetSize.Large);
@@ -65,20 +73,25 @@ describe("Home layout drafts", () => {
     expect(selectedHomeLayout(value, "mobile").widgets).toEqual([]);
   });
 
-  it("reorders by instance identity without changing options and ignores invalid moves", () => {
-    const layout = defaultHomeLayout();
-    const clock = layout.widgets[0];
-    moveHomeWidget(layout, "default-clock", 1);
-    moveHomeWidget(layout, "missing", 0);
-    moveHomeWidget(layout, "default-clock", -1);
-    moveHomeWidget(layout, "default-clock", 2);
+  it("updates only the selected draft options while retaining widget references and geometry", () => {
+    const value = settings();
+    setSeparateMobileLayout(value, true);
+    const layout = value.desktop;
+    const widgets = [...layout.widgets];
+    const options = widgets.map((widget) => widget.options);
+    const mobile = structuredClone(value.mobile);
+    const rectangles = widgets.map(({ x, y, width, height }) => ({ x, y, width, height }));
 
-    expect(layout.widgets[1]!.instanceId).toBe(clock!.instanceId);
-    expect(layout.widgets[1]!.options).toEqual(clock!.options);
-    expect(layout.widgets.map((widget) => widget.instanceId)).toEqual([
-      "default-library",
-      "default-clock",
-    ]);
+    expect(updateHomeWidgetOptions(layout, widgets[0]!.instanceId, { timeZone: "UTC" })).toBe(true);
+    expect(updateHomeWidgetOptions(layout, "missing", { timeZone: "UTC" })).toBe(false);
+
+    layout.widgets.forEach((widget, index) => expect(widget).toBe(widgets[index]));
+    expect(layout.widgets[0]!.options).not.toBe(options[0]);
+    expect(layout.widgets[1]!.options).toBe(options[1]);
+    expect(layout.widgets.map(({ x, y, width, height }) => ({ x, y, width, height }))).toEqual(
+      rectangles,
+    );
+    expect(value.mobile).toEqual(mobile);
   });
 
   it("edits a deep draft, leaves committed state alone and Cancel discards both drafts", () => {

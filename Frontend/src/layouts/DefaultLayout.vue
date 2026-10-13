@@ -65,9 +65,9 @@ const items = computed<NavigationMenuItem[]>(() => {
   ];
   if (authStore.isAuthenticated) {
     itemArray.push({
-      active: route.path.startsWith("/dashboard"),
-      label: "Dashboard",
-      to: "/dashboard",
+      active: route.path === "/home",
+      label: "Home",
+      to: "/home",
     });
   }
   return itemArray;

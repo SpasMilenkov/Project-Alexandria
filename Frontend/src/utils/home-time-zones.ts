@@ -5,7 +5,17 @@ interface HomeTimeZoneChoice {
 }
 
 export const homeTimeZoneLabel = (identifier: unknown): string => {
-  if (identifier === "local") return "Your device's time zone";
+  if (identifier === "local") {
+    try {
+      const local = new Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      if (local) return homeTimeZoneLabel(local);
+    } catch {
+      return "Local time";
+    }
+
+    return "Local time";
+  }
   if (typeof identifier !== "string" || !identifier) return "Saved time zone";
 
   return identifier.split("_").join(" ").split("/").join(" / ");
@@ -25,10 +35,22 @@ export const resolveHomeTimeZone = (identifier: unknown) => {
   }
 };
 
-export const homeTimeZoneChoices = (identifiers: string[], saved: string): HomeTimeZoneChoice[] => {
-  const choices: HomeTimeZoneChoice[] = [...new Set(identifiers)]
+export const homeTimeZoneCatalogue = (identifiers: string[]): HomeTimeZoneChoice[] =>
+  [...new Set(identifiers)]
     .filter((identifier) => !resolveHomeTimeZone(identifier).unavailable)
-    .map((identifier) => ({ label: homeTimeZoneLabel(identifier), value: identifier }));
+    .map((identifier) => {
+      let label = homeTimeZoneLabel(identifier);
+
+      if (identifier === "local") label = `Local (${label})`;
+
+      return { label, value: identifier };
+    });
+
+export const homeTimeZoneChoices = (
+  catalogue: HomeTimeZoneChoice[],
+  saved: string,
+): HomeTimeZoneChoice[] => {
+  const choices = [...catalogue];
 
   if (!choices.some((choice) => choice.value === saved)) {
     choices.unshift({ label: `${homeTimeZoneLabel(saved)} (saved)`, value: saved, disabled: true });
