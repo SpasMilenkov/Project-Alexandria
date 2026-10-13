@@ -1,0 +1,128 @@
+---
+title: Operations, recovery and backups
+description: Manage an installer-generated Alexandria project without losing its settings or volume data.
+---
+
+Use the project-specific commands in `INSTALLATION.txt`. Every command must address the saved project and settings folder explicitly: an unqualified `docker compose` from the source checkout can address a different stack.
+
+## Address the correct installation
+
+For the examples below, replace both values with your actual settings path and the `ProjectName` recorded in `alexandria-config.json`. The following Bash helper quotes paths containing spaces and passes each Compose argument separately:
+
+```bash
+alexandria_target='/srv/Alexandria settings'
+alexandria_project='replace-with-saved-project-name'
+
+alexandria_compose() {
+  docker compose \
+    --project-name "$alexandria_project" \
+    --project-directory "$alexandria_target" \
+    --env-file "$alexandria_target/.env" \
+    --file "$alexandria_target/docker-compose.yml" "$@"
+}
+```
+
+Review the values before using the helper. Do not source `.env` as a shell script or print resolved Compose configuration containing credentials. Validate without printing values:
+
+```bash
+alexandria_compose config --quiet
+alexandria_compose ps --all
+```
+
+## Stop, start and inspect
+
+```bash
+# Stop this project's services while retaining containers and volumes.
+alexandria_compose stop
+
+# Start the saved stack using existing images, without building or pulling.
+alexandria_compose up -d --no-build --pull never
+
+# Inspect all states, including completed setup jobs.
+alexandria_compose ps --all
+
+# Follow recent logs; use a selected service name for a narrower view.
+alexandria_compose logs -f --tail 100
+alexandria_compose logs --tail 200 api
+```
+
+`garage-init` and `rabbitmq-config` are setup jobs and should exit successfully. Ongoing selected services must be running; services with healthchecks must become healthy. A running process without a healthcheck is not a complete application check. Confirm the HTTPS origin and sign-in after starting.
+
+`docker compose down`, with the same explicit project arguments, removes this project's containers/networks and normally preserves named volumes. Use `stop` for routine downtime. **`down -v` deletes volume data.** Do not use volume pruning or delete the settings folder as a repair technique.
+
+## Repair and change features
+
+Run Builder again and select the existing settings folder and its source checkout. Review the recovered project, volume names, source path, features, origin and certificate identity before deploying. Established credentials and data remain authoritative. The installer will stop if it cannot safely associate legacy settings with Docker resources, or if a required existing volume is missing.
+
+Retry within the failure screen revalidates the environment, artifact checkpoint and ownership, and retains verified preparation from that session. If settings changed, return to the summary for review. After an exit or cancellation, rerun with the same folder to resume from saved state. Started services can keep running after failure; cancellation stops installer child work and does not automatically tear the stack down.
+
+Repair does not reset an established administrator password, change an existing Garage layout capacity, or restore missing data. Restore the matching backup when those are the problem.
+
+## Named failures and next steps
+
+| Failure | What to inspect and do |
+| --- | --- |
+| Settings permission or log creation failure | Check ownership and write access to the real settings folder and parent directories. Deployment has not started if the installer cannot create its log. Avoid switching users and generating a second identity in a different folder. |
+| Docker unavailable or permission denied | Check `docker info`, your account's Docker access and the selected local context. Use `docker context ls` to inspect it; remote SSH/TCP contexts are unsupported. |
+| Missing source asset or template | Restore the complete matching source checkout or native bundle, including `Templates/Local`. A moved source folder also breaks runtime bind mounts; review the source location in Builder. |
+| Busy HTTPS port | Return to network access and choose a free port. A port occupied by another project is not adopted. Use the newly reviewed origin on clients. |
+| Image build, registry transfer or dependency failure | Inspect the **installer log and build output**, not only container logs: containers may not exist yet. Resolve the named registry/network/cache, disk, memory or compiler error and retry with the same folder. Do not replace `.env` or delete volumes. |
+| Missing/corrupt model | Supply selected local assets, explicitly choose HTTPS downloads in the Audio models step, or switch analysis Off. Size/SHA-256 failures discard partial transfers and keep verified cache; images alone do not provide models. |
+| Storage or messaging init failure | Inspect `garage`, `garage-init`, `rabbitmq-config` and `rabbitmq` status and logs. Resolve the named configuration/permission/capacity error, then resume bootstrap. Successful setup jobs should exit 0. |
+| Docker address pools fully subnetted | Docker cannot allocate another project network. Finish other disposable tests and remove only networks belonging to those tests, then retry the same settings folder. Preserve unrelated deployments; daemon address-pool changes require a separate host administration decision. |
+| Storage keys missing after init | Preserve the protected key handoff if present. If it is absent and `.env` lacks complete persisted keys, rerun the existing init job as shown below, then rerun Builder. Never replace established credentials with random values. |
+| Missing volume, ownership or ambiguous legacy identity | Stop and compare saved project/volume metadata with Docker resources and backups. Restore or explicitly resolve the mapping; a different project name can create an empty stack rather than recover data. |
+| Selected service unhealthy, stopped or duplicated | Inspect the exact named service with `ps --all` and its logs; fix that blocker and retry. Disabled optional workers are not required. Do not treat “some containers running” as success. |
+| Fresh admin check fails | Inspect API bootstrap/authentication evidence. Setup is incomplete even if the login page loads. Preserve settings and retry after correcting the reported cause. Existing-account repair needs a separate browser sign-in check. |
+| TLS warning or client connection failure | Follow `nginx/CLIENT-TRUST.txt`; compare fingerprint, host/IP, expiry and client trust. Check LAN reachability, DNS, firewall and Wi-Fi isolation. Do not bypass TLS warnings. |
+| Lyrics provider unavailable or no match | Check lyrics-worker evidence and outbound HTTPS to `lrclib.net`. Provider failures retry; a completed no-match result is different from an outage. Core storage remains usable. |
+| Monitoring unavailable | Inspect Prometheus, Loki, Alloy and Grafana. Use `/monitoring/` on the saved HTTPS origin and Grafana's own credentials. Monitoring has host-level Docker access requirements, described below. |
+
+If storage initialization succeeded but the credential handoff and complete persisted keys are both missing, reuse the reviewed project and existing volumes:
+
+```bash
+GARAGE_FORCE_CREDENTIAL_EXPORT=true alexandria_compose up -d --no-deps --force-recreate \
+  --no-build --pull never garage-init
+alexandria_compose ps --all garage-init
+alexandria_compose logs --tail 200 garage-init
+```
+
+Wait for `garage-init` to exit 0, then rerun Builder with the same settings folder so it validates and persists the keys. The flag applies only to this recovery command. Normal initialization skips another credential export after the installer has verified persistence; the generation-bound receipt contains no keys. Never print or paste the contents of `init-output/garage-credentials.env` into a support conversation.
+
+Installer logs are timestamped under `installer-logs/` and owner-readable only. Secret values are redacted before display and storage; still review evidence before sharing it. Avoid sharing `.env`, private keys, raw Docker environment/inspect output or resolved Compose configuration.
+
+## Consistent backups
+
+There is no automatic backup scheduler. A usable backup must keep the database, object data, broker state and matching configuration from the same stopped point in time. A database-only backup cannot reconstruct uploaded objects; a settings-only backup contains no volume data.
+
+1. Record the source revision, image versions, project name and exact volume names from `INSTALLATION.txt`, `alexandria-config.json` and Docker's project labels. Include retained volumes from features that were enabled previously. Retain the matching source/build assets and images needed for recovery.
+2. Schedule downtime, let active uploads/jobs finish, then run `alexandria_compose stop`. Confirm **every container belonging to the project** is stopped before copying state, including any older service outside the current Compose selection. A consistent filesystem/storage snapshot is an alternative only if your backup tooling guarantees consistency across **all** these resources.
+3. Back up the complete settings folder, including hidden files, `.env`, `alexandria-config.json`, generation checkpoint, Garage/proxy/broker configuration, certificates **and their private keys**, model cache and any pending `init-output` handoff. Protect this archive as credential material.
+4. Back up every recorded named volume with your existing Docker/storage backup tooling, preserving ownership and permissions. The essential data includes Postgres, both Garage metadata and object-data volumes, RabbitMQ and its definitions. Include monitoring state when enabled and queued/in-flight processing volumes to retain pending work. Do not infer physical volume names from the folder name, particularly for adopted legacy installations.
+5. Keep the matching archives together, verify their integrity and rehearse restoration into an isolated Docker host before relying on them. Restart the original project with `alexandria_compose up -d --no-build --pull never`, then confirm HTTPS access and a file round trip.
+
+Use the saved project label to inventory volumes and confirm no owned containers remain running:
+
+```bash
+docker volume ls \
+  --filter "label=com.docker.compose.project=$alexandria_project" \
+  --format '{{.Name}}'
+
+docker ps \
+  --filter "label=com.docker.compose.project=$alexandria_project" \
+  --format '{{.Names}} {{.Status}}'
+```
+
+Do not copy a cold backup while the second command lists running containers. Verify their ownership and stop them before proceeding; `compose stop` only addresses services in the current Compose file.
+
+Optional monitoring uses privileged cAdvisor with read-only host mounts, including `/var/lib/docker`, and Alloy's Docker socket access. A read-only socket mount does not restrict Docker API authority. Metrics/log filters scope retained data to the project; they do not remove those host permissions. Keep the host under your administrative control.
+
+## Restore and upgrades
+
+Restore with the application stopped, preferably on an isolated host first. Use the backed-up source revision and matching service versions; restore the complete settings and all volume archives as one set with their original Docker volume names/labels and ownership. Confirm the source and settings paths match saved build contexts/bind mounts before starting. Changing only the Compose project name does not remap existing volume data.
+
+Do not start an empty stack to “initialize” it over a partial restore: API startup can apply database migrations and setup jobs can alter service state. Validate restored settings with `config --quiet`, verify the volume mapping, then start with the explicit project helper and existing images. Confirm sign-in, metadata, an uploaded/downloaded file, encryption and enabled processing/monitoring. Repairs preserve an existing account but do not verify its current password; perform that check in the browser. Retain the backup until recovery is proven.
+
+Take a consistent backup before changing source or image versions. Builder is not an upgrade rollback manager and provides no automatic database/schema downgrade. Returning to an older executable/image after newer migrations is not a safe rollback plan; restore the complete matching pre-upgrade configuration and data set instead. Local-CA identity is also backup material: preserving it avoids requiring every client to trust a replacement authority.
+
+For generated certificates, rerun Builder in the final 30 days before server-certificate expiry to renew under the same local CA. For imported certificates, renew with the issuer and provide the renewed PEM certificate and matching unencrypted private key. A lost/expired CA or a new self-signed identity requires deliberate replacement and renewed client trust.

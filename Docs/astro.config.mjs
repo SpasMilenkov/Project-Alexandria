@@ -29,6 +29,7 @@ export default defineConfig({
               label: "Manual Installation",
               slug: "getting-started/manual-installation",
             },
+            { label: "First Steps", slug: "getting-started/first-steps" },
           ],
         },
         {
@@ -38,7 +39,7 @@ export default defineConfig({
               label: "Development Setup",
               slug: "guides/set-up-development-environment",
             },
-
+            { label: "Operations and Backups", slug: "guides/operations" },
           ],
         },
         {

@@ -1,136 +1,131 @@
 ---
 title: Installation
-description: Set up Alexandria on your own machine with the interactive TUI installer.
+description: Set up Alexandria on a private LAN with the source-based Ubuntu x64 installer.
 ---
 
-import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
+
+Alexandria Builder is an interactive terminal installer for a private local network. It builds the application from a local source checkout, generates protected settings and certificates, initializes storage and messaging, and checks the selected services before reporting success.
 
 <Aside type="caution">
-The installer currently covers **local self-hosted setups**. Server deployments are on the roadmap — until then, use the [manual installation](../manual-installation). Running on a private home network is recommended.
+Ubuntu 24.04 on x64 (glibc) is the initial deployment target. Native-bundle execution and all 11 clean source-image builds have passed on this host. PC/Android application checks and Grafana metrics are confirmed; the maintainer accepts manual client trust of automatically generated certificates. Preview Loki log ingestion has a deferred failure despite passing readiness. Final delivery acceptance remains open. Other Linux distributions, Windows, macOS and ARM are not advertised as supported, and no published installer download is assumed.
 </Aside>
 
-The Alexandria installer is an interactive TUI that sets up the whole stack on your machine: it asks what you want in plain language, creates every password for you, builds and starts all services with Docker, and even creates the secure storage keys automatically.
+## Before you start
 
-| Key | Action |
-|---|---|
-| `↑` `↓` | Move between options |
-| `Space` | Toggle a feature on/off |
-| `T` | Switch the installer's look (Papyrus ↔ Aurora) - saved instantly |
-| `R` | On the summary: flip the memory chart between breakdown and bar |
-| `A` | On the summary: see every component that will run |
-| `Enter` | Confirm |
-| `Esc` | Go back one step |
-| `Ctrl+C` | Abort (cleans up running containers) |
+Have the following available on the installation host:
 
-<Aside type="tip">
-**TL;DR**: Run the installer → choose features → pick a folder → confirm. No config files need to be edited by hand.
+- A complete Alexandria source checkout, including `Backend/`, `Frontend/`, `Builder/`, scripts and configuration assets. Keep this checkout available after installation: generated Compose also mounts some source files.
+- A working local Docker engine and the `docker compose` plugin, accessible to your account. A remote SSH/TCP Docker context cannot mount these local folders and is unsupported.
+- The .NET 10 SDK to run Builder from source. A native executable, when supplied with its matching `Templates/Local` folder, runs without a .NET runtime but still needs the source checkout for Docker builds.
+- A stable LAN IPv4 address or a DNS name that resolves on every client, plus one available TCP port for HTTPS (443 by default). IPv6 and localhost are not supported as the public address.
+- Space for Docker images, stored files, temporary processing, models and backups. Docker's data filesystem and the installation settings filesystem can be different disks.
+
+Builder checks prerequisites and explains failures; it does not install missing tools. Git is useful for obtaining and tracking source but Builder does not clone a repository for you. Developer hot reload is a separate [development workflow](/guides/set-up-development-environment/).
+
+Initial image builds need Internet access to image registries and package repositories unless every required layer and dependency is already cached. Lyrics lookup needs outbound HTTPS to `lrclib.net`. Ordinary local browsing and file storage do not require exposing the server to the Internet. The installer does not change router forwarding, firewall rules or client trust stores.
+
+## Resource planning
+
+Use the wizard's measured Docker CPU/memory and disk information together with its feature estimate. Unknown measurements are shown as unknown; host RAM is not necessarily the RAM allocated to a Docker VM.
+
+| Selection | Additional RAM planning allowance |
+| --- | --- |
+| Core stack, including media metadata and playlists | 4096 MB total |
+| Document previews | 1024 MB |
+| Adaptive streaming conversion | 1024 MB |
+| Audio analysis coordinator and one classifier | 3072 MB |
+| Lyrics | 512 MB |
+| Monitoring | 1536 MB |
+
+These figures include planning headroom; they are not measured minimum requirements or a reservation. Media and inference jobs can use substantial CPU. Classifiers process one job at a time with an eight-core CPU limit and a 2 GB memory cap. Allow at least two CPU cores and additional disk space beyond your intended stored-file capacity; low resources produce warnings, and a successful preflight does not guarantee every workload will fit.
+
+## Run Builder
+
+From the source checkout, using your existing SDK and restored dependencies:
+
+```bash
+dotnet run --project 'Builder/Builder.csproj' --no-restore
+```
+
+For a supplied native bundle, keep the executable and `Templates/Local` directory together and run its executable from a terminal. Do not copy the executable alone. The Builder README describes native publication with the existing Ubuntu-specific runtime packs. The published executable has been tested outside the checkout with source and settings paths containing spaces.
+
+Use the keyboard hints shown on each screen. Back navigation retains entered choices; `Ctrl+C` cancels work and restores the terminal. During deployment, cancellation stops child commands while retaining data and services already started. Closing the completed installer leaves Alexandria running.
+
+## Choose source and installation folders
+
+The source folder contains code and build assets. The installation settings folder contains the generated `docker-compose.yml`, `.env`, `garage.toml`, `alexandria-config.json`, proxy/certificate files, model cache and installer logs. They may be separate folders. Relative paths resolve from the directory where Builder was launched; the wizard shows the resolved paths before proceeding. Use real directories, not symlink or junction paths, for the settings folder.
+
+Choose permanent locations before deploying, for example `~/alexandria/source` and `~/alexandria/settings`. Keep both available: runtime configuration mounts still refer to the source tree. Ordinary repair is not a relocation facility; moving an existing installation requires preserving its project/volume identity and reconciling saved paths and Docker ownership labels. A folder copy alone is insufficient.
+
+Uploaded files, database records and other persistent service state live in Docker-managed named volumes, outside the settings folder. Choosing an installation folder does not choose or move Docker's data disk. New installations get separate project/volume identities. Rerun Builder with the same settings folder to repair an existing installation; selecting it does not authorize a reset. Ambiguous legacy identity or missing owned volumes blocks repair for review.
+
+<Aside type="danger">
+Back up both the settings folder and its data volumes. Copying the settings folder alone does not back up uploaded files or the database. Keep `.env`, certificate private keys and backup archives private.
 </Aside>
 
-## Prerequisites
+## Choose capabilities
 
-- **Docker** with **Docker Compose** (v2) — the installer checks this first and shows install instructions per OS if missing
-- **2+ CPU cores** recommended
-- **4 GB of memory** is comfortable for the default feature set; the installer estimates usage live based on your choices
-- **10 GB free disk space**
+There are six independent toggles and one audio-model choice:
 
-## Running the Installer
+| Toggle | Default | Effect |
+| --- | --- | --- |
+| Media previews | On | Thumbnails, images and short media previews; core descriptive audio/video metadata remains available when off. |
+| Document previews | On | Adds the document-preview worker for formats such as PDF. |
+| Adaptive streaming | On | Creates new converted audio/video representations. Disabling it retains existing playback, representations and playlists. |
+| Automatic tagging | On | Master switch for analysis with the selected audio model. Off omits the analysis coordinator and classifier. |
+| Lyrics fetching | On | Adds lyrics lookup; requires access to the external provider. |
+| Monitoring dashboard | Off | Adds metrics, logs and Grafana at the same HTTPS address under `/monitoring/`. |
 
-From a checkout of the repository:
+The audio-model choice is **Off**, **Effnet** (default) or **MAEST**. At most one classifier is installed. Model Off disables analysis even if automatic tagging is on. Core storage, media metadata and playlist synchronization remain installed with every toggle off. Previously queued optional jobs are retained for re-enabling; disabling a feature is not a queue purge.
 
-```bash
-dotnet run --project Builder
-```
+### Supply audio models
 
-<Steps>
+Builder defaults to copying existing local assets into the installation's `models/` folder.
+On the Audio models screen, choose **Existing local files (offline)** or explicitly select
+**Download missing or corrupt models (HTTPS)**. Downloads start during installation after
+the final summary, use only `essentia.upf.edu`, and require no Python or additional host tools.
+Both modes verify pinned sizes and SHA-256 before promoting a file, reuse verified caches,
+and discard unverified partial transfers. The choice is saved for repair; selecting offline
+again disables model downloads. Cancellation retains verified assets for retry.
 
-1. **Pick how the installer looks** — Papyrus (warm gold) or Aurora (violet). A live preview of each is shown on first run; your choice is remembered for next time.
-2. **Choose "Set up Alexandria on this machine"**.
-3. **Toggle features** — every option explains what it does and what it costs before you decide.
-4. **Create your sign-in account** — email, name, password. This becomes your Alexandria login; write it down.
-5. **Choose where settings live** — the detected project folder is offered as the default; any other folder works too.
-6. **Confirm the summary** — services count, memory estimate, address, and exactly which files will be created.
-7. **Watch it run** — building, storage keys, service startup and health checks stream live. Nothing else to click unless something fails.
+| Model | Required files | Asset size, decimal |
+| --- | --- | --- |
+| Off | None | 0 |
+| Effnet | 17 | 24,056,930 bytes, about 24 MB |
+| MAEST | 17 | 370,003,909 bytes, about 370 MB |
 
-</Steps>
+MAEST also uses shared Effnet embeddings and mood heads; supplying only its genre model is insufficient. The checkout's `classificators/essentia/model-requirements.tsv` and `classificators/essentia/models/models.sha256` define the required assets. Point the wizard to an existing matching model folder, keep a verified installation cache, enable model downloads explicitly, or choose Off. Permission to pull container images does not enable model downloads.
 
-## Feature Toggles
-
-| Toggle | Default | What it gives you |
-|---|---|---|
-| Media processing | On | Thumbnails, previews, clips |
-| Document previews | On | PDF previews without opening downloads |
-| Adaptive streaming | On | Big media starts instantly, adapts to connection quality (~1 GB) |
-| Audio tagging – fast | On | Genre & mood recognized right after upload |
-| Audio tagging – deep | Off | Richer tags, much slower and heavier (~2 GB) — best on stronger machines |
-| Automatic tagging | On | Master switch; taggers only have effect when this is on |
-| Lyrics fetching | On | Finds lyrics automatically |
-| Monitoring dashboard | Off | Health graphs at localhost:3000 (~1 GB across several helpers) |
-
-## Where Your Files Go
-
-Everything generated lands in the folder you picked:
-
-```
-docker-compose.yml      how the services run
-.env                    every setting and password - locked to your user only
-garage.toml             storage configuration
-alexandria-config.json  record of your choices
-init-output/            temporary bootstrap files (cleaned up after setup)
-prometheus/             monitoring config + its access token (when enabled)
-```
-
-<Aside type="caution">
-`.env` holds every secret of your installation. The installer locks it to your user account; treat it like a password manager export. Storage keys are created inside the stack during setup and merged into `.env` automatically — no plaintext copies are left behind.
-</Aside>
-
-## Re-running the Installer
-
-If the target folder already has an `.env`, your existing settings are kept and only missing values are filled in. Starting completely fresh requires typing `FRESH` to confirm; the old file is renamed (never deleted) so nothing is lost by accident.
-
-## Post-Install Commands
-
-From your install directory:
-
-| Command | Purpose |
-|---------|---------|
-| `docker compose logs -f` | Stream logs from all services |
-| `docker compose ps` | Check container status |
-| `docker compose down` | Stop everything (data preserved) |
-| `docker compose up -d` | Start everything again |
-
-## Troubleshooting
-
-### Setup failed at some phase
-
-The installer shows which phase turned red. Pick **Show container status** on the failure screen, or:
+An optional model-sourcing script already exists. With Python 3 available, run it from the
+source checkout to explicitly permit missing model downloads, then select its output folder
+in Builder:
 
 ```bash
-docker compose logs garage-init   # storage key creation
-docker compose logs rabbitmq      # messaging startup
+bash classificators/essentia/download-models.sh '/absolute/path/to/model-cache' effnet --download
 ```
 
-If the storage key step reports an unreadable key file, do **not** delete `init-output/garage-credentials.env` — it contains the only copy of those keys. Fix or restore it and re-run the installer; it will merge the existing keys instead of starting over.
+Use `maest` instead of `effnet` for that backbone. The helper reuses verified cached assets,
+checks pinned sizes and SHA-256 hashes, and promotes only verified downloads. Without
+`--download`, it only prepares existing local files. This helper is an alternative to the
+wizard's download choice, useful when preparing a cache in advance.
 
-### Services still starting after the timeout
+## Set storage, network and HTTPS
 
-Large image pulls make the first boot slow. Check progress — services often finish on their own:
+New Garage layouts default to **10 decimal GB** and require at least **1 GB**. This is an object-store layout capacity, not disk preallocation, available disk space or a per-user quota. Repair reads and preserves the actual capacity. Resizing an existing layout or moving its data disk requires a separate operation; a conflicting capacity request stops rather than silently resizing data.
 
-```bash
-docker compose ps
-```
+Choose one stable host address and HTTPS port. If a port is busy, choose an available alternative in the wizard and use the resulting full address everywhere. The generated origin drives browser/API access, signed object URLs, CORS and monitoring. Application, storage, database, broker and monitoring ports stay internal; Grafana has no separate host port.
 
-### Port already in use
+Builder generates an installation-owned local certificate authority and a server certificate for the chosen address, or accepts a valid matching imported PEM certificate/key. Repairs reuse the trust identity. A generated certificate does not become trusted on other devices automatically: follow `nginx/CLIENT-TRUST.txt`, verify its fingerprint and import only the public trust certificate on each client. See [first steps](/getting-started/first-steps/).
 
-The installer checks ports 80/443 (and 3000 for monitoring) before installing and offers automatic fallbacks. If something started after that check:
+## Review and deploy
 
-```bash
-lsof -i :80        # Linux / macOS
-netstat -ano | findstr :80   # Windows
-```
+Review folders, selected services, resource estimates, storage, address and administrator account before confirming. Passwords are held in protected `.env` settings; `alexandria-config.json` records non-secret installation metadata. Established passwords and keys are preserved during repair.
 
-Stop the conflicting program or re-run the installer and accept a different port.
+Deployment proceeds through configuration validation, model preparation when enabled, image builds, storage/messaging initialization, storage-key persistence, database/admin initialization and service startup. Builder then checks the exact selected services, monitoring when enabled, the HTTPS origin and fresh administrator authentication. Services without healthchecks are qualified by running process state. Existing-account repair preserves the account and asks you to verify current browser sign-in yourself.
 
-## Next Steps
+After verifying the Garage keys in protected `.env`, Builder deletes `init-output/garage-credentials.env`. A receipt containing only the generation ID prevents normal restarts from exporting another secret copy. If persistence fails, the protected handoff is retained for recovery.
 
-- [First steps](./first-steps/) — sign in and take a look around
-- [Manual installation](../manual-installation/) — server-grade setup without the TUI
+On completion, `INSTALLATION.txt` records the exact address, public certificate fingerprint, configuration/data/log locations and correctly quoted commands for this project. It contains no passwords. Follow [first steps](/getting-started/first-steps/) to trust clients and confirm access; use [operations and backups](/guides/operations/) for ongoing management.
+
+If a stage fails, the screen offers its log, container status, service logs, a stage-specific retry/resume, summary review and exit preserving services. Before any containers exist, the installer build log is the useful evidence. The [manual Compose and recovery guide](/getting-started/manual-installation/) explains named failures and targeted recovery.
