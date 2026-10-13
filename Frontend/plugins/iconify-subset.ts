@@ -41,6 +41,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "bookmark",
     "document-text",
     "star",
+    "sparkles",
     "heart",
     "flag",
     "check-circle",
@@ -63,6 +64,8 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "map-pin",
   ],
   lucide: [
+    "undo-2",
+    "redo-2",
     "activity",
     "alert-circle",
     "archive",
@@ -181,6 +184,8 @@ const ICON_SUBSETS: Record<string, string[]> = {
   ],
   "material-symbols": ["keyboard-outline-rounded", "vitals"],
   mdi: [
+    "star",
+    "star-outline",
     "apple",
     "export",
     "video-off-outline",
