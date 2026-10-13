@@ -2,8 +2,7 @@
 FROM node:24.15-alpine3.22@sha256:b689d4005875ae167178471a7a622ec2909459a3bbb32277260be1971af7a99f AS build
 WORKDIR /app
 
-# Enable corepack for pnpm
-RUN npm install -g pnpm@11.0.6
+RUN npm install -g pnpm@12.4.2
 
 # Copy package files for dependency caching
 COPY package.json pnpm-lock.yaml  pnpm-workspace.yaml  ./
@@ -11,8 +10,15 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
+ARG VITE_API_BASE_URL=/api
+ARG VITE_STREAMING_ENABLED=false
+ARG VITE_PBKDF2_ITERATIONS=800000
+ARG VITE_AUTOTAGGING_ENABLED=false
 ENV CI=true
-ENV VITE_API_BASE_URL=/api
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_STREAMING_ENABLED=${VITE_STREAMING_ENABLED} \
+    VITE_PBKDF2_ITERATIONS=${VITE_PBKDF2_ITERATIONS} \
+    VITE_AUTOTAGGING_ENABLED=${VITE_AUTOTAGGING_ENABLED}
 RUN pnpm run build-only
 
 # ===== RUNTIME STAGE =====
