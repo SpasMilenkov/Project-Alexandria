@@ -71,6 +71,29 @@ public sealed class ListeningStatsService(IUnitOfWork unitOfWork) : IListeningSt
         return new TopSongsResponse(fromUtc, toUtc, items);
     }
 
+    public async Task<JumpBackInResponse> GetJumpBackInAsync(
+        Guid userId, DateTime asOfUtc, int inactiveDays, int limit, CancellationToken ct = default)
+    {
+        var inactiveBefore = asOfUtc.AddDays(-inactiveDays);
+        var ranking = await unitOfWork.StreamingHistories.GetJumpBackInAsync(userId, inactiveBefore, limit, ct);
+
+        if (ranking.Count == 0)
+            return new JumpBackInResponse(inactiveDays, inactiveBefore, []);
+
+        var references = ranking.Select(s => new PlaybackSourceEntryRef { FileId = s.FileId }).ToList();
+        var playableFiles = await unitOfWork.Files.GetPlaybackEntriesAsync(
+            userId, new PlaybackSourceDto { IsVideo = false }, references, ct);
+        var filesById = playableFiles.ToDictionary(f => f.FileId);
+
+        var items = ranking
+            .Where(s => filesById.ContainsKey(s.FileId))
+            .Select(s => new JumpBackInSongDto(
+                filesById[s.FileId], s.QualifiedPlayCount, s.TotalListenedSeconds, s.LastPlayedAt))
+            .ToList();
+
+        return new JumpBackInResponse(inactiveDays, inactiveBefore, items);
+    }
+
     public async Task<TimelineResponse> GetTimelineAsync(
         Guid userId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
     {

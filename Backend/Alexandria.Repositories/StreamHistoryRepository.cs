@@ -307,6 +307,50 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
             .Take(limit);
     }
 
+    public async Task<IReadOnlyList<JumpBackInRankingRow>> GetJumpBackInAsync(
+        Guid userId, DateTime inactiveBeforeUtc, int limit, CancellationToken ct = default)
+    {
+        return await JumpBackInQuery(userId, inactiveBeforeUtc, limit).ToListAsync(ct);
+    }
+
+    internal IQueryable<JumpBackInRankingRow> JumpBackInQuery(
+        Guid userId, DateTime inactiveBeforeUtc, int limit)
+    {
+        var playableFileIds = PlayableAudioFileIdsQuery(
+            StreamingSourceQueries.ViableJobs(context, userId, false), userId);
+
+        return JumpBackInRankingsQuery(_history.AsNoTracking(), playableFileIds, userId, inactiveBeforeUtc, limit);
+    }
+
+    internal static IQueryable<JumpBackInRankingRow> JumpBackInRankingsQuery(
+        IQueryable<StreamHistory> histories, IQueryable<Guid> playableFileIds,
+        Guid userId, DateTime inactiveBeforeUtc, int limit)
+    {
+        return histories
+            .Where(h => h.UserId == userId
+                        && h.DeletedAt == null
+                        && h.File.DeletedAt == null
+                        && h.File.MimeType.StartsWith("audio/")
+                        && h.QualifiedPlayCount >= 2
+                        && h.TotalListenedSeconds > 0
+                        && h.LastPlayedAt != null
+                        && h.LastPlayedAt < inactiveBeforeUtc
+                        && h.LastAccessedAt < inactiveBeforeUtc
+                        && playableFileIds.Contains(h.FileId))
+            .OrderByDescending(h => h.QualifiedPlayCount)
+            .ThenByDescending(h => h.TotalListenedSeconds)
+            .ThenBy(h => h.LastAccessedAt)
+            .ThenBy(h => h.FileId)
+            .Take(limit)
+            .Select(h => new JumpBackInRankingRow
+            {
+                FileId = h.FileId,
+                QualifiedPlayCount = h.QualifiedPlayCount,
+                TotalListenedSeconds = h.TotalListenedSeconds,
+                LastPlayedAt = h.LastPlayedAt!.Value
+            });
+    }
+
     public async Task<IReadOnlyList<ListeningHistoryRef>> GetListeningHistoryRefsAsync(
         Guid userId, CancellationToken ct = default, DateTime? beforeUtc = null)
     {
