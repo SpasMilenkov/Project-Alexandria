@@ -10,11 +10,15 @@ export const useHomeStore = defineStore("home", () => {
   const ownerEpoch = ref(0);
   const settings = ref<HomeSettings | null>(null);
   const draft = ref<HomeSettings | null>(null);
+  const baseline = ref<HomeSettings | null>(null);
   const target = ref<HomeEditorTarget>("desktop");
 
   const isEditing = computed(() => draft.value !== null);
+  const showWidgetTitles = computed(
+    () => (draft.value ?? settings.value)?.showWidgetTitles ?? false,
+  );
   const isDirty = computed(() =>
-    Boolean(draft.value && JSON.stringify(draft.value) !== JSON.stringify(settings.value)),
+    Boolean(draft.value && JSON.stringify(draft.value) !== JSON.stringify(baseline.value)),
   );
   const activeLayout = computed(() => {
     const source = draft.value ?? settings.value;
@@ -29,6 +33,7 @@ export const useHomeStore = defineStore("home", () => {
     ownerId.value = nextOwner;
     settings.value = null;
     draft.value = null;
+    baseline.value = null;
     target.value = "desktop";
   };
 
@@ -41,12 +46,14 @@ export const useHomeStore = defineStore("home", () => {
   const beginEditing = (nextTarget: HomeEditorTarget) => {
     if (!settings.value) return;
 
-    draft.value = cloneHomeSettings(settings.value);
+    baseline.value = cloneHomeSettings(settings.value);
+    draft.value = cloneHomeSettings(baseline.value);
     target.value = nextTarget;
   };
 
   const cancelEditing = () => {
     draft.value = null;
+    baseline.value = null;
   };
 
   const commit = (requestOwner: string, value: HomeSettings) => {
@@ -54,10 +61,12 @@ export const useHomeStore = defineStore("home", () => {
 
     hydrate(requestOwner, value);
     draft.value = null;
+    baseline.value = null;
   };
 
   return {
     activeLayout,
+    baseline,
     beginEditing,
     cancelEditing,
     commit,
@@ -68,6 +77,7 @@ export const useHomeStore = defineStore("home", () => {
     ownerEpoch,
     ownerId,
     settings,
+    showWidgetTitles,
     setOwner,
     target,
   };
