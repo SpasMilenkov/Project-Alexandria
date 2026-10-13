@@ -1,0 +1,10 @@
+**
+!Dockerfile
+!essentia_core.py
+!model_assets.py
+!model-requirements.tsv
+!classify.py
+!worker.py
+!entrypoint.sh
+!models/
+!models/models.sha256

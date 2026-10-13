@@ -11,6 +11,12 @@ import sys
 import time
 import traceback
 
+from model_assets import (
+    EFFNET_EMBEDDING_MODEL, EFFNET_EMBEDDING_OUTPUT,
+    EFFNET_GENRE_MODEL, EFFNET_GENRE_META,
+    MAEST_GENRE_MODEL, MAEST_GENRE_META, MOOD_CLASSIFIERS,
+)
+
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
 import essentia
@@ -21,32 +27,6 @@ essentia.log.infoActive = False
 essentia.log.warningActive = False
 
 MODEL_DIR = os.environ.get("ESSENTIA_MODEL_DIR", "/app/models")
-
-EFFNET_EMBEDDING_MODEL = "discogs-effnet-bs64-1.pb"
-EFFNET_EMBEDDING_OUTPUT = "PartitionedCall:1"
-
-EFFNET_GENRE_MODEL = "genre_discogs400-discogs-effnet-1.pb"
-EFFNET_GENRE_META = "genre_discogs400-discogs-effnet-1.json"
-
-MAEST_GENRE_MODEL = "discogs-maest-30s-pw-519l-2.pb"
-MAEST_GENRE_META = "discogs-maest-30s-pw-519l-2.json"
-
-MOOD_CLASSIFIERS = [
-    {"name": "mood_aggressive", "model": "mood_aggressive-discogs-effnet-1.pb",
-     "meta": "mood_aggressive-discogs-effnet-1.json", "output": "model/Softmax"},
-    {"name": "mood_happy", "model": "mood_happy-discogs-effnet-1.pb",
-     "meta": "mood_happy-discogs-effnet-1.json", "output": "model/Softmax"},
-    {"name": "mood_party", "model": "mood_party-discogs-effnet-1.pb",
-     "meta": "mood_party-discogs-effnet-1.json", "output": "model/Softmax"},
-    {"name": "mood_relaxed", "model": "mood_relaxed-discogs-effnet-1.pb",
-     "meta": "mood_relaxed-discogs-effnet-1.json", "output": "model/Softmax"},
-    {"name": "mood_sad", "model": "mood_sad-discogs-effnet-1.pb",
-     "meta": "mood_sad-discogs-effnet-1.json", "output": "model/Softmax"},
-    {"name": "mood_acoustic", "model": "mood_acoustic-discogs-effnet-1.pb",
-     "meta": "mood_acoustic-discogs-effnet-1.json", "output": "model/Softmax"},
-    {"name": "voice_instrumental", "model": "voice_instrumental-discogs-effnet-1.pb",
-     "meta": "voice_instrumental-discogs-effnet-1.json", "output": "model/Softmax"},
-]
 
 
 def genre_model_name(backbone):
