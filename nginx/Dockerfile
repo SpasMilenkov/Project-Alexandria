@@ -1,4 +1,4 @@
-FROM alpine:3.21 AS builder
+FROM alpine:3.21@sha256:ce64758a109eb420d874a118f87920e625e12d3634e03b4a5573fd9f6e5d3507 AS builder
 ARG NGINX_VERSION=1.31.8
 ARG NGINX_SIGNING_FPR=D6786CE303D9A9022998DC6CC8464D549AF75C0A
 ARG NGX_BROTLI_COMMIT=53e0fb55f250f48fe80c0ddbf6c0f7103cdbaae1
@@ -9,8 +9,9 @@ RUN apk add --no-cache \
     linux-headers gnupg gettext
 
 # Clone ngx_brotli at pinned commit
-RUN git clone --recurse-submodules https://github.com/google/ngx_brotli /usr/src/ngx_brotli \
-    && git -C /usr/src/ngx_brotli checkout ${NGX_BROTLI_COMMIT}
+RUN git clone https://github.com/google/ngx_brotli /usr/src/ngx_brotli \
+    && git -C /usr/src/ngx_brotli checkout ${NGX_BROTLI_COMMIT} \
+    && git -C /usr/src/ngx_brotli submodule update --init --recursive
 
 RUN cd /usr/src/ngx_brotli/deps/brotli \
     && mkdir -p out && cd out \
@@ -78,7 +79,7 @@ RUN scanelf --needed --nobanner /usr/sbin/nginx /usr/bin/envsubst $(ls /usr/lib/
         | sort -u > /tmp/runDeps.txt
 
 # ---- Runtime image ----
-FROM alpine:3.21
+FROM alpine:3.21@sha256:ce64758a109eb420d874a118f87920e625e12d3634e03b4a5573fd9f6e5d3507
 ARG NGINX_VERSION
 
 LABEL org.opencontainers.image.version="${NGINX_VERSION}"
