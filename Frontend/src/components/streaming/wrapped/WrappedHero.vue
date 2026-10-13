@@ -10,7 +10,8 @@
       <span class="text-xs tracking-widest text-gray-600 dark:text-gray-400">SIDE A / 01</span>
     </div>
 
-    <WrappedLandscape :series="facts.series" />
+    <WrappedDailyLandscape v-if="month" :month="month" :series="dailySeries" :through="through" />
+    <WrappedLandscape v-else :series="facts.series" />
 
     <div
       class="grid gap-6 border-t border-gray-200/70 dark:border-gray-700/70 p-6 md:grid-cols-[1.3fr_1fr] md:p-8"
@@ -44,16 +45,28 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { WrappedCardResponse } from "@/api/stats";
+import type { WrappedCardResponse, WrappedPeriodPoint } from "@/api/stats";
 
+import WrappedDailyLandscape from "@/components/streaming/wrapped/WrappedDailyLandscape.vue";
 import WrappedLandscape from "@/components/streaming/wrapped/WrappedLandscape.vue";
 import WrappedMilestone from "@/components/streaming/wrapped/WrappedMilestone.vue";
 import WrappedStoryNotes from "@/components/streaming/wrapped/WrappedStoryNotes.vue";
 import { factsFor, wrappedInks } from "@/utils/wrapped-art.utils";
 
-const props = defineProps<{ card: WrappedCardResponse; eyebrow: string }>();
+const {
+  card,
+  month = undefined,
+  dailySeries = [],
+  through = "",
+} = defineProps<{
+  card: WrappedCardResponse;
+  eyebrow: string;
+  month?: string;
+  dailySeries?: WrappedPeriodPoint[];
+  through?: string;
+}>();
 
-const facts = computed(() => factsFor(props.card));
+const facts = computed(() => factsFor(card));
 
-const inks = computed(() => wrappedInks(props.card));
+const inks = computed(() => wrappedInks(card));
 </script>

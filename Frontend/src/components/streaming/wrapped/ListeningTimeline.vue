@@ -1,7 +1,10 @@
 <template>
   <section aria-label="Your listening timeline">
     <header class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <p class="text-sm text-gray-600 dark:text-gray-400">{{ rangeLabel }}</p>
+      <div>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Listening timeline</h2>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ rangeLabel }}</p>
+      </div>
 
       <div class="flex shrink-0 items-center gap-2" role="group" aria-label="Timeline range">
         <UButton
