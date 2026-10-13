@@ -1,5 +1,4 @@
 import type { ColorName, FontName } from "@/stores/settings";
-import type { HomeSettings } from "@/types/home";
 
 import { apiClient } from "./client";
 
@@ -62,24 +61,6 @@ const mapBehaviorFromServer = (raw: any): BehaviorSettings => ({
 export const settingsApi = {
   getHomeTimeZones: async (): Promise<string[]> => {
     const result = await apiClient.get<string[]>("/settings/home/time-zones");
-
-    return result.data;
-  },
-
-  getHome: async (): Promise<HomeSettings> => {
-    const result = await apiClient.get<HomeSettings>("/settings/home");
-
-    if (result.data.schemaVersion !== 1) {
-      throw new Error(
-        "This dashboard was saved by a newer version of Alexandria. Update the app to edit it.",
-      );
-    }
-
-    return result.data;
-  },
-
-  updateHome: async (payload: HomeSettings): Promise<HomeSettings> => {
-    const result = await apiClient.put<HomeSettings>("/settings/home", payload);
 
     return result.data;
   },
