@@ -13,21 +13,22 @@ RUN pip install --no-cache-dir \
 WORKDIR /app
 
 COPY essentia_core.py /app/essentia_core.py
+COPY model_assets.py model-requirements.tsv /app/
+COPY models/models.sha256 /app/models.sha256
 COPY classify.py /app/classify.py
 COPY worker.py /app/worker.py
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # Models are NOT baked into the image. They're mounted at runtime from a
-# host directory that is populated once via download_models.sh, so re-running
+# host directory populated via download-models.sh, so re-running
 # `docker build` never re-downloads them and the image stays small. Both
 # the effnet and maest worker containers use this SAME image, they just
 # get different BACKBONE/QUEUE_NAME env vars at `docker run`/compose time.
 ENV ESSENTIA_MODEL_DIR=/app/models
-ENV VERIFY_MODELS=true
 
-# Shared /data volume ownership: local.yml runs this image as uid 1001 (the
-# same uid the .NET media-metadata worker uses) so both sides can clean up each
+# Shared /data volume ownership uses uid 1001, matching the metadata worker,
+# so both sides can clean up each
 # other's files. The named volume inherits this ownership on first mount.
 RUN groupadd --gid 1001 appgroup && useradd --uid 1001 --gid appgroup --no-create-home appuser \
     && mkdir -p /data && chown appuser:appgroup /data
