@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
@@ -28,7 +29,8 @@ public partial class AutoTagSweepWorker(
     IOptions<AutoTaggingOptions> taggingOptions,
     IServiceProvider serviceProvider,
     AutoTagQueueService queue,
-    IPublisherService publisher) : BackgroundService
+    IPublisherService publisher,
+    IOptions<ProcessingCapabilities>? capabilities = null) : BackgroundService
 {
     private const string EnrichRoutingKey = "media-metadata.enrich";
 
@@ -70,8 +72,11 @@ public partial class AutoTagSweepWorker(
         }
     }
 
-    private async Task SweepAsync(IServiceScope scope, CancellationToken ct)
+    internal async Task SweepAsync(IServiceScope scope, CancellationToken ct)
     {
+        if (!(capabilities?.Value.AudioAnalysis ?? true))
+            return;
+
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var cooldown = TimeSpan.FromHours(Math.Max(taggingOptions.Value.RetryCooldownHours, 1));
 

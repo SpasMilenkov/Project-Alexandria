@@ -1,11 +1,13 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Policies;
 using Alexandria.Common.Helpers;
 using Alexandria.Common.Services;
 using Alexandria.Services.Storage.Policies;
 using FastEndpoints;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Api.Features.Storage.Files.AutoTag;
 
@@ -26,7 +28,8 @@ public class AutoTagFileResponse
 public class AutoTagFileEndpoint(
     IPublisherService publisher,
     IUnitOfWork unitOfWork,
-    IConfiguration configuration) : EndpointWithoutRequest<AutoTagFileResponse>
+    IConfiguration configuration,
+    IOptions<ProcessingCapabilities> capabilities) : EndpointWithoutRequest<AutoTagFileResponse>
 {
     public override void Configure()
     {
@@ -68,7 +71,7 @@ public class AutoTagFileEndpoint(
         }
 
         var autoTaggingEnabled = bool.TryParse(configuration["Features:Autotagging"], out var enabled)
-                                 && enabled;
+                                 && enabled && capabilities.Value.AudioAnalysis;
 
         try
         {

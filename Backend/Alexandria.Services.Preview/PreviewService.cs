@@ -1,11 +1,13 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Services.Preview;
 
@@ -17,8 +19,11 @@ public class PreviewService(
     IUnitOfWork unitOfWork,
     ITextPreviewService textPreviewService,
     IArchivePreviewService archivePreviewService,
-    IMemoryCache memoryCache) : IPreviewService
+    IMemoryCache memoryCache,
+    IOptions<ProcessingCapabilities>? capabilities = null) : IPreviewService
 {
+    private readonly ProcessingCapabilities _capabilities = capabilities?.Value ?? new();
+
     private static readonly TimeSpan JobInFlightTtl = TimeSpan.FromMinutes(10);
 
     private static string JobKey(Guid versionId) => $"preview-job:{versionId}";
@@ -54,6 +59,13 @@ public class PreviewService(
         Guid versionId, Guid userId, PreviewKind kind, string routingKey, JobType jobType,
         CancellationToken ct)
     {
+        if (jobType == JobType.DocumentPreview && !_capabilities.DocumentPreviews)
+            return null;
+
+        if (jobType == JobType.MediaPreview && !_capabilities.MediaPreviews
+            && routingKey.StartsWith("image.", StringComparison.Ordinal))
+            return null;
+
         // Preview and thumbnail reads trigger dispatch. While the broker is down they skip
         // without creating job rows, and drop the in-flight marker so the first read after
         // recovery dispatches normally.
@@ -69,6 +81,10 @@ public class PreviewService(
         if (existing is not null)
         {
             if (existing.Job.Status is JobStatus.Queued or JobStatus.Processing)
+                return null;
+
+            if (!_capabilities.MediaPreviews && existing.Job.Status == JobStatus.Ready
+                && routingKey.StartsWith("media.", StringComparison.Ordinal))
                 return null;
 
             await unitOfWork.Jobs.UpdateStatusAsync(existing.JobId, JobStatus.Queued, progress: 0, ct: ct);

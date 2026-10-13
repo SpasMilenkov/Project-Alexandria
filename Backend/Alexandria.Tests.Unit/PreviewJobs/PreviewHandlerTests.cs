@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Exceptions.Preview.Documents;
 using Alexandria.Common.Repositories;
@@ -13,6 +14,7 @@ using Alexandria.Services.Preview.Media.Dto;
 using Alexandria.Tests.Common.Builders;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using ImageHandler = Alexandria.Workers.Media.Handlers.ImagePreviewGenerationHandler;
 using MediaHandler = Alexandria.Workers.Media.Handlers.MediaPreviewGenerationHandler;
@@ -252,6 +254,47 @@ public class PreviewHandlerTests
             File.Delete(previewPath);
             File.Delete(thumbnailPath);
         }
+    }
+
+    [Fact]
+    public async Task HandleAsync_previews_and_analysis_disabled_saves_metadata_without_artifacts()
+    {
+        StoredJob();
+        StoredVersion("audio/mpeg");
+        var storage = Substitute.For<IContentStorageService>();
+        var artifacts = Substitute.For<IPreviewArtifactService>();
+        var media = Substitute.For<IMediaPreviewService>();
+        var metadata = new MediaMetadataDto { Artist = "Local artist", Duration = 12 };
+        media.ExtractMetadataAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(metadata);
+        var sut = new MediaHandler(Substitute.For<ILogger<MediaHandler>>(), storage, artifacts, media, _unitOfWork,
+            Options.Create(new ProcessingCapabilities { MediaPreviews = false, AudioAnalysis = false }));
+
+        await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
+
+        await artifacts.Received(1).SaveMediaMetadataAsync(_versionId, metadata, TestContext.Current.CancellationToken);
+        await media.DidNotReceiveWithAnyArgs().GeneratePreviewAsync(default!, default, default);
+        await artifacts.DidNotReceiveWithAnyArgs().UploadMediaData(default!, default!, default, default,
+            default!, default, default!, default);
+        await _jobs.Received(1).UpdateStatusAsync(_jobId, JobStatus.Ready,
+            Arg.Any<int?>(), Arg.Any<string?>(), TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task HandleAsync_image_previews_disabled_cancels_old_delivery_without_processing()
+    {
+        StoredJob();
+        var storage = Substitute.For<IContentStorageService>();
+        var images = Substitute.For<IImagePreviewService>();
+        var sut = new ImageHandler(Substitute.For<ILogger<ImageHandler>>(), storage,
+            Substitute.For<IPreviewArtifactService>(), images, Substitute.For<ICaptureMetadataService>(), _unitOfWork,
+            Options.Create(new ProcessingCapabilities { MediaPreviews = false }));
+
+        await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
+
+        await storage.DidNotReceiveWithAnyArgs().DownloadSeekableFile(default, default(CancellationToken));
+        await _jobs.Received(1).UpdateStatusAsync(_jobId, JobStatus.Cancelled,
+            Arg.Any<int?>(), Arg.Is<string?>(s => s != null && s.Contains("disabled")),
+            TestContext.Current.CancellationToken);
     }
 
     [Fact]

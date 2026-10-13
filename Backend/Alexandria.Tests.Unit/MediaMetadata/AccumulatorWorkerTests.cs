@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -31,6 +32,7 @@ public class AccumulatorWorkerTests : IDisposable
     private readonly AccumulatorWorker _sut;
     private readonly string _stagedDir = IoDirectory.CreateTempSubdirectory("accumulator-tests").FullName;
     private readonly EssentiaConfig _config;
+    private readonly ProcessingCapabilities _capabilities = new();
 
     public AccumulatorWorkerTests()
     {
@@ -62,7 +64,8 @@ public class AccumulatorWorkerTests : IDisposable
             _buffer,
             Options.Create(new EssentiaConfig()),
             _publisher,
-            provider);
+            provider,
+            Options.Create(_capabilities));
     }
 
     public void Dispose()
@@ -90,12 +93,57 @@ public class AccumulatorWorkerTests : IDisposable
         IoDirectory.EnumerateFiles(_stagedDir, "*", SearchOption.AllDirectories);
 
     [Fact]
+    public async Task FlushAsync_audio_analysis_disabled_does_not_create_durable_jobs_or_dispatch()
+    {
+        _capabilities.AudioAnalysis = false;
+
+        await _sut.FlushAsync(BatchOf(1), _config, TestContext.Current.CancellationToken);
+
+        await _batches.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
+
+    [Theory]
+    [InlineData("effnet", EssentiaBackbone.Effnet)]
+    [InlineData("maest", EssentiaBackbone.Maest)]
+    public async Task FlushAsync_selected_backbone_persists_matching_identity_and_dispatches_matching_queue(
+        string backbone, EssentiaBackbone expected)
+    {
+        var config = new EssentiaConfig
+        {
+            Backbone = backbone,
+            LocalVolumePath = _config.LocalVolumePath,
+            VolumeMountPath = _config.VolumeMountPath,
+            StagedDir = _stagedDir,
+            OutputDir = _config.OutputDir
+        };
+
+        await _sut.FlushAsync(BatchOf(1), config, TestContext.Current.CancellationToken);
+
+        await _batches.Received(1).AddAsync(Arg.Is<EssentiaBatch>(b => b.Backbone == expected),
+            TestContext.Current.CancellationToken);
+        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), $"media-metadata.classify.audio.{backbone}");
+    }
+
+    [Fact]
+    public async Task FlushAsync_unknown_backbone_rejects_before_persisting_or_dispatching()
+    {
+        var act = () => _sut.FlushAsync(BatchOf(1), new EssentiaConfig { Backbone = "unavailable", StagedDir = _stagedDir },
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _batches.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
+
+    [Fact]
     public async Task persist_failure_records_cycle_failure_and_skips_publish()
     {
         _batches.AddAsync(Arg.Any<EssentiaBatch>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<EssentiaBatch>(new InvalidOperationException("db down")));
 
-        await _sut.FlushAsync(BatchOf(2), EssentiaBackbone.Effnet, "rk", _config,
+        await _sut.FlushAsync(BatchOf(2), _config,
             TestContext.Current.CancellationToken);
 
         await _events.Received(1).AddActiveIfAbsentAsync(
@@ -111,7 +159,7 @@ public class AccumulatorWorkerTests : IDisposable
         _publisher.PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>())
             .Returns(Task.FromException(new InvalidOperationException("broker down")));
 
-        await _sut.FlushAsync(BatchOf(2), EssentiaBackbone.Effnet, "rk", _config,
+        await _sut.FlushAsync(BatchOf(2), _config,
             TestContext.Current.CancellationToken);
 
         await _jobs.Received(1).UpdateStatusForJobsAsync(
@@ -133,8 +181,7 @@ public class AccumulatorWorkerTests : IDisposable
         _publisher.PublishAsync(Arg.Do<byte[]>(b => published = b), Arg.Any<string>())
             .Returns(Task.CompletedTask);
 
-        await _sut.FlushAsync(batch, EssentiaBackbone.Effnet, "media-metadata.classify.audio.effnet",
-            _config, TestContext.Current.CancellationToken);
+        await _sut.FlushAsync(batch, _config, TestContext.Current.CancellationToken);
 
         published.Should().NotBeNull();
         var request = JsonSerializer.Deserialize<ClassifyRequest>(published!);
@@ -163,7 +210,7 @@ public class AccumulatorWorkerTests : IDisposable
         _batches.AddAsync(Arg.Any<EssentiaBatch>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<EssentiaBatch>(new InvalidOperationException("db down")));
 
-        await _sut.FlushAsync(batch, EssentiaBackbone.Effnet, "rk", _config,
+        await _sut.FlushAsync(batch, _config,
             TestContext.Current.CancellationToken);
 
         settled.Should().Equal(false, false);
@@ -183,7 +230,7 @@ public class AccumulatorWorkerTests : IDisposable
                 return Task.CompletedTask;
             });
 
-        await _sut.FlushAsync(batch, EssentiaBackbone.Effnet, "rk", _config,
+        await _sut.FlushAsync(batch, _config,
             TestContext.Current.CancellationToken);
 
         settled.Should().Equal(true, true);
@@ -198,7 +245,7 @@ public class AccumulatorWorkerTests : IDisposable
                 Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<int>(new InvalidOperationException("still down")));
 
-        var act = () => _sut.FlushAsync(BatchOf(1), EssentiaBackbone.Effnet, "rk", _config,
+        var act = () => _sut.FlushAsync(BatchOf(1), _config,
             TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
@@ -213,7 +260,7 @@ public class AccumulatorWorkerTests : IDisposable
         _publisher.PublishAsync(Arg.Do<byte[]>(b => published = b), Arg.Any<string>())
             .Returns(Task.CompletedTask);
 
-        await _sut.FlushAsync(batch, EssentiaBackbone.Effnet, "rk", _config,
+        await _sut.FlushAsync(batch, _config,
             TestContext.Current.CancellationToken);
 
         var request = JsonSerializer.Deserialize<ClassifyRequest>(published!);
@@ -239,10 +286,8 @@ public class AccumulatorWorkerTests : IDisposable
         _publisher.PublishAsync(Arg.Do<byte[]>(published.Add), Arg.Any<string>())
             .Returns(Task.CompletedTask);
 
-        await _sut.FlushAsync([new StagedFile(fileId, first, "audio/mpeg")], EssentiaBackbone.Effnet, "rk",
-            _config, TestContext.Current.CancellationToken);
-        await _sut.FlushAsync([new StagedFile(fileId, second, "audio/mpeg")], EssentiaBackbone.Effnet, "rk",
-            _config, TestContext.Current.CancellationToken);
+        await _sut.FlushAsync([new StagedFile(fileId, first, "audio/mpeg")], _config, TestContext.Current.CancellationToken);
+        await _sut.FlushAsync([new StagedFile(fileId, second, "audio/mpeg")], _config, TestContext.Current.CancellationToken);
 
         var inputs = published
             .Select(b => JsonSerializer.Deserialize<ClassifyRequest>(b)!.Files.Single())
@@ -259,7 +304,7 @@ public class AccumulatorWorkerTests : IDisposable
         _batches.AddAsync(Arg.Any<EssentiaBatch>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<EssentiaBatch>(new InvalidOperationException("db down")));
 
-        await _sut.FlushAsync(BatchOf(2), EssentiaBackbone.Effnet, "rk", _config,
+        await _sut.FlushAsync(BatchOf(2), _config,
             TestContext.Current.CancellationToken);
 
         StagedFiles().Should().BeEmpty();
@@ -271,7 +316,7 @@ public class AccumulatorWorkerTests : IDisposable
         _publisher.PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>())
             .Returns(Task.FromException(new InvalidOperationException("broker down")));
 
-        await _sut.FlushAsync(BatchOf(2), EssentiaBackbone.Effnet, "rk", _config,
+        await _sut.FlushAsync(BatchOf(2), _config,
             TestContext.Current.CancellationToken);
 
         StagedFiles().Should().BeEmpty();
@@ -291,7 +336,7 @@ public class AccumulatorWorkerTests : IDisposable
                 return Task.CompletedTask;
             });
 
-        await _sut.FlushAsync(batch, EssentiaBackbone.Effnet, "rk", _config,
+        await _sut.FlushAsync(batch, _config,
             TestContext.Current.CancellationToken);
 
         settled.Should().Equal(false, false);

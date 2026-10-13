@@ -25,14 +25,18 @@ sealed class QueueRefetchEndpoint(ITrackLyricsService lyricsService) : Endpoint<
         try
         {
             await lyricsService.QueueLyricsRefetchAsync(req.JobId, userId, ct);
+
+            await Send.NoContentAsync(ct);
         }
         catch (MessageBrokerUnavailableException ex)
         {
             AddError(ex.Message);
             await Send.ErrorsAsync(503, ct);
-            return;
         }
-
-        await Send.NoContentAsync(ct);
+        catch (CapabilityUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(409, ct);
+        }
     }
 }

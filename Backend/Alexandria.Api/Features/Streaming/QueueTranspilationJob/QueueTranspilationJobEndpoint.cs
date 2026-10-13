@@ -36,5 +36,10 @@ internal sealed class QueueTranspilationJobEndpoint(ITranspilationJobService job
             AddError(ex.Message);
             await Send.ErrorsAsync(503, ct);
         }
+        catch (CapabilityUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(409, ct);
+        }
     }
 }

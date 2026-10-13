@@ -153,6 +153,41 @@ public class CompositeLyricsProviderTests
     }
 
     [Fact]
+    public async Task only_provider_fails_propagates_instead_of_returning_no_match()
+    {
+        var provider = Substitute.For<ITrackLyricsProvider>();
+        provider.IsAvailableAsync(Arg.Any<CancellationToken>()).Returns(true);
+        provider.FetchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<LyricsResult?>(new InvalidOperationException("invalid provider response")));
+        var sut = CreateSut(provider);
+
+        var fetch = () => sut.FetchAsync("Song", null, null, null, ct: TestContext.Current.CancellationToken);
+
+        await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage("invalid provider response");
+    }
+
+    [Fact]
+    public async Task caller_cancellation_propagates_instead_of_returning_no_match()
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var provider = Substitute.For<ITrackLyricsProvider>();
+        provider.IsAvailableAsync(Arg.Any<CancellationToken>()).Returns(true);
+        provider.FetchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                cts.Cancel();
+                return Task.FromException<LyricsResult?>(new OperationCanceledException(cts.Token));
+            });
+        var sut = CreateSut(provider);
+
+        var fetch = () => sut.FetchAsync("Song", null, null, null, ct: cts.Token);
+
+        await fetch.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [Fact]
     public async Task target_provider_restricts_to_that_provider()
     {
         var p1 = Substitute.For<ITrackLyricsProvider>();

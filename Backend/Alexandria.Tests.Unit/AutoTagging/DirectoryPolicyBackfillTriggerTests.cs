@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Text.Json;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
@@ -12,6 +13,7 @@ using Alexandria.Services.Storage.Policies;
 using AwesomeAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Alexandria.Tests.Unit.AutoTagging;
@@ -54,13 +56,14 @@ public class DirectoryPolicyBackfillTriggerTests
             .Do(call => call.Arg<DirectoryPolicy>().UpdatedAt = UpdatedAt);
     }
 
-    private DirectoryPolicyService CreateSut(bool enabled = true)
+    private DirectoryPolicyService CreateSut(bool enabled = true, bool audioAnalysis = true)
     {
         var configuration = Substitute.For<IConfiguration>();
         configuration["Features:Autotagging"].Returns(enabled ? "true" : "false");
 
         return new DirectoryPolicyService(_unitOfWork, Substitute.For<IDirectoryService>(),
-            _publisher, configuration, Substitute.For<ILogger<DirectoryPolicyService>>());
+            _publisher, configuration, Substitute.For<ILogger<DirectoryPolicyService>>(),
+            Options.Create(new ProcessingCapabilities { AudioAnalysis = audioAnalysis }));
     }
 
     private static bool MatchesRequest(byte[] body, DateTime cutoff)
@@ -77,6 +80,29 @@ public class DirectoryPolicyBackfillTriggerTests
         TriggerValue = "*",
         Parameters = JsonDocument.Parse("{}")
     };
+
+    [Fact]
+    public async Task UpdatePolicyAsync_audio_analysis_disabled_preserves_policy_without_backfill_message()
+    {
+        _policies.GetByIdAsync(PolicyId, Arg.Any<CancellationToken>()).Returns(new DirectoryPolicy
+        {
+            Id = PolicyId,
+            DirectoryId = DirectoryId,
+            CreatedAt = CreatedAt,
+            Rules = [new PolicyRule
+            {
+                Id = RuleId,
+                ActionType = PolicyActionType.AutoTag,
+                Parameters = JsonDocument.Parse("{}")
+            }]
+        });
+
+        await CreateSut(audioAnalysis: false).UpdatePolicyAsync(
+            PolicyId, inheritedByChildren: true, OwnerId, TestContext.Current.CancellationToken);
+
+        await _unitOfWork.Received(1).SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
 
     [Fact]
     public async Task CreatePolicyAsync_without_autotag_rule_does_not_publish_backfill()

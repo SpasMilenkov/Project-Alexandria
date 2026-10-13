@@ -1,4 +1,5 @@
 using Alexandria.Common.Services;
+using Alexandria.Common.Config;
 using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
@@ -22,6 +23,11 @@ public static class ServiceExtensions
         IConfiguration configuration)
     {
         services.AddCoreWorkerServices();
+        services.Configure<ProcessingCapabilities>(configuration.GetSection(ProcessingCapabilities.SectionName));
+
+        // Must stay the first hosted service: it clears crash leftovers before any worker
+        // stages or batches files.
+        services.AddHostedService<StagingRecoveryService>();
 
         services.AddScoped<IContentStorageService, ContentStorageService>();
         services.AddScoped<IStaticAssetService, StaticAssetService>();
@@ -35,7 +41,8 @@ public static class ServiceExtensions
         services.AddSingleton<IAutoTagQueue>(sp =>
             sp.GetRequiredService<AutoTagQueueService>());
 
-        if (configuration.GetValue<bool>("Features:Autotagging"))
+        var audioAnalysisEnabled = configuration.GetValue("Features:AudioAnalysis", true);
+        if (configuration.GetValue<bool>("Features:Autotagging") && audioAnalysisEnabled)
         {
             services.AddScoped<IAutoTagDerivationService, AutoTagDerivationService>();
             services.AddScoped<IAutoTagSyncService, AutoTagSyncService>();
@@ -51,6 +58,14 @@ public static class ServiceExtensions
         services.AddSingleton<AccumulatorBuffer>();
 
         services.AddScoped<IStagingService, StagingService>();
+
+        if (audioAnalysisEnabled)
+        {
+            services.AddHostedService<TriggerConsumerWorker>();
+            services.AddHostedService<AccumulatorWorker>();
+            services.AddHostedService<ResultsConsumerWorker>();
+            services.AddHostedService<TimeoutSweepWorker>();
+        }
 
         services.AddHostedService(sp => new JobFailureThresholdChecker(
             sp.GetRequiredService<IJobOutcomeTracker>(),

@@ -35,14 +35,18 @@ internal sealed class UpdateTranspilationJobEndpoint(ITranspilationJobService jo
                 audioRungs: req.AudioRungs,
                 videoRungs: req.VideoRungs,
                 ct: ct);
+
+            await Send.NoContentAsync(cancellation: ct);
         }
         catch (MessageBrokerUnavailableException ex)
         {
             AddError(ex.Message);
             await Send.ErrorsAsync(503, ct);
-            return;
         }
-
-        await Send.NoContentAsync(cancellation: ct);
+        catch (CapabilityUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(409, ct);
+        }
     }
 }

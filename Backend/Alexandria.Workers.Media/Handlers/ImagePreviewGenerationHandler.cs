@@ -3,6 +3,7 @@ using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Workers.Media.Handlers;
 
@@ -12,7 +13,8 @@ public class ImagePreviewGenerationHandler(
     IPreviewArtifactService artifacts,
     IImagePreviewService imagePreviewService,
     ICaptureMetadataService captureMetadata,
-    IUnitOfWork unitOfWork) : IPreviewGenerationHandler
+    IUnitOfWork unitOfWork,
+    IOptions<ProcessingCapabilities>? capabilities = null) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string message, CancellationToken ct = default)
     {
@@ -28,6 +30,13 @@ public class ImagePreviewGenerationHandler(
 
         try
         {
+            if (!(capabilities?.Value.MediaPreviews ?? true))
+            {
+                await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Cancelled,
+                    errorDetail: "Media previews are disabled for this installation.", ct: ct);
+                return;
+            }
+
             await GenerateAsync(previewJob.VersionId, ct);
             await PreviewJobLifecycle.CompleteAsync(unitOfWork, jobId, ct);
         }

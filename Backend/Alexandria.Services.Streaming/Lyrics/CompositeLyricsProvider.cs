@@ -34,7 +34,7 @@ public sealed partial class CompositeLyricsProvider(
             candidates = _ordered;
         }
 
-        Exception? transientFailure = null;
+        Exception? providerFailure = null;
 
         foreach (var provider in candidates)
         {
@@ -64,32 +64,27 @@ public sealed partial class CompositeLyricsProvider(
             {
                 // timeoutCts fired, not the caller's token -> treat as this provider's failure
                 LogProviderTimedOutAfterTimeoutSTryingNext(provider.GetType().Name, PerProviderTimeout.TotalSeconds);
-                transientFailure ??= new TimeoutException(
+                providerFailure ??= new TimeoutException(
                     $"Provider {provider.GetType().Name} timed out after {PerProviderTimeout.TotalSeconds}s");
             }
-            catch (Exception ex) when (IsTransient(ex))
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
-                logger.LogError(ex, "{Provider} threw unexpectedly, trying next", provider.GetType().Name);
-                transientFailure ??= ex;
+                throw;
             }
             catch (Exception ex)
             {
-                // Defensive: a well-behaved provider shouldn't throw (see note below),
-                // but don't let one bad provider kill the whole chain.
                 logger.LogError(ex, "{Provider} threw unexpectedly, trying next", provider.GetType().Name);
+                providerFailure ??= ex;
             }
         }
 
         // A provider error means "unknown", not "no lyrics": surface it so the
         // caller requeues instead of recording a terminal NoMatch.
-        if (transientFailure is not null)
-            ExceptionDispatchInfo.Capture(transientFailure).Throw();
+        if (providerFailure is not null)
+            ExceptionDispatchInfo.Capture(providerFailure).Throw();
 
         return null;
     }
-
-    private static bool IsTransient(Exception ex) =>
-        ex is HttpRequestException or TimeoutException or TaskCanceledException;
 
     [LoggerMessage(LogLevel.Debug, "{Provider} unavailable, skipping")]
     partial void LogProviderUnavailableSkipping(string provider);
