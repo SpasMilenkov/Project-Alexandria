@@ -1,6 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 import { fixture, seed } from "./helpers/home-dashboard.js";
+import { closeWidgetSettings, openWidgetTab } from "./helpers/home-grid-editor.js";
 
 test("searches the server catalogue and saves a quarter-hour zone through reload", async ({
   page,
@@ -11,7 +12,10 @@ test("searches the server catalogue and saves a quarter-hour zone through reload
   const state = await fixture(page);
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
-  await page.getByRole("button", { name: "Widget options", exact: true }).click();
+  await openWidgetTab(page, "Options");
+
+  // Vue rejects pointer events stamped at the same frozen time as its listeners.
+  await page.clock.setFixedTime(new Date("2026-01-15T12:00:00.001Z"));
 
   const control = page.getByRole("button", { name: "Time zone", exact: true });
 
@@ -21,7 +25,7 @@ test("searches the server catalogue and saves a quarter-hour zone through reload
   await expect(page.getByRole("option")).toHaveCount(1);
 
   await page.getByRole("option", { name: "Asia / Kathmandu", exact: true }).click();
-  await page.getByRole("button", { name: "Close options", exact: true }).click();
+  await closeWidgetSettings(page);
 
   const clock = page.locator('[data-widget-id="default-clock"]');
 
@@ -65,7 +69,7 @@ test("browser-unsupported zones preserve the saved preference and offer an expli
   expect(state.saved.desktop.widgets[0]!.options.timeZone).toBe("Pacific/Chatham");
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
-  await page.getByRole("button", { name: "Widget options", exact: true }).click();
+  await openWidgetTab(page, "Options");
 
   await expect(
     page.getByText("This device cannot display your saved time zone.", { exact: false }),
@@ -86,7 +90,7 @@ test("browser-unsupported zones preserve the saved preference and offer an expli
   await expect(page.getByRole("option", { name: "Pacific / Chatham", exact: true })).toHaveCount(0);
 
   await page.getByRole("option", { name: "UTC", exact: true }).click();
-  await page.getByRole("button", { name: "Close options", exact: true }).click();
+  await closeWidgetSettings(page);
 
   await expect(clock.getByRole("status")).toHaveCount(0);
   expect(state.writes).toHaveLength(0);
@@ -123,7 +127,7 @@ test("catalogue loading and retry never overwrite the saved zone", async ({ page
   });
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
-  await page.getByRole("button", { name: "Widget options", exact: true }).click();
+  await openWidgetTab(page, "Options");
 
   await expect(page.getByLabel("Loading time zones")).toBeVisible();
   expect(attempts).toBe(1);
@@ -138,7 +142,7 @@ test("catalogue loading and retry never overwrite the saved zone", async ({ page
     "US / Eastern (saved)",
   );
 
-  await page.getByRole("button", { name: "Close options", exact: true }).click();
+  await closeWidgetSettings(page);
 
   await expect(page.locator('[data-widget-id="default-clock"] .clock-zone')).toHaveText(
     "US / Eastern",
@@ -174,7 +178,7 @@ test("prefetches without blocking Home and reuses the catalogue when options ope
 
   release();
   await response;
-  await page.getByRole("button", { name: "Widget options", exact: true }).click();
+  await openWidgetTab(page, "Options");
 
   await expect(page.getByRole("button", { name: "Time zone", exact: true })).toBeVisible();
   await expect(page.getByLabel("Loading time zones")).toHaveCount(0);
@@ -184,4 +188,67 @@ test("prefetches without blocking Home and reuses the catalogue when options ope
   await expect(page.getByRole("option", { name: "Asia / Kathmandu", exact: true })).toBeVisible();
   expect(requests).toBe(1);
   expect(state.writes).toHaveLength(0);
+});
+
+const changeClockStyles = async (page: Page) => {
+  await openWidgetTab(page, "Style");
+  await page.getByRole("button", { name: "Watch", exact: true }).click();
+  await page.evaluate(() => Reflect.set(window, "timezoneFormatterCalls", 0));
+  await page.getByRole("button", { name: "Tile", exact: true }).click();
+  await page.getByRole("button", { name: "Watch", exact: true }).click();
+
+  const validationCalls = await page.evaluate(() =>
+    Number(Reflect.get(window, "timezoneFormatterCalls")),
+  );
+
+  expect(validationCalls).toBeLessThan(20);
+
+  await openWidgetTab(page, "Options");
+};
+
+test("keeps the full catalogue searchable without rendering or revalidating every zone on edits", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.addInitScript(() => {
+    Reflect.set(window, "timezoneFormatterCalls", 0);
+    Intl.DateTimeFormat = new Proxy(Intl.DateTimeFormat, {
+      construct: (target, args, newTarget) => {
+        const calls = Number(Reflect.get(window, "timezoneFormatterCalls"));
+
+        Reflect.set(window, "timezoneFormatterCalls", calls + 1);
+
+        return Reflect.construct(target, args, newTarget);
+      },
+    });
+  });
+
+  const catalogue = await page.evaluate(() => [
+    "local",
+    "UTC",
+    "Asia/Kathmandu",
+    ...Intl.supportedValuesOf("timeZone"),
+  ]);
+
+  expect(catalogue.length).toBeGreaterThan(350);
+
+  const state = await fixture(page, seed(), {}, async (route) => {
+    await route.fulfill({ json: catalogue });
+  });
+
+  await page.getByRole("button", { name: "Customize", exact: true }).click();
+  await changeClockStyles(page);
+
+  await page.getByRole("button", { name: "Time zone", exact: true }).click();
+  await expect(page.getByRole("option").first()).toBeVisible();
+  expect(await page.getByRole("option").count()).toBeLessThan(40);
+
+  await page.getByPlaceholder("Search time zones...").fill("Kathmandu");
+  await expect(page.getByRole("option")).toHaveCount(1);
+  await page.getByRole("option", { name: "Asia / Kathmandu", exact: true }).click();
+  await closeWidgetSettings(page);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+
+  await expect(page.getByRole("button", { name: "Customize", exact: true })).toBeVisible();
+  expect(state.saved.desktop.widgets[0]!.options.timeZone).toBe("Asia/Kathmandu");
 });

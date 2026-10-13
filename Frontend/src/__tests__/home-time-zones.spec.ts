@@ -1,9 +1,10 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import HomeClockWidget from "@/components/dashboard/home/widgets/HomeClockWidget.vue";
 import { defaultHomeLayout } from "@/utils/home-layout";
 import {
+  homeTimeZoneCatalogue,
   homeTimeZoneChoices,
   homeTimeZoneLabel,
   resolveHomeTimeZone,
@@ -46,7 +47,8 @@ describe("Home timezone compatibility", () => {
 
   it("offers only server-provided browser-compatible choices and retains unavailable saved values", () => {
     const identifiers = ["local", "UTC", "Asia/Kathmandu", "Asia/Kathmandu", "Europe/RemovedZone"];
-    const choices = homeTimeZoneChoices(identifiers, "Europe/SavedZone");
+    const catalogue = homeTimeZoneCatalogue(identifiers);
+    const choices = homeTimeZoneChoices(catalogue, "Europe/SavedZone");
 
     expect(choices.map((choice) => choice.value)).toEqual([
       "Europe/SavedZone",
@@ -60,11 +62,30 @@ describe("Home timezone compatibility", () => {
   });
 
   it("labels identifiers without a separate city list", () => {
-    expect(homeTimeZoneLabel("local")).toBe("Your device's time zone");
+    const local = new Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    expect(homeTimeZoneLabel("local")).toBe(homeTimeZoneLabel(local));
     expect(homeTimeZoneLabel("UTC")).toBe("UTC");
     expect(homeTimeZoneLabel("America/Argentina/Buenos_Aires")).toBe(
       "America / Argentina / Buenos Aires",
     );
+  });
+
+  it("labels local clocks and choices with the browser's resolved timezone while keeping the local preference", () => {
+    const options = new Intl.DateTimeFormat().resolvedOptions();
+    const spy = vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockReturnValue({
+      ...options,
+      timeZone: "America/New_York",
+    });
+
+    try {
+      expect(homeTimeZoneLabel("local")).toBe("America / New York");
+      expect(homeTimeZoneCatalogue(["local"])).toEqual([
+        { value: "local", label: "Local (America / New York)" },
+      ]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("renders a labelled fallback and preserves the saved widget options", () => {

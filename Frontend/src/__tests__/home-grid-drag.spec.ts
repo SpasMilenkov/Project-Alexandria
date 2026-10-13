@@ -1,10 +1,19 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp, defineComponent, nextTick, ref } from "vue";
 
 import type { HomeResizeEdge } from "@/utils/home-grid-input";
 
 import { useHomeGridDrag } from "@/composables/useHomeGridDrag";
 import { defaultHomeLayout } from "@/utils/home-layout";
+
+const frames = new Map<number, FrameRequestCallback>();
+let frameId = 0;
+
+const renderFrame = () => {
+  const pending = [...frames.values()];
+  frames.clear();
+  pending.forEach((callback) => callback(0));
+};
 
 const pointer = (type: string, x: number, y: number) => {
   const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
@@ -60,12 +69,27 @@ const mountDrag = (edge: HomeResizeEdge | null = null, initial = defaultHomeLayo
 
 describe("Home grid drag draft boundary", () => {
   const cleanups: (() => void)[] = [];
-  afterEach(() => cleanups.splice(0).forEach((close) => close()));
+  beforeEach(() => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      frames.set(++frameId, callback);
+
+      return frameId;
+    });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+    vi.stubGlobal("scrollBy", vi.fn());
+  });
+
+  afterEach(() => {
+    cleanups.splice(0).forEach((close) => close());
+    frames.clear();
+    vi.unstubAllGlobals();
+  });
 
   it("previews pointer movement without writes and commits only on a valid release", () => {
     const state = mountDrag();
     cleanups.push(state.close);
     window.dispatchEvent(pointer("pointermove", 628, 20));
+    renderFrame();
 
     expect(state.drag.preview.value).not.toBeNull();
     expect(state.layout.value.widgets[0]!.x).toBe(0);
@@ -75,10 +99,48 @@ describe("Home grid drag draft boundary", () => {
     expect(state.drag.active.value).toBe(false);
   });
 
+  it.each([null, "right"] as const)(
+    "reuses stationary and same-cell previews during %s gestures",
+    (edge) => {
+      const state = mountDrag(edge);
+      cleanups.push(state.close);
+      window.dispatchEvent(pointer("pointermove", 120, 20));
+      renderFrame();
+      const candidate = state.drag.candidate.value;
+      const preview = state.drag.preview.value;
+
+      for (let index = 0; index < 60; index++) renderFrame();
+      for (let index = 0; index < 10; index++)
+        window.dispatchEvent(pointer("pointermove", 121 + index, 20));
+
+      expect(state.drag.candidate.value).toBe(candidate);
+      renderFrame();
+      expect(state.drag.candidate.value).toBe(candidate);
+      expect(state.drag.preview.value).toBe(preview);
+    },
+  );
+
+  it("updates containment even when an outside pointer clamps to the same cell", () => {
+    const state = mountDrag();
+    cleanups.push(state.close);
+    window.dispatchEvent(pointer("pointermove", 628, 20));
+    renderFrame();
+    const candidate = state.drag.candidate.value;
+
+    window.dispatchEvent(pointer("pointermove", 1220, 20));
+    renderFrame();
+
+    expect(state.drag.candidate.value).toBe(candidate);
+    expect(state.drag.preview.value).toBeNull();
+    window.dispatchEvent(pointer("pointerup", 1220, 20));
+    expect(state.place).not.toHaveBeenCalled();
+  });
+
   it.each(["pointercancel", "blur"])("cancels %s without applying a preview", (event) => {
     const state = mountDrag();
     cleanups.push(state.close);
     window.dispatchEvent(pointer("pointermove", 628, 20));
+    renderFrame();
     window.dispatchEvent(new Event(event));
     window.dispatchEvent(pointer("pointerup", 628, 20));
 
@@ -90,6 +152,7 @@ describe("Home grid drag draft boundary", () => {
     const state = mountDrag();
     cleanups.push(state.close);
     window.dispatchEvent(pointer("pointermove", 628, 20));
+    renderFrame();
     const escape = new KeyboardEvent("keydown", { key: "Escape", cancelable: true });
     window.dispatchEvent(escape);
     window.dispatchEvent(pointer("pointerup", 628, 20));
@@ -103,6 +166,7 @@ describe("Home grid drag draft boundary", () => {
     const state = mountDrag();
     cleanups.push(state.close);
     window.dispatchEvent(pointer("pointermove", 628, 20));
+    renderFrame();
     window.dispatchEvent(pointer("pointerup", -20, 20));
 
     expect(state.place).not.toHaveBeenCalled();
@@ -113,6 +177,7 @@ describe("Home grid drag draft boundary", () => {
     const state = mountDrag();
     cleanups.push(state.close);
     window.dispatchEvent(pointer("pointermove", 628, 20));
+    renderFrame();
     state.enabled.value = false;
     await nextTick();
     window.dispatchEvent(pointer("pointerup", 628, 20));
@@ -123,6 +188,7 @@ describe("Home grid drag draft boundary", () => {
     const state = mountDrag("bottom");
     cleanups.push(state.close);
     window.dispatchEvent(pointer("pointermove", 20, 180));
+    renderFrame();
 
     expect(state.drag.resizing.value).toBe(true);
     expect(state.drag.preview.value!.widgets[0]!.height).toBe(6);
@@ -139,6 +205,7 @@ describe("Home grid drag draft boundary", () => {
       const state = mountDrag("right");
       cleanups.push(state.close);
       window.dispatchEvent(pointer("pointermove", 120, 20));
+      renderFrame();
       if (event === "Escape") window.dispatchEvent(new KeyboardEvent("keydown", { key: event }));
       else window.dispatchEvent(new Event(event));
       window.dispatchEvent(pointer("pointerup", 120, 20));
@@ -157,6 +224,7 @@ describe("Home grid drag draft boundary", () => {
     const state = mountDrag("bottom", initial);
     cleanups.push(state.close);
     window.dispatchEvent(pointer("pointermove", 20, 100));
+    renderFrame();
 
     expect(state.drag.preview.value).toBeNull();
     window.dispatchEvent(pointer("pointerup", 20, 100));

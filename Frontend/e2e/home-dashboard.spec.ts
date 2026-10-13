@@ -3,9 +3,12 @@ import { type Page, expect, test } from "@playwright/test";
 import { fixture, seed } from "./helpers/home-dashboard.js";
 import {
   closeControls,
+  closeWidgetSettings,
+  dashboardSettings,
   dragCatalogue,
   dragWidget,
   openControls,
+  openWidgetTab,
   removeWidget,
   selectWidget,
 } from "./helpers/home-grid-editor.js";
@@ -33,7 +36,7 @@ const verifyCatalogueDirection = async (page: Page, direction: "right" | "bottom
   await page.getByRole("button", { name: "Add widget", exact: true }).click();
 
   if (direction === "right") {
-    const panel = page.getByRole("complementary", { name: "Widget catalogue" });
+    const panel = page.getByRole("region", { name: "Widget catalogue" });
 
     await expect(panel).toBeVisible();
 
@@ -41,9 +44,9 @@ const verifyCatalogueDirection = async (page: Page, direction: "right" | "bottom
 
     expect(bounds.x).toBeGreaterThan(page.viewportSize()!.width / 2);
   } else {
-    const drawer = page.getByRole("dialog", { name: "Add a widget" });
+    const drawer = page.getByRole("region", { name: "Widget catalogue" });
 
-    await expect(drawer).toHaveAttribute("data-vaul-drawer-direction", "bottom");
+    await expect(drawer).toHaveClass(/is-mobile/u);
 
     await drawer.getByRole("button", { name: "Add Clock", exact: true }).hover();
 
@@ -56,6 +59,12 @@ const discardCustomization = async (page: Page) => {
   await page.getByRole("button", { name: "Discard and exit", exact: true }).click();
 };
 
+const resetCurrentLayout = async (page: Page) => {
+  await dashboardSettings(page);
+  await page.getByRole("button", { name: "Reset this layout" }).click();
+  await page.getByRole("button", { name: "Reset layout", exact: true }).click();
+};
+
 test.use({ serviceWorkers: "block" });
 
 const verifyReordering = async (page: Page) => {
@@ -63,7 +72,7 @@ const verifyReordering = async (page: Page) => {
   const library = page.locator('[data-widget-id="default-library"]');
 
   await dragWidget(page, clock.locator("p").first(), 6, 0);
-  await dragWidget(page, clock.getByRole("heading", { name: "Clock", exact: true }), 0, 0);
+  await dragWidget(page, clock, 0, 0);
   await dragWidget(page, library.getByRole("link", { name: /File Explorer/u }), 0, 6);
 
   await expect(page).toHaveURL(/\/home$/u);
@@ -71,6 +80,7 @@ const verifyReordering = async (page: Page) => {
   await clock.focus();
   await clock.press("ArrowRight");
 
+  await openWidgetTab(page, "Layout");
   await expect(page.getByText("Column 2, row 1", { exact: true })).toBeVisible();
 
   await clock.press("ArrowLeft");
@@ -84,18 +94,19 @@ const customizeDesktop = async (page: Page, state: Awaited<ReturnType<typeof fix
   await verifyReordering(page);
 
   await selectWidget(page, clock);
-  await selectOption(page, page.getByRole("combobox", { name: "Widget size" }), "Large");
+  await openWidgetTab(page, "Layout");
+  await page.getByRole("button", { name: "Large widget", exact: true }).click();
 
-  await page.getByRole("button", { name: "Widget options", exact: true }).click();
+  await openWidgetTab(page, "Options");
   await selectOption(page, page.getByRole("button", { name: "Time zone" }), "UTC");
-  await page.getByRole("button", { name: "Close options", exact: true }).click();
+  await closeWidgetSettings(page);
 
   await page.getByRole("button", { name: "Add widget", exact: true }).click();
   await page.getByRole("button", { name: "Add Clock", exact: true }).click();
 
   await expect(widgets).toHaveCount(3);
   expect(state.writes).toHaveLength(0);
-  await expect(page.getByRole("dialog", { name: "Add a widget" })).not.toBeVisible();
+  await expect(page.getByRole("region", { name: "Widget catalogue" })).not.toBeVisible();
 
   await page.screenshot({ path: "/tmp/alexandria-home-desktop-editor.png", fullPage: true });
 };
@@ -123,25 +134,23 @@ const saveWithRecovery = async (page: Page, state: Awaited<ReturnType<typeof fix
 
 const customizeMobile = async (page: Page) => {
   const widgets = page.locator("[data-widget-id]");
-  const clock = page.locator('[data-widget-id="default-clock"]');
-  const library = page.locator('[data-widget-id="default-library"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
+  const library = page.locator('[data-widget-id][aria-label="Library shortcuts"]');
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
+  await dashboardSettings(page);
   await page.getByRole("switch", { name: "Use a separate mobile layout" }).click();
   await page.getByRole("button", { name: "Mobile", exact: true }).click();
 
   await removeWidget(page, library);
-  await removeWidget(
-    page,
-    page.locator('[data-widget-id]:not([data-widget-id="default-clock"])').last(),
-  );
+  await removeWidget(page, page.locator('[data-widget-id][aria-label="Clock"]').last());
 
   await expect(widgets).toHaveCount(1);
 
   await selectWidget(page, clock);
-  await page.getByRole("button", { name: "Widget options", exact: true }).click();
+  await openWidgetTab(page, "Options");
   await selectOption(page, page.getByRole("button", { name: "Time zone" }), "Asia / Tokyo");
-  await page.getByRole("button", { name: "Close options", exact: true }).click();
+  await closeWidgetSettings(page);
   await page.screenshot({ path: "/tmp/alexandria-home-mobile-preview.png", fullPage: true });
 
   const preview = await page.locator('[data-preview="mobile"]').boundingBox();
@@ -152,11 +161,13 @@ const customizeMobile = async (page: Page) => {
 const saveAndRestoreMobile = async (page: Page, state: Awaited<ReturnType<typeof fixture>>) => {
   const widgets = page.locator("[data-widget-id]");
 
+  await dashboardSettings(page);
   await page.getByRole("switch", { name: "Use a separate mobile layout" }).click();
 
   await expect(widgets).toHaveCount(3);
   await expect(page.getByRole("button", { name: "Reset this layout" })).toBeDisabled();
 
+  await dashboardSettings(page);
   await page.getByRole("switch", { name: "Use a separate mobile layout" }).click();
 
   await expect(widgets).toHaveCount(1);
@@ -171,7 +182,7 @@ const saveAndRestoreMobile = async (page: Page, state: Awaited<ReturnType<typeof
 
 const verifyResponsiveReload = async (page: Page, state: Awaited<ReturnType<typeof fixture>>) => {
   const widgets = page.locator("[data-widget-id]");
-  const clock = page.locator('[data-widget-id="default-clock"]');
+  const clock = page.locator('[data-widget-id][aria-label="Clock"]').first();
 
   await page.reload();
 
@@ -190,6 +201,7 @@ const verifyResponsiveReload = async (page: Page, state: Awaited<ReturnType<type
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
   await openControls(page);
+  await dashboardSettings(page);
   await page.getByRole("switch", { name: "Use a separate mobile layout" }).click();
   await closeControls(page);
   await page.getByRole("button", { name: "Done", exact: true }).click();
@@ -236,7 +248,7 @@ test("Cancel and navigation protection preserve saved Home; empty layouts surviv
   await removeWidget(page, widgets.first());
 
   await expect(
-    page.getByText("Add a widget to start building your layout.", { exact: true }),
+    page.getByText("Add your first widget to get started.", { exact: true }),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Done", exact: true }).click();
@@ -249,7 +261,7 @@ test("Cancel and navigation protection preserve saved Home; empty layouts surviv
   await expect(page.getByText("Your dashboard is empty", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
-  await page.getByRole("button", { name: "Reset this layout" }).click();
+  await resetCurrentLayout(page);
 
   await expect(widgets).toHaveCount(2);
   expect(state.saved.desktop.widgets).toEqual([]);
@@ -278,10 +290,13 @@ test("touch controls edit the shared layout and build a separate phone layout", 
     await page.getByRole("button", { name: "Customize", exact: true }).tap();
     await widgets.first().tap();
     await openControls(page);
+    await openWidgetTab(page, "Layout");
     await page.getByRole("button", { name: "Move widget down", exact: true }).tap();
 
+    await openWidgetTab(page, "Layout");
     await expect(page.getByText("Column 1, row 2", { exact: true })).toBeVisible();
 
+    await dashboardSettings(page);
     await page.getByRole("switch", { name: "Use a separate mobile layout" }).tap();
     await page.getByRole("button", { name: "Mobile", exact: true }).tap();
     await closeControls(page);
@@ -311,7 +326,7 @@ test("Home fills a wide screen and the catalogue adapts to the viewport", async 
   await page.screenshot({ path: "/tmp/alexandria-home-side-catalogue.png", fullPage: true });
   await page.keyboard.press("Escape");
 
-  await expect(page.getByRole("dialog", { name: "Add a widget" })).not.toBeVisible();
+  await expect(page.getByRole("region", { name: "Widget catalogue" })).not.toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await verifyFullWidth(page);
@@ -319,7 +334,7 @@ test("Home fills a wide screen and the catalogue adapts to the viewport", async 
   await page.screenshot({ path: "/tmp/alexandria-home-bottom-catalogue.png", fullPage: true });
   await page.keyboard.press("Escape");
 
-  await expect(page.getByRole("dialog", { name: "Add a widget" })).not.toBeVisible();
+  await expect(page.getByRole("region", { name: "Widget catalogue" })).not.toBeVisible();
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await verifyFullWidth(page);
@@ -398,13 +413,15 @@ test("Cancel and route exits confirm unchanged drafts and route discard preserve
 
 const openMobileWorkspace = async (page: Page) => {
   await page.getByRole("button", { name: "Customize", exact: true }).click();
+  await dashboardSettings(page);
   await page.getByRole("switch", { name: "Use a separate mobile layout" }).click();
   await page.getByRole("button", { name: "Mobile", exact: true }).click();
 
   const preview = page.getByRole("region", { name: "Mobile layout preview", exact: true });
-  const catalogue = page.getByRole("complementary", { name: "Widget catalogue", exact: true });
+  const catalogue = page.getByRole("region", { name: "Widget catalogue", exact: true });
 
   await expect(preview).toBeVisible();
+  await page.getByRole("button", { name: "Add widget", exact: true }).click();
   await expect(catalogue).toBeVisible();
   await expect(preview.getByText("Your phone dashboard", { exact: true })).toBeVisible();
 
@@ -429,14 +446,13 @@ const composeMobileByDragging = async (page: Page) => {
   await dragCatalogue(page, 1, 0, 0);
 
   await expect(widgets).toHaveCount(2);
-  await expect(
-    widgets.first().getByRole("heading", { name: "Library shortcuts", exact: true }),
-  ).toBeVisible();
+  await expect(widgets.first()).toHaveAttribute("aria-label", "Library shortcuts");
 
+  await page.getByRole("button", { name: "Add widget", exact: true }).click();
   await catalogue.getByRole("button", { name: "Add Clock", exact: true }).click();
 
   await expect(widgets).toHaveCount(3);
-  await expect(catalogue).toBeVisible();
+  await expect(catalogue).not.toBeVisible();
 
   return { preview, catalogue };
 };
@@ -491,9 +507,10 @@ test("shared preview blocks additions and Escape closes the dock before exit con
   await page.getByRole("button", { name: "Customize", exact: true }).click();
   await page.getByRole("button", { name: "Mobile", exact: true }).click();
 
-  const catalogue = page.getByRole("complementary", { name: "Widget catalogue", exact: true });
+  const catalogue = page.getByRole("region", { name: "Widget catalogue", exact: true });
 
   await expect(page.getByText("Shared layout preview", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add widget", exact: true }).click();
   await expect(catalogue.getByRole("button", { name: "Add Clock" })).toBeDisabled();
   await expect(
     catalogue.getByText("Enable a separate mobile layout to add widgets here."),
@@ -513,6 +530,7 @@ test("shared preview blocks additions and Escape closes the dock before exit con
   await expect(page.getByRole("dialog", { name: "Leave customization?" })).toBeVisible();
 
   await page.getByRole("button", { name: "Keep editing" }).click();
+  await dashboardSettings(page);
   await page.getByRole("switch", { name: "Use a separate mobile layout" }).click();
   await page.getByRole("button", { name: "Add widget", exact: true }).click();
 
@@ -528,6 +546,7 @@ test("native tab close warns about unsaved Home changes and allows closing after
   const state = await fixture(page);
 
   await page.getByRole("button", { name: "Customize", exact: true }).click();
+  await openWidgetTab(page, "Layout");
   await page.getByRole("button", { name: "Move widget right", exact: true }).click();
 
   const dialogEvent = page.waitForEvent("dialog");
@@ -540,6 +559,7 @@ test("native tab close warns about unsaved Home changes and allows closing after
 
   await dialog.dismiss();
 
+  await openWidgetTab(page, "Layout");
   await expect(page.getByText("Column 2, row 1", { exact: true })).toBeVisible();
   expect(state.writes).toHaveLength(0);
 
@@ -574,8 +594,9 @@ test("mobile catalogue enforces the widget limit for drops and Add buttons", asy
   await page.getByRole("button", { name: "Mobile", exact: true }).click();
 
   const preview = page.getByRole("region", { name: "Mobile layout preview", exact: true });
-  const catalogue = page.getByRole("complementary", { name: "Widget catalogue", exact: true });
+  const catalogue = page.getByRole("region", { name: "Widget catalogue", exact: true });
 
+  await page.getByRole("button", { name: "Add widget", exact: true }).click();
   await expect(catalogue.getByRole("button", { name: "Add Clock", exact: true })).toBeDisabled();
 
   await preview.evaluate((element) => {
@@ -588,6 +609,7 @@ test("mobile catalogue enforces the widget limit for drops and Add buttons", asy
   await expect(preview.locator("[data-widget-id]")).toHaveCount(32);
 
   await removeWidget(page, preview.locator("[data-widget-id]").first());
+  await page.getByRole("button", { name: "Add widget", exact: true }).click();
   await catalogue.getByRole("button", { name: "Add Clock", exact: true }).click();
 
   await expect(preview.locator("[data-widget-id]")).toHaveCount(32);
