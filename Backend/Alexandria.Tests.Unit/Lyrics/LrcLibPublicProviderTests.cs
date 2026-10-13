@@ -86,13 +86,35 @@ public class LrcLibPublicProviderTests
     }
 
     [Fact]
-    public async Task get_http_error_returns_null()
+    public async Task get_http_error_propagates_provider_outage()
     {
         var provider = CreateProvider(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
 
-        var result = await provider.FetchAsync("Error", null, null, null);
+        var fetch = () => provider.FetchAsync("Error", null, null, null, TestContext.Current.CancellationToken);
 
-        result.Should().BeNull();
+        await fetch.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [Fact]
+    public async Task search_http_error_propagates_provider_outage()
+    {
+        var provider = CreateProvider(request => new HttpResponseMessage(
+            request.RequestUri!.AbsolutePath.EndsWith("/get", StringComparison.Ordinal)
+                ? HttpStatusCode.NotFound : HttpStatusCode.ServiceUnavailable));
+
+        var fetch = () => provider.FetchAsync("Error", null, null, null, TestContext.Current.CancellationToken);
+
+        await fetch.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [Fact]
+    public async Task transport_error_propagates_instead_of_returning_no_match()
+    {
+        var provider = CreateProvider(_ => throw new HttpRequestException("connection refused"));
+
+        var fetch = () => provider.FetchAsync("Error", null, null, null, TestContext.Current.CancellationToken);
+
+        await fetch.Should().ThrowAsync<HttpRequestException>().WithMessage("connection refused");
     }
 
     // ---- SEARCH endpoint tests ----

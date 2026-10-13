@@ -8,6 +8,9 @@ namespace Alexandria.Tests.Common.Fakes;
 
 public class FakeStorageService : IStorageService
 {
+    public Task SaveMediaMetadataAsync(Guid versionId, MediaMetadataDto metadata, CancellationToken ct = default)
+        => Task.CompletedTask;
+
     private readonly Dictionary<string, Dictionary<string, byte[]>> _store = new();
 
     public List<(string Bucket, string Key, byte[] Bytes)> UploadedObjects { get; } = [];

@@ -1,4 +1,5 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using FastEndpoints;
 
@@ -21,8 +22,16 @@ sealed class QueueRefetchEndpoint(ITrackLyricsService lyricsService) : Endpoint<
     {
         var userId = User.GetUserId();
 
-        await lyricsService.QueueLyricsRefetchAsync(req.JobId, userId, ct);
+        try
+        {
+            await lyricsService.QueueLyricsRefetchAsync(req.JobId, userId, ct);
 
-        await Send.NoContentAsync(ct);
+            await Send.NoContentAsync(ct);
+        }
+        catch (CapabilityUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(409, ct);
+        }
     }
 }

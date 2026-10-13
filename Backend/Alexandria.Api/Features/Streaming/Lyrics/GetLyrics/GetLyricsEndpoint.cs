@@ -1,4 +1,5 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Lyrics;
 using FastEndpoints;
@@ -22,6 +23,14 @@ internal sealed class GetLyricsEndpoint(ITrackLyricsService lyricsService) : End
     {
         var userId = User.GetUserId();
 
-        await Send.OkAsync(await lyricsService.GetLyricsForMediaAsync(req.LyricsId, userId, ct), ct);
+        try
+        {
+            await Send.OkAsync(await lyricsService.GetLyricsForMediaAsync(req.LyricsId, userId, ct), ct);
+        }
+        catch (CapabilityUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(409, ct);
+        }
     }
 }

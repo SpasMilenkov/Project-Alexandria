@@ -6,6 +6,7 @@ WORKDIR /src
 # Copy all transitive csproj dependencies for layer caching
 COPY ["Alexandria.Api/Alexandria.Api.csproj", "Alexandria.Api/"]
 COPY ["Alexandria.Infrastructure/Alexandria.Infrastructure.csproj", "Alexandria.Infrastructure/"]
+COPY ["Alexandria.Services.Monitoring/Alexandria.Services.Monitoring.csproj", "Alexandria.Services.Monitoring/"]
 COPY ["Alexandria.Services.Preview/Alexandria.Services.Preview.csproj", "Alexandria.Services.Preview/"]
 COPY ["Alexandria.Services.Streaming/Alexandria.Services.Streaming.csproj", "Alexandria.Services.Streaming/"]
 COPY ["Alexandria.Common/Alexandria.Common.csproj", "Alexandria.Common/"]

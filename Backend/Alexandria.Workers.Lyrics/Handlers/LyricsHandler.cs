@@ -74,6 +74,11 @@ public partial class LyricsHandler(
             await FailJobAsync(jobId, "search parameters not found", ct);
             throw;
         }
+        catch (Exception ex) when (!ct.IsCancellationRequested && IsTransient(ex))
+        {
+            await FailJobAsync(jobId, ex.Message, ct);
+            throw;
+        }
         catch (Exception ex) when (!ct.IsCancellationRequested && !IsTransient(ex))
         {
             LogFetchFailedWithErrorEx(logger, ex);
@@ -84,9 +89,8 @@ public partial class LyricsHandler(
         }
     }
 
-    // Network-level failures are worth another delivery: the job stays
-    // Processing and the worker's requeue keeps it alive. Cancellation and
-    // anything else propagate to the terminal handling above.
+    // A failed claim can be retried; leaving it Processing would make the
+    // worker acknowledge the next delivery as a duplicate without trying again.
     private static bool IsTransient(Exception ex) =>
         ex is HttpRequestException or TimeoutException or TaskCanceledException;
 

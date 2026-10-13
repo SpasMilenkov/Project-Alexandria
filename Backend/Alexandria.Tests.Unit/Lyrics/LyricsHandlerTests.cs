@@ -175,7 +175,7 @@ public class LyricsHandlerTests
     }
 
     [Fact]
-    public async Task transient_provider_error_rethrows_without_terminal_outcome()
+    public async Task transient_provider_error_marks_job_failed_and_rethrows_for_retry()
     {
         _defaultProvider.FetchAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
@@ -186,9 +186,47 @@ public class LyricsHandlerTests
 
         await act.Should().ThrowAsync<HttpRequestException>();
         _record.Status.Should().Be(LyricsStatus.PendingFetch);
-        await _jobsRepo.DidNotReceive().UpdateStatusAsync(
-            Arg.Any<Guid>(), Arg.Any<JobStatus>(), Arg.Any<int?>(), Arg.Any<string?>(),
+        _record.FetchedAt.Should().BeNull();
+        await _jobsRepo.Received(1).UpdateStatusAsync(
+            _jobId, JobStatus.Failed, Arg.Any<int?>(), "timeout",
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task transient_provider_error_allows_next_delivery_to_fetch_and_complete()
+    {
+        var status = JobStatus.Queued;
+        _jobsRepo.TryClaimJobAsync(_jobId, Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            if (status is not (JobStatus.Queued or JobStatus.Failed))
+                return false;
+
+            status = JobStatus.Processing;
+            return true;
+        });
+        _jobsRepo.UpdateStatusAsync(_jobId, Arg.Any<JobStatus>(), Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            status = call.ArgAt<JobStatus>(1);
+            return Task.CompletedTask;
+        });
+        _defaultProvider.FetchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<double?>(), Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromException<LyricsResult?>(new HttpRequestException("provider unavailable")),
+                _ => Task.FromResult<LyricsResult?>(SampleResult));
+
+        var firstDelivery = () => _sut.HandleAsync(_jobId, TestContext.Current.CancellationToken);
+        await firstDelivery.Should().ThrowAsync<HttpRequestException>();
+        status.Should().Be(JobStatus.Failed);
+        _record.Status.Should().Be(LyricsStatus.PendingFetch);
+
+        await _sut.HandleAsync(_jobId, TestContext.Current.CancellationToken);
+
+        await _defaultProvider.Received(2).FetchAsync(Arg.Any<string>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<double?>(), Arg.Any<CancellationToken>());
+        status.Should().Be(JobStatus.Ready);
+        _record.Status.Should().Be(LyricsStatus.Fetched);
+        _record.PlainLyrics.Should().Be(SampleResult.PlainLyrics);
     }
 
     [Fact]

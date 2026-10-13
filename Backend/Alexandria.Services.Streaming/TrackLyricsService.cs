@@ -1,18 +1,24 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Extensions;
 using Alexandria.Dto.Files.Streaming.Lyrics;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Services.Streaming;
 
 public class TrackLyricsService(
     IUnitOfWork unitOfWork,
-    IPublisherService publisher) : ITrackLyricsService
+    IPublisherService publisher,
+    IOptions<ProcessingCapabilities>? capabilities = null) : ITrackLyricsService
 {
+    private readonly ProcessingCapabilities _capabilities = capabilities?.Value ?? new();
+
     /// <inheritdoc/>
     public async Task<LyricsDto> GetLyricsForMediaAsync(Guid jobId, Guid userId, CancellationToken ct = default)
     {
@@ -32,6 +38,8 @@ public class TrackLyricsService(
     /// <inheritdoc/>
     public async Task QueueLyricsRefetchAsync(Guid jobId, Guid userId, CancellationToken ct = default)
     {
+        EnsureLyricsAvailable();
+
         var existing = await unitOfWork.Lyrics.FirstOrDefaultAsync(
             l => l.TranspilationJobId == jobId && l.TranspilationJob!.UserId == userId && l.DeletedAt == null, ct);
 
@@ -176,6 +184,8 @@ public class TrackLyricsService(
         if (provider == LyricsProvider.Manual)
             throw new ArgumentException("Use UploadLyricsAsync to submit user lyrics.");
 
+        EnsureLyricsAvailable();
+
         var lyrics = await unitOfWork.Lyrics.FirstOrDefaultAsync(
                          l => l.Id == lyricsId && l.TranspilationJob!.UserId == userId, ct)
                      ?? throw new LyricsNotFoundException(lyricsId);
@@ -192,5 +202,11 @@ public class TrackLyricsService(
         await unitOfWork.SaveChangesAsync(ct);
 
         await RequeueAndPublishAsync(lyrics.JobId, "lyrics.change", ct);
+    }
+
+    private void EnsureLyricsAvailable()
+    {
+        if (!_capabilities.Lyrics)
+            throw new CapabilityUnavailableException("Lyrics lookup");
     }
 }

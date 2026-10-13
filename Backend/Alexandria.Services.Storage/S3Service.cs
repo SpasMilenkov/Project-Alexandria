@@ -250,6 +250,57 @@ public partial class S3Service(
         return "application/octet-stream";
     }
 
+    public async Task SaveMediaMetadataAsync(Guid versionId, MediaMetadataDto metadataDto,
+        CancellationToken ct = default)
+    {
+        auditContext.RunAsSystem();
+
+        var version = await unitOfWork.FileVersions.GetByIdAsync(versionId, ct)
+                      ?? throw new InvalidOperationException("File for metadata not found");
+
+        await PersistMediaMetadataAsync(version, metadataDto, ct);
+        await unitOfWork.SaveChangesAsync(ct);
+
+        await PlaylistSyncNotifier.PublishFileChangedAsync(
+            publisher, version.FileId, version.File.OwnerId, logger);
+    }
+
+    private async Task PersistMediaMetadataAsync(FileVersion version, MediaMetadataDto metadataDto,
+        CancellationToken ct)
+    {
+        var existingMetadata =
+            await unitOfWork.MediaMetadata.FirstOrDefaultAsync(f => f.FileId == version.FileId, ct);
+
+        if (existingMetadata != null)
+        {
+            LogUpdatingMediaMetadata(logger, existingMetadata.Id, version.FileId);
+
+            existingMetadata.Duration = metadataDto.Duration;
+            existingMetadata.BitrateMbps = metadataDto.BitrateMbps;
+            existingMetadata.FormatName = metadataDto.FormatName;
+            existingMetadata.VideoCodec = metadataDto.VideoCodec;
+            existingMetadata.AudioCodec = metadataDto.AudioCodec;
+            existingMetadata.Width = metadataDto.Width;
+            existingMetadata.Height = metadataDto.Height;
+            existingMetadata.HasAudio = metadataDto.HasAudio;
+            // Descriptive fields merge per-field: stored non-empty values (including
+            // user corrections) survive automated output unless the owner opted into
+            // automatic overwrite; empty fields always take it.
+            var behavior = await userSettingsService.GetBehaviorAsync(version.File.OwnerId, ct);
+            MediaMetadataMerge.ApplyDescriptiveFields(
+                existingMetadata, metadataDto, behavior.AllowAutomaticMetadataOverwrite);
+            existingMetadata.UpdatedBy = SystemConfig.SystemId;
+
+            await unitOfWork.MediaMetadata.UpdateAsync(existingMetadata, ct);
+        }
+        else
+        {
+            LogCreatingMediaMetadata(logger, version.FileId);
+            var mediaMetadata = metadataDto.ToEntity(version.FileId);
+            await unitOfWork.MediaMetadata.CreateAsync(mediaMetadata, ct);
+        }
+    }
+
     /// <summary>
     ///  Takes in the preview video and the thumbnail streams, uploads them to storage and registers a metadata entity into
     ///  the database
@@ -314,39 +365,7 @@ public partial class S3Service(
                 DisableDefaultChecksumValidation = true
             }, ct);
 
-            // Media metadata, purely descriptive/technical fields now,
-            // thumbnail location no longer tracked here, Previews owns that
-            var existingMetadata =
-                await unitOfWork.MediaMetadata.FirstOrDefaultAsync(f => f.FileId == version.FileId, ct);
-
-            if (existingMetadata != null)
-            {
-                LogUpdatingMediaMetadata(logger, existingMetadata.Id, version.FileId);
-
-                existingMetadata.Duration = metadataDto.Duration;
-                existingMetadata.BitrateMbps = metadataDto.BitrateMbps;
-                existingMetadata.FormatName = metadataDto.FormatName;
-                existingMetadata.VideoCodec = metadataDto.VideoCodec;
-                existingMetadata.AudioCodec = metadataDto.AudioCodec;
-                existingMetadata.Width = metadataDto.Width;
-                existingMetadata.Height = metadataDto.Height;
-                existingMetadata.HasAudio = metadataDto.HasAudio;
-                // Descriptive fields merge per-field: stored non-empty values (including
-                // user corrections) survive automated output unless the owner opted into
-                // automatic overwrite; empty fields always take it.
-                var behavior = await userSettingsService.GetBehaviorAsync(version.File.OwnerId, ct);
-                MediaMetadataMerge.ApplyDescriptiveFields(
-                    existingMetadata, metadataDto, behavior.AllowAutomaticMetadataOverwrite);
-                existingMetadata.UpdatedBy = SystemConfig.SystemId;
-
-                await unitOfWork.MediaMetadata.UpdateAsync(existingMetadata, ct);
-            }
-            else
-            {
-                LogCreatingMediaMetadata(logger, version.FileId);
-                var mediaMetadata = metadataDto.ToEntity(version.FileId);
-                await unitOfWork.MediaMetadata.CreateAsync(mediaMetadata, ct);
-            }
+            await PersistMediaMetadataAsync(version, metadataDto, ct);
 
             // Preview record (the video/document preview object itself)
             var existingPreviewRecord = await unitOfWork.Previews.FirstOrDefaultAsync(

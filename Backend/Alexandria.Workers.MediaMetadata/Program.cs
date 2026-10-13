@@ -1,9 +1,17 @@
+using Alexandria.Common.Health;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.DocumentWorker;
 using Alexandria.Workers.MediaMetadata.Extensions;
 using Alexandria.Workers.MediaMetadata.Workers;
 using Microsoft.AspNetCore.Builder;
 using Serilog;
+
+var probeExitCode = await HttpHealthProbe.TryRunAsync(args);
+if (probeExitCode is { } exitCode)
+{
+    Environment.ExitCode = exitCode;
+    return;
+}
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -27,11 +35,6 @@ try
         .AddWorkerServices(builder.Configuration)
         .AddS3Storage(builder.Configuration)
         .AddHealthChecks();
-
-    builder.Services.AddHostedService<TriggerConsumerWorker>();
-    builder.Services.AddHostedService<AccumulatorWorker>();
-    builder.Services.AddHostedService<ResultsConsumerWorker>();
-    builder.Services.AddHostedService<TimeoutSweepWorker>();
 
     var host = builder.Build();
 

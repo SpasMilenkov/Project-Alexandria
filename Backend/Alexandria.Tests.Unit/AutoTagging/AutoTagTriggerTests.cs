@@ -1,11 +1,17 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions.Policies;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
+using Alexandria.Common.Policies;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Storage.Policies;
 using AwesomeAssertions;
 using NSubstitute;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Tests.Unit.AutoTagging;
 
@@ -13,6 +19,25 @@ public class AutoTagTriggerTests
 {
     private static readonly Guid FileId = Guid.Parse("aaaa0000-0000-0000-0000-000000000010");
     private const string AudioMime = "audio/mpeg";
+
+    [Fact]
+    public async Task QueueAutoTagAsync_policy_enabled_analysis_disabled_refuses_without_publish()
+    {
+        var (publisher, unitOfWork) = Create();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Features:Autotagging"] = "true"
+        }).Build();
+        var sut = new JobQueue(Substitute.For<ITranspilationJobService>(), Substitute.For<IPreviewService>(),
+            publisher, unitOfWork, configuration, Substitute.For<ILogger<JobQueue>>(),
+            Options.Create(new ProcessingCapabilities { AudioAnalysis = false }));
+
+        var act = () => sut.QueueAutoTagAsync(FileId, new AutoTagParameters(TagSource.Auto), AudioMime,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<AutoTaggingDisabledException>();
+        await publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
 
     [Fact]
     public async Task QueueIfNeededAsync_throws_when_flag_is_off()

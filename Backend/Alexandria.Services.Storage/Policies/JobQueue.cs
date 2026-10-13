@@ -1,8 +1,10 @@
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Services.Storage.Policies;
 
@@ -12,17 +14,19 @@ public class JobQueue(
     IPublisherService publisher,
     IUnitOfWork unitOfWork,
     IConfiguration configuration,
-    ILogger<JobQueue> logger) : IJobQueue
+    ILogger<JobQueue> logger,
+    IOptions<ProcessingCapabilities>? capabilities = null) : IJobQueue
 {
     private readonly bool _autoTaggingEnabled =
-        bool.TryParse(configuration["Features:Autotagging"], out var enabled) && enabled;
+        bool.TryParse(configuration["Features:Autotagging"], out var enabled) && enabled
+        && (capabilities?.Value.AudioAnalysis ?? true);
 
     public async Task QueueTranspilationJobAsync(Guid versionId, Guid fileId, Guid userId,
         TranscodeParameters parameters, CancellationToken ct = default)
     {
         //TODO: Add support for dynamic parameters setting.
         var job = await jobService.CreateJobAsync(versionId, userId, parameters.AudioRungs, parameters.VideoRungs, ct);
-        await previewService.GeneratePreviewAsync(fileId, userId, ct: ct);
+        await previewService.GeneratePreviewAsync(versionId, userId, ct: ct);
     }
 
     public Task QueueBackupAsync(Guid fileId, BackupParameters parameters, CancellationToken ct = default)

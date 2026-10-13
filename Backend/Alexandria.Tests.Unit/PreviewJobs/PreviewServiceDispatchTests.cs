@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -9,6 +10,7 @@ using Alexandria.Services.Preview;
 using Alexandria.Tests.Common.Builders;
 using AwesomeAssertions;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using File = Alexandria.Data.Models.File;
 
@@ -26,6 +28,7 @@ public class PreviewServiceDispatchTests
     private readonly ITextPreviewService _textPreview = Substitute.For<ITextPreviewService>();
     private readonly IArchivePreviewService _archivePreview = Substitute.For<IArchivePreviewService>();
     private readonly PreviewService _sut;
+    private readonly ProcessingCapabilities _capabilities = new();
 
     private readonly Guid _versionId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
@@ -44,7 +47,7 @@ public class PreviewServiceDispatchTests
         var cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 100 });
         _sut = new PreviewService(
             _storage, _publisher, _unitOfWork,
-            _textPreview, _archivePreview, cache);
+            _textPreview, _archivePreview, cache, Options.Create(_capabilities));
     }
 
     private File StoredFile(string mimeType) =>
@@ -60,6 +63,63 @@ public class PreviewServiceDispatchTests
         _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(StoredFile("image/png"));
         _storage.CategorizeFile("image/png").Returns(FileCategory.Image);
+    }
+
+    [Theory]
+    [InlineData("image/png", FileCategory.Image)]
+    [InlineData("application/pdf", FileCategory.Document)]
+    public async Task GeneratePreviewAsync_disabled_consumer_does_not_create_or_requeue_work(
+        string mimeType, FileCategory category)
+    {
+        StoredImage();
+        _capabilities.DocumentPreviews = false;
+        _capabilities.MediaPreviews = false;
+        _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(StoredFile(mimeType));
+        _storage.CategorizeFile(mimeType).Returns(category);
+        var job = new JobBuilder().WithStatus(JobStatus.Failed).WithUser(_userId).Build();
+        _previewJobs.FirstOrDefaultAsync(Arg.Any<Expression<Func<PreviewJob, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(new PreviewJobBuilder().WithJob(job).WithVersion(_versionId).WithUser(_userId).Build());
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, ct: TestContext.Current.CancellationToken);
+
+        await _jobs.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+        await _jobs.DidNotReceiveWithAnyArgs().UpdateStatusAsync(default, default, default, default, default);
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
+
+    [Fact]
+    public async Task GeneratePreviewAsync_previews_and_analysis_disabled_still_queues_media_metadata()
+    {
+        StoredImage();
+        _capabilities.MediaPreviews = false;
+        _capabilities.AudioAnalysis = false;
+        _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(StoredFile("audio/mpeg"));
+        _storage.CategorizeFile("audio/mpeg").Returns(FileCategory.Audio);
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, ct: TestContext.Current.CancellationToken);
+
+        await _jobs.Received(1).AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), "media.mpeg");
+    }
+
+    [Fact]
+    public async Task GeneratePreviewAsync_completed_metadata_only_job_is_not_requeued()
+    {
+        StoredImage();
+        _capabilities.MediaPreviews = false;
+        _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(StoredFile("audio/mpeg"));
+        _storage.CategorizeFile("audio/mpeg").Returns(FileCategory.Audio);
+        var job = new JobBuilder().WithStatus(JobStatus.Ready).WithUser(_userId).Build();
+        _previewJobs.FirstOrDefaultAsync(Arg.Any<Expression<Func<PreviewJob, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(new PreviewJobBuilder().WithJob(job).WithVersion(_versionId).WithUser(_userId).Build());
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, ct: TestContext.Current.CancellationToken);
+
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _jobs.DidNotReceiveWithAnyArgs().UpdateStatusAsync(default, default, default, default, default);
     }
 
     [Fact]

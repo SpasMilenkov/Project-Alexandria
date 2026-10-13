@@ -7,6 +7,9 @@ namespace Alexandria.Infrastructure.HealthChecks;
 
 public static class HealthMonitoringExtension
 {
+    public static bool IsEssentialReadinessCheck(HealthCheckRegistration registration)
+        => !registration.Tags.Contains("worker");
+
     public static IServiceCollection AddHealthMonitoring(
         this IServiceCollection services, IConfiguration config)
     {

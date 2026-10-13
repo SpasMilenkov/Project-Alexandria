@@ -88,7 +88,7 @@ public sealed partial class LrcLibPublicProvider(HttpClient http, ILogger<LrcLib
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogRequestFailed(url, ex);
-            return null;
+            throw;
         }
     }
 
@@ -135,7 +135,7 @@ public sealed partial class LrcLibPublicProvider(HttpClient http, ILogger<LrcLib
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogRequestFailed(url, ex);
-            return null;
+            throw;
         }
     }
 

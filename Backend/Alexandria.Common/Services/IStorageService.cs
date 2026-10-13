@@ -8,6 +8,8 @@ namespace Alexandria.Common.Services;
 
 public interface IStorageService
 {
+    Task SaveMediaMetadataAsync(Guid versionId, MediaMetadataDto metadata, CancellationToken ct = default);
+
     public Task UploadPreview(
         string objectName,
         string contentType,

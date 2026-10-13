@@ -1,4 +1,5 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using FastEndpoints;
@@ -26,13 +27,21 @@ internal sealed class UpdateTranspilationJobEndpoint(ITranspilationJobService jo
     {
         var userId = User.GetUserId();
 
-        await jobService.UpdateStatusAsync(jobId: req.JobId,
-            userId: userId,
-            targetStatus: req.Status,
-            audioRungs: req.AudioRungs,
-            videoRungs: req.VideoRungs,
-            ct: ct);
+        try
+        {
+            await jobService.UpdateStatusAsync(jobId: req.JobId,
+                userId: userId,
+                targetStatus: req.Status,
+                audioRungs: req.AudioRungs,
+                videoRungs: req.VideoRungs,
+                ct: ct);
 
-        await Send.NoContentAsync(cancellation: ct);
+            await Send.NoContentAsync(cancellation: ct);
+        }
+        catch (CapabilityUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(409, ct);
+        }
     }
 }

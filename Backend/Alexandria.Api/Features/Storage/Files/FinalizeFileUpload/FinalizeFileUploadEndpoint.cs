@@ -1,6 +1,8 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using FastEndpoints;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Api.Features.Storage.Files.FinalizeFileUpload;
 
@@ -17,7 +19,11 @@ internal sealed class FinalizeFileUploadRequest
     public int? IterationCount { get; set; }
 }
 
-sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage, IPolicyDispatcher policyDispatcher)
+sealed class FinalizeFileUploadEndpoint(
+    IStorageService s3Storage,
+    IPolicyDispatcher policyDispatcher,
+    IPreviewService previewService,
+    IOptions<ProcessingCapabilities> capabilities)
     : Endpoint<FinalizeFileUploadRequest>
 {
     public override void Configure()
@@ -42,6 +48,11 @@ sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage, IPolicyDispat
         //TODO: gotta make it job specific, encrypted files are eligible for backup
         if (!req.IsEncrypted)
         {
+            if (!capabilities.Value.MediaPreviews &&
+                (result.MimeType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase) ||
+                 result.MimeType.StartsWith("video/", StringComparison.OrdinalIgnoreCase)))
+                await previewService.GeneratePreviewAsync(result.VersionId, userId, ct: ct);
+
             await policyDispatcher.DispatchAsync(new FileFinalizedEvent(result.FileId,
                 result.VersionId,
                 req.DirectoryId,

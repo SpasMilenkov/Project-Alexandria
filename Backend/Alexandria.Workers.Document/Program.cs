@@ -1,9 +1,17 @@
+using Alexandria.Common.Health;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.DocumentWorker;
 using Alexandria.Workers.Document;
 using Alexandria.Workers.Document.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Serilog;
+
+var probeExitCode = await HttpHealthProbe.TryRunAsync(args);
+if (probeExitCode is { } exitCode)
+{
+    Environment.ExitCode = exitCode;
+    return;
+}
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()

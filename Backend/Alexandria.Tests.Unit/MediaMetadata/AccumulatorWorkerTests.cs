@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -27,6 +28,7 @@ public class AccumulatorWorkerTests
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
     private readonly AccumulatorBuffer _buffer = new();
     private readonly AccumulatorWorker _sut;
+    private readonly ProcessingCapabilities _capabilities = new();
 
     private static readonly EssentiaConfig Config = new()
     {
@@ -57,7 +59,8 @@ public class AccumulatorWorkerTests
             _buffer,
             Options.Create(new EssentiaConfig()),
             _publisher,
-            provider);
+            provider,
+            Options.Create(_capabilities));
     }
 
     private static List<StagedFile> BatchOf(int count) =>
@@ -66,12 +69,50 @@ public class AccumulatorWorkerTests
             .ToList();
 
     [Fact]
+    public async Task FlushAsync_audio_analysis_disabled_does_not_create_durable_jobs_or_dispatch()
+    {
+        _capabilities.AudioAnalysis = false;
+
+        await _sut.FlushAsync(BatchOf(1), Config, TestContext.Current.CancellationToken);
+
+        await _batches.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
+
+    [Theory]
+    [InlineData("effnet", EssentiaBackbone.Effnet)]
+    [InlineData("maest", EssentiaBackbone.Maest)]
+    public async Task FlushAsync_selected_backbone_persists_matching_identity_and_dispatches_matching_queue(
+        string backbone, EssentiaBackbone expected)
+    {
+        var config = new EssentiaConfig { Backbone = backbone };
+
+        await _sut.FlushAsync(BatchOf(1), config, TestContext.Current.CancellationToken);
+
+        await _batches.Received(1).AddAsync(Arg.Is<EssentiaBatch>(b => b.Backbone == expected),
+            TestContext.Current.CancellationToken);
+        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), $"media-metadata.classify.audio.{backbone}");
+    }
+
+    [Fact]
+    public async Task FlushAsync_unknown_backbone_rejects_before_persisting_or_dispatching()
+    {
+        var act = () => _sut.FlushAsync(BatchOf(1), new EssentiaConfig { Backbone = "unavailable" },
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _batches.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
+
+    [Fact]
     public async Task persist_failure_records_cycle_failure_and_skips_publish()
     {
         _batches.AddAsync(Arg.Any<EssentiaBatch>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<EssentiaBatch>(new InvalidOperationException("db down")));
 
-        await _sut.FlushAsync(BatchOf(2), EssentiaBackbone.Effnet, "rk", Config,
+        await _sut.FlushAsync(BatchOf(2), Config,
             TestContext.Current.CancellationToken);
 
         await _events.Received(1).AddAsync(
@@ -87,7 +128,7 @@ public class AccumulatorWorkerTests
         _publisher.PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>())
             .Returns(Task.FromException(new InvalidOperationException("broker down")));
 
-        await _sut.FlushAsync(BatchOf(2), EssentiaBackbone.Effnet, "rk", Config,
+        await _sut.FlushAsync(BatchOf(2), Config,
             TestContext.Current.CancellationToken);
 
         await _jobs.Received(1).UpdateStatusForJobsAsync(
@@ -109,8 +150,7 @@ public class AccumulatorWorkerTests
         _publisher.PublishAsync(Arg.Do<byte[]>(b => published = b), Arg.Any<string>())
             .Returns(Task.CompletedTask);
 
-        await _sut.FlushAsync(batch, EssentiaBackbone.Effnet, "media-metadata.classify.audio.effnet",
-            Config, TestContext.Current.CancellationToken);
+        await _sut.FlushAsync(batch, Config, TestContext.Current.CancellationToken);
 
         published.Should().NotBeNull();
         var request = JsonSerializer.Deserialize<ClassifyRequest>(published!);

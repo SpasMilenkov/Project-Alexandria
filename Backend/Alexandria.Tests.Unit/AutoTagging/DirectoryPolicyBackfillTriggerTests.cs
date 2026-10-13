@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
@@ -7,7 +8,9 @@ using Alexandria.Data.Models;
 using Alexandria.Dto.Policies;
 using Alexandria.Services.Storage.Policies;
 using AwesomeAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Alexandria.Tests.Unit.AutoTagging;
@@ -27,11 +30,29 @@ public class DirectoryPolicyBackfillTriggerTests
         _unitOfWork.DirectoryPolicies.Returns(_policies);
     }
 
-    private DirectoryPolicyService CreateSut() => new(
+    private DirectoryPolicyService CreateSut(bool audioAnalysis = true) => new(
         _unitOfWork,
         Substitute.For<IDirectoryService>(),
         _publisher,
-        Substitute.For<ILogger<DirectoryPolicyService>>());
+        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Features:Autotagging"] = "true",
+        }).Build(),
+        Substitute.For<ILogger<DirectoryPolicyService>>(),
+        Options.Create(new ProcessingCapabilities { AudioAnalysis = audioAnalysis }));
+
+    [Fact]
+    public async Task UpdatePolicyAsync_audio_analysis_disabled_preserves_policy_without_backfill_message()
+    {
+        _policies.GetByIdAsync(PolicyId, Arg.Any<CancellationToken>())
+            .Returns(new DirectoryPolicy { Id = PolicyId, DirectoryId = DirectoryId });
+
+        await CreateSut(audioAnalysis: false).UpdatePolicyAsync(
+            PolicyId, inheritedByChildren: true, OwnerId, TestContext.Current.CancellationToken);
+
+        await _unitOfWork.Received(1).SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
 
     [Fact]
     public async Task CreatePolicyAsync_publishes_backfill_for_new_policy()

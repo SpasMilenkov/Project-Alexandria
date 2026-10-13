@@ -22,7 +22,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         LogGeneratingPreview(logger, inputPath, fileCategory.ToString());
         try
         {
-            var metadata = await AnalyzeMediaAsync(inputPath, ct);
+            var metadata = await ExtractMetadataAsync(inputPath, ct);
 
             var result = fileCategory switch
             {
@@ -41,7 +41,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         }
     }
 
-    private async Task<MediaMetadataDto> AnalyzeMediaAsync(string inputPath, CancellationToken ct)
+    public async Task<MediaMetadataDto> ExtractMetadataAsync(string inputPath, CancellationToken ct)
     {
         LogFfprobeStarting(logger, inputPath);
 

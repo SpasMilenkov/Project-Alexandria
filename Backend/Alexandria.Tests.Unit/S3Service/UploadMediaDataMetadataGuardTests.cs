@@ -113,6 +113,24 @@ public class UploadMediaDataMetadataGuardTests
     }
 
     [Fact]
+    public async Task SaveMediaMetadataAsync_preserves_user_fields_and_saves_without_preview_storage()
+    {
+        GivenVersionWithOwner();
+        var existing = ExistingMetadata(_fileId, null);
+        GivenExistingMetadata(existing);
+        GivenOverwriteFlag(false);
+
+        await _sut.SaveMediaMetadataAsync(_versionId, IncomingDto(), TestContext.Current.CancellationToken);
+
+        existing.Title.Should().Be("Existing Title");
+        existing.Album.Should().Be("Incoming Album");
+        existing.Duration.Should().Be(180);
+        await _unitOfWork.Received(1).SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _s3.DidNotReceiveWithAnyArgs().PutObjectAsync(default!, default);
+        await _previews.DidNotReceiveWithAnyArgs().CreateAsync(default!, default);
+    }
+
+    [Fact]
     public async Task UploadMediaData_flagOff_preservesNonEmptyDescriptiveFields()
     {
         GivenVersionWithOwner();

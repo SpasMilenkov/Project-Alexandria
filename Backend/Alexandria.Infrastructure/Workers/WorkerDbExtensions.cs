@@ -1,4 +1,5 @@
 using Alexandria.Common.Audit;
+using Alexandria.Common.Auth;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Microsoft.AspNetCore.Identity;
@@ -21,6 +22,10 @@ public static class WorkerDbExtensions
                 options.Password.RequireDigit = true;
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequiredLength = AccountValidationRules.PasswordLength;
+                options.Password.RequiredUniqueChars = AccountValidationRules.PasswordUniqueCharacters;
+                options.User.AllowedUserNameCharacters = AccountValidationRules.UsernameCharacters;
                 options.SignIn.RequireConfirmedEmail = false;
             })
             .AddEntityFrameworkStores<AlexandriaDbContext>()

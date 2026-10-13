@@ -15,8 +15,13 @@ public class AdminSeeder(
 {
     public async Task SeedAsync(CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         await SeedRolesAsync();
-        await SeedAdminUserAsync();
+
+        ct.ThrowIfCancellationRequested();
+        await SeedAdminUserAsync(ct);
+
+        ct.ThrowIfCancellationRequested();
         await SeedSystemUserAsync();
     }
 
@@ -26,7 +31,7 @@ public class AdminSeeder(
 
         foreach (var roleName in roles)
         {
-            if (await roleManager.RoleExistsAsync(roleName))
+            if (await ExecuteAsync(() => roleManager.RoleExistsAsync(roleName), "RoleLookupFailed"))
                 continue;
 
             var role = new ApplicationRole
@@ -34,29 +39,34 @@ public class AdminSeeder(
                 Name = roleName,
             };
 
-            var result = await roleManager.CreateAsync(role);
+            var result = await ExecuteAsync(() => roleManager.CreateAsync(role), "RoleCreationFailed");
 
-            if (result.Succeeded)
-                logger.LogInformation("Role '{Role}' created successfully.", roleName);
-            else
-                logger.LogError("Failed to create role '{Role}': {Errors}",
-                    roleName, string.Join(", ", result.Errors.Select(e => e.Description)));
+            if (!result.Succeeded)
+                throw Failure("RoleCreationFailed", result);
+
+            logger.LogInformation("Role '{Role}' created successfully.", roleName);
         }
     }
 
-    private async Task SeedAdminUserAsync()
+    private async Task SeedAdminUserAsync(CancellationToken ct)
     {
-        var adminEmail = configuration.GetValue<string>("Admin:Email") ??
-                         throw new InvalidOperationException("Configuration misses admin email");
-        var existing = await userManager.FindByEmailAsync(adminEmail);
+        var adminEmail = RequiredSetting("Admin:Email");
+        var existing = await ExecuteAsync(() => userManager.FindByEmailAsync(adminEmail), "AdminLookupFailed");
         if (existing != null)
         {
-            logger.LogInformation("Admin user already exists, skipping.");
+            if (existing.DeletedAt is not null || existing.Id == SystemConfig.SystemId)
+                throw Failure("ExistingAdminUnavailable");
+
+            if (!await ExecuteAsync(() => userManager.IsInRoleAsync(existing, Roles.Admin), "AdminRoleLookupFailed"))
+                throw Failure("ExistingAccountIsNotAdmin", recovery:
+                    "Resolve the configured account or its role through an authorized recovery process before retrying.");
+
+            logger.LogInformation("Existing admin account verified; credentials preserved.");
             return;
         }
 
-        var adminName = configuration.GetValue<string>("Admin:Name") ??
-                        throw new InvalidOperationException("Configuration misses admin name");
+        var adminName = RequiredSetting("Admin:Name");
+        var adminPassword = RequiredSetting("Admin:Password");
 
         var admin = new ApplicationUser
         {
@@ -67,32 +77,50 @@ public class AdminSeeder(
             StorageQuota = ApplicationUser.DefaultStorageQuotaBytes,
         };
 
-        var createResult = await userManager.CreateAsync(admin,
-            configuration.GetValue<string>("Admin:Password") ??
-            throw new InvalidOperationException("Configuration misses admin password"));
+        var createResult = await ExecuteAsync(() => userManager.CreateAsync(admin, adminPassword), "AdminCreationFailed");
         if (!createResult.Succeeded)
-        {
-            logger.LogError("Failed to create admin user: {Errors}",
-                string.Join(", ", createResult.Errors.Select(e => e.Description)));
-            return;
-        }
+            throw Failure("AdminCreationFailed", createResult);
 
-        var roleResult = await userManager.AddToRoleAsync(admin, Roles.Admin);
-        if (!roleResult.Succeeded)
+        try
         {
-            logger.LogError("Failed to assign Admin role to admin user: {Errors}",
-                string.Join(", ", roleResult.Errors.Select(e => e.Description)));
-            return;
+            ct.ThrowIfCancellationRequested();
+            var roleResult = await ExecuteAsync(() => userManager.AddToRoleAsync(admin, Roles.Admin), "AdminRoleAssignmentFailed");
+            if (!roleResult.Succeeded)
+                throw Failure("AdminRoleAssignmentFailed", roleResult);
+
+            var stored = await ExecuteAsync(() => userManager.FindByEmailAsync(adminEmail), "AdminVerificationFailed");
+            if (stored is null || stored.Id != admin.Id || stored.DeletedAt is not null ||
+                !await ExecuteAsync(() => userManager.CheckPasswordAsync(stored, adminPassword), "AdminVerificationFailed") ||
+                !await ExecuteAsync(() => userManager.IsInRoleAsync(stored, Roles.Admin), "AdminVerificationFailed"))
+                throw Failure("AdminVerificationFailed");
+        }
+        catch
+        {
+            await RollbackNewAdminAsync(admin);
+            throw;
         }
 
         logger.LogInformation("Admin user seeded successfully.");
+    }
+
+    private async Task RollbackNewAdminAsync(ApplicationUser admin)
+    {
+        const string recovery =
+            "The newly created account remains incomplete; use an authorized recovery process before retrying.";
+
+        // Only this attempt's newly created account may be removed during recovery.
+        var rollback = await ExecuteAsync(() => userManager.DeleteAsync(admin), "AdminRollbackFailed", recovery);
+        if (!rollback.Succeeded)
+            throw Failure("AdminRollbackFailed", rollback, recovery);
+
+        logger.LogWarning("Incomplete new admin account removed; bootstrap can be retried.");
     }
 
     private async Task SeedSystemUserAsync()
     {
         logger.LogInformation("Creating system account");
 
-        var exists = await userManager.FindByIdAsync(SystemConfig.SystemId.ToString());
+        var exists = await ExecuteAsync(() => userManager.FindByIdAsync(SystemConfig.SystemId.ToString()), "SystemAccountLookupFailed");
 
         if (exists is not null)
         {
@@ -109,15 +137,77 @@ public class AdminSeeder(
             EmailConfirmed = true,
         };
 
-        var result = await userManager.CreateAsync(system);
+        var result = await ExecuteAsync(() => userManager.CreateAsync(system), "SystemAccountCreationFailed");
 
         if (!result.Succeeded)
-        {
-            logger.LogError("Failed to seed system account: {Errors}",
-                string.Join(", ", result.Errors.Select(e => e.Description)));
-            return;
-        }
+            throw Failure("SystemAccountCreationFailed", result);
 
         logger.LogInformation("System user created successfully");
     }
+
+    private string RequiredSetting(string key)
+    {
+        var value = configuration.GetValue<string>(key);
+        if (string.IsNullOrWhiteSpace(value))
+            throw Failure("AdminConfigurationMissing", recovery: $"Configure {key} before retrying.");
+
+        return value;
+    }
+
+    private async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, string failureCode, string? recovery = null)
+    {
+        try
+        {
+            return await operation();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            // Store exceptions and Identity descriptions can include credentials or account input.
+            throw Failure(failureCode, recovery: recovery);
+        }
+    }
+
+    private InvalidOperationException Failure(string code, IdentityResult? result = null, string? recovery = null)
+    {
+        var codes = result?.Errors.Select(error => SafeIdentityCode(error.Code)).Distinct().ToArray() ?? [];
+        var message = $"Account bootstrap failed [{code}].";
+        if (codes.Length > 0)
+            message += $" Identity codes: {string.Join(", ", codes)}.";
+
+        if (recovery is not null)
+            message += $" {recovery}";
+
+        logger.LogError("{BootstrapFailure}", message);
+        return new InvalidOperationException(message);
+    }
+
+    private static string SafeIdentityCode(string code) => code switch
+    {
+        nameof(IdentityErrorDescriber.DefaultError) or
+        nameof(IdentityErrorDescriber.ConcurrencyFailure) or
+        nameof(IdentityErrorDescriber.PasswordMismatch) or
+        nameof(IdentityErrorDescriber.InvalidToken) or
+        nameof(IdentityErrorDescriber.LoginAlreadyAssociated) or
+        nameof(IdentityErrorDescriber.InvalidUserName) or
+        nameof(IdentityErrorDescriber.InvalidEmail) or
+        nameof(IdentityErrorDescriber.DuplicateUserName) or
+        nameof(IdentityErrorDescriber.DuplicateEmail) or
+        nameof(IdentityErrorDescriber.InvalidRoleName) or
+        nameof(IdentityErrorDescriber.DuplicateRoleName) or
+        nameof(IdentityErrorDescriber.UserAlreadyHasPassword) or
+        nameof(IdentityErrorDescriber.UserLockoutNotEnabled) or
+        nameof(IdentityErrorDescriber.UserAlreadyInRole) or
+        nameof(IdentityErrorDescriber.UserNotInRole) or
+        nameof(IdentityErrorDescriber.PasswordTooShort) or
+        nameof(IdentityErrorDescriber.PasswordRequiresUniqueChars) or
+        nameof(IdentityErrorDescriber.PasswordRequiresNonAlphanumeric) or
+        nameof(IdentityErrorDescriber.PasswordRequiresDigit) or
+        nameof(IdentityErrorDescriber.PasswordRequiresLower) or
+        nameof(IdentityErrorDescriber.PasswordRequiresUpper) => code,
+        _ => "UnrecognizedIdentityError",
+    };
 }

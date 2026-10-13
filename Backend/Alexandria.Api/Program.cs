@@ -1,9 +1,18 @@
+using Alexandria.Common.Health;
 using Alexandria.Api.Extensions;
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Api.Middlewares;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.HealthChecks;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
+
+var probeExitCode = await HttpHealthProbe.TryRunAsync(args);
+if (probeExitCode is { } exitCode)
+{
+    Environment.ExitCode = exitCode;
+    return;
+}
 
 var bld = WebApplication.CreateBuilder();
 
@@ -62,12 +71,17 @@ try
 
 
     app.MapHealthChecks("/health");
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = HealthMonitoringExtension.IsEssentialReadinessCheck,
+    });
     app.MapPrometheusScrapingEndpoint();
     await app.RunAsync();
 }
 catch (Exception ex) when (ex is not HostAbortedException)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+    Environment.ExitCode = 1;
 }
 finally
 {

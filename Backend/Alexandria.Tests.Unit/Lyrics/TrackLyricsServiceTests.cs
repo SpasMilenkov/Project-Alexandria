@@ -1,6 +1,8 @@
 using System.Linq.Expressions;
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
@@ -9,6 +11,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Streaming;
 using AwesomeAssertions;
 using NSubstitute;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Tests.Unit.Lyrics;
 
@@ -22,6 +25,7 @@ public class TrackLyricsServiceTests
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
 
     private readonly TrackLyricsService _sut;
+    private readonly ProcessingCapabilities _capabilities = new();
 
     public TrackLyricsServiceTests()
     {
@@ -29,7 +33,54 @@ public class TrackLyricsServiceTests
         _uow.Jobs.Returns(_jobsRepo);
         _jobsRepo.AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.Arg<Job>());
-        _sut = new TrackLyricsService(_uow, _publisher);
+        _sut = new TrackLyricsService(_uow, _publisher, Options.Create(_capabilities));
+    }
+
+    [Theory]
+    [InlineData("get")]
+    [InlineData("refetch")]
+    [InlineData("change")]
+    public async Task Lookup_lyrics_disabled_rejects_before_creating_or_resetting_jobs(string operation)
+    {
+        _capabilities.Lyrics = false;
+        Func<Task> act = operation switch
+        {
+            "get" => () => _sut.GetLyricsForMediaAsync(_jobId, _userId, TestContext.Current.CancellationToken),
+            "refetch" => () => _sut.QueueLyricsRefetchAsync(_jobId, _userId, TestContext.Current.CancellationToken),
+            _ => () => _sut.ChangeProviderAsync(_jobId, _userId, LyricsProvider.LrclibPublic,
+                TestContext.Current.CancellationToken)
+        };
+
+        await act.Should().ThrowAsync<CapabilityUnavailableException>();
+
+        await _jobsRepo.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+        _lyricsRepo.DidNotReceive().Update(Arg.Any<TrackLyrics>());
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
+
+    [Fact]
+    public async Task GetLyricsForMediaAsync_lookup_disabled_still_returns_existing_manual_lyrics()
+    {
+        _capabilities.Lyrics = false;
+        _lyricsRepo.FirstOrDefaultAsync(Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(new TrackLyrics { PlainLyrics = "User lyrics", SourceProvider = LyricsProvider.Manual });
+
+        var result = await _sut.GetLyricsForMediaAsync(_jobId, _userId, TestContext.Current.CancellationToken);
+
+        result.PlayLyrics.Should().Be("User lyrics");
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+    }
+
+    [Fact]
+    public async Task UploadLyricsAsync_lookup_disabled_still_accepts_manual_lyrics()
+    {
+        _capabilities.Lyrics = false;
+
+        await _sut.UploadLyricsAsync(_jobId, _userId, "User lyrics", null, TestContext.Current.CancellationToken);
+
+        await _lyricsRepo.Received(1).AddAsync(Arg.Is<TrackLyrics>(l => l.SourceProvider == LyricsProvider.Manual),
+            TestContext.Current.CancellationToken);
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
     }
 
     // ---- GetLyricsForMediaAsync ----

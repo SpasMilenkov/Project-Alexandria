@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -8,6 +9,7 @@ using Alexandria.Services.Storage.Policies;
 using AwesomeAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Directory = Alexandria.Data.Models.Directory;
 
@@ -41,13 +43,14 @@ public class EnrichmentBackfillServiceTests
         _unitOfWork.FileEnrichments.Returns(_enrichments);
     }
 
-    private EnrichmentBackfillService CreateSut(bool enabled = true)
+    private EnrichmentBackfillService CreateSut(bool enabled = true, bool audioAnalysis = true)
     {
         var configuration = Substitute.For<IConfiguration>();
         configuration["Features:Autotagging"].Returns(enabled ? "true" : "false");
         return new EnrichmentBackfillService(
             _unitOfWork, _publisher, configuration,
-            Substitute.For<ILogger<EnrichmentBackfillService>>());
+            Substitute.For<ILogger<EnrichmentBackfillService>>(),
+            Options.Create(new ProcessingCapabilities { AudioAnalysis = audioAnalysis }));
     }
 
     private void GivenPolicy(bool inheritedByChildren = true)
@@ -90,6 +93,19 @@ public class EnrichmentBackfillServiceTests
 
         result.Should().Be(new EnrichmentBackfillResult(0, 0, 0));
         await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task BackfillPolicyAsync_audio_analysis_disabled_skips_candidate_query_and_publish()
+    {
+        GivenPolicy();
+
+        var result = await CreateSut(audioAnalysis: false).BackfillPolicyAsync(
+            PolicyId, TestContext.Current.CancellationToken);
+
+        result.Should().Be(new EnrichmentBackfillResult(0, 0, 0));
+        await _batchFiles.DidNotReceiveWithAnyArgs().GetEnrichmentBackfillCandidatesAsync(default!, default, default);
+        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
     }
 
     [Fact]

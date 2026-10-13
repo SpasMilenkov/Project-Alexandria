@@ -1,4 +1,5 @@
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Queues;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
@@ -31,6 +32,8 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
+        services.AddOptions<ProcessingCapabilities>().BindConfiguration(ProcessingCapabilities.SectionName);
+
         services.AddScoped<IStorageService, S3Service>();
         services.AddScoped<PreviewSizeBackfillService>();
         services.AddScoped<RepresentationSizeBackfillService>();

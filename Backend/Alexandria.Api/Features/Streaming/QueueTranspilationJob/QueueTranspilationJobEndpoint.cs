@@ -1,4 +1,5 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using FastEndpoints;
@@ -24,7 +25,15 @@ internal sealed class QueueTranspilationJobEndpoint(ITranspilationJobService job
     public override async Task HandleAsync(QueueTranspilationJobRequest req, CancellationToken ct)
     {
         var userId = User.GetUserId();
-        await Send.OkAsync(await jobService.CreateJobAsync(req.VersionId, userId, req.AudioRungs, req.VideoRungs, ct),
-            cancellation: ct);
+        try
+        {
+            await Send.OkAsync(await jobService.CreateJobAsync(req.VersionId, userId, req.AudioRungs, req.VideoRungs, ct),
+                cancellation: ct);
+        }
+        catch (CapabilityUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(409, ct);
+        }
     }
 }
