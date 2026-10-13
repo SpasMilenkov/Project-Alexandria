@@ -5,6 +5,11 @@ logging {
 
 discovery.docker "containers" {
   host = "unix:///var/run/docker.sock"
+
+  filter {
+    name   = "label"
+    values = [string.format("com.docker.compose.project=%s", sys.env("ALLOY_DOCKER_PROJECT"))]
+  }
 }
 
 // Only keep containers explicitly opted in via the "logs.collect=true" label.
@@ -24,6 +29,16 @@ discovery.relabel "dotnet_services" {
   }
 
   rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+
+  rule {
     source_labels = ["__meta_docker_container_log_stream"]
     target_label  = "stream"
   }
@@ -37,7 +52,7 @@ loki.source.docker "default" {
   forward_to    = [loki.process.serilog.receiver]
 }
 
-// Parse Serilog's structured JSON output.
+// Accept both configured Serilog console output and structured JSON.
 loki.process "serilog" {
   forward_to = [loki.write.local.receiver]
 
@@ -49,6 +64,10 @@ loki.process "serilog" {
       exception  = "Exception",
       source_ctx = "Properties.SourceContext",
     }
+  }
+
+  stage.regex {
+    expression = "^\\[(?:[0-9]{2}:){2}[0-9]{2} (?P<level>VRB|DBG|INF|WRN|ERR|FTL)\\]"
   }
 
   // Low-cardinality fields become real Loki labels (indexed, cheap to query on).
@@ -68,7 +87,7 @@ loki.process "serilog" {
 
   stage.timestamp {
     source = "timestamp"
-    format = "RFC3339"
+    format = "RFC3339Nano"
   }
 }
 
