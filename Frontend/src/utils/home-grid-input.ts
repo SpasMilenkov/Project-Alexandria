@@ -26,6 +26,21 @@ export const homeDragFromControl = (target: EventTarget | null) =>
     ),
   );
 
+export const homeEditorKeyboardBlocked = (event: KeyboardEvent) => {
+  if (
+    event.target instanceof HTMLElement &&
+    (event.target.isContentEditable ||
+      event.target.closest(
+        'input, textarea, select, [role="textbox"], [role="combobox"], [role="spinbutton"]',
+      ))
+  )
+    return true;
+
+  const overlays = document.querySelectorAll('[role="dialog"], [role="listbox"], [role="menu"]');
+
+  return [...overlays].some((overlay) => overlay.checkVisibility({ visibilityProperty: true }));
+};
+
 export const homePointerPosition = (
   bounds: Pick<DOMRect, "left" | "top" | "width">,
   columns: HomeLayout["columns"],
@@ -55,8 +70,11 @@ export const homeArrowOffset = (key: string): { x: number; y: number } | null =>
   return offsets[key] ?? null;
 };
 
-export const homeCanvasContains = (board: HTMLElement, point: { x: number; y: number }) => {
-  const bounds = board.getBoundingClientRect();
+export const homeCanvasContains = (
+  board: HTMLElement,
+  point: { x: number; y: number },
+  bounds = board.getBoundingClientRect(),
+) => {
   let left = Math.max(0, bounds.left);
   let right = Math.min(window.innerWidth, bounds.right);
   let top = Math.max(0, bounds.top);

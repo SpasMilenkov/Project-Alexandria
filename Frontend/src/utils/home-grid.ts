@@ -1,6 +1,7 @@
 import type { HomeLayout, HomeWidget } from "@/types/home";
 
 import { HomeWidgetSize } from "@/enums/home-widget";
+import { cloneHomeWidgetOptions } from "@/utils/home-widget-options";
 import { homeWidgetMinimum } from "@/utils/home-widget-sizing";
 
 export const HOME_GRID_MAX_ROWS = 256;
@@ -86,13 +87,13 @@ export const previewHomePlacement = (
   )
     return null;
 
-  const placed = [{ ...candidate, options: { ...candidate.options } }];
+  const placed = [{ ...candidate, options: cloneHomeWidgetOptions(candidate.options) }];
   const others = layout.widgets
     .filter((widget) => widget.instanceId !== candidate.instanceId)
     .sort(homeSpatialOrder);
 
   for (const source of others) {
-    const widget = { ...source, options: { ...source.options } };
+    const widget = { ...source, options: cloneHomeWidgetOptions(source.options) };
     let collisions = placed.filter((other) => homeRectanglesOverlap(widget, other));
 
     while (collisions.length) {
@@ -144,7 +145,12 @@ export const projectHomeLayout = (
     }
     const position = firstFreeHomeCell(result, footprint);
 
-    if (position) result.widgets.push({ ...source, ...position, options: { ...source.options } });
+    if (position)
+      result.widgets.push({
+        ...source,
+        ...position,
+        options: cloneHomeWidgetOptions(source.options),
+      });
   }
 
   return result;
