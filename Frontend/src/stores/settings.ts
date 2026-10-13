@@ -221,6 +221,7 @@ const DEFAULT_UI_STATE = {
   isAutoPlaylistsSectionOpen: true,
   isBehaviorSectionOpen: true,
   isSystemTagsVisible: false,
+  isMediaSectionOpen: false,
 };
 
 export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024;
@@ -255,6 +256,7 @@ export const useSettingsStore = defineStore(
     const isAutoTaggingSectionOpen = ref(DEFAULT_UI_STATE.isAutoTaggingSectionOpen);
     const isAutoPlaylistsSectionOpen = ref(DEFAULT_UI_STATE.isAutoPlaylistsSectionOpen);
     const isSystemTagsVisible = ref(DEFAULT_UI_STATE.isSystemTagsVisible);
+    const isMediaSectionOpen = ref(DEFAULT_UI_STATE.isMediaSectionOpen);
 
     // Getters
     const getSettings = computed((): UserSettings => ({
@@ -421,6 +423,10 @@ export const useSettingsStore = defineStore(
       isSystemTagsVisible.value = v;
     };
 
+    const setMediaSectionOpen = (v: boolean) => {
+      isMediaSectionOpen.value = v;
+    };
+
     const syncAppearanceFromServer = (appearance: AppearanceSettings) => {
       setAccentColor(appearance.accentColor);
       setBackgroundColor(appearance.backgroundColor);
@@ -566,6 +572,7 @@ export const useSettingsStore = defineStore(
       isAutoTaggingSectionOpen.value = DEFAULT_UI_STATE.isAutoTaggingSectionOpen;
       isAutoPlaylistsSectionOpen.value = DEFAULT_UI_STATE.isAutoPlaylistsSectionOpen;
       isSystemTagsVisible.value = DEFAULT_UI_STATE.isSystemTagsVisible;
+      isMediaSectionOpen.value = DEFAULT_UI_STATE.isMediaSectionOpen;
     };
 
     return {
@@ -606,6 +613,7 @@ export const useSettingsStore = defineStore(
       isAutoPlaylistsSectionOpen,
       isBehaviorSectionOpen,
       isSystemTagsVisible,
+      isMediaSectionOpen,
       listIconSize,
       resetAppearanceSettings,
       resetAutoPlaylistSettings,
@@ -624,6 +632,7 @@ export const useSettingsStore = defineStore(
       setBackgroundImage,
       setBackgroundImageOpacity,
       setBehaviorSectionOpen,
+      setMediaSectionOpen,
       setFrostDisabledOnMobile,
       setFrostEnabled,
       setFrostStrength,
@@ -669,6 +678,7 @@ export const useSettingsStore = defineStore(
         "isBehaviorSectionOpen",
         "isAutoTaggingSectionOpen",
         "isSystemTagsVisible",
+        "isMediaSectionOpen",
       ],
     },
   },
