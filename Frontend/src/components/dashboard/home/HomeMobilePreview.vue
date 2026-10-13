@@ -1,9 +1,13 @@
 <script setup lang="ts">
-defineProps<{ shared: boolean; dropActive: boolean }>();
+const { framed = true } = defineProps<{ shared: boolean; dropActive: boolean; framed?: boolean }>();
 </script>
 
 <template>
-  <section aria-label="Mobile layout preview" class="w-full max-w-108 min-w-0">
+  <section
+    aria-label="Mobile layout preview"
+    class="w-full min-w-0"
+    :class="{ 'max-w-108': framed }"
+  >
     <header class="mb-4 flex items-center gap-2">
       <UIcon
         name="i-heroicons-device-phone-mobile"
@@ -18,21 +22,27 @@ defineProps<{ shared: boolean; dropActive: boolean }>();
     </header>
 
     <div
-      class="frosted-glass glass-surface rounded-4xl border-2 border-gray-300/70 p-3 dark:border-gray-600/70"
-      :class="{ 'ring-2 ring-primary ring-offset-2': dropActive }"
+      :class="{
+        'frosted-glass glass-surface rounded-4xl border-2 border-gray-300/70 p-3 dark:border-gray-600/70':
+          framed,
+      }"
     >
-      <div class="mb-4 flex justify-center" aria-hidden="true">
+      <div v-if="framed" class="mb-4 flex justify-center" aria-hidden="true">
         <div class="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-gray-600" />
       </div>
 
       <div
         data-preview="mobile"
-        class="mx-auto max-h-[min(65dvh,700px)] min-h-96 w-full max-w-97.5 overflow-y-auto"
+        class="mx-auto min-h-96 w-full p-4"
+        :class="{
+          'max-h-[min(65dvh,700px)] max-w-97.5 overflow-y-auto': framed,
+          'ring-2 ring-primary': dropActive,
+        }"
       >
         <slot />
       </div>
 
-      <div class="mt-4 flex justify-center" aria-hidden="true">
+      <div v-if="framed" class="mt-4 flex justify-center" aria-hidden="true">
         <div class="h-1 w-24 rounded-full bg-gray-300 dark:bg-gray-600" />
       </div>
     </div>
