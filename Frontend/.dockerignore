@@ -1,17 +1,33 @@
-# Keep .env in the context: Vite reads the VITE_ feature flags at build time, and the
-# environment values in docker-compose only reach the nginx container at runtime.
+# Secrets never enter the build context. The VITE_ feature flags reach the build as
+# Dockerfile build args (see the compose files), not through a copied .env file.
+.env*
+**/.env*
+certs/
+**/certs/
+secrets/
+**/secrets/
+**/*.pem
+**/*.key
+**/*.crt
+**/*.cer
+**/*.p12
+**/*.pfx
+**/.npmrc
+**/.pnpmrc
 
 # Installed inside the image, and the host copy would overwrite that install
 **/node_modules
 
 # Build output and tool caches
 dist
+**/dist/
 dev-dist
 coverage
 .devtools-oxc
 .vitest
 *.tsbuildinfo
 *.log
+**/*.log
 
 # Tests, which the production build does not read
 e2e
@@ -22,7 +38,8 @@ src/__tests__
 vitest.config.ts
 vitest.setup.ts
 
-# Editor settings, linters and docs
+# Editor settings, linters, VCS and docs
+.git/
 .zed
 .vscode
 .idea

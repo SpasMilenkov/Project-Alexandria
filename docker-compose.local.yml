@@ -344,11 +344,14 @@ services:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
+      # Vite bakes these in at build time; runtime environment never reaches the bundle.
+      args:
+        VITE_API_BASE_URL: /api
+        VITE_PBKDF2_ITERATIONS: ${PBKDF2_ITERATION_COUNT:-800000}
+        VITE_STREAMING_ENABLED: ${STREAMING_ENABLED:-false}
+        VITE_AUTOTAGGING_ENABLED: ${AUTOTAGGING_ENABLED:-false}
     container_name: alexandria-frontend
     restart: always
-    environment:
-      VITE_PBKDF2_ITERATIONS: ${PBKDF2_ITERATION_COUNT}
-      VITE_STREAMING_ENABLED: ${STREAMING_ENABLED}
     depends_on:
       api:
         condition: service_healthy
