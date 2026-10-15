@@ -44,8 +44,8 @@ public class ContentObjectConfiguration : IEntityTypeConfiguration<ContentObject
 
         builder.HasIndex(e => e.Hash)
             .IsUnique()
-            .HasFilter("\"OrphanedAt\" IS NULL")
-            .HasDatabaseName("ix_contentobjects_hash_active");
+            .HasFilter("\"DeletedAt\" IS NULL")
+            .HasDatabaseName("ix_contentobjects_not_deleted");
 
 
         builder.ToTable("ContentObjects");

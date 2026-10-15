@@ -23,12 +23,17 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
         return await _dbSet.FirstOrDefaultAsync(predicate, ct);
     }
 
+    /// <summary>
+    /// Deduplication lookup. Matches live and orphaned rows so finalize can
+    /// revive an orphaned row instead of aliasing its storage key with a second
+    /// row. Soft-deleted rows are excluded. Uniqueness is enforced by
+    /// ix_contentobjects_not_deleted, so at most one row matches.
+    /// </summary>
     public async Task<ContentObject?> HashExistsAsync(byte[] hash, CancellationToken ct = default)
     {
         return await _dbSet
             .FirstOrDefaultAsync(co =>
                     co.Hash == hash &&
-                    co.OrphanedAt == null &&
                     co.DeletedAt == null,
                 ct);
     }
@@ -150,6 +155,39 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
             .ExecuteUpdateAsync(
                 s => s.SetProperty(co => co.OrphanedAt, _ => (DateTime?)null),
                 ct);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TryClaimOrphanedDeleteAsync(Guid id, DateTime cutoff, CancellationToken ct = default)
+    {
+        var deleted = await _dbSet
+            .Where(co =>
+                co.Id == id &&
+                co.DeletedAt == null &&
+                co.OrphanedAt != null &&
+                co.OrphanedAt < cutoff &&
+                !context.FileVersions.Any(fv =>
+                    fv.ContentObjectId == co.Id &&
+                    fv.DeletedAt == null))
+            .ExecuteDeleteAsync(ct);
+
+        return deleted == 1;
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<ContentObject>> GetByHashesAsync(IEnumerable<byte[]> hashes, CancellationToken ct = default)
+    {
+        var hashList = hashes.ToList();
+
+        if (hashList.Count == 0)
+            return [];
+
+        return await _dbSet
+            .AsNoTracking()
+            .Where(co =>
+                co.DeletedAt == null &&
+                hashList.Contains(co.Hash))
+            .ToListAsync(ct);
     }
 
     public async Task<bool> IsVideo(Guid versionId,

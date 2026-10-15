@@ -313,8 +313,8 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("Hash")
                         .IsUnique()
-                        .HasDatabaseName("ix_contentobjects_hash_active")
-                        .HasFilter("\"OrphanedAt\" IS NULL");
+                        .HasDatabaseName("ix_contentobjects_not_deleted")
+                        .HasFilter("\"DeletedAt\" IS NULL");
 
                     b.HasIndex("UploadId")
                         .IsUnique();

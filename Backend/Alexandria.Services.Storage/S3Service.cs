@@ -53,21 +53,25 @@ public partial class S3Service(
 
     /// <summary>
     /// Deletes a temporary object from the temp bucket with error handling.
+    /// Takes the bare temp object key; temp objects always live under the
+    /// <c>content/</c> prefix, which is applied here.
     /// </summary>
     private async Task CleanupTempObjectAsync(string bucket, string key, CancellationToken ct)
     {
+        var objectKey = key.StartsWith("content/", StringComparison.Ordinal) ? key : $"content/{key}";
+
         try
         {
-            await s3.DeleteObjectAsync(bucket, key, ct);
-            LogTempObjectCleaned(logger, bucket, key);
+            await s3.DeleteObjectAsync(bucket, objectKey, ct);
+            LogTempObjectCleaned(logger, bucket, objectKey);
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            LogTempObjectNotFound(logger, bucket, key);
+            LogTempObjectNotFound(logger, bucket, objectKey);
         }
         catch (Exception ex)
         {
-            LogTempObjectCleanupFailed(logger, ex, bucket, key);
+            LogTempObjectCleanupFailed(logger, ex, bucket, objectKey);
         }
     }
 
@@ -257,6 +261,8 @@ public partial class S3Service(
     /// <param name="previewStream">The stream of the video preview</param>
     /// <param name="thumbnailStream">The thumbnail stream</param>
     /// <param name="metadataDto">The metadata DTO object returned from FFMPEG</param>
+    /// <param name="previewSize">The size of the preview</param>
+    /// <param name="thumbnailSize">The size of the thumbnail</param>
     /// <param name="objectName">The original object's name into the database</param>
     /// <param name="versionId">The version's entity ID inside the database</param>
     /// <param name="ct">Cancellation token</param>
@@ -555,7 +561,7 @@ public partial class S3Service(
     public async Task<Stream> DownloadFile(Guid versionId, Guid userId, CancellationToken ct)
     {
         var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(
-            v => v.Id == versionId && v.File!.OwnerId == userId, ct);
+            v => v.Id == versionId && v.File.OwnerId == userId, ct);
 
         if (version is null)
         {
@@ -588,7 +594,7 @@ public partial class S3Service(
     public async Task<Stream> DownloadSeekableFile(Guid versionId, Guid userId, CancellationToken ct = default)
     {
         var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(
-            v => v.Id == versionId && v.File!.OwnerId == userId, ct);
+            v => v.Id == versionId && v.File.OwnerId == userId, ct);
 
         if (version is null)
         {
@@ -907,11 +913,13 @@ public partial class S3Service(
 
         await unitOfWork.BeginTransactionAsync(ct);
 
+        Upload? upload = null;
+
         try
         {
             await fileService.FolderWithOwnershipExistsAsync(directoryId, uploadedBy, ct);
 
-            var upload = await unitOfWork.Uploads.GetByIdAsync(uploadId);
+            upload = await unitOfWork.Uploads.GetByIdAsync(uploadId, ct);
             if (upload is null)
                 throw new InvalidOperationException("Upload not found");
 
@@ -995,6 +1003,32 @@ public partial class S3Service(
                 await unitOfWork.ContentObjects.AddAsync(contentObject, ct);
             }
 
+            var wasOrphaned = contentObject.OrphanedAt is not null;
+            var alreadyPromoted = contentObject.IsPromoted;
+
+            if (wasOrphaned)
+            {
+                contentObject.OrphanedAt = null;
+
+                // Content objects are never soft-deleted today, but the planned
+                // unique index permits a soft-deleted plus active pair sharing
+                // one hash. Clearing both keeps a single live row per hash.
+                contentObject.DeletedAt = null;
+                contentObject.UploadId = upload.Id;
+                contentObject.UpdatedBy = uploadedBy;
+
+                if (!contentObject.IsPromoted)
+                {
+                    // Otherwise the promotion scanner keeps ignoring this row:
+                    // it only picks up objects below the attempt budget.
+                    contentObject.PromotionAttempts = 0;
+                    contentObject.LastPromotionAttemptAt = null;
+                }
+
+                unitOfWork.ContentObjects.Update(contentObject);
+            }
+
+
             // =====================================================
             // 6. Create / update file record
             // =====================================================
@@ -1024,7 +1058,13 @@ public partial class S3Service(
                     ct: ct);
                 await unitOfWork.CommitAsync(ct);
 
-                await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
+                if (alreadyPromoted)
+                    // Bytes are already durable under this storage key. The new
+                    // temp copy is redundant, so remove it instead of queueing
+                    // a copy that the promotion worker would no-op.
+                    await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
+                else
+                    await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
 
                 return new UploadResult(
                     ObjectName: objectName,
@@ -1070,7 +1110,10 @@ public partial class S3Service(
 
             await unitOfWork.CommitAsync(ct);
 
-            await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
+            if (alreadyPromoted)
+                await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
+            else
+                await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
 
             LogUploadFinalized(logger, file.Id, computedSize);
 
@@ -1089,7 +1132,8 @@ public partial class S3Service(
 
             await unitOfWork.RollbackAsync(ct);
 
-            await CleanupTempObjectAsync(tmp, objectName, ct);
+            if (upload?.TempObjectKey is not null)
+                await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
 
             throw new InvalidOperationException($"Upload failed: {ex.Message}", ex);
         }
@@ -1135,7 +1179,7 @@ public partial class S3Service(
     }
 
 
-    public async Task<string> GenerateUploadUrl(string objectKey, string contentType, TimeSpan expiry)
+    private async Task<string> GenerateUploadUrl(string objectKey, string contentType, TimeSpan expiry)
     {
         var request = new GetPreSignedUrlRequest
         {
@@ -1219,7 +1263,8 @@ public partial class S3Service(
         return await publicS3.GetPreSignedURLAsync(request);
     }
 
-    public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false, CancellationToken ct = default)
+    public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false,
+        CancellationToken ct = default)
     {
         var trashSize = await unitOfWork.Files.GetDeletedSizeAsync(userId, ct);
         var sizeByMimeType = await unitOfWork.Files.GetSizeByTypeAsync(userId, ct);
