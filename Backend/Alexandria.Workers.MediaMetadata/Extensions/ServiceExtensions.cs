@@ -3,8 +3,8 @@ using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Monitoring;
-using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.AutoTagging;
+using Alexandria.Services.Storage.Content;
 using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Previews;
 using Alexandria.Services.Storage.Static;
@@ -23,7 +23,7 @@ public static class ServiceExtensions
     {
         services.AddCoreWorkerServices();
 
-        services.AddScoped<IStorageService, S3Service>();
+        services.AddScoped<IContentStorageService, ContentStorageService>();
         services.AddScoped<IStaticAssetService, StaticAssetService>();
         services.AddScoped<IPreviewArtifactService, PreviewArtifactService>();
 

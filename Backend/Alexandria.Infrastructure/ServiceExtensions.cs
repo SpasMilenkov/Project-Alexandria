@@ -11,6 +11,7 @@ using Alexandria.Services.Preview.Text;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.AutoTagging;
 using Alexandria.Services.Storage.Cleanup;
+using Alexandria.Services.Storage.Content;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Previews;
@@ -34,7 +35,7 @@ public static class ServiceExtensions
 {
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
-        services.AddScoped<IStorageService, S3Service>();
+        services.AddScoped<IContentStorageService, ContentStorageService>();
         services.AddScoped<IStaticAssetService, StaticAssetService>();
         services.AddScoped<IPreviewArtifactService, PreviewArtifactService>();
         services.AddScoped<PreviewSizeBackfillService>();

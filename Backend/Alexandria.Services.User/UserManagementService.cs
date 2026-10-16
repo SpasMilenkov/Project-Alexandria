@@ -14,7 +14,7 @@ namespace Alexandria.Services.User;
 public class UserManagementService(
     UserManager<ApplicationUser> userManager,
     IUnitOfWork unitOfWork,
-    IStorageService storageService)
+    IContentStorageService storageService)
     : IUserManagementService
 {
     public async Task DeleteUsersAsync(Guid[] userIds, CancellationToken ct = default)

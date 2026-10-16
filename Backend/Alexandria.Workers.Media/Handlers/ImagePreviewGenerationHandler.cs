@@ -7,7 +7,7 @@ namespace Alexandria.Workers.Media.Handlers;
 
 public class ImagePreviewGenerationHandler(
     ILogger<ImagePreviewGenerationHandler> logger,
-    IStorageService storage,
+    IContentStorageService storage,
     IPreviewArtifactService artifacts,
     IImagePreviewService imagePreviewService,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler

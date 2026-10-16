@@ -16,7 +16,7 @@ namespace Alexandria.Tests.Unit.PreviewJobs;
 
 public class PreviewServiceDispatchTests
 {
-    private readonly IStorageService _storage = Substitute.For<IStorageService>();
+    private readonly IContentStorageService _storage = Substitute.For<IContentStorageService>();
     private readonly IPreviewArtifactService _artifacts = Substitute.For<IPreviewArtifactService>();
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();

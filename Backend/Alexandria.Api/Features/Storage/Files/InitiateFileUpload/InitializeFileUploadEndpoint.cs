@@ -42,7 +42,7 @@ sealed class InitializeFileUploadRequestValidator : Validator<InitializeFileUplo
     }
 }
 
-sealed class InitializeFileUploadEndpoint(IStorageService s3Service)
+sealed class InitializeFileUploadEndpoint(IContentStorageService s3Service)
     : Endpoint<InitializeFileUploadRequest, InitializeFileUploadResponse>
 {
     public override void Configure()

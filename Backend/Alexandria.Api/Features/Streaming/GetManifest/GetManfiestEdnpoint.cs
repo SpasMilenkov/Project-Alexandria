@@ -9,7 +9,7 @@ internal sealed class GetManifestRequest
     public Guid Id { get; set; }
 }
 
-sealed class GetManifestEndpoint(IStorageService storageService) : Endpoint<GetManifestRequest, string>
+sealed class GetManifestEndpoint(IContentStorageService storageService) : Endpoint<GetManifestRequest, string>
 {
     public override void Configure()
     {

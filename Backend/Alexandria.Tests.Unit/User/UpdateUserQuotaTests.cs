@@ -18,7 +18,7 @@ public class UpdateUserQuotaTests
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
-    private readonly IStorageService _storage = Substitute.For<IStorageService>();
+    private readonly IContentStorageService _storage = Substitute.For<IContentStorageService>();
     private readonly UserManagementService _sut;
     private readonly Guid _userId = Guid.NewGuid();
 

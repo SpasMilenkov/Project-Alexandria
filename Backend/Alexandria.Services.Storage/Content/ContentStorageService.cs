@@ -23,20 +23,20 @@ using Microsoft.Extensions.Options;
 using Directory = System.IO.Directory;
 using FileEntity = Alexandria.Data.Models.File;
 
-namespace Alexandria.Services.Storage;
+namespace Alexandria.Services.Storage.Content;
 
-public partial class S3Service(
+public partial class ContentStorageService(
     IAmazonS3 s3,
     [FromKeyedServices("public")] IAmazonS3 publicS3,
     IUnitOfWork unitOfWork,
     IOptions<S3Config> config,
-    ILogger<S3Service> logger,
+    ILogger<ContentStorageService> logger,
     IPromotionQueue promotionQueue,
     IFileService fileService,
     AuditContext auditContext,
     IUserSettingsService userSettingsService,
     IPublisherService publisher)
-    : IStorageService
+    : IContentStorageService
 {
     /// <summary>
     /// Deletes a temporary object from the temp bucket with error handling.

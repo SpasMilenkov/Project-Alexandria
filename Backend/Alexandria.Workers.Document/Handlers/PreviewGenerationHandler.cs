@@ -8,7 +8,7 @@ namespace Alexandria.Workers.Document.Handlers;
 
 public class PreviewGenerationHandler(
     ILogger<PreviewGenerationHandler> logger,
-    IStorageService storage,
+    IContentStorageService storage,
     IPreviewArtifactService artifacts,
     IPdfPreviewService pdfPreviewService,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler

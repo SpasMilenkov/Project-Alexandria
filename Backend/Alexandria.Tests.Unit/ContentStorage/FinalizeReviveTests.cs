@@ -8,6 +8,7 @@ using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Storage.Cleanup;
+using Alexandria.Services.Storage.Content;
 using Amazon.S3;
 using Amazon.S3.Model;
 using AwesomeAssertions;
@@ -17,7 +18,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using File = Alexandria.Data.Models.File;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.ContentStorage;
 
 public class FinalizeReviveTests
 {
@@ -29,7 +30,7 @@ public class FinalizeReviveTests
     private readonly IAmazonS3 _s3 = Substitute.For<IAmazonS3>();
     private readonly IPromotionQueue _promotionQueue = Substitute.For<IPromotionQueue>();
     private readonly IFileService _fileService = Substitute.For<IFileService>();
-    private readonly Services.Storage.S3Service _sut;
+    private readonly ContentStorageService _sut;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly byte[] _bytes = "revive-me"u8.ToArray();
 
@@ -51,12 +52,12 @@ public class FinalizeReviveTests
                 Arg.Any<Guid?>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        _sut = new Services.Storage.S3Service(
+        _sut = new ContentStorageService(
             _s3,
             Substitute.For<IAmazonS3>(),
             _unitOfWork,
             config,
-            Substitute.For<ILogger<Services.Storage.S3Service>>(),
+            Substitute.For<ILogger<ContentStorageService>>(),
             _promotionQueue,
             _fileService,
             new AuditContext(),

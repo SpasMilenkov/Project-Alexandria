@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace Alexandria.Services.Storage.SignedUrls;
 
 public sealed partial class SignedUrlService(
-    IStorageService storageService,
+    IContentStorageService storageService,
     IUnitOfWork unitOfWork,
     ILogger<SignedUrlService> logger,
     AlexandriaDbContext context) : ISignedUrlService

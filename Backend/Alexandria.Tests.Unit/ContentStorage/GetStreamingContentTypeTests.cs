@@ -1,6 +1,7 @@
+using Alexandria.Services.Storage.Content;
 using AwesomeAssertions;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.ContentStorage;
 
 public class GetStreamingContentTypeTests
 {
@@ -13,7 +14,7 @@ public class GetStreamingContentTypeTests
     [InlineData(".m4a", "audio/mp4")]
     public void GetStreamingContentType_knownExtensions(string extension, string expected)
     {
-        Services.Storage.S3Service.GetStreamingContentType(extension).Should().Be(expected);
+        ContentStorageService.GetStreamingContentType(extension).Should().Be(expected);
     }
 
     [Theory]
@@ -23,7 +24,7 @@ public class GetStreamingContentTypeTests
     [InlineData("")]
     public void GetStreamingContentType_unknownExtension(string extension)
     {
-        Services.Storage.S3Service.GetStreamingContentType(extension)
+        ContentStorageService.GetStreamingContentType(extension)
             .Should().Be("application/octet-stream");
     }
 
@@ -33,6 +34,6 @@ public class GetStreamingContentTypeTests
     [InlineData(".MP4", "video/mp4")]
     public void GetStreamingContentType_caseInsensitivity(string extension, string expected)
     {
-        Services.Storage.S3Service.GetStreamingContentType(extension).Should().Be(expected);
+        ContentStorageService.GetStreamingContentType(extension).Should().Be(expected);
     }
 }

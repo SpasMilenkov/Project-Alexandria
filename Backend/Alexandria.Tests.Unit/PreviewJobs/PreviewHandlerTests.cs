@@ -62,7 +62,7 @@ public class PreviewHandlerTests
     {
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(),
-            Substitute.For<IStorageService>(), Substitute.For<IPreviewArtifactService>(),
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(),
             Substitute.For<IImagePreviewService>(), _unitOfWork);
 
         var act = () => sut.HandleAsync("not-a-guid", TestContext.Current.CancellationToken);
@@ -77,7 +77,7 @@ public class PreviewHandlerTests
         _previewJobs.GetByJobIdAsync(_jobId, Arg.Any<CancellationToken>()).Returns((PreviewJob?)null);
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(),
-            Substitute.For<IStorageService>(), Substitute.For<IPreviewArtifactService>(),
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(),
             Substitute.For<IImagePreviewService>(), _unitOfWork);
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
@@ -91,7 +91,7 @@ public class PreviewHandlerTests
     {
         StoredJob();
         _jobs.TryClaimJobAsync(_jobId, Arg.Any<CancellationToken>()).Returns(false);
-        var storage = Substitute.For<IStorageService>();
+        var storage = Substitute.For<IContentStorageService>();
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(),
             storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IImagePreviewService>(), _unitOfWork);
@@ -109,7 +109,7 @@ public class PreviewHandlerTests
     {
         StoredJob();
         StoredVersion();
-        var storage = Substitute.For<IStorageService>();
+        var storage = Substitute.For<IContentStorageService>();
         var artifacts = Substitute.For<IPreviewArtifactService>();
         storage.DownloadSeekableFile(_versionId, Arg.Any<CancellationToken>())
             .Returns(new MemoryStream(new byte[] { 1, 2, 3 }));
@@ -138,7 +138,7 @@ public class PreviewHandlerTests
     {
         StoredJob();
         StoredVersion();
-        var storage = Substitute.For<IStorageService>();
+        var storage = Substitute.For<IContentStorageService>();
         storage.DownloadSeekableFile(_versionId, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<Stream>(new InvalidOperationException("storage down")));
         var sut = new ImageHandler(
@@ -162,7 +162,7 @@ public class PreviewHandlerTests
         var thumbnailPath = Path.GetTempFileName();
         try
         {
-            var storage = Substitute.For<IStorageService>();
+            var storage = Substitute.For<IContentStorageService>();
             var artifacts = Substitute.For<IPreviewArtifactService>();
             var media = Substitute.For<IMediaPreviewService>();
             media.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
@@ -196,7 +196,7 @@ public class PreviewHandlerTests
     {
         StoredJob();
         StoredVersion("video/mp4");
-        var storage = Substitute.For<IStorageService>();
+        var storage = Substitute.For<IContentStorageService>();
         var artifacts = Substitute.For<IPreviewArtifactService>();
         var media = Substitute.For<IMediaPreviewService>();
         media.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
@@ -220,7 +220,7 @@ public class PreviewHandlerTests
         var media = Substitute.For<IMediaPreviewService>();
         var sut = new MediaHandler(
             Substitute.For<ILogger<MediaHandler>>(),
-            Substitute.For<IStorageService>(), Substitute.For<IPreviewArtifactService>(), media, _unitOfWork);
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(), media, _unitOfWork);
 
         await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
@@ -237,7 +237,7 @@ public class PreviewHandlerTests
         var thumbnailPath = Path.GetTempFileName();
         try
         {
-            var storage = Substitute.For<IStorageService>();
+            var storage = Substitute.For<IContentStorageService>();
             var artifacts = Substitute.For<IPreviewArtifactService>();
             var pdf = Substitute.For<IPdfPreviewService>();
             pdf.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
@@ -266,7 +266,7 @@ public class PreviewHandlerTests
     {
         StoredJob();
         StoredVersion("application/pdf");
-        var storage = Substitute.For<IStorageService>();
+        var storage = Substitute.For<IContentStorageService>();
         var artifacts = Substitute.For<IPreviewArtifactService>();
         var pdf = Substitute.For<IPdfPreviewService>();
         pdf.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
@@ -289,7 +289,7 @@ public class PreviewHandlerTests
         _jobs.TryClaimJobAsync(_jobId, Arg.Any<CancellationToken>()).Returns(false);
         var pdf = Substitute.For<IPdfPreviewService>();
         var sut = new DocumentHandler(
-            Substitute.For<ILogger<DocumentHandler>>(), Substitute.For<IStorageService>(),
+            Substitute.For<ILogger<DocumentHandler>>(), Substitute.For<IContentStorageService>(),
             Substitute.For<IPreviewArtifactService>(), pdf, _unitOfWork);
 
         await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);

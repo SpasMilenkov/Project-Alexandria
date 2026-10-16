@@ -5,7 +5,12 @@ using Alexandria.Dto.Metrics;
 
 namespace Alexandria.Common.Services;
 
-public interface IStorageService
+/// <summary>
+/// Owns content bytes (<c>UploadBucket</c>, <c>TempBucket</c>, <c>StreamingBucket</c>):
+/// upload lifecycle, downloads, presigned URLs, bulk zip, streaming output, manifest,
+/// storage breakdown.
+/// </summary>
+public interface IContentStorageService
 {
     // File Download
     Task<Stream> DownloadFile(Guid versionId, Guid userId, CancellationToken ct = default);
@@ -33,7 +38,7 @@ public interface IStorageService
     Task UploadStreamingOutputAsync(string localDirectory, string keyPrefix, CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes all the old transpilation 
+    /// Deletes all the old transpilation
     /// </summary>
     /// <param name="prefix"></param>
     /// <param name="ct"></param>

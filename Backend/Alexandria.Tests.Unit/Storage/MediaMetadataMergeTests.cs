@@ -3,7 +3,7 @@ using Alexandria.Services.Storage.MediaMetadata;
 using AwesomeAssertions;
 using MediaMetadataEntity = Alexandria.Data.Models.MediaMetadata;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.Storage;
 
 public class MediaMetadataMergeTests
 {

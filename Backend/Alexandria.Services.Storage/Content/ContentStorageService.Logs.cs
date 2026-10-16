@@ -1,9 +1,9 @@
 using System.Net;
 using Microsoft.Extensions.Logging;
 
-namespace Alexandria.Services.Storage;
+namespace Alexandria.Services.Storage.Content;
 
-public partial class S3Service
+public partial class ContentStorageService
 {
     // Temp object cleanup
 

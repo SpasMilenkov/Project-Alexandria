@@ -6,7 +6,7 @@ using FastEndpoints;
 namespace Alexandria.Api.Features.Storage.Files.DownloadFileById;
 
 public class DownloadFileByIdEndpoint(
-    IStorageService storageService
+    IContentStorageService storageService
 ) : Endpoint<DownloadFileByIdRequest, DownloadInfo>
 {
     public override void Configure()

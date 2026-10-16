@@ -10,7 +10,7 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Alexandria.Services.Preview;
 
 public class PreviewService(
-    IStorageService storageService,
+    IContentStorageService storageService,
     IPreviewArtifactService previewArtifacts,
     IPublisherService publisherService,
     IUnitOfWork unitOfWork,

@@ -6,6 +6,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Dto.PreviewsStats;
+using Alexandria.Services.Storage.Content;
 using Amazon.S3;
 using Amazon.S3.Model;
 using AwesomeAssertions;
@@ -13,7 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.ContentStorage;
 
 public class InitiateUploadQuotaWarningTests
 {
@@ -27,7 +28,7 @@ public class InitiateUploadQuotaWarningTests
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
     private readonly IUploadRepository _uploads = Substitute.For<IUploadRepository>();
     private readonly IAmazonS3 _publicS3 = Substitute.For<IAmazonS3>();
-    private readonly Services.Storage.S3Service _sut;
+    private readonly ContentStorageService _sut;
     private readonly Guid _userId = Guid.NewGuid();
 
     public InitiateUploadQuotaWarningTests()
@@ -46,12 +47,12 @@ public class InitiateUploadQuotaWarningTests
         _publicS3.GetPreSignedURLAsync(Arg.Any<GetPreSignedUrlRequest>())
             .Returns("https://presigned/upload");
 
-        _sut = new Services.Storage.S3Service(
+        _sut = new ContentStorageService(
             Substitute.For<IAmazonS3>(),
             _publicS3,
             _unitOfWork,
             config,
-            Substitute.For<ILogger<Services.Storage.S3Service>>(),
+            Substitute.For<ILogger<ContentStorageService>>(),
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
             new AuditContext(),
