@@ -29,7 +29,7 @@ internal sealed class UploadPlaylistCoverResponse
     public required string UploadUrl { get; set; }
 }
 
-internal sealed class UploadPlaylistCoverEndpoint(IStorageService storageService)
+internal sealed class UploadPlaylistCoverEndpoint(IStaticAssetService staticAssetService)
     : Endpoint<UploadPlaylistCoverRequest, UploadPlaylistCoverResponse>
 {
     public override void Configure()
@@ -43,7 +43,7 @@ internal sealed class UploadPlaylistCoverEndpoint(IStorageService storageService
         var userId = User.GetUserId();
 
         var presignedUrl =
-            await storageService.GetPlaylistCoverUploadUrlAsync(req.PlaylistId, userId, req.MimeType, ct);
+            await staticAssetService.GetPlaylistCoverUploadUrlAsync(req.PlaylistId, userId, req.MimeType, ct);
 
         await Send.OkAsync(new UploadPlaylistCoverResponse
         {

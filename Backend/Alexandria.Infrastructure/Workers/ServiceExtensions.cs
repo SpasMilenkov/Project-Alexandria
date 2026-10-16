@@ -8,6 +8,7 @@ using Alexandria.Services.Monitoring;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Promotions;
+using Alexandria.Services.Storage.Static;
 using Alexandria.Services.User.Settings;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +19,7 @@ public static class ServiceExtensions
     public static IServiceCollection AddCoreWorkerServices(this IServiceCollection services)
     {
         services.AddScoped<IStorageService, S3Service>();
+        services.AddScoped<IStaticAssetService, StaticAssetService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();

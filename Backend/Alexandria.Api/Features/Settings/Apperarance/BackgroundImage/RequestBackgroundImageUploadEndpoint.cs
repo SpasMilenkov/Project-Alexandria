@@ -11,7 +11,7 @@ public class RequestUploadResponse
 }
 
 public class RequestBackgroundImageUploadEndpoint(
-    IStorageService storageService,
+    IStaticAssetService staticAssetService,
     IUserSettingsService userSettingsService) : EndpointWithoutRequest<RequestUploadResponse>
 {
     public override void Configure() =>
@@ -29,7 +29,7 @@ public class RequestBackgroundImageUploadEndpoint(
         var imageId = parts?[^1] ?? Guid.NewGuid().ToString();
         var objectKey = $"background_images/{imageId}";
 
-        var uploadUrl = await storageService.GenerateImageUploadUrl(
+        var uploadUrl = await staticAssetService.GenerateImageUploadUrl(
             objectKey,
             TimeSpan.FromMinutes(15));
 

@@ -4,7 +4,7 @@ using FastEndpoints;
 
 namespace Alexandria.Api.Features.Settings.Apperarance.BackgroundImage;
 
-public class DeleteBackgroundImageEndpoint(IUserSettingsService settingsService, IStorageService storageService)
+public class DeleteBackgroundImageEndpoint(IUserSettingsService settingsService, IStaticAssetService staticAssetService)
     : EndpointWithoutRequest
 {
     public override void Configure() =>
@@ -17,7 +17,7 @@ public class DeleteBackgroundImageEndpoint(IUserSettingsService settingsService,
 
         if (settings.BackgroundImageKey is not null)
         {
-            await storageService.DeleteBackgroundImageAsync(settings.BackgroundImageKey, ct);
+            await staticAssetService.DeleteBackgroundImageAsync(settings.BackgroundImageKey, ct);
             settings.BackgroundImageKey = null;
             settings.BackgroundImageUpdatedAt = null;
             await settingsService.SetAppearanceAsync(userId, settings, userId, ct);

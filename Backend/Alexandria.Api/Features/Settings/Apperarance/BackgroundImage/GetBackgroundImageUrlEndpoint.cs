@@ -9,7 +9,7 @@ public class BackgroundImageUrlResponse
     public string Url { get; set; } = default!;
 }
 
-public class GetBackgroundImageUrlEndpoint(IStorageService storageService, IUserSettingsService settingsService)
+public class GetBackgroundImageUrlEndpoint(IStaticAssetService staticAssetService, IUserSettingsService settingsService)
     : EndpointWithoutRequest<BackgroundImageUrlResponse>
 {
     public override void Configure() =>
@@ -26,7 +26,7 @@ public class GetBackgroundImageUrlEndpoint(IStorageService storageService, IUser
             return;
         }
 
-        var url = await storageService.GenerateBackgroundImageGetUrl(
+        var url = await staticAssetService.GenerateBackgroundImageGetUrl(
             settings.BackgroundImageKey,
             TimeSpan.FromMinutes(60));
 

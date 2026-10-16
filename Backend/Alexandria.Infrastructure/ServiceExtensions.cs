@@ -15,6 +15,7 @@ using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Promotions;
 using Alexandria.Services.Storage.SignedUrls;
+using Alexandria.Services.Storage.Static;
 using Alexandria.Services.Streaming;
 using Alexandria.Services.Streaming.Shuffle;
 using Alexandria.Services.Streaming.Wrapped;
@@ -33,6 +34,7 @@ public static class ServiceExtensions
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
         services.AddScoped<IStorageService, S3Service>();
+        services.AddScoped<IStaticAssetService, StaticAssetService>();
         services.AddScoped<PreviewSizeBackfillService>();
         services.AddScoped<RepresentationSizeBackfillService>();
         services.AddScoped<IFileRepository, FileRepository>();

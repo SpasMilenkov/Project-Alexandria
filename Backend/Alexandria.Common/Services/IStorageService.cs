@@ -125,9 +125,6 @@ public interface IStorageService
     Task<(int DeletedCount, long FreedBytes)> DeletePreviewsByFileAsync(
         Guid fileId, Guid userId, bool isAdmin, DateTime? createdBefore, CancellationToken ct = default);
 
-    Task<string> GenerateBackgroundImageGetUrl(string objectKey, TimeSpan expiry);
-    Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default);
-    Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry);
     Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default);
 
     Task StreamBulkZipAsync(
@@ -135,8 +132,5 @@ public interface IStorageService
         Guid[] fileIds,
         Guid userId,
         Stream destination,
-        CancellationToken ct = default);
-
-    Task<string> GetPlaylistCoverUploadUrlAsync(Guid playlistId, Guid userId, string contentType,
         CancellationToken ct = default);
 }

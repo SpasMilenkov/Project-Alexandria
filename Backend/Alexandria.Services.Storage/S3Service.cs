@@ -7,7 +7,6 @@ using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
-using Alexandria.Common.Exceptions.Playlist;
 using Alexandria.Common.Queues;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -43,14 +42,6 @@ public partial class S3Service(
     IPublisherService publisher)
     : IStorageService
 {
-    private static readonly HashSet<string> AllowedCoverTypes =
-    [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif"
-    ];
-
     /// <summary>
     /// Deletes a temporary object from the temp bucket with error handling.
     /// Takes the bare temp object key; temp objects always live under the
@@ -1199,25 +1190,6 @@ public partial class S3Service(
         return await publicS3.GetPreSignedURLAsync(request);
     }
 
-    public async Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry)
-    {
-        var request = new GetPreSignedUrlRequest
-        {
-            BucketName = config.Value.ImagesBucket,
-            Key = $"{objectKey}",
-            Verb = HttpVerb.PUT,
-            Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = Protocol.HTTPS
-        };
-
-        return await publicS3.GetPreSignedURLAsync(request);
-    }
-
-    public async Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default)
-    {
-        await s3.DeleteObjectAsync(config.Value.ImagesBucket, $"{objectKey}", ct);
-    }
-
     public async Task DeleteStreamingOutputByPrefixAsync(string prefix, CancellationToken ct = default)
     {
         var paginator = s3.Paginators.ListObjectsV2(new ListObjectsV2Request
@@ -1253,19 +1225,6 @@ public partial class S3Service(
         }, ct);
 
         batch.Clear();
-    }
-
-    public async Task<string> GenerateBackgroundImageGetUrl(string objectKey, TimeSpan expiry)
-    {
-        var request = new GetPreSignedUrlRequest
-        {
-            BucketName = config.Value.ImagesBucket,
-            Key = $"{objectKey}",
-            Verb = HttpVerb.GET,
-            Expires = DateTime.UtcNow.Add(expiry),
-            Protocol = Protocol.HTTPS
-        };
-        return await publicS3.GetPreSignedURLAsync(request);
     }
 
     public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false,
@@ -1452,28 +1411,6 @@ public partial class S3Service(
         }
 
         // Dispose flushes the central directory → response stream closed b y Kestrel
-    }
-
-    public async Task<string> GetPlaylistCoverUploadUrlAsync(Guid playlistId, Guid userId, string contentType,
-        CancellationToken ct = default)
-    {
-        if (!AllowedCoverTypes.Contains(contentType))
-            throw new InvalidOperationException($"Content type '{contentType}' is not allowed for covers.");
-
-        if (!await unitOfWork.Playlists.ExistsAsync(p => p.Id == playlistId && p.OwnerId == userId, ct))
-            throw new PlaylistNotFoundException(playlistId);
-
-        var request = new GetPreSignedUrlRequest
-        {
-            BucketName = config.Value.PreviewBucket,
-            Key = $"covers/{playlistId}",
-            Verb = HttpVerb.PUT,
-            Expires = DateTime.UtcNow.Add(TimeSpan.FromMinutes(1)),
-            Protocol = Protocol.HTTPS,
-            ContentType = contentType,
-        };
-
-        return await publicS3.GetPreSignedURLAsync(request);
     }
 
     internal static CompressionLevel GetCompressionLevel(string fileName)
