@@ -168,11 +168,12 @@ public class PreviewService(
             }
 
             case FileCategory.Text:
-                var fileStream = await storageService.DownloadFile(versionId, fileData.OwnerId, ct);
+            {
+                await using var fileStream = await storageService.DownloadFile(versionId, fileData.OwnerId, ct);
                 var (data, _) =
                     await textPreviewService.GenerateTextPreviewAsync(fileStream, fileData.Name, 524288, ct);
                 return new PreviewResultDto(null, data);
-
+            }
             case FileCategory.Audio:
             case FileCategory.Video:
                 if (TryStartJob(versionId))
