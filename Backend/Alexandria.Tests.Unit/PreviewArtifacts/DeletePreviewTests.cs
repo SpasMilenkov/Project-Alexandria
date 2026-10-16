@@ -3,11 +3,11 @@ using System.Net;
 using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
-using Alexandria.Common.Queues;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Services.Storage.Previews;
 using Alexandria.Tests.Common.Builders;
 using Amazon.Runtime;
 using Amazon.S3;
@@ -18,7 +18,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using File = Alexandria.Data.Models.File;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.PreviewArtifacts;
 
 public class DeletePreviewTests
 {
@@ -26,7 +26,7 @@ public class DeletePreviewTests
     private readonly IFileRepository _files = Substitute.For<IFileRepository>();
     private readonly IPreviewRepository _previews = Substitute.For<IPreviewRepository>();
     private readonly IAmazonS3 _s3 = Substitute.For<IAmazonS3>();
-    private readonly Services.Storage.S3Service _sut;
+    private readonly PreviewArtifactService _sut;
     private readonly Guid _userId = Guid.NewGuid();
     private readonly Guid _previewId = Guid.NewGuid();
     private readonly Guid _fileId = Guid.NewGuid();
@@ -42,14 +42,11 @@ public class DeletePreviewTests
         _s3.DeleteObjectAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new DeleteObjectResponse());
 
-        _sut = new Services.Storage.S3Service(
+        _sut = new PreviewArtifactService(
             _s3,
-            Substitute.For<IAmazonS3>(),
             _unitOfWork,
             config,
-            Substitute.For<ILogger<Services.Storage.S3Service>>(),
-            Substitute.For<IPromotionQueue>(),
-            Substitute.For<IFileService>(),
+            Substitute.For<ILogger<PreviewArtifactService>>(),
             new AuditContext(),
             Substitute.For<IUserSettingsService>(),
             Substitute.For<IPublisherService>());
@@ -201,7 +198,7 @@ public class DeletePreviewTests
     {
         var preview = StoredPreview(OwnedFile(), objectKey: "previews/custom");
 
-        Services.Storage.S3Service.ResolvePreviewKey(preview).Should().Be("previews/custom");
+        PreviewArtifactService.ResolvePreviewKey(preview).Should().Be("previews/custom");
     }
 
     [Fact]
@@ -230,8 +227,8 @@ public class DeletePreviewTests
             ObjectKey = string.Empty
         };
 
-        Services.Storage.S3Service.ResolvePreviewKey(thumbnail).Should().Be("thumbnails/0aff");
-        Services.Storage.S3Service.ResolvePreviewKey(image).Should().Be("previews/0aff");
+        PreviewArtifactService.ResolvePreviewKey(thumbnail).Should().Be("thumbnails/0aff");
+        PreviewArtifactService.ResolvePreviewKey(image).Should().Be("previews/0aff");
     }
 
     [Fact]

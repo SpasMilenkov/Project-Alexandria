@@ -7,6 +7,7 @@ using Alexandria.Repositories;
 using Alexandria.Services.Monitoring;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.Directories;
+using Alexandria.Services.Storage.Previews;
 using Alexandria.Services.Storage.Promotions;
 using Alexandria.Services.Storage.Static;
 using Alexandria.Services.User.Settings;
@@ -20,6 +21,7 @@ public static class ServiceExtensions
     {
         services.AddScoped<IStorageService, S3Service>();
         services.AddScoped<IStaticAssetService, StaticAssetService>();
+        services.AddScoped<IPreviewArtifactService, PreviewArtifactService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ITagRepository, TagRepository>();
         services.AddScoped<IMediaMetadataRepository, MediaMetadataRepository>();

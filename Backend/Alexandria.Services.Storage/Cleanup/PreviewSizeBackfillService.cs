@@ -1,6 +1,7 @@
 using System.Net;
 using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
+using Alexandria.Services.Storage.Previews;
 using Amazon.S3;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -49,7 +50,7 @@ public class PreviewSizeBackfillService(
                 string key;
                 try
                 {
-                    key = S3Service.ResolvePreviewKey(preview);
+                    key = PreviewArtifactService.ResolvePreviewKey(preview);
                 }
                 catch (InvalidOperationException ex)
                 {

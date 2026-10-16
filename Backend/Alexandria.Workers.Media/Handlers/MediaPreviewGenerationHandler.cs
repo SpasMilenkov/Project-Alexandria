@@ -7,6 +7,7 @@ namespace Alexandria.Workers.Media.Handlers;
 public class MediaPreviewGenerationHandler(
     ILogger<MediaPreviewGenerationHandler> logger,
     IStorageService storage,
+    IPreviewArtifactService artifacts,
     IMediaPreviewService mediaPreviewService,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
@@ -88,7 +89,7 @@ public class MediaPreviewGenerationHandler(
 
             await using var previewStream = File.OpenRead(previewPath);
             await using var thumbnailStream = File.OpenRead(thumbnailPath);
-            await storage.UploadMediaData(previewStream, thumbnailStream, previewSize, thumbnailSize, contentHash,
+            await artifacts.UploadMediaData(previewStream, thumbnailStream, previewSize, thumbnailSize, contentHash,
                 versionId, result.Metadata, ct);
         }
         finally

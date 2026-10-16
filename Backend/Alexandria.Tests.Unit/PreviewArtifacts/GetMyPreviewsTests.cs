@@ -1,39 +1,36 @@
 using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
-using Alexandria.Common.Queues;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Previews;
+using Alexandria.Services.Storage.Previews;
 using Amazon.S3;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.PreviewArtifacts;
 
 public class GetMyPreviewsTests
 {
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IPreviewRepository _previews = Substitute.For<IPreviewRepository>();
-    private readonly Services.Storage.S3Service _sut;
+    private readonly PreviewArtifactService _sut;
     private readonly Guid _userId = Guid.NewGuid();
 
     public GetMyPreviewsTests()
     {
         _unitOfWork.Previews.Returns(_previews);
 
-        _sut = new Services.Storage.S3Service(
-            Substitute.For<IAmazonS3>(),
+        _sut = new PreviewArtifactService(
             Substitute.For<IAmazonS3>(),
             _unitOfWork,
             Substitute.For<IOptions<S3Config>>(),
-            Substitute.For<ILogger<Services.Storage.S3Service>>(),
-            Substitute.For<IPromotionQueue>(),
-            Substitute.For<IFileService>(),
+            Substitute.For<ILogger<PreviewArtifactService>>(),
             new AuditContext(),
             Substitute.For<IUserSettingsService>(),
             Substitute.For<IPublisherService>());

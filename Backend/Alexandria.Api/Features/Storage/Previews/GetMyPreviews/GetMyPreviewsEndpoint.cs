@@ -6,7 +6,7 @@ using FastEndpoints;
 
 namespace Alexandria.Api.Features.Storage.Previews.GetMyPreviews;
 
-public class GetMyPreviewsEndpoint(IStorageService storageService)
+public class GetMyPreviewsEndpoint(IPreviewArtifactService previewArtifacts)
     : Endpoint<GetMyPreviewsRequest, PaginatedResult<UserPreviewDto>>
 {
     public override void Configure()
@@ -27,7 +27,7 @@ public class GetMyPreviewsEndpoint(IStorageService storageService)
         var userId = User.GetUserId();
 
         await Send.OkAsync(
-            await storageService.GetMyPreviewsAsync(
+            await previewArtifacts.GetMyPreviewsAsync(
                 userId, req.FileId, req.CreatedBefore?.UtcDateTime, req.Page, req.PageSize, ct),
             ct);
     }

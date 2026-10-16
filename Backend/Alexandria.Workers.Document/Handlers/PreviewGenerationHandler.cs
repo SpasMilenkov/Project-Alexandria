@@ -9,6 +9,7 @@ namespace Alexandria.Workers.Document.Handlers;
 public class PreviewGenerationHandler(
     ILogger<PreviewGenerationHandler> logger,
     IStorageService storage,
+    IPreviewArtifactService artifacts,
     IPdfPreviewService pdfPreviewService,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
@@ -85,7 +86,7 @@ public class PreviewGenerationHandler(
             logger.LogInformation("Preview generated at {PreviewPath}, size: {Size}",
                 previewPath, previewStream.Length);
 
-            await storage.UploadPreview($"previews/{contentHash}",
+            await artifacts.UploadPreview($"previews/{contentHash}",
                 "application/pdf",
                 previewStream,
                 versionId,
@@ -98,7 +99,7 @@ public class PreviewGenerationHandler(
             logger.LogInformation("Thumbnail generated at {ThumbnailPath}, size: {Size}",
                 thumbnailPath, thumbnailStream.Length);
 
-            await storage.UploadPreview($"thumbnails/{contentHash}",
+            await artifacts.UploadPreview($"thumbnails/{contentHash}",
                 "image/png",
                 thumbnailStream,
                 versionId,

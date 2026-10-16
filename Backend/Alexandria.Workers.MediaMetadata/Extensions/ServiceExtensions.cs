@@ -6,6 +6,7 @@ using Alexandria.Services.Monitoring;
 using Alexandria.Services.Storage;
 using Alexandria.Services.Storage.AutoTagging;
 using Alexandria.Services.Storage.Policies;
+using Alexandria.Services.Storage.Previews;
 using Alexandria.Services.Storage.Static;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Queueing;
@@ -24,6 +25,7 @@ public static class ServiceExtensions
 
         services.AddScoped<IStorageService, S3Service>();
         services.AddScoped<IStaticAssetService, StaticAssetService>();
+        services.AddScoped<IPreviewArtifactService, PreviewArtifactService>();
 
         services.AddAutoTagging(configuration);
 

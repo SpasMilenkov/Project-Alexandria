@@ -17,6 +17,7 @@ namespace Alexandria.Tests.Unit.PreviewJobs;
 public class PreviewServiceDispatchTests
 {
     private readonly IStorageService _storage = Substitute.For<IStorageService>();
+    private readonly IPreviewArtifactService _artifacts = Substitute.For<IPreviewArtifactService>();
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IFileRepository _files = Substitute.For<IFileRepository>();
@@ -43,7 +44,7 @@ public class PreviewServiceDispatchTests
 
         var cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 100 });
         _sut = new PreviewService(
-            _storage, _publisher, _unitOfWork,
+            _storage, _artifacts, _publisher, _unitOfWork,
             _textPreview, _archivePreview, cache);
     }
 
@@ -55,7 +56,7 @@ public class PreviewServiceDispatchTests
         _files.VersionBelongsToUserAsync(_versionId, _userId, Arg.Any<CancellationToken>())
             .Returns("hash");
         _versions.IsEncryptedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(false);
-        _storage.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
+        _artifacts.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(StoredFile("image/png"));
@@ -68,7 +69,7 @@ public class PreviewServiceDispatchTests
         _files.VersionBelongsToUserAsync(_versionId, _userId, Arg.Any<CancellationToken>())
             .Returns("hash");
         _versions.IsEncryptedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(false);
-        _storage.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
+        _artifacts.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
             .Returns("https://cdn/preview");
 
         await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview,
@@ -125,7 +126,7 @@ public class PreviewServiceDispatchTests
         _files.VersionBelongsToUserAsync(_versionId, _userId, Arg.Any<CancellationToken>())
             .Returns("hash");
         _versions.IsEncryptedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(false);
-        _storage.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
+        _artifacts.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(StoredFile("application/pdf"));
@@ -192,7 +193,7 @@ public class PreviewServiceDispatchTests
             .Returns("hash");
         _versions.IsEncryptedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(false);
         _versions.IsPromotedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(true);
-        _storage.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
+        _artifacts.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(StoredFile("application/json"));
@@ -219,7 +220,7 @@ public class PreviewServiceDispatchTests
             .Returns("hash");
         _versions.IsEncryptedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(false);
         _versions.IsPromotedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(true);
-        _storage.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
+        _artifacts.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
             .Returns((string?)null);
         _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
             .Returns(StoredFile("application/zip"));

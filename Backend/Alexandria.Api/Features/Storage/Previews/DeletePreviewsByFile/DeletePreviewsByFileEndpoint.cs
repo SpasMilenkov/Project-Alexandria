@@ -10,7 +10,7 @@ public sealed class DeletePreviewsByFileResponse
     public long FreedBytes { get; set; }
 }
 
-public class DeletePreviewsByFileEndpoint(IStorageService storageService)
+public class DeletePreviewsByFileEndpoint(IPreviewArtifactService previewArtifacts)
     : Endpoint<DeletePreviewsByFileRequest, DeletePreviewsByFileResponse>
 {
     public override void Configure()
@@ -36,7 +36,7 @@ public class DeletePreviewsByFileEndpoint(IStorageService storageService)
 
         try
         {
-            var (deletedCount, freedBytes) = await storageService.DeletePreviewsByFileAsync(
+            var (deletedCount, freedBytes) = await previewArtifacts.DeletePreviewsByFileAsync(
                 req.FileId, userId, isAdmin, req.CreatedBefore?.UtcDateTime, ct);
             await Send.OkAsync(new DeletePreviewsByFileResponse
             {

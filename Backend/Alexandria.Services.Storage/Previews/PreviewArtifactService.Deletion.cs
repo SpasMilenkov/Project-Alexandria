@@ -3,9 +3,9 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Amazon.S3;
 
-namespace Alexandria.Services.Storage;
+namespace Alexandria.Services.Storage.Previews;
 
-public partial class S3Service
+public partial class PreviewArtifactService
 {
     internal static string ResolvePreviewKey(Preview preview)
     {
