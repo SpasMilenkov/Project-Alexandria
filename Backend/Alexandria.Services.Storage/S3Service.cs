@@ -919,7 +919,12 @@ public partial class S3Service(
         {
             await fileService.FolderWithOwnershipExistsAsync(directoryId, uploadedBy, ct);
 
-            upload = await unitOfWork.Uploads.GetByIdAsync(uploadId, ct);
+            upload = await unitOfWork.Uploads
+                .FirstOrDefaultAsync(u => u.Id == uploadId &&
+                                          u.UserId == uploadedBy &&
+                                          u.DeletedAt == null &&
+                                          u.Status == UploadStatus.InProgress,
+                    ct);
             if (upload is null)
                 throw new InvalidOperationException("Upload not found");
 

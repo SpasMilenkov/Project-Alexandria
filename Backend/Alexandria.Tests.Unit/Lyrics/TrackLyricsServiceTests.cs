@@ -18,6 +18,7 @@ public class TrackLyricsServiceTests
     private readonly Guid _jobId = Guid.NewGuid();
     private readonly ITrackLyricsRepository _lyricsRepo = Substitute.For<ITrackLyricsRepository>();
     private readonly IJobRepository _jobsRepo = Substitute.For<IJobRepository>();
+    private readonly ITranspilationJobRepository _transcodes = Substitute.For<ITranspilationJobRepository>();
     private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
 
@@ -27,6 +28,10 @@ public class TrackLyricsServiceTests
     {
         _uow.Lyrics.Returns(_lyricsRepo);
         _uow.Jobs.Returns(_jobsRepo);
+        _uow.TranspilationJobs.Returns(_transcodes);
+        _transcodes.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TranspilationJob, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(new TranspilationJob { Id = _jobId, UserId = _userId });
         _jobsRepo.AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.Arg<Job>());
         _sut = new TrackLyricsService(_uow, _publisher);
@@ -168,6 +173,25 @@ public class TrackLyricsServiceTests
             "lyrics.job");
     }
 
+    [Fact]
+    public async Task queue_refetch_foreign_transcode_throws_without_insert()
+    {
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((TrackLyrics?)null);
+        _transcodes.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TranspilationJob, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((TranspilationJob?)null);
+
+        var act = async () => await _sut.QueueLyricsRefetchAsync(_jobId, _userId);
+
+        await act.Should().ThrowAsync<LyricsNotFoundException>();
+        await _lyricsRepo.DidNotReceive().AddAsync(
+            Arg.Any<TrackLyrics>(), Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceive().PublishAsync(
+            Arg.Any<byte[]>(), Arg.Any<string>());
+    }
+
     // ---- RemoveLyricsAsync ----
 
     [Fact]
@@ -225,6 +249,25 @@ public class TrackLyricsServiceTests
                 l.Status == LyricsStatus.Fetched),
             Arg.Any<CancellationToken>());
         await _uow.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task upload_foreign_transcode_throws_without_insert()
+    {
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((TrackLyrics?)null);
+        _transcodes.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TranspilationJob, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((TranspilationJob?)null);
+
+        var act = async () => await _sut.UploadLyricsAsync(_jobId, _userId, "plain", "synced");
+
+        await act.Should().ThrowAsync<LyricsNotFoundException>();
+        await _lyricsRepo.DidNotReceive().AddAsync(
+            Arg.Any<TrackLyrics>(), Arg.Any<CancellationToken>());
+        await _jobsRepo.DidNotReceive().AddAsync(
+            Arg.Any<Job>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

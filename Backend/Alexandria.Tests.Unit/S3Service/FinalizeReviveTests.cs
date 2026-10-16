@@ -86,7 +86,10 @@ public class FinalizeReviveTests
             UserId = _userId
         };
 
-        _uploads.GetByIdAsync(upload.Id, Arg.Any<CancellationToken>()).Returns(upload);
+        _uploads.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<Upload, bool>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(upload);
 
         _s3.GetObjectAsync(Arg.Any<GetObjectRequest>(), Arg.Any<CancellationToken>())
             .Returns(new GetObjectResponse
