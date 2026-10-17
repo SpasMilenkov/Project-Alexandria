@@ -12,15 +12,6 @@ until g status 2>&1 | grep -q "HEALTHY NODES"; do
   sleep 2
 done
 
-mkdir -p ~/.aws
-cat > ~/.aws/config << 'EOF'
-[default]
-s3 =
-    addressing_style = path
-s3api =
-    addressing_style = path
-EOF
-
 echo "Garage is up"
 echo ""
 
@@ -66,6 +57,8 @@ g bucket website --allow alexandria-streaming
 echo "  Web endpoint enabled: alexandria-streaming"
 g bucket website --allow alexandria-previews
 echo "  Web endpoint enabled: alexandria-previews"
+g bucket website --allow alexandria-images
+echo "  Web endpoint enabled: alexandria-images"
 
 # ── Keys
 echo ""
@@ -119,26 +112,6 @@ g bucket allow --read         alexandria-files     --key alexandria-streaming-ke
 g bucket allow --read --write alexandria-streaming --key alexandria-streaming-key
 echo "  Streaming key -> read       -> alexandria-files"
 echo "  Streaming key -> read/write -> alexandria-streaming"
-
-# ── CORS
-echo ""
-echo "Step 5: CORS..."
-CORS_ORIGIN="${CORS_ORIGIN:-http://localhost:5173}"
-
-export AWS_ACCESS_KEY_ID="$MASTER_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$MASTER_SECRET"
-export AWS_DEFAULT_REGION="garage"
-
-echo "  Key ID: '${MASTER_KEY_ID}'"
-echo "  Secret (first 8): '${MASTER_SECRET:0:8}'"
-
-aws configure set default.s3.addressing_style path
-sed "s|CORS_ORIGIN_PLACEHOLDER|${CORS_ORIGIN}|g" /config/cors.json > /tmp/cors.json
-
-aws --endpoint-url http://garage:3900 \
-    s3api put-bucket-cors \
-    --bucket alexandria-images \
-    --cors-configuration file:///tmp/cors.json
 
 # ── Credentials
 echo ""

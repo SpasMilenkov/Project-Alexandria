@@ -99,6 +99,7 @@ COPY --from=builder /usr/sbin/nginx                 /usr/sbin/nginx
 COPY --from=builder /etc/nginx                      /etc/nginx
 COPY --from=builder /usr/bin/envsubst               /usr/local/bin/envsubst
 COPY nginx.conf                                     /etc/nginx/nginx.conf
+COPY 502.html /etc/nginx/html/502.html
 
 EXPOSE 80 443
 

@@ -56,13 +56,10 @@ services:
     depends_on:
       garage:
         condition: service_healthy
-    environment:
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
     volumes:
       - ./garage.local.toml:/etc/garage.toml:ro
       - garage_local_meta_data:/var/lib/garage/meta
       - ./init-output:/output
-      - ./scripts/garage-init/cors.json:/config/cors.json:ro
     networks:
       - data-net
 
