@@ -13,16 +13,23 @@ const mockedAttemptRefresh = vi.mocked(attemptRefresh);
 
 const RETRY_DELAYS = [2_000, 5_000, 10_000, 30_000, 60_000];
 
-const mountHost = (fileId = "file-123", versionId = "version-1", mimeType?: string | null) => {
+const mountHost = (
+  fileId = "file-123",
+  versionId = "version-1",
+  mimeType?: string | null,
+  isEncrypted?: boolean,
+) => {
   const fileIdRef = ref(fileId);
   const versionIdRef = ref(versionId);
   const mimeTypeRef = ref(mimeType);
+  const isEncryptedRef = ref(isEncrypted);
   const wrapper = mount(
     defineComponent({
       setup() {
         return {
           ...useFileThumbnail(() => ({
             fileId: fileIdRef.value,
+            isEncrypted: isEncryptedRef.value,
             mimeType: mimeTypeRef.value,
             versionId: versionIdRef.value,
           })),
@@ -31,7 +38,7 @@ const mountHost = (fileId = "file-123", versionId = "version-1", mimeType?: stri
       template: "<div />",
     }),
   );
-  return { fileIdRef, mimeTypeRef, versionIdRef, wrapper };
+  return { fileIdRef, isEncryptedRef, mimeTypeRef, versionIdRef, wrapper };
 };
 
 describe("useFileThumbnail", () => {
@@ -137,6 +144,19 @@ describe("useFileThumbnail", () => {
     expect(wrapper.vm.thumbnailUrl).toBe("/api/files/file-123/versions/version-1/thumbnail");
     mimeTypeRef.value = "image/png";
     await nextTick();
+    expect(wrapper.vm.canHaveThumbnail).toBe(true);
+  });
+
+  it("gates thumbnail requests for encrypted versions", async () => {
+    const { isEncryptedRef, wrapper } = mountHost("file-123", "version-1", "image/png", true);
+    expect(wrapper.vm.canHaveThumbnail).toBe(false);
+    isEncryptedRef.value = false;
+    await nextTick();
+    expect(wrapper.vm.canHaveThumbnail).toBe(true);
+  });
+
+  it("allows thumbnails when isEncrypted is omitted for backwards compatibility", () => {
+    const { wrapper } = mountHost("file-123", "version-1", "image/png");
     expect(wrapper.vm.canHaveThumbnail).toBe(true);
   });
 });

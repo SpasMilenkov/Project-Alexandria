@@ -49,6 +49,14 @@
           />
         </div>
         <span
+          v-if="props.data.currentVersion.isEncrypted"
+          class="absolute top-1 left-1 flex items-center justify-center rounded bg-neutral-900/80 p-0.5 text-white"
+          data-encrypted-indicator
+        >
+          <Icon icon="mdi:lock" class="w-3.5 h-3.5" aria-hidden="true" />
+          <span class="sr-only">Encrypted</span>
+        </span>
+        <span
           v-if="fileExtension"
           class="absolute bottom-1 right-1 text-xs leading-4 px-1.5 rounded bg-neutral-900/80 text-white shrink-0 max-w-16 truncate"
         >
@@ -92,6 +100,14 @@
       </span>
       <span class="flex-1 min-w-0 flex items-center gap-2">
         <span class="truncate">{{ props.data.fileName }}</span>
+        <span
+          v-if="props.data.currentVersion.isEncrypted"
+          class="flex shrink-0 items-center text-gray-500 dark:text-gray-500"
+          data-encrypted-indicator
+        >
+          <Icon icon="mdi:lock" class="w-3.5 h-3.5" aria-hidden="true" />
+          <span class="sr-only">Encrypted</span>
+        </span>
         <span
           v-if="fileExtension"
           class="text-xs leading-4 px-1.5 rounded border border-gray-200/70 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 shrink-0 ml-auto"
@@ -165,6 +181,7 @@ const {
   onThumbnailError,
 } = useFileThumbnail(() => ({
   fileId: props.data.fileId,
+  isEncrypted: props.data.currentVersion.isEncrypted,
   mimeType: props.data.mimeType,
   versionId: props.data.currentVersion.id,
 }));
@@ -182,14 +199,20 @@ const showThumbnail = computed(
 const prefetchDetails = useDebounceFn(() => {
   queryCache.refresh(queryCache.ensure(getFile(props.data.fileId)));
   queryCache.refresh(queryCache.ensure(getTagsForFile(props.data.fileId)));
-  queryCache.refresh(queryCache.ensure(getPreview(props.data.fileId)));
+
+  // Encrypted versions have no backend preview, so warming that query would
+  // only spend a doomed request.
+  if (!props.data.currentVersion.isEncrypted) {
+    queryCache.refresh(queryCache.ensure(getPreview(props.data.fileId)));
+  }
+
   queryCache.refresh(
     queryCache.ensure(getVersionsForFile({ id: props.data.fileId, page: 1, pageSize: 10 })),
   );
 }, 150);
 
-// The four requests above only warm the details drawer, which fetches them for
-// real on open. A pending warmup is cancelled as soon as interest moves away
+// These requests only warm the details drawer, which fetches them for real on
+// open. A pending warmup is cancelled as soon as interest moves away
 // (pointer/focus leave, touch end) or the row unmounts, so no delayed request
 // begins after disposal.
 const cancelPrefetch = () => {

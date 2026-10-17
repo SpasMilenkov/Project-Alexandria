@@ -8,13 +8,15 @@ export interface FileThumbnailSource {
   fileId: string;
   versionId?: string;
   mimeType?: string | null;
+  isEncrypted?: boolean;
 }
 
 // Retry budget: 5 attempts over ~2min. One uniform loop for every failure,
 // no error-type branches: preview-worker generation lag after upload,
 // transient nginx 404s (cached 1m server-side), and idle session expiry all
-// converge here. Permanent misses (encrypted, unpromoted) burn 6 cheap
-// lookups, one initial plus 5 retries, then latch the fallback icon.
+// converge here. Permanent misses (unpromoted) burn 6 cheap lookups, one
+// initial plus 5 retries, then latch the fallback icon. Encrypted versions
+// never produce backend previews and are excluded before any request fires.
 const MAX_RETRIES = 5;
 const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 30_000, 60_000];
 
@@ -23,7 +25,9 @@ const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 30_000, 60_000];
 // When mimeType is provided and outside the backend thumbnail allowlist
 // (text, archives, unknown), canHaveThumbnail is false so callers can skip
 // mounting the <img> entirely instead of firing a doomed request.
-// mimeType omitted preserves the legacy behavior (URL always built).
+// Encrypted versions force the same gate: the backend generates no previews
+// for them, so a request would only burn the retry budget.
+// mimeType and isEncrypted omitted preserve the legacy behavior (URL always built).
 export const useFileThumbnail = (source: () => FileThumbnailSource) => {
   const thumbnailLoaded = ref(false);
   const thumbnailErrored = ref(false);
@@ -49,6 +53,7 @@ export const useFileThumbnail = (source: () => FileThumbnailSource) => {
   });
 
   const canHaveThumbnail = computed(() => {
+    if (source().isEncrypted === true) return false;
     const mimeType = source().mimeType;
     if (mimeType === undefined) return true;
     return isThumbnailSupportedMimeType(mimeType);
