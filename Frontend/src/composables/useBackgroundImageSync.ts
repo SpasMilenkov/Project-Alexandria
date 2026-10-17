@@ -51,10 +51,10 @@ export const useBackgroundImageSync = () => {
     });
 
     if (!cached) {
-      // Cache miss — fetch a presigned GET URL and seed the SW
-      const presignedUrl = await settingsApi.getBackgroundImageUrl();
+      // Cache miss — fetch the stable gated URL and seed the SW
+      const imageUrl = await settingsApi.getBackgroundImageUrl();
       const result = await swMessage(sw, {
-        presignedUrl,
+        imageUrl,
         timestamp: updatedAt,
         type: "FETCH_AND_CACHE",
       });
@@ -70,11 +70,9 @@ export const useBackgroundImageSync = () => {
     store.backgroundImage = `/sw/background-image?t=${encodeURIComponent(updatedAt)}`;
   };
 
-  // Full upload flow: request URL → upload to S3 → confirm → sync
+  // Full upload flow: single proxied POST (validate + store server-side) → sync
   const uploadBackgroundImage = async (file: File): Promise<void> => {
-    const { uploadUrl, objectKey } = await settingsApi.requestBackgroundImageUpload();
-    await settingsApi.uploadToS3(uploadUrl, file);
-    const saved = await settingsApi.confirmBackgroundImageUpload(objectKey);
+    const saved = await settingsApi.uploadBackgroundImage(file);
     store.syncFromServer(saved, store.getSettings);
     queryCache.invalidateQueries({ key: SETTINGS_QUERY_KEYS.appearance() });
 
