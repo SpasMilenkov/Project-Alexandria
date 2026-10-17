@@ -9,8 +9,6 @@ public class UpdateAppearanceRequest
 {
     public string AccentColor { get; set; } = default!;
     public string BackgroundColor { get; set; } = default!;
-    public string? BackgroundImageKey { get; set; }
-    public DateTime? BackgroundImageUpdatedAt { get; set; }
     public double BackgroundImageOpacity { get; set; }
     public int GridIconSize { get; set; }
     public int ListIconSize { get; set; }
@@ -36,12 +34,17 @@ public class UpdateAppearanceEndpoint(IUserSettingsService settingsService)
     {
         var userId = User.GetUserId();
 
+        // Background image identity is server-owned (single proxied upload flow).
+        // The general update must never accept a caller-supplied key (SEC-03):
+        // preserve whatever is stored.
+        var current = await settingsService.GetAppearanceAsync(userId, ct);
+
         await settingsService.SetAppearanceAsync(userId, new AppearanceSettingsValue
         {
             AccentColor = req.AccentColor,
             BackgroundColor = req.BackgroundColor,
-            BackgroundImageKey = req.BackgroundImageKey,
-            BackgroundImageUpdatedAt = req.BackgroundImageUpdatedAt,
+            BackgroundImageKey = current.BackgroundImageKey,
+            BackgroundImageUpdatedAt = current.BackgroundImageUpdatedAt,
             BackgroundImageOpacity = req.BackgroundImageOpacity,
             GridIconSize = req.GridIconSize,
             ListIconSize = req.ListIconSize,

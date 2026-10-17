@@ -83,7 +83,8 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
 
         if (parentId is not null)
         {
-            root = await unitOfWork.Directories.GetByIdAsync((Guid)parentId, ct);
+            root = await unitOfWork.Directories
+                .FirstOrDefaultAsync(d => d.Id == (Guid)parentId && d.OwnerId == userId && d.DeletedAt == null, ct);
 
             if (root is null) throw new DirectoryNotFoundException((Guid)parentId);
         }

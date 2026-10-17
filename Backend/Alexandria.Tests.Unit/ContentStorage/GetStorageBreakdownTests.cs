@@ -8,13 +8,14 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.PreviewsStats;
+using Alexandria.Services.Storage.Content;
 using Amazon.S3;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.ContentStorage;
 
 public class GetStorageBreakdownTests
 {
@@ -26,7 +27,7 @@ public class GetStorageBreakdownTests
         Substitute.For<IStreamingRepresentationRepository>();
 
     private readonly IUserRepository _users = Substitute.For<IUserRepository>();
-    private readonly Services.Storage.S3Service _sut;
+    private readonly ContentStorageService _sut;
     private readonly Guid _userId = Guid.NewGuid();
 
     public GetStorageBreakdownTests()
@@ -36,12 +37,12 @@ public class GetStorageBreakdownTests
         _unitOfWork.StreamingRepresentations.Returns(_representations);
         _unitOfWork.Users.Returns(_users);
 
-        _sut = new Services.Storage.S3Service(
+        _sut = new ContentStorageService(
             Substitute.For<IAmazonS3>(),
             Substitute.For<IAmazonS3>(),
             _unitOfWork,
             Substitute.For<IOptions<S3Config>>(),
-            Substitute.For<ILogger<Services.Storage.S3Service>>(),
+            Substitute.For<ILogger<ContentStorageService>>(),
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
             new AuditContext(),

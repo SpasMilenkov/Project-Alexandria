@@ -63,15 +63,15 @@ const handleCheck = async (event: ExtendableMessageEvent) => {
 };
 
 const handleFetchAndCache = async (event: ExtendableMessageEvent) => {
-  const { presignedUrl, timestamp } = event.data;
+  const { imageUrl, timestamp } = event.data;
   try {
     const cache = await caches.open(CACHE_NAME);
     const keys = await cache.keys();
     await Promise.all(keys.map((k) => cache.delete(k)));
 
-    const response = await fetch(presignedUrl);
+    const response = await fetch(imageUrl);
     if (!response.ok) {
-      throw new Error(`S3 fetch failed: ${response.status}`);
+      throw new Error(`Background image fetch failed: ${response.status}`);
     }
 
     await cache.put(buildCacheKey(timestamp), response.clone());

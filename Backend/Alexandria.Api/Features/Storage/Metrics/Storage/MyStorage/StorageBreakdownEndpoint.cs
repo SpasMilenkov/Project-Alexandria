@@ -10,7 +10,8 @@ sealed class StorageBreakdownRequest
     public bool Summary { get; set; }
 }
 
-sealed class StorageBreakdownEndpoint(IStorageService storageService) : Endpoint<StorageBreakdownRequest, StorageBreakdown>
+sealed class StorageBreakdownEndpoint(IContentStorageService storageService)
+    : Endpoint<StorageBreakdownRequest, StorageBreakdown>
 {
     public override void Configure()
     {

@@ -12,7 +12,8 @@ sealed class BulkDownloadRequest
     public required string Token { get; set; }
 }
 
-sealed class BulkDownloadEndpoint(IStorageService storageService, IMemoryCache cache) : Endpoint<BulkDownloadRequest>
+sealed class BulkDownloadEndpoint(IContentStorageService storageService, IMemoryCache cache)
+    : Endpoint<BulkDownloadRequest>
 {
     public override void Configure()
     {

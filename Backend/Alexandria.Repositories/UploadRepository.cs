@@ -41,6 +41,18 @@ public class UploadRepository(AlexandriaDbContext context) : IUploadRepository
             .ToListAsync(ct);
     }
 
+    public async Task<List<Upload>> GetByTempKeysAsync(IEnumerable<string> tempKeys, CancellationToken ct = default)
+    {
+        var keyList = tempKeys.ToList();
+
+        if (keyList.Count == 0)
+            return [];
+
+        return await _uploads
+            .Where(u => u.DeletedAt == null && keyList.Contains(u.TempObjectKey))
+            .ToListAsync(ct);
+    }
+
     public async Task<Upload> AddAsync(Upload entity, CancellationToken ct = default)
     {
         // Set audit fields

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 
 namespace Alexandria.Services.Storage.Cleanup;
 
-public class OrphanedCleanupWorker(
+public partial class OrphanedCleanupWorker(
     IServiceProvider serviceProvider,
     IAmazonS3 s3,
     IOptions<S3Config> config,
@@ -45,7 +45,7 @@ public class OrphanedCleanupWorker(
         logger.LogInformation("OrphanedCleanupWorker stopped");
     }
 
-    private async Task CleanupOrphanedContentAsync(CancellationToken ct)
+    internal async Task CleanupOrphanedContentAsync(CancellationToken ct)
     {
         using var scope = serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -53,19 +53,17 @@ public class OrphanedCleanupWorker(
         var cutoffTime = DateTime.UtcNow - _orphanedRetention;
         var now = DateTime.UtcNow;
 
-        logger.LogInformation(
-            "Scanning for orphaned content objects (orphaned before {CutoffTime})",
-            cutoffTime);
+        LogScanningForOrphanedContentObjectsOrphanedBeforeCutoffTime(cutoffTime);
 
 
         var markedCount = await unitOfWork.ContentObjects.MarkOrphaned(now, ct);
         if (markedCount > 0)
-            logger.LogInformation("Marked {Count} ContentObjects as orphaned", markedCount);
+            LogMarkedCountContentObjectsAsOrphaned(markedCount);
 
         var clearedCount = await unitOfWork.ContentObjects.ClearOrphaned(now, ct);
 
         if (clearedCount > 0)
-            logger.LogInformation("Cleared orphan status from {Count} ContentObjects", clearedCount);
+            LogClearedOrphanStatusFromCountContentObjects(clearedCount);
 
         // Find orphaned ContentObjects ready for deletion
         var orphanedObjects = await unitOfWork.ContentObjects
@@ -84,11 +82,10 @@ public class OrphanedCleanupWorker(
             return;
         }
 
-        logger.LogInformation(
-            "Found {Count} orphaned content objects to clean up",
-            contentObjects.Count());
+        LogFoundCountOrphanedContentObjectsToCleanUp(contentObjects.Count());
 
         var deletedCount = 0;
+        var skippedCount = 0;
         var failedCount = 0;
 
         foreach (var contentObject in contentObjects)
@@ -98,8 +95,10 @@ public class OrphanedCleanupWorker(
 
             try
             {
-                await DeleteOrphanedContentObjectAsync(contentObject, unitOfWork, ct);
-                deletedCount++;
+                if (await DeleteOrphanedContentObjectAsync(contentObject, unitOfWork, ct))
+                    deletedCount++;
+                else
+                    skippedCount++;
             }
             catch (Exception ex)
             {
@@ -110,11 +109,13 @@ public class OrphanedCleanupWorker(
                     contentObject.Id,
                     Convert.ToHexStringLower(contentObject.Hash));
 
-                // Track deletion attempts
+                // Track deletion attempts. SaveChanges is used directly: this
+                // scope runs without an explicit transaction, where CommitAsync
+                // would be a no-op and the counter would never persist.
                 contentObject.PromotionAttempts++; // Reuse this field for deletion attempts
                 contentObject.LastPromotionAttemptAt = DateTime.UtcNow;
                 unitOfWork.ContentObjects.Update(contentObject);
-                await unitOfWork.CommitAsync(ct);
+                await unitOfWork.SaveChangesAsync(ct);
 
                 // Alert if too many failures
                 if (contentObject.PromotionAttempts >= MaxDeletionAttempts)
@@ -126,9 +127,7 @@ public class OrphanedCleanupWorker(
             }
         }
 
-        logger.LogInformation(
-            "Orphaned cleanup completed: {DeletedCount} deleted, {FailedCount} failed",
-            deletedCount, failedCount);
+        LogOrphanedCleanupCompleted(deletedCount, skippedCount, failedCount);
 
         if (failedCount > 5)
         {
@@ -136,7 +135,7 @@ public class OrphanedCleanupWorker(
         }
     }
 
-    private async Task DeleteOrphanedContentObjectAsync(
+    internal async Task<bool> DeleteOrphanedContentObjectAsync(
         ContentObject contentObject,
         IUnitOfWork unitOfWork,
         CancellationToken ct)
@@ -144,39 +143,42 @@ public class OrphanedCleanupWorker(
         var hash = Convert.ToHexStringLower(contentObject.Hash);
         var s3Key = $"content/{hash}";
 
-        logger.LogInformation(
-            "Deleting orphaned ContentObject {Id} from S3: {Key}",
-            contentObject.Id, s3Key);
+        // Atomic claim: hard-deletes the row only if it is still orphaned,
+        // past retention, and referenced by no live version. A concurrent
+        // revive either commits first (the claim sees the new version and
+        // skips) or commits after (its version insert fails loudly on the
+        // missing row instead of silently losing bytes).
+        var claimed = await unitOfWork.ContentObjects.TryClaimOrphanedDeleteAsync(
+            contentObject.Id, DateTime.UtcNow - _orphanedRetention, ct);
+
+        if (!claimed)
+        {
+            LogOrphanedDeleteSkipped(contentObject.Id);
+            return false;
+        }
+
+        LogDeletingOrphanedContentObjectIdFromS3Key(contentObject.Id, s3Key);
 
         try
         {
-            // Delete from S3
             await s3.DeleteObjectAsync(
                 config.Value.UploadBucket,
                 s3Key,
                 ct);
 
-            logger.LogInformation(
-                "Successfully deleted S3 object: {Key}",
-                s3Key);
+            LogSuccessfullyDeletedS3ObjectKey(s3Key);
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             logger.LogWarning(ex,
                 "S3 object not found (already deleted?): {Key}",
                 s3Key);
-            // Continue with database deletion
         }
 
-        // Hard delete from database
-        await unitOfWork.ContentObjects.DeleteAsync(contentObject.Id, ct);
-        await unitOfWork.CommitAsync(ct);
-
-        logger.LogInformation(
-            "Deleted orphaned ContentObject {Id} (hash: {Hash}, orphaned since: {OrphanedAt})",
-            contentObject.Id,
-            hash,
+        LogDeletedOrphanedContentObjectIdHashHashOrphanedSinceOrphanedAt(contentObject.Id, hash,
             contentObject.OrphanedAt);
+
+        return true;
     }
 
     private Task AlertOrphanedDeletionFailureAsync(Guid contentObjectId, int attempts)
@@ -198,4 +200,34 @@ public class OrphanedCleanupWorker(
 
         return Task.CompletedTask;
     }
+
+    [LoggerMessage(LogLevel.Information, "Marked {Count} ContentObjects as orphaned")]
+    partial void LogMarkedCountContentObjectsAsOrphaned(int count);
+
+    [LoggerMessage(LogLevel.Information, "Cleared orphan status from {Count} ContentObjects")]
+    partial void LogClearedOrphanStatusFromCountContentObjects(int count);
+
+    [LoggerMessage(LogLevel.Information, "Scanning for orphaned content objects (orphaned before {CutoffTime})")]
+    partial void LogScanningForOrphanedContentObjectsOrphanedBeforeCutoffTime(DateTime cutoffTime);
+
+    [LoggerMessage(LogLevel.Information,
+        "Deleted orphaned ContentObject {Id} (hash: {Hash}, orphaned since: {OrphanedAt})")]
+    partial void LogDeletedOrphanedContentObjectIdHashHashOrphanedSinceOrphanedAt(Guid id, string hash,
+        DateTime? orphanedAt);
+
+    [LoggerMessage(LogLevel.Information, "Successfully deleted S3 object: {Key}")]
+    partial void LogSuccessfullyDeletedS3ObjectKey(string key);
+
+    [LoggerMessage(LogLevel.Information, "Deleting orphaned ContentObject {Id} from S3: {Key}")]
+    partial void LogDeletingOrphanedContentObjectIdFromS3Key(Guid id, string key);
+
+    [LoggerMessage(LogLevel.Information,
+        "Orphaned cleanup completed: {DeletedCount} deleted, {SkippedCount} skipped, {FailedCount} failed")]
+    partial void LogOrphanedCleanupCompleted(int deletedCount, int skippedCount, int failedCount);
+
+    [LoggerMessage(LogLevel.Debug, "Orphaned delete skipped, row revived or re-referenced: {ContentObjectId}")]
+    partial void LogOrphanedDeleteSkipped(Guid contentObjectId);
+
+    [LoggerMessage(LogLevel.Information, "Found {Count} orphaned content objects to clean up")]
+    partial void LogFoundCountOrphanedContentObjectsToCleanUp(int count);
 }

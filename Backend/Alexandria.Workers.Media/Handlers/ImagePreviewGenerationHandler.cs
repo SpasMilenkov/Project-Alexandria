@@ -7,7 +7,8 @@ namespace Alexandria.Workers.Media.Handlers;
 
 public class ImagePreviewGenerationHandler(
     ILogger<ImagePreviewGenerationHandler> logger,
-    IStorageService storage,
+    IContentStorageService storage,
+    IPreviewArtifactService artifacts,
     IImagePreviewService imagePreviewService,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
@@ -57,7 +58,7 @@ public class ImagePreviewGenerationHandler(
 
         try
         {
-            await storage.UploadPreview(
+            await artifacts.UploadPreview(
                 $"previews/{fileHash}",
                 mimetype,
                 previewStream,
@@ -67,7 +68,7 @@ public class ImagePreviewGenerationHandler(
                 kind: PreviewKind.Preview,
                 ct: ct);
 
-            await storage.UploadPreview(
+            await artifacts.UploadPreview(
                 $"thumbnails/{fileHash}",
                 mimetype,
                 thumbnailStream,

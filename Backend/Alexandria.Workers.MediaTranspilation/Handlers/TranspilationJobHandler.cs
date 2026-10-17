@@ -12,7 +12,7 @@ namespace Alexandria.Workers.MediaTranspilation.Handlers;
 public partial class TranspilationJobHandler(
     ITranspilationJobService jobService,
     IStreamingRepresentationService representationService,
-    IStorageService storage,
+    IContentStorageService storage,
     IVideoTranspilationService videoTranspilation,
     IAudioTranspilationService audioTranspilation,
     IUnitOfWork unitOfWork,

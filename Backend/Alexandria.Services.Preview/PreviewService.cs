@@ -10,7 +10,8 @@ using Microsoft.Extensions.Caching.Memory;
 namespace Alexandria.Services.Preview;
 
 public class PreviewService(
-    IStorageService storageService,
+    IContentStorageService storageService,
+    IPreviewArtifactService previewArtifacts,
     IPublisherService publisherService,
     IUnitOfWork unitOfWork,
     ITextPreviewService textPreviewService,
@@ -126,7 +127,7 @@ public class PreviewService(
         if (!await unitOfWork.FileVersions.IsPromotedAsync(versionId, ct))
             return new PreviewResultDto(null, null);
 
-        var cachedUrl = await storageService.GetCachedPreview(versionId, PreviewKind.Preview, ct);
+        var cachedUrl = await previewArtifacts.GetCachedPreview(versionId, PreviewKind.Preview, ct);
         if (cachedUrl is not null)
         {
             ClearJob(versionId);
@@ -168,11 +169,12 @@ public class PreviewService(
             }
 
             case FileCategory.Text:
-                var fileStream = await storageService.DownloadFile(versionId, fileData.OwnerId, ct);
+            {
+                await using var fileStream = await storageService.DownloadFile(versionId, fileData.OwnerId, ct);
                 var (data, _) =
                     await textPreviewService.GenerateTextPreviewAsync(fileStream, fileData.Name, 524288, ct);
                 return new PreviewResultDto(null, data);
-
+            }
             case FileCategory.Audio:
             case FileCategory.Video:
                 if (TryStartJob(versionId))
@@ -196,7 +198,7 @@ public class PreviewService(
         if (await unitOfWork.FileVersions.IsEncryptedAsync(versionId, ct))
             return;
 
-        var cachedUrl = await storageService.GetCachedPreview(versionId, kind, ct);
+        var cachedUrl = await previewArtifacts.GetCachedPreview(versionId, kind, ct);
         if (cachedUrl is not null)
         {
             ClearJob(versionId);
@@ -266,7 +268,7 @@ public class PreviewService(
             || !await unitOfWork.FileVersions.IsPromotedAsync(versionId, ct))
             return null;
 
-        var cachedThumbnail = await storageService.GetCachedPreview(versionId, PreviewKind.Thumbnail, ct);
+        var cachedThumbnail = await previewArtifacts.GetCachedPreview(versionId, PreviewKind.Thumbnail, ct);
         if (cachedThumbnail is not null)
         {
             ClearJob(versionId);

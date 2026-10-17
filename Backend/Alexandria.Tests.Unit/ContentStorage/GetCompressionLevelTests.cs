@@ -1,7 +1,8 @@
 using System.IO.Compression;
+using Alexandria.Services.Storage.Content;
 using AwesomeAssertions;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.ContentStorage;
 
 public class GetCompressionLevelTests
 {
@@ -25,7 +26,7 @@ public class GetCompressionLevelTests
     [InlineData("archive.rar")]
     public void GetCompressionLevel_compressedFormats(string fileName)
     {
-        Services.Storage.S3Service.GetCompressionLevel(fileName)
+        ContentStorageService.GetCompressionLevel(fileName)
             .Should().Be(CompressionLevel.NoCompression);
     }
 
@@ -38,7 +39,7 @@ public class GetCompressionLevelTests
     [InlineData("noextension")]
     public void GetCompressionLevel_uncompressedFormats(string fileName)
     {
-        Services.Storage.S3Service.GetCompressionLevel(fileName)
+        ContentStorageService.GetCompressionLevel(fileName)
             .Should().Be(CompressionLevel.Fastest);
     }
 
@@ -48,7 +49,7 @@ public class GetCompressionLevelTests
     [InlineData("Archive.ZIP")]
     public void GetCompressionLevel_caseInsensitivity(string fileName)
     {
-        Services.Storage.S3Service.GetCompressionLevel(fileName)
+        ContentStorageService.GetCompressionLevel(fileName)
             .Should().Be(CompressionLevel.NoCompression);
     }
 }

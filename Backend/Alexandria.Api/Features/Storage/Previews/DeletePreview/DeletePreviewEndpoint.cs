@@ -9,7 +9,7 @@ public sealed class DeletePreviewResponse
     public long FreedBytes { get; set; }
 }
 
-public class DeletePreviewEndpoint(IStorageService storageService)
+public class DeletePreviewEndpoint(IPreviewArtifactService previewArtifacts)
     : Endpoint<DeletePreviewRequest, DeletePreviewResponse>
 {
     public override void Configure()
@@ -34,7 +34,7 @@ public class DeletePreviewEndpoint(IStorageService storageService)
 
         try
         {
-            var freedBytes = await storageService.DeletePreviewAsync(req.PreviewId, userId, isAdmin, ct);
+            var freedBytes = await previewArtifacts.DeletePreviewAsync(req.PreviewId, userId, isAdmin, ct);
             await Send.OkAsync(new DeletePreviewResponse { FreedBytes = freedBytes }, ct);
         }
         catch (KeyNotFoundException)

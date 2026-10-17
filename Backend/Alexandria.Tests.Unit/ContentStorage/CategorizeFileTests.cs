@@ -4,24 +4,25 @@ using Alexandria.Common.Config;
 using Alexandria.Common.Queues;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Services.Storage.Content;
 using Amazon.S3;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.ContentStorage;
 
 public class CategorizeFileTests
 {
-    private static Services.Storage.S3Service CreateSut()
+    private static ContentStorageService CreateSut()
     {
-        return new Services.Storage.S3Service(
+        return new ContentStorageService(
             Substitute.For<IAmazonS3>(),
             Substitute.For<IAmazonS3>(),
             Substitute.For<IUnitOfWork>(),
             Substitute.For<IOptions<S3Config>>(),
-            Substitute.For<ILogger<Services.Storage.S3Service>>(),
+            Substitute.For<ILogger<ContentStorageService>>(),
             Substitute.For<IPromotionQueue>(),
             Substitute.For<IFileService>(),
             new AuditContext(),

@@ -224,7 +224,7 @@ const DEFAULT_UI_STATE = {
   isMediaSectionOpen: false,
 };
 
-export const MAX_BACKGROUND_IMAGE_BYTES = 2 * 1024 * 1024;
+export const MAX_BACKGROUND_IMAGE_BYTES = 4 * 1024 * 1024;
 
 export const useSettingsStore = defineStore(
   "settings",

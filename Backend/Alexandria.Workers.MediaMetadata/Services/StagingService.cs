@@ -7,7 +7,7 @@ namespace Alexandria.Workers.MediaMetadata.Services;
 
 public partial class StagingService(
     IUnitOfWork unitOfWork,
-    IStorageService storage,
+    IContentStorageService storage,
     IOptions<EssentiaConfig> options,
     ILogger<StagingService> logger) : IStagingService
 {

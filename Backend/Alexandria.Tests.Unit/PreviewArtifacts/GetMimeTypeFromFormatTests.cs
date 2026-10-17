@@ -1,6 +1,7 @@
+using Alexandria.Services.Storage.Previews;
 using AwesomeAssertions;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.PreviewArtifacts;
 
 public class GetMimeTypeFromFormatTests
 {
@@ -20,7 +21,7 @@ public class GetMimeTypeFromFormatTests
     [InlineData("ogg", "audio/ogg")]
     public void GetMimeTypeFromFormat_knownFormat(string format, string expected)
     {
-        Services.Storage.S3Service.GetMimeTypeFromFormat(format).Should().Be(expected);
+        PreviewArtifactService.GetMimeTypeFromFormat(format).Should().Be(expected);
     }
 
     [Theory]
@@ -30,7 +31,7 @@ public class GetMimeTypeFromFormatTests
     [InlineData("unknown_format")]
     public void GetMimeTypeFromFormat_fallback(string? format)
     {
-        Services.Storage.S3Service.GetMimeTypeFromFormat(format)
+        PreviewArtifactService.GetMimeTypeFromFormat(format)
             .Should().Be("application/octet-stream");
     }
 
@@ -40,6 +41,6 @@ public class GetMimeTypeFromFormatTests
     [InlineData("MP3", "audio/mpeg")]
     public void GetMimeTypeFromFormat_caseInsensitivity(string format, string expected)
     {
-        Services.Storage.S3Service.GetMimeTypeFromFormat(format).Should().Be(expected);
+        PreviewArtifactService.GetMimeTypeFromFormat(format).Should().Be(expected);
     }
 }

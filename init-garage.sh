@@ -10,21 +10,13 @@ MASTER_KEY_NAME="alexandria-master-key"
 PREVIEW_KEY_NAME="alexandria-preview-key"
 STREAMING_KEY_NAME="alexandria-streaming-key"
 BUCKETS=("alexandria-files" "alexandria-previews" "alexandria-temp" "alexandria-images" "alexandria-streaming")
-CORS_BUCKETS=("alexandria-images")      # Buckets that need browser CORS access
 ZONE="dc1"
 CAPACITY="10G"
-
-# CORS allowed origins — add your production domain here when deploying
-CORS_ORIGINS=("http://localhost:5173")
-
-# mc alias — must match what you configured with: mc alias set <name> http://localhost:9000 ...
-MC_ALIAS="garage"
 
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Check if container is running
@@ -34,101 +26,12 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     exit 1
 fi
 
-# Detect available CORS tools — mc preferred, AWS CLI as fallback
-HAS_MC=false
-HAS_AWS=false
-command -v mc  &> /dev/null && HAS_MC=true
-command -v aws &> /dev/null && HAS_AWS=true
-
-if [ "${HAS_MC}" = true ]; then
-    echo -e "${GREEN}CORS tool: mc (MinIO client)${NC}"
-    SKIP_CORS=false
-elif [ "${HAS_AWS}" = true ]; then
-    echo -e "${YELLOW}CORS tool: AWS CLI (mc not found, falling back)${NC}"
-    SKIP_CORS=false
-else
-    echo -e "${RED}Warning: neither mc nor AWS CLI found — CORS configuration will be skipped.${NC}"
-    echo "Install mc:      https://min.io/docs/minio/linux/reference/minio-mc.html"
-    echo "Install AWS CLI: pip install awscli"
-    SKIP_CORS=true
-fi
-
 echo "Waiting for Garage to be ready..."
 sleep 5
 
 # Function to execute garage commands
 garage_exec() {
     docker exec "${CONTAINER_NAME}" /garage "$@"
-}
-
-# Apply CORS via mc — preferred, uses XML format matching the S3 spec exactly
-apply_cors_mc() {
-    local bucket=$1
-
-    # Build one <AllowedOrigin> element per entry in CORS_ORIGINS
-    local origin_elements=""
-    for origin in "${CORS_ORIGINS[@]}"; do
-        origin_elements+="  <AllowedOrigin>${origin}</AllowedOrigin>"$'\n'
-    done
-
-    mc cors set "${MC_ALIAS}/${bucket}" - <<EOF
-<CORSConfiguration>
-  <CORSRule>
-${origin_elements}    <AllowedMethod>GET</AllowedMethod>
-    <AllowedMethod>PUT</AllowedMethod>
-    <AllowedMethod>POST</AllowedMethod>
-    <AllowedMethod>HEAD</AllowedMethod>
-    <AllowedHeader>*</AllowedHeader>
-    <ExposeHeader>ETag</ExposeHeader>
-    <MaxAgeSeconds>3600</MaxAgeSeconds>
-  </CORSRule>
-</CORSConfiguration>
-EOF
-}
-
-# Apply CORS via AWS CLI — fallback, uses JSON format
-apply_cors_aws() {
-    local bucket=$1
-
-    local origins_json
-    origins_json=$(printf '"%s",' "${CORS_ORIGINS[@]}")
-    origins_json="[${origins_json%,}]"
-
-    local cors_config
-    cors_config=$(cat <<EOF
-{
-  "CORSRules": [{
-    "AllowedOrigins": ${origins_json},
-    "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
-    "AllowedHeaders": ["*"],
-    "ExposeHeaders": ["ETag"],
-    "MaxAgeSeconds": 3600
-  }]
-}
-EOF
-)
-
-    aws s3api put-bucket-cors \
-        --endpoint-url http://localhost:9000 \
-        --region garage \
-        --bucket "${bucket}" \
-        --cors-configuration "${cors_config}"
-}
-
-# Dispatcher — tries mc first, falls back to AWS CLI
-apply_cors() {
-    local bucket=$1
-    echo "Applying CORS policy to '${bucket}'..."
-
-    if [ "${HAS_MC}" = true ]; then
-        apply_cors_mc "${bucket}"
-    else
-        apply_cors_aws "${bucket}"
-    fi
-
-    echo -e "${GREEN}✓ CORS configured for: ${bucket}${NC}"
-    echo "  Allowed origins: ${CORS_ORIGINS[*]}"
-    echo "  Allowed methods: GET, PUT, POST, HEAD"
 }
 
 echo ""
@@ -239,7 +142,7 @@ done
 echo ""
 echo "Step 7: Granting PREVIEW key permissions..."
 # Preview key still needs read/write via the authenticated S3 API — website
-# mode (step 10 below) only changes how *unauthenticated* nginx-proxied reads
+# mode (step 9 below) only changes how *unauthenticated* nginx-proxied reads
 # behave. The worker's own upload path is untouched by that change.
 garage_exec bucket allow --read --write "alexandria-previews" --key "${PREVIEW_KEY_NAME}"
 garage_exec bucket allow --read "alexandria-files" --key "${PREVIEW_KEY_NAME}"
@@ -252,62 +155,18 @@ garage_exec bucket allow --read "alexandria-files" --key "${STREAMING_KEY_NAME}"
 echo -e "${BLUE}✓ Streaming key: read/write access to alexandria-streaming${NC}"
 
 echo ""
-echo "Step 9: Applying CORS policies..."
-if [ "${SKIP_CORS}" = true ]; then
-    echo -e "${YELLOW}Skipping CORS (neither mc nor AWS CLI found)${NC}"
-    echo ""
-    echo "Run manually using mc (preferred):"
-    for bucket in "${CORS_BUCKETS[@]}"; do
-        echo ""
-        echo "  mc cors set ${MC_ALIAS}/${bucket} <<'EOF'"
-        echo "  <CORSConfiguration>"
-        echo "    <CORSRule>"
-        echo "      <AllowedOrigin>http://localhost:5173</AllowedOrigin>"
-        echo "      <AllowedMethod>GET</AllowedMethod>"
-        echo "      <AllowedMethod>PUT</AllowedMethod>"
-        echo "      <AllowedMethod>POST</AllowedMethod>"
-        echo "      <AllowedMethod>HEAD</AllowedMethod>"
-        echo "      <AllowedHeader>*</AllowedHeader>"
-        echo "      <ExposeHeader>ETag</ExposeHeader>"
-        echo "      <MaxAgeSeconds>3600</MaxAgeSeconds>"
-        echo "    </CORSRule>"
-        echo "  </CORSConfiguration>"
-        echo "  EOF"
-    done
-    echo ""
-    echo "Or using AWS CLI (fallback):"
-    for bucket in "${CORS_BUCKETS[@]}"; do
-        echo ""
-        echo "  aws s3api put-bucket-cors \\"
-        echo "    --endpoint-url http://localhost:9000 \\"
-        echo "    --region garage \\"
-        echo "    --bucket ${bucket} \\"
-        echo "    --cors-configuration '{"
-        echo "      \"CORSRules\": [{"
-        echo "        \"AllowedOrigins\": [\"http://localhost:5173\"],"
-        echo "        \"AllowedMethods\": [\"GET\", \"PUT\", \"POST\", \"HEAD\"],"
-        echo "        \"AllowedHeaders\": [\"*\"],"
-        echo "        \"ExposeHeaders\": [\"ETag\"],"
-        echo "        \"MaxAgeSeconds\": 3600"
-        echo "      }]"
-        echo "    }'"
-    done
-else
-    for bucket in "${CORS_BUCKETS[@]}"; do
-        apply_cors "${bucket}"
-    done
-fi
-
-echo ""
-echo "Step 10: Setting up website-mode buckets..."
-# Neither bucket is externally reachable — nginx enforces auth_request
-# (stream-check / preview-check) before any request reaches Garage. Write
-# access is untouched: uploads still require the preview/streaming key via
-# the authenticated S3 API (steps 7-8 above).
+echo "Step 9: Setting up website-mode buckets..."
+# None of these buckets is externally reachable — nginx enforces auth_request
+# (stream-check / preview-check / image-check) before any request reaches
+# Garage. Write access is untouched: uploads still require the preview/streaming
+# key via the authenticated S3 API, and background images are written by the
+# API's proxied upload path, never by the browser.
 garage_exec bucket website --allow "alexandria-streaming"
 echo -e "${GREEN}✓ Web endpoint enabled: alexandria-streaming${NC}"
 garage_exec bucket website --allow "alexandria-previews"
 echo -e "${GREEN}✓ Web endpoint enabled: alexandria-previews${NC}"
+garage_exec bucket website --allow "alexandria-images"
+echo -e "${GREEN}✓ Web endpoint enabled: alexandria-images${NC}"
 
 echo ""
 echo "=== Garage Initialization Complete! ==="
@@ -321,28 +180,17 @@ echo "Buckets:"
 echo "  • alexandria-files     (private — server only, presigned download)"
 echo "  • alexandria-previews  (website mode — read gated by nginx auth_request /preview/, write via preview key only)"
 echo "  • alexandria-temp      (private — presigned browser uploads)"
-echo "  • alexandria-images    (private — CORS enabled for presigned browser uploads)"
+echo "  • alexandria-images    (website mode — read gated by nginx auth_request /images/, write via API upload path only)"
 echo "  • alexandria-streaming (website mode — read gated by nginx auth_request /stream/, write via streaming key only)"
 echo ""
 echo "Keys:"
 echo "  • ${MASTER_KEY_NAME}   → Full access to all buckets"
 echo "  • ${PREVIEW_KEY_NAME}  → Read/write on previews, read on files"
 echo "  • ${STREAMING_KEY_NAME} → Read on files, read/write on streaming"
-echo "CORS:"
-if [ "${SKIP_CORS}" = true ]; then
-    echo -e "  ${RED}• CORS was NOT applied — see manual commands above${NC}"
-elif [ "${HAS_MC}" = true ]; then
-    echo "  • Applied via mc (XML format)"
-else
-    echo "  • Applied via AWS CLI (JSON format)"
-fi
-echo "  • alexandria-images allows GET, PUT, POST, HEAD from: ${CORS_ORIGINS[*]}"
-echo "  • All other buckets have no CORS policy (browser cannot access directly)"
 echo ""
 echo "Next steps:"
 echo "  1. Save the credentials shown above to your .env file"
 echo "  2. Add 'ImagesBucket=alexandria-images' to your storage config"
-echo "  3. For production: add your domain to CORS_ORIGINS at the top of this script"
 echo ""
 echo "To view credentials later:"
 echo "  docker exec ${CONTAINER_NAME} /garage key info ${MASTER_KEY_NAME}"

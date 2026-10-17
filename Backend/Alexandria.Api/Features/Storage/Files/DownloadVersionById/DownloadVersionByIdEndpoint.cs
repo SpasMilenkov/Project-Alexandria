@@ -10,7 +10,7 @@ sealed class DownloadVersionByIdRequest
     public Guid Id { get; set; }
 }
 
-sealed class DownloadVersionByIdEndpoint(IStorageService storageService)
+sealed class DownloadVersionByIdEndpoint(IContentStorageService storageService)
     : Endpoint<DownloadVersionByIdRequest, DownloadInfo>
 {
     public override void Configure()

@@ -2,11 +2,11 @@ using System.Linq.Expressions;
 using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
-using Alexandria.Common.Queues;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Common.Settings.Values;
 using Alexandria.Dto.Files;
+using Alexandria.Services.Storage.Previews;
 using Alexandria.Tests.Common.Builders;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -16,7 +16,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using MediaMetadataEntity = Alexandria.Data.Models.MediaMetadata;
 
-namespace Alexandria.Tests.Unit.S3Service;
+namespace Alexandria.Tests.Unit.PreviewArtifacts;
 
 public class UploadMediaDataMetadataGuardTests
 {
@@ -26,7 +26,7 @@ public class UploadMediaDataMetadataGuardTests
     private readonly IPreviewRepository _previews = Substitute.For<IPreviewRepository>();
     private readonly IAmazonS3 _s3 = Substitute.For<IAmazonS3>();
     private readonly IUserSettingsService _settings = Substitute.For<IUserSettingsService>();
-    private readonly Services.Storage.S3Service _sut;
+    private readonly PreviewArtifactService _sut;
     private readonly Guid _ownerId = Guid.NewGuid();
     private readonly Guid _versionId = Guid.NewGuid();
     private readonly Guid _fileId = Guid.NewGuid();
@@ -45,14 +45,11 @@ public class UploadMediaDataMetadataGuardTests
                 Arg.Any<CancellationToken>())
             .Returns(new PutObjectResponse());
 
-        _sut = new Services.Storage.S3Service(
+        _sut = new PreviewArtifactService(
             _s3,
-            Substitute.For<IAmazonS3>(),
             _unitOfWork,
             config,
-            Substitute.For<ILogger<Services.Storage.S3Service>>(),
-            Substitute.For<IPromotionQueue>(),
-            Substitute.For<IFileService>(),
+            Substitute.For<ILogger<PreviewArtifactService>>(),
             new AuditContext(),
             _settings,
             Substitute.For<IPublisherService>());

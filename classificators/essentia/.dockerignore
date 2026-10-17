@@ -1,0 +1,9 @@
+**
+!Dockerfile
+!essentia_core.py
+!classify.py
+!worker.py
+!entrypoint.sh
+!download-models.sh
+!models/
+!models/models.sha256

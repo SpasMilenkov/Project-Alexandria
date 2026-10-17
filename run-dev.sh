@@ -18,11 +18,25 @@ COMPOSE_FILE="docker-compose.dev.yml"
 COMPOSE_PROJECT="alexandria-dev"
 COMPOSE=(docker compose -f "$COMPOSE_FILE" -p "$COMPOSE_PROJECT")
 
-# Services that get their own log tile in the "Docker" window.
-# rabbitmq-config is a one-shot init container; remove it from the list if
-# you don't want a (static) tile for it.
+# Compose services that shouldn't get their own log tile in the "Docker"
+# window -- typically one-shot init containers that exit right after
+# startup and would otherwise just sit there as a permanently blank tile.
+EXCLUDE_LOG_SERVICES=(rabbitmq-config)
+
+is_excluded() {
+  local svc="$1"
+  (( ${#EXCLUDE_LOG_SERVICES[@]} == 0 )) && return 1
+  local ex
+  for ex in "${EXCLUDE_LOG_SERVICES[@]}"; do
+    [[ "$svc" == "$ex" ]] && return 0
+  done
+  return 1
+}
+
 COMPOSE_LOG_SERVICES=()
-while IFS= read -r s; do COMPOSE_LOG_SERVICES+=("$s"); done < <("${COMPOSE[@]}" config --services)
+while IFS= read -r s; do
+  is_excluded "$s" || COMPOSE_LOG_SERVICES+=("$s")
+done < <("${COMPOSE[@]}" config --services)
 SCRIPT_START=$SECONDS
 
 # Output helpers (honors NO_COLOR)
@@ -80,6 +94,7 @@ banner
 section "Building backend ${DIM}(S3 provider:${RESET} ${BOLD}${CYAN}$S3_PROVIDER${RESET}${DIM})${RESET}"
 
 BUILD_ARGS=(-m:2 -v quiet --nologo)
+
 if [[ "$NO_ANALYZERS" == true ]]; then
   warn "Skipping analyzers during build"
   BUILD_ARGS+=(-p:RunAnalyzersDuringBuild=false)
@@ -176,7 +191,15 @@ log_cmd() {
 DOCKER_PANE=$(tmux new-window -d -P -F '#{pane_id}' -t "$SESSION_NAME" -n "Docker" -c "$PWD" \
   "$(log_cmd "${COMPOSE_LOG_SERVICES[0]}")")
 DOCKER_WINDOW=$(tmux display -p -t "$DOCKER_PANE" '#{window_id}')
-tmux resize-window -t "$DOCKER_WINDOW" -x 200 -y 48
+
+# Show each tile's service name in a border above it, and highlight whichever
+# tile currently has focus so it's easy to tell them apart at a glance.
+tmux set-window-option -t "$DOCKER_WINDOW" pane-border-status top
+tmux set-window-option -t "$DOCKER_WINDOW" pane-border-format '#[align=centre,bold] #{pane_title} '
+tmux set-window-option -t "$DOCKER_WINDOW" pane-border-style 'fg=colour238'
+tmux set-window-option -t "$DOCKER_WINDOW" pane-active-border-style 'fg=colour39,bold'
+
+tmux resize-window -t "$DOCKER_WINDOW" -x 200 -y 50
 
 LOG_PANES=("$DOCKER_PANE")
 for service in "${COMPOSE_LOG_SERVICES[@]:1}"; do

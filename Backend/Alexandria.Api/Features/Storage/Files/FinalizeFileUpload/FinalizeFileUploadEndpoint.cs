@@ -17,7 +17,7 @@ internal sealed class FinalizeFileUploadRequest
     public int? IterationCount { get; set; }
 }
 
-sealed class FinalizeFileUploadEndpoint(IStorageService s3Storage, IPolicyDispatcher policyDispatcher)
+sealed class FinalizeFileUploadEndpoint(IContentStorageService s3Storage, IPolicyDispatcher policyDispatcher)
     : Endpoint<FinalizeFileUploadRequest>
 {
     public override void Configure()

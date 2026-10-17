@@ -31,11 +31,6 @@ export interface BehaviorSettings {
   autoPlaylistMinTracks: number;
 }
 
-export interface RequestUploadResponse {
-  uploadUrl: string;
-  objectKey: string;
-}
-
 // Backend `ToastLevel` is a numeric enum (All=0, ErrorsOnly=1, Silent=2) serialized without a
 // JsonStringEnumConverter, so it travels as a number in both directions.
 const TOAST_LEVEL_TO_VALUE: Record<ToastLevel, number> = {
@@ -65,11 +60,25 @@ export const settingsApi = {
     return result.data;
   },
 
-  confirmBackgroundImageUpload: async (objectKey: string): Promise<AppearanceSettings> => {
-    const result = await apiClient.put<AppearanceSettings>(
-      "/settings/appearance/background-image/confirm",
-      { objectKey },
+  uploadBackgroundImage: async (file: File): Promise<AppearanceSettings> => {
+    const form = new FormData();
+    form.append("file", file);
+
+    // Drop the instance JSON content-type so the browser sets multipart
+    // with its own boundary; the default transform would stringify the form.
+    const result = await apiClient.post<AppearanceSettings>(
+      "/settings/appearance/background-image",
+      form,
+      {
+        transformRequest: [
+          (payload, headers) => {
+            headers?.delete("Content-Type");
+            return payload;
+          },
+        ],
+      },
     );
+
     return result.data;
   },
 
@@ -94,13 +103,6 @@ export const settingsApi = {
     return mapBehaviorFromServer(result.data);
   },
 
-  requestBackgroundImageUpload: async (): Promise<RequestUploadResponse> => {
-    const result = await apiClient.post<RequestUploadResponse>(
-      "/settings/appearance/background-image",
-    );
-    return result.data;
-  },
-
   updateAppearance: async (payload: AppearanceSettings): Promise<AppearanceSettings> => {
     const result = await apiClient.put<AppearanceSettings>("/settings/appearance", payload);
     return result.data;
@@ -112,13 +114,5 @@ export const settingsApi = {
       toastLevel: TOAST_LEVEL_TO_VALUE[payload.toastLevel],
     });
     return mapBehaviorFromServer(result.data);
-  },
-
-  uploadToS3: async (uploadUrl: string, file: File): Promise<void> => {
-    await fetch(uploadUrl, {
-      body: file,
-      headers: { "Content-Type": file.type },
-      method: "PUT",
-    });
   },
 };
