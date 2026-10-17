@@ -182,11 +182,17 @@ const props = defineProps<{
   currentVersionId: string;
   fileName: string;
   mimeType: string;
+  isEncrypted?: boolean;
 }>();
 
 // Preview query
 
-const { data: previewData, isLoading: previewLoading } = useQuery(() => getPreview(props.fileId));
+// Encrypted versions never have backend previews, so the query stays disabled
+// and no request fires even if a caller mounts the component anyway.
+const { data: previewData, isLoading: previewLoading } = useQuery(() => ({
+  ...getPreview(props.fileId),
+  enabled: !props.isEncrypted,
+}));
 
 const previewUrl = computed(() => previewData.value?.previewUrl ?? null);
 const archivePreview = computed(() => previewData.value?.archivePreview ?? null);

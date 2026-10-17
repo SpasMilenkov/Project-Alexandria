@@ -150,21 +150,51 @@
            shared modal preset with no per-modal :ui override and no glass classes.
            Reuses the same versioned thumbnail already loaded for the hero, just
            displayed larger, rather than standing up a second async fetch. -->
+      <!-- Full-size artwork overlay. Deliberate exception to the shared modalUi preset:
+                this modal sizes itself to the artwork (w-max) instead of a fixed preset width.
+                Still solid, no glass classes. -->
       <UModal
         v-model:open="isArtworkModalOpen"
         :title="displayName"
         :description="track?.artist ?? undefined"
+        :ui="{ content: 'w-max max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)]' }"
       >
-        <template #body>
-          <div class="flex items-center justify-center">
-            <img
-              v-if="track && !thumbnailErrored"
-              :src="thumbnailUrl"
-              :alt="displayName"
-              class="max-h-[70vh] w-auto rounded-lg object-contain"
-            />
-            <div v-else class="w-64 h-64 flex items-center justify-center">
-              <UIcon name="mdi:music-note" class="w-16 h-16 text-gray-400 dark:text-gray-600" />
+        <template #content="{ close }">
+          <div class="overflow-hidden rounded-lg">
+            <div class="relative">
+              <img
+                v-if="track && !thumbnailErrored"
+                :src="thumbnailUrl"
+                :alt="displayName"
+                class="block max-h-[75dvh] w-auto max-w-full"
+              />
+              <div
+                v-else
+                class="flex h-64 w-64 items-center justify-center bg-gray-100 dark:bg-white/5"
+              >
+                <UIcon name="mdi:music-note" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+              </div>
+
+              <UButton
+                icon="mdi:close"
+                color="neutral"
+                variant="solid"
+                size="sm"
+                square
+                aria-label="Close"
+                class="absolute top-3 right-3 justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                @click="close"
+              />
+            </div>
+
+            <!-- w-0 min-w-full: the caption matches the image width instead of widening the modal -->
+            <div class="w-0 min-w-full px-4 py-3">
+              <p class="m-0 truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {{ displayName }}
+              </p>
+              <p v-if="track?.artist" class="m-0 truncate text-sm text-gray-600 dark:text-gray-400">
+                {{ track.artist }}
+              </p>
             </div>
           </div>
         </template>

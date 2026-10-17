@@ -1,7 +1,7 @@
 <template>
   <div
     :draggable="true"
-    class="group flex items-center gap-3 px-4 py-3 bg-white/40 dark:bg-white/3 transition-colors select-none"
+    class="group flex items-center gap-3 px-4 py-3 bg-white/40 dark:bg-white/3 transition-colors select-none glass-surface"
     :class="{
       'opacity-40': isDragging,
       'bg-primary/5 dark:bg-primary/10': isDragOver || isPlaying,

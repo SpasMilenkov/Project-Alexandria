@@ -57,6 +57,13 @@
               >
                 {{ getFileTypeReadable(detail.currentVersion.mimeType, detail.fileName) }}
               </span>
+              <span
+                v-if="detail.currentVersion.isEncrypted"
+                class="flex shrink-0 items-center gap-1 text-gray-500 dark:text-gray-500"
+              >
+                <Icon icon="mdi:lock" class="w-3.5 h-3.5" aria-hidden="true" />
+                Encrypted
+              </span>
             </div>
           </div>
         </div>
@@ -147,6 +154,7 @@
           :current-version-id="detail.currentVersion.id"
           :file-name="detail.fileName"
           :mime-type="detail.currentVersion.mimeType"
+          :is-encrypted="detail.currentVersion.isEncrypted"
         />
 
         <!-- File Details Grid -->

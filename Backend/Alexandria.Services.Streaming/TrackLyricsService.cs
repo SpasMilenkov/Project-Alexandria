@@ -50,6 +50,10 @@ public class TrackLyricsService(
             return;
         }
 
+        _ = await unitOfWork.TranspilationJobs.FirstOrDefaultAsync(
+                t => t.Id == jobId && t.UserId == userId && t.DeletedAt == null, ct)
+            ?? throw new LyricsNotFoundException(jobId);
+
         var job = new Job
         {
             Id = Guid.NewGuid(),
@@ -139,6 +143,10 @@ public class TrackLyricsService(
         }
         else
         {
+            _ = await unitOfWork.TranspilationJobs.FirstOrDefaultAsync(
+                    t => t.Id == jobId && t.UserId == userId && t.DeletedAt == null, ct)
+                ?? throw new LyricsNotFoundException(jobId);
+
             var job = new Job
             {
                 Id = Guid.NewGuid(),

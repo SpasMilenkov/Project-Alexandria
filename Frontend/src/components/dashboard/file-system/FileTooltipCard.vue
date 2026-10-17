@@ -40,6 +40,14 @@
         <dd>v{{ data.currentVersion.versionNumber }}</dd>
       </div>
 
+      <div v-if="props.data.currentVersion.isEncrypted" class="tooltip-card__meta-row">
+        <dt>
+          <UIcon name="i-mdi-lock" class="tooltip-card__meta-icon" />
+          Encryption
+        </dt>
+        <dd>Yes</dd>
+      </div>
+
       <div class="tooltip-card__meta-row">
         <dt>
           <UIcon name="i-heroicons-user" class="tooltip-card__meta-icon" />
