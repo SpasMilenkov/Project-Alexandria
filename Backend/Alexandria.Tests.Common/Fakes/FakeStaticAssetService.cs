@@ -11,11 +11,11 @@ public class FakeStaticAssetService : IStaticAssetService
         DeletedKeys.Clear();
     }
 
-    public Task<string> GenerateImageUploadUrl(string objectKey, TimeSpan expiry)
-        => Task.FromResult($"http://fake-s3/upload/{objectKey}");
-
-    public Task<string> GenerateBackgroundImageGetUrl(string objectKey, TimeSpan expiry)
-        => Task.FromResult($"http://fake-s3/bg/{objectKey}");
+    public Task<string> UploadBackgroundImageAsync(Stream content, string contentType, Guid userId,
+        CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
 
     public Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default)
     {
@@ -23,8 +23,8 @@ public class FakeStaticAssetService : IStaticAssetService
         return Task.CompletedTask;
     }
 
-    public Task<string> GetPlaylistCoverUploadUrlAsync(Guid playlistId, Guid userId, string contentType,
-        CancellationToken ct = default)
+    public Task<string> UploadPlaylistCoverAsync(Stream content, string contentType, Guid playlistId,
+        Guid userId, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }
