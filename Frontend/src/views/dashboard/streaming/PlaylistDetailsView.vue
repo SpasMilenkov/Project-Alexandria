@@ -8,7 +8,7 @@
       variant="ghost"
       size="sm"
       class="mb-4 -ml-1"
-      @click="router.push('/streaming/playlists')"
+      @click="router.back()"
     />
 
     <!-- Loading -->
@@ -47,19 +47,30 @@
         <!-- <div class="absolute inset-0 bg-white/60 dark:bg-gray-950/70" /> -->
 
         <!-- Content -->
-        <div class="relative flex flex-col md:flex-row items-center md:items-end gap-6 p-5 md:p-6">
-          <!-- Cover image -->
+        <div
+          class="relative flex flex-col md:flex-row items-center md:items-end gap-6 p-5 md:p-6 frosted-glass glass-surface"
+        >
+          <!-- Cover image. Only a user-set cover is clickable; the generated
+               PlaylistCover fallback is not artwork worth enlarging. -->
           <div
             class="w-48 shrink-0 aspect-square rounded-xl overflow-hidden shadow-lg"
             :style="coverShadowStyle"
           >
-            <img
-              v-if="coverUrl && !coverErrored"
-              :src="coverUrl"
-              :alt="playlist.name"
-              class="w-full h-full object-cover"
-              @error="coverErrored = true"
-            />
+            <button
+              v-if="hasExplicitCover"
+              type="button"
+              class="group relative block w-full h-full cursor-zoom-in"
+              :aria-label="`View full-size cover for ${playlist.name}`"
+              @click="isCoverModalOpen = true"
+            >
+              <img
+                :src="coverUrl ?? undefined"
+                :alt="playlist.name"
+                class="w-full h-full object-cover"
+                @error="coverErrored = true"
+              />
+              <div class="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
+            </button>
             <div v-else class="w-full h-full">
               <PlaylistCover :playlist="playlist" />
             </div>
@@ -227,6 +238,53 @@
     </template>
   </div>
 
+  <!-- Full-size cover overlay. Deliberate exception to the shared modalUi preset:
+       sizes itself to the artwork (w-max) instead of a fixed preset width.
+       Still solid, no glass classes. Only mounted for an explicit user cover. -->
+  <UModal
+    v-if="playlist && hasExplicitCover"
+    v-model:open="isCoverModalOpen"
+    :title="playlist.name"
+    :description="playlist.description ?? undefined"
+    :ui="{ content: 'w-max max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)]' }"
+  >
+    <template #content="{ close }">
+      <div class="overflow-hidden rounded-lg">
+        <div class="relative">
+          <img
+            :src="coverUrl ?? undefined"
+            :alt="playlist.name"
+            class="block max-h-[75dvh] w-auto max-w-full"
+          />
+
+          <UButton
+            icon="mdi:close"
+            color="neutral"
+            variant="solid"
+            size="sm"
+            square
+            aria-label="Close"
+            class="absolute top-3 right-3 justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+            @click="close"
+          />
+        </div>
+
+        <!-- w-0 min-w-full: the caption matches the image width instead of widening the modal -->
+        <div class="w-0 min-w-full px-4 py-3">
+          <p class="m-0 truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {{ playlist.name }}
+          </p>
+          <p
+            v-if="playlist.description"
+            class="m-0 truncate text-sm text-gray-600 dark:text-gray-400"
+          >
+            {{ playlist.description }}
+          </p>
+        </div>
+      </div>
+    </template>
+  </UModal>
+
   <!-- Edit modal -->
   <UModal
     v-model:open="showEditModal"
@@ -317,7 +375,6 @@ import { useRoute, useRouter } from "vue-router";
 import type { PlaylistItemResponse } from "@/api/playlist";
 import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 
-import { fileApi } from "@/api/file";
 import { playlistApi } from "@/api/playlist";
 import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
 import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
@@ -437,6 +494,17 @@ watch(
     coverErrored.value = false;
   },
 );
+
+// True only when the user set a cover and it loaded. The generated
+// PlaylistCover fallback is not artwork worth enlarging.
+const hasExplicitCover = computed(() => coverUrl.value !== null && !coverErrored.value);
+
+const isCoverModalOpen = ref(false);
+
+// Close the viewer if the cover disappears (error, or replaced by a failed upload).
+watch(hasExplicitCover, (hasCover) => {
+  if (!hasCover) isCoverModalOpen.value = false;
+});
 
 // Ambient color helpers
 const coverShadowStyle = computed(() => {
@@ -610,15 +678,10 @@ const confirmRemoveItem = (itemId: string) => {
 const handleUpdate = async (payload: UpdatePlaylistSchema) => {
   try {
     // Upload the bytes before flagging the cover: the update bumps updatedAt
-    // (new ?v= cache-buster), and a cover URL fetched before the PUT lands
+    // (new ?v= cache-buster), and a cover URL fetched before the upload lands
     // reads a 404 that nginx then caches.
     if (payload.coverFile) {
-      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
-        playlistId: playlistId.value,
-        mimeType: payload.coverFile.type,
-        fileSize: payload.coverFile.size,
-      });
-      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
+      await playlistApi.uploadPlaylistCover(playlistId.value, payload.coverFile);
     }
     await update({
       id: playlistId.value,

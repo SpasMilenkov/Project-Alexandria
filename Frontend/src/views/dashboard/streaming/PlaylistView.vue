@@ -1,131 +1,204 @@
 <template>
-  <div class="px-4 py-4 sm:px-6 sm:py-5">
+  <div>
     <section
       class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70"
       aria-labelledby="playlists-heading"
     >
-      <!-- Collapsing header: `top` is the negative height of the collapsible
-           block, so as you scroll the title and filters slide out of view 1:1
-           and only the status row stays pinned. No scroll listener, and no
-           layout change that could feed back into the scroll position. -->
-      <header
-        class="sticky z-10 rounded-t-2xl border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface-strong px-4 sm:px-6"
-        :style="headerStyle"
-      >
-        <div ref="collapsibleRef" class="border-b border-gray-200/70 dark:border-gray-700/70 py-4">
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-              <h1
-                id="playlists-heading"
-                class="text-xl font-semibold text-gray-900 dark:text-gray-100"
-              >
-                Playlists
-              </h1>
-              <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Your collections and automatic mixes.
-              </p>
-            </div>
-            <UButton
-              icon="i-heroicons-plus"
-              label="New playlist"
-              color="primary"
-              variant="solid"
-              class="shrink-0"
-              @click="showCreateModal = true"
-            />
+      <header class="frosted-glass glass-surface px-4 pb-6 pt-6 sm:px-6 sm:pt-8">
+        <div class="flex items-center justify-between gap-4 sm:items-start">
+          <div class="min-w-0">
+            <h1 id="playlists-heading" class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Playlists
+            </h1>
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              Your collections and automatic mixes.
+            </p>
           </div>
+          <UButton
+            icon="i-heroicons-plus"
+            label="New playlist"
+            color="primary"
+            variant="solid"
+            :ui="{ label: 'max-sm:sr-only' }"
+            class="h-10 shrink-0 rounded-xl max-sm:w-10 max-sm:justify-center max-sm:px-0"
+            @click="showCreateModal = true"
+          />
+        </div>
 
-          <div class="mt-4 flex flex-col gap-4 md:flex-row md:items-end">
-            <div class="min-w-0">
-              <p
-                id="playlist-origin-label"
-                class="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100"
-              >
-                Collection
-              </p>
+        <!-- One grouped panel below md so search, sort and filters read as a
+             single unit. From md up the panel chrome drops away and the
+             controls sit directly on the page surface. -->
+        <div
+          class="mt-6 flex flex-col gap-4 max-md:rounded-xl max-md:border max-md:border-gray-200/70 max-md:bg-black/5 max-md:p-4 max-md:dark:border-gray-700/70 max-md:dark:bg-white/5"
+        >
+          <div class="flex flex-col gap-4 md:flex-row md:items-center">
+            <div class="relative flex w-full flex-col gap-2 md:max-w-xl md:flex-1">
+              <UInput
+                v-model="searchTerm"
+                icon="i-heroicons-magnifying-glass"
+                placeholder="Search playlists"
+                aria-label="Search playlists"
+                :maxlength="PLAYLIST_SEARCH_MAX_LENGTH"
+                :ui="searchUi"
+                class="w-full"
+              />
               <div
-                role="group"
-                aria-labelledby="playlist-origin-label"
-                class="inline-flex max-w-full gap-1 rounded-lg bg-black/5 dark:bg-white/5 p-1"
+                class="flex items-center gap-1 max-md:justify-between md:absolute md:inset-y-1 md:right-1"
               >
                 <UButton
-                  v-for="option in originOptions"
-                  :key="option.value"
-                  :label="option.label"
-                  :aria-pressed="originFilter === option.value"
-                  :color="originFilter === option.value ? 'primary' : 'neutral'"
-                  :variant="originFilter === option.value ? 'soft' : 'ghost'"
+                  :icon="searchItems ? 'mdi-check' : undefined"
+                  label="Inside tracks"
                   size="sm"
-                  @click="originFilter = option.value"
+                  :color="searchItems ? 'primary' : 'neutral'"
+                  :variant="searchItems ? 'soft' : 'outline'"
+                  :aria-pressed="searchItems"
+                  class="h-8 rounded-lg px-3"
+                  @click="searchItems = !searchItems"
+                />
+                <UButton
+                  v-if="searchTerm"
+                  variant="ghost"
+                  color="neutral"
+                  size="sm"
+                  icon="i-heroicons-x-mark"
+                  aria-label="Clear search"
+                  class="h-8 w-8 justify-center rounded-lg"
+                  @click="clearSearch"
                 />
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-4 md:w-80">
-              <UFormField label="Kind" name="playlist-kind">
-                <USelect
-                  v-model="kindFilter"
-                  :items="kindFilterOptions"
-                  aria-label="Playlist kind"
-                  class="w-full"
-                />
-              </UFormField>
-              <UFormField label="Sort by" name="playlist-sort">
-                <USelect
-                  v-model="sort"
-                  :items="sortOptions"
-                  aria-label="Sort playlists"
-                  class="w-full"
-                />
-              </UFormField>
+
+            <div class="flex w-full items-center gap-2 md:w-auto">
+              <USelect
+                v-model="sort"
+                :items="sortOptions"
+                aria-label="Sort playlists"
+                :ui="fieldUi"
+                class="w-full md:w-48"
+                @update:model-value="onSortSelected"
+              />
+              <UButton
+                variant="outline"
+                color="neutral"
+                :title="
+                  sortDirection === SortDirection.Asc
+                    ? 'Switch to descending'
+                    : 'Switch to ascending'
+                "
+                :aria-label="sortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
+                :icon="
+                  sortDirection === SortDirection.Asc ? 'mdi-sort-ascending' : 'mdi-sort-descending'
+                "
+                class="h-10 w-10 shrink-0 justify-center rounded-xl"
+                @click="toggleSortDirection"
+              />
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-4 md:flex-row md:items-center">
+            <div
+              role="group"
+              aria-label="Collection"
+              class="flex gap-1 rounded-xl bg-black/5 p-1 dark:bg-white/5 md:inline-flex"
+            >
+              <UButton
+                v-for="option in originOptions"
+                :key="option.value"
+                :label="option.label"
+                :aria-pressed="originFilter === option.value"
+                :color="originFilter === option.value ? 'primary' : 'neutral'"
+                :variant="originFilter === option.value ? 'soft' : 'ghost'"
+                class="h-8 flex-1 justify-center rounded-lg px-4 md:flex-none"
+                @click="originFilter = option.value"
+              />
+            </div>
+
+            <span
+              aria-hidden="true"
+              class="hidden h-8 w-px bg-gray-200/70 dark:bg-gray-700/70 md:block"
+            />
+
+            <div role="group" aria-label="Kind" class="flex flex-wrap items-center gap-2">
+              <span
+                class="w-full text-sm font-semibold text-gray-600 dark:text-gray-400 md:w-auto md:pr-2"
+              >
+                Kind
+              </span>
+              <UButton
+                v-for="option in kindFilterOptions"
+                :key="option.value"
+                :label="option.label"
+                :aria-pressed="kindFilter === option.value"
+                :color="kindFilter === option.value ? 'primary' : 'neutral'"
+                :variant="kindFilter === option.value ? 'soft' : 'outline'"
+                class="h-8 rounded-xl px-4"
+                @click="kindFilter = option.value"
+              />
             </div>
           </div>
         </div>
+      </header>
 
-        <!-- Pinned bar: keeps paging and "Clear filters" reachable even while
-             the filter controls above are scrolled out of view. -->
-        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0">
-            <p
-              class="text-sm text-gray-600 dark:text-gray-400 tabular-nums"
-              role="status"
-              aria-live="polite"
+      <!-- Results bar: the only element that pins. Everything above scrolls
+           away naturally, so there is no scroll listener and no measuring. -->
+      <div
+        class="frosted-glass glass-surface-strong sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-y border-gray-200/70 px-4 py-3 dark:border-gray-700/70 sm:px-6"
+      >
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <p
+            class="mr-2 text-sm font-semibold text-gray-900 tabular-nums dark:text-gray-100"
+            role="status"
+            aria-live="polite"
+          >
+            <template v-if="isFetching">Loading playlists…</template>
+            <template v-else-if="playlistsQuery.status.value === 'error'"
+              >Playlists unavailable</template
             >
-              <template v-if="isFetching">Loading playlists…</template>
-              <template v-else-if="playlistsQuery.status.value === 'error'"
-                >Playlists unavailable</template
-              >
-              <template v-else-if="total === 0">0 playlists</template>
-              <template v-else
-                >{{ firstResult }}–{{ lastResult }} of {{ total }} playlists</template
-              >
-            </p>
+            <template v-else-if="total === 0">0 playlists</template>
+            <template v-else>{{ firstResult }}–{{ lastResult }} of {{ total }} playlists</template>
+          </p>
+          <span
+            v-for="pill in activeFilterPills"
+            :key="pill.key"
+            class="inline-flex items-center gap-1 rounded-lg bg-primary/10 py-1 pl-3 pr-1 text-sm font-semibold text-primary"
+          >
+            {{ pill.label }}
             <UButton
-              v-if="hasActiveFilters"
-              label="Clear filters"
-              color="neutral"
-              variant="ghost"
+              icon="i-heroicons-x-mark"
               size="xs"
-              @click="clearFilters"
+              color="primary"
+              variant="ghost"
+              :aria-label="`Remove ${pill.label} filter`"
+              class="justify-center rounded-md"
+              @click="pill.clear()"
             />
-          </div>
-          <UPagination
-            v-if="totalPages > 1"
-            v-model:page="page"
-            :total="total"
-            :items-per-page="pageSize"
-            :sibling-count="1"
-            :disabled="isFetching"
-            :ui="{ first: 'hidden', last: 'hidden' }"
+          </span>
+          <UButton
+            v-if="hasActiveFilters"
+            label="Clear all"
             color="neutral"
             variant="ghost"
-            active-color="primary"
-            active-variant="soft"
-            size="sm"
-            aria-label="Playlist pages"
-            class="shrink-0"
+            size="xs"
+            @click="clearFilters"
           />
         </div>
-      </header>
+        <UPagination
+          v-if="totalPages > 1"
+          v-model:page="page"
+          :total="total"
+          :items-per-page="pageSize"
+          :sibling-count="1"
+          :disabled="isFetching"
+          :ui="{ first: 'hidden', last: 'hidden' }"
+          color="neutral"
+          variant="ghost"
+          active-color="primary"
+          active-variant="soft"
+          size="sm"
+          aria-label="Playlist pages"
+          class="shrink-0"
+        />
+      </div>
 
       <div class="p-4 sm:p-6" :aria-busy="isFetching">
         <div v-if="playlistsQuery.status.value === 'pending'" class="flex justify-center py-16">
@@ -151,7 +224,9 @@
         >
           <Icon icon="mdi:magnify" class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-2" />
           <p class="font-medium text-gray-900 dark:text-gray-100">No playlists match</p>
-          <p class="text-sm text-gray-600 dark:text-gray-400">Try another collection or kind.</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Try another search, collection, or kind.
+          </p>
           <UButton
             label="Clear filters"
             color="neutral"
@@ -180,7 +255,10 @@
           />
         </div>
 
-        <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,14rem),1fr))] gap-4">
+        <div
+          v-else
+          class="grid grid-cols-2 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(min(100%,14rem),1fr))] sm:gap-6"
+        >
           <PlaylistCard
             v-for="playlist in playlists"
             :key="playlist.id"
@@ -265,23 +343,28 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
-import { useElementSize } from "@vueuse/core";
+import { useDebounceFn } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import type { PlaylistKindFilter, PlaylistOriginFilter } from "@/utils/playlist-display.utils";
-
-import { fileApi } from "@/api/file";
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
 import PlaylistCard from "@/components/streaming/PlaylistCard.vue";
 import PlaylistForm, { type PlaylistFormPayload } from "@/components/streaming/PlaylistForm.vue";
 import { AutoGroupKind } from "@/enums/auto-group-kind";
 import { PlaylistSort } from "@/enums/playlist-sort";
+import { SortDirection } from "@/enums/SortDirection";
 import { createPlaylist, deletePlaylist, updatePlaylist } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
 import { glassModalContent, playlistModalUi } from "@/utils/modalUi";
-import { parsePlaylistBrowseQuery, playlistBrowseQuery } from "@/utils/playlist-display.utils";
+import {
+  PLAYLIST_SEARCH_MAX_LENGTH,
+  type PlaylistKindFilter,
+  type PlaylistOriginFilter,
+  naturalSortDirection,
+  parsePlaylistBrowseQuery,
+  playlistBrowseQuery,
+} from "@/utils/playlist-display.utils";
 
 const route = useRoute();
 const router = useRouter();
@@ -289,27 +372,56 @@ const toast = useToast();
 const store = usePlayerStore();
 const queryCache = useQueryCache();
 
-// The header pins itself `collapsibleHeight` px above the top edge, so
-// everything inside the collapsible block scrolls away and the rest stays.
-// border-box so the block's padding and bottom border count toward the offset;
-// ceil so a fractional height never leaves a hairline peeking out.
-const collapsibleRef = ref<HTMLElement | null>(null);
-const { height: collapsibleHeight } = useElementSize(collapsibleRef, undefined, {
-  box: "border-box",
-});
-const headerStyle = computed(() => ({ top: `-${Math.ceil(collapsibleHeight.value)}px` }));
+// Shared control shape: 40px tall fields, 32px chips and in-field controls.
+// Standalone controls use a 12px radius; nested items (segmented buttons, the
+// in-field toggle) use rounded-lg so the corners stay concentric with their
+// container. The search field reserves room on the right from md up for the
+// absolutely placed toggle cluster.
+const fieldUi = { base: "h-10 rounded-xl" };
+const searchUi = { base: "h-10 rounded-xl md:pe-44" };
 
 const initialBrowse = parsePlaylistBrowseQuery(route.query);
 const page = ref(initialBrowse.page);
-const pageSize = 30;
+const pageSize = 20;
 
 // Browse state initializes from the route query and stays synced there, so
 // drilling into a playlist and back (or reloading) restores page + filters.
-// Filtering and sorting run server-side so page contents and totals always
-// describe the same set.
+// Filtering, search, and sorting run server-side so page contents and totals
+// always describe the same set.
 const originFilter = ref<PlaylistOriginFilter>(initialBrowse.origin);
 const kindFilter = ref<PlaylistKindFilter>(initialBrowse.kind);
 const sort = ref<PlaylistSort>(initialBrowse.sort);
+const sortDirection = ref<SortDirection>(initialBrowse.direction);
+
+// The raw input drives the URL and the query only through the debounce, so
+// typing does not fire a request per keystroke.
+const searchTerm = ref(initialBrowse.q);
+const searchItems = ref(initialBrowse.searchItems);
+const debouncedQ = ref(initialBrowse.q);
+
+const setDebouncedSearch = useDebounceFn((value: string) => {
+  debouncedQ.value = value.trim();
+}, 250);
+
+watch(searchTerm, (value) => {
+  setDebouncedSearch(value);
+});
+
+const clearSearch = () => {
+  searchTerm.value = "";
+  debouncedQ.value = "";
+};
+
+// Picking a different sort field resets to that field's natural direction;
+// the toggle next to the select then flips from there.
+const onSortSelected = (value: PlaylistSort) => {
+  sortDirection.value = naturalSortDirection(value);
+};
+
+const toggleSortDirection = () => {
+  sortDirection.value =
+    sortDirection.value === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
+};
 
 const isAutoGeneratedParam = computed(() => {
   if (originFilter.value === "auto") {
@@ -331,6 +443,9 @@ const playlistsQuery = useQuery({
       isAutoGeneratedParam.value,
       kindParam.value,
       sort.value,
+      sortDirection.value,
+      debouncedQ.value || null,
+      searchItems.value,
     ),
   placeholderData: (prev) => prev,
   query: () =>
@@ -338,6 +453,9 @@ const playlistsQuery = useQuery({
       isAutoGenerated: isAutoGeneratedParam.value,
       autoGroupKind: kindParam.value,
       sort: sort.value,
+      sortDirection: sortDirection.value,
+      query: debouncedQ.value || null,
+      searchItems: searchItems.value,
     }),
 });
 
@@ -356,7 +474,9 @@ const originOptions: { label: string; value: PlaylistOriginFilter }[] = [
   { label: "Manual", value: "manual" },
 ];
 
-const hasActiveFilters = computed(() => originFilter.value !== "all" || kindFilter.value !== "all");
+const hasActiveFilters = computed(
+  () => originFilter.value !== "all" || kindFilter.value !== "all" || debouncedQ.value !== "",
+);
 
 const kindFilterOptions = [
   { label: "All kinds", value: "all" as const },
@@ -369,7 +489,7 @@ const kindFilterOptions = [
 ];
 
 const sortOptions = [
-  { label: "Newest", value: PlaylistSort.Newest },
+  { label: "Created", value: PlaylistSort.Newest },
   { label: "Name", value: PlaylistSort.Name },
   { label: "Track count", value: PlaylistSort.TrackCount },
 ];
@@ -378,31 +498,76 @@ const clearFilters = () => {
   originFilter.value = "all";
   kindFilter.value = "all";
   sort.value = PlaylistSort.Newest;
+  sortDirection.value = naturalSortDirection(PlaylistSort.Newest);
+  clearSearch();
+  searchItems.value = false;
 };
+
+type FilterPill = { key: string; label: string; clear: () => void };
+
+// One removable pill per active filter, shown in the pinned results bar so
+// the current filter set stays visible after the controls scroll away.
+// Sort is left out on purpose, matching hasActiveFilters.
+const activeFilterPills = computed(() => {
+  const pills: FilterPill[] = [];
+
+  if (originFilter.value !== "all") {
+    const origin = originOptions.find((option) => option.value === originFilter.value);
+    pills.push({
+      key: "origin",
+      label: origin?.label ?? "Collection",
+      clear: () => {
+        originFilter.value = "all";
+      },
+    });
+  }
+
+  if (kindFilter.value !== "all") {
+    const kind = kindFilterOptions.find((option) => option.value === kindFilter.value);
+    pills.push({
+      key: "kind",
+      label: kind?.label ?? "Kind",
+      clear: () => {
+        kindFilter.value = "all";
+      },
+    });
+  }
+
+  if (debouncedQ.value !== "") {
+    pills.push({ key: "query", label: `"${debouncedQ.value}"`, clear: clearSearch });
+  }
+
+  return pills;
+});
 
 // A new filter set starts on page one: staying on a later page would show an
 // empty grid when the filtered set is shorter. Pagination math itself is out
 // of scope here.
-watch([originFilter, kindFilter, sort], () => {
+watch([originFilter, kindFilter, sort, sortDirection, debouncedQ, searchItems], () => {
   page.value = 1;
 });
 
 // Outbound: reflect browse state in the URL (defaults omitted). Replace, not
 // push, so paging does not spam history. Registered after the reset watcher
 // so the reset page is what lands in the URL.
-watch([page, originFilter, kindFilter, sort], () => {
+watch([page, originFilter, kindFilter, sort, sortDirection, debouncedQ, searchItems], () => {
   void router.replace({
     query: playlistBrowseQuery({
       page: page.value,
       origin: originFilter.value,
       kind: kindFilter.value,
       sort: sort.value,
+      direction: sortDirection.value,
+      q: debouncedQ.value,
+      searchItems: searchItems.value,
     }),
   });
 });
 
 // Inbound: pick up query changes without a remount. Guarded to this route so
-// leaving for a detail page never resets the restored state.
+// leaving for a detail page never resets the restored state. Search fields are
+// only adopted when they differ from local state: our own replace echoes them
+// back and overwriting would clobber in-flight typing.
 watch(
   () => route.query,
   () => {
@@ -414,6 +579,15 @@ watch(
     originFilter.value = next.origin;
     kindFilter.value = next.kind;
     sort.value = next.sort;
+    sortDirection.value = next.direction;
+
+    if (next.q !== debouncedQ.value) {
+      searchTerm.value = next.q;
+      debouncedQ.value = next.q;
+    }
+    if (next.searchItems !== searchItems.value) {
+      searchItems.value = next.searchItems;
+    }
   },
 );
 
@@ -500,13 +674,7 @@ const handleCreate = async (payload: PlaylistFormPayload) => {
     });
 
     if (payload.coverFile) {
-      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
-        playlistId: playlist.id,
-        mimeType: payload.coverFile.type,
-        fileSize: payload.coverFile.size,
-      });
-
-      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
+      await playlistApi.uploadPlaylistCover(playlist.id, payload.coverFile);
 
       if (payload.ambientTheme) {
         await playlistApi.update(playlist.id, { ambientTheme: payload.ambientTheme });
@@ -527,16 +695,10 @@ const handleUpdate = async (payload: PlaylistFormPayload) => {
 
   try {
     // Upload the bytes before flagging the cover: the update bumps updatedAt
-    // (new ?v= cache-buster), and a cover URL fetched before the PUT lands
+    // (new ?v= cache-buster), and a cover URL fetched before the upload lands
     // reads a 404 that nginx then caches.
     if (payload.coverFile) {
-      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
-        playlistId: id,
-        mimeType: payload.coverFile.type,
-        fileSize: payload.coverFile.size,
-      });
-
-      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
+      await playlistApi.uploadPlaylistCover(id, payload.coverFile);
     }
 
     await update({
