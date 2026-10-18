@@ -42,5 +42,6 @@ public class Playlist : IBase
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public bool IsStarred { get; set; } = false;
     public Guid? UpdatedBy { get; set; }
 }

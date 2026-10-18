@@ -30,6 +30,9 @@ public class PlaylistConfiguration : IEntityTypeConfiguration<Playlist>
             .HasColumnType($"varchar({ValidationConstants.StringLengths.ShortString})")
             .IsRequired(false);
 
+        builder.Property(e => e.IsStarred)
+            .HasDefaultValue(false);
+
         builder.Property(e => e.OwnerId)
             .HasColumnType("uuid")
             .IsRequired();
