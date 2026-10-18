@@ -7,7 +7,7 @@ using Alexandria.Dto.Files.Streaming.Playlist;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Alexandria.Services.Streaming;
+namespace Alexandria.Services.Streaming.Playlists;
 
 public sealed partial class AutoPlaylistSyncService(
     IUnitOfWork unitOfWork,

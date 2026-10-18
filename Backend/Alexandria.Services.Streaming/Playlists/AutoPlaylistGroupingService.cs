@@ -2,7 +2,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Playlist;
 
-namespace Alexandria.Services.Streaming;
+namespace Alexandria.Services.Streaming.Playlists;
 
 public sealed class AutoPlaylistGroupingService(IFileRepository files) : IAutoPlaylistGroupingService
 {

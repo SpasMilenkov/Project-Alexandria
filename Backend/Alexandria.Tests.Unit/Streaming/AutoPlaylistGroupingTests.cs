@@ -1,7 +1,7 @@
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming.Playlist;
-using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.Playlists;
 using AwesomeAssertions;
 using NSubstitute;
 

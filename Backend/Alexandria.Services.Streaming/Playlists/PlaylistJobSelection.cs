@@ -1,6 +1,6 @@
 using Alexandria.Dto.Files.Streaming.Playlist;
 
-namespace Alexandria.Services.Streaming;
+namespace Alexandria.Services.Streaming.Playlists;
 
 /// <summary>
 /// Pure version-selection rule: the current version's Ready job wins even when

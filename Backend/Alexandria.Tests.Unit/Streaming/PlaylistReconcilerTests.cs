@@ -1,5 +1,5 @@
 using Alexandria.Dto.Files.Streaming.Playlist;
-using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.Playlists;
 using AwesomeAssertions;
 
 namespace Alexandria.Tests.Unit.Streaming;

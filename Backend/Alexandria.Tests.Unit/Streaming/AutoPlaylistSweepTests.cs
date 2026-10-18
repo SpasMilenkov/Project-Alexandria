@@ -2,10 +2,10 @@ using Alexandria.Common;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Playlist;
-using Alexandria.Services.Streaming;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using AutoPlaylistSweepService = Alexandria.Services.Streaming.Playlists.AutoPlaylistSweepService;
 
 namespace Alexandria.Tests.Unit.Streaming;
 

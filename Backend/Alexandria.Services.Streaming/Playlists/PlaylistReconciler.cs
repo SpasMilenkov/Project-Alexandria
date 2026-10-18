@@ -1,6 +1,6 @@
 using Alexandria.Dto.Files.Streaming.Playlist;
 
-namespace Alexandria.Services.Streaming;
+namespace Alexandria.Services.Streaming.Playlists;
 
 /// <summary>
 /// Pure reconciler diff for one auto-playlist. Desired is a set of

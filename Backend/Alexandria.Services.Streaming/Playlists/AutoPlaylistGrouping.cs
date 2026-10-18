@@ -2,7 +2,7 @@ using Alexandria.Common.Validation;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming.Playlist;
 
-namespace Alexandria.Services.Streaming;
+namespace Alexandria.Services.Streaming.Playlists;
 
 /// <summary>
 /// Pure in-memory bucketing for auto-playlist grouping.

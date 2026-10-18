@@ -5,11 +5,11 @@ using Alexandria.Common.Settings.Values;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming.Playlist;
-using Alexandria.Services.Streaming;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using AutoPlaylistSyncService = Alexandria.Services.Streaming.Playlists.AutoPlaylistSyncService;
 
 namespace Alexandria.Tests.Unit.Streaming;
 
