@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { useSettingsStore } from "@/stores/settings";
 
-//oxlint-disable-next-line max-lines-per-function
+//oxlint-disable-next-line max-lines-per-function, oxlint-disable-next-line max-statements
 describe("useSettingsStore", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -522,6 +522,18 @@ describe("useSettingsStore", () => {
       expect(store.surfaceOpacity).toBe(60);
       expect(store.thumbnailsEnabled).toBe(true);
     });
+
+    it("clears the background image and its server metadata", () => {
+      const store = useSettingsStore();
+      store.setBackgroundImage("url://img.jpg");
+      store.backgroundImageKey = "key-123";
+      store.backgroundImageUpdatedAt = "2024-01-01";
+      store.resetSettings();
+      expect(store.backgroundImage).toBeNull();
+      expect(store.backgroundImageKey).toBeNull();
+      expect(store.backgroundImageUpdatedAt).toBeNull();
+      expect(store.isAppearanceModified).toBe(false);
+    });
   });
 
   describe("resetAppearanceSettings", () => {
@@ -548,6 +560,18 @@ describe("useSettingsStore", () => {
       expect(store.cornerRadius).toBe(0.25);
       expect(store.skipDeleteConfirmation).toBe(true);
     });
+
+    it("clears the background image and its server metadata", () => {
+      const store = useSettingsStore();
+      store.setBackgroundImage("url://img.jpg");
+      store.backgroundImageKey = "key-123";
+      store.backgroundImageUpdatedAt = "2024-01-01";
+      store.resetAppearanceSettings();
+      expect(store.backgroundImage).toBeNull();
+      expect(store.backgroundImageKey).toBeNull();
+      expect(store.backgroundImageUpdatedAt).toBeNull();
+      expect(store.isAppearanceModified).toBe(false);
+    });
   });
 
   describe("resetBehaviorSettings", () => {
@@ -560,6 +584,18 @@ describe("useSettingsStore", () => {
       expect(store.skipDeleteConfirmation).toBe(false);
       expect(store.toastLevel).toBe("all");
       expect(store.accentColor).toBe("blue");
+    });
+  });
+
+  describe("resetAutoTaggingSettings", () => {
+    it("resets both auto-tagging settings", () => {
+      const store = useSettingsStore();
+      store.setAllowAutoTagRegression(true);
+      store.setAllowAutomaticMetadataOverwrite(true);
+      store.resetAutoTaggingSettings();
+      expect(store.allowAutoTagRegression).toBe(false);
+      expect(store.allowAutomaticMetadataOverwrite).toBe(false);
+      expect(store.isAutoTaggingModified).toBe(false);
     });
   });
 
