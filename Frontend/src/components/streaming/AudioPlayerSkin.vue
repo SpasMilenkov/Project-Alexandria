@@ -682,8 +682,8 @@ onUnmounted(() => {
 .player-card.player-motion-snapshot {
   background: transparent !important;
   border-color: transparent !important;
-  backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
 
 .player-card.player-motion-live {
@@ -763,8 +763,8 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(var(--frost-blur));
   -webkit-backdrop-filter: blur(var(--frost-blur));
+  backdrop-filter: blur(var(--frost-blur));
   transition:
     background 160ms ease,
     transform 160ms ease;
