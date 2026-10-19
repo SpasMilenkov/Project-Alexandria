@@ -101,6 +101,10 @@ describe("parsePlaylistBrowseQuery", () => {
     );
   });
 
+  it("parses the favorites collection scope", () => {
+    expect(parsePlaylistBrowseQuery({ origin: "favorites" }).origin).toBe("favorites");
+  });
+
   it("reads the first value of repeated params", () => {
     expect(parsePlaylistBrowseQuery({ page: ["2", "5"] })).toMatchObject({ page: 2 });
   });
@@ -183,6 +187,14 @@ describe("playlistBrowseQuery", () => {
     };
     const query = playlistBrowseQuery(state);
     expect(query).toEqual({ page: "2", q: "beatles", searchItems: "1" });
+    expect(parsePlaylistBrowseQuery(query)).toEqual(state);
+  });
+
+  it("serializes the favorites scope and round-trips", () => {
+    const state = { ...DEFAULT_BROWSE_STATE, origin: "favorites" as const };
+    const query = playlistBrowseQuery(state);
+
+    expect(query).toEqual({ origin: "favorites" });
     expect(parsePlaylistBrowseQuery(query)).toEqual(state);
   });
 });

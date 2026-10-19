@@ -132,6 +132,15 @@
                 />
               </UTooltip>
 
+              <UTooltip v-if="!isMobile" :text="favoriteActionLabel">
+                <PlaylistFavoriteButton
+                  variant="inline"
+                  :playlist="playlist"
+                  :disabled="isFavoritePending"
+                  @favorite="toggleFavorite"
+                />
+              </UTooltip>
+
               <UDropdownMenu :items="menuItems" :content="{ align: 'start' }">
                 <UButton
                   icon="mdi:dots-horizontal"
@@ -372,11 +381,11 @@ import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import type { PlaylistItemResponse } from "@/api/playlist";
 import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 
-import { playlistApi } from "@/api/playlist";
+import { type PlaylistItemResponse, playlistApi } from "@/api/playlist";
 import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
+import PlaylistFavoriteButton from "@/components/streaming/PlaylistFavoriteButton.vue";
 import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
 import PlaylistItemRow from "@/components/streaming/PlaylistItemRow.vue";
 import PlaylistTrackSearch from "@/components/streaming/PlaylistTrackSearch.vue";
@@ -386,6 +395,7 @@ import {
   deletePlaylist,
   removePlaylistItem,
   reorderPlaylistItems,
+  setPlaylistFavorite,
   updatePlaylist,
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
@@ -529,6 +539,18 @@ const {
   isLoading: isReorderingPlaylistItem,
   state: reorderState,
 } = reorderPlaylistItems();
+const { mutateAsync: setFavorite, isLoading: isFavoritePending } = setPlaylistFavorite();
+
+const toggleFavorite = async () => {
+  const target = playlist.value;
+  if (!target || isFavoritePending.value) return;
+
+  try {
+    await setFavorite({ playlistId: target.id, isStarred: !target.isStarred });
+  } catch {
+    toast.add({ title: "Failed to update favorite", color: "error" });
+  }
+};
 
 // Local item list
 const localItems = ref<PlaylistItemResponse[]>([]);
@@ -561,6 +583,13 @@ const itemCountLabel = computed(() => {
 const addTracksIcon = computed(() => (showSearch.value ? "mdi:close" : "mdi:plus"));
 const addTracksLabel = computed(() => (showSearch.value ? "Cancel" : "Add tracks"));
 
+const favoriteActionLabel = computed(() =>
+  playlist.value?.isStarred ? "Remove from favorites" : "Add to favorites",
+);
+const favoriteIcon = computed(() =>
+  playlist.value?.isStarred ? "mdi:heart" : "mdi:heart-outline",
+);
+
 // Overflow menu: secondary actions first, destructive action in its own group.
 // Shuffle only lives here on mobile, where the header shows a single action.
 const menuItems = computed<DropdownMenuItem[][]>(() => {
@@ -568,12 +597,20 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
   const secondary: DropdownMenuItem[] = [];
 
   if (isMobile.value) {
-    secondary.push({
-      label: "Shuffle",
-      icon: "mdi:shuffle-variant",
-      disabled: isEmpty || isLoadingQueue.value,
-      onSelect: shuffleAll,
-    });
+    secondary.push(
+      {
+        label: "Shuffle",
+        icon: "mdi:shuffle-variant",
+        disabled: isEmpty || isLoadingQueue.value,
+        onSelect: shuffleAll,
+      },
+      {
+        label: favoriteActionLabel.value,
+        icon: favoriteIcon.value,
+        disabled: isFavoritePending.value,
+        onSelect: toggleFavorite,
+      },
+    );
   }
 
   secondary.push(
