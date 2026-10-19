@@ -47,6 +47,9 @@ public class AutoPlaylistSyncServiceTests
             .Returns(new BehaviorSettingsValue());
         _playlists.GetSupersededGenrePlaylistIdsAsync(Owner, Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Any<Guid[]>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Guid>());
     }
 
     private AutoPlaylistSyncService CreateSut(int minTracks = 10)
@@ -102,7 +105,8 @@ public class AutoPlaylistSyncServiceTests
             .Returns(call => created = call.Arg<Playlist>());
         _playlists.GetItemsIncludingDeletedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<PlaylistItemState>());
-        _playlists.GetOwnerAutoPlaylistIdsForFileAsync(Owner, FileOne, Arg.Any<CancellationToken>())
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Any<Guid[]>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
         var result = await CreateSut().SyncFileAsync(FileOne, Owner, TestContext.Current.CancellationToken);
@@ -127,7 +131,8 @@ public class AutoPlaylistSyncServiceTests
         _playlists.GetAutoPlaylistAsync(
                 Owner, AutoGroupKind.Artist, "arcane", null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((Playlist?)null);
-        _playlists.GetOwnerAutoPlaylistIdsForFileAsync(Owner, FileOne, Arg.Any<CancellationToken>())
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Any<Guid[]>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
         var result = await CreateSut().SyncFileAsync(FileOne, Owner, TestContext.Current.CancellationToken);
@@ -150,7 +155,8 @@ public class AutoPlaylistSyncServiceTests
             {
                 new(ItemId, JobOne, true, true, DateTime.UtcNow),
             });
-        _playlists.GetOwnerAutoPlaylistIdsForFileAsync(Owner, FileOne, Arg.Any<CancellationToken>())
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Any<Guid[]>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
         var result = await CreateSut().SyncFileAsync(FileOne, Owner, TestContext.Current.CancellationToken);
@@ -166,7 +172,8 @@ public class AutoPlaylistSyncServiceTests
     {
         GivenGrouping(new AutoPlaylistGroupingResult([], [], [], [], [], []));
         GivenResolutions((FileOne, JobOne));
-        _playlists.GetOwnerAutoPlaylistIdsForFileAsync(Owner, FileOne, Arg.Any<CancellationToken>())
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Is<Guid[]>(ids => ids.Contains(FileOne)), Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { PlaylistId });
         _playlists.GetByIdAsync(PlaylistId, Arg.Any<CancellationToken>()).Returns(AutoPlaylist());
         _playlists.GetItemsIncludingDeletedAsync(PlaylistId, Arg.Any<CancellationToken>())
@@ -186,7 +193,8 @@ public class AutoPlaylistSyncServiceTests
     {
         GivenGrouping(new AutoPlaylistGroupingResult([], [], [], [], [], []));
         GivenResolutions((FileOne, JobOne));
-        _playlists.GetOwnerAutoPlaylistIdsForFileAsync(Owner, FileOne, Arg.Any<CancellationToken>())
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Any<Guid[]>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
         var result = await CreateSut().SyncFileAsync(FileOne, Owner, TestContext.Current.CancellationToken);
@@ -196,6 +204,44 @@ public class AutoPlaylistSyncServiceTests
         await _playlists.DidNotReceive().TouchAutoPlaylistAsync(
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         result.Should().Be(new AutoPlaylistSyncResult(0, 0, 0, 0));
+    }
+
+    [Fact]
+    public async Task SyncFilesAsync_deduplicates_file_ids_and_reads_one_owner_snapshot()
+    {
+        GivenGrouping(new AutoPlaylistGroupingResult(
+            [
+                new ArtistGroup("alpha", "Alpha", [FileOne]),
+                new ArtistGroup("beta", "Beta", [FileTwo]),
+            ],
+            [],
+            [],
+            [],
+            [],
+            []));
+        GivenResolutions((FileOne, JobOne), (FileTwo, Guid.NewGuid()));
+        _playlists.GetAutoPlaylistAsync(
+                Owner, Arg.Any<AutoGroupKind>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<CancellationToken>())
+            .Returns((Playlist?)null);
+        _playlists.CreateAsync(Arg.Any<Playlist>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<Playlist>());
+        _playlists.GetItemsIncludingDeletedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new List<PlaylistItemState>());
+
+        var result = await CreateSut().SyncFilesAsync(
+            Owner, [FileOne, FileOne, FileTwo], TestContext.Current.CancellationToken);
+
+        await _grouping.Received(1).GetGroupingAsync(Owner, Arg.Any<CancellationToken>());
+        await _resolver.Received(1).ResolveForOwnerAsync(Owner, Arg.Any<CancellationToken>());
+        await _playlists.Received(1).GetOwnerAutoPlaylistIdsForFilesAsync(
+            Owner,
+            Arg.Is<Guid[]>(ids =>
+                ids.Length == 2 && ids.Contains(FileOne) && ids.Contains(FileTwo)),
+            Arg.Any<CancellationToken>());
+        await _playlists.Received(2).CreateAsync(
+            Arg.Any<Playlist>(), Arg.Any<CancellationToken>());
+        result.PlaylistsSynced.Should().Be(2);
     }
 
     [Fact]
@@ -562,7 +608,8 @@ public class AutoPlaylistSyncServiceTests
             .Returns(AutoPlaylist());
         _playlists.GetItemsIncludingDeletedAsync(PlaylistId, Arg.Any<CancellationToken>())
             .Returns(new List<PlaylistItemState>());
-        _playlists.GetOwnerAutoPlaylistIdsForFileAsync(Owner, FileOne, Arg.Any<CancellationToken>())
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Any<Guid[]>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
         await CreateSut().SyncFileAsync(FileOne, Owner, TestContext.Current.CancellationToken);
@@ -660,7 +707,8 @@ public class AutoPlaylistSyncServiceTests
             .Returns(call => created = call.Arg<Playlist>());
         _playlists.GetItemsIncludingDeletedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new List<PlaylistItemState>());
-        _playlists.GetOwnerAutoPlaylistIdsForFileAsync(Owner, FileOne, Arg.Any<CancellationToken>())
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Any<Guid[]>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
 
         await CreateSut().SyncFileAsync(FileOne, Owner, TestContext.Current.CancellationToken);
@@ -681,7 +729,8 @@ public class AutoPlaylistSyncServiceTests
             .Returns(AutoPlaylist());
         _playlists.GetItemsIncludingDeletedAsync(PlaylistId, Arg.Any<CancellationToken>())
             .Returns(new List<PlaylistItemState>());
-        _playlists.GetOwnerAutoPlaylistIdsForFileAsync(Owner, FileOne, Arg.Any<CancellationToken>())
+        _playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+                Owner, Arg.Any<Guid[]>(), Arg.Any<CancellationToken>())
             .Returns(new List<Guid>());
         _jobs.AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException<Job>(new InvalidOperationException("telemetry down")));

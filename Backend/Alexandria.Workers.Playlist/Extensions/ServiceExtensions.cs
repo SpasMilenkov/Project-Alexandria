@@ -5,6 +5,7 @@ using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Monitoring;
 using Alexandria.Services.Streaming.Playlists;
 using Alexandria.Workers.Playlist.Config;
+using Alexandria.Workers.Playlist.Queueing;
 using Alexandria.Workers.Playlist.Workers;
 
 namespace Alexandria.Workers.Playlist.Extensions;
@@ -24,6 +25,7 @@ public static class ServiceExtensions
         services.AddScoped<IPlaylistJobResolver, PlaylistJobResolver>();
         services.AddScoped<IAutoPlaylistSyncService, AutoPlaylistSyncService>();
         services.AddScoped<IAutoPlaylistSweepService, AutoPlaylistSweepService>();
+        services.AddSingleton<PlaylistSyncBuffer>();
         services.AddHostedService<PlaylistSyncWorker>();
         services.AddHostedService<PlaylistSweepWorker>();
         services.AddHostedService(sp => new JobFailureThresholdChecker(

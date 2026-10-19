@@ -60,12 +60,6 @@ public interface IPlaylistRepository : IRepository<Playlist>
     /// <summary>Soft-deletes a single playlist item.</summary>
     Task RemoveItemAsync(Guid playlistId, Guid itemId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Returns a random Preview.Path sourced from the files that back the given transpilation jobs.
-    /// Returns null when none of those files have a non-deleted preview.
-    /// </summary>
-    // Task<string?> GetRandomPreviewPathForJobsAsync(Guid[] jobIds, CancellationToken ct = default);
-
     /// <summary>Returns whether the given user is the owner of the playlist and it has not been deleted.</summary>
     Task<bool> IsOwnerAsync(Guid playlistId, Guid userId, CancellationToken ct = default);
 
@@ -97,6 +91,13 @@ public interface IPlaylistRepository : IRepository<Playlist>
     /// </summary>
     Task<IReadOnlyList<Guid>> GetOwnerAutoPlaylistIdsForFileAsync(
         Guid ownerId, Guid fileId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Ids of the owner's live auto playlists that hold a live item bound to any
+    /// transcode job of any of the given files. One query for a coalesced batch.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOwnerAutoPlaylistIdsForFilesAsync(
+        Guid ownerId, Guid[] fileIds, CancellationToken ct = default);
 
     /// <summary>
     /// Plain reconciler insert at the next position. Never touches user tombstones;

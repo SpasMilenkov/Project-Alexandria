@@ -6,9 +6,9 @@ public sealed partial class AutoPlaylistSyncService
 {
     [LoggerMessage(Level = LogLevel.Debug,
         Message =
-            "Synced file {FileId}: {Playlists} playlist(s), {Added} added, {Revived} revived, {Removed} removed.")]
-    private static partial void LogFileSynced(
-        ILogger logger, Guid fileId, int playlists, int added, int revived, int removed);
+            "Synced {Files} file(s) for owner {OwnerId}: {Playlists} playlist(s), {Added} added, {Revived} revived, {Removed} removed.")]
+    private static partial void LogFilesSynced(
+        ILogger logger, int files, Guid ownerId, int playlists, int added, int revived, int removed);
 
     [LoggerMessage(Level = LogLevel.Debug,
         Message =

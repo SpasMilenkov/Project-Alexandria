@@ -17,13 +17,21 @@ public sealed partial class AutoPlaylistSyncService(
     IServiceScopeFactory scopeFactory,
     ILogger<AutoPlaylistSyncService> logger) : IAutoPlaylistSyncService
 {
-    public async Task<AutoPlaylistSyncResult> SyncFileAsync(
+    public Task<AutoPlaylistSyncResult> SyncFileAsync(
         Guid fileId, Guid ownerId, CancellationToken ct = default)
+    {
+        return SyncFilesAsync(ownerId, [fileId], ct);
+    }
+
+    public async Task<AutoPlaylistSyncResult> SyncFilesAsync(
+        Guid ownerId,
+        IReadOnlyCollection<Guid> fileIds,
+        CancellationToken ct = default)
     {
         var startedAt = DateTime.UtcNow;
         try
         {
-            var result = await SyncFileCoreAsync(fileId, ownerId, ct);
+            var result = await SyncFilesCoreAsync(ownerId, fileIds, ct);
             await RecordRunAsync(ownerId, startedAt, result, null, ct);
             return result;
         }
@@ -34,9 +42,15 @@ public sealed partial class AutoPlaylistSyncService(
         }
     }
 
-    private async Task<AutoPlaylistSyncResult> SyncFileCoreAsync(
-        Guid fileId, Guid ownerId, CancellationToken ct)
+    private async Task<AutoPlaylistSyncResult> SyncFilesCoreAsync(
+        Guid ownerId,
+        IReadOnlyCollection<Guid> fileIds,
+        CancellationToken ct)
     {
+        var changedFileIds = fileIds.ToHashSet();
+        if (changedFileIds.Count == 0)
+            return new AutoPlaylistSyncResult(0, 0, 0, 0);
+
         var grouping = await groupingService.GetGroupingAsync(ownerId, ct);
         var jobByFile = await ResolveJobsAsync(ownerId, ct);
         var minTracks = await ResolveMinTracksAsync(ownerId, ct);
@@ -45,15 +59,16 @@ public sealed partial class AutoPlaylistSyncService(
 
         var playlists = new Dictionary<Guid, Playlist>();
 
-        foreach (var group in AllGroups(grouping).Where(g => g.FileIds.Contains(fileId)))
+        foreach (var group in AllGroups(grouping)
+                     .Where(g => g.FileIds.Any(changedFileIds.Contains)))
         {
             var playlist = await EnsurePlaylistAsync(ownerId, group, jobByFile, minTracks, ct);
             if (playlist is not null)
                 playlists[playlist.Id] = playlist;
         }
 
-        var reverseIds = await unitOfWork.Playlists
-            .GetOwnerAutoPlaylistIdsForFileAsync(ownerId, fileId, ct);
+        var reverseIds = await unitOfWork.Playlists.GetOwnerAutoPlaylistIdsForFilesAsync(
+            ownerId, changedFileIds.ToArray(), ct);
 
         foreach (var playlistId in reverseIds)
         {
@@ -67,8 +82,8 @@ public sealed partial class AutoPlaylistSyncService(
 
         var result = await SyncPlaylistsAsync(playlists.Values, grouping, jobByFile, ownerId, ct);
 
-        LogFileSynced(logger, fileId, result.PlaylistsSynced, result.ItemsAdded,
-            result.ItemsRevived, result.ItemsRemoved);
+        LogFilesSynced(logger, changedFileIds.Count, ownerId, result.PlaylistsSynced,
+            result.ItemsAdded, result.ItemsRevived, result.ItemsRemoved);
 
         return result;
     }
