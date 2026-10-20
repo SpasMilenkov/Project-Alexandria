@@ -11,9 +11,10 @@ public sealed partial class AutoPlaylistSweepService(
     IServiceScopeFactory scopeFactory,
     ILogger<AutoPlaylistSweepService> logger) : IAutoPlaylistSweepService
 {
-    public async Task<AutoPlaylistSweepResult> SweepAsync(CancellationToken ct = default)
+    public async Task<AutoPlaylistSweepResult> SweepAsync(
+        bool forceFull = false, CancellationToken ct = default)
     {
-        var ownerIds = await unitOfWork.Playlists.GetSyncOwnerIdsAsync(ct);
+        var ownerIds = await unitOfWork.Playlists.GetOwnersNeedingSyncAsync(forceFull, ct);
 
         var owners = 0;
         var synced = 0;

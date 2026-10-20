@@ -117,9 +117,15 @@ public interface IPlaylistRepository : IRepository<Playlist>
     Task<IReadOnlyList<Guid>> GetSupersededGenrePlaylistIdsAsync(
         Guid ownerId, CancellationToken ct = default);
 
-    /// <summary>Distinct owners of live files. Sweep entry: covers owners whose files
-    /// predate every playlist event, so existing libraries get playlists too.</summary>
-    Task<IReadOnlyList<Guid>> GetSyncOwnerIdsAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Owners that need a sweep: every owner with a live automatic playlist or a
+    /// resolvable transcode, minus owners whose oldest playlist sync is newer than
+    /// every relevant input change. A missing or null sync marker always qualifies.
+    /// Pass <paramref name="forceFull"/> to return every candidate regardless of
+    /// timestamps, which the worker uses for its periodic repair pass.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetOwnersNeedingSyncAsync(
+        bool forceFull, CancellationToken ct = default);
 
     /// <summary>Live auto-maintained playlists of one owner, with grouping columns.</summary>
     Task<IReadOnlyList<Playlist>> GetOwnerAutoPlaylistsAsync(Guid ownerId, CancellationToken ct = default);
