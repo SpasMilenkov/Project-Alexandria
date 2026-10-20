@@ -78,19 +78,21 @@ public interface IPlaylistRepository : IRepository<Playlist>
         CancellationToken ct = default);
 
     /// <summary>
-    /// Every item of a playlist including soft-deleted rows, as reconciler state.
-    /// Ordered by id for deterministic diffs.
+    /// Every item of every given playlist including soft-deleted rows, keyed by
+    /// playlist id and ordered by item id inside each playlist. Missing keys mean
+    /// the playlist has no item rows.
     /// </summary>
-    Task<IReadOnlyList<PlaylistItemState>> GetItemsIncludingDeletedAsync(
-        Guid playlistId, CancellationToken ct = default);
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<PlaylistItemState>>> GetItemsIncludingDeletedForPlaylistsAsync(
+        Guid[] playlistIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Ids of the owner's live auto playlists that hold a live item bound to any
-    /// transcode job of the given file's versions. Finds playlists the file left
-    /// (rename, tag removal) so they can drop it.
+    /// Acquires the session-level advisory lock that serializes auto-playlist
+    /// syncs for one owner across processes. The lock lives on a dedicated open
+    /// connection; dispose the returned handle to release the lock and close the
+    /// connection.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetOwnerAutoPlaylistIdsForFileAsync(
-        Guid ownerId, Guid fileId, CancellationToken ct = default);
+    Task<IAsyncDisposable> AcquireOwnerSyncLockAsync(
+        Guid ownerId, CancellationToken ct = default);
 
     /// <summary>
     /// Ids of the owner's live auto playlists that hold a live item bound to any
@@ -100,20 +102,12 @@ public interface IPlaylistRepository : IRepository<Playlist>
         Guid ownerId, Guid[] fileIds, CancellationToken ct = default);
 
     /// <summary>
-    /// Plain reconciler insert at the next position. Never touches user tombstones;
-    /// the diff decides beforehand whether this insert is allowed.
+    /// Applies one owner batch of reconciler diffs: appends new items after the
+    /// live maximum position, revives system tombstones, soft-deletes removed live
+    /// rows, and stamps every playlist's LastSyncedAt. One save for the batch.
     /// </summary>
-    Task<PlaylistItem> AddAutoItemAsync(
-        Guid playlistId, Guid transpilationJobId, Guid ownerId, CancellationToken ct = default);
-
-    /// <summary>Clears the soft-delete of a system-removed row (flag stays false).</summary>
-    Task ReviveAutoItemAsync(Guid itemId, CancellationToken ct = default);
-
-    /// <summary>System soft-delete: sets DeletedAt, leaves RemovedByUser false.</summary>
-    Task RemoveAutoItemAsync(Guid itemId, Guid ownerId, CancellationToken ct = default);
-
-    /// <summary>Stamps the playlist's LastSyncedAt with the current time.</summary>
-    Task TouchAutoPlaylistAsync(Guid playlistId, CancellationToken ct = default);
+    Task ApplyAutoDiffsAsync(
+        Guid ownerId, IReadOnlyList<AutoPlaylistDiff> diffs, CancellationToken ct = default);
 
     /// <summary>
     /// Ids of live auto Tag-kind playlists whose tag is a genre-facet child. Parent

@@ -173,7 +173,10 @@ public sealed partial class PlaylistService(
         {
             Id = Guid.NewGuid(),
             PlaylistId = playlistId,
-            TranspilationJobId = transpilationJobId
+            TranspilationJobId = transpilationJobId,
+            // User additions are pins: sync keeps them even when the file no
+            // longer matches the playlist's grouping.
+            AddedByUser = true
         };
 
         var result = await playlistRepo.AddItemAsync(item, ct);

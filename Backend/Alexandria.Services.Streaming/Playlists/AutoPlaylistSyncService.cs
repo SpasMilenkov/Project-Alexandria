@@ -31,7 +31,9 @@ public sealed partial class AutoPlaylistSyncService(
         var startedAt = DateTime.UtcNow;
         try
         {
-            var result = await SyncFilesCoreAsync(ownerId, fileIds, ct);
+            var result = await WithOwnerLockAsync(
+                ownerId, () => SyncFilesCoreAsync(ownerId, fileIds, ct), ct);
+
             await RecordRunAsync(ownerId, startedAt, result, null, ct);
             return result;
         }
@@ -40,6 +42,16 @@ public sealed partial class AutoPlaylistSyncService(
             await RecordRunAsync(ownerId, startedAt, null, ex, ct);
             throw;
         }
+    }
+
+    // Session-level advisory lock: serializes syncs for one owner across
+    // processes. Released together with its dedicated connection on exit.
+    private async Task<T> WithOwnerLockAsync<T>(
+        Guid ownerId, Func<Task<T>> work, CancellationToken ct)
+    {
+        await using var ownerLock = await unitOfWork.Playlists.AcquireOwnerSyncLockAsync(ownerId, ct);
+
+        return await work();
     }
 
     private async Task<AutoPlaylistSyncResult> SyncFilesCoreAsync(
@@ -94,7 +106,9 @@ public sealed partial class AutoPlaylistSyncService(
         var startedAt = DateTime.UtcNow;
         try
         {
-            var result = await SyncOwnerCoreAsync(ownerId, ct);
+            var result = await WithOwnerLockAsync(
+                ownerId, () => SyncOwnerCoreAsync(ownerId, ct), ct);
+
             await RecordRunAsync(ownerId, startedAt, result, null, ct);
             return result;
         }
@@ -235,36 +249,43 @@ public sealed partial class AutoPlaylistSyncService(
         Guid ownerId,
         CancellationToken ct)
     {
-        var synced = 0;
+        var playlistList = playlists.ToList();
+        if (playlistList.Count == 0)
+            return new AutoPlaylistSyncResult(0, 0, 0, 0);
+
+        var playlistIds = playlistList.Select(p => p.Id).ToArray();
+
+        var itemsByPlaylist = await unitOfWork.Playlists.GetItemsIncludingDeletedForPlaylistsAsync(
+            playlistIds, ct);
+
+        var fileByJob = Invert(jobByFile);
+
+        var diffs = new List<AutoPlaylistDiff>(playlistList.Count);
         var added = 0;
         var revived = 0;
         var removed = 0;
 
-        foreach (var playlist in playlists)
+        foreach (var playlist in playlistList)
         {
             var members = BucketMembers(grouping, playlist);
             var desired = DesiredJobs(members, jobByFile);
-            var items = await unitOfWork.Playlists.GetItemsIncludingDeletedAsync(playlist.Id, ct);
-            var diff = PlaylistReconciler.ComputeDiff(desired, items, Invert(jobByFile));
 
-            foreach (var jobId in diff.AddJobIds)
-                await unitOfWork.Playlists.AddAutoItemAsync(playlist.Id, jobId, ownerId, ct);
+            IReadOnlyList<PlaylistItemState> items = itemsByPlaylist.TryGetValue(
+                playlist.Id, out var existingItems)
+                ? existingItems
+                : [];
 
-            foreach (var itemId in diff.ReviveItemIds)
-                await unitOfWork.Playlists.ReviveAutoItemAsync(itemId, ct);
+            var diff = PlaylistReconciler.ComputeDiff(desired, items, fileByJob);
 
-            foreach (var itemId in diff.RemoveItemIds)
-                await unitOfWork.Playlists.RemoveAutoItemAsync(itemId, ownerId, ct);
-
-            await unitOfWork.Playlists.TouchAutoPlaylistAsync(playlist.Id, ct);
-
-            synced++;
+            diffs.Add(new AutoPlaylistDiff(playlist.Id, diff));
             added += diff.AddJobIds.Count;
             revived += diff.ReviveItemIds.Count;
             removed += diff.RemoveItemIds.Count;
         }
 
-        return new AutoPlaylistSyncResult(synced, added, revived, removed);
+        await unitOfWork.Playlists.ApplyAutoDiffsAsync(ownerId, diffs, ct);
+
+        return new AutoPlaylistSyncResult(playlistList.Count, added, revived, removed);
     }
 
     private static IReadOnlyDictionary<Guid, Guid> Invert(IReadOnlyDictionary<Guid, Guid> jobByFile)

@@ -3,6 +3,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Playlist;
 using AwesomeAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using AutoPlaylistSweepService = Alexandria.Services.Streaming.Playlists.AutoPlaylistSweepService;
@@ -17,14 +18,26 @@ public class AutoPlaylistSweepTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IPlaylistRepository _playlists = Substitute.For<IPlaylistRepository>();
     private readonly IAutoPlaylistSyncService _sync = Substitute.For<IAutoPlaylistSyncService>();
+    private readonly IServiceScopeFactory _scopeFactory = Substitute.For<IServiceScopeFactory>();
 
     public AutoPlaylistSweepTests()
     {
         _unitOfWork.Playlists.Returns(_playlists);
+
+        _scopeFactory.CreateScope().Returns(_ =>
+        {
+            var provider = Substitute.For<IServiceProvider>();
+            provider.GetService(typeof(IAutoPlaylistSyncService)).Returns(_sync);
+
+            var scope = Substitute.For<IServiceScope>();
+            scope.ServiceProvider.Returns(provider);
+
+            return scope;
+        });
     }
 
     private AutoPlaylistSweepService CreateSut() => new(
-        _unitOfWork, _sync, NullLogger<AutoPlaylistSweepService>.Instance);
+        _unitOfWork, _scopeFactory, NullLogger<AutoPlaylistSweepService>.Instance);
 
     [Fact]
     public async Task SweepAsync_sweeps_every_owner_and_aggregates()
@@ -69,5 +82,20 @@ public class AutoPlaylistSweepTests
 
         await _sync.Received(1).SyncOwnerAsync(OwnerTwo, Arg.Any<CancellationToken>());
         result.Should().Be(new AutoPlaylistSweepResult(1, 1, 2, 0, 0));
+    }
+
+    [Fact]
+    public async Task SweepAsync_resolves_sync_service_on_a_fresh_scope_per_owner()
+    {
+        _playlists.GetSyncOwnerIdsAsync(Arg.Any<CancellationToken>())
+            .Returns(new List<Guid> { OwnerOne, OwnerTwo });
+        _sync.SyncOwnerAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new AutoPlaylistSyncResult(0, 0, 0, 0));
+
+        await CreateSut().SweepAsync(TestContext.Current.CancellationToken);
+
+        _scopeFactory.Received(2).CreateScope();
+        await _sync.Received(1).SyncOwnerAsync(OwnerOne, Arg.Any<CancellationToken>());
+        await _sync.Received(1).SyncOwnerAsync(OwnerTwo, Arg.Any<CancellationToken>());
     }
 }

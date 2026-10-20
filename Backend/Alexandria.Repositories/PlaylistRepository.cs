@@ -289,9 +289,19 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
 
     public async Task<PlaylistItemDto> AddItemAsync(PlaylistItem item, CancellationToken ct = default)
     {
-        // Manually re-adding a user-removed track resurrects the tombstone (flag
-        // cleared) instead of duplicating the row. A live row means the user wants
-        // the track twice, so that still inserts.
+        // A live row means the track is already in the playlist, so the add is a
+        // no-op instead of a duplicate. Otherwise a user-removed tombstone is
+        // resurrected, and only a track with no row at all is inserted.
+        var liveItemId = await _playlistItems
+            .Where(i => i.PlaylistId == item.PlaylistId
+                        && i.TranspilationJobId == item.TranspilationJobId
+                        && i.DeletedAt == null)
+            .Select(i => (Guid?)i.Id)
+            .FirstOrDefaultAsync(ct);
+
+        if (liveItemId is not null)
+            return await GetItemDtoAsync(liveItemId.Value, ct);
+
         var tombstone = await _playlistItems
             .Where(i => i.PlaylistId == item.PlaylistId
                         && i.TranspilationJobId == item.TranspilationJobId
@@ -299,12 +309,7 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
             .OrderByDescending(i => i.DeletedAt)
             .FirstOrDefaultAsync(ct);
 
-        var hasLiveRow = await _playlistItems
-            .AnyAsync(i => i.PlaylistId == item.PlaylistId
-                           && i.TranspilationJobId == item.TranspilationJobId
-                           && i.DeletedAt == null, ct);
-
-        if (tombstone is not null && !hasLiveRow)
+        if (tombstone is not null)
         {
             var maxPosition = await _playlistItems
                 .Where(i => i.PlaylistId == item.PlaylistId && i.DeletedAt == null)
@@ -314,25 +319,30 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
             tombstone.UpdatedAt = DateTime.UtcNow;
             tombstone.UpdatedBy = item.UpdatedBy;
             tombstone.RemovedByUser = false;
+            tombstone.AddedByUser = item.AddedByUser;
             tombstone.Position = maxPosition + 1;
             await context.SaveChangesAsync(ct);
-            item = tombstone;
-        }
-        else
-        {
-            var maxPosition = await _playlistItems
-                .Where(i => i.PlaylistId == item.PlaylistId && i.DeletedAt == null)
-                .MaxAsync(i => (int?)i.Position, ct) ?? -1;
 
-            item.Position = maxPosition + 1;
-            item.CreatedAt = DateTime.UtcNow;
-
-            await _playlistItems.AddAsync(item, ct);
-            await context.SaveChangesAsync(ct);
+            return await GetItemDtoAsync(tombstone.Id, ct);
         }
 
-        return await _playlistItems
-            .Where(i => i.Id == item.Id)
+        var max = await _playlistItems
+            .Where(i => i.PlaylistId == item.PlaylistId && i.DeletedAt == null)
+            .MaxAsync(i => (int?)i.Position, ct) ?? -1;
+
+        item.Position = max + 1;
+        item.CreatedAt = DateTime.UtcNow;
+
+        await _playlistItems.AddAsync(item, ct);
+        await context.SaveChangesAsync(ct);
+
+        return await GetItemDtoAsync(item.Id, ct);
+    }
+
+    private Task<PlaylistItemDto> GetItemDtoAsync(Guid itemId, CancellationToken ct)
+    {
+        return _playlistItems
+            .Where(i => i.Id == itemId)
             .Select(i => new PlaylistItemDto
             {
                 Id = i.Id,
@@ -404,33 +414,32 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<PlaylistItemState>> GetItemsIncludingDeletedAsync(
-        Guid playlistId, CancellationToken ct = default)
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<PlaylistItemState>>>
+        GetItemsIncludingDeletedForPlaylistsAsync(
+            Guid[] playlistIds, CancellationToken ct = default)
     {
-        return await _playlistItems
-            .Where(i => i.PlaylistId == playlistId)
-            .OrderBy(i => i.Id)
-            .Select(i => new PlaylistItemState(
-                i.Id,
-                i.TranspilationJobId,
-                i.DeletedAt != null,
-                i.RemovedByUser,
-                i.DeletedAt))
-            .ToListAsync(ct);
-    }
+        if (playlistIds.Length == 0)
+            return new Dictionary<Guid, IReadOnlyList<PlaylistItemState>>();
 
-    public async Task<IReadOnlyList<Guid>> GetOwnerAutoPlaylistIdsForFileAsync(
-        Guid ownerId, Guid fileId, CancellationToken ct = default)
-    {
-        return await _playlistItems
-            .Where(i => i.DeletedAt == null
-                        && i.Playlist.DeletedAt == null
-                        && i.Playlist.OwnerId == ownerId
-                        && i.Playlist.IsAutoGenerated
-                        && i.TranspilationJob.FileVersion.FileId == fileId)
-            .Select(i => i.PlaylistId)
-            .Distinct()
+        var rows = await _playlistItems
+            .Where(i => playlistIds.Contains(i.PlaylistId))
+            .OrderBy(i => i.Id)
+            .Select(i => new
+            {
+                i.PlaylistId,
+                State = new PlaylistItemState(
+                    i.Id,
+                    i.TranspilationJobId,
+                    i.DeletedAt != null,
+                    i.RemovedByUser,
+                    i.AddedByUser,
+                    i.DeletedAt)
+            })
             .ToListAsync(ct);
+
+        return rows
+            .GroupBy(r => r.PlaylistId, r => r.State)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<PlaylistItemState>)g.ToList());
     }
 
     public async Task<IReadOnlyList<Guid>> GetOwnerAutoPlaylistIdsForFilesAsync(
@@ -450,81 +459,53 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
             .ToListAsync(ct);
     }
 
-    public async Task<PlaylistItem> AddAutoItemAsync(
-        Guid playlistId, Guid transpilationJobId, Guid ownerId, CancellationToken ct = default)
+    public Task<IAsyncDisposable> AcquireOwnerSyncLockAsync(
+        Guid ownerId, CancellationToken ct = default)
     {
-        var maxPosition = await _playlistItems
-            .Where(i => i.PlaylistId == playlistId && i.DeletedAt == null)
-            .MaxAsync(i => (int?)i.Position, ct) ?? -1;
-
-        var item = new PlaylistItem
-        {
-            Id = Guid.NewGuid(),
-            PlaylistId = playlistId,
-            TranspilationJobId = transpilationJobId,
-            Position = maxPosition + 1,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedBy = ownerId,
-        };
-
-        await _playlistItems.AddAsync(item, ct);
-        await context.SaveChangesAsync(ct);
-        return item;
+        return PlaylistOwnerSyncLock.AcquireAsync(context, ownerId, ct);
     }
 
-    public async Task ReviveAutoItemAsync(Guid itemId, CancellationToken ct = default)
+    public async Task ApplyAutoDiffsAsync(
+        Guid ownerId, IReadOnlyList<AutoPlaylistDiff> diffs, CancellationToken ct = default)
     {
-        var item = await _playlistItems
-            .Where(i => i.Id == itemId)
-            .Select(i => new { i.PlaylistId, i.Position })
-            .FirstOrDefaultAsync(ct);
-
-        if (item is null)
+        if (diffs.Count == 0)
             return;
 
-        // Keep the original position only when still free, else append, so two
-        // live rows never share a position.
-        var occupied = await _playlistItems
-            .AnyAsync(i => i.PlaylistId == item.PlaylistId
-                           && i.Id != itemId
-                           && i.DeletedAt == null
-                           && i.Position == item.Position, ct);
+        var playlistIds = diffs
+            .Select(d => d.PlaylistId)
+            .Distinct()
+            .ToArray();
 
-        var position = item.Position;
-        if (occupied)
+        var existingItems = await _playlistItems
+            .Where(i => playlistIds.Contains(i.PlaylistId))
+            .ToListAsync(ct);
+
+        var itemsByPlaylist = existingItems
+            .GroupBy(i => i.PlaylistId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var now = DateTime.UtcNow;
+        var newItems = new List<PlaylistItem>();
+
+        foreach (var entry in diffs)
         {
-            position = await _playlistItems
-                .Where(i => i.PlaylistId == item.PlaylistId && i.DeletedAt == null)
-                .MaxAsync(i => (int?)i.Position, ct) ?? -1;
-            position++;
+            List<PlaylistItem> items = itemsByPlaylist.TryGetValue(
+                entry.PlaylistId, out var playlistItems)
+                ? playlistItems
+                : [];
+
+            newItems.AddRange(PlaylistDiffApplier.Apply(
+                entry.PlaylistId, items, entry.Diff, ownerId, now));
         }
 
-        await _playlistItems
-            .Where(i => i.Id == itemId)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(i => i.DeletedAt, (DateTime?)null)
-                .SetProperty(i => i.Position, position)
-                .SetProperty(i => i.UpdatedAt, DateTime.UtcNow), ct);
-    }
+        if (newItems.Count > 0)
+            await _playlistItems.AddRangeAsync(newItems, ct);
 
-    public async Task RemoveAutoItemAsync(Guid itemId, Guid ownerId, CancellationToken ct = default)
-    {
-        var now = DateTime.UtcNow;
-
-        await _playlistItems
-            .Where(i => i.Id == itemId && i.DeletedAt == null)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(i => i.DeletedAt, now)
-                .SetProperty(i => i.UpdatedAt, now)
-                .SetProperty(i => i.UpdatedBy, ownerId), ct);
-    }
-
-    public async Task TouchAutoPlaylistAsync(Guid playlistId, CancellationToken ct = default)
-    {
         await _playlists
-            .Where(p => p.Id == playlistId)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(p => p.LastSyncedAt, DateTime.UtcNow), ct);
+            .Where(p => playlistIds.Contains(p.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.LastSyncedAt, now), ct);
+
+        await context.SaveChangesAsync(ct);
     }
 
     public async Task<IReadOnlyList<Guid>> GetSupersededGenrePlaylistIdsAsync(
