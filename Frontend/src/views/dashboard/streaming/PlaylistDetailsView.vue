@@ -104,18 +104,18 @@
 
             <!-- Actions: one primary, one utility, one overflow menu -->
             <div class="flex items-center justify-center md:justify-start gap-2 mt-4">
-              <UTooltip text="Play all">
+              <UTooltip :text="playButtonLabel">
                 <UButton
-                  icon="mdi:play"
+                  :icon="playButtonIcon"
                   color="primary"
                   variant="solid"
                   square
-                  aria-label="Play all"
+                  :aria-label="playButtonLabel"
                   class="size-14 rounded-full justify-center shadow-lg transition-transform hover:scale-105"
                   :ui="{ leadingIcon: 'size-6' }"
                   :loading="isLoadingQueue"
                   :disabled="!localItems.length"
-                  @click="playAll"
+                  @click="handlePlay"
                 />
               </UTooltip>
 
@@ -465,6 +465,23 @@ const playlistId = computed(() => route.params.id as string);
 // The playlist this view shows is the player's source while its context
 // points at it, so the header keeps a playing state after loading finishes.
 const isCurrentPlaylist = computed(() => store.context?.ref.playlistId === playlistId.value);
+
+const isPlaylistPlaying = computed(() => isCurrentPlaylist.value && store.isPlaying);
+
+const playButtonIcon = computed(() => (isPlaylistPlaying.value ? "mdi:pause" : "mdi:play"));
+
+const playButtonLabel = computed(() => {
+  if (!isCurrentPlaylist.value) return "Play all";
+  return store.isPlaying ? "Pause" : "Resume";
+});
+
+const handlePlay = () => {
+  if (isCurrentPlaylist.value) {
+    store.togglePlay();
+    return;
+  }
+  void playAll();
+};
 
 // Identity of the now-playing file: the playlist occurrence when it has one,
 // otherwise the file itself. Matched against row ids so the row the audio is

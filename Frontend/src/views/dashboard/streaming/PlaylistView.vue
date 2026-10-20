@@ -263,7 +263,7 @@
             v-for="playlist in playlists"
             :key="playlist.id"
             :playlist="playlist"
-            :is-playing="playingPlaylistId === playlist.id"
+            :is-playing="playingPlaylistId === playlist.id && store.isPlaying"
             :is-loading="loadingPlaylistId === playlist.id"
             @open="navigateToPlaylist(playlist.id)"
             @edit="openEditModal(playlist)"
@@ -490,7 +490,6 @@ const kindFilterOptions = [
   { label: "Album", value: AutoGroupKind.Album },
   { label: "Tag", value: AutoGroupKind.Tag },
   { label: "Genre", value: AutoGroupKind.Genre },
-  { label: "Parent genre", value: AutoGroupKind.ParentGenre },
   { label: "Decade", value: AutoGroupKind.Decade },
 ];
 
@@ -623,6 +622,11 @@ const playingPlaylistId = computed(() => store.context?.ref.playlistId ?? null);
 
 const playPlaylist = async (playlist: PlaylistResponse) => {
   if (loadingPlaylistId.value === playlist.id) return;
+
+  if (playingPlaylistId.value === playlist.id) {
+    store.togglePlay();
+    return;
+  }
 
   loadingPlaylistId.value = playlist.id;
   try {
