@@ -1,7 +1,7 @@
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming.Playlist;
-using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.Playlists;
 using AwesomeAssertions;
 using NSubstitute;
 
@@ -51,6 +51,84 @@ public class AutoPlaylistGroupingTests
     }
 
     [Fact]
+    public void GroupArtists_realMultiArtistTag_splitsIntoDistinctArtists()
+    {
+        var rows = new[]
+        {
+            Row(FileA, artist:
+                "Lotus Juice, ATLUS Sound Team, ATLUS GAME MUSIC, Lotus Juice, 目黒将司, ATLUS Sound Team"),
+        };
+
+        var groups = AutoPlaylistGrouping.GroupArtists(rows);
+
+        groups.Should().HaveCount(4);
+        groups.Select(g => g.Key).Should().BeEquivalentTo(
+            "lotus juice", "atlus sound team", "atlus game music", "目黒将司");
+        groups.Should().OnlyContain(g => g.FileIds.Count == 1 && g.FileIds[0] == FileA);
+    }
+
+    [Fact]
+    public void GroupArtists_sharesFileAcrossMultipleArtistBuckets()
+    {
+        var rows = new[]
+        {
+            Row(FileA, artist: "Artist A, Artist B"),
+            Row(FileB, artist: "Artist B, Artist C"),
+        };
+
+        var groups = AutoPlaylistGrouping.GroupArtists(rows);
+
+        groups.Should().HaveCount(3);
+        groups.Single(g => g.Key == "artist b").FileIds.Should().BeEquivalentTo([FileA, FileB]);
+        groups.Single(g => g.Key == "artist a").FileIds.Should().ContainSingle().Subject.Should().Be(FileA);
+        groups.Single(g => g.Key == "artist c").FileIds.Should().ContainSingle().Subject.Should().Be(FileB);
+    }
+
+    [Fact]
+    public void GroupArtists_splitsSemicolonJapaneseCommaAndFeaturing()
+    {
+        var rows = new[]
+        {
+            Row(FileA, artist: "Artist A; Artist B、Artist C feat. Artist D"),
+        };
+
+        var groups = AutoPlaylistGrouping.GroupArtists(rows);
+
+        groups.Select(g => g.Key).Should().BeEquivalentTo(
+            "artist a", "artist b", "artist c", "artist d");
+    }
+
+    [Fact]
+    public void GroupArtists_doesNotSplitAmpersandOrSlash()
+    {
+        var rows = new[]
+        {
+            Row(FileA, artist: "Simon & Garfunkel"),
+            Row(FileB, artist: "AC/DC"),
+        };
+
+        var groups = AutoPlaylistGrouping.GroupArtists(rows);
+
+        groups.Should().HaveCount(2);
+        groups.Select(g => g.Key).Should().BeEquivalentTo("simon & garfunkel", "ac/dc");
+    }
+
+    [Fact]
+    public void GroupArtists_dedupesCaseVariantsWithinOneValue()
+    {
+        var rows = new[]
+        {
+            Row(FileA, artist: "Lotus Juice, lotus juice, LOTUS JUICE"),
+        };
+
+        var group = AutoPlaylistGrouping.GroupArtists(rows).Should().ContainSingle().Subject;
+
+        group.Key.Should().Be("lotus juice");
+        group.DisplayName.Should().Be("Lotus Juice");
+        group.FileIds.Should().ContainSingle().Subject.Should().Be(FileA);
+    }
+
+    [Fact]
     public void GroupArtists_blankArtist_skipsRow()
     {
         var rows = new[]
@@ -95,6 +173,23 @@ public class AutoPlaylistGroupingTests
         group.AlbumKey.Should().Be("league of legends");
         group.DisplayArtist.Should().Be("Arcane");
         group.DisplayAlbum.Should().Be("League of Legends");
+        group.FileIds.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void GroupAlbums_multiArtistValue_usesPrimaryArtistForKey()
+    {
+        var rows = new[]
+        {
+            Row(FileA, artist: "Lotus Juice, ATLUS Sound Team", album: "Persona 3"),
+            Row(FileB, artist: "Lotus Juice, 目黒将司", album: "Persona 3"),
+        };
+
+        var group = AutoPlaylistGrouping.GroupAlbums(rows).Should().ContainSingle().Subject;
+
+        group.ArtistKey.Should().Be("lotus juice");
+        group.DisplayArtist.Should().Be("Lotus Juice");
+        group.AlbumKey.Should().Be("persona 3");
         group.FileIds.Should().HaveCount(2);
     }
 

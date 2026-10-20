@@ -1,18 +1,20 @@
 using Alexandria.Common;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Playlist;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Alexandria.Services.Streaming;
+namespace Alexandria.Services.Streaming.Playlists;
 
 public sealed partial class AutoPlaylistSweepService(
     IUnitOfWork unitOfWork,
-    IAutoPlaylistSyncService syncService,
+    IServiceScopeFactory scopeFactory,
     ILogger<AutoPlaylistSweepService> logger) : IAutoPlaylistSweepService
 {
-    public async Task<AutoPlaylistSweepResult> SweepAsync(CancellationToken ct = default)
+    public async Task<AutoPlaylistSweepResult> SweepAsync(
+        bool forceFull = false, CancellationToken ct = default)
     {
-        var ownerIds = await unitOfWork.Playlists.GetSyncOwnerIdsAsync(ct);
+        var ownerIds = await unitOfWork.Playlists.GetOwnersNeedingSyncAsync(forceFull, ct);
 
         var owners = 0;
         var synced = 0;
@@ -25,6 +27,12 @@ public sealed partial class AutoPlaylistSweepService(
             AutoPlaylistSyncResult result;
             try
             {
+                // Fresh scope per owner: a failed owner cannot leave tracked
+                // entities or a held session lock for the next one to inherit.
+                using var scope = scopeFactory.CreateScope();
+                var syncService = scope.ServiceProvider
+                    .GetRequiredService<IAutoPlaylistSyncService>();
+
                 result = await syncService.SyncOwnerAsync(ownerId, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)

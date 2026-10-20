@@ -19,6 +19,7 @@ using Alexandria.Services.Storage.Promotions;
 using Alexandria.Services.Storage.SignedUrls;
 using Alexandria.Services.Storage.Static;
 using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.Playlists;
 using Alexandria.Services.Streaming.Shuffle;
 using Alexandria.Services.Streaming.Wrapped;
 using Alexandria.Services.User;

@@ -13,12 +13,12 @@ vi.mock("@pinia/colada", () => ({
   useQueryCache: () => ({ ensure, refresh }),
 }));
 
-const makeFile = (fileId: string): FileResult => ({
+const makeFile = (fileId: string, isEncrypted = false): FileResult => ({
   createdAt: "2026-01-01T00:00:00.000Z",
   currentVersion: {
     id: "v1",
     isDeleted: false,
-    isEncrypted: false,
+    isEncrypted,
     mimeType: "text/plain",
     size: "1024",
     versionNumber: 1,
@@ -45,10 +45,10 @@ describe("FileItem prefetch", () => {
     vi.useRealTimers();
   });
 
-  const mountRow = () =>
+  const mountRow = (file: FileResult = makeFile("f1")) =>
     mount(FileItem, {
       global: { plugins: [createPinia()] },
-      props: { data: makeFile("f1"), isSelected: false, viewMode: "list" },
+      props: { data: file, isSelected: false, viewMode: "list" },
     });
 
   it("warms the details drawer queries after the hover delay", async () => {
@@ -58,6 +58,16 @@ describe("FileItem prefetch", () => {
     vi.advanceTimersByTime(150);
     expect(ensure).toHaveBeenCalledTimes(4);
     expect(refresh).toHaveBeenCalledTimes(4);
+  });
+
+  it("skips the preview warmup for encrypted files", async () => {
+    const wrapper = mountRow(makeFile("f1", true));
+    await wrapper.find("button").trigger("mouseenter");
+    vi.advanceTimersByTime(150);
+
+    const ensuredKeys = ensure.mock.calls.map(([options]) => (options as { key: unknown[] }).key);
+    expect(ensuredKeys.some((key) => key.includes("preview"))).toBe(false);
+    expect(refresh).toHaveBeenCalledTimes(3);
   });
 
   it("cancels a pending warmup when interest moves away", async () => {

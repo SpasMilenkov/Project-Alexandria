@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { AutoGroupKind } from "@/enums/auto-group-kind";
 import { PlaylistSort } from "@/enums/playlist-sort";
+import { SortDirection } from "@/enums/SortDirection";
 import {
-  autoGroupKindLabel,
   DEFAULT_BROWSE_STATE,
+  PLAYLIST_SEARCH_MAX_LENGTH,
+  autoGroupKindLabel,
   parsePlaylistBrowseQuery,
   playlistBadgeLabel,
   playlistBrowseQuery,
@@ -25,7 +27,7 @@ describe("autoGroupKindLabel", () => {
   it("labels every known kind", () => {
     expect(autoGroupKindLabel(AutoGroupKind.Artist)).toBe("Artist");
     expect(autoGroupKindLabel(AutoGroupKind.Album)).toBe("Album");
-    expect(autoGroupKindLabel(AutoGroupKind.Tag)).toBe("Tag");
+    expect(autoGroupKindLabel(AutoGroupKind.Tag)).toBe("Theme");
     expect(autoGroupKindLabel(AutoGroupKind.Genre)).toBe("Genre");
     expect(autoGroupKindLabel(AutoGroupKind.ParentGenre)).toBe("Genre");
     expect(autoGroupKindLabel(AutoGroupKind.Decade)).toBe("Decade");
@@ -59,12 +61,38 @@ describe("parsePlaylistBrowseQuery", () => {
   });
 
   it("parses a full valid query", () => {
-    expect(parsePlaylistBrowseQuery({ page: "3", origin: "auto", kind: "5", sort: "1" })).toEqual({
+    expect(
+      parsePlaylistBrowseQuery({
+        page: "3",
+        origin: "auto",
+        kind: "5",
+        sort: "1",
+        direction: "desc",
+        q: "miles",
+        searchItems: "1",
+      }),
+    ).toEqual({
       page: 3,
       origin: "auto",
       kind: AutoGroupKind.Decade,
       sort: PlaylistSort.Name,
+      direction: SortDirection.Desc,
+      q: "miles",
+      searchItems: true,
     });
+  });
+
+  it("trims search text and caps it at the max length", () => {
+    expect(parsePlaylistBrowseQuery({ q: "  beatles  " }).q).toBe("beatles");
+
+    const long = "a".repeat(PLAYLIST_SEARCH_MAX_LENGTH + 20);
+    expect(parsePlaylistBrowseQuery({ q: long }).q).toHaveLength(PLAYLIST_SEARCH_MAX_LENGTH);
+  });
+
+  it("treats non-string search params as empty and unrecognized flags as off", () => {
+    expect(parsePlaylistBrowseQuery({ q: 5 }).q).toBe("");
+    expect(parsePlaylistBrowseQuery({ searchItems: "true" }).searchItems).toBe(false);
+    expect(parsePlaylistBrowseQuery({ searchItems: "0" }).searchItems).toBe(false);
   });
 
   it("falls back per field on garbage", () => {
@@ -73,8 +101,68 @@ describe("parsePlaylistBrowseQuery", () => {
     );
   });
 
+  it("parses the favorites collection scope", () => {
+    expect(parsePlaylistBrowseQuery({ origin: "favorites" }).origin).toBe("favorites");
+  });
+
+  it("normalizes the retired parent-genre kind to the merged genre filter", () => {
+    expect(parsePlaylistBrowseQuery({ kind: String(AutoGroupKind.ParentGenre) }).kind).toBe(
+      AutoGroupKind.Genre,
+    );
+  });
+
   it("reads the first value of repeated params", () => {
     expect(parsePlaylistBrowseQuery({ page: ["2", "5"] })).toMatchObject({ page: 2 });
+  });
+});
+
+describe("sort direction", () => {
+  it("defaults to the natural direction of the sort field", () => {
+    expect(parsePlaylistBrowseQuery({}).direction).toBe(SortDirection.Desc);
+    expect(parsePlaylistBrowseQuery({ sort: "1" }).direction).toBe(SortDirection.Asc);
+    expect(parsePlaylistBrowseQuery({ sort: "2" }).direction).toBe(SortDirection.Desc);
+  });
+
+  it("parses an explicit direction and ignores garbage", () => {
+    expect(parsePlaylistBrowseQuery({ sort: "1", direction: "desc" }).direction).toBe(
+      SortDirection.Desc,
+    );
+    expect(parsePlaylistBrowseQuery({ sort: "1", direction: "asc" }).direction).toBe(
+      SortDirection.Asc,
+    );
+    expect(parsePlaylistBrowseQuery({ sort: "2", direction: "sideways" }).direction).toBe(
+      SortDirection.Desc,
+    );
+    expect(parsePlaylistBrowseQuery({ sort: "1", direction: 7 }).direction).toBe(SortDirection.Asc);
+  });
+
+  it("omits the direction when it matches the field default and round-trips", () => {
+    const state = {
+      ...DEFAULT_BROWSE_STATE,
+      sort: PlaylistSort.Name,
+      direction: SortDirection.Asc,
+    };
+
+    expect(playlistBrowseQuery(state)).toEqual({ sort: "1" });
+    expect(parsePlaylistBrowseQuery(playlistBrowseQuery(state))).toEqual(state);
+  });
+
+  it("serializes a flipped direction and round-trips", () => {
+    const state = {
+      ...DEFAULT_BROWSE_STATE,
+      sort: PlaylistSort.Name,
+      direction: SortDirection.Desc,
+    };
+
+    expect(playlistBrowseQuery(state)).toEqual({ sort: "1", direction: "desc" });
+    expect(parsePlaylistBrowseQuery(playlistBrowseQuery(state))).toEqual(state);
+  });
+
+  it("serializes a direction flip on the default sort", () => {
+    const state = { ...DEFAULT_BROWSE_STATE, direction: SortDirection.Asc };
+
+    expect(playlistBrowseQuery(state)).toEqual({ direction: "asc" });
+    expect(parsePlaylistBrowseQuery(playlistBrowseQuery(state))).toEqual(state);
   });
 });
 
@@ -85,6 +173,7 @@ describe("playlistBrowseQuery", () => {
 
   it("serializes a full state and round-trips", () => {
     const state = {
+      ...DEFAULT_BROWSE_STATE,
       page: 2,
       origin: "auto" as const,
       kind: AutoGroupKind.Tag,
@@ -92,6 +181,26 @@ describe("playlistBrowseQuery", () => {
     };
     const query = playlistBrowseQuery(state);
     expect(query).toEqual({ page: "2", origin: "auto", kind: "2", sort: "2" });
+    expect(parsePlaylistBrowseQuery(query)).toEqual(state);
+  });
+
+  it("serializes search state and round-trips", () => {
+    const state = {
+      ...DEFAULT_BROWSE_STATE,
+      page: 2,
+      q: "beatles",
+      searchItems: true,
+    };
+    const query = playlistBrowseQuery(state);
+    expect(query).toEqual({ page: "2", q: "beatles", searchItems: "1" });
+    expect(parsePlaylistBrowseQuery(query)).toEqual(state);
+  });
+
+  it("serializes the favorites scope and round-trips", () => {
+    const state = { ...DEFAULT_BROWSE_STATE, origin: "favorites" as const };
+    const query = playlistBrowseQuery(state);
+
+    expect(query).toEqual({ origin: "favorites" });
     expect(parsePlaylistBrowseQuery(query)).toEqual(state);
   });
 });

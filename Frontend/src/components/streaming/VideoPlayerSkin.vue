@@ -677,8 +677,8 @@ defineExpose({ toggleFullscreen });
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(var(--frost-blur));
   -webkit-backdrop-filter: blur(var(--frost-blur));
+  backdrop-filter: blur(var(--frost-blur));
   transition:
     background 150ms ease,
     transform 150ms ease;
@@ -753,8 +753,8 @@ defineExpose({ toggleFullscreen });
   border-radius: 1rem;
   background: rgba(16, 16, 20, 0.84);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 /* Seek row */
@@ -1128,8 +1128,8 @@ defineExpose({ toggleFullscreen });
 /* Resume prompt */
 .vps-resume-prompt {
   background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(var(--frost-blur));
   -webkit-backdrop-filter: blur(var(--frost-blur));
+  backdrop-filter: blur(var(--frost-blur));
   pointer-events: auto;
   z-index: 14;
 }
@@ -1187,8 +1187,8 @@ defineExpose({ toggleFullscreen });
   padding: 0.5rem 0.75rem 0.5rem 0.5rem;
   border-radius: 0.625rem;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(var(--frost-blur));
   -webkit-backdrop-filter: blur(var(--frost-blur));
+  backdrop-filter: blur(var(--frost-blur));
   border: 1px solid rgba(255, 255, 255, 0.1);
   pointer-events: auto;
 }
@@ -1304,8 +1304,8 @@ defineExpose({ toggleFullscreen });
   border-radius: 12px;
   background: rgba(20, 20, 24, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
   z-index: 30;
 }

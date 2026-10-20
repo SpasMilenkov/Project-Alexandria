@@ -1170,6 +1170,11 @@ namespace Alexandria.Data.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsStarred")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime?>("LastSyncedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1222,6 +1227,11 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("AddedByUser")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

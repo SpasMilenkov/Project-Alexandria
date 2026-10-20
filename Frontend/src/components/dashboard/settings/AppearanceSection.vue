@@ -339,6 +339,18 @@ const clearImage = async () => {
   await persistAppearance();
 };
 
+const handleResetAppearance = async () => {
+  if (settingsStore.hasBackgroundImage) {
+    try {
+      await deleteBackgroundImage();
+    } catch (err) {
+      logger.error(err);
+    }
+  }
+
+  settingsStore.resetAppearanceSettings();
+};
+
 const imageName = computed(() => {
   if (!settingsStore.backgroundImageKey) return null;
   return settingsStore.backgroundImageKey.split("/").pop() ?? "background";
@@ -549,7 +561,7 @@ const listRowStyle = computed(() => {
               variant="outline"
               size="xs"
               :disabled="!settingsStore.isAppearanceModified"
-              @click="settingsStore.resetAppearanceSettings()"
+              @click="handleResetAppearance"
             />
           </div>
 

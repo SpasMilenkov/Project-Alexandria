@@ -517,7 +517,7 @@ export const useSettingsStore = defineStore(
     const resetSettings = () => {
       accentColor.value = DEFAULT_ACCENT_COLOR;
       backgroundColor.value = DEFAULT_BACKGROUND;
-      backgroundImage.value = DEFAULT_BACKGROUND_IMAGE;
+      clearBackgroundImage();
       backgroundImageOpacity.value = DEFAULT_BACKGROUND_IMAGE_OPACITY;
       frostEnabled.value = DEFAULT_FROST_ENABLED;
       frostStrength.value = DEFAULT_FROST_STRENGTH;
@@ -539,7 +539,7 @@ export const useSettingsStore = defineStore(
     const resetAppearanceSettings = () => {
       accentColor.value = DEFAULT_ACCENT_COLOR;
       backgroundColor.value = DEFAULT_BACKGROUND;
-      backgroundImage.value = DEFAULT_BACKGROUND_IMAGE;
+      clearBackgroundImage();
       backgroundImageOpacity.value = DEFAULT_BACKGROUND_IMAGE_OPACITY;
       frostEnabled.value = DEFAULT_FROST_ENABLED;
       frostStrength.value = DEFAULT_FROST_STRENGTH;
@@ -560,6 +560,7 @@ export const useSettingsStore = defineStore(
 
     const resetAutoTaggingSettings = () => {
       allowAutoTagRegression.value = DEFAULT_ALLOW_AUTO_TAG_REGRESSION;
+      allowAutomaticMetadataOverwrite.value = DEFAULT_ALLOW_AUTOMATIC_METADATA_OVERWRITE;
     };
 
     const resetAutoPlaylistSettings = () => {

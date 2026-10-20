@@ -8,11 +8,14 @@ import AppearanceSection from "@/components/dashboard/settings/AppearanceSection
 import AutoPlaylistsSection from "@/components/dashboard/settings/AutoPlaylistsSection.vue";
 import AutoTaggingSection from "@/components/dashboard/settings/AutoTaggingSection.vue";
 import BehaviorSection from "@/components/dashboard/settings/BehaviorSection.vue";
+import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
 import { useSettingsSearch } from "@/composables/useSettingsSearch";
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import { useSettingsStore } from "@/stores/settings";
+import { logger } from "@/utils/logger";
 
 const settingsStore = useSettingsStore();
+const { deleteBackgroundImage } = useBackgroundImageSync();
 const { isSavingAppearance, isSavingBehavior } = useSettingsSync();
 const route = useRoute();
 const router = useRouter();
@@ -37,7 +40,15 @@ const toggleAll = () => {
   settingsStore.setAutoPlaylistsSectionOpen(next);
 };
 
-const handleResetAll = () => {
+const handleResetAll = async () => {
+  if (settingsStore.hasBackgroundImage) {
+    try {
+      await deleteBackgroundImage();
+    } catch (err) {
+      logger.error(err);
+    }
+  }
+
   settingsStore.resetSettings();
 };
 

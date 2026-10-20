@@ -1,5 +1,5 @@
 <template>
-  <main class="mx-auto w-full max-w-7xl px-4 py-6 md:px-6 md:py-8">
+  <main class="mx-auto w-full px-4 py-6 md:px-6 md:py-8">
     <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p
@@ -16,17 +16,6 @@
           Your recent months, annual recaps, and daily listening history.
         </p>
       </div>
-
-      <UButton
-        :to="{ query: route.query, hash: '#timeline' }"
-        color="neutral"
-        variant="outline"
-        icon="mdi:calendar-clock-outline"
-        class="self-start shrink-0"
-        @click="startSectionJump"
-      >
-        Jump to timeline
-      </UButton>
     </header>
 
     <div :key="userId" class="space-y-8">

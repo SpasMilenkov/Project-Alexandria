@@ -38,7 +38,7 @@ const layoutName = computed<LayoutName>(() => {
     </component>
     <UFooter />
   </UApp>
-  <PiniaColadaDevtools />
+  <!-- <PiniaColadaDevtools /> -->
 </template>
 
 <style scoped></style>

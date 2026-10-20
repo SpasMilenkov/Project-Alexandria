@@ -30,6 +30,8 @@
       <div
         class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
       />
+
+      <PlaylistFavoriteButton :playlist="playlist" @favorite="emit('favorite')" />
       <button
         class="absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full bg-white dark:bg-white/90 shadow-lg flex items-center justify-center text-gray-900 translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-200 hover:scale-105 active:scale-95 pointer-events-auto"
         :class="{ 'opacity-100 translate-y-0': isPlaying || isLoading }"
@@ -93,6 +95,7 @@ import { computed, ref, watch } from "vue";
 
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
 import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
+import PlaylistFavoriteButton from "@/components/streaming/PlaylistFavoriteButton.vue";
 import { formatDate } from "@/utils/date-formatters";
 import { playlistBadgeLabel } from "@/utils/playlist-display.utils";
 
@@ -124,6 +127,7 @@ const emit = defineEmits<{
   delete: [];
   play: [];
   addToQueue: [];
+  favorite: [];
 }>();
 
 const menuItems = [
@@ -142,6 +146,11 @@ const menuItems = [
       label: "Add to queue",
       icon: "mdi:playlist-plus",
       onSelect: () => emit("addToQueue"),
+    },
+    {
+      label: playlist.isStarred ? "Remove from favorites" : "Add to favorites",
+      icon: playlist.isStarred ? "mdi:heart" : "mdi:heart-outline",
+      onSelect: () => emit("favorite"),
     },
     {
       label: "Edit",

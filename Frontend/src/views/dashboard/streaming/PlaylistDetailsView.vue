@@ -8,7 +8,7 @@
       variant="ghost"
       size="sm"
       class="mb-4 -ml-1"
-      @click="router.push('/streaming/playlists')"
+      @click="router.back()"
     />
 
     <!-- Loading -->
@@ -47,19 +47,30 @@
         <!-- <div class="absolute inset-0 bg-white/60 dark:bg-gray-950/70" /> -->
 
         <!-- Content -->
-        <div class="relative flex flex-col md:flex-row items-center md:items-end gap-6 p-5 md:p-6">
-          <!-- Cover image -->
+        <div
+          class="relative flex flex-col md:flex-row items-center md:items-end gap-6 p-5 md:p-6 frosted-glass glass-surface"
+        >
+          <!-- Cover image. Only a user-set cover is clickable; the generated
+               PlaylistCover fallback is not artwork worth enlarging. -->
           <div
             class="w-48 shrink-0 aspect-square rounded-xl overflow-hidden shadow-lg"
             :style="coverShadowStyle"
           >
-            <img
-              v-if="coverUrl && !coverErrored"
-              :src="coverUrl"
-              :alt="playlist.name"
-              class="w-full h-full object-cover"
-              @error="coverErrored = true"
-            />
+            <button
+              v-if="hasExplicitCover"
+              type="button"
+              class="group relative block w-full h-full cursor-zoom-in"
+              :aria-label="`View full-size cover for ${playlist.name}`"
+              @click="isCoverModalOpen = true"
+            >
+              <img
+                :src="coverUrl ?? undefined"
+                :alt="playlist.name"
+                class="w-full h-full object-cover"
+                @error="coverErrored = true"
+              />
+              <div class="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
+            </button>
             <div v-else class="w-full h-full">
               <PlaylistCover :playlist="playlist" />
             </div>
@@ -93,18 +104,18 @@
 
             <!-- Actions: one primary, one utility, one overflow menu -->
             <div class="flex items-center justify-center md:justify-start gap-2 mt-4">
-              <UTooltip text="Play all">
+              <UTooltip :text="playButtonLabel">
                 <UButton
-                  icon="mdi:play"
+                  :icon="playButtonIcon"
                   color="primary"
                   variant="solid"
                   square
-                  aria-label="Play all"
+                  :aria-label="playButtonLabel"
                   class="size-14 rounded-full justify-center shadow-lg transition-transform hover:scale-105"
                   :ui="{ leadingIcon: 'size-6' }"
                   :loading="isLoadingQueue"
                   :disabled="!localItems.length"
-                  @click="playAll"
+                  @click="handlePlay"
                 />
               </UTooltip>
 
@@ -118,6 +129,15 @@
                   class="size-10 rounded-full justify-center"
                   :disabled="!localItems.length || isLoadingQueue"
                   @click="shuffleAll"
+                />
+              </UTooltip>
+
+              <UTooltip v-if="!isMobile" :text="favoriteActionLabel">
+                <PlaylistFavoriteButton
+                  variant="inline"
+                  :playlist="playlist"
+                  :disabled="isFavoritePending"
+                  @favorite="toggleFavorite"
                 />
               </UTooltip>
 
@@ -227,6 +247,53 @@
     </template>
   </div>
 
+  <!-- Full-size cover overlay. Deliberate exception to the shared modalUi preset:
+       sizes itself to the artwork (w-max) instead of a fixed preset width.
+       Still solid, no glass classes. Only mounted for an explicit user cover. -->
+  <UModal
+    v-if="playlist && hasExplicitCover"
+    v-model:open="isCoverModalOpen"
+    :title="playlist.name"
+    :description="playlist.description ?? undefined"
+    :ui="{ content: 'w-max max-w-[calc(100vw-2rem)] sm:max-w-[calc(100vw-4rem)]' }"
+  >
+    <template #content="{ close }">
+      <div class="overflow-hidden rounded-lg">
+        <div class="relative">
+          <img
+            :src="coverUrl ?? undefined"
+            :alt="playlist.name"
+            class="block max-h-[75dvh] w-auto max-w-full"
+          />
+
+          <UButton
+            icon="mdi:close"
+            color="neutral"
+            variant="solid"
+            size="sm"
+            square
+            aria-label="Close"
+            class="absolute top-3 right-3 justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+            @click="close"
+          />
+        </div>
+
+        <!-- w-0 min-w-full: the caption matches the image width instead of widening the modal -->
+        <div class="w-0 min-w-full px-4 py-3">
+          <p class="m-0 truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {{ playlist.name }}
+          </p>
+          <p
+            v-if="playlist.description"
+            class="m-0 truncate text-sm text-gray-600 dark:text-gray-400"
+          >
+            {{ playlist.description }}
+          </p>
+        </div>
+      </div>
+    </template>
+  </UModal>
+
   <!-- Edit modal -->
   <UModal
     v-model:open="showEditModal"
@@ -314,12 +381,11 @@ import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import type { PlaylistItemResponse } from "@/api/playlist";
 import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 
-import { fileApi } from "@/api/file";
-import { playlistApi } from "@/api/playlist";
+import { type PlaylistItemResponse, playlistApi } from "@/api/playlist";
 import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
+import PlaylistFavoriteButton from "@/components/streaming/PlaylistFavoriteButton.vue";
 import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
 import PlaylistItemRow from "@/components/streaming/PlaylistItemRow.vue";
 import PlaylistTrackSearch from "@/components/streaming/PlaylistTrackSearch.vue";
@@ -329,6 +395,7 @@ import {
   deletePlaylist,
   removePlaylistItem,
   reorderPlaylistItems,
+  setPlaylistFavorite,
   updatePlaylist,
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
@@ -399,6 +466,23 @@ const playlistId = computed(() => route.params.id as string);
 // points at it, so the header keeps a playing state after loading finishes.
 const isCurrentPlaylist = computed(() => store.context?.ref.playlistId === playlistId.value);
 
+const isPlaylistPlaying = computed(() => isCurrentPlaylist.value && store.isPlaying);
+
+const playButtonIcon = computed(() => (isPlaylistPlaying.value ? "mdi:pause" : "mdi:play"));
+
+const playButtonLabel = computed(() => {
+  if (!isCurrentPlaylist.value) return "Play all";
+  return store.isPlaying ? "Pause" : "Resume";
+});
+
+const handlePlay = () => {
+  if (isCurrentPlaylist.value) {
+    store.togglePlay();
+    return;
+  }
+  void playAll();
+};
+
 // Identity of the now-playing file: the playlist occurrence when it has one,
 // otherwise the file itself. Matched against row ids so the row the audio is
 // coming from stays highlighted even when queued rather than context-played.
@@ -438,6 +522,17 @@ watch(
   },
 );
 
+// True only when the user set a cover and it loaded. The generated
+// PlaylistCover fallback is not artwork worth enlarging.
+const hasExplicitCover = computed(() => coverUrl.value !== null && !coverErrored.value);
+
+const isCoverModalOpen = ref(false);
+
+// Close the viewer if the cover disappears (error, or replaced by a failed upload).
+watch(hasExplicitCover, (hasCover) => {
+  if (!hasCover) isCoverModalOpen.value = false;
+});
+
 // Ambient color helpers
 const coverShadowStyle = computed(() => {
   if (!playlist.value?.ambientTheme) return {};
@@ -461,6 +556,18 @@ const {
   isLoading: isReorderingPlaylistItem,
   state: reorderState,
 } = reorderPlaylistItems();
+const { mutateAsync: setFavorite, isLoading: isFavoritePending } = setPlaylistFavorite();
+
+const toggleFavorite = async () => {
+  const target = playlist.value;
+  if (!target || isFavoritePending.value) return;
+
+  try {
+    await setFavorite({ playlistId: target.id, isStarred: !target.isStarred });
+  } catch {
+    toast.add({ title: "Failed to update favorite", color: "error" });
+  }
+};
 
 // Local item list
 const localItems = ref<PlaylistItemResponse[]>([]);
@@ -493,6 +600,13 @@ const itemCountLabel = computed(() => {
 const addTracksIcon = computed(() => (showSearch.value ? "mdi:close" : "mdi:plus"));
 const addTracksLabel = computed(() => (showSearch.value ? "Cancel" : "Add tracks"));
 
+const favoriteActionLabel = computed(() =>
+  playlist.value?.isStarred ? "Remove from favorites" : "Add to favorites",
+);
+const favoriteIcon = computed(() =>
+  playlist.value?.isStarred ? "mdi:heart" : "mdi:heart-outline",
+);
+
 // Overflow menu: secondary actions first, destructive action in its own group.
 // Shuffle only lives here on mobile, where the header shows a single action.
 const menuItems = computed<DropdownMenuItem[][]>(() => {
@@ -500,12 +614,20 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
   const secondary: DropdownMenuItem[] = [];
 
   if (isMobile.value) {
-    secondary.push({
-      label: "Shuffle",
-      icon: "mdi:shuffle-variant",
-      disabled: isEmpty || isLoadingQueue.value,
-      onSelect: shuffleAll,
-    });
+    secondary.push(
+      {
+        label: "Shuffle",
+        icon: "mdi:shuffle-variant",
+        disabled: isEmpty || isLoadingQueue.value,
+        onSelect: shuffleAll,
+      },
+      {
+        label: favoriteActionLabel.value,
+        icon: favoriteIcon.value,
+        disabled: isFavoritePending.value,
+        onSelect: toggleFavorite,
+      },
+    );
   }
 
   secondary.push(
@@ -610,15 +732,10 @@ const confirmRemoveItem = (itemId: string) => {
 const handleUpdate = async (payload: UpdatePlaylistSchema) => {
   try {
     // Upload the bytes before flagging the cover: the update bumps updatedAt
-    // (new ?v= cache-buster), and a cover URL fetched before the PUT lands
+    // (new ?v= cache-buster), and a cover URL fetched before the upload lands
     // reads a 404 that nginx then caches.
     if (payload.coverFile) {
-      const { uploadUrl } = await playlistApi.getCoverUploadUrl({
-        playlistId: playlistId.value,
-        mimeType: payload.coverFile.type,
-        fileSize: payload.coverFile.size,
-      });
-      await fileApi.uploadToS3(uploadUrl, payload.coverFile);
+      await playlistApi.uploadPlaylistCover(playlistId.value, payload.coverFile);
     }
     await update({
       id: playlistId.value,

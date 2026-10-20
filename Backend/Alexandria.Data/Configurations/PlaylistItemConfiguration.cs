@@ -29,6 +29,10 @@ public class PlaylistItemConfiguration : IEntityTypeConfiguration<PlaylistItem>
             .HasDefaultValue(false)
             .IsRequired();
 
+        builder.Property(e => e.AddedByUser)
+            .HasDefaultValue(false)
+            .IsRequired();
+
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")

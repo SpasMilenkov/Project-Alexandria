@@ -46,6 +46,17 @@ export const deletePlaylist = defineMutation(() => {
   });
 });
 
+export const setPlaylistFavorite = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return useMutation({
+    mutation: ({ playlistId, isStarred }: { playlistId: string; isStarred: boolean }) =>
+      playlistApi.setFavorite(playlistId, isStarred),
+    onSettled() {
+      queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.root });
+    },
+  });
+});
+
 export const addPlaylistItem = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({

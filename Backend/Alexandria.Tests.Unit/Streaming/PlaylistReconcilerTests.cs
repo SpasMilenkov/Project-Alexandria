@@ -1,5 +1,5 @@
 using Alexandria.Dto.Files.Streaming.Playlist;
-using Alexandria.Services.Streaming;
+using Alexandria.Services.Streaming.Playlists;
 using AwesomeAssertions;
 
 namespace Alexandria.Tests.Unit.Streaming;
@@ -14,13 +14,16 @@ public class PlaylistReconcilerTests
     private static readonly DateTime DeletedAt = new(2026, 8, 10, 12, 0, 0, DateTimeKind.Utc);
 
     private static PlaylistItemState Live(Guid itemId, Guid jobId) =>
-        new(itemId, jobId, false, false, null);
+        new(itemId, jobId, false, false, false, null);
+
+    private static PlaylistItemState Pinned(Guid itemId, Guid jobId) =>
+        new(itemId, jobId, false, false, true, null);
 
     private static PlaylistItemState SystemRemoved(Guid itemId, Guid jobId) =>
-        new(itemId, jobId, true, false, DeletedAt);
+        new(itemId, jobId, true, false, false, DeletedAt);
 
     private static PlaylistItemState UserRemoved(Guid itemId, Guid jobId) =>
-        new(itemId, jobId, true, true, DeletedAt);
+        new(itemId, jobId, true, true, false, DeletedAt);
 
     [Fact]
     public void ComputeDiff_empty_items_adds_all_desired()
@@ -42,6 +45,42 @@ public class PlaylistReconcilerTests
         diff.RemoveItemIds.Should().ContainSingle().Subject.Should().Be(ItemB);
         diff.AddJobIds.Should().BeEmpty();
         diff.ReviveItemIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ComputeDiff_pinned_live_row_outside_desired_survives()
+    {
+        var diff = PlaylistReconciler.ComputeDiff(
+            new HashSet<Guid> { JobA },
+            [Live(ItemA, JobA), Pinned(ItemB, JobB)]);
+
+        diff.RemoveItemIds.Should().BeEmpty();
+        diff.AddJobIds.Should().BeEmpty();
+        diff.ReviveItemIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ComputeDiff_pinned_row_counts_as_live_for_desired_job()
+    {
+        var diff = PlaylistReconciler.ComputeDiff(
+            new HashSet<Guid> { JobB },
+            [Pinned(ItemB, JobB)]);
+
+        diff.AddJobIds.Should().BeEmpty();
+        diff.ReviveItemIds.Should().BeEmpty();
+        diff.RemoveItemIds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ComputeDiff_pinned_tombstone_still_blocks_readd()
+    {
+        var diff = PlaylistReconciler.ComputeDiff(
+            new HashSet<Guid> { JobA },
+            [new PlaylistItemState(ItemA, JobA, true, true, true, DeletedAt)]);
+
+        diff.AddJobIds.Should().BeEmpty();
+        diff.ReviveItemIds.Should().BeEmpty();
+        diff.RemoveItemIds.Should().BeEmpty();
     }
 
     [Fact]
@@ -97,7 +136,12 @@ public class PlaylistReconcilerTests
     {
         var diff = PlaylistReconciler.ComputeDiff(
             new HashSet<Guid>(),
-            [Live(ItemA, JobA), Live(ItemB, JobB), SystemRemoved(Guid.NewGuid(), JobA)]);
+            [
+                Live(ItemA, JobA),
+                Live(ItemB, JobB),
+                Pinned(Guid.NewGuid(), JobB),
+                SystemRemoved(Guid.NewGuid(), JobA)
+            ]);
 
         diff.RemoveItemIds.Should().BeEquivalentTo([ItemA, ItemB]);
         diff.AddJobIds.Should().BeEmpty();

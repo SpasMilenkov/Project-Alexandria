@@ -1,13 +1,14 @@
 using Alexandria.Dto.Files.Streaming.Playlist;
 
-namespace Alexandria.Services.Streaming;
+namespace Alexandria.Services.Streaming.Playlists;
 
 /// <summary>
 /// Pure reconciler diff for one auto-playlist. Desired is a set of
 /// transcode job ids; current is every item row including soft-deletes:
 /// <list type="bullet">
 /// <item>live rows whose job left the desired set are removed (plain soft-delete,
-/// reversible on re-match);</item>
+/// reversible on re-match) unless the user pinned them by adding them
+/// (<c>AddedByUser</c>);</item>
 /// <item>desired jobs with no row at all are added, unless a user tombstone
 /// (<c>RemovedByUser</c>) exists for that job — those stay removed;</item>
 /// <item>when a job-to-file map is provided, a user tombstone also blocks a
@@ -59,7 +60,10 @@ internal static class PlaylistReconciler
 
         foreach (var item in items)
         {
-            if (!item.IsDeleted && !desiredJobIds.Contains(item.TranspilationJobId))
+            if (item.IsDeleted || item.AddedByUser)
+                continue;
+
+            if (!desiredJobIds.Contains(item.TranspilationJobId))
                 remove.Add(item.ItemId);
         }
 
