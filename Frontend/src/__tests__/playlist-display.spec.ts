@@ -105,6 +105,12 @@ describe("parsePlaylistBrowseQuery", () => {
     expect(parsePlaylistBrowseQuery({ origin: "favorites" }).origin).toBe("favorites");
   });
 
+  it("normalizes the retired parent-genre kind to the merged genre filter", () => {
+    expect(
+      parsePlaylistBrowseQuery({ kind: String(AutoGroupKind.ParentGenre) }).kind,
+    ).toBe(AutoGroupKind.Genre);
+  });
+
   it("reads the first value of repeated params", () => {
     expect(parsePlaylistBrowseQuery({ page: ["2", "5"] })).toMatchObject({ page: 2 });
   });

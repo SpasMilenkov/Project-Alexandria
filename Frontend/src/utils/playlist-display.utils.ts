@@ -105,6 +105,11 @@ const parseKind = (value: unknown): PlaylistKindFilter => {
     AutoGroupKind.Decade,
   ];
   if (kinds.includes(parsed as AutoGroupKind)) {
+    // The browse filter exposes one merged Genre option; older links that
+    // still carry the parent-genre kind resolve to that view.
+    if (parsed === AutoGroupKind.ParentGenre) {
+      return AutoGroupKind.Genre;
+    }
     return parsed as AutoGroupKind;
   }
   return "all";
