@@ -19,6 +19,13 @@ public class PlaylistItem : IBase
     /// </summary>
     public bool RemovedByUser { get; set; } = false;
 
+    /// <summary>
+    /// True when the user placed this item on the playlist, either by adding it
+    /// directly or by restoring it after removal. Sync never sets this flag; it
+    /// keeps pinned live rows even when the track no longer matches the grouping.
+    /// </summary>
+    public bool AddedByUser { get; set; } = false;
+
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
