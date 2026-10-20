@@ -493,7 +493,7 @@ const kindFilterOptions = [
   { label: "All kinds", value: "all" as const },
   { label: "Artist", value: AutoGroupKind.Artist },
   { label: "Album", value: AutoGroupKind.Album },
-  { label: "Tag", value: AutoGroupKind.Tag },
+  { label: "Theme", value: AutoGroupKind.Tag },
   { label: "Genre", value: AutoGroupKind.Genre },
   { label: "Decade", value: AutoGroupKind.Decade },
 ];

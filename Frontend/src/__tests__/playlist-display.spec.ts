@@ -27,7 +27,7 @@ describe("autoGroupKindLabel", () => {
   it("labels every known kind", () => {
     expect(autoGroupKindLabel(AutoGroupKind.Artist)).toBe("Artist");
     expect(autoGroupKindLabel(AutoGroupKind.Album)).toBe("Album");
-    expect(autoGroupKindLabel(AutoGroupKind.Tag)).toBe("Tag");
+    expect(autoGroupKindLabel(AutoGroupKind.Tag)).toBe("Theme");
     expect(autoGroupKindLabel(AutoGroupKind.Genre)).toBe("Genre");
     expect(autoGroupKindLabel(AutoGroupKind.ParentGenre)).toBe("Genre");
     expect(autoGroupKindLabel(AutoGroupKind.Decade)).toBe("Decade");
