@@ -48,7 +48,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const { playlist, variant = "cover", disabled } = defineProps<{
+const {
+  playlist,
+  variant = "cover",
+  disabled,
+} = defineProps<{
   playlist: { isStarred: boolean };
   variant?: "cover" | "inline";
   disabled?: boolean;

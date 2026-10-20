@@ -354,7 +354,12 @@ import PlaylistForm, { type PlaylistFormPayload } from "@/components/streaming/P
 import { AutoGroupKind } from "@/enums/auto-group-kind";
 import { PlaylistSort } from "@/enums/playlist-sort";
 import { SortDirection } from "@/enums/SortDirection";
-import { createPlaylist, deletePlaylist, setPlaylistFavorite, updatePlaylist } from "@/mutations/playlists";
+import {
+  createPlaylist,
+  deletePlaylist,
+  setPlaylistFavorite,
+  updatePlaylist,
+} from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
 import { glassModalContent, playlistModalUi } from "@/utils/modalUi";

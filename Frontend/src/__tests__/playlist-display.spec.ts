@@ -106,9 +106,9 @@ describe("parsePlaylistBrowseQuery", () => {
   });
 
   it("normalizes the retired parent-genre kind to the merged genre filter", () => {
-    expect(
-      parsePlaylistBrowseQuery({ kind: String(AutoGroupKind.ParentGenre) }).kind,
-    ).toBe(AutoGroupKind.Genre);
+    expect(parsePlaylistBrowseQuery({ kind: String(AutoGroupKind.ParentGenre) }).kind).toBe(
+      AutoGroupKind.Genre,
+    );
   });
 
   it("reads the first value of repeated params", () => {
