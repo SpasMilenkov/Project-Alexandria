@@ -1,0 +1,163 @@
+{
+  "numTotalTestSuites": 6,
+  "numPassedTestSuites": 4,
+  "numFailedTestSuites": 2,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 12,
+  "numPassedTests": 0,
+  "numFailedTests": 1,
+  "numPendingTests": 11,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1790505835913,
+  "success": false,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["audible ownership"],
+          "fullName": "audible ownership pauses the previous owner when explicit playback starts elsewhere",
+          "status": "skipped",
+          "title": "pauses the previous owner when explicit playback starts elsewhere",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["audible ownership"],
+          "fullName": "audible ownership does not steal ownership when queueing",
+          "status": "skipped",
+          "title": "does not steal ownership when queueing",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["audible ownership"],
+          "fullName": "audible ownership claims ownership when a background engine starts sounding",
+          "status": "skipped",
+          "title": "claims ownership when a background engine starts sounding",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["engine reporting"],
+          "fullName": "engine reporting flushes history before a natural audio advance",
+          "status": "skipped",
+          "title": "flushes history before a natural audio advance",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["engine reporting"],
+          "fullName": "engine reporting survives a failing history flush",
+          "status": "skipped",
+          "title": "survives a failing history flush",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["video countdown"],
+          "fullName": "video countdown counts down and advances after video ends with autoplay on",
+          "status": "failed",
+          "title": "counts down and advances after video ends with autoplay on",
+          "duration": 17.144232000000102,
+          "failureMessages": [
+            "TypeError: Cannot read properties of undefined (reading 'map')\n    at /home/spasmilenkov/repos/Project-Alexandria/Frontend/src/__tests__/playback-coordinator.spec.ts:265:86\n    at file:///home/spasmilenkov/repos/Project-Alexandria/Frontend/node_modules/.pnpm/vitest@5.0.1_@types+node@26.2.0_jsdom@30.0.1_vite@8.2.2_@types+node@26.2.0_esbuild@0.27.3_jiti@2.6.1_yaml@2.9.0_/node_modules/vitest/dist/chunks/run.C5UmxDPh.js:2783:20"
+          ],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["video countdown"],
+          "fullName": "video countdown cancels the countdown when audio takes over",
+          "status": "skipped",
+          "title": "cancels the countdown when audio takes over",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["video countdown"],
+          "fullName": "video countdown stays stopped with autoplay off",
+          "status": "skipped",
+          "title": "stays stopped with autoplay off",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["restore and persistence"],
+          "fullName": "restore and persistence restores sessions paused without taking ownership",
+          "status": "skipped",
+          "title": "restores sessions paused without taking ownership",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["restore and persistence"],
+          "fullName": "restore and persistence migrates legacy state once and drops the park",
+          "status": "skipped",
+          "title": "migrates legacy state once and drops the park",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["restore and persistence"],
+          "fullName": "restore and persistence releases everything on logout",
+          "status": "skipped",
+          "title": "releases everything on logout",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        },
+        {
+          "ancestorTitles": ["session snapshots"],
+          "fullName": "session snapshots reports next and previous availability",
+          "status": "skipped",
+          "title": "reports next and previous availability",
+          "failureMessages": [],
+          "meta": {},
+          "tags": [],
+          "benchmarks": []
+        }
+      ],
+      "startTime": 1790505837334,
+      "endTime": 1790505837351.1443,
+      "status": "failed",
+      "message": "",
+      "name": "/home/spasmilenkov/repos/Project-Alexandria/Frontend/src/__tests__/playback-coordinator.spec.ts"
+    }
+  ]
+}

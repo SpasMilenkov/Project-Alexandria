@@ -3,6 +3,7 @@ import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 
 import type { AppearanceSettings, BehaviorSettings } from "@/api/settings";
+import { releaseBackgroundImageObjectUrl } from "@/utils/backgroundImageObjectUrl";
 
 export const AVAILABLE_COLORS = [
   { name: "red", value: "239 68 68" },
@@ -234,7 +235,7 @@ export const useSettingsStore = defineStore(
     const backgroundColor = ref<string>(DEFAULT_BACKGROUND);
     const backgroundImageKey = ref<string | null>(null);
     const backgroundImageUpdatedAt = ref<string | null>(null);
-    const backgroundImage = ref<string | null>(null); // Runtime only — SW URL
+    const backgroundImage = ref<string | null>(null); // Runtime-only blob URL
     const backgroundImageOpacity = ref<number>(DEFAULT_BACKGROUND_IMAGE_OPACITY);
     const frostEnabled = ref<boolean>(DEFAULT_FROST_ENABLED);
     const frostStrength = ref<number>(DEFAULT_FROST_STRENGTH);
@@ -287,7 +288,7 @@ export const useSettingsStore = defineStore(
         AVAILABLE_BACKGROUNDS.find((b) => b.name === backgroundColor.value) ??
         AVAILABLE_BACKGROUNDS[0],
     );
-    const hasBackgroundImage = computed(() => Boolean(backgroundImage.value));
+    const hasBackgroundImage = computed(() => Boolean(backgroundImageKey.value));
 
     const isAppearanceModified = computed(
       () =>
@@ -382,6 +383,7 @@ export const useSettingsStore = defineStore(
       cornerRadius.value = Math.min(1, Math.max(0, Math.round(v * 100) / 100));
     };
     const clearBackgroundImage = () => {
+      releaseBackgroundImageObjectUrl();
       backgroundImage.value = null;
       backgroundImageKey.value = null;
       backgroundImageUpdatedAt.value = null;
@@ -576,6 +578,11 @@ export const useSettingsStore = defineStore(
       isMediaSectionOpen.value = DEFAULT_UI_STATE.isMediaSectionOpen;
     };
 
+    const resetSessionState = () => {
+      resetSettings();
+      resetUIState();
+    };
+
     return {
       AVAILABLE_BACKGROUNDS,
       AVAILABLE_COLORS,
@@ -621,6 +628,7 @@ export const useSettingsStore = defineStore(
       resetAutoTaggingSettings,
       resetBehaviorSettings,
       resetSettings,
+      resetSessionState,
       resetUIState,
       setAccentColor,
       setAllowAutoTagRegression,

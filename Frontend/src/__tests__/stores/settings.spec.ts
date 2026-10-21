@@ -74,14 +74,15 @@ describe("useSettingsStore", () => {
       expect(store.backgroundImage).toBeNull();
     });
 
-    it("hasBackgroundImage is false when null", () => {
+    it("hasBackgroundImage is false when no key is configured", () => {
       const store = useSettingsStore();
+      store.setBackgroundImage("url://img.jpg");
       expect(store.hasBackgroundImage).toBe(false);
     });
 
-    it("hasBackgroundImage is true when set", () => {
+    it("hasBackgroundImage is true when a key is configured", () => {
       const store = useSettingsStore();
-      store.setBackgroundImage("url://img.jpg");
+      store.backgroundImageKey = "key-123";
       expect(store.hasBackgroundImage).toBe(true);
     });
 

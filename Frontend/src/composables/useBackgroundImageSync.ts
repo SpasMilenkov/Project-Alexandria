@@ -2,77 +2,144 @@ import { useQueryCache } from "@pinia/colada";
 
 import { settingsApi } from "@/api/settings";
 import { SETTINGS_QUERY_KEYS } from "@/queries/settings";
+import { useAuthStore } from "@/stores/auth";
 import { useSettingsStore } from "@/stores/settings";
+import {
+  type BackgroundImageLoad,
+  finishBackgroundImageLoad,
+  getBackgroundImageLoadGeneration,
+  hasBackgroundImageObjectUrl,
+  invalidateBackgroundImageLoads,
+  isCurrentBackgroundImageLoad,
+  setBackgroundImageObjectUrl,
+  startBackgroundImageLoad,
+} from "@/utils/backgroundImageObjectUrl";
 import { logger } from "@/utils/logger";
 
-type SWMessage = Record<string, unknown>;
+interface PendingBackgroundImage {
+  generation: number;
+  key: string;
+  promise: Promise<void>;
+  updatedAt: string;
+}
 
-// Send a message to the SW and await the response via MessageChannel
-const swMessage = (sw: ServiceWorker, data: SWMessage): Promise<SWMessage> =>
-  new Promise((resolve, reject) => {
-    const channel = new MessageChannel();
-    channel.port1.onmessage = (e) => resolve(e.data);
-    channel.port1.onmessageerror = () => reject(new Error("SW message error"));
-    sw.postMessage(data, [channel.port2]);
+let pendingBackgroundImage: PendingBackgroundImage | null = null;
+
+const isAbortError = (err: unknown): boolean =>
+  err instanceof DOMException && err.name === "AbortError";
+
+const fetchBackgroundImage = async (url: string, signal: AbortSignal): Promise<Blob> => {
+  const response = await fetch(url, {
+    cache: "no-store",
+    credentials: "same-origin",
+    signal,
   });
 
-const getActiveSW = async (): Promise<ServiceWorker | null> => {
-  if (!("serviceWorker" in navigator)) {
-    return null;
+  if (!response.ok) {
+    throw new Error(`Background image fetch failed: ${response.status}`);
   }
-  const reg = await navigator.serviceWorker.getRegistration("/");
-  return reg?.active ?? null;
+
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (!contentType.startsWith("image/")) {
+    throw new Error("Background image response was not an image");
+  }
+
+  return response.blob();
 };
 
 export const useBackgroundImageSync = () => {
   const store = useSettingsStore();
+  const authStore = useAuthStore();
   const queryCache = useQueryCache();
-  // Called by useSettingsSync after server data arrives
-  const syncBackgroundImage = async (
-    key: string | null,
-    updatedAt: string | null,
-  ): Promise<void> => {
-    if (!key || !updatedAt) {
-      store.backgroundImage = null;
-      return;
-    }
 
-    const sw = await getActiveSW();
-    if (!sw) {
-      // No SW available — fall back to direct presigned URL (no caching)
-      store.backgroundImage = await settingsApi.getBackgroundImageUrl();
-      return;
-    }
+  const loadBackgroundImage = (
+    key: string,
+    updatedAt: string,
+  ): { load: BackgroundImageLoad; promise: Promise<void> } => {
+    const ownerId = authStore.user?.user?.id ?? null;
+    const load = startBackgroundImageLoad();
 
-    // Ask SW if this timestamp is already cached
-    const { cached } = await swMessage(sw, {
-      timestamp: updatedAt,
-      type: "CHECK_CACHED",
-    });
+    const promise = (async () => {
+      try {
+        const imageUrl = await settingsApi.getBackgroundImageUrl();
+        const blob = await fetchBackgroundImage(imageUrl, load.controller.signal);
+        const ownerChanged = (authStore.user?.user?.id ?? null) !== ownerId;
 
-    if (!cached) {
-      // Cache miss — fetch the stable gated URL and seed the SW
-      const imageUrl = await settingsApi.getBackgroundImageUrl();
-      const result = await swMessage(sw, {
-        imageUrl,
-        timestamp: updatedAt,
-        type: "FETCH_AND_CACHE",
-      });
+        if (
+          !isCurrentBackgroundImageLoad(load) ||
+          ownerChanged ||
+          store.backgroundImageKey !== key ||
+          store.backgroundImageUpdatedAt !== updatedAt
+        ) {
+          return;
+        }
 
-      if (!(result as any).success) {
-        logger.error("SW failed to cache background image:", result);
-        return;
+        const objectUrl = URL.createObjectURL(blob);
+
+        setBackgroundImageObjectUrl(objectUrl, key, updatedAt);
+        store.setBackgroundImage(objectUrl);
+      } catch (err: unknown) {
+        if (isAbortError(err) || !isCurrentBackgroundImageLoad(load)) {
+          return;
+        }
+
+        logger.error("Unable to load background image:", err);
+      } finally {
+        finishBackgroundImageLoad(load);
       }
-    }
+    })();
 
-    // SW now has it — point the store at the intercept URL
-    // UseTheme picks this up reactively and sets it as CSS background
-    store.backgroundImage = `/sw/background-image?t=${encodeURIComponent(updatedAt)}`;
+    return { load, promise };
   };
 
-  // Full upload flow: single proxied POST (validate + store server-side) → sync
+  const syncBackgroundImage = (key: string | null, updatedAt: string | null): Promise<void> => {
+    if (!key || !updatedAt) {
+      invalidateBackgroundImageLoads();
+      store.clearBackgroundImage();
+      return Promise.resolve();
+    }
+
+    if (store.backgroundImageKey && store.backgroundImageKey !== key) {
+      return Promise.resolve();
+    }
+
+    if (store.backgroundImageUpdatedAt && store.backgroundImageUpdatedAt !== updatedAt) {
+      return Promise.resolve();
+    }
+
+    if (hasBackgroundImageObjectUrl(key, updatedAt)) {
+      return Promise.resolve();
+    }
+
+    if (pendingBackgroundImage?.key === key && pendingBackgroundImage.updatedAt === updatedAt) {
+      if (pendingBackgroundImage.generation === getBackgroundImageLoadGeneration()) {
+        return pendingBackgroundImage.promise;
+      }
+
+      pendingBackgroundImage = null;
+    }
+
+    const { load, promise: loadPromise } = loadBackgroundImage(key, updatedAt);
+    const promise = loadPromise.finally(() => {
+      if (pendingBackgroundImage?.promise === promise) {
+        pendingBackgroundImage = null;
+      }
+    });
+
+    pendingBackgroundImage = {
+      generation: load.generation,
+      key,
+      promise,
+      updatedAt,
+    };
+
+    return promise;
+  };
+
   const uploadBackgroundImage = async (file: File): Promise<void> => {
     const saved = await settingsApi.uploadBackgroundImage(file);
+
     store.syncFromServer(saved, store.getSettings);
     queryCache.invalidateQueries({ key: SETTINGS_QUERY_KEYS.appearance() });
 
@@ -80,12 +147,9 @@ export const useBackgroundImageSync = () => {
   };
 
   const deleteBackgroundImage = async (): Promise<void> => {
-    await settingsApi.deleteBackgroundImage();
+    invalidateBackgroundImageLoads();
 
-    const sw = await getActiveSW();
-    if (sw) {
-      await swMessage(sw, { type: "EVICT" });
-    }
+    await settingsApi.deleteBackgroundImage();
 
     store.clearBackgroundImage();
   };

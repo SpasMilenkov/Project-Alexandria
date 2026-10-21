@@ -177,7 +177,7 @@
 
     <UDashboardPanel :ui="{ body: 'sm:p-0 p-0 gap-0 overflow-hidden' }">
       <template #header>
-        <UDashboardNavbar toggle-side="right" :ui="{ left: 'flex-1 min-w-0' }">
+        <UDashboardNavbar toggle-side="right" :ui="{ root: 'glass-surface frosted-glass', left: 'flex-1 min-w-0' }">
           <template #left>
             <UButton
               v-if="player.playerDismissed && player.hasActiveFile && player.isAudio"

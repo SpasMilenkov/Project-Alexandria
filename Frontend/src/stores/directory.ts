@@ -47,6 +47,14 @@ export const useDirectoryStore = defineStore(
       error.value = null;
     };
 
+    const resetSessionState = () => {
+      selectedDirectories.value = [];
+      modificationOriginDirId.value = null;
+      isLoading.value = false;
+      isSearching.value = false;
+      error.value = null;
+    };
+
     // oxlint-disable-next-line sort-keys
     return {
       // State
@@ -58,6 +66,7 @@ export const useDirectoryStore = defineStore(
       // Actions
       searchDirectory,
       clearError,
+      resetSessionState,
     };
   },
   { persist: true },

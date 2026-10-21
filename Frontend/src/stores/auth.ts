@@ -1,13 +1,74 @@
 import type { AxiosError } from "axios";
 
-import { acceptHMRUpdate, defineStore } from "pinia";
+import { useMutationCache, useQueryCache } from "@pinia/colada";
+import { type Pinia, acceptHMRUpdate, defineStore, getActivePinia } from "pinia";
 import { computed, ref } from "vue";
 
 import type { LoginSchema } from "@/schemas/auth";
 
 import { type AuthResponse, authApi } from "@/api/auth";
+import { resetRefreshState } from "@/api/client";
+import { useActivityStore } from "@/stores/activity";
+import { useDirectoryStore } from "@/stores/directory";
+import { useFileStore } from "@/stores/file";
 import { useHomeStore } from "@/stores/home";
+import { usePlayerStore } from "@/stores/stream-player";
+import { useSettingsStore } from "@/stores/settings";
+import { useTabStore } from "@/stores/tab";
+import { cancelBackgroundImageLoad } from "@/utils/backgroundImageObjectUrl";
 import { logger } from "@/utils/logger";
+
+const clearSessionCaches = (pinia: Pinia) => {
+  try {
+    const queryCache = useQueryCache(pinia);
+
+    // cancelQueries suppresses a pending fetch's commit, so a late response
+    // cannot recreate the entry that remove() is about to delete.
+    queryCache.cancelQueries(undefined, "session-boundary");
+    queryCache.getEntries().forEach((entry) => queryCache.remove(entry));
+
+    const mutationCache = useMutationCache(pinia);
+
+    mutationCache.getEntries().forEach((entry) => mutationCache.remove(entry));
+  } catch (err: unknown) {
+    // Colada is not installed in some store-only unit tests.
+    logger.error("Unable to clear query cache:", err);
+  }
+};
+
+const resetOwnerStores = (pinia: Pinia) => {
+  cancelBackgroundImageLoad();
+  useActivityStore(pinia).resetSessionState();
+  useDirectoryStore(pinia).resetSessionState();
+  useFileStore(pinia).resetSessionState();
+  useHomeStore(pinia).resetSessionState();
+  useSettingsStore(pinia).resetSessionState();
+  useTabStore(pinia).resetSessionState();
+
+  // The shuffle session belongs to the account being torn down. Releasing it
+  // must happen before this reset, while its request still carries that account's cookies.
+  usePlayerStore(pinia).clearOwnerState({ releaseSession: false });
+};
+
+const removeLegacyOwnerStorage = () => {
+  try {
+    localStorage.removeItem("player");
+  } catch {
+    // Storage can be unavailable during private browsing; in-memory state is still reset.
+  }
+};
+
+const resetPrivateState = (): void => {
+  const pinia = getActivePinia();
+
+  if (!pinia) {
+    return;
+  }
+
+  clearSessionCaches(pinia);
+  resetOwnerStores(pinia);
+  removeLegacyOwnerStorage();
+};
 
 export const useAuthStore = defineStore(
   "auth",
@@ -27,6 +88,11 @@ export const useAuthStore = defineStore(
       error.value = null;
       try {
         const response = await authApi.login(credentials);
+
+        resetRefreshState();
+        user.value = null;
+        resetPrivateState();
+
         user.value = response;
         useHomeStore().setOwner(response.user?.id ?? null);
 
@@ -46,42 +112,37 @@ export const useAuthStore = defineStore(
       }
     };
 
-    const clearPlayerState = async () => {
-      try {
-        const { usePlayerStore } = await import("@/stores/stream-player");
-        const { getActivePinia } = await import("pinia");
-        const pinia = getActivePinia();
-        if (pinia) usePlayerStore(pinia).clearOwnerState();
-      } catch (err: unknown) {
-        logger.error("Player teardown error:", err);
-      }
-    };
-
     const logout = async () => {
+      // Start the release while the retiring account's cookies are still active.
+      let release: Promise<void> | void = Promise.resolve();
+
       try {
-        const { useTabStore } = await import("@/stores/tab");
+        release = usePlayerStore().releaseShuffleSession();
+      } catch (err: unknown) {
+        logger.error("Shuffle session release error:", err);
+      }
 
-        const tabStore = useTabStore();
+      resetRefreshState();
+      user.value = null;
+      resetPrivateState();
 
-        tabStore.closeAllTabs();
-        // localStorage.removeItem('tab');
-        const { usePlayerStore } = await import("@/stores/stream-player");
-        const player = usePlayerStore();
-        await player.releaseShuffleSession();
-        player.clearOwnerState();
+      try {
         await authApi.logout();
       } catch (err: unknown) {
         logger.error("Logout error:", err);
-      } finally {
-        user.value = null;
-        useHomeStore().setOwner(null);
+      }
+
+      try {
+        await release;
+      } catch (err: unknown) {
+        logger.error("Shuffle session release error:", err);
       }
     };
 
     const clearSession = () => {
+      resetRefreshState();
       user.value = null;
-      useHomeStore().setOwner(null);
-      void clearPlayerState();
+      resetPrivateState();
     };
 
     const clearError = () => {

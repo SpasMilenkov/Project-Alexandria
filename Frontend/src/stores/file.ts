@@ -97,6 +97,17 @@ export const useFileStore = defineStore("file", () => {
     error.value = null;
   };
 
+  const resetSessionState = () => {
+    currentFile.value = null;
+    modificationOriginDirId.value = null;
+    downloadProgress.value = 0;
+    selectedFiles.value = [];
+    copyMode.value = true;
+    isUploading.value = false;
+    isDownloading.value = false;
+    error.value = null;
+  };
+
   //oxlint-disable sort-keys
   return {
     // State
@@ -115,6 +126,7 @@ export const useFileStore = defineStore("file", () => {
     downloadFile,
     clearError,
     searchFiles,
+    resetSessionState,
   };
 });
 

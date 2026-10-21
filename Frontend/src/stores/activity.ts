@@ -16,6 +16,14 @@ export const useActivityStore = defineStore("activity", () => {
   const getPageSize = computed(() => pageSize.value);
   const getTotalCount = computed(() => totalCount.value);
 
+  const resetSessionState = () => {
+    activity.value = [];
+    page.value = 1;
+    totalCount.value = 0;
+    isLoading.value = false;
+    error.value = null;
+  };
+
   // oxlint-disable-next-line sort-keys
   return {
     // State
@@ -30,6 +38,8 @@ export const useActivityStore = defineStore("activity", () => {
     getPage,
     getPageSize,
     getTotalCount,
+    // Actions
+    resetSessionState,
   };
 });
 

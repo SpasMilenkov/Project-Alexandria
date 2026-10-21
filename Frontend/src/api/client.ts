@@ -2,10 +2,18 @@ import axios, { type AxiosInstance } from "axios";
 
 const MAX_REFRESH_FAILURES = 3;
 let refreshFailures = 0;
+let refreshGeneration = 0;
 
 // If a refresh is already in-flight, every other 401 waits on this
 // same promise instead of firing its own refresh call.
 let refreshPromise: Promise<void> | null = null;
+
+// A login or logout must not inherit failure counts from the previous session.
+export const resetRefreshState = (): void => {
+  refreshGeneration += 1;
+  refreshFailures = 0;
+  refreshPromise = null;
+};
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
@@ -35,24 +43,32 @@ const forceLogout = async () => {
 export const attemptRefresh = (): Promise<void> => {
   if (refreshPromise) return refreshPromise;
 
-  refreshPromise = apiClient
+  const generation = refreshGeneration;
+
+  const pending = apiClient
     .post("/auth/refresh")
     .then(() => {
       refreshFailures = 0;
     })
     .catch(async (err) => {
+      // A refresh started for the previous account must not clear the new one.
+      if (generation !== refreshGeneration) throw err;
+
       refreshFailures++;
       if (refreshFailures >= MAX_REFRESH_FAILURES) {
         refreshFailures = 0;
         await forceLogout();
       }
       throw err;
-    })
-    .finally(() => {
-      refreshPromise = null;
     });
 
-  return refreshPromise;
+  const tracked: Promise<void> = pending.finally(() => {
+    if (refreshPromise === tracked) refreshPromise = null;
+  });
+
+  refreshPromise = tracked;
+
+  return tracked;
 };
 
 apiClient.interceptors.response.use(

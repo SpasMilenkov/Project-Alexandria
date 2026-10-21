@@ -35,6 +35,11 @@ export const useTabStore = defineStore(
       tabs.value = [];
       activeTabId.value = undefined;
     };
+
+    const resetSessionState = () => {
+      closeAllTabs();
+    };
+
     const getTab = (tabId: string) => tabs.value.find((t) => t.id === tabId);
 
     const setActiveDir = (tabId: string, dirId: string | null) => {
@@ -58,6 +63,7 @@ export const useTabStore = defineStore(
       createTab,
       getTab,
       setActiveDir,
+      resetSessionState,
       tabs,
       updateTabTitle,
     };

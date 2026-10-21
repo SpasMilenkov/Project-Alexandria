@@ -1,13 +1,19 @@
 /// <reference lib="webworker" />
+/// <reference types="vite/client" />
 import {
   CacheFirst,
   ExpirationPlugin,
+  type HTTPMethod,
   NetworkFirst,
   NetworkOnly,
   type PrecacheEntry,
+  Route,
   Serwist,
   type SerwistGlobalConfig,
+  type SerwistPlugin,
 } from "serwist";
+
+import { isProtectedRequest, resolveConfiguredApiBase } from "./utils/serviceWorkerPolicy";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -16,82 +22,14 @@ declare global {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
   }
 }
-const CACHE_NAME = "bg-image-v1";
-const INTERCEPT_PATH = "/sw/background-image";
 
-self.addEventListener("fetch", (event: FetchEvent) => {
-  const url = new URL(event.request.url);
-  if (url.pathname !== INTERCEPT_PATH) {
-    return;
-  }
-  event.respondWith(serveFromCache(url));
-});
+const API_BASE = resolveConfiguredApiBase(self.location.origin);
+const STATIC_CACHE_NAME = "static-assets";
+const PROTECTED_METHODS: HTTPMethod[] = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"];
 
-const serveFromCache = async (url: URL): Promise<Response> => {
-  const timestamp = url.searchParams.get("t");
-  if (!timestamp) {
-    return new Response("Missing timestamp", { status: 400 });
-  }
-
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(buildCacheKey(timestamp));
-  if (cached) {
-    return cached;
-  }
-
-  return new Response("Not cached", { status: 404 });
+const noStoreRequests: SerwistPlugin = {
+  requestWillFetch: ({ request }) => new Request(request, { cache: "no-store" }),
 };
-
-self.addEventListener("message", (event: ExtendableMessageEvent) => {
-  const { type } = event.data ?? {};
-  if (type === "CHECK_CACHED") {
-    handleCheck(event);
-  }
-  if (type === "FETCH_AND_CACHE") {
-    handleFetchAndCache(event);
-  }
-  if (type === "EVICT") {
-    handleEvict(event);
-  }
-});
-
-const handleCheck = async (event: ExtendableMessageEvent) => {
-  const { timestamp } = event.data;
-  const cache = await caches.open(CACHE_NAME);
-  const hit = await cache.match(buildCacheKey(timestamp));
-  event.ports[0].postMessage({ cached: Boolean(hit) });
-};
-
-const handleFetchAndCache = async (event: ExtendableMessageEvent) => {
-  const { imageUrl, timestamp } = event.data;
-  try {
-    const cache = await caches.open(CACHE_NAME);
-    const keys = await cache.keys();
-    await Promise.all(keys.map((k) => cache.delete(k)));
-
-    const response = await fetch(imageUrl);
-    if (!response.ok) {
-      throw new Error(`Background image fetch failed: ${response.status}`);
-    }
-
-    await cache.put(buildCacheKey(timestamp), response.clone());
-    event.ports[0].postMessage({ success: true });
-  } catch (err) {
-    event.ports[0].postMessage({
-      error: (err as Error).message,
-      success: false,
-    });
-  }
-};
-
-const handleEvict = async (event: ExtendableMessageEvent) => {
-  const cache = await caches.open(CACHE_NAME);
-  const keys = await cache.keys();
-  await Promise.all(keys.map((k) => cache.delete(k)));
-  event.ports[0]?.postMessage({ evicted: true });
-};
-
-const buildCacheKey = (timestamp: string): string => `${INTERCEPT_PATH}?t=${timestamp}`;
 
 const serwist = new Serwist({
   clientsClaim: true,
@@ -103,32 +41,33 @@ const serwist = new Serwist({
       matcher: ({ request }) => request.mode === "navigate",
     },
     {
-      matcher: ({ url }) => url.pathname.startsWith("/stream"),
-      handler: new NetworkOnly(),
-    },
-    {
-      handler: new NetworkFirst(),
-      matcher: ({ url }) => url.pathname.startsWith("/api/"),
-    },
-    {
-      handler: new NetworkOnly(),
-      matcher: ({ url }) =>
-        url.pathname.includes("/init-upload") || url.pathname.includes("/finalize-upload"),
-    },
-    {
-      handler: new NetworkFirst(),
-      matcher: ({ url }) => url.pathname.startsWith("/sw/"),
-    },
-    {
       // Only cache genuinely static assets — content-hashed filenames only
       handler: new CacheFirst({
-        cacheName: "static-assets",
+        cacheName: STATIC_CACHE_NAME,
         plugins: [new ExpirationPlugin({ maxAgeSeconds: 60 * 60 * 24 * 30, maxEntries: 100 })],
       }),
-      matcher: ({ url }) => /\.[0-9a-f]{8}\.(js|css|woff2|png|svg)$/.test(url.pathname),
+      matcher: ({ url }) =>
+        /\.[0-9a-f]{8}\.(?<extension>js|css|woff2|png|svg)$/u.test(url.pathname),
     },
   ],
   skipWaiting: true,
 });
+
+const protectedHandler = new NetworkOnly({ plugins: [noStoreRequests] });
+
+for (const method of PROTECTED_METHODS) {
+  const route = new Route(
+    ({ url }) => isProtectedRequest(url, API_BASE, self.location.origin),
+    protectedHandler,
+    method,
+  );
+  const routes = serwist.routes.get(method);
+
+  if (routes) {
+    routes.unshift(route);
+  } else {
+    serwist.routes.set(method, [route]);
+  }
+}
 
 serwist.addEventListeners();
