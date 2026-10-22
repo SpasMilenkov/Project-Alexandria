@@ -549,8 +549,10 @@ const mobileSettingsItems = computed<MobileSettingsItem[]>(() => [
 ]);
 
 const handleLogout = async () => {
-  await authStore.logout();
-  router.push("/auth");
+  const logout = authStore.logout();
+
+  await router.push("/auth");
+  await logout;
 };
 </script>
 

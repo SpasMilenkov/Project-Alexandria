@@ -2,7 +2,7 @@ import type { AxiosError } from "axios";
 
 import { useMutationCache, useQueryCache } from "@pinia/colada";
 import { type Pinia, acceptHMRUpdate, defineStore, getActivePinia } from "pinia";
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 
 import type { LoginSchema } from "@/schemas/auth";
 
@@ -17,6 +17,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
 import { cancelBackgroundImageLoad } from "@/utils/backgroundImageObjectUrl";
 import { logger } from "@/utils/logger";
+import { rotateSessionEpoch } from "@/utils/sessionBoundary";
 
 const clearSessionCaches = (pinia: Pinia) => {
   try {
@@ -70,6 +71,13 @@ const resetPrivateState = (): void => {
   removeLegacyOwnerStorage();
 };
 
+const publishSessionBoundary = async (): Promise<void> => {
+  // Persistence watchers run on the next flush. Waiting for it guarantees
+  // peers see the new snapshots before they see the new epoch.
+  await nextTick();
+  rotateSessionEpoch();
+};
+
 export const useAuthStore = defineStore(
   "auth",
   () => {
@@ -95,6 +103,7 @@ export const useAuthStore = defineStore(
 
         user.value = response;
         useHomeStore().setOwner(response.user?.id ?? null);
+        await publishSessionBoundary();
 
         return { success: true };
       } catch (err: unknown) {
@@ -125,6 +134,7 @@ export const useAuthStore = defineStore(
       resetRefreshState();
       user.value = null;
       resetPrivateState();
+      await publishSessionBoundary();
 
       try {
         await authApi.logout();
@@ -139,10 +149,11 @@ export const useAuthStore = defineStore(
       }
     };
 
-    const clearSession = () => {
+    const clearSession = async () => {
       resetRefreshState();
       user.value = null;
       resetPrivateState();
+      await publishSessionBoundary();
     };
 
     const clearError = () => {

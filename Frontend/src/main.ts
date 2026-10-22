@@ -11,9 +11,11 @@ import App from "./App.vue";
 import { registerIcons } from "./icons";
 import router from "./router";
 import { logger } from "./utils/logger";
+import { startSessionBoundaryWatcher } from "./utils/sessionBoundary";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 
 registerIcons();
+startSessionBoundaryWatcher();
 
 const app = createApp(App);
 

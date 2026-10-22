@@ -1,5 +1,6 @@
 import { PiniaColada, defineQueryOptions, useQuery, useQueryCache } from "@pinia/colada";
 import { createPinia, setActivePinia } from "pinia";
+import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Component, createApp, defineComponent, nextTick } from "vue";
 
@@ -7,6 +8,10 @@ import { useAuthStore } from "@/stores/auth";
 import { useHomeStore } from "@/stores/home";
 import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
+import {
+  SESSION_EPOCH_STORAGE_KEY,
+  stopSessionBoundaryWatcher,
+} from "@/utils/sessionBoundary";
 
 const { mockLogin, mockLogout } = vi.hoisted(() => ({
   mockLogin: vi.fn(),
@@ -29,8 +34,13 @@ const makeAuthResponse = (id = "user-b") => ({
 
 const mountedApps: ReturnType<typeof createApp>[] = [];
 
-const mountWithColada = (component: Component) => {
+const mountWithColada = (component: Component, persist = false) => {
   const pinia = createPinia();
+
+  if (persist) {
+    pinia.use(piniaPluginPersistedstate);
+  }
+
   const app = createApp(component);
 
   app.use(pinia);
@@ -43,6 +53,8 @@ const mountWithColada = (component: Component) => {
 };
 
 beforeEach(() => {
+  stopSessionBoundaryWatcher();
+  localStorage.clear();
   mockLogin.mockReset();
   mockLogout.mockReset();
   mockLogout.mockResolvedValue(undefined);
@@ -50,6 +62,7 @@ beforeEach(() => {
 
 afterEach(() => {
   mountedApps.splice(0).forEach((app) => app.unmount());
+  vi.restoreAllMocks();
 });
 
 describe("auth session teardown", () => {
@@ -147,5 +160,71 @@ describe("auth session teardown", () => {
     expect(cache.getEntries()).toHaveLength(0);
     expect(settings.accentColor).toBe(initialAccent);
     expect(tabs.tabs).toHaveLength(0);
+  });
+
+  it("rotates the shared session epoch on login and logout", async () => {
+    mountWithColada(defineComponent({ setup: () => () => null }));
+
+    const auth = useAuthStore();
+    const initialEpoch = localStorage.getItem(SESSION_EPOCH_STORAGE_KEY);
+
+    mockLogin.mockResolvedValueOnce(makeAuthResponse());
+    await auth.login({ email: "b@test.com", password: "pw" });
+
+    const loginEpoch = localStorage.getItem(SESSION_EPOCH_STORAGE_KEY);
+
+    expect(loginEpoch).toBeTruthy();
+    expect(loginEpoch).not.toBe(initialEpoch);
+
+    await auth.logout();
+
+    const logoutEpoch = localStorage.getItem(SESSION_EPOCH_STORAGE_KEY);
+
+    expect(logoutEpoch).toBeTruthy();
+    expect(logoutEpoch).not.toBe(loginEpoch);
+  });
+
+  it("persists the new auth state before rotating the session epoch", async () => {
+    mountWithColada(defineComponent({ setup: () => () => null }), true);
+
+    const auth = useAuthStore();
+    const loginEpoch = "login-epoch";
+
+    mockLogin.mockResolvedValueOnce(makeAuthResponse());
+    localStorage.setItem(SESSION_EPOCH_STORAGE_KEY, loginEpoch);
+
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+
+    await auth.login({ email: "b@test.com", password: "pw" });
+
+    const persistedAuth = JSON.parse(localStorage.getItem("auth") ?? "{}");
+    const authWriteIndex = setItem.mock.calls.findIndex(([key]) => key === "auth");
+    const playerWriteIndex = setItem.mock.calls.findIndex(([key]) => key === "player-v2");
+    const tabWriteIndex = setItem.mock.calls.findIndex(([key]) => key === "tab");
+    const epochWriteIndex = setItem.mock.calls.findIndex(
+      ([key]) => key === SESSION_EPOCH_STORAGE_KEY,
+    );
+
+    expect(persistedAuth.user?.user?.id).toBe("user-b");
+    expect(authWriteIndex).toBeGreaterThanOrEqual(0);
+    expect(playerWriteIndex).toBeGreaterThanOrEqual(0);
+    expect(tabWriteIndex).toBeGreaterThanOrEqual(0);
+    expect(epochWriteIndex).toBeGreaterThanOrEqual(0);
+    expect(authWriteIndex).toBeLessThan(epochWriteIndex);
+    expect(playerWriteIndex).toBeLessThan(epochWriteIndex);
+    expect(tabWriteIndex).toBeLessThan(epochWriteIndex);
+  });
+
+  it("does not rotate the session epoch for a failed login", async () => {
+    mountWithColada(defineComponent({ setup: () => () => null }));
+
+    const auth = useAuthStore();
+    const initialEpoch = localStorage.getItem(SESSION_EPOCH_STORAGE_KEY);
+
+    mockLogin.mockRejectedValueOnce(new Error("Invalid credentials"));
+
+    await auth.login({ email: "bad@test.com", password: "wrong" });
+
+    expect(localStorage.getItem(SESSION_EPOCH_STORAGE_KEY)).toBe(initialEpoch);
   });
 });

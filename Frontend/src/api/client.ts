@@ -1,5 +1,7 @@
 import axios, { type AxiosInstance } from "axios";
 
+import { isSessionEpochCurrent } from "@/utils/sessionBoundary";
+
 const MAX_REFRESH_FAILURES = 3;
 let refreshFailures = 0;
 let refreshGeneration = 0;
@@ -29,6 +31,11 @@ const forceLogout = async () => {
 
   const pinia = getActivePinia();
   if (pinia) {
+    if (!isSessionEpochCurrent()) {
+      window.location.reload();
+      return;
+    }
+
     const authStore = useAuthStore(pinia);
     authStore.clearSession();
   }
