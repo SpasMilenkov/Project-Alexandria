@@ -63,7 +63,7 @@ const items = computed<NavigationMenuItem[]>(() => {
       to: "/auth",
     },
   ];
-  if (authStore.isAuthenticated) {
+  if (authStore.isSessionVerified) {
     itemArray.push({
       active: route.path === "/home",
       label: "Home",

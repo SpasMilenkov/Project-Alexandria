@@ -43,6 +43,15 @@ export const useHomeStore = defineStore("home", () => {
     settings.value = cloneHomeSettings(value);
   };
 
+  const resetSessionState = () => {
+    ownerEpoch.value += 1;
+    ownerId.value = null;
+    settings.value = null;
+    draft.value = null;
+    baseline.value = null;
+    target.value = "desktop";
+  };
+
   const beginEditing = (nextTarget: HomeEditorTarget) => {
     if (!settings.value) return;
 
@@ -76,6 +85,7 @@ export const useHomeStore = defineStore("home", () => {
     isEditing,
     ownerEpoch,
     ownerId,
+    resetSessionState,
     settings,
     showWidgetTitles,
     setOwner,

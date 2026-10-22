@@ -14,8 +14,12 @@ const route = useRoute();
 useTheme();
 
 // The public status page uses the default shell for anonymous visitors but the
-// dashboard shell for logged-in users (D6).
+// dashboard shell only after the cookie-backed identity has been verified.
 const authStore = useAuthStore();
+
+if (authStore.isAuthenticated && !authStore.isSessionVerified) {
+  void authStore.ensureSessionVerified();
+}
 
 type LayoutName = "dashboard" | "default" | "onboarding";
 
@@ -26,7 +30,7 @@ const layouts = {
 };
 
 const layoutName = computed<LayoutName>(() => {
-  if (route.name === "public-status" && authStore.isAuthenticated) return "dashboard";
+  if (route.name === "public-status" && authStore.isSessionVerified) return "dashboard";
   return (route.meta.layout as LayoutName) || "default";
 });
 </script>

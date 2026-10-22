@@ -16,7 +16,7 @@ ENV VITE_API_BASE_URL=/api
 RUN pnpm run build-only
 
 # ===== RUNTIME STAGE =====
-FROM nginx:1.28.3-alpine-slim@sha256:b33eedfdf089be1f83759ced27b4deec5b6f1b6fc2a6819ebce0ae351a4406e5 AS final
+FROM nginx:1.31.8-alpine3.24-slim@sha256:b899b0ef5345e14c01720a5ff83e716bacda65c7077a7363602ff7e7970bf88a AS final
 
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf

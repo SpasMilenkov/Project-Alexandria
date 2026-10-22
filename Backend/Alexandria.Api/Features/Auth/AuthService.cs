@@ -40,6 +40,21 @@ public class AuthService(
         return authResult;
     }
 
+    public async Task<AuthResult> GetSessionAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+
+        if (user is not { DeletedAt: null } || user.Id == SystemConfig.SystemId)
+            return AuthResult.Failed();
+
+        var authResult = AuthResult.SetSuccess(user);
+
+        authResult.UserRoles = await userManager.GetRolesAsync(user);
+        authResult.OnboardingStep = user.OnboardinStep;
+
+        return authResult;
+    }
+
     public async Task<AuthResult> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
     {
         var storedToken = await unitOfWork.RefreshTokens.GetByTokenWithUserAsync(refreshToken, ct);

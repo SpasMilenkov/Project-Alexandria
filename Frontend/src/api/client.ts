@@ -1,11 +1,18 @@
 import axios, { type AxiosInstance } from "axios";
 
-const MAX_REFRESH_FAILURES = 3;
-let refreshFailures = 0;
+import { isSessionEpochCurrent } from "@/utils/sessionBoundary";
+
+let refreshGeneration = 0;
 
 // If a refresh is already in-flight, every other 401 waits on this
 // same promise instead of firing its own refresh call.
 let refreshPromise: Promise<void> | null = null;
+
+// A login or logout must not inherit an in-flight refresh from the previous session.
+export const resetRefreshState = (): void => {
+  refreshGeneration += 1;
+  refreshPromise = null;
+};
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000",
@@ -21,6 +28,11 @@ const forceLogout = async () => {
 
   const pinia = getActivePinia();
   if (pinia) {
+    if (!isSessionEpochCurrent()) {
+      window.location.reload();
+      return;
+    }
+
     const authStore = useAuthStore(pinia);
     authStore.clearSession();
   }
@@ -32,27 +44,46 @@ const forceLogout = async () => {
   }
 };
 
+const refreshErrorStatus = (err: unknown): number | null => {
+  if (!axios.isAxiosError(err)) return null;
+
+  return err.response?.status ?? null;
+};
+
 export const attemptRefresh = (): Promise<void> => {
   if (refreshPromise) return refreshPromise;
 
-  refreshPromise = apiClient
+  const generation = refreshGeneration;
+
+  const pending = apiClient
     .post("/auth/refresh")
     .then(() => {
-      refreshFailures = 0;
+      // A login or logout superseded this refresh. Do not retry the old request
+      // under the new session's cookies.
+      if (generation !== refreshGeneration) {
+        throw new Error("Session changed during token refresh");
+      }
     })
-    .catch(async (err) => {
-      refreshFailures++;
-      if (refreshFailures >= MAX_REFRESH_FAILURES) {
-        refreshFailures = 0;
+    .catch(async (err: unknown) => {
+      // A refresh started for the previous account must not clear the new one.
+      if (generation !== refreshGeneration) throw err;
+
+      // A rejected refresh is authoritative: the refresh token is gone or invalid.
+      // Network failures and server errors must leave the local session alone.
+      if (refreshErrorStatus(err) === 401) {
         await forceLogout();
       }
+
       throw err;
-    })
-    .finally(() => {
-      refreshPromise = null;
     });
 
-  return refreshPromise;
+  const tracked: Promise<void> = pending.finally(() => {
+    if (refreshPromise === tracked) refreshPromise = null;
+  });
+
+  refreshPromise = tracked;
+
+  return tracked;
 };
 
 apiClient.interceptors.response.use(

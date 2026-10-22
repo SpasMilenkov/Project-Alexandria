@@ -201,10 +201,10 @@ export const createRecovery = (deps: RecoveryDeps) => {
     );
   };
 
-  const clearOwnerState = () => {
+  const clearOwnerState = (options: { releaseSession?: boolean } = {}) => {
     transitions.supersede();
     const kind = fileKind();
-    orders.releaseActive(true);
+    orders.releaseActive(options.releaseSession ?? true);
     state.nowPlaying.value = null;
     state.context.value = null;
     state.snapshot.value = null;

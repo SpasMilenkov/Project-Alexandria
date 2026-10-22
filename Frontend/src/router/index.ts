@@ -257,13 +257,22 @@ const router = createRouter({
 });
 
 // Navigation Guard
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
-  const { isAuthenticated, isAdmin } = authStore;
 
-  if (to.meta.requiresAuth && !isAuthenticated) {
+  if (
+    (to.meta.requiresAuth || to.meta.requiresAdmin) &&
+    authStore.isAuthenticated &&
+    !authStore.isSessionVerified
+  ) {
+    await authStore.ensureSessionVerified();
+  }
+
+  const { isAdmin, isAuthenticated, isSessionVerified } = authStore;
+
+  if (to.meta.requiresAuth && (!isAuthenticated || !isSessionVerified)) {
     return { path: "/auth", query: { redirect: to.fullPath } };
-  } else if (isAuthenticated && (to.meta.guestOnly || to.name === "index")) {
+  } else if (isSessionVerified && (to.meta.guestOnly || to.name === "index")) {
     return getSignInDestination(router, authStore.user?.onboardingStep, to.query.redirect);
   } else if (to.meta.requiresAdmin && !isAdmin) {
     return { path: "/home" };

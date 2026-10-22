@@ -1,9 +1,10 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.app.json",
   "compilerOptions": {
     "lib": ["webworker", "webworker.iterable", "es2020"],
     "target": "es2020",
-    "skipLibCheck": true
+    "types": ["vite/client"],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.sw.tsbuildinfo"
   },
-  "include": ["src/bg-image-sw.ts"]
+  "include": ["env.d.ts", "src/env.d.ts", "src/sw.ts", "src/utils/serviceWorkerPolicy.ts"]
 }

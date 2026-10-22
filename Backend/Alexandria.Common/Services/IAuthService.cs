@@ -6,6 +6,7 @@ namespace Alexandria.Common.Services;
 public interface IAuthService
 {
     Task<AuthResult> AuthenticateAsync(string email, string password);
+    Task<AuthResult> GetSessionAsync(Guid userId, CancellationToken ct = default);
     Task<AuthResult> RefreshTokenAsync(string refreshToken, CancellationToken ct = default);
     Task<bool> RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct = default);
     string GenerateAccessToken(ApplicationUser user);
