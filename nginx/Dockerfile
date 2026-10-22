@@ -1,6 +1,7 @@
 FROM alpine:3.21 AS builder
-ARG NGINX_VERSION=1.28.3
-ARG NGX_BROTLI_COMMIT=a71f9312c2deb28875acc7bacfdd5695a111aa53
+ARG NGINX_VERSION=1.31.8
+ARG NGINX_SIGNING_FPR=D6786CE303D9A9022998DC6CC8464D549AF75C0A
+ARG NGX_BROTLI_COMMIT=53e0fb55f250f48fe80c0ddbf6c0f7103cdbaae1
 
 RUN apk add --no-cache \
     build-base git cmake curl pax-utils \
@@ -18,14 +19,16 @@ RUN cd /usr/src/ngx_brotli/deps/brotli \
     && make -j$(nproc) brotlienc brotlidec brotlicommon
 
 # Download + verify nginx source
-COPY gpg/arut.key /tmp/arut.key
+COPY gpg/ /tmp/nginx-keys/
 
-RUN gpg --import /tmp/arut.key \
-    && curl -fSL https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz -o /tmp/nginx.tar.gz \
-    && curl -fSL https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz.asc -o /tmp/nginx.tar.gz.asc \
-    && gpg --verify /tmp/nginx.tar.gz.asc /tmp/nginx.tar.gz \
+RUN test -n "${NGINX_SIGNING_FPR}" \
+    && gpg --import /tmp/nginx-keys/* \
+    && curl -fSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o /tmp/nginx.tar.gz \
+    && curl -fSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz.asc" -o /tmp/nginx.tar.gz.asc \
+    && gpg --verify --status-fd 1 /tmp/nginx.tar.gz.asc /tmp/nginx.tar.gz > /tmp/gpg-status.txt \
+    && grep -q "VALIDSIG .*${NGINX_SIGNING_FPR}" /tmp/gpg-status.txt \
     && tar -C /usr/src -xzf /tmp/nginx.tar.gz \
-    && rm -f /tmp/nginx.tar.gz /tmp/nginx.tar.gz.asc
+    && rm -f /tmp/nginx.tar.gz /tmp/nginx.tar.gz.asc /tmp/gpg-status.txt
 
 RUN cd /usr/src/nginx-${NGINX_VERSION} && ./configure \
         --prefix=/etc/nginx \
