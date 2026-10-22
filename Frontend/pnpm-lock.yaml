@@ -167,8 +167,8 @@ importers:
   .:
     dependencies:
       '@iconify/vue':
-        specifier: 5.0.1
-        version: 5.0.1(vue@3.5.41(typescript@5.8.3))
+        specifier: 5.0.3
+        version: 5.0.3(vue@3.5.41(typescript@5.8.3))
       '@internationalized/date':
         specifier: 3.11.0
         version: 3.11.0
@@ -754,11 +754,6 @@ packages:
 
   '@iconify/utils@3.1.4':
     resolution: {integrity: sha512-b1S7B1k9ohZ+iNTi2ATxbRYG9fTrJmUT0rc46bvVnNxqNRGW7dyo/vRREwyniI5IRN2RSJHDcm+s3BjWrSAjHw==}
-
-  '@iconify/vue@5.0.1':
-    resolution: {integrity: sha512-aumwwooJlFJ5H5qYWB6ZTAyM0C8hpfcSVLB9/a3qnH1GGvIJ+FEbpEs4s/HfErYe/M5qZeLjwmESR5fFm3lXEw==}
-    peerDependencies:
-      vue: '>=3.0.0'
 
   '@iconify/vue@5.0.3':
     resolution: {integrity: sha512-e9x6QZe2/HyeHUog0jzZJSZts7m/YntPYp/p4OqtZEXpHznxWnQpcX30YpuaUH43h69l3YeR1FCJ8V1t3qd7qA==}
@@ -4779,11 +4774,6 @@ snapshots:
       '@iconify/types': 2.0.0
       import-meta-resolve: 4.2.0
 
-  '@iconify/vue@5.0.1(vue@3.5.41(typescript@5.8.3))':
-    dependencies:
-      '@iconify/types': 2.0.0
-      vue: 3.5.41(typescript@5.8.3)
-
   '@iconify/vue@5.0.3(vue@3.5.41(typescript@5.8.3))':
     dependencies:
       '@iconify/types': 2.0.0
@@ -4908,7 +4898,7 @@ snapshots:
       '@iconify/collections': 1.0.727
       '@iconify/types': 2.0.0
       '@iconify/utils': 3.1.4
-      '@iconify/vue': 5.0.1(vue@3.5.41(typescript@5.8.3))
+      '@iconify/vue': 5.0.3(vue@3.5.41(typescript@5.8.3))
       '@nuxt/devtools-kit': 3.4.2(magic-string@1.4.3)(rolldown@1.2.8)(unplugin@3.4.0(esbuild@0.27.3)(rolldown@1.2.8)(rollup@4.59.0)(vite@8.3.4(@types/node@26.2.0)(esbuild@0.27.3)(jiti@2.6.1)(yaml@2.9.0)))(vite@8.3.4(@types/node@26.2.0)(esbuild@0.27.3)(jiti@2.6.1)(yaml@2.9.0))
       '@nuxt/kit': 4.5.2(magic-string@1.4.3)(rolldown@1.2.8)(unplugin@3.4.0(esbuild@0.27.3)(rolldown@1.2.8)(rollup@4.59.0)(vite@8.3.4(@types/node@26.2.0)(esbuild@0.27.3)(jiti@2.6.1)(yaml@2.9.0)))
       consola: 3.4.2
