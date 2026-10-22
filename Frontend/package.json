@@ -20,7 +20,7 @@
   "dependencies": {
     "@iconify/vue": "5.0.1",
     "@internationalized/date": "3.11.0",
-    "@nuxt/ui": "4.11.1",
+    "@nuxt/ui": "4.12.0",
     "@pinia/colada": "0.21.7",
     "@pinia/colada-plugin-retry": "0.2.3",
     "@serwist/window": "9.5.12",
@@ -61,11 +61,11 @@
     "@vue/tsconfig": "0.7.0",
     "jiti": "2.6.1",
     "jsdom": "30.0.1",
-    "oxfmt": "0.68.0",
-    "oxlint": "1.83.0",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
     "serwist": "9.5.12",
     "typescript": "~5.8.3",
-    "vite": "8.2.2",
+    "vite": "8.3.4",
     "vite-plugin-vue-devtools": "8.2.1",
     "vitest": "5.0.1",
     "vue-tsc": "3.3.11"
