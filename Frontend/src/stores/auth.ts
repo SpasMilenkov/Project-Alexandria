@@ -85,10 +85,73 @@ export const useAuthStore = defineStore(
     const user = ref<AuthResponse | null>(null);
     const isLoading = ref(false);
     const error = ref<string | null>(null);
+    const sessionVerified = ref(false);
+
+    let sessionGeneration = 0;
+    let verificationPromise: Promise<boolean> | null = null;
 
     // Getters
     const isAuthenticated = computed(() => Boolean(user.value));
     const isAdmin = computed(() => user.value?.userRoles?.includes("Admin") ?? false);
+    const isSessionVerified = computed(() => Boolean(user.value) && sessionVerified.value);
+
+    const resetSessionVerification = () => {
+      sessionGeneration += 1;
+      verificationPromise = null;
+      sessionVerified.value = false;
+    };
+
+    const ensureSessionVerified = (): Promise<boolean> => {
+      if (!user.value) {
+        return Promise.resolve(false);
+      }
+
+      if (sessionVerified.value) {
+        return Promise.resolve(true);
+      }
+
+      if (verificationPromise) {
+        return verificationPromise;
+      }
+
+      const generation = sessionGeneration;
+      const expectedUserId = user.value.user?.id;
+
+      const pending = (async () => {
+        try {
+          const session = await authApi.getSession();
+
+          if (generation !== sessionGeneration || !user.value) {
+            return false;
+          }
+
+          if (!expectedUserId || session.user.id !== expectedUserId) {
+            await clearSession();
+            return false;
+          }
+
+          user.value = { ...session, success: true };
+          sessionVerified.value = true;
+          verificationPromise = null;
+
+          return true;
+        } catch (err: unknown) {
+          // A server rejection is authoritative only through the refresh 401 path.
+          // Network and 5xx failures keep the hint but never unlock private routes.
+          if (generation !== sessionGeneration) {
+            return false;
+          }
+
+          verificationPromise = null;
+          logger.error("Session verification failed:", err);
+          return false;
+        }
+      })();
+
+      verificationPromise = pending;
+
+      return pending;
+    };
 
     // Actions
     const login = async (credentials: LoginSchema) => {
@@ -98,10 +161,12 @@ export const useAuthStore = defineStore(
         const response = await authApi.login(credentials);
 
         resetRefreshState();
+        resetSessionVerification();
         user.value = null;
         resetPrivateState();
 
         user.value = response;
+        sessionVerified.value = true;
         useHomeStore().setOwner(response.user?.id ?? null);
         await publishSessionBoundary();
 
@@ -132,6 +197,7 @@ export const useAuthStore = defineStore(
       }
 
       resetRefreshState();
+      resetSessionVerification();
       user.value = null;
       resetPrivateState();
       await publishSessionBoundary();
@@ -151,6 +217,7 @@ export const useAuthStore = defineStore(
 
     const clearSession = async () => {
       resetRefreshState();
+      resetSessionVerification();
       user.value = null;
       resetPrivateState();
       await publishSessionBoundary();
@@ -169,15 +236,19 @@ export const useAuthStore = defineStore(
       // Getters
       isAuthenticated,
       isAdmin,
+      isSessionVerified,
       // Actions
       login,
       logout,
       clearError,
       clearSession,
+      ensureSessionVerified,
     };
   },
   {
-    persist: true,
+    persist: {
+      pick: ["user"],
+    },
   },
 );
 

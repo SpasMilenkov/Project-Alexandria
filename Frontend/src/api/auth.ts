@@ -13,13 +13,19 @@ export interface AuthResponse {
   onboardingStep: OnboardingStep;
 }
 
+export interface SessionResponse {
+  user: { id: string; email: string; name: string };
+  userRoles: string[];
+  onboardingStep: OnboardingStep;
+}
+
 export const authApi = {
   changeInitialPassword: async (payload: ChangePasswordSchema) => {
     await apiClient.patch("/auth/change-initial-password", payload);
   },
 
-  getProfile: async (): Promise<AuthResponse> => {
-    const response = await apiClient.get<AuthResponse>("/auth/profile");
+  getSession: async (): Promise<SessionResponse> => {
+    const response = await apiClient.get<SessionResponse>("/auth/session", { timeout: 10_000 });
     return response.data;
   },
 

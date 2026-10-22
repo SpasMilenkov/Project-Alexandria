@@ -13,13 +13,15 @@ import {
   stopSessionBoundaryWatcher,
 } from "@/utils/sessionBoundary";
 
-const { mockLogin, mockLogout } = vi.hoisted(() => ({
+const { mockGetSession, mockLogin, mockLogout } = vi.hoisted(() => ({
+  mockGetSession: vi.fn(),
   mockLogin: vi.fn(),
   mockLogout: vi.fn(),
 }));
 
 vi.mock("@/api/auth", () => ({
   authApi: {
+    getSession: mockGetSession,
     login: mockLogin,
     logout: mockLogout,
   },
@@ -28,6 +30,12 @@ vi.mock("@/api/auth", () => ({
 const makeAuthResponse = (id = "user-b") => ({
   onboardingStep: 0,
   success: true,
+  user: { email: `${id}@test.com`, id, name: id },
+  userRoles: ["User"],
+});
+
+const makeSessionResponse = (id = "user-b") => ({
+  onboardingStep: 3,
   user: { email: `${id}@test.com`, id, name: id },
   userRoles: ["User"],
 });
@@ -55,6 +63,7 @@ const mountWithColada = (component: Component, persist = false) => {
 beforeEach(() => {
   stopSessionBoundaryWatcher();
   localStorage.clear();
+  mockGetSession.mockReset();
   mockLogin.mockReset();
   mockLogout.mockReset();
   mockLogout.mockResolvedValue(undefined);
@@ -206,6 +215,7 @@ describe("auth session teardown", () => {
     );
 
     expect(persistedAuth.user?.user?.id).toBe("user-b");
+    expect(persistedAuth.sessionVerified).toBeUndefined();
     expect(authWriteIndex).toBeGreaterThanOrEqual(0);
     expect(playerWriteIndex).toBeGreaterThanOrEqual(0);
     expect(tabWriteIndex).toBeGreaterThanOrEqual(0);
@@ -226,5 +236,117 @@ describe("auth session teardown", () => {
     await auth.login({ email: "bad@test.com", password: "wrong" });
 
     expect(localStorage.getItem(SESSION_EPOCH_STORAGE_KEY)).toBe(initialEpoch);
+  });
+});
+
+describe("startup session verification", () => {
+  it("confirms the persisted user and refreshes server-owned fields", async () => {
+    mountWithColada(defineComponent({ setup: () => () => null }));
+
+    const auth = useAuthStore();
+    auth.user = makeAuthResponse("user-a");
+
+    mockGetSession.mockResolvedValueOnce({
+      ...makeSessionResponse("user-a"),
+      userRoles: ["Admin"],
+    });
+
+    const verified = await auth.ensureSessionVerified();
+
+    expect(verified).toBe(true);
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+    expect(auth.isSessionVerified).toBe(true);
+    expect(auth.user?.userRoles).toEqual(["Admin"]);
+    expect(auth.user?.onboardingStep).toBe(3);
+  });
+
+  it("clears the local session when the cookie belongs to another account", async () => {
+    mountWithColada(defineComponent({ setup: () => () => null }));
+
+    const auth = useAuthStore();
+    const cache = useQueryCache();
+
+    auth.user = makeAuthResponse("user-a");
+    cache.setQueryData(["settings", "appearance"], { accentColor: "red" });
+    mockGetSession.mockResolvedValueOnce(makeSessionResponse("user-b"));
+
+    const verified = await auth.ensureSessionVerified();
+
+    expect(verified).toBe(false);
+    expect(auth.user).toBeNull();
+    expect(auth.isSessionVerified).toBe(false);
+    expect(cache.getEntries()).toHaveLength(0);
+  });
+
+  it("keeps the persisted hint when verification cannot reach the server", async () => {
+    mountWithColada(defineComponent({ setup: () => () => null }));
+
+    const auth = useAuthStore();
+    auth.user = makeAuthResponse("user-a");
+    mockGetSession.mockRejectedValueOnce(new Error("Network error"));
+
+    const verified = await auth.ensureSessionVerified();
+
+    expect(verified).toBe(false);
+    expect(auth.user?.user.id).toBe("user-a");
+    expect(auth.isSessionVerified).toBe(false);
+  });
+
+  it("ignores a verification response that arrives after a session transition", async () => {
+    let resolveSession: (value: ReturnType<typeof makeSessionResponse>) => void = () => {};
+    const pendingSession = new Promise<ReturnType<typeof makeSessionResponse>>((resolve) => {
+      resolveSession = resolve;
+    });
+
+    mountWithColada(defineComponent({ setup: () => () => null }));
+
+    const auth = useAuthStore();
+    auth.user = makeAuthResponse("user-a");
+    mockGetSession.mockReturnValueOnce(pendingSession);
+
+    const pendingVerification = auth.ensureSessionVerified();
+    await auth.clearSession();
+    resolveSession(makeSessionResponse("user-a"));
+
+    expect(await pendingVerification).toBe(false);
+    expect(auth.user).toBeNull();
+    expect(auth.isSessionVerified).toBe(false);
+  });
+
+  it("shares one verification request between concurrent callers", async () => {
+    let resolveSession: (value: ReturnType<typeof makeSessionResponse>) => void = () => {};
+    const pendingSession = new Promise<ReturnType<typeof makeSessionResponse>>((resolve) => {
+      resolveSession = resolve;
+    });
+
+    mountWithColada(defineComponent({ setup: () => () => null }));
+
+    const auth = useAuthStore();
+    auth.user = makeAuthResponse("user-a");
+    mockGetSession.mockReturnValueOnce(pendingSession);
+
+    const first = auth.ensureSessionVerified();
+    const second = auth.ensureSessionVerified();
+
+    expect(mockGetSession).toHaveBeenCalledTimes(1);
+
+    resolveSession(makeSessionResponse("user-a"));
+
+    await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
+  });
+
+  it("marks a successful login as verified and clears it on logout", async () => {
+    mountWithColada(defineComponent({ setup: () => () => null }));
+
+    const auth = useAuthStore();
+    mockLogin.mockResolvedValueOnce(makeAuthResponse("user-a"));
+
+    await auth.login({ email: "a@test.com", password: "pw" });
+
+    expect(auth.isSessionVerified).toBe(true);
+
+    await auth.logout();
+
+    expect(auth.isSessionVerified).toBe(false);
   });
 });
