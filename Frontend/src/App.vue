@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { PiniaColadaDevtools } from "@pinia/colada-devtools";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 
@@ -42,7 +41,6 @@ const layoutName = computed<LayoutName>(() => {
     </component>
     <UFooter />
   </UApp>
-  <!-- <PiniaColadaDevtools /> -->
 </template>
 
 <style scoped></style>
