@@ -4,6 +4,8 @@ import vue from "@vitejs/plugin-vue";
 import { URL, fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import vueDevTools from "vite-plugin-vue-devtools";
+import { PiniaColadaDevtools } from '@pinia/colada-devtools/vite'
+import { DevTools } from '@vitejs/devtools'
 
 import { iconifySubsetPlugin } from "./plugins/iconify-subset";
 
@@ -18,6 +20,8 @@ export default defineConfig(({ mode }) => {
       vue(),
       iconifySubsetPlugin(),
       vueDevTools(),
+      DevTools(),
+      PiniaColadaDevtools(),
       ui({
         ui: {
           colors: {
