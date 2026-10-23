@@ -61,7 +61,7 @@
     "@vitejs/devtools-oxc": "0.8.0",
     "@vitejs/devtools-rolldown": "0.8.0",
     "@vitejs/devtools-vite": "0.8.0",
-    "@vitejs/plugin-vue": "6.0.4",
+    "@vitejs/plugin-vue": "6.0.10",
     "@vue/test-utils": "2.5.1",
     "@vue/tsconfig": "0.9.1",
     "jiti": "2.6.1",
