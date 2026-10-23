@@ -215,8 +215,8 @@ importers:
         specifier: 4.7.1
         version: 4.7.1(@nuxt/kit@4.6.1(@nuxt/schema@4.6.1)(confbox@0.3.1)(dotenv@17.3.1)(giget@3.2.0)(jiti@2.6.1)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.8)(unplugin@3.4.0(esbuild@0.27.3)(rolldown@1.2.8)(rollup@4.59.0)(vite@8.3.4(@types/node@26.2.0)(esbuild@0.27.3)(jiti@2.6.1)(yaml@2.9.0))))(pinia@3.0.4(typescript@5.8.3)(vue@3.5.44(typescript@5.8.3)))
       shaka-player:
-        specifier: 5.2.7
-        version: 5.2.7
+        specifier: 5.2.14
+        version: 5.2.14
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3
@@ -3692,8 +3692,8 @@ packages:
       typescript:
         optional: true
 
-  shaka-player@5.2.7:
-    resolution: {integrity: sha512-4qFQcLdAa0sHnTaXZ7dDLLh/X0TffX8BUoW6+eD4JFkUssGVhzNZsMfqNivDwIrzLTcXXZefvFNYJUUikXJDrg==}
+  shaka-player@5.2.14:
+    resolution: {integrity: sha512-yRYXJgSRXibj5ds2r4Pt9d9S015Qi9vLYUZpfSm70bwCCSQsrIJNeC/2+J0I+D3+mFrMLjVaIwx4u9BNvllDWw==}
     engines: {node: '>=18'}
 
   shebang-command@2.0.0:
@@ -7722,7 +7722,7 @@ snapshots:
     transitivePeerDependencies:
       - browserslist
 
-  shaka-player@5.2.7: {}
+  shaka-player@5.2.14: {}
 
   shebang-command@2.0.0:
     dependencies:
