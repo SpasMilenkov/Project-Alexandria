@@ -23,7 +23,6 @@
           "
         />
 
-        <!-- @vue-expect-error -->
         <UForm
           v-if="!user?.isLockedOut"
           ref="form"

@@ -135,13 +135,13 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 
 import { Icon } from "@iconify/vue";
 import { useDropZone, useObjectUrl } from "@vueuse/core";
-import { reactive, computed, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 
-import { playlistApi, type PlaylistResponse } from "@/api/playlist";
+import { type PlaylistResponse, playlistApi } from "@/api/playlist";
 import {
+  type CreatePlaylistSchema,
   createPlaylistSchema,
   updatePlaylistSchema,
-  type CreatePlaylistSchema,
 } from "@/schemas/playlist";
 
 export interface PlaylistFormPayload extends CreatePlaylistSchema {
@@ -159,7 +159,7 @@ const emit = defineEmits<{
   ambientChange: [color: string | null];
 }>();
 
-const isEdit = computed(() => !!props.initial);
+const isEdit = computed(() => Boolean(props.initial));
 const schema = computed(() => (isEdit.value ? updatePlaylistSchema : createPlaylistSchema));
 
 const state = reactive({
