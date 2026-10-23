@@ -251,11 +251,26 @@ export const fixture = async (
 
   await page.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
+
+    // Vite serves source modules from /src/api/*; only mock the API itself.
+    if (path !== "/api" && !path.startsWith("/api/")) {
+      await route.continue();
+
+      return;
+    }
+
     if (apiHandler && (await apiHandler(route))) return;
 
     let body: unknown = {};
 
-    if (path === "/api/home/widgets") {
+    if (path === "/api/auth/session") {
+      // The router verifies the persisted auth hint against the cookie-backed session.
+      body = {
+        user: { id: "home-fixture", name: "Alex", email: "alex@example.test" },
+        userRoles: ["User"],
+        onboardingStep: 3,
+      };
+    } else if (path === "/api/home/widgets") {
       if (route.request().method() === "PATCH") {
         const batch = route.request().postDataJSON() as BoardChanges;
         const proposed = applyChanges(state.saved, batch);
