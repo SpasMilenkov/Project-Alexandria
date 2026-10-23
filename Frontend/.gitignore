@@ -41,3 +41,4 @@ components.d.ts
 
 # Service worker Dev
 dev-dist/
+.devtools-oxc
