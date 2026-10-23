@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useEventListener, useMediaQuery, useTimestamp } from "@vueuse/core";
+import { useEventListener, useIntervalFn, useMediaQuery, useTimestamp } from "@vueuse/core";
 import { computed, defineAsyncComponent, nextTick, onUnmounted, ref, watch } from "vue";
 import { onBeforeRouteLeave } from "vue-router";
 
@@ -47,7 +47,7 @@ const store = useHomeStore();
 const { error, isLoading, isSaving, refresh, save } = useHomeSettings();
 
 const isMobile = useMediaQuery("(max-width: 767px)");
-const timestamp = useTimestamp({ interval: 60_000 });
+const timestamp = useTimestamp({ scheduler: (cb) => useIntervalFn(cb, 60_000) });
 
 const catalogueOpen = ref(false);
 const showcaseOpen = ref(false);

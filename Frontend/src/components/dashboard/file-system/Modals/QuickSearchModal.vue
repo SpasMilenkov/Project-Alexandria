@@ -5,7 +5,6 @@
     :ui="{ body: 'sm:p-2 ', header: 'hidden', content: glassModalContent }"
   >
     <template #body>
-      <!-- @vue-expect-error -->
       <UForm
         :schema="unifiedSearchUiSchema"
         :state="state"

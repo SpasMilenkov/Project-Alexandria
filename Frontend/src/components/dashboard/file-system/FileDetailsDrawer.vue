@@ -68,16 +68,6 @@
           </div>
         </div>
 
-        <!-- Track info (music files only). Sits right under the header because
-             it describes what the file *is*, before the housekeeping sections. -->
-        <TrackMetadataEditor
-          v-if="isMusicFile && musicMetadata"
-          :file="musicMetadata"
-          title="Track info"
-          :compact="isMobile"
-          @saved="refreshDetail"
-        />
-
         <!-- Tags Section -->
         <div class="flex flex-col gap-3">
           <div class="flex items-center justify-between gap-2">
@@ -272,8 +262,6 @@ import type { TagDto } from "@/api/tag";
 import type { SearchTagsSchema } from "@/schemas/tag";
 
 import { type FileResult } from "@/api/file";
-// Adjust the path to wherever the editor lives in your project.
-import TrackMetadataEditor from "@/components/streaming/TrackMetadataEditor.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
@@ -356,20 +344,6 @@ const { mutateAsync: autoTagMutate, isLoading: isAutoTagging } = autoTagFile();
 const isAudioFile = computed(() =>
   detail.value ? isAutoTagSupportedFileType(detail.value.currentVersion.mimeType) : false,
 );
-
-// Gates the Track info card. If the backend only writes tags for certain
-// formats, swap this for a util in mimetype.utils.
-const isMusicFile = computed(
-  () => detail.value?.currentVersion.mimeType?.startsWith("audio/") ?? false,
-);
-
-// Maps the drawer's data onto the editor's small metadata shape.
-// TODO: match these field names to what getFile / FileResult actually return.
-const musicMetadata = computed(() => {
-  if (!displayFile.value) return null;
-  const { title, artist, album, year, genre } = detail.value ?? {};
-  return { fileId: displayFile.value.fileId, title, artist, album, year, genre };
-});
 
 const extractAutoTagError = (err: any): string => {
   const data = err?.response?.data;

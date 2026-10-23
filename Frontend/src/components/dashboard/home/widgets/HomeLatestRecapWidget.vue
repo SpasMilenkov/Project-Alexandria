@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useNow } from "@vueuse/core";
+import { useIntervalFn, useNow } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 
@@ -25,7 +25,7 @@ import { type WrappedPalette, wrappedCssColors } from "@/utils/wrapped-palette.u
 const { widget } = defineProps<{ widget: HomeWidget }>();
 
 const store = useHomeStore();
-const now = useNow({ interval: 60_000 });
+const now = useNow({ scheduler: (cb) => useIntervalFn(cb, 60_000) });
 const { palette: wrappedPalette } = useHomeWidgetPreview()
   ? { palette: ref<WrappedPalette | null>(null) }
   : useWrappedPalette();

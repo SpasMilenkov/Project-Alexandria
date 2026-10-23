@@ -130,7 +130,7 @@
 
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
-import { useNow } from "@vueuse/core";
+import { useIntervalFn, useNow } from "@vueuse/core";
 import { isAxiosError } from "axios";
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -165,7 +165,7 @@ const { palette, paletteStyle } = useWrappedPalette();
 
 const userId = computed(() => auth.user?.user.id);
 
-const now = useNow({ interval: 60_000 });
+const now = useNow({ scheduler: (cb) => useIntervalFn(cb, 60_000) });
 const currentYear = new Date().getUTCFullYear();
 const month = computed(() => parseWrappedMonth(route.query.month, now.value));
 const monthLabel = computed(() => (month.value ? wrappedMonthLabel(month.value) : ""));

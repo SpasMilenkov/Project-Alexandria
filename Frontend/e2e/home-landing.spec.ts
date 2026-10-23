@@ -34,9 +34,19 @@ const prepareLanding = async (
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
+
+    // Vite serves source modules from /src/api/*; only mock the API itself.
+    if (path !== "/api" && !path.startsWith("/api/")) {
+      await route.continue();
+
+      return;
+    }
+
     let body: unknown = {};
 
-    if (path === "/api/auth/login") {
+    if (path === "/api/auth/session") {
+      body = account(step);
+    } else if (path === "/api/auth/login") {
       body = account(step);
     } else if (path === "/api/users/onboarding") {
       body = { onboardingStep: step };

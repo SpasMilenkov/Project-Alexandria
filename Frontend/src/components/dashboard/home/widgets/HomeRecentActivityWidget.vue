@@ -22,7 +22,7 @@ import {
 const { widget } = defineProps<{ widget: HomeWidget }>();
 
 const store = useHomeStore();
-const now = useNow({ interval: 60_000 });
+const now = useNow({ scheduler: (cb) => useIntervalFn(cb, 60_000) });
 const list = ref<HTMLElement | null>(null);
 const isByDay = computed(() => widget.options.activityStyle === HomeActivityStyle.ByDay);
 
