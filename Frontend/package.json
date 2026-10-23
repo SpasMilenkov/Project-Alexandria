@@ -24,7 +24,7 @@
     "@pinia/colada": "1.4.8",
     "@pinia/colada-plugin-retry": "1.0.3",
     "@serwist/window": "9.5.12",
-    "@tailwindcss/vite": "4.2.1",
+    "@tailwindcss/vite": "4.3.3",
     "@unhead/vue": "3.4.0",
     "@vueuse/core": "15.0.0",
     "@vueuse/integrations": "15.0.0",
