@@ -1,4 +1,4 @@
-import { useDocumentVisibility, useLocalStorage, useTimestamp } from "@vueuse/core";
+import { useDocumentVisibility, useIntervalFn, useLocalStorage, useTimestamp } from "@vueuse/core";
 import { computed, watch } from "vue";
 
 import type { HomeWidget } from "@/types/home";
@@ -33,9 +33,8 @@ export const useHomeFocusTimer = (widget: () => HomeWidget) => {
     pause,
     resume,
   } = useTimestamp({
-    interval: 250,
+    scheduler: (cb) => useIntervalFn(cb, 250, { immediate: false }),
     controls: true,
-    immediate: false,
   });
   const key = computed(() => `alexandria:home-focus:${home.ownerId ?? ""}:${widget().instanceId}`);
   const stored = useLocalStorage<ReturnType<typeof homeFocusIdle> | null>(key, null, {

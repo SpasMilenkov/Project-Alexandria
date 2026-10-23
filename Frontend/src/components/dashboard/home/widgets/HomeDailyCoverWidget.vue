@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useNow } from "@vueuse/core";
+import { useIntervalFn, useNow } from "@vueuse/core";
 import { computed } from "vue";
 
 import type { HomeWidget } from "@/types/home";
@@ -12,7 +12,7 @@ import HomeDailyCoverArt from "./HomeDailyCoverArt.vue";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 const home = useHomeStore();
-const now = useNow({ interval: 30_000 });
+const now = useNow({ scheduler: (cb) => useIntervalFn(cb, 30_000) });
 
 const day = computed(() => homeLocalDay(now.value));
 

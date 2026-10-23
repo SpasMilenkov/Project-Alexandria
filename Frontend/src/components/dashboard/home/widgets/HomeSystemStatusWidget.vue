@@ -21,7 +21,7 @@ import {
 const { widget } = defineProps<{ widget: HomeWidget }>();
 
 const store = useHomeStore();
-const now = useNow({ interval: 60_000 });
+const now = useNow({ scheduler: (cb) => useIntervalFn(cb, 60_000) });
 const list = ref<HTMLElement | null>(null);
 const isHistory = computed(() => widget.options.statusStyle === HomeStatusStyle.History);
 const badgeOnly = computed(

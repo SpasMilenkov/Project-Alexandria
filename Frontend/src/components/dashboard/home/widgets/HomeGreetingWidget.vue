@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useTimestamp } from "@vueuse/core";
+import { useIntervalFn, useTimestamp } from "@vueuse/core";
 import { computed } from "vue";
 
 import type { HomeWidget } from "@/types/home";
@@ -12,7 +12,7 @@ import { homeGreetingHeading } from "@/utils/home-greeting";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 const auth = useAuthStore();
-const timestamp = useTimestamp({ interval: 60_000 });
+const timestamp = useTimestamp({ scheduler: (cb) => useIntervalFn(cb, 60_000) });
 
 const heading = computed(() =>
   homeGreetingHeading(timestamp.value, widget.options, auth.user?.user.name),
