@@ -62,7 +62,7 @@
     "@vitejs/devtools-rolldown": "0.8.0",
     "@vitejs/devtools-vite": "0.8.0",
     "@vitejs/plugin-vue": "6.0.4",
-    "@vue/test-utils": "2.4.10",
+    "@vue/test-utils": "2.5.1",
     "@vue/tsconfig": "0.9.1",
     "jiti": "2.6.1",
     "jsdom": "30.0.1",
