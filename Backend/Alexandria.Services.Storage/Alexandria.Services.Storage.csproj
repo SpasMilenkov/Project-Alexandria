@@ -20,6 +20,7 @@
         <PackageReference Include="AWSSDK.S3"/>
         <PackageReference Include="Blake3"/>
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions"/>
+        <PackageReference Include="Mime-Detective"/>
         <PackageReference Include="SeekableS3Stream"/>
     </ItemGroup>
 

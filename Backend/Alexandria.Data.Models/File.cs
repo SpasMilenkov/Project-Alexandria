@@ -11,7 +11,7 @@ public class File : IBase
 
     [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
     [StringLength(ValidationConstants.StringLengths.MediumString)]
-    public required string MimeType { get; init; }
+    public required string MimeType { get; set; }
 
     public NpgsqlTsVector SearchVector { get; set; } = null!;
     public string NormalizedName { get; set; } = null!;

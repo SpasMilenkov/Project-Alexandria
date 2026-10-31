@@ -1,4 +1,5 @@
 using System.Net;
+using Alexandria.Services.Storage.Content.Mime;
 using Microsoft.Extensions.Logging;
 
 namespace Alexandria.Services.Storage.Content;
@@ -131,4 +132,11 @@ public partial class ContentStorageService
         "Storage quota check failed for user: UserId={UserId}")]
     private static partial void LogStorageQuotaCheckFailed(
         ILogger logger, Exception ex, Guid userId);
+
+    // MIME resolution
+
+    [LoggerMessage(1057, LogLevel.Information,
+        "Upload {UploadId} MIME resolved from {Declared} to {Resolved} via {Source}")]
+    private static partial void LogMimeCorrected(
+        ILogger logger, Guid uploadId, string declared, string resolved, MimeSource source);
 }
