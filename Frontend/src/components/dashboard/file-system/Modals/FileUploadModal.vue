@@ -5,6 +5,7 @@ import type { WorkerOutMessage } from "@/workers/blake3.worker";
 
 import { fileApi } from "@/api/file";
 import { useAppToast } from "@/composables/useAppToast";
+import { FALLBACK_CONTENT_TYPE } from "@/composables/useDirectoryUpload";
 import { encryptFile } from "@/composables/useFileEncryption";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { formatBytes } from "@/utils/size.utils";
@@ -367,12 +368,12 @@ const uploadSingle = async (state: FileUploadState) => {
   updateProgress(state, 0);
 
   let fileToUpload: File | Blob = state.file;
-  let contentType = state.file.type || "application/octet-stream";
+  let contentType = state.file.type || FALLBACK_CONTENT_TYPE;
 
   if (state.isEncrypted) {
     const result = await encryptFile(state.file, state.password);
-    fileToUpload = new Blob([result.ciphertext], { type: "application/octet-stream" });
-    contentType = "application/octet-stream";
+    fileToUpload = new Blob([result.ciphertext], { type: FALLBACK_CONTENT_TYPE });
+    contentType = FALLBACK_CONTENT_TYPE;
     state.encryptionIv = result.iv;
     state.encryptionSalt = result.salt;
     state.encryptionAuthTag = result.authTag;
@@ -406,7 +407,8 @@ const uploadSingle = async (state: FileUploadState) => {
   updateProgress(state, 0);
   await fileApi.uploadToS3(
     response.uploadUrl,
-    fileToUpload as File,
+    fileToUpload,
+    contentType,
     (pct) => updateProgress(state, pct),
     signal,
   );

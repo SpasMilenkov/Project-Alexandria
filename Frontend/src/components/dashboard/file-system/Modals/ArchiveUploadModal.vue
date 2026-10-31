@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { BlobReader, BlobWriter, ZipReader, configure } from "@zip.js/zip.js";
+import {
+  BlobReader,
+  BlobWriter,
+  type Entry as ZipEntry,
+  type FileEntry as ZipFileEntry,
+  ZipReader,
+  configure,
+} from "@zip.js/zip.js";
 import { computed, onMounted, ref } from "vue";
 
 import { directoryApi } from "@/api/directory";
@@ -177,7 +184,10 @@ const extractArchive = async () => {
     const entries = await reader.getEntries();
 
     const fileEntries = entries.filter(
-      (e) => !e.directory && !e.filename.startsWith("__MACOSX/") && !e.filename.endsWith("/"),
+      (entry: ZipEntry): entry is ZipFileEntry =>
+        !entry.directory &&
+        !entry.filename.startsWith("__MACOSX/") &&
+        !entry.filename.endsWith("/"),
     );
 
     totalEntryCount.value = fileEntries.length;
@@ -186,14 +196,14 @@ const extractArchive = async () => {
     for (const entry of fileEntries) {
       if (signal.aborted) break;
 
-      const blob = await entry.getData!(new BlobWriter(), { signal });
+      const blob = await entry.getData(new BlobWriter(), { signal });
 
       const relativePath = entry.filename;
       const fileName = relativePath.split("/").pop() ?? relativePath;
-      const mimeType = mimeFromExtension(fileName);
 
+      // No type is set on purpose: the server detects the real type from the file content.
       extractedFiles.value.push({
-        file: new File([blob], fileName, { type: mimeType }),
+        file: new File([blob], fileName),
         relativePath,
       });
 
@@ -292,31 +302,6 @@ const reset = () => {
   resetUpload();
 };
 
-// mime helpers
-
-const EXTENSION_MIME: Record<string, string> = {
-  css: "text/css",
-  csv: "text/csv",
-  gif: "image/gif",
-  html: "text/html",
-  ico: "image/x-icon",
-  jpeg: "image/jpeg",
-  jpg: "image/jpeg",
-  js: "application/javascript",
-  json: "application/json",
-  md: "text/markdown",
-  pdf: "application/pdf",
-  png: "image/png",
-  svg: "image/svg+xml",
-  ts: "application/typescript",
-  txt: "text/plain",
-  wasm: "application/wasm",
-  webp: "image/webp",
-  xml: "application/xml",
-  yaml: "application/yaml",
-  yml: "application/yaml",
-};
-
 onMounted(() => {
   const dropped = props.droppedFiles?.[0];
   if (!dropped) return;
@@ -330,11 +315,6 @@ onMounted(() => {
   archiveFile.value = dropped;
   extractionAbort.value = new AbortController();
 });
-
-const mimeFromExtension = (fileName: string): string => {
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  return EXTENSION_MIME[ext] ?? "application/octet-stream";
-};
 </script>
 
 <template>

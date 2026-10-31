@@ -333,7 +333,8 @@ export const fileApi = {
 
   uploadToS3: (
     presignedUrl: string,
-    file: File,
+    file: Blob,
+    contentType: string,
     onProgress?: (percent: number) => void,
     signal?: AbortSignal,
   ): Promise<void> =>
@@ -362,7 +363,7 @@ export const fileApi = {
       signal?.addEventListener("abort", () => xhr.abort(), { once: true });
 
       xhr.open("PUT", presignedUrl);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("Content-Type", contentType);
       xhr.send(file);
     }),
 };
