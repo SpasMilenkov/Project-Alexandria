@@ -35,6 +35,7 @@ import { OperationalEventSeverity } from "./operational-event-severity";
 import { OperationalEventStatus } from "./operational-event-status";
 import { PlaylistSort } from "./playlist-sort";
 import { ServiceType } from "./service-type";
+import { TextPreviewTruncation } from "./text-preview-truncation";
 import { WrappedCardType } from "./wrapped-card-type";
 
 export type { SortBy, SortDirection, PreviewKind, UserRole };
@@ -69,5 +70,6 @@ export {
   OperationalEventSeverity,
   OperationalEventStatus,
   ServiceType,
+  TextPreviewTruncation,
   WrappedCardType,
 };

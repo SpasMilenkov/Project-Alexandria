@@ -1,3 +1,4 @@
+import type { TextPreviewTruncation } from "@/enums";
 import type { GenerateSignedUrlSchema, UpdateFileMetadataSchema } from "@/schemas/file";
 import type { FileSearchQuery } from "@/schemas/search";
 import type { PaginationParams } from "@/types/pagination-params";
@@ -72,8 +73,33 @@ export interface FileResult {
 // (Kind = Thumbnail is its own artifact, not bundled into the preview response)
 export interface PreviewResultDto {
   previewUrl: string | null;
-  textPreview: string | null;
+  textPreview: TextPreviewDto | null;
   archivePreview: string | null;
+}
+
+export interface TextPreviewToken {
+  start: number;
+  length: number;
+  kind: string;
+}
+
+export interface TextPreviewLine {
+  text: string;
+  tokens: TextPreviewToken[];
+}
+
+export interface TextPreviewDto {
+  lines: TextPreviewLine[];
+  language: string;
+  truncated: boolean;
+  truncation: TextPreviewTruncation;
+  highlightingLimited: boolean;
+  bytesShown: number;
+  totalBytes: number | null;
+  encoding: string;
+  lineCount: number;
+  tokenCount: number;
+  domElementCount: number;
 }
 
 export interface FileVersionDto {

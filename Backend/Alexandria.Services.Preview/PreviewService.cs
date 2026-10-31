@@ -170,10 +170,14 @@ public class PreviewService(
 
             case FileCategory.Text:
             {
+                // The download stream is not seekable, so the size has to come from the version row.
+                var version = await unitOfWork.FileVersions.GetByIdAsync(versionId, ct);
+
                 await using var fileStream = await storageService.DownloadFile(versionId, fileData.OwnerId, ct);
-                var (data, _) =
-                    await textPreviewService.GenerateTextPreviewAsync(fileStream, fileData.Name, 524288, ct);
-                return new PreviewResultDto(null, data);
+                var textPreview = await textPreviewService.GenerateHighlightedPreviewAsync(
+                    fileStream, fileData.Name, version?.Size, ct: ct);
+
+                return new PreviewResultDto(null, textPreview);
             }
             case FileCategory.Audio:
             case FileCategory.Video:
@@ -244,12 +248,6 @@ public class PreviewService(
             }
 
             case FileCategory.Text:
-            {
-                var fileStream = await storageService.DownloadFile(versionId, fileData.OwnerId, ct);
-                await textPreviewService.GenerateTextPreviewAsync(fileStream, fileData.Name, 524288, ct);
-                break;
-            }
-
             case FileCategory.Unknown:
                 break;
 

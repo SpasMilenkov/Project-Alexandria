@@ -5,6 +5,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Files;
 using Alexandria.Services.Preview;
 using Alexandria.Tests.Common.Builders;
 using AwesomeAssertions;
@@ -187,7 +188,7 @@ public class PreviewServiceDispatchTests
     }
 
     [Fact]
-    public async Task getPreviewUrl_text_returns_textPreview_slot()
+    public async Task getPreviewUrl_text_returns_structured_textPreview()
     {
         _files.VersionBelongsToUserAsync(_versionId, _userId, Arg.Any<CancellationToken>())
             .Returns("hash");
@@ -200,16 +201,65 @@ public class PreviewServiceDispatchTests
         _storage.CategorizeFile("application/json").Returns(FileCategory.Text);
         _storage.DownloadFile(_versionId, _userId, Arg.Any<CancellationToken>())
             .Returns(new MemoryStream(Encoding.UTF8.GetBytes("{\"hello\":\"world\"}")));
-        _textPreview.GenerateTextPreviewAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<int>(),
+
+        var textPreview = new TextPreviewDto(
+            [new TextPreviewLineDto("{\"hello\":\"world\"}", [])],
+            "json",
+            false,
+            TextPreviewTruncation.None,
+            false,
+            17,
+            null,
+            "utf-8",
+            1,
+            0,
+            1);
+
+        _textPreview.GenerateHighlightedPreviewAsync(
+                Arg.Any<Stream>(),
+                Arg.Any<string>(),
+                Arg.Any<long?>(),
+                Arg.Any<int>(),
+                Arg.Any<int>(),
+                Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
-            .Returns(("{\"hello\":\"world\"}", "application/json"));
+            .Returns(textPreview);
 
         var result = await _sut.GetPreviewUrlAsync(_versionId, _userId, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.PreviewUrl.Should().BeNull();
-        result.TextPreview.Should().Be("{\"hello\":\"world\"}");
+        result.TextPreview.Should().Be(textPreview);
         result.ArchivePreview.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task getPreviewUrl_text_passes_the_version_size_as_totalBytes()
+    {
+        _files.VersionBelongsToUserAsync(_versionId, _userId, Arg.Any<CancellationToken>())
+            .Returns("hash");
+        _versions.IsEncryptedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(false);
+        _versions.IsPromotedAsync(_versionId, Arg.Any<CancellationToken>()).Returns(true);
+        _versions.GetByIdAsync(_versionId, Arg.Any<CancellationToken>())
+            .Returns(new FileVersion { Size = 4_096, VersionNumber = 1, MimeType = "text/plain" });
+        _artifacts.GetCachedPreview(_versionId, PreviewKind.Preview, Arg.Any<CancellationToken>())
+            .Returns((string?)null);
+        _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(StoredFile("text/plain"));
+        _storage.CategorizeFile("text/plain").Returns(FileCategory.Text);
+        _storage.DownloadFile(_versionId, _userId, Arg.Any<CancellationToken>())
+            .Returns(new MemoryStream(Encoding.UTF8.GetBytes("hello\n")));
+
+        await _sut.GetPreviewUrlAsync(_versionId, _userId, TestContext.Current.CancellationToken);
+
+        await _textPreview.Received(1).GenerateHighlightedPreviewAsync(
+            Arg.Any<Stream>(),
+            Arg.Any<string>(),
+            4_096L,
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
