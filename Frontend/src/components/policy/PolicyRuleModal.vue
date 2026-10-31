@@ -237,6 +237,7 @@ import {
   VideoRung,
 } from "@/api/policy";
 import { addRule, updateRule } from "@/mutations/policies";
+import { POLICY_FILE_GROUPS, type PolicyFileGroup } from "@/utils/mime-catalog";
 import { glassModalContent } from "@/utils/modalUi";
 
 const props = defineProps<{
@@ -273,23 +274,30 @@ const snapPriority = (p: number): number => {
 // Groups eligible per action type
 type GroupOption = { label: string; value: string; icon: string };
 
-const allGroupsList = (): GroupOption[] => [
-  { label: "Images", value: "Images", icon: "mdi:image-outline" },
-  { label: "Videos", value: "Videos", icon: "mdi:video-outline" },
-  { label: "Audio", value: "Audio", icon: "mdi:music-note-outline" },
-  { label: "Documents", value: "Documents", icon: "mdi:file-document-outline" },
-  { label: "Spreadsheets", value: "Spreadsheets", icon: "mdi:table-large" },
-  { label: "Presentations", value: "Presentations", icon: "mdi:presentation" },
-  { label: "Archives", value: "Archives", icon: "mdi:archive-outline" },
-  { label: "Code", value: "Code", icon: "mdi:code-braces" },
-  { label: "Text", value: "Text", icon: "mdi:text-box-outline" },
-];
+// Group names come from the backend catalog; a new backend group fails type-checking here until
+// it gets an icon.
+const GROUP_ICONS: Record<PolicyFileGroup, string> = {
+  Images: "mdi:image-outline",
+  Videos: "mdi:video-outline",
+  Audio: "mdi:music-note-outline",
+  Documents: "mdi:file-document-outline",
+  Spreadsheets: "mdi:table-large",
+  Presentations: "mdi:presentation",
+  Archives: "mdi:archive-outline",
+  Code: "mdi:code-braces",
+  Text: "mdi:text-box-outline",
+};
+
+const groupOption = (group: PolicyFileGroup): GroupOption => ({
+  label: group,
+  value: group,
+  icon: GROUP_ICONS[group],
+});
+
+const allGroupsList = (): GroupOption[] => POLICY_FILE_GROUPS.map(groupOption);
 
 const groupsByAction: Record<PolicyActionType, GroupOption[]> = {
-  [PolicyActionType.Transcode]: [
-    { label: "Videos", value: "Videos", icon: "mdi:video-outline" },
-    { label: "Audio", value: "Audio", icon: "mdi:music-note-outline" },
-  ],
+  [PolicyActionType.Transcode]: [groupOption("Videos"), groupOption("Audio")],
   [PolicyActionType.AutoTag]: allGroupsList(),
   [PolicyActionType.Backup]: allGroupsList(),
 };

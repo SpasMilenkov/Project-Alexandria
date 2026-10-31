@@ -133,10 +133,15 @@ import { useQueryCache } from "@pinia/colada";
 import { useDebounceFn } from "@vueuse/core";
 import { computed, onUnmounted } from "vue";
 
-import { type FileResult } from "@/api/file";
+import { type FileResult, type PreviewResultDto } from "@/api/file";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { type FileTooltipEnterKind } from "@/composables/useFileTooltip";
-import { getFile, getPreview, getVersionsForFile } from "@/queries/files";
+import {
+  FILES_QUERY_KEYS,
+  getFile,
+  getPreviewByVersion,
+  getVersionsForFile,
+} from "@/queries/files";
 import { getTagsForFile } from "@/queries/tags";
 import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
@@ -203,7 +208,21 @@ const prefetchDetails = useDebounceFn(() => {
   // Encrypted versions have no backend preview, so warming that query would
   // only spend a doomed request.
   if (!props.data.currentVersion.isEncrypted) {
-    queryCache.refresh(queryCache.ensure(getPreview(props.data.fileId)));
+    const { fileId } = props.data;
+    const versionId = props.data.currentVersion.id;
+
+    queryCache.refresh(
+      queryCache.ensure(
+        getPreviewByVersion({
+          fileId,
+          versionId,
+          mimeType: props.data.mimeType,
+          cached: queryCache.getQueryData<PreviewResultDto>(
+            FILES_QUERY_KEYS.previewByVersion(fileId, versionId),
+          ),
+        }),
+      ),
+    );
   }
 
   queryCache.refresh(

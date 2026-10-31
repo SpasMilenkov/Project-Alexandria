@@ -1,3 +1,9 @@
+import {
+  canonicalizeMime,
+  isAutoTagSupportedMime,
+  policyGroupOf,
+  routesToPreviewWorker,
+} from "./mime-catalog";
 import { formatBytes } from "./size.utils";
 
 export type FileGroup =
@@ -23,10 +29,11 @@ interface MimeMeta {
 
 //oxlint-disable sort-keys
 /**
- * Single source of truth for MIME type metadata.
- * Both `getFileTypeReadable` and `groupMimeSizeRecord` derive from this.
+ * Labels for canonical MIME types, plus display groups for types that no backend policy group
+ * owns (fonts, executables, packages). Keys must be canonical: lookups canonicalize first, so an
+ * alias key would never be read.
  */
-const MIME_META: Record<string, MimeMeta> = {
+export const MIME_META: Readonly<Record<string, MimeMeta>> = {
   // Documents
   "application/pdf": { group: "Documents", label: "PDF Document" },
   "application/msword": { group: "Documents", label: "Word Document" },
@@ -39,7 +46,8 @@ const MIME_META: Record<string, MimeMeta> = {
     label: "Text Document",
   },
   "application/rtf": { group: "Documents", label: "Rich Text Document" },
-  "text/markdown": { group: "Documents", label: "Markdown Document" },
+  "application/epub+zip": { group: "Documents", label: "EPUB Book" },
+  "text/markdown": { group: "Text", label: "Markdown Document" },
 
   // Spreadsheets
   "application/vnd.ms-excel": { group: "Spreadsheets", label: "Spreadsheet" },
@@ -70,7 +78,6 @@ const MIME_META: Record<string, MimeMeta> = {
 
   // Images
   "image/jpeg": { group: "Images", label: "JPEG Image" },
-  "image/jpg": { group: "Images", label: "JPEG Image" },
   "image/png": { group: "Images", label: "PNG Image" },
   "image/gif": { group: "Images", label: "GIF Image" },
   "image/webp": { group: "Images", label: "WebP Image" },
@@ -93,19 +100,17 @@ const MIME_META: Record<string, MimeMeta> = {
 
   // Audio
   "audio/mpeg": { group: "Audio", label: "MP3 Audio" },
-  "audio/mp3": { group: "Audio", label: "MP3 Audio" },
-  "audio/mp4": { group: "Audio", label: "MP4 Audio" },
+  "audio/mp4": { group: "Audio", label: "M4A Audio" },
   "audio/wav": { group: "Audio", label: "WAV Audio" },
-  "audio/x-wav": { group: "Audio", label: "WAV Audio" },
   "audio/flac": { group: "Audio", label: "FLAC Audio" },
   "audio/ogg": { group: "Audio", label: "OGG Audio" },
   "audio/webm": { group: "Audio", label: "WebM Audio" },
   "audio/aac": { group: "Audio", label: "AAC Audio" },
-  "audio/x-m4a": { group: "Audio", label: "M4A Audio" },
 
   // Archives
   "application/zip": { group: "Archives", label: "ZIP Archive" },
-  "application/x-zip-compressed": { group: "Archives", label: "ZIP Archive" },
+  "application/java-archive": { group: "Archives", label: "Java Archive" },
+  "application/vnd.android.package-archive": { group: "Archives", label: "Android Package" },
   "application/x-rar-compressed": { group: "Archives", label: "RAR Archive" },
   "application/x-7z-compressed": { group: "Archives", label: "7-Zip Archive" },
   "application/x-tar": { group: "Archives", label: "TAR Archive" },
@@ -115,27 +120,59 @@ const MIME_META: Record<string, MimeMeta> = {
 
   // Code & Development
   "text/javascript": { group: "Code", label: "JavaScript File" },
-  "application/javascript": { group: "Code", label: "JavaScript File" },
   "text/typescript": { group: "Code", label: "TypeScript File" },
-  "application/typescript": { group: "Code", label: "TypeScript File" },
   "text/html": { group: "Code", label: "HTML Document" },
   "text/css": { group: "Code", label: "CSS Stylesheet" },
   "application/json": { group: "Code", label: "JSON File" },
+  "application/yaml": { group: "Code", label: "YAML File" },
+  "application/toml": { group: "Code", label: "TOML File" },
   "application/xml": { group: "Code", label: "XML File" },
-  "text/xml": { group: "Code", label: "XML File" },
-  "application/x-yaml": { group: "Code", label: "YAML File" },
-  "text/yaml": { group: "Code", label: "YAML File" },
   "text/x-python": { group: "Code", label: "Python Script" },
+  "application/sql": { group: "Code", label: "SQL File" },
+  "text/x-vue": { group: "Code", label: "Vue Component" },
   "application/x-python-code": { group: "Code", label: "Python Script" },
   "text/x-java-source": { group: "Code", label: "Java Source File" },
   "text/x-c": { group: "Code", label: "C Source File" },
   "text/x-c++": { group: "Code", label: "C++ Source File" },
   "text/x-csharp": { group: "Code", label: "C# Source File" },
+  "text/x-dockerfile": { group: "Code", label: "Dockerfile" },
+  "text/x-containerfile": { group: "Code", label: "Containerfile" },
+  "text/x-makefile": { group: "Code", label: "Makefile" },
+  "text/x-tex": { group: "Code", label: "LaTeX Source" },
+  "text/x-sln": { group: "Code", label: "Visual Studio Solution" },
+  "text/x-slnx": { group: "Code", label: "Visual Studio Solution (XML)" },
+  "text/x-swift": { group: "Code", label: "Swift Source File" },
+  "text/x-scala": { group: "Code", label: "Scala Source File" },
+  "text/x-kotlin": { group: "Code", label: "Kotlin Source File" },
+  "text/x-kotlin-script": { group: "Code", label: "Kotlin Script" },
+  "application/dart": { group: "Code", label: "Dart Source File" },
   "application/x-sh": { group: "Code", label: "Shell Script" },
   "application/x-php": { group: "Code", label: "PHP Script" },
   "text/x-ruby": { group: "Code", label: "Ruby Script" },
   "text/x-go": { group: "Code", label: "Go Source File" },
   "text/x-rust": { group: "Code", label: "Rust Source File" },
+  "text/x-powershell": { group: "Code", label: "PowerShell Script" },
+  "text/x-batch": { group: "Code", label: "Batch Script" },
+  "text/x-lua": { group: "Code", label: "Lua Script" },
+  "text/x-r": { group: "Code", label: "R Script" },
+  "text/x-julia": { group: "Code", label: "Julia Script" },
+  "text/x-fsharp": { group: "Code", label: "F# Source File" },
+  "text/x-vb": { group: "Code", label: "Visual Basic Source File" },
+  "text/x-scss": { group: "Code", label: "SCSS Stylesheet" },
+  "text/x-sass": { group: "Code", label: "Sass Stylesheet" },
+  "text/x-less": { group: "Code", label: "Less Stylesheet" },
+  "text/x-hcl": { group: "Code", label: "Terraform / HCL File" },
+  "text/x-nix": { group: "Code", label: "Nix Expression" },
+  "text/x-cmake": { group: "Code", label: "CMake File" },
+  "text/x-bazel": { group: "Code", label: "Bazel File" },
+  "text/x-gradle": { group: "Code", label: "Gradle Build Script" },
+  "text/x-groovy": { group: "Code", label: "Groovy Script" },
+  "application/jsonc": { group: "Code", label: "JSON with Comments" },
+  "application/json5": { group: "Code", label: "JSON5 File" },
+  "application/x-ndjson": { group: "Code", label: "JSON Lines File" },
+  "text/x-diff": { group: "Code", label: "Diff / Patch File" },
+  "text/x-htaccess": { group: "Code", label: "Apache .htaccess" },
+  "text/x-nginx": { group: "Code", label: "Nginx Configuration" },
 
   // Fonts
   "font/ttf": { group: "Fonts", label: "TrueType Font" },
@@ -154,10 +191,6 @@ const MIME_META: Record<string, MimeMeta> = {
   },
 
   // Packages
-  "application/vnd.android.package-archive": {
-    group: "Packages",
-    label: "Android Package",
-  },
   "application/x-debian-package": {
     group: "Packages",
     label: "Debian Package",
@@ -165,6 +198,19 @@ const MIME_META: Record<string, MimeMeta> = {
 
   // Text
   "text/plain": { group: "Text", label: "Text File" },
+  "text/x-log": { group: "Text", label: "Log File" },
+  "text/x-srt": { group: "Text", label: "SubRip Subtitle" },
+  "text/x-vtt": { group: "Text", label: "WebVTT Subtitle" },
+  "text/x-ass": { group: "Text", label: "ASS Subtitle" },
+  "text/x-m3u": { group: "Text", label: "M3U Playlist" },
+  "text/x-m3u8": { group: "Text", label: "M3U8 Playlist" },
+  "text/x-cue": { group: "Text", label: "CUE Sheet" },
+  "text/x-lrc": { group: "Text", label: "LRC Lyrics" },
+  "text/x-nfo": { group: "Text", label: "NFO File" },
+  "text/x-gitignore": { group: "Text", label: "Git Ignore File" },
+  "text/x-gitattributes": { group: "Text", label: "Git Attributes File" },
+  "text/x-dockerignore": { group: "Text", label: "Docker Ignore File" },
+  "text/x-editorconfig": { group: "Text", label: "EditorConfig File" },
 
   // Binary
   "application/octet-stream": { group: "Binary", label: "Binary File" },
@@ -172,6 +218,7 @@ const MIME_META: Record<string, MimeMeta> = {
 
 // Fallback helpers
 
+// Only reached for types that neither a policy group nor MIME_META claims, so it stays coarse.
 const groupFromMimeType = (mimeType: string): FileGroup => {
   const [category, subtype = ""] = mimeType.split("/");
   const sub = subtype.toLowerCase();
@@ -237,9 +284,16 @@ const groupFromMimeType = (mimeType: string): FileGroup => {
   return "Uncategorized";
 };
 
+/**
+ * Display group of a canonical type. Backend policy groups win, so the storage breakdown always
+ * agrees with policy rules; MIME_META and the heuristics only cover types no policy group owns.
+ */
+const resolveGroup = (canonical: string): FileGroup =>
+  policyGroupOf(canonical) ?? MIME_META[canonical]?.group ?? groupFromMimeType(canonical);
+
 const labelFromMimeType = (mimeType: string, fileName?: string): string => {
   const [, subtype = ""] = mimeType.split("/");
-  const group = groupFromMimeType(mimeType);
+  const group = resolveGroup(mimeType);
 
   // For well-known groups, a generic label is fine
   const genericLabels: Partial<Record<FileGroup, string>> = {
@@ -276,66 +330,25 @@ const labelFromMimeType = (mimeType: string, fileName?: string): string => {
 };
 
 /**
- * Returns a human-readable label for a MIME type.
- * Falls back to file extension or formatted subtype when unknown.
+ * Returns a human-readable label for a MIME type. Aliases resolve to their canonical label;
+ * unknown types fall back to the file extension or a formatted subtype.
  */
-export const getFileTypeReadable = (mimeType: string, fileName?: string): string =>
-  MIME_META[mimeType]?.label ?? labelFromMimeType(mimeType, fileName);
+export const getFileTypeReadable = (mimeType: string, fileName?: string): string => {
+  const canonical = canonicalizeMime(mimeType);
+
+  return MIME_META[canonical]?.label ?? labelFromMimeType(canonical, fileName);
+};
+
+/** Whether the auto-tag trigger should be offered; the rule comes from the backend catalog. */
+export const isAutoTagSupportedFileType = (mimeType: string | null | undefined): boolean =>
+  isAutoTagSupportedMime(mimeType);
 
 /**
- * Mirror of the backend `AutoTagSupportedFileTypes.IsSupported` gate: audio (`audio/*`
- * plus `application/ogg`) is supported today. Used to decide where the auto-tag trigger
- * is offered in the UI so it stays in sync with what the endpoint accepts.
+ * Whether a thumbnail can exist. Only types a preview worker renders ever get one, and asking
+ * for any other type only yields a 404, so callers gate thumbnail requests on this.
  */
-export const isAutoTagSupportedFileType = (mimeType: string | null | undefined): boolean => {
-  if (!mimeType) return false;
-  const normalized = mimeType.trim().toLowerCase();
-  return normalized.startsWith("audio/") || normalized === "application/ogg";
-};
-
-// Backend thumbnail allowlist, mirrors S3Service.CategorizeFile categories that
-// produce a Thumbnail artifact (Image, Audio, Video, Document, Spreadsheet,
-// Presentation, Pdf). Text, Archive and Unknown never produce one, so requesting
-// a thumbnail URL for those MIMEs only yields a 404 plus wasted backend work.
-const THUMBNAIL_SUPPORTED_MIMES: ReadonlySet<string> = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "image/bmp",
-  "image/tiff",
-  "image/svg+xml",
-  "audio/mpeg",
-  "audio/mp3",
-  "audio/wav",
-  "audio/ogg",
-  "audio/flac",
-  "audio/aac",
-  "video/mp4",
-  "video/x-msvideo",
-  "video/x-matroska",
-  "video/webm",
-  "video/quicktime",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.oasis.opendocument.text",
-  "application/rtf",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.oasis.opendocument.spreadsheet",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.oasis.opendocument.presentation",
-  "application/pdf",
-]);
-
-export const isThumbnailSupportedMimeType = (mimeType: string | null | undefined): boolean => {
-  if (!mimeType) return false;
-  const normalized = mimeType.split(";")[0]?.trim().toLowerCase() ?? "";
-  if (!normalized) return false;
-  return THUMBNAIL_SUPPORTED_MIMES.has(normalized);
-};
+export const isThumbnailSupportedMimeType = (mimeType: string | null | undefined): boolean =>
+  routesToPreviewWorker(mimeType);
 
 export interface GroupedMimeSizeResult {
   categories: FileGroup[];
@@ -353,7 +366,7 @@ export const groupMimeSizeRecord = (
   const sizeMap = {} as Record<FileGroup, number>;
 
   for (const [mimeType, bytes] of Object.entries(sizeByMimeType)) {
-    const group = MIME_META[mimeType]?.group ?? groupFromMimeType(mimeType);
+    const group = resolveGroup(canonicalizeMime(mimeType));
     sizeMap[group] = (sizeMap[group] ?? 0) + bytes;
   }
 

@@ -9,6 +9,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Storage.Cleanup;
 using Alexandria.Services.Storage.Content;
+using Alexandria.Services.Storage.Content.Mime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using AwesomeAssertions;
@@ -62,7 +63,8 @@ public class FinalizeReviveTests
             _fileService,
             new AuditContext(),
             Substitute.For<IUserSettingsService>(),
-            Substitute.For<IPublisherService>());
+            Substitute.For<IPublisherService>(),
+            new MimeTypeResolver(Substitute.For<IMimeSniffer>()));
     }
 
     private static byte[] Digest(byte[] input)

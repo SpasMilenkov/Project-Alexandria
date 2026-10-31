@@ -7,6 +7,7 @@ using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Dto.PreviewsStats;
 using Alexandria.Services.Storage.Content;
+using Alexandria.Services.Storage.Content.Mime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using AwesomeAssertions;
@@ -57,7 +58,8 @@ public class InitiateUploadQuotaWarningTests
             Substitute.For<IFileService>(),
             new AuditContext(),
             Substitute.For<IUserSettingsService>(),
-            Substitute.For<IPublisherService>());
+            Substitute.For<IPublisherService>(),
+            new MimeTypeResolver(Substitute.For<IMimeSniffer>()));
     }
 
     private void SeedUsage(long filesSize, long quota)

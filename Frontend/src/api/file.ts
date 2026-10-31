@@ -1,3 +1,4 @@
+import type { TextPreviewTruncation } from "@/enums";
 import type { GenerateSignedUrlSchema, UpdateFileMetadataSchema } from "@/schemas/file";
 import type { FileSearchQuery } from "@/schemas/search";
 import type { PaginationParams } from "@/types/pagination-params";
@@ -72,8 +73,33 @@ export interface FileResult {
 // (Kind = Thumbnail is its own artifact, not bundled into the preview response)
 export interface PreviewResultDto {
   previewUrl: string | null;
-  textPreview: string | null;
+  textPreview: TextPreviewDto | null;
   archivePreview: string | null;
+}
+
+export interface TextPreviewToken {
+  start: number;
+  length: number;
+  kind: string;
+}
+
+export interface TextPreviewLine {
+  text: string;
+  tokens: TextPreviewToken[];
+}
+
+export interface TextPreviewDto {
+  lines: TextPreviewLine[];
+  language: string;
+  truncated: boolean;
+  truncation: TextPreviewTruncation;
+  highlightingLimited: boolean;
+  bytesShown: number;
+  totalBytes: number | null;
+  encoding: string;
+  lineCount: number;
+  tokenCount: number;
+  domElementCount: number;
 }
 
 export interface FileVersionDto {
@@ -333,7 +359,8 @@ export const fileApi = {
 
   uploadToS3: (
     presignedUrl: string,
-    file: File,
+    file: Blob,
+    contentType: string,
     onProgress?: (percent: number) => void,
     signal?: AbortSignal,
   ): Promise<void> =>
@@ -362,7 +389,7 @@ export const fileApi = {
       signal?.addEventListener("abort", () => xhr.abort(), { once: true });
 
       xhr.open("PUT", presignedUrl);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.setRequestHeader("Content-Type", contentType);
       xhr.send(file);
     }),
 };

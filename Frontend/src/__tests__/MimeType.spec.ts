@@ -198,6 +198,154 @@ describe("groupMimeSizeRecord – cross-office aggregation", () => {
   });
 });
 
+describe("getFileTypeReadable – content-sniffed additions", () => {
+  it("labels Vue components and SQL files as code", () => {
+    expect(getFileTypeReadable("text/x-vue")).toBe("Vue Component");
+    expect(getFileTypeReadable("application/sql")).toBe("SQL File");
+  });
+
+  it("labels EPUB books and Java archives", () => {
+    expect(getFileTypeReadable("application/epub+zip")).toBe("EPUB Book");
+    expect(getFileTypeReadable("application/java-archive")).toBe("Java Archive");
+  });
+
+  it("labels Dockerfiles as code", () => {
+    expect(getFileTypeReadable("text/x-dockerfile")).toBe("Dockerfile");
+  });
+
+  it("labels container and build files", () => {
+    expect(getFileTypeReadable("text/x-containerfile")).toBe("Containerfile");
+    expect(getFileTypeReadable("text/x-makefile")).toBe("Makefile");
+    expect(getFileTypeReadable("text/x-log")).toBe("Log File");
+  });
+
+  it("labels additional language source files", () => {
+    expect(getFileTypeReadable("text/x-tex")).toBe("LaTeX Source");
+    expect(getFileTypeReadable("text/x-sln")).toBe("Visual Studio Solution");
+    expect(getFileTypeReadable("text/x-slnx")).toBe("Visual Studio Solution (XML)");
+    expect(getFileTypeReadable("text/x-swift")).toBe("Swift Source File");
+    expect(getFileTypeReadable("text/x-scala")).toBe("Scala Source File");
+    expect(getFileTypeReadable("text/x-kotlin")).toBe("Kotlin Source File");
+    expect(getFileTypeReadable("text/x-kotlin-script")).toBe("Kotlin Script");
+    expect(getFileTypeReadable("application/dart")).toBe("Dart Source File");
+    expect(getFileTypeReadable("application/x-php")).toBe("PHP Script");
+  });
+
+  it("labels the second batch of source and build files", () => {
+    expect(getFileTypeReadable("text/x-powershell")).toBe("PowerShell Script");
+    expect(getFileTypeReadable("text/x-batch")).toBe("Batch Script");
+    expect(getFileTypeReadable("text/x-ruby")).toBe("Ruby Script");
+    expect(getFileTypeReadable("text/x-lua")).toBe("Lua Script");
+    expect(getFileTypeReadable("text/x-r")).toBe("R Script");
+    expect(getFileTypeReadable("text/x-julia")).toBe("Julia Script");
+    expect(getFileTypeReadable("text/x-fsharp")).toBe("F# Source File");
+    expect(getFileTypeReadable("text/x-vb")).toBe("Visual Basic Source File");
+    expect(getFileTypeReadable("text/x-scss")).toBe("SCSS Stylesheet");
+    expect(getFileTypeReadable("text/x-sass")).toBe("Sass Stylesheet");
+    expect(getFileTypeReadable("text/x-less")).toBe("Less Stylesheet");
+    expect(getFileTypeReadable("text/x-hcl")).toBe("Terraform / HCL File");
+    expect(getFileTypeReadable("text/x-nix")).toBe("Nix Expression");
+    expect(getFileTypeReadable("text/x-cmake")).toBe("CMake File");
+    expect(getFileTypeReadable("text/x-bazel")).toBe("Bazel File");
+    expect(getFileTypeReadable("text/x-gradle")).toBe("Gradle Build Script");
+    expect(getFileTypeReadable("text/x-groovy")).toBe("Groovy Script");
+    expect(getFileTypeReadable("application/jsonc")).toBe("JSON with Comments");
+    expect(getFileTypeReadable("application/json5")).toBe("JSON5 File");
+    expect(getFileTypeReadable("application/x-ndjson")).toBe("JSON Lines File");
+    expect(getFileTypeReadable("text/x-diff")).toBe("Diff / Patch File");
+  });
+
+  it("groups the new code types under Code", () => {
+    const result = groupMimeSizeRecord({
+      "text/x-csharp": 128,
+      "text/x-vue": 256,
+      "text/typescript": 512,
+      "text/x-dockerfile": 1024,
+      "text/x-containerfile": 64,
+      "text/x-makefile": 64,
+      "text/x-tex": 64,
+      "text/x-sln": 64,
+      "text/x-slnx": 64,
+      "text/x-swift": 64,
+      "text/x-scala": 64,
+      "text/x-kotlin": 64,
+      "text/x-kotlin-script": 64,
+      "application/dart": 64,
+      "application/x-php": 64,
+      "text/x-powershell": 64,
+      "text/x-batch": 64,
+      "text/x-ruby": 64,
+      "text/x-lua": 64,
+      "text/x-r": 64,
+      "text/x-julia": 64,
+      "text/x-fsharp": 64,
+      "text/x-vb": 64,
+      "text/x-scss": 64,
+      "text/x-sass": 64,
+      "text/x-less": 64,
+      "text/x-hcl": 64,
+      "text/x-nix": 64,
+      "text/x-cmake": 64,
+      "text/x-bazel": 64,
+      "text/x-gradle": 64,
+      "text/x-groovy": 64,
+      "application/jsonc": 64,
+      "application/json5": 64,
+      "application/x-ndjson": 64,
+      "text/x-diff": 64,
+    });
+
+    expect(result.categories).toEqual(["Code"]);
+  });
+
+  it("labels media-adjacent text files and dotfiles", () => {
+    expect(getFileTypeReadable("text/x-srt")).toBe("SubRip Subtitle");
+    expect(getFileTypeReadable("text/x-vtt")).toBe("WebVTT Subtitle");
+    expect(getFileTypeReadable("text/x-ass")).toBe("ASS Subtitle");
+    expect(getFileTypeReadable("text/x-m3u")).toBe("M3U Playlist");
+    expect(getFileTypeReadable("text/x-m3u8")).toBe("M3U8 Playlist");
+    expect(getFileTypeReadable("text/x-cue")).toBe("CUE Sheet");
+    expect(getFileTypeReadable("text/x-lrc")).toBe("LRC Lyrics");
+    expect(getFileTypeReadable("text/x-nfo")).toBe("NFO File");
+    expect(getFileTypeReadable("text/x-gitignore")).toBe("Git Ignore File");
+    expect(getFileTypeReadable("text/x-gitattributes")).toBe("Git Attributes File");
+    expect(getFileTypeReadable("text/x-dockerignore")).toBe("Docker Ignore File");
+    expect(getFileTypeReadable("text/x-editorconfig")).toBe("EditorConfig File");
+    expect(getFileTypeReadable("text/x-htaccess")).toBe("Apache .htaccess");
+    expect(getFileTypeReadable("text/x-nginx")).toBe("Nginx Configuration");
+  });
+
+  it("groups media text as Text and server configs as Code", () => {
+    const text = groupMimeSizeRecord({
+      "text/x-srt": 64,
+      "text/x-vtt": 64,
+      "text/x-ass": 64,
+      "text/x-m3u": 64,
+      "text/x-m3u8": 64,
+      "text/x-cue": 64,
+      "text/x-lrc": 64,
+      "text/x-nfo": 64,
+      "text/x-gitignore": 64,
+      "text/x-gitattributes": 64,
+      "text/x-dockerignore": 64,
+      "text/x-editorconfig": 64,
+    });
+    const code = groupMimeSizeRecord({
+      "text/x-htaccess": 64,
+      "text/x-nginx": 64,
+    });
+
+    expect(text.categories).toEqual(["Text"]);
+    expect(code.categories).toEqual(["Code"]);
+  });
+
+  it("keeps logs in the Text group", () => {
+    const result = groupMimeSizeRecord({ "text/x-log": 128 });
+
+    expect(result.categories).toEqual(["Text"]);
+  });
+});
+
 describe("isThumbnailSupportedMimeType", () => {
   it("supports image, audio, video and office document MIMEs", () => {
     expect(isThumbnailSupportedMimeType("image/png")).toBe(true);

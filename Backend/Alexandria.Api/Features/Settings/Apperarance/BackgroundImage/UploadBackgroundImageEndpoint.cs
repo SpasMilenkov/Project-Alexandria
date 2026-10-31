@@ -44,8 +44,7 @@ public class UploadBackgroundImageEndpoint(
 
         if (section is not null &&
             ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out var disposition) &&
-            disposition.DispositionType.Equals("form-data", StringComparison.OrdinalIgnoreCase) &&
-            !string.IsNullOrEmpty(section.ContentType))
+            disposition.DispositionType.Equals("form-data", StringComparison.OrdinalIgnoreCase))
         {
             hasFile = !string.IsNullOrEmpty(disposition.FileName.Value) ||
                       !string.IsNullOrEmpty(disposition.FileNameStar.Value);
@@ -64,7 +63,7 @@ public class UploadBackgroundImageEndpoint(
         try
         {
             newKey = await staticAssetService.UploadBackgroundImageAsync(
-                section.Body, section.ContentType, userId, ct);
+                section.Body, userId, ct);
         }
         catch (InvalidOperationException ex)
         {

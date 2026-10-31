@@ -7,27 +7,24 @@ namespace Alexandria.Common.Services;
 public interface IStaticAssetService
 {
     /// <summary>
-    /// Validates (size cap, content-type allowlist, magic-bytes sniff) and stores a
-    /// background image under a fresh server-derived per-owner key. Returns the key.
+    /// Validates (size cap, server-side image sniffing) and stores a background image
+    /// under a fresh server-derived per-owner key. Returns the key.
     /// </summary>
-    /// <exception cref="InvalidOperationException">Over cap, disallowed type, or magic mismatch.</exception>
+    /// <exception cref="InvalidOperationException">Over cap or unsupported image content.</exception>
     Task<string> UploadBackgroundImageAsync(
         Stream content,
-        string contentType,
         Guid userId,
         CancellationToken ct = default);
 
     Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default);
 
     /// <summary>
-    /// Validates (ownership, size cap, content-type allowlist, magic-bytes sniff)
-    /// and stores a playlist cover under its stable gate-mapped key.
-    /// Returns the key.
+    /// Validates (ownership, size cap, server-side image sniffing) and stores a playlist
+    /// cover under its stable gate-mapped key. Returns the key.
     /// </summary>
-    /// <exception cref="InvalidOperationException">Over cap, disallowed type, or magic mismatch.</exception>
+    /// <exception cref="InvalidOperationException">Over cap or unsupported image content.</exception>
     Task<string> UploadPlaylistCoverAsync(
         Stream content,
-        string contentType,
         Guid playlistId,
         Guid userId,
         CancellationToken ct = default);

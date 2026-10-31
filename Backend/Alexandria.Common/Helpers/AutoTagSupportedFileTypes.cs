@@ -1,3 +1,5 @@
+using Alexandria.Common.Mime;
+
 namespace Alexandria.Common.Helpers;
 
 /// <summary>
@@ -8,18 +10,19 @@ namespace Alexandria.Common.Helpers;
 /// </summary>
 public static class AutoTagSupportedFileTypes
 {
+    /// <summary>The supported set, also exported to the frontend catalog.</summary>
+    public static MimeMatcher Supported { get; } =
+        new(prefixes: ["audio/"], types: ["application/ogg"]);
+
     /// <summary>
-    /// True when the MIME type is routable to the audio enrichment pipeline.
-    /// Null, empty and unknown types are never supported.
+    /// True when the MIME type is routable to the audio enrichment pipeline. The type is
+    /// canonicalized first, so playlist aliases such as audio/x-mpegurl (really text/x-m3u) are
+    /// not mistaken for audio. Null, empty and unknown types are never supported.
     /// </summary>
     public static bool IsSupported(string? mimeType)
     {
-        if (string.IsNullOrWhiteSpace(mimeType))
-            return false;
+        var canonical = MimeAliases.Canonicalize(mimeType);
 
-        var normalized = mimeType.Trim().ToLowerInvariant();
-
-        return normalized.StartsWith("audio/", StringComparison.Ordinal) ||
-               normalized == "application/ogg";
+        return canonical.Length > 0 && Supported.Matches(canonical);
     }
 }

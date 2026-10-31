@@ -8,9 +8,10 @@ import FileItem from "@/components/dashboard/file-system/FileItem.vue";
 
 const refresh = vi.fn();
 const ensure = vi.fn((query: unknown) => query);
+const getQueryData = vi.fn();
 vi.mock("@pinia/colada", () => ({
   defineQueryOptions: (fn: unknown) => fn,
-  useQueryCache: () => ({ ensure, refresh }),
+  useQueryCache: () => ({ ensure, getQueryData, refresh }),
 }));
 
 const makeFile = (fileId: string, isEncrypted = false): FileResult => ({
@@ -39,6 +40,7 @@ describe("FileItem prefetch", () => {
     vi.useFakeTimers();
     refresh.mockClear();
     ensure.mockClear();
+    getQueryData.mockReset();
   });
 
   afterEach(() => {
@@ -58,6 +60,21 @@ describe("FileItem prefetch", () => {
     vi.advanceTimersByTime(150);
     expect(ensure).toHaveBeenCalledTimes(4);
     expect(refresh).toHaveBeenCalledTimes(4);
+
+    const ensuredKeys = ensure.mock.calls.map(([options]) => (options as { key: unknown[] }).key);
+    expect(ensuredKeys).toContainEqual(["files", "preview-by-version", "f1", "v1"]);
+  });
+
+  it("lets a later warmup refetch a preview that came back empty", async () => {
+    getQueryData.mockReturnValue({ archivePreview: null, previewUrl: null, textPreview: null });
+    const wrapper = mountRow();
+    await wrapper.find("button").trigger("mouseenter");
+    vi.advanceTimersByTime(150);
+
+    const preview = ensure.mock.calls
+      .map(([options]) => options as { key: unknown[]; staleTime?: number })
+      .find((options) => options.key.includes("preview-by-version"));
+    expect(preview?.staleTime).toBe(30_000);
   });
 
   it("skips the preview warmup for encrypted files", async () => {

@@ -3,7 +3,8 @@ import { defineQueryOptions } from "@pinia/colada";
 import type { FileSearchQuery } from "@/schemas/search";
 import type { PaginationParams } from "@/types/pagination-params";
 
-import { fileApi } from "@/api/file";
+import { type PreviewResultDto, fileApi } from "@/api/file";
+import { routesToPreviewWorker } from "@/utils/mime-catalog";
 
 export const FILES_QUERY_KEYS = {
   getFile: (id: string) => [...FILES_QUERY_KEYS.root, "file", id],
@@ -76,15 +77,40 @@ export const getPreview = defineQueryOptions((id: string) => ({
   staleTime: 30_000,
 }));
 
+const PENDING_PREVIEW_STALE_TIME = 30_000;
+
+export const hasPreviewContent = (preview: PreviewResultDto | undefined): boolean =>
+  Boolean(preview?.previewUrl || preview?.textPreview || preview?.archivePreview);
+
+// A version's preview never changes once it exists, but two answers are only provisional:
+// worker-rendered types (image, media, document) can finish after the first response, and any
+// type comes back empty until the upload has been promoted. Both keep a short window so the next
+// open refetches; only a synchronous text or archive result with content is cached for good.
+// `cached` is the entry's current data, so the window drops as soon as an empty result lands.
+const previewStaleTime = (mimeType: string, cached: PreviewResultDto | undefined): number => {
+  if (routesToPreviewWorker(mimeType)) return PENDING_PREVIEW_STALE_TIME;
+  if (cached !== undefined && !hasPreviewContent(cached)) return PENDING_PREVIEW_STALE_TIME;
+
+  return Infinity;
+};
+
 // Versioned query. A given (fileId, versionId) pair's preview content is
-// permanent — the version can't change out from under this key — so it's
-// safe to treat as effectively immutable client-side, same reasoning as the
-// immutable Cache-Control on the byte-serving endpoint itself.
+// permanent, so the version can't change out from under this key.
 export const getPreviewByVersion = defineQueryOptions(
-  ({ fileId, versionId }: { fileId: string; versionId: string }) => ({
+  ({
+    fileId,
+    versionId,
+    mimeType,
+    cached,
+  }: {
+    fileId: string;
+    versionId: string;
+    mimeType: string;
+    cached?: PreviewResultDto;
+  }) => ({
     key: FILES_QUERY_KEYS.previewByVersion(fileId, versionId),
     query: () => fileApi.getPreviewByVersion(fileId, versionId),
-    staleTime: Infinity,
+    staleTime: previewStaleTime(mimeType, cached),
     gcTime: 24 * 60 * 60 * 1000, // 24h, keeps scroll-back from refetching within a session
   }),
 );

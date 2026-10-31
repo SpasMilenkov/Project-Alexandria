@@ -156,26 +156,21 @@
     </div>
 
     <!-- Text Preview -->
-    <div
-      v-else-if="textPreview"
-      class="w-full p-6 frosted-glass glass-surface-strong rounded-lg border border-gray-200 dark:border-gray-700"
-    >
-      <p class="max-h-96 overflow-y-auto wrap-break-word">
-        {{ textPreview }}
-      </p>
-    </div>
+    <TextPreviewPane v-else-if="textPreview" :preview="textPreview" @download="downloadPreview" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { useQuery } from "@pinia/colada";
+import { useQuery, useQueryCache } from "@pinia/colada";
 import { computed, ref, watch } from "vue";
 
-import { fileApi } from "@/api/file";
-import { getPreview } from "@/queries/files";
+import { type PreviewResultDto, fileApi } from "@/api/file";
+import { useFileDownload } from "@/composables/useFileDownload";
+import { FILES_QUERY_KEYS, getPreviewByVersion } from "@/queries/files";
 
 import AudioEqualizer from "../AudioEqualizer.vue";
+import TextPreviewPane from "./TextPreviewPane.vue";
 
 const props = defineProps<{
   fileId: string;
@@ -187,16 +182,33 @@ const props = defineProps<{
 
 // Preview query
 
+const queryCache = useQueryCache();
+
 // Encrypted versions never have backend previews, so the query stays disabled
-// and no request fires even if a caller mounts the component anyway.
+// and no request fires even if a caller mounts the component anyway. Reading the
+// cached entry makes this getter re-run when a result lands, so an empty answer
+// immediately gets the short stale window instead of being kept for good.
 const { data: previewData, isLoading: previewLoading } = useQuery(() => ({
-  ...getPreview(props.fileId),
+  ...getPreviewByVersion({
+    fileId: props.fileId,
+    versionId: props.currentVersionId,
+    mimeType: props.mimeType,
+    cached: queryCache.getQueryData<PreviewResultDto>(
+      FILES_QUERY_KEYS.previewByVersion(props.fileId, props.currentVersionId),
+    ),
+  }),
   enabled: !props.isEncrypted,
 }));
 
 const previewUrl = computed(() => previewData.value?.previewUrl ?? null);
 const archivePreview = computed(() => previewData.value?.archivePreview ?? null);
 const textPreview = computed(() => previewData.value?.textPreview ?? null);
+
+const { downloadVersion } = useFileDownload();
+
+const downloadPreview = (): void => {
+  void downloadVersion(props.currentVersionId);
+};
 
 // Audio player state
 

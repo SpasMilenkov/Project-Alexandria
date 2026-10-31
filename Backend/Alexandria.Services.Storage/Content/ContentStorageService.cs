@@ -7,12 +7,14 @@ using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
+using Alexandria.Common.Mime;
 using Alexandria.Common.Queues;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Metrics;
+using Alexandria.Services.Storage.Content.Mime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Blake3;
@@ -35,7 +37,8 @@ public partial class ContentStorageService(
     IFileService fileService,
     AuditContext auditContext,
     IUserSettingsService userSettingsService,
-    IPublisherService publisher)
+    IPublisherService publisher,
+    IMimeTypeResolver mimeResolver)
     : IContentStorageService
 {
     /// <summary>
@@ -116,61 +119,11 @@ public partial class ContentStorageService(
         return (newFile, fileVersion);
     }
 
-    public FileCategory CategorizeFile(string mimeType)
-    {
-        if (string.IsNullOrWhiteSpace(mimeType))
-            return FileCategory.Unknown;
-
-        return mimeType.ToLowerInvariant() switch
-        {
-            // ====== Images ======
-            "image/jpeg" or "image/jpg" or "image/png" or "image/gif" or "image/webp" or
-                "image/bmp" or "image/tiff" or "image/svg+xml"
-                => FileCategory.Image,
-
-            // ====== Audio ======
-            "audio/mpeg" or "audio/mp3" or "audio/wav" or "audio/ogg" or
-                "audio/flac" or "audio/aac"
-                => FileCategory.Audio,
-
-            // ====== Video ======
-            "video/mp4" or "video/x-msvideo" or "video/x-matroska" or
-                "video/webm" or "video/quicktime"
-                => FileCategory.Video,
-
-            // ====== Documents (Word, OpenDoc, RTF, Plaintext) ======
-            "application/msword" or "application/vnd.openxmlformats-officedocument.wordprocessingml.document" or
-                "application/vnd.oasis.opendocument.text" or "application/rtf"
-                => FileCategory.Document,
-
-            // ====== Spreadsheets ======
-            "application/vnd.ms-excel" or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" or
-                "application/vnd.oasis.opendocument.spreadsheet"
-                => FileCategory.Spreadsheet,
-
-            // ====== Presentations ======
-            "application/vnd.ms-powerpoint"
-                or "application/vnd.openxmlformats-officedocument.presentationml.presentation" or
-                "application/vnd.oasis.opendocument.presentation"
-                => FileCategory.Presentation,
-
-            // ====== PDF ======
-            "application/pdf"
-                => FileCategory.Pdf,
-
-            // ====== Archives / Compressed ======
-            "application/zip" or "application/x-7z-compressed" or
-                "application/x-rar-compressed" or "application/gzip" or "application/x-tar" or "application/x-xz"
-                => FileCategory.Archive,
-
-            // ====== Text (Markdown, JSON, HTML, XML, etc.) ======
-            "text/markdown" or "application/json" or "application/xml" or "text/xml" or "text/html" or "text/plain"
-                => FileCategory.Text,
-
-            // ====== Fallback ======
-            _ => FileCategory.Unknown
-        };
-    }
+    /// <summary>
+    /// Maps a MIME type to a category. The rules live in <see cref="MimeCategories"/> so the
+    /// frontend catalog is generated from the same source.
+    /// </summary>
+    public FileCategory CategorizeFile(string mimeType) => MimeCategories.Categorize(mimeType);
 
     public async Task<string> GetFilePresignedUrl(Guid fileId, byte[] hash, string fileName, TimeSpan expiry)
     {
@@ -569,21 +522,23 @@ public partial class ContentStorageService(
                 throw new InvalidOperationException("Upload not found");
 
             // =====================================================
-            // 1. Stream object ONCE and compute hash + size
+            // 1. Stream object ONCE and compute hash + size + header bytes
             // =====================================================
             byte[] computedHash;
             long computedSize;
+            byte[] header;
 
             try
             {
-                var result = await ComputeHashAndSizeFromS3Async(
+                var scan = await ComputeHashAndSizeFromS3Async(
                     tmp,
                     upload.TempObjectKey,
                     upload.Size > 0 ? (long?)upload.Size : null,
                     ct);
 
-                computedHash = result.Hash;
-                computedSize = result.Size;
+                computedHash = scan.Hash;
+                computedSize = scan.Size;
+                header = scan.Header;
             }
             catch (Exception ex)
             {
@@ -620,6 +575,18 @@ public partial class ContentStorageService(
 
             upload.Status = UploadStatus.Finished;
             upload.FinishedAt = DateTime.UtcNow;
+
+            // 3b. Resolve the MIME type to store. Encrypted payloads are ciphertext and are
+            // never sniffed. Upload.MimeType keeps the declared value as an audit trail.
+            // The sniffer swallows its own faults, so this step can never reject an upload.
+            var resolution = isEncrypted
+                ? mimeResolver.ResolveWithoutContent(objectName, upload.MimeType)
+                : mimeResolver.Resolve(objectName, header, upload.MimeType);
+            var resolvedMimeType = resolution.MimeType;
+
+            var declaredMimeType = MimeAliases.Canonicalize(upload.MimeType);
+            if (MimeAliases.IsUsable(declaredMimeType) && declaredMimeType != resolvedMimeType)
+                LogMimeCorrected(logger, upload.Id, declaredMimeType, resolvedMimeType, resolution.Source);
 
             // =====================================================
             // 4. Prepare hash string
@@ -689,7 +656,7 @@ public partial class ContentStorageService(
                 var result = await CreateFileWithVersionAsync(
                     objectName,
                     directoryId,
-                    upload.MimeType,
+                    resolvedMimeType,
                     uploadedBy,
                     computedSize,
                     Convert.FromHexString(serverHash),
@@ -735,7 +702,7 @@ public partial class ContentStorageService(
                     ContentHash = Convert.FromHexString(serverHash),
                     Size = computedSize,
                     VersionNumber = currentVersion.VersionNumber + 1,
-                    MimeType = upload.MimeType,
+                    MimeType = resolvedMimeType,
                     CreatedBy = uploadedBy,
                     ContentObjectId = contentObject.Id,
                     FileId = file.Id,
@@ -750,6 +717,7 @@ public partial class ContentStorageService(
                 ct);
 
             file.CurrentVersionId = newVersion.Id;
+            file.MimeType = resolvedMimeType;
 
             unitOfWork.Files.Update(file);
 
@@ -785,10 +753,14 @@ public partial class ContentStorageService(
     }
 
 
+    /// <summary>Result of the single pass over an uploaded object.</summary>
+    private sealed record ScanResult(byte[] Hash, long Size, byte[] Header);
+
     /// <summary>
-    /// Streams the S3 object, computes SHA256 and exact size, and returns VersionId if present.
+    /// Streams the S3 object once and computes the hash, the exact size and the first
+    /// <see cref="MimeSniffing.HeaderBytes"/> bytes used for content sniffing.
     /// </summary>
-    private async Task<(byte[] Hash, long Size)> ComputeHashAndSizeFromS3Async(
+    private async Task<ScanResult> ComputeHashAndSizeFromS3Async(
         string bucket,
         string key,
         long? maxAllowedBytes,
@@ -803,6 +775,7 @@ public partial class ContentStorageService(
         using var response = await s3.GetObjectAsync(req, ct);
 
         using var hasher = Hasher.New();
+        var headerBuffer = new HeaderBuffer(MimeSniffing.HeaderBytes);
 
         var buffer = new byte[81920];
         long totalBytes = 0;
@@ -811,6 +784,7 @@ public partial class ContentStorageService(
         while ((read = await response.ResponseStream.ReadAsync(buffer, 0, buffer.Length, ct)) > 0)
         {
             hasher.Update(buffer.AsSpan(0, read));
+            headerBuffer.Append(buffer.AsSpan(0, read));
 
             totalBytes += read;
             if (maxAllowedBytes.HasValue && totalBytes > maxAllowedBytes.Value)
@@ -820,7 +794,7 @@ public partial class ContentStorageService(
         Hash hash = hasher.Finalize();
         byte[] hashBytes = hash.AsSpan().ToArray();
 
-        return (hashBytes, totalBytes);
+        return new ScanResult(hashBytes, totalBytes, headerBuffer.ToArray());
     }
 
 

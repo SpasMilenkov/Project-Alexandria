@@ -40,6 +40,10 @@ export interface DirectoryTreeItem extends TreeItem {
 export const CONCURRENCY = 4;
 export const VIRTUALIZE_THRESHOLD = 150;
 
+// Declared type for files whose type the browser cannot determine. The server resolves the
+// real type from the file content, so this is only a hint.
+export const FALLBACK_CONTENT_TYPE = "application/octet-stream";
+
 // composable
 
 // oxlint-disable-next-line max-lines-per-function, oxlint-disable-next-line max-statements
@@ -301,6 +305,9 @@ export const useDirectoryUpload = () => {
 
     try {
       const { file } = fileStatus;
+      // Single source of truth: the presigned PUT is signed with the type sent to initialize,
+      // so both calls must use exactly this value.
+      const contentType = file.type || FALLBACK_CONTENT_TYPE;
 
       fileStatus.status = "hashing";
       fileStatus.progress = 0;
@@ -317,7 +324,7 @@ export const useDirectoryUpload = () => {
       fileStatus.progress = 25;
       const { uploadId, uploadUrl } = await fileApi.initializeUpload({
         contentLength: file.size,
-        contentType: file.type || "application/octet-stream",
+        contentType,
         directoryId: fileStatus.directoryId,
         hash,
       });
@@ -327,6 +334,7 @@ export const useDirectoryUpload = () => {
       await fileApi.uploadToS3(
         uploadUrl,
         file,
+        contentType,
         (pct) => {
           fileStatus.progress = 30 + Math.round(pct * 0.65);
         },

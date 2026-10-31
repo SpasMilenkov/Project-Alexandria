@@ -9,6 +9,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Alexandria.Dto\Alexandria.Dto.csproj"/>
         <ProjectReference Include="..\Alexandria.Data.Models\Alexandria.Data.Models.csproj"/>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
     </ItemGroup>
 
 </Project>

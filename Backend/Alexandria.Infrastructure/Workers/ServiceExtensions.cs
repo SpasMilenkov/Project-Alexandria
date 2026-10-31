@@ -21,6 +21,7 @@ public static class ServiceExtensions
     public static IServiceCollection AddCoreWorkerServices(this IServiceCollection services)
     {
         services.AddScoped<IContentStorageService, ContentStorageService>();
+        services.AddMimeDetection();
         services.AddScoped<IStaticAssetService, StaticAssetService>();
         services.AddScoped<IPreviewArtifactService, PreviewArtifactService>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();

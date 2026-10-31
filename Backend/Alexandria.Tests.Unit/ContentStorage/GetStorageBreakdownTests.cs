@@ -9,6 +9,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.PreviewsStats;
 using Alexandria.Services.Storage.Content;
+using Alexandria.Services.Storage.Content.Mime;
 using Amazon.S3;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
@@ -47,7 +48,8 @@ public class GetStorageBreakdownTests
             Substitute.For<IFileService>(),
             new AuditContext(),
             Substitute.For<IUserSettingsService>(),
-            Substitute.For<IPublisherService>());
+            Substitute.For<IPublisherService>(),
+            new MimeTypeResolver(Substitute.For<IMimeSniffer>()));
     }
 
     private void SeedUsage(
