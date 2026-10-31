@@ -11,7 +11,7 @@ public class FakeStaticAssetService : IStaticAssetService
         DeletedKeys.Clear();
     }
 
-    public Task<string> UploadBackgroundImageAsync(Stream content, string contentType, Guid userId,
+    public Task<string> UploadBackgroundImageAsync(Stream content, Guid userId,
         CancellationToken ct = default)
     {
         throw new NotImplementedException();
@@ -23,7 +23,7 @@ public class FakeStaticAssetService : IStaticAssetService
         return Task.CompletedTask;
     }
 
-    public Task<string> UploadPlaylistCoverAsync(Stream content, string contentType, Guid playlistId,
+    public Task<string> UploadPlaylistCoverAsync(Stream content, Guid playlistId,
         Guid userId, CancellationToken ct = default)
     {
         throw new NotImplementedException();

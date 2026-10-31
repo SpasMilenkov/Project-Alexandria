@@ -20,29 +20,17 @@ public class StaticAssetService(
     IOptions<S3Config> config)
     : IStaticAssetService
 {
-    private static readonly HashSet<string> AllowedImageTypes =
-    [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif"
-    ];
-
     private const long MaxImageBytes = 4 * 1024 * 1024;
 
     public async Task<string> UploadBackgroundImageAsync(
         Stream content,
-        string contentType,
         Guid userId,
         CancellationToken ct = default)
     {
-        if (!AllowedImageTypes.Contains(contentType))
-            throw new InvalidOperationException($"Content type '{contentType}' is not allowed for backgrounds.");
-
         var bytes = await ReadCappedAsync(content, MaxImageBytes, "Background image", ct);
 
-        if (!MagicMatchesContentType(bytes, contentType))
-            throw new InvalidOperationException($"Upload content does not match the declared type '{contentType}'.");
+        var contentType = DetectImageContentType(bytes)
+            ?? throw new InvalidOperationException("Upload content is not a supported image format.");
 
         var objectKey = $"background_images/{userId}/{Guid.NewGuid()}";
 
@@ -60,24 +48,36 @@ public class StaticAssetService(
         return objectKey;
     }
 
-    private static bool MagicMatchesContentType(byte[] bytes, string contentType)
+    private static string? DetectImageContentType(ReadOnlySpan<byte> bytes)
     {
-        if (bytes.Length < 4)
-            return false;
-
-        return contentType switch
+        if (bytes.Length >= 3 &&
+            bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF)
         {
-            "image/jpeg" => bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF,
-            "image/png" => bytes.Length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E &&
-                           bytes[3] == 0x47 && bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A &&
-                           bytes[7] == 0x0A,
-            "image/gif" => bytes.Length >= 6 && bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 &&
-                           bytes[3] == 0x38 && (bytes[4] == 0x37 || bytes[4] == 0x39) && bytes[5] == 0x61,
-            "image/webp" => bytes.Length >= 12 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 &&
-                            bytes[3] == 0x46 && bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 &&
-                            bytes[11] == 0x50,
-            _ => false
-        };
+            return "image/jpeg";
+        }
+
+        if (bytes.Length >= 8 &&
+            bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47 &&
+            bytes[4] == 0x0D && bytes[5] == 0x0A && bytes[6] == 0x1A && bytes[7] == 0x0A)
+        {
+            return "image/png";
+        }
+
+        if (bytes.Length >= 6 &&
+            bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x38 &&
+            (bytes[4] == 0x37 || bytes[4] == 0x39) && bytes[5] == 0x61)
+        {
+            return "image/gif";
+        }
+
+        if (bytes.Length >= 12 &&
+            bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46 &&
+            bytes[8] == 0x57 && bytes[9] == 0x45 && bytes[10] == 0x42 && bytes[11] == 0x50)
+        {
+            return "image/webp";
+        }
+
+        return null;
     }
 
     public async Task DeleteBackgroundImageAsync(string objectKey, CancellationToken ct = default)
@@ -88,21 +88,17 @@ public class StaticAssetService(
 
     public async Task<string> UploadPlaylistCoverAsync(
         Stream content,
-        string contentType,
         Guid playlistId,
         Guid userId,
         CancellationToken ct = default)
     {
-        if (!AllowedImageTypes.Contains(contentType))
-            throw new InvalidOperationException($"Content type '{contentType}' is not allowed for covers.");
-
         if (!await unitOfWork.Playlists.ExistsAsync(p => p.Id == playlistId && p.OwnerId == userId, ct))
             throw new PlaylistNotFoundException(playlistId);
 
         var bytes = await ReadCappedAsync(content, MaxImageBytes, "cover image", ct);
 
-        if (!MagicMatchesContentType(bytes, contentType))
-            throw new InvalidOperationException($"Upload content does not match the declared type '{contentType}'.");
+        var contentType = DetectImageContentType(bytes)
+            ?? throw new InvalidOperationException("Upload content is not a supported image format.");
 
         var objectKey = $"covers/{playlistId}";
 

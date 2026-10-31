@@ -48,7 +48,7 @@ public class UploadPlaylistCoverTests
         var jpeg = new byte[] { 0xFF, 0xD8, 0xFF, 0x00 };
 
         var key = await _sut.UploadPlaylistCoverAsync(
-            new MemoryStream(jpeg), "image/jpeg", _playlistId, _userId,
+            new MemoryStream(jpeg), _playlistId, _userId,
             TestContext.Current.CancellationToken);
 
         key.Should().Be($"covers/{_playlistId}");
@@ -65,7 +65,7 @@ public class UploadPlaylistCoverTests
             .Returns(false);
 
         var act = async () => await _sut.UploadPlaylistCoverAsync(
-            new MemoryStream(new byte[] { 0xFF, 0xD8, 0xFF }), "image/jpeg",
+            new MemoryStream(new byte[] { 0xFF, 0xD8, 0xFF }),
             _playlistId, _userId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<PlaylistNotFoundException>();
@@ -82,7 +82,7 @@ public class UploadPlaylistCoverTests
         bytes[2] = 0xFF;
 
         var act = async () => await _sut.UploadPlaylistCoverAsync(
-            new MemoryStream(bytes), "image/jpeg", _playlistId, _userId,
+            new MemoryStream(bytes), _playlistId, _userId,
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
@@ -91,19 +91,14 @@ public class UploadPlaylistCoverTests
     }
 
     [Fact]
-    public async Task disallowed_type_and_magic_mismatch_fail_closed_without_store()
+    public async Task unsupported_content_fails_closed_without_store()
     {
-        var jpeg = new MemoryStream(new byte[] { 0xFF, 0xD8, 0xFF });
+        var svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>"u8.ToArray();
 
-        var wrongType = async () => await _sut.UploadPlaylistCoverAsync(
-            jpeg, "image/svg+xml", _playlistId, _userId, TestContext.Current.CancellationToken);
-        await wrongType.Should().ThrowAsync<InvalidOperationException>();
+        var act = async () => await _sut.UploadPlaylistCoverAsync(
+            new MemoryStream(svg), _playlistId, _userId, TestContext.Current.CancellationToken);
 
-        var pngAsJpeg = new MemoryStream(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
-        var mismatch = async () => await _sut.UploadPlaylistCoverAsync(
-            pngAsJpeg, "image/jpeg", _playlistId, _userId, TestContext.Current.CancellationToken);
-        await mismatch.Should().ThrowAsync<InvalidOperationException>();
-
+        await act.Should().ThrowAsync<InvalidOperationException>();
         await _s3.DidNotReceive().PutObjectAsync(
             Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>());
     }

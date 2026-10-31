@@ -43,7 +43,7 @@ internal sealed class UploadPlaylistCoverEndpoint(IStaticAssetService staticAsse
         }
 
         Guid? playlistId = null;
-        WebMultipartSection? fileSection = null;
+        MemoryStream? fileContent = null;
 
         var reader = new MultipartReader(boundary, HttpContext.Request.Body);
         WebMultipartSection? section;
@@ -60,9 +60,10 @@ internal sealed class UploadPlaylistCoverEndpoint(IStaticAssetService staticAsse
             if (!string.IsNullOrEmpty(disposition.FileName.Value) ||
                 !string.IsNullOrEmpty(disposition.FileNameStar.Value))
             {
-                if (fileSection is null)
+                if (fileContent is null)
                 {
-                    fileSection = section;
+                    fileContent = new MemoryStream();
+                    await section.Body.CopyToAsync(fileContent, ct);
                 }
                 else
                 {
@@ -82,7 +83,7 @@ internal sealed class UploadPlaylistCoverEndpoint(IStaticAssetService staticAsse
             }
         }
 
-        if (playlistId is null || fileSection is null || string.IsNullOrEmpty(fileSection.ContentType))
+        if (playlistId is null || fileContent is null)
         {
             AddError("file", "A playlistId field and a single image file section are required.");
             await Send.ErrorsAsync(StatusCodes.Status400BadRequest, ct);
@@ -91,10 +92,14 @@ internal sealed class UploadPlaylistCoverEndpoint(IStaticAssetService staticAsse
 
         var userId = User.GetUserId();
 
+        using var coverStream = fileContent;
+
         try
         {
+            coverStream.Position = 0;
+
             await staticAssetService.UploadPlaylistCoverAsync(
-                fileSection.Body, fileSection.ContentType, (Guid)playlistId, userId, ct);
+                coverStream, (Guid)playlistId, userId, ct);
         }
         catch (PlaylistNotFoundException)
         {
@@ -103,8 +108,7 @@ internal sealed class UploadPlaylistCoverEndpoint(IStaticAssetService staticAsse
         }
         catch (InvalidOperationException ex)
         {
-            AddError("file", ex.Message);
-            await Send.ErrorsAsync(StatusCodes.Status400BadRequest, ct);
+            await FailAsync(ex.Message, ct);
             return;
         }
 
@@ -112,5 +116,11 @@ internal sealed class UploadPlaylistCoverEndpoint(IStaticAssetService staticAsse
         {
             CoverUrl = $"/covers/{playlistId}"
         }, ct);
+    }
+
+    private async Task FailAsync(string message, CancellationToken ct)
+    {
+        AddError(message);
+        await Send.ErrorsAsync(StatusCodes.Status400BadRequest, ct);
     }
 }

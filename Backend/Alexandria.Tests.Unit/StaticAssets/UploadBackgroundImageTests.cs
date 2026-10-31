@@ -55,7 +55,7 @@ public class UploadBackgroundImageTests
         };
 
         var key = await _sut.UploadBackgroundImageAsync(
-            new MemoryStream(bytes), contentType, _userId, TestContext.Current.CancellationToken);
+            new MemoryStream(bytes), _userId, TestContext.Current.CancellationToken);
 
         key.Should().StartWith($"background_images/{_userId}/");
         await _s3.Received(1).PutObjectAsync(
@@ -69,7 +69,7 @@ public class UploadBackgroundImageTests
         var bytes = JpegBytes(4 * 1024 * 1024 + 1);
 
         var act = async () => await _sut.UploadBackgroundImageAsync(
-            new MemoryStream(bytes), "image/jpeg", _userId, TestContext.Current.CancellationToken);
+            new MemoryStream(bytes), _userId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _s3.DidNotReceive().PutObjectAsync(
@@ -77,23 +77,12 @@ public class UploadBackgroundImageTests
     }
 
     [Fact]
-    public async Task disallowed_type_fails_closed_without_store()
+    public async Task unsupported_content_fails_closed_without_store()
     {
-        var act = async () => await _sut.UploadBackgroundImageAsync(
-            new MemoryStream(JpegBytes()), "image/svg+xml", _userId, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        await _s3.DidNotReceive().PutObjectAsync(
-            Arg.Any<PutObjectRequest>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task magic_mismatch_fails_closed_without_store()
-    {
-        var png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+        var svg = "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>"u8.ToArray();
 
         var act = async () => await _sut.UploadBackgroundImageAsync(
-            new MemoryStream(png), "image/jpeg", _userId, TestContext.Current.CancellationToken);
+            new MemoryStream(svg), _userId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         await _s3.DidNotReceive().PutObjectAsync(
