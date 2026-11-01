@@ -20,13 +20,14 @@ public static class WorkerCycleFailureRecorder
         Exception ex,
         CancellationToken ct)
     {
-        var existing = await unitOfWork.OperationalEvents.GetActiveEventAsync(
-            serviceType, OperationalEventCode.WorkerCycleFailure, ct);
+        // Recurrences keep the open incident alive; it auto-expires once failures stop.
+        var touched = await unitOfWork.OperationalEvents.TouchActiveEventAsync(
+            serviceType, OperationalEventCode.WorkerCycleFailure, DateTime.UtcNow, ct);
 
-        if (existing is not null)
+        if (touched > 0)
             return;
 
-        await unitOfWork.OperationalEvents.AddAsync(new OperationalEvent
+        await unitOfWork.OperationalEvents.AddActiveIfAbsentAsync(new OperationalEvent
         {
             Id = Guid.NewGuid(),
             ServiceType = serviceType,
@@ -42,7 +43,5 @@ public static class WorkerCycleFailureRecorder
                 }),
             CreatedBy = SystemConfig.SystemId
         }, ct);
-
-        await unitOfWork.SaveChangesAsync(ct);
     }
 }

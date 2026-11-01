@@ -16,6 +16,7 @@ public class OperationalEvent : IBase
     public DateTime? UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
+    public DateTime? LastSeenAt { get; set; }
     public required Guid CreatedBy { get; set; }
     public Guid? UpdatedBy { get; set; }
 }
