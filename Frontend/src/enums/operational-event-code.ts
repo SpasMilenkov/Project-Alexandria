@@ -3,4 +3,5 @@ export enum OperationalEventCode {
   HealthcheckUnreachable = 1,
   ErrorRateThresholdExceeded = 2,
   UserReportedProblem = 3,
+  WorkerCycleFailure = 4,
 }

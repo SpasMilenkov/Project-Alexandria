@@ -36,6 +36,11 @@ export interface EventCalendarRange {
   to: Date;
 }
 
+export interface ServiceUptime {
+  service: ServiceType;
+  uptime: number;
+}
+
 export interface ReportProblemPayload {
   description: string;
   pageContext?: string | null;
@@ -75,6 +80,12 @@ export type EventMetadata =
       description: string;
       pageContext?: string | null;
       resolutionNote?: string | null;
+    }
+  | {
+      kind: "worker-cycle-failure";
+      serviceInstance: string;
+      exceptionMessage: string;
+      resolutionNote?: string | null;
     };
 
 // Metadata rows written before the backend serializer fix are PascalCase and
@@ -89,6 +100,7 @@ const toCamelCaseRecord = (raw: Record<string, unknown>): Record<string, unknown
   threshold: raw.threshold ?? raw.Threshold,
   description: raw.description ?? raw.Description,
   pageContext: raw.pageContext ?? raw.PageContext,
+  exceptionMessage: raw.exceptionMessage ?? raw.ExceptionMessage,
   resolutionNote: raw.resolutionNote ?? raw.ResolutionNote,
 });
 
@@ -120,6 +132,15 @@ const buildMetadata = (m: Record<string, unknown>): EventMetadata | null => {
       windowMinutes: num(m.windowMinutes),
       failureCount: num(m.failureCount),
       threshold: num(m.threshold),
+      resolutionNote,
+    };
+  }
+
+  if (kind === "worker-cycle-failure" || (!kind && str(m.exceptionMessage) !== undefined)) {
+    return {
+      kind: "worker-cycle-failure",
+      serviceInstance,
+      exceptionMessage: str(m.exceptionMessage) ?? "Unknown error",
       resolutionNote,
     };
   }
@@ -184,6 +205,13 @@ export const monitoringApi = {
   getUptime: async (service: ServiceType, range: EventCalendarRange): Promise<number> => {
     const result = await apiClient.get<number>("/monitoring/uptime", {
       params: { service, from: range.from.toISOString(), to: range.to.toISOString() },
+    });
+    return result.data;
+  },
+
+  getAllUptimes: async (range: EventCalendarRange): Promise<ServiceUptime[]> => {
+    const result = await apiClient.get<ServiceUptime[]>("/monitoring/uptime/all", {
+      params: { from: range.from.toISOString(), to: range.to.toISOString() },
     });
     return result.data;
   },

@@ -4,6 +4,8 @@ import { computed } from "vue";
 
 import type { OperationalEvent } from "@/api/monitoring";
 
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
+import { useRollingNow } from "@/composables/useRollingNow";
 import { useServiceDashboardRouting } from "@/composables/useServiceDashboardRouting";
 import { OperationalEventSeverity, ServiceType } from "@/enums";
 import { UPTIME_WINDOW_DAYS, serviceUptimes, statusHistory } from "@/queries/monitoring";
@@ -16,20 +18,31 @@ import {
 } from "@/utils/monitoring-display.utils";
 import { buildDeepLink } from "@/utils/serviceDashboardRouting";
 
-// Fixed trailing window (Option A): the strip always shows the last 30 days
-const uptimeTo = new Date();
-const uptimeFrom = new Date();
-uptimeFrom.setDate(uptimeFrom.getDate() - UPTIME_WINDOW_DAYS);
 const SERVICES = MONITORED_SERVICES;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-const { data: history, isLoading: historyLoading, error: historyError } = useQuery(statusHistory());
+// Five-minute steps keep the uptime key stable between polls while the window still advances.
+const { now } = useRollingNow(5 * 60 * 1000);
+const uptimeRange = computed(() => ({
+  from: new Date(now.value - UPTIME_WINDOW_DAYS * DAY_MS),
+  to: new Date(now.value),
+}));
+
+const {
+  data: history,
+  isLoading: historyFetching,
+  error: historyError,
+  refetch: refetchHistory,
+} = useQuery(statusHistory());
 const {
   data: uptimes,
-  isLoading: uptimesLoading,
+  isLoading: uptimesFetching,
   error: uptimesError,
-} = useQuery(serviceUptimes({ from: uptimeFrom, to: uptimeTo }));
+  refetch: refetchUptimes,
+} = useQuery(() => serviceUptimes(uptimeRange.value));
 
-const isLoading = computed(() => historyLoading.value || uptimesLoading.value);
+useLiveRefresh(refetchHistory, 30_000);
+useLiveRefresh(refetchUptimes, 60_000);
 
 // Auth refresh cycles produce transient 401/403s — never surface those
 const isAuthError = (err: unknown): boolean => {
@@ -40,6 +53,16 @@ const isAuthError = (err: unknown): boolean => {
   const msg = String(e.message ?? "").toLowerCase();
   return msg.includes("unauthorized") || msg.includes("401") || msg.includes("forbidden");
 };
+
+// Rows must never render from missing data: that reads as "all healthy". Background
+// refetches keep the current rows; a suppressed auth error keeps the spinner.
+const isLoading = computed(() => {
+  const historyMissing =
+    history.value === undefined && (historyFetching.value || isAuthError(historyError.value));
+  const uptimesMissing =
+    uptimes.value === undefined && (uptimesFetching.value || isAuthError(uptimesError.value));
+  return historyMissing || uptimesMissing;
+});
 
 // A silent failure would render fake "all healthy" rows — surface it instead
 const visibleError = computed((): Error | null => {
@@ -97,9 +120,14 @@ const overallStatus = computed(() => {
   return { color: "success" as const, label: "All systems operational" };
 });
 
-const formatUptime = (value: number): string => `${value.toFixed(1)}%`;
+// Floor rather than round so 99.96% never displays as a perfect 100.0%.
+const formatUptime = (value: number): string => {
+  const clamped = Math.min(Math.max(value, 0), 100);
+  return `${(Math.floor(clamped * 10) / 10).toFixed(1)}%`;
+};
 
-const uptimeClass = (value: number): string => {
+const uptimeClass = (value: number | undefined): string => {
+  if (value === undefined) return "text-gray-500 dark:text-gray-400";
   if (value >= 99.5) return "text-emerald-600 dark:text-emerald-400";
   if (value >= 95) return "text-amber-600 dark:text-amber-400";
   return "text-red-600 dark:text-red-400";
@@ -180,7 +208,7 @@ const openService = (row: HealthRow) => {
           <div class="text-right shrink-0">
             <p
               class="text-sm font-bold tabular-nums leading-none"
-              :class="uptimeClass(row.uptime ?? 100)"
+              :class="uptimeClass(row.uptime)"
             >
               {{ row.uptime === undefined ? "—" : formatUptime(row.uptime) }}
             </p>
@@ -217,7 +245,7 @@ const openService = (row: HealthRow) => {
           <div>
             <p
               class="text-lg font-bold tabular-nums leading-none"
-              :class="uptimeClass(row.uptime ?? 100)"
+              :class="uptimeClass(row.uptime)"
             >
               {{ row.uptime === undefined ? "—" : formatUptime(row.uptime) }}
             </p>

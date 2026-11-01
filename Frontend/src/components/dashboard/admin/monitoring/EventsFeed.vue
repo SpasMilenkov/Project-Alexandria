@@ -10,6 +10,7 @@ import {
 } from "@/api/monitoring";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { useServiceDashboardRouting } from "@/composables/useServiceDashboardRouting";
 import {
   OperationalEventCode,
@@ -51,17 +52,18 @@ const severityFilter = ref<OperationalEventSeverity | undefined>(initialSeverity
 const statusFilter = ref<OperationalEventStatus | undefined>(undefined);
 
 // Later deep-link applications (same-page producers like strip cards) re-seed
-// the matching filter.
+// the matching filter, and a deep link without the param clears it again.
 watch(
   () => initialServiceType,
   (v) => {
-    if (v != null) serviceFilter.value = v;
+    if ((v === null || v === undefined) && lockedService) return;
+    serviceFilter.value = v ?? undefined;
   },
 );
 watch(
   () => initialSeverity,
   (v) => {
-    if (v != null) severityFilter.value = v;
+    severityFilter.value = v ?? undefined;
   },
 );
 
@@ -70,9 +72,15 @@ watch(
 // control competing for space on a narrow screen.
 const filtersOpen = ref(false);
 
-watch([serviceFilter, codeFilter, severityFilter, statusFilter, () => dateRange], () => {
-  page.value = 1;
-});
+// Sync flush resets the page before the query key recomputes, so a filter change
+// does not first fetch the old page with the new filters.
+watch(
+  [serviceFilter, codeFilter, severityFilter, statusFilter, () => dateRange],
+  () => {
+    page.value = 1;
+  },
+  { flush: "sync" },
+);
 
 const SERVICE_OPTIONS = [
   { label: "All services", value: undefined },
@@ -117,9 +125,11 @@ const queryParams = computed<OperationalEventsQuery>(() => ({
   to: dateRange?.to,
 }));
 
-const { data, isLoading, error, asyncStatus } = useQuery(() =>
+const { data, error, asyncStatus, refetch } = useQuery(() =>
   operationalEvents(queryParams.value),
 );
+
+useLiveRefresh(refetch, 30_000);
 
 const isAuthError = (err: unknown): boolean => {
   if (!err) return false;
@@ -135,6 +145,12 @@ const visibleError = computed(() =>
 );
 
 const isFetching = computed(() => asyncStatus.value === "loading");
+
+// Previous pages stay visible while refetching; a suppressed auth error keeps the
+// spinner instead of claiming there are no incidents.
+const isLoading = computed(
+  () => data.value === undefined && (isFetching.value || isAuthError(error.value)),
+);
 
 const events = computed<OperationalEvent[]>(() => data.value?.items ?? []);
 const totalPages = computed(() => Math.max(data.value?.totalPages ?? 1, 1));
@@ -209,6 +225,11 @@ const metadataRows = (event: OperationalEvent): MetadataRow[] => {
         { label: "Description", value: meta.description },
         ...(meta.pageContext ? [{ label: "Page", value: meta.pageContext }] : []),
       ];
+    case "worker-cycle-failure":
+      return [
+        { label: "Error", value: meta.exceptionMessage },
+        { label: "Instance", value: meta.serviceInstance },
+      ];
   }
 
   // Unrecognized shapes must never crash the row — just render no extra fields
@@ -247,13 +268,25 @@ const statusIconBg = (event: OperationalEvent): string =>
 const statusIconColor = (event: OperationalEvent): string =>
   isActive(event) ? "text-red-500" : "text-gray-400 dark:text-gray-500";
 
-const dateChipLabel = computed(() => {
-  if (!dateRange) return "";
-  return dateRange.from.toLocaleDateString(undefined, {
+// Day windows are UTC days (matching backend bucketing), so the chip must not shift
+// them into the viewer's local day.
+const formatUtcDay = (date: Date): string =>
+  date.toLocaleDateString(undefined, {
     day: "numeric",
     month: "long",
+    timeZone: "UTC",
     year: "numeric",
   });
+
+const dateChipLabel = computed(() => {
+  if (!dateRange) return "";
+
+  const start = formatUtcDay(dateRange.from);
+  const lastInstant = new Date(Math.max(dateRange.to.getTime() - 1, dateRange.from.getTime()));
+  const end = formatUtcDay(lastInstant);
+
+  if (end === start) return start;
+  return `${start} – ${end}`;
 });
 
 // Resolve flow

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
-import { useMediaQuery } from "@vueuse/core";
+import { useIntervalFn, useMediaQuery, useNow } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 
 import {
@@ -8,6 +8,7 @@ import {
   type ErrorCalendarDay,
   useErrorCalendar,
 } from "@/composables/useErrorCalendar";
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { ServiceType } from "@/enums";
 import { errorCalendar } from "@/queries/monitoring";
 import {
@@ -21,24 +22,26 @@ const emit = defineEmits<{ viewDay: [date: Date] }>();
 
 const isMobile = useMediaQuery("(max-width: 767px)");
 
-const currentYear = new Date().getFullYear();
-const currentMonth = new Date().getMonth();
-const MIN_YEAR = currentYear - 4;
+// A page left open across midnight or New Year must still be able to reach "today".
+const now = useNow({ scheduler: (cb) => useIntervalFn(cb, 60_000) });
+const currentYear = computed(() => now.value.getFullYear());
+const currentMonth = computed(() => now.value.getMonth());
+const MIN_YEAR = computed(() => currentYear.value - 4);
 
-const selectedYear = ref(currentYear);
-const selectedMonth = ref(currentMonth);
+const selectedYear = ref(currentYear.value);
+const selectedMonth = ref(currentMonth.value);
 
 const HEATMAP_CELL = "w-3.5 h-3.5 xl:w-4 xl:h-4";
 const HEATMAP_GAP = "gap-[4px] xl:gap-[5px]";
 const HEATMAP_ROW = "h-3.5 xl:h-4";
 
 watch(selectedYear, (yr) => {
-  selectedMonth.value = yr === currentYear ? currentMonth : 0;
+  selectedMonth.value = yr === currentYear.value ? currentMonth.value : 0;
   selectedDay.value = null;
 });
 
-const canGoBack = computed(() => selectedYear.value > MIN_YEAR);
-const canGoForward = computed(() => selectedYear.value < currentYear);
+const canGoBack = computed(() => selectedYear.value > MIN_YEAR.value);
+const canGoForward = computed(() => selectedYear.value < currentYear.value);
 
 const prevYear = () => {
   if (canGoBack.value) {
@@ -53,9 +56,11 @@ const nextYear = () => {
   }
 };
 
-const canGoBackMonth = computed(() => selectedMonth.value > 0 || selectedYear.value > MIN_YEAR);
+const canGoBackMonth = computed(
+  () => selectedMonth.value > 0 || selectedYear.value > MIN_YEAR.value,
+);
 const canGoForwardMonth = computed(
-  () => !(selectedYear.value === currentYear && selectedMonth.value >= currentMonth),
+  () => !(selectedYear.value === currentYear.value && selectedMonth.value >= currentMonth.value),
 );
 
 const prevMonth = () => {
@@ -120,7 +125,10 @@ const range = computed(() => ({
   to: new Date(Date.UTC(selectedYear.value + 1, 0, 1)),
 }));
 
-const { data, isLoading, error } = useQuery(() => errorCalendar(range.value));
+const { data, isLoading: isFetching, error, refetch } = useQuery(() => errorCalendar(range.value));
+
+
+useLiveRefresh(refetch, 60_000);
 
 const isAuthError = (err: unknown): boolean => {
   if (!err) return false;
@@ -130,6 +138,12 @@ const isAuthError = (err: unknown): boolean => {
   const msg = String(e.message ?? "").toLowerCase();
   return msg.includes("unauthorized") || msg.includes("401") || msg.includes("forbidden");
 };
+
+// Background polls keep the grid on screen; only a range without data shows the spinner.
+// A suppressed auth error also keeps the spinner so it never reads as an empty year.
+const isLoading = computed(
+  () => data.value === undefined && (isFetching.value || isAuthError(error.value)),
+);
 
 const visibleError = computed(() =>
   error.value && !isAuthError(error.value) ? error.value : null,

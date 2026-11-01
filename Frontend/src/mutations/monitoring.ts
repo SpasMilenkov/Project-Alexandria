@@ -14,6 +14,9 @@ export const useReportProblem = defineMutation(() => {
     onSettled() {
       queryCache.invalidateQueries({ key: ["monitoring", "events"] });
       queryCache.invalidateQueries({ key: ["monitoring", "status-history"] });
+      queryCache.invalidateQueries({ key: ["monitoring", "calendar"] });
+      queryCache.invalidateQueries({ key: ["public-status"] });
+      queryCache.invalidateQueries({ key: ["home", "public-status"] });
     },
   });
 });
@@ -30,6 +33,8 @@ export const useResolveIncident = defineMutation(() => {
       queryCache.invalidateQueries({ key: ["monitoring", "events"] });
       queryCache.invalidateQueries({ key: ["monitoring", "status-history"] });
       queryCache.invalidateQueries({ key: ["monitoring", "uptimes"] });
+      queryCache.invalidateQueries({ key: ["public-status"] });
+      queryCache.invalidateQueries({ key: ["home", "public-status"] });
     },
   });
 });
