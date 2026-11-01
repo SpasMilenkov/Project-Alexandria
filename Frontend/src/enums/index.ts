@@ -27,6 +27,7 @@ import {
   HomeWidgetType,
 } from "./home-widget";
 import { JobStatus } from "./job-status";
+import { JobType } from "./job-type";
 import { LyricsProvider } from "./lyrics-provider";
 import { LyricsStatus } from "./lyrics-status";
 import { OnboardingStep } from "./OnboardingStep";
@@ -64,6 +65,7 @@ export {
   PlaylistSort,
   OnboardingStep,
   JobStatus,
+  JobType,
   LyricsProvider,
   LyricsStatus,
   OperationalEventCode,

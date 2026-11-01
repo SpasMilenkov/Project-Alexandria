@@ -130,8 +130,10 @@
           Playlist incidents
         </h2>
         <EventsFeed
-          :date-range="null"
+          :date-range="feedDateRange"
           :initial-service-type="ServiceType.Playlist"
+          :initial-severity="initialSeverity"
+          :highlight-id="highlightId"
           locked-service
         />
       </div>
@@ -162,6 +164,9 @@ import type { PlaylistBucket } from "@/api/playlistStats";
 
 import { PLAYLIST_BUCKET, PLAYLIST_STATUS } from "@/api/playlistStats";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
+import { useRollingNow } from "@/composables/useRollingNow";
+import { useServiceDeepLink } from "@/composables/useServiceDeepLink";
 import { useTheme } from "@/composables/useTheme";
 import { ServiceType } from "@/enums";
 import { playlistOverview, playlistTrend } from "@/queries/playlistStats";
@@ -180,6 +185,8 @@ ChartJS.register(
 
 const { isDark } = useTheme();
 
+const { feedDateRange, highlightId, initialSeverity } = useServiceDeepLink();
+
 const rangeOptions = [
   { label: "24h", value: 24 * 60 * 60 * 1000 },
   { label: "7d", value: 7 * 24 * 60 * 60 * 1000 },
@@ -193,8 +200,11 @@ const bucketOptions: { label: string; value: PlaylistBucket }[] = [
 const rangeMs = ref(rangeOptions[0].value);
 const bucket = ref<PlaylistBucket>(PLAYLIST_BUCKET.Hour);
 
+// Minute ticks move the trailing window forward, which refetches the trend under a new key.
+const { now } = useRollingNow();
+
 const trendParams = computed(() => {
-  const to = Date.now();
+  const to = now.value;
   return {
     from: new Date(to - rangeMs.value).toISOString(),
     to: new Date(to).toISOString(),
@@ -202,8 +212,15 @@ const trendParams = computed(() => {
   };
 });
 
-const { data: overview, isLoading: overviewLoading } = useQuery(playlistOverview());
-const { data: trend, isLoading: trendLoading } = useQuery(() => playlistTrend(trendParams.value));
+const {
+  data: overview,
+  isPending: overviewLoading,
+  refetch: refetchOverview,
+} = useQuery(playlistOverview());
+
+// Overview counts have a fixed key, so they are polled explicitly.
+useLiveRefresh(refetchOverview, 60_000);
+const { data: trend, isPending: trendLoading } = useQuery(() => playlistTrend(trendParams.value));
 
 const statusCount = (status: number): number =>
   overview.value?.statusCounts.find((entry) => entry.status === status)?.count ?? 0;

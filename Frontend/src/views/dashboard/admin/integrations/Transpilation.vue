@@ -126,14 +126,18 @@
         </div>
       </div>
 
+      <JobRecoveryPanel :type="JobType.Transpilation" title="Transpilation jobs" />
+
       <!-- Incidents -->
       <div class="space-y-2">
         <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 px-1">
           Transpilation incidents
         </h2>
         <EventsFeed
-          :date-range="null"
+          :date-range="feedDateRange"
           :initial-service-type="ServiceType.Transpilation"
+          :initial-severity="initialSeverity"
+          :highlight-id="highlightId"
           locked-service
         />
       </div>
@@ -164,8 +168,12 @@ import type { StatsBucket } from "@/api/transpilationStats";
 
 import { STATS_BUCKET, TRANSPILATION_STATUS } from "@/api/transpilationStats";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
+import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
+import { useRollingNow } from "@/composables/useRollingNow";
+import { useServiceDeepLink } from "@/composables/useServiceDeepLink";
 import { useTheme } from "@/composables/useTheme";
-import { ServiceType } from "@/enums";
+import { JobType, ServiceType } from "@/enums";
 import { transpilationOverview, transpilationTrend } from "@/queries/transpilationStats";
 
 ChartJS.register(
@@ -182,6 +190,8 @@ ChartJS.register(
 
 const { isDark } = useTheme();
 
+const { feedDateRange, highlightId, initialSeverity } = useServiceDeepLink();
+
 const rangeOptions = [
   { label: "24h", value: 24 * 60 * 60 * 1000 },
   { label: "7d", value: 7 * 24 * 60 * 60 * 1000 },
@@ -195,8 +205,11 @@ const bucketOptions: { label: string; value: StatsBucket }[] = [
 const rangeMs = ref(rangeOptions[0].value);
 const bucket = ref<StatsBucket>(STATS_BUCKET.Hour);
 
+// Minute ticks move the trailing window forward, which refetches the trend under a new key.
+const { now } = useRollingNow();
+
 const trendParams = computed(() => {
-  const to = Date.now();
+  const to = now.value;
   return {
     from: new Date(to - rangeMs.value).toISOString(),
     to: new Date(to).toISOString(),
@@ -204,8 +217,15 @@ const trendParams = computed(() => {
   };
 });
 
-const { data: overview, isLoading: overviewLoading } = useQuery(transpilationOverview());
-const { data: trend, isLoading: trendLoading } = useQuery(() =>
+const {
+  data: overview,
+  isPending: overviewLoading,
+  refetch: refetchOverview,
+} = useQuery(transpilationOverview());
+
+// Overview counts have a fixed key, so they are polled explicitly.
+useLiveRefresh(refetchOverview, 60_000);
+const { data: trend, isPending: trendLoading } = useQuery(() =>
   transpilationTrend(trendParams.value),
 );
 

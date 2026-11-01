@@ -21,8 +21,11 @@ import type { LyricsStatsBucket } from "@/api/lyricsStats";
 
 import { LYRICS_PROVIDER, LYRICS_STATS_BUCKET, LYRICS_STATUS } from "@/api/lyricsStats";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
+import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
+import { useRollingNow } from "@/composables/useRollingNow";
 import { useTheme } from "@/composables/useTheme";
-import { ServiceType } from "@/enums";
+import { JobType, ServiceType } from "@/enums";
 import { lyricsOverview, lyricsTrend } from "@/queries/lyricsStats";
 import { parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
 
@@ -70,8 +73,11 @@ const bucketOptions: { label: string; value: LyricsStatsBucket }[] = [
 const rangeMs = ref(rangeOptions[0].value);
 const bucket = ref<LyricsStatsBucket>(LYRICS_STATS_BUCKET.Hour);
 
+// Minute ticks move the trailing window forward, which refetches the trend under a new key.
+const { now } = useRollingNow();
+
 const trendParams = computed(() => {
-  const to = Date.now();
+  const to = now.value;
   return {
     from: new Date(to - rangeMs.value).toISOString(),
     to: new Date(to).toISOString(),
@@ -79,8 +85,15 @@ const trendParams = computed(() => {
   };
 });
 
-const { data: overview, isLoading: overviewLoading } = useQuery(lyricsOverview());
-const { data: trend, isLoading: trendLoading } = useQuery(() => lyricsTrend(trendParams.value));
+const {
+  data: overview,
+  isPending: overviewLoading,
+  refetch: refetchOverview,
+} = useQuery(lyricsOverview());
+
+// Overview counts have a fixed key, so they are polled explicitly.
+useLiveRefresh(refetchOverview, 60_000);
+const { data: trend, isPending: trendLoading } = useQuery(() => lyricsTrend(trendParams.value));
 
 const statusCount = (status: number): number =>
   overview.value?.statusCounts.find((entry) => entry.status === status)?.count ?? 0;
@@ -433,6 +446,8 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
           </div>
         </div>
       </div>
+
+      <JobRecoveryPanel :type="JobType.LyricsFetch" title="Lyrics jobs" />
 
       <!-- Incidents -->
       <div class="space-y-2">
