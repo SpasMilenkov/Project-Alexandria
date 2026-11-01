@@ -123,7 +123,9 @@ public static class ServiceExtensions
 
         services.AddMemoryCache();
 
-        services.AddHttpClient("worker-health")
+        // Must stay well below the health publisher's timeout, otherwise a hung worker cancels
+        // the whole publish cycle and its outage is never recorded.
+        services.AddHttpClient("worker-health", client => client.Timeout = TimeSpan.FromSeconds(10))
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler())
             .SetHandlerLifetime(TimeSpan.FromMinutes(5));
 

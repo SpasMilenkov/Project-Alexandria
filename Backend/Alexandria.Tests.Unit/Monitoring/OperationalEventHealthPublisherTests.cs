@@ -22,8 +22,8 @@ public class OperationalEventHealthPublisherTests
     public OperationalEventHealthPublisherTests()
     {
         _unitOfWork.OperationalEvents.Returns(_repo);
-        _repo.AddAsync(Arg.Do<OperationalEvent>(e => _added.Add(e)), Arg.Any<CancellationToken>())
-            .Returns(ci => ci.ArgAt<OperationalEvent>(0));
+        _repo.AddActiveIfAbsentAsync(Arg.Do<OperationalEvent>(e => _added.Add(e)), Arg.Any<CancellationToken>())
+            .Returns(true);
         _repo.ResolveActiveEventsAsync(
                 Arg.Any<ServiceType>(),
                 Arg.Any<OperationalEventCode>(),
@@ -106,6 +106,7 @@ public class OperationalEventHealthPublisherTests
             ("worker-transpilationworker", ServiceType.Transpilation),
             ("worker-lyricsworker", ServiceType.Lyrics),
             ("worker-mediametadataworker", ServiceType.MediaMetadata),
+            ("worker-playlistworker", ServiceType.Playlist),
         };
 
         foreach (var (checkName, expectedService) in cases)
@@ -156,19 +157,12 @@ public class OperationalEventHealthPublisherTests
     [Fact]
     public async Task no_duplicate_event_when_active_already_exists()
     {
-        _repo.GetActiveEventAsync(
-                Arg.Any<ServiceType>(),
-                Arg.Any<OperationalEventCode>(),
+        _repo.TouchActiveEventAsync(
+                ServiceType.Api,
+                OperationalEventCode.HealthcheckUnhealthy,
+                Arg.Any<DateTime>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new OperationalEvent
-            {
-                Id = Guid.NewGuid(),
-                ServiceType = ServiceType.Api,
-                Code = OperationalEventCode.HealthcheckUnhealthy,
-                Severity = OperationalEventSeverity.Failure,
-                Status = OperationalEventStatus.Active,
-                CreatedBy = SystemConfig.SystemId
-            });
+            .Returns(1);
 
         var report = Report(("postgres", Entry(HealthStatus.Unhealthy, tags: ["infrastructure"])));
 
@@ -177,10 +171,83 @@ public class OperationalEventHealthPublisherTests
         _added.Should().BeEmpty();
         await _repo.DidNotReceive().ResolveActiveEventsAsync(
             Arg.Any<ServiceType>(),
-            Arg.Any<OperationalEventCode>(),
+            OperationalEventCode.HealthcheckUnhealthy,
             Arg.Any<DateTime>(),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task healthy_sibling_check_does_not_resolve_failing_sibling()
+    {
+        _repo.GetActiveEventAsync(
+                Arg.Any<ServiceType>(),
+                Arg.Any<OperationalEventCode>(),
+                Arg.Any<CancellationToken>())
+            .Returns(ActiveEvent(OperationalEventCode.HealthcheckUnhealthy));
+        _repo.TouchActiveEventAsync(
+                ServiceType.Api,
+                OperationalEventCode.HealthcheckUnhealthy,
+                Arg.Any<DateTime>(),
+                Arg.Any<CancellationToken>())
+            .Returns(1);
+
+        var report = Report(
+            ("postgres", Entry(HealthStatus.Healthy, tags: ["infrastructure"])),
+            ("storage", Entry(HealthStatus.Unhealthy, tags: ["infrastructure"])),
+            ("rabbitmq", Entry(HealthStatus.Healthy, tags: ["infrastructure"])));
+
+        await _sut.PublishAsync(report, TestContext.Current.CancellationToken);
+
+        await _repo.DidNotReceive().ResolveActiveEventsAsync(
+            ServiceType.Api, OperationalEventCode.HealthcheckUnhealthy,
+            Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        _added.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task multiple_failing_checks_for_one_service_open_a_single_incident()
+    {
+        var report = Report(
+            ("postgres", Entry(HealthStatus.Unhealthy, tags: ["infrastructure"], description: "db down")),
+            ("storage", Entry(HealthStatus.Unhealthy, tags: ["infrastructure"], description: "s3 down")));
+
+        await _sut.PublishAsync(report, TestContext.Current.CancellationToken);
+
+        var evt = _added.Should().ContainSingle().Subject;
+        using var doc = JsonDocument.Parse(evt.MetadataJson!);
+        doc.RootElement.GetProperty("serviceInstance").GetString().Should().Be("postgres, storage");
+        doc.RootElement.GetProperty("detail").GetString().Should().Be("postgres: db down; storage: s3 down");
+    }
+
+    [Fact]
+    public async Task switching_failure_code_resolves_the_previous_code()
+    {
+        _repo.GetActiveEventAsync(
+                ServiceType.Lyrics,
+                OperationalEventCode.HealthcheckUnreachable,
+                Arg.Any<CancellationToken>())
+            .Returns(ActiveEvent(OperationalEventCode.HealthcheckUnreachable));
+
+        var report = Report(("worker-lyricsworker",
+            Entry(HealthStatus.Unhealthy, exception: new InvalidOperationException("consumer dead"))));
+
+        await _sut.PublishAsync(report, TestContext.Current.CancellationToken);
+
+        await _repo.Received(1).ResolveActiveEventsAsync(
+            ServiceType.Lyrics, OperationalEventCode.HealthcheckUnreachable,
+            Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        _added.Should().ContainSingle().Which.Code.Should().Be(OperationalEventCode.HealthcheckUnhealthy);
+    }
+
+    private static OperationalEvent ActiveEvent(OperationalEventCode code) => new()
+    {
+        Id = Guid.NewGuid(),
+        ServiceType = ServiceType.Api,
+        Code = code,
+        Severity = OperationalEventSeverity.Failure,
+        Status = OperationalEventStatus.Active,
+        CreatedBy = SystemConfig.SystemId
+    };
 
     [Fact]
     public async Task failure_metadata_serializes_instance_and_detail()
@@ -207,6 +274,5 @@ public class OperationalEventHealthPublisherTests
         await _sut.PublishAsync(report, TestContext.Current.CancellationToken);
 
         _added.Should().BeEmpty();
-        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

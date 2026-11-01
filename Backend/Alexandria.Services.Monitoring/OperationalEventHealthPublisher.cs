@@ -19,22 +19,42 @@ public class OperationalEventHealthPublisher(IServiceScopeFactory scopeFactory) 
         using var scope = scopeFactory.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        foreach (var (name, entry) in report.Entries)
-        {
-            if (!TryResolveServiceType(name, out var serviceType)) continue;
-            var code = ResolveCode(entry);
+        // Several checks can share a service (postgres/storage/rabbitmq all report as Api),
+        // so state is decided per service: a healthy sibling must not resolve a failing one.
+        var byService = report.Entries
+            .Select(e => (Name: e.Key, Entry: e.Value, Known: TryResolveServiceType(e.Key, out var type), Type: type))
+            .Where(e => e.Known)
+            .GroupBy(e => e.Type);
 
-            if (entry.Status == HealthStatus.Healthy)
+        foreach (var group in byService)
+        {
+            var serviceType = group.Key;
+            var failing = group.Where(e => e.Entry.Status != HealthStatus.Healthy).ToList();
+
+            if (failing.Count == 0)
             {
                 await ResolveIfActive(unitOfWork, serviceType, HealthcheckUnhealthy, ct);
                 await ResolveIfActive(unitOfWork, serviceType, HealthcheckUnreachable, ct);
                 continue;
             }
 
-            var existing = await unitOfWork.OperationalEvents.GetActiveEventAsync(serviceType, code, ct);
-            if (existing is not null) continue;
+            var code = failing.Any(e => ResolveCode(e.Entry) == HealthcheckUnhealthy)
+                ? HealthcheckUnhealthy
+                : HealthcheckUnreachable;
 
-            await unitOfWork.OperationalEvents.AddAsync(new OperationalEvent
+            // Only one healthcheck incident per service may be open at a time, otherwise
+            // flipping between unreachable and unhealthy leaves overlapping downtime.
+            var otherCode = code == HealthcheckUnhealthy ? HealthcheckUnreachable : HealthcheckUnhealthy;
+            await ResolveIfActive(unitOfWork, serviceType, otherCode, ct);
+
+            var touched = await unitOfWork.OperationalEvents.TouchActiveEventAsync(
+                serviceType, code, DateTime.UtcNow, ct);
+            if (touched > 0) continue;
+
+            var primary = failing.First(e => ResolveCode(e.Entry) == code);
+            var names = string.Join(", ", failing.Select(e => e.Name));
+
+            await unitOfWork.OperationalEvents.AddActiveIfAbsentAsync(new OperationalEvent
             {
                 Id = Guid.NewGuid(),
                 ServiceType = serviceType,
@@ -45,16 +65,24 @@ public class OperationalEventHealthPublisher(IServiceScopeFactory scopeFactory) 
                     code,
                     new HealthcheckFailureMetadata
                     {
-                        ServiceInstance = name,
-                        CheckName = name,
-                        Detail = entry.Exception?.Message ?? entry.Description
+                        ServiceInstance = names,
+                        CheckName = primary.Name,
+                        Detail = DescribeFailures(failing.Select(e => (e.Name, e.Entry)).ToList())
                     }),
                 CreatedBy = SystemConfig.SystemId
             }, ct);
         }
-
-        await unitOfWork.SaveChangesAsync(ct);
     }
+
+    private static string? DescribeFailures(IReadOnlyList<(string Name, HealthReportEntry Entry)> failing)
+    {
+        if (failing.Count == 1)
+            return Detail(failing[0].Entry);
+
+        return string.Join("; ", failing.Select(f => $"{f.Name}: {Detail(f.Entry)}"));
+    }
+
+    private static string? Detail(HealthReportEntry entry) => entry.Exception?.Message ?? entry.Description;
 
     private static OperationalEventCode ResolveCode(HealthReportEntry entry)
     {
@@ -87,6 +115,7 @@ public class OperationalEventHealthPublisher(IServiceScopeFactory scopeFactory) 
             "worker-transpilationworker" => ServiceType.Transpilation,
             "worker-lyricsworker" => ServiceType.Lyrics,
             "worker-mediametadataworker" => ServiceType.MediaMetadata,
+            "worker-playlistworker" => ServiceType.Playlist,
             "postgres" or "storage" or "rabbitmq" => ServiceType.Api,
             _ => default
         };
