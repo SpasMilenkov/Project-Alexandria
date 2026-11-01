@@ -20,12 +20,21 @@ public partial class TranspilationJobHandler(
 {
     public async Task HandleAsync(Guid jobId, CancellationToken ct = default)
     {
+        // Checked before claiming: a job without its transpilation row can never succeed, and
+        // claiming first would strand it in Processing while the message loops forever.
+        var transpilation = await unitOfWork.TranspilationJobs.GetByJobIdAsync(jobId, ct);
+        if (transpilation is null)
+        {
+            LogTranspilationRowMissing(logger, jobId);
+            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed,
+                errorDetail: "transpilation record missing", ct: ct);
+            await unitOfWork.Jobs.MarkNonRetryableAsync(jobId, ct);
+            return;
+        }
+
         var claimed = await unitOfWork.Jobs.TryClaimJobAsync(jobId, ct);
         if (!claimed)
             return;
-
-        var transpilation = await unitOfWork.TranspilationJobs.GetByJobIdAsync(jobId, ct);
-        if (transpilation is null) throw new TranspilationJobNotFoundException(jobId);
 
         var mediaDir = transpilation.IsVideo ? "v" : "a";
         var codecStr = transpilation.IsVideo ? "h264" : "opus";
@@ -92,6 +101,15 @@ public partial class TranspilationJobHandler(
             await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Ready, 100, ct: ct);
 
             LogJobCompleted(logger, jobId);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Worker shutdown, not a job failure: hand the job back so the redelivered
+            // message can claim it after restart.
+            await unitOfWork.Jobs.ReleaseClaimAsync(jobId, CancellationToken.None);
+            if (representationIds.Count > 0)
+                await representationService.MarkAllFailedAsync(representationIds, CancellationToken.None);
+            throw;
         }
         catch (TranspilationCancelledException)
         {

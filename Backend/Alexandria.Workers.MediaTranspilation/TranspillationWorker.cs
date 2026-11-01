@@ -53,7 +53,13 @@ public partial class TranspilationWorker(
             await _concurrencyGate.WaitAsync(ct);
             try
             {
-                var jobId = Guid.Parse(Encoding.UTF8.GetString(eventArgs.Body.Span));
+                if (!Guid.TryParse(Encoding.UTF8.GetString(eventArgs.Body.Span), out var jobId))
+                {
+                    // Requeueing an unparseable message would redeliver it forever.
+                    LogMalformedMessage(logger);
+                    await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: false, ct);
+                    return;
+                }
 
                 using var scope = serviceProvider.CreateScope();
                 var handler = scope.ServiceProvider.GetRequiredService<TranspilationJobHandler>();
