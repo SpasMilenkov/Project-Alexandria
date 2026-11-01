@@ -3,7 +3,7 @@ using Alexandria.Common.Services;
 using FastEndpoints;
 using FluentValidation;
 
-namespace Alexandria.Api.Features.Streaming.ReorderPlaylistItems;
+namespace Alexandria.Api.Features.Streaming.Playlists.ReorderPlaylistItems;
 
 internal sealed class ReorderPlaylistItemsRequest
 {

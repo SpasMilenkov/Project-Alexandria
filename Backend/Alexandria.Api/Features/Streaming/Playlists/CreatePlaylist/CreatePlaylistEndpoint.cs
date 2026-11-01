@@ -1,5 +1,5 @@
 using Alexandria.Api.Features.Auth.Extensions;
-using Alexandria.Api.Features.Streaming.GetPlaylist;
+using Alexandria.Api.Features.Streaming.Playlists.GetPlaylist;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Playlist;
 using FastEndpoints;

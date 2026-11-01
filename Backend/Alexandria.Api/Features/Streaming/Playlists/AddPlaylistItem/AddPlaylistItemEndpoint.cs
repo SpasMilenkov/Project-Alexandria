@@ -1,10 +1,11 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Api.Features.Streaming.Playlists.GetPlaylist;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Playlist;
 using FastEndpoints;
 using FluentValidation;
 
-namespace Alexandria.Api.Features.Streaming.AddPlaylistItem;
+namespace Alexandria.Api.Features.Streaming.Playlists.AddPlaylistItem;
 
 internal sealed class AddPlaylistItemRequest
 {
@@ -35,7 +36,7 @@ internal sealed class AddPlaylistItemEndpoint(IPlaylistService playlistService)
         var userId = User.GetUserId();
         var result = await playlistService.AddItemAsync(req.PlaylistId, req.TranspilationJobId, userId, ct);
  
-        await Send.CreatedAtAsync<GetPlaylist.GetPlaylistEndpoint>(
+        await Send.CreatedAtAsync<GetPlaylistEndpoint>(
             new { Id = req.PlaylistId }, result, cancellation: ct);
     }
 }

@@ -4,7 +4,7 @@ using Alexandria.Dto.Files.Streaming.Playlist;
 using FastEndpoints;
 using FluentValidation;
 
-namespace Alexandria.Api.Features.Streaming.UpdatePlaylist;
+namespace Alexandria.Api.Features.Streaming.Playlists.UpdatePlaylist;
 
 internal sealed class UpdatePlaylistRequest
 {
