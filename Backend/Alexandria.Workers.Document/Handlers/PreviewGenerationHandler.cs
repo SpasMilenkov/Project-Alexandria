@@ -30,9 +30,14 @@ public class PreviewGenerationHandler(
             await GenerateAsync(previewJob.VersionId, ct);
             await PreviewJobLifecycle.CompleteAsync(unitOfWork, jobId, ct);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            await PreviewJobLifecycle.ReleaseAsync(unitOfWork, jobId);
+            throw;
+        }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            await PreviewJobLifecycle.FailAsync(unitOfWork, jobId, ex.Message, ct);
+            await PreviewJobLifecycle.FailAsync(unitOfWork, jobId, ex, ct);
             throw;
         }
     }
