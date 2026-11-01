@@ -1,12 +1,12 @@
 <template>
-  <UDashboardGroup storage-key="alexandria-sidebar">
+  <UDashboardGroup storage-key="alexandria-sidebar" unit="rem">
     <UDashboardSidebar
       v-model:collapsed="isCollapsed"
       collapsible
       resizable
-      :min-size="15"
-      :max-size="24"
-      :default-size="15"
+      :min-size="13"
+      :max-size="20"
+      :default-size="14"
       :ui="{
         root: 'frosted-glass glass-surface',
         footer: 'border-t border-default py-2',
@@ -16,112 +16,41 @@
     >
       <template #header="{ collapsed }">
         <LogoComponent v-if="!collapsed" class="h-5 w-auto shrink-0" />
-        <UDashboardSidebarCollapse class="ms-auto" />
+        <UDashboardSidebarCollapse :class="collapsed ? 'mx-auto' : 'ms-auto'" />
       </template>
 
       <template #default="{ collapsed }">
         <div class="hidden lg:flex lg:flex-col lg:flex-1 gap-1 min-w-0 overflow-x-hidden">
-          <p
-            v-if="!collapsed"
-            class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
-          >
-            Your Library
-          </p>
-          <UNavigationMenu
+          <SidebarSection
+            v-for="section in sidebarSections"
+            :key="section.id"
+            :section="section"
             :collapsed="collapsed"
-            :items="libraryMenuItems"
-            orientation="vertical"
-          />
-
-          <USeparator class="my-1" />
-          <p
-            v-if="!collapsed"
-            class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
-          >
-            Media
-          </p>
-          <UNavigationMenu
-            v-model="mediaMenuValue"
-            :collapsed="collapsed"
-            :items="streamingMenuItems"
-            popover
-            aria-label="Media navigation"
-            orientation="vertical"
-          />
-
-          <template v-if="authStore.isAdmin">
-            <USeparator class="my-1" />
-            <p
-              v-if="!collapsed"
-              class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 pt-1 pb-0.5 select-none"
-            >
-              Admin
-            </p>
-            <UNavigationMenu
-              :collapsed="collapsed"
-              :items="adminMenuItems"
-              orientation="vertical"
-            />
-          </template>
-
-          <StorageInfoWidget class="mt-auto" />
-          <USeparator class="my-1" />
-          <UNavigationMenu
-            :collapsed="collapsed"
-            :items="settingsMenuItems"
-            orientation="vertical"
+            :open="isSectionOpen(section.id)"
+            @update:open="(value) => setSectionOpen(section.id, value)"
           />
         </div>
 
         <div class="flex flex-col flex-1 min-w-0 lg:hidden overflow-y-auto overflow-x-hidden">
-          <div class="px-3 pt-5 pb-1">
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
-              Your Library
-            </p>
-          </div>
-          <nav class="flex flex-col gap-0.5 px-3">
-            <MobileNavItem
-              v-for="item in mobileMainItems"
-              :key="item.to"
-              :icon="item.icon"
-              :label="item.label"
-              :to="item.to"
-              :active="route.path === item.to"
-            />
-          </nav>
-
-          <template v-if="streamingEnabled">
-            <div class="px-3 pt-6 pb-1">
+          <template v-for="section in sidebarSections" :key="section.id">
+            <div v-if="section.id !== 'library'" class="px-3 pt-6 pb-1">
               <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
-                Media
+                {{ section.label }}
               </p>
             </div>
-            <nav class="flex flex-col gap-0.5 px-3">
+
+            <nav
+              class="flex flex-col gap-0.5 px-3"
+              :class="{ 'pt-5': section.id === 'library' }"
+              :aria-label="`${section.label} navigation`"
+            >
               <MobileNavItem
-                v-for="item in mobileStreamingItems"
+                v-for="item in section.items"
                 :key="item.to"
                 :icon="item.icon"
                 :label="item.label"
                 :to="item.to"
-                :active="item.to === '/stats' ? isListeningRoute : route.path === item.to"
-              />
-            </nav>
-          </template>
-
-          <template v-if="authStore.isAdmin">
-            <div class="px-3 pt-6 pb-1">
-              <p class="text-[10px] font-semibold uppercase tracking-widest text-dimmed px-2 mb-1">
-                Admin
-              </p>
-            </div>
-            <nav class="flex flex-col gap-0.5 px-3">
-              <MobileNavItem
-                v-for="item in mobileAdminItems"
-                :key="item.to"
-                :icon="item.icon"
-                :label="item.label"
-                :to="item.to"
-                :active="route.path === item.to"
+                :active="isSidebarItemActive(item, route.name)"
               />
             </nav>
           </template>
@@ -131,45 +60,36 @@
               Account
             </p>
           </div>
-          <nav class="flex flex-col gap-0.5 px-3 min-w-0">
+          <nav class="flex flex-col gap-0.5 px-3 pb-3 min-w-0" aria-label="Account navigation">
             <MobileNavItem
-              v-for="item in mobileSettingsItems"
+              v-for="item in mobileAccountItems"
               :key="item.label"
               :icon="item.icon"
               :label="item.label"
               :to="item.to"
               :action="item.action"
-              :indented="item.indented"
-              :dot="item.dot"
-              :active="item.hash ? route.hash === item.hash : route.path === item.to"
             />
           </nav>
-
-          <div class="mt-auto px-3 pb-3 pt-4">
-            <StorageInfoWidget />
-          </div>
         </div>
       </template>
 
       <template #footer="{ collapsed }">
-        <UTooltip v-if="collapsed" text="Log out">
-          <UButton
-            icon="i-heroicons-arrow-right-on-rectangle"
-            color="neutral"
-            variant="ghost"
-            square
-            @click="handleLogout"
+        <div class="hidden w-full min-w-0 lg:block">
+          <SidebarUserMenu
+            :collapsed="collapsed"
+            @logout="handleLogout"
+            @report-problem="openReportProblemModal"
           />
-        </UTooltip>
+        </div>
+
         <UButton
-          v-else
           label="Log out"
-          icon="i-heroicons-arrow-right-on-rectangle"
+          icon="i-lucide-log-out"
           color="neutral"
           variant="link"
           size="sm"
           block
-          class="justify-start text-gray-500 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          class="justify-start text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 lg:hidden"
           @click="handleLogout"
         />
       </template>
@@ -199,6 +119,8 @@
             />
           </template>
           <template #right>
+            <div id="dashboard-navbar-actions" class="flex items-center gap-2 empty:hidden" />
+
             <UTooltip text="Show app shortcuts">
               <UButton
                 class="md:block hidden"
@@ -243,13 +165,12 @@
 </template>
 
 <script setup lang="ts">
-import type { NavigationMenuItem } from "@nuxt/ui";
-
 import { computed, defineAsyncComponent, ref } from "vue";
 import { useRoute } from "vue-router";
 
-import StorageInfoWidget from "@/components/dashboard/metrics/StorageInfoWidget.vue";
 import MobileNavItem from "@/components/dashboard/MobileNavItem.vue";
+import SidebarSection from "@/components/dashboard/SidebarSection.vue";
+import SidebarUserMenu from "@/components/dashboard/SidebarUserMenu.vue";
 import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 import ReportProblemModal from "@/components/modals/ReportProblemModal.vue";
 import LyricsPanel from "@/components/streaming/LyricsPanel.vue";
@@ -261,6 +182,11 @@ import router from "@/router";
 import { useAuthStore } from "@/stores/auth";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/stream-player";
+import {
+  type SidebarSectionId,
+  buildSidebarSections,
+  isSidebarItemActive,
+} from "@/utils/sidebar-navigation";
 
 const streamingEnabled = import.meta.env.VITE_STREAMING_ENABLED === "true";
 
@@ -310,199 +236,33 @@ defineShortcuts({
   meta_k: openShortCutsModal,
 });
 
-// Desktop navigation
-const libraryMenuItems: NavigationMenuItem[] = [
-  {
-    icon: "i-heroicons-home",
-    label: "Home",
-    to: "/home",
-  },
-  {
-    icon: "i-heroicons-folder",
-    label: "File Explorer",
-    to: "/dashboard",
-  },
-  {
-    icon: "i-heroicons-tag",
-    label: "Tags and Categories",
-    to: "/dashboard/tags",
-  },
-  {
-    icon: "i-heroicons-clock",
-    label: "Access History",
-    to: "/access-history",
-  },
-  {
-    icon: "i-heroicons-trash",
-    label: "Trash",
-    to: "/dashboard/trash",
-  },
-];
-
-const streamingDestinations = [
-  { icon: "mdi:play-circle-outline", label: "Overview", to: "/media" },
-  { icon: "mdi:music-note", label: "Music", to: "/streaming/music" },
-  { icon: "mdi:playlist-play", label: "Playlists", to: "/streaming/playlists" },
-  { icon: "mdi:film-open-outline", label: "Videos", to: "/streaming/videos" },
-  { icon: "mdi:luggage", label: "Jobs", to: "/streaming/jobs" },
-  { icon: "mdi:history", label: "History", to: "/streaming/history" },
-  { icon: "mdi:chart-line", label: "Your listening", to: "/stats" },
-];
-
-const isListeningRoute = computed(
-  () => route.path === "/stats" || route.path.startsWith("/stats/wrapped"),
+const sidebarSections = computed(() =>
+  buildSidebarSections({ isAdmin: authStore.isAdmin, streamingEnabled }),
 );
 
-const mediaMenuValue = computed<string[]>({
-  get: () => (settingsStore.isMediaSectionOpen ? ["media"] : []),
-  set: (values) => settingsStore.setMediaSectionOpen(values.includes("media")),
-});
+const isSectionOpen = (id: SidebarSectionId) => {
+  if (id === "media") return settingsStore.isMediaSectionOpen;
+  if (id === "admin") return settingsStore.isAdminSectionOpen;
 
-const streamingMenuItems = computed<NavigationMenuItem[]>(() => [
-  {
-    value: "media",
-    icon: "mdi:play-circle-outline",
-    label: "Overview",
-    to: "/media",
-    active:
-      route.path === "/media" || route.path.startsWith("/streaming/") || isListeningRoute.value,
-    children: streamingDestinations
-      .filter((item) => item.to !== "/media")
-      .map((item) => {
-        if (item.to === "/stats") return { ...item, active: isListeningRoute.value };
+  return true;
+};
 
-        return item;
-      }),
-  },
-]);
+const setSectionOpen = (id: SidebarSectionId, value: boolean) => {
+  if (id === "media") settingsStore.setMediaSectionOpen(value);
+  if (id === "admin") settingsStore.setAdminSectionOpen(value);
+};
 
-const adminMenuItems = computed<NavigationMenuItem[]>(() => [
-  {
-    icon: "i-heroicons-chart-bar",
-    label: "Admin Dashboard",
-    to: "/dashboard/admin",
-  },
-  {
-    icon: "i-heroicons-users",
-    label: "User Registry",
-    to: "/dashboard/admin/user-registry",
-  },
-  {
-    icon: "i-heroicons-archive-box",
-    label: "Storage",
-    to: "/dashboard/admin/storage",
-  },
-  {
-    icon: "material-symbols:vitals",
-    label: "System Vitals",
-    to: "/dashboard/admin/service-status",
-  },
-  {
-    icon: "lucide:calendar-clock",
-    label: "Incident History",
-    to: "/dashboard/admin/incident-history",
-  },
-]);
-
-const settingsMenuItems = computed<NavigationMenuItem[]>(() => {
-  const onSettings = route.path === "/settings";
-  const hash = route.hash;
-  const children: NavigationMenuItem[] = [
-    {
-      active: onSettings && (hash === "" || hash === "#appearance"),
-      class: settingsStore.isAppearanceModified ? "settings-nav-modified" : undefined,
-      icon: "mdi:palette-outline",
-      label: "Appearance",
-      to: "/settings#appearance",
-    },
-    {
-      active: onSettings && hash === "#behavior",
-      class: settingsStore.isBehaviorModified ? "settings-nav-modified" : undefined,
-      icon: "mdi:cog-outline",
-      label: "Behavior",
-      to: "/settings#behavior",
-    },
-  ];
-  if (import.meta.env.VITE_AUTOTAGGING_ENABLED === "true") {
-    children.push({
-      active: onSettings && hash === "#auto-tagging",
-      class: settingsStore.isAutoTaggingModified ? "settings-nav-modified" : undefined,
-      icon: "mdi:tag-multiple",
-      label: "Auto-tagging",
-      to: "/settings#auto-tagging",
-    });
-  }
-  children.push({
-    active: onSettings && hash === "#auto-playlists",
-    class: settingsStore.isAutoPlaylistsModified ? "settings-nav-modified" : undefined,
-    icon: "mdi:playlist-music",
-    label: "Auto-playlists",
-    to: "/settings#auto-playlists",
-  });
-  return [
-    {
-      children,
-      defaultOpen: onSettings,
-      icon: "i-heroicons-cog-6-tooth",
-      label: "Settings",
-      to: "/settings",
-    },
-    {
-      icon: "i-heroicons-user-circle",
-      label: "My Account",
-      to: "/account",
-    },
-    {
-      icon: "i-lucide-life-buoy",
-      label: "Report a problem",
-      onSelect: () => {
-        void openReportProblemModal();
-      },
-    },
-  ];
-});
-
-// Mobile navigation
-
-const mobileMainItems = [
-  { icon: "i-heroicons-home", label: "Home", to: "/home" },
-  { icon: "i-heroicons-folder", label: "File Explorer", to: "/dashboard" },
-  { icon: "i-heroicons-tag", label: "Tags and Categories", to: "/dashboard/tags" },
-  { icon: "i-heroicons-clock", label: "Access History", to: "/access-history" },
-  { icon: "i-heroicons-trash", label: "Trash", to: "/dashboard/trash" },
-];
-
-const mobileStreamingItems = streamingDestinations;
-
-const mobileAdminItems = [
-  { icon: "i-heroicons-chart-bar", label: "Admin Dashboard", to: "/dashboard/admin" },
-  { icon: "i-heroicons-users", label: "User Registry", to: "/dashboard/admin/user-registry" },
-  { icon: "i-heroicons-archive-box", label: "Storage", to: "/dashboard/admin/storage" },
-  {
-    icon: "i-material-symbols:vitals",
-    label: "System Vitals",
-    to: "/dashboard/admin/service-status",
-  },
-  {
-    icon: "i-mdi-calendar-clock",
-    label: "Incident History",
-    to: "/dashboard/admin/incident-history",
-  },
-];
-
-interface MobileSettingsItem {
+interface MobileAccountItem {
   icon: string;
   label: string;
   to?: string;
   action?: () => void;
-  hash?: string;
-  indented?: boolean;
-  dot?: boolean;
 }
 
-const mobileSettingsItems = computed<MobileSettingsItem[]>(() => [
-  { icon: "i-heroicons-cog-6-tooth", label: "Settings", to: "/settings" },
-  { icon: "i-heroicons-user-circle", label: "My Account", to: "/account" },
+const mobileAccountItems: MobileAccountItem[] = [
+  { icon: "i-lucide-user-round", label: "My account", to: "/account" },
+  { icon: "i-lucide-settings", label: "Settings", to: "/settings" },
+  { icon: "i-lucide-hard-drive", label: "My storage", to: "/my-storage" },
   {
     icon: "i-lucide-life-buoy",
     label: "Report a problem",
@@ -510,43 +270,7 @@ const mobileSettingsItems = computed<MobileSettingsItem[]>(() => [
       void openReportProblemModal();
     },
   },
-  {
-    dot: settingsStore.isAppearanceModified,
-    hash: "#appearance",
-    icon: "mdi:palette-outline",
-    indented: true,
-    label: "Appearance",
-    to: "/settings#appearance",
-  },
-  {
-    dot: settingsStore.isBehaviorModified,
-    hash: "#behavior",
-    icon: "mdi:cog-outline",
-    indented: true,
-    label: "Behavior",
-    to: "/settings#behavior",
-  },
-  ...(import.meta.env.VITE_AUTOTAGGING_ENABLED === "true"
-    ? [
-        {
-          dot: settingsStore.isAutoTaggingModified,
-          hash: "#auto-tagging",
-          icon: "mdi:tag-multiple",
-          indented: true,
-          label: "Auto-tagging",
-          to: "/settings#auto-tagging",
-        },
-      ]
-    : []),
-  {
-    dot: settingsStore.isAutoPlaylistsModified,
-    hash: "#auto-playlists",
-    icon: "mdi:playlist-music",
-    indented: true,
-    label: "Auto-playlists",
-    to: "/settings#auto-playlists",
-  },
-]);
+];
 
 const handleLogout = async () => {
   const logout = authStore.logout();
@@ -555,19 +279,3 @@ const handleLogout = async () => {
   await logout;
 };
 </script>
-
-<style scoped>
-.settings-nav-modified {
-  position: relative;
-}
-
-.settings-nav-modified::after {
-  content: "";
-  flex: none;
-  width: 6px;
-  height: 6px;
-  margin-left: auto;
-  border-radius: 9999px;
-  background: var(--ui-primary);
-}
-</style>

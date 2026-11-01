@@ -591,7 +591,10 @@ onUnmounted(() => {
   <main class="home-page w-full min-w-0" :class="{ 'is-editing': store.isEditing }">
     <header
       class="home-toolbar flex shrink-0 flex-wrap items-center gap-2 border-gray-200/70 dark:border-gray-700/70"
-      :class="{ 'frosted-glass glass-surface border-b': store.isEditing }"
+      :class="{
+        'frosted-glass glass-surface border-b': store.isEditing,
+        'is-collapsed': !store.isEditing && !showHeaderGreeting,
+      }"
     >
       <div
         class="home-heading min-w-0"
@@ -726,15 +729,6 @@ onUnmounted(() => {
         </template>
       </template>
 
-      <UButton
-        v-else-if="store.settings"
-        class="ml-auto"
-        color="neutral"
-        variant="outline"
-        icon="i-heroicons-cog-6-tooth"
-        @click="beginEditing"
-        >Customize</UButton
-      >
     </header>
 
     <HomeLoadError v-if="showError" :retrying="isLoading" :disabled="isSaving" @retry="refresh()" />
@@ -898,6 +892,25 @@ onUnmounted(() => {
       </div>
     </template>
 
+    <Teleport defer to="#dashboard-navbar-actions">
+      <UButton
+        v-if="store.settings && !store.isEditing"
+        color="neutral"
+        variant="ghost"
+        icon="i-lucide-layout-dashboard"
+        aria-label="Customize"
+        class="group/customize gap-0"
+        @click="beginEditing"
+      >
+        <span
+          class="grid grid-cols-[0fr] opacity-0 transition-[grid-template-columns,opacity] duration-200 ease-out group-hover/customize:grid-cols-[1fr] group-hover/customize:opacity-100 group-focus-visible/customize:grid-cols-[1fr] group-focus-visible/customize:opacity-100 motion-reduce:transition-none"
+          aria-hidden="true"
+        >
+          <span class="overflow-hidden whitespace-nowrap pl-1.5">Customize</span>
+        </span>
+      </UButton>
+    </Teleport>
+
     <UModal
       v-model:open="exitDialogOpen"
       title="Leave customization?"
@@ -955,6 +968,11 @@ onUnmounted(() => {
 
 .home-toolbar {
   margin-bottom: 2rem;
+}
+
+/* Only the screen-reader heading remains, so the row must not reserve space above the grid. */
+.home-toolbar.is-collapsed {
+  margin-bottom: 0;
 }
 
 .home-heading {

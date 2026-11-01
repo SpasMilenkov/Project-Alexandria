@@ -224,11 +224,11 @@ test("completed onboarding bookmarks honor cached completion and their return de
   expect(onboardingRequests).toBe(1);
 });
 
-test("Home and File Explorer remain separate keyboard destinations", async ({ page }) => {
+test("Home and Files remain separate keyboard destinations", async ({ page }) => {
   await prepareLanding(page, { signedIn: true });
   await page.goto("/home");
 
-  const explorer = page.getByRole("link", { name: "File Explorer", exact: true }).first();
+  const explorer = page.getByRole("link", { name: "Files", exact: true }).first();
   await explorer.focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/dashboard$/u);
@@ -244,7 +244,7 @@ test.describe("phone landing", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
   for (const colorScheme of ["light", "dark"] as const) {
-    test(`Home, Media and File Explorer navigation in ${colorScheme} mode`, async ({ page }) => {
+    test(`Home, Media and Files navigation in ${colorScheme} mode`, async ({ page }) => {
       await page.emulateMedia({ colorScheme });
       await prepareLanding(page, { signedIn: true });
       await page.goto("/");
@@ -257,7 +257,7 @@ test.describe("phone landing", () => {
       await expect(page.getByRole("heading", { name: "Media", exact: true })).toBeVisible();
 
       await page.getByRole("button", { name: "Open sidebar", exact: true }).click();
-      await page.getByRole("button", { name: "File Explorer", exact: true }).click();
+      await page.getByRole("button", { name: "Files", exact: true }).click();
       await expect(page).toHaveURL(/\/dashboard$/u);
 
       await page.getByRole("button", { name: "Open sidebar", exact: true }).click();
