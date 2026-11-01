@@ -2,9 +2,9 @@ namespace Alexandria.Common.Services;
 
 public interface IImagePreviewService
 {
-    public Task<Stream> GenerateImagePreviewAsync(Stream imageToPreview, string? format, int width = 1280,
-        int height = 720, CancellationToken ct = default);
-
-    Task<Stream> GenerateImageThumbnailAsync(Stream imageToPreview, string? format, int size = 320,
-        CancellationToken ct = default);
+    /// <summary>
+    /// Generates the preview (fits 1280x720, never upscaled) and the padded 320x320 thumbnail
+    /// from a single seekable source.
+    /// </summary>
+    Task<ImagePreviewArtifacts> GenerateAsync(Stream source, string? mimeType, CancellationToken ct = default);
 }
