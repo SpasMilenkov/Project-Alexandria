@@ -222,7 +222,8 @@ const DEFAULT_UI_STATE = {
   isAutoPlaylistsSectionOpen: true,
   isBehaviorSectionOpen: true,
   isSystemTagsVisible: false,
-  isMediaSectionOpen: false,
+  isMediaSectionOpen: true,
+  isAdminSectionOpen: true,
 };
 
 export const MAX_BACKGROUND_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -258,6 +259,7 @@ export const useSettingsStore = defineStore(
     const isAutoPlaylistsSectionOpen = ref(DEFAULT_UI_STATE.isAutoPlaylistsSectionOpen);
     const isSystemTagsVisible = ref(DEFAULT_UI_STATE.isSystemTagsVisible);
     const isMediaSectionOpen = ref(DEFAULT_UI_STATE.isMediaSectionOpen);
+    const isAdminSectionOpen = ref(DEFAULT_UI_STATE.isAdminSectionOpen);
 
     // Getters
     const getSettings = computed((): UserSettings => ({
@@ -429,6 +431,10 @@ export const useSettingsStore = defineStore(
       isMediaSectionOpen.value = v;
     };
 
+    const setAdminSectionOpen = (v: boolean) => {
+      isAdminSectionOpen.value = v;
+    };
+
     const syncAppearanceFromServer = (appearance: AppearanceSettings) => {
       setAccentColor(appearance.accentColor);
       setBackgroundColor(appearance.backgroundColor);
@@ -576,6 +582,7 @@ export const useSettingsStore = defineStore(
       isAutoPlaylistsSectionOpen.value = DEFAULT_UI_STATE.isAutoPlaylistsSectionOpen;
       isSystemTagsVisible.value = DEFAULT_UI_STATE.isSystemTagsVisible;
       isMediaSectionOpen.value = DEFAULT_UI_STATE.isMediaSectionOpen;
+      isAdminSectionOpen.value = DEFAULT_UI_STATE.isAdminSectionOpen;
     };
 
     const resetSessionState = () => {
@@ -622,6 +629,7 @@ export const useSettingsStore = defineStore(
       isBehaviorSectionOpen,
       isSystemTagsVisible,
       isMediaSectionOpen,
+      isAdminSectionOpen,
       listIconSize,
       resetAppearanceSettings,
       resetAutoPlaylistSettings,
@@ -642,6 +650,7 @@ export const useSettingsStore = defineStore(
       setBackgroundImageOpacity,
       setBehaviorSectionOpen,
       setMediaSectionOpen,
+      setAdminSectionOpen,
       setFrostDisabledOnMobile,
       setFrostEnabled,
       setFrostStrength,
@@ -688,6 +697,7 @@ export const useSettingsStore = defineStore(
         "isAutoTaggingSectionOpen",
         "isSystemTagsVisible",
         "isMediaSectionOpen",
+        "isAdminSectionOpen",
       ],
     },
   },

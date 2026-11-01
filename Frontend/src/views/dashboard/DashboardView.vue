@@ -163,7 +163,7 @@ onMounted(() => {
       </div>
       <div
         @contextmenu="openManageSheet"
-        class="fixed bottom-0 inset-x-0 z-20 h-14 flex items-center gap-1 px-2 border-t border-gray-200/70 dark:border-gray-700/70 bg-background/80 frosted-glass"
+        class="fixed bottom-0 inset-x-0 z-20 h-14 flex items-center gap-1 px-2 border-t border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface-strong"
       >
         <!-- Visible tab pills (max 3) -->
         <button
