@@ -268,19 +268,7 @@ public class JobRepository(AlexandriaDbContext context) : IJobRepository
 
     public async Task<PaginatedResult<Job>> FindJobsAsync(JobQuery query, CancellationToken ct = default)
     {
-        var jobsQuery = context.Set<Job>().Where(j => j.DeletedAt == null);
-
-        if (query.Status.HasValue)
-            jobsQuery = jobsQuery.Where(j => j.Status == query.Status.Value);
-
-        if (query.Type.HasValue)
-            jobsQuery = jobsQuery.Where(j => j.Type == query.Type.Value);
-
-        if (query.TriggeredByUserId.HasValue)
-            jobsQuery = jobsQuery.Where(j => j.UserId == query.TriggeredByUserId.Value);
-
-        if (query.MaxRetryCount.HasValue)
-            jobsQuery = jobsQuery.Where(j => j.RetryCount < query.MaxRetryCount.Value);
+        var jobsQuery = FilterJobs(context.Set<Job>(), query);
 
         var totalCount = await jobsQuery.CountAsync(ct);
 
@@ -298,6 +286,50 @@ public class JobRepository(AlexandriaDbContext context) : IJobRepository
             TotalCount = totalCount,
             TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
         };
+    }
+
+    public async Task<PaginatedResult<AdminJobDto>> FindAdminJobsAsync(JobQuery query, CancellationToken ct = default)
+    {
+        var jobsQuery = FilterJobs(_jobs.AsNoTracking(), query);
+
+        var totalCount = await jobsQuery.CountAsync(ct);
+
+        var items = await jobsQuery
+            .OrderByDescending(j => j.UpdatedAt ?? j.CreatedAt)
+            .ThenBy(j => j.Id)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(j => new AdminJobDto(j.Id, j.Type, j.Status, j.RetryCount, j.ErrorDetail,
+                j.CreatedAt, j.StartedAt, j.CompletedAt, j.UpdatedAt))
+            .ToListAsync(ct);
+
+        return new PaginatedResult<AdminJobDto>
+        {
+            Items = items,
+            CurrentPage = query.Page,
+            PageSize = query.PageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
+        };
+    }
+
+    private static IQueryable<Job> FilterJobs(IQueryable<Job> jobs, JobQuery query)
+    {
+        var filtered = jobs.Where(j => j.DeletedAt == null);
+
+        if (query.Status.HasValue)
+            filtered = filtered.Where(j => j.Status == query.Status.Value);
+
+        if (query.Type.HasValue)
+            filtered = filtered.Where(j => j.Type == query.Type.Value);
+
+        if (query.TriggeredByUserId.HasValue)
+            filtered = filtered.Where(j => j.UserId == query.TriggeredByUserId.Value);
+
+        if (query.MaxRetryCount.HasValue)
+            filtered = filtered.Where(j => j.RetryCount < query.MaxRetryCount.Value);
+
+        return filtered;
     }
 
     public async Task UpdateStatusForJobsAsync(

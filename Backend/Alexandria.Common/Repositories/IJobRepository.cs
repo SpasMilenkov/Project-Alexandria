@@ -94,6 +94,9 @@ public interface IJobRepository : IRepository<Job>
 
     Task<PaginatedResult<Job>> FindJobsAsync(JobQuery query, CancellationToken ct = default);
 
+    /// <summary>Read-only admin listing, newest activity first, projected in the database.</summary>
+    Task<PaginatedResult<AdminJobDto>> FindAdminJobsAsync(JobQuery query, CancellationToken ct = default);
+
     Task UpdateStatusForJobsAsync(
         IEnumerable<Guid> jobIds, JobStatus status, string? errorDetail = null, CancellationToken ct = default);
 
