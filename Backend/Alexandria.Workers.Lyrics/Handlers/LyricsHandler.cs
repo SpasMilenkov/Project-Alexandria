@@ -82,11 +82,33 @@ public partial class LyricsHandler(
             await FailJobAsync(jobId, ex.Message, ct);
             await unitOfWork.SaveChangesAsync(ct);
         }
+        catch (Exception)
+        {
+            // Transient failure or shutdown: hand the job back so the worker's counted
+            // redelivery can claim it again instead of being dropped as a duplicate.
+            await unitOfWork.Jobs.ReleaseClaimAsync(jobId, CancellationToken.None);
+            throw;
+        }
     }
 
-    // Network-level failures are worth another delivery: the job stays
-    // Processing and the worker's requeue keeps it alive. Cancellation and
-    // anything else propagate to the terminal handling above.
+    /// <summary>
+    /// Terminal outcome for a delivery the worker parked after exhausting its attempts, so the
+    /// job and track stop reporting an in-progress fetch.
+    /// </summary>
+    public async Task MarkRetriesExhaustedAsync(Guid jobId, CancellationToken ct = default)
+    {
+        var lyricsRecord = await unitOfWork.Lyrics.GetByJobIdAsync(jobId, ct);
+        if (lyricsRecord is not null && lyricsRecord.Status != LyricsStatus.Fetched)
+        {
+            lyricsRecord.Status = LyricsStatus.FetchFailed;
+            await unitOfWork.SaveChangesAsync(ct);
+        }
+
+        await FailJobAsync(jobId, "retries exhausted", ct);
+    }
+
+    // Network-level failures are worth another delivery: the claim is released and the
+    // worker's counted republish retries it. Anything else is terminal and handled above.
     private static bool IsTransient(Exception ex) =>
         ex is HttpRequestException or TimeoutException or TaskCanceledException;
 

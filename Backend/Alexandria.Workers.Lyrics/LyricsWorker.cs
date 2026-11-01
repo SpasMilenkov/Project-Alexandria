@@ -186,6 +186,7 @@ public partial class LyricsWorker : BackgroundService
             await LyricsRetryPolicy.PublishWithAttemptsAsync(
                 _channel!, exchangeName, parkingRoutingKey, body, attempt, ct);
             await RecordFailureAsync(ex, ct);
+            await MarkParkedJobFailedAsync(body, ct);
             await _channel!.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
         }
         catch (Exception parkEx)
@@ -193,6 +194,16 @@ public partial class LyricsWorker : BackgroundService
             LogParkFailed(_logger, parkEx);
             await _channel!.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, ct);
         }
+    }
+
+    private async Task MarkParkedJobFailedAsync(byte[] body, CancellationToken ct)
+    {
+        if (!Guid.TryParse(Encoding.UTF8.GetString(body), out var jobId))
+            return;
+
+        using var scope = _serviceProvider.CreateScope();
+        var handler = scope.ServiceProvider.GetRequiredService<LyricsHandler>();
+        await handler.MarkRetriesExhaustedAsync(jobId, ct);
     }
 
     private async Task RecordFailureAsync(Exception ex, CancellationToken ct)

@@ -192,6 +192,30 @@ public class LyricsHandlerTests
     }
 
     [Fact]
+    public async Task transient_provider_error_releases_claim_so_redelivery_can_claim()
+    {
+        _defaultProvider.FetchAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<double?>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<LyricsResult?>(new HttpRequestException("timeout")));
+
+        var act = () => _sut.HandleAsync(_jobId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+        await _jobsRepo.Received(1).ReleaseClaimAsync(_jobId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task mark_retries_exhausted_fails_job_and_record()
+    {
+        await _sut.MarkRetriesExhaustedAsync(_jobId, TestContext.Current.CancellationToken);
+
+        _record.Status.Should().Be(LyricsStatus.FetchFailed);
+        await _jobsRepo.Received(1).UpdateStatusAsync(
+            _jobId, JobStatus.Failed, Arg.Any<int?>(), "retries exhausted", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task duplicate_delivery_returns_silently_without_work()
     {
         _jobsRepo.TryClaimJobAsync(_jobId, Arg.Any<CancellationToken>()).Returns(false);
