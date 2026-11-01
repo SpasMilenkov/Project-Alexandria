@@ -18,13 +18,17 @@ public class PublisherService(Lazy<Task<IConnection>> connectionLazy, IChannelPo
             autoDelete: false,
             arguments: null);
 
+        // Persistent so queued jobs survive a broker restart; queues are already durable.
+        var properties = new BasicProperties { Persistent = true };
+
         try
         {
             await channel.BasicPublishAsync(
                 exchange: exchangeName,
                 routingKey: routingKey,
-                body: body,
-                mandatory: false);
+                mandatory: false,
+                basicProperties: properties,
+                body: body);
         }
         finally
         {
