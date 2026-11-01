@@ -121,6 +121,7 @@ public class EssentiaBatchFileRepository(AlexandriaDbContext context) : IEssenti
 
     public async Task<IEnumerable<Guid>> GetAutoTagRetryCandidatesAsync(
         DateTime attemptCutoff,
+        int maxFailedAttempts,
         CancellationToken ct = default)
     {
         var retryStatuses = new[]
@@ -142,6 +143,9 @@ public class EssentiaBatchFileRepository(AlexandriaDbContext context) : IEssenti
                         && f.Job.CompletedAt < attemptCutoff
                         && f.File.DeletedAt == null
                         && (f.File.CurrentVersion == null || !f.File.CurrentVersion.IsEncrypted)
+                        && _batchFiles.Count(other => other.DeletedAt == null
+                                                      && other.FileId == f.FileId
+                                                      && other.Job.Status == JobStatus.Failed) < maxFailedAttempts
                         && !_batchFiles.Any(other => other.DeletedAt == null
                                                      && other.FileId == f.FileId
                                                      && (other.Job.CompletedAt ?? other.CreatedAt) >

@@ -91,12 +91,13 @@ public partial class EnrichmentBackfillWorker(
                 LogBackfillDrained(logger, request.PolicyId, result.Published, result.Candidates);
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Backfill is idempotent per file, so redelivery only re-publishes
                 // triggers the shared guard would have skipped anyway.
                 LogBackfillError(logger, ex, request.PolicyId);
-                await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
+                await ConsumerRetry.HandleFailureAsync(_channel, eventArgs, exchangeName, ex, serviceProvider,
+                    stoppingToken);
             }
         };
 

@@ -1,3 +1,4 @@
+using Alexandria.Common.Services;
 using Alexandria.Common.Settings;
 using Alexandria.Infrastructure.Converters;
 using Alexandria.Services.Monitoring;
@@ -55,6 +56,13 @@ public static class ApiExtensions
         services.AddMemoryCache(options => { options.SizeLimit = 3000; });
 
         services.Configure<EnrichmentMonitoringOptions>(config.GetSection("Monitoring:Enrichment"));
+        services.Configure<IncidentExpiryOptions>(config.GetSection("Monitoring:IncidentExpiry"));
+        services.AddHostedService<IncidentExpiryService>();
+
+        services.Configure<JobRecoveryOptions>(config.GetSection("Monitoring:JobRecovery"));
+        services.AddScoped<JobRecoveryService>();
+        services.AddScoped<IJobRequeueService, JobRequeueService>();
+        services.AddHostedService<JobRecoveryWorker>();
 
         return services;
     }

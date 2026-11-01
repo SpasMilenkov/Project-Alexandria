@@ -12,6 +12,12 @@ public interface IFileEnrichmentRepository : IRepository<FileEnrichment>
     Task<FileEnrichment> UpsertAsync(FileEnrichment row, CancellationToken ct = default);
 
     /// <summary>
+    /// Upserts a failure payload unless the same analyzer and version already holds a successful
+    /// result, in which case the existing row is returned untouched.
+    /// </summary>
+    Task<FileEnrichment> UpsertFailureAsync(FileEnrichment row, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns true when the file has at least one non-deleted enrichment row whose payload
     /// is a successful result (i.e. not a <c>{"success":false,...}</c> failure row). Used by
     /// the auto-tag trigger to avoid re-publishing enrichment for already-enriched files.

@@ -83,6 +83,20 @@ public class FileEnrichmentRepository(AlexandriaDbContext context) : IFileEnrich
         return result.Entity;
     }
 
+    public async Task<FileEnrichment> UpsertFailureAsync(FileEnrichment row, CancellationToken ct = default)
+    {
+        var existing = await _enrichments.FirstOrDefaultAsync(
+            e => e.FileId == row.FileId
+                 && e.Analyzer == row.Analyzer
+                 && e.Version == row.Version, ct);
+
+        // A later failed attempt must not erase an earlier successful analysis of the same model.
+        if (existing is not null && !EnrichmentPayload.IsFailure(existing.PayloadJson))
+            return existing;
+
+        return await UpsertAsync(row, ct);
+    }
+
     public async Task<bool> HasSuccessfulAutoTagEnrichmentAsync(Guid fileId, CancellationToken ct = default)
     {
         var payloads = await _enrichments

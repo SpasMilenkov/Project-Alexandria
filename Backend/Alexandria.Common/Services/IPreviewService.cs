@@ -34,4 +34,11 @@ public interface IPreviewService
     /// <param name="ct"></param>
     /// <returns></returns>
     Task<string?> GetThumbnailAsync(Guid versionId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Publishes an existing preview job to the worker queue matching its file type without
+    /// changing the job's state. Returns <see langword="false"/> when the source file or its
+    /// type can no longer be resolved, meaning the job can never succeed.
+    /// </summary>
+    Task<bool> RepublishJobAsync(Guid jobId, CancellationToken ct = default);
 }

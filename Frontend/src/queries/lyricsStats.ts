@@ -16,5 +16,6 @@ export const lyricsOverview = defineQueryOptions(() => ({
 export const lyricsTrend = defineQueryOptions((params: LyricsTrendParams) => ({
   key: [...ROOT, "trend", params.from, params.to, params.bucket],
   query: () => lyricsStatsApi.getTrend(params),
+  placeholderData: (prev) => prev,
   staleTime: 15_000,
 }));

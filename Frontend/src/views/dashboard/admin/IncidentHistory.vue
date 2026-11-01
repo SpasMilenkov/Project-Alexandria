@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useQueryCache } from "@pinia/colada";
 import { nextTick, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { type LocationQueryRaw, useRoute, useRouter } from "vue-router";
 
 import type { EventCalendarRange } from "@/api/monitoring";
 import type { OperationalEventSeverity, ServiceType } from "@/enums";
@@ -37,10 +37,23 @@ const applyDeepLink = () => {
   initialSeverity.value = params.severity ?? null;
   highlightId.value = params.eventId ?? null;
 
-  if (params.from && params.to) {
-    feedDateRange.value = { from: params.from, to: params.to };
-    scrollToFeed();
+  // The URL is the source of truth: a link without a window must clear the previous one.
+  if (!params.from || !params.to) {
+    feedDateRange.value = null;
+    return;
   }
+
+  feedDateRange.value = { from: params.from, to: params.to };
+  scrollToFeed();
+};
+
+// Drops keys from the current query; "undefined" removes them from the URL.
+const queryWithout = (...keys: string[]): LocationQueryRaw => {
+  const next: LocationQueryRaw = { ...route.query };
+  for (const key of keys) {
+    next[key] = undefined;
+  }
+  return next;
 };
 
 watch(() => route.query, applyDeepLink, { immediate: true });
@@ -53,9 +66,19 @@ const handleViewDay = (date: Date) => {
   const range = dayWindowFor(date);
   feedDateRange.value = range;
   scrollToFeed();
+  // A day filter replaces any incident-specific selection carried by the previous link.
   void router.replace({
-    query: { ...route.query, from: range.from.toISOString(), to: range.to.toISOString() },
+    query: {
+      ...queryWithout("eventId", "severity"),
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+    },
   });
+};
+
+const handleClearDateRange = () => {
+  feedDateRange.value = null;
+  void router.replace({ query: queryWithout("from", "to") });
 };
 
 // One invalidate covers calendar, uptimes, status history and the event log
@@ -108,7 +131,7 @@ const handleRefresh = async () => {
           :initial-service-type="initialServiceType"
           :initial-severity="initialSeverity"
           :highlight-id="highlightId"
-          @clear-date-range="feedDateRange = null"
+          @clear-date-range="handleClearDateRange"
         />
       </div>
     </div>

@@ -6,6 +6,7 @@ using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Dto.Events.Operational;
 using Alexandria.Dto.Files;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Alexandria.Repositories;
 
@@ -39,35 +40,30 @@ public class OperationalEventRepository(AlexandriaDbContext context) : IOperatio
         };
     }
 
-    public async Task<List<ErrorAggregate>> GetErrorCountsAsync(DateTime from, DateTime to,
+    public async Task<List<EventCalendarRow>> GetCalendarRowsAsync(DateTime from, DateTime to,
         CancellationToken ct = default)
     {
         return await context.OperationalEvents
-            .Where(e => e.CreatedAt >= from && e.CreatedAt <= to)
-            .GroupBy(e => new { Day = DateOnly.FromDateTime(e.CreatedAt), e.ServiceType, e.Severity })
-            .Select(g => new ErrorAggregate(g.Key.Day, g.Key.ServiceType, g.Key.Severity, g.Count()))
+            .AsNoTracking()
+            .Where(e => e.CreatedAt >= from && e.CreatedAt < to)
+            .Select(e => new EventCalendarRow(e.CreatedAt, e.ServiceType, e.Severity))
             .ToListAsync(ct);
     }
 
-    public async Task<double> CalculateUptimeAsync(ServiceType service, DateTime from, DateTime to,
-        CancellationToken ct = default)
+    public async Task<List<DowntimeInterval>> GetDowntimeIntervalsAsync(ServiceType? service, DateTime from,
+        DateTime to, CancellationToken ct = default)
     {
-        var totalWindow = to - from;
+        var q = context.OperationalEvents
+            .AsNoTracking()
+            .Where(e => e.Severity == OperationalEventSeverity.Failure)
+            .Where(e => e.CreatedAt < to && (e.ResolvedAt == null || e.ResolvedAt > from));
 
-        var downtimeSeconds = await context.OperationalEvents
-            .Where(e => e.ServiceType == service
-                        && (e.Code == OperationalEventCode.HealthcheckUnhealthy
-                            || e.Code == OperationalEventCode.HealthcheckUnreachable))
-            .Where(e => e.CreatedAt < to && (e.ResolvedAt == null || e.ResolvedAt > from))
-            .Select(e =>
-                (e.ResolvedAt == null || e.ResolvedAt > to ? to : e.ResolvedAt.Value)
-                - (e.CreatedAt < from ? from : e.CreatedAt))
-            .Select(span => span.TotalSeconds)
-            .SumAsync(ct);
+        if (service is not null)
+            q = q.Where(e => e.ServiceType == service);
 
-        var downtime = TimeSpan.FromSeconds(downtimeSeconds);
-
-        return 100.0 * (1 - downtime.TotalSeconds / totalWindow.TotalSeconds);
+        return await q
+            .Select(e => new DowntimeInterval(e.ServiceType, e.CreatedAt, e.ResolvedAt))
+            .ToListAsync(ct);
     }
 
     public async Task<OperationalEvent?> GetActiveEventAsync(
@@ -92,6 +88,44 @@ public class OperationalEventRepository(AlexandriaDbContext context) : IOperatio
                 .SetProperty(e => e.Status, OperationalEventStatus.Resolved)
                 .SetProperty(e => e.ResolvedAt, resolvedAt)
                 .SetProperty(e => e.UpdatedAt, resolvedAt), ct);
+    }
+
+    public async Task<int> TouchActiveEventAsync(
+        ServiceType serviceType, OperationalEventCode code, DateTime seenAt, CancellationToken ct)
+    {
+        return await context.OperationalEvents
+            .Where(e => e.ServiceType == serviceType
+                        && e.Code == code
+                        && e.Status == OperationalEventStatus.Active)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.LastSeenAt, seenAt), ct);
+    }
+
+    public async Task<bool> AddActiveIfAbsentAsync(OperationalEvent entity, CancellationToken ct)
+    {
+        entity.CreatedAt = DateTime.UtcNow;
+        entity.LastSeenAt ??= entity.CreatedAt;
+        context.OperationalEvents.Add(entity);
+
+        try
+        {
+            await context.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            context.Entry(entity).State = EntityState.Detached;
+            return false;
+        }
+    }
+
+    public async Task<List<OperationalEvent>> GetIdleActiveEventsAsync(
+        OperationalEventCode code, DateTime idleBefore, CancellationToken ct)
+    {
+        return await context.OperationalEvents
+            .Where(e => e.Code == code
+                        && e.Status == OperationalEventStatus.Active
+                        && (e.LastSeenAt ?? e.CreatedAt) < idleBefore)
+            .ToListAsync(ct);
     }
 
     public async Task<List<OperationalEvent>> GetCurrentStatusPerServiceAsync(CancellationToken ct)
@@ -136,6 +170,7 @@ public class OperationalEventRepository(AlexandriaDbContext context) : IOperatio
     public async Task<OperationalEvent> AddAsync(OperationalEvent entity, CancellationToken ct = default)
     {
         entity.CreatedAt = DateTime.UtcNow;
+        entity.LastSeenAt ??= entity.CreatedAt;
         var entry = await context.OperationalEvents.AddAsync(entity, ct);
         return entry.Entity;
     }
@@ -150,6 +185,7 @@ public class OperationalEventRepository(AlexandriaDbContext context) : IOperatio
         foreach (var entity in eventList)
         {
             entity.CreatedAt = now;
+            entity.LastSeenAt ??= now;
         }
 
         await context.OperationalEvents.AddRangeAsync(eventList, ct);
@@ -190,4 +226,7 @@ public class OperationalEventRepository(AlexandriaDbContext context) : IOperatio
     {
         return await context.OperationalEvents.AnyAsync(predicate, ct);
     }
+
+    private static bool IsUniqueViolation(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 }

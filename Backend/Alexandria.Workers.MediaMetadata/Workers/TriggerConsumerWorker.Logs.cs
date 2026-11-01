@@ -33,4 +33,7 @@ public partial class TriggerConsumerWorker
 
     [LoggerMessage(22207, LogLevel.Information, "Trigger consumer stopping")]
     private static partial void LogWorkerStopping(ILogger logger);
+
+    [LoggerMessage(22210, LogLevel.Error, "Failed to republish trigger for file {FileId} after a staging error; requeueing")]
+    private static partial void LogRetryPublishFailed(ILogger logger, Exception ex, Guid fileId);
 }

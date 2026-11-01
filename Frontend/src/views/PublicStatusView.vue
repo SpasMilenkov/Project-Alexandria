@@ -6,6 +6,7 @@ import { computed } from "vue";
 import type { DailyServiceStatus, PublicServiceState } from "@/api/publicStatus";
 import type { ServiceType } from "@/enums";
 
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { publicCurrentStatus, publicStatusHistory } from "@/queries/publicStatus";
 import {
   overallPublicState,
@@ -25,16 +26,17 @@ const visibleWindow = computed(() => (isMobile.value ? MOBILE_DAYS : DAYS));
 
 const {
   data: current,
-  isLoading: currentLoading,
+  isLoading: currentFetching,
   error: currentError,
+  refetch: refetchCurrent,
 } = useQuery(publicCurrentStatus());
 const {
   data: history,
-  isLoading: historyLoading,
+  isLoading: historyFetching,
   error: historyError,
 } = useQuery(publicStatusHistory(DAYS));
 
-const isLoading = computed(() => currentLoading.value || historyLoading.value);
+useLiveRefresh(refetchCurrent, 60_000);
 
 // Auth refresh cycles produce transient 401/403s — never surface those
 const isAuthError = (err: unknown): boolean => {
@@ -45,6 +47,16 @@ const isAuthError = (err: unknown): boolean => {
   const msg = String(e.message ?? "").toLowerCase();
   return msg.includes("unauthorized") || msg.includes("401") || msg.includes("forbidden");
 };
+
+// Missing data must never render as "operational": background refetches keep the
+// current rows, and a suppressed auth error keeps the spinner.
+const isLoading = computed(() => {
+  const currentMissing =
+    current.value === undefined && (currentFetching.value || isAuthError(currentError.value));
+  const historyMissing =
+    history.value === undefined && (historyFetching.value || isAuthError(historyError.value));
+  return currentMissing || historyMissing;
+});
 
 const visibleError = computed(() => {
   const err = currentError.value ?? historyError.value;

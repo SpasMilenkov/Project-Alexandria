@@ -5,6 +5,7 @@ import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import {
   type LyricLine,
   type LyricsFormat,
@@ -16,7 +17,7 @@ import {
 import { LyricsProvider } from "@/enums/lyrics-provider";
 import { LyricsStatus } from "@/enums/lyrics-status";
 import { changeProvider, deleteLyrics, requeueLyrics, uploadLyrics } from "@/mutations/lyrics";
-import { getLyrics } from "@/queries/lyrics";
+import { getLyrics, lyricsPollInterval } from "@/queries/lyrics";
 import { usePlayerStore } from "@/stores/stream-player";
 
 const emit = defineEmits<{ (e: "close"): void }>();
@@ -28,7 +29,17 @@ const currentTime = computed(() => playerStore.currentTime);
 
 const lyricsJobId = computed(() => activeFile.value?.transpilationJobId ?? "");
 
-const { data, isLoading } = useQuery(() => getLyrics(lyricsJobId.value));
+const { data, isLoading, refetch } = useQuery(() => getLyrics(lyricsJobId.value));
+
+// Background polls must not swap the lyrics for a spinner.
+const isFirstLoad = computed(() => isLoading.value && data.value === undefined);
+
+useLiveRefresh(
+  () => {
+    if (lyricsJobId.value) refetch();
+  },
+  () => lyricsPollInterval(data.value),
+);
 
 // The lyrics record has its own id, separate from the transpilation job id
 // used to look it up. Change-provider and delete target that record id;
@@ -428,7 +439,10 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
       </div>
 
       <!-- Loading -->
-      <div v-else-if="isLoading" class="flex flex-col items-center justify-center gap-2.5 flex-1">
+      <div
+        v-else-if="isFirstLoad"
+        class="flex flex-col items-center justify-center gap-2.5 flex-1"
+      >
         <Icon icon="mdi:loading" class="w-5 h-5 animate-spin text-gray-400 dark:text-white/30" />
       </div>
 

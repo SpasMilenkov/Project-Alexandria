@@ -86,6 +86,16 @@ public class MimeCatalogTests
     }
 
     [Fact]
+    public void PreviewWorker_categories_matchPreviewServiceRouting()
+    {
+        foreach (var category in Enum.GetValues<FileCategory>())
+        {
+            var routed = PreviewService.WorkerRoutingKey(category, "type/subtype") is not null;
+            routed.Should().Be(MimeCategories.UsesPreviewWorker(category), category.ToString());
+        }
+    }
+
+    [Fact]
     public void Groups_everyTypeTheResolverCanEmit_belongsToExactlyOneGroup()
     {
         var emitted = ExtensionMimeMap.AllTypes

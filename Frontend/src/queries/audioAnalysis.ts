@@ -3,7 +3,7 @@ import { defineQueryOptions } from "@pinia/colada";
 import { audioAnalysisApi } from "@/api/audioAnalysis";
 
 export const INTEGRATIONS_QUERY_KEYS = {
-  batches: () => [...INTEGRATIONS_QUERY_KEYS.root, "batches"],
+  batches: (limit: number | null) => [...INTEGRATIONS_QUERY_KEYS.root, "batches", limit],
   duration: () => [...INTEGRATIONS_QUERY_KEYS.root, "duration"],
   failureRate: (from: string, to: string, bucket: string) => [
     ...INTEGRATIONS_QUERY_KEYS.root,
@@ -27,22 +27,20 @@ export const INTEGRATIONS_QUERY_KEYS = {
 export const queueDepth = defineQueryOptions(() => ({
   key: INTEGRATIONS_QUERY_KEYS.queueDepth(),
   query: () => audioAnalysisApi.getQueueDepth(),
-  // Live-ish numbers, cheap to refetch on the admin page.
   staleTime: 5000,
-  refetchInterval: 30000,
 }));
 
 export const stuck = defineQueryOptions(() => ({
   key: INTEGRATIONS_QUERY_KEYS.stuck(),
   query: () => audioAnalysisApi.getStuck(),
   staleTime: 5000,
-  refetchInterval: 30000,
 }));
 
 export const failureRate = defineQueryOptions(
   (range: { from: string; to: string; bucket: "hour" | "day" }) => ({
     key: INTEGRATIONS_QUERY_KEYS.failureRate(range.from, range.to, range.bucket),
     query: () => audioAnalysisApi.getFailureRate(range.from, range.to, range.bucket),
+    placeholderData: (prev) => prev,
     staleTime: 15000,
   }),
 );
@@ -54,7 +52,7 @@ export const duration = defineQueryOptions(() => ({
 }));
 
 export const batches = defineQueryOptions((limit?: number) => ({
-  key: INTEGRATIONS_QUERY_KEYS.batches(),
+  key: INTEGRATIONS_QUERY_KEYS.batches(limit ?? null),
   query: () => audioAnalysisApi.getBatches(limit),
   staleTime: 10000,
 }));
@@ -62,6 +60,7 @@ export const batches = defineQueryOptions((limit?: number) => ({
 export const volumeByHour = defineQueryOptions((range: { from: string; to: string }) => ({
   key: INTEGRATIONS_QUERY_KEYS.volumeByHour(range.from, range.to),
   query: () => audioAnalysisApi.getVolumeByHour(range.from, range.to),
+  placeholderData: (prev) => prev,
   staleTime: 15000,
 }));
 

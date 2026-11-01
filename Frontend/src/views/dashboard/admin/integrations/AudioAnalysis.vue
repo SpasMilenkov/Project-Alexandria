@@ -21,8 +21,11 @@ import { useRoute } from "vue-router";
 import type { EnrichmentBucket } from "@/api/audioAnalysis";
 
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
+import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
+import { useRollingNow } from "@/composables/useRollingNow";
 import { useTheme } from "@/composables/useTheme";
-import { ServiceType } from "@/enums";
+import { JobType, ServiceType } from "@/enums";
 import {
   batches,
   duration,
@@ -90,8 +93,11 @@ const bucketOptions: { label: string; value: EnrichmentBucket }[] = [
 const rangeMs = ref(rangeOptions[0].value);
 const bucket = ref<EnrichmentBucket>("hour");
 
+// Minute ticks move the trailing window forward; Refresh ticks it immediately.
+const { now, tick } = useRollingNow();
+
 const rangeDates = computed(() => {
-  const to = Date.now();
+  const to = now.value;
   const from = to - rangeMs.value;
   return {
     from: new Date(from).toISOString(),
@@ -130,13 +136,19 @@ const hasError = computed(
 );
 
 const handleRefresh = () => {
-  queue.refresh();
-  stuckQuery.refresh();
-  failure.refresh();
-  durationQuery.refresh();
-  volume.refresh();
-  recent.refresh();
+  tick();
+  queue.refetch();
+  stuckQuery.refetch();
+  failure.refetch();
+  durationQuery.refetch();
+  volume.refetch();
+  recent.refetch();
 };
+
+useLiveRefresh(() => {
+  queue.refetch();
+  stuckQuery.refetch();
+}, 30_000);
 
 // Tracks when the last successful refresh finished, so the header can show a
 // quiet "Updated 2:41 PM" instead of leaving the user guessing about staleness.
@@ -922,6 +934,8 @@ const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse())
         </div>
       </div>
     </section>
+
+    <JobRecoveryPanel :type="JobType.MetadataEnrichment" title="Enrichment jobs" />
 
     <!-- Incidents (D12): locked to MediaMetadata, fed by the deep-link contract -->
     <section class="space-y-2">

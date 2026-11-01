@@ -20,6 +20,7 @@ export const previewsOverview = defineQueryOptions(() => ({
 export const previewsVolume = defineQueryOptions((params: PreviewVolumeParams) => ({
   key: [...ROOT, "volume", params.from, params.to, params.bucket],
   query: () => previewsStatsApi.getVolume(params),
+  placeholderData: (prev) => prev,
   staleTime: 15_000,
 }));
 
@@ -32,5 +33,6 @@ export const previewsJobOverview = defineQueryOptions((type?: PreviewJobType) =>
 export const previewsJobTrend = defineQueryOptions((params: PreviewJobTrendParams) => ({
   key: [...ROOT, "job-trend", params.from, params.to, params.bucket, params.type ?? null],
   query: () => previewsStatsApi.getJobTrend(params),
+  placeholderData: (prev) => prev,
   staleTime: 15_000,
 }));

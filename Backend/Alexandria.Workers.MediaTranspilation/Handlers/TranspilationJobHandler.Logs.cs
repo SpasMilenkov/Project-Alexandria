@@ -50,4 +50,8 @@ public partial class TranspilationJobHandler
     [LoggerMessage(10009, LogLevel.Debug,
         "Cleaning up  old segments for job with Id {jobId} and prefix {segmentPrefix} ")]
     private static partial void LogCleaningUpOldSegments(ILogger logger, Guid jobId, string segmentPrefix);
+
+    [LoggerMessage(10010, LogLevel.Warning,
+        "Job {JobId}: transpilation record is missing; failing the job without retries")]
+    private static partial void LogTranspilationRowMissing(ILogger logger, Guid jobId);
 }

@@ -19,6 +19,15 @@ public partial class AccumulatorWorker
     private static partial void LogDispatchError(ILogger logger, Exception ex, Guid batchId, int count);
 
     [LoggerMessage(22303, LogLevel.Error,
-        "Failed to persist batch {BatchId} ({Count} files); batch left Dispatched for the timeout sweep")]
+        "Failed to persist batch {BatchId} ({Count} files); triggers released for redelivery")]
     private static partial void LogPersistError(ILogger logger, Exception ex, Guid batchId, int count);
+
+    [LoggerMessage(22304, LogLevel.Error, "Accumulator flush of {Count} files failed unexpectedly")]
+    private static partial void LogFlushError(ILogger logger, Exception ex, int count);
+
+    [LoggerMessage(22305, LogLevel.Warning, "Could not settle the trigger delivery for file {FileId}")]
+    private static partial void LogSettleError(ILogger logger, Exception ex, Guid fileId);
+
+    [LoggerMessage(22306, LogLevel.Error, "Could not record the media-metadata worker-cycle failure")]
+    private static partial void LogRecordFailureError(ILogger logger, Exception ex);
 }

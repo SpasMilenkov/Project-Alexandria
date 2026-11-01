@@ -3,6 +3,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.PreviewsStats;
 using FastEndpoints;
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.PreviewsStats;
 
@@ -35,7 +36,7 @@ sealed class GetPreviewJobOverviewEndpoint(IPreviewStatsService statsService)
     {
         Get("/admin/previews/job-overview");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(10);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(GetPreviewJobOverviewRequest req, CancellationToken ct)

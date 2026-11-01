@@ -1,3 +1,5 @@
+using Alexandria.Common.Exceptions.Preview.Images;
+using Alexandria.Common.Exceptions.Preview.Media;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 
@@ -34,4 +36,29 @@ public static class PreviewJobLifecycle
     public static Task FailAsync(
         IUnitOfWork unitOfWork, Guid jobId, string errorDetail, CancellationToken ct = default)
         => unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: errorDetail, ct: ct);
+
+    /// <summary>
+    /// Records a generation failure. Failures that cannot succeed on retry (unsupported or
+    /// oversized input) exhaust the retry budget so automatic recovery leaves them alone.
+    /// </summary>
+    public static async Task FailAsync(
+        IUnitOfWork unitOfWork, Guid jobId, Exception ex, CancellationToken ct = default)
+    {
+        await FailAsync(unitOfWork, jobId, ex.Message, ct);
+
+        if (IsPermanent(ex))
+            await unitOfWork.Jobs.MarkNonRetryableAsync(jobId, ct);
+    }
+
+    /// <summary>
+    /// Hands a claimed job back when the worker stops mid-generation, so the broker's
+    /// redelivery (or the recovery sweep) can claim it again. Runs uncancellable on purpose.
+    /// </summary>
+    public static Task ReleaseAsync(IUnitOfWork unitOfWork, Guid jobId)
+        => unitOfWork.Jobs.ReleaseClaimAsync(jobId, CancellationToken.None);
+
+    internal static bool IsPermanent(Exception ex)
+        => ex is UnsupportedImageFormatException
+            or ImageTooLargeException
+            or UnsupportedMediaCategoryException;
 }

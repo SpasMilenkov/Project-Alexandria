@@ -25,9 +25,11 @@ public interface IEssentiaBatchFileRepository : IRepository<EssentiaBatchFile>
     /// enrichment attempt (any outcome) is a <c>Failed</c> linked job
     /// that is older than <paramref name="attemptCutoff"/> (the retry cooldown), and whose
     /// current version is not client-encrypted. Encrypted files can never be enriched, so
-    /// they are never re-queued.
+    /// they are never re-queued. Files that already failed <paramref name="maxFailedAttempts"/>
+    /// times are left for an admin requeue instead of retrying forever.
     /// </summary>
-    Task<IEnumerable<Guid>> GetAutoTagRetryCandidatesAsync(DateTime attemptCutoff, CancellationToken ct = default);
+    Task<IEnumerable<Guid>> GetAutoTagRetryCandidatesAsync(DateTime attemptCutoff, int maxFailedAttempts,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Rule backfill candidates: live files sitting directly in one of

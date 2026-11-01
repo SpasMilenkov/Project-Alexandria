@@ -42,6 +42,7 @@ export const EVENT_CODE_LABELS: Record<OperationalEventCode, string> = {
   [OperationalEventCode.HealthcheckUnhealthy]: "Healthcheck Unhealthy",
   [OperationalEventCode.HealthcheckUnreachable]: "Healthcheck Unreachable",
   [OperationalEventCode.UserReportedProblem]: "User Reported Problem",
+  [OperationalEventCode.WorkerCycleFailure]: "Worker Cycle Failure",
 };
 
 export const EVENT_CODE_ICONS: Record<OperationalEventCode, string> = {
@@ -49,6 +50,7 @@ export const EVENT_CODE_ICONS: Record<OperationalEventCode, string> = {
   [OperationalEventCode.HealthcheckUnhealthy]: "mdi:heart-off-outline",
   [OperationalEventCode.HealthcheckUnreachable]: "mdi:lan-disconnect",
   [OperationalEventCode.UserReportedProblem]: "mdi:account-alert-outline",
+  [OperationalEventCode.WorkerCycleFailure]: "mdi:alert-circle-outline",
 };
 
 export const SEVERITY_LABELS: Record<OperationalEventSeverity, string> = {

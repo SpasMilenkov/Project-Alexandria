@@ -2,6 +2,7 @@ using Alexandria.Common.Services;
 using Alexandria.Dto.TranspilationStats;
 using FastEndpoints;
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.TranspilationStats;
 
@@ -38,7 +39,7 @@ sealed class GetTranspilationTrendEndpoint(ITranspilationStatsService statsServi
     {
         Get("/admin/transpilation/trend");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(10);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(GetTranspilationTrendRequest req, CancellationToken ct)

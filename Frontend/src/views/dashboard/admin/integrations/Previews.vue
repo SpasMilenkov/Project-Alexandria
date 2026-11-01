@@ -22,8 +22,11 @@ import type { PreviewJobType, PreviewStatsBucket } from "@/api/previewsStats";
 
 import { PREVIEW_JOB_STATUS, PREVIEW_JOB_TYPE, PREVIEW_STATS_BUCKET } from "@/api/previewsStats";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
+import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
+import { useLiveRefresh } from "@/composables/useLiveRefresh";
+import { useRollingNow } from "@/composables/useRollingNow";
 import { useTheme } from "@/composables/useTheme";
-import { ServiceType } from "@/enums";
+import { JobType, ServiceType } from "@/enums";
 import {
   previewsJobOverview,
   previewsJobTrend,
@@ -104,8 +107,11 @@ const bucketOptions: { label: string; value: PreviewStatsBucket }[] = [
 const rangeMs = ref(rangeOptions[0].value);
 const bucket = ref<PreviewStatsBucket>(PREVIEW_STATS_BUCKET.Hour);
 
+// Minute ticks move the trailing window forward, which refetches the trend under a new key.
+const { now } = useRollingNow();
+
 const volumeParams = computed(() => {
-  const to = Date.now();
+  const to = now.value;
   return {
     from: new Date(to - rangeMs.value).toISOString(),
     to: new Date(to).toISOString(),
@@ -113,8 +119,15 @@ const volumeParams = computed(() => {
   };
 });
 
-const { data: overview, isLoading: overviewLoading } = useQuery(previewsOverview());
-const { data: volume, isLoading: volumeLoading } = useQuery(() =>
+const {
+  data: overview,
+  isPending: overviewLoading,
+  refetch: refetchOverview,
+} = useQuery(previewsOverview());
+
+// Overview counts have a fixed key, so they are polled explicitly.
+useLiveRefresh(refetchOverview, 60_000);
+const { data: volume, isPending: volumeLoading } = useQuery(() =>
   previewsVolume(volumeParams.value),
 );
 
@@ -128,10 +141,14 @@ const scopeJobType = computed<PreviewJobType | undefined>(() => {
 
 const jobTrendParams = computed(() => ({ ...volumeParams.value, type: scopeJobType.value }));
 
-const { data: jobOverview, isLoading: jobOverviewLoading } = useQuery(() =>
-  previewsJobOverview(scopeJobType.value),
-);
-const { data: jobTrend, isLoading: jobTrendLoading } = useQuery(() =>
+const {
+  data: jobOverview,
+  isPending: jobOverviewLoading,
+  refetch: refetchJobOverview,
+} = useQuery(() => previewsJobOverview(scopeJobType.value));
+
+useLiveRefresh(refetchJobOverview, 60_000);
+const { data: jobTrend, isPending: jobTrendLoading } = useQuery(() =>
   previewsJobTrend(jobTrendParams.value),
 );
 
@@ -458,6 +475,12 @@ const incidentScopes = computed<IncidentScope[]>(() => {
             <Line :data="rateChartData" :options="rateOptions" />
           </div>
         </div>
+      </div>
+
+      <!-- Recovery: failed and stalled jobs per preview worker -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
+        <JobRecoveryPanel :type="JobType.MediaPreview" title="Media preview jobs" />
+        <JobRecoveryPanel :type="JobType.DocumentPreview" title="Document preview jobs" />
       </div>
 
       <!-- Incidents per scope -->

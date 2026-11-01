@@ -222,7 +222,7 @@ public partial class TranspilationJobService(
         TimeSpan threshold,
         CancellationToken ct = default)
     {
-        var stalledJobs = await unitOfWork.Jobs.GetStalledJobsAsync(threshold, ct);
+        var stalledJobs = await unitOfWork.Jobs.GetStalledJobsAsync(threshold, JobType.Transpilation, ct);
         var transpilationStalledJobs = stalledJobs.Where(j => j.Type == JobType.Transpilation).ToList();
 
         var result = new List<TranspilationJobDto>(transpilationStalledJobs.Count);

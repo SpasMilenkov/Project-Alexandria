@@ -115,6 +115,41 @@ public class PreviewService(
     }
 
     /// <inheritdoc/>
+    public async Task<bool> RepublishJobAsync(Guid jobId, CancellationToken ct = default)
+    {
+        var previewJob = await unitOfWork.PreviewJobs.GetByJobIdAsync(jobId, ct);
+        if (previewJob is null)
+            return false;
+
+        var mimeType = await unitOfWork.Files.GetMimeTypeByVersionIdAsync(previewJob.VersionId, ct);
+        if (mimeType is null)
+            return false;
+
+        var routingKey = WorkerRoutingKey(storageService.CategorizeFile(mimeType), mimeType);
+        if (routingKey is null)
+            return false;
+
+        await publisherService.PublishAsync(Encoding.UTF8.GetBytes(jobId.ToString()), routingKey);
+        return true;
+    }
+
+    // Mirrors the dispatch routing below: only categories rendered by a preview worker have a queue.
+    internal static string? WorkerRoutingKey(FileCategory category, string mimeType)
+    {
+        var separator = mimeType.IndexOf('/');
+        var subType = separator >= 0 ? mimeType[(separator + 1)..] : mimeType;
+
+        return category switch
+        {
+            FileCategory.Image => $"image.{subType}",
+            FileCategory.Document or FileCategory.Spreadsheet or FileCategory.Presentation or FileCategory.Pdf
+                => $"document.{subType}",
+            FileCategory.Audio or FileCategory.Video => $"media.{subType}",
+            _ => null
+        };
+    }
+
+    /// <inheritdoc/>
     public async Task<PreviewResultDto?> GetPreviewUrlAsync(Guid versionId, Guid ownerId,
         CancellationToken ct = default)
     {

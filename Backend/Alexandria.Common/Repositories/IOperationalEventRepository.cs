@@ -20,24 +20,17 @@ public interface IOperationalEventRepository : IRepository<OperationalEvent>
     Task<PaginatedResult<OperationalEvent>> GetEventsAsync(OperationalEventQuery query, CancellationToken ct = default);
 
     /// <summary>
-    /// Calculates the uptime percentage for a service over a time window, based on the overlap
-    /// of healthcheck-unhealthy/unreachable events with that window.
+    /// Lists the lifetimes of Failure-severity incidents that overlap <c>[from, to)</c>,
+    /// optionally restricted to one service. Overlaps are left for the caller to merge.
     /// </summary>
-    /// <param name="service">The service to calculate uptime for.</param>
-    /// <param name="from">Start of the time window.</param>
-    /// <param name="to">End of the time window.</param>
-    /// <param name="ct">A token to cancel the operation.</param>
-    /// <returns>Uptime percentage (0-100) for the service over the given window.</returns>
-    Task<double> CalculateUptimeAsync(ServiceType service, DateTime from, DateTime to, CancellationToken ct = default);
+    Task<List<DowntimeInterval>> GetDowntimeIntervalsAsync(ServiceType? service, DateTime from, DateTime to,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Aggregates the number of events created per day, per service, within a time range.
+    /// Lists the creation time, service and severity of every event created within <c>[from, to)</c>
+    /// so the caller can bucket them by UTC day.
     /// </summary>
-    /// <param name="from">Inclusive start of the range.</param>
-    /// <param name="to">Inclusive end of the range.</param>
-    /// <param name="ct">A token to cancel the operation.</param>
-    /// <returns>Daily, per-service event counts.</returns>
-    Task<List<ErrorAggregate>> GetErrorCountsAsync(DateTime from, DateTime to, CancellationToken ct = default);
+    Task<List<EventCalendarRow>> GetCalendarRowsAsync(DateTime from, DateTime to, CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves the most recent active event for a given service and event code, if one exists.
@@ -68,4 +61,26 @@ public interface IOperationalEventRepository : IRepository<OperationalEvent>
     /// <param name="ct">A token to cancel the operation.</param>
     /// <returns>At most one active event per service.</returns>
     Task<List<OperationalEvent>> GetCurrentStatusPerServiceAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Records that the active incident for a service and code recurred, so idle-based expiry
+    /// measures time since the last occurrence rather than since the incident opened.
+    /// </summary>
+    /// <returns>The number of active events touched; zero when none is active.</returns>
+    Task<int> TouchActiveEventAsync(
+        ServiceType serviceType, OperationalEventCode code, DateTime seenAt, CancellationToken ct);
+
+    /// <summary>
+    /// Inserts and immediately saves an active event. Returns <c>false</c> instead of throwing when
+    /// another producer already holds the active incident for the same service and code.
+    /// Any other pending changes on the unit of work are saved with it.
+    /// </summary>
+    Task<bool> AddActiveIfAbsentAsync(OperationalEvent entity, CancellationToken ct);
+
+    /// <summary>
+    /// Retrieves tracked active events with the given code whose last occurrence is older than
+    /// <paramref name="idleBefore"/>.
+    /// </summary>
+    Task<List<OperationalEvent>> GetIdleActiveEventsAsync(
+        OperationalEventCode code, DateTime idleBefore, CancellationToken ct);
 }

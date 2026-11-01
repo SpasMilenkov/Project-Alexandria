@@ -74,7 +74,7 @@ public class AccumulatorWorkerTests
         await _sut.FlushAsync(BatchOf(2), EssentiaBackbone.Effnet, "rk", Config,
             TestContext.Current.CancellationToken);
 
-        await _events.Received(1).AddAsync(
+        await _events.Received(1).AddActiveIfAbsentAsync(
             Arg.Is<OperationalEvent>(e => e.Code == OperationalEventCode.WorkerCycleFailure),
             Arg.Any<CancellationToken>());
         await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(
@@ -93,7 +93,7 @@ public class AccumulatorWorkerTests
         await _jobs.Received(1).UpdateStatusForJobsAsync(
             Arg.Is<IEnumerable<Guid>>(ids => ids.Count() == 2),
             JobStatus.Failed, "publish failed", Arg.Any<CancellationToken>());
-        await _events.Received(1).AddAsync(
+        await _events.Received(1).AddActiveIfAbsentAsync(
             Arg.Is<OperationalEvent>(e => e.Code == OperationalEventCode.WorkerCycleFailure),
             Arg.Any<CancellationToken>());
     }
@@ -118,9 +118,65 @@ public class AccumulatorWorkerTests
         request!.Files.Should().HaveCount(2);
         await _publisher.Received(1).PublishAsync(
             Arg.Any<byte[]>(), "media-metadata.classify.audio.effnet");
-        await _events.DidNotReceiveWithAnyArgs().AddAsync(
+        await _events.DidNotReceiveWithAnyArgs().AddActiveIfAbsentAsync(
             Arg.Any<OperationalEvent>(), Arg.Any<CancellationToken>());
         foreach (var staged in batch)
             _buffer.TryEnqueue(staged).Should().Be(EnqueueResult.Added);
+    }
+
+    [Fact]
+    public async Task persist_failure_releases_files_so_later_triggers_are_accepted()
+    {
+        var batch = BatchOf(2);
+        var settled = new List<bool>();
+        foreach (var staged in batch)
+            _buffer.TryEnqueue(staged, persisted =>
+            {
+                settled.Add(persisted);
+                return Task.CompletedTask;
+            }).Should().Be(EnqueueResult.Added);
+
+        _batches.AddAsync(Arg.Any<EssentiaBatch>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EssentiaBatch>(new InvalidOperationException("db down")));
+
+        await _sut.FlushAsync(batch, EssentiaBackbone.Effnet, "rk", Config,
+            TestContext.Current.CancellationToken);
+
+        settled.Should().Equal(false, false);
+        foreach (var staged in batch)
+            _buffer.TryEnqueue(staged).Should().Be(EnqueueResult.Added);
+    }
+
+    [Fact]
+    public async Task successful_persist_acknowledges_each_trigger()
+    {
+        var batch = BatchOf(2);
+        var settled = new List<bool>();
+        foreach (var staged in batch)
+            _buffer.TryEnqueue(staged, persisted =>
+            {
+                settled.Add(persisted);
+                return Task.CompletedTask;
+            });
+
+        await _sut.FlushAsync(batch, EssentiaBackbone.Effnet, "rk", Config,
+            TestContext.Current.CancellationToken);
+
+        settled.Should().Equal(true, true);
+    }
+
+    [Fact]
+    public async Task recording_failure_does_not_escape_flush()
+    {
+        _batches.AddAsync(Arg.Any<EssentiaBatch>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<EssentiaBatch>(new InvalidOperationException("db down")));
+        _events.TouchActiveEventAsync(Arg.Any<ServiceType>(), Arg.Any<OperationalEventCode>(),
+                Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<int>(new InvalidOperationException("still down")));
+
+        var act = () => _sut.FlushAsync(BatchOf(1), EssentiaBackbone.Effnet, "rk", Config,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
     }
 }
