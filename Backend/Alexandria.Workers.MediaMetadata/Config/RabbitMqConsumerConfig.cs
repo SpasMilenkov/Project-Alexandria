@@ -40,6 +40,11 @@ public class RabbitMqConsumerConfig
     public int TriggerMaxStagingAttempts { get; set; } = 5;
 
     /// <summary>
+    /// Seconds to wait before republishing a trigger whose staging failed.
+    /// </summary>
+    public int TriggerRetryDelaySeconds { get; set; } = 15;
+
+    /// <summary>
     /// Queue the completion messages arrive on.
     /// </summary>
     public string ResultsQueueName { get; set; } = "media-metadata-results-queue";

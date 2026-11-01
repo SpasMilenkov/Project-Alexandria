@@ -89,10 +89,11 @@ public partial class ResultsConsumerWorker(
                 await HandleCompletionAsync(completion, stoppingToken);
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 LogProcessError(logger, ex);
-                await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
+                await ConsumerRetry.HandleFailureAsync(_channel, eventArgs, exchangeName, ex, serviceProvider,
+                    stoppingToken);
             }
         };
 

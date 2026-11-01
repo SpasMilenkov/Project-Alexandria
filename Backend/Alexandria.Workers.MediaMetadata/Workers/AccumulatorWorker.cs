@@ -72,7 +72,15 @@ public partial class AccumulatorWorker(
                 }
             }
 
-            await FlushAsync(batch, backbone, routingKey, config, stoppingToken);
+            try
+            {
+                await FlushAsync(batch, backbone, routingKey, config, stoppingToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // A single bad flush must not stop the host and with it every future batch.
+                LogFlushError(logger, ex, batch.Count);
+            }
         }
     }
 
@@ -122,19 +130,23 @@ public partial class AccumulatorWorker(
             await unitOfWork.EssentiaBatches.AddAsync(batchEntity, stoppingToken);
             await unitOfWork.SaveChangesAsync(stoppingToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogPersistError(logger, ex, batchId, batch.Count);
-            await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex,
-                stoppingToken);
+
+            // Release the files before anything else can fail: a leaked pending entry makes every
+            // later trigger for the file a silent duplicate until the worker restarts.
+            await SettleAsync(batch, persisted: false);
+
+            // The failed context still tracks the unsaved batch, so it cannot record anything.
+            await RecordCycleFailureAsync(ex, stoppingToken);
             return;
         }
 
         var outputDir = $"{config.ToVolumePath(config.OutputDir.TrimEnd('/'))}/{batchId}";
         var files = batch.Select(f => config.ToVolumePath(f.FilePath)).ToArray();
 
-        foreach (var staged in batch)
-            buffer.MarkDispatched(staged.FileId);
+        await SettleAsync(batch, persisted: true);
 
         var request = new ClassifyRequest
         {
@@ -164,6 +176,43 @@ public partial class AccumulatorWorker(
         }
 
         LogBatchDispatched(logger, batchId, backbone, batch.Count, outputDir, routingKey);
+    }
+
+    private async Task SettleAsync(List<StagedFile> batch, bool persisted)
+    {
+        foreach (var staged in batch)
+        {
+            buffer.MarkDispatched(staged.FileId);
+
+            var settle = buffer.TakeSettler(staged.FileId);
+            if (settle is null)
+                continue;
+
+            try
+            {
+                await settle(persisted);
+            }
+            catch (Exception ex)
+            {
+                // The channel may already be closed; the broker then redelivers the trigger itself.
+                LogSettleError(logger, ex, staged.FileId);
+            }
+        }
+    }
+
+    private async Task RecordCycleFailureAsync(Exception ex, CancellationToken ct)
+    {
+        try
+        {
+            using var scope = serviceProvider.CreateScope();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex,
+                ct);
+        }
+        catch (Exception recordEx) when (recordEx is not OperationCanceledException)
+        {
+            LogRecordFailureError(logger, recordEx);
+        }
     }
 
     private static EssentiaBackbone ParseBackbone(string backbone)

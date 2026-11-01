@@ -102,11 +102,19 @@ public partial class TriggerConsumerWorker(
                     return;
                 }
 
-                switch (buffer.TryEnqueue(staged))
+                var deliveryTag = eventArgs.DeliveryTag;
+                var channel = _channel!;
+
+                // Acked only once the accumulator has persisted the batch; until then a crash
+                // leaves the trigger unacked so the broker redelivers it.
+                Task Settle(bool persisted) => persisted
+                    ? channel.BasicAckAsync(deliveryTag, false, CancellationToken.None).AsTask()
+                    : channel.BasicNackAsync(deliveryTag, false, requeue: true, CancellationToken.None).AsTask();
+
+                switch (buffer.TryEnqueue(staged, Settle))
                 {
                     case EnqueueResult.Added:
                         LogTriggerQueued(logger, fileId, staged.FilePath);
-                        await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
                         break;
 
                     case EnqueueResult.Duplicate:
@@ -150,10 +158,22 @@ public partial class TriggerConsumerWorker(
                 }
 
                 LogStageError(logger, ex, fileId);
-                await TriggerRetryPolicy.PublishWithAttemptsAsync(
-                    _channel, exchangeName, eventArgs.RoutingKey,
-                    body, attempt, stoppingToken);
-                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+
+                try
+                {
+                    // A short pause keeps a storage outage from burning every attempt in seconds.
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Max(config.TriggerRetryDelaySeconds, 0)),
+                        stoppingToken);
+                    await TriggerRetryPolicy.PublishWithAttemptsAsync(
+                        _channel, exchangeName, eventArgs.RoutingKey,
+                        body, attempt, stoppingToken);
+                    await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                }
+                catch (Exception retryEx) when (retryEx is not OperationCanceledException)
+                {
+                    LogRetryPublishFailed(logger, retryEx, fileId);
+                    await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
+                }
             }
         };
 
