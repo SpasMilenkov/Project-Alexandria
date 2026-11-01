@@ -2,7 +2,7 @@ using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
 using FastEndpoints;
 
-namespace Alexandria.Api.Features.Streaming.DeletePlaylist;
+namespace Alexandria.Api.Features.Streaming.Playlists.DeletePlaylist;
 
 internal sealed class DeletePlaylistRequest
 {

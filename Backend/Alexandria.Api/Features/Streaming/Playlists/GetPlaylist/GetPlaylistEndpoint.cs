@@ -3,7 +3,7 @@ using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Playlist;
 using FastEndpoints;
 
-namespace Alexandria.Api.Features.Streaming.GetPlaylist;
+namespace Alexandria.Api.Features.Streaming.Playlists.GetPlaylist;
 
 internal sealed class GetPlaylistRequest
 {
