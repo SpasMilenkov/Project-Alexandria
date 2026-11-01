@@ -16,5 +16,6 @@ export const transpilationOverview = defineQueryOptions(() => ({
 export const transpilationTrend = defineQueryOptions((params: TranspilationTrendParams) => ({
   key: [...ROOT, "trend", params.from, params.to, params.bucket],
   query: () => transpilationStatsApi.getTrend(params),
+  placeholderData: (prev) => prev,
   staleTime: 15_000,
 }));

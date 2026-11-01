@@ -14,5 +14,6 @@ export const playlistOverview = defineQueryOptions(() => ({
 export const playlistTrend = defineQueryOptions((params: PlaylistTrendParams) => ({
   key: [...ROOT, "trend", params.from, params.to, params.bucket],
   query: () => playlistStatsApi.getTrend(params),
+  placeholderData: (prev) => prev,
   staleTime: 15_000,
 }));
