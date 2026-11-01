@@ -57,6 +57,10 @@ public class OperationalEventConfiguration : IEntityTypeConfiguration<Operationa
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
 
+        builder.Property(e => e.LastSeenAt)
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false);
+
         builder.Property(e => e.DeletedAt)
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
@@ -64,6 +68,13 @@ public class OperationalEventConfiguration : IEntityTypeConfiguration<Operationa
         builder.HasIndex(e => new { e.ServiceType, e.Status });
 
         builder.HasIndex(e => e.CreatedAt);
+
+        // User reports are intentionally not deduplicated; every other code allows a
+        // single active incident per service so concurrent producers cannot double-open.
+        builder.HasIndex(e => new { e.ServiceType, e.Code })
+            .IsUnique()
+            .HasFilter("\"Status\" = 'Active' AND \"Code\" <> 'UserReportedProblem'")
+            .HasDatabaseName("IX_OperationalEvents_ServiceType_Code_ActiveUnique");
 
         builder.ToTable("OperationalEvents");
     }

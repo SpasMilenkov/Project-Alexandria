@@ -114,19 +114,17 @@ public class PreviewHandlerTests
         storage.DownloadSeekableFile(_versionId, Arg.Any<CancellationToken>())
             .Returns(new MemoryStream(new byte[] { 1, 2, 3 }));
         var images = Substitute.For<IImagePreviewService>();
-        images.GenerateImagePreviewAsync(Arg.Any<Stream>(), Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new MemoryStream(new byte[] { 4 }));
-        images.GenerateImageThumbnailAsync(Arg.Any<Stream>(), Arg.Any<string?>(), Arg.Any<int>(),
-                Arg.Any<CancellationToken>())
-            .Returns(new MemoryStream(new byte[] { 5 }));
+        images.GenerateAsync(Arg.Any<Stream>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new ImagePreviewArtifacts(
+                new ImagePreviewResult(new MemoryStream(new byte[] { 4 }), "image/webp"),
+                new ImagePreviewResult(new MemoryStream(new byte[] { 5 }), "image/webp")));
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(), storage, artifacts, images, _unitOfWork);
 
         await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
         await artifacts.Received(2).UploadPreview(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Stream>(), _versionId,
+            Arg.Any<string>(), "image/webp", Arg.Any<Stream>(), _versionId,
             Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<PreviewKind>(), Arg.Any<CancellationToken>());
         await _jobs.Received(1).UpdateStatusAsync(
             _jobId, JobStatus.Ready, Arg.Any<int?>(), Arg.Any<string?>(),

@@ -49,41 +49,28 @@ public class ImagePreviewGenerationHandler(
                        throw new InvalidOperationException("Mime type is missing");
 
         await using var fileStream = await storage.DownloadSeekableFile(versionId, ct);
+        await using var generated = await imagePreviewService.GenerateAsync(fileStream, mimetype, ct);
 
-        var previewStream = await imagePreviewService.GenerateImagePreviewAsync(fileStream, mimetype, ct: ct);
+        await artifacts.UploadPreview(
+            $"previews/{fileHash}",
+            generated.Preview.ContentType,
+            generated.Preview.Content,
+            versionId,
+            contentLength: generated.Preview.Content.Length,
+            uploadedBy: SystemConfig.SystemId,
+            kind: PreviewKind.Preview,
+            ct: ct);
 
-        fileStream.Position = 0;
+        await artifacts.UploadPreview(
+            $"thumbnails/{fileHash}",
+            generated.Thumbnail.ContentType,
+            generated.Thumbnail.Content,
+            versionId,
+            contentLength: generated.Thumbnail.Content.Length,
+            uploadedBy: SystemConfig.SystemId,
+            kind: PreviewKind.Thumbnail,
+            ct: ct);
 
-        var thumbnailStream = await imagePreviewService.GenerateImageThumbnailAsync(fileStream, mimetype, ct: ct);
-
-        try
-        {
-            await artifacts.UploadPreview(
-                $"previews/{fileHash}",
-                mimetype,
-                previewStream,
-                versionId,
-                contentLength: previewStream.Length,
-                uploadedBy: SystemConfig.SystemId,
-                kind: PreviewKind.Preview,
-                ct: ct);
-
-            await artifacts.UploadPreview(
-                $"thumbnails/{fileHash}",
-                mimetype,
-                thumbnailStream,
-                versionId,
-                contentLength: thumbnailStream.Length,
-                uploadedBy: SystemConfig.SystemId,
-                kind: PreviewKind.Thumbnail,
-                ct: ct);
-
-            logger.LogInformation("Image preview and thumbnail generated for file {FileId}", message);
-        }
-        finally
-        {
-            await previewStream.DisposeAsync();
-            await thumbnailStream.DisposeAsync();
-        }
+        logger.LogInformation("Image preview and thumbnail generated for file {FileId}", message);
     }
 }

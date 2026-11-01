@@ -13,7 +13,7 @@
     <ItemGroup>
         <PackageReference Include="ClosedXML"/>
         <PackageReference Include="SharpCompress"/>
-        <PackageReference Include="SixLabors.ImageSharp"/>
+        <PackageReference Include="NetVips"/>
     </ItemGroup>
 
     <ItemGroup>

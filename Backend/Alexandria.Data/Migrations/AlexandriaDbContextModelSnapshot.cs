@@ -1023,6 +1023,9 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("MetadataJson")
                         .HasColumnType("jsonb");
 
@@ -1054,6 +1057,11 @@ namespace Alexandria.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ServiceType", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OperationalEvents_ServiceType_Code_ActiveUnique")
+                        .HasFilter("\"Status\" = 'Active' AND \"Code\" <> 'UserReportedProblem'");
 
                     b.HasIndex("ServiceType", "Status");
 

@@ -2,11 +2,23 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-resolute-amd64@sha256:67c94b99341ac046603156a7025ea5ea22a41949ec2cef126d22d3a7bbe21963 AS base
 WORKDIR /app
 
-# Install FFmpeg for media processing
+# FFmpeg for media processing. ImageMagick (plus the HEVC plugin for HEIC) is only the sandboxed
+# fallback decoder for image formats the bundled libvips cannot load; --no-install-recommends
+# keeps ghostscript and the other PDF/PostScript delegates out of the image.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
+    imagemagick \
+    libheif-plugin-libde265 \
     && rm -rf /var/lib/apt/lists/*
+
+COPY ["Alexandria.Workers.Media/ImageMagick/policy.xml", "/etc/ImageMagick-7/policy.xml"]
+
+# glibc arena fragmentation makes libvips RSS creep in long-running processes.
+ENV MALLOC_ARENA_MAX=2 \
+    VIPS_BLOCK_UNTRUSTED=1 \
+    MAGICK_THREAD_LIMIT=1 \
+    MAGICK_TEMPORARY_PATH=/tmp/worker-scratch
 
 # ===== BUILD IMAGE =====
 FROM mcr.microsoft.com/dotnet/sdk:10.0.401-resolute-amd64@sha256:a93ae0a0716bc411e934c6b9468901e5c0e1025e4925b6a2d96fbb02bc0cd871 AS build
