@@ -59,7 +59,12 @@ public class AuthService(
     {
         var storedToken = await unitOfWork.RefreshTokens.GetByTokenWithUserAsync(refreshToken, ct);
 
-        if (storedToken == null || storedToken.ExpiresAt < DateTime.UtcNow || storedToken.User?.DeletedAt != null)
+        if (storedToken?.User is not { DeletedAt: null } || storedToken.ExpiresAt < DateTime.UtcNow)
+        {
+            return AuthResult.Failed();
+        }
+
+        if (await userManager.IsLockedOutAsync(storedToken.User))
         {
             return AuthResult.Failed();
         }
@@ -85,7 +90,7 @@ public class AuthService(
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 
-            var result = AuthResult.SetSuccess(storedToken.User!);
+            var result = AuthResult.SetSuccess(storedToken.User);
             result.RefreshToken = newRefreshToken.Token;
 
             return result;
