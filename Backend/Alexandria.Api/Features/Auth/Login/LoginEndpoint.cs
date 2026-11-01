@@ -1,3 +1,4 @@
+using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Audit;
@@ -38,22 +39,7 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
         var accessToken = _authService.GenerateAccessToken(result.User);
         var refreshToken = await _authService.GenerateRefreshTokenAsync(result.User, ct);
 
-        HttpContext.Response.Cookies.Append("access_token", accessToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            MaxAge = TimeSpan.FromMinutes(15)
-        });
-
-        HttpContext.Response.Cookies.Append("refresh_token", refreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            MaxAge = TimeSpan.FromDays(7),
-            Path = "/api/auth/refresh"
-        });
+        HttpContext.Response.AppendSessionCookies(accessToken, refreshToken);
 
         await _auditService.LogAsync(
             new AuditLogDto(

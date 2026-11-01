@@ -1,3 +1,4 @@
+using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
 using FastEndpoints;
 
@@ -15,7 +16,7 @@ public class RefreshTokenEndpoint(IAuthService authService)
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        if (!HttpContext.Request.Cookies.TryGetValue("refresh_token", out var refreshToken))
+        if (!HttpContext.Request.Cookies.TryGetValue(AuthCookies.RefreshToken, out var refreshToken))
         {
             await Send.UnauthorizedAsync(ct);
             return;
@@ -25,41 +26,18 @@ public class RefreshTokenEndpoint(IAuthService authService)
 
         if (!result.Succeeded || result.User is null || result.RefreshToken is null)
         {
-            ClearAuthCookies();
+            HttpContext.Response.ClearSessionCookies();
             await Send.UnauthorizedAsync(ct);
             return;
         }
 
         var newAccessToken = authService.GenerateAccessToken(result.User);
-        var newRefreshToken = result.RefreshToken;
 
-        HttpContext.Response.Cookies.Append("access_token", newAccessToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            MaxAge = TimeSpan.FromMinutes(15)
-        });
-
-        HttpContext.Response.Cookies.Append("refresh_token", newRefreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            MaxAge = TimeSpan.FromDays(7),
-            Path = "/api/auth/refresh"
-        });
+        HttpContext.Response.AppendSessionCookies(newAccessToken, result.RefreshToken);
 
         await Send.OkAsync(new RefreshResponse
         {
             Success = true,
         }, ct);
-    }
-
-    private void ClearAuthCookies()
-    {
-        HttpContext.Response.Cookies.Delete("access_token");
-        HttpContext.Response.Cookies.Delete("refresh_token");
-        HttpContext.Response.Cookies.Delete("csrf_token");
     }
 }
