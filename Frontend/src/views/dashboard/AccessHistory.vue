@@ -141,10 +141,9 @@ const changePage = (pageNumber: number) => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full w-full flex-1">
-    <!-- Header -->
-    <div
-      class="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-200/70 dark:border-gray-700/70"
+  <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
+    <header
+      class="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-gray-200/70 px-4 py-3 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
     >
       <div class="flex items-center gap-2.5 min-w-0">
         <UIcon name="i-lucide-activity" class="w-5 h-5 text-muted shrink-0" />
@@ -153,144 +152,148 @@ const changePage = (pageNumber: number) => {
           {{ data.totalCount }}
         </UBadge>
       </div>
-    </div>
+    </header>
 
     <ActivityCalendar />
 
-    <!-- Sticky pagination bar — always visible below the calendar -->
-    <div
-      v-if="data && data.totalCount > activityStore.pageSize"
-      class="flex items-center justify-center px-6 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface shrink-0"
+    <section
+      class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
     >
-      <UPagination
-        v-model:page="activityStore.page"
-        :total="data.totalCount"
-        :page-size="activityStore.pageSize"
-        @update:page="changePage"
-      />
-    </div>
-
-    <!-- Content -->
-    <div class="flex-1 overflow-auto">
-      <div class="px-6 py-5 space-y-4">
-        <!-- Error — auth/token-refresh errors are intentionally suppressed -->
-        <UAlert
-          v-if="visibleError"
-          color="error"
-          variant="subtle"
-          icon="i-lucide-alert-circle"
-          title="Failed to load activity"
-          :description="visibleError.message"
+      <!-- Pagination row, always visible above the scrolling list -->
+      <div
+        v-if="data && data.totalCount > activityStore.pageSize"
+        class="flex shrink-0 items-center justify-center border-b border-gray-200/70 px-4 py-2 dark:border-gray-700/70"
+      >
+        <UPagination
+          v-model:page="activityStore.page"
+          :total="data.totalCount"
+          :page-size="activityStore.pageSize"
+          @update:page="changePage"
         />
+      </div>
 
-        <!-- Loading skeleton -->
-        <div v-if="isLoading" class="space-y-1">
-          <div v-for="i in 10" :key="i" class="flex items-center gap-4 px-4 py-4">
-            <USkeleton class="w-9 h-9 rounded-full shrink-0" />
-            <div class="flex-1 space-y-2">
-              <USkeleton class="h-4 w-72" />
-              <USkeleton class="h-3 w-36 opacity-50" />
-            </div>
-            <USkeleton class="h-6 w-16 rounded-full shrink-0" />
-          </div>
-        </div>
-
-        <!-- Log list -->
-        <div v-else-if="rows.length > 0" class="relative">
-          <!-- Vertical spine -->
-          <div
-            class="absolute left-[1.55rem] top-0 bottom-0 w-px border-l border-dashed border-gray-300/40 dark:border-gray-600/40 pointer-events-none"
+      <!-- Content -->
+      <div class="min-h-0 flex-1 overflow-auto">
+        <div class="space-y-4 p-4">
+          <!-- Error: auth/token-refresh errors are intentionally suppressed -->
+          <UAlert
+            v-if="visibleError"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-alert-circle"
+            title="Failed to load activity"
+            :description="visibleError.message"
           />
 
-          <!-- Rows -->
-          <div class="divide-y divide-gray-100/50 dark:divide-gray-800/50">
-            <div v-for="row in rows" :key="row.key" @click="toggleExpanded(row.key)">
-              <!-- Main row -->
-              <div
-                class="relative flex items-center gap-4 py-3 hover:bg-neutral-300/60 dark:hover:bg-white/5 transition-colors rounded-lg px-1 cursor-pointer"
-              >
-                <!-- Icon dot -->
-                <div
-                  class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 shrink-0 transition-colors bg-neutral-50 dark:bg-gray-950"
-                  :class="row.iconStyle"
-                >
-                  <UIcon :name="row.icon" class="w-4 h-4" />
-                </div>
-
-                <!-- Title -->
-                <p class="flex-1 min-w-0 text-sm font-medium leading-snug truncate">
-                  {{ row.title }}
-                </p>
-
-                <!-- Right zone: timestamp · source badge · op badge · chevron -->
-                <div class="flex items-center gap-2 shrink-0">
-                  <!-- Timestamp -->
-                  <p class="text-xs text-muted tabular-nums whitespace-nowrap hidden sm:block">
-                    {{ row.date }} · {{ row.time }}
-                  </p>
-
-                  <!-- Log source badge -->
-                  <UBadge
-                    color="neutral"
-                    variant="outline"
-                    size="sm"
-                    class="shrink-0 hidden sm:inline-flex"
-                  >
-                    {{ row.logSourceLabel }}
-                  </UBadge>
-
-                  <!-- Operation badge -->
-                  <UBadge
-                    :color="row.color"
-                    variant="soft"
-                    size="sm"
-                    class="shrink-0 capitalize font-medium"
-                  >
-                    {{ row.opLabel }}
-                  </UBadge>
-
-                  <!-- Expand chevron -->
-                  <UButton
-                    color="neutral"
-                    variant="ghost"
-                    size="xs"
-                    :icon="isExpanded(row.key) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                    :aria-label="isExpanded(row.key) ? 'Collapse details' : 'Expand details'"
-                    @click.stop="toggleExpanded(row.key)"
-                  />
-                </div>
+          <!-- Loading skeleton -->
+          <div v-if="isLoading" class="space-y-1">
+            <div v-for="i in 10" :key="i" class="flex items-center gap-4 px-4 py-4">
+              <USkeleton class="w-9 h-9 rounded-full shrink-0" />
+              <div class="flex-1 space-y-2">
+                <USkeleton class="h-4 w-72" />
+                <USkeleton class="h-3 w-36 opacity-50" />
               </div>
-
-              <!-- Expandable detail panel -->
-              <Transition
-                enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-                enter-from-class="opacity-0 max-h-0"
-                enter-to-class="opacity-100 max-h-48"
-                leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-                leave-from-class="opacity-100 max-h-48"
-                leave-to-class="opacity-0 max-h-0"
-              >
-                <div v-if="isExpanded(row.key)" class="pl-13 pr-1 pb-3">
-                  <AuditDetailPanel
-                    :entity-id="row.entityId"
-                    :entity-type="row.entityType"
-                    :metadata="row.metadata"
-                  />
-                </div>
-              </Transition>
+              <USkeleton class="h-6 w-16 rounded-full shrink-0" />
             </div>
           </div>
-        </div>
 
-        <!-- Empty state -->
-        <div v-else class="flex flex-col items-center justify-center py-24 text-center gap-3">
-          <UIcon name="i-lucide-folder-open" class="w-12 h-12 text-muted" />
-          <div class="space-y-1">
-            <p class="text-sm font-medium">No activity yet</p>
-            <p class="text-xs text-muted">Actions will appear here as you use the system</p>
+          <!-- Log list -->
+          <div v-else-if="rows.length > 0" class="relative">
+            <!-- Vertical spine -->
+            <div
+              class="absolute left-[1.55rem] top-0 bottom-0 w-px border-l border-dashed border-gray-300/40 dark:border-gray-600/40 pointer-events-none"
+            />
+
+            <!-- Rows -->
+            <div class="divide-y divide-gray-100/50 dark:divide-gray-800/50">
+              <div v-for="row in rows" :key="row.key" @click="toggleExpanded(row.key)">
+                <!-- Main row -->
+                <div
+                  class="relative flex items-center gap-4 py-3 hover:bg-neutral-300/60 dark:hover:bg-white/5 transition-colors rounded-lg px-1 cursor-pointer"
+                >
+                  <!-- Icon dot -->
+                  <div
+                    class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 shrink-0 transition-colors bg-neutral-50 dark:bg-gray-950"
+                    :class="row.iconStyle"
+                  >
+                    <UIcon :name="row.icon" class="w-4 h-4" />
+                  </div>
+
+                  <!-- Title -->
+                  <p class="flex-1 min-w-0 text-sm font-medium leading-snug truncate">
+                    {{ row.title }}
+                  </p>
+
+                  <!-- Right zone: timestamp · source badge · op badge · chevron -->
+                  <div class="flex items-center gap-2 shrink-0">
+                    <!-- Timestamp -->
+                    <p class="text-xs text-muted tabular-nums whitespace-nowrap hidden sm:block">
+                      {{ row.date }} · {{ row.time }}
+                    </p>
+
+                    <!-- Log source badge -->
+                    <UBadge
+                      color="neutral"
+                      variant="outline"
+                      size="sm"
+                      class="shrink-0 hidden sm:inline-flex"
+                    >
+                      {{ row.logSourceLabel }}
+                    </UBadge>
+
+                    <!-- Operation badge -->
+                    <UBadge
+                      :color="row.color"
+                      variant="soft"
+                      size="sm"
+                      class="shrink-0 capitalize font-medium"
+                    >
+                      {{ row.opLabel }}
+                    </UBadge>
+
+                    <!-- Expand chevron -->
+                    <UButton
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      :icon="isExpanded(row.key) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                      :aria-label="isExpanded(row.key) ? 'Collapse details' : 'Expand details'"
+                      @click.stop="toggleExpanded(row.key)"
+                    />
+                  </div>
+                </div>
+
+                <!-- Expandable detail panel -->
+                <Transition
+                  enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+                  enter-from-class="opacity-0 max-h-0"
+                  enter-to-class="opacity-100 max-h-48"
+                  leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+                  leave-from-class="opacity-100 max-h-48"
+                  leave-to-class="opacity-0 max-h-0"
+                >
+                  <div v-if="isExpanded(row.key)" class="pl-13 pr-1 pb-3">
+                    <AuditDetailPanel
+                      :entity-id="row.entityId"
+                      :entity-type="row.entityType"
+                      :metadata="row.metadata"
+                    />
+                  </div>
+                </Transition>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div v-else class="flex flex-col items-center justify-center py-24 text-center gap-3">
+            <UIcon name="i-lucide-folder-open" class="w-12 h-12 text-muted" />
+            <div class="space-y-1">
+              <p class="text-sm font-medium">No activity yet</p>
+              <p class="text-xs text-muted">Actions will appear here as you use the system</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>

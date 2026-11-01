@@ -302,7 +302,9 @@ const breakdownEntries = (
 </script>
 
 <template>
-  <div class="border-b border-neutral-200/70 dark:border-neutral-700/70 px-6 py-5 space-y-4">
+  <div
+    class="shrink-0 space-y-4 rounded-[14px] border border-gray-200/70 p-4 frosted-glass glass-surface md:p-5 dark:border-gray-700/70"
+  >
     <!-- Header row -->
     <div class="flex items-center justify-between gap-3 flex-wrap">
       <!-- Mobile: month navigator -->
