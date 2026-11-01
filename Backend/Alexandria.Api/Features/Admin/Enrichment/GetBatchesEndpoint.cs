@@ -1,6 +1,7 @@
 using Alexandria.Common.Repositories;
 using Alexandria.Dto.Enrichment;
 using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.Enrichment;
 
@@ -17,7 +18,7 @@ internal sealed class GetBatchesEndpoint(IEssentiaBatchRepository repository)
     {
         Get("/admin/enrichment/batches");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(5);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(GetBatchesRequest req, CancellationToken ct)

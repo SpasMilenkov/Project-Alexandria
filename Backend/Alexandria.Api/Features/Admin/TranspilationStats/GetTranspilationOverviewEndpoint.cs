@@ -2,6 +2,7 @@ using Alexandria.Common.Services;
 using Alexandria.Dto.TranspilationStats;
 using Alexandria.Services.Monitoring;
 using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.TranspilationStats;
 
@@ -12,7 +13,7 @@ sealed class GetTranspilationOverviewEndpoint(ITranspilationStatsService statsSe
     {
         Get("/admin/transpilation/overview");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(10);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

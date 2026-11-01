@@ -1,6 +1,7 @@
 using Alexandria.Common.Repositories;
 using Alexandria.Dto.Enrichment;
 using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.Enrichment;
 
@@ -14,7 +15,7 @@ internal sealed class GetDurationEndpoint(IEssentiaBatchFileRepository repositor
     {
         Get("/admin/enrichment/duration");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(5);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

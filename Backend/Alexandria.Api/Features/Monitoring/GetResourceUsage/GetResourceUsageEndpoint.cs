@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Alexandria.Dto.Metrics;
 using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Monitoring.GetResourceUsage;
 
@@ -10,7 +11,7 @@ sealed class GetServerResourcesEndpoint : EndpointWithoutRequest<ServerResources
     {
         Get("monitoring/resources");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(10);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

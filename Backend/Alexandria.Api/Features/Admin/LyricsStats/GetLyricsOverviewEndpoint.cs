@@ -1,6 +1,7 @@
 using Alexandria.Common.Services;
 using Alexandria.Dto.LyricsStats;
 using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.LyricsStats;
 
@@ -11,7 +12,7 @@ sealed class GetLyricsOverviewEndpoint(ILyricsStatsService statsService)
     {
         Get("/admin/lyrics/overview");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(10);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

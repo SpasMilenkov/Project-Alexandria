@@ -1,6 +1,7 @@
 using Alexandria.Common.Services;
 using Alexandria.Dto.Events.Operational;
 using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Monitoring.GetErrorCalendar;
 
@@ -17,7 +18,7 @@ sealed class GetErrorCalendarEndpoint(IOperationalEventService service)
     {
         Get("/monitoring/events/calendar");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(60);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(GetErrorCalendarRequest req, CancellationToken ct)

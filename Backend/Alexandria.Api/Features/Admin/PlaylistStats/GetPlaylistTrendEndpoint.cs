@@ -3,6 +3,7 @@ using Alexandria.Dto.PlaylistStats;
 using Alexandria.Dto.TranspilationStats;
 using FastEndpoints;
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.PlaylistStats;
 
@@ -39,7 +40,7 @@ sealed class GetPlaylistTrendEndpoint(IPlaylistStatsService statsService)
     {
         Get("/admin/playlists/trend");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(10);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(GetPlaylistTrendRequest req, CancellationToken ct)

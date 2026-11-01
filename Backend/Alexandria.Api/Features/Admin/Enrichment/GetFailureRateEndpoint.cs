@@ -1,6 +1,7 @@
 using Alexandria.Common.Repositories;
 using Alexandria.Dto.Enrichment;
 using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.Enrichment;
 
@@ -23,7 +24,7 @@ internal sealed class GetFailureRateEndpoint(IEssentiaBatchFileRepository reposi
     {
         Get("/admin/enrichment/failure-rate");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(5);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(GetFailureRateRequest req, CancellationToken ct)

@@ -3,6 +3,7 @@ using Alexandria.Common.Settings;
 using Alexandria.Dto.Enrichment;
 using FastEndpoints;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Admin.Enrichment;
 
@@ -19,7 +20,7 @@ internal sealed class GetStuckEndpoint(
     {
         Get("/admin/enrichment/stuck");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(5);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(CancellationToken ct)

@@ -1,6 +1,7 @@
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators.Monitoring;
 using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Monitoring.GetUptime;
 
@@ -18,7 +19,7 @@ sealed class GetUptimeEndpoint(IOperationalEventService service)
     {
         Get("/monitoring/uptime");
         Policies(Common.Auth.Policies.RequireAdmin);
-        ResponseCache(60, varyByQueryKeys: ["service", "from", "to"]);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(GetUptimeRequest req, CancellationToken ct)

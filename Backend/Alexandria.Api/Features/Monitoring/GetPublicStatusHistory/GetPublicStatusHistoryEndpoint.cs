@@ -26,7 +26,7 @@ sealed class GetPublicStatusHistoryEndpoint(IOperationalEventService service)
     {
         Get("/status/history");
         AllowAnonymous();
-        ResponseCache(60);
+        ResponseCache(60, varyByQueryKeys: ["days"]);
     }
 
     public override async Task HandleAsync(GetPublicStatusHistoryRequest req, CancellationToken ct)
