@@ -40,6 +40,8 @@ public class UserManagementService(
 
         var lockResult = await userManager.SetLockoutEndDateAsync(user, restrictionEndDate.ToUniversalTime());
         ThrowIfFailed(lockResult);
+
+        await unitOfWork.RefreshTokens.RevokeUserTokensAsync(userId, ct);
     }
 
 
