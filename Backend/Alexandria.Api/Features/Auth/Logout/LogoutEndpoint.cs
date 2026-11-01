@@ -1,3 +1,4 @@
+using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
 using FastEndpoints;
 
@@ -13,14 +14,12 @@ public class LogoutEndpoint(IAuthService authService) : EndpointWithoutRequest
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        if (HttpContext.Request.Cookies.TryGetValue("refresh_token", out var refreshToken))
+        if (HttpContext.Request.Cookies.TryGetValue(AuthCookies.RefreshToken, out var refreshToken))
         {
             await authService.RevokeRefreshTokenAsync(refreshToken, ct);
         }
 
-        HttpContext.Response.Cookies.Delete("access_token");
-        HttpContext.Response.Cookies.Delete("refresh_token", new CookieOptions { Path = "/api/auth/refresh" });
-        HttpContext.Response.Cookies.Delete("csrf_token");
+        HttpContext.Response.ClearSessionCookies();
 
         await Send.OkAsync(cancellation: ct);
     }
