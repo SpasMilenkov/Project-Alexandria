@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Services.Storage.AutoTagging;
 using Alexandria.Workers.MediaMetadata.Queueing;
@@ -81,7 +82,7 @@ public partial class AutoTagSweepWorker(
 
         // Job B — failed retry: re-trigger enrichment past the cooldown.
         var cutoff = DateTime.UtcNow.Add(-cooldown);
-        var retry = (await unitOfWork.EssentiaBatchFiles.GetAutoTagRetryCandidatesAsync(cutoff, ct)).ToList();
+        var retry = (await unitOfWork.EssentiaBatchFiles.GetAutoTagRetryCandidatesAsync(cutoff, JobRetryPolicy.MaxAutoRetries, ct)).ToList();
         foreach (var fileId in retry)
         {
             await publisher.PublishAsync(

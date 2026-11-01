@@ -274,7 +274,7 @@ public partial class ResultsConsumerWorker(
         var genreVersion = !string.IsNullOrWhiteSpace(output.ModelVersions?.Genre)
             ? output.ModelVersions.Genre
             : "unknown";
-        await unitOfWork.FileEnrichments.UpsertAsync(new FileEnrichment
+        await unitOfWork.FileEnrichments.UpsertFailureAsync(new FileEnrichment
         {
             Id = Guid.NewGuid(),
             FileId = fileId,
@@ -287,7 +287,7 @@ public partial class ResultsConsumerWorker(
         var moodVersion = !string.IsNullOrWhiteSpace(output.ModelVersions?.Mood)
             ? output.ModelVersions.Mood
             : "unknown";
-        await unitOfWork.FileEnrichments.UpsertAsync(new FileEnrichment
+        await unitOfWork.FileEnrichments.UpsertFailureAsync(new FileEnrichment
         {
             Id = Guid.NewGuid(),
             FileId = fileId,
