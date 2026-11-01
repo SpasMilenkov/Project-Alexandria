@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators.Monitoring;
@@ -14,14 +15,39 @@ namespace Alexandria.Services.Monitoring;
 public class OperationalEventService(
     IUnitOfWork unitOfWork) : IOperationalEventService
 {
+    internal const string AutoExpiredNote = "Auto-expired: no recurrence within the idle window.";
+
     public Task<PaginatedResult<OperationalEvent>> GetEventsAsync(OperationalEventQuery query, CancellationToken ct)
         => unitOfWork.OperationalEvents.GetEventsAsync(query, ct);
 
-    public Task<List<ErrorAggregate>> GetErrorCountsAsync(DateTime from, DateTime to, CancellationToken ct)
-        => unitOfWork.OperationalEvents.GetErrorCountsAsync(from, to, ct);
+    public async Task<List<ErrorAggregate>> GetErrorCountsAsync(DateTime from, DateTime to, CancellationToken ct)
+    {
+        var rows = await unitOfWork.OperationalEvents.GetCalendarRowsAsync(from, to, ct);
 
-    public Task<double> GetUptimeAsync(ServiceType service, DateTime from, DateTime to, CancellationToken ct)
-        => unitOfWork.OperationalEvents.CalculateUptimeAsync(service, from, to, ct);
+        // Bucketed in C# so the day boundary is always UTC, independent of the database session time zone.
+        return rows
+            .GroupBy(r => new { Day = DateOnly.FromDateTime(r.CreatedAt), r.ServiceType, r.Severity })
+            .Select(g => new ErrorAggregate(g.Key.Day, g.Key.ServiceType, g.Key.Severity, g.Count()))
+            .ToList();
+    }
+
+    public async Task<double> GetUptimeAsync(ServiceType service, DateTime from, DateTime to, CancellationToken ct)
+    {
+        var intervals = await unitOfWork.OperationalEvents.GetDowntimeIntervalsAsync(service, from, to, ct);
+        return UptimeCalculator.Calculate(intervals, from, to, DateTime.UtcNow);
+    }
+
+    public async Task<List<ServiceUptime>> GetAllUptimesAsync(DateTime from, DateTime to, CancellationToken ct)
+    {
+        var intervals = await unitOfWork.OperationalEvents.GetDowntimeIntervalsAsync(null, from, to, ct);
+        var now = DateTime.UtcNow;
+
+        return Enum.GetValues<ServiceType>()
+            .Select(service => new ServiceUptime(
+                service,
+                UptimeCalculator.Calculate(intervals.Where(i => i.ServiceType == service), from, to, now)))
+            .ToList();
+    }
 
     public Task<List<OperationalEvent>> GetCurrentStatusAsync(CancellationToken ct)
         => unitOfWork.OperationalEvents.GetCurrentStatusPerServiceAsync(ct);
@@ -73,6 +99,27 @@ public class OperationalEventService(
 
         await unitOfWork.SaveChangesAsync(ct);
         return new ResolveIncidentResult(ResolveOutcome.Resolved, evt);
+    }
+
+    public async Task<int> ExpireIdleIncidentsAsync(OperationalEventCode code, DateTime idleBefore,
+        CancellationToken ct)
+    {
+        var idle = await unitOfWork.OperationalEvents.GetIdleActiveEventsAsync(code, idleBefore, ct);
+        if (idle.Count == 0)
+            return 0;
+
+        var now = DateTime.UtcNow;
+        foreach (var evt in idle)
+        {
+            evt.MetadataJson = AppendResolutionNote(evt.MetadataJson, AutoExpiredNote);
+            evt.Status = OperationalEventStatus.Resolved;
+            evt.ResolvedAt = now;
+            evt.UpdatedAt = now;
+            evt.UpdatedBy = SystemConfig.SystemId;
+        }
+
+        await unitOfWork.SaveChangesAsync(ct);
+        return idle.Count;
     }
 
     // Format-preserving append: parses whatever shape the blob has (modern

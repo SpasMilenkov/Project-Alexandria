@@ -14,6 +14,8 @@ public interface IOperationalEventService
 
     Task<double> GetUptimeAsync(ServiceType service, DateTime from, DateTime to, CancellationToken ct);
 
+    Task<List<ServiceUptime>> GetAllUptimesAsync(DateTime from, DateTime to, CancellationToken ct);
+
     Task<List<OperationalEvent>> GetCurrentStatusAsync(CancellationToken ct);
 
     Task<OperationalEvent> ReportProblemAsync(Guid userId, string description, string? pageContext,
@@ -35,4 +37,11 @@ public interface IOperationalEventService
     /// </summary>
     Task<IReadOnlyList<DailyServiceStatus>> GetPublicStatusHistoryAsync(int days,
         CancellationToken ct);
+
+    /// <summary>
+    /// Resolves active incidents of <paramref name="code"/> whose last occurrence is older than
+    /// <paramref name="idleBefore"/>, appending an auto-expiry resolution note.
+    /// </summary>
+    /// <returns>The number of incidents resolved.</returns>
+    Task<int> ExpireIdleIncidentsAsync(OperationalEventCode code, DateTime idleBefore, CancellationToken ct);
 }

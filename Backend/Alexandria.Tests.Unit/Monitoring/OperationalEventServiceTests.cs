@@ -40,37 +40,64 @@ public class OperationalEventServiceTests
     }
 
     [Fact]
-    public async Task get_error_counts_delegates_range_to_repository()
+    public async Task get_error_counts_buckets_rows_by_utc_day_service_and_severity()
     {
-        var from = DateTime.UtcNow.AddDays(-7);
-        var to = DateTime.UtcNow;
-        var expected = new List<ErrorAggregate>
-        {
-            new(DateOnly.FromDateTime(from), ServiceType.Api, OperationalEventSeverity.Failure, 3)
-        };
-        _repo.GetErrorCountsAsync(from, to, Arg.Any<CancellationToken>()).Returns(expected);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var dayStart = DateTime.SpecifyKind(today.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+        var from = dayStart.AddDays(-7);
+        var to = dayStart.AddDays(1);
+        _repo.GetCalendarRowsAsync(from, to, Arg.Any<CancellationToken>()).Returns(
+        [
+            new EventCalendarRow(dayStart.AddHours(1), ServiceType.Api, OperationalEventSeverity.Failure),
+            new EventCalendarRow(dayStart.AddHours(23), ServiceType.Api, OperationalEventSeverity.Failure),
+            new EventCalendarRow(dayStart.AddHours(-1), ServiceType.Api, OperationalEventSeverity.Failure),
+            new EventCalendarRow(dayStart.AddHours(2), ServiceType.Lyrics, OperationalEventSeverity.PartialFailure)
+        ]);
 
         var result = await _sut.GetErrorCountsAsync(from, to, TestContext.Current.CancellationToken);
 
-        result.Should().BeSameAs(expected);
+        result.Should().BeEquivalentTo(new List<ErrorAggregate>
+        {
+            new(today, ServiceType.Api, OperationalEventSeverity.Failure, 2),
+            new(today.AddDays(-1), ServiceType.Api, OperationalEventSeverity.Failure, 1),
+            new(today, ServiceType.Lyrics, OperationalEventSeverity.PartialFailure, 1)
+        });
     }
 
     [Fact]
-    public async Task get_uptime_delegates_arguments_to_repository()
+    public async Task get_uptime_merges_overlapping_downtime_for_the_service()
     {
-        _repo.CalculateUptimeAsync(ServiceType.Transpilation,
-                Arg.Any<DateTime>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(99.5);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var from = DateTime.SpecifyKind(today.AddDays(-2).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+        var to = from.AddDays(1);
+        _repo.GetDowntimeIntervalsAsync(ServiceType.Transpilation, from, to, Arg.Any<CancellationToken>())
+            .Returns(
+            [
+                new DowntimeInterval(ServiceType.Transpilation, from.AddHours(6), from.AddHours(12)),
+                new DowntimeInterval(ServiceType.Transpilation, from.AddHours(9), from.AddHours(12))
+            ]);
 
-        var result = await _sut.GetUptimeAsync(ServiceType.Transpilation,
-            DateTime.UtcNow.AddDays(-30), DateTime.UtcNow, TestContext.Current.CancellationToken);
+        var result = await _sut.GetUptimeAsync(ServiceType.Transpilation, from, to,
+            TestContext.Current.CancellationToken);
 
-        await _repo.Received(1).CalculateUptimeAsync(
-            ServiceType.Transpilation,
-            Arg.Is<DateTime>(d => d <= DateTime.UtcNow),
-            Arg.Is<DateTime>(d => d <= DateTime.UtcNow),
-            Arg.Any<CancellationToken>());
-        result.Should().Be(99.5);
+        result.Should().BeApproximately(75.0, 0.0001);
+    }
+
+    [Fact]
+    public async Task get_all_uptimes_returns_every_service_from_one_query()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var from = DateTime.SpecifyKind(today.AddDays(-2).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+        var to = from.AddDays(1);
+        _repo.GetDowntimeIntervalsAsync(null, from, to, Arg.Any<CancellationToken>())
+            .Returns([new DowntimeInterval(ServiceType.Lyrics, from, from.AddHours(12))]);
+
+        var result = await _sut.GetAllUptimesAsync(from, to, TestContext.Current.CancellationToken);
+
+        result.Should().HaveCount(Enum.GetValues<ServiceType>().Length);
+        result.Single(r => r.Service == ServiceType.Lyrics).Uptime.Should().BeApproximately(50.0, 0.0001);
+        result.Where(r => r.Service != ServiceType.Lyrics).Should().OnlyContain(r => r.Uptime == 100.0);
+        await _repo.Received(1).GetDowntimeIntervalsAsync(null, from, to, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -223,6 +250,49 @@ public class OperationalEventServiceTests
             TestContext.Current.CancellationToken);
 
         result.Outcome.Should().Be(ResolveOutcome.AlreadyResolved);
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task expire_idle_incidents_resolves_and_notes_each_event()
+    {
+        var idle = new OperationalEvent
+        {
+            Id = Guid.NewGuid(),
+            ServiceType = ServiceType.Lyrics,
+            Code = OperationalEventCode.WorkerCycleFailure,
+            Severity = OperationalEventSeverity.Failure,
+            Status = OperationalEventStatus.Active,
+            MetadataJson = """{"kind":"worker-cycle-failure","serviceInstance":"lyrics"}""",
+            CreatedBy = SystemConfig.SystemId
+        };
+        var cutoff = DateTime.UtcNow.AddMinutes(-30);
+        _repo.GetIdleActiveEventsAsync(OperationalEventCode.WorkerCycleFailure, cutoff, Arg.Any<CancellationToken>())
+            .Returns([idle]);
+
+        var count = await _sut.ExpireIdleIncidentsAsync(OperationalEventCode.WorkerCycleFailure, cutoff,
+            TestContext.Current.CancellationToken);
+
+        count.Should().Be(1);
+        idle.Status.Should().Be(OperationalEventStatus.Resolved);
+        idle.ResolvedAt.Should().NotBeNull();
+        idle.UpdatedBy.Should().Be(SystemConfig.SystemId);
+        using var doc = JsonDocument.Parse(idle.MetadataJson!);
+        doc.RootElement.GetProperty("kind").GetString().Should().Be("worker-cycle-failure");
+        doc.RootElement.GetProperty("resolutionNote").GetString().Should().Be(OperationalEventService.AutoExpiredNote);
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task expire_idle_incidents_without_matches_does_not_save()
+    {
+        _repo.GetIdleActiveEventsAsync(Arg.Any<OperationalEventCode>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns([]);
+
+        var count = await _sut.ExpireIdleIncidentsAsync(OperationalEventCode.UserReportedProblem, DateTime.UtcNow,
+            TestContext.Current.CancellationToken);
+
+        count.Should().Be(0);
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
