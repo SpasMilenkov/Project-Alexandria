@@ -28,6 +28,8 @@ try
         .AddS3Storage(builder.Configuration)
         .AddHealthChecks();
 
+    // Must stay first: it clears crash leftovers before any worker stages or batches files.
+    builder.Services.AddHostedService<StagingRecoveryService>();
     builder.Services.AddHostedService<TriggerConsumerWorker>();
     builder.Services.AddHostedService<AccumulatorWorker>();
     builder.Services.AddHostedService<ResultsConsumerWorker>();
