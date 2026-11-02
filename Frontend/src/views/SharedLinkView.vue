@@ -64,7 +64,15 @@ const displayError = computed((): DisplayError | null => {
 });
 
 const isImageFile = computed(() => metadata.value?.mimeType.startsWith("image/") ?? false);
-const canPreview = computed(() => isImageFile.value && Boolean(downloadData.value?.presignedUrl));
+
+// Encrypted files keep their plaintext MIME type, but the presigned URL serves ciphertext,
+// so an inline <img> would only ever show a broken image.
+const canPreview = computed(
+  () =>
+    isImageFile.value &&
+    metadata.value?.isEncrypted !== true &&
+    Boolean(downloadData.value?.presignedUrl),
+);
 
 const handleDownload = () => {
   if (!downloadData.value?.presignedUrl) return;
