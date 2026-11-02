@@ -1,6 +1,7 @@
 export const MEDIA_GRID_GAP = 16;
 export const MEDIA_CARD_METADATA_HEIGHT = 112;
 export const MEDIA_CARD_BORDER_WIDTH = 1;
+export const MEDIA_LIST_ROW_HEIGHT = 64;
 
 export const getMediaGridLayout = (width: number, mediaType: "audio" | "video") => {
   const availableWidth = Math.max(1, width);
