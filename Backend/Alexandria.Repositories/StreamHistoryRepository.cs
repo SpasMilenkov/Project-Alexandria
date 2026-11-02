@@ -52,26 +52,7 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
 
         var totalCount = await q.CountAsync(ct);
 
-        var items = await q
-            .OrderByDescending(h => h.LastAccessedAt)
-            .Skip((query.CurrentPage - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(h => new StreamHistoryDto
-            {
-                Id = h.Id,
-                FileId = h.FileId,
-                Title = h.File.MediaMetadata!.Title ?? h.File.Name,
-                PositionSeconds = h.PositionSeconds,
-                MaxPositionReachedSeconds = h.MaxPositionReachedSeconds,
-                TotalListenedSeconds = h.TotalListenedSeconds,
-                QualifiedPlayCount = h.QualifiedPlayCount,
-                LastPlayedAt = h.LastPlayedAt,
-                HasFinished = h.HasFinished,
-                LastAccessedAt = h.LastAccessedAt,
-                CreatedAt = h.CreatedAt,
-                UpdatedAt = h.UpdatedAt
-            })
-            .ToListAsync(ct);
+        var items = await HistoryPageQuery(q, query.CurrentPage, query.PageSize).ToListAsync(ct);
 
         return new PaginatedResult<StreamHistoryDto>
         {
@@ -82,6 +63,33 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
             TotalCount = totalCount
         };
     }
+
+    // Metadata columns come from the same File/MediaMetadata joins the title already needs.
+    internal static IQueryable<StreamHistoryDto> HistoryPageQuery(
+        IQueryable<StreamHistory> history, int currentPage, int pageSize) =>
+        history
+            .OrderByDescending(h => h.LastAccessedAt)
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .Select(h => new StreamHistoryDto
+            {
+                Id = h.Id,
+                FileId = h.FileId,
+                Title = h.File.MediaMetadata!.Title ?? h.File.Name,
+                Artist = h.File.MediaMetadata!.Artist,
+                Album = h.File.MediaMetadata!.Album,
+                Duration = h.File.MediaMetadata == null ? null : h.File.MediaMetadata.Duration,
+                IsVideo = h.File.MimeType.StartsWith("video/"),
+                PositionSeconds = h.PositionSeconds,
+                MaxPositionReachedSeconds = h.MaxPositionReachedSeconds,
+                TotalListenedSeconds = h.TotalListenedSeconds,
+                QualifiedPlayCount = h.QualifiedPlayCount,
+                LastPlayedAt = h.LastPlayedAt,
+                HasFinished = h.HasFinished,
+                LastAccessedAt = h.LastAccessedAt,
+                CreatedAt = h.CreatedAt,
+                UpdatedAt = h.UpdatedAt
+            });
 
     public async Task<StreamHistory> CreateAsync(StreamHistory entity, CancellationToken ct = default)
     {

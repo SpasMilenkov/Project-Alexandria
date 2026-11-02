@@ -7,6 +7,10 @@ public sealed class StreamHistoryDto
     public Guid Id { get; init; }
     public Guid FileId { get; init; }
     public string Title { get; init; }
+    public string? Artist { get; init; }
+    public string? Album { get; init; }
+    public double? Duration { get; init; }
+    public bool IsVideo { get; init; }
     public long PositionSeconds { get; init; }
     public long MaxPositionReachedSeconds { get; init; }
     public long TotalListenedSeconds { get; init; }
