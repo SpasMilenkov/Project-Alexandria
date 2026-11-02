@@ -31,15 +31,29 @@ public partial class StagingService(
         }
 
         var stagedDir = options.Value.StagedDir;
-        Directory.CreateDirectory(stagedDir);
+        Directory.CreateDirectory(StagingPaths.IncomingDirectory(stagedDir));
 
-        var extension = MimeTypeExtensions.GetExtension(version.MimeType);
-        var stagedPath = Path.Combine(stagedDir, $"{fileId}{extension}");
+        var stagedPath = StagingPaths.NewIncomingPath(stagedDir, fileId, version.MimeType);
 
-        await storage.DownloadContentObjectAsync(version.ContentObjectId, stagedPath, ct);
+        try
+        {
+            await storage.DownloadContentObjectAsync(version.ContentObjectId, stagedPath, ct);
+        }
+        catch
+        {
+            // The path is unique to this attempt, so the partial download has no other reader.
+            Discard(new StagedFile(fileId, stagedPath, version.MimeType));
+            throw;
+        }
 
         LogFileStaged(logger, fileId, version.MimeType, stagedPath, new FileInfo(stagedPath).Length);
 
         return new StagedFile(fileId, stagedPath, version.MimeType);
+    }
+
+    public void Discard(StagedFile file)
+    {
+        if (!StagingPaths.TryDeleteFile(file.FilePath, out var error))
+            LogDiscardFailed(logger, error, file.FileId, file.FilePath);
     }
 }

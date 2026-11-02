@@ -29,7 +29,7 @@ public partial class ResultsConsumerWorker
     private static partial void LogBatchCompleted(ILogger logger, Guid batchId, int count);
 
     [LoggerMessage(22408, LogLevel.Warning, "Failed to clean up {Path}")]
-    private static partial void LogCleanupError(ILogger logger, Exception ex, string path);
+    private static partial void LogCleanupError(ILogger logger, Exception? ex, string path);
 
     [LoggerMessage(22409, LogLevel.Error, "Error processing completion message; requeueing")]
     private static partial void LogProcessError(ILogger logger, Exception ex);

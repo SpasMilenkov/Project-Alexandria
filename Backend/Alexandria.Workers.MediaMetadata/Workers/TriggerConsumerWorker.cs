@@ -89,6 +89,13 @@ public partial class TriggerConsumerWorker(
                 return;
             }
 
+            if (buffer.IsPending(fileId))
+            {
+                LogDuplicateTrigger(logger, fileId);
+                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                return;
+            }
+
             try
             {
                 using var scope = serviceProvider.CreateScope();
@@ -119,11 +126,13 @@ public partial class TriggerConsumerWorker(
 
                     case EnqueueResult.Duplicate:
                         LogDuplicateTrigger(logger, fileId);
+                        staging.Discard(staged);
                         await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
                         break;
 
                     case EnqueueResult.BufferFull:
                         LogBufferFull(logger, fileId);
+                        staging.Discard(staged);
                         await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: true, stoppingToken);
                         break;
                 }

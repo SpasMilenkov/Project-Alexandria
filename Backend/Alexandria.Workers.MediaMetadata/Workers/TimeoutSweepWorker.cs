@@ -6,6 +6,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Workers.MediaMetadata.Config;
+using Alexandria.Workers.MediaMetadata.Services;
 using Microsoft.Extensions.Options;
 
 namespace Alexandria.Workers.MediaMetadata.Workers;
@@ -79,6 +80,11 @@ public partial class TimeoutSweepWorker(
 
         foreach (var batch in overdue)
         {
+            // Inputs are unique to the batch; once it has timed out nothing still counts on them.
+            var stagedBatchDir = StagingPaths.BatchDirectory(config.StagedDir, batch.Id);
+            if (!StagingPaths.TryDeleteDirectory(stagedBatchDir, out var cleanupError))
+                LogCleanupError(logger, cleanupError, stagedBatchDir);
+
             var files = await unitOfWork.EssentiaBatchFiles.GetByBatchAsync(batch.Id, ct);
             var pendingFiles = files.Where(f => f.Job.Status == JobStatus.Queued).ToList();
             if (pendingFiles.Count == 0)

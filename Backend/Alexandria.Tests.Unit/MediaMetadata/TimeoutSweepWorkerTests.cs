@@ -10,6 +10,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using IoDirectory = System.IO.Directory;
+using IoFile = System.IO.File;
 
 namespace Alexandria.Tests.Unit.MediaMetadata;
 
@@ -117,5 +119,40 @@ public class TimeoutSweepWorkerTests
             Arg.Any<CancellationToken>());
         await _enrichments.DidNotReceiveWithAnyArgs().UpsertAsync(
             Arg.Any<FileEnrichment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task overdue_batch_removes_only_its_own_staged_inputs()
+    {
+        var stagedDir = IoDirectory.CreateTempSubdirectory("timeout-sweep-tests").FullName;
+        try
+        {
+            var sut = new TimeoutSweepWorker(
+                Substitute.For<ILogger<TimeoutSweepWorker>>(),
+                Options.Create(new EssentiaConfig { Backbone = "effnet", StagedDir = stagedDir }),
+                Substitute.For<IServiceProvider>());
+
+            var (batch, file, _) = StoredFile(JobStatus.Queued);
+            _batches.GetDispatchedSinceAsync(Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+                .Returns(new List<EssentiaBatch> { batch });
+            _batchFiles.GetByBatchAsync(batch.Id, Arg.Any<CancellationToken>())
+                .Returns(new List<EssentiaBatchFile> { file });
+
+            var ownDir = IoDirectory.CreateDirectory(Path.Combine(stagedDir, batch.Id.ToString())).FullName;
+            var otherDir = IoDirectory.CreateDirectory(Path.Combine(stagedDir, Guid.NewGuid().ToString())).FullName;
+            await IoFile.WriteAllTextAsync(Path.Combine(ownDir, $"{file.FileId}.mp3"), "audio",
+                TestContext.Current.CancellationToken);
+            await IoFile.WriteAllTextAsync(Path.Combine(otherDir, $"{file.FileId}.mp3"), "audio",
+                TestContext.Current.CancellationToken);
+
+            await sut.SweepAsync(NewScope(), TestContext.Current.CancellationToken);
+
+            IoDirectory.Exists(ownDir).Should().BeFalse();
+            IoDirectory.Exists(otherDir).Should().BeTrue();
+        }
+        finally
+        {
+            IoDirectory.Delete(stagedDir, recursive: true);
+        }
     }
 }

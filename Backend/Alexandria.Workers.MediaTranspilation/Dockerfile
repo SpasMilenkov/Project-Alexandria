@@ -24,6 +24,7 @@ COPY ["Alexandria.Data.Models/Alexandria.Data.Models.csproj", "Alexandria.Data.M
 COPY ["Alexandria.Repositories/Alexandria.Repositories.csproj", "Alexandria.Repositories/"]
 COPY ["Alexandria.Services.Storage/Alexandria.Services.Storage.csproj", "Alexandria.Services.Storage/"]
 COPY ["Alexandria.Services.User/Alexandria.Services.User.csproj", "Alexandria.Services.User/"]
+COPY ["Alexandria.Services.Streaming/Alexandria.Services.Streaming.csproj", "Alexandria.Services.Streaming/"]
 COPY ["Alexandria.Dto/Alexandria.Dto.csproj", "Alexandria.Dto/"]
 
 COPY ["Directory.Packages.props", "."]

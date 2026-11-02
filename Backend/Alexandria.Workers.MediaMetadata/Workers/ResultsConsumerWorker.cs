@@ -7,6 +7,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Messages;
 using Alexandria.Workers.MediaMetadata.Queueing;
+using Alexandria.Workers.MediaMetadata.Services;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -301,30 +302,13 @@ public partial class ResultsConsumerWorker(
 
     private void Cleanup(EssentiaBatch batch, EssentiaConfig config, string? localOutputDir)
     {
-        foreach (var batchFile in batch.Files)
-        {
-            try
-            {
-                foreach (var stagedFile in Directory.EnumerateFiles(config.StagedDir, $"{batchFile.FileId}.*"))
-                    File.Delete(stagedFile);
-            }
-            catch (Exception ex)
-            {
-                LogCleanupError(logger, ex, config.StagedDir);
-            }
-        }
+        // Only this batch's own inputs: another batch for the same file may still be reading its copy.
+        var stagedBatchDir = StagingPaths.BatchDirectory(config.StagedDir, batch.Id);
+        if (!StagingPaths.TryDeleteDirectory(stagedBatchDir, out var stagedError))
+            LogCleanupError(logger, stagedError, stagedBatchDir);
 
-        if (localOutputDir is not null && Directory.Exists(localOutputDir))
-        {
-            try
-            {
-                Directory.Delete(localOutputDir, recursive: true);
-            }
-            catch (Exception ex)
-            {
-                LogCleanupError(logger, ex, localOutputDir);
-            }
-        }
+        if (localOutputDir is not null && !StagingPaths.TryDeleteDirectory(localOutputDir, out var outputError))
+            LogCleanupError(logger, outputError, localOutputDir);
     }
 
     private static CompletionMessage? Deserialize(byte[] body)

@@ -40,6 +40,12 @@ public sealed class AccumulatorBuffer
     public ChannelReader<StagedFile> Reader => _channel.Reader;
 
     /// <summary>
+    /// True while the file is queued or batching but not yet dispatched, letting triggers skip
+    /// a download that <see cref="TryEnqueue"/> would reject as a duplicate.
+    /// </summary>
+    public bool IsPending(Guid fileId) => _pending.ContainsKey(fileId);
+
+    /// <summary>
     /// Queues a staged file for dispatch. Returns <see cref="EnqueueResult.Added"/> when
     /// enqueued, <see cref="EnqueueResult.Duplicate"/> when the file is already pending,
     /// or <see cref="EnqueueResult.BufferFull"/> when the buffer is full.
