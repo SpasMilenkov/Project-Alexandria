@@ -88,6 +88,42 @@ public static class StreamingSeedHelper
         return new StreamableFileSeed(file.Id, transcode.Id, version.Id);
     }
 
+    public static async Task SeedLyricsAsync(
+        AlexandriaDbContext db,
+        Guid ownerId,
+        Guid transcodeJobId,
+        string? plainLyrics,
+        string? syncedLyrics = null,
+        LyricsStatus status = LyricsStatus.Fetched,
+        CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+
+        var job = new JobBuilder()
+            .WithStatus(JobStatus.Ready)
+            .WithType(JobType.LyricsFetch)
+            .WithUser(ownerId)
+            .WithCompletedAt(now)
+            .Build();
+
+        db.Set<Job>().Add(job);
+        await db.SaveChangesAsync(ct);
+
+        db.Set<TrackLyrics>().Add(new TrackLyrics
+        {
+            Id = Guid.NewGuid(),
+            PlainLyrics = plainLyrics,
+            SyncedLyrics = syncedLyrics,
+            Status = status,
+            FetchedAt = now,
+            TranspilationJobId = transcodeJobId,
+            JobId = job.Id,
+            CreatedAt = now,
+        });
+
+        await db.SaveChangesAsync(ct);
+    }
+
     public static async Task<(Guid PlaylistId, List<Guid> ItemIds)> SeedPlaylistAsync(
         AlexandriaDbContext db,
         Guid ownerId,

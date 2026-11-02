@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Alexandria.Data.Context;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Alexandria.Tests.Common.Builders;
@@ -191,5 +192,105 @@ public class StreamingSourceTests(AlexandriaFixture fixture) : FullStackTestBase
 
         page2.TotalCount.Should().Be(3);
         page2.Items.Select(i => i.FileId).Should().Equal(fallback.FileId);
+    }
+
+    [Fact]
+    public async Task Search_ranks_lyrics_matches_between_metadata_and_file_name_matches()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
+        var ct = TestContext.Current.CancellationToken;
+
+        var titled = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "song-a.mp3", SeedBase.AddMinutes(1), 120.0, ct: ct);
+
+        var titledWithLyrics = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "song-b.mp3", SeedBase.AddMinutes(2), 120.0, ct: ct);
+
+        var lyricsOnly = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "song-c.mp3", SeedBase.AddMinutes(3), 120.0, ct: ct);
+
+        var fileNameOnly = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "ocean-tapes.mp3", SeedBase.AddMinutes(4), 120.0, ct: ct);
+
+        var pendingLyrics = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "song-d.mp3", SeedBase.AddMinutes(5), 120.0, ct: ct);
+
+        var (_, foreignOwnerId) = await CreateOtherUserAsync();
+
+        var foreign = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, foreignOwnerId, "song-e.mp3", SeedBase.AddMinutes(6), 120.0, ct: ct);
+
+        foreach (var (seed, title) in new[] { (titled, "Ocean Drive"), (titledWithLyrics, "Ocean Eyes") })
+        {
+            var metadata = await db.MediaMetadata.SingleAsync(m => m.FileId == seed.FileId, ct);
+
+            metadata.Title = title;
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        await StreamingSeedHelper.SeedLyricsAsync(
+            db, UserId, titledWithLyrics.JobId, "Staring at the ocean", ct: ct);
+
+        await StreamingSeedHelper.SeedLyricsAsync(
+            db, UserId, lyricsOnly.JobId, "Line one\nWaves crash on the ocean floor", ct: ct);
+
+        await StreamingSeedHelper.SeedLyricsAsync(
+            db, UserId, pendingLyrics.JobId, "Another ocean song", status: LyricsStatus.PendingFetch, ct: ct);
+
+        await StreamingSeedHelper.SeedLyricsAsync(
+            db, foreignOwnerId, foreign.JobId, "Foreign ocean lyrics", ct: ct);
+
+        var page = await GetPageAsync("page=1&pageSize=10&isVideo=false&query=ocean");
+
+        page.TotalCount.Should().Be(4);
+
+        page.Items.Take(2).Select(i => i.FileId).Should()
+            .BeEquivalentTo([titled.FileId, titledWithLyrics.FileId]);
+
+        page.Items.Skip(2).Select(i => i.FileId).Should()
+            .Equal(lyricsOnly.FileId, fileNameOnly.FileId);
+
+        page.Items.Single(i => i.FileId == lyricsOnly.FileId).LyricsSnippet.Should()
+            .Be("Waves crash on the ocean floor");
+
+        page.Items.Where(i => i.FileId != lyricsOnly.FileId).Should()
+            .OnlyContain(i => i.LyricsSnippet == null);
+
+        var pastEnd = await GetPageAsync("page=2&pageSize=10&isVideo=false&query=ocean");
+
+        pastEnd.Items.Should().BeEmpty();
+        pastEnd.TotalCount.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Search_cyrillic_query_matches_metadata_and_synced_lyrics()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AlexandriaDbContext>();
+        var ct = TestContext.Current.CancellationToken;
+
+        var titled = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "track-1.mp3", SeedBase.AddMinutes(1), 120.0, ct: ct);
+
+        var lyricsOnly = await StreamingSeedHelper.SeedStreamableFileAsync(
+            db, UserId, "track-2.mp3", SeedBase.AddMinutes(2), 120.0, ct: ct);
+
+        var metadata = await db.MediaMetadata.SingleAsync(m => m.FileId == titled.FileId, ct);
+
+        metadata.Title = "Обичам те";
+        await db.SaveChangesAsync(ct);
+
+        await StreamingSeedHelper.SeedLyricsAsync(
+            db, UserId, lyricsOnly.JobId, plainLyrics: null,
+            syncedLyrics: "[00:01.00] Аз те обичам\n[00:04.00] Обичам те завинаги", ct: ct);
+
+        var page = await GetPageAsync(
+            $"page=1&pageSize=10&isVideo=false&query={Uri.EscapeDataString("обичам те")}");
+
+        page.TotalCount.Should().Be(2);
+        page.Items.Select(i => i.FileId).Should().Equal(titled.FileId, lyricsOnly.FileId);
+        page.Items.Last().LyricsSnippet.Should().Be("Обичам те завинаги");
     }
 }

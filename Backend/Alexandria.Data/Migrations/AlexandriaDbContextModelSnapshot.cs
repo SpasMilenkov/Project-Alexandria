@@ -1858,6 +1858,12 @@ namespace Alexandria.Data.Migrations
                     b.Property<string>("ProviderTrackId")
                         .HasColumnType("text");
 
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("to_tsvector('simple', coalesce(\n            nullif(btrim(\"PlainLyrics\"), ''),\n            regexp_replace(coalesce(\"SyncedLyrics\", ''), '\\[[^\\]]*\\]', ' ', 'g')\n        ))", true);
+
                     b.Property<int>("SourceProvider")
                         .HasColumnType("integer");
 
@@ -1883,6 +1889,11 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("JobId")
                         .IsUnique();
+
+                    b.HasIndex("SearchVector")
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "gin");
 
                     b.HasIndex("Status");
 

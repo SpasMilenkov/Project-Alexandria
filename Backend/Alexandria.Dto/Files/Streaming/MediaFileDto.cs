@@ -26,4 +26,8 @@ public sealed class MediaFileDto
     public bool? HasFinished { get; set; }
     public DateTimeOffset? LastAccessedAt { get; set; }
     public DateTimeOffset? CreatedAt { get; set; }
+
+    // Set only on search results that matched through lyrics rather than metadata or
+    // file name: the lyric line containing the match, so the hit is explainable.
+    public string? LyricsSnippet { get; set; }
 }
