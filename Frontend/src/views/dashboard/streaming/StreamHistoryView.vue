@@ -116,7 +116,7 @@ const subtitleOf = (entry: HistoryEntry) => {
 
 <template>
   <div class="px-4 sm:px-6 py-5">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 frosted-glass glass-surface">
       <div>
         <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Stream history</h1>
         <p class="text-sm text-gray-600 dark:text-gray-400">{{ countText }}</p>

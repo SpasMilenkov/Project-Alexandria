@@ -7,6 +7,7 @@ import { computed, reactive, ref, watch } from "vue";
 import type { TranspilationJobQuery, TranspilationJobResponse } from "@/api/streaming";
 
 import { AudioRung, VideoRung } from "@/api/policy";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { JobStatus } from "@/enums/job-status";
 import { stopTranspilationJob } from "@/mutations/streaming";
@@ -392,43 +393,43 @@ interface StatusConfig {
 const statusConfig: Record<JobStatus, StatusConfig> = {
   [JobStatus.Queued]: {
     label: "Queued",
-    icon: "mdi:clock-outline",
-    chipClass: "bg-gray-200/80 dark:bg-white/10 text-gray-500 dark:text-white/50",
+    icon: "lucide:clock",
+    chipClass: "bg-gray-200/80 dark:bg-white/10 text-gray-600 dark:text-gray-400",
     barClass: "bg-gray-400 dark:bg-white/30",
   },
   [JobStatus.Partial]: {
     label: "Partial",
-    icon: "mdi:clock-alert-outline",
+    icon: "lucide:clock-alert",
     chipClass: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
     barClass: "bg-amber-400 dark:bg-amber-500",
   },
   [JobStatus.Processing]: {
     label: "Processing",
-    icon: "mdi:loading",
+    icon: "lucide:loader-circle",
     chipClass: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400",
-    barClass: "bg-primary",
+    barClass: "bg-blue-400 dark:bg-blue-500",
   },
   [JobStatus.CancellationRequested]: {
     label: "Cancelling",
-    icon: "mdi:loading",
+    icon: "lucide:loader-circle",
     chipClass: "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400",
     barClass: "bg-orange-400 dark:bg-orange-500",
   },
   [JobStatus.Cancelled]: {
     label: "Cancelled",
-    icon: "mdi:close-circle",
-    chipClass: "bg-gray-200/80 dark:bg-white/[0.07] text-gray-400 dark:text-white/35",
+    icon: "lucide:circle-x",
+    chipClass: "bg-gray-200/80 dark:bg-white/[0.07] text-gray-600 dark:text-gray-400",
     barClass: "bg-gray-300 dark:bg-white/20",
   },
   [JobStatus.Ready]: {
     label: "Ready",
-    icon: "mdi:check-circle-outline",
+    icon: "lucide:circle-check",
     chipClass: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
     barClass: "bg-emerald-400 dark:bg-emerald-500",
   },
   [JobStatus.Failed]: {
     label: "Failed",
-    icon: "mdi:alert-circle-outline",
+    icon: "lucide:circle-alert",
     chipClass: "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
     barClass: "bg-red-400 dark:bg-red-500",
   },
@@ -499,650 +500,688 @@ const statusFilterOptions = [
 ];
 
 const mediaFilterOptions = [
-  { label: "All", value: undefined, icon: "mdi:all-inclusive" },
+  { label: "All", value: undefined, icon: "lucide:infinity" },
   { label: "Video", value: true, icon: "lucide:video" },
-  { label: "Audio", value: false, icon: "mdi:music-note-outline" },
+  { label: "Audio", value: false, icon: "lucide:music" },
 ];
 </script>
 
 <template>
-  <div class="px-6 py-8">
-    <!-- Page header -->
-    <div class="flex items-center gap-3 mb-6 flex-wrap">
-      <div>
-        <h1 class="text-lg font-semibold text-gray-800 dark:text-white/90 m-0">
-          Transpilation Jobs
-        </h1>
-        <p class="text-xs text-gray-400 dark:text-white/30 mt-0.5 m-0">
-          {{ groups.length }} file{{ groups.length !== 1 ? "s" : "" }},
-          {{ data?.totalCount ?? 0 }} job{{ (data?.totalCount ?? 0) !== 1 ? "s" : "" }}
-        </p>
-      </div>
-      <span
-        v-if="hasLive && !isLoading"
-        class="inline-flex items-center gap-2 h-7 px-3 rounded-full bg-black/[0.04] dark:bg-white/[0.06] text-xs text-gray-600 dark:text-white/50"
-      >
-        <span class="w-2 h-2 rounded-full bg-primary animate-pulse" />
-        Updating live
-      </span>
-      <span class="flex-1" />
-      <button
-        class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] hover:text-gray-600 dark:hover:text-white/55 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        :disabled="isRefreshing || isLoading"
-        :title="isRefreshing ? 'Refreshing…' : 'Refresh jobs'"
-        @click="handleRefresh"
-      >
-        <Icon icon="mdi:refresh" class="w-4 h-4" :class="{ 'animate-spin': isRefreshing }" />
-      </button>
-    </div>
-
-    <!-- Filters with live counts -->
-    <div v-if="!error && (isLoading || groups.length > 0 || isFiltered)">
-      <div class="filter-tabs" role="tablist" aria-label="Status">
-        <button
-          v-for="opt in statusFilterOptions"
-          :key="String(opt.value)"
-          role="tab"
-          :aria-selected="statusFilter === opt.value"
-          class="filter-tab"
-          :class="{ 'filter-tab-on': statusFilter === opt.value }"
-          @click="selectStatus(opt.value)"
-        >
-          {{ opt.label }}
-          <em>{{
-            opt.value === undefined ? (allCount ?? "") : (statusCounts.get(opt.value) ?? "")
-          }}</em>
-          <span
-            v-if="statusFilter === opt.value"
-            class="absolute left-0 right-0 bottom-0 h-0.5 rounded-full bg-primary"
-          />
-        </button>
-      </div>
-
-      <div class="filters-toolbar">
-        <div
-          class="flex items-center flex-wrap sm:flex-nowrap gap-1 filter-group"
-          role="group"
-          aria-label="Media type"
-        >
-          <button
-            v-for="opt in mediaFilterOptions"
-            :key="String(opt.value)"
-            class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
-            :class="
-              isVideoFilter === opt.value
-                ? 'bg-primary text-white'
-                : 'bg-black/[0.04] dark:bg-white/[0.06] text-gray-600 dark:text-white/50 hover:bg-black/[0.07] dark:hover:bg-white/[0.09]'
-            "
-            @click="selectMedia(opt.value)"
-          >
-            <Icon :icon="opt.icon" class="w-3.5 h-3.5" />
-            {{ opt.label }}
-          </button>
+  <div class="flex w-full flex-col gap-3 p-3">
+    <header
+      class="rounded-xl border border-gray-200/70 frosted-glass glass-surface-strong dark:border-gray-700/70"
+    >
+      <!-- Title row -->
+      <div class="flex flex-wrap items-center gap-4 px-4 py-4">
+        <div class="flex min-w-0 flex-col gap-0.5">
+          <h1 class="m-0 text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Transpilation Jobs
+          </h1>
+          <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
+            {{ groups.length }} file{{ groups.length !== 1 ? "s" : "" }},
+            {{ data?.totalCount ?? 0 }} job{{ (data?.totalCount ?? 0) !== 1 ? "s" : "" }}
+          </p>
         </div>
-
-        <button
-          class="flex items-center gap-1.5 h-[38px] px-3 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap shrink-0"
-          :class="
-            filtersOpen || advancedFilterCount > 0
-              ? 'border-primary/60 bg-primary/10 text-primary'
-              : 'border-black/[0.08] dark:border-white/[0.09] text-gray-600 dark:text-white/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
-          "
-          :aria-expanded="filtersOpen"
-          @click="filtersOpen = !filtersOpen"
-        >
-          <Icon icon="lucide:filter" class="w-3.5 h-3.5" />
-          Filters
-          <span
-            v-if="advancedFilterCount > 0"
-            class="min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[11px] font-bold inline-grid place-items-center tabular-nums"
-          >
-            {{ advancedFilterCount }}
-          </span>
-        </button>
-
         <span
-          v-for="chip in activeChips"
-          :key="chip.key"
-          class="inline-flex items-center gap-1 h-7 pl-3 pr-1 rounded-full bg-black/[0.04] dark:bg-white/[0.06] text-xs text-gray-700 dark:text-white/70 whitespace-nowrap"
+          v-if="hasLive && !isLoading"
+          class="inline-flex h-6 items-center gap-2 rounded-full border border-gray-200/70 px-3 text-xs text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
         >
-          {{ chip.label }}
-          <button
-            class="w-5 h-5 rounded-full grid place-items-center text-gray-400 dark:text-white/30 hover:text-gray-700 dark:hover:text-white/70 transition-colors"
-            :aria-label="`Remove filter ${chip.label}`"
-            @click="removeChip(chip.key)"
-          >
-            <Icon icon="lucide:x" class="w-3 h-3" />
-          </button>
-        </span>
-        <button
-          v-if="activeChips.length > 0"
-          class="px-2.5 h-7 rounded-lg text-xs font-medium text-gray-500 dark:text-white/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors whitespace-nowrap"
-          @click="resetAdvanced"
-        >
-          Clear all
-        </button>
-      </div>
-
-      <!-- More filters panel -->
-      <div
-        v-if="filtersOpen"
-        class="rounded-xl border border-black/[0.08] dark:border-white/[0.09] frosted-glass glass-surface p-4 sm:p-6 mb-4"
-      >
-        <div class="flex items-center gap-2 mb-6">
-          <p class="text-sm font-semibold text-gray-700 dark:text-white/70 m-0">More filters</p>
-          <span class="flex-1" />
-          <button
-            class="px-2.5 h-7 rounded-lg text-xs font-medium text-gray-500 dark:text-white/40 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            :disabled="advancedFilterCount === 0"
-            @click="resetAdvanced"
-          >
-            Reset
-          </button>
-          <button
-            class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors"
-            aria-label="Close filters"
-            @click="filtersOpen = false"
-          >
-            <Icon icon="lucide:x" class="w-4 h-4" />
-          </button>
-        </div>
-
-        <div class="filter-grid">
-          <div class="flex flex-col gap-3">
-            <p class="text-[13px] font-semibold text-gray-700 dark:text-white/70 m-0">Created</p>
-            <div class="grid grid-cols-2 gap-3">
-              <UFormField name="createdFrom">
-                <!-- @vue-ignore -->
-                <UInputDate v-model="createdFrom" class="w-full">
-                  <template #trailing>
-                    <UPopover>
-                      <UButton
-                        color="neutral"
-                        variant="link"
-                        size="sm"
-                        icon="i-lucide-calendar"
-                        aria-label="Created from"
-                        class="px-0"
-                      />
-                      <template #content>
-                        <!-- @vue-ignore -->
-                        <UCalendar v-model="createdFrom" />
-                      </template>
-                    </UPopover>
-                  </template>
-                </UInputDate>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">From</p>
-              </UFormField>
-              <UFormField name="createdTo">
-                <!-- @vue-ignore -->
-                <UInputDate v-model="createdTo" class="w-full">
-                  <template #trailing>
-                    <UPopover>
-                      <UButton
-                        color="neutral"
-                        variant="link"
-                        size="sm"
-                        icon="i-lucide-calendar"
-                        aria-label="Created until"
-                        class="px-0"
-                      />
-                      <template #content>
-                        <!-- @vue-ignore -->
-                        <UCalendar v-model="createdTo" />
-                      </template>
-                    </UPopover>
-                  </template>
-                </UInputDate>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Until</p>
-              </UFormField>
-            </div>
-            <p v-if="!createdRangeValid" class="text-xs text-red-500 dark:text-red-400 m-0">
-              The From date is after the To date.
-            </p>
-            <div class="flex gap-2 flex-wrap">
-              <button
-                class="h-7 px-2.5 rounded-lg border border-black/[0.08] dark:border-white/[0.09] text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-xs transition-colors"
-                @click="applyPreset(0)"
-              >
-                Today
-              </button>
-              <button
-                class="h-7 px-2.5 rounded-lg border border-black/[0.08] dark:border-white/[0.09] text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-xs transition-colors"
-                @click="applyPreset(7)"
-              >
-                Last 7 days
-              </button>
-              <button
-                class="h-7 px-2.5 rounded-lg border border-black/[0.08] dark:border-white/[0.09] text-gray-500 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-xs transition-colors"
-                @click="applyPreset(30)"
-              >
-                Last 30 days
-              </button>
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-3">
-            <p class="text-[13px] font-semibold text-gray-700 dark:text-white/70 m-0">Completed</p>
-            <div class="grid grid-cols-2 gap-3">
-              <UFormField name="completedFrom">
-                <!-- @vue-ignore -->
-                <UInputDate v-model="completedFrom" class="w-full">
-                  <template #trailing>
-                    <UPopover>
-                      <UButton
-                        color="neutral"
-                        variant="link"
-                        size="sm"
-                        icon="i-lucide-calendar"
-                        aria-label="Completed from"
-                        class="px-0"
-                      />
-                      <template #content>
-                        <!-- @vue-ignore -->
-                        <UCalendar v-model="completedFrom" />
-                      </template>
-                    </UPopover>
-                  </template>
-                </UInputDate>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">From</p>
-              </UFormField>
-              <UFormField name="completedTo">
-                <!-- @vue-ignore -->
-                <UInputDate v-model="completedTo" class="w-full">
-                  <template #trailing>
-                    <UPopover>
-                      <UButton
-                        color="neutral"
-                        variant="link"
-                        size="sm"
-                        icon="i-lucide-calendar"
-                        aria-label="Completed until"
-                        class="px-0"
-                      />
-                      <template #content>
-                        <!-- @vue-ignore -->
-                        <UCalendar v-model="completedTo" />
-                      </template>
-                    </UPopover>
-                  </template>
-                </UInputDate>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">Until</p>
-              </UFormField>
-            </div>
-            <p v-if="!completedRangeValid" class="text-xs text-red-500 dark:text-red-400 m-0">
-              The From date is after the To date.
-            </p>
-            <p class="text-xs text-gray-400 dark:text-white/30 m-0">
-              Jobs that are still running are left out.
-            </p>
-          </div>
-
-          <div class="flex flex-col gap-3">
-            <p class="text-[13px] font-semibold text-gray-700 dark:text-white/70 m-0">Retries</p>
-            <div
-              class="inline-flex items-center gap-1 self-start p-0.5 rounded-[10px] border border-black/[0.08] dark:border-white/[0.09]"
-            >
-              <button
-                class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                :disabled="minRetries <= 0"
-                aria-label="Fewer"
-                @click="minRetries--"
-              >
-                <Icon icon="lucide:minus" class="w-3.5 h-3.5" />
-              </button>
-              <span
-                class="min-w-[84px] text-center text-xs tabular-nums text-gray-600 dark:text-white/50"
-              >
-                {{ minRetries > 0 ? `At least ${minRetries}` : "Any" }}
-              </span>
-              <button
-                class="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 dark:text-white/35 hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-colors"
-                aria-label="More"
-                @click="minRetries++"
-              >
-                <Icon icon="lucide:plus" class="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <p class="text-xs text-gray-400 dark:text-white/30 m-0">
-              Show jobs retried this many times or more.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loading state -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <Icon icon="mdi:loading" class="w-6 h-6 animate-spin text-gray-400 dark:text-white/35" />
-    </div>
-
-    <!-- Error state -->
-    <div v-else-if="error" class="flex flex-col items-center gap-2.5 py-20 text-center">
-      <Icon icon="mdi:alert-circle-outline" class="w-9 h-9 text-red-400" />
-      <p class="text-sm font-medium text-gray-700 dark:text-white/70 m-0">Could not load jobs</p>
-      <p class="text-xs text-gray-400 dark:text-white/30 m-0">
-        The jobs service did not respond. Check the connection and try again.
-      </p>
-      <button
-        class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-black/[0.05] dark:bg-white/[0.07] text-gray-600 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.10] transition-colors"
-        @click="handleRefresh"
-      >
-        <Icon icon="mdi:refresh" class="w-3.5 h-3.5" />
-        Try again
-      </button>
-    </div>
-
-    <!-- Empty states -->
-    <div v-else-if="!groups.length" class="flex flex-col items-center gap-3 py-20 text-center">
-      <Icon icon="mdi:cog-outline" class="w-10 h-10 text-gray-300 dark:text-white/[0.18]" />
-      <p class="text-sm font-medium text-gray-700 dark:text-white/70 m-0">
-        {{ isFiltered ? "No jobs match these filters" : "No transpilation jobs yet" }}
-      </p>
-      <p class="text-xs text-gray-400 dark:text-white/30 m-0">
-        {{
-          isFiltered
-            ? "Try different filters."
-            : "Jobs appear here when a file is queued for streaming."
-        }}
-      </p>
-      <button
-        v-if="isFiltered"
-        class="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-black/[0.05] dark:bg-white/[0.07] text-gray-600 dark:text-white/55 hover:bg-black/[0.08] dark:hover:bg-white/[0.10] transition-colors"
-        @click="clearFilters"
-      >
-        Clear filters
-      </button>
-    </div>
-
-    <!-- Job groups -->
-    <div v-else class="space-y-3">
-      <div
-        v-if="statusFilter === undefined && failedCount > 0"
-        class="flex items-center gap-3 px-4 py-3 rounded-xl border border-red-200/60 dark:border-red-500/20 bg-red-50/80 dark:bg-red-500/[0.07]"
-      >
-        <Icon
-          icon="mdi:alert-circle-outline"
-          class="w-4 h-4 shrink-0 text-red-500 dark:text-red-400"
-        />
-        <span class="text-xs text-gray-700 dark:text-white/70">
-          {{ failedCount }} job{{ failedCount !== 1 ? "s" : "" }} failed and may need a retry.
+          <span class="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+          Updating live
         </span>
         <span class="flex-1" />
-        <button
-          class="px-2.5 py-1 rounded-lg text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-100/60 dark:hover:bg-red-500/10 transition-colors shrink-0"
-          @click="selectStatus(JobStatus.Failed)"
-        >
-          Review failed
-        </button>
+        <UTooltip text="Refresh jobs">
+          <UButton
+            icon="i-lucide-refresh-cw"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            class="justify-center"
+            aria-label="Refresh jobs"
+            :loading="isRefreshing"
+            :disabled="isLoading"
+            @click="handleRefresh"
+          />
+        </UTooltip>
       </div>
 
-      <div
-        v-for="group in groups"
-        :key="group.versionId"
-        class="rounded-xl border border-black/[0.08] dark:border-white/[0.09] overflow-hidden frosted-glass glass-surface"
-      >
-        <!-- Group header -->
-        <button
-          class="w-full flex items-center gap-3 px-4 py-3 bg-black/[0.03] dark:bg-white/[0.03] hover:bg-black/[0.05] dark:hover:bg-white/[0.05] transition-colors text-left border-b border-black/[0.06] dark:border-white/[0.06]"
-          :aria-expanded="isGroupOpen(group)"
-          @click="toggleGroup(group)"
-        >
-          <span
-            class="flex items-center justify-center w-9 h-9 rounded-[10px] bg-black/[0.04] dark:bg-white/[0.06] text-gray-500 dark:text-white/40 shrink-0"
+      <!-- Filters with live counts -->
+      <div v-if="!error && (isLoading || groups.length > 0 || isFiltered)">
+        <div class="filter-tabs" role="tablist" aria-label="Status">
+          <button
+            v-for="opt in statusFilterOptions"
+            :key="String(opt.value)"
+            role="tab"
+            :aria-selected="statusFilter === opt.value"
+            class="filter-tab"
+            :class="{ 'filter-tab-on': statusFilter === opt.value }"
+            @click="selectStatus(opt.value)"
           >
-            <Icon :icon="group.isVideo ? 'lucide:video' : 'mdi:music-note'" class="w-4 h-4" />
-          </span>
-          <span class="flex-1 min-w-0">
-            <span class="text-sm font-medium text-gray-700 dark:text-white/80 truncate block">
-              {{ group.fileName ?? group.versionId }}
-            </span>
+            {{ opt.label }}
+            <em>{{
+              opt.value === undefined ? (allCount ?? "") : (statusCounts.get(opt.value) ?? "")
+            }}</em>
             <span
-              v-if="group.fileName && group.versionNumber != null"
-              class="text-xs text-gray-400 dark:text-white/30"
-            >
-              Version {{ group.versionNumber }}, {{ group.jobs.length }} run{{
-                group.jobs.length !== 1 ? "s" : ""
-              }}
-            </span>
-          </span>
-          <span class="hidden sm:flex items-center gap-3 flex-wrap justify-end">
-            <span
-              v-for="item in groupSummary(group)"
-              :key="item.status"
-              class="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-white/40 tabular-nums"
-            >
-              <span class="w-2 h-2 rounded-full" :class="statusConfig[item.status].barClass" />
-              {{ item.count }} {{ statusConfig[item.status].label.toLowerCase() }}
-            </span>
-          </span>
-          <Icon
-            icon="mdi:chevron-down"
-            class="w-4 h-4 text-gray-400 dark:text-white/30 transition-transform duration-200 shrink-0"
-            :class="{ 'rotate-180': isGroupOpen(group) }"
-          />
-        </button>
+              v-if="statusFilter === opt.value"
+              class="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary"
+            />
+          </button>
+        </div>
 
-        <!-- Job rows -->
-        <div
-          v-if="isGroupOpen(group)"
-          class="divide-y divide-black/[0.04] dark:divide-white/[0.05]"
+        <div class="filters-toolbar">
+          <div
+            class="filter-group inline-flex h-8 items-center gap-0.5 rounded-lg border border-gray-200/70 px-0.5 dark:border-gray-700/70"
+            role="group"
+            aria-label="Media type"
+          >
+            <button
+              v-for="opt in mediaFilterOptions"
+              :key="String(opt.value)"
+              class="inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-md px-3 text-xs font-medium transition-colors"
+              :class="
+                isVideoFilter === opt.value
+                  ? 'bg-primary text-white'
+                  : 'text-gray-600 hover:bg-black/[0.05] dark:text-gray-400 dark:hover:bg-white/[0.07]'
+              "
+              :aria-pressed="isVideoFilter === opt.value"
+              @click="selectMedia(opt.value)"
+            >
+              <Icon :icon="opt.icon" class="w-3.5 h-3.5" />
+              {{ opt.label }}
+            </button>
+          </div>
+
+          <UButton
+            icon="i-lucide-filter"
+            size="sm"
+            class="shrink-0"
+            :color="filtersOpen || advancedFilterCount > 0 ? 'primary' : 'neutral'"
+            :variant="filtersOpen || advancedFilterCount > 0 ? 'subtle' : 'outline'"
+            :aria-expanded="filtersOpen"
+            @click="filtersOpen = !filtersOpen"
+          >
+            Filters
+            <UBadge v-if="advancedFilterCount > 0" color="primary" size="sm" class="tabular-nums">
+              {{ advancedFilterCount }}
+            </UBadge>
+          </UButton>
+
+          <span
+            v-for="chip in activeChips"
+            :key="chip.key"
+            class="inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full border border-gray-200/70 pl-3 pr-1 text-xs text-gray-900 dark:border-gray-700/70 dark:text-gray-100"
+          >
+            {{ chip.label }}
+            <button
+              class="grid h-5 w-5 place-items-center rounded-full text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100"
+              :aria-label="`Remove filter ${chip.label}`"
+              @click="removeChip(chip.key)"
+            >
+              <Icon icon="lucide:x" class="w-3.5 h-3.5" />
+            </button>
+          </span>
+          <UButton
+            v-if="activeChips.length > 0"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            class="whitespace-nowrap"
+            @click="resetAdvanced"
+          >
+            Clear all
+          </UButton>
+        </div>
+
+        <!-- More filters panel -->
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          enter-from-class="opacity-0 -translate-y-1"
+          leave-active-class="transition-all duration-150 ease-in"
+          leave-to-class="opacity-0 -translate-y-1"
         >
           <div
-            v-for="job in group.jobs"
-            :key="job.id"
-            class="job-grid px-4 py-3 hover:bg-black/[0.01] dark:hover:bg-white/[0.02] transition-colors"
+            v-if="filtersOpen"
+            class="border-t border-gray-200/70 p-4 dark:border-gray-700/70"
           >
-            <span
-              class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium w-fit"
-              :class="statusConfig[job.status].chipClass"
-            >
-              <Icon
-                :icon="statusConfig[job.status].icon"
-                class="w-3.5 h-3.5 shrink-0"
-                :class="{ 'animate-spin': isSpinning(job.status) }"
+            <div class="mb-4 flex items-center gap-2">
+              <p class="m-0 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                More filters
+              </p>
+              <span class="flex-1" />
+              <UButton
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                :disabled="advancedFilterCount === 0"
+                @click="resetAdvanced"
+              >
+                Reset
+              </UButton>
+              <UButton
+                icon="i-lucide-x"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                class="justify-center"
+                aria-label="Close filters"
+                @click="filtersOpen = false"
               />
-              {{ statusConfig[job.status].label }}
-            </span>
-
-            <div class="job-mid min-w-0 flex flex-col gap-2">
-              <div class="flex gap-1.5 flex-wrap">
-                <span
-                  v-for="chip in rungChips(job)"
-                  :key="chip"
-                  class="h-[22px] px-2 rounded-md bg-black/[0.04] dark:bg-white/[0.06] text-gray-500 dark:text-white/40 text-xs inline-flex items-center tabular-nums"
-                >
-                  {{ chip }}
-                </span>
-              </div>
-              <div v-if="showProgress(job.status)" class="flex items-center gap-2 max-w-90">
-                <div class="flex-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
-                  <div
-                    class="h-full rounded-full transition-all duration-500"
-                    :class="statusConfig[job.status].barClass"
-                    :style="{ width: `${job.progressPercent}%` }"
-                  />
-                </div>
-                <span
-                  class="text-xs tabular-nums text-gray-400 dark:text-white/30 w-8 text-right shrink-0"
-                >
-                  {{ job.progressPercent }}%
-                </span>
-              </div>
             </div>
 
-            <div
-              class="job-meta flex items-center gap-3 text-xs text-gray-400 dark:text-white/30 whitespace-nowrap tabular-nums"
+            <div class="filter-grid">
+              <div class="flex flex-col gap-2">
+                <p class="m-0 text-sm font-semibold text-gray-900 dark:text-gray-100">Created</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <UFormField name="createdFrom">
+                    <!-- @vue-ignore -->
+                    <UInputDate v-model="createdFrom" class="w-full">
+                      <template #trailing>
+                        <UPopover>
+                          <UButton
+                            color="neutral"
+                            variant="link"
+                            size="sm"
+                            icon="i-lucide-calendar"
+                            aria-label="Created from"
+                            class="px-0"
+                          />
+                          <template #content>
+                            <!-- @vue-ignore -->
+                            <UCalendar v-model="createdFrom" />
+                          </template>
+                        </UPopover>
+                      </template>
+                    </UInputDate>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">From</p>
+                  </UFormField>
+                  <UFormField name="createdTo">
+                    <!-- @vue-ignore -->
+                    <UInputDate v-model="createdTo" class="w-full">
+                      <template #trailing>
+                        <UPopover>
+                          <UButton
+                            color="neutral"
+                            variant="link"
+                            size="sm"
+                            icon="i-lucide-calendar"
+                            aria-label="Created until"
+                            class="px-0"
+                          />
+                          <template #content>
+                            <!-- @vue-ignore -->
+                            <UCalendar v-model="createdTo" />
+                          </template>
+                        </UPopover>
+                      </template>
+                    </UInputDate>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Until</p>
+                  </UFormField>
+                </div>
+                <p v-if="!createdRangeValid" class="m-0 text-xs text-red-600 dark:text-red-400">
+                  The From date is after the To date.
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <UButton color="neutral" variant="outline" size="xs" @click="applyPreset(0)">
+                    Today
+                  </UButton>
+                  <UButton color="neutral" variant="outline" size="xs" @click="applyPreset(7)">
+                    Last 7 days
+                  </UButton>
+                  <UButton color="neutral" variant="outline" size="xs" @click="applyPreset(30)">
+                    Last 30 days
+                  </UButton>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <p class="m-0 text-sm font-semibold text-gray-900 dark:text-gray-100">Completed</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <UFormField name="completedFrom">
+                    <!-- @vue-ignore -->
+                    <UInputDate v-model="completedFrom" class="w-full">
+                      <template #trailing>
+                        <UPopover>
+                          <UButton
+                            color="neutral"
+                            variant="link"
+                            size="sm"
+                            icon="i-lucide-calendar"
+                            aria-label="Completed from"
+                            class="px-0"
+                          />
+                          <template #content>
+                            <!-- @vue-ignore -->
+                            <UCalendar v-model="completedFrom" />
+                          </template>
+                        </UPopover>
+                      </template>
+                    </UInputDate>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">From</p>
+                  </UFormField>
+                  <UFormField name="completedTo">
+                    <!-- @vue-ignore -->
+                    <UInputDate v-model="completedTo" class="w-full">
+                      <template #trailing>
+                        <UPopover>
+                          <UButton
+                            color="neutral"
+                            variant="link"
+                            size="sm"
+                            icon="i-lucide-calendar"
+                            aria-label="Completed until"
+                            class="px-0"
+                          />
+                          <template #content>
+                            <!-- @vue-ignore -->
+                            <UCalendar v-model="completedTo" />
+                          </template>
+                        </UPopover>
+                      </template>
+                    </UInputDate>
+                    <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">Until</p>
+                  </UFormField>
+                </div>
+                <p v-if="!completedRangeValid" class="m-0 text-xs text-red-600 dark:text-red-400">
+                  The From date is after the To date.
+                </p>
+                <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
+                  Jobs that are still running are left out.
+                </p>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <p class="m-0 text-sm font-semibold text-gray-900 dark:text-gray-100">Retries</p>
+                <div
+                  class="inline-flex items-center gap-1 self-start rounded-lg border border-gray-200/70 p-0.5 dark:border-gray-700/70"
+                >
+                  <UButton
+                    icon="i-lucide-minus"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    class="justify-center"
+                    aria-label="Fewer"
+                    :disabled="minRetries <= 0"
+                    @click="minRetries--"
+                  />
+                  <span
+                    class="min-w-24 text-center text-xs tabular-nums text-gray-600 dark:text-gray-400"
+                  >
+                    {{ minRetries > 0 ? `At least ${minRetries}` : "Any" }}
+                  </span>
+                  <UButton
+                    icon="i-lucide-plus"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    class="justify-center"
+                    aria-label="More"
+                    @click="minRetries++"
+                  />
+                </div>
+                <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
+                  Show jobs retried this many times or more.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </div>
+    </header>
+
+    <!-- Jobs panel -->
+    <section
+      class="overflow-hidden rounded-[14px] border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
+    >
+      <!-- Loading state -->
+      <div v-if="isLoading" class="flex items-center justify-center py-20">
+        <BlockSpinner :size="24" class="text-gray-600 dark:text-gray-400" />
+      </div>
+
+      <!-- Error state -->
+      <div
+        v-else-if="error"
+        class="flex flex-col items-center gap-3 px-4 py-20 text-center"
+      >
+        <Icon icon="lucide:circle-alert" class="w-12 h-12 text-red-400" />
+        <p class="m-0 text-sm font-medium text-gray-900 dark:text-gray-100">Could not load jobs</p>
+        <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
+          The jobs service did not respond. Check the connection and try again.
+        </p>
+        <UButton
+          icon="i-lucide-refresh-cw"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="handleRefresh"
+        >
+          Try again
+        </UButton>
+      </div>
+
+      <!-- Empty states -->
+      <div
+        v-else-if="!groups.length"
+        class="flex flex-col items-center gap-3 px-4 py-20 text-center"
+      >
+        <Icon icon="lucide:cog" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+        <p class="m-0 text-sm font-medium text-gray-900 dark:text-gray-100">
+          {{ isFiltered ? "No jobs match these filters" : "No transpilation jobs yet" }}
+        </p>
+        <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
+          {{
+            isFiltered
+              ? "Try different filters."
+              : "Jobs appear here when a file is queued for streaming."
+          }}
+        </p>
+        <UButton
+          v-if="isFiltered"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          @click="clearFilters"
+        >
+          Clear filters
+        </UButton>
+      </div>
+
+      <!-- Job groups -->
+      <div v-else>
+        <div
+          v-if="statusFilter === undefined && failedCount > 0"
+          class="flex items-center gap-2 border-b border-red-200/60 bg-red-50/80 px-4 py-2 dark:border-red-500/20 dark:bg-red-500/[0.07]"
+        >
+          <Icon
+            icon="lucide:circle-alert"
+            class="w-4 h-4 shrink-0 text-red-600 dark:text-red-400"
+          />
+          <span class="text-xs text-gray-900 dark:text-gray-100">
+            {{ failedCount }} job{{ failedCount !== 1 ? "s" : "" }} failed and may need a retry.
+          </span>
+          <span class="flex-1" />
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="xs"
+            class="shrink-0"
+            @click="selectStatus(JobStatus.Failed)"
+          >
+            Review failed
+          </UButton>
+        </div>
+
+        <div class="divide-y divide-gray-200/70 dark:divide-gray-700/70">
+          <div v-for="group in groups" :key="group.versionId">
+            <!-- Group header -->
+            <button
+              class="flex w-full items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+              :aria-expanded="isGroupOpen(group)"
+              @click="toggleGroup(group)"
             >
               <span
-                v-if="job.retryCount > 0"
-                class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"
-                title="Retry count"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200/70 text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
               >
-                <Icon icon="mdi:refresh" class="w-3.5 h-3.5" />
-                {{ job.retryCount }}
+                <Icon :icon="group.isVideo ? 'lucide:video' : 'lucide:music'" class="w-4 h-4" />
               </span>
-              <span :title="formatDate(job.createdAt)">{{ formatRelative(job.createdAt) }}</span>
-            </div>
-
-            <div class="job-actions flex items-center gap-2 justify-end">
-              <button
-                v-if="job.errorDetail"
-                class="inline-flex items-center text-xs text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors shrink-0"
-                @click="toggleError(job.id)"
-              >
-                {{ expandedError[job.id] ? "Hide error" : "Show error" }}
-              </button>
-
-              <button
-                v-if="canCancel(job.status)"
-                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium border border-black/[0.08] dark:border-white/[0.09] text-gray-700 dark:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                :disabled="actionInProgress === job.id"
-                @click="handleCancel(job)"
-              >
-                <Icon
-                  :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:close-circle'"
-                  class="w-3.5 h-3.5"
-                  :class="{ 'animate-spin': actionInProgress === job.id }"
-                />
-                Cancel
-              </button>
-
-              <UPopover v-if="canRequeue(job.status)" v-model:open="requeuePopoverOpen[job.id]">
-                <button
-                  class="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[13px] font-medium border border-black/[0.08] dark:border-white/[0.09] text-gray-700 dark:text-white/70 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  :disabled="actionInProgress === job.id"
-                  @click="initRequeueRungs(job)"
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {{ group.fileName ?? group.versionId }}
+                </span>
+                <span
+                  v-if="group.fileName && group.versionNumber != null"
+                  class="text-xs text-gray-600 dark:text-gray-400"
                 >
-                  <Icon
-                    :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:refresh'"
-                    class="w-3.5 h-3.5"
-                    :class="{ 'animate-spin': actionInProgress === job.id }"
-                  />
-                  Requeue
-                </button>
+                  Version {{ group.versionNumber }}, {{ group.jobs.length }} run{{
+                    group.jobs.length !== 1 ? "s" : ""
+                  }}
+                </span>
+              </span>
+              <span class="hidden flex-wrap items-center justify-end gap-4 sm:flex">
+                <span
+                  v-for="item in groupSummary(group)"
+                  :key="item.status"
+                  class="inline-flex items-center gap-2 text-xs tabular-nums text-gray-600 dark:text-gray-400"
+                >
+                  <span class="h-2 w-2 rounded-full" :class="statusConfig[item.status].barClass" />
+                  {{ item.count }} {{ statusConfig[item.status].label.toLowerCase() }}
+                </span>
+              </span>
+              <Icon
+                icon="lucide:chevron-down"
+                class="w-4 h-4 shrink-0 text-gray-500 transition-transform duration-200 dark:text-gray-500"
+                :class="{ 'rotate-180': isGroupOpen(group) }"
+              />
+            </button>
 
-                <template #content>
-                  <div class="p-4 w-60 space-y-3 frosted-glass glass-surface-strong">
-                    <p class="text-xs font-semibold text-gray-700 dark:text-white/70 m-0">
-                      Adjust qualities
-                    </p>
-                    <div class="flex flex-wrap gap-1.5">
-                      <template v-if="job.isVideo">
-                        <button
-                          v-for="rung in videoRungOptions"
-                          :key="rung.value"
-                          class="px-2 py-0.5 rounded text-xs border transition-all"
-                          :class="
-                            pendingVideoRungs[job.id]?.includes(rung.value)
-                              ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
-                              : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/40 hover:border-gray-300 dark:hover:border-white/20'
-                          "
-                          @click="toggleVideoRung(job.id, rung.value)"
-                        >
-                          {{ rung.label }}
-                        </button>
-                      </template>
-                      <template v-else>
-                        <button
-                          v-for="rung in audioRungOptions"
-                          :key="rung.value"
-                          class="px-2 py-0.5 rounded text-xs border transition-all"
-                          :class="
-                            pendingAudioRungs[job.id]?.includes(rung.value)
-                              ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
-                              : 'border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/40 hover:border-gray-300 dark:hover:border-white/20'
-                          "
-                          @click="toggleAudioRung(job.id, rung.value)"
-                        >
-                          {{ rung.label }}
-                        </button>
-                      </template>
-                    </div>
-                    <div
-                      class="flex justify-end pt-1 border-t border-gray-200/70 dark:border-white/[0.08]"
-                    >
-                      <button
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        :disabled="
-                          actionInProgress === job.id ||
-                          (job.isVideo
-                            ? !pendingVideoRungs[job.id]?.length
-                            : !pendingAudioRungs[job.id]?.length)
-                        "
-                        @click="handleRequeue(job)"
-                      >
-                        <Icon
-                          :icon="actionInProgress === job.id ? 'mdi:loading' : 'mdi:refresh'"
-                          class="w-3.5 h-3.5"
-                          :class="{ 'animate-spin': actionInProgress === job.id }"
-                        />
-                        Requeue
-                      </button>
-                    </div>
-                  </div>
-                </template>
-              </UPopover>
-            </div>
-
-            <!-- Error detail panel -->
-            <Transition
-              enter-active-class="transition-all duration-200 ease-out"
-              leave-active-class="transition-all duration-150 ease-in"
-              enter-from-class="opacity-0 -translate-y-1"
-              leave-to-class="opacity-0 -translate-y-1"
+            <!-- Job rows -->
+            <div
+              v-if="isGroupOpen(group)"
+              class="divide-y divide-gray-100/50 border-t border-gray-200/70 dark:divide-gray-800/50 dark:border-gray-700/70"
             >
               <div
-                v-if="job.errorDetail && expandedError[job.id]"
-                class="job-error-panel rounded-[10px] border border-red-200/60 dark:border-red-500/20 bg-red-50/80 dark:bg-red-500/[0.07] overflow-hidden"
+                v-for="job in group.jobs"
+                :key="job.id"
+                class="job-grid px-4 py-3 transition-colors hover:bg-black/[0.02] sm:pl-16 dark:hover:bg-white/[0.03]"
               >
-                <div
-                  class="flex items-center justify-between pl-3 pr-2 py-1.5 border-b border-red-200/40 dark:border-red-500/15"
+                <span
+                  class="inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium"
+                  :class="statusConfig[job.status].chipClass"
                 >
-                  <span class="text-xs font-medium text-red-600 dark:text-red-400"
-                    >Error detail</span
-                  >
-                  <button
-                    class="flex items-center gap-1 text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors px-1.5 py-0.5 rounded hover:bg-red-100/60 dark:hover:bg-red-500/10"
-                    @click="copyError(job.errorDetail!)"
-                  >
-                    <Icon icon="mdi:content-copy" class="w-3.5 h-3.5" />
-                    Copy
-                  </button>
+                  <Icon
+                    :icon="statusConfig[job.status].icon"
+                    class="w-3.5 h-3.5 shrink-0"
+                    :class="{ 'animate-spin': isSpinning(job.status) }"
+                  />
+                  {{ statusConfig[job.status].label }}
+                </span>
+
+                <div class="job-mid flex min-w-0 flex-col gap-2">
+                  <div class="flex flex-wrap gap-2">
+                    <span
+                      v-for="chip in rungChips(job)"
+                      :key="chip"
+                      class="inline-flex h-6 items-center rounded-md border border-gray-200/70 px-2 text-xs tabular-nums text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
+                    >
+                      {{ chip }}
+                    </span>
+                  </div>
+                  <div v-if="showProgress(job.status)" class="flex max-w-90 items-center gap-2">
+                    <div
+                      class="h-1.5 flex-1 overflow-hidden rounded-full bg-black/10 dark:bg-white/10"
+                    >
+                      <div
+                        class="h-full rounded-full transition-all duration-500"
+                        :class="statusConfig[job.status].barClass"
+                        :style="{ width: `${job.progressPercent}%` }"
+                      />
+                    </div>
+                    <span
+                      class="w-8 shrink-0 text-right text-xs tabular-nums text-gray-600 dark:text-gray-400"
+                    >
+                      {{ job.progressPercent }}%
+                    </span>
+                  </div>
                 </div>
-                <pre
-                  class="px-3 py-3 text-xs text-red-700 dark:text-red-300 whitespace-pre-wrap break-all font-mono leading-relaxed m-0 max-h-44 overflow-y-auto"
-                  >{{ job.errorDetail }}</pre>
+
+                <div
+                  class="job-meta flex items-center gap-4 whitespace-nowrap text-xs tabular-nums text-gray-600 dark:text-gray-400"
+                >
+                  <span
+                    v-if="job.retryCount > 0"
+                    class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"
+                    title="Retry count"
+                  >
+                    <Icon icon="lucide:rotate-ccw" class="w-3.5 h-3.5" />
+                    {{ job.retryCount }}
+                  </span>
+                  <span :title="formatDate(job.createdAt)">
+                    {{ formatRelative(job.createdAt) }}
+                  </span>
+                </div>
+
+                <div class="job-actions flex items-center justify-end gap-2">
+                  <button
+                    v-if="job.errorDetail"
+                    class="shrink-0 text-xs text-red-600 transition-colors hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                    @click="toggleError(job.id)"
+                  >
+                    {{ expandedError[job.id] ? "Hide error" : "Show error" }}
+                  </button>
+
+                  <UButton
+                    v-if="canCancel(job.status)"
+                    icon="i-lucide-circle-x"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    :loading="actionInProgress === job.id"
+                    @click="handleCancel(job)"
+                  >
+                    Cancel
+                  </UButton>
+
+                  <UPopover v-if="canRequeue(job.status)" v-model:open="requeuePopoverOpen[job.id]">
+                    <UButton
+                      icon="i-lucide-refresh-cw"
+                      color="neutral"
+                      variant="outline"
+                      size="sm"
+                      :loading="actionInProgress === job.id"
+                      @click="initRequeueRungs(job)"
+                    >
+                      Requeue
+                    </UButton>
+
+                    <template #content>
+                      <div class="w-60 space-y-3 p-4 frosted-glass glass-surface-strong">
+                        <p class="m-0 text-xs font-semibold text-gray-900 dark:text-gray-100">
+                          Adjust qualities
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                          <template v-if="job.isVideo">
+                            <button
+                              v-for="rung in videoRungOptions"
+                              :key="rung.value"
+                              class="rounded-md border px-2 py-0.5 text-xs transition-all"
+                              :class="
+                                pendingVideoRungs[job.id]?.includes(rung.value)
+                                  ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
+                                  : 'border-gray-200/70 text-gray-600 hover:border-gray-300 dark:border-gray-700/70 dark:text-gray-400 dark:hover:border-gray-600'
+                              "
+                              @click="toggleVideoRung(job.id, rung.value)"
+                            >
+                              {{ rung.label }}
+                            </button>
+                          </template>
+                          <template v-else>
+                            <button
+                              v-for="rung in audioRungOptions"
+                              :key="rung.value"
+                              class="rounded-md border px-2 py-0.5 text-xs transition-all"
+                              :class="
+                                pendingAudioRungs[job.id]?.includes(rung.value)
+                                  ? 'border-primary/60 bg-primary/10 text-primary ring-1 ring-primary scale-[1.03]'
+                                  : 'border-gray-200/70 text-gray-600 hover:border-gray-300 dark:border-gray-700/70 dark:text-gray-400 dark:hover:border-gray-600'
+                              "
+                              @click="toggleAudioRung(job.id, rung.value)"
+                            >
+                              {{ rung.label }}
+                            </button>
+                          </template>
+                        </div>
+                        <div
+                          class="flex justify-end border-t border-gray-200/70 pt-3 dark:border-gray-700/70"
+                        >
+                          <UButton
+                            icon="i-lucide-refresh-cw"
+                            color="primary"
+                            variant="solid"
+                            size="xs"
+                            :loading="actionInProgress === job.id"
+                            :disabled="
+                              job.isVideo
+                                ? !pendingVideoRungs[job.id]?.length
+                                : !pendingAudioRungs[job.id]?.length
+                            "
+                            @click="handleRequeue(job)"
+                          >
+                            Requeue
+                          </UButton>
+                        </div>
+                      </div>
+                    </template>
+                  </UPopover>
+                </div>
+
+                <!-- Error detail panel -->
+                <Transition
+                  enter-active-class="transition-all duration-200 ease-out"
+                  enter-from-class="opacity-0 -translate-y-1"
+                  leave-active-class="transition-all duration-150 ease-in"
+                  leave-to-class="opacity-0 -translate-y-1"
+                >
+                  <div
+                    v-if="job.errorDetail && expandedError[job.id]"
+                    class="job-error-panel overflow-hidden rounded-lg border border-red-200/60 bg-red-50/80 dark:border-red-500/20 dark:bg-red-500/[0.07]"
+                  >
+                    <div
+                      class="flex items-center justify-between border-b border-red-200/40 py-1 pl-3 pr-2 dark:border-red-500/15"
+                    >
+                      <span class="text-xs font-medium text-red-600 dark:text-red-400">
+                        Error detail
+                      </span>
+                      <UButton
+                        icon="i-lucide-copy"
+                        color="error"
+                        variant="ghost"
+                        size="xs"
+                        @click="copyError(job.errorDetail!)"
+                      >
+                        Copy
+                      </UButton>
+                    </div>
+                    <pre
+                      class="m-0 max-h-44 overflow-y-auto whitespace-pre-wrap break-all px-3 py-3 font-mono text-xs leading-relaxed text-red-700 dark:text-red-300"
+                      >{{ job.errorDetail }}</pre>
+                  </div>
+                </Transition>
               </div>
-            </Transition>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Pagination -->
-    <div
-      v-if="data && (data.totalPages ?? 1) > 1"
-      class="flex items-center justify-center gap-2 mt-6"
-    >
-      <button
-        class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-white/55 bg-black/[0.05] dark:bg-white/[0.07] hover:bg-black/[0.08] dark:hover:bg-white/[0.10] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        :disabled="currentPage <= 1"
-        @click="currentPage--"
+      <!-- Pagination -->
+      <div
+        v-if="data && (data.totalPages ?? 1) > 1"
+        class="flex items-center justify-center gap-2 border-t border-gray-200/70 px-4 py-2 dark:border-gray-700/70"
       >
-        <Icon icon="mdi:chevron-left" class="w-4 h-4" /> Prev
-      </button>
-      <span class="text-sm text-gray-400 dark:text-white/35 tabular-nums px-2">
-        {{ currentPage }} / {{ data.totalPages }}
-      </span>
-      <button
-        class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-white/55 bg-black/[0.05] dark:bg-white/[0.07] hover:bg-black/[0.08] dark:hover:bg-white/[0.10] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        :disabled="currentPage >= (data.totalPages ?? 1)"
-        @click="currentPage++"
-      >
-        Next <Icon icon="mdi:chevron-right" class="w-4 h-4" />
-      </button>
-    </div>
+        <UButton
+          icon="i-lucide-chevron-left"
+          color="neutral"
+          variant="outline"
+          size="xs"
+          :disabled="currentPage <= 1"
+          @click="currentPage--"
+        >
+          Prev
+        </UButton>
+        <span class="px-2 text-sm tabular-nums text-gray-600 dark:text-gray-400">
+          {{ currentPage }} / {{ data.totalPages }}
+        </span>
+        <UButton
+          trailing-icon="i-lucide-chevron-right"
+          color="neutral"
+          variant="outline"
+          size="xs"
+          :disabled="currentPage >= (data.totalPages ?? 1)"
+          @click="currentPage++"
+        >
+          Next
+        </UButton>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -1151,15 +1190,15 @@ const mediaFilterOptions = [
 .filter-tabs {
   display: flex;
   gap: 1.5rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid rgb(0 0 0 / 0.06);
+  padding: 0 1rem;
+  border-bottom: 1px solid rgb(229 231 235 / 0.7);
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
 .dark .filter-tabs {
-  border-bottom-color: rgb(255 255 255 / 0.07);
+  border-bottom-color: rgb(55 65 81 / 0.7);
 }
 
 .filter-tabs::-webkit-scrollbar {
@@ -1171,7 +1210,7 @@ const mediaFilterOptions = [
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  height: 2.75rem;
+  height: 2.5rem;
   font-size: 0.75rem;
   font-weight: 500;
   white-space: nowrap;
@@ -1180,7 +1219,7 @@ const mediaFilterOptions = [
 }
 
 .dark .filter-tab {
-  color: rgb(255 255 255 / 0.4);
+  color: rgb(156 163 175);
 }
 
 .filter-tab:hover {
@@ -1188,7 +1227,7 @@ const mediaFilterOptions = [
 }
 
 .dark .filter-tab:hover {
-  color: rgb(255 255 255 / 0.7);
+  color: rgb(243 244 246);
 }
 
 .filter-tab-on {
@@ -1197,13 +1236,14 @@ const mediaFilterOptions = [
 }
 
 .dark .filter-tab-on {
-  color: rgb(255 255 255 / 0.9);
+  color: rgb(243 244 246);
 }
 
 .filter-tab em {
   font-style: normal;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
+  color: rgb(107 114 128);
 }
 
 /* More-filters panel grid */
@@ -1213,13 +1253,13 @@ const mediaFilterOptions = [
   gap: 2rem;
 }
 
-/* Filters toolbar: side by side on desktop, wraps on mobile */
+/* Filters toolbar: side by side on desktop, stacked on mobile */
 .filters-toolbar {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
 }
 
 @media (max-width: 639px) {
@@ -1227,31 +1267,24 @@ const mediaFilterOptions = [
     width: 100%;
     flex-direction: column;
     align-items: stretch;
-    gap: 0.375rem;
+    gap: 0.5rem;
   }
 
   .filter-group {
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    padding-bottom: 2px;
   }
 
   .filter-group::-webkit-scrollbar {
     display: none;
   }
-
-  /* Remove the desktop divider between the two filter groups */
-  .filter-group.border-l {
-    border-left: none;
-    padding-left: 0;
-  }
 }
 
-/* Job row grid: badge | qualities+progress | meta | actions */
+/* Job row grid: badge | qualities + progress | meta | actions */
 .job-grid {
   display: grid;
-  grid-template-columns: 116px minmax(0, 1fr) auto auto;
+  grid-template-columns: 7rem minmax(0, 1fr) auto auto;
   gap: 0.5rem 1rem;
   align-items: center;
 }

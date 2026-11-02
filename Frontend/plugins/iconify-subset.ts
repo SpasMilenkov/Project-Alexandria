@@ -199,6 +199,9 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "leaf",
     "flame",
     "audio-lines",
+    "clock-alert",
+    "cog",
+    "infinity",
   ],
   "material-symbols": ["keyboard-outline-rounded", "vitals"],
   mdi: [
