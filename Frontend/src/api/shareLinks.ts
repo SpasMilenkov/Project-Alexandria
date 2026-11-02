@@ -21,6 +21,8 @@ export interface SharedFileMetadataDto {
   versionNumber: number;
   /** True when the link targets a specific pinned version rather than the always-current version. */
   isPinnedVersion: boolean;
+  /** True when the shared bytes are ciphertext; mimeType still names the plaintext type. */
+  isEncrypted: boolean;
 }
 
 export interface ShareDownloadResponse {
