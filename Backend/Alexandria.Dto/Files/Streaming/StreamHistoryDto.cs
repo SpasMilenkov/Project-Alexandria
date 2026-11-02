@@ -10,7 +10,10 @@ public sealed class StreamHistoryDto
     public string? Artist { get; init; }
     public string? Album { get; init; }
     public double? Duration { get; init; }
-    public bool IsVideo { get; init; }
+
+    // Filled by the history page query only; null wherever the DTO is built from the entity alone.
+    public bool? IsVideo { get; init; }
+
     public long PositionSeconds { get; init; }
     public long MaxPositionReachedSeconds { get; init; }
     public long TotalListenedSeconds { get; init; }

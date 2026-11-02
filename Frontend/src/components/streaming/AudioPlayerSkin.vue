@@ -89,12 +89,12 @@ const repeatIcon = computed(() => {
 
 const shuffleToggleClass = computed(() => {
   if (isShuffled.value) return "text-primary";
-  return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
+  return "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100";
 });
 
 const repeatToggleClass = computed(() => {
   if (repeatMode.value === "all" || repeatMode.value === "one") return "text-primary";
-  return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
+  return "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100";
 });
 
 const muteLabel = computed(() => {
@@ -104,7 +104,7 @@ const muteLabel = computed(() => {
 
 const lyricsToggleClass = computed(() => {
   if (lyricsOpen.value) return "text-primary";
-  return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
+  return "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100";
 });
 const cardRef = ref<HTMLDivElement | null>(null);
 const layoutRef = ref<HTMLDivElement | null>(null);
@@ -288,7 +288,7 @@ const modeIcon = computed(() => {
 });
 
 const cardVariantClass = computed(() => {
-  if (isStrip.value) return "w-full rounded-t-xl";
+  if (isStrip.value) return "w-full rounded-3xl shadow-xl";
   return "rounded-2xl";
 });
 
@@ -298,7 +298,7 @@ const dragCursorClass = computed(() => {
 });
 
 const playerAreaClass = computed(() => {
-  if (isStrip.value) return "h-[88px]";
+  if (isStrip.value) return "h-19";
   return "";
 });
 
@@ -330,11 +330,12 @@ onUnmounted(() => {
       'h-0': playerMode === 'pip',
       'z-40': isMinimized || isSwitching,
       'z-30': isStrip && !isSwitching,
+      'px-3 pb-1': isStrip,
     }"
   >
     <div
       ref="cardRef"
-      class="@container player-card frosted-glass glass-surface border border-black/[0.08] dark:border-white/10 overflow-hidden"
+      class="@container player-card frosted-glass glass-surface-strong border border-gray-200/70 dark:border-gray-700/70 overflow-hidden"
       :class="[
         cardVariantClass,
         {
@@ -488,14 +489,14 @@ onUnmounted(() => {
         <div
           v-if="isStrip"
           id="audio-strip"
-          class="h-[88px] grid grid-cols-[minmax(0,1fr)_minmax(280px,420px)_minmax(0,1fr)] items-center gap-4 px-4"
+          class="h-19 grid grid-cols-[minmax(0,1fr)_minmax(320px,560px)_minmax(0,1fr)] items-center gap-6 px-4"
         >
-          <div class="flex items-center gap-4 min-w-0">
+          <div class="flex items-center gap-3 min-w-0">
             <RouterLink
               v-if="trackDetailsTo"
               :to="trackDetailsTo"
               data-player-artwork-frame
-              class="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0"
+              class="size-12 rounded-xl overflow-hidden bg-gray-500/15 shadow-md flex-shrink-0"
               aria-label="Open track details"
               @click="goToTrackDetails"
             >
@@ -508,15 +509,15 @@ onUnmounted(() => {
             <div
               v-else
               data-player-artwork-frame
-              class="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex-shrink-0"
+              class="size-12 rounded-xl overflow-hidden bg-gray-500/15 shadow-md flex-shrink-0"
             >
               <PlayerArtwork :file="null" />
             </div>
-            <div class="flex-1 min-w-0 max-w-60">
+            <div class="flex-1 min-w-0 max-w-72">
               <RouterLink
                 v-if="trackDetailsTo"
                 :to="trackDetailsTo"
-                class="block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 m-0 hover:text-primary transition-colors"
+                class="block text-sm font-semibold truncate text-gray-900 dark:text-gray-100 m-0 hover:underline"
                 :title="activeFileName ?? 'Unknown'"
                 @click="goToTrackDetails"
               >
@@ -535,10 +536,10 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex flex-col justify-center gap-1 min-w-0">
-            <div class="flex items-center justify-center gap-2">
+          <div class="flex flex-col justify-center min-w-0">
+            <div class="flex items-center justify-center gap-1">
               <button
-                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+                class="size-9 rounded-lg flex items-center justify-center transition-colors"
                 :class="shuffleToggleClass"
                 :disabled="orderBusy"
                 :title="shuffleTitle"
@@ -549,7 +550,7 @@ onUnmounted(() => {
                 <Icon v-else icon="mdi:shuffle-variant" class="w-5 h-5" />
               </button>
               <button
-                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-700 dark:text-white/85 hover:text-gray-950 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                class="size-9 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 :disabled="!hasPrevious"
                 title="Previous"
                 aria-label="Previous"
@@ -558,7 +559,7 @@ onUnmounted(() => {
                 <Icon icon="mdi:skip-previous" class="w-6 h-6" />
               </button>
               <button
-                class="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+                class="size-10 mx-1 rounded-full flex-shrink-0 flex items-center justify-center bg-primary text-white shadow-md hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
                 :disabled="!activeFile"
                 :title="playPauseLabel"
                 :aria-label="playPauseLabel"
@@ -569,7 +570,7 @@ onUnmounted(() => {
                 <Icon v-else :icon="playPauseIcon" class="w-6 h-6" />
               </button>
               <button
-                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-700 dark:text-white/85 hover:text-gray-950 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                class="size-9 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 :disabled="!hasNext"
                 title="Next"
                 aria-label="Next"
@@ -578,7 +579,7 @@ onUnmounted(() => {
                 <Icon icon="mdi:skip-next" class="w-6 h-6" />
               </button>
               <button
-                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+                class="size-9 rounded-lg flex items-center justify-center transition-colors"
                 :class="repeatToggleClass"
                 title="Repeat"
                 aria-label="Repeat"
@@ -587,7 +588,7 @@ onUnmounted(() => {
                 <Icon :icon="repeatIcon" class="w-5 h-5" />
               </button>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="-mb-1.5 flex items-center gap-2">
               <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
                 formatTime(currentTime)
               }}</span>
@@ -608,68 +609,73 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex items-center justify-end gap-0.5 min-w-0">
-            <div class="hidden @min-[800px]:flex items-center flex-shrink-0">
+          <div class="flex items-center justify-end gap-2 min-w-0">
+            <div class="flex items-center gap-0.5 rounded-full bg-gray-500/10 px-1 min-w-0">
+              <div class="hidden @min-[800px]:flex items-center flex-shrink-0 pr-1">
+                <button
+                  class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                  :title="muteLabel"
+                  :aria-label="muteLabel"
+                  @click="toggleMute"
+                >
+                  <Icon :icon="volumeIcon" class="w-5 h-5" />
+                </button>
+                <input
+                  type="range"
+                  class="audio-player-range volume-slider w-24 flex-shrink-0"
+                  :style="{ '--player-range-fill': `${volume * 100}%` }"
+                  :min="0"
+                  :max="1"
+                  :step="0.02"
+                  :value="volume"
+                  aria-label="Volume"
+                  :aria-valuetext="`${Math.round(volume * 100)} percent`"
+                  @input="onVolumeInput"
+                />
+              </div>
+
+              <PlayerQueue />
+              <PlayerSettings />
               <button
-                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
-                :title="muteLabel"
-                :aria-label="muteLabel"
-                @click="toggleMute"
+                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+                :class="lyricsToggleClass"
+                title="Lyrics"
+                aria-label="Lyrics"
+                :aria-pressed="lyricsOpen"
+                @click="store.toggleLyrics()"
               >
-                <Icon :icon="volumeIcon" class="w-5 h-5" />
+                <Icon icon="mdi:script-text-outline" class="w-5 h-5" />
               </button>
-              <input
-                type="range"
-                class="audio-player-range volume-slider w-20 flex-shrink-0"
-                :style="{ '--player-range-fill': `${volume * 100}%` }"
-                :min="0"
-                :max="1"
-                :step="0.02"
-                :value="volume"
-                aria-label="Volume"
-                :aria-valuetext="`${Math.round(volume * 100)} percent`"
-                @input="onVolumeInput"
-              />
+              <UDropdownMenu :items="trackMenuItems" :content="{ align: 'end' }">
+                <button
+                  class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                  title="More options"
+                  aria-label="More options"
+                >
+                  <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
+                </button>
+              </UDropdownMenu>
             </div>
 
-            <PlayerQueue />
-            <PlayerSettings />
-            <button
-              class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
-              :class="lyricsToggleClass"
-              title="Lyrics"
-              aria-label="Lyrics"
-              :aria-pressed="lyricsOpen"
-              @click="store.toggleLyrics()"
-            >
-              <Icon icon="mdi:script-text-outline" class="w-5 h-5" />
-            </button>
-            <UDropdownMenu :items="trackMenuItems" :content="{ align: 'end' }">
+            <div class="flex items-center gap-0.5 flex-shrink-0">
               <button
-                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80 transition-colors"
-                title="More options"
-                aria-label="More options"
+                class="hidden @min-[1100px]:flex w-10 h-10 rounded-lg items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                title="Mini player"
+                aria-label="Mini player"
+                data-player-mode-toggle="strip"
+                @click="cycleMode"
               >
-                <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
+                <Icon :icon="modeIcon" class="w-5 h-5" />
               </button>
-            </UDropdownMenu>
-            <button
-              class="hidden @min-[1100px]:flex w-10 h-10 rounded-lg items-center justify-center text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/90 transition-colors"
-              title="Mini player"
-              aria-label="Mini player"
-              data-player-mode-toggle="strip"
-              @click="cycleMode"
-            >
-              <Icon :icon="modeIcon" class="w-5 h-5" />
-            </button>
-            <button
-              class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-              title="Close player"
-              aria-label="Close player"
-              @click="store.closePlayer()"
-            >
-              <Icon icon="mdi:close" class="w-5 h-5" />
-            </button>
+              <button
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                title="Close player"
+                aria-label="Close player"
+                @click="store.closePlayer()"
+              >
+                <Icon icon="mdi:close" class="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

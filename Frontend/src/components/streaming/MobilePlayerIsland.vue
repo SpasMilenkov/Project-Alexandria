@@ -199,64 +199,15 @@
             <button
               v-for="tab in tabs"
               :key="tab.id"
-              class="flex-1 h-10 rounded-lg flex items-center justify-center gap-2 text-[13px] transition-colors"
+              class="flex-1 min-w-0 h-10 rounded-lg flex items-center justify-center gap-2 text-[13px] transition-colors"
               :class="tabButtonClass(tab.id)"
+              :aria-label="tab.label"
               :aria-pressed="presentation === 'sheet' && pane === tab.id"
               @click="openSheet(tab.id)"
             >
-              <Icon :icon="tab.icon" class="w-4 h-4" />
-              {{ tab.label }}
+              <Icon :icon="tab.icon" class="w-4 h-4 shrink-0" />
+              <span class="truncate max-[360px]:hidden">{{ tab.label }}</span>
             </button>
-
-            <div ref="volumeWrapRef" class="relative flex-shrink-0">
-              <button
-                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
-                :class="volumeToggleClass"
-                :title="muteLabel"
-                :aria-label="`Volume, ${Math.round(volume * 100)} percent`"
-                aria-haspopup="true"
-                :aria-expanded="volumePopoverOpen"
-                @click="volumePopoverOpen = !volumePopoverOpen"
-              >
-                <Icon :icon="volumeIcon" class="w-5 h-5" />
-              </button>
-
-              <Transition
-                enter-active-class="transition-all duration-150 ease-out"
-                leave-active-class="transition-all duration-100 ease-in"
-                enter-from-class="opacity-0 translate-y-1"
-                leave-to-class="opacity-0 translate-y-1"
-              >
-                <div
-                  v-if="volumePopoverOpen"
-                  class="absolute bottom-full right-0 z-10 mb-2 flex w-12 flex-col items-center gap-2 rounded-2xl frosted-glass glass-surface-strong border border-gray-200/70 p-2 shadow-lg dark:border-gray-700/70"
-                  role="group"
-                  aria-label="Volume control"
-                >
-                  <input
-                    type="range"
-                    class="audio-player-range audio-player-range--vertical"
-                    :style="{ '--player-range-fill': `${volume * 100}%` }"
-                    :min="0"
-                    :max="1"
-                    :step="0.02"
-                    :value="volume"
-                    aria-label="Volume"
-                    :aria-valuetext="`${Math.round(volume * 100)} percent`"
-                    @input="onVolumeInput"
-                  />
-
-                  <button
-                    class="w-8 h-8 flex-shrink-0 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-                    :title="muteLabel"
-                    :aria-label="muteLabel"
-                    @click="toggleMute"
-                  >
-                    <Icon :icon="volumeIcon" class="w-4 h-4" />
-                  </button>
-                </div>
-              </Transition>
-            </div>
 
             <button
               class="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
@@ -327,8 +278,6 @@ const rootRef = ref<HTMLElement | null>(null);
 const sheetRef = ref<HTMLElement | null>(null);
 const pillRef = ref<HTMLElement | null>(null);
 const collapseRef = ref<HTMLButtonElement | null>(null);
-const volumeWrapRef = ref<HTMLElement | null>(null);
-const volumePopoverOpen = ref(false);
 
 const trackTitle = computed(
   () => activeFile.value?.title ?? activeFile.value?.fileName ?? "Unknown",
@@ -374,16 +323,6 @@ const repeatToggleClass = computed(() => {
   return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
 });
 
-const muteLabel = computed(() => {
-  if (isMuted.value) return "Unmute";
-  return "Mute";
-});
-
-const volumeToggleClass = computed(() => {
-  if (volumePopoverOpen.value) return "text-primary bg-primary/10";
-  return "text-gray-400 dark:text-white/40 hover:text-gray-700 dark:hover:text-white/80";
-});
-
 const tabButtonClass = (tab: Pane) => {
   if (presentation.value === "sheet" && pane.value === tab) return "text-primary bg-primary/10";
   return "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100";
@@ -413,28 +352,6 @@ const formatTime = (seconds: number) => {
 
 const onSeekInput = (e: Event) => {
   store.seek(Number((e.target as HTMLInputElement).value));
-};
-
-const premuteVolume = ref(1);
-const isMuted = computed(() => volume.value === 0);
-
-const volumeIcon = computed(() => {
-  if (volume.value === 0) return "mdi:volume-off";
-  if (volume.value < 0.5) return "mdi:volume-medium";
-  return "mdi:volume-high";
-});
-
-const toggleMute = () => {
-  if (isMuted.value) {
-    store.setVolume(premuteVolume.value > 0 ? premuteVolume.value : 1);
-  } else {
-    premuteVolume.value = volume.value;
-    store.setVolume(0);
-  }
-};
-
-const onVolumeInput = (e: Event) => {
-  store.setVolume(Number((e.target as HTMLInputElement).value));
 };
 
 const openCard = () => {
@@ -489,21 +406,10 @@ const onSheetKeydown = (e: KeyboardEvent) => {
 const onDocumentKeydown = (e: KeyboardEvent) => {
   if (e.key !== "Escape" || presentation.value === "pill") return;
   e.stopPropagation();
-  if (volumePopoverOpen.value) {
-    volumePopoverOpen.value = false;
-    return;
-  }
   collapse();
 };
 
 const onOutsideClick = (e: MouseEvent) => {
-  if (
-    volumePopoverOpen.value &&
-    volumeWrapRef.value &&
-    !volumeWrapRef.value.contains(e.target as Node)
-  ) {
-    volumePopoverOpen.value = false;
-  }
   if (presentation.value === "pill" || !rootRef.value) return;
   if (!rootRef.value.contains(e.target as Node)) presentation.value = "pill";
 };
@@ -517,6 +423,10 @@ const onPageScroll = (e: Event) => {
 };
 
 onMounted(() => {
+  // Phones control loudness with their hardware buttons and this player has no volume control,
+  // so a lower level saved on this device would otherwise be stuck.
+  if (window.matchMedia("(pointer: coarse)").matches && volume.value < 1) store.setVolume(1);
+
   document.addEventListener("keydown", onDocumentKeydown);
   document.addEventListener("click", onOutsideClick, { capture: true });
   document.addEventListener("scroll", onPageScroll, { capture: true, passive: true });
@@ -547,7 +457,6 @@ watch(presentation, (current, previous) => {
   if (previous === "sheet" && current !== "sheet" && pane.value === "lyrics") {
     store.setLyricsOpen(false);
   }
-  volumePopoverOpen.value = false;
 });
 
 onBeforeUnmount(() => {

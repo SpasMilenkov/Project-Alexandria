@@ -439,10 +439,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
       </div>
 
       <!-- Loading -->
-      <div
-        v-else-if="isFirstLoad"
-        class="flex flex-col items-center justify-center gap-2.5 flex-1"
-      >
+      <div v-else-if="isFirstLoad" class="flex flex-col items-center justify-center gap-2.5 flex-1">
         <Icon icon="mdi:loading" class="w-5 h-5 animate-spin text-gray-400 dark:text-white/30" />
       </div>
 
@@ -487,11 +484,23 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
         <p class="text-xs text-gray-400 dark:text-white/95 max-w-xs leading-relaxed m-0">
           Something went wrong reaching the lyrics provider.
         </p>
-        <div class="flex items-center gap-2 mt-1">
-          <UButton variant="outline" color="neutral" size="sm" @click="onRequeue">
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-1">
+          <UButton
+            variant="outline"
+            color="neutral"
+            size="sm"
+            class="whitespace-nowrap"
+            @click="onRequeue"
+          >
             Try again
           </UButton>
-          <UButton variant="outline" color="neutral" size="sm" @click="onOpenManualUpload">
+          <UButton
+            variant="outline"
+            color="neutral"
+            size="sm"
+            class="whitespace-nowrap"
+            @click="onOpenManualUpload"
+          >
             Add manually
           </UButton>
         </div>
@@ -510,11 +519,23 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
         <p class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0">
           We couldn't match this track to a lyrics database.
         </p>
-        <div class="flex items-center gap-2 mt-1">
-          <UButton variant="outline" color="neutral" size="sm" @click="onRequeue">
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-1">
+          <UButton
+            variant="outline"
+            color="neutral"
+            size="sm"
+            class="whitespace-nowrap"
+            @click="onRequeue"
+          >
             Try again
           </UButton>
-          <UButton variant="outline" color="neutral" size="sm" @click="onOpenManualUpload">
+          <UButton
+            variant="outline"
+            color="neutral"
+            size="sm"
+            class="whitespace-nowrap"
+            @click="onOpenManualUpload"
+          >
             Add lyrics manually
           </UButton>
         </div>
