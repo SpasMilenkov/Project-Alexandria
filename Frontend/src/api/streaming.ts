@@ -76,6 +76,10 @@ export interface StreamHistoryResponse {
   id: string;
   fileId: string;
   title: string;
+  artist?: string | null;
+  album?: string | null;
+  duration?: number | null;
+  isVideo?: boolean | null;
   positionSeconds: number;
   maxPositionReachedSeconds: number;
   totalListenedSeconds: number;
@@ -150,7 +154,15 @@ export interface MediaFileDto {
   playlistItemId?: string | null;
   isVideo: boolean;
   segmentPrefix: string | null;
+
+  // Requesting user's progress, null without a history row
+  positionSeconds?: number | null;
   hasFinished?: boolean | null;
+  lastAccessedAt?: string | null;
+  createdAt?: string | null;
+
+  // Search results only: the lyric line that matched when the hit came from lyrics
+  lyricsSnippet?: string | null;
 }
 
 export const streamingApi = {

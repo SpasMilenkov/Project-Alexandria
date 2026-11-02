@@ -56,6 +56,7 @@ const {
 } = usePlayerEngine(videoRef, containerRef, {
   getThumbnailUrl: () => thumbnailUrl.value,
   mediaKind: "video",
+  fullscreenElementRef: rootRef,
   shakaUiConfig: {
     ...VIDEO_SHAKA_UI_CONFIG,
     controlPanelElements: [],
@@ -603,8 +604,7 @@ defineExpose({ toggleFullscreen });
   background: #000;
 }
 
-.vps-root:fullscreen,
-.vps-root:-webkit-full-screen {
+.vps-root:fullscreen {
   border-radius: 0;
   border: none;
   display: block;
@@ -613,8 +613,7 @@ defineExpose({ toggleFullscreen });
   background: #000;
 }
 
-.vps-root:fullscreen .vps-stage,
-.vps-root:-webkit-full-screen .vps-stage {
+.vps-root:fullscreen .vps-stage {
   position: absolute;
   inset: 0;
   width: 100%;

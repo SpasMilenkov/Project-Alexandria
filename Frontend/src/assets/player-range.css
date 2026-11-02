@@ -95,29 +95,6 @@
   transform: scale(1.15);
 }
 
-.audio-player-range--vertical {
-  --player-range-direction: to top;
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 32px;
-  height: 96px;
-}
-
-.audio-player-range--vertical::-webkit-slider-runnable-track {
-  width: 4px;
-  height: 100%;
-}
-
-.audio-player-range--vertical::-webkit-slider-thumb {
-  margin-top: 0;
-  margin-left: -4px;
-}
-
-.audio-player-range--vertical::-moz-range-track {
-  width: 4px;
-  height: 100%;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .audio-player-range::-webkit-slider-thumb {
     transition: none;

@@ -1,7 +1,12 @@
 import { type Locator, type Page, type Route, expect, test } from "@playwright/test";
 
 import { fixture, seed } from "./helpers/home-dashboard.js";
-import { closeWidgetSettings, openWidgetTab, selectWidget } from "./helpers/home-grid-editor.js";
+import {
+  closeWidgetSettings,
+  dashboardSettings,
+  openWidgetTab,
+  selectWidget,
+} from "./helpers/home-grid-editor.js";
 
 const names = ["Documents", "Photos", "Projects", "Backups", "Music", "Videos"];
 
@@ -269,6 +274,11 @@ test("favorites have empty and isolated retry states", async ({ page }) => {
   await expect(page.locator(".access-body")).toHaveCount(3);
 });
 
+const enableSeparateMobileLayout = async (page: Page) => {
+  await dashboardSettings(page);
+  await page.getByRole("switch", { name: "Use a separate mobile layout" }).click();
+};
+
 test("styles save with Done and remain independent on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const value = document();
@@ -283,7 +293,7 @@ test("styles save with Done and remain independent on mobile", async ({ page }) 
   await selectWidget(page, page.locator('[data-widget-id="upload-0"]'));
   await page.getByRole("button", { name: "Pulse", exact: true }).click();
   await closeWidgetSettings(page);
-  await page.getByRole("switch", { name: "Use a separate mobile layout" }).click();
+  await enableSeparateMobileLayout(page);
   await page.getByRole("button", { name: "Mobile", exact: true }).click();
   await selectWidget(page, page.locator('[data-widget-id][aria-label="Quick access"]'));
   await openWidgetTab(page, "Style");

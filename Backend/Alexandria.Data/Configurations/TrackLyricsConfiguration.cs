@@ -36,6 +36,20 @@ public class TrackLyricsConfiguration : IEntityTypeConfiguration<TrackLyrics>
             .HasForeignKey(e => e.JobId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Synced-only lyrics are indexed with their LRC tags ([mm:ss.xx], [ar:...]) blanked
+        // so timestamps never become searchable tokens or break phrase adjacency.
+        builder.Property(e => e.SearchVector)
+            .HasComputedColumnSql(
+                @"to_tsvector('simple', coalesce(
+            nullif(btrim(""PlainLyrics""), ''),
+            regexp_replace(coalesce(""SyncedLyrics"", ''), '\[[^\]]*\]', ' ', 'g')
+        ))",
+                stored: true);
+
+        builder.HasIndex(e => e.SearchVector)
+            .HasMethod("gin")
+            .HasFilter("\"DeletedAt\" IS NULL");
+
         builder.HasIndex(e => e.Id);
         builder.HasIndex(e => e.Status);
         builder.HasIndex(e => e.JobId).IsUnique();

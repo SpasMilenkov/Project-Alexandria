@@ -74,6 +74,12 @@ const recap = (month: string, now: string, empty = false, daily = true) => {
   };
 };
 
+// Same-document navigation, as when following an in-page #section link.
+const followHash = (page: Page, section: string) =>
+  page.evaluate((hash) => {
+    location.hash = hash;
+  }, section);
+
 const openListening = async (
   page: Page,
   options: {
@@ -267,10 +273,11 @@ for (const colorScheme of ["light", "dark"] as const) {
       const previous = page.getByRole("article", { name: "September 2026 recap", exact: true });
 
       await expect(previous.getByRole("link", { name: "Open September 2026 recap" })).toBeVisible();
-      const a = (await current.boundingBox())!;
-      const b = (await previous.boundingBox())!;
+      // Cards run chronologically, so last month stacks above the month in progress.
+      const above = (await previous.boundingBox())!;
+      const below = (await current.boundingBox())!;
 
-      expect(b.y).toBeGreaterThan(a.y + a.height);
+      expect(below.y).toBeGreaterThan(above.y + above.height);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
       );
@@ -328,7 +335,6 @@ test("January includes December and inline Timeline keeps its range while revisi
   await expect(page.getByRole("article", { name: "January 2026 recap" })).toBeVisible();
   await expect(page.getByRole("article", { name: "December 2025 recap" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Listening sections" })).toHaveCount(0);
-  await page.getByRole("link", { name: "Jump to timeline", exact: true }).click();
   await page.getByRole("button", { name: "Previous 90 days", exact: true }).click();
   const timeline = page.getByRole("region", { name: "Your listening timeline", exact: true });
   const range = await timeline.locator("header p").textContent();
@@ -355,9 +361,11 @@ test("the unified page keeps day details and legacy timeline bookmarks usable", 
   ).toBeVisible();
   await expect(page.getByRole("article", { name: "October 2026 recap" })).toHaveCount(1);
   await expect.poll(async () => (await timeline.boundingBox())!.y).toBeLessThan(900);
-  await page.getByRole("link", { name: "Jump to timeline", exact: true }).click();
+  await followHash(page, "timeline");
   await expect(page.locator("#timeline")).toBeFocused();
   await page.mouse.wheel(0, -2000);
-  await page.getByRole("link", { name: "Jump to timeline", exact: true }).click();
+  await followHash(page, "recaps");
+  await expect.poll(async () => (await timeline.boundingBox())!.y).toBeGreaterThan(900);
+  await followHash(page, "timeline");
   await expect.poll(async () => (await timeline.boundingBox())!.y).toBeLessThan(900);
 });

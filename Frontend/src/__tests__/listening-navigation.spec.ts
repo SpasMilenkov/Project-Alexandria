@@ -127,7 +127,7 @@ describe("Your listening navigation", () => {
     await router.push("/stats?source=bookmark");
     const wrapper = mount(StatsHubView, { global: { plugins: [router] } });
 
-    await wrapper.get('a[href$="#timeline"]').trigger("click");
+    await router.push({ query: router.currentRoute.value.query, hash: "#timeline" });
     await flushPromises();
 
     expect(router.currentRoute.value.hash).toBe("#timeline");

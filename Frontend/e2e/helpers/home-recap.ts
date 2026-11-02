@@ -1,7 +1,7 @@
 import { type Locator, expect } from "@playwright/test";
 
-export const expectRecapContentFits = async (cards: Locator) => {
-  const clipped = await cards.evaluateAll((elements) =>
+const clippedRecapText = (cards: Locator) =>
+  cards.evaluateAll((elements) =>
     elements.flatMap((element) => {
       const face = element.getBoundingClientRect();
       const targets = element.querySelectorAll(
@@ -36,5 +36,14 @@ export const expectRecapContentFits = async (cards: Locator) => {
     }),
   );
 
-  expect(clipped, "Recap text must fit inside its visible content area").toEqual([]);
+// Measured only after fonts load and the layout settles; a single early snapshot under load
+// can catch text mid-reflow and report it as clipped.
+export const expectRecapContentFits = async (cards: Locator) => {
+  await cards.first().evaluate(() => document.fonts.ready);
+
+  await expect
+    .poll(() => clippedRecapText(cards), {
+      message: "Recap text must fit inside its visible content area",
+    })
+    .toEqual([]);
 };

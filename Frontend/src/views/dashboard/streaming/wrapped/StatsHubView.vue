@@ -1,6 +1,8 @@
 <template>
-  <main class="mx-auto w-full px-4 py-6 md:px-6 md:py-8">
-    <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+  <main class="mx-auto flex w-full flex-col gap-3 p-3">
+    <header
+      class="flex flex-col gap-4 rounded-xl border border-gray-200/70 px-4 py-4 frosted-glass glass-surface-strong sm:flex-row sm:items-end sm:justify-between md:px-5 dark:border-gray-700/70"
+    >
       <div>
         <p
           class="text-xs font-semibold tracking-[0.16em] text-gray-600 uppercase dark:text-gray-400"
@@ -18,12 +20,15 @@
       </div>
     </header>
 
-    <div :key="userId" class="space-y-8">
-      <div id="recaps" ref="recapsSection" class="scroll-mt-8" tabindex="-1">
+    <div
+      :key="userId"
+      class="space-y-8 rounded-[14px] border border-gray-200/70 p-4 frosted-glass glass-surface md:p-5 dark:border-gray-700/70"
+    >
+      <div id="recaps" ref="recapsSection" class="scroll-mt-3" tabindex="-1">
         <ListeningRecaps />
       </div>
 
-      <div id="timeline" ref="timelineSection" class="scroll-mt-8" tabindex="-1">
+      <div id="timeline" ref="timelineSection" class="scroll-mt-3" tabindex="-1">
         <ListeningTimeline />
       </div>
     </div>

@@ -3,6 +3,7 @@ using Alexandria.Common.Services;
 using Alexandria.Dto.Files.Streaming.Stats;
 using FastEndpoints;
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Stats.JumpBackIn;
 
@@ -28,7 +29,7 @@ internal sealed class GetJumpBackInEndpoint(IListeningStatsService statsService)
     {
         Get("/stats/jump-back-in");
         Policies(Common.Auth.Policies.RequireUser);
-        ResponseCache(60);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(GetJumpBackInRequest req, CancellationToken ct)

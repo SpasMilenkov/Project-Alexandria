@@ -1,24 +1,36 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import { formatConfidence } from "@/utils/audio-taxonomy.utils";
 
 const {
   value,
-  accent = false,
   align = "start",
+  color = undefined,
+  delay = 0,
   size = "md",
 } = defineProps<{
   value: number;
-  accent?: boolean;
   align?: "start" | "end";
+  color?: string;
+  delay?: number;
   size?: "sm" | "md";
 }>();
 
-const fillStyle = computed(() => {
-  const width = formatConfidence(value);
-  return accent ? { width, backgroundColor: "var(--ui-primary)" } : { width };
+// Starts empty and grows on the next frame; reduced motion drops the transition, so it just appears.
+const isRevealed = ref(false);
+
+onMounted(() => {
+  requestAnimationFrame(() => {
+    isRevealed.value = true;
+  });
 });
+
+const fillStyle = computed(() => ({
+  backgroundColor: color,
+  transitionDelay: `${delay}ms`,
+  width: isRevealed.value ? formatConfidence(value) : "0%",
+}));
 </script>
 
 <template>
@@ -28,8 +40,8 @@ const fillStyle = computed(() => {
     aria-hidden="true"
   >
     <div
-      class="h-full shrink-0 rounded-full"
-      :class="{ 'bg-gray-400 dark:bg-gray-500': !accent }"
+      class="h-full shrink-0 rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none"
+      :class="{ 'bg-gray-400 dark:bg-gray-500': !color }"
       :style="fillStyle"
     />
   </div>

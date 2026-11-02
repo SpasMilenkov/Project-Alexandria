@@ -14,6 +14,7 @@ const RESUME_MIN_POSITION = 5;
 export interface PlayerEngineOptions {
   getThumbnailUrl?: () => string | null | undefined;
   shakaUiConfig?: Record<string, unknown>;
+  fullscreenElementRef?: Ref<HTMLElement | null>;
   mediaKind: "audio" | "video";
   headless?: boolean;
 }
@@ -378,7 +379,10 @@ export const usePlayerEngine = (
 
         if (!options.headless && containerRef.value) {
           shakaUi = new shaka.ui.Overlay(shakaPlayer, containerRef.value, videoRef.value);
-          shakaUi.configure(options.shakaUiConfig ?? AUDIO_SHAKA_UI_CONFIG);
+          shakaUi.configure({
+            ...(options.shakaUiConfig ?? AUDIO_SHAKA_UI_CONFIG),
+            fullScreenElement: options.fullscreenElementRef?.value ?? containerRef.value,
+          });
         }
 
         shakaPlayer.addEventListener("buffering", (e: any) => {

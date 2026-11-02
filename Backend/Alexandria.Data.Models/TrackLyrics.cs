@@ -1,4 +1,5 @@
 using Alexandria.Data.Models.Enumerators;
+using NpgsqlTypes;
 
 namespace Alexandria.Data.Models;
 
@@ -20,6 +21,9 @@ public class TrackLyrics : IBase
     public decimal? ConfidenceScore { get; set; }
     public LyricsStatus Status { get; set; }
     public DateTime? FetchedAt { get; set; }
+
+    // Searching
+    public NpgsqlTsVector SearchVector { get; set; } = null!;
 
     //Navigation
 

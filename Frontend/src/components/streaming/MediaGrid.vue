@@ -1,8 +1,8 @@
 <template>
   <div class="flex h-full overflow-hidden">
-    <section class="flex flex-col h-full overflow-hidden flex-1 min-w-0">
+    <section class="flex flex-col h-full overflow-hidden flex-1 min-w-0 gap-4 p-3 sm:px-3 sm:py-3">
       <div
-        class="sticky top-0 z-10 px-2 pt-4 pb-3 mb-5 w-full justify-evenly frosted-glass glass-surface border border-black/[0.08] dark:border-white/10"
+        class="relative z-20 shrink-0 w-full rounded-2xl px-3 py-2 frosted-glass sm:px-4 glass-surface border border-black/[0.08] dark:border-white/10"
       >
         <div v-if="selectionMode" class="flex items-center gap-2 sm:gap-3">
           <UButton
@@ -13,38 +13,38 @@
             aria-label="Exit selection"
             @click="exitSelection"
           />
-          <span class="text-xs text-gray-500 dark:text-white/30 tabular-nums whitespace-nowrap">
+          <span class="text-xs text-gray-600 dark:text-gray-400 tabular-nums whitespace-nowrap">
             {{ selectedCount }} selected
           </span>
           <div class="flex-1" />
+          <UButton color="neutral" variant="outline" size="xs" @click="selectAllLoaded">
+            <span class="sm:hidden">Select all</span>
+            <span class="max-sm:hidden">Select all loaded</span>
+          </UButton>
+
           <UButton
-            label="Select all loaded"
-            color="neutral"
-            variant="outline"
-            size="xs"
-            @click="selectAllLoaded"
-          />
-          <UButton
-            label="Edit metadata"
             color="primary"
             size="xs"
             :disabled="selectedCount === 0"
             @click="bulkOpen = true"
-          />
+          >
+            <span class="sm:hidden">Edit</span>
+            <span class="max-sm:hidden">Edit metadata</span>
+          </UButton>
         </div>
         <div
           v-else
-          class="grid grid-cols-2 items-center gap-x-4 gap-y-2 sm:flex sm:items-center sm:gap-8"
+          class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 sm:flex sm:items-center sm:gap-8"
         >
           <div class="flex items-center gap-3 order-1 min-w-0">
             <h2
-              class="text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/35 m-0 truncate"
+              class="text-xs font-semibold tracking-widest uppercase text-gray-600 dark:text-gray-400 m-0 truncate max-sm:sr-only"
             >
               Available Media
             </h2>
             <span
               v-if="data && !isInitialLoad"
-              class="text-xs text-gray-500 dark:text-white/30 tabular-nums"
+              class="text-xs text-gray-600 dark:text-gray-400 tabular-nums whitespace-nowrap"
             >
               {{ data.totalCount ?? 0 }} file{{ (data.totalCount ?? 0) !== 1 ? "s" : "" }}
             </span>
@@ -56,71 +56,71 @@
           />
 
           <div
-            class="flex items-center gap-1.5 flex-wrap order-2 justify-end sm:order-3 sm:justify-start sm:shrink-0"
+            class="flex items-center gap-1 sm:gap-1.5 flex-wrap order-2 justify-end sm:order-3 sm:justify-start sm:shrink-0"
           >
             <button
-              class="p-1.5 rounded-md text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
+              class="flex size-9 items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-150"
               aria-label="Refresh"
               :disabled="isLoading"
               @click="onRefresh"
             >
               <Icon
                 icon="mdi:refresh"
-                class="w-4 h-4 transition-transform duration-500"
+                class="size-4.5 transition-transform duration-500"
                 :class="{ 'animate-spin': isLoading }"
               />
             </button>
 
             <button
               v-if="mediaType === 'audio'"
-              class="p-1.5 rounded-md transition-all duration-150"
+              class="flex size-9 items-center justify-center rounded-md transition-all duration-150"
               :class="
                 lyricsOpen
                   ? 'bg-white dark:bg-white/10 text-gray-700 dark:text-white/80 shadow-sm'
-                  : 'text-gray-400 dark:text-white/30 hover:text-gray-500 dark:hover:text-white/50'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               "
               aria-label="Toggle lyrics"
               @click="playerStore.toggleLyrics()"
             >
-              <Icon icon="mdi:script-text-outline" class="w-4 h-4" />
+              <Icon icon="mdi:script-text-outline" class="size-4.5" />
             </button>
 
             <div
               class="inline-flex items-center gap-0.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.05] p-0.5"
             >
               <button
-                class="p-1.5 rounded-md transition-all duration-150"
+                class="flex size-8 items-center justify-center rounded-md transition-all duration-150"
                 :class="
                   viewMode === 'grid'
                     ? 'bg-white dark:bg-white/10 text-gray-700 dark:text-white/80 shadow-sm'
-                    : 'text-gray-400 dark:text-white/30 hover:text-gray-500 dark:hover:text-white/50'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 "
                 aria-label="Grid view"
                 @click="viewMode = 'grid'"
               >
-                <Icon icon="mdi:view-grid-outline" class="w-4 h-4" />
+                <Icon icon="mdi:view-grid-outline" class="size-4.5" />
               </button>
               <button
-                class="p-1.5 rounded-md transition-all duration-150"
+                class="flex size-8 items-center justify-center rounded-md transition-all duration-150"
                 :class="
                   viewMode === 'list'
                     ? 'bg-white dark:bg-white/10 text-gray-700 dark:text-white/80 shadow-sm'
-                    : 'text-gray-400 dark:text-white/30 hover:text-gray-500 dark:hover:text-white/50'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                 "
                 aria-label="List view"
                 @click="viewMode = 'list'"
               >
-                <Icon icon="mdi:view-list-outline" class="w-4 h-4" />
+                <Icon icon="mdi:view-list-outline" class="size-4.5" />
               </button>
             </div>
 
             <button
-              class="p-1.5 rounded-md text-gray-400 dark:text-white/30 hover:text-gray-600 dark:hover:text-white/60 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-all duration-150"
+              class="flex size-9 items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-all duration-150"
               aria-label="Select files"
               title="Select files"
               @click="enterSelection()"
             >
-              <Icon icon="mdi:check-box-multiple-outline" class="w-4 h-4" />
+              <Icon icon="mdi:check-box-multiple-outline" class="size-4.5" />
             </button>
           </div>
         </div>
@@ -139,19 +139,33 @@
       <!-- Loading: List skeleton -->
       <div
         v-else-if="isInitialLoad"
-        class="flex flex-col rounded-xl border border-black/[0.06] dark:border-white/[0.06] overflow-hidden"
+        class="flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
       >
         <div
-          v-for="i in LIBRARY_PAGE_SIZE"
-          :key="i"
-          class="flex items-center gap-3 px-3 py-2.5 animate-pulse border-b border-black/[0.04] dark:border-white/[0.04] last:border-b-0"
+          class="grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_36px] items-center gap-2 sm:gap-4 border-b border-gray-200/70 px-3 text-xs font-semibold text-gray-600 sm:px-4 sm:grid-cols-[minmax(0,1fr)_64px_36px] frosted-glass glass-surface-strong dark:border-gray-700/70 dark:text-gray-400"
         >
-          <div class="w-9 h-9 rounded-lg bg-gray-200 dark:bg-white/[0.06] shrink-0" />
-          <div class="flex-1 space-y-1.5">
-            <div class="h-2.5 rounded bg-gray-200 dark:bg-white/[0.06] w-2/3" />
-            <div class="h-2 rounded bg-gray-100 dark:bg-white/[0.04] w-1/3" />
+          <span>Name</span>
+          <span class="hidden text-right sm:block">Duration</span>
+          <span />
+        </div>
+        <div class="min-h-0 flex-1 overflow-hidden">
+          <div
+            v-for="i in 16"
+            :key="i"
+            :style="{ height: `${MEDIA_LIST_ROW_HEIGHT}px` }"
+            class="grid grid-cols-[minmax(0,1fr)_36px] items-center gap-2 sm:gap-4 border-b border-gray-200/70 px-3 animate-pulse sm:px-4 sm:grid-cols-[minmax(0,1fr)_64px_36px] dark:border-gray-700/70"
+          >
+            <div class="flex min-w-0 items-center gap-2 sm:gap-3">
+              <div class="hidden h-4 w-4 shrink-0 rounded bg-gray-200 sm:block dark:bg-white/10" />
+              <div class="size-10 shrink-0 rounded-lg sm:size-11 bg-gray-200 dark:bg-white/[0.06]" />
+              <div class="min-w-0 flex-1 space-y-1.5">
+                <div class="h-3 w-2/3 rounded bg-gray-200 dark:bg-white/[0.08]" />
+                <div class="h-2.5 w-1/3 rounded bg-gray-100 dark:bg-white/[0.05]" />
+              </div>
+            </div>
+            <div class="ml-auto hidden h-2 w-10 rounded bg-gray-100 sm:block dark:bg-white/[0.05]" />
+            <div class="size-9 justify-self-end rounded bg-gray-100 dark:bg-white/[0.05]" />
           </div>
-          <div class="h-2 rounded bg-gray-100 dark:bg-white/[0.04] w-12 shrink-0" />
         </div>
       </div>
 
@@ -161,42 +175,53 @@
         class="flex flex-col items-center gap-2.5 py-20 text-center"
       >
         <Icon icon="mdi:alert-circle-outline" class="w-9 h-9 text-red-400" />
-        <p class="text-sm text-gray-500 dark:text-white/40 m-0">Failed to load media library</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 m-0">Failed to load media library</p>
       </div>
 
       <!-- Empty -->
       <div v-else-if="!allItems.length" class="flex flex-col items-center gap-3 py-20 text-center">
-        <Icon icon="mdi:video-off-outline" class="w-10 h-10 text-gray-300 dark:text-white/[0.18]" />
-        <p class="text-sm text-gray-500 dark:text-white/40 m-0">No streamable media found</p>
-        <p class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0">
+        <Icon icon="mdi:video-off-outline" class="w-10 h-10 text-gray-400 dark:text-gray-500" />
+        <p class="text-sm text-gray-600 dark:text-gray-400 m-0">No streamable media found</p>
+        <p class="text-xs text-gray-600 dark:text-gray-400 max-w-xs leading-relaxed m-0">
           Files need a completed transcoding job before they appear here.
         </p>
       </div>
 
       <!-- List view -->
-      <RecycleScroller
+      <div
         v-else-if="viewMode === 'list' && !isInitialLoad && allItems.length"
-        class="flex-1 min-h-0 rounded-xl border border-black/[0.06] dark:border-white/[0.06] divide-y divide-black/[0.04] dark:divide-white/[0.05]"
-        :items="allItems"
-        :item-size="60"
-        key-field="fileId"
-        @scroll.passive="onScroll"
+        class="flex flex-1 min-h-0 flex-col overflow-hidden rounded-xl border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
       >
-        <template #default="{ item }">
-          <MediaCard
-            :file="item"
-            view-mode="list"
-            :selected="selectedIds.has(item.fileId)"
-            :selection-mode="selectionMode"
-            :progress-percent="progressFor(item)"
-            :watched="watchedFor(item)"
-            @select="onFileClick"
-            @info="onMediaInfo"
-            @toggle="onToggleSelect"
-            @longpress="onCardLongPress"
-          />
-        </template>
-      </RecycleScroller>
+        <div
+          class="grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_36px] items-center gap-2 sm:gap-4 border-b border-gray-200/70 px-3 text-xs font-semibold text-gray-600 sm:px-4 sm:grid-cols-[minmax(0,1fr)_64px_36px] frosted-glass glass-surface-strong dark:border-gray-700/70 dark:text-gray-400"
+        >
+          <span>Name</span>
+          <span class="hidden text-right sm:block">Duration</span>
+          <span />
+        </div>
+        <RecycleScroller
+          class="flex-1 min-h-0"
+          :items="allItems"
+          :item-size="MEDIA_LIST_ROW_HEIGHT"
+          key-field="fileId"
+          @scroll.passive="onScroll"
+        >
+          <template #default="{ item }">
+            <MediaCard
+              :file="item"
+              view-mode="list"
+              :selected="selectedIds.has(item.fileId)"
+              :selection-mode="selectionMode"
+              :progress-percent="progressFor(item)"
+              :watched="watchedFor(item)"
+              @select="onFileClick"
+              @info="onMediaInfo"
+              @toggle="onToggleSelect"
+              @longpress="onCardLongPress"
+            />
+          </template>
+        </RecycleScroller>
+      </div>
 
       <!-- Grid view -->
       <div
@@ -251,41 +276,13 @@
       @close="bulkOpen = false"
       @applied="onBulkApplied"
     />
-
-    <UDrawer
-      v-model:open="infoOpen"
-      :title="infoTitle"
-      description="Audio analysis results"
-      :direction="isMobile ? 'bottom' : 'right'"
-      :ui="{
-        container: 'md:max-w-[34rem] lg:min-w-[44rem]',
-        content: glassDrawerContent,
-      }"
-    >
-      <template #body>
-        <div class="p-1">
-          <div class="flex justify-end pb-2">
-            <UButton
-              v-if="infoFile"
-              icon="mdi:arrow-expand"
-              label="Open full page"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              @click="openTrackPage"
-            />
-          </div>
-          <AudioAnalysisFilePanel v-if="infoFile" :file-id="infoFile.fileId" :enabled="infoOpen" />
-        </div>
-      </template>
-    </UDrawer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
-import { breakpointsTailwind, onKeyStroke, useBreakpoints } from "@vueuse/core";
+import { onKeyStroke } from "@vueuse/core";
 import { computed, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 
@@ -293,17 +290,12 @@ import { type MediaFileDto } from "@/api/streaming";
 import { isWatchedEntry, progressPercentOf, useVideoHistory } from "@/composables/useVideoHistory";
 import { STREAMING_QUERY_KEYS, getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
-import { getMediaGridLayout } from "@/utils/media-grid-layout";
-import { glassDrawerContent } from "@/utils/modalUi";
+import { MEDIA_LIST_ROW_HEIGHT, getMediaGridLayout } from "@/utils/media-grid-layout";
 import { LIBRARY_PAGE_SIZE, libraryLabel, type SourceDescriptor } from "@/utils/player-source";
 
 import BlockSpinner from "../common/BlockSpinner.vue";
-import AudioAnalysisFilePanel from "../dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";
 import BulkMetadataDrawer from "./BulkMetadataDrawer.vue";
 import MediaCard from "./MediaCard.vue";
-
-const breakpoints = useBreakpoints(breakpointsTailwind);
-const isMobile = breakpoints.smaller("md");
 
 // Props
 
@@ -429,24 +421,8 @@ const progressFor = (file: MediaFileDto): number | null =>
 const watchedFor = (file: MediaFileDto): boolean =>
   isWatchedEntry(historyByFileId.value.get(file.fileId));
 
-// Audio analysis drawer
-
-const infoOpen = ref(false);
-const infoFile = ref<MediaFileDto | null>(null);
-
-const infoTitle = computed(() => infoFile.value?.title ?? infoFile.value?.fileName ?? "");
-
 const onMediaInfo = (file: MediaFileDto) => {
-  infoFile.value = file;
-  infoOpen.value = true;
-};
-
-const openTrackPage = () => {
-  if (!infoFile.value) return;
-  const fileId = infoFile.value.fileId;
-  infoOpen.value = false;
-  infoFile.value = null;
-  router.push(`/streaming/track/${fileId}`);
+  router.push(`/streaming/track/${file.fileId}`);
 };
 
 // Selection mode: id-based state owned here so recycled cards cannot drift.

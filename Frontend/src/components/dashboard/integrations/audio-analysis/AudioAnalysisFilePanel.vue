@@ -1,160 +1,78 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { useQuery } from "@pinia/colada";
 import { computed, ref } from "vue";
 
-import type { EnrichmentRowDto } from "@/api/audioAnalysis";
-
-import { getFileAudioAnalysis } from "@/queries/audioAnalysis";
-import { type MoodSide, buildMoodPairs } from "@/utils/audio-mood-pairs.utils";
-import {
-  buildMoodEntries,
-  formatConfidence,
-  parseGenreLabel,
-  voicePole,
-} from "@/utils/audio-taxonomy.utils";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import { useTrackAudioAnalysis } from "@/composables/useTrackAudioAnalysis";
+import { formatConfidence } from "@/utils/audio-taxonomy.utils";
 import { formatDate } from "@/utils/date-formatters";
 
 import AudioConfidenceBar from "./AudioConfidenceBar.vue";
+import AudioMoodBalance from "./AudioMoodBalance.vue";
+import AudioMoodRadar from "./AudioMoodRadar.vue";
 import AudioRawPayload from "./AudioRawPayload.vue";
 
-interface GenrePrediction {
-  label: string;
-  score: number;
-}
-
-interface GenrePayload {
-  predictions: GenrePrediction[];
-}
-
-type MoodPayload = Record<string, Record<string, number>>;
-
-const isGenrePayload = (payload: Record<string, unknown>): payload is GenrePayload =>
-  Array.isArray((payload as GenrePayload).predictions);
-
-const isMoodPayload = (payload: Record<string, unknown>): payload is MoodPayload => {
-  const values = Object.values(payload);
-  return (
-    values.length > 0 &&
-    values.every((value) => typeof value === "object" && value !== null && !Array.isArray(value))
-  );
-};
-
-const props = defineProps<{
+const { fileId, accent } = defineProps<{
   fileId: string;
-  fileName?: string;
-  enabled?: boolean;
-  showHeading?: boolean;
+  /** Mark color for the bars and the mood shape, usually derived from the cover art. */
+  accent: string;
 }>();
 
 const LOW_CONFIDENCE_THRESHOLD = 0.15;
-const ACCENT_THRESHOLD = 0.5;
+const BAR_STAGGER_MS = 80;
 
-const CARD_CLASS =
-  "rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface";
-const EMPTY_CLASS =
-  "flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-gray-200/70 px-6 py-12 text-center dark:border-gray-700/70";
+const DIVIDER_CLASS = "border-gray-200/60 dark:border-gray-700/60";
 const EYEBROW_CLASS =
-  "text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-500";
+  "text-xs font-semibold uppercase tracking-widest text-gray-600 dark:text-gray-400";
 const CHIP_CLASS =
-  "rounded-full bg-black/5 px-2 py-0.5 text-[11px] text-gray-600 dark:bg-white/5 dark:text-gray-400";
-// One grid template shared by the batch table header and rows. Below the
-// container breakpoint the rows stay as wrapping flex lines.
+  "rounded-full border border-gray-200/70 px-2 py-0.5 text-xs text-gray-600 dark:border-gray-700/70 dark:text-gray-400";
 const BATCH_GRID_CLASS =
-  "@3xl:grid @3xl:grid-cols-[140px_160px_minmax(0,1fr)_auto] @3xl:items-center @3xl:gap-4 @3xl:px-6";
+  "@3xl:grid @3xl:grid-cols-[140px_160px_minmax(0,1fr)_auto] @3xl:items-center @3xl:gap-4";
+
+const {
+  batches,
+  error,
+  genreEnrichment,
+  genrePredictions,
+  isPending,
+  latestAnalyzedAt,
+  moodEnrichment,
+  moodEntries,
+  refresh,
+  topGenre,
+  topMood,
+  voice,
+} = useTrackAudioAnalysis(() => fileId);
 
 const showAdvanced = ref(false);
+const isHistoryOpen = ref(false);
 
-const { data, status, error, refresh } = useQuery(() => ({
-  ...getFileAudioAnalysis(props.fileId),
-  enabled: props.enabled ?? true,
-}));
-
-const isLoading = computed(() => status.value === "pending");
-
-const byNewest = (a: { createdAt: string }, b: { createdAt: string }) =>
-  new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-
-const sortedEnrichments = computed(() => [...(data.value?.enrichments ?? [])].sort(byNewest));
-
-const latestAnalyzedAt = computed(() => sortedEnrichments.value[0]?.createdAt);
-
-const genreEnrichment = computed<EnrichmentRowDto | undefined>(() =>
-  sortedEnrichments.value.find((row) => isGenrePayload(row.payload)),
-);
-
-const moodEnrichment = computed<EnrichmentRowDto | undefined>(() =>
-  sortedEnrichments.value.find((row) => isMoodPayload(row.payload)),
-);
-
-const genrePredictions = computed(() => {
-  const payload = genreEnrichment.value?.payload as GenrePayload | undefined;
-  const predictions = payload?.predictions ?? [];
-  return [...predictions]
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map((prediction) => ({
-      ...parseGenreLabel(prediction.label),
-      confidence: prediction.score,
-    }));
-});
-
-const topGenre = computed(() => genrePredictions.value[0]);
 const restGenres = computed(() => genrePredictions.value.slice(1));
-const genreLowConfidence = computed(
+
+const isGenreLowConfidence = computed(
   () => (topGenre.value?.confidence ?? 0) < LOW_CONFIDENCE_THRESHOLD,
 );
 
-const flattenMoodPayload = (payload: MoodPayload): Record<string, number> =>
-  Object.entries(payload).reduce<Record<string, number>>((flat, [axis, poles]) => {
-    for (const [pole, value] of Object.entries(poles)) {
-      flat[`${axis}:${pole}`] = value;
-    }
-    return flat;
-  }, {});
+const voiceIcon = computed(() => {
+  if (voice.value?.name === "Instrumental") return "lucide:audio-lines";
 
-const moodScores = computed(() => {
-  const payload = moodEnrichment.value?.payload as MoodPayload | undefined;
-  return payload ? flattenMoodPayload(payload) : {};
+  return "mdi:microphone-variant";
 });
 
-const moodEntries = computed(() => buildMoodEntries(moodScores.value));
-const topMood = computed(() => moodEntries.value[0]);
+const analyzedLabel = computed(() => {
+  if (latestAnalyzedAt.value) return `Analyzed ${formatDate(latestAnalyzedAt.value).toLowerCase()}`;
 
-const moodLayout = computed(() => buildMoodPairs(moodEntries.value));
-const hasMoodPairs = computed(() => moodLayout.value.pairs.length > 0);
-
-const voice = computed(() => (moodEnrichment.value ? voicePole(moodScores.value) : null));
-
-const voiceIcon = computed(() =>
-  voice.value?.name === "Instrumental" ? "mdi:waveform" : "mdi:microphone-variant",
-);
-
-const showSummary = computed(() => !isLoading.value && (!!topGenre.value || !!topMood.value));
-const showModelDetails = computed(
-  () => showAdvanced.value && (!!genreEnrichment.value || !!moodEnrichment.value),
-);
-
-const isStrong = (value: number) => value >= ACCENT_THRESHOLD;
-const leads = (pair: { leading: MoodSide }, side: MoodSide) => pair.leading === side;
-
-const poleNameClass = (emphasised: boolean) =>
-  emphasised ? "font-medium text-gray-900 dark:text-gray-100" : "text-gray-600 dark:text-gray-400";
-
-const poleValueClass = (emphasised: boolean) =>
-  emphasised ? "text-gray-600 dark:text-gray-400" : "text-gray-500 dark:text-gray-500";
-
-const rankedNameClass = (index: number) =>
-  index === 0 ? "font-medium text-gray-900 dark:text-gray-100" : "text-gray-700 dark:text-gray-300";
+  return "Genre and mood, read from the audio itself";
+});
 
 const fileStatusMeta: Record<string, { dot: string; label: string }> = {
-  Queued: { dot: "bg-amber-500", label: "Queued" },
-  Processing: { dot: "bg-blue-500", label: "Processing" },
-  Partial: { dot: "bg-amber-400", label: "Partial" },
-  Ready: { dot: "bg-emerald-500", label: "Ready" },
-  Failed: { dot: "bg-red-500", label: "Failed" },
   Cancelled: { dot: "bg-gray-400", label: "Cancelled" },
   CancellationRequested: { dot: "bg-orange-400", label: "Cancelling" },
+  Failed: { dot: "bg-red-500", label: "Failed" },
+  Partial: { dot: "bg-amber-400", label: "Partial" },
+  Processing: { dot: "bg-blue-500", label: "Processing" },
+  Queued: { dot: "bg-amber-500", label: "Queued" },
+  Ready: { dot: "bg-emerald-500", label: "Ready" },
 };
 
 const batchStatusMeta: Record<string, { bg: string; label: string; text: string }> = {
@@ -175,341 +93,314 @@ const batchStatusMeta: Record<string, { bg: string; label: string; text: string 
   },
 };
 
-const fileMeta = (status: string) =>
-  fileStatusMeta[status] ?? { dot: "bg-gray-400", label: status };
+const fileMeta = (fileStatus: string) =>
+  fileStatusMeta[fileStatus] ?? { dot: "bg-gray-400", label: fileStatus };
 
-const batchMeta = (status: string) =>
-  batchStatusMeta[status] ?? {
+const batchMeta = (batchStatus: string) =>
+  batchStatusMeta[batchStatus] ?? {
     bg: "bg-gray-500/10",
-    label: status,
+    label: batchStatus,
     text: "text-gray-600 dark:text-gray-400",
   };
 
-const shortId = (id: string) => id.slice(0, 8).toUpperCase();
+const batchReference = (id: string) => {
+  if (showAdvanced.value) return id;
 
-const batchReference = (id: string) => (showAdvanced.value ? id : shortId(id));
+  return id.slice(0, 8).toUpperCase();
+};
+
+const describeModel = (row: { analyzer: string; version: string } | undefined, suffix = "") => {
+  if (!row) return "Not run";
+
+  return `${row.analyzer}-${row.version}${suffix}`;
+};
+
+const modelDetails = computed(() => [
+  {
+    label: "Genre model",
+    name: describeModel(genreEnrichment.value, ` · ${genrePredictions.value.length} predictions`),
+    payload: genreEnrichment.value?.payload,
+  },
+  {
+    label: "Mood model",
+    name: describeModel(moodEnrichment.value),
+    payload: moodEnrichment.value?.payload,
+  },
+]);
 
 const referenceHeading = computed(() => (showAdvanced.value ? "Batch id" : "Reference"));
 
 const batchRows = computed(() =>
-  [...(data.value?.batches ?? [])].sort(byNewest).map((attempt) => ({
-    key: `${attempt.batchId}-${attempt.createdAt}`,
-    id: attempt.batchId,
+  batches.value.map((attempt) => ({
+    batch: batchMeta(attempt.batchStatus),
     createdAt: attempt.createdAt,
     errorDetail: attempt.errorDetail,
-    batch: batchMeta(attempt.batchStatus),
     file: fileMeta(attempt.fileStatus),
+    id: attempt.batchId,
+    key: `${attempt.batchId}-${attempt.createdAt}`,
   })),
 );
+
+const historySummary = computed(() => {
+  const [latest] = batchRows.value;
+
+  if (!latest) return "No dispatch attempts yet";
+
+  const count = batchRows.value.length;
+  const attempts = count === 1 ? "1 attempt" : `${count} attempts`;
+
+  return `${attempts} · last ${latest.batch.label.toLowerCase()} ${formatDate(latest.createdAt).toLowerCase()}`;
+});
 </script>
 
 <template>
-  <div class="@container">
-    <div class="flex flex-col gap-6">
-      <header class="flex flex-wrap items-end justify-end gap-4 @3xl:justify-between">
-        <div v-if="showHeading" class="hidden @3xl:block">
-          <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Audio analysis</h1>
-          <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
-            Genre, mood and processing history for this file
-          </p>
-        </div>
-        <div class="ml-auto flex items-center gap-4">
-          <label
-            class="flex cursor-pointer select-none items-center gap-2 text-xs text-gray-600 dark:text-gray-400"
-          >
-            <USwitch v-model="showAdvanced" size="sm" />
-            Advanced
-          </label>
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="outline"
-            icon="i-mdi-refresh"
-            :loading="isLoading"
-            @click="refresh()"
-          >
-            Refresh
-          </UButton>
-        </div>
-      </header>
+  <section
+    aria-label="Audio analysis"
+    class="@container frosted-glass glass-surface overflow-hidden rounded-2xl border border-gray-200/70 dark:border-gray-700/70"
+  >
+    <header
+      class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-5 py-4"
+      :class="DIVIDER_CLASS"
+    >
+      <div class="min-w-0">
+        <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Audio analysis</h2>
+        <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">{{ analyzedLabel }}</p>
+      </div>
 
+      <div class="ml-auto flex items-center gap-2">
+        <label
+          class="flex cursor-pointer select-none items-center gap-2 text-xs text-gray-600 dark:text-gray-400"
+        >
+          <USwitch v-model="showAdvanced" size="sm" />
+          Advanced
+        </label>
+
+        <UButton
+          icon="i-mdi-refresh"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          square
+          aria-label="Refresh analysis"
+          :loading="isPending"
+          @click="refresh()"
+        />
+      </div>
+    </header>
+
+    <div v-if="error" class="px-5 pt-4">
       <UAlert
-        v-if="error"
         color="error"
         variant="soft"
         title="Could not load the analysis"
         description="The server may be offline, or this file hasn't been analyzed yet."
         icon="i-mdi-connection"
       />
+    </div>
 
-      <div v-if="showSummary" class="hidden gap-6 @5xl:grid @5xl:grid-cols-3">
-        <div v-if="topGenre" :class="[CARD_CLASS, 'flex flex-col gap-1 px-6 py-4']">
-          <span :class="EYEBROW_CLASS">Top genre</span>
-          <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ topGenre.name }}</p>
-          <span class="text-xs text-gray-600 dark:text-gray-400">
-            {{ topGenre.parent }} · {{ formatConfidence(topGenre.confidence) }} confidence
+    <div v-if="isPending" class="flex h-72 items-center justify-center">
+      <BlockSpinner :size="24" aria-label="Loading audio analysis" class="text-gray-500" />
+    </div>
+
+    <div v-else class="grid grid-cols-1 @3xl:grid-cols-2">
+      <div class="flex min-w-0 flex-col gap-5 p-5 @3xl:col-start-1 @3xl:row-start-1 @3xl:p-6">
+        <div class="flex items-center gap-2">
+          <Icon icon="mdi:music-note" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Genre</h3>
+          <span
+            v-if="genreEnrichment"
+            class="ml-auto text-xs font-medium text-gray-600 dark:text-gray-400"
+          >
+            {{ formatDate(genreEnrichment.createdAt) }}
           </span>
         </div>
-        <div v-if="topMood" :class="[CARD_CLASS, 'flex flex-col gap-1 px-6 py-4']">
-          <span :class="EYEBROW_CLASS">Top mood</span>
-          <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ topMood.name }}</p>
-          <span class="text-xs text-gray-600 dark:text-gray-400">
-            {{ formatConfidence(topMood.value) }} confidence
-          </span>
+
+        <div
+          v-if="!genreEnrichment || !topGenre"
+          class="flex flex-col items-center gap-2 py-10 text-center"
+        >
+          <Icon
+            icon="mdi:music-note-off-outline"
+            class="w-12 h-12 text-gray-400 dark:text-gray-600"
+          />
+          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            No genre analysis yet
+          </p>
+          <p class="max-w-xs text-xs text-gray-600 dark:text-gray-400">
+            This file hasn't been through the genre model, or the result hasn't arrived yet.
+          </p>
         </div>
-        <div v-if="voice" :class="[CARD_CLASS, 'flex flex-col gap-1 px-6 py-4']">
-          <span :class="EYEBROW_CLASS">Voice</span>
-          <p class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ voice.name }}</p>
-          <span v-if="latestAnalyzedAt" class="text-xs text-gray-600 dark:text-gray-400">
-            Last analyzed {{ formatDate(latestAnalyzedAt) }}
-          </span>
-        </div>
+
+        <template v-else>
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+              <span :class="EYEBROW_CLASS">Best match</span>
+              <span :class="CHIP_CLASS">{{ topGenre.parent }}</span>
+            </div>
+
+            <div class="flex items-baseline gap-4">
+              <p
+                class="min-w-0 break-words text-2xl font-bold tracking-tight text-gray-900 @3xl:text-3xl dark:text-gray-100"
+              >
+                {{ topGenre.name }}
+              </p>
+              <span
+                class="ml-auto shrink-0 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100"
+              >
+                {{ formatConfidence(topGenre.confidence) }}
+              </span>
+            </div>
+
+            <AudioConfidenceBar :value="topGenre.confidence" :color="accent" />
+
+            <p v-if="isGenreLowConfidence" class="text-xs text-gray-600 dark:text-gray-400">
+              Low-confidence match, treat this as a rough guess rather than a firm tag.
+            </p>
+          </div>
+
+          <ol
+            v-if="restGenres.length"
+            class="flex flex-col gap-3 border-t pt-4"
+            :class="DIVIDER_CLASS"
+          >
+            <li
+              v-for="(genre, index) in restGenres"
+              :key="genre.raw"
+              class="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5"
+            >
+              <span class="text-xs tabular-nums text-gray-600 dark:text-gray-400">
+                {{ String(index + 2).padStart(2, "0") }}
+              </span>
+
+              <span class="flex min-w-0 items-center gap-2">
+                <span class="truncate text-sm text-gray-900 dark:text-gray-100">{{
+                  genre.name
+                }}</span>
+                <span class="hidden truncate text-xs text-gray-600 @md:inline dark:text-gray-400">
+                  {{ genre.parent }}
+                </span>
+              </span>
+
+              <span class="text-xs font-medium tabular-nums text-gray-900 dark:text-gray-100">
+                {{ formatConfidence(genre.confidence) }}
+              </span>
+
+              <AudioConfidenceBar
+                :value="genre.confidence"
+                :color="accent"
+                :delay="(index + 1) * BAR_STAGGER_MS"
+                size="sm"
+                class="col-start-2 col-end-4"
+              />
+            </li>
+          </ol>
+        </template>
       </div>
 
       <div
-        class="grid grid-cols-1 items-stretch gap-6 @3xl:grid-cols-2 @5xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]"
+        class="flex min-w-0 flex-col gap-5 border-t p-5 @3xl:col-start-2 @3xl:row-span-2 @3xl:row-start-1 @3xl:border-t-0 @3xl:border-l @3xl:p-6"
+        :class="DIVIDER_CLASS"
       >
-        <section class="flex min-w-0 flex-col gap-3">
-          <div class="flex items-center gap-2">
-            <Icon icon="mdi:music-note" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Genre</h2>
-            <span v-if="genreEnrichment" class="ml-auto text-xs text-gray-500 dark:text-gray-500">
-              {{ formatDate(genreEnrichment.createdAt) }}
-            </span>
-          </div>
-
-          <div v-if="isLoading" :class="[CARD_CLASS, 'min-h-40 grow animate-pulse']" />
-
-          <div v-else-if="!genreEnrichment || !topGenre" :class="[EMPTY_CLASS, 'grow']">
-            <Icon
-              icon="mdi:music-note-off-outline"
-              class="w-8 h-8 text-gray-400 dark:text-gray-600"
-            />
-            <div class="max-w-sm space-y-1">
-              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                No genre analysis yet
-              </p>
-              <p class="text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                This file hasn't been through the genre model, or the result hasn't arrived yet.
-              </p>
-            </div>
-          </div>
-
-          <div
-            v-else
-            :class="[CARD_CLASS, 'flex grow flex-col gap-4 px-5 py-4 @3xl:px-6 @3xl:py-5']"
+        <div class="flex items-center gap-2">
+          <Icon icon="mdi:emoticon-outline" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Mood profile</h3>
+          <span v-if="voice" :class="[CHIP_CLASS, 'flex items-center gap-1']">
+            <Icon :icon="voiceIcon" class="w-3 h-3" />
+            {{ voice.name }}
+          </span>
+          <span
+            v-if="moodEnrichment"
+            class="ml-auto text-xs font-medium text-gray-600 dark:text-gray-400"
           >
-            <div class="flex flex-col gap-1.5">
-              <div class="flex items-center gap-2">
-                <span :class="EYEBROW_CLASS">Top pick</span>
-                <span :class="CHIP_CLASS">{{ topGenre.parent }}</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <p class="text-lg font-semibold text-gray-900 dark:text-gray-100 @3xl:text-2xl">
-                  {{ topGenre.name }}
-                </p>
-                <span
-                  class="ml-auto text-sm font-semibold tabular-nums text-gray-800 dark:text-gray-100"
-                >
-                  {{ formatConfidence(topGenre.confidence) }}
-                </span>
-              </div>
-              <AudioConfidenceBar :value="topGenre.confidence" accent />
-              <p v-if="genreLowConfidence" class="text-xs text-gray-500 dark:text-gray-500">
-                Low-confidence match, treat this as a rough guess rather than a firm tag.
-              </p>
-            </div>
+            {{ formatDate(moodEnrichment.createdAt) }}
+          </span>
+        </div>
 
-            <div
-              v-if="restGenres.length"
-              class="flex grow flex-col justify-around gap-2.5 border-t border-gray-200/60 pt-3 dark:border-gray-700/60"
-            >
-              <div v-for="genre in restGenres" :key="genre.raw" class="flex items-center gap-3">
-                <span :class="[CHIP_CLASS, 'shrink-0']">{{ genre.parent }}</span>
-                <span class="truncate text-sm text-gray-700 dark:text-gray-300">
-                  {{ genre.name }}
-                </span>
-                <span
-                  class="ml-auto shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-500"
-                >
-                  {{ formatConfidence(genre.confidence) }}
-                </span>
-                <AudioConfidenceBar
-                  :value="genre.confidence"
-                  size="sm"
-                  class="w-12 shrink-0 @3xl:w-24"
-                />
-              </div>
-            </div>
+        <div
+          v-if="!moodEnrichment || !topMood"
+          class="flex flex-col items-center gap-2 py-10 text-center"
+        >
+          <Icon icon="mdi:emoticon-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">No mood analysis yet</p>
+          <p class="max-w-xs text-xs text-gray-600 dark:text-gray-400">
+            This file hasn't been through the mood model, or the result hasn't arrived yet.
+          </p>
+        </div>
 
-            <div v-if="showAdvanced" class="flex flex-col gap-4 @3xl:hidden">
-              <p
-                class="border-t border-gray-200/60 pt-1 text-[11px] text-gray-500 dark:border-gray-700/60 dark:text-gray-500"
-              >
-                Model {{ genreEnrichment.analyzer }}-{{ genreEnrichment.version }} ·
-                {{ genrePredictions.length }} predictions
-              </p>
-              <AudioRawPayload :payload="genreEnrichment.payload" />
-            </div>
-          </div>
-        </section>
-
-        <section class="flex min-w-0 flex-col gap-3">
-          <div class="flex items-center gap-2">
-            <Icon icon="mdi:emoticon-outline" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Mood</h2>
-            <span v-if="voice" :class="[CHIP_CLASS, 'flex items-center gap-1']">
-              <Icon :icon="voiceIcon" class="w-3 h-3" />
-              {{ voice.name }}
-            </span>
-            <span v-if="moodEnrichment" class="ml-auto text-xs text-gray-500 dark:text-gray-500">
-              {{ formatDate(moodEnrichment.createdAt) }}
-            </span>
-          </div>
-
-          <div v-if="isLoading" :class="[CARD_CLASS, 'min-h-40 grow animate-pulse']" />
-
-          <div v-else-if="!moodEnrichment || !topMood" :class="[EMPTY_CLASS, 'grow']">
-            <Icon icon="mdi:emoticon-outline" class="w-8 h-8 text-gray-400 dark:text-gray-600" />
-            <div class="max-w-sm space-y-1">
-              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                No mood analysis yet
-              </p>
-              <p class="text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                This file hasn't been through the mood model, or the result hasn't arrived yet.
-              </p>
-            </div>
-          </div>
-
-          <div
-            v-else
-            :class="[CARD_CLASS, 'flex grow flex-col gap-4 px-5 py-4 @3xl:px-6 @3xl:py-5']"
-          >
-            <div class="flex flex-col gap-2.5" :class="{ '@3xl:hidden': hasMoodPairs }">
-              <div
-                v-for="(mood, index) in moodEntries"
-                :key="mood.key"
-                class="flex items-center gap-3"
-              >
-                <span class="w-24 shrink-0 text-sm" :class="rankedNameClass(index)">
-                  {{ mood.name }}
-                </span>
-                <AudioConfidenceBar :value="mood.value" :accent="index === 0" class="flex-1" />
-                <span
-                  class="w-9 shrink-0 text-right text-xs tabular-nums text-gray-500 dark:text-gray-500"
-                >
-                  {{ formatConfidence(mood.value) }}
-                </span>
-              </div>
-            </div>
-
-            <div v-if="hasMoodPairs" class="hidden grow flex-col justify-between gap-5 @3xl:flex">
-              <div v-for="pair in moodLayout.pairs" :key="pair.key" class="flex flex-col gap-1.5">
-                <div class="flex items-baseline justify-between gap-3">
-                  <span class="flex items-baseline gap-1.5">
-                    <span class="text-sm" :class="poleNameClass(leads(pair, 'left'))">
-                      {{ pair.left.name }}
-                    </span>
-                    <span class="text-xs tabular-nums" :class="poleValueClass(leads(pair, 'left'))">
-                      {{ formatConfidence(pair.left.value) }}
-                    </span>
-                  </span>
-                  <span class="flex items-baseline gap-1.5">
-                    <span
-                      class="text-xs tabular-nums"
-                      :class="poleValueClass(leads(pair, 'right'))"
-                    >
-                      {{ formatConfidence(pair.right.value) }}
-                    </span>
-                    <span class="text-sm" :class="poleNameClass(leads(pair, 'right'))">
-                      {{ pair.right.name }}
-                    </span>
-                  </span>
-                </div>
-                <div class="grid grid-cols-2 gap-1">
-                  <AudioConfidenceBar
-                    :value="pair.left.value"
-                    align="end"
-                    :accent="leads(pair, 'left') && isStrong(pair.left.value)"
-                  />
-                  <AudioConfidenceBar
-                    :value="pair.right.value"
-                    :accent="leads(pair, 'right') && isStrong(pair.right.value)"
-                  />
-                </div>
-              </div>
-
-              <div
-                v-if="moodLayout.singles.length"
-                class="grid grid-cols-2 gap-x-6 gap-y-5 border-t border-gray-200/60 pt-4 dark:border-gray-700/60"
-              >
-                <div
-                  v-for="mood in moodLayout.singles"
-                  :key="mood.key"
-                  class="flex flex-col gap-1.5"
-                >
-                  <div class="flex items-baseline justify-between gap-3">
-                    <span class="text-sm" :class="poleNameClass(isStrong(mood.value))">
-                      {{ mood.name }}
-                    </span>
-                    <span
-                      class="text-xs tabular-nums"
-                      :class="poleValueClass(isStrong(mood.value))"
-                    >
-                      {{ formatConfidence(mood.value) }}
-                    </span>
-                  </div>
-                  <AudioConfidenceBar :value="mood.value" :accent="isStrong(mood.value)" />
-                </div>
-              </div>
-            </div>
-
-            <div v-if="showAdvanced" class="flex flex-col gap-4 @3xl:hidden">
-              <p
-                class="border-t border-gray-200/60 pt-2 text-[11px] text-gray-500 dark:border-gray-700/60 dark:text-gray-500"
-              >
-                Model {{ moodEnrichment.analyzer }}-{{ moodEnrichment.version }}
-              </p>
-              <AudioRawPayload :payload="moodEnrichment.payload" />
-            </div>
-          </div>
-        </section>
+        <template v-else>
+          <AudioMoodRadar :entries="moodEntries" :color="accent" class="my-auto" />
+        </template>
       </div>
 
-      <section class="flex flex-col gap-3">
-        <div class="flex items-center gap-2">
-          <Icon icon="mdi:history" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Batch history</h2>
-        </div>
+      <div
+        v-if="moodEnrichment && topMood"
+        class="min-w-0 border-t p-5 @3xl:col-start-1 @3xl:row-start-2 @3xl:p-6"
+        :class="DIVIDER_CLASS"
+      >
+        <AudioMoodBalance :entries="moodEntries" :color="accent" />
+      </div>
+    </div>
 
-        <div v-if="isLoading" :class="[CARD_CLASS, 'animate-pulse space-y-3 p-5']">
-          <div v-for="i in 3" :key="i" class="h-8 rounded-lg bg-black/5 dark:bg-white/5" />
-        </div>
+    <div
+      v-if="showAdvanced && (genreEnrichment || moodEnrichment)"
+      class="grid grid-cols-1 divide-y divide-gray-200/60 border-t @3xl:grid-cols-2 @3xl:divide-x @3xl:divide-y-0 dark:divide-gray-700/60"
+      :class="DIVIDER_CLASS"
+    >
+      <div
+        v-for="model in modelDetails"
+        :key="model.label"
+        class="flex min-w-0 flex-col gap-2 p-5 @3xl:px-6"
+      >
+        <span :class="EYEBROW_CLASS">{{ model.label }}</span>
+        <span
+          class="truncate font-mono text-xs text-gray-600 dark:text-gray-400"
+          :title="model.name"
+        >
+          {{ model.name }}
+        </span>
 
-        <div v-else-if="!batchRows.length" :class="EMPTY_CLASS">
-          <Icon icon="mdi:history" class="w-8 h-8 text-gray-400 dark:text-gray-600" />
-          <div class="max-w-sm space-y-1">
-            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-              No batch attempts yet
-            </p>
-            <p class="text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-              Dispatch attempts for this file will appear here once it enters the queue.
-            </p>
-          </div>
+        <AudioRawPayload v-if="model.payload" :payload="model.payload" class="h-72" />
+        <div
+          v-else
+          class="flex h-72 items-center justify-center rounded-lg border border-dashed border-gray-200/70 text-xs text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
+        >
+          No result from this model yet
         </div>
+      </div>
+    </div>
 
-        <div v-else :class="[CARD_CLASS, 'overflow-hidden']">
-          <div
-            :class="[
-              'hidden border-b border-gray-200/60 py-2.5 dark:border-gray-700/60',
-              BATCH_GRID_CLASS,
-            ]"
-          >
+    <UCollapsible
+      v-model:open="isHistoryOpen"
+      :disabled="!batchRows.length"
+      class="border-t"
+      :class="DIVIDER_CLASS"
+    >
+      <button
+        type="button"
+        class="flex w-full items-center gap-3 px-5 py-3.5 text-left disabled:cursor-default"
+      >
+        <Icon icon="mdi:history" class="w-4 h-4 shrink-0 text-gray-600 dark:text-gray-400" />
+        <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Processing history</span>
+        <span class="min-w-0 truncate text-xs text-gray-600 dark:text-gray-400">
+          {{ historySummary }}
+        </span>
+        <Icon
+          v-if="batchRows.length"
+          icon="mdi:chevron-down"
+          class="ml-auto w-4 h-4 shrink-0 text-gray-600 transition-transform duration-200 motion-reduce:transition-none dark:text-gray-400"
+          :class="{ 'rotate-180': isHistoryOpen }"
+        />
+      </button>
+
+      <template #content>
+        <div class="border-t" :class="DIVIDER_CLASS">
+          <div :class="['hidden border-b px-5 py-2.5', DIVIDER_CLASS, BATCH_GRID_CLASS]">
             <span :class="EYEBROW_CLASS">Batch</span>
             <span :class="EYEBROW_CLASS">File</span>
             <span :class="EYEBROW_CLASS">{{ referenceHeading }}</span>
             <span :class="[EYEBROW_CLASS, 'justify-self-end']">When</span>
           </div>
+
           <div class="divide-y divide-gray-200/60 dark:divide-gray-700/60">
             <div
               v-for="row in batchRows"
@@ -522,16 +413,20 @@ const batchRows = computed(() =>
               >
                 {{ row.batch.label }}
               </span>
+
               <span class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                 <span class="h-2 w-2 shrink-0 rounded-full" :class="row.file.dot" />
                 {{ row.file.label }}
               </span>
-              <span class="min-w-0 truncate font-mono text-xs text-gray-500 dark:text-gray-500">
+
+              <span class="min-w-0 truncate font-mono text-xs text-gray-600 dark:text-gray-400">
                 {{ batchReference(row.id) }}
               </span>
-              <span class="ml-auto text-xs text-gray-500 dark:text-gray-500">
+
+              <span class="ml-auto text-xs font-medium text-gray-600 dark:text-gray-400">
                 {{ formatDate(row.createdAt) }}
               </span>
+
               <p
                 v-if="row.errorDetail"
                 class="w-full text-xs text-red-600 dark:text-red-400 @3xl:col-span-full"
@@ -541,36 +436,7 @@ const batchRows = computed(() =>
             </div>
           </div>
         </div>
-      </section>
-
-      <section v-if="showModelDetails" class="hidden flex-col gap-3 @3xl:flex">
-        <div class="flex items-center gap-2">
-          <Icon icon="mdi:chip" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Model details</h2>
-        </div>
-        <div
-          :class="[
-            CARD_CLASS,
-            'grid grid-cols-2 divide-x divide-gray-200/60 overflow-hidden dark:divide-gray-700/60',
-          ]"
-        >
-          <div v-if="genreEnrichment" class="flex min-w-0 flex-col gap-2 px-6 py-4">
-            <span :class="EYEBROW_CLASS">Genre model</span>
-            <span class="font-mono text-xs text-gray-500 dark:text-gray-500">
-              {{ genreEnrichment.analyzer }}-{{ genreEnrichment.version }} ·
-              {{ genrePredictions.length }} predictions
-            </span>
-            <AudioRawPayload :payload="genreEnrichment.payload" />
-          </div>
-          <div v-if="moodEnrichment" class="flex min-w-0 flex-col gap-2 px-6 py-4">
-            <span :class="EYEBROW_CLASS">Mood model</span>
-            <span class="font-mono text-xs text-gray-500 dark:text-gray-500">
-              {{ moodEnrichment.analyzer }}-{{ moodEnrichment.version }}
-            </span>
-            <AudioRawPayload :payload="moodEnrichment.payload" />
-          </div>
-        </div>
-      </section>
-    </div>
-  </div>
+      </template>
+    </UCollapsible>
+  </section>
 </template>

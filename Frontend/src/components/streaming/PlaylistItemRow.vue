@@ -25,13 +25,11 @@
     <div class="w-5 shrink-0 flex items-center justify-center">
       <div
         v-if="isPlaying"
-        class="flex gap-0.5 items-end h-3.5"
+        class="flex"
         role="status"
         aria-label="Now playing"
       >
-        <div class="w-0.5 bg-primary rounded-full animate-eq-1" />
-        <div class="w-0.5 bg-primary rounded-full animate-eq-2" />
-        <div class="w-0.5 bg-primary rounded-full animate-eq-3" />
+        <MediaEqualizer :playing="player.isPlaying" class="text-primary" />
       </div>
       <template v-else>
         <span class="text-xs text-muted text-right group-hover:hidden">
@@ -101,7 +99,9 @@ import { computed, ref } from "vue";
 import type { PlaylistItemResponse } from "@/api/playlist";
 
 import { fileApi } from "@/api/file";
+import MediaEqualizer from "@/components/streaming/overview/MediaEqualizer.vue";
 import { useSettingsStore } from "@/stores/settings";
+import { usePlayerStore } from "@/stores/stream-player";
 import { isThumbnailSupportedMimeType } from "@/utils/mimetype.utils";
 
 const { item, draggedItemId, isPlaying } = defineProps<{
@@ -118,6 +118,8 @@ const emit = defineEmits<{
   dragOver: [id: string];
   drop: [targetId: string];
 }>();
+
+const player = usePlayerStore();
 
 const isVideo = computed(() => item.mimeType.startsWith("video/"));
 const isDragging = computed(() => draggedItemId === item.id);
@@ -157,42 +159,3 @@ function onDrop() {
   emit("drop", item.id);
 }
 </script>
-
-<style scoped>
-@keyframes eq1 {
-  0%,
-  100% {
-    height: 4px;
-  }
-  50% {
-    height: 14px;
-  }
-}
-@keyframes eq2 {
-  0%,
-  100% {
-    height: 10px;
-  }
-  50% {
-    height: 4px;
-  }
-}
-@keyframes eq3 {
-  0%,
-  100% {
-    height: 6px;
-  }
-  50% {
-    height: 12px;
-  }
-}
-.animate-eq-1 {
-  animation: eq1 0.8s ease-in-out infinite;
-}
-.animate-eq-2 {
-  animation: eq2 0.8s ease-in-out infinite 0.2s;
-}
-.animate-eq-3 {
-  animation: eq3 0.8s ease-in-out infinite 0.4s;
-}
-</style>
