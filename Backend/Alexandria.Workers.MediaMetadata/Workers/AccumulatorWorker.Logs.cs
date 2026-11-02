@@ -30,4 +30,11 @@ public partial class AccumulatorWorker
 
     [LoggerMessage(22306, LogLevel.Error, "Could not record the media-metadata worker-cycle failure")]
     private static partial void LogRecordFailureError(ILogger logger, Exception ex);
+
+    [LoggerMessage(22307, LogLevel.Error,
+        "Failed to move {Count} staged files into batch {BatchId}; triggers will be redelivered")]
+    private static partial void LogMoveError(ILogger logger, Exception ex, Guid batchId, int count);
+
+    [LoggerMessage(22308, LogLevel.Warning, "Failed to clean up staged input {Path}")]
+    private static partial void LogCleanupError(ILogger logger, Exception? ex, string path);
 }

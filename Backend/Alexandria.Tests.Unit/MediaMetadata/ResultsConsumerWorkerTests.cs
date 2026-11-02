@@ -187,4 +187,26 @@ public class ResultsConsumerWorkerTests : IDisposable
             Arg.Any<FileEnrichment>(), Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task completion_cleans_only_its_own_staged_inputs()
+    {
+        var (batch, _, fileId) = StoredFile();
+        _batches.GetWithFilesAsync(batch.Id, Arg.Any<CancellationToken>()).Returns(batch);
+        var stagedDir = Path.Combine(_tmpRoot, "staged");
+
+        var ownInput = Path.Combine(stagedDir, batch.Id.ToString(), $"{fileId}.mp3");
+        var otherBatchInput = Path.Combine(stagedDir, Guid.NewGuid().ToString(), $"{fileId}.mp3");
+        foreach (var input in new[] { ownInput, otherBatchInput })
+        {
+            IoDirectory.CreateDirectory(Path.GetDirectoryName(input)!);
+            await IoFile.WriteAllTextAsync(input, "audio", TestContext.Current.CancellationToken);
+        }
+
+        await _sut.HandleCompletionAsync(
+            CompletionFor(batch.Id, null), TestContext.Current.CancellationToken);
+
+        IoDirectory.Exists(Path.GetDirectoryName(ownInput)).Should().BeFalse();
+        IoFile.Exists(otherBatchInput).Should().BeTrue();
+    }
 }

@@ -10,6 +10,8 @@ using Alexandria.Workers.MediaMetadata.Messages;
 using Alexandria.Workers.MediaMetadata.Queueing;
 using Alexandria.Workers.MediaMetadata.Services;
 using Microsoft.Extensions.Options;
+using File = System.IO.File;
+using Directory = System.IO.Directory;
 
 namespace Alexandria.Workers.MediaMetadata.Workers;
 
@@ -92,6 +94,22 @@ public partial class AccumulatorWorker(
         CancellationToken stoppingToken)
     {
         var batchId = Guid.NewGuid();
+        var batchDir = StagingPaths.BatchDirectory(config.StagedDir, batchId);
+
+        List<string> inputs;
+        try
+        {
+            inputs = MoveIntoBatch(batch, config.StagedDir, batchId);
+        }
+        catch (Exception ex)
+        {
+            LogMoveError(logger, ex, batchId, batch.Count);
+
+            await SettleAsync(batch, persisted: false);
+            DiscardInputs(batch, batchDir);
+            await RecordCycleFailureAsync(ex, stoppingToken);
+            return;
+        }
 
         using var scope = serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -138,13 +156,16 @@ public partial class AccumulatorWorker(
             // later trigger for the file a silent duplicate until the worker restarts.
             await SettleAsync(batch, persisted: false);
 
+            // Redelivered triggers stage fresh copies, so nothing will read this batch's inputs.
+            DeleteBatchDirectory(batchDir);
+
             // The failed context still tracks the unsaved batch, so it cannot record anything.
             await RecordCycleFailureAsync(ex, stoppingToken);
             return;
         }
 
         var outputDir = $"{config.ToVolumePath(config.OutputDir.TrimEnd('/'))}/{batchId}";
-        var files = batch.Select(f => config.ToVolumePath(f.FilePath)).ToArray();
+        var files = inputs.Select(config.ToVolumePath).ToArray();
 
         await SettleAsync(batch, persisted: true);
 
@@ -170,12 +191,47 @@ public partial class AccumulatorWorker(
             var jobIds = batchEntity.Files.Select(f => f.JobId).ToList();
             await unitOfWork.Jobs.UpdateStatusForJobsAsync(jobIds, JobStatus.Failed, "publish failed", stoppingToken);
 
+            DeleteBatchDirectory(batchDir);
+
             await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex,
                 stoppingToken);
             return;
         }
 
         LogBatchDispatched(logger, batchId, backbone, batch.Count, outputDir, routingKey);
+    }
+
+    private static List<string> MoveIntoBatch(List<StagedFile> batch, string stagedDir, Guid batchId)
+    {
+        Directory.CreateDirectory(StagingPaths.BatchDirectory(stagedDir, batchId));
+
+        var inputs = new List<string>(batch.Count);
+        foreach (var staged in batch)
+        {
+            var target = StagingPaths.BatchInputPath(stagedDir, batchId, staged);
+            File.Move(staged.FilePath, target);
+            inputs.Add(target);
+        }
+
+        return inputs;
+    }
+
+    private void DiscardInputs(List<StagedFile> batch, string batchDir)
+    {
+        // Files moved before the failure live in the batch directory; the rest are still incoming.
+        foreach (var staged in batch)
+        {
+            if (!StagingPaths.TryDeleteFile(staged.FilePath, out var error))
+                LogCleanupError(logger, error, staged.FilePath);
+        }
+
+        DeleteBatchDirectory(batchDir);
+    }
+
+    private void DeleteBatchDirectory(string batchDir)
+    {
+        if (!StagingPaths.TryDeleteDirectory(batchDir, out var error))
+            LogCleanupError(logger, error, batchDir);
     }
 
     private async Task SettleAsync(List<StagedFile> batch, bool persisted)

@@ -11,4 +11,7 @@ public partial class StagingService
     [LoggerMessage(22102, LogLevel.Information, "Staged file {FileId} ({MimeType}) to {StagedPath} ({Size} bytes)")]
     private static partial void LogFileStaged(ILogger logger, Guid fileId, string mimeType, string stagedPath,
         long size);
+
+    [LoggerMessage(22103, LogLevel.Warning, "Could not discard staged file {FileId} at {StagedPath}")]
+    private static partial void LogDiscardFailed(ILogger logger, Exception? ex, Guid fileId, string stagedPath);
 }

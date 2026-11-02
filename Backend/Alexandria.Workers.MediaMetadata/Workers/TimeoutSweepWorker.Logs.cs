@@ -13,4 +13,7 @@ public partial class TimeoutSweepWorker
 
     [LoggerMessage(22503, LogLevel.Error, "Timeout sweep failed; retrying next interval")]
     private static partial void LogSweepError(ILogger logger, Exception ex);
+
+    [LoggerMessage(22504, LogLevel.Warning, "Failed to clean up staged inputs of timed-out batch at {Path}")]
+    private static partial void LogCleanupError(ILogger logger, Exception? ex, string path);
 }
