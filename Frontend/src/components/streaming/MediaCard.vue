@@ -8,6 +8,7 @@ import { computed, onUnmounted, ref, useTemplateRef } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import MediaEqualizer from "@/components/streaming/overview/MediaEqualizer.vue";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatDuration } from "@/utils/date-formatters";
@@ -293,13 +294,11 @@ const onCardKeydown = (event: KeyboardEvent) => {
           <div class="flex items-center gap-2 min-w-0">
             <div
               v-if="isActive && isAudio"
-              class="flex gap-0.5 items-end h-3.5"
+              class="flex"
               role="status"
               aria-label="Now playing"
             >
-              <div class="w-0.5 bg-primary rounded-full animate-eq-1" />
-              <div class="w-0.5 bg-primary rounded-full animate-eq-2" />
-              <div class="w-0.5 bg-primary rounded-full animate-eq-3" />
+              <MediaEqualizer :playing="isActivePlaying" class="text-primary" />
             </div>
             <Icon
               v-else-if="isActive"
@@ -362,13 +361,11 @@ const onCardKeydown = (event: KeyboardEvent) => {
           </span>
           <div
             v-else-if="isActive && isAudio"
-            class="flex gap-0.5 items-end h-3.5"
+            class="flex"
             role="status"
             aria-label="Now playing"
           >
-            <div class="w-0.5 bg-primary rounded-full animate-eq-1" />
-            <div class="w-0.5 bg-primary rounded-full animate-eq-2" />
-            <div class="w-0.5 bg-primary rounded-full animate-eq-3" />
+            <MediaEqualizer :playing="isActivePlaying" class="text-primary" />
           </div>
           <Icon
             v-else-if="isActive"
@@ -464,42 +461,6 @@ const onCardKeydown = (event: KeyboardEvent) => {
   opacity: 0;
 }
 
-@keyframes eq1 {
-  0%,
-  100% {
-    height: 4px;
-  }
-  50% {
-    height: 14px;
-  }
-}
-@keyframes eq2 {
-  0%,
-  100% {
-    height: 10px;
-  }
-  50% {
-    height: 4px;
-  }
-}
-@keyframes eq3 {
-  0%,
-  100% {
-    height: 6px;
-  }
-  50% {
-    height: 12px;
-  }
-}
-.animate-eq-1 {
-  animation: eq1 0.8s ease-in-out infinite;
-}
-.animate-eq-2 {
-  animation: eq2 0.8s ease-in-out infinite 0.2s;
-}
-.animate-eq-3 {
-  animation: eq3 0.8s ease-in-out infinite 0.4s;
-}
 @keyframes blink-eye {
   0%,
   100% {
