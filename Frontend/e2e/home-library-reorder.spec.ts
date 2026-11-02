@@ -193,7 +193,6 @@ test.describe("Touch shortcut ordering", () => {
     }));
     const state = await fixture(page, value);
     await openLibraryOptions(page, widgets(page).first());
-    await page.getByRole("button", { name: "Expand inspector", exact: true }).click();
     await touchReorderWithScroll(page);
     const list = page.getByRole("list", { name: "Selected destinations" });
 

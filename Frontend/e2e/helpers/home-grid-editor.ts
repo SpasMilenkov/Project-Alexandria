@@ -1,16 +1,42 @@
 import { type Locator, type Page, expect } from "@playwright/test";
 
-export const openControls = async (page: Page) => {
-  const button = page.getByRole("button", { name: "Layout controls", exact: true });
-  const panel = page.getByRole("complementary", { name: "Dashboard editing panel", exact: true });
+// Wide screens dock the panel beside the grid; phones open it as a bottom drawer dialog.
+export const editingPanel = (page: Page) => {
+  const name = { name: "Dashboard editing panel", exact: true };
 
-  if ((await button.isVisible()) && !(await panel.isVisible())) await button.click();
+  return page.getByRole("complementary", name).or(page.getByRole("dialog", name));
 };
 
-export const closeControls = async (page: Page) => {
-  const button = page.getByRole("button", { name: "Back to layout", exact: true });
+// A drawer that is sliding away still reports visible, so it counts as closed here.
+const isPanelOpen = async (page: Page) => {
+  const name = { name: "Dashboard editing panel", exact: true };
 
-  if (await button.isVisible()) await button.click();
+  if (await page.getByRole("complementary", name).isVisible()) return true;
+
+  const drawer = page.getByRole("dialog", name);
+
+  return (await drawer.count()) > 0 && (await drawer.getAttribute("data-state")) === "open";
+};
+
+export const openControls = async (page: Page) => {
+  const button = page.getByRole("button", { name: "Layout controls", exact: true });
+
+  if (!(await button.isVisible()) || (await isPanelOpen(page))) return;
+
+  await button.click();
+  await expect.poll(() => isPanelOpen(page)).toBe(true);
+};
+
+// Some editor actions already dismiss the drawer, so only an open one is closed here; a
+// closing drawer still shows its button while it slides away.
+export const closeControls = async (page: Page) => {
+  const drawer = page.getByRole("dialog", { name: "Dashboard editing panel", exact: true });
+
+  if ((await drawer.count()) > 0 && (await drawer.getAttribute("data-state")) === "open") {
+    await drawer.getByRole("button", { name: "Back to layout", exact: true }).click();
+  }
+
+  await expect(drawer).toHaveCount(0);
 };
 
 export const openWidgetTab = async (page: Page, tab: "Style" | "Options" | "Layout") => {
@@ -176,7 +202,8 @@ export const resizePoints = async (
 
   const handle = widget.locator("..").locator(`[data-resize-edge="${edge}"]`);
 
-  await handle.scrollIntoViewIfNeeded();
+  // Centered, so the gesture never starts inside the grid's 48px edge auto-scroll zone.
+  await handle.evaluate((element) => element.scrollIntoView({ block: "center" }));
 
   const bounds = (await handle.boundingBox())!;
   const grid = page.locator('[aria-label="Home widgets"]');

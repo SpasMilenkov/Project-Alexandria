@@ -92,6 +92,12 @@ const artworkFits = async (widget: Locator, colored = false) => {
 const verifyAnimationFrozen = async (page: Page, svg: Locator) => {
   const animationTime = () =>
     svg.evaluate((element) => Number(element.getAnimations({ subtree: true })[0]!.currentTime));
+
+  // playState reads "paused" while the pause is still pending; its hold time is final only
+  // once ready resolves, otherwise the baseline can trail by one frame.
+  await svg.evaluate((element) =>
+    Promise.all(element.getAnimations({ subtree: true }).map((animation) => animation.ready)),
+  );
   const paused = await animationTime();
 
   await page.evaluate(async () => {
@@ -102,7 +108,8 @@ const verifyAnimationFrozen = async (page: Page, svg: Locator) => {
     }
   });
 
-  expect(await animationTime()).toBe(paused);
+  // A paused animation can be re-quantized by a few microseconds; a running one moves a whole frame.
+  expect(await animationTime()).toBeCloseTo(paused, 1);
 };
 
 const verifyDocumentVisibility = async (page: Page, decoration: Locator, svg: Locator) => {

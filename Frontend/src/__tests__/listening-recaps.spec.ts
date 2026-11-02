@@ -263,7 +263,8 @@ describe("annual recap overview", () => {
     const wrapper = mountRecaps(ListeningRecaps);
 
     await flushPromises();
-    const [currentCard, previousCard] = wrapper.findAllComponents(MonthlyRecapCard);
+    // Cards run chronologically: last month first, then the month in progress.
+    const [previousCard, currentCard] = wrapper.findAllComponents(MonthlyRecapCard);
 
     expect(currentCard!.text()).toContain("Could not load this month");
     expect(previousCard!.get("dl").text()).toContain("17");
@@ -284,8 +285,8 @@ describe("annual recap overview", () => {
     const cards = wrapper.findAllComponents(MonthlyRecapCard);
 
     expect(cards.every((card) => card.text().includes("No recorded listening"))).toBe(true);
-    expect(cards[0]!.text()).toContain("Browse music");
-    expect(cards[1]!.text()).not.toContain("Browse music");
+    expect(cards[0]!.text()).not.toContain("Browse music");
+    expect(cards[1]!.text()).toContain("Browse music");
     expect(wrapper.find("dl").exists()).toBe(false);
     expect(wrapper.text()).toContain(`${year} so far`);
   });

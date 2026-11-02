@@ -1,7 +1,12 @@
 import { type Page, expect, test } from "@playwright/test";
 
 import { fixture } from "./helpers/home-dashboard.js";
-import { dragCatalogue } from "./helpers/home-grid-editor.js";
+import {
+  closeControls,
+  dragCatalogue,
+  editingPanel,
+  openControls,
+} from "./helpers/home-grid-editor.js";
 
 const configureClock = async (page: Page) => {
   const panel = page.getByRole("complementary", { name: "Dashboard editing panel" });
@@ -93,29 +98,28 @@ test("workspace keeps the canvas beside the inspector and saves supported widget
   await expect(page.locator('[data-widget-id][aria-label="Storage"]')).toHaveCount(1);
 });
 
+// Phones edit in a bottom drawer; switching the preview to Mobile dismisses it.
 const preparePhone = async (page: Page) => {
-  await page.getByRole("button", { name: "Customize", exact: true }).click();
-  await page.getByRole("button", { name: "Layout controls", exact: true }).click();
+  const panel = editingPanel(page);
 
-  const panel = page.getByRole("complementary", { name: "Dashboard editing panel" });
+  await page.getByRole("button", { name: "Customize", exact: true }).click();
+  await openControls(page);
   await panel.getByRole("switch", { name: "Use a separate mobile layout", exact: true }).click();
   await page.getByRole("button", { name: "Mobile", exact: true }).click();
-  await panel.getByRole("button", { name: "Expand inspector", exact: true }).click();
-  await expect(panel).toHaveClass(/is-expanded/u);
+  await openControls(page);
   await panel.getByRole("button", { name: "Reset this layout", exact: true }).click();
   await expect(
     panel.getByRole("group", { name: "Confirm layout reset", exact: true }),
   ).toBeVisible();
   await panel.getByRole("button", { name: "Keep layout", exact: true }).click();
-  await panel.getByRole("button", { name: "Back to layout", exact: true }).click();
-  await expect(panel).toHaveCount(0);
+  await closeControls(page);
 };
 
 const discardPhoneReset = async (page: Page) => {
-  const panel = page.getByRole("complementary", { name: "Dashboard editing panel" });
+  const panel = editingPanel(page);
 
   await page.getByRole("button", { name: "Back to editing", exact: true }).click();
-  await page.getByRole("button", { name: "Layout controls", exact: true }).click();
+  await openControls(page);
   await panel.getByRole("button", { name: "Back to dashboard settings", exact: true }).click();
   await panel.getByRole("button", { name: "Reset this layout", exact: true }).click();
   await panel.getByRole("button", { name: "Reset layout", exact: true }).click();
@@ -124,14 +128,14 @@ const discardPhoneReset = async (page: Page) => {
   await expect(page.getByRole("button", { name: "Customize", exact: true })).toBeVisible();
 };
 
-test("phone inspector expands, dismisses, previews and confirms current-layout reset", async ({
+test("phone drawer opens for new widgets, dismisses, previews and confirms current-layout reset", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const state = await fixture(page);
   await preparePhone(page);
 
-  const panel = page.getByRole("complementary", { name: "Dashboard editing panel" });
+  const panel = editingPanel(page);
 
   await page.getByRole("button", { name: "Add widget", exact: true }).click();
 

@@ -148,29 +148,47 @@ test("loads and retries one failed section independently", async ({ page }) => {
   ).toHaveLength(1);
 });
 
-test("desktop Overview groups all media pages and remembers expansion", async ({ page }) => {
+test("desktop Media section collapses to the current page and remembers its state", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await openMedia(page);
+  const toggle = page.getByRole("button", { name: "Media", exact: true });
   const navigation = page.getByRole("navigation", { name: "Media navigation", exact: true });
+  const currentPage = page.getByRole("navigation", { name: "Current Media page", exact: true });
+  const panel = page.locator(`[id="${await toggle.getAttribute("aria-controls")}"]`);
 
-  await expect(navigation.getByRole("link", { name: "Overview", exact: true })).toBeVisible();
-  await expect(navigation.getByRole("link", { name: "Music", exact: true })).toHaveCount(0);
-  await navigation.locator('[data-slot="linkTrailing"]').click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
 
-  for (const name of ["Music", "Videos", "Playlists", "History", "Jobs", "Your listening"]) {
+  for (const name of [
+    "Overview",
+    "Music",
+    "Videos",
+    "Playlists",
+    "Listening stats",
+    "Play history",
+    "Conversions",
+  ]) {
     await expect(navigation.getByRole("link", { name, exact: true })).toBeVisible();
   }
 
-  await page.reload();
-  await expect(navigation.getByRole("link", { name: "History", exact: true })).toBeVisible();
-  await navigation.getByRole("link", { name: "History", exact: true }).click();
+  await navigation.getByRole("link", { name: "Play history", exact: true }).click();
   await expect(page).toHaveURL(/\/streaming\/history$/u);
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(panel).toHaveAttribute("inert", "");
+  await expect(currentPage.getByRole("link", { name: "Play history", exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(currentPage.getByRole("link", { name: "Play history", exact: true })).toBeVisible();
+
+  await toggle.click();
+  await expect(panel).not.toHaveAttribute("inert");
+  await expect(currentPage).toHaveCount(0);
   await navigation.getByRole("link", { name: "Overview", exact: true }).click();
   await expect(page).toHaveURL(/\/media$/u);
-  await navigation.locator('[data-slot="linkTrailing"]').click();
-  await expect(navigation.getByRole("link", { name: "Music", exact: true })).toHaveCount(0);
-  await page.reload();
-  await expect(navigation.getByRole("link", { name: "Music", exact: true })).toHaveCount(0);
 });
 
 test("keeps playing media while moving between Overview and History", async ({ page }) => {
