@@ -260,11 +260,12 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
-  if (
-    (to.meta.requiresAuth || to.meta.requiresAdmin) &&
-    authStore.isAuthenticated &&
-    !authStore.isSessionVerified
-  ) {
+  // Guest pages and the landing redirect a signed-in visitor, so they need a verified
+  // session too; otherwise a fresh page load leaves that visitor on the sign-in page.
+  const dependsOnSession =
+    to.meta.requiresAuth || to.meta.requiresAdmin || to.meta.guestOnly || to.name === "index";
+
+  if (dependsOnSession && authStore.isAuthenticated && !authStore.isSessionVerified) {
     await authStore.ensureSessionVerified();
   }
 
