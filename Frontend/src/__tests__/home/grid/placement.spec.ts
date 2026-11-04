@@ -9,8 +9,8 @@ import {
   previewHomePlacement,
   projectHomeLayout,
   validHomeRectangle,
-} from "@/utils/home-grid";
-import { cloneHomeLayout, createHomeWidget, defaultHomeLayout } from "@/utils/home-layout";
+} from "@/features/home/grid/placement";
+import { cloneHomeLayout, createHomeWidget, defaultHomeLayout } from "@/features/home/layout";
 
 describe("Home spatial layout", () => {
   it("keeps a right-side clock and intentional gaps after adding or removing other widgets", () => {

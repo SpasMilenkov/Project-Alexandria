@@ -8,7 +8,7 @@ import {
   useHomeWidgetThumbnail,
 } from "@/composables/useHomeWidgetPreview";
 import { HomeWidgetType } from "@/enums/home-widget";
-import { createHomeWidgetPreview, homeWidgetShowcaseLayout } from "@/utils/home-widget-showcase";
+import { createHomeWidgetPreview, homeWidgetShowcaseLayout } from "@/features/home/editor/showcase";
 
 const live = vi.hoisted(() => ({ query: vi.fn(), thumbnail: vi.fn() }));
 

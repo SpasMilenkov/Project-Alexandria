@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type HomeResizeEdge, homeArrowOffset } from "@/utils/home-grid-input";
+import { type HomeResizeEdge, homeArrowOffset } from "@/features/home/grid/input";
 
 defineProps<{ label: string; helpId: string }>();
 

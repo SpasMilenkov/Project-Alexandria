@@ -7,8 +7,8 @@ import { useRoute } from "vue-router";
 import type { ShareDownloadResponse, SharedFileMetadataDto } from "@/api/shareLinks";
 
 import { getSharedFileDownloadUrl, getSharedFileMetadata } from "@/queries/shareLinks";
-import { getFileIcon } from "@/utils/icon.utils";
-import { formatBytes } from "@/utils/size.utils";
+import { getFileIcon } from "@/utils/files/icons";
+import { formatBytes } from "@/utils/size";
 
 const route = useRoute();
 const token = route.params.token as string;

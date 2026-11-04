@@ -8,7 +8,10 @@ import {
   HomeShortcutGroup,
   HomeWidgetType,
 } from "@/enums/home-widget";
-import { cloneHomeSettings, setSeparateMobileLayout } from "@/utils/home-layout";
+import { homeWidgetHasStyles, homeWidgetStyleLabel } from "@/features/home/editor/styles";
+import { cloneHomeSettings, setSeparateMobileLayout } from "@/features/home/layout";
+import { buildHomeChanges, homeBoardToSettings } from "@/features/home/persistence";
+import { defaultHomeWidgetOptions } from "@/features/home/widget-options";
 import {
   HOME_LIBRARY_DESTINATIONS,
   homeLibraryCustomChange,
@@ -16,10 +19,7 @@ import {
   homeLibraryLinks,
   homeLibraryPresetChange,
   homeLibrarySelection,
-} from "@/utils/home-library";
-import { homeWidgetHasStyles, homeWidgetStyleLabel } from "@/utils/home-widget-editor";
-import { defaultHomeWidgetOptions } from "@/utils/home-widget-options";
-import { buildHomeChanges, homeBoardToSettings } from "@/utils/home-widget-persistence";
+} from "@/features/home/widgets/library";
 
 const existingBoard = (): HomeBoard => ({
   initialized: true,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { HomeClockReadout } from "@/utils/home-clock";
+import type { HomeClockReadout } from "@/features/home/widgets/clock/clock";
 
 import HomeFlipDigit from "./HomeFlipDigit.vue";
 

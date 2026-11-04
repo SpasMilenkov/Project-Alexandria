@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { wrappedDailyLandscape } from "@/utils/wrapped-daily-landscape";
+import { wrappedDailyLandscape } from "@/features/wrapped/daily-landscape";
 
 describe("Monthly Wrapped daily skyline", () => {
   it("uses a complete calendar month and one linear height scale", () => {

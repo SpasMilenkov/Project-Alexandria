@@ -5,8 +5,8 @@ import { computed, ref } from "vue";
 import type { StorageBreakdown } from "@/api/status";
 
 import { HomeStorageStyle } from "@/enums/home-widget";
-import { homeStorageCells, homeStorageModel } from "@/utils/home-file-widgets";
-import { formatBytes } from "@/utils/size.utils";
+import { homeStorageCells, homeStorageModel } from "@/features/home/widgets/files";
+import { formatBytes } from "@/utils/size";
 
 import HomeStorageLegend from "./HomeStorageLegend.vue";
 import HomeStorageTank from "./HomeStorageTank.vue";

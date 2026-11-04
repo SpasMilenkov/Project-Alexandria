@@ -112,7 +112,7 @@ import {
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const directoryStore = useDirectoryStore();
 const fileStore = useFileStore();

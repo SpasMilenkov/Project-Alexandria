@@ -1,4 +1,4 @@
-import type { returnGeometry } from "@/utils/wrapped-story.utils";
+import type { returnGeometry } from "@/features/wrapped/story";
 
 type ReturnGeometry = ReturnType<typeof returnGeometry>;
 

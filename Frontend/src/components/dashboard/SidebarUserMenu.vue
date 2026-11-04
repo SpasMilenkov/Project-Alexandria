@@ -191,10 +191,10 @@ import { useRoute, useRouter } from "vue-router";
 import type { StorageBreakdown } from "@/api/status";
 
 import StorageRing from "@/components/dashboard/StorageRing.vue";
+import { type RingArc, buildRingArcs } from "@/features/storage/ring";
 import { myStorage } from "@/queries/status";
 import { useAuthStore } from "@/stores/auth";
-import { formatBytes } from "@/utils/size.utils";
-import { type RingArc, buildRingArcs } from "@/utils/storage-ring";
+import { formatBytes } from "@/utils/size";
 
 const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
 

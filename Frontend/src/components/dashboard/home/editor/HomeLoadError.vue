@@ -4,7 +4,7 @@ import { computed, ref, useId, watch } from "vue";
 import { resetHomeSettings } from "@/mutations/home";
 import { useAuthStore } from "@/stores/auth";
 import { useHomeStore } from "@/stores/home";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 defineProps<{ retrying: boolean; disabled: boolean }>();
 

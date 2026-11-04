@@ -6,7 +6,7 @@ import { nextTick } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 
 import { attemptRefresh } from "@/api/client";
-import MediaCard from "@/components/streaming/MediaCard.vue";
+import MediaCard from "@/components/streaming/library/MediaCard.vue";
 
 vi.mock("@/api/client", () => ({ attemptRefresh: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@/stores/stream-player", async () => {

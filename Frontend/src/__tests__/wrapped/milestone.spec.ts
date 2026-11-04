@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { WrappedComparison } from "@/api/stats";
 
-import WrappedMilestone from "@/components/streaming/wrapped/WrappedMilestone.vue";
+import WrappedMilestone from "@/components/streaming/wrapped/story/WrappedMilestone.vue";
 import {
   WrappedDurationCategory,
   WrappedDurationRelationship,

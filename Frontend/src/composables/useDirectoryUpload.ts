@@ -5,7 +5,7 @@ import { computed, ref } from "vue";
 import type { WorkerOutMessage } from "@/workers/blake3.worker";
 
 import { fileApi } from "@/api/file";
-import { formatBytes } from "@/utils/size.utils";
+import { formatBytes } from "@/utils/size";
 
 // types
 

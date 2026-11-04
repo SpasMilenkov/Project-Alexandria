@@ -4,7 +4,7 @@ import {
   getFileTypeReadable,
   groupMimeSizeRecord,
   isThumbnailSupportedMimeType,
-} from "@/utils/mimetype.utils";
+} from "@/utils/files/mimetype";
 
 // Documents
 

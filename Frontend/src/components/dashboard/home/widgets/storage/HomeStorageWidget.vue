@@ -4,11 +4,11 @@ import { computed } from "vue";
 import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeWidgetDataState from "@/components/dashboard/home/HomeWidgetDataState.vue";
+import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
 import { useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { homeStorage } from "@/queries/home-widgets";
 import { useHomeStore } from "@/stores/home";
-import { formatBytes } from "@/utils/size.utils";
+import { formatBytes } from "@/utils/size";
 
 import HomeStorageDisplay from "./HomeStorageDisplay.vue";
 

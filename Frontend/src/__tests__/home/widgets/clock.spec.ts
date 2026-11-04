@@ -3,9 +3,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { HomeWidget } from "@/types/home";
 
-import HomeClockFlipFace from "@/components/dashboard/home/widgets/HomeClockFlipFace.vue";
-import HomeClockWidget from "@/components/dashboard/home/widgets/HomeClockWidget.vue";
+import HomeClockFlipFace from "@/components/dashboard/home/widgets/clock/HomeClockFlipFace.vue";
+import HomeClockWidget from "@/components/dashboard/home/widgets/clock/HomeClockWidget.vue";
 import { HomeClockHourFormat, HomeClockStyle, HomeWidgetType } from "@/enums/home-widget";
+import { createHomeWidget } from "@/features/home/layout";
 import {
   homeClockDateLabels,
   homeClockDateWindow,
@@ -13,8 +14,7 @@ import {
   homeClockReadout,
   homeClockRingProgress,
   homeClockWords,
-} from "@/utils/home-clock";
-import { createHomeWidget } from "@/utils/home-layout";
+} from "@/features/home/widgets/clock/clock";
 
 const mounted: ReturnType<typeof mount>[] = [];
 

@@ -1,9 +1,6 @@
 import { useQueryCache } from "@pinia/colada";
 
 import { settingsApi } from "@/api/settings";
-import { SETTINGS_QUERY_KEYS } from "@/queries/settings";
-import { useAuthStore } from "@/stores/auth";
-import { useSettingsStore } from "@/stores/settings";
 import {
   type BackgroundImageLoad,
   finishBackgroundImageLoad,
@@ -13,7 +10,10 @@ import {
   isCurrentBackgroundImageLoad,
   setBackgroundImageObjectUrl,
   startBackgroundImageLoad,
-} from "@/utils/backgroundImageObjectUrl";
+} from "@/features/appearance/background-image";
+import { SETTINGS_QUERY_KEYS } from "@/queries/settings";
+import { useAuthStore } from "@/stores/auth";
+import { useSettingsStore } from "@/stores/settings";
 import { logger } from "@/utils/logger";
 
 interface PendingBackgroundImage {

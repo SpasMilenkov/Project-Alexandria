@@ -5,6 +5,8 @@ import type { RangeResult } from "@/stores/player/types";
 
 import { RANGE_SIZE, SHUFFLE_BATCH_LIMIT, conflictField, shuffleApi } from "@/api/shuffle";
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
+import { SHUFFLE_RANGE_SIZE } from "@/features/player/shuffle-buffer";
+import { LIBRARY_PAGE_SIZE, indexOfAnchor, positionOf } from "@/features/player/source";
 import { createAutoplayCountdown } from "@/stores/player/autoplay-countdown";
 import { createEngineBridge } from "@/stores/player/engine-bridge";
 import { createHistory } from "@/stores/player/history";
@@ -13,8 +15,6 @@ import { locateAnchor } from "@/stores/player/order/sequential";
 import { openShuffle } from "@/stores/player/order/shuffle";
 import { createQueue } from "@/stores/player/queue";
 import { Stale, createTransitions } from "@/stores/player/transitions";
-import { SHUFFLE_RANGE_SIZE } from "@/utils/player-shuffle-buffer";
-import { LIBRARY_PAGE_SIZE, indexOfAnchor, positionOf } from "@/utils/player-source";
 
 const file = (fileId: string, playlistItemId: string | null = null): MediaFileDto => ({
   fileId,
@@ -70,7 +70,7 @@ describe("player foundations", () => {
       hasPrevious: true,
       hasNext: false,
     });
-    const { fetchSequentialPage } = await import("@/utils/player-source");
+    const { fetchSequentialPage } = await import("@/features/player/source");
     const page = await fetchSequentialPage({ isVideo: false, playlistId: null }, 3);
     expect(page.totalCount).toBe(113);
     expect(page.currentPage).toBe(3);

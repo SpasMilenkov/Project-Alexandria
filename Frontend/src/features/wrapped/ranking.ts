@@ -1,6 +1,6 @@
 import type { WrappedCardEntryResponse, WrappedPeriodPoint } from "@/api/stats";
 
-import { bounded } from "@/utils/wrapped-art.utils";
+import { bounded } from "@/features/wrapped/art";
 
 export const shareLabel = (share?: number): string =>
   `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(bounded(share) * 100)}%`;

@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp, defineComponent, nextTick, ref } from "vue";
 
-import type { HomeResizeEdge } from "@/utils/home-grid-input";
+import type { HomeResizeEdge } from "@/features/home/grid/input";
 
 import { useHomeGridDrag } from "@/composables/useHomeGridDrag";
-import { defaultHomeLayout } from "@/utils/home-layout";
+import { defaultHomeLayout } from "@/features/home/layout";
 
 const frames = new Map<number, FrameRequestCallback>();
 let frameId = 0;

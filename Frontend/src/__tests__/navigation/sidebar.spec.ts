@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { buildSidebarSections, isSidebarItemActive } from "@/features/navigation/sidebar";
 import appRouter from "@/router";
-import { buildSidebarSections, isSidebarItemActive } from "@/utils/sidebar-navigation";
 
 const allItems = () =>
   buildSidebarSections({ isAdmin: true, streamingEnabled: true }).flatMap(

@@ -5,8 +5,8 @@ import type { HomeWidget } from "@/types/home";
 
 import { useHomeFocusTimer } from "@/composables/useHomeFocusTimer";
 import { HomeFocusStyle } from "@/enums/home-widget";
+import { homeFocusAction, homeFocusDuration, homeFocusLabel } from "@/features/home/widgets/focus";
 import { useHomeStore } from "@/stores/home";
-import { homeFocusAction, homeFocusDuration, homeFocusLabel } from "@/utils/home-focus";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 const home = useHomeStore();

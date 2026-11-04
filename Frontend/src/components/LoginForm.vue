@@ -3,9 +3,9 @@ import type { AuthFormField, FormSubmitEvent } from "@nuxt/ui";
 
 import { useRoute, useRouter } from "vue-router";
 
+import { getSignInDestination } from "@/features/home/landing";
 import { type LoginSchema, loginSchema } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth";
-import { getSignInDestination } from "@/utils/home-landing";
 
 const toast = useToast();
 const authStore = useAuthStore();

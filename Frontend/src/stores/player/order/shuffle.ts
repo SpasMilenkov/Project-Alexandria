@@ -7,9 +7,9 @@ import {
   shuffleApi,
   sourceUnavailable,
 } from "@/api/shuffle";
-import { type SourceAnchor, type SourceDescriptor, sameSource } from "@/utils/player-source";
+import { type SourceAnchor, type SourceDescriptor, sameSource } from "@/features/player/source";
 
-import type { Order, RangeBufferHooks, RangeResult } from "../types";
+import type { Order, RangeBufferHooks, RangeResult } from "@/stores/player/types";
 
 import { createRangeBuffer } from "./range-buffer";
 

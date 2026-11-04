@@ -4,7 +4,7 @@ import { ref, watch } from "vue";
 import type { HomeEditorTarget, HomeLayout } from "@/types/home";
 
 import { HOME_WIDGET_REGISTRY } from "@/components/dashboard/home/registry";
-import { homeWidgetStyleLabel } from "@/utils/home-widget-editor";
+import { homeWidgetStyleLabel } from "@/features/home/editor/styles";
 
 const { target } = defineProps<{
   target: HomeEditorTarget;

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, useId } from "vue";
 
+import { type MoodEntry, formatConfidence } from "@/features/audio-analysis/taxonomy";
 import { useSettingsStore } from "@/stores/settings";
-import { type MoodEntry, formatConfidence } from "@/utils/audio-taxonomy.utils";
 
 interface Point {
   x: number;

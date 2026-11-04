@@ -260,7 +260,7 @@ import type { UserDetailsDto } from "@/types/user";
 
 import { getUserCount, getUserStorage } from "@/queries/user";
 import { formatDate } from "@/utils/date-formatters";
-import { formatBytes } from "@/utils/size.utils";
+import { formatBytes } from "@/utils/size";
 
 const props = defineProps<{
   user: UserDetailsDto;

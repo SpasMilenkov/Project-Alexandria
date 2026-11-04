@@ -6,7 +6,7 @@ import {
   SUMMARY_KIND_WRAPPED,
   summaryToWrappedDeck,
   summaryYear,
-} from "@/utils/wrapped-summary.utils";
+} from "@/features/wrapped/summary";
 
 const summary = (overrides = {}): OverviewSummaryDtoResponse => ({
   id: "00000000-0000-0000-0000-000000000001",

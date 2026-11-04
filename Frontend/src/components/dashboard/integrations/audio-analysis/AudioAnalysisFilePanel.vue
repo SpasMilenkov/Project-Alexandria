@@ -4,7 +4,7 @@ import { computed, ref } from "vue";
 
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useTrackAudioAnalysis } from "@/composables/useTrackAudioAnalysis";
-import { formatConfidence } from "@/utils/audio-taxonomy.utils";
+import { formatConfidence } from "@/features/audio-analysis/taxonomy";
 import { formatDate } from "@/utils/date-formatters";
 
 import AudioConfidenceBar from "./AudioConfidenceBar.vue";

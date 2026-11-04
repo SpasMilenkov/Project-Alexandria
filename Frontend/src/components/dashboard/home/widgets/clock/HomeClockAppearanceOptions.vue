@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeClockOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
-import HomeClockPositionPicker from "@/components/dashboard/home/HomeClockPositionPicker.vue";
-import HomeClockStylePreview from "@/components/dashboard/home/HomeClockStylePreview.vue";
+import HomeClockStylePreview from "@/components/dashboard/home/options/style-previews/HomeClockStylePreview.vue";
+import HomeClockPositionPicker from "@/components/dashboard/home/widgets/clock/HomeClockPositionPicker.vue";
 import { HomeClockHourFormat, HomeClockStyle } from "@/enums/home-widget";
-import { HOME_CLOCK_HOUR_FORMATS, HOME_CLOCK_STYLES } from "@/utils/home-widget-options";
+import { HOME_CLOCK_HOUR_FORMATS, HOME_CLOCK_STYLES } from "@/features/home/widget-options";
 
-import HomeStylePicker from "./HomeStylePicker.vue";
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeClockOptions;

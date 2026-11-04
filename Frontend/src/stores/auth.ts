@@ -8,16 +8,16 @@ import type { LoginSchema } from "@/schemas/auth";
 
 import { type AuthResponse, authApi } from "@/api/auth";
 import { resetRefreshState } from "@/api/client";
+import { cancelBackgroundImageLoad } from "@/features/appearance/background-image";
+import { rotateSessionEpoch } from "@/features/auth/session-boundary";
 import { useActivityStore } from "@/stores/activity";
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useHomeStore } from "@/stores/home";
-import { usePlayerStore } from "@/stores/stream-player";
 import { useSettingsStore } from "@/stores/settings";
+import { usePlayerStore } from "@/stores/stream-player";
 import { useTabStore } from "@/stores/tab";
-import { cancelBackgroundImageLoad } from "@/utils/backgroundImageObjectUrl";
 import { logger } from "@/utils/logger";
-import { rotateSessionEpoch } from "@/utils/sessionBoundary";
 
 const clearSessionCaches = (pinia: Pinia) => {
   try {

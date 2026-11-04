@@ -94,10 +94,10 @@
 import { computed, ref, watch } from "vue";
 
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
-import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
-import PlaylistFavoriteButton from "@/components/streaming/PlaylistFavoriteButton.vue";
+import PlaylistCover from "@/components/streaming/playlist/PlaylistCover.vue";
+import PlaylistFavoriteButton from "@/components/streaming/playlist/PlaylistFavoriteButton.vue";
+import { playlistBadgeLabel } from "@/features/playlists/display";
 import { formatDate } from "@/utils/date-formatters";
-import { playlistBadgeLabel } from "@/utils/playlist-display.utils";
 
 const { playlist, isPlaying, isLoading } = defineProps<{
   playlist: PlaylistResponse;

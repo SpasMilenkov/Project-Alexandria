@@ -7,9 +7,9 @@ import type {
 import type { HomeLayout, HomeSettings, HomeWidget, HomeWidgetOptions } from "@/types/home";
 
 import { HomeLayoutKind, HomeWidgetType } from "@/enums/home-widget";
-import { defaultHomeLayout } from "@/utils/home-layout";
-import { cloneHomeWidgetOptions, defaultHomeWidgetOptions } from "@/utils/home-widget-options";
-import { homeWidgetDensity } from "@/utils/home-widget-sizing";
+import { homeWidgetDensity } from "@/features/home/grid/sizing";
+import { defaultHomeLayout } from "@/features/home/layout";
+import { cloneHomeWidgetOptions, defaultHomeWidgetOptions } from "@/features/home/widget-options";
 
 const optionFields: Record<HomeWidgetType, readonly (keyof HomeWidgetOptions)[]> = {
   [HomeWidgetType.Greeting]: [

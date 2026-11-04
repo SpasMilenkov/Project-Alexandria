@@ -1,7 +1,7 @@
 import { type Locator, type Page, expect, test } from "@playwright/test";
 
-import { WrappedCardType } from "../src/enums/wrapped-card-type.js";
-import { fixture, seed } from "./helpers/home-dashboard.js";
+import { WrappedCardType } from "@/enums/wrapped-card-type.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 
 interface ListeningDay {
   date: string;

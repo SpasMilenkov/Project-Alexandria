@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import { fixture } from "./helpers/home-dashboard.js";
-import { openWidgetTab, selectWidget } from "./helpers/home-grid-editor.js";
+import { fixture } from "@e2e/helpers/home-dashboard.js";
+import { openWidgetTab, selectWidget } from "@e2e/helpers/home-grid-editor.js";
 
 test("Done preserves another device's additions, geometry and unedited preferences", async ({
   page,

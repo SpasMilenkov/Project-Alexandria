@@ -3,7 +3,7 @@ import { computed, ref, watch } from "vue";
 
 import type { HomeWidgetType } from "@/enums/home-widget";
 
-import HomeWidgetCataloguePreview from "@/components/dashboard/home/HomeWidgetCataloguePreview.vue";
+import HomeWidgetCataloguePreview from "@/components/dashboard/home/catalogue/HomeWidgetCataloguePreview.vue";
 import { homeWidgetDefinitions } from "@/components/dashboard/home/registry";
 
 const {

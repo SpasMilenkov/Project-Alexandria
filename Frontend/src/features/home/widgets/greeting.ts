@@ -5,7 +5,7 @@ import {
   HomeGreetingDecoration,
   HomeGreetingStyle,
 } from "@/enums/home-widget";
-import { homeClockGreeting, homeClockNumbers } from "@/utils/home-clock";
+import { homeClockGreeting, homeClockNumbers } from "@/features/home/widgets/clock/clock";
 
 export const HOME_GREETING_STYLES = [
   {

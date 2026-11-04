@@ -3,8 +3,8 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedPeriodPoint } from "@/api/stats";
 
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { type WrappedDayBar, wrappedDailyLandscape } from "@/utils/wrapped-daily-landscape";
+import { formatWrappedDuration } from "@/features/wrapped/art";
+import { type WrappedDayBar, wrappedDailyLandscape } from "@/features/wrapped/daily-landscape";
 
 const { month, through, series } = defineProps<{
   month: string;

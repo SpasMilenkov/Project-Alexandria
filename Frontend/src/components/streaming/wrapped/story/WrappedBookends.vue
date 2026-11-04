@@ -55,9 +55,9 @@ import { RouterLink } from "vue-router";
 
 import type { WrappedCardResponse } from "@/api/stats";
 
-import WrappedStoryNotes from "@/components/streaming/wrapped/WrappedStoryNotes.vue";
-import WrappedVinylArt from "@/components/streaming/wrapped/WrappedVinylArt.vue";
-import { factsFor } from "@/utils/wrapped-art.utils";
+import WrappedVinylArt from "@/components/streaming/wrapped/art/WrappedVinylArt.vue";
+import WrappedStoryNotes from "@/components/streaming/wrapped/story/WrappedStoryNotes.vue";
+import { factsFor } from "@/features/wrapped/art";
 
 const props = defineProps<{
   card: WrappedCardResponse;

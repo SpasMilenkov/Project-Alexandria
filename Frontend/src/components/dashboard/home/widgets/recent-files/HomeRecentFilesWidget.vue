@@ -7,14 +7,14 @@ import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
 import FileUploadModal from "@/components/dashboard/file-system/Modals/FileUploadModal.vue";
-import HomeWidgetDataState from "@/components/dashboard/home/HomeWidgetDataState.vue";
+import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
 import { useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { useLazyModal } from "@/composables/useLazyOverlay";
 import { HomeRecentFilesSource, HomeRecentFilesStyle } from "@/enums/home-widget";
+import { homeRecentFileDate } from "@/features/home/widgets/files";
 import { HOME_WIDGET_QUERY_KEYS, homeRecentFiles } from "@/queries/home-widgets";
 import { STATUS_QUERY_KEYS } from "@/queries/status";
 import { useHomeStore } from "@/stores/home";
-import { homeRecentFileDate } from "@/utils/home-file-widgets";
 
 import HomeRecentFilesDisplay from "./HomeRecentFilesDisplay.vue";
 

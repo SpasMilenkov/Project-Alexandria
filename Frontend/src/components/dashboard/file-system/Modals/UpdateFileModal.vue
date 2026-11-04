@@ -6,7 +6,7 @@ import { reactive } from "vue";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { updateFileMetadata } from "@/mutations/files";
 import { type UpdateFileMetadataSchema, updateFileMetadataSchema } from "@/schemas/file";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const { fileId, originalName } = defineProps<{
   fileId: string;

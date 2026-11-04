@@ -53,5 +53,28 @@
     "builtin": true
   },
 
+  "overrides": [
+    {
+      "files": ["src/**", "e2e/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^\\.\\./",
+                "message": "Use an @/ (or @e2e/) alias for imports outside this folder."
+              },
+              {
+                "regex": "^\\./[^/]+/",
+                "message": "Use an @/ (or @e2e/) alias for imports outside this folder."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+
   "ignorePatterns": ["node_modules", "dist", ".output", ".nuxt"]
 }

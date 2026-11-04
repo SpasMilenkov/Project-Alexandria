@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeRecentFilesOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
-import { HOME_RECENT_FILES_SOURCES, HOME_RECENT_FILES_STYLES } from "@/utils/home-file-widgets";
+import { HOME_RECENT_FILES_SOURCES, HOME_RECENT_FILES_STYLES } from "@/features/home/widgets/files";
 
-import HomeFileStylePreview from "./HomeFileStylePreview.vue";
-import HomeStylePicker from "./HomeStylePicker.vue";
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
+import HomeFileStylePreview from "@/components/dashboard/home/options/style-previews/HomeFileStylePreview.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeRecentFilesOptions;

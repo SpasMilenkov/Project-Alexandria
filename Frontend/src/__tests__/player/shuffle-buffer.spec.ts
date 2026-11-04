@@ -11,7 +11,7 @@ import {
   previousBufferedPosition,
   rangesToRetain,
   shouldPrefetchRange,
-} from "@/utils/player-shuffle-buffer";
+} from "@/features/player/shuffle-buffer";
 
 const file = (fileId: string): MediaFileDto => ({
   fileId,

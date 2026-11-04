@@ -9,8 +9,8 @@ import type { ShareLinkSummaryDto } from "@/api/shareLinks";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { createShareLink, revokeShareLink } from "@/mutations/shareLinks";
 import { getShareLinksForFile } from "@/queries/shareLinks";
-import { getFileIcon } from "@/utils/icon.utils";
-import { glassModalContent } from "@/utils/modalUi";
+import { getFileIcon } from "@/utils/files/icons";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const { mutateAsync: createLink } = createShareLink();
 const { mutateAsync: revokeLink } = revokeShareLink();

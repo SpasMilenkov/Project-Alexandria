@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import { type WrappedPalette, wrappedPalettePresets } from "@/utils/wrapped-palette.utils";
+import { type WrappedPalette, wrappedPalettePresets } from "@/features/wrapped/palette";
 
 const {
   modelValue,

@@ -97,11 +97,11 @@
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 
 import type { WrappedDeckResponse } from "@/api/stats";
-import type { WrappedExportFormat } from "@/utils/wrapped-export.utils";
-import type { WrappedPalette } from "@/utils/wrapped-palette.utils";
+import type { WrappedExportFormat } from "@/features/wrapped/export/render";
+import type { WrappedPalette } from "@/features/wrapped/palette";
 
 import { useTheme } from "@/composables/useTheme";
-import { glassModalBody, glassModalContentWide } from "@/utils/modalUi";
+import { glassModalBody, glassModalContentWide } from "@/utils/modal-ui";
 
 const props = defineProps<{
   response: WrappedDeckResponse;
@@ -145,7 +145,7 @@ const prepare = async () => {
     const selectedFormat = format.value;
 
     const { renderWrappedExport, encodeWrappedExport, exportFilename } =
-      await import("@/utils/wrapped-export.utils");
+      await import("@/features/wrapped/export/render");
 
     // Give the spinner a paint before synchronous canvas composition starts.
     await new Promise<void>((resolve) =>

@@ -6,16 +6,16 @@ import { defineComponent, h, ref } from "vue";
 
 import type { TopSong, TopSongsQuery, TopSongsResponse } from "@/api/listening-rankings";
 
-import HomeTopSongsWidget from "@/components/dashboard/home/widgets/HomeTopSongsWidget.vue";
+import HomeTopSongsWidget from "@/components/dashboard/home/widgets/top-songs/HomeTopSongsWidget.vue";
 import { OnboardingStep } from "@/enums";
 import { HomeWidgetType } from "@/enums/home-widget";
+import { createHomeWidget, defaultHomeLayout } from "@/features/home/layout";
+import { homeTopSongBar, homeTopSongTitle, homeTopSongsPeriod } from "@/features/media/top-songs";
 import { homeTopSongs } from "@/queries/home-top-songs";
 import { useAuthStore } from "@/stores/auth";
 import { useHomeStore } from "@/stores/home";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/stream-player";
-import { createHomeWidget, defaultHomeLayout } from "@/utils/home-layout";
-import { homeTopSongBar, homeTopSongTitle, homeTopSongsPeriod } from "@/utils/home-top-songs";
 
 const api = vi.hoisted(() => ({ getTopSongs: vi.fn() }));
 

@@ -3,8 +3,8 @@ import { computed } from "vue";
 
 import type { HomeWidget } from "@/types/home";
 
+import { homeLibraryLinks } from "@/features/home/widgets/library";
 import { useHomeStore } from "@/stores/home";
-import { homeLibraryLinks } from "@/utils/home-library";
 
 import HomeLibraryDisplay from "./HomeLibraryDisplay.vue";
 

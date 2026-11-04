@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import type { TagDto } from "@/api/tag";
 
-import { getIconByValue } from "@/utils/icon.utils";
+import { getIconByValue } from "@/utils/files/icons";
 
 const props = defineProps<{
   tag: TagDto;

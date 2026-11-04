@@ -9,6 +9,7 @@ import type { HomeSettings } from "@/types/home";
 
 import { useHomeSettings } from "@/composables/useHomeSettings";
 import { OnboardingStep } from "@/enums";
+import { defaultHomeLayout, setSeparateMobileLayout } from "@/features/home/layout";
 import { resetHomeSettings } from "@/mutations/home";
 import { HOME_QUERY_KEYS } from "@/queries/home";
 import { HOME_STATUS_ACTIVITY_QUERY_KEYS } from "@/queries/home-status-activity";
@@ -16,7 +17,6 @@ import { HOME_TOP_SONGS_QUERY_KEYS } from "@/queries/home-top-songs";
 import { HOME_WIDGET_QUERY_KEYS } from "@/queries/home-widgets";
 import { useAuthStore } from "@/stores/auth";
 import { useHomeStore } from "@/stores/home";
-import { defaultHomeLayout, setSeparateMobileLayout } from "@/utils/home-layout";
 
 const api = vi.hoisted(() => ({
   getHome: vi.fn(),

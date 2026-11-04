@@ -4,19 +4,19 @@ import { describe, expect, it, vi } from "vitest";
 
 import { useHomeFocusTimer } from "@/composables/useHomeFocusTimer";
 import { HomeLayoutKind, HomeWidgetType } from "@/enums/home-widget";
-import { useHomeStore } from "@/stores/home";
-import { homeDailyCover } from "@/utils/home-daily-cover";
+import { createHomeWidget } from "@/features/home/layout";
+import { homeWidgetToRow } from "@/features/home/persistence";
+import { defaultHomeWidgetOptions } from "@/features/home/widget-options";
+import { homeDailyCover } from "@/features/home/widgets/daily-cover";
 import {
   homeFocusIdle,
   homeFocusNext,
   homeFocusRemaining,
   homeFocusToggle,
   parseHomeFocusState,
-} from "@/utils/home-focus";
-import { homeCalendarDate, homeCountdown } from "@/utils/home-general";
-import { createHomeWidget } from "@/utils/home-layout";
-import { defaultHomeWidgetOptions } from "@/utils/home-widget-options";
-import { homeWidgetToRow } from "@/utils/home-widget-persistence";
+} from "@/features/home/widgets/focus";
+import { homeCalendarDate, homeCountdown } from "@/features/home/widgets/general";
+import { useHomeStore } from "@/stores/home";
 
 const plan = defaultHomeWidgetOptions();
 

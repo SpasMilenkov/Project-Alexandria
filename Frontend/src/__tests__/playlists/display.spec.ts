@@ -10,7 +10,7 @@ import {
   parsePlaylistBrowseQuery,
   playlistBadgeLabel,
   playlistBrowseQuery,
-} from "@/utils/playlist-display.utils";
+} from "@/features/playlists/display";
 
 const item = (
   overrides: Partial<{

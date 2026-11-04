@@ -3,9 +3,9 @@ import { type Ref, computed, onUnmounted, ref, watch } from "vue";
 
 import { attemptRefresh } from "@/api/client";
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
+import { ListeningHistoryTracker } from "@/features/player/history-tracker";
 import { closeSession, startSession } from "@/mutations/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
-import { ListeningHistoryTracker } from "@/utils/listening-history-tracker";
 
 const REFRESH_INTERVAL_MS = 10 * 30 * 1_000;
 const RESUME_CUTOFF_FROM_END = 10;

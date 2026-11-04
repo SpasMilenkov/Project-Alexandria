@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ListeningHistoryTracker,
   type HistorySessionCallbacks,
-} from "@/utils/listening-history-tracker";
+} from "@/features/player/history-tracker";
 
 const setup = () => {
   const calls = {

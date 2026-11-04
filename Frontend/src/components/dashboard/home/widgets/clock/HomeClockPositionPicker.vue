@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HomeHorizontalAlignment, HomeVerticalAlignment } from "@/enums/home-widget";
 
-import { HOME_CLOCK_ANCHORS } from "@/utils/home-widget-options";
+import { HOME_CLOCK_ANCHORS } from "@/features/home/widget-options";
 
 const { horizontal, vertical, target } = defineProps<{
   horizontal: HomeHorizontalAlignment;

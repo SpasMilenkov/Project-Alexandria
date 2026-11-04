@@ -4,7 +4,7 @@ import { useRoute } from "vue-router";
 
 import { useAppToast } from "@/composables/useAppToast";
 import { useReportProblem } from "@/mutations/monitoring";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const MAX_DESCRIPTION_LENGTH = 2000;
 

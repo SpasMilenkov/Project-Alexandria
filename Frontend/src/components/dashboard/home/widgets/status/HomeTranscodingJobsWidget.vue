@@ -7,7 +7,7 @@ import type { TranspilationJobResponse } from "@/api/streaming";
 import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeWidgetDataState from "@/components/dashboard/home/HomeWidgetDataState.vue";
+import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { useHomeWidgetRows } from "@/composables/useHomeWidgetRows";

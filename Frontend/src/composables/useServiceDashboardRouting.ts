@@ -1,13 +1,13 @@
 import { useRouter } from "vue-router";
 
 import type { ServiceType } from "@/enums";
-import type { DeepLinkParams } from "@/utils/serviceDashboardRouting";
+import type { DeepLinkParams } from "@/features/monitoring/service-routing";
 
 import {
   buildDeepLink,
   FALLBACK_ROUTE,
   SERVICE_DASHBOARD_ROUTES,
-} from "@/utils/serviceDashboardRouting";
+} from "@/features/monitoring/service-routing";
 
 export const useServiceDashboardRouting = () => {
   const router = useRouter();

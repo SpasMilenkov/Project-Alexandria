@@ -4,13 +4,13 @@ import { createPinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent } from "vue";
 
-import HomeQuickUploadWidget from "@/components/dashboard/home/widgets/HomeQuickUploadWidget.vue";
+import HomeQuickUploadWidget from "@/components/dashboard/home/widgets/quick/HomeQuickUploadWidget.vue";
 import { HomeWidgetType } from "@/enums/home-widget";
+import { createHomeWidget, defaultHomeLayout } from "@/features/home/layout";
 import { DIRECTORY_QUERY_KEYS } from "@/queries/directories";
 import { FILES_QUERY_KEYS } from "@/queries/files";
 import { STATUS_QUERY_KEYS } from "@/queries/status";
 import { useHomeStore } from "@/stores/home";
-import { createHomeWidget, defaultHomeLayout } from "@/utils/home-layout";
 
 const launcher = vi.hoisted(() => ({ open: vi.fn(), openDrop: vi.fn() }));
 

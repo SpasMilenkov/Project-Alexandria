@@ -7,9 +7,9 @@ import {
   fetchAnchorPage,
   fetchSequentialPage,
   indexOfAnchor,
-} from "@/utils/player-source";
+} from "@/features/player/source";
 
-import type { RangeBufferHooks, RangeResult } from "../types";
+import type { RangeBufferHooks, RangeResult } from "@/stores/player/types";
 
 import { createRangeBuffer } from "./range-buffer";
 

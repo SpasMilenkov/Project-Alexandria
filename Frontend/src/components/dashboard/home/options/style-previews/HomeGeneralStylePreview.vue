@@ -6,7 +6,7 @@ import {
   HomeWidgetType,
 } from "@/enums/home-widget";
 
-import HomeDailyCoverArt from "./widgets/HomeDailyCoverArt.vue";
+import HomeDailyCoverArt from "@/components/dashboard/home/widgets/daily-cover/HomeDailyCoverArt.vue";
 
 defineProps<{ type: HomeWidgetType; variant: number }>();
 </script>

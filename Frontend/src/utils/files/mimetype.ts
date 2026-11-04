@@ -1,10 +1,10 @@
+import { formatBytes } from "@/utils/size";
 import {
   canonicalizeMime,
   isAutoTagSupportedMime,
   policyGroupOf,
   routesToPreviewWorker,
 } from "./mime-catalog";
-import { formatBytes } from "./size.utils";
 
 export type FileGroup =
   | "Documents"

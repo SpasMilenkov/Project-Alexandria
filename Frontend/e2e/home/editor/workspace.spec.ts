@@ -1,12 +1,12 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { fixture } from "./helpers/home-dashboard.js";
+import { fixture } from "@e2e/helpers/home-dashboard.js";
 import {
   closeControls,
   dragCatalogue,
   editingPanel,
   openControls,
-} from "./helpers/home-grid-editor.js";
+} from "@e2e/helpers/home-grid-editor.js";
 
 const configureClock = async (page: Page) => {
   const panel = page.getByRole("complementary", { name: "Dashboard editing panel" });

@@ -6,12 +6,12 @@ import {
   isAutoTagSupportedMime,
   policyGroupOf,
   routesToPreviewWorker,
-} from "@/utils/mime-catalog";
+} from "@/utils/files/mime-catalog";
 import {
   MIME_META,
   getFileTypeReadable,
   isThumbnailSupportedMimeType,
-} from "@/utils/mimetype.utils";
+} from "@/utils/files/mimetype";
 
 describe("canonicalizeMime", () => {
   it("strips parameters, trims, lowercases and resolves aliases", () => {

@@ -2,9 +2,9 @@ import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { HomeActivityStyle, HomeStatusStyle, HomeWidgetType } from "@/enums/home-widget";
+import { homeWidgetMinimum } from "@/features/home/grid/sizing";
+import { createHomeWidget, setSeparateMobileLayout } from "@/features/home/layout";
 import { useHomeStore } from "@/stores/home";
-import { createHomeWidget, setSeparateMobileLayout } from "@/utils/home-layout";
-import { homeWidgetMinimum } from "@/utils/home-widget-sizing";
 
 describe("Status, song and activity composition", () => {
   beforeEach(() => setActivePinia(createPinia()));

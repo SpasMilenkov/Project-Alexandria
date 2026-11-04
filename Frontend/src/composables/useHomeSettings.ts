@@ -1,6 +1,7 @@
 import { useQuery, useQueryCache } from "@pinia/colada";
 import { computed, watch } from "vue";
 
+import { buildHomeChanges } from "@/features/home/persistence";
 import { updateHomeSettings } from "@/mutations/home";
 import { HOME_QUERY_KEYS, homeSettings, homeTimeZones } from "@/queries/home";
 import { HOME_MEDIA_QUERY_KEYS } from "@/queries/home-media";
@@ -9,7 +10,6 @@ import { HOME_TOP_SONGS_QUERY_KEYS } from "@/queries/home-top-songs";
 import { HOME_WIDGET_QUERY_KEYS } from "@/queries/home-widgets";
 import { useAuthStore } from "@/stores/auth";
 import { useHomeStore } from "@/stores/home";
-import { buildHomeChanges } from "@/utils/home-widget-persistence";
 
 export const useHomeSettings = () => {
   const auth = useAuthStore();

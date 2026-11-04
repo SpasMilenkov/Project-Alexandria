@@ -1,18 +1,18 @@
 import type { HomeWidget, HomeWidgetOptions } from "@/types/home";
 
 import { HomePlayerStyle, HomeWidgetType } from "@/enums/home-widget";
-import { HOME_RECENT_FILES_STYLES, HOME_STORAGE_STYLES } from "@/utils/home-file-widgets";
+import { HOME_CLOCK_STYLES } from "@/features/home/widget-options";
+import { HOME_RECENT_FILES_STYLES, HOME_STORAGE_STYLES } from "@/features/home/widgets/files";
 import {
   HOME_COUNTDOWN_STYLES,
   HOME_DAILY_COVER_STYLES,
   HOME_FOCUS_STYLES,
-} from "@/utils/home-general";
-import { HOME_GREETING_STYLES } from "@/utils/home-greeting";
-import { HOME_LIBRARY_STYLES } from "@/utils/home-library";
-import { HOME_RECAP_STYLES } from "@/utils/home-media";
-import { HOME_QUICK_ACCESS_STYLES, HOME_QUICK_UPLOAD_STYLES } from "@/utils/home-quick-widgets";
-import { HOME_ACTIVITY_STYLES, HOME_STATUS_STYLES } from "@/utils/home-status-activity";
-import { HOME_CLOCK_STYLES } from "@/utils/home-widget-options";
+} from "@/features/home/widgets/general";
+import { HOME_GREETING_STYLES } from "@/features/home/widgets/greeting";
+import { HOME_LIBRARY_STYLES } from "@/features/home/widgets/library";
+import { HOME_RECAP_STYLES } from "@/features/home/widgets/media";
+import { HOME_QUICK_ACCESS_STYLES, HOME_QUICK_UPLOAD_STYLES } from "@/features/home/widgets/quick";
+import { HOME_ACTIVITY_STYLES, HOME_STATUS_STYLES } from "@/features/home/widgets/status-activity";
 
 export type HomeOptionsSection = "all" | "style" | "options";
 

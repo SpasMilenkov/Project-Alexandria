@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeStatusOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
 import { HomeStatusStyle } from "@/enums/home-widget";
-import { HOME_STATUS_STYLES } from "@/utils/home-status-activity";
+import { HOME_STATUS_STYLES } from "@/features/home/widgets/status-activity";
 
-import HomeStylePicker from "./HomeStylePicker.vue";
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeStatusOptions;

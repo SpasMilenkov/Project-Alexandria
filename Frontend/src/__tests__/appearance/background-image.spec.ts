@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Component, createApp } from "vue";
 
 import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
+import { cancelBackgroundImageLoad } from "@/features/appearance/background-image";
 import { useAuthStore } from "@/stores/auth";
 import { useSettingsStore } from "@/stores/settings";
-import { cancelBackgroundImageLoad } from "@/utils/backgroundImageObjectUrl";
 
 const { mockDelete, mockGetUrl, mockUpload } = vi.hoisted(() => ({
   mockDelete: vi.fn(),

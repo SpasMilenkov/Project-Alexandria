@@ -2,7 +2,7 @@ import type { WrappedDeckResponse } from "@/api/stats";
 
 import { HomeRecapStyle } from "@/enums/home-widget";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
+import { formatWrappedDuration } from "@/features/wrapped/art";
 
 export const HOME_RECAP_STYLES = [
   { value: HomeRecapStyle.Poster, label: "Poster", description: "Your month as a colorful cover." },

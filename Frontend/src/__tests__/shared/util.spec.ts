@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { formatDate } from "@/utils/date-formatters";
-import { getIconByValue, getFileIcon } from "@/utils/icon.utils";
-import { getFileTypeReadable, groupMimeSizeRecord } from "@/utils/mimetype.utils";
-import { formatBytes } from "@/utils/size.utils";
+import { getIconByValue, getFileIcon } from "@/utils/files/icons";
+import { getFileTypeReadable, groupMimeSizeRecord } from "@/utils/files/mimetype";
+import { formatBytes } from "@/utils/size";
 
 // formatDate
 

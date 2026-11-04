@@ -2,16 +2,16 @@
 import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeClockOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
 import { isAuthError } from "@/api/shuffle";
-import { homeTimeZones } from "@/queries/home";
 import {
   homeTimeZoneCatalogue,
   homeTimeZoneChoices,
   resolveHomeTimeZone,
-} from "@/utils/home-time-zones";
+} from "@/features/home/widgets/clock/time-zones";
+import { homeTimeZones } from "@/queries/home";
 
 import HomeClockAppearanceOptions from "./HomeClockAppearanceOptions.vue";
 

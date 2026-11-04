@@ -62,9 +62,9 @@ import { computed, ref, watch } from "vue";
 import type { WrappedCardFacts, WrappedPeriodPoint } from "@/api/stats";
 
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { wrappedStoryNote } from "@/utils/wrapped-copy.utils";
-import { dateLabel, waveformDays } from "@/utils/wrapped-story.utils";
+import { formatWrappedDuration } from "@/features/wrapped/art";
+import { wrappedStoryNote } from "@/features/wrapped/copy";
+import { dateLabel, waveformDays } from "@/features/wrapped/story";
 
 const props = defineProps<{ facts: WrappedCardFacts }>();
 const whole = ref(false);

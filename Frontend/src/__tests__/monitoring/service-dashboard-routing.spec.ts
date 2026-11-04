@@ -5,7 +5,7 @@ import {
   FALLBACK_ROUTE,
   parseDeepLinkQuery,
   SERVICE_DASHBOARD_ROUTES,
-} from "@/utils/serviceDashboardRouting";
+} from "@/features/monitoring/service-routing";
 
 describe("SERVICE_DASHBOARD_ROUTES", () => {
   it("deep-links the playlist worker to its dashboard", () => {

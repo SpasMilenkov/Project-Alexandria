@@ -1,13 +1,13 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { fixture, seed } from "./helpers/home-dashboard.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import {
   dragCatalogue,
   dragTouchWidget,
   dragWidget,
   gridPoint,
   openWidgetTab,
-} from "./helpers/home-grid-editor.js";
+} from "@e2e/helpers/home-grid-editor.js";
 
 test("medium clock snaps to the right and persists after dragging from content", async ({
   page,

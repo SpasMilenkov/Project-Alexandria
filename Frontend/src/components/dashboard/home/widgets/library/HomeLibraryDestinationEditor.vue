@@ -9,7 +9,7 @@ import {
   HOME_LIBRARY_DESTINATIONS,
   homeLibraryCustomChange,
   homeLibrarySelection,
-} from "@/utils/home-library";
+} from "@/features/home/widgets/library";
 
 const { options } = defineProps<{ options: HomeLibraryOptions }>();
 const emit = defineEmits<{ change: [options: Partial<HomeLibraryOptions>] }>();

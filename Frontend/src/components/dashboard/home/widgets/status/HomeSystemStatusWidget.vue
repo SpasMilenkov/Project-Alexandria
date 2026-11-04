@@ -5,18 +5,18 @@ import { computed, ref } from "vue";
 import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeWidgetDataState from "@/components/dashboard/home/HomeWidgetDataState.vue";
+import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
 import { useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { useHomeWidgetRows } from "@/composables/useHomeWidgetRows";
 import { HomeStatusStyle } from "@/enums/home-widget";
-import { homeSystemStatus } from "@/queries/home-status-activity";
-import { useHomeStore } from "@/stores/home";
 import {
   HOME_STATUS_PRESENTATION,
   homeCurrentStatusRows,
   homeHistoryRows,
   homeOverallStatus,
-} from "@/utils/home-status-activity";
+} from "@/features/home/widgets/status-activity";
+import { homeSystemStatus } from "@/queries/home-status-activity";
+import { useHomeStore } from "@/stores/home";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 

@@ -5,13 +5,13 @@ import { defineComponent, h } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
-import HomePlayerWidget from "@/components/dashboard/home/widgets/HomePlayerWidget.vue";
+import HomePlayerWidget from "@/components/dashboard/home/widgets/player/HomePlayerWidget.vue";
 import { HomePlayerStyle, HomeWidgetType } from "@/enums/home-widget";
+import { homeWidgetMinimum } from "@/features/home/grid/sizing";
+import { createHomeWidget, defaultHomeLayout } from "@/features/home/layout";
 import { useHomeStore } from "@/stores/home";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/stream-player";
-import { createHomeWidget, defaultHomeLayout } from "@/utils/home-layout";
-import { homeWidgetMinimum } from "@/utils/home-widget-sizing";
 
 const media = (isVideo = false): MediaFileDto => ({
   fileId: "media-a",

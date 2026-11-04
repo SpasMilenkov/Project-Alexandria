@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildRingArcs } from "@/utils/storage-ring";
+import { buildRingArcs } from "@/features/storage/ring";
 
 const GB = 1_000_000_000;
 

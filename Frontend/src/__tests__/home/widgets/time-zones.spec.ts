@@ -1,14 +1,14 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 
-import HomeClockWidget from "@/components/dashboard/home/widgets/HomeClockWidget.vue";
-import { defaultHomeLayout } from "@/utils/home-layout";
+import HomeClockWidget from "@/components/dashboard/home/widgets/clock/HomeClockWidget.vue";
+import { defaultHomeLayout } from "@/features/home/layout";
 import {
   homeTimeZoneCatalogue,
   homeTimeZoneChoices,
   homeTimeZoneLabel,
   resolveHomeTimeZone,
-} from "@/utils/home-time-zones";
+} from "@/features/home/widgets/clock/time-zones";
 
 const format = (identifier: string, date: string) => {
   const zone = resolveHomeTimeZone(identifier);

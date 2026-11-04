@@ -1,6 +1,6 @@
-import type { AutoGroupKind } from "../enums/auto-group-kind";
-import type { PlaylistSort } from "../enums/playlist-sort";
-import type { SortDirection } from "../enums/SortDirection";
+import type { AutoGroupKind } from "@/enums/auto-group-kind";
+import type { PlaylistSort } from "@/enums/playlist-sort";
+import type { SortDirection } from "@/enums/SortDirection";
 import type { PaginatedResponse } from "./directory";
 import type { StreamingRepresentationResponse } from "./streaming";
 

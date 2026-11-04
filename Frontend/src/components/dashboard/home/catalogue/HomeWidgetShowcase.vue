@@ -4,12 +4,12 @@ import { computed, ref } from "vue";
 
 import { provideHomeWidgetPreview } from "@/composables/useHomeWidgetPreview";
 import { HomeWidgetType } from "@/enums/home-widget";
+import { createHomeWidgetPreview, homeWidgetShowcaseLayout } from "@/features/home/editor/showcase";
+import { homeWidgetStyleChoices } from "@/features/home/editor/styles";
 import { useHomeStore } from "@/stores/home";
-import { homeWidgetStyleChoices } from "@/utils/home-widget-editor";
-import { createHomeWidgetPreview, homeWidgetShowcaseLayout } from "@/utils/home-widget-showcase";
 
-import HomeDashboardGrid from "./HomeDashboardGrid.vue";
-import { homeWidgetDefinitions } from "./registry";
+import HomeDashboardGrid from "@/components/dashboard/home/grid/HomeDashboardGrid.vue";
+import { homeWidgetDefinitions } from "@/components/dashboard/home/registry";
 
 const home = useHomeStore();
 const smallScreen = useMediaQuery("(max-width: 767px)");

@@ -58,7 +58,7 @@
 import { computed, onBeforeUnmount, ref } from "vue";
 
 import { useTheme } from "@/composables/useTheme";
-import { type WrappedPalette, wrappedExportColors } from "@/utils/wrapped-palette.utils";
+import { type WrappedPalette, wrappedExportColors } from "@/features/wrapped/palette";
 
 import WrappedPalettePicker from "./WrappedPalettePicker.vue";
 

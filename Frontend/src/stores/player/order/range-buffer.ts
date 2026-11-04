@@ -8,9 +8,9 @@ import {
   markRangeScanned,
   rangesToRetain,
   shouldPrefetchRange,
-} from "@/utils/player-shuffle-buffer";
+} from "@/features/player/shuffle-buffer";
 
-import type { Order, RangeBufferHooks, RangeLoader, RangeResult } from "../types";
+import type { Order, RangeBufferHooks, RangeLoader, RangeResult } from "@/stores/player/types";
 
 export interface RangeOrder extends Order {
   prefetch: (position: number) => void;

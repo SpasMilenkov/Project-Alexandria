@@ -4,14 +4,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { HomeSettings } from "@/types/home";
 
 import { HomeWidgetSize, HomeWidgetType } from "@/enums/home-widget";
-import { useHomeStore } from "@/stores/home";
-import { placeHomeWidget } from "@/utils/home-grid";
+import { placeHomeWidget } from "@/features/home/grid/placement";
 import {
   defaultHomeLayout,
   selectedHomeLayout,
   setSeparateMobileLayout,
   updateHomeWidgetOptions,
-} from "@/utils/home-layout";
+} from "@/features/home/layout";
+import { useHomeStore } from "@/stores/home";
 
 const settings = (): HomeSettings => ({
   initialized: true,

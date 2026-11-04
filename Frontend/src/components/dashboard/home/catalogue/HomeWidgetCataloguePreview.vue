@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import HomeClockStylePreview from "@/components/dashboard/home/HomeClockStylePreview.vue";
-import HomeFileStylePreview from "@/components/dashboard/home/HomeFileStylePreview.vue";
-import HomeGeneralStylePreview from "@/components/dashboard/home/HomeGeneralStylePreview.vue";
-import HomeGreetingStylePreview from "@/components/dashboard/home/HomeGreetingStylePreview.vue";
-import HomeLibraryStylePreview from "@/components/dashboard/home/HomeLibraryStylePreview.vue";
-import HomeQuickStylePreview from "@/components/dashboard/home/HomeQuickStylePreview.vue";
-import HomePlayerRecord from "@/components/dashboard/home/widgets/HomePlayerRecord.vue";
+import HomeClockStylePreview from "@/components/dashboard/home/options/style-previews/HomeClockStylePreview.vue";
+import HomeFileStylePreview from "@/components/dashboard/home/options/style-previews/HomeFileStylePreview.vue";
+import HomeGeneralStylePreview from "@/components/dashboard/home/options/style-previews/HomeGeneralStylePreview.vue";
+import HomeGreetingStylePreview from "@/components/dashboard/home/options/style-previews/HomeGreetingStylePreview.vue";
+import HomeLibraryStylePreview from "@/components/dashboard/home/options/style-previews/HomeLibraryStylePreview.vue";
+import HomeQuickStylePreview from "@/components/dashboard/home/options/style-previews/HomeQuickStylePreview.vue";
+import HomePlayerRecord from "@/components/dashboard/home/widgets/player/HomePlayerRecord.vue";
 import {
   HomeClockStyle,
   HomeGreetingStyle,

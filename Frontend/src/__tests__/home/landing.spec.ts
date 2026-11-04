@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { createMemoryHistory, createRouter } from "vue-router";
 
 import { OnboardingStep } from "@/enums/OnboardingStep";
+import { getHomeLandingDestination, getSignInDestination } from "@/features/home/landing";
 import appRouter from "@/router";
-import { getHomeLandingDestination, getSignInDestination } from "@/utils/home-landing";
 
 const router = createRouter({
   history: createMemoryHistory(),

@@ -2,7 +2,7 @@
 import { computed, useId } from "vue";
 
 import { HomeDailyCoverStyle } from "@/enums/home-widget";
-import { homeDailyCover } from "@/utils/home-daily-cover";
+import { homeDailyCover } from "@/features/home/widgets/daily-cover";
 
 const { day, coverStyle } = defineProps<{ day: string; coverStyle: HomeDailyCoverStyle }>();
 

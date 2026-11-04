@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { HomePlayerOptions } from "@/types/home";
 
-import HomeStylePicker from "@/components/dashboard/home/HomeStylePicker.vue";
-import HomePlayerRecord from "@/components/dashboard/home/widgets/HomePlayerRecord.vue";
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
+import HomePlayerRecord from "@/components/dashboard/home/widgets/player/HomePlayerRecord.vue";
 import { HomePlayerStyle } from "@/enums/home-widget";
-import { HOME_PLAYER_STYLES, type HomeOptionsSection } from "@/utils/home-widget-editor";
+import { HOME_PLAYER_STYLES, type HomeOptionsSection } from "@/features/home/editor/styles";
 
 const { options, section = "all" } = defineProps<{
   options: HomePlayerOptions;

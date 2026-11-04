@@ -138,15 +138,15 @@ import { computed, ref, useTemplateRef, watch } from "vue";
 
 import type { OverviewSummaryHeaderDtoResponse } from "@/api/stats";
 
-import RecapLandscape from "@/components/streaming/wrapped/RecapLandscape.vue";
+import RecapLandscape from "@/components/streaming/wrapped/recaps/RecapLandscape.vue";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
+import { formatWrappedDuration } from "@/features/wrapped/art";
+import { wrappedEmptyState, yearRange } from "@/features/wrapped/display";
+import { recapTimestamp } from "@/features/wrapped/listening/recaps";
+import { SUMMARY_KIND_WRAPPED, summaryToWrappedDeck } from "@/features/wrapped/summary";
 import { finalizeSummary } from "@/mutations/stats";
 import { getSummary } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
-import { recapTimestamp } from "@/utils/listening-recaps.utils";
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { wrappedEmptyState, yearRange } from "@/utils/wrapped-display.utils";
-import { SUMMARY_KIND_WRAPPED, summaryToWrappedDeck } from "@/utils/wrapped-summary.utils";
 
 const {
   year,

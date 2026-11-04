@@ -2,8 +2,8 @@ import type { WrappedCardResponse } from "@/api/stats";
 
 import { WrappedCardType } from "@/enums/wrapped-card-type";
 import { WrappedRhythmEvidence, WrappedTimeScene } from "@/enums/wrapped-story";
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { dateLabel } from "@/utils/wrapped-story.utils";
+import { formatWrappedDuration } from "@/features/wrapped/art";
+import { dateLabel } from "@/features/wrapped/story";
 
 type StoryCard = Pick<WrappedCardResponse, "type" | "facts">;
 

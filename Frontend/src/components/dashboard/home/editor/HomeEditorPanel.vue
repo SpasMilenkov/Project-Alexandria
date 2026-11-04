@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { glassDrawerContent } from "@/utils/modalUi";
+import { glassDrawerContent } from "@/utils/modal-ui";
 
 const open = defineModel<boolean>("open", { required: true });
 

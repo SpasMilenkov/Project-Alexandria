@@ -4,7 +4,7 @@ import { useRoute } from "vue-router";
 import type { EventCalendarRange } from "@/api/monitoring";
 import type { OperationalEventSeverity } from "@/enums";
 
-import { parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
+import { parseDeepLinkQuery } from "@/features/monitoring/service-routing";
 
 // Seeds an embedded incident feed from the shared deep-link contract. Every param is
 // re-read on each navigation so a link without one clears the previous selection.

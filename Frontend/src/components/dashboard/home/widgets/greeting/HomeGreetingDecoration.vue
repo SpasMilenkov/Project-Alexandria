@@ -3,16 +3,16 @@ import { useDocumentVisibility, useElementVisibility } from "@vueuse/core";
 import { type Component, computed, ref } from "vue";
 
 import { HomeGreetingColorMode, HomeGreetingDecoration } from "@/enums/home-widget";
-import { HOME_GREETING_EMOJIS } from "@/utils/home-greeting";
+import { HOME_GREETING_EMOJIS } from "@/features/home/widgets/greeting";
 
-import GreetingCat from "./greeting-artwork/GreetingCat.vue";
-import GreetingCoffee from "./greeting-artwork/GreetingCoffee.vue";
-import GreetingDog from "./greeting-artwork/GreetingDog.vue";
-import GreetingDuck from "./greeting-artwork/GreetingDuck.vue";
-import GreetingMoon from "./greeting-artwork/GreetingMoon.vue";
-import GreetingPlant from "./greeting-artwork/GreetingPlant.vue";
-import GreetingSun from "./greeting-artwork/GreetingSun.vue";
-import GreetingVinyl from "./greeting-artwork/GreetingVinyl.vue";
+import GreetingCat from "@/components/dashboard/home/widgets/greeting/artwork/GreetingCat.vue";
+import GreetingCoffee from "@/components/dashboard/home/widgets/greeting/artwork/GreetingCoffee.vue";
+import GreetingDog from "@/components/dashboard/home/widgets/greeting/artwork/GreetingDog.vue";
+import GreetingDuck from "@/components/dashboard/home/widgets/greeting/artwork/GreetingDuck.vue";
+import GreetingMoon from "@/components/dashboard/home/widgets/greeting/artwork/GreetingMoon.vue";
+import GreetingPlant from "@/components/dashboard/home/widgets/greeting/artwork/GreetingPlant.vue";
+import GreetingSun from "@/components/dashboard/home/widgets/greeting/artwork/GreetingSun.vue";
+import GreetingVinyl from "@/components/dashboard/home/widgets/greeting/artwork/GreetingVinyl.vue";
 
 const {
   decoration,

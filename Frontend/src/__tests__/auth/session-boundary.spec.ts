@@ -7,7 +7,7 @@ import {
   rotateSessionEpoch,
   startSessionBoundaryWatcher,
   stopSessionBoundaryWatcher,
-} from "@/utils/sessionBoundary";
+} from "@/features/auth/session-boundary";
 
 class FakeBroadcastChannel {
   static instances: FakeBroadcastChannel[] = [];

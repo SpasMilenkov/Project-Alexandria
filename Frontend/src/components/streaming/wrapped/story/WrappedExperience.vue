@@ -56,17 +56,17 @@ import { computed, provide } from "vue";
 
 import type { WrappedDeckResponse } from "@/api/stats";
 
-import WrappedBookends from "@/components/streaming/wrapped/WrappedBookends.vue";
-import WrappedCountdown from "@/components/streaming/wrapped/WrappedCountdown.vue";
-import WrappedHero from "@/components/streaming/wrapped/WrappedHero.vue";
-import WrappedMoment from "@/components/streaming/wrapped/WrappedMoment.vue";
-import WrappedTimeOfDay from "@/components/streaming/wrapped/WrappedTimeOfDay.vue";
+import WrappedBookends from "@/components/streaming/wrapped/story/WrappedBookends.vue";
+import WrappedCountdown from "@/components/streaming/wrapped/story/WrappedCountdown.vue";
+import WrappedHero from "@/components/streaming/wrapped/story/WrappedHero.vue";
+import WrappedMoment from "@/components/streaming/wrapped/story/WrappedMoment.vue";
+import WrappedTimeOfDay from "@/components/streaming/wrapped/story/WrappedTimeOfDay.vue";
 import { useTheme } from "@/composables/useTheme";
 import { wrappedPaletteKey } from "@/composables/useWrappedPalette";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { factsFor, formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { type WrappedPalette, wrappedCssColors } from "@/utils/wrapped-palette.utils";
-import { buildWrappedSections } from "@/utils/wrapped-sections.utils";
+import { factsFor, formatWrappedDuration } from "@/features/wrapped/art";
+import { type WrappedPalette, wrappedCssColors } from "@/features/wrapped/palette";
+import { buildWrappedSections } from "@/features/wrapped/sections";
 
 const props = defineProps<{
   response: WrappedDeckResponse;

@@ -19,7 +19,7 @@ import {
   enqueuePaint,
   observeVisibility,
   renderCover,
-} from "@/utils/playlist-cover.painter";
+} from "@/features/playlists/cover/painter";
 
 const { playlist } = defineProps<{
   playlist: {

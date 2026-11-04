@@ -46,7 +46,7 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const emit = defineEmits<{
   close: [value: "archive" | "file" | null];

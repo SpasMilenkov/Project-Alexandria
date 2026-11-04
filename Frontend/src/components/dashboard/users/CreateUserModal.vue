@@ -349,8 +349,8 @@ import { z } from "zod";
 import type { CreateUserSchema } from "@/schemas/user";
 
 import { UserRole } from "@/enums/UserRole";
-import { glassModalContent } from "@/utils/modalUi";
-import { parseQuotaGbInput } from "@/utils/size.utils";
+import { glassModalContent } from "@/utils/modal-ui";
+import { parseQuotaGbInput } from "@/utils/size";
 
 const props = defineProps<{
   open: boolean;

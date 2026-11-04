@@ -81,8 +81,8 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedCardFacts } from "@/api/stats";
 
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { dateLabel, vinylGroove } from "@/utils/wrapped-story.utils";
+import { formatWrappedDuration } from "@/features/wrapped/art";
+import { dateLabel, vinylGroove } from "@/features/wrapped/story";
 
 const props = defineProps<{ facts: WrappedCardFacts; from: string; to: string }>();
 

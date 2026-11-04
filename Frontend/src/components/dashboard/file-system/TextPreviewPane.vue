@@ -5,7 +5,7 @@ import type { TextPreviewDto, TextPreviewLine } from "@/api/file";
 import type { RenderedLine, RenderedSegment } from "@/types/preview/code-preview";
 
 import { TextPreviewTruncation } from "@/enums";
-import { formatBytes } from "@/utils/size.utils";
+import { formatBytes } from "@/utils/size";
 
 import TextPreviewCode from "./TextPreviewCode.vue";
 

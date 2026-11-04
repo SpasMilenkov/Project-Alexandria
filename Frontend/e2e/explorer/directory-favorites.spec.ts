@@ -1,6 +1,6 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { fixture, seed } from "./helpers/home-dashboard.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 
 const directoryId = "10101010-1010-4010-8010-101010101010";
 

@@ -78,14 +78,14 @@ import { RouterLink } from "vue-router";
 
 import type { WrappedCardResponse } from "@/api/stats";
 
-import WrappedArt from "@/components/streaming/wrapped/WrappedArt.vue";
-import WrappedCalendarArt from "@/components/streaming/wrapped/WrappedCalendarArt.vue";
-import WrappedReplayArt from "@/components/streaming/wrapped/WrappedReplayArt.vue";
-import WrappedReturnArt from "@/components/streaming/wrapped/WrappedReturnArt.vue";
-import WrappedStoryNotes from "@/components/streaming/wrapped/WrappedStoryNotes.vue";
-import WrappedWaveformArt from "@/components/streaming/wrapped/WrappedWaveformArt.vue";
+import WrappedArt from "@/components/streaming/wrapped/art/WrappedArt.vue";
+import WrappedCalendarArt from "@/components/streaming/wrapped/art/WrappedCalendarArt.vue";
+import WrappedReplayArt from "@/components/streaming/wrapped/art/WrappedReplayArt.vue";
+import WrappedReturnArt from "@/components/streaming/wrapped/art/WrappedReturnArt.vue";
+import WrappedWaveformArt from "@/components/streaming/wrapped/art/WrappedWaveformArt.vue";
+import WrappedStoryNotes from "@/components/streaming/wrapped/story/WrappedStoryNotes.vue";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { factsFor, wrappedInks } from "@/utils/wrapped-art.utils";
+import { factsFor, wrappedInks } from "@/features/wrapped/art";
 
 const props = defineProps<{
   card: WrappedCardResponse;

@@ -4,11 +4,11 @@ import { computed } from "vue";
 
 import type { HomeWidget } from "@/types/home";
 
-import HomeGreetingDecoration from "@/components/dashboard/home/HomeGreetingDecoration.vue";
+import HomeGreetingDecoration from "@/components/dashboard/home/widgets/greeting/HomeGreetingDecoration.vue";
 import { HomeGreetingDecoration as Decoration, HomeGreetingStyle } from "@/enums/home-widget";
+import { homeClockDateLabels } from "@/features/home/widgets/clock/clock";
+import { homeGreetingHeading } from "@/features/home/widgets/greeting";
 import { useAuthStore } from "@/stores/auth";
-import { homeClockDateLabels } from "@/utils/home-clock";
-import { homeGreetingHeading } from "@/utils/home-greeting";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 const auth = useAuthStore();

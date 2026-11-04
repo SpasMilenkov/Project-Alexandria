@@ -5,16 +5,16 @@ import { computed } from "vue";
 import type { TopSong } from "@/api/listening-rankings";
 
 import { isAuthError } from "@/api/shuffle";
-import { MEDIA_OVERVIEW_PAGE_SIZES, mediaOverviewOnRepeat } from "@/queries/media-overview";
-import { usePlayerStore } from "@/stores/stream-player";
-import { coverSeed } from "@/utils/generated-cover";
+import { coverSeed } from "@/features/media/generated-cover";
 import {
   homeTopSongArtist,
   homeTopSongBar,
   homeTopSongPlays,
   homeTopSongTitle,
   homeTopSongsPeriod,
-} from "@/utils/home-top-songs";
+} from "@/features/media/top-songs";
+import { MEDIA_OVERVIEW_PAGE_SIZES, mediaOverviewOnRepeat } from "@/queries/media-overview";
+import { usePlayerStore } from "@/stores/stream-player";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaEqualizer from "./MediaEqualizer.vue";

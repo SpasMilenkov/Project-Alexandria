@@ -1,4 +1,4 @@
-import { AUDIO_LIBRARY_LABEL, AUDIO_LIBRARY_REF } from "@/utils/player-source";
+import { AUDIO_LIBRARY_LABEL, AUDIO_LIBRARY_REF } from "@/features/player/source";
 
 import type { createCommit } from "./commit";
 import type { createEngineBridge } from "./engine-bridge";

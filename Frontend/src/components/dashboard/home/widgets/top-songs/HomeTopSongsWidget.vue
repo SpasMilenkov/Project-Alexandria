@@ -5,20 +5,20 @@ import type { TopSong } from "@/api/listening-rankings";
 import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeWidgetDataState from "@/components/dashboard/home/HomeWidgetDataState.vue";
+import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
 import { useHomeWidgetPreview, useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { useHomeWidgetRows } from "@/composables/useHomeWidgetRows";
-import { homeTopSongs } from "@/queries/home-top-songs";
-import { useAuthStore } from "@/stores/auth";
-import { useHomeStore } from "@/stores/home";
-import { usePlayerStore } from "@/stores/stream-player";
 import {
   homeTopSongArtist,
   homeTopSongBar,
   homeTopSongPlays,
   homeTopSongTitle,
   homeTopSongsPeriod,
-} from "@/utils/home-top-songs";
+} from "@/features/media/top-songs";
+import { homeTopSongs } from "@/queries/home-top-songs";
+import { useAuthStore } from "@/stores/auth";
+import { useHomeStore } from "@/stores/home";
+import { usePlayerStore } from "@/stores/stream-player";
 
 import HomeTopSongArtwork from "./HomeTopSongArtwork.vue";
 

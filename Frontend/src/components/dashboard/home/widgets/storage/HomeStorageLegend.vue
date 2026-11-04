@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-import type { HomeStorageCategory } from "@/utils/home-file-widgets";
+import type { HomeStorageCategory } from "@/features/home/widgets/files";
 
-import { formatBytes } from "@/utils/size.utils";
+import { formatBytes } from "@/utils/size";
 
 defineProps<{ categories: HomeStorageCategory[] }>();
 

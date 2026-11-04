@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import DirectoryPicker from "@/components/common/DirectoryPicker.vue";
-import { glassModalBody, glassModalContentWide } from "@/utils/modalUi";
+import { glassModalBody, glassModalContentWide } from "@/utils/modal-ui";
 
 defineProps<{
   title: string;

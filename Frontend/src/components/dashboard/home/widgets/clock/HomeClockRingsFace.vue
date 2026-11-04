@@ -6,7 +6,7 @@ import {
   homeClockNumbers,
   homeClockRingProgress,
   type useHomeClockTiming,
-} from "@/utils/home-clock";
+} from "@/features/home/widgets/clock/clock";
 
 const {
   clock,

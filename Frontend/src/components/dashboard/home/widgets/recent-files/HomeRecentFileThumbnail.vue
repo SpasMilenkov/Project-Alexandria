@@ -5,8 +5,8 @@ import { computed } from "vue";
 import type { FileResult } from "@/api/file";
 
 import { useHomeWidgetThumbnail } from "@/composables/useHomeWidgetPreview";
+import { homeFileVisual } from "@/features/home/widgets/files";
 import { useSettingsStore } from "@/stores/settings";
-import { homeFileVisual } from "@/utils/home-file-widgets";
 
 const { file, cover = false } = defineProps<{ file: FileResult; cover?: boolean }>();
 

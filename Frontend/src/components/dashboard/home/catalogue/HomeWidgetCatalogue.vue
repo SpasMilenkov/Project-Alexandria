@@ -4,8 +4,8 @@ import { nextTick, ref, watch } from "vue";
 
 import type { HomeWidgetType } from "@/enums/home-widget";
 
-import HomeWidgetCatalogueItems from "@/components/dashboard/home/HomeWidgetCatalogueItems.vue";
-import { glassOverlayContent } from "@/utils/modalUi";
+import HomeWidgetCatalogueItems from "@/components/dashboard/home/catalogue/HomeWidgetCatalogueItems.vue";
+import { glassOverlayContent } from "@/utils/modal-ui";
 
 const open = defineModel<boolean>("open", { required: true });
 const {

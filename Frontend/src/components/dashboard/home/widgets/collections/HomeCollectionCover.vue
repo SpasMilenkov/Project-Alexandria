@@ -2,7 +2,7 @@
 import { computed, ref, watch } from "vue";
 
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
-import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
+import PlaylistCover from "@/components/streaming/playlist/PlaylistCover.vue";
 import { useSettingsStore } from "@/stores/settings";
 
 const { playlist } = defineProps<{ playlist: PlaylistResponse }>();

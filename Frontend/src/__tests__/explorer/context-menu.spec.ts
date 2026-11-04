@@ -8,7 +8,7 @@ import {
   type ExplorerMenuSnapshot,
   buildExplorerMenuItems,
   resolveContextMenuTarget,
-} from "@/utils/explorerContextMenu";
+} from "@/features/explorer/context-menu";
 
 const makeFile = (fileId: string): FileResult => ({
   createdAt: "2026-01-01T00:00:00.000Z",

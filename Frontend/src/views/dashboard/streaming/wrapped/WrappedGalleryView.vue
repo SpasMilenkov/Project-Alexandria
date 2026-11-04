@@ -53,11 +53,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-import WrappedExperience from "@/components/streaming/wrapped/WrappedExperience.vue";
-import WrappedExportButton from "@/components/streaming/wrapped/WrappedExportButton.vue";
-import WrappedPaletteSwitcher from "@/components/streaming/wrapped/WrappedPaletteSwitcher.vue";
+import WrappedPaletteSwitcher from "@/components/streaming/wrapped/palette/WrappedPaletteSwitcher.vue";
+import WrappedExperience from "@/components/streaming/wrapped/story/WrappedExperience.vue";
+import WrappedExportButton from "@/components/streaming/wrapped/story/WrappedExportButton.vue";
 import { useWrappedPalette } from "@/composables/useWrappedPalette";
-import { wrappedFixtures } from "@/utils/wrapped-fixtures";
+import { wrappedFixtures } from "@/features/wrapped/fixtures";
 
 const selected = ref("repeater");
 const { palette, paletteStyle } = useWrappedPalette();

@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeRecapOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
-import WrappedPalettePicker from "@/components/streaming/wrapped/WrappedPalettePicker.vue";
+import WrappedPalettePicker from "@/components/streaming/wrapped/palette/WrappedPalettePicker.vue";
 import { HomeRecapPeriod, HomeRecapStyle } from "@/enums/home-widget";
-import { HOME_RECAP_STYLES } from "@/utils/home-media";
+import { HOME_RECAP_STYLES } from "@/features/home/widgets/media";
 
-import HomeStylePicker from "./HomeStylePicker.vue";
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeRecapOptions;

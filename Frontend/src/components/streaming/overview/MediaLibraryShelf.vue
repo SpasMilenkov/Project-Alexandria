@@ -5,9 +5,9 @@ import { computed } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 
 import { isAuthError } from "@/api/shuffle";
+import { addedThisWeekLabel } from "@/features/media/overview";
 import { mediaOverviewLibrary } from "@/queries/media-overview";
 import { formatDate } from "@/utils/date-formatters";
-import { addedThisWeekLabel } from "@/utils/media-overview";
 
 import MediaOverviewFile from "./MediaOverviewFile.vue";
 import MediaOverviewSection from "./MediaOverviewSection.vue";

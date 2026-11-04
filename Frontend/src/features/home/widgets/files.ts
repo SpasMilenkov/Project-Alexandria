@@ -5,9 +5,9 @@ import type { FileSearchQuery } from "@/schemas/search";
 import { HomeRecentFilesSource, HomeRecentFilesStyle, HomeStorageStyle } from "@/enums/home-widget";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
-import { getFileIcon } from "@/utils/icon.utils";
-import { groupMimeSizeRecord } from "@/utils/mimetype.utils";
-import { formatBytes } from "@/utils/size.utils";
+import { getFileIcon } from "@/utils/files/icons";
+import { groupMimeSizeRecord } from "@/utils/files/mimetype";
+import { formatBytes } from "@/utils/size";
 
 export const HOME_STORAGE_STYLES = [
   {

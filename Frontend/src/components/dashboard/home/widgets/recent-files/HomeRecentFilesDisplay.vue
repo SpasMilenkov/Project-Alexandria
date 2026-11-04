@@ -7,9 +7,9 @@ import type { FileResult } from "@/api/file";
 
 import { useHomeWidgetRows } from "@/composables/useHomeWidgetRows";
 import { HomeRecentFilesSource, HomeRecentFilesStyle } from "@/enums/home-widget";
+import { homeFileVisual, homeRecentFileDate } from "@/features/home/widgets/files";
 import { formatRelativeShort } from "@/utils/date-formatters";
-import { homeFileVisual, homeRecentFileDate } from "@/utils/home-file-widgets";
-import { formatBytes } from "@/utils/size.utils";
+import { formatBytes } from "@/utils/size";
 
 import HomeRecentFileName from "./HomeRecentFileName.vue";
 import HomeRecentFileThumbnail from "./HomeRecentFileThumbnail.vue";

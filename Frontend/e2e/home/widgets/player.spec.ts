@@ -1,7 +1,7 @@
 import { type Locator, type Page, type Route, expect, test } from "@playwright/test";
 
-import { fixture, seed } from "./helpers/home-dashboard.js";
-import { openWidgetTab, selectWidget } from "./helpers/home-grid-editor.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
+import { openWidgetTab, selectWidget } from "@e2e/helpers/home-grid-editor.js";
 
 interface BrowserPlayer {
   engineLoadError: string | null;

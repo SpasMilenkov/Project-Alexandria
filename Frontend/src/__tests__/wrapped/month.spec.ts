@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { HomeRecapPeriod } from "@/enums/home-widget";
-import { parseWrappedMonth, wrappedMonth, wrappedMonthRange } from "@/utils/wrapped-month";
+import { parseWrappedMonth, wrappedMonth, wrappedMonthRange } from "@/features/wrapped/month";
 
 describe("Monthly recap periods", () => {
   it("uses UTC months across local offsets and the January rollover", () => {

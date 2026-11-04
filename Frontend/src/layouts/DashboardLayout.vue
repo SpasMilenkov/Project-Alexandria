@@ -177,20 +177,20 @@ import SidebarSection from "@/components/dashboard/SidebarSection.vue";
 import SidebarUserMenu from "@/components/dashboard/SidebarUserMenu.vue";
 import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 import ReportProblemModal from "@/components/modals/ReportProblemModal.vue";
-import LyricsPanel from "@/components/streaming/LyricsPanel.vue";
+import LyricsPanel from "@/components/streaming/player/lyrics/LyricsPanel.vue";
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext";
 import { OnboardingStep } from "@/enums";
-import router from "@/router";
-import { useAuthStore } from "@/stores/auth";
-import { useSettingsStore } from "@/stores/settings";
-import { usePlayerStore } from "@/stores/stream-player";
 import {
   type SidebarSectionId,
   buildSidebarSections,
   isSidebarItemActive,
-} from "@/utils/sidebar-navigation";
+} from "@/features/navigation/sidebar";
+import router from "@/router";
+import { useAuthStore } from "@/stores/auth";
+import { useSettingsStore } from "@/stores/settings";
+import { usePlayerStore } from "@/stores/stream-player";
 
 const streamingEnabled = import.meta.env.VITE_STREAMING_ENABLED === "true";
 
@@ -201,13 +201,13 @@ if (streamingEnabled) {
 }
 
 const AudioSkin = streamingEnabled
-  ? defineAsyncComponent(() => import("@/components/streaming/AudioPlayerSkin.vue"))
+  ? defineAsyncComponent(() => import("@/components/streaming/player/AudioPlayerSkin.vue"))
   : null;
 const AudioEngineHost = streamingEnabled
-  ? defineAsyncComponent(() => import("@/components/streaming/AudioEngineHost.vue"))
+  ? defineAsyncComponent(() => import("@/components/streaming/player/AudioEngineHost.vue"))
   : null;
 const MobilePlayerIsland = streamingEnabled
-  ? defineAsyncComponent(() => import("@/components/streaming/MobilePlayerIsland.vue"))
+  ? defineAsyncComponent(() => import("@/components/streaming/player/MobilePlayerIsland.vue"))
   : null;
 
 const player = usePlayerStore();

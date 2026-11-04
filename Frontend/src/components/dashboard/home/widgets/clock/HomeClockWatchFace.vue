@@ -6,7 +6,7 @@ import {
   homeClockHandAngles,
   homeClockNumbers,
   type useHomeClockTiming,
-} from "@/utils/home-clock";
+} from "@/features/home/widgets/clock/clock";
 
 const {
   timing,

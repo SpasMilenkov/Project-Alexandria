@@ -15,7 +15,7 @@ import { computed } from "vue";
 
 import type { WrappedCardResponse } from "@/api/stats";
 
-import { wrappedStoryNote } from "@/utils/wrapped-copy.utils";
+import { wrappedStoryNote } from "@/features/wrapped/copy";
 
 const { card } = defineProps<{ card: WrappedCardResponse }>();
 

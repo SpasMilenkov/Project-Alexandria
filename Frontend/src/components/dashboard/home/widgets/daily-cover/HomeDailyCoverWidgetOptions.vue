@@ -1,12 +1,12 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeDailyCoverOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
 import { HomeWidgetType } from "@/enums/home-widget";
-import { HOME_DAILY_COVER_STYLES } from "@/utils/home-general";
+import { HOME_DAILY_COVER_STYLES } from "@/features/home/widgets/general";
 
-import HomeGeneralStylePreview from "./HomeGeneralStylePreview.vue";
-import HomeStylePicker from "./HomeStylePicker.vue";
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
+import HomeGeneralStylePreview from "@/components/dashboard/home/options/style-previews/HomeGeneralStylePreview.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeDailyCoverOptions;

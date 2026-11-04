@@ -6,7 +6,7 @@ import {
   parseWrappedYear,
   wrappedEmptyState,
   yearRange,
-} from "@/utils/wrapped-display.utils";
+} from "@/features/wrapped/display";
 
 describe("parseWrappedYear", () => {
   it("accepts sane years and falls back otherwise", () => {

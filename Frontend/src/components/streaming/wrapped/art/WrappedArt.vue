@@ -61,7 +61,7 @@ import { computed, useId } from "vue";
 
 import type { WrappedCardResponse } from "@/api/stats";
 
-import { buildWrappedRecipe } from "@/utils/wrapped-art.utils";
+import { buildWrappedRecipe } from "@/features/wrapped/art";
 
 const props = defineProps<{
   card: WrappedCardResponse;

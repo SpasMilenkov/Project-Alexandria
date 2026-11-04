@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { WrappedCardResponse } from "@/api/stats";
 
 import { WrappedCardType as Type } from "@/enums/wrapped-card-type";
-import { buildWrappedRecipe } from "@/utils/wrapped-art.utils";
+import { buildWrappedRecipe } from "@/features/wrapped/art";
 
 const card = (type: Type): WrappedCardResponse => ({
   type,

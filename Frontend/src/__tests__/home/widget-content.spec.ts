@@ -2,8 +2,8 @@ import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
 import { defineAsyncComponent, defineComponent } from "vue";
 
-import HomeWidgetContent from "@/components/dashboard/home/HomeWidgetContent.vue";
-import { defaultHomeLayout } from "@/utils/home-layout";
+import HomeWidgetContent from "@/components/dashboard/home/grid/HomeWidgetContent.vue";
+import { defaultHomeLayout } from "@/features/home/layout";
 
 const ready = defineComponent({ template: "<p>Ready widget</p>" });
 const global = { stubs: { UButton: { template: "<button><slot /></button>" }, UIcon: true } };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ServiceType } from "@/enums";
-import { MONITORED_SERVICES } from "@/utils/monitoring-display.utils";
+import { MONITORED_SERVICES } from "@/features/monitoring/display";
 
 describe("MONITORED_SERVICES", () => {
   it("covers every known service so none vanish from incident history", () => {

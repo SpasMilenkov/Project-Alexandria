@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 interface AlertProps {
   title: string;

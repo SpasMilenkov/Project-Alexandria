@@ -4,15 +4,15 @@ import { createPinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, reactive, ref } from "vue";
 
-import HomeCollectionsWidget from "@/components/dashboard/home/widgets/HomeCollectionsWidget.vue";
-import HomeLatestRecapWidget from "@/components/dashboard/home/widgets/HomeLatestRecapWidget.vue";
-import HomeTranscodingJobsWidget from "@/components/dashboard/home/widgets/HomeTranscodingJobsWidget.vue";
+import HomeCollectionsWidget from "@/components/dashboard/home/widgets/collections/HomeCollectionsWidget.vue";
+import HomeLatestRecapWidget from "@/components/dashboard/home/widgets/latest-recap/HomeLatestRecapWidget.vue";
+import HomeTranscodingJobsWidget from "@/components/dashboard/home/widgets/status/HomeTranscodingJobsWidget.vue";
 import { HomeRecapPeriod, HomeRecapStyle, HomeWidgetType } from "@/enums/home-widget";
 import { JobStatus } from "@/enums/job-status";
+import { homeWidgetMinimum } from "@/features/home/grid/sizing";
+import { createHomeWidget, defaultHomeLayout } from "@/features/home/layout";
 import { homeMonthlyRecap } from "@/queries/home-media";
 import { useHomeStore } from "@/stores/home";
-import { createHomeWidget, defaultHomeLayout } from "@/utils/home-layout";
-import { homeWidgetMinimum } from "@/utils/home-widget-sizing";
 
 const api = vi.hoisted(() => ({
   jobs: vi.fn(),

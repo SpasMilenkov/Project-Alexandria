@@ -1,5 +1,5 @@
 import { WrappedTimeScene } from "@/enums/wrapped-story";
-import { type WrappedPalette, tintWrappedSkyColor } from "@/utils/wrapped-palette.utils";
+import { type WrappedPalette, tintWrappedSkyColor } from "@/features/wrapped/palette";
 
 interface SkyPreset {
   eyebrow: string;

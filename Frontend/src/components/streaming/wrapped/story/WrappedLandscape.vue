@@ -69,8 +69,8 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedPeriodPoint } from "@/api/stats";
 
-import { formatWrappedDuration, monthLabel } from "@/utils/wrapped-art.utils";
-import { monthlyLandscape } from "@/utils/wrapped-ranking.utils";
+import { formatWrappedDuration, monthLabel } from "@/features/wrapped/art";
+import { monthlyLandscape } from "@/features/wrapped/ranking";
 
 const props = defineProps<{ series: WrappedPeriodPoint[] }>();
 const selected = ref<string | null>(null);

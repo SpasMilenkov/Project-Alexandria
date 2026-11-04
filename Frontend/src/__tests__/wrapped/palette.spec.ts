@@ -6,8 +6,8 @@ import {
   wrappedCssColors,
   wrappedExportColors,
   wrappedPalettePresets,
-} from "@/utils/wrapped-palette.utils";
-import { getWrappedSkyPreset, skyPresets } from "@/utils/wrapped-sky.utils";
+} from "@/features/wrapped/palette";
+import { getWrappedSkyPreset, skyPresets } from "@/features/wrapped/sky";
 
 const relativeLuminance = (hex: string) => {
   const channels = [1, 3, 5].map((offset) => {

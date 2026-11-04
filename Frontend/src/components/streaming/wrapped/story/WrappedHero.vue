@@ -47,11 +47,11 @@ import { computed } from "vue";
 
 import type { WrappedCardResponse, WrappedPeriodPoint } from "@/api/stats";
 
-import WrappedDailyLandscape from "@/components/streaming/wrapped/WrappedDailyLandscape.vue";
-import WrappedLandscape from "@/components/streaming/wrapped/WrappedLandscape.vue";
-import WrappedMilestone from "@/components/streaming/wrapped/WrappedMilestone.vue";
-import WrappedStoryNotes from "@/components/streaming/wrapped/WrappedStoryNotes.vue";
-import { factsFor, wrappedInks } from "@/utils/wrapped-art.utils";
+import WrappedDailyLandscape from "@/components/streaming/wrapped/story/WrappedDailyLandscape.vue";
+import WrappedLandscape from "@/components/streaming/wrapped/story/WrappedLandscape.vue";
+import WrappedMilestone from "@/components/streaming/wrapped/story/WrappedMilestone.vue";
+import WrappedStoryNotes from "@/components/streaming/wrapped/story/WrappedStoryNotes.vue";
+import { factsFor, wrappedInks } from "@/features/wrapped/art";
 
 const {
   card,

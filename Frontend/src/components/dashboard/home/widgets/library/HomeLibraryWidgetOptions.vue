@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeLibraryOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
 import { HomeShortcutGroup } from "@/enums/home-widget";
-import { HOME_LIBRARY_STYLES, homeLibraryPresetChange } from "@/utils/home-library";
+import { HOME_LIBRARY_STYLES, homeLibraryPresetChange } from "@/features/home/widgets/library";
 
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
+import HomeLibraryStylePreview from "@/components/dashboard/home/options/style-previews/HomeLibraryStylePreview.vue";
 import HomeLibraryDestinationEditor from "./HomeLibraryDestinationEditor.vue";
-import HomeLibraryStylePreview from "./HomeLibraryStylePreview.vue";
-import HomeStylePicker from "./HomeStylePicker.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeLibraryOptions;

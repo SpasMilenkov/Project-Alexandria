@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeWidget, HomeWidgetOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
-import { HOME_WIDGET_REGISTRY } from "./registry";
+import { HOME_WIDGET_REGISTRY } from "@/components/dashboard/home/registry";
 
 const { widget, section = "all" } = defineProps<{
   widget: HomeWidget;

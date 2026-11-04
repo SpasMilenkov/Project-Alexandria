@@ -68,9 +68,9 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedPeriodPoint } from "@/api/stats";
 
-import { annualRecapMonths } from "@/utils/listening-recaps.utils";
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { monthlyLandscape } from "@/utils/wrapped-ranking.utils";
+import { formatWrappedDuration } from "@/features/wrapped/art";
+import { annualRecapMonths } from "@/features/wrapped/listening/recaps";
+import { monthlyLandscape } from "@/features/wrapped/ranking";
 
 const {
   year,

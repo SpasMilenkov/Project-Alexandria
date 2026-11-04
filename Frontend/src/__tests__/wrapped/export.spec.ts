@@ -6,9 +6,9 @@ import {
   exportFilename,
   renderWrappedExport,
   wrapExportText,
-} from "@/utils/wrapped-export.utils";
-import { wrappedFixtures } from "@/utils/wrapped-fixtures";
-import { monthlyLandscape, rankedRecords, shareLabel } from "@/utils/wrapped-ranking.utils";
+} from "@/features/wrapped/export/render";
+import { wrappedFixtures } from "@/features/wrapped/fixtures";
+import { monthlyLandscape, rankedRecords, shareLabel } from "@/features/wrapped/ranking";
 
 describe("Wrapped polish and export", () => {
   it("keeps tied record areas and mixtape bars equal", () => {

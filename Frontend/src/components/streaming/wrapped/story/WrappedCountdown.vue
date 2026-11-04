@@ -141,9 +141,9 @@ import { RouterLink } from "vue-router";
 import type { WrappedCardResponse } from "@/api/stats";
 
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { wrappedInks } from "@/utils/wrapped-art.utils";
-import { padRank } from "@/utils/wrapped-display.utils";
-import { rankedRecords, shareLabel } from "@/utils/wrapped-ranking.utils";
+import { wrappedInks } from "@/features/wrapped/art";
+import { padRank } from "@/features/wrapped/display";
+import { rankedRecords, shareLabel } from "@/features/wrapped/ranking";
 
 const props = defineProps<{ card: WrappedCardResponse }>();
 

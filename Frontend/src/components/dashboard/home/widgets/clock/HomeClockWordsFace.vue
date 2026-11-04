@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import { type HomeClockReadout, homeClockWords } from "@/utils/home-clock";
+import { type HomeClockReadout, homeClockWords } from "@/features/home/widgets/clock/clock";
 
 const { clock, faceOnly = false } = defineProps<{
   clock: HomeClockReadout;

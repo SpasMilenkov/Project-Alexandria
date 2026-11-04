@@ -7,14 +7,14 @@ import type { DailyServiceStatus, PublicServiceState } from "@/api/publicStatus"
 import type { ServiceType } from "@/enums";
 
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
-import { publicCurrentStatus, publicStatusHistory } from "@/queries/publicStatus";
 import {
   overallPublicState,
   PUBLIC_SERVICE_LABELS,
   PUBLIC_STATE_BADGE_COLORS,
   PUBLIC_STATE_BAR_COLORS,
   PUBLIC_STATE_LABELS,
-} from "@/utils/publicStatus.utils";
+} from "@/features/monitoring/public-status";
+import { publicCurrentStatus, publicStatusHistory } from "@/queries/publicStatus";
 
 const DAYS = 90;
 const MOBILE_DAYS = 30;

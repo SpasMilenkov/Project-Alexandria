@@ -272,19 +272,19 @@ import { useRoute, useRouter } from "vue-router";
 
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import AudioAnalysisFilePanel from "@/components/dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";
+import TrackMetadataEditor from "@/components/streaming/metadata/TrackMetadataEditor.vue";
+import TrackTagsSection from "@/components/streaming/metadata/TrackTagsSection.vue";
 import MediaArtwork from "@/components/streaming/overview/MediaArtwork.vue";
 import MediaEqualizer from "@/components/streaming/overview/MediaEqualizer.vue";
-import TrackMetadataEditor from "@/components/streaming/TrackMetadataEditor.vue";
-import TrackTagsSection from "@/components/streaming/TrackTagsSection.vue";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { useTheme } from "@/composables/useTheme";
 import { useTrackAudioAnalysis } from "@/composables/useTrackAudioAnalysis";
+import { formatConfidence } from "@/features/audio-analysis/taxonomy";
+import { coverInk, heroTint } from "@/features/media/cover-color";
+import { coverSeed, generatedCover } from "@/features/media/generated-cover";
 import { getStreamingFile } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
-import { formatConfidence } from "@/utils/audio-taxonomy.utils";
-import { coverInk, heroTint } from "@/utils/cover-color";
 import { formatDuration } from "@/utils/date-formatters";
-import { coverSeed, generatedCover } from "@/utils/generated-cover";
 
 interface GlanceItem {
   label: string;

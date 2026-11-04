@@ -384,12 +384,13 @@ import { useRoute, useRouter } from "vue-router";
 import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 
 import { type PlaylistItemResponse, playlistApi } from "@/api/playlist";
-import PlaylistCover from "@/components/streaming/PlaylistCover.vue";
-import PlaylistFavoriteButton from "@/components/streaming/PlaylistFavoriteButton.vue";
-import PlaylistForm from "@/components/streaming/PlaylistForm.vue";
-import PlaylistItemRow from "@/components/streaming/PlaylistItemRow.vue";
-import PlaylistTrackSearch from "@/components/streaming/PlaylistTrackSearch.vue";
+import PlaylistCover from "@/components/streaming/playlist/PlaylistCover.vue";
+import PlaylistFavoriteButton from "@/components/streaming/playlist/PlaylistFavoriteButton.vue";
+import PlaylistForm from "@/components/streaming/playlist/PlaylistForm.vue";
+import PlaylistItemRow from "@/components/streaming/playlist/PlaylistItemRow.vue";
+import PlaylistTrackSearch from "@/components/streaming/playlist/PlaylistTrackSearch.vue";
 import { useTheme } from "@/composables/useTheme";
+import { findPlaylistItemIndex, loadPlaylistAnchorPage } from "@/features/player/source";
 import {
   addPlaylistItem,
   deletePlaylist,
@@ -400,8 +401,7 @@ import {
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
-import { glassModalContent, playlistModalUi } from "@/utils/modalUi";
-import { findPlaylistItemIndex, loadPlaylistAnchorPage } from "@/utils/player-source";
+import { glassModalContent, playlistModalUi } from "@/utils/modal-ui";
 
 const store = usePlayerStore();
 const toast = useToast();

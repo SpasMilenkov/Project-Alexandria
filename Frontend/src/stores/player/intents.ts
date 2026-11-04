@@ -7,7 +7,7 @@ import {
   fetchPlaylistTracks,
   sameSource,
   toAnchor,
-} from "@/utils/player-source";
+} from "@/features/player/source";
 
 import type { createCommit } from "./commit";
 import type { OrderManager } from "./order-manager";

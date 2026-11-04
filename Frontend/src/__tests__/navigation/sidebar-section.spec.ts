@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createMemoryHistory, createRouter } from "vue-router";
 
 import SidebarSection from "@/components/dashboard/SidebarSection.vue";
-import { buildSidebarSections } from "@/utils/sidebar-navigation";
+import { buildSidebarSections } from "@/features/navigation/sidebar";
 
 const NavigationMenu = {
   props: { ariaLabel: String, collapsed: Boolean, items: Array },

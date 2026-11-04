@@ -6,10 +6,10 @@ import { RouterLink } from "vue-router";
 import type { StreamHistoryResponse } from "@/api/streaming";
 
 import { isAuthError } from "@/api/shuffle";
+import { coverSeed } from "@/features/media/generated-cover";
+import { groupByDay } from "@/features/media/overview";
 import { mediaOverviewHistory } from "@/queries/media-overview";
 import { formatDuration } from "@/utils/date-formatters";
-import { coverSeed } from "@/utils/generated-cover";
-import { groupByDay } from "@/utils/media-overview";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaOverviewSection from "./MediaOverviewSection.vue";

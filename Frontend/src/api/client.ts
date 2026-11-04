@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from "axios";
 
-import { isSessionEpochCurrent } from "@/utils/sessionBoundary";
+import { isSessionEpochCurrent } from "@/features/auth/session-boundary";
 
 let refreshGeneration = 0;
 

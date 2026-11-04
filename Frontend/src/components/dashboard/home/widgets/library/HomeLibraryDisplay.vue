@@ -3,7 +3,7 @@ import { useElementSize } from "@vueuse/core";
 import { computed, ref, useId, watch } from "vue";
 
 import { HomeLibraryDestination, HomeLibraryStyle } from "@/enums/home-widget";
-import { type HomeLibraryLink, homeLibraryDisplayOrder } from "@/utils/home-library";
+import { type HomeLibraryLink, homeLibraryDisplayOrder } from "@/features/home/widgets/library";
 
 import HomeLibrarySpotlightArt from "./HomeLibrarySpotlightArt.vue";
 

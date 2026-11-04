@@ -3,11 +3,11 @@ import { computed } from "vue";
 
 import type { HomeLayout, HomeWidget, HomeWidgetOptions as WidgetOptions } from "@/types/home";
 
-import HomeWidgetOptions from "@/components/dashboard/home/HomeWidgetOptions.vue";
+import HomeWidgetOptions from "@/components/dashboard/home/editor/HomeWidgetOptions.vue";
 import { HOME_WIDGET_REGISTRY } from "@/components/dashboard/home/registry";
-import { HOME_GRID_GAP, HOME_GRID_ROW_HEIGHT } from "@/utils/home-grid";
-import { homeWidgetHasStyles, homeWidgetStyleLabel } from "@/utils/home-widget-editor";
-import { glassOverlayContent } from "@/utils/modalUi";
+import { homeWidgetHasStyles, homeWidgetStyleLabel } from "@/features/home/editor/styles";
+import { HOME_GRID_GAP, HOME_GRID_ROW_HEIGHT } from "@/features/home/grid/placement";
+import { glassOverlayContent } from "@/utils/modal-ui";
 
 const { widget, columns } = defineProps<{
   widget: HomeWidget;

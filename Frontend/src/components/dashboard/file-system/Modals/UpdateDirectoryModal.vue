@@ -7,7 +7,7 @@ import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { updateDirectory } from "@/mutations/directories";
 import { type UpdateDirectorySchema, updateDirectorySchema } from "@/schemas/directory";
 import { logger } from "@/utils/logger";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const { directoryId, currentName } = defineProps<{
   directoryId: string;

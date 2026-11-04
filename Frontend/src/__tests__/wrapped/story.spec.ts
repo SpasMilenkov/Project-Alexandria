@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { wrappedFixtures } from "@/utils/wrapped-fixtures";
+import { wrappedFixtures } from "@/features/wrapped/fixtures";
 import {
   calendarMonths,
   replayMarks,
   returnGeometry,
   vinylGroove,
   waveformDays,
-} from "@/utils/wrapped-story.utils";
+} from "@/features/wrapped/story";
 
 describe("Wrapped story mappings", () => {
   it("counts eighteen individual marks and preserves grouped remainders", () => {

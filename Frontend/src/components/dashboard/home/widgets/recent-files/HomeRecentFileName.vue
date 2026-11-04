@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import { getFileExtension } from "@/utils/file-name.utils";
+import { getFileExtension } from "@/utils/files/file-name";
 
 const { fileName } = defineProps<{ fileName: string }>();
 

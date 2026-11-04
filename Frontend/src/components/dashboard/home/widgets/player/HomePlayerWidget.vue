@@ -3,7 +3,7 @@ import { computed } from "vue";
 
 import type { HomeWidget } from "@/types/home";
 
-import HomePlayerRecord from "@/components/dashboard/home/widgets/HomePlayerRecord.vue";
+import HomePlayerRecord from "@/components/dashboard/home/widgets/player/HomePlayerRecord.vue";
 import { useHomeWidgetPreview, useHomeWidgetThumbnail } from "@/composables/useHomeWidgetPreview";
 import { HomePlayerStyle } from "@/enums/home-widget";
 import { useHomeStore } from "@/stores/home";

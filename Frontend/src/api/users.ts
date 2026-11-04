@@ -3,7 +3,7 @@ import type { CreateUserSchema, UpdateUserSchema } from "@/schemas/user";
 import type { UserDetailsDto, UserProfile, UserQueryDto } from "@/types/user";
 
 import { logger } from "@/utils/logger";
-import { gbToBytes } from "@/utils/size.utils";
+import { gbToBytes } from "@/utils/size";
 
 import type { PaginatedResponse } from "./directory";
 

@@ -4,14 +4,14 @@ import { computed, watch } from "vue";
 import type { HomeWidget } from "@/types/home";
 
 import { useHomeWidgetPreview } from "@/composables/useHomeWidgetPreview";
-import { useHomeStore } from "@/stores/home";
 import {
   homeFocusIdle,
   homeFocusNext,
   homeFocusRemaining,
   homeFocusToggle,
   parseHomeFocusState,
-} from "@/utils/home-focus";
+} from "@/features/home/widgets/focus";
+import { useHomeStore } from "@/stores/home";
 
 export const useHomeFocusTimer = (widget: () => HomeWidget) => {
   if (useHomeWidgetPreview()) {

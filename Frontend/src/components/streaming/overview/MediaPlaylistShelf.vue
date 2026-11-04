@@ -6,9 +6,9 @@ import { RouterLink } from "vue-router";
 import type { PlaylistResponse } from "@/api/playlist";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeCollectionCover from "@/components/dashboard/home/widgets/HomeCollectionCover.vue";
+import HomeCollectionCover from "@/components/dashboard/home/widgets/collections/HomeCollectionCover.vue";
+import { autoGroupKindLabel } from "@/features/playlists/display";
 import { mediaOverviewPlaylists } from "@/queries/media-overview";
-import { autoGroupKindLabel } from "@/utils/playlist-display.utils";
 
 import MediaOverviewSection from "./MediaOverviewSection.vue";
 import MediaShelfScroller from "./MediaShelfScroller.vue";

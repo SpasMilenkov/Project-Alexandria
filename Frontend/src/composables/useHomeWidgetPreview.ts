@@ -4,7 +4,7 @@ import { type InjectionKey, computed, inject, provide, ref } from "vue";
 import type { HomeWidgetPreview } from "@/types/home-widget-preview";
 
 import { type FileThumbnailSource, useFileThumbnail } from "@/composables/useFileThumbnail";
-import { isThumbnailSupportedMimeType } from "@/utils/mimetype.utils";
+import { isThumbnailSupportedMimeType } from "@/utils/files/mimetype";
 
 const previewKey: InjectionKey<HomeWidgetPreview> = Symbol("home-widget-preview");
 

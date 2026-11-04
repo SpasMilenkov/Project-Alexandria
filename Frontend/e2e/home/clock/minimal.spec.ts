@@ -1,7 +1,7 @@
 import { type Locator, expect, test } from "@playwright/test";
 
-import { fixture, seed } from "./helpers/home-dashboard.js";
-import { resizeWidget } from "./helpers/home-grid-editor.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
+import { resizeWidget } from "@e2e/helpers/home-grid-editor.js";
 
 test.use({ timezoneId: "UTC" });
 

@@ -1,8 +1,8 @@
 import type { HomeLayout, HomeWidget } from "@/types/home";
 
 import { HomeWidgetSize } from "@/enums/home-widget";
-import { cloneHomeWidgetOptions } from "@/utils/home-widget-options";
-import { homeWidgetMinimum } from "@/utils/home-widget-sizing";
+import { homeWidgetMinimum } from "@/features/home/grid/sizing";
+import { cloneHomeWidgetOptions } from "@/features/home/widget-options";
 
 export const HOME_GRID_MAX_ROWS = 256;
 export const HOME_GRID_MAX_HEIGHT = 12;

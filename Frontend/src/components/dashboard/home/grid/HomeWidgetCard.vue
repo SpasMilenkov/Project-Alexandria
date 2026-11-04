@@ -3,12 +3,12 @@ import { computed } from "vue";
 
 import type { HomeWidget } from "@/types/home";
 
-import HomeWidgetContent from "@/components/dashboard/home/HomeWidgetContent.vue";
+import HomeWidgetContent from "@/components/dashboard/home/grid/HomeWidgetContent.vue";
 import { HOME_WIDGET_REGISTRY } from "@/components/dashboard/home/registry";
 import { HomeWidgetType } from "@/enums/home-widget";
+import { homeDragFromControl } from "@/features/home/grid/input";
+import { isHomeClockFaceOnly } from "@/features/home/widget-options";
 import { useHomeStore } from "@/stores/home";
-import { homeDragFromControl } from "@/utils/home-grid-input";
-import { isHomeClockFaceOnly } from "@/utils/home-widget-options";
 
 const { widget, editing, disabled, selected } = defineProps<{
   widget: HomeWidget;

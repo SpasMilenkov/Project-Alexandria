@@ -53,11 +53,11 @@ import { computed } from "vue";
 
 import type { WrappedCardResponse } from "@/api/stats";
 
-import WrappedSkyArt from "@/components/streaming/wrapped/WrappedSkyArt.vue";
-import WrappedStoryNotes from "@/components/streaming/wrapped/WrappedStoryNotes.vue";
+import WrappedSkyArt from "@/components/streaming/wrapped/art/WrappedSkyArt.vue";
+import WrappedStoryNotes from "@/components/streaming/wrapped/story/WrappedStoryNotes.vue";
 import { WrappedRhythmEvidence, WrappedTimeScene } from "@/enums/wrapped-story";
-import { wrappedCardSubline } from "@/utils/wrapped-copy.utils";
-import { skyPresets } from "@/utils/wrapped-sky.utils";
+import { wrappedCardSubline } from "@/features/wrapped/copy";
+import { skyPresets } from "@/features/wrapped/sky";
 
 const props = defineProps<{ card: WrappedCardResponse }>();
 

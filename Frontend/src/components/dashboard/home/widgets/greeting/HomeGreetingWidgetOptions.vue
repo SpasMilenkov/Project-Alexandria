@@ -1,18 +1,18 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeGreetingOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
+import { HOME_TEXT_ALIGNMENTS } from "@/features/home/widget-options";
 import {
   HOME_GREETING_COLOR_MODES,
   HOME_GREETING_DECORATIONS,
   HOME_GREETING_STYLES,
   isHomeGreetingPixelArt,
-} from "@/utils/home-greeting";
-import { HOME_TEXT_ALIGNMENTS } from "@/utils/home-widget-options";
+} from "@/features/home/widgets/greeting";
 
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
+import HomeGreetingStylePreview from "@/components/dashboard/home/options/style-previews/HomeGreetingStylePreview.vue";
 import HomeGreetingDecoration from "./HomeGreetingDecoration.vue";
-import HomeGreetingStylePreview from "./HomeGreetingStylePreview.vue";
-import HomeStylePicker from "./HomeStylePicker.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeGreetingOptions;

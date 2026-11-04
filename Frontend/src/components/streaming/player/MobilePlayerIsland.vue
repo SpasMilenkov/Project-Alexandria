@@ -244,10 +244,10 @@ import { storeToRefs } from "pinia";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import "@/assets/player-range.css";
-import LyricsContent from "@/components/streaming/LyricsContent.vue";
-import PlayerArtwork from "@/components/streaming/PlayerArtwork.vue";
-import QueueContent from "@/components/streaming/QueueContent.vue";
-import SettingsContent from "@/components/streaming/SettingsContent.vue";
+import LyricsContent from "@/components/streaming/player/lyrics/LyricsContent.vue";
+import PlayerArtwork from "@/components/streaming/player/PlayerArtwork.vue";
+import QueueContent from "@/components/streaming/player/QueueContent.vue";
+import SettingsContent from "@/components/streaming/player/SettingsContent.vue";
 import { usePlayerStore } from "@/stores/stream-player";
 import { logger } from "@/utils/logger";
 

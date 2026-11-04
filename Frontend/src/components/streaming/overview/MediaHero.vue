@@ -10,11 +10,11 @@ import { type MediaFileDto, type StreamHistoryResponse, streamingApi } from "@/a
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useTheme } from "@/composables/useTheme";
+import { heroTint } from "@/features/media/cover-color";
+import { coverSeed } from "@/features/media/generated-cover";
 import { mediaOverviewHistory, mediaOverviewLibrary } from "@/queries/media-overview";
 import { usePlayerStore } from "@/stores/stream-player";
-import { heroTint } from "@/utils/cover-color";
 import { formatDuration } from "@/utils/date-formatters";
-import { coverSeed } from "@/utils/generated-cover";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaEqualizer from "./MediaEqualizer.vue";

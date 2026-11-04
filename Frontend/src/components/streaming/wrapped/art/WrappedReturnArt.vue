@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import { dateLabel, returnGeometry } from "@/utils/wrapped-story.utils";
+import { dateLabel, returnGeometry } from "@/features/wrapped/story";
 
 const props = defineProps<{ from?: string | null; to?: string | null; count: number }>();
 

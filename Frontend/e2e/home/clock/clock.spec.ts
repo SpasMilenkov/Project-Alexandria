@@ -1,6 +1,6 @@
 import { type Locator, type Page, expect, test } from "@playwright/test";
 
-import { fixture, seed } from "./helpers/home-dashboard.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import {
   closeControls,
   closeWidgetSettings,
@@ -8,7 +8,7 @@ import {
   openControls,
   openWidgetTab,
   resizeWidget,
-} from "./helpers/home-grid-editor.js";
+} from "@e2e/helpers/home-grid-editor.js";
 
 const fitsCard = async (clock: Locator) => {
   const fits = await clock.evaluate((element) => ({

@@ -7,8 +7,8 @@ import type {
 } from "@/types/home";
 
 import { HomeWidgetSize, HomeWidgetType } from "@/enums/home-widget";
-import { homeWidgetFootprint, projectHomeLayout } from "@/utils/home-grid";
-import { cloneHomeWidgetOptions, defaultHomeWidgetOptions } from "@/utils/home-widget-options";
+import { homeWidgetFootprint, projectHomeLayout } from "@/features/home/grid/placement";
+import { cloneHomeWidgetOptions, defaultHomeWidgetOptions } from "@/features/home/widget-options";
 
 export const MAX_HOME_WIDGETS = 32;
 

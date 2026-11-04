@@ -1,13 +1,13 @@
 import { type Locator, type Page, expect, test } from "@playwright/test";
 
-import { fixture, seed } from "./helpers/home-dashboard.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import {
   closeWidgetSettings,
   dashboardSettings,
   dragWidget,
   openWidgetTab,
   selectWidget,
-} from "./helpers/home-grid-editor.js";
+} from "@e2e/helpers/home-grid-editor.js";
 
 const document = (width = 6, height = 4) => {
   const value = seed();

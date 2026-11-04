@@ -5,14 +5,14 @@ import { createApp, defineComponent } from "vue";
 
 import { directoryApi } from "@/api/directory";
 import { HomeQuickAccessStyle, HomeQuickUploadStyle, HomeWidgetType } from "@/enums/home-widget";
-import { DIRECTORY_QUERY_KEYS } from "@/queries/directories";
-import { homeFavoriteFolders } from "@/queries/home-widgets";
 import {
   cloneHomeSettings,
   createHomeWidget,
   defaultHomeLayout,
   setSeparateMobileLayout,
-} from "@/utils/home-layout";
+} from "@/features/home/layout";
+import { DIRECTORY_QUERY_KEYS } from "@/queries/directories";
+import { homeFavoriteFolders } from "@/queries/home-widgets";
 
 afterEach(() => vi.restoreAllMocks());
 

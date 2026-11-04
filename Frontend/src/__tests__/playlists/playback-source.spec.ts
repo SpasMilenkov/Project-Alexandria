@@ -10,7 +10,7 @@ import {
   loadPlaylistFirstPage,
   playlistPageFetcher,
   sameSource,
-} from "@/utils/player-source";
+} from "@/features/player/source";
 
 vi.mock("@/api/shuffle", () => ({
   SHUFFLE_BATCH_LIMIT: 50,

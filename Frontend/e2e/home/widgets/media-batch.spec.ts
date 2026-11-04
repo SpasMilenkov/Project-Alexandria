@@ -1,8 +1,8 @@
 import { type Page, type Route, expect, test } from "@playwright/test";
 
-import { fixture, seed } from "./helpers/home-dashboard.js";
-import { openWidgetTab, selectWidget } from "./helpers/home-grid-editor.js";
-import { expectRecapContentFits } from "./helpers/home-recap.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
+import { openWidgetTab, selectWidget } from "@e2e/helpers/home-grid-editor.js";
+import { expectRecapContentFits } from "@e2e/helpers/home-recap.js";
 
 const variants = [
   { id: "jobs", type: 10, recapStyle: 0 },

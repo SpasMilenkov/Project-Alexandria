@@ -6,7 +6,7 @@ import { reactive } from "vue";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { createDirectory } from "@/mutations/directories";
 import { type CreateDirectorySchema, createDirectorySchema } from "@/schemas/directory";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const props = defineProps<{
   parentId: string | null;

@@ -83,9 +83,9 @@ import type { TagDto } from "@/api/tag";
 
 import { getTagsForFile } from "@/queries/tags";
 import { formatDate } from "@/utils/date-formatters";
-import { getFileIcon, getIconByValue } from "@/utils/icon.utils";
-import { getFileTypeReadable } from "@/utils/mimetype.utils";
-import { formatBytes } from "@/utils/size.utils";
+import { getFileIcon, getIconByValue } from "@/utils/files/icons";
+import { getFileTypeReadable } from "@/utils/files/mimetype";
+import { formatBytes } from "@/utils/size";
 
 const props = defineProps<{
   data: FileResult;

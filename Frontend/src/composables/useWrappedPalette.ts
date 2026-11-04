@@ -6,7 +6,7 @@ import {
   type WrappedPalette,
   parseWrappedPalette,
   wrappedCssColors,
-} from "@/utils/wrapped-palette.utils";
+} from "@/features/wrapped/palette";
 
 export const wrappedPaletteKey: InjectionKey<Readonly<Ref<WrappedPalette | null>>> =
   Symbol("wrapped-palette");

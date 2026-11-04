@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import { replayMarks } from "@/utils/wrapped-story.utils";
+import { replayMarks } from "@/features/wrapped/story";
 
 const props = defineProps<{ count: number }>();
 

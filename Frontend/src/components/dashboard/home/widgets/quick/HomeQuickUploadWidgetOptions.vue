@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeQuickUploadOptions } from "@/types/home";
-import type { HomeOptionsSection } from "@/utils/home-widget-editor";
 
-import { HOME_QUICK_UPLOAD_STYLES } from "@/utils/home-quick-widgets";
+import { HOME_QUICK_UPLOAD_STYLES } from "@/features/home/widgets/quick";
 
-import HomeQuickStylePreview from "./HomeQuickStylePreview.vue";
-import HomeStylePicker from "./HomeStylePicker.vue";
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
+import HomeQuickStylePreview from "@/components/dashboard/home/options/style-previews/HomeQuickStylePreview.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeQuickUploadOptions;

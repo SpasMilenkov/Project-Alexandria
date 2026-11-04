@@ -2,7 +2,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiClient, attemptRefresh, resetRefreshState } from "@/api/client";
-import { stopSessionBoundaryWatcher } from "@/utils/sessionBoundary";
+import { stopSessionBoundaryWatcher } from "@/features/auth/session-boundary";
 
 const { mockClearSession, mockCurrentRoute, mockPush } = vi.hoisted(() => ({
   mockClearSession: vi.fn(),

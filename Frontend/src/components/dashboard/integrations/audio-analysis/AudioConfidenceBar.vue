@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 
-import { formatConfidence } from "@/utils/audio-taxonomy.utils";
+import { formatConfidence } from "@/features/audio-analysis/taxonomy";
 
 const {
   value,

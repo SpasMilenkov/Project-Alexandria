@@ -87,7 +87,7 @@ import type { UserDetailsDto } from "@/types/user";
 
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { type RestrictUserSchema, restrictUserSchema } from "@/schemas/user";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const props = defineProps<{
   open: boolean;

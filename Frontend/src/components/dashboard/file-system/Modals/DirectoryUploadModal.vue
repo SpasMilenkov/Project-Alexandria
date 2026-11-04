@@ -6,11 +6,11 @@ import { useAppToast } from "@/composables/useAppToast";
 import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 
-import UploadEmptyState from "./upload/UploadEmptyState.vue";
-import UploadFileTree from "./upload/UploadFileTree.vue";
-import UploadModalFooter from "./upload/UploadModalFooter.vue";
-import UploadModalShell from "./upload/UploadModalShell.vue";
-import UploadProgressSummary from "./upload/UploadProgressSummary.vue";
+import UploadEmptyState from "@/components/dashboard/file-system/Modals/upload/UploadEmptyState.vue";
+import UploadFileTree from "@/components/dashboard/file-system/Modals/upload/UploadFileTree.vue";
+import UploadModalFooter from "@/components/dashboard/file-system/Modals/upload/UploadModalFooter.vue";
+import UploadModalShell from "@/components/dashboard/file-system/Modals/upload/UploadModalShell.vue";
+import UploadProgressSummary from "@/components/dashboard/file-system/Modals/upload/UploadProgressSummary.vue";
 
 const appToast = useAppToast();
 

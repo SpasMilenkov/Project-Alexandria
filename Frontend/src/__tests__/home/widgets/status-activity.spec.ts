@@ -15,16 +15,14 @@ import {
   activityApi,
 } from "@/api/activity";
 import { publicStatusApi } from "@/api/publicStatus";
-import HomeRecentActivityWidgetOptions from "@/components/dashboard/home/HomeRecentActivityWidgetOptions.vue";
-import HomeSystemStatusWidgetOptions from "@/components/dashboard/home/HomeSystemStatusWidgetOptions.vue";
-import HomeRecentActivityWidget from "@/components/dashboard/home/widgets/HomeRecentActivityWidget.vue";
-import HomeSystemStatusWidget from "@/components/dashboard/home/widgets/HomeSystemStatusWidget.vue";
+import HomeRecentActivityWidget from "@/components/dashboard/home/widgets/status/HomeRecentActivityWidget.vue";
+import HomeRecentActivityWidgetOptions from "@/components/dashboard/home/widgets/status/HomeRecentActivityWidgetOptions.vue";
+import HomeSystemStatusWidget from "@/components/dashboard/home/widgets/status/HomeSystemStatusWidget.vue";
+import HomeSystemStatusWidgetOptions from "@/components/dashboard/home/widgets/status/HomeSystemStatusWidgetOptions.vue";
 import { ServiceType } from "@/enums";
 import { HomeActivityStyle, HomeStatusStyle, HomeWidgetType } from "@/enums/home-widget";
 import { SortDirection } from "@/enums/SortDirection";
-import { homeRecentActivity, homeSystemStatus } from "@/queries/home-status-activity";
-import { useHomeStore } from "@/stores/home";
-import { createHomeWidget, defaultHomeLayout } from "@/utils/home-layout";
+import { createHomeWidget, defaultHomeLayout } from "@/features/home/layout";
 import {
   homeActivityDescription,
   homeActivityDisplayRows,
@@ -33,7 +31,9 @@ import {
   homeCurrentStatusRows,
   homeHistoryRows,
   homeOverallStatus,
-} from "@/utils/home-status-activity";
+} from "@/features/home/widgets/status-activity";
+import { homeRecentActivity, homeSystemStatus } from "@/queries/home-status-activity";
+import { useHomeStore } from "@/stores/home";
 
 vi.mock("@/composables/useHomeWidgetRows", () => ({ useHomeWidgetRows: () => ref(100) }));
 

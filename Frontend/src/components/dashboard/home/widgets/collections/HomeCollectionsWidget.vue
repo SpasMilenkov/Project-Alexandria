@@ -5,7 +5,7 @@ import { RouterLink } from "vue-router";
 import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeWidgetDataState from "@/components/dashboard/home/HomeWidgetDataState.vue";
+import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
 import { useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { homeCollections } from "@/queries/home-media";
 import { useHomeStore } from "@/stores/home";

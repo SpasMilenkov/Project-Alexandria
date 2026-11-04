@@ -5,19 +5,19 @@ import { computed, ref } from "vue";
 import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeWidgetDataState from "@/components/dashboard/home/HomeWidgetDataState.vue";
+import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
 import { useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { useHomeWidgetRows } from "@/composables/useHomeWidgetRows";
 import { HomeActivityStyle } from "@/enums/home-widget";
-import { homeRecentActivity } from "@/queries/home-status-activity";
-import { useHomeStore } from "@/stores/home";
 import {
   homeActivityDescription,
   homeActivityDisplayRows,
   homeActivityGroups,
   homeActivityPresentation,
   homeActivityTime,
-} from "@/utils/home-status-activity";
+} from "@/features/home/widgets/status-activity";
+import { homeRecentActivity } from "@/queries/home-status-activity";
+import { useHomeStore } from "@/stores/home";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 

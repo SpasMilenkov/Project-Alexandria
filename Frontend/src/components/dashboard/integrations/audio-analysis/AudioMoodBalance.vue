@@ -2,8 +2,8 @@
 import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
-import { type MoodSide, buildMoodPairs } from "@/utils/audio-mood-pairs.utils";
-import { type MoodEntry, formatConfidence } from "@/utils/audio-taxonomy.utils";
+import { type MoodSide, buildMoodPairs } from "@/features/audio-analysis/mood-pairs";
+import { type MoodEntry, formatConfidence } from "@/features/audio-analysis/taxonomy";
 
 import AudioConfidenceBar from "./AudioConfidenceBar.vue";
 

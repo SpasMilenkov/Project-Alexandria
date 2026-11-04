@@ -63,8 +63,8 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedCardFacts } from "@/api/stats";
 
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { calendarMonths, dateLabel, type CalendarCell } from "@/utils/wrapped-story.utils";
+import { formatWrappedDuration } from "@/features/wrapped/art";
+import { calendarMonths, dateLabel, type CalendarCell } from "@/features/wrapped/story";
 
 const props = defineProps<{ facts: WrappedCardFacts; from: string; to: string }>();
 const root = ref<HTMLElement | null>(null);

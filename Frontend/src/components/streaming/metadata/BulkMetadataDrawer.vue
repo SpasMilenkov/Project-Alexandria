@@ -46,7 +46,7 @@ import type { MediaFileDto } from "@/api/streaming";
 import { useAppToast } from "@/composables/useAppToast";
 import { bulkUpdateFileMetadata } from "@/mutations/files";
 import { chunkArray } from "@/utils/chunk";
-import { glassDrawerContent } from "@/utils/modalUi";
+import { glassDrawerContent } from "@/utils/modal-ui";
 
 const BULK_CHUNK_SIZE = 100;
 

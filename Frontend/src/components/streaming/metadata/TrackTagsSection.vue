@@ -124,8 +124,8 @@ import { useAppToast } from "@/composables/useAppToast";
 import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import { getTagsForFile, searchTag } from "@/queries/tags";
-import { getIconByValue } from "@/utils/icon.utils";
-import { isAutoTagSupportedFileType } from "@/utils/mimetype.utils";
+import { getIconByValue } from "@/utils/files/icons";
+import { isAutoTagSupportedFileType } from "@/utils/files/mimetype";
 
 const { file } = defineProps<{ file: MediaFileDto }>();
 

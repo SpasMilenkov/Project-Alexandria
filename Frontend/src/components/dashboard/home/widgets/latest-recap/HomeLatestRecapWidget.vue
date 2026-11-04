@@ -6,21 +6,21 @@ import { RouterLink } from "vue-router";
 import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeWidgetDataState from "@/components/dashboard/home/HomeWidgetDataState.vue";
-import WrappedArt from "@/components/streaming/wrapped/WrappedArt.vue";
+import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
+import WrappedArt from "@/components/streaming/wrapped/art/WrappedArt.vue";
 import { useHomeWidgetPreview, useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { useWrappedPalette } from "@/composables/useWrappedPalette";
 import { HomeRecapStyle } from "@/enums/home-widget";
-import { homeMonthlyRecap } from "@/queries/home-media";
-import { useHomeStore } from "@/stores/home";
-import { homeRecapFacts } from "@/utils/home-media";
+import { homeRecapFacts } from "@/features/home/widgets/media";
 import {
   wrappedMonth,
   wrappedMonthLabel,
   wrappedMonthLocation,
   wrappedMonthRange,
-} from "@/utils/wrapped-month";
-import { type WrappedPalette, wrappedCssColors } from "@/utils/wrapped-palette.utils";
+} from "@/features/wrapped/month";
+import { type WrappedPalette, wrappedCssColors } from "@/features/wrapped/palette";
+import { homeMonthlyRecap } from "@/queries/home-media";
+import { useHomeStore } from "@/stores/home";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 
