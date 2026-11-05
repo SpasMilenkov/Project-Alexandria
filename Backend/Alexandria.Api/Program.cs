@@ -3,6 +3,7 @@ using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Api.Middlewares;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.HealthChecks;
+using Alexandria.Infrastructure.Messaging;
 using Serilog;
 
 var bld = WebApplication.CreateBuilder();

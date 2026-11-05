@@ -16,4 +16,7 @@ public partial class AutoTagSweepWorker
 
     [LoggerMessage(22603, LogLevel.Error, "Auto-tag sweep failed")]
     private static partial void LogSweepError(ILogger logger, Exception ex);
+
+    [LoggerMessage(22604, LogLevel.Debug, "Auto-tag retry skipped: {Reason}")]
+    private static partial void LogSweepRetrySkipped(ILogger logger, string reason);
 }

@@ -1,3 +1,4 @@
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using FastEndpoints;
@@ -33,7 +34,15 @@ sealed class RequeueFailedJobsEndpoint(IJobRequeueService requeueService)
 
     public override async Task HandleAsync(RequeueFailedJobsRequest req, CancellationToken ct)
     {
-        var requeued = await requeueService.RequeueFailedAsync(req.Type, req.Limit, ct);
-        await Send.OkAsync(new RequeueFailedJobsResponse(requeued), ct);
+        try
+        {
+            var requeued = await requeueService.RequeueFailedAsync(req.Type, req.Limit, ct);
+            await Send.OkAsync(new RequeueFailedJobsResponse(requeued), ct);
+        }
+        catch (MessageBrokerUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(503, ct);
+        }
     }
 }

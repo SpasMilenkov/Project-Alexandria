@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Common.Settings;
@@ -22,16 +23,19 @@ public class JobRequeueServiceTests
     private readonly IEssentiaBatchFileRepository _batchFiles = Substitute.For<IEssentiaBatchFileRepository>();
     private readonly IPreviewService _previews = Substitute.For<IPreviewService>();
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
 
     public JobRequeueServiceTests()
     {
         _unitOfWork.Jobs.Returns(_jobs);
         _unitOfWork.Lyrics.Returns(_lyrics);
         _unitOfWork.EssentiaBatchFiles.Returns(_batchFiles);
+        _broker.IsEnabled.Returns(true);
+        _broker.IsAvailable.Returns(true);
     }
 
     private JobRequeueService CreateSut() =>
-        new(_unitOfWork, _previews, _publisher, Options.Create(new JobRecoveryOptions()));
+        new(_unitOfWork, _previews, _publisher, _broker, Options.Create(new JobRecoveryOptions()));
 
     private Job GivenJob(JobType type, JobStatus status = JobStatus.Failed)
     {
@@ -46,6 +50,31 @@ public class JobRequeueServiceTests
         var outcome = await CreateSut().RequeueAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         outcome.Should().Be(JobRequeueOutcome.NotFound);
+    }
+
+    [Fact]
+    public async Task requeue_broker_unavailable_throws_before_reset()
+    {
+        var job = GivenJob(JobType.Transpilation);
+        _broker.IsAvailable.Returns(false);
+
+        var act = () => CreateSut().RequeueAsync(job.Id, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<MessageBrokerUnavailableException>();
+        await _jobs.DidNotReceive().TryResetForManualRequeueAsync(
+            Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task requeue_failed_broker_unavailable_throws_before_listing()
+    {
+        _broker.IsAvailable.Returns(false);
+
+        var act = () => CreateSut().RequeueFailedAsync(JobType.MediaPreview, 10, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<MessageBrokerUnavailableException>();
+        await _jobs.DidNotReceive().FindJobsAsync(Arg.Any<JobQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

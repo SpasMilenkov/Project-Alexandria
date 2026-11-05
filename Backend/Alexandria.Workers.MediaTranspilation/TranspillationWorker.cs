@@ -1,4 +1,5 @@
 using System.Text;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.MediaTranspilation.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -7,7 +8,7 @@ namespace Alexandria.Workers.MediaTranspilation;
 
 public partial class TranspilationWorker(
     ILogger<TranspilationWorker> logger,
-    IConnection connection,
+    MessageBrokerConnection broker,
     IConfiguration configuration,
     IServiceProvider serviceProvider) : BackgroundService
 {
@@ -15,6 +16,12 @@ public partial class TranspilationWorker(
     private readonly SemaphoreSlim _concurrencyGate = new(2, 2);
 
     protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await ConsumerStartup.RunAsync(broker, StartConsumingAsync, logger, ct: ct);
+        await Task.Delay(Timeout.Infinite, ct);
+    }
+
+    private async Task StartConsumingAsync(IConnection connection, CancellationToken ct)
     {
         _channel = await connection.CreateChannelAsync(cancellationToken: ct);
 
@@ -84,8 +91,6 @@ public partial class TranspilationWorker(
             autoAck: false,
             consumer: consumer,
             cancellationToken: ct);
-
-        await Task.Delay(Timeout.Infinite, ct);
     }
 
     public override async Task StopAsync(CancellationToken ct)

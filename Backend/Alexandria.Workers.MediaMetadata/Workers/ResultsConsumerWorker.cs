@@ -4,6 +4,7 @@ using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Messages;
 using Alexandria.Workers.MediaMetadata.Queueing;
@@ -25,7 +26,7 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 /// </summary>
 public partial class ResultsConsumerWorker(
     ILogger<ResultsConsumerWorker> logger,
-    IConnection connection,
+    MessageBrokerConnection broker,
     IServiceProvider serviceProvider,
     IOptions<RabbitMqConsumerConfig> rabbitOptions,
     IOptions<EssentiaConfig> essentiaOptions,
@@ -38,6 +39,12 @@ public partial class ResultsConsumerWorker(
     private bool _autoTagEnabled;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await ConsumerStartup.RunAsync(broker, StartConsumingAsync, logger, ct: stoppingToken);
+        await Task.Delay(Timeout.Infinite, stoppingToken);
+    }
+
+    private async Task StartConsumingAsync(IConnection connection, CancellationToken stoppingToken)
     {
         var config = rabbitOptions.Value;
         var exchangeName = config.ExchangeName;
@@ -105,8 +112,6 @@ public partial class ResultsConsumerWorker(
             cancellationToken: stoppingToken);
 
         LogConsumerStarted(logger, queueName, exchangeName);
-
-        await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
     internal async Task HandleCompletionAsync(CompletionMessage completion, CancellationToken ct)

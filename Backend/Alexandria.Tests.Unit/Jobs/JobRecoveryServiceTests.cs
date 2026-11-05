@@ -20,6 +20,7 @@ public class JobRecoveryServiceTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IJobRepository _jobs = Substitute.For<IJobRepository>();
     private readonly IPreviewService _previews = Substitute.For<IPreviewService>();
+    private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
 
     private readonly JobRecoveryOptions _options = new()
     {
@@ -34,6 +35,8 @@ public class JobRecoveryServiceTests
     public JobRecoveryServiceTests()
     {
         _unitOfWork.Jobs.Returns(_jobs);
+        _broker.IsEnabled.Returns(true);
+        _broker.IsAvailable.Returns(true);
         _jobs.GetRetryCandidatesAsync(Arg.Any<IReadOnlyCollection<JobType>>(), Arg.Any<DateTime>(), Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
             .Returns([]);
@@ -43,7 +46,7 @@ public class JobRecoveryServiceTests
     }
 
     private JobRecoveryService CreateSut() =>
-        new(_unitOfWork, _previews, Options.Create(_options), NullLogger<JobRecoveryService>.Instance);
+        new(_unitOfWork, _previews, _broker, Options.Create(_options), NullLogger<JobRecoveryService>.Instance);
 
     private static Job FailedJob(int retryCount, DateTime completedAt) => new()
     {
@@ -53,6 +56,21 @@ public class JobRecoveryServiceTests
         RetryCount = retryCount,
         CompletedAt = completedAt
     };
+
+    [Fact]
+    public async Task sweep_broker_unavailable_fails_stalled_but_skips_republishing()
+    {
+        _broker.IsAvailable.Returns(false);
+
+        await CreateSut().SweepAsync(Now, TestContext.Current.CancellationToken);
+
+        await _jobs.Received().FailStalledJobsAsync(
+            Arg.Any<JobType>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _jobs.DidNotReceive().GetRetryCandidatesAsync(Arg.Any<IReadOnlyCollection<JobType>>(),
+            Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _jobs.DidNotReceive().GetOrphanedQueuedJobsAsync(Arg.Any<IReadOnlyCollection<JobType>>(),
+            Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
 
     [Fact]
     public async Task sweep_fails_stalled_jobs_with_per_type_thresholds()

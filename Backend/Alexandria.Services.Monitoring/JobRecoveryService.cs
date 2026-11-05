@@ -15,6 +15,7 @@ namespace Alexandria.Services.Monitoring;
 public class JobRecoveryService(
     IUnitOfWork unitOfWork,
     IPreviewService previewService,
+    IMessageBrokerStatus brokerStatus,
     IOptions<JobRecoveryOptions> options,
     ILogger<JobRecoveryService> logger)
 {
@@ -27,6 +28,11 @@ public class JobRecoveryService(
     public async Task SweepAsync(DateTime now, CancellationToken ct)
     {
         await FailStalledJobsAsync(now, ct);
+
+        // Republishing during an outage would only fail again and burn the retry budget.
+        if (!brokerStatus.IsAvailable)
+            return;
+
         await RetryFailedPreviewsAsync(now, ct);
         await RepublishOrphanedPreviewsAsync(now, ct);
     }

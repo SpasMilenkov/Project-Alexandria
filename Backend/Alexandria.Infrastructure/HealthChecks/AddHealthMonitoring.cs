@@ -1,4 +1,5 @@
 using Alexandria.Common.Config;
+using Alexandria.Infrastructure.Messaging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -19,7 +20,8 @@ public static class HealthMonitoringExtension
         if (hcConfig.GetValue<bool>("Storage:Enabled"))
             builder.AddCheck<S3HealthCheck>("storage", tags: ["infrastructure"]);
 
-        if (hcConfig.GetValue<bool>("MessageBroker:Enabled"))
+        // A deployment without a broker must not raise a permanent rabbitmq incident.
+        if (hcConfig.GetValue<bool>("MessageBroker:Enabled") && RabbitMqExtensions.IsBrokerEnabled(config))
             builder.AddCheck<RabbitMqHealthCheck>("rabbitmq", tags: ["infrastructure"]);
 
         // Workers: dynamic, config-driven, no hardcoding

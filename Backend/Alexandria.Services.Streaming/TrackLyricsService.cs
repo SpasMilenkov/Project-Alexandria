@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -11,7 +12,8 @@ namespace Alexandria.Services.Streaming;
 
 public class TrackLyricsService(
     IUnitOfWork unitOfWork,
-    IPublisherService publisher) : ITrackLyricsService
+    IPublisherService publisher,
+    IMessageBrokerStatus brokerStatus) : ITrackLyricsService
 {
     /// <inheritdoc/>
     public async Task<LyricsDto> GetLyricsForMediaAsync(Guid jobId, Guid userId, CancellationToken ct = default)
@@ -21,7 +23,11 @@ public class TrackLyricsService(
 
         if (lyrics is not null) return lyrics.ToDto();
 
-        await QueueLyricsRefetchAsync(jobId, userId, ct);
+        // A read must not fail or leave a pending row behind while the broker is down; the
+        // first read after recovery queues the fetch.
+        if (brokerStatus.IsAvailable)
+            await QueueLyricsRefetchAsync(jobId, userId, ct);
+
         return new LyricsDto
         {
             Status = LyricsStatus.PendingFetch,
@@ -32,6 +38,8 @@ public class TrackLyricsService(
     /// <inheritdoc/>
     public async Task QueueLyricsRefetchAsync(Guid jobId, Guid userId, CancellationToken ct = default)
     {
+        MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
+
         var existing = await unitOfWork.Lyrics.FirstOrDefaultAsync(
             l => l.TranspilationJobId == jobId && l.TranspilationJob!.UserId == userId && l.DeletedAt == null, ct);
 
@@ -183,6 +191,8 @@ public class TrackLyricsService(
     {
         if (provider == LyricsProvider.Manual)
             throw new ArgumentException("Use UploadLyricsAsync to submit user lyrics.");
+
+        MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
 
         var lyrics = await unitOfWork.Lyrics.FirstOrDefaultAsync(
                          l => l.Id == lyricsId && l.TranspilationJob!.UserId == userId, ct)

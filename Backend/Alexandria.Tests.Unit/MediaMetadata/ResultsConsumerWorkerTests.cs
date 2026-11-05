@@ -2,6 +2,7 @@ using Alexandria.Common;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Tests.Common.Builders;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Messages;
@@ -13,7 +14,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using RabbitMQ.Client;
 using IoDirectory = System.IO.Directory;
 using IoFile = System.IO.File;
 
@@ -53,7 +53,7 @@ public class ResultsConsumerWorkerTests : IDisposable
 
         _sut = new ResultsConsumerWorker(
             Substitute.For<ILogger<ResultsConsumerWorker>>(),
-            Substitute.For<IConnection>(),
+            new MessageBrokerConnection(isEnabled: true),
             provider,
             Options.Create(new RabbitMqConsumerConfig()),
             essentiaOptions,

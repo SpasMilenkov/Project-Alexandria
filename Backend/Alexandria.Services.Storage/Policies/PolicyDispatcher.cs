@@ -1,4 +1,5 @@
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Policies;
@@ -50,6 +51,10 @@ public sealed partial class PolicyDispatcher(
                 });
 
                 LogJobQueued(logger, rule.ActionType.ToString(), ev.FileId, rule.Id);
+            }
+            catch (MessageBrokerUnavailableException ex)
+            {
+                LogRuleDispatchSkipped(logger, rule.Id, ev.FileId, ex.Message);
             }
             catch (Exception ex)
             {

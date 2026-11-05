@@ -1,5 +1,6 @@
 using Alexandria.Common.Playlists;
 using Alexandria.Common.Services;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.Playlist.Config;
 using Alexandria.Workers.Playlist.Queueing;
 using Microsoft.Extensions.Options;
@@ -15,7 +16,7 @@ namespace Alexandria.Workers.Playlist.Workers;
 /// </summary>
 public partial class PlaylistSyncWorker(
     ILogger<PlaylistSyncWorker> logger,
-    IConnection connection,
+    MessageBrokerConnection broker,
     IServiceProvider serviceProvider,
     IOptions<PlaylistConsumerConfig> consumerOptions,
     PlaylistSyncBuffer buffer) : BackgroundService
@@ -24,6 +25,12 @@ public partial class PlaylistSyncWorker(
     private IChannel? _channel;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await ConsumerStartup.RunAsync(broker, StartConsumingAsync, logger, ct: stoppingToken);
+        await DrainAsync(consumerOptions.Value, stoppingToken);
+    }
+
+    private async Task StartConsumingAsync(IConnection connection, CancellationToken stoppingToken)
     {
         var config = consumerOptions.Value;
 
@@ -90,8 +97,6 @@ public partial class PlaylistSyncWorker(
             cancellationToken: stoppingToken);
 
         LogConsumerStarted(logger, config.SyncQueueName, config.ExchangeName);
-
-        await DrainAsync(config, stoppingToken);
     }
 
     private async Task DrainAsync(PlaylistConsumerConfig config, CancellationToken stoppingToken)

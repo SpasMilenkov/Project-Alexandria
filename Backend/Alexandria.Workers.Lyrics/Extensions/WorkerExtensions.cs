@@ -2,6 +2,7 @@ using System.Threading.RateLimiting;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Monitoring;
 using Alexandria.Services.Streaming.Lyrics;

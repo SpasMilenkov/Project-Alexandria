@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Policies;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
@@ -192,6 +193,10 @@ public sealed partial class DirectoryPolicyService(
             await publisher.PublishAsync(
                 JsonSerializer.SerializeToUtf8Bytes(request, BackfillJsonOptions),
                 EnrichmentBackfill.BackfillRoutingKey);
+        }
+        catch (MessageBrokerUnavailableException ex)
+        {
+            LogBackfillSkippedBrokerUnavailable(logger, request.PolicyId, ex.Message);
         }
         catch (Exception ex)
         {

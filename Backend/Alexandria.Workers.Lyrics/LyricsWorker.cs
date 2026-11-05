@@ -2,6 +2,7 @@ using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators.Monitoring;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.Lyrics.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -13,18 +14,18 @@ public partial class LyricsWorker : BackgroundService
     private IChannel? _channel;
     private readonly SemaphoreSlim _concurrencyGate;
     private readonly ILogger<LyricsWorker> _logger;
-    private readonly IConnection _connection;
+    private readonly MessageBrokerConnection _broker;
     private readonly IConfiguration _configuration;
     private readonly IServiceProvider _serviceProvider;
 
     public LyricsWorker(
         ILogger<LyricsWorker> logger,
-        IConnection connection,
+        MessageBrokerConnection broker,
         IConfiguration configuration,
         IServiceProvider serviceProvider)
     {
         _logger = logger;
-        _connection = connection;
+        _broker = broker;
         _configuration = configuration;
         _serviceProvider = serviceProvider;
 
@@ -34,7 +35,13 @@ public partial class LyricsWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
+        await ConsumerStartup.RunAsync(_broker, StartConsumingAsync, _logger, ct: ct);
+        await Task.Delay(Timeout.Infinite, ct);
+    }
+
+    private async Task StartConsumingAsync(IConnection connection, CancellationToken ct)
+    {
+        _channel = await connection.CreateChannelAsync(cancellationToken: ct);
 
         var exchangeName = "content-exchange";
         var routingKey = "lyrics.#";
@@ -139,8 +146,6 @@ public partial class LyricsWorker : BackgroundService
             autoAck: false,
             consumer: consumer,
             cancellationToken: ct);
-
-        await Task.Delay(Timeout.Infinite, ct);
     }
 
     private async Task HandleDeliveryFailureAsync(
