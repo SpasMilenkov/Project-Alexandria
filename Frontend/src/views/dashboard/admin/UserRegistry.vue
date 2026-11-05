@@ -1,552 +1,286 @@
 <template>
-  <div class="flex flex-col h-full min-h-0 gap-4 p-4 sm:p-6">
-    <!-- PAGE HEADER  -->
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-xl font-semibold text-default">User Registry</h1>
-        <p class="text-sm text-muted mt-0.5">Manage accounts, roles, and access restrictions.</p>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <UButton
-          v-if="selectedUserIds.length > 0"
-          color="error"
-          variant="outline"
-          icon="i-lucide-trash-2"
-          :label="`Delete ${selectedUserIds.length} selected`"
-          size="sm"
-          @click="openDelete(selectedUserIds)"
-        />
-        <UButton
-          color="primary"
-          variant="solid"
-          icon="i-lucide-user-plus"
-          label="New user"
-          size="sm"
-          @click="openCreate()"
-        />
-      </div>
-    </div>
-
-    <!--  TOOLBAR  -->
-    <div
-      class="flex flex-wrap items-center gap-2 rounded-lg border border-default px-3 py-2 frosted-glass glass-surface"
+  <div class="flex h-full min-h-0 flex-col gap-3 p-3">
+    <header
+      aria-labelledby="user-registry-heading"
+      class="shrink-0 rounded-xl border border-gray-200/70 px-4 py-4 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
     >
-      <UInput
-        v-model="uiState.userName"
-        placeholder="Search by username…"
-        icon="i-lucide-search"
-        size="sm"
-        class="w-52"
-        @update:model-value="debouncedCommit"
-      />
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-2.5">
+          <UIcon name="i-lucide-users" class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400" />
 
-      <USeparator orientation="vertical" class="h-5 hidden sm:block" />
+          <div class="min-w-0">
+            <h1
+              id="user-registry-heading"
+              class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100"
+            >
+              User Registry
+            </h1>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Manage accounts, roles, and access restrictions.
+            </p>
+          </div>
+        </div>
 
-      <UTooltip text="Show only locked-out accounts" :delay-duration="300">
-        <UButton
-          size="xs"
-          :color="uiState.isLockedOut === true ? 'warning' : 'neutral'"
-          :variant="uiState.isLockedOut === true ? 'soft' : 'outline'"
-          icon="i-lucide-lock"
-          label="Locked"
-          @click="toggleQuick('locked')"
-        />
-      </UTooltip>
-
-      <UTooltip text="Include soft-deleted accounts in results" :delay-duration="300">
-        <UButton
-          size="xs"
-          :color="uiState.showDeleted ? 'error' : 'neutral'"
-          :variant="uiState.showDeleted ? 'soft' : 'outline'"
-          icon="i-lucide-trash"
-          label="Show deleted"
-          @click="toggleQuick('deleted')"
-        />
-      </UTooltip>
-
-      <UTooltip text="Show only deleted accounts" :delay-duration="300">
-        <UButton
-          size="xs"
-          :color="uiState.showDeletedOnly ? 'error' : 'neutral'"
-          :variant="uiState.showDeletedOnly ? 'solid' : 'outline'"
-          icon="i-lucide-archive"
-          label="Deleted only"
-          @click="toggleQuick('deletedOnly')"
-        />
-      </UTooltip>
-
-      <div class="ml-auto flex items-center gap-2">
-        <span v-if="!isLoading && userData" class="text-xs text-muted">
-          {{ userData.totalCount.toLocaleString() }} user{{ userData.totalCount !== 1 ? "s" : "" }}
-        </span>
-        <USeparator orientation="vertical" class="h-5" />
-        <UTooltip text="Toggle advanced filters" :delay-duration="300">
+        <div class="flex items-center gap-2">
           <UButton
+            v-if="selectedUserIds.length > 0"
+            color="error"
+            variant="outline"
+            icon="i-lucide-trash-2"
+            :label="`Delete ${selectedUserIds.length} selected`"
             size="sm"
-            :color="isFilterPanelOpen ? 'primary' : 'neutral'"
-            :variant="isFilterPanelOpen ? 'soft' : 'outline'"
-            icon="i-lucide-sliders-horizontal"
-            label="Filters"
-            @click="isFilterPanelOpen = !isFilterPanelOpen"
+            @click="openDelete(selectedUserIds)"
           />
-        </UTooltip>
+          <UButton
+            color="primary"
+            variant="solid"
+            icon="i-lucide-user-plus"
+            label="New user"
+            size="sm"
+            @click="openCreate()"
+          />
+        </div>
       </div>
-    </div>
 
-    <!-- FILTER PANE -->
-    <Transition
-      enter-active-class="transition-all duration-200 ease-out"
-      enter-from-class="opacity-0 -translate-y-2"
-      enter-to-class="opacity-100 translate-y-0"
-      leave-active-class="transition-all duration-150 ease-in"
-      leave-from-class="opacity-100 translate-y-0"
-      leave-to-class="opacity-0 -translate-y-2"
+      <div
+        class="mt-4 flex flex-col gap-4 max-md:rounded-xl max-md:border max-md:border-gray-200/70 max-md:bg-black/5 max-md:p-4 max-md:dark:border-gray-700/70 max-md:dark:bg-white/5"
+      >
+        <div class="flex flex-col gap-4 md:flex-row md:items-center">
+          <UInput
+            v-model="uiState.userName"
+            icon="i-lucide-search"
+            placeholder="Search by username"
+            aria-label="Search by username"
+            :maxlength="50"
+            :ui="fieldUi"
+            class="w-full md:max-w-xl md:flex-1"
+            @update:model-value="debouncedCommit"
+          />
+
+          <div class="flex w-full items-center gap-2 md:ml-auto md:w-auto">
+            <USelect
+              v-model="sortBy"
+              :items="sortByOptions"
+              aria-label="Sort users"
+              :ui="fieldUi"
+              class="w-full md:w-44"
+            />
+            <UButton
+              variant="outline"
+              color="neutral"
+              :title="sortDirectionTitle"
+              :aria-label="sortDirectionLabel"
+              :icon="sortDirectionIcon"
+              class="h-10 w-10 shrink-0 justify-center rounded-xl"
+              @click="toggleSortDirection"
+            />
+            <UButton
+              icon="i-lucide-sliders-horizontal"
+              label="Filters"
+              :color="filterButtonColor"
+              :variant="filterButtonVariant"
+              :aria-expanded="isFilterPanelOpen"
+              aria-controls="user-filter-panel"
+              class="h-10 shrink-0 rounded-xl px-3"
+              @click="isFilterPanelOpen = !isFilterPanelOpen"
+            >
+              <template v-if="advancedFilterCount > 0" #trailing>
+                <span
+                  class="flex size-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-inverted tabular-nums"
+                >
+                  {{ advancedFilterCount }}
+                </span>
+              </template>
+            </UButton>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center">
+          <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <span class="text-sm font-semibold text-gray-600 dark:text-gray-400 md:pr-1">
+              Accounts
+            </span>
+            <div
+              role="group"
+              aria-label="Accounts"
+              class="flex gap-1 rounded-xl bg-black/5 p-1 dark:bg-white/5 md:inline-flex"
+            >
+              <UButton
+                v-for="option in accountOptions"
+                :key="option.value"
+                :label="option.label"
+                :aria-pressed="accountsMode === option.value"
+                :color="segmentColor(accountsMode === option.value)"
+                :variant="segmentVariant(accountsMode === option.value)"
+                class="h-8 flex-1 justify-center rounded-lg px-4 md:flex-none"
+                @click="accountsMode = option.value"
+              />
+            </div>
+          </div>
+
+          <span
+            aria-hidden="true"
+            class="hidden h-8 w-px bg-gray-200/70 dark:bg-gray-700/70 md:block"
+          />
+
+          <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <span class="text-sm font-semibold text-gray-600 dark:text-gray-400 md:pr-1">
+              Lock
+            </span>
+            <div
+              role="group"
+              aria-label="Lock status"
+              class="flex gap-1 rounded-xl bg-black/5 p-1 dark:bg-white/5 md:inline-flex"
+            >
+              <UButton
+                v-for="option in lockOptions"
+                :key="option.value"
+                :label="option.label"
+                :aria-pressed="lockMode === option.value"
+                :color="segmentColor(lockMode === option.value)"
+                :variant="segmentVariant(lockMode === option.value)"
+                class="h-8 flex-1 justify-center rounded-lg px-4 md:flex-none"
+                @click="lockMode = option.value"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Animating the row track instead of toggling the node keeps the table
+           below moving in step with the panel rather than snapping. -->
+      <div
+        id="user-filter-panel"
+        class="grid transition-[grid-template-rows,opacity]"
+        :class="filterPanelClass"
+        :inert="!isFilterPanelOpen"
+      >
+        <div class="min-h-0 overflow-hidden">
+          <div
+            class="mt-4 max-h-[40vh] space-y-4 overflow-y-auto border-t border-gray-200/70 pt-4 dark:border-gray-700/70"
+          >
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <UFormField label="Email" :error="emailError">
+                <UInput
+                  v-model="emailDraft"
+                  type="email"
+                  icon="i-lucide-mail"
+                  placeholder="jane@example.com"
+                  :maxlength="256"
+                  :ui="fieldUi"
+                  class="w-full"
+                  @update:model-value="debouncedEmailCommit"
+                />
+              </UFormField>
+
+              <UFormField label="Role">
+                <USelect v-model="roleFilter" :items="roleOptions" :ui="fieldUi" class="w-full" />
+              </UFormField>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div v-for="filter in DATE_FILTERS" :key="filter.key" class="min-w-0 space-y-1">
+                <DateRangeFilter
+                  :model-value="getRange(filter)"
+                  :label="filter.label"
+                  :icon="filter.icon"
+                  :disabled="isDateFilterDisabled(filter)"
+                  @update:model-value="setRange(filter, $event)"
+                />
+                <p
+                  v-if="isDateFilterDisabled(filter)"
+                  class="px-1 text-xs text-gray-500 dark:text-gray-500"
+                >
+                  Include deleted accounts to use this
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section
+      aria-label="Users"
+      class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
     >
       <div
-        v-if="isFilterPanelOpen"
-        class="rounded-xl border border-default frosted-glass glass-surface overflow-hidden max-h-[40vh] overflow-y-auto shrink-0"
+        class="flex shrink-0 flex-wrap items-center gap-2 border-b border-gray-200/70 px-4 py-3 dark:border-gray-700/70 sm:px-6"
       >
-        <!-- @vue-ignore -->
-        <UForm ref="filterForm" :schema="userQueryUiSchema" :state="uiState" @submit="applyFilters">
-          <div
-            class="flex items-center justify-between px-5 py-3 border-b border-default frosted-glass bg-elevated/30"
-          >
-            <span class="text-sm font-semibold text-default">Advanced Filters</span>
-            <div class="flex items-center gap-2">
-              <UButton
-                type="button"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-rotate-ccw"
-                label="Reset"
-                @click="clearFilters()"
-              />
-              <UButton
-                size="xs"
-                color="primary"
-                variant="soft"
-                icon="i-lucide-check"
-                label="Apply"
-                @click="filterForm?.submit()"
-              />
-            </div>
-          </div>
+        <p
+          class="mr-2 text-sm font-semibold text-gray-900 tabular-nums dark:text-gray-100"
+          role="status"
+          aria-live="polite"
+        >
+          {{ resultSummary }}
+        </p>
 
-          <div class="divide-y divide-default">
-            <!-- Identity & status -->
-            <div class="px-5 py-4">
-              <p
-                class="text-xs font-semibold uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5"
-              >
-                <UIcon name="i-lucide-user-search" class="size-3.5" />
-                Identity &amp; status
-              </p>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <UFormField label="Username" name="userName">
-                  <UInput
-                    v-model="uiState.userName"
-                    placeholder="Contains…"
-                    icon="i-lucide-user"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField label="Email" name="userEmail">
-                  <UInput
-                    v-model="uiState.userEmail"
-                    placeholder="Contains…"
-                    icon="i-lucide-mail"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField label="Role" name="role">
-                  <USelect
-                    v-model="uiState.role"
-                    :items="[{ label: 'Any role', value: null }, ...roleOptions]"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField label="Lock status" name="isLockedOut">
-                  <USelect
-                    v-model="uiState.isLockedOut"
-                    :items="lockStatusOptions"
-                    class="w-full"
-                  />
-                </UFormField>
-              </div>
-            </div>
+        <span
+          v-for="pill in activeFilterPills"
+          :key="pill.key"
+          class="inline-flex items-center gap-1 rounded-lg bg-primary/10 py-1 pr-1 pl-3 text-sm font-semibold text-primary"
+        >
+          {{ pill.label }}
+          <UButton
+            icon="i-lucide-x"
+            size="xs"
+            color="primary"
+            variant="ghost"
+            :aria-label="`Remove ${pill.label} filter`"
+            class="justify-center rounded-md"
+            @click="pill.clear()"
+          />
+        </span>
 
-            <!-- Deleted accounts -->
-            <div class="px-5 py-4">
-              <p
-                class="text-xs font-semibold uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5"
-              >
-                <UIcon name="i-lucide-trash-2" class="size-3.5" />
-                Deleted accounts
-                <UTooltip
-                  text="'Include deleted' and 'Deleted only' are mutually exclusive."
-                  :delay-duration="200"
-                >
-                  <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                </UTooltip>
-              </p>
-              <div class="flex flex-wrap gap-6">
-                <UFormField name="showDeleted">
-                  <UCheckbox
-                    v-model="uiState.showDeleted"
-                    label="Include deleted"
-                    description="Mix deleted accounts into results alongside active ones."
-                    @update:model-value="
-                      (v) => {
-                        if (v) uiState.showDeletedOnly = false;
-                      }
-                    "
-                  />
-                </UFormField>
-                <UFormField name="showDeletedOnly">
-                  <UCheckbox
-                    v-model="uiState.showDeletedOnly"
-                    label="Deleted only"
-                    description="Show exclusively deleted accounts, hiding all active ones."
-                    @update:model-value="
-                      (v) => {
-                        if (v) uiState.showDeleted = false;
-                      }
-                    "
-                  />
-                </UFormField>
-              </div>
-            </div>
-
-            <!-- Sorting & pagination -->
-            <div class="px-5 py-4">
-              <p
-                class="text-xs font-semibold uppercase tracking-wider text-muted mb-3 flex items-center gap-1.5"
-              >
-                <UIcon name="i-lucide-arrow-up-down" class="size-3.5" />
-                Sorting &amp; pagination
-              </p>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <UFormField label="Sort by" name="sortBy">
-                  <USelect v-model="uiState.sortBy" :items="sortByOptions" class="w-full" />
-                </UFormField>
-                <UFormField label="Direction" name="sortDirection">
-                  <USelect
-                    v-model="uiState.sortDirection"
-                    :items="sortDirectionOptions"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField label="Page size" name="pageSize">
-                  <USelect v-model="uiState.pageSize" :items="pageSizeOptions" class="w-full" />
-                </UFormField>
-              </div>
-            </div>
-
-            <!-- Date ranges (collapsible) -->
-            <UCollapsible v-model:open="isDateRangesOpen">
-              <div
-                class="px-5 py-3 flex items-center justify-between cursor-pointer select-none hover:bg-elevated/30 transition-colors"
-              >
-                <p
-                  class="text-xs font-semibold uppercase tracking-wider text-muted flex items-center gap-1.5"
-                >
-                  <UIcon name="i-lucide-calendar-range" class="size-3.5" />
-                  Date ranges
-                </p>
-                <UIcon
-                  :name="isDateRangesOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                  class="size-4 text-muted transition-transform duration-200"
-                />
-              </div>
-
-              <template #content>
-                <div class="px-5 pb-5 pt-2 space-y-4">
-                  <!-- Created -->
-                  <div>
-                    <p class="text-xs text-muted font-medium mb-2 flex items-center gap-1">
-                      <UIcon name="i-lucide-calendar-plus" class="size-3" />
-                      Created
-                    </p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UFormField label="After" name="createdAfter" class="w-full">
-                        <!-- @vue-ignore -->
-                        <UInputDate
-                          ref="createdAfter"
-                          v-model="uiState.createdAfter"
-                          class="w-full"
-                        >
-                          <template #trailing>
-                            <UPopover :reference="createdAfter?.inputsRef[3]?.$el">
-                              <UButton
-                                color="neutral"
-                                variant="link"
-                                size="sm"
-                                icon="i-lucide-calendar"
-                                aria-label="Pick date"
-                                class="px-0"
-                              />
-                              <template #content>
-                                <!-- @vue-ignore -->
-                                <UCalendar v-model="uiState.createdAfter" class="p-2" />
-                              </template>
-                            </UPopover>
-                          </template>
-                        </UInputDate>
-                      </UFormField>
-                      <UFormField label="Before" name="createdBefore" class="w-full">
-                        <!-- @vue-ignore -->
-                        <UInputDate
-                          ref="createdBefore"
-                          v-model="uiState.createdBefore"
-                          class="w-full"
-                        >
-                          <template #trailing>
-                            <UPopover :reference="createdBefore?.inputsRef[3]?.$el">
-                              <UButton
-                                color="neutral"
-                                variant="link"
-                                size="sm"
-                                icon="i-lucide-calendar"
-                                aria-label="Pick date"
-                                class="px-0"
-                              />
-                              <template #content>
-                                <!-- @vue-ignore -->
-                                <UCalendar v-model="uiState.createdBefore" class="p-2" />
-                              </template>
-                            </UPopover>
-                          </template>
-                        </UInputDate>
-                      </UFormField>
-                    </div>
-                  </div>
-
-                  <USeparator />
-
-                  <!-- Updated -->
-                  <div>
-                    <p class="text-xs text-muted font-medium mb-2 flex items-center gap-1">
-                      <UIcon name="i-lucide-calendar-clock" class="size-3" />
-                      Updated
-                    </p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UFormField label="After" name="updatedAfter" class="w-full">
-                        <!-- @vue-ignore -->
-                        <UInputDate
-                          ref="updatedAfter"
-                          v-model="uiState.updatedAfter"
-                          class="w-full"
-                        >
-                          <template #trailing>
-                            <UPopover :reference="updatedAfter?.inputsRef[3]?.$el">
-                              <UButton
-                                color="neutral"
-                                variant="link"
-                                size="sm"
-                                icon="i-lucide-calendar"
-                                aria-label="Pick date"
-                                class="px-0"
-                              />
-                              <template #content>
-                                <!-- @vue-ignore -->
-                                <UCalendar v-model="uiState.updatedAfter" class="p-2" />
-                              </template>
-                            </UPopover>
-                          </template>
-                        </UInputDate>
-                      </UFormField>
-                      <UFormField label="Before" name="updatedBefore" class="w-full">
-                        <!-- @vue-ignore -->
-                        <UInputDate
-                          ref="updatedBefore"
-                          v-model="uiState.updatedBefore"
-                          class="w-full"
-                        >
-                          <template #trailing>
-                            <UPopover :reference="updatedBefore?.inputsRef[3]?.$el">
-                              <UButton
-                                color="neutral"
-                                variant="link"
-                                size="sm"
-                                icon="i-lucide-calendar"
-                                aria-label="Pick date"
-                                class="px-0"
-                              />
-                              <template #content>
-                                <!-- @vue-ignore -->
-                                <UCalendar v-model="uiState.updatedBefore" class="p-2" />
-                              </template>
-                            </UPopover>
-                          </template>
-                        </UInputDate>
-                      </UFormField>
-                    </div>
-                  </div>
-
-                  <USeparator />
-
-                  <!-- Deleted -->
-                  <div>
-                    <p class="text-xs text-muted font-medium mb-2 flex items-center gap-1">
-                      <UIcon name="i-lucide-calendar-x" class="size-3" />
-                      Deleted
-                    </p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UFormField label="After" name="deletedAfter" class="w-full">
-                        <!-- @vue-ignore -->
-                        <UInputDate
-                          ref="deletedAfter"
-                          v-model="uiState.deletedAfter"
-                          class="w-full"
-                        >
-                          <template #trailing>
-                            <UPopover :reference="deletedAfter?.inputsRef[3]?.$el">
-                              <UButton
-                                color="neutral"
-                                variant="link"
-                                size="sm"
-                                icon="i-lucide-calendar"
-                                aria-label="Pick date"
-                                class="px-0"
-                              />
-                              <template #content>
-                                <!-- @vue-ignore -->
-                                <UCalendar v-model="uiState.deletedAfter" class="p-2" />
-                              </template>
-                            </UPopover>
-                          </template>
-                        </UInputDate>
-                      </UFormField>
-                      <UFormField label="Before" name="deletedBefore" class="w-full">
-                        <!-- @vue-ignore -->
-                        <UInputDate
-                          ref="deletedBefore"
-                          v-model="uiState.deletedBefore"
-                          class="w-full"
-                        >
-                          <template #trailing>
-                            <UPopover :reference="deletedBefore?.inputsRef[3]?.$el">
-                              <UButton
-                                color="neutral"
-                                variant="link"
-                                size="sm"
-                                icon="i-lucide-calendar"
-                                aria-label="Pick date"
-                                class="px-0"
-                              />
-                              <template #content>
-                                <!-- @vue-ignore -->
-                                <UCalendar v-model="uiState.deletedBefore" class="p-2" />
-                              </template>
-                            </UPopover>
-                          </template>
-                        </UInputDate>
-                      </UFormField>
-                    </div>
-                  </div>
-
-                  <USeparator />
-
-                  <!-- Locked out -->
-                  <div>
-                    <p class="text-xs text-muted font-medium mb-2 flex items-center gap-1">
-                      <UIcon name="i-lucide-lock" class="size-3" /> Locked out
-                    </p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <UFormField label="After" name="lockedOutAfter" class="w-full">
-                        <!-- @vue-ignore -->
-                        <UInputDate
-                          ref="lockedOutAfter"
-                          v-model="uiState.lockedOutAfter"
-                          class="w-full"
-                        >
-                          <template #trailing>
-                            <UPopover :reference="lockedOutAfter?.inputsRef[3]?.$el">
-                              <UButton
-                                color="neutral"
-                                variant="link"
-                                size="sm"
-                                icon="i-lucide-calendar"
-                                aria-label="Pick date"
-                                class="px-0"
-                              />
-                              <template #content>
-                                <!-- @vue-ignore -->
-                                <UCalendar v-model="uiState.lockedOutAfter" class="p-2" />
-                              </template>
-                            </UPopover>
-                          </template>
-                        </UInputDate>
-                      </UFormField>
-                      <UFormField label="Before" name="lockedOutBefore" class="w-full">
-                        <!-- @vue-ignore -->
-                        <UInputDate
-                          ref="lockedOutBefore"
-                          v-model="uiState.lockedOutBefore"
-                          class="w-full"
-                        >
-                          <template #trailing>
-                            <UPopover :reference="lockedOutBefore?.inputsRef[3]?.$el">
-                              <UButton
-                                color="neutral"
-                                variant="link"
-                                size="sm"
-                                icon="i-lucide-calendar"
-                                aria-label="Pick date"
-                                class="px-0"
-                              />
-                              <template #content>
-                                <!-- @vue-ignore -->
-                                <UCalendar v-model="uiState.lockedOutBefore" class="p-2" />
-                              </template>
-                            </UPopover>
-                          </template>
-                        </UInputDate>
-                      </UFormField>
-                    </div>
-                  </div>
-                </div>
-              </template>
-            </UCollapsible>
-          </div>
-        </UForm>
+        <UButton
+          v-if="activeFilterPills.length > 1"
+          label="Clear all"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          @click="clearFilters"
+        />
       </div>
-    </Transition>
 
-    <!-- TABLE  -->
-    <div
-      class="flex-1 min-h-0 rounded-xl border border-default overflow-x-hidden frosted-glass glass-surface"
-    >
-      <UsersTable
-        v-model:selected="selectedUserIds"
-        :data="tableData"
-        :loading="isLoading"
-        @edit="openEdit"
-        @restrict="openRestrict"
-        @delete="openDelete"
-        @clear-filters="clearFilters"
-      />
-    </div>
+      <div class="min-h-0 flex-1">
+        <UsersTable
+          v-model:selected="selectedUserIds"
+          :data="tableData"
+          :loading="isLoading"
+          @edit="openEdit"
+          @restrict="openRestrict"
+          @delete="openDelete"
+          @clear-filters="clearFilters"
+        />
+      </div>
 
-    <!-- PAGINATION -->
-    <div
-      v-if="userData && userData.totalCount > uiState.pageSize"
-      class="flex items-center justify-between"
-    >
-      <span class="text-xs text-muted">Page {{ uiState.page + 1 }} of {{ totalPages }}</span>
-      <UPagination
-        v-model:page="currentPage"
-        :total="userData.totalCount"
-        :items-per-page="uiState.pageSize"
-        size="sm"
-      />
-    </div>
+      <div
+        v-if="userData && userData.totalCount > 0"
+        class="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-gray-200/70 px-4 py-3 dark:border-gray-700/70 sm:px-6"
+      >
+        <USelect
+          v-model="pageSize"
+          :items="pageSizeOptions"
+          aria-label="Users per page"
+          size="sm"
+          class="w-36"
+        />
+
+        <UPagination
+          v-if="totalPages > 1"
+          v-model:page="currentPage"
+          :total="userData.totalCount"
+          :items-per-page="uiState.pageSize"
+          size="sm"
+        />
+      </div>
+    </section>
 
     <!-- MODALS -->
     <CreateUserModal
-      :open="activeModal.type === 'create'"
+      v-if="activeModal.type === 'create'"
+      :open="true"
+      :loading="isCreating"
       @close="closeModal"
       @submit="submitCreate"
     />
@@ -579,92 +313,131 @@
 
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
-import { useDebounceFn } from "@vueuse/core";
-import { computed, reactive, ref, shallowRef } from "vue";
+import { computed, ref } from "vue";
 
+import type { CreateUserSchema, RestrictUserSchema, UpdateUserSchema } from "@/schemas/user";
 import type { UserDetailsDto } from "@/types/user";
 
 import { userApi } from "@/api/users";
+import DateRangeFilter from "@/components/common/DateRangeFilter.vue";
 import CreateUserModal from "@/components/dashboard/users/CreateUserModal.vue";
 import DeleteUsersModal from "@/components/dashboard/users/DeleteUserModal.vue";
 import EditUserModal from "@/components/dashboard/users/EditUserModal.vue";
 import RestrictUserModal from "@/components/dashboard/users/RestrictUserModal.vue";
 import UsersTable from "@/components/dashboard/users/UsersTable.vue";
-import { SortBy } from "@/enums/SortBy";
-import { SortDirection } from "@/enums/SortDirection";
-import { UserRole } from "@/enums/UserRole";
+import { useAppToast } from "@/composables/useAppToast";
+import { countOf } from "@/features/toast/format";
+import {
+  DATE_FILTERS,
+  accountOptions,
+  lockOptions,
+  pageSizeOptions,
+  roleOptions,
+  sortByOptions,
+  useUserRegistryFilters,
+} from "@/features/users/registry-filters";
 import { useCreateUser, useDeleteUsers, useRestrictUser, useUpdateUser } from "@/mutations/user";
 import { USER_QUERY_KEYS } from "@/queries/user";
-import {
-  type CreateUserSchema,
-  type RestrictUserSchema,
-  type UpdateUserSchema,
-  userQueryApiSchema,
-  userQueryUiSchema,
-} from "@/schemas/user";
 
-const toast = useToast();
+const toast = useAppToast("users");
 
-// Filter state
-const createdAfter = shallowRef();
-const createdBefore = shallowRef();
-const updatedAfter = shallowRef();
-const updatedBefore = shallowRef();
-const deletedAfter = shallowRef();
-const deletedBefore = shallowRef();
-const lockedOutAfter = shallowRef();
-const lockedOutBefore = shallowRef();
-const uiState = reactive(userQueryUiSchema.parse({}));
-const apiState = ref(userQueryApiSchema.parse(uiState));
+// Filters
+
+const {
+  accountsMode,
+  activeFilterPills,
+  advancedFilterCount,
+  apiState,
+  clearFilters,
+  commitQuery,
+  debouncedCommit,
+  debouncedEmailCommit,
+  emailDraft,
+  emailError,
+  getRange,
+  isAscending,
+  isDateFilterDisabled,
+  lockMode,
+  pageSize,
+  roleFilter,
+  setRange,
+  sortBy,
+  toggleSortDirection,
+  uiState,
+} = useUserRegistryFilters();
+
+// Shared control shape with the media pages: 40px fields, 32px segments.
+const fieldUi = { base: "h-10 rounded-xl" };
+
 const isFilterPanelOpen = ref(false);
-const isDateRangesOpen = ref(false);
-const filterForm = ref();
 
-const commitQuery = () => {
-  apiState.value = userQueryApiSchema.parse(uiState);
+const sortDirectionIcon = computed(() => {
+  if (isAscending.value) {
+    return "mdi-sort-ascending";
+  }
+  return "mdi-sort-descending";
+});
+
+const sortDirectionLabel = computed(() => {
+  if (isAscending.value) {
+    return "Ascending";
+  }
+  return "Descending";
+});
+
+const sortDirectionTitle = computed(() => {
+  if (isAscending.value) {
+    return "Switch to descending";
+  }
+  return "Switch to ascending";
+});
+
+const isFilterButtonActive = computed(
+  () => isFilterPanelOpen.value || advancedFilterCount.value > 0,
+);
+
+const filterButtonColor = computed(() => {
+  if (isFilterButtonActive.value) {
+    return "primary";
+  }
+  return "neutral";
+});
+
+const filterButtonVariant = computed(() => {
+  if (isFilterButtonActive.value) {
+    return "soft";
+  }
+  return "outline";
+});
+
+const filterPanelClass = computed(() => {
+  if (isFilterPanelOpen.value) {
+    return "grid-rows-[1fr] opacity-100 duration-200 ease-out";
+  }
+  return "grid-rows-[0fr] opacity-0 duration-150 ease-in";
+});
+
+const segmentColor = (active: boolean) => {
+  if (active) {
+    return "primary";
+  }
+  return "neutral";
 };
 
-const debouncedCommit = useDebounceFn(() => {
-  uiState.page = 0;
-  commitQuery();
-}, 350);
-
-const applyFilters = () => {
-  uiState.page = 0;
-  commitQuery();
-};
-
-const clearFilters = () => {
-  const defaults = userQueryUiSchema.parse({});
-  (Object.keys(uiState) as (keyof typeof uiState)[]).forEach((key) => {
-    (uiState as Record<string, unknown>)[key] = (defaults as Record<string, unknown>)[key];
-  });
-  commitQuery();
-};
-
-const toggleQuick = (kind: "locked" | "deleted" | "deletedOnly") => {
-  if (kind === "locked") {
-    uiState.isLockedOut = uiState.isLockedOut === true ? undefined : true;
+const segmentVariant = (active: boolean) => {
+  if (active) {
+    return "soft";
   }
-  if (kind === "deleted") {
-    uiState.showDeleted = !uiState.showDeleted;
-    if (uiState.showDeleted) {
-      uiState.showDeletedOnly = false;
-    }
-  }
-  if (kind === "deletedOnly") {
-    uiState.showDeletedOnly = !uiState.showDeletedOnly;
-    if (uiState.showDeletedOnly) {
-      uiState.showDeleted = false;
-    }
-  }
-  uiState.page = 0;
-  commitQuery();
+  return "ghost";
 };
 
 // Query
 
-const { data: userData, isLoading } = useQuery({
+const {
+  data: userData,
+  isLoading,
+  isPending,
+} = useQuery({
   key: () => USER_QUERY_KEYS.getUsers(apiState.value),
   query: () => userApi.getUsers(apiState.value),
   staleTime: 30_000,
@@ -682,13 +455,28 @@ const currentPage = computed({
   },
 });
 
+const resultSummary = computed(() => {
+  if (isPending.value || !userData.value) {
+    return "Loading users…";
+  }
+
+  const total = userData.value.totalCount;
+  if (total === 0) {
+    return "0 users";
+  }
+
+  const first = uiState.page * uiState.pageSize + 1;
+  const last = Math.min(first + uiState.pageSize - 1, total);
+  return `${first}–${last} of ${total.toLocaleString()} users`;
+});
+
 // Selection
 
 const selectedUserIds = ref<string[]>([]);
 
 // Mutations
 
-const { mutateAsync: createUserMutation } = useCreateUser();
+const { mutateAsync: createUserMutation, isLoading: isCreating } = useCreateUser();
 const { mutateAsync: updateUserMutation, isLoading: isUpdating } = useUpdateUser();
 const { mutateAsync: restrictUserMutation, isLoading: isRestricting } = useRestrictUser();
 const { mutateAsync: deleteUsersMutation, isLoading: isDeleting } = useDeleteUsers();
@@ -712,35 +500,13 @@ const openDelete = (ids: string[]) => (activeModal.value = { ids, type: "delete"
 
 // Submit handlers
 
-const serverErrorMessage = (err: unknown): string => {
-  const response = (err as { response?: { data?: { errors?: Record<string, string[]> } } })
-    ?.response;
-  const errors = response?.data?.errors;
-  if (errors) {
-    for (const messages of Object.values(errors)) {
-      if (messages.length > 0) return messages[0];
-    }
-  }
-  return "Please check the details and try again.";
-};
-
 const submitCreate = async (data: CreateUserSchema) => {
   try {
     await createUserMutation(data);
-    toast.add({
-      color: "success",
-      description: `@${data.userName} has been added and will receive an invitation.`,
-      icon: "i-lucide-user-check",
-      title: "Account created",
-    });
+    toast.success(`Created @${data.userName}`, "They'll receive an invitation to sign in.");
     closeModal();
   } catch (err) {
-    toast.add({
-      color: "error",
-      description: serverErrorMessage(err),
-      icon: "i-lucide-x-circle",
-      title: "Could not create account",
-    });
+    toast.error(`Couldn't create @${data.userName}`, err);
   }
 };
 
@@ -748,21 +514,14 @@ const submitEdit = async (data: UpdateUserSchema) => {
   if (activeModal.value.type !== "edit") {
     return;
   }
+  const handle = `@${activeModal.value.user.userName}`;
+
   try {
     await updateUserMutation({ data, userId: activeModal.value.user.id });
-    toast.add({
-      color: "success",
-      icon: "i-lucide-check-circle",
-      title: "User updated",
-    });
+    toast.success(`Saved changes to ${handle}`);
     closeModal();
   } catch (err) {
-    toast.add({
-      color: "error",
-      description: serverErrorMessage(err),
-      icon: "i-lucide-x-circle",
-      title: "Update failed",
-    });
+    toast.error(`Couldn't save changes to ${handle}`, err);
   }
 };
 
@@ -770,22 +529,22 @@ const submitRestrict = async (data: RestrictUserSchema | { userId: string }) => 
   if (activeModal.value.type !== "restrict") {
     return;
   }
+
+  const handle = `@${activeModal.value.user.userName}`;
+  const isLifting = !("lockoutEndDate" in data);
+
   try {
     const lockoutEndDate =
       "lockoutEndDate" in data ? data.lockoutEndDate.toString() : new Date(0).toISOString();
     await restrictUserMutation({ lockoutEndDate, userId: data.userId });
-    toast.add({
-      color: "warning",
-      icon: "i-lucide-lock",
-      title: "Restriction updated",
-    });
+    if (isLifting) {
+      toast.success(`Lifted the restriction on ${handle}`);
+    } else {
+      toast.success(`Restricted ${handle}`, "They can't sign in until the restriction ends.");
+    }
     closeModal();
-  } catch {
-    toast.add({
-      color: "error",
-      icon: "i-lucide-x-circle",
-      title: "Restriction failed",
-    });
+  } catch (err) {
+    toast.error(`Couldn't update the restriction on ${handle}`, err);
   }
 };
 
@@ -796,61 +555,11 @@ const submitDelete = async () => {
 
   try {
     await deleteUsersMutation(ids);
-    toast.add({
-      color: "success",
-      icon: "i-lucide-check-circle",
-      title: `${ids.length} user(s) deleted`,
-    });
+    toast.success(`Deleted ${countOf(ids.length, "user")}`);
     selectedUserIds.value = selectedUserIds.value.filter((id) => !ids.includes(id));
     closeModal();
-  } catch {
-    toast.add({
-      color: "error",
-      icon: "i-lucide-x-circle",
-      title: "Delete failed",
-    });
+  } catch (err) {
+    toast.error(`Couldn't delete ${countOf(ids.length, "user")}`, err);
   }
 };
-// Select options
-
-const roleOptions = [
-  {
-    description: "Standard access.",
-    icon: "i-lucide-user",
-    label: "User",
-    value: UserRole.User,
-  },
-  {
-    description: "Full access.",
-    icon: "i-lucide-shield-check",
-    label: "Administrator",
-    value: UserRole.Admin,
-  },
-];
-
-const lockStatusOptions = [
-  { label: "All accounts", value: null },
-  { label: "Active only", value: false },
-  { label: "Locked only", value: true },
-];
-
-const sortByOptions = [
-  { label: "Name", value: SortBy.Name },
-  { label: "Created", value: SortBy.CreatedAt },
-  { label: "Last updated", value: SortBy.UpdatedAt },
-  { label: "File count", value: SortBy.FileCount },
-  { label: "Storage used", value: SortBy.TotalSize },
-];
-
-const sortDirectionOptions = [
-  { label: "Newest first", value: SortDirection.Desc },
-  { label: "Oldest first", value: SortDirection.Asc },
-];
-
-const pageSizeOptions = [
-  { label: "10 per page", value: 10 },
-  { label: "20 per page", value: 20 },
-  { label: "50 per page", value: 50 },
-  { label: "100 per page", value: 100 },
-];
 </script>
