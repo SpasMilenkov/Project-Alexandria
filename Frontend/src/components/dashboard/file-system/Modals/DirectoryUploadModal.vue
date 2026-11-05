@@ -2,17 +2,18 @@
 import { computed, ref } from "vue";
 
 import { directoryApi } from "@/api/directory";
-import { useAppToast } from "@/composables/useAppToast";
-import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
-import { useModalBackGuard } from "@/composables/useModalBackGuard";
-
 import UploadEmptyState from "@/components/dashboard/file-system/Modals/upload/UploadEmptyState.vue";
 import UploadFileTree from "@/components/dashboard/file-system/Modals/upload/UploadFileTree.vue";
 import UploadModalFooter from "@/components/dashboard/file-system/Modals/upload/UploadModalFooter.vue";
 import UploadModalShell from "@/components/dashboard/file-system/Modals/upload/UploadModalShell.vue";
+import UploadPanel from "@/components/dashboard/file-system/Modals/upload/UploadPanel.vue";
 import UploadProgressSummary from "@/components/dashboard/file-system/Modals/upload/UploadProgressSummary.vue";
+import { useAppToast } from "@/composables/useAppToast";
+import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { countOf } from "@/features/toast/format";
 
-const appToast = useAppToast();
+const appToast = useAppToast("upload");
 
 const {
   fileStatuses,
@@ -57,6 +58,20 @@ const emit = defineEmits<{ close: [boolean] }>();
 
 const files = ref<FileEntry[]>(props.droppedFiles ?? []);
 const selectedDirectoryId = ref<string | undefined>(props.directoryId ?? undefined);
+const destinationName = ref(props.directoryName ?? "Home");
+
+const rootFolderName = computed(() => files.value[0]?.relativePath.split("/")[0]);
+
+// Names what is being uploaded so the toast still makes sense after the modal has closed.
+const uploadSubject = computed(() =>
+  rootFolderName.value ? `"${rootFolderName.value}"` : "the folder",
+);
+
+const totalSize = computed(() => files.value.reduce((sum, entry) => sum + entry.file.size, 0));
+
+const uploadSummary = (count: number, outcome: string) =>
+  `${countOf(count, "file")} ${outcome} to ${destinationName.value}`;
+
 const directoryInputRef = ref<HTMLInputElement | null>(null);
 
 const handleDirectoryChange = (e: Event) => {
@@ -73,6 +88,17 @@ const handleDirectoryChange = (e: Event) => {
 const treeItems = computed(() =>
   fileStatuses.value.length > 0 ? buildTreeFromStatuses() : buildFileTree(files.value),
 );
+
+// One plain sentence instead of coloured fragments, so the summary reads the same in every modal.
+const progressLabel = computed(() => {
+  const failed = failedFiles.value.length;
+  const failedNote = failed > 0 ? `, ${failed} failed` : "";
+
+  if (uploading.value)
+    return `Uploading ${activeFiles.value}, ${successfulFiles.value} done${failedNote}`;
+
+  return `${completedFiles.value} of ${totalFiles.value} files${failedNote}`;
+});
 
 const canUpload = computed(
   () => files.value.length > 0 && !uploading.value && fileStatuses.value.length === 0,
@@ -93,7 +119,14 @@ const uploadDirectoryStructure = async () => {
     await startUploadPipeline(files.value, directoryMapping);
 
     if (cancelled.value) {
-      appToast.info("Upload cancelled");
+      const finishedEarly = successfulFiles.value;
+
+      appToast.info(
+        "Upload cancelled",
+        finishedEarly > 0
+          ? uploadSummary(finishedEarly, "finished before you cancelled")
+          : undefined,
+      );
       return;
     }
 
@@ -101,16 +134,18 @@ const uploadDirectoryStructure = async () => {
     const success = successfulFiles.value;
 
     if (failed === 0) {
-      appToast.success(
-        "Upload Complete",
-        `${success} ${success === 1 ? "file" : "files"} uploaded`,
-      );
+      appToast.success(`Uploaded ${uploadSubject.value}`, uploadSummary(success, "uploaded"));
       setTimeout(() => emit("close", true), 1000);
     } else {
-      appToast.warning("Upload Finished with Errors", `${success} succeeded, ${failed} failed`);
+      appToast.warning(
+        `Uploaded ${success} of ${success + failed} files from ${uploadSubject.value}`,
+        `${countOf(failed, "file")} failed. Use Retry in the upload window.`,
+      );
     }
   } catch (err) {
-    appToast.error("Directory Structure Failed", err);
+    appToast.error(`Couldn't create folders for ${uploadSubject.value}`, err, {
+      retry: uploadDirectoryStructure,
+    });
   } finally {
     uploading.value = false;
   }
@@ -124,12 +159,12 @@ const handleRetry = async () => {
   const success = successfulFiles.value;
 
   if (stillFailed === 0) {
-    appToast.success("Upload Complete", `${success} ${success === 1 ? "file" : "files"} uploaded`);
+    appToast.success(`Uploaded ${uploadSubject.value}`, uploadSummary(success, "uploaded"));
     setTimeout(() => emit("close", true), 1000);
   } else {
     appToast.warning(
-      "Retry Complete",
-      `${stillFailed} ${stillFailed === 1 ? "file" : "files"} still failed`,
+      `${countOf(stillFailed, "file")} from ${uploadSubject.value} still failed`,
+      "Check each file's error in the upload window.",
     );
     uploading.value = false;
   }
@@ -144,24 +179,22 @@ const clearFiles = () => {
 <template>
   <UploadModalShell
     v-model="selectedDirectoryId"
-    title="Upload Directory"
+    v-model:destination-name="destinationName"
+    title="Upload a folder"
+    description="Everything inside it is uploaded, keeping its subfolders."
     :initial-id="directoryId"
     :initial-name="directoryName"
     :picker-disabled="uploading"
     @close="emit('close', false)"
   >
-    <template #intro>
-      <p class="text-sm text-muted">Select a folder to upload all its files and subdirectories.</p>
-    </template>
-
-    <!-- empty: folder picker -->
     <UploadEmptyState
       v-if="files.length === 0"
-      tall
       icon="i-lucide-folder-up"
-      button-label="Select Folder"
+      title="Choose a folder"
+      subtitle="Its files and subfolders are recreated at the destination."
+      button-label="Choose folder"
       button-icon="i-lucide-folder-open"
-      hint="Or drag and drop a folder onto the file explorer"
+      hint="You can also drop a folder onto the file explorer."
       @select="directoryInputRef?.click()"
     >
       <input
@@ -174,27 +207,27 @@ const clearFiles = () => {
       />
     </UploadEmptyState>
 
-    <!-- file tree -->
-    <div
-      v-else
-      class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden"
-    >
-      <div
-        class="flex items-center justify-between px-3 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-      >
-        <span class="text-xs text-muted">
-          {{ files.length }} {{ files.length === 1 ? "file" : "files" }}
-        </span>
+    <UploadPanel v-else>
+      <template #header>
+        <p class="min-w-0 flex-1 truncate text-sm text-gray-600 dark:text-gray-400">
+          <span class="font-medium text-gray-900 dark:text-gray-100">
+            {{ countOf(files.length, "file") }}
+          </span>
+          · {{ formatBytes(totalSize) }}
+        </p>
+
         <UButton
-          v-if="!uploading"
+          v-if="!uploading && fileStatuses.length === 0"
           icon="i-lucide-x"
-          label="Clear"
-          size="xs"
+          size="sm"
           variant="ghost"
           color="neutral"
+          square
+          class="justify-center"
+          aria-label="Clear folder"
           @click="clearFiles"
         />
-      </div>
+      </template>
 
       <UploadFileTree
         :items="treeItems"
@@ -209,40 +242,30 @@ const clearFiles = () => {
         :format-bytes="formatBytes"
       />
 
-      <Transition
-        enter-active-class="transition-all duration-200 ease-out"
-        leave-active-class="transition-all duration-150 ease-in"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-      >
-        <UploadProgressSummary
-          v-if="fileStatuses.length > 0"
-          :percent="overallProgress"
-          :color="summaryBarColor"
+      <template #footer>
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          leave-active-class="transition-all duration-150 ease-in"
+          enter-from-class="opacity-0"
+          leave-to-class="opacity-0"
         >
-          <template #label>
-            <span>
-              <template v-if="uploading">
-                {{ activeFiles }} uploading
-                <span v-if="successfulFiles > 0" class="text-success">
-                  · {{ successfulFiles }} done</span
-                >
-                <span v-if="failedFiles.length > 0" class="text-error">
-                  · {{ failedFiles.length }} failed</span
-                >
-              </template>
-              <template v-else> {{ completedFiles }} of {{ totalFiles }} files </template>
-            </span>
-          </template>
-        </UploadProgressSummary>
-      </Transition>
-    </div>
+          <UploadProgressSummary
+            v-if="fileStatuses.length > 0"
+            :percent="overallProgress"
+            :color="summaryBarColor"
+          >
+            <template #label>{{ progressLabel }}</template>
+          </UploadProgressSummary>
+        </Transition>
+      </template>
+    </UploadPanel>
 
     <template #footer>
       <UploadModalFooter
         :working="uploading"
         :has-session="fileStatuses.length > 0"
         :has-failures="failedFiles.length > 0 && !uploading"
+        :destination-name="destinationName"
         @cancel="cancelAll"
         @start-over="clearFiles"
         @close="emit('close', false)"

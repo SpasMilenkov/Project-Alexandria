@@ -1,12 +1,11 @@
 <script setup lang="ts">
 defineProps<{
   icon: string;
+  title: string;
   buttonLabel: string;
   buttonIcon: string;
-  title?: string;
   subtitle?: string;
   hint?: string;
-  tall?: boolean;
 }>();
 
 defineEmits<{ select: [] }>();
@@ -14,17 +13,13 @@ defineEmits<{ select: [] }>();
 
 <template>
   <div
-    :class="
-      tall
-        ? 'sm:min-h-80 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-4 p-6'
-        : 'rounded-lg border border-dashed border-gray-200/70 dark:border-gray-700/70 p-8 flex flex-col items-center gap-4'
-    "
+    class="flex min-h-56 flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-gray-200/70 px-6 py-8 text-center sm:min-h-72 dark:border-gray-700/70"
   >
-    <UIcon :name="icon" class="size-10 text-muted" />
+    <UIcon :name="icon" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
 
-    <div v-if="title" class="text-center">
-      <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ title }}</p>
-      <p v-if="subtitle" class="text-xs text-muted mt-1">{{ subtitle }}</p>
+    <div class="space-y-1">
+      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ title }}</p>
+      <p v-if="subtitle" class="text-sm text-gray-600 dark:text-gray-400">{{ subtitle }}</p>
     </div>
 
     <UButton
@@ -35,9 +30,8 @@ defineEmits<{ select: [] }>();
       @click="$emit('select')"
     />
 
-    <p v-if="hint" class="text-xs text-muted">{{ hint }}</p>
+    <p v-if="hint" class="text-xs text-gray-500 dark:text-gray-500">{{ hint }}</p>
 
     <slot />
-    <slot name="below" />
   </div>
 </template>

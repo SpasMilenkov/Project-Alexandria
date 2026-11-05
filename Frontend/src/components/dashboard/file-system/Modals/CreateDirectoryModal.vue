@@ -3,7 +3,9 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 
 import { reactive } from "vue";
 
+import { useAppToast } from "@/composables/useAppToast";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { quoted } from "@/features/toast/format";
 import { createDirectory } from "@/mutations/directories";
 import { type CreateDirectorySchema, createDirectorySchema } from "@/schemas/directory";
 import { glassModalContent } from "@/utils/modal-ui";
@@ -16,6 +18,8 @@ const { mutateAsync, state: mutationState } = createDirectory();
 
 const emit = defineEmits<{ close: [boolean] }>();
 
+const appToast = useAppToast("folders");
+
 useModalBackGuard(() => emit("close", false));
 
 const state = reactive({
@@ -24,9 +28,15 @@ const state = reactive({
 });
 
 const onSubmit = async (event: FormSubmitEvent<CreateDirectorySchema>) => {
-  await mutateAsync(event.data);
+  try {
+    await mutateAsync(event.data);
+  } catch (err) {
+    appToast.error(`Couldn't create folder ${quoted(event.data.name)}`, err);
+    return;
+  }
 
   if (!mutationState.value.error) {
+    appToast.success(`Created folder ${quoted(event.data.name)}`);
     emit("close", true);
   }
 };

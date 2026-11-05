@@ -18,7 +18,7 @@ const { widget } = defineProps<{ widget: HomeWidget }>();
 
 const store = useHomeStore();
 const cache = useQueryCache();
-const toast = useAppToast();
+const toast = useAppToast("upload");
 const launcher = useUploadLauncher();
 const drop = useDropZone();
 

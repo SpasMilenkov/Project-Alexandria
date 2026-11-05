@@ -6,13 +6,16 @@ defineProps<{
 </script>
 
 <template>
-  <div
-    class="px-4 py-3 border-t border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-  >
-    <div class="flex items-center justify-between text-xs text-muted mb-1.5">
-      <slot name="label" />
-      <span class="tabular-nums font-medium">{{ percent }}%</span>
+  <div class="border-t border-gray-200/70 px-4 py-3 dark:border-gray-700/70">
+    <div
+      class="mb-1.5 flex items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-400"
+    >
+      <span class="min-w-0 truncate"><slot name="label" /></span>
+      <span class="shrink-0 font-medium tabular-nums text-gray-900 dark:text-gray-100">
+        {{ percent }}%
+      </span>
     </div>
-    <UProgress :value="percent" :color="color" size="xs" />
+
+    <UProgress :model-value="percent" :color="color" size="xs" />
   </div>
 </template>

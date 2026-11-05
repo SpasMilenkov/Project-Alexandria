@@ -10,22 +10,23 @@ import {
 import { computed, onMounted, ref } from "vue";
 
 import { directoryApi } from "@/api/directory";
+import UploadEmptyState from "@/components/dashboard/file-system/Modals/upload/UploadEmptyState.vue";
+import UploadFileTree from "@/components/dashboard/file-system/Modals/upload/UploadFileTree.vue";
+import UploadModalFooter from "@/components/dashboard/file-system/Modals/upload/UploadModalFooter.vue";
+import UploadModalShell from "@/components/dashboard/file-system/Modals/upload/UploadModalShell.vue";
+import UploadPanel from "@/components/dashboard/file-system/Modals/upload/UploadPanel.vue";
+import UploadProgressSummary from "@/components/dashboard/file-system/Modals/upload/UploadProgressSummary.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { countOf } from "@/features/toast/format";
 import { useDirectoryStore } from "@/stores/directory";
-
-import UploadEmptyState from "./upload/UploadEmptyState.vue";
-import UploadFileTree from "./upload/UploadFileTree.vue";
-import UploadModalFooter from "./upload/UploadModalFooter.vue";
-import UploadModalShell from "./upload/UploadModalShell.vue";
-import UploadProgressSummary from "./upload/UploadProgressSummary.vue";
 
 // configure zip.js to use its own built-in workers for decompression
 configure({ useWebWorkers: true });
 
 const directoryStore = useDirectoryStore();
-const appToast = useAppToast();
+const appToast = useAppToast("upload");
 
 const {
   fileStatuses,
@@ -132,12 +133,58 @@ const progressValue = computed(() =>
 );
 
 const progressLabel = computed(() => {
-  if (extractionPhase.value === "scanning") return "Reading archive…";
-  if (extractionPhase.value === "extracting")
-    return `Extracting ${extractedCount.value} of ${totalEntryCount.value} files…`;
-  if (uploading.value) return `${activeFiles.value} uploading`;
-  if (fileStatuses.value.length > 0) return `${completedFiles.value} of ${totalFiles.value} files`;
+  const failed = failedFiles.value.length;
+  const failedNote = failed > 0 ? `, ${failed} failed` : "";
+
+  if (extractionPhase.value === "scanning") return "Reading the archive…";
+  if (extractionPhase.value === "extracting") {
+    return `Unpacking ${extractedCount.value} of ${totalEntryCount.value} files…`;
+  }
+  if (uploading.value) {
+    return `Uploading ${activeFiles.value}, ${successfulFiles.value} done${failedNote}`;
+  }
+  if (fileStatuses.value.length > 0) {
+    return `${completedFiles.value} of ${totalFiles.value} files${failedNote}`;
+  }
+
   return "";
+});
+
+const showProgress = computed(() => isExtracting.value || fileStatuses.value.length > 0);
+
+interface ArchiveStatus {
+  icon: string;
+  iconClass: string;
+  text: string;
+}
+
+// Plain status line under the archive name; the progress bar below carries the numbers.
+const archiveStatus = computed((): ArchiveStatus => {
+  if (isExtracting.value) {
+    return {
+      icon: "i-lucide-loader-circle",
+      iconClass: "text-primary motion-safe:animate-spin",
+      text: "Unpacking…",
+    };
+  }
+
+  if (extractionPhase.value === "done") {
+    return {
+      icon: "i-lucide-check-circle",
+      iconClass: "text-success",
+      text: `${countOf(extractedFiles.value.length, "file")} unpacked`,
+    };
+  }
+
+  if (extractionPhase.value === "error") {
+    return {
+      icon: "i-lucide-x-circle",
+      iconClass: "text-error",
+      text: extractionError.value ?? "Couldn't unpack the archive",
+    };
+  }
+
+  return { icon: "", iconClass: "", text: "Ready to unpack" };
 });
 
 // file selection
@@ -232,6 +279,17 @@ const cancelExtraction = () => {
 };
 
 const selectedDirectoryId = ref<string | undefined>(props.directoryId ?? undefined);
+const destinationName = ref(props.directoryName ?? "Home");
+
+// Names what is being uploaded so the toast still makes sense after the modal has closed.
+const uploadSubject = computed(() => {
+  const name = archiveFile.value?.name;
+
+  return name ? `"${name}"` : "the archive";
+});
+
+const uploadSummary = (count: number, outcome: string) =>
+  `${countOf(count, "file")} ${outcome} to ${destinationName.value}`;
 
 // upload
 
@@ -248,7 +306,14 @@ const startUpload = async () => {
     await startUploadPipeline(extractedFiles.value, directoryMapping);
 
     if (cancelled.value) {
-      appToast.info("Upload cancelled");
+      const finishedEarly = successfulFiles.value;
+
+      appToast.info(
+        "Upload cancelled",
+        finishedEarly > 0
+          ? uploadSummary(finishedEarly, "finished before you cancelled")
+          : undefined,
+      );
       return;
     }
 
@@ -256,16 +321,16 @@ const startUpload = async () => {
     const success = successfulFiles.value;
 
     if (failed === 0) {
-      appToast.success(
-        "Upload Complete",
-        `${success} ${success === 1 ? "file" : "files"} uploaded`,
-      );
+      appToast.success(`Uploaded ${uploadSubject.value}`, uploadSummary(success, "uploaded"));
       setTimeout(() => emit("close", true), 1000);
     } else {
-      appToast.warning("Upload Finished with Errors", `${success} succeeded, ${failed} failed`);
+      appToast.warning(
+        `Uploaded ${success} of ${success + failed} files from ${uploadSubject.value}`,
+        `${countOf(failed, "file")} failed. Use Retry in the upload window.`,
+      );
     }
   } catch (err) {
-    appToast.error("Upload Failed", err);
+    appToast.error(`Couldn't upload ${uploadSubject.value}`, err, { retry: startUpload });
   } finally {
     uploading.value = false;
   }
@@ -279,12 +344,12 @@ const handleRetry = async () => {
   const success = successfulFiles.value;
 
   if (stillFailed === 0) {
-    appToast.success("Upload Complete", `${success} ${success === 1 ? "file" : "files"} uploaded`);
+    appToast.success(`Uploaded ${uploadSubject.value}`, uploadSummary(success, "uploaded"));
     setTimeout(() => emit("close", true), 1000);
   } else {
     appToast.warning(
-      "Retry Complete",
-      `${stillFailed} ${stillFailed === 1 ? "file" : "files"} still failed`,
+      `${countOf(stillFailed, "file")} from ${uploadSubject.value} still failed`,
+      "Check each file's error in the upload window.",
     );
     uploading.value = false;
   }
@@ -320,28 +385,21 @@ onMounted(() => {
 <template>
   <UploadModalShell
     v-model="selectedDirectoryId"
-    title="Upload Archive"
+    v-model:destination-name="destinationName"
+    title="Upload an archive"
+    description="The archive is unpacked and its contents are uploaded as a folder."
     :initial-id="directoryId"
     :initial-name="directoryName"
     :picker-disabled="uploading"
     @close="emit('close', false)"
   >
-    <template #intro>
-      <p class="text-sm text-muted">
-        Upload a <code class="text-xs font-mono">.zip</code> or
-        <code class="text-xs font-mono">.jar</code> archive — its contents will be extracted and
-        uploaded as a directory.
-      </p>
-    </template>
-
-    <!-- empty: archive picker -->
     <UploadEmptyState
       v-if="!archiveFile"
-      tall
       icon="i-lucide-archive"
-      button-label="Select Archive"
+      title="Choose an archive"
+      subtitle="Works with .zip and .jar files."
+      button-label="Choose archive"
       button-icon="i-lucide-file-archive"
-      hint=".zip and .jar only"
       @select="archiveInputRef?.click()"
     >
       <input
@@ -351,85 +409,54 @@ onMounted(() => {
         class="hidden"
         @change="handleFileChange"
       />
-      <template #below>
-        <Transition
-          enter-active-class="transition-all duration-200 ease-out"
-          leave-active-class="transition-all duration-150 ease-in"
-          enter-from-class="opacity-0"
-          leave-to-class="opacity-0"
-        >
-          <p v-if="validationError" class="text-xs text-error">{{ validationError }}</p>
-        </Transition>
-      </template>
-    </UploadEmptyState>
 
-    <!-- archive selected -->
-    <div
-      v-else
-      class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 overflow-hidden"
-    >
-      <!-- archive file row -->
-      <div
-        class="flex items-center gap-3 px-3 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-      >
-        <UIcon name="i-lucide-file-archive" class="size-4 text-muted shrink-0" />
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium truncate text-gray-700 dark:text-gray-300">
-            {{ archiveFile.name }}
-          </p>
-          <p class="text-xs text-muted">{{ formatBytes(archiveFile.size) }}</p>
-        </div>
-
-        <!-- extraction phase badge -->
-        <div class="flex items-center gap-1.5 shrink-0">
-          <template v-if="extractionPhase === 'idle'">
-            <span class="text-xs text-muted">Ready to extract</span>
-          </template>
-          <template v-else-if="isExtracting">
-            <UIcon name="i-lucide-loader-circle" class="size-3.5 text-primary animate-spin" />
-            <span class="text-xs text-primary">Extracting…</span>
-          </template>
-          <template v-else-if="extractionPhase === 'done'">
-            <UIcon name="i-lucide-check-circle" class="size-3.5 text-success" />
-            <span class="text-xs text-success">{{ extractedFiles.length }} files extracted</span>
-          </template>
-          <template v-else-if="extractionPhase === 'error'">
-            <UIcon name="i-lucide-x-circle" class="size-3.5 text-error" />
-            <span class="text-xs text-error">{{ extractionError }}</span>
-          </template>
-        </div>
-
-        <UButton
-          v-if="!isExtracting && !uploading"
-          icon="i-lucide-x"
-          size="xs"
-          variant="ghost"
-          color="neutral"
-          aria-label="Remove archive"
-          @click="reset"
-        />
-      </div>
-
-      <!-- extraction + upload progress bar -->
       <Transition
         enter-active-class="transition-all duration-200 ease-out"
         leave-active-class="transition-all duration-150 ease-in"
         enter-from-class="opacity-0"
         leave-to-class="opacity-0"
       >
-        <div
-          v-if="isExtracting || fileStatuses.length > 0"
-          class="px-3 pt-2.5 pb-2 border-b border-gray-200/70 dark:border-gray-700/70 space-y-1.5"
-        >
-          <div class="flex items-center justify-between text-xs">
-            <span class="text-muted">{{ progressLabel }}</span>
-            <span class="tabular-nums font-medium">{{ progressValue }}%</span>
-          </div>
-          <UProgress :value="progressValue" :color="progressBarColor" size="xs" />
-        </div>
+        <p v-if="validationError" class="text-xs text-error">{{ validationError }}</p>
       </Transition>
+    </UploadEmptyState>
 
-      <!-- live file tree — shown once we have any extracted entries -->
+    <UploadPanel v-else>
+      <template #header>
+        <UIcon
+          name="i-lucide-file-archive"
+          class="size-5 shrink-0 text-gray-500 dark:text-gray-500"
+        />
+
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+            {{ archiveFile.name }}
+          </p>
+          <p class="flex min-w-0 items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+            <span class="shrink-0">{{ formatBytes(archiveFile.size) }}</span>
+            <span aria-hidden="true">·</span>
+            <UIcon
+              v-if="archiveStatus.icon"
+              :name="archiveStatus.icon"
+              class="size-3.5 shrink-0"
+              :class="archiveStatus.iconClass"
+            />
+            <span class="truncate" :title="archiveStatus.text">{{ archiveStatus.text }}</span>
+          </p>
+        </div>
+
+        <UButton
+          v-if="!isExtracting && !uploading"
+          icon="i-lucide-x"
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          square
+          class="justify-center"
+          aria-label="Remove archive"
+          @click="reset"
+        />
+      </template>
+
       <UploadFileTree
         v-if="extractedFiles.length > 0 || fileStatuses.length > 0"
         :items="treeItems"
@@ -444,41 +471,30 @@ onMounted(() => {
         :format-bytes="formatBytes"
       />
 
-      <!-- upload summary bar -->
-      <Transition
-        enter-active-class="transition-all duration-200 ease-out"
-        leave-active-class="transition-all duration-150 ease-in"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-      >
-        <UploadProgressSummary
-          v-if="fileStatuses.length > 0"
-          :percent="overallProgress"
-          :color="summaryBarColor"
+      <template #footer>
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out"
+          leave-active-class="transition-all duration-150 ease-in"
+          enter-from-class="opacity-0"
+          leave-to-class="opacity-0"
         >
-          <template #label>
-            <span>
-              <template v-if="uploading">
-                {{ activeFiles }} uploading
-                <span v-if="successfulFiles > 0" class="text-success">
-                  · {{ successfulFiles }} done</span
-                >
-                <span v-if="failedFiles.length > 0" class="text-error">
-                  · {{ failedFiles.length }} failed</span
-                >
-              </template>
-              <template v-else> {{ completedFiles }} of {{ totalFiles }} files </template>
-            </span>
-          </template>
-        </UploadProgressSummary>
-      </Transition>
-    </div>
+          <UploadProgressSummary
+            v-if="showProgress"
+            :percent="progressValue"
+            :color="progressBarColor"
+          >
+            <template #label>{{ progressLabel }}</template>
+          </UploadProgressSummary>
+        </Transition>
+      </template>
+    </UploadPanel>
 
     <template #footer>
       <UploadModalFooter
         :working="isExtracting || uploading"
         :has-session="!!archiveFile"
         :has-failures="failedFiles.length > 0 && !uploading"
+        :destination-name="destinationName"
         @cancel="isExtracting ? cancelExtraction() : cancelUpload()"
         @start-over="reset"
         @close="emit('close', false)"
@@ -487,7 +503,7 @@ onMounted(() => {
         <template #primary>
           <UButton
             v-if="extractionPhase === 'idle' && archiveFile"
-            label="Extract"
+            label="Unpack"
             icon="i-lucide-package-open"
             color="primary"
             variant="solid"
@@ -495,7 +511,7 @@ onMounted(() => {
           />
           <UButton
             v-else-if="extractionPhase === 'error'"
-            label="Retry Extract"
+            label="Try unpacking again"
             icon="i-lucide-rotate-ccw"
             color="neutral"
             variant="outline"

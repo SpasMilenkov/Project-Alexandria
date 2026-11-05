@@ -1,5 +1,3 @@
-import { type Locator, type Page, type Route, expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import {
   closeWidgetSettings,
@@ -7,6 +5,7 @@ import {
   openWidgetTab,
   selectWidget,
 } from "@e2e/helpers/home-grid-editor.js";
+import { type Locator, type Page, type Route, expect, test } from "@playwright/test";
 
 const names = ["Documents", "Photos", "Projects", "Backups", "Music", "Videos"];
 
@@ -237,7 +236,7 @@ test("mobile compact cards keep every upload action reachable", async ({ page })
   await target.getByRole("button", { name: "More upload options" }).click();
   await expect(page.getByRole("menuitem", { name: "Upload folder" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Upload folder" }).click();
-  await expect(page.getByRole("dialog", { name: "Upload Directory" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Upload a folder" })).toBeVisible();
   await page.screenshot({ path: "/tmp/alexandria-quick-widgets-mobile.png", fullPage: true });
 });
 
@@ -315,14 +314,14 @@ test("file, folder and archive buttons launch the existing root dialogs", async 
   const target = page.locator('[data-widget-id="upload-1"]');
 
   for (const [action, title] of [
-    ["Upload files", "Upload Files"],
-    ["Upload folder", "Upload Directory"],
-    ["Extract ZIP", "Upload Archive"],
+    ["Upload files", "Upload files"],
+    ["Upload folder", "Upload a folder"],
+    ["Extract ZIP", "Upload an archive"],
   ]) {
     await target.getByRole("button", { name: action, exact: true }).click();
     const dialog = page.getByRole("dialog", { name: title });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("Root directory", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Destination" })).toContainText("Home");
     await dialog.getByRole("button", { name: "Close", exact: true }).click();
     await expect(dialog).toHaveCount(0);
   }
@@ -337,7 +336,7 @@ test("external file and folder drops reach the matching dialogs", async ({ page 
     await expect(target.locator(".upload-body")).toHaveAttribute("data-drag-over", "true");
     await dispatchDrop(target, kind, "drop");
 
-    const title = kind === "file" ? "Upload Files" : "Upload Directory";
+    const title = kind === "file" ? "Upload files" : "Upload a folder";
     const dialog = page.getByRole("dialog", { name: title });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText("notes.txt", { exact: true })).toBeVisible();
@@ -354,10 +353,10 @@ test("ZIP drops offer both choices and can keep the archive intact", async ({ pa
   await dispatchDrop(target, "zip", "drop");
   const choice = page.getByRole("dialog");
 
-  await expect(choice.getByRole("button", { name: /Upload as Archive/u })).toBeVisible();
-  await choice.getByRole("button", { name: /Upload as File/u }).click();
+  await expect(choice.getByRole("button", { name: /Unpack into a folder/u })).toBeVisible();
+  await choice.getByRole("button", { name: /Keep as a single file/u }).click();
 
-  const dialog = page.getByRole("dialog", { name: "Upload Files" });
+  const dialog = page.getByRole("dialog", { name: "Upload files" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("backup.zip", { exact: true })).toBeVisible();
 });

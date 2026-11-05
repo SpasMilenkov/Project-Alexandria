@@ -438,7 +438,7 @@ export const useDirectoryUpload = () => {
   const statusIconClass = (status: UploadStatus) => {
     switch (status) {
       case "pending":
-        return "text-muted";
+        return "text-gray-400 dark:text-gray-600";
       case "hashing":
         return "text-primary animate-spin";
       case "uploading":
@@ -460,7 +460,7 @@ export const useDirectoryUpload = () => {
       case "error":
         return "text-error";
       default:
-        return "text-muted";
+        return "text-gray-500 dark:text-gray-500";
     }
   };
 

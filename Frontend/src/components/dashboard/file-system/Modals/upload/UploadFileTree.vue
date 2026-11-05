@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Icon } from "@iconify/vue";
+
 import type {
   DirectoryTreeItem,
   FileUploadStatus,
@@ -6,7 +8,10 @@ import type {
   UploadStatus,
 } from "@/composables/useDirectoryUpload";
 
-defineProps<{
+import MiddleTruncatedName from "@/components/common/MiddleTruncatedName.vue";
+import { getFileIcon } from "@/utils/files/icons";
+
+const { statusMap } = defineProps<{
   items: DirectoryTreeItem[];
   virtualize: boolean;
   hasStatuses: boolean;
@@ -18,6 +23,20 @@ defineProps<{
   folderIconClass: (folderPath: string) => string;
   formatBytes: (bytes: number) => string;
 }>();
+
+// The label owns the shrinking; trailing size and status keep their width however long the name is.
+const TREE_UI = {
+  linkLabel: "flex min-w-0 flex-1 items-center gap-2",
+  linkTrailing: "ms-auto inline-flex shrink-0 items-center gap-1.5 ps-3",
+  listWithChildren: "border-s border-gray-200/50 dark:border-gray-700/50",
+};
+
+const labelClass = (item: DirectoryTreeItem) => {
+  if (item.isFolder) return "font-medium text-gray-900 dark:text-gray-100";
+  if (statusMap.get(item.relativePath ?? "")?.status === "error") return "text-error";
+
+  return "text-gray-900 dark:text-gray-100";
+};
 </script>
 
 <template>
@@ -28,16 +47,20 @@ defineProps<{
       :get-key="(item: DirectoryTreeItem) => item.fullPath"
       color="neutral"
       size="sm"
-      :ui="{ listWithChildren: 'border-s border-gray-200/50 dark:border-gray-700/50' }"
+      :ui="TREE_UI"
     >
       <template #item-leading="{ item }: { item: DirectoryTreeItem }">
-        <UIcon
+        <Icon
           v-if="item.isFolder"
-          name="i-lucide-folder"
-          class="size-4 transition-colors"
-          :class="hasStatuses ? folderIconClass(item.fullPath) : 'text-muted'"
+          icon="mdi:folder"
+          class="size-4 shrink-0 transition-colors"
+          :class="hasStatuses ? folderIconClass(item.fullPath) : 'text-gray-500 dark:text-gray-400'"
         />
-        <UIcon v-else name="i-lucide-file" class="size-4 text-muted" />
+        <Icon
+          v-else
+          :icon="getFileIcon(item.label ?? '')"
+          class="size-4 shrink-0 text-gray-500 dark:text-gray-400"
+        />
       </template>
 
       <template #item-trailing="{ item }: { item: DirectoryTreeItem }">
@@ -49,7 +72,7 @@ defineProps<{
               'text-success': folderStatusMap.get(item.fullPath) === 'complete',
               'text-error': folderStatusMap.get(item.fullPath) === 'error',
               'text-primary': folderStatusMap.get(item.fullPath) === 'uploading',
-              'text-muted': folderStatusMap.get(item.fullPath) === 'pending',
+              'text-gray-500 dark:text-gray-500': folderStatusMap.get(item.fullPath) === 'pending',
             }"
           >
             {{ folderChildCountMap.get(item.fullPath)?.done }}/{{
@@ -59,7 +82,7 @@ defineProps<{
         </template>
 
         <template v-else-if="!item.isFolder">
-          <span v-if="!hasStatuses" class="text-xs text-muted tabular-nums">
+          <span v-if="!hasStatuses" class="text-xs tabular-nums text-gray-500 dark:text-gray-500">
             {{ formatBytes(item.fileSize ?? 0) }}
           </span>
           <div v-else class="flex items-center gap-1.5">
@@ -68,7 +91,7 @@ defineProps<{
                 statusMap.get(item.relativePath!)?.status === 'hashing' ||
                 statusMap.get(item.relativePath!)?.status === 'uploading'
               "
-              class="text-xs text-muted tabular-nums w-7 text-right"
+              class="w-7 text-right text-xs tabular-nums text-gray-500 dark:text-gray-500"
             >
               {{ statusMap.get(item.relativePath!)?.progress ?? 0 }}%
             </span>
@@ -82,19 +105,17 @@ defineProps<{
       </template>
 
       <template #item-label="{ item }: { item: DirectoryTreeItem }">
-        <span
-          class="truncate"
-          :class="{
-            'text-error': statusMap.get(item.relativePath ?? '')?.status === 'error',
-          }"
-        >
-          {{ item.label }}
-        </span>
+        <MiddleTruncatedName
+          :name="item.label ?? ''"
+          :keep-extension="!item.isFolder"
+          :class="labelClass(item)"
+        />
         <span
           v-if="statusMap.get(item.relativePath ?? '')?.error"
-          class="ml-1.5 text-xs text-error/70 truncate max-w-32"
+          class="min-w-0 max-w-40 shrink truncate text-xs text-error"
+          :title="statusMap.get(item.relativePath ?? '')?.error"
         >
-          — {{ statusMap.get(item.relativePath ?? "")?.error }}
+          {{ statusMap.get(item.relativePath ?? "")?.error }}
         </span>
       </template>
     </UTree>
