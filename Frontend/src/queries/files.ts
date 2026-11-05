@@ -4,7 +4,7 @@ import type { FileSearchQuery } from "@/schemas/search";
 import type { PaginationParams } from "@/types/pagination-params";
 
 import { type PreviewResultDto, fileApi } from "@/api/file";
-import { routesToPreviewWorker } from "@/utils/mime-catalog";
+import { routesToPreviewWorker } from "@/utils/files/mime-catalog";
 
 export const FILES_QUERY_KEYS = {
   getFile: (id: string) => [...FILES_QUERY_KEYS.root, "file", id],
@@ -17,18 +17,9 @@ export const FILES_QUERY_KEYS = {
     params.sortDirection,
     params.SortBy,
   ],
-  searchFiles: (query: FileSearchQuery) => [
-    ...FILES_QUERY_KEYS.root,
-    "search-files",
-    query.nameContains ?? null,
-    query.isDeleted,
-    query.isShared,
-    query.isStarred,
-    query.currentPage,
-    query.sortDirection,
-    query.sortBy,
-    query.pageSize,
-  ],
+  // Every filter belongs in the key, otherwise changing one (e.g. a deletion window)
+  // serves the cached result of the previous query.
+  searchFiles: (query: FileSearchQuery) => [...FILES_QUERY_KEYS.root, "search-files", query],
   // unversioned, resolves to "current version" server-side, so its result
   // can go stale the moment a new version becomes active
   preview: (fileId: string) => [...FILES_QUERY_KEYS.root, "preview", fileId],
