@@ -111,7 +111,9 @@ test("a failed favorite change keeps the mobile drawer state and can be retried"
   state.failNext = true;
 
   await drawer.getByRole("button", { name: "Remove from favorites", exact: true }).click();
-  await expect(page.getByText("Could not update folder favorites", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Couldn\'t update favorites for "Projects"', { exact: true }),
+  ).toBeVisible();
   await expect(drawer.getByText("Favorite folder", { exact: true })).toBeVisible();
 
   await drawer.getByRole("button", { name: "Remove from favorites", exact: true }).click();

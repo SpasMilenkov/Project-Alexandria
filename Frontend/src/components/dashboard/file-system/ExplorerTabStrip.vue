@@ -144,7 +144,7 @@ const handleKeydown = (event: KeyboardEvent) => {
           :key="tab.id"
           :data-tab-id="tab.id"
           role="presentation"
-          class="flex h-10 w-48 max-w-[100cqw] shrink-0 items-center border-b-2 transition-colors hover:bg-gray-800/10 dark:hover:bg-gray-500/20"
+          class="flex h-10 w-48 max-w-[100cqw] shrink-0 items-center border-b-2 transition-colors hover:bg-gray-800/10 data-[drop-active=valid]:bg-primary/10 data-[drop-active=valid]:ring-2 data-[drop-active=valid]:ring-inset data-[drop-active=valid]:ring-primary dark:hover:bg-gray-500/20"
           :class="tab.id === activeTabId ? 'border-primary bg-primary/10' : 'border-transparent'"
         >
           <button
