@@ -110,12 +110,11 @@ public class FakeContentStorageService : IContentStorageService
         return Task.FromResult((uploadId, uploadUrl));
     }
 
-    public Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false, CancellationToken ct = default)
+    public Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
         => Task.FromResult(new StorageBreakdown
         {
             SizeByType = new Dictionary<string, long>(),
-            TrashSize = 0,
-            OldFiles = []
+            TrashSize = 0
         });
 
     public Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default)

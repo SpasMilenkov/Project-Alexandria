@@ -71,7 +71,6 @@ public interface IFileRepository : IRepository<File>
     /// <summary>Version bytes of deleted files, all owners. No tracking.</summary>
     Task<long> GetTotalTrashSizeAsync(CancellationToken ct = default);
 
-    Task<IEnumerable<FileSummary>> GetOldFilesAsync(Guid userId, CancellationToken ct = default);
     Task<Dictionary<string, long>> GetSizeByTypeAsync(Guid userId, CancellationToken ct = default);
     Task<int> RestoreFilesAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default);
     Task<int> GetFileCountPerUserAsync(Guid userId, bool deletedOnly, CancellationToken ct = default);

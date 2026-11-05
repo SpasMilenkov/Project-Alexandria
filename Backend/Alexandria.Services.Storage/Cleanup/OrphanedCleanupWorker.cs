@@ -1,6 +1,7 @@
 using System.Net;
 using Alexandria.Common;
 using Alexandria.Common.Config;
+using Alexandria.Common.Policies;
 using Alexandria.Data.Models;
 using Amazon.S3;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,7 +19,7 @@ public partial class OrphanedCleanupWorker(
     : BackgroundService
 {
     private readonly TimeSpan _cleanupInterval = TimeSpan.FromHours(1);
-    private readonly TimeSpan _orphanedRetention = TimeSpan.FromDays(30);
+    private readonly TimeSpan _orphanedRetention = TrashRetentionPolicy.RetentionPeriod;
     private const int MaxDeletionAttempts = 10;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

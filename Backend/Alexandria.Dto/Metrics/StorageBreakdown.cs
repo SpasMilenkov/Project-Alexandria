@@ -1,4 +1,3 @@
-using Alexandria.Dto.Files;
 using Alexandria.Dto.PreviewsStats;
 
 namespace Alexandria.Dto.Metrics;
@@ -6,8 +5,9 @@ namespace Alexandria.Dto.Metrics;
 public class StorageBreakdown
 {
     public required Dictionary<string, long> SizeByType { get; set; }
+
+    /// <summary>Versions of files still inside the restore window; older trash is already reclaimed.</summary>
     public required long TrashSize { get; set; }
-    public required IEnumerable<FileSummary> OldFiles { get; set; }
 
     /// <summary>Sum of <see cref="SizeByType"/> values: all versions of live files.</summary>
     public long FilesSize { get; set; }
