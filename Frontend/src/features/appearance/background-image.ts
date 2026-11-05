@@ -52,11 +52,7 @@ export const cancelBackgroundImageLoad = (): void => {
 export const hasBackgroundImageObjectUrl = (key: string, updatedAt: string): boolean =>
   activeObjectUrl?.key === key && activeObjectUrl.updatedAt === updatedAt;
 
-export const setBackgroundImageObjectUrl = (
-  url: string,
-  key: string,
-  updatedAt: string,
-): void => {
+export const setBackgroundImageObjectUrl = (url: string, key: string, updatedAt: string): void => {
   if (activeObjectUrl?.url === url) {
     return;
   }

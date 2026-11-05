@@ -4,14 +4,14 @@ import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Component, createApp, defineComponent, nextTick } from "vue";
 
+import {
+  SESSION_EPOCH_STORAGE_KEY,
+  stopSessionBoundaryWatcher,
+} from "@/features/auth/session-boundary";
 import { useAuthStore } from "@/stores/auth";
 import { useHomeStore } from "@/stores/home";
 import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
-import {
-  SESSION_EPOCH_STORAGE_KEY,
-  stopSessionBoundaryWatcher,
-} from "@/utils/sessionBoundary";
 
 const { mockGetSession, mockLogin, mockLogout } = vi.hoisted(() => ({
   mockGetSession: vi.fn(),

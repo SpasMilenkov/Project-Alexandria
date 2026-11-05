@@ -4,12 +4,16 @@ import { computed, ref, watch } from "vue";
 import type { HomeWidgetSize } from "@/enums/home-widget";
 import type { HomeLayout, HomeWidgetOptions as HomeWidgetOptionsValue } from "@/types/home";
 
-import HomeWidgetOptions from "@/components/dashboard/home/HomeWidgetOptions.vue";
+import HomeWidgetOptions from "@/components/dashboard/home/editor/HomeWidgetOptions.vue";
 import { HOME_WIDGET_REGISTRY } from "@/components/dashboard/home/registry";
-import { HOME_GRID_MAX_HEIGHT, HOME_GRID_MAX_ROWS, homeWidgetFootprint } from "@/utils/home-grid";
-import { HOME_SIZES } from "@/utils/home-layout";
-import { homeWidgetHasStyles, homeWidgetStyleLabel } from "@/utils/home-widget-editor";
-import { homeWidgetMinimum } from "@/utils/home-widget-sizing";
+import { homeWidgetHasStyles, homeWidgetStyleLabel } from "@/features/home/editor/styles";
+import {
+  HOME_GRID_MAX_HEIGHT,
+  HOME_GRID_MAX_ROWS,
+  homeWidgetFootprint,
+} from "@/features/home/grid/placement";
+import { homeWidgetMinimum } from "@/features/home/grid/sizing";
+import { HOME_SIZES } from "@/features/home/layout";
 
 const { layout, selectedId, disabled } = defineProps<{
   layout: HomeLayout;

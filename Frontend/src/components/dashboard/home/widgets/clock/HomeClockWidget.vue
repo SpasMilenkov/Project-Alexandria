@@ -8,10 +8,14 @@ import {
   HomeHorizontalAlignment,
   HomeVerticalAlignment,
 } from "@/enums/home-widget";
-import { homeClockDateLabels, homeClockReadout, useHomeClockTiming } from "@/utils/home-clock";
-import { homeClockLayout } from "@/utils/home-clock-layout";
-import { homeTimeZoneLabel, resolveHomeTimeZone } from "@/utils/home-time-zones";
-import { isHomeClockFaceOnly } from "@/utils/home-widget-options";
+import { isHomeClockFaceOnly } from "@/features/home/widget-options";
+import {
+  homeClockDateLabels,
+  homeClockReadout,
+  useHomeClockTiming,
+} from "@/features/home/widgets/clock/clock";
+import { homeClockLayout } from "@/features/home/widgets/clock/layout";
+import { homeTimeZoneLabel, resolveHomeTimeZone } from "@/features/home/widgets/clock/time-zones";
 
 import HomeClockFlipFace from "./HomeClockFlipFace.vue";
 import HomeClockRingsFace from "./HomeClockRingsFace.vue";

@@ -4,11 +4,15 @@ import { computed } from "vue";
 
 import { isAuthError } from "@/api/shuffle";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
+import { factsFor, formatWrappedDuration } from "@/features/wrapped/art";
+import { wrappedDailyLandscape } from "@/features/wrapped/daily-landscape";
+import {
+  wrappedMonthLabel,
+  wrappedMonthLocation,
+  wrappedMonthRange,
+} from "@/features/wrapped/month";
 import { getWrapped } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
-import { factsFor, formatWrappedDuration } from "@/utils/wrapped-art.utils";
-import { wrappedDailyLandscape } from "@/utils/wrapped-daily-landscape";
-import { wrappedMonthLabel, wrappedMonthLocation, wrappedMonthRange } from "@/utils/wrapped-month";
 
 const { month, now } = defineProps<{ month: string; now: Date }>();
 

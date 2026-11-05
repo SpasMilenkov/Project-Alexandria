@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { HomeWidgetSize } from "@/enums/home-widget";
-import { projectHomeLayout } from "@/utils/home-grid";
-import { type HomeResizeEdge, homePointerResize, homeResizeByCells } from "@/utils/home-grid-input";
-import { cloneHomeLayout, defaultHomeLayout } from "@/utils/home-layout";
+import {
+  type HomeResizeEdge,
+  homePointerResize,
+  homeResizeByCells,
+} from "@/features/home/grid/input";
+import { projectHomeLayout } from "@/features/home/grid/placement";
+import { cloneHomeLayout, defaultHomeLayout } from "@/features/home/layout";
 
 describe("Home resize geometry", () => {
   const edges: { edge: HomeResizeEdge; expected: object }[] = [

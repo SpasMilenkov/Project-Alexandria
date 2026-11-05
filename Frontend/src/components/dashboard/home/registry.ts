@@ -23,8 +23,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Make yourself at home with a personal welcome.",
     icon: "i-heroicons-sparkles",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeGreetingWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeGreetingWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/greeting/HomeGreetingWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/greeting/HomeGreetingWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.Countdown]: {
     type: HomeWidgetType.Countdown,
@@ -33,8 +35,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Count the days until a date that matters to you.",
     icon: "i-heroicons-calendar",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeCountdownWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeCountdownWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/countdown/HomeCountdownWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/countdown/HomeCountdownWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.FocusTimer]: {
     type: HomeWidgetType.FocusTimer,
@@ -43,8 +47,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Make room for focus, with short and long breaks.",
     icon: "i-heroicons-clock",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeFocusWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeFocusWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/focus/HomeFocusWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/focus/HomeFocusWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.DailyCover]: {
     type: HomeWidgetType.DailyCover,
@@ -53,8 +59,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "A fresh piece of generated artwork for each day.",
     icon: "i-heroicons-photo",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeDailyCoverWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeDailyCoverWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/daily-cover/HomeDailyCoverWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/daily-cover/HomeDailyCoverWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.TranscodingJobs]: {
     type: HomeWidgetType.TranscodingJobs,
@@ -63,7 +71,7 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Your running, queued and failed media encoding jobs.",
     icon: "i-heroicons-arrow-path",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeTranscodingJobsWidget.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/status/HomeTranscodingJobsWidget.vue")),
   },
   [HomeWidgetType.LatestRecap]: {
     type: HomeWidgetType.LatestRecap,
@@ -72,8 +80,12 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Your month in music, as a poster, numbers or a story preview.",
     icon: "i-heroicons-musical-note",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeLatestRecapWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeLatestRecapWidgetOptions.vue")),
+    component: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/latest-recap/HomeLatestRecapWidget.vue"),
+    ),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/latest-recap/HomeLatestRecapWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.Collections]: {
     type: HomeWidgetType.Collections,
@@ -82,7 +94,9 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "A collage of the automatic collections in your music library.",
     icon: "i-heroicons-book-open",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeCollectionsWidget.vue")),
+    component: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/collections/HomeCollectionsWidget.vue"),
+    ),
   },
   [HomeWidgetType.Clock]: {
     type: HomeWidgetType.Clock,
@@ -91,8 +105,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "The time and date, at home or in another time zone.",
     icon: "i-heroicons-clock",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeClockWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeClockWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/clock/HomeClockWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/clock/HomeClockWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.Storage]: {
     type: HomeWidgetType.Storage,
@@ -101,8 +117,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Your usage and quota, with a breakdown of what takes space.",
     icon: "i-heroicons-archive-box",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeStorageWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeStorageWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/storage/HomeStorageWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/storage/HomeStorageWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.RecentFiles]: {
     type: HomeWidgetType.RecentFiles,
@@ -111,8 +129,12 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Files you recently created or updated.",
     icon: "i-heroicons-document-text",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeRecentFilesWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeRecentFilesWidgetOptions.vue")),
+    component: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/recent-files/HomeRecentFilesWidget.vue"),
+    ),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/recent-files/HomeRecentFilesWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.LibraryShortcuts]: {
     type: HomeWidgetType.LibraryShortcuts,
@@ -121,8 +143,12 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Keep your file or media destinations within reach.",
     icon: "i-heroicons-book-open",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeLibraryWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeLibraryWidgetOptions.vue")),
+    component: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/library/HomeLibraryWidget.vue"),
+    ),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/library/HomeLibraryWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.QuickAccess]: {
     type: HomeWidgetType.QuickAccess,
@@ -131,8 +157,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Open your favorite folders in one click.",
     icon: "i-heroicons-folder",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeQuickAccessWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeQuickAccessWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/quick/HomeQuickAccessWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/quick/HomeQuickAccessWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.QuickUpload]: {
     type: HomeWidgetType.QuickUpload,
@@ -141,8 +169,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Upload files, folders or ZIP archives to your library.",
     icon: "i-heroicons-arrow-up-tray",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeQuickUploadWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeQuickUploadWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/quick/HomeQuickUploadWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/quick/HomeQuickUploadWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.Player]: {
     type: HomeWidgetType.Player,
@@ -151,8 +181,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Control what is playing, right from your dashboard.",
     icon: "i-mdi-music-note-outline",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomePlayerWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomePlayerWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/player/HomePlayerWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/player/HomePlayerWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.SystemStatus]: {
     type: HomeWidgetType.SystemStatus,
@@ -161,8 +193,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Current service status and thirty days of incident history.",
     icon: "i-heroicons-check-circle",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeSystemStatusWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeSystemStatusWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/status/HomeSystemStatusWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/status/HomeSystemStatusWidgetOptions.vue"),
+    ),
   },
   [HomeWidgetType.TopSongs]: {
     type: HomeWidgetType.TopSongs,
@@ -171,7 +205,7 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Your most played songs over the last seven days.",
     icon: "i-heroicons-musical-note",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeTopSongsWidget.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/top-songs/HomeTopSongsWidget.vue")),
   },
   [HomeWidgetType.RecentActivity]: {
     type: HomeWidgetType.RecentActivity,
@@ -180,8 +214,10 @@ export const HOME_WIDGET_REGISTRY: Record<HomeWidgetType, HomeWidgetDefinition> 
     description: "Recent actions on your files and account, together or grouped by day.",
     icon: "i-heroicons-clock",
     sizes,
-    component: defineAsyncComponent(() => import("./widgets/HomeRecentActivityWidget.vue")),
-    optionsComponent: defineAsyncComponent(() => import("./HomeRecentActivityWidgetOptions.vue")),
+    component: defineAsyncComponent(() => import("@/components/dashboard/home/widgets/status/HomeRecentActivityWidget.vue")),
+    optionsComponent: defineAsyncComponent(
+      () => import("@/components/dashboard/home/widgets/status/HomeRecentActivityWidgetOptions.vue"),
+    ),
   },
 };
 

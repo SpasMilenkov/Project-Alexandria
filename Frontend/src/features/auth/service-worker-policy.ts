@@ -51,11 +51,7 @@ export const isApiRequest = (url: URL, apiBase: URL): boolean => {
   return url.pathname === basePath || url.pathname.startsWith(`${basePath}/`);
 };
 
-export const isProtectedRequest = (
-  url: URL,
-  apiBase: URL,
-  pageOrigin: string,
-): boolean => {
+export const isProtectedRequest = (url: URL, apiBase: URL, pageOrigin: string): boolean => {
   if (isApiRequest(url, apiBase)) {
     return true;
   }

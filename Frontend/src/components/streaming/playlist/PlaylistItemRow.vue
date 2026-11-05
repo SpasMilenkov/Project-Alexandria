@@ -23,12 +23,7 @@
     <!-- Position number hides on hover, play button takes its place.
          The now-playing track keeps the equalizer visible instead. -->
     <div class="w-5 shrink-0 flex items-center justify-center">
-      <div
-        v-if="isPlaying"
-        class="flex"
-        role="status"
-        aria-label="Now playing"
-      >
+      <div v-if="isPlaying" class="flex" role="status" aria-label="Now playing">
         <MediaEqualizer :playing="player.isPlaying" class="text-primary" />
       </div>
       <template v-else>
@@ -102,7 +97,7 @@ import { fileApi } from "@/api/file";
 import MediaEqualizer from "@/components/streaming/overview/MediaEqualizer.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/stream-player";
-import { isThumbnailSupportedMimeType } from "@/utils/mimetype.utils";
+import { isThumbnailSupportedMimeType } from "@/utils/files/mimetype";
 
 const { item, draggedItemId, isPlaying } = defineProps<{
   item: PlaylistItemResponse;

@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fileApi } from "@/api/file";
@@ -125,7 +124,7 @@ describe("presigned PUT content type", () => {
 describe("archive extraction", () => {
   it("V04 builds extracted files without a MIME type", () => {
     const source = readSource(
-      "../components/dashboard/file-system/Modals/ArchiveUploadModal.vue",
+      "../../components/dashboard/file-system/Modals/ArchiveUploadModal.vue",
     );
 
     expect(source).toContain("new File([blob], fileName)");
@@ -134,7 +133,7 @@ describe("archive extraction", () => {
 
   it("V05 no longer contains the extension MIME table", () => {
     const source = readSource(
-      "../components/dashboard/file-system/Modals/ArchiveUploadModal.vue",
+      "../../components/dashboard/file-system/Modals/ArchiveUploadModal.vue",
     );
 
     expect(source).not.toContain("EXTENSION_MIME");

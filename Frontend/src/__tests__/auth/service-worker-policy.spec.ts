@@ -4,7 +4,7 @@ import {
   isApiRequest,
   isProtectedRequest,
   resolveApiBase,
-} from "@/utils/serviceWorkerPolicy";
+} from "@/features/auth/service-worker-policy";
 
 const appOrigin = "https://alexandria.test";
 
@@ -35,7 +35,9 @@ describe("service worker API policy", () => {
     expect(isApiRequest(new URL("https://api.alexandria.test/files/1", appOrigin), apiBase)).toBe(
       true,
     );
-    expect(isApiRequest(new URL("https://alexandria.test/files/1", appOrigin), apiBase)).toBe(false);
+    expect(isApiRequest(new URL("https://alexandria.test/files/1", appOrigin), apiBase)).toBe(
+      false,
+    );
   });
 
   it("falls back to the local API origin when no base URL is configured", () => {
@@ -52,14 +54,14 @@ describe("service worker API policy", () => {
       true,
     );
     expect(isProtectedRequest(new URL("/stream/song/1", appOrigin), apiBase, appOrigin)).toBe(true);
-    expect(isProtectedRequest(new URL("/preview/version-1/preview", appOrigin), apiBase, appOrigin)).toBe(
-      true,
-    );
-    expect(isProtectedRequest(new URL("/images/user-1", "https://cdn.test"), apiBase, appOrigin)).toBe(
-      false,
-    );
-    expect(isProtectedRequest(new URL("/assets/app-12345678.js", appOrigin), apiBase, appOrigin)).toBe(
-      false,
-    );
+    expect(
+      isProtectedRequest(new URL("/preview/version-1/preview", appOrigin), apiBase, appOrigin),
+    ).toBe(true);
+    expect(
+      isProtectedRequest(new URL("/images/user-1", "https://cdn.test"), apiBase, appOrigin),
+    ).toBe(false);
+    expect(
+      isProtectedRequest(new URL("/assets/app-12345678.js", appOrigin), apiBase, appOrigin),
+    ).toBe(false);
   });
 });

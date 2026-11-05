@@ -9,20 +9,24 @@ import {
   HomeGreetingStyle,
   HomeWidgetType,
 } from "@/enums/home-widget";
-import { useHomeStore } from "@/stores/home";
+import { homeWidgetHasStyles, homeWidgetStyleLabel } from "@/features/home/editor/styles";
 import {
-  HOME_GREETING_DECORATIONS,
-  HOME_GREETING_EMOJIS,
-  homeGreetingHeading,
-} from "@/utils/home-greeting";
-import { cloneHomeSettings, createHomeWidget, setSeparateMobileLayout } from "@/utils/home-layout";
-import { homeWidgetHasStyles, homeWidgetStyleLabel } from "@/utils/home-widget-editor";
-import { defaultHomeWidgetOptions } from "@/utils/home-widget-options";
+  cloneHomeSettings,
+  createHomeWidget,
+  setSeparateMobileLayout,
+} from "@/features/home/layout";
 import {
   buildHomeChanges,
   homeBoardToSettings,
   homeWidgetToRow,
-} from "@/utils/home-widget-persistence";
+} from "@/features/home/persistence";
+import { defaultHomeWidgetOptions } from "@/features/home/widget-options";
+import {
+  HOME_GREETING_DECORATIONS,
+  HOME_GREETING_EMOJIS,
+  homeGreetingHeading,
+} from "@/features/home/widgets/greeting";
+import { useHomeStore } from "@/stores/home";
 
 const board = (): HomeBoard => ({
   initialized: true,

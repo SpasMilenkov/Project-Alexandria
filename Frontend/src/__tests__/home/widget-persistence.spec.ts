@@ -5,13 +5,17 @@ import type { HomeBoard } from "@/api/home";
 import type { HomeSettings } from "@/types/home";
 
 import { HomeLayoutKind, HomeWidgetType } from "@/enums/home-widget";
-import { useHomeStore } from "@/stores/home";
-import { cloneHomeSettings, defaultHomeLayout, setSeparateMobileLayout } from "@/utils/home-layout";
+import {
+  cloneHomeSettings,
+  defaultHomeLayout,
+  setSeparateMobileLayout,
+} from "@/features/home/layout";
 import {
   buildHomeChanges,
   homeBoardToSettings,
   homeWidgetToRow,
-} from "@/utils/home-widget-persistence";
+} from "@/features/home/persistence";
+import { useHomeStore } from "@/stores/home";
 
 const settings = (): HomeSettings => ({
   initialized: true,

@@ -5,26 +5,26 @@ import { computed, nextTick, ref, watch } from "vue";
 import type { HomeWidgetType } from "@/enums/home-widget";
 import type { HomeLayout, HomeWidget, HomeWidgetOptions } from "@/types/home";
 
-import HomeWidgetCard from "@/components/dashboard/home/HomeWidgetCard.vue";
-import HomeWidgetResizeHandles from "@/components/dashboard/home/HomeWidgetResizeHandles.vue";
-import HomeWidgetToolbar from "@/components/dashboard/home/HomeWidgetToolbar.vue";
+import HomeWidgetResizeHandles from "@/components/dashboard/home/editor/HomeWidgetResizeHandles.vue";
+import HomeWidgetToolbar from "@/components/dashboard/home/editor/HomeWidgetToolbar.vue";
+import HomeWidgetCard from "@/components/dashboard/home/grid/HomeWidgetCard.vue";
 import { HOME_WIDGET_REGISTRY } from "@/components/dashboard/home/registry";
 import { useHomeGridDrag } from "@/composables/useHomeGridDrag";
 import { useHomeGridMotion } from "@/composables/useHomeGridMotion";
-import {
-  HOME_GRID_MAX_ROWS,
-  homeSpatialOrder,
-  previewHomePlacement,
-  projectHomeLayout,
-} from "@/utils/home-grid";
 import {
   type HomeResizeEdge,
   homeArrowOffset,
   homeDragFromControl,
   homeEditorKeyboardBlocked,
   homeResizeByCells,
-} from "@/utils/home-grid-input";
-import { MAX_HOME_WIDGETS, createHomeWidget } from "@/utils/home-layout";
+} from "@/features/home/grid/input";
+import {
+  HOME_GRID_MAX_ROWS,
+  homeSpatialOrder,
+  previewHomePlacement,
+  projectHomeLayout,
+} from "@/features/home/grid/placement";
+import { MAX_HOME_WIDGETS, createHomeWidget } from "@/features/home/layout";
 
 const {
   layout,

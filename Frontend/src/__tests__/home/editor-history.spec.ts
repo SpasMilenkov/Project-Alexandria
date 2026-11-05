@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import { effectScope, ref } from "vue";
 
 import { useHomeEditorHistory } from "@/composables/useHomeEditorHistory";
+import {
+  cloneHomeSettings,
+  defaultHomeLayout,
+  setSeparateMobileLayout,
+} from "@/features/home/layout";
+import { buildHomeChanges } from "@/features/home/persistence";
 import { useHomeStore } from "@/stores/home";
-import { cloneHomeSettings, defaultHomeLayout, setSeparateMobileLayout } from "@/utils/home-layout";
-import { buildHomeChanges } from "@/utils/home-widget-persistence";
 
 const setup = () => {
   setActivePinia(createPinia());
