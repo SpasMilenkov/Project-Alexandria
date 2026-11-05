@@ -1,3 +1,4 @@
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Playlists;
 using Alexandria.Common.Services;
 using Microsoft.Extensions.Logging;
@@ -23,11 +24,19 @@ internal static partial class PlaylistSyncNotifier
                 PlaylistSyncMessage.Encode(fileId, ownerId),
                 PlaylistSyncMessage.SyncRoutingKey);
         }
+        catch (MessageBrokerUnavailableException ex)
+        {
+            LogSyncSkippedBrokerUnavailable(logger, fileId, ex.Message);
+        }
         catch (Exception ex)
         {
             LogSyncPublishFailed(logger, ex, fileId, ownerId);
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Debug,
+        Message = "Skipped playlist sync for file {FileId}: {Reason}")]
+    private static partial void LogSyncSkippedBrokerUnavailable(ILogger logger, Guid fileId, string reason);
 
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Failed to publish playlist sync for file {FileId} of owner {OwnerId}.")]

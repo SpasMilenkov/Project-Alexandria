@@ -1,5 +1,6 @@
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.DocumentWorker;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.MediaMetadata.Extensions;
 using Alexandria.Workers.MediaMetadata.Workers;
 using Microsoft.AspNetCore.Builder;

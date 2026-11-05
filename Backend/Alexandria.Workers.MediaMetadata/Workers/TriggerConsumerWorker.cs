@@ -2,6 +2,7 @@ using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators.Monitoring;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.MediaMetadata.Config;
 using Alexandria.Workers.MediaMetadata.Queueing;
 using Alexandria.Workers.MediaMetadata.Services;
@@ -18,7 +19,7 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 /// </summary>
 public partial class TriggerConsumerWorker(
     ILogger<TriggerConsumerWorker> logger,
-    IConnection connection,
+    MessageBrokerConnection broker,
     IServiceProvider serviceProvider,
     IOptions<RabbitMqConsumerConfig> rabbitOptions,
     AccumulatorBuffer buffer) : BackgroundService
@@ -26,6 +27,12 @@ public partial class TriggerConsumerWorker(
     private IChannel? _channel;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await ConsumerStartup.RunAsync(broker, StartConsumingAsync, logger, ct: stoppingToken);
+        await Task.Delay(Timeout.Infinite, stoppingToken);
+    }
+
+    private async Task StartConsumingAsync(IConnection connection, CancellationToken stoppingToken)
     {
         var config = rabbitOptions.Value;
         var exchangeName = config.ExchangeName;
@@ -193,8 +200,6 @@ public partial class TriggerConsumerWorker(
             cancellationToken: stoppingToken);
 
         LogConsumerStarted(logger, queueName, exchangeName);
-
-        await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
     private static async Task RecordTriggerFailureAsync(

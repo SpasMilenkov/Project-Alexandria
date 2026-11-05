@@ -1,4 +1,5 @@
 using System.Text;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.Media.Handlers;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -7,7 +8,7 @@ namespace Alexandria.Workers.Media;
 
 public class Worker(
     ILogger<Worker> logger,
-    IConnection connection,
+    MessageBrokerConnection broker,
     IConfiguration configuration,
     IServiceProvider serviceProvider)
     : BackgroundService
@@ -15,6 +16,12 @@ public class Worker(
     private IChannel? _channel;
 
     protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await ConsumerStartup.RunAsync(broker, StartConsumingAsync, logger, ct: ct);
+        await Task.Delay(Timeout.Infinite, ct);
+    }
+
+    private async Task StartConsumingAsync(IConnection connection, CancellationToken ct)
     {
         logger.LogInformation("RabbitMQ Worker starting...");
         _channel = await connection.CreateChannelAsync(cancellationToken: ct);
@@ -75,7 +82,6 @@ public class Worker(
             consumer: consumer,
             cancellationToken: ct);
         logger.LogInformation("RabbitMQ Worker started and listening on queue: {QueueName}", queueName);
-        await Task.Delay(Timeout.Infinite, ct);
     }
 
     public override async Task StopAsync(CancellationToken ct)

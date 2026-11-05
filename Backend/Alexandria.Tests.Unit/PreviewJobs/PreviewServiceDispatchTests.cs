@@ -20,6 +20,7 @@ public class PreviewServiceDispatchTests
     private readonly IContentStorageService _storage = Substitute.For<IContentStorageService>();
     private readonly IPreviewArtifactService _artifacts = Substitute.For<IPreviewArtifactService>();
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IFileRepository _files = Substitute.For<IFileRepository>();
     private readonly IFileVersionRepository _versions = Substitute.For<IFileVersionRepository>();
@@ -38,6 +39,8 @@ public class PreviewServiceDispatchTests
         _unitOfWork.FileVersions.Returns(_versions);
         _unitOfWork.PreviewJobs.Returns(_previewJobs);
         _unitOfWork.Jobs.Returns(_jobs);
+        _broker.IsEnabled.Returns(true);
+        _broker.IsAvailable.Returns(true);
         _jobs.AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.Arg<Job>());
         _previewJobs.AddAsync(Arg.Any<PreviewJob>(), Arg.Any<CancellationToken>())
@@ -45,7 +48,7 @@ public class PreviewServiceDispatchTests
 
         var cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 100 });
         _sut = new PreviewService(
-            _storage, _artifacts, _publisher, _unitOfWork,
+            _storage, _artifacts, _publisher, _broker, _unitOfWork,
             _textPreview, _archivePreview, cache);
     }
 
@@ -78,6 +81,36 @@ public class PreviewServiceDispatchTests
 
         await _jobs.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
         await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task broker_unavailable_skips_dispatch_without_job_rows()
+    {
+        StoredImage();
+        _broker.IsAvailable.Returns(false);
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview,
+            TestContext.Current.CancellationToken);
+
+        await _jobs.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+        await _previewJobs.DidNotReceive().AddAsync(Arg.Any<PreviewJob>(), Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task broker_recovery_dispatches_on_next_read()
+    {
+        StoredImage();
+        _broker.IsAvailable.Returns(false);
+        var ct = TestContext.Current.CancellationToken;
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview, ct);
+
+        _broker.IsAvailable.Returns(true);
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview, ct);
+
+        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), "image.png");
     }
 
     [Fact]

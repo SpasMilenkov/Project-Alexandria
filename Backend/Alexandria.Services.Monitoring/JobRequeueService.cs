@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Common.Settings;
 using Alexandria.Data.Models.Enumerators;
@@ -12,6 +13,7 @@ public class JobRequeueService(
     IUnitOfWork unitOfWork,
     IPreviewService previewService,
     IPublisherService publisher,
+    IMessageBrokerStatus brokerStatus,
     IOptions<JobRecoveryOptions> options) : IJobRequeueService
 {
     internal const string TranspilationRoutingKey = "transpilation.job";
@@ -25,6 +27,10 @@ public class JobRequeueService(
         if (job is null || job.DeletedAt is not null)
             return JobRequeueOutcome.NotFound;
 
+        // Checked before the reset so an outage never leaves a job flipped to Queued
+        // with no message behind it.
+        MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
+
         return job.Type switch
         {
             JobType.MediaPreview or JobType.DocumentPreview => await RequeuePreviewAsync(job.Id, job.Type, ct),
@@ -37,6 +43,8 @@ public class JobRequeueService(
 
     public async Task<int> RequeueFailedAsync(JobType type, int limit, CancellationToken ct)
     {
+        MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
+
         var failed = await unitOfWork.Jobs.FindJobsAsync(
             new JobQuery { Status = JobStatus.Failed, Type = type, PageSize = Math.Clamp(limit, 1, 500) }, ct);
 

@@ -1,6 +1,6 @@
 using RabbitMQ.Client;
 
-namespace Alexandria.Infrastructure;
+namespace Alexandria.Infrastructure.Messaging;
 
 public interface IChannelPool
 {

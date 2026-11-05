@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Services.Storage.AutoTagging;
@@ -48,6 +49,10 @@ public partial class AutoTagSweepWorker(
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 break;
+            }
+            catch (MessageBrokerUnavailableException ex)
+            {
+                LogSweepRetrySkipped(logger, ex.Message);
             }
             catch (Exception ex)
             {

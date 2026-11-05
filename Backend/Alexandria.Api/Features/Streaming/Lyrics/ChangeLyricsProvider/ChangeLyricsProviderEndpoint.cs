@@ -1,4 +1,5 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using FastEndpoints;
@@ -23,7 +24,16 @@ internal sealed class ChangeProviderEndpoint(ITrackLyricsService lyricsService) 
     {
         var userId = User.GetUserId();
 
-        await lyricsService.ChangeProviderAsync(req.LyricsId, userId, req.Provider, ct);
+        try
+        {
+            await lyricsService.ChangeProviderAsync(req.LyricsId, userId, req.Provider, ct);
+        }
+        catch (MessageBrokerUnavailableException ex)
+        {
+            AddError(ex.Message);
+            await Send.ErrorsAsync(503, ct);
+            return;
+        }
 
         await Send.NoContentAsync(ct);
     }

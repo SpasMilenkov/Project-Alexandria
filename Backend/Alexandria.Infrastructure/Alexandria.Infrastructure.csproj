@@ -46,4 +46,8 @@
         </Reference>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
+    </ItemGroup>
+
 </Project>

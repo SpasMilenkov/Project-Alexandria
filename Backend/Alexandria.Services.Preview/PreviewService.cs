@@ -13,6 +13,7 @@ public class PreviewService(
     IContentStorageService storageService,
     IPreviewArtifactService previewArtifacts,
     IPublisherService publisherService,
+    IMessageBrokerStatus brokerStatus,
     IUnitOfWork unitOfWork,
     ITextPreviewService textPreviewService,
     IArchivePreviewService archivePreviewService,
@@ -53,6 +54,15 @@ public class PreviewService(
         Guid versionId, Guid userId, PreviewKind kind, string routingKey, JobType jobType,
         CancellationToken ct)
     {
+        // Preview and thumbnail reads trigger dispatch. While the broker is down they skip
+        // without creating job rows, and drop the in-flight marker so the first read after
+        // recovery dispatches normally.
+        if (!brokerStatus.IsAvailable)
+        {
+            ClearJob(versionId);
+            return null;
+        }
+
         var existing = await unitOfWork.PreviewJobs.FirstOrDefaultAsync(
             j => j.VersionId == versionId && j.Kind == kind && j.UserId == userId && j.DeletedAt == null, ct);
 

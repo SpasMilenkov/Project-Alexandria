@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
@@ -21,6 +22,7 @@ public class TrackLyricsServiceTests
     private readonly ITranspilationJobRepository _transcodes = Substitute.For<ITranspilationJobRepository>();
     private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
 
     private readonly TrackLyricsService _sut;
 
@@ -34,7 +36,9 @@ public class TrackLyricsServiceTests
             .Returns(new TranspilationJob { Id = _jobId, UserId = _userId });
         _jobsRepo.AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>())
             .Returns(ci => ci.Arg<Job>());
-        _sut = new TrackLyricsService(_uow, _publisher);
+        _broker.IsEnabled.Returns(true);
+        _broker.IsAvailable.Returns(true);
+        _sut = new TrackLyricsService(_uow, _publisher, _broker);
     }
 
     // ---- GetLyricsForMediaAsync ----
@@ -85,6 +89,44 @@ public class TrackLyricsServiceTests
     }
 
     // ---- QueueLyricsRefetchAsync ----
+
+    [Fact]
+    public async Task get_lyrics_not_found_broker_unavailable_returns_pending_without_queueing()
+    {
+        _broker.IsAvailable.Returns(false);
+
+        var result = await _sut.GetLyricsForMediaAsync(_jobId, _userId, TestContext.Current.CancellationToken);
+
+        result.Status.Should().Be(LyricsStatus.PendingFetch);
+        await _jobsRepo.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task queue_refetch_broker_unavailable_throws_before_any_write()
+    {
+        _broker.IsAvailable.Returns(false);
+
+        var act = () => _sut.QueueLyricsRefetchAsync(_jobId, _userId, TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<MessageBrokerUnavailableException>();
+        await _uow.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _jobsRepo.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task change_provider_broker_disabled_throws_before_any_write()
+    {
+        _broker.IsEnabled.Returns(false);
+        _broker.IsAvailable.Returns(false);
+
+        var act = () => _sut.ChangeProviderAsync(
+            Guid.NewGuid(), _userId, LyricsProvider.LrclibPublic, TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<MessageBrokerUnavailableException>())
+            .Which.Disabled.Should().BeTrue();
+        await _uow.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
 
     [Fact]
     public async Task queue_refetch_existing_non_manual_resets()

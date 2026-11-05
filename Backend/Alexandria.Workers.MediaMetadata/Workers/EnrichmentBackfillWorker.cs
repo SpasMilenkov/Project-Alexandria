@@ -3,6 +3,7 @@ using System.Text.Json;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Enrichment;
+using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.MediaMetadata.Config;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
@@ -17,7 +18,7 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 /// </summary>
 public partial class EnrichmentBackfillWorker(
     ILogger<EnrichmentBackfillWorker> logger,
-    IConnection connection,
+    MessageBrokerConnection broker,
     IServiceProvider serviceProvider,
     IOptions<RabbitMqConsumerConfig> rabbitOptions) : BackgroundService
 {
@@ -26,6 +27,12 @@ public partial class EnrichmentBackfillWorker(
     private IChannel? _channel;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await ConsumerStartup.RunAsync(broker, StartConsumingAsync, logger, ct: stoppingToken);
+        await Task.Delay(Timeout.Infinite, stoppingToken);
+    }
+
+    private async Task StartConsumingAsync(IConnection connection, CancellationToken stoppingToken)
     {
         var config = rabbitOptions.Value;
         var exchangeName = config.ExchangeName;
@@ -108,8 +115,6 @@ public partial class EnrichmentBackfillWorker(
             cancellationToken: stoppingToken);
 
         LogConsumerStarted(logger, queueName, exchangeName);
-
-        await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
     public override async Task StopAsync(CancellationToken cancellationToken)

@@ -1,16 +1,19 @@
+using Alexandria.Common.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using RabbitMQ.Client;
 
 namespace Alexandria.Infrastructure.HealthChecks;
 
-public class RabbitMqHealthCheck(Lazy<Task<IConnection>> connectionLazy) : IHealthCheck
+// Reads the supervisor-maintained state instead of connecting, so /health answers instantly
+// even while the broker is down.
+public class RabbitMqHealthCheck(IMessageBrokerStatus broker) : IHealthCheck
 {
-    public async Task<HealthCheckResult> CheckHealthAsync(
+    public Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        var connection = await connectionLazy.Value;
-        return connection.IsOpen
+        var result = broker.IsAvailable
             ? HealthCheckResult.Healthy("Connected")
-            : HealthCheckResult.Unhealthy("Connection closed");
+            : HealthCheckResult.Unhealthy("RabbitMQ is not connected");
+
+        return Task.FromResult(result);
     }
 }

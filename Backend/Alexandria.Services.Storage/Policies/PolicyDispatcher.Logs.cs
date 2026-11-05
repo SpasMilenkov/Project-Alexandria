@@ -14,4 +14,7 @@ public sealed partial class PolicyDispatcher
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to dispatch rule {RuleId} for file {FileId}.")]
     private static partial void LogRuleDispatchFailed(ILogger logger, Exception ex, Guid ruleId, Guid fileId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Skipped rule {RuleId} for file {FileId}: {Reason}")]
+    private static partial void LogRuleDispatchSkipped(ILogger logger, Guid ruleId, Guid fileId, string reason);
 }

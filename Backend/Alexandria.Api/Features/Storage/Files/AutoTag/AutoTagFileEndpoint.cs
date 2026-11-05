@@ -1,5 +1,6 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Policies;
 using Alexandria.Common.Helpers;
 using Alexandria.Common.Services;
@@ -86,6 +87,10 @@ public class AutoTagFileEndpoint(
         catch (AutoTaggingDisabledException ex)
         {
             ThrowError(ex.Message, 400);
+        }
+        catch (MessageBrokerUnavailableException ex)
+        {
+            ThrowError(ex.Message, 503);
         }
     }
 }
