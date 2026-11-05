@@ -87,7 +87,7 @@ describe("PolicyRuleRow", () => {
     deleteFn.mockRejectedValue(new Error("boom"));
     const wrapper = mountRow();
     await wrapper.find('[aria-label="Delete rule"]').trigger("click");
-    expect(errorToast).toHaveBeenCalledWith("Failed to remove rule", expect.any(Error));
+    expect(errorToast).toHaveBeenCalledWith("Couldn't remove the rule", expect.any(Error));
     expect(successToast).not.toHaveBeenCalled();
   });
 });

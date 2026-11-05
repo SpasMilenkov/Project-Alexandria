@@ -86,7 +86,7 @@ describe("PolicySection automation setup", () => {
     createFn.mockRejectedValue(new Error("boom"));
     const wrapper = mountSection();
     await clickByText(wrapper, "Set up automation");
-    expect(errorToast).toHaveBeenCalledWith("Failed to enable automation", expect.any(Error));
+    expect(errorToast).toHaveBeenCalledWith("Couldn't enable automation", expect.any(Error));
     expect(successToast).not.toHaveBeenCalled();
   });
 });

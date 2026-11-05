@@ -1,96 +1,126 @@
 <template>
   <div
     data-tag-item
-    class="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50/60 dark:hover:bg-white/5"
-    :class="isSelected ? 'ring-1 ring-inset ring-primary bg-primary/5' : ''"
-    :style="{ '--tag-color': tag.color }"
-    @click="!readOnly && $emit('click', $event)"
+    :role="isInteractive ? 'button' : undefined"
+    :tabindex="isInteractive ? 0 : undefined"
+    :aria-pressed="isInteractive ? isSelected : undefined"
+    class="group flex items-center gap-3 px-4 py-2.5 transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
+    :class="stateClass"
+    @click="handleActivate"
+    @keydown.enter.prevent="handleActivate"
+    @keydown.space.prevent="handleActivate"
   >
-    <!-- Selection checkbox — read-only tags are not selectable -->
-    <div v-if="!readOnly" class="shrink-0">
-      <div
-        class="w-5 h-5 rounded border-2 flex items-center justify-center transition-colors"
-        :class="isSelected ? 'bg-primary border-primary' : 'border-gray-300 dark:border-gray-600'"
-      >
-        <UIcon v-if="isSelected" name="i-lucide-check" class="w-3 h-3 text-white" />
-      </div>
-    </div>
+    <TagIconWell :color="tag.color" :icon="tag.icon" :is-selected="isSelected" size="sm" />
 
-    <!-- Tag icon — colored with the tag's own color -->
-    <div
-      class="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
-      :style="{
-        backgroundColor: `color-mix(in srgb, ${tag.color} 15%, transparent)`,
-        color: tag.color,
-      }"
-    >
-      <Icon :icon="getIconByValue(tag.icon) || 'mdi:tag'" class="w-4 h-4" />
-    </div>
-
-    <!-- Tag info -->
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2 min-w-0">
-        <p class="text-sm font-medium truncate">{{ tag.name }}</p>
-        <UBadge v-if="readOnly" color="neutral" variant="subtle" size="sm" class="shrink-0">
+    <div class="min-w-0 flex-1">
+      <div class="flex min-w-0 items-center gap-2">
+        <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100" :title="tag.name">
+          {{ tag.name }}
+        </p>
+        <UBadge v-if="isReadOnly" color="neutral" variant="outline" size="xs" class="shrink-0">
           System
         </UBadge>
       </div>
-      <p class="text-xs text-muted mt-0.5">Created {{ formatDate(tag.createdAt) }}</p>
+
+      <p
+        v-if="secondaryLine"
+        class="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400"
+        :title="secondaryLine"
+      >
+        {{ secondaryLine }}
+      </p>
     </div>
 
-    <!-- Color swatch — no raw value -->
-    <div
-      class="shrink-0 w-4 h-4 rounded-full border border-gray-200/70 dark:border-gray-700/70 hidden sm:block"
-      :style="{ backgroundColor: tag.color }"
-    />
+    <span
+      v-if="!isReadOnly"
+      class="hidden shrink-0 text-xs font-medium text-gray-600 sm:block dark:text-gray-400"
+    >
+      {{ formatDate(tag.createdAt) }}
+    </span>
 
-    <!-- Actions -->
-    <div v-if="!readOnly" class="shrink-0" @click.stop>
+    <div
+      v-if="isInteractive"
+      class="shrink-0 transition-opacity duration-150 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 pointer-fine:group-focus-within:opacity-100"
+      @click.stop
+      @keydown.stop
+    >
       <UDropdownMenu :items="menuItems">
-        <UButton icon="i-lucide-ellipsis-vertical" size="sm" variant="ghost" color="neutral" />
+        <UButton
+          icon="i-lucide-ellipsis-vertical"
+          size="sm"
+          variant="ghost"
+          color="neutral"
+          square
+          class="justify-center"
+          :aria-label="`Actions for ${tag.name}`"
+        />
       </UDropdownMenu>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import type { TagDto } from "@/api/tag";
 
+import { describeTag } from "@/features/tags/display";
 import { formatDate } from "@/utils/date-formatters";
-import { getIconByValue } from "@/utils/icon.utils";
 
-const props = defineProps<{
+import TagIconWell from "./TagIconWell.vue";
+
+const { tag, isSelected } = defineProps<{
   tag: TagDto;
   isSelected: boolean;
 }>();
 
-const readOnly = computed(() => props.tag.isSystem === true);
-
 const emit = defineEmits<{
-  click: [event: MouseEvent];
+  click: [event: MouseEvent | KeyboardEvent];
   edit: [tag: TagDto];
   delete: [tagId: string];
 }>();
+
+const isReadOnly = computed(() => tag.isSystem === true);
+
+const isInteractive = computed(() => !isReadOnly.value);
+
+// The created date has its own right-aligned column here, so only descriptions and
+// system facets earn a second line.
+const secondaryLine = computed(() => {
+  if (isReadOnly.value) return describeTag(tag);
+
+  return tag.description ?? "";
+});
+
+const stateClass = computed(() => {
+  if (isSelected) return "bg-primary/5 ring-1 ring-inset ring-primary";
+
+  if (!isInteractive.value) return "";
+
+  return "cursor-pointer hover:bg-gray-900/5 dark:hover:bg-white/5";
+});
+
+const handleActivate = (event: MouseEvent | KeyboardEvent) => {
+  if (!isInteractive.value) return;
+
+  emit("click", event);
+};
 
 const menuItems = computed(() => [
   [
     {
       icon: "i-lucide-pencil",
       label: "Edit",
-      onSelect: () => emit("edit", props.tag),
+      onSelect: () => emit("edit", tag),
     },
   ],
   [
     {
+      color: "error" as const,
       icon: "i-lucide-trash-2",
       label: "Delete",
-      onSelect: () => emit("delete", props.tag.id),
+      onSelect: () => emit("delete", tag.id),
     },
   ],
 ]);
 </script>
-
-<style scoped></style>
