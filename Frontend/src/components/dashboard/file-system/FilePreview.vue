@@ -1,10 +1,10 @@
 <template>
-  <USkeleton v-if="previewLoading" />
-  <div
-    v-else-if="previewUrl || archivePreview || textPreview"
-    class="bg-neutral-100 dark:bg-neutral-800/50 rounded-lg p-4"
-  >
-    <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Preview</h4>
+  <div v-if="previewLoading" class="flex h-40 items-center justify-center text-gray-500">
+    <BlockSpinner :size="20" />
+  </div>
+
+  <section v-else-if="previewUrl || archivePreview || textPreview" class="flex flex-col gap-3">
+    <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview</h3>
 
     <!-- Audio Preview -->
     <div
@@ -145,19 +145,22 @@
     <!-- PDF Preview -->
     <div
       v-else-if="pdfPreviewMimes.includes(mimeType) && previewUrl"
-      class="relative xl:w-xl h-220 frosted-glass glass-surface-strong rounded-lg overflow-hidden"
+      class="relative h-[36rem] w-full overflow-hidden rounded-lg border border-gray-200/70 dark:border-gray-700/70"
     >
       <embed :src="previewUrl" type="application/pdf" class="w-full h-full" />
     </div>
 
     <!-- Archive Preview -->
-    <div v-else-if="archivePreviewItems">
+    <div
+      v-else-if="archivePreviewItems"
+      class="rounded-lg border border-gray-200/70 p-2 dark:border-gray-700/70"
+    >
       <UTree :items="archivePreviewItems" />
     </div>
 
     <!-- Text Preview -->
     <TextPreviewPane v-else-if="textPreview" :preview="textPreview" @download="downloadPreview" />
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
@@ -166,10 +169,11 @@ import { useQuery, useQueryCache } from "@pinia/colada";
 import { computed, ref, watch } from "vue";
 
 import { type PreviewResultDto, fileApi } from "@/api/file";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { FILES_QUERY_KEYS, getPreviewByVersion } from "@/queries/files";
 
-import AudioEqualizer from "../AudioEqualizer.vue";
+import AudioEqualizer from "@/components/dashboard/AudioEqualizer.vue";
 import TextPreviewPane from "./TextPreviewPane.vue";
 
 const props = defineProps<{

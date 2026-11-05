@@ -1,11 +1,16 @@
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DirectorySummaryDto } from "@/api/directory";
 
 import DirectoryItem from "@/components/dashboard/file-system/DirectoryItem.vue";
 import FolderDetailsDrawer from "@/components/dashboard/file-system/FolderDetailsDrawer.vue";
+
+// Tooltips need the app-level provider, which a bare mount does not install.
+vi.mock("@nuxt/ui/runtime/components/Tooltip.vue", () => ({
+  default: { name: "TooltipStub", template: "<slot />" },
+}));
 
 const makeDir = (id: string, name?: string): DirectorySummaryDto => ({
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -20,7 +25,7 @@ const makeDir = (id: string, name?: string): DirectorySummaryDto => ({
 const drawerStub = {
   name: "DrawerStub",
   props: ["open", "title", "description", "direction", "ui", "handleOnly"],
-  template: '<div class="drawer-stub"><slot name="body" /></div>',
+  template: '<div class="drawer-stub"><slot name="content" /></div>',
 };
 
 const mountRow = (dir: DirectorySummaryDto) =>
@@ -33,7 +38,11 @@ const mountDrawer = (directory: DirectorySummaryDto | null) =>
   mount(FolderDetailsDrawer, {
     global: {
       plugins: [createPinia()],
-      stubs: { Drawer: drawerStub, PolicySection: true, UDrawer: drawerStub },
+      stubs: {
+        Drawer: drawerStub,
+        PolicySection: true,
+        UDrawer: drawerStub,
+      },
     },
     props: { directory },
   });
@@ -46,6 +55,12 @@ const clickByText = async (wrapper: ReturnType<typeof mountDrawer>, text: string
   const target = buttons.find((button) => button.text().includes(text));
   expect(target).toBeDefined();
   await target!.trigger("click");
+};
+
+const clickByLabel = async (wrapper: ReturnType<typeof mountDrawer>, label: string) => {
+  const target = wrapper.find(`button[aria-label="${label}"]`);
+  expect(target.exists()).toBe(true);
+  await target.trigger("click");
 };
 
 describe("directory details shared ownership", () => {
@@ -134,9 +149,9 @@ describe("FolderDetailsDrawer", () => {
     expect(wrapper.emitted("update:directory")?.[0]).toEqual([null]);
   });
 
-  it("emits navigate with captured ids on Open Directory", async () => {
+  it("emits navigate with captured ids on Open folder", async () => {
     const wrapper = mountDrawer(makeDir("d1", "Projects"));
-    await clickByText(wrapper, "Open Directory");
+    await clickByText(wrapper, "Open folder");
     expect(wrapper.emitted("update:directory")?.[0]).toEqual([null]);
     expect(wrapper.emitted("navigate")?.[0]).toEqual(["d1", "Projects"]);
   });
@@ -145,16 +160,19 @@ describe("FolderDetailsDrawer", () => {
     const directory = { ...makeDir("d1"), isStarred: true };
     const wrapper = mountDrawer(directory);
 
-    expect(wrapper.text()).toContain("Favorite folder");
-    await clickByText(wrapper, "Remove from favorites");
+    expect(wrapper.text()).toContain("Favorite");
+    expect(
+      wrapper.find('button[aria-label="Remove from favorites"]').attributes("aria-pressed"),
+    ).toBe("true");
+    await clickByLabel(wrapper, "Remove from favorites");
 
     expect(wrapper.emitted("favorite")?.[0]).toEqual([directory]);
     expect(wrapper.emitted("update:directory")).toBeUndefined();
 
     await wrapper.setProps({ directory: { ...directory, isStarred: false } });
 
-    expect(wrapper.text()).not.toContain("Favorite folder");
-    expect(wrapper.text()).toContain("Add to favorites");
+    expect(wrapper.text()).not.toContain("Favorite");
+    expect(wrapper.find('button[aria-label="Add to favorites"]').exists()).toBe(true);
   });
 
   it("emits rename, move, download and delete with captured ids", async () => {
@@ -168,7 +186,7 @@ describe("FolderDetailsDrawer", () => {
     await clickByText(wrapper, "Download");
     expect(wrapper.emitted("download")?.[0]).toEqual([["d1"]]);
 
-    await clickByText(wrapper, "Delete");
+    await clickByLabel(wrapper, "Delete folder");
     expect(wrapper.emitted("delete")?.[0]).toEqual([["d1"]]);
   });
 });
