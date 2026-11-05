@@ -139,6 +139,7 @@ import { computed, ref, useTemplateRef, watch } from "vue";
 import type { OverviewSummaryHeaderDtoResponse } from "@/api/stats";
 
 import RecapLandscape from "@/components/streaming/wrapped/recaps/RecapLandscape.vue";
+import { useAppToast } from "@/composables/useAppToast";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { wrappedEmptyState, yearRange } from "@/features/wrapped/display";
@@ -159,7 +160,7 @@ const {
 }>();
 
 const auth = useAuthStore();
-const toast = useToast();
+const toast = useAppToast("wrapped");
 
 const userId = computed(() => auth.user?.user.id);
 
@@ -279,13 +280,9 @@ const finalize = async () => {
       to: header.periodEnd,
     });
 
-    toast.add({ title: "Recap finalized", color: "success" });
-  } catch {
-    toast.add({
-      title: "Finalize failed",
-      description: "Could not finalize this recap.",
-      color: "error",
-    });
+    toast.success(`Finalized your ${year} recap`, "Its numbers are now locked in.");
+  } catch (err) {
+    toast.error(`Couldn't finalize your ${year} recap`, err, { retry: finalize });
   } finally {
     finalizing.value = false;
   }

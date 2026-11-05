@@ -6,13 +6,13 @@ import { createMemoryHistory, createRouter } from "vue-router";
 
 import type { OverviewSummaryDtoResponse, OverviewSummaryHeaderDtoResponse } from "@/api/stats";
 
-import AnnualRecapCard from "@/components/streaming/wrapped/AnnualRecapCard.vue";
-import ListeningRecaps from "@/components/streaming/wrapped/ListeningRecaps.vue";
-import MonthlyRecapCard from "@/components/streaming/wrapped/MonthlyRecapCard.vue";
-import RecapLandscape from "@/components/streaming/wrapped/RecapLandscape.vue";
+import AnnualRecapCard from "@/components/streaming/wrapped/recaps/AnnualRecapCard.vue";
+import ListeningRecaps from "@/components/streaming/wrapped/recaps/ListeningRecaps.vue";
+import MonthlyRecapCard from "@/components/streaming/wrapped/recaps/MonthlyRecapCard.vue";
+import RecapLandscape from "@/components/streaming/wrapped/recaps/RecapLandscape.vue";
 import { HomeRecapPeriod } from "@/enums/home-widget";
-import { annualRecapHeaders, annualRecapMonths } from "@/utils/listening-recaps.utils";
-import { wrappedMonth, wrappedMonthLabel, wrappedMonthRange } from "@/utils/wrapped-month";
+import { annualRecapHeaders, annualRecapMonths } from "@/features/wrapped/listening/recaps";
+import { wrappedMonth, wrappedMonthLabel, wrappedMonthRange } from "@/features/wrapped/month";
 
 const api = vi.hoisted(() => ({
   getSummary: vi.fn(),
@@ -192,11 +192,10 @@ describe("annual recap overview", () => {
     expect(months.reduce((total, month) => total + month.seconds, 0)).toBe(3711);
   });
 
-  it("features current and previous months with annual access even without archived summaries", async () => {
+  it("features current and previous months even without archived summaries", async () => {
     const wrapper = mountRecaps(ListeningRecaps);
 
     await flushPromises();
-    expect(wrapper.text()).toContain(`${year} so far`);
     expect(wrapper.text()).toContain("No archived years yet");
     expect(wrapper.get("dl").text()).toContain("17");
 
@@ -288,7 +287,6 @@ describe("annual recap overview", () => {
     expect(cards[0]!.text()).not.toContain("Browse music");
     expect(cards[1]!.text()).toContain("Browse music");
     expect(wrapper.find("dl").exists()).toBe(false);
-    expect(wrapper.text()).toContain(`${year} so far`);
   });
 });
 

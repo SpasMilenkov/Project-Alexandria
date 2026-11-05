@@ -13,7 +13,7 @@ vi.mock("@/stores/auth", () => ({
   useAuthStore: () => ({ user: { user: { id: "listener" } } }),
 }));
 
-vi.mock("@/components/streaming/wrapped/ListeningTimeline.vue", async () => {
+vi.mock("@/components/streaming/wrapped/listening/ListeningTimeline.vue", async () => {
   const { onMounted, ref } = await import("vue");
 
   return {
@@ -29,7 +29,27 @@ vi.mock("@/components/streaming/wrapped/ListeningTimeline.vue", async () => {
   };
 });
 
-vi.mock("@/components/streaming/wrapped/ListeningRecaps.vue", async () => {
+const history = vi.hoisted(() => ({ empty: false }));
+
+vi.mock("@/composables/useListeningHistoryEmpty", async () => {
+  const { computed } = await import("vue");
+
+  return { useListeningHistoryEmpty: () => ({ listeningEmpty: computed(() => history.empty) }) };
+});
+
+vi.mock("@/components/streaming/wrapped/listening/ListeningWelcomeHero.vue", () => ({
+  default: { template: "<section><h1>Your listening</h1><h2>Welcome</h2></section>" },
+}));
+
+vi.mock("@/components/streaming/wrapped/listening/ListeningPreviews.vue", () => ({
+  default: { template: "<section>What you will find here</section>" },
+}));
+
+vi.mock("@/components/streaming/wrapped/listening/ListeningHero.vue", () => ({
+  default: { template: "<section><h1>Your listening</h1></section>" },
+}));
+
+vi.mock("@/components/streaming/wrapped/recaps/ListeningRecaps.vue", async () => {
   const { onMounted } = await import("vue");
 
   return {
@@ -65,6 +85,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  history.empty = false;
 
   if (originalScroll)
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", originalScroll);
@@ -96,6 +117,22 @@ describe("Your listening navigation", () => {
     expect(wrapper.find('[aria-label="Listening sections"]').exists()).toBe(false);
     expect(mounted.recaps).toHaveBeenCalledOnce();
     expect(mounted.timeline).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it("replaces every section with one welcome when nothing has been played", async () => {
+    history.empty = true;
+    const router = createListeningRouter();
+
+    await router.push("/stats");
+
+    const wrapper = mount(StatsHubView, { global: { plugins: [router] } });
+
+    expect(wrapper.text()).toContain("Welcome");
+    expect(wrapper.text()).toContain("What you will find here");
+    expect(wrapper.text()).not.toContain("Recap collection");
+    expect(mounted.recaps).not.toHaveBeenCalled();
+    expect(mounted.timeline).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 

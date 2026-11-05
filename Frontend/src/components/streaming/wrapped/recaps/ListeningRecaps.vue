@@ -5,36 +5,23 @@
     </div>
 
     <section class="mt-8" aria-label="Annual Wrapped">
-      <header class="flex flex-wrap items-center justify-between gap-4">
+      <header class="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Annual Wrapped</h2>
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            The whole year, on one record.
+            Past years, each on one record.
           </p>
         </div>
 
-        <UButton
-          :to="`/stats/wrapped/${currentYear}`"
-          color="neutral"
-          variant="outline"
-          icon="mdi:gift-outline"
+        <p
+          v-if="!isPending && !visibleError && !authWaiting"
+          class="text-xs text-gray-600 tabular-nums dark:text-gray-400"
         >
-          {{ currentYear }} so far
-        </UButton>
+          {{ rows.length }} {{ rows.length === 1 ? "recap" : "recaps" }}
+        </p>
       </header>
 
-      <section class="mt-6" aria-label="Past years">
-        <header class="mb-4 flex items-baseline justify-between gap-4">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Past years</h3>
-
-          <p
-            v-if="!isPending && !visibleError && !authWaiting"
-            class="text-xs text-gray-500 tabular-nums dark:text-gray-500"
-          >
-            {{ rows.length }} {{ rows.length === 1 ? "recap" : "recaps" }}
-          </p>
-        </header>
-
+      <section aria-label="Past years">
         <div
           v-if="isPending || authWaiting"
           class="flex justify-center py-16"
@@ -90,15 +77,15 @@ import { useIntervalFn, useNow } from "@vueuse/core";
 import { isAxiosError } from "axios";
 import { computed } from "vue";
 
-import AnnualRecapCard from "@/components/streaming/wrapped/AnnualRecapCard.vue";
-import MonthlyRecapCard from "@/components/streaming/wrapped/MonthlyRecapCard.vue";
+import AnnualRecapCard from "@/components/streaming/wrapped/recaps/AnnualRecapCard.vue";
+import MonthlyRecapCard from "@/components/streaming/wrapped/recaps/MonthlyRecapCard.vue";
 import { useWrappedPalette } from "@/composables/useWrappedPalette";
 import { HomeRecapPeriod } from "@/enums/home-widget";
+import { annualRecapHeaders } from "@/features/wrapped/listening/recaps";
+import { wrappedMonth } from "@/features/wrapped/month";
+import { SUMMARY_KIND_WRAPPED, summaryYear } from "@/features/wrapped/summary";
 import { listSummaries } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
-import { annualRecapHeaders } from "@/utils/listening-recaps.utils";
-import { wrappedMonth } from "@/utils/wrapped-month";
-import { SUMMARY_KIND_WRAPPED, summaryYear } from "@/utils/wrapped-summary.utils";
 
 const auth = useAuthStore();
 const { paletteStyle } = useWrappedPalette();

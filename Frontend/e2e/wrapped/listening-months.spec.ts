@@ -1,7 +1,8 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { WrappedCardType } from "../src/enums/wrapped-card-type.js";
-import { fixture, seed } from "./helpers/home-dashboard.js";
+import { WrappedCardType } from "@/enums/wrapped-card-type.js";
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
+import { media } from "@e2e/helpers/media-overview.js";
 
 const currentDate = "2026-10-09T12:00:00Z";
 
@@ -120,6 +121,14 @@ const openListening = async (
       } else {
         await route.fulfill({ json: recap(month, now, options.empty, !options.missingDaily) });
       }
+    } else if (url.pathname === "/api/stats/top-songs") {
+      const items = [0, 1, 2].map((index) => ({
+        file: media(false, index),
+        qualifiedPlayCount: 9 - index * 3,
+        totalListenedSeconds: 2400 - index * 600,
+      }));
+
+      await route.fulfill({ json: { from: url.searchParams.get("from"), to: now, items } });
     } else if (url.pathname === "/api/stats/timeline") {
       const to = url.searchParams.get("to") ?? now;
       const date = new Date(Date.parse(to) - 1).toISOString().slice(0, 10);
@@ -144,7 +153,7 @@ const openListening = async (
               ],
             },
           ],
-          months: [],
+          months: [{ date: `${date.slice(0, 7)}-01`, seconds: 3600, plays: 5, sessionCount: 17 }],
           totalSeconds: 3600,
           activeDays: 1,
           sessionCount: 17,
@@ -205,18 +214,20 @@ const expectMonthRequests = (requests: URL[]) => {
 const inspectTimelineDay = async (page: Page, touch = false) => {
   const timeline = page.getByRole("region", { name: "Your listening timeline", exact: true });
   const day = timeline.locator('[data-day="2026-10-09"]');
+  const panel = timeline.getByRole("region", { name: "Selected listening day", exact: true });
 
   await day.scrollIntoViewIfNeeded();
 
   if (touch) await day.tap();
   else await day.click();
 
-  const drawer = page.getByRole("dialog");
+  await expect(day).toHaveAttribute("aria-selected", "true");
+  await expect(panel).toContainText("Oct 9, 2026");
+  await expect(panel).toContainText("The song from this listening day");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
-  await expect(drawer).toBeVisible();
-  await expect(drawer).toContainText("The song from this listening day");
-  await page.keyboard.press("Escape");
-  await expect(drawer).toBeHidden();
+  await timeline.locator('[data-day="2026-10-08"]').click();
+  await expect(panel).toContainText("No listening recorded on this day.");
 };
 
 test("recent months lead the page and open cached monthly recaps with annual access below", async ({
@@ -249,7 +260,7 @@ test("recent months lead the page and open cached monthly recaps with annual acc
   await expect(page.getByRole("figure", { name: "Your month in music, day by day" })).toBeVisible();
   expect(requests.filter((url) => url.pathname === "/api/stats/wrapped")).toHaveLength(2);
   await page.goBack();
-  await page.getByRole("link", { name: "2026 so far", exact: true }).click();
+  await page.getByRole("link", { name: "Open 2026 Wrapped", exact: true }).click();
   await expect(page.getByRole("heading", { name: "2026 Wrapped", exact: true })).toBeVisible();
 });
 
@@ -335,7 +346,7 @@ test("January includes December and inline Timeline keeps its range while revisi
   await expect(page.getByRole("article", { name: "January 2026 recap" })).toBeVisible();
   await expect(page.getByRole("article", { name: "December 2025 recap" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Listening sections" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Previous 90 days", exact: true }).click();
+  await page.getByRole("button", { name: "Previous year", exact: true }).click();
   const timeline = page.getByRole("region", { name: "Your listening timeline", exact: true });
   const range = await timeline.locator("header p").textContent();
 
@@ -368,4 +379,38 @@ test("the unified page keeps day details and legacy timeline bookmarks usable", 
   await expect.poll(async () => (await timeline.boundingBox())!.y).toBeGreaterThan(900);
   await followHash(page, "timeline");
   await expect.poll(async () => (await timeline.boundingBox())!.y).toBeLessThan(900);
+});
+
+test("the hero leads with the year so far and the timeline stays compact", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await openListening(page);
+  const hero = page.getByRole("region", { name: "Your listening", exact: true });
+  const timeline = page.getByRole("region", { name: "Your listening timeline", exact: true });
+
+  await expect(hero).toContainText("2026 so far");
+  await expect(hero).toContainText("1 hr");
+  await expect(
+    hero.getByRole("list", { name: "Top songs this year" }).getByRole("listitem"),
+  ).toHaveCount(3);
+  await expect(hero.getByRole("link", { name: /Song 1/u }).first()).toHaveAttribute(
+    "href",
+    "/streaming/track/audio-0",
+  );
+  await expect(hero.getByRole("button", { name: "Play top songs", exact: true })).toBeVisible();
+  await expect(timeline.locator("button[data-day]")).toHaveCount(
+    Math.round((Date.parse("2026-10-10") - Date.parse("2026-01-01")) / 86_400_000),
+  );
+  expect((await timeline.boundingBox())!.height).toBeLessThan(600);
+  await hero.screenshot({ path: "/tmp/listening-hero-desktop.png" });
+  await timeline.screenshot({ path: "/tmp/listening-timeline-desktop.png" });
+
+  await timeline.locator('[data-day="2026-10-02"]').click();
+  await timeline.getByRole("button", { name: /^Busiest day/u }).click();
+  await expect(timeline.locator('[data-day="2026-10-09"]')).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(
+    timeline.getByRole("region", { name: "Selected listening day", exact: true }),
+  ).toContainText("The song from this listening day");
 });
