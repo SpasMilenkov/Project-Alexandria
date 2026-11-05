@@ -3,7 +3,7 @@
 import { createBLAKE3 } from "hash-wasm";
 
 export interface WorkerInMessage {
-  file: File;
+  file: Blob;
   id: string;
 }
 
@@ -14,11 +14,16 @@ export type WorkerOutMessage =
 
 declare const self: DedicatedWorkerGlobalScope;
 
+// The worker is reused across files, so the WASM instance is created once and reset per file.
+let hasherReady: ReturnType<typeof createBLAKE3> | undefined = undefined;
+
 self.onmessage = async (e: MessageEvent<WorkerInMessage>) => {
   const { file, id } = e.data;
 
   try {
-    const hasher = await createBLAKE3();
+    hasherReady ??= createBLAKE3();
+
+    const hasher = await hasherReady;
     hasher.init();
 
     const CHUNK = 16 * 1024 * 1024;
@@ -42,6 +47,9 @@ self.onmessage = async (e: MessageEvent<WorkerInMessage>) => {
       hash: hasher.digest("hex"),
     } satisfies WorkerOutMessage);
   } catch (err: unknown) {
+    // A failed WASM setup must not stay cached and fail every later file.
+    hasherReady = undefined;
+
     self.postMessage({
       type: "error",
       id,

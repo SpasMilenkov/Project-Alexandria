@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-import type { WorkerOutMessage } from "@/workers/blake3.worker";
-
 import { fileApi } from "@/api/file";
 import UploadEmptyState from "@/components/dashboard/file-system/Modals/upload/UploadEmptyState.vue";
 import UploadModalFooter from "@/components/dashboard/file-system/Modals/upload/UploadModalFooter.vue";
@@ -14,6 +12,7 @@ import { FALLBACK_CONTENT_TYPE } from "@/composables/useDirectoryUpload";
 import { encryptFile } from "@/composables/useFileEncryption";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { countOf, quoted } from "@/features/toast/format";
+import { hashFile } from "@/features/upload/hash-pool";
 import {
   STRENGTH_IDLE_TEXT,
   getPasswordRequirements,
@@ -291,51 +290,6 @@ const extractErrorMessage = (err: any): string => {
   return "An unexpected error occurred. Please try again.";
 };
 
-// worker-based hashing
-
-const hashWithWorker = (
-  file: File | Blob,
-  id: string,
-  onProgress: (pct: number) => void,
-  signal: AbortSignal,
-): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const worker = new Worker(new URL("@/workers/blake3.worker.ts", import.meta.url), {
-      type: "module",
-    });
-
-    const onAbort = () => {
-      worker.terminate();
-      reject(new DOMException("Upload cancelled", "AbortError"));
-    };
-
-    signal.addEventListener("abort", onAbort, { once: true });
-
-    worker.onmessage = ({ data }: MessageEvent<WorkerOutMessage>) => {
-      if (data.id !== id) return;
-
-      if (data.type === "progress") {
-        onProgress(data.percent);
-      } else if (data.type === "done") {
-        signal.removeEventListener("abort", onAbort);
-        worker.terminate();
-        resolve(data.hash);
-      } else if (data.type === "error") {
-        signal.removeEventListener("abort", onAbort);
-        worker.terminate();
-        reject(new Error(data.message));
-      }
-    };
-
-    worker.onerror = (err) => {
-      signal.removeEventListener("abort", onAbort);
-      worker.terminate();
-      reject(err);
-    };
-
-    worker.postMessage({ file, id });
-  });
-
 // concurrency limiter
 
 const runConcurrent = async <T>(
@@ -385,7 +339,7 @@ const uploadSingle = async (state: FileUploadState) => {
 
   state.stage = UploadStage.HASHING;
   updateProgress(state, 0);
-  const hash = await hashWithWorker(
+  const hash = await hashFile(
     fileToUpload,
     state.id,
     (pct) => updateProgress(state, pct),
