@@ -74,10 +74,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$S3_PROVIDER" in
-  Garage|MinIO|RustFS)
+  Garage|RustFS)
     ;;
   *)
-    die "Invalid S3 provider: $S3_PROVIDER (valid values: Garage, MinIO, RustFS)"
+    die "Invalid S3 provider: $S3_PROVIDER (valid values: Garage, RustFS)"
     ;;
 esac
 

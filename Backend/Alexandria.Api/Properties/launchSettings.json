@@ -9,14 +9,6 @@
         "S3Storage__Provider": "RustFS"
       }
     },
-    "API (MinIO)": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "S3Storage__Provider": "MinIO"
-      }
-    },
     "API (Garage)": {
       "commandName": "Project",
       "dotnetRunMessages": true,

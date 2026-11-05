@@ -9,14 +9,6 @@
         "S3Storage__Provider": "RustFS"
       }
     },
-    "DocumentWorker (MinIO)": {
-      "commandName": "Project",
-      "dotnetRunMessages": true,
-      "environmentVariables": {
-        "DOTNET_ENVIRONMENT": "Development",
-        "S3Storage__Provider": "MinIO"
-      }
-    },
     "DocumentWorker (Garage)": {
       "commandName": "Project",
       "dotnetRunMessages": true,

@@ -15,7 +15,7 @@ public class DeleteFileEndpoint(IFileService fileService) : Endpoint<DeleteFileR
         {
             s.Summary = "Soft delete a file (marks as deleted, keeps in storage)";
             s.Description =
-                "Performs a soft delete - marks the file as deleted in the database but keeps it in MinIO storage";
+                "Performs a soft delete - marks the file as deleted in the database but keeps it in object storage";
             s.Responses[200] = "File deleted successfully";
             s.Responses[404] = "File not found";
             s.Responses[500] = "Internal server error";

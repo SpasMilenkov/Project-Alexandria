@@ -57,13 +57,17 @@ echo "  Access Key: ${RUSTFS_ACCESS_KEY}"
 echo "  Secret Key: ${RUSTFS_SECRET_KEY:0:3}***${RUSTFS_SECRET_KEY: -3}"
 echo ""
 
-# Check if mc (MinIO Client) is available
-if ! command -v mc &> /dev/null; then
-    echo -e "${YELLOW}MinIO Client (mc) not found. Installing...${NC}"
-    echo "Please install mc from: https://min.io/docs/minio/linux/reference/minio-mc.html"
-    echo "Or run: wget https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x mc && sudo mv mc /usr/local/bin/"
+if ! command -v aws &> /dev/null; then
+    echo -e "${RED}AWS CLI (aws) not found.${NC}"
+    echo "Please install AWS CLI v2 from: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html"
     exit 1
 fi
+
+export AWS_ACCESS_KEY_ID="${RUSTFS_ACCESS_KEY}"
+export AWS_SECRET_ACCESS_KEY="${RUSTFS_SECRET_KEY}"
+export AWS_DEFAULT_REGION="us-east-1"
+
+s3api() { aws --endpoint-url "${RUSTFS_ENDPOINT}" s3api "$@"; }
 
 echo ""
 echo "Step 1: Testing RustFS health endpoint..."
@@ -74,17 +78,8 @@ else
 fi
 
 echo ""
-echo "Step 2: Configuring mc alias for RustFS..."
-# Remove existing alias if it exists
-mc alias remove rustfs 2>/dev/null || true
-
-# Set alias with explicit S3v4 signature
-mc alias set rustfs "${RUSTFS_ENDPOINT}" "${RUSTFS_ACCESS_KEY}" "${RUSTFS_SECRET_KEY}" --api S3v4
-
-echo ""
-echo "Step 3: Testing connection with simple list operation..."
-# Try a simple bucket list instead of admin info (which may not be supported)
-if mc ls rustfs/ 2>&1 | grep -q "AccessDenied\|InvalidAccessKeyId\|SignatureDoesNotMatch"; then
+echo "Step 2: Testing connection with simple list operation..."
+if s3api list-buckets 2>&1 | grep -q "AccessDenied\|InvalidAccessKeyId\|SignatureDoesNotMatch"; then
     echo -e "${RED}Authentication failed!${NC}"
     echo ""
     echo "Debug information:"
@@ -103,23 +98,31 @@ fi
 echo -e "${GREEN}✓ Connected to RustFS successfully${NC}"
 
 echo ""
-echo "Step 4: Creating buckets..."
+echo "Step 3: Creating buckets..."
 for bucket in "${BUCKETS[@]}"; do
-    if mc ls rustfs/ 2>/dev/null | grep -q "${bucket}"; then
+    if s3api head-bucket --bucket "${bucket}" > /dev/null 2>&1; then
         echo -e "${YELLOW}Bucket '${bucket}' already exists, skipping${NC}"
     else
-        mc mb "rustfs/${bucket}" --ignore-existing
+        s3api create-bucket --bucket "${bucket}" > /dev/null
         echo -e "${GREEN}✓ Created bucket: ${bucket}${NC}"
     fi
 done
 
 echo ""
-echo "Step 5: Setting bucket policies..."
+echo "Step 4: Setting bucket policies..."
 
 # Set public read policy for preview bucket
 for bucket in "${PUBLIC_BUCKETS[@]}"; do
-    echo "Setting download (public read) policy for: ${bucket}"
-    mc anonymous set download "rustfs/${bucket}"
+    echo "Setting public read policy for: ${bucket}"
+    s3api put-bucket-policy --bucket "${bucket}" --policy "{
+        \"Version\": \"2012-10-17\",
+        \"Statement\": [{
+            \"Effect\": \"Allow\",
+            \"Principal\": {\"AWS\": [\"*\"]},
+            \"Action\": [\"s3:GetObject\"],
+            \"Resource\": [\"arn:aws:s3:::${bucket}/*\"]
+        }]
+    }"
     echo -e "${GREEN}✓ Public read access enabled for: ${bucket}${NC}"
 done
 
@@ -130,13 +133,13 @@ for bucket in "${BUCKETS[@]}"; do
         continue
     fi
     echo "Ensuring private policy for: ${bucket}"
-    mc anonymous set none "rustfs/${bucket}" 2>/dev/null || true
+    s3api delete-bucket-policy --bucket "${bucket}" 2>/dev/null || true
     echo -e "${GREEN}✓ Private access for: ${bucket}${NC}"
 done
 
 echo ""
-echo "Step 6: Verifying bucket configuration..."
-mc ls rustfs/
+echo "Step 5: Verifying bucket configuration..."
+aws --endpoint-url "${RUSTFS_ENDPOINT}" s3 ls
 
 echo ""
 echo "=== RustFS Initialization Complete! ==="
@@ -164,12 +167,8 @@ echo ""
 echo "Next steps:"
 echo "  1. Access the web console: ${RUSTFS_CONSOLE}"
 echo "  2. Configure your application with the credentials above"
-echo "  3. Test with: mc ls rustfs/"
-echo "  4. Test S3 API: aws s3 ls --endpoint-url ${RUSTFS_ENDPOINT}"
-echo ""
-echo "To view buckets:"
-echo "  mc ls rustfs/"
+echo "  3. Test S3 API: aws s3 ls --endpoint-url ${RUSTFS_ENDPOINT}"
 echo ""
 echo "To set custom policies:"
-echo "  mc anonymous set [none|download|upload|public] rustfs/bucket-name"
+echo "  aws --endpoint-url ${RUSTFS_ENDPOINT} s3api put-bucket-policy --bucket bucket-name --policy file://policy.json"
 echo ""
