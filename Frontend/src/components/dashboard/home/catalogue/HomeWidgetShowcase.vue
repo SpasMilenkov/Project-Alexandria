@@ -2,14 +2,13 @@
 import { useMediaQuery } from "@vueuse/core";
 import { computed, ref } from "vue";
 
+import HomeDashboardGrid from "@/components/dashboard/home/grid/HomeDashboardGrid.vue";
+import { homeWidgetDefinitions } from "@/components/dashboard/home/registry";
 import { provideHomeWidgetPreview } from "@/composables/useHomeWidgetPreview";
 import { HomeWidgetType } from "@/enums/home-widget";
 import { createHomeWidgetPreview, homeWidgetShowcaseLayout } from "@/features/home/editor/showcase";
 import { homeWidgetStyleChoices } from "@/features/home/editor/styles";
 import { useHomeStore } from "@/stores/home";
-
-import HomeDashboardGrid from "@/components/dashboard/home/grid/HomeDashboardGrid.vue";
-import { homeWidgetDefinitions } from "@/components/dashboard/home/registry";
 
 const home = useHomeStore();
 const smallScreen = useMediaQuery("(max-width: 767px)");
@@ -63,12 +62,15 @@ const changeStyle = (type: HomeWidgetType, value: number) => {
     class="h-full min-h-0 overflow-y-auto overscroll-contain p-4 md:p-6"
     data-home-showcase
   >
-    <div class="mb-8 flex flex-wrap items-start gap-4">
+    <!-- Headings sit on glass: the catalogue scrolls over the dashboard background, which may be a busy image. -->
+    <div
+      class="frosted-glass glass-surface-strong mb-8 flex flex-wrap items-start gap-4 rounded-2xl border border-gray-200/70 px-5 py-4 dark:border-gray-700/70"
+    >
       <div class="min-w-0 flex-1">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Every widget, at every size
         </h2>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
           Large, medium, then small. Sample content and style changes stay in this catalogue.
         </p>
       </div>
@@ -101,12 +103,14 @@ const changeStyle = (type: HomeWidgetType, value: number) => {
         :aria-label="`${group.definition.label} samples`"
         :data-showcase-type="group.definition.type"
       >
-        <header class="mb-4 flex flex-wrap items-center gap-4">
+        <header
+          class="frosted-glass glass-surface-strong mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-gray-200/70 px-4 py-3 dark:border-gray-700/70"
+        >
           <div class="min-w-0 flex-1">
             <h3 class="font-semibold text-gray-900 dark:text-gray-100">
               {{ group.definition.label }}
             </h3>
-            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
               {{ group.definition.description }}
             </p>
           </div>
@@ -134,7 +138,7 @@ const changeStyle = (type: HomeWidgetType, value: number) => {
 
       <p
         v-if="!visibleGroups.length"
-        class="py-8 text-center text-sm text-gray-600 dark:text-gray-400"
+        class="frosted-glass glass-surface-strong mx-auto max-w-sm rounded-xl border border-gray-200/70 px-4 py-6 text-center text-sm text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
       >
         No widgets match your search.
       </p>

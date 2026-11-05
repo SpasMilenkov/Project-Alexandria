@@ -8,14 +8,16 @@ const { framed = true } = defineProps<{ shared: boolean; dropActive: boolean; fr
     class="w-full min-w-0"
     :class="{ 'max-w-108': framed }"
   >
-    <header class="mb-4 flex items-center gap-2">
+    <header
+      class="frosted-glass glass-surface-strong mb-4 flex items-center gap-2 rounded-xl border border-gray-200/70 px-4 py-3 dark:border-gray-700/70"
+    >
       <UIcon
         name="i-heroicons-device-phone-mobile"
         class="size-5 shrink-0 text-gray-600 dark:text-gray-400"
       />
       <div>
         <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Mobile layout</h2>
-        <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+        <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
           {{ shared ? "Shared layout preview" : "Your phone dashboard" }}
         </p>
       </div>
