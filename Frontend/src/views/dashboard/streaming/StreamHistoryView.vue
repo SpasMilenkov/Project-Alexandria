@@ -5,6 +5,9 @@ import { computed, ref } from "vue";
 
 import type { StreamHistoryQuery } from "@/api/streaming";
 
+import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
+import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
+import StreamHistoryGhost from "@/components/streaming/ghosts/StreamHistoryGhost.vue";
 import { getHistory } from "@/queries/streaming";
 import { formatDate, formatDuration } from "@/utils/date-formatters";
 
@@ -115,8 +118,10 @@ const subtitleOf = (entry: HistoryEntry) => {
 </script>
 
 <template>
-  <div class="px-4 sm:px-6 py-5">
-    <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 frosted-glass glass-surface">
+  <div class="flex min-h-full flex-col px-4 py-5 sm:px-6">
+    <div
+      class="rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 frosted-glass glass-surface"
+    >
       <div>
         <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Stream history</h1>
         <p class="text-sm text-gray-600 dark:text-gray-400">{{ countText }}</p>
@@ -152,38 +157,45 @@ const subtitleOf = (entry: HistoryEntry) => {
       </div>
     </div>
 
-    <div v-else-if="error" class="flex flex-col items-center gap-2 py-16 text-center">
-      <Icon icon="mdi:alert-circle-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-      <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-        Couldn't load history
-      </h2>
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        Something went wrong while loading your history. Try again in a moment.
-      </p>
-      <UButton class="mt-2" color="neutral" variant="outline" size="sm" @click="refetch()">
-        Try again
-      </UButton>
+    <div v-else-if="error" class="flex py-16">
+      <GlassEmptyState
+        icon="i-mdi-alert-circle-outline"
+        title="Couldn't load history"
+        description="Something went wrong while loading your history. Try again in a moment."
+        class="m-auto"
+      >
+        <UButton color="neutral" variant="outline" class="rounded-full px-5" @click="refetch()">
+          Try again
+        </UButton>
+      </GlassEmptyState>
     </div>
 
-    <div v-else-if="!hasItems" class="flex flex-col items-center gap-2 py-16 text-center">
-      <Icon icon="mdi:history" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-      <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-        {{ emptyState.title }}
-      </h2>
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        Things you play will show up here so you can pick up where you left off.
-      </p>
-      <UButton
-        v-if="emptyState.canReset"
-        class="mt-2"
-        color="neutral"
-        variant="outline"
-        size="sm"
-        @click="setFilter(undefined)"
+    <EmptyStatePanel v-else-if="!hasItems">
+      <template #ghost>
+        <StreamHistoryGhost />
+      </template>
+
+      <GlassEmptyState
+        icon="i-mdi-history"
+        :title="emptyState.title"
+        description="Things you play will show up here so you can pick up where you left off."
+        class="m-auto"
       >
-        Show all
-      </UButton>
-    </div>
+        <UButton
+          v-if="emptyState.canReset"
+          color="neutral"
+          variant="outline"
+          class="rounded-full px-5"
+          @click="setFilter(undefined)"
+        >
+          Show all
+        </UButton>
+
+        <UButton v-else to="/media" color="neutral" variant="outline" class="rounded-full px-5">
+          Browse media
+        </UButton>
+      </GlassEmptyState>
+    </EmptyStatePanel>
 
     <template v-else>
       <div

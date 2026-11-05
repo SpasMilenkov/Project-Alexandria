@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from "@nuxt/ui";
 
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, nextTick, onUnmounted, ref, watch } from "vue";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import { useAppToast } from "@/composables/useAppToast";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import {
   type LyricLine,
@@ -16,9 +17,12 @@ import {
 } from "@/composables/useLyrics";
 import { LyricsProvider } from "@/enums/lyrics-provider";
 import { LyricsStatus } from "@/enums/lyrics-status";
+import { countOf } from "@/features/toast/format";
 import { changeProvider, deleteLyrics, requeueLyrics, uploadLyrics } from "@/mutations/lyrics";
 import { getLyrics, lyricsPollInterval } from "@/queries/lyrics";
 import { usePlayerStore } from "@/stores/stream-player";
+
+import LyricsEmptyState from "./LyricsEmptyState.vue";
 
 const emit = defineEmits<{ (e: "close"): void }>();
 
@@ -207,7 +211,7 @@ const SLOW_HINT_DELAY_MS = 5_000;
 const FETCH_TIMEOUT_MS = 45_000;
 
 const slowFetchHintText =
-  "First fetches reach out to an external lyrics provider and can take a bit — hang tight.";
+  "First fetches reach out to an external lyrics provider and can take a moment.";
 
 const showSlowFetchHint = ref(false);
 const fetchTimedOut = ref(false);
@@ -262,17 +266,34 @@ onUnmounted(clearFetchTimers);
 const showManualUpload = ref(false);
 const manualLyrics = ref("");
 
-const FORMAT_HINTS: Record<LyricsFormat, string> = {
-  plain: "Detected: plain text",
-  synced: "Detected: synced (LRC)",
+const FORMAT_META: Record<LyricsFormat, { icon: string; label: string; unit: string }> = {
+  plain: { icon: "i-lucide-align-left", label: "Plain text", unit: "line" },
+  synced: { icon: "i-mdi-clock-outline", label: "Synced", unit: "timed line" },
 };
 
-const manualFormatHint = computed(() =>
-  manualLyrics.value.trim() ? FORMAT_HINTS[detectLyricsFormat(manualLyrics.value)] : "",
+const MANUAL_PLACEHOLDER =
+  "[00:12.00] First line\n[00:15.50] Second line\n\nor plain lyrics, one per row";
+
+const manualFormat = computed(() => {
+  const raw = manualLyrics.value;
+  if (!raw.trim()) return null;
+
+  const format = detectLyricsFormat(raw);
+  const lineCount =
+    format === "synced"
+      ? parseSyncedLyrics(raw).length
+      : raw.split("\n").filter((line) => line.trim()).length;
+
+  return { ...FORMAT_META[format], count: countOf(lineCount, FORMAT_META[format].unit) };
+});
+
+const manualUploadTitle = computed(() =>
+  hasExistingLyricsText.value ? "Edit lyrics" : "Add lyrics",
 );
 
+// Synced text is preferred so editing existing lyrics never silently drops their timing.
 const onOpenManualUpload = () => {
-  manualLyrics.value = data.value?.playLyrics ?? "";
+  manualLyrics.value = data.value?.syncedLyrics ?? data.value?.playLyrics ?? "";
   showManualUpload.value = true;
 };
 const onCancelManualUpload = () => {
@@ -284,19 +305,29 @@ watch(lyricsJobId, () => {
   manualLyrics.value = "";
 });
 
+const appToast = useAppToast("lyrics");
+
 const { mutateAsync: uploadMutateAsync, isLoading: isUploading } = uploadLyrics();
 
 const onManualUploadSubmit = async () => {
-  if (!lyricsJobId.value || !manualLyrics.value.trim()) return;
+  if (!lyricsJobId.value || !manualLyrics.value.trim() || isUploading.value) return;
 
   const isSynced = detectLyricsFormat(manualLyrics.value) === "synced";
 
-  await uploadMutateAsync({
-    jobId: lyricsJobId.value,
-    plainLyrics: isSynced ? null : manualLyrics.value,
-    syncedLyrics: isSynced ? manualLyrics.value : null,
-    isInstrumental: false,
-  });
+  try {
+    await uploadMutateAsync({
+      jobId: lyricsJobId.value,
+      plainLyrics: isSynced ? null : manualLyrics.value,
+      syncedLyrics: isSynced ? manualLyrics.value : null,
+      isInstrumental: false,
+    });
+  } catch (cause) {
+    appToast.error("Couldn't save lyrics", cause, { retry: onManualUploadSubmit });
+
+    return;
+  }
+
+  appToast.success("Lyrics saved", activeFile.value?.title ?? activeFile.value?.fileName);
   showManualUpload.value = false;
   manualLyrics.value = "";
 };
@@ -373,7 +404,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
     <div class="shrink-0 px-4 pt-4 pb-3 border-b border-gray-200/70 dark:border-gray-700/70">
       <div class="flex items-center justify-between gap-2">
         <h2
-          class="text-xs font-semibold tracking-widest uppercase text-gray-500 dark:text-white/35 m-0"
+          class="text-xs font-semibold tracking-widest uppercase text-gray-600 dark:text-gray-400 m-0"
         >
           Lyrics
         </h2>
@@ -402,186 +433,218 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
         </div>
       </div>
 
-      <p v-if="activeFile" class="mt-1 text-sm text-gray-700 dark:text-white truncate m-0">
+      <p
+        v-if="activeFile"
+        class="mt-1 text-sm font-medium text-gray-900 dark:text-gray-100 truncate m-0"
+      >
         {{ activeFile.title ?? activeFile.fileName }}
       </p>
-      <p v-if="activeFile?.artist" class="text-xs text-gray-400 dark:text-white truncate m-0">
+      <p v-if="activeFile?.artist" class="text-xs text-gray-600 dark:text-gray-400 truncate m-0">
         {{ activeFile.artist }}
       </p>
     </div>
 
     <!-- Body -->
     <div class="flex-1 min-h-0 flex flex-col">
-      <!-- Nothing playing -->
-      <div
+      <LyricsEmptyState
         v-if="!activeFile"
-        class="flex flex-col items-center justify-center gap-3 flex-1 text-center px-6"
+        icon="i-mdi-music-note-outline"
+        title="Nothing playing"
+        description="Play a song and its lyrics will follow along here."
       >
-        <Icon
-          icon="mdi:music-note-outline"
-          class="w-12 h-12 text-gray-300 dark:text-white/[0.18]"
+        <UButton
+          to="/media"
+          label="Browse media"
+          variant="outline"
+          color="neutral"
+          size="sm"
+          class="rounded-full px-4"
         />
-        <p class="text-sm text-gray-500 dark:text-white/40 m-0">Nothing playing</p>
-        <p class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0">
-          Play a song to see its lyrics here.
-        </p>
-      </div>
+      </LyricsEmptyState>
 
-      <!-- Not an audio file -->
-      <div
+      <LyricsEmptyState
         v-else-if="!isAudio"
-        class="flex flex-col items-center justify-center gap-3 flex-1 text-center px-6"
+        icon="i-mdi-video-outline"
+        title="No lyrics for videos"
+        description="Lyrics are only available for audio tracks."
+        :ghost="false"
+      />
+
+      <LyricsEmptyState v-else-if="isFirstLoad" title="Loading lyrics">
+        <template #icon>
+          <BlockSpinner :size="22" />
+        </template>
+      </LyricsEmptyState>
+
+      <LyricsEmptyState
+        v-else-if="isFetchStatus && fetchTimedOut"
+        icon="i-mdi-timer-sand"
+        title="Taking longer than expected"
+        description="The lyrics provider hasn't answered yet. Keep waiting, or ask it again."
       >
-        <Icon icon="mdi:video-outline" class="w-12 h-12 text-gray-300 dark:text-white/[0.18]" />
-        <p class="text-sm text-gray-500 dark:text-white/40 m-0">
-          Lyrics aren't available for video
-        </p>
-      </div>
+        <UButton
+          label="Try again"
+          icon="i-mdi-refresh"
+          variant="outline"
+          color="neutral"
+          size="sm"
+          class="rounded-full px-4"
+          @click="onRequeue"
+        />
+      </LyricsEmptyState>
 
-      <!-- Loading -->
-      <div v-else-if="isFirstLoad" class="flex flex-col items-center justify-center gap-2.5 flex-1">
-        <Icon icon="mdi:loading" class="w-5 h-5 animate-spin text-gray-400 dark:text-white/30" />
-      </div>
-
-      <!-- Fetching / pending on the backend -->
-      <div
+      <LyricsEmptyState
         v-else-if="isFetchStatus"
-        class="flex flex-col items-center justify-center gap-2.5 flex-1 text-center px-6"
+        title="Looking for lyrics"
+        :description="showSlowFetchHint ? slowFetchHintText : undefined"
       >
-        <template v-if="!fetchTimedOut">
-          <Icon icon="mdi:loading" class="w-6 h-6 animate-spin text-gray-400 dark:text-white/30" />
-          <p class="text-sm text-gray-500 dark:text-white/40 m-0">Fetching lyrics…</p>
-          <p
-            v-if="showSlowFetchHint"
-            class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0"
-          >
-            {{ slowFetchHintText }}
-          </p>
+        <template #icon>
+          <BlockSpinner :size="22" />
         </template>
+      </LyricsEmptyState>
 
-        <template v-else>
-          <Icon icon="mdi:timer-sand" class="w-10 h-10 text-gray-300 dark:text-white/[0.18]" />
-          <p class="text-sm text-gray-500 dark:text-white/40 m-0">Taking longer than expected</p>
-          <p class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0">
-            The lyrics provider hasn't responded yet. You can keep waiting or try again.
-          </p>
-          <UButton variant="outline" color="neutral" size="sm" class="mt-1" @click="onRequeue">
-            Try again
-          </UButton>
-        </template>
-      </div>
-
-      <!-- Fetch failed -->
-      <div
-        v-else-if="isFailedStatus"
-        class="flex flex-col items-center justify-center gap-3 flex-1 text-center px-6"
+      <LyricsEmptyState
+        v-else-if="isFailedStatus && !showManualUpload"
+        icon="i-mdi-alert-circle-outline"
+        title="Couldn't fetch lyrics"
+        description="Something went wrong reaching the lyrics provider. Try again, or paste them yourself."
       >
-        <Icon
-          icon="mdi:alert-circle-outline"
-          class="w-12 h-12 text-gray-300 dark:text-white/[0.18]"
+        <UButton
+          label="Try again"
+          icon="i-mdi-refresh"
+          variant="outline"
+          color="neutral"
+          size="sm"
+          class="rounded-full px-4"
+          @click="onRequeue"
         />
-        <p class="text-sm text-gray-500 dark:text-white/90 m-0">Couldn't fetch lyrics</p>
-        <p class="text-xs text-gray-400 dark:text-white/95 max-w-xs leading-relaxed m-0">
-          Something went wrong reaching the lyrics provider.
-        </p>
-        <div class="flex flex-wrap items-center justify-center gap-2 mt-1">
-          <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            class="whitespace-nowrap"
-            @click="onRequeue"
-          >
-            Try again
-          </UButton>
-          <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            class="whitespace-nowrap"
-            @click="onOpenManualUpload"
-          >
-            Add manually
-          </UButton>
-        </div>
-      </div>
+        <UButton
+          label="Add manually"
+          icon="i-mdi-pencil-outline"
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          class="rounded-full px-4"
+          @click="onOpenManualUpload"
+        />
+      </LyricsEmptyState>
 
-      <!-- No match found -->
-      <div
+      <LyricsEmptyState
         v-else-if="isNoMatchStatus && !showManualUpload"
-        class="flex flex-col items-center justify-center gap-3 flex-1 text-center px-6"
+        icon="i-mdi-magnify"
+        title="No lyrics found"
+        description="This track didn't match anything in the lyrics providers. Search again, or paste them yourself."
       >
-        <Icon
-          icon="mdi:file-question-outline"
-          class="w-12 h-12 text-gray-300 dark:text-white/[0.18]"
+        <UButton
+          label="Search again"
+          icon="i-mdi-refresh"
+          variant="outline"
+          color="neutral"
+          size="sm"
+          class="rounded-full px-4"
+          @click="onRequeue"
         />
-        <p class="text-sm text-gray-500 dark:text-white/40 m-0">No lyrics found</p>
-        <p class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0">
-          We couldn't match this track to a lyrics database.
-        </p>
-        <div class="flex flex-wrap items-center justify-center gap-2 mt-1">
-          <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            class="whitespace-nowrap"
-            @click="onRequeue"
-          >
-            Try again
-          </UButton>
-          <UButton
-            variant="outline"
-            color="neutral"
-            size="sm"
-            class="whitespace-nowrap"
-            @click="onOpenManualUpload"
-          >
-            Add lyrics manually
-          </UButton>
-        </div>
-      </div>
+        <UButton
+          label="Add manually"
+          icon="i-mdi-pencil-outline"
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          class="rounded-full px-4"
+          @click="onOpenManualUpload"
+        />
+      </LyricsEmptyState>
 
-      <!-- Instrumental -->
-      <div
+      <LyricsEmptyState
         v-else-if="isInstrumental"
-        class="flex flex-col items-center justify-center gap-3 flex-1 text-center px-6"
-      >
-        <Icon icon="mdi:music-note-off" class="w-12 h-12 text-gray-300 dark:text-white/[0.18]" />
-        <p class="text-sm text-gray-500 dark:text-white/40 m-0">Instrumental track</p>
-        <p class="text-xs text-gray-400 dark:text-white/25 max-w-xs leading-relaxed m-0">
-          There are no vocals to show lyrics for on this track.
-        </p>
-      </div>
+        icon="i-mdi-music-note-off"
+        title="Instrumental track"
+        description="There are no vocals on this track, so there's nothing to show."
+        :ghost="false"
+      />
 
       <!-- Manual upload form -->
-      <div v-if="showManualUpload" class="flex flex-col gap-3 px-4 py-4">
-        <UFormField label="Paste lyrics (plain or LRC)">
+      <form
+        v-if="showManualUpload"
+        class="flex min-h-0 flex-1 flex-col"
+        @submit.prevent="onManualUploadSubmit"
+      >
+        <div class="flex min-h-0 flex-1 flex-col gap-3 px-4 pt-4 pb-3">
+          <div class="flex flex-col gap-1">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 m-0">
+              {{ manualUploadTitle }}
+            </h3>
+            <p class="text-xs leading-relaxed text-gray-600 dark:text-gray-400 m-0">
+              Paste plain text, or LRC with timestamps like [01:23.45] to follow along with
+              playback.
+            </p>
+          </div>
+
           <UTextarea
             v-model="manualLyrics"
-            :rows="10"
-            placeholder="Paste plain or LRC lyrics here…"
-            class="w-full"
+            :rows="8"
+            autofocus
+            aria-label="Lyrics"
+            :placeholder="MANUAL_PLACEHOLDER"
+            :disabled="isUploading"
+            :ui="{
+              root: 'flex min-h-0 w-full flex-1',
+              base: 'h-full min-h-40 resize-none font-mono text-sm leading-relaxed',
+            }"
+            @keydown.enter.meta.prevent="onManualUploadSubmit"
+            @keydown.enter.ctrl.prevent="onManualUploadSubmit"
           />
-          <p v-if="manualFormatHint" class="text-xs text-gray-500 dark:text-gray-500 mt-1 m-0">
-            {{ manualFormatHint }}
-          </p>
-        </UFormField>
-        <div class="flex justify-end gap-2">
-          <UButton variant="outline" color="neutral" size="sm" @click="onCancelManualUpload">
-            Cancel
-          </UButton>
-          <UButton
-            variant="solid"
-            color="primary"
-            size="sm"
-            :loading="isUploading"
-            :disabled="!manualLyrics.trim()"
-            @click="onManualUploadSubmit"
-          >
-            Save lyrics
-          </UButton>
+
+          <div class="flex min-h-5 items-center gap-2 text-xs">
+            <template v-if="manualFormat">
+              <UBadge
+                variant="subtle"
+                color="neutral"
+                size="sm"
+                :icon="manualFormat.icon"
+                :label="manualFormat.label"
+              />
+              <span class="text-gray-600 dark:text-gray-400">{{ manualFormat.count }}</span>
+            </template>
+            <span v-else class="text-gray-500 dark:text-gray-500">
+              The format is detected as you paste.
+            </span>
+          </div>
         </div>
-      </div>
+
+        <div
+          class="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-t border-gray-200/70 dark:border-gray-700/70"
+        >
+          <span
+            class="hidden items-center gap-1 text-xs text-gray-500 md:inline-flex dark:text-gray-500"
+          >
+            <UKbd value="meta" size="sm" />
+            <UKbd value="enter" size="sm" />
+            to save
+          </span>
+
+          <div class="ml-auto flex items-center gap-2">
+            <UButton
+              type="button"
+              label="Cancel"
+              variant="outline"
+              color="neutral"
+              size="sm"
+              :disabled="isUploading"
+              @click="onCancelManualUpload"
+            />
+            <UButton
+              type="submit"
+              label="Save lyrics"
+              variant="solid"
+              color="primary"
+              size="sm"
+              :loading="isUploading"
+              :disabled="!manualLyrics.trim()"
+            />
+          </div>
+        </div>
+      </form>
 
       <!-- Synced lyrics -->
       <div
@@ -596,7 +659,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
           class="px-5 py-2 rounded-md cursor-pointer text-base leading-relaxed transition-colors duration-150"
           :class="{
             'text-primary font-semibold': index === activeIndex,
-            'text-gray-600 dark:text-white/90 hover:text-gray-800 dark:hover:text-white':
+            'text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100':
               index !== activeIndex,
           }"
           @click="onLineClick(line)"
@@ -615,7 +678,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
         <p
           v-for="(line, index) in plainLines"
           :key="index"
-          class="text-base leading-relaxed text-gray-600 dark:text-white/60 m-0"
+          class="text-base leading-relaxed text-gray-700 dark:text-gray-300 m-0"
           :class="{ 'py-1.5': line.trim() }"
         >
           {{ line }}
@@ -653,7 +716,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
         </UTooltip>
       </div>
 
-      <span class="text-xs text-gray-400 dark:text-white/30 shrink-0">
+      <span class="text-xs text-gray-500 dark:text-gray-500 shrink-0">
         {{ fetchedAtLabel }}
       </span>
     </div>

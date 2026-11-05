@@ -1,148 +1,160 @@
 <template>
-  <div>
-    <section
-      class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70"
+  <div class="flex min-h-full flex-col gap-3 p-3">
+    <header
       aria-labelledby="playlists-heading"
+      class="shrink-0 rounded-xl border border-gray-200/70 px-4 py-4 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
     >
-      <header class="frosted-glass glass-surface px-4 pb-6 pt-6 sm:px-6 sm:pt-8">
-        <div class="flex items-center justify-between gap-4 sm:items-start">
+      <div class="flex items-center justify-between gap-4">
+        <div class="flex min-w-0 items-center gap-2.5">
+          <UIcon
+            name="i-lucide-list-music"
+            class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
+          />
+
           <div class="min-w-0">
-            <h1 id="playlists-heading" class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h1
+              id="playlists-heading"
+              class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100"
+            >
               Playlists
             </h1>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
               Your collections and automatic mixes.
             </p>
           </div>
-          <UButton
-            icon="i-heroicons-plus"
-            label="New playlist"
-            color="primary"
-            variant="solid"
-            :ui="{ label: 'max-sm:sr-only' }"
-            class="h-10 shrink-0 rounded-xl max-sm:w-10 max-sm:justify-center max-sm:px-0"
-            @click="showCreateModal = true"
-          />
         </div>
+        <UButton
+          icon="i-heroicons-plus"
+          label="New playlist"
+          color="primary"
+          variant="solid"
+          :ui="{ label: 'max-sm:sr-only' }"
+          size="sm"
+          class="shrink-0 max-sm:w-9 max-sm:justify-center max-sm:px-0"
+          @click="showCreateModal = true"
+        />
+      </div>
 
-        <!-- One grouped panel below md so search, sort and filters read as a
-             single unit. From md up the panel chrome drops away and the
-             controls sit directly on the page surface. -->
-        <div
-          class="mt-6 flex flex-col gap-4 max-md:rounded-xl max-md:border max-md:border-gray-200/70 max-md:bg-black/5 max-md:p-4 max-md:dark:border-gray-700/70 max-md:dark:bg-white/5"
-        >
-          <div class="flex flex-col gap-4 md:flex-row md:items-center">
-            <div class="relative flex w-full flex-col gap-2 md:max-w-xl md:flex-1">
-              <UInput
-                v-model="searchTerm"
-                icon="i-heroicons-magnifying-glass"
-                placeholder="Search playlists"
-                aria-label="Search playlists"
-                :maxlength="PLAYLIST_SEARCH_MAX_LENGTH"
-                :ui="searchUi"
-                class="w-full"
-              />
-              <div
-                class="flex items-center gap-1 max-md:justify-between md:absolute md:inset-y-1 md:right-1"
-              >
-                <UButton
-                  :icon="searchItems ? 'mdi-check' : undefined"
-                  label="Inside tracks"
-                  size="sm"
-                  :color="searchItems ? 'primary' : 'neutral'"
-                  :variant="searchItems ? 'soft' : 'outline'"
-                  :aria-pressed="searchItems"
-                  class="h-8 rounded-lg px-3"
-                  @click="searchItems = !searchItems"
-                />
-                <UButton
-                  v-if="searchTerm"
-                  variant="ghost"
-                  color="neutral"
-                  size="sm"
-                  icon="i-heroicons-x-mark"
-                  aria-label="Clear search"
-                  class="h-8 w-8 justify-center rounded-lg"
-                  @click="clearSearch"
-                />
-              </div>
-            </div>
-
-            <div class="flex w-full items-center gap-2 md:w-auto">
-              <USelect
-                v-model="sort"
-                :items="sortOptions"
-                aria-label="Sort playlists"
-                :ui="fieldUi"
-                class="w-full md:w-48"
-                @update:model-value="onSortSelected"
-              />
-              <UButton
-                variant="outline"
-                color="neutral"
-                :title="
-                  sortDirection === SortDirection.Asc
-                    ? 'Switch to descending'
-                    : 'Switch to ascending'
-                "
-                :aria-label="sortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
-                :icon="
-                  sortDirection === SortDirection.Asc ? 'mdi-sort-ascending' : 'mdi-sort-descending'
-                "
-                class="h-10 w-10 shrink-0 justify-center rounded-xl"
-                @click="toggleSortDirection"
-              />
-            </div>
-          </div>
-
-          <div class="flex flex-col gap-4 md:flex-row md:items-center">
+      <!-- One grouped panel below md so search, sort and filters read as a
+           single unit. From md up the panel chrome drops away and the
+           controls sit directly on the header surface. -->
+      <div
+        class="mt-4 flex flex-col gap-4 max-md:rounded-xl max-md:border max-md:border-gray-200/70 max-md:bg-black/5 max-md:p-4 max-md:dark:border-gray-700/70 max-md:dark:bg-white/5"
+      >
+        <div class="flex flex-col gap-4 md:flex-row md:items-center">
+          <div class="relative flex w-full flex-col gap-2 md:max-w-xl md:flex-1">
+            <UInput
+              v-model="searchTerm"
+              icon="i-heroicons-magnifying-glass"
+              placeholder="Search playlists"
+              aria-label="Search playlists"
+              :maxlength="PLAYLIST_SEARCH_MAX_LENGTH"
+              :ui="searchUi"
+              class="w-full"
+            />
             <div
-              role="group"
-              aria-label="Collection"
-              class="flex gap-1 rounded-xl bg-black/5 p-1 dark:bg-white/5 md:inline-flex"
+              class="flex items-center gap-1 max-md:justify-between md:absolute md:inset-y-1 md:right-1"
             >
               <UButton
-                v-for="option in originOptions"
-                :key="option.value"
-                :label="option.label"
-                :aria-pressed="originFilter === option.value"
-                :color="originFilter === option.value ? 'primary' : 'neutral'"
-                :variant="originFilter === option.value ? 'soft' : 'ghost'"
-                class="h-8 flex-1 justify-center rounded-lg px-4 md:flex-none"
-                @click="originFilter = option.value"
+                :icon="searchItems ? 'mdi-check' : undefined"
+                label="Inside tracks"
+                size="sm"
+                :color="searchItems ? 'primary' : 'neutral'"
+                :variant="searchItems ? 'soft' : 'outline'"
+                :aria-pressed="searchItems"
+                class="h-8 rounded-lg px-3"
+                @click="searchItems = !searchItems"
               />
-            </div>
-
-            <span
-              aria-hidden="true"
-              class="hidden h-8 w-px bg-gray-200/70 dark:bg-gray-700/70 md:block"
-            />
-
-            <div role="group" aria-label="Kind" class="flex flex-wrap items-center gap-2">
-              <span
-                class="w-full text-sm font-semibold text-gray-600 dark:text-gray-400 md:w-auto md:pr-2"
-              >
-                Kind
-              </span>
               <UButton
-                v-for="option in kindFilterOptions"
-                :key="option.value"
-                :label="option.label"
-                :aria-pressed="kindFilter === option.value"
-                :color="kindFilter === option.value ? 'primary' : 'neutral'"
-                :variant="kindFilter === option.value ? 'soft' : 'outline'"
-                class="h-8 rounded-xl px-4"
-                @click="kindFilter = option.value"
+                v-if="searchTerm"
+                variant="ghost"
+                color="neutral"
+                size="sm"
+                icon="i-heroicons-x-mark"
+                aria-label="Clear search"
+                class="h-8 w-8 justify-center rounded-lg"
+                @click="clearSearch"
               />
             </div>
           </div>
-        </div>
-      </header>
 
+          <div class="flex w-full items-center gap-2 md:w-auto">
+            <USelect
+              v-model="sort"
+              :items="sortOptions"
+              aria-label="Sort playlists"
+              :ui="fieldUi"
+              class="w-full md:w-48"
+              @update:model-value="onSortSelected"
+            />
+            <UButton
+              variant="outline"
+              color="neutral"
+              :title="
+                sortDirection === SortDirection.Asc ? 'Switch to descending' : 'Switch to ascending'
+              "
+              :aria-label="sortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
+              :icon="
+                sortDirection === SortDirection.Asc ? 'mdi-sort-ascending' : 'mdi-sort-descending'
+              "
+              class="h-10 w-10 shrink-0 justify-center rounded-xl"
+              @click="toggleSortDirection"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-4 md:flex-row md:items-center">
+          <div
+            role="group"
+            aria-label="Collection"
+            class="flex gap-1 rounded-xl bg-black/5 p-1 dark:bg-white/5 md:inline-flex"
+          >
+            <UButton
+              v-for="option in originOptions"
+              :key="option.value"
+              :label="option.label"
+              :aria-pressed="originFilter === option.value"
+              :color="originFilter === option.value ? 'primary' : 'neutral'"
+              :variant="originFilter === option.value ? 'soft' : 'ghost'"
+              class="h-8 flex-1 justify-center rounded-lg px-4 md:flex-none"
+              @click="originFilter = option.value"
+            />
+          </div>
+
+          <span
+            aria-hidden="true"
+            class="hidden h-8 w-px bg-gray-200/70 dark:bg-gray-700/70 md:block"
+          />
+
+          <div role="group" aria-label="Kind" class="flex flex-wrap items-center gap-2">
+            <span
+              class="w-full text-sm font-semibold text-gray-600 dark:text-gray-400 md:w-auto md:pr-2"
+            >
+              Kind
+            </span>
+            <UButton
+              v-for="option in kindFilterOptions"
+              :key="option.value"
+              :label="option.label"
+              :aria-pressed="kindFilter === option.value"
+              :color="kindFilter === option.value ? 'primary' : 'neutral'"
+              :variant="kindFilter === option.value ? 'soft' : 'outline'"
+              class="h-8 rounded-xl px-4"
+              @click="kindFilter = option.value"
+            />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section
+      aria-label="Playlist results"
+      class="flex flex-1 flex-col rounded-[14px] border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
+    >
       <!-- Results bar: the only element that pins. Everything above scrolls
            away naturally, so there is no scroll listener and no measuring. -->
       <div
-        class="frosted-glass glass-surface-strong sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-y border-gray-200/70 px-4 py-3 dark:border-gray-700/70 sm:px-6"
+        class="frosted-glass glass-surface-strong sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-[14px] border-b border-gray-200/70 px-4 py-3 dark:border-gray-700/70 sm:px-6"
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <p
@@ -200,7 +212,7 @@
         />
       </div>
 
-      <div class="p-4 sm:p-6" :aria-busy="isFetching">
+      <div class="flex flex-1 flex-col p-4 sm:p-6" :aria-busy="isFetching">
         <div v-if="playlistsQuery.status.value === 'pending'" class="flex justify-center py-16">
           <Icon
             icon="mdi:loading"
@@ -218,42 +230,44 @@
           description="Please try refreshing the page."
         />
 
-        <div
-          v-else-if="!playlists.length && hasActiveFilters"
-          class="flex flex-col items-center justify-center gap-2 py-16 text-center"
-        >
-          <Icon icon="mdi:magnify" class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-2" />
-          <p class="font-medium text-gray-900 dark:text-gray-100">No playlists match</p>
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            Try another search, collection, or kind.
-          </p>
-          <UButton
-            label="Clear filters"
-            color="neutral"
-            variant="outline"
-            class="mt-2"
-            @click="clearFilters"
-          />
-        </div>
+        <EmptyStatePanel v-else-if="!playlists.length" :panel="false">
+          <template #ghost>
+            <PlaylistGridGhost />
+          </template>
 
-        <div
-          v-else-if="!playlists.length"
-          class="flex flex-col items-center justify-center gap-2 py-16 text-center"
-        >
-          <Icon icon="mdi:playlist-music" class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-2" />
-          <p class="font-medium text-gray-900 dark:text-gray-100">No playlists yet</p>
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            Create your first playlist to get started.
-          </p>
-          <UButton
-            label="New playlist"
-            icon="i-heroicons-plus"
-            color="neutral"
-            variant="outline"
-            class="mt-2"
-            @click="showCreateModal = true"
-          />
-        </div>
+          <GlassEmptyState
+            v-if="hasActiveFilters"
+            icon="i-mdi-magnify"
+            title="No playlists match"
+            description="Try another search, collection, or kind."
+            class="m-auto"
+          >
+            <UButton
+              label="Clear filters"
+              color="neutral"
+              variant="outline"
+              class="rounded-full px-5"
+              @click="clearFilters"
+            />
+          </GlassEmptyState>
+
+          <GlassEmptyState
+            v-else
+            icon="i-mdi-playlist-music"
+            title="No playlists yet"
+            description="Create your first playlist to get started. Automatic mixes appear here on their own as your library grows."
+            class="m-auto"
+          >
+            <UButton
+              label="New playlist"
+              icon="i-heroicons-plus"
+              color="neutral"
+              variant="outline"
+              class="rounded-full px-5"
+              @click="showCreateModal = true"
+            />
+          </GlassEmptyState>
+        </EmptyStatePanel>
 
         <div
           v-else
@@ -349,11 +363,26 @@ import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
-import PlaylistCard from "@/components/streaming/PlaylistCard.vue";
-import PlaylistForm, { type PlaylistFormPayload } from "@/components/streaming/PlaylistForm.vue";
+import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
+import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
+import PlaylistCard from "@/components/streaming/playlist/PlaylistCard.vue";
+import PlaylistForm, {
+  type PlaylistFormPayload,
+} from "@/components/streaming/playlist/PlaylistForm.vue";
+import PlaylistGridGhost from "@/components/streaming/playlist/PlaylistGridGhost.vue";
+import { useAppToast } from "@/composables/useAppToast";
 import { AutoGroupKind } from "@/enums/auto-group-kind";
 import { PlaylistSort } from "@/enums/playlist-sort";
 import { SortDirection } from "@/enums/SortDirection";
+import {
+  PLAYLIST_SEARCH_MAX_LENGTH,
+  type PlaylistKindFilter,
+  type PlaylistOriginFilter,
+  naturalSortDirection,
+  parsePlaylistBrowseQuery,
+  playlistBrowseQuery,
+} from "@/features/playlists/display";
+import { countOf, quoted } from "@/features/toast/format";
 import {
   createPlaylist,
   deletePlaylist,
@@ -362,19 +391,11 @@ import {
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
-import { glassModalContent, playlistModalUi } from "@/utils/modalUi";
-import {
-  PLAYLIST_SEARCH_MAX_LENGTH,
-  type PlaylistKindFilter,
-  type PlaylistOriginFilter,
-  naturalSortDirection,
-  parsePlaylistBrowseQuery,
-  playlistBrowseQuery,
-} from "@/utils/playlist-display.utils";
+import { glassModalContent, playlistModalUi } from "@/utils/modal-ui";
 
 const route = useRoute();
 const router = useRouter();
-const toast = useToast();
+const toast = useAppToast("playlists");
 const store = usePlayerStore();
 const queryCache = useQueryCache();
 
@@ -653,23 +674,19 @@ const addPlaylistToQueue = async (playlistId: string, label?: string) => {
   addingPlaylistId.value = playlistId;
   try {
     const queuedCount = await store.addPlaylistToQueue(playlistId, label ?? null);
+    const name = label ? quoted(label) : "This playlist";
+
     if (queuedCount === 0) {
-      toast.add({
-        title: "Playlist is empty",
-        description: "Add some tracks before queueing.",
-        color: "warning",
-      });
+      toast.warning(`${name} has no tracks yet`, "Add some tracks before queueing it.");
       return;
     }
-    toast.add({
-      title: `Added ${queuedCount} track${queuedCount === 1 ? "" : "s"} to queue`,
-      color: "success",
+    toast.success(`Added ${countOf(queuedCount, "track")} to the queue`, {
+      description: label ? `From ${quoted(label)}` : undefined,
+      source: "playback",
     });
-  } catch {
-    toast.add({
-      title: "Failed to queue playlist",
-      description: "Could not fetch tracks. Please try again.",
-      color: "error",
+  } catch (err) {
+    toast.error(`Couldn't queue ${label ? quoted(label) : "the playlist"}`, err, {
+      retry: () => addPlaylistToQueue(playlistId, label),
     });
   } finally {
     addingPlaylistId.value = null;
@@ -686,8 +703,8 @@ const toggleFavorite = async (playlist: PlaylistResponse) => {
 
   try {
     await setFavorite({ playlistId: playlist.id, isStarred: !playlist.isStarred });
-  } catch {
-    toast.add({ title: "Failed to update favorite", color: "error" });
+  } catch (err) {
+    toast.error(`Couldn't update favorites for ${quoted(playlist.name)}`, err);
   }
 };
 
@@ -695,27 +712,54 @@ const navigateToPlaylist = (id: string) => {
   router.push(`/streaming/playlists/${id}`);
 };
 
+const openPlaylistAction = (id: string) => ({
+  icon: "i-lucide-arrow-up-right",
+  label: "Open",
+  onClick: () => navigateToPlaylist(id),
+});
+
 const handleCreate = async (payload: PlaylistFormPayload) => {
-  try {
-    const playlist = await playlistApi.create({
+  const name = quoted(payload.name);
+  const playlist = await playlistApi
+    .create({
       name: payload.name,
       description: payload.description,
       hasCover: Boolean(payload.coverFile),
+    })
+    .catch((err: unknown) => {
+      toast.error(`Couldn't create ${name}`, err);
+      return null;
     });
 
-    if (payload.coverFile) {
+  if (!playlist) return;
+
+  // The playlist already exists at this point, so a cover failure must not read as a failed create.
+  let coverError: unknown = null;
+
+  if (payload.coverFile) {
+    try {
       await playlistApi.uploadPlaylistCover(playlist.id, payload.coverFile);
 
       if (payload.ambientTheme) {
         await playlistApi.update(playlist.id, { ambientTheme: payload.ambientTheme });
       }
+    } catch (err) {
+      coverError = err;
     }
-
-    await queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.root });
-    showCreateModal.value = false;
-  } catch {
-    toast.add({ title: "Failed to create playlist", color: "error" });
   }
+
+  await queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.root });
+  showCreateModal.value = false;
+
+  if (coverError) {
+    toast.warning(`Created ${name} without its cover`, {
+      actions: [openPlaylistAction(playlist.id)],
+      description: "The cover image didn't upload. Edit the playlist to try again.",
+    });
+    return;
+  }
+
+  toast.success(`Created ${name}`, { actions: [openPlaylistAction(playlist.id)] });
 };
 
 const handleUpdate = async (payload: PlaylistFormPayload) => {
@@ -748,18 +792,29 @@ const handleUpdate = async (payload: PlaylistFormPayload) => {
       await queryCache.invalidateQueries({ key: PLAYLIST_QUERY_KEYS.root });
       showEditModal.value = false;
       editTarget.value = null;
+      toast.success(`Saved changes to ${quoted(payload.name)}`);
     }
-  } catch {
-    toast.add({ title: "Failed to update playlist", color: "error" });
+  } catch (err) {
+    toast.error(`Couldn't save changes to ${quoted(payload.name)}`, err);
   }
 };
 
 const handleDelete = async () => {
   if (!deleteTarget.value) return;
-  await remove(deleteTarget.value.id);
+
+  const name = quoted(deleteTarget.value.name);
+
+  try {
+    await remove(deleteTarget.value.id);
+  } catch (err) {
+    toast.error(`Couldn't delete ${name}`, err);
+    return;
+  }
+
   if (!deleteState.value.error) {
     showDeleteModal.value = false;
     deleteTarget.value = null;
+    toast.success(`Deleted ${name}`);
   }
 };
 </script>

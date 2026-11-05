@@ -389,8 +389,10 @@ import PlaylistFavoriteButton from "@/components/streaming/playlist/PlaylistFavo
 import PlaylistForm from "@/components/streaming/playlist/PlaylistForm.vue";
 import PlaylistItemRow from "@/components/streaming/playlist/PlaylistItemRow.vue";
 import PlaylistTrackSearch from "@/components/streaming/playlist/PlaylistTrackSearch.vue";
+import { useAppToast } from "@/composables/useAppToast";
 import { useTheme } from "@/composables/useTheme";
 import { findPlaylistItemIndex, loadPlaylistAnchorPage } from "@/features/player/source";
+import { countOf, quoted } from "@/features/toast/format";
 import {
   addPlaylistItem,
   deletePlaylist,
@@ -404,7 +406,9 @@ import { usePlayerStore } from "@/stores/stream-player";
 import { glassModalContent, playlistModalUi } from "@/utils/modal-ui";
 
 const store = usePlayerStore();
-const toast = useToast();
+const toast = useAppToast("playlists");
+
+const playlistLabel = () => (playlist.value?.name ? quoted(playlist.value.name) : "this playlist");
 const { isDark } = useTheme();
 
 // Below md the header keeps only the play button and the overflow menu.
@@ -419,15 +423,15 @@ const addAllToQueue = async () => {
   try {
     const total = await store.addPlaylistToQueue(playlistId.value, playlist.value?.name ?? null);
     if (total === 0) {
-      toast.add({ title: "Playlist is empty", color: "warning" });
+      toast.warning(`${playlistLabel()} has no tracks yet`, "Add some tracks before queueing it.");
       return;
     }
-    toast.add({
-      title: `Added ${total} track${total === 1 ? "" : "s"} to queue`,
-      color: "success",
+    toast.success(`Added ${countOf(total, "track")} to the queue`, {
+      description: `From ${playlistLabel()}`,
+      source: "playback",
     });
-  } catch {
-    toast.add({ title: "Failed to queue playlist", color: "error" });
+  } catch (err) {
+    toast.error(`Couldn't queue ${playlistLabel()}`, err, { retry: addAllToQueue });
   } finally {
     isAddingAllToQueue.value = false;
   }
@@ -440,6 +444,8 @@ const playAll = async () => {
       { isVideo: false, playlistId: playlistId.value },
       { label: playlist.value?.name ?? "Playlist" },
     );
+  } catch (err) {
+    toast.error(`Couldn't play ${playlistLabel()}`, err, { retry: playAll, source: "playback" });
   } finally {
     isLoadingQueue.value = false;
   }
@@ -452,6 +458,11 @@ const shuffleAll = async () => {
       { isVideo: false, playlistId: playlistId.value },
       { label: playlist.value?.name ?? "Playlist", shuffle: true },
     );
+  } catch (err) {
+    toast.error(`Couldn't shuffle ${playlistLabel()}`, err, {
+      retry: shuffleAll,
+      source: "playback",
+    });
   } finally {
     isLoadingQueue.value = false;
   }
@@ -564,8 +575,8 @@ const toggleFavorite = async () => {
 
   try {
     await setFavorite({ playlistId: target.id, isStarred: !target.isStarred });
-  } catch {
-    toast.add({ title: "Failed to update favorite", color: "error" });
+  } catch (err) {
+    toast.error(`Couldn't update favorites for ${playlistLabel()}`, err);
   }
 };
 
@@ -670,17 +681,20 @@ const playFromItem = async (itemId: string, fileId: string) => {
     const result = await loadPlaylistAnchorPage(playlistId.value, fileId, itemId);
     const index = findPlaylistItemIndex(result.items, itemId);
     if (index === -1) {
-      toast.add({ title: "Track is no longer in this playlist", color: "warning" });
+      toast.warning("That track is no longer in this playlist", "The list refreshes to match.");
       return;
     }
     const file = result.items[index];
     if (!file) {
-      toast.add({ title: "Track is no longer in this playlist", color: "warning" });
+      toast.warning("That track is no longer in this playlist", "The list refreshes to match.");
       return;
     }
     await store.playTrackInContext(file, descriptor, playlist.value?.name ?? "Playlist");
-  } catch {
-    toast.add({ title: "Failed to load playlist", color: "error" });
+  } catch (err) {
+    toast.error(`Couldn't start playback from ${playlistLabel()}`, err, {
+      retry: () => playFromItem(itemId, fileId),
+      source: "playback",
+    });
   } finally {
     isLoadingQueue.value = false;
   }
@@ -707,18 +721,29 @@ const onDragOver = (targetId: string) => {
   localItems.value = items;
 };
 
-const onDrop = async (_targetId: string) => {
+const onDrop = async (targetId: string) => {
   draggedItemId.value = null;
-  await reorder({
-    playlistId: playlistId.value,
-    req: { orderedItemIds: localItems.value.map((i) => i.id) },
-  });
+
+  try {
+    await reorder({
+      playlistId: playlistId.value,
+      req: { orderedItemIds: localItems.value.map((i) => i.id) },
+    });
+  } catch (err) {
+    toast.error(`Couldn't save the new order of ${playlistLabel()}`, err, {
+      retry: () => onDrop(targetId),
+    });
+  }
 };
 
 const handleAddItem = async (transpilationJobId: string) => {
   addingIds.value = new Set([...addingIds.value, transpilationJobId]);
   try {
     await addItem({ playlistId: playlistId.value, req: { transpilationJobId } });
+  } catch (err) {
+    toast.error(`Couldn't add the track to ${playlistLabel()}`, err, {
+      retry: () => handleAddItem(transpilationJobId),
+    });
   } finally {
     addingIds.value = new Set([...addingIds.value].filter((id) => id !== transpilationJobId));
   }
@@ -745,23 +770,49 @@ const handleUpdate = async (payload: UpdatePlaylistSchema) => {
         hasCover: Boolean(payload.coverFile),
       },
     });
-    if (!updateState.value.error) showEditModal.value = false;
-  } catch {
-    toast.add({ title: "Failed to update playlist", color: "error" });
+    if (!updateState.value.error) {
+      showEditModal.value = false;
+      toast.success(`Saved changes to ${quoted(payload.name)}`);
+    }
+  } catch (err) {
+    toast.error(`Couldn't save changes to ${quoted(payload.name)}`, err);
   }
 };
 
 const handleDelete = async () => {
-  await remove(playlistId.value);
-  if (!deleteState.value.error) router.push("/streaming/playlists");
+  const name = playlistLabel();
+
+  try {
+    await remove(playlistId.value);
+  } catch (err) {
+    toast.error(`Couldn't delete ${name}`, err);
+    return;
+  }
+
+  if (!deleteState.value.error) {
+    toast.success(`Deleted ${name}`);
+    router.push("/streaming/playlists");
+  }
 };
 
 const handleRemoveItem = async () => {
   if (!removeItemTarget.value) return;
-  await removeItem({ playlistId: playlistId.value, itemId: removeItemTarget.value });
+
+  const itemId = removeItemTarget.value;
+  const fileName = localItems.value.find((item) => item.id === itemId)?.fileName;
+  const trackLabel = fileName ? quoted(fileName) : "the track";
+
+  try {
+    await removeItem({ playlistId: playlistId.value, itemId });
+  } catch (err) {
+    toast.error(`Couldn't remove ${trackLabel} from ${playlistLabel()}`, err);
+    return;
+  }
+
   if (!removeItemState.value.error) {
     showRemoveItemModal.value = false;
     removeItemTarget.value = null;
+    toast.success(`Removed ${trackLabel} from ${playlistLabel()}`);
   }
 };
 </script>

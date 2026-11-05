@@ -1,20 +1,5 @@
 <template>
-  <!-- Mobile-only dim backdrop: on desktop the panel pushes layout instead of overlaying it, so no backdrop is needed there -->
-  <Transition
-    enter-active-class="transition-opacity duration-200 ease-out"
-    enter-from-class="opacity-0"
-    enter-to-class="opacity-100"
-    leave-active-class="transition-opacity duration-150 ease-in"
-    leave-from-class="opacity-100"
-    leave-to-class="opacity-0"
-  >
-    <div
-      v-if="open"
-      class="fixed inset-0 z-20 bg-black/30 frosted-glass sm:hidden"
-      @click="onClose"
-    />
-  </Transition>
-
+  <!-- Desktop only: the layout hides this below md, where the player island's sheet shows lyrics instead. -->
   <Transition
     enter-active-class="transition-all duration-200 ease-out"
     enter-from-class="opacity-0 translate-x-4"
@@ -25,7 +10,8 @@
   >
     <aside
       v-if="open"
-      class="fixed inset-y-0 right-0 z-30 sm:static sm:inset-auto sm:z-auto sm:shrink-0 flex flex-col w-full sm:w-96 border-l border-gray-200/70 dark:border-gray-700/70 bg-white dark:bg-neutral-900 md:bg-white/60 md:dark:bg-white/[0.06] md:frosted-glass"
+      class="flex w-96 shrink-0 flex-col border-l border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface-strong"
+      aria-label="Lyrics"
     >
       <LyricsContent @close="onClose" />
     </aside>

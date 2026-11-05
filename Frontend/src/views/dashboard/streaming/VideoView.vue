@@ -3,23 +3,23 @@ import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 
 import type { MediaFileDto } from "@/api/streaming";
 import type { UpNextItem } from "@/stores/player/types";
 
-import MediaGrid from "@/components/streaming/MediaGrid.vue";
+import MediaGrid from "@/components/streaming/library/MediaGrid.vue";
+import VideoPlayerSkin from "@/components/streaming/player/VideoPlayerSkin.vue";
+import VideoEmptyHero from "@/components/streaming/video/VideoEmptyHero.vue";
+import VideoEmptyRail from "@/components/streaming/video/VideoEmptyRail.vue";
 import VideoHero from "@/components/streaming/video/VideoHero.vue";
 import VideoUpNext from "@/components/streaming/video/VideoUpNext.vue";
-import VideoPlayerSkin from "@/components/streaming/VideoPlayerSkin.vue";
 import { useVideoHistory } from "@/composables/useVideoHistory";
+import { VIDEO_LIBRARY_LABEL, VIDEO_LIBRARY_REF } from "@/features/player/source";
 import { getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
-import { VIDEO_LIBRARY_LABEL, VIDEO_LIBRARY_REF } from "@/utils/player-source";
 
 const store = usePlayerStore();
 const { activeFile, isPlaying, upNextItems, playingFrom, context } = storeToRefs(store);
-const router = useRouter();
 
 const railOpen = ref(true);
 const skinRef = ref<InstanceType<typeof VideoPlayerSkin> | null>(null);
@@ -95,10 +95,6 @@ const playCandidate = () => {
   if (heroFile.value) playInLibrary(heroFile.value.file);
 };
 
-const openExplorer = () => {
-  void router.push("/dashboard");
-};
-
 const setRailOpen = (open: boolean) => {
   railOpen.value = open;
 };
@@ -127,31 +123,24 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 w-full p-4">
-    <h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Videos</h1>
+  <div class="flex min-h-full w-full flex-col gap-4 p-4">
+    <header
+      class="flex shrink-0 items-center gap-2.5 rounded-xl border border-gray-200/70 px-4 py-3 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
+    >
+      <UIcon name="i-lucide-video" class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400" />
+      <h1 class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">Videos</h1>
+      <UBadge v-if="!libraryLoading" color="neutral" variant="subtle" size="sm">
+        {{ libraryTotal }}
+      </UBadge>
+    </header>
 
     <div
       class="grid gap-4"
-      :class="gridRail ? 'xl:grid-cols-[minmax(0,1fr)_340px]' : 'grid-cols-1'"
+      :class="gridRail || libraryEmpty ? 'xl:grid-cols-[minmax(0,1fr)_340px]' : 'grid-cols-1'"
     >
       <section aria-label="Video player" class="min-w-0">
-        <div
-          v-if="libraryEmpty"
-          class="video-stage-frame flex flex-col items-center justify-center gap-2 text-center p-4 sm:p-6"
-        >
-          <Icon
-            icon="mdi:film-open-outline"
-            class="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 dark:text-gray-600"
-          />
-          <h2 class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100 m-0">
-            No streamable media yet
-          </h2>
-          <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 m-0 max-w-full sm:max-w-xs">
-            Files need a finished transcoding job before they show up here.
-          </p>
-          <UButton class="mt-2" color="neutral" variant="outline" size="sm" @click="openExplorer">
-            Open File Explorer
-          </UButton>
+        <div v-if="libraryEmpty" class="video-stage-frame">
+          <VideoEmptyHero />
         </div>
 
         <div
@@ -206,9 +195,15 @@ onUnmounted(() => {
           />
         </aside>
       </Transition>
+
+      <VideoEmptyRail v-if="libraryEmpty" />
     </div>
 
-    <MediaGrid v-if="!libraryEmpty" mediaType="video" />
+    <MediaGrid
+      mediaType="video"
+      :empty-message="!libraryEmpty"
+      :class="{ 'flex-1': libraryEmpty }"
+    />
   </div>
 </template>
 
