@@ -21,6 +21,20 @@
         <UBadge v-if="isReadOnly" color="neutral" variant="outline" size="xs" class="shrink-0">
           System
         </UBadge>
+        <span
+          v-if="breadcrumb"
+          class="max-w-1/2 shrink-0 truncate text-xs font-medium text-gray-700 dark:text-gray-300"
+          :title="breadcrumb"
+        >
+          {{ breadcrumb }}
+        </span>
+        <span
+          v-if="breadcrumb"
+          class="shrink-0 text-xs text-gray-600 dark:text-gray-400"
+          aria-hidden="true"
+        >
+          ·
+        </span>
         <p class="truncate text-xs text-gray-600 dark:text-gray-400" :title="subtitle">
           {{ subtitle }}
         </p>
@@ -53,7 +67,7 @@ import { computed } from "vue";
 
 import type { TagDto } from "@/api/tag";
 
-import { describeTag } from "@/features/tags/display";
+import { describeTag, tagBreadcrumbPrefix } from "@/features/tags/display";
 
 import TagIconWell from "./TagIconWell.vue";
 
@@ -78,6 +92,8 @@ const isReadOnly = computed(() => tag.isSystem === true);
 const isInteractive = computed(() => !preview && !isReadOnly.value);
 
 const subtitle = computed(() => describeTag(tag));
+
+const breadcrumb = computed(() => tagBreadcrumbPrefix(tag));
 
 const stateClass = computed(() => {
   if (isSelected) return "border-primary bg-primary/5 ring-1 ring-primary";
