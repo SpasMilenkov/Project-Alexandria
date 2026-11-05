@@ -61,6 +61,7 @@
 import { computed, reactive } from "vue";
 
 import { useAppToast } from "@/composables/useAppToast";
+import { quoted } from "@/features/toast/format";
 import { updateFileMetadata } from "@/mutations/files";
 import { updateFileMetadataSchema } from "@/schemas/file";
 
@@ -76,8 +77,10 @@ const { file } = defineProps<{ file: EditableMediaMetadata }>();
 
 const emit = defineEmits<{ saved: []; cancel: [] }>();
 
-const appToast = useAppToast();
+const appToast = useAppToast("metadata");
 const { mutateAsync, isLoading: isSaving } = updateFileMetadata();
+
+const trackLabel = computed(() => (file.title ? quoted(file.title) : "this track"));
 
 const yearToString = (year: EditableMediaMetadata["year"]) => {
   if (year === null || year === undefined) return "";
@@ -114,12 +117,12 @@ const onSubmit = async () => {
       year: trimmedOrUndefined(form.year),
     });
   } catch (error) {
-    appToast.error("Failed to save details", error);
+    appToast.error(`Couldn't save details for ${trackLabel.value}`, error);
 
     return;
   }
 
-  appToast.success("Details saved");
+  appToast.success(`Saved details for ${trackLabel.value}`);
   emit("saved");
 };
 </script>

@@ -44,6 +44,7 @@ import { computed, reactive, ref, watch } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 
 import { useAppToast } from "@/composables/useAppToast";
+import { countOf } from "@/features/toast/format";
 import { bulkUpdateFileMetadata } from "@/mutations/files";
 import { chunkArray } from "@/utils/chunk";
 import { glassDrawerContent } from "@/utils/modal-ui";
@@ -65,7 +66,7 @@ const emit = defineEmits<{
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");
 
-const appToast = useAppToast();
+const appToast = useAppToast("metadata");
 const { mutateAsync: bulkMutate } = bulkUpdateFileMetadata();
 const isSaving = ref(false);
 
@@ -144,6 +145,7 @@ const isSubmittable = computed(
 const onSubmit = async () => {
   if (!isSubmittable.value || isSaving.value) return;
   isSaving.value = true;
+  const progress = appToast.track(`Updating ${countOf(files.length, "track")}…`);
   try {
     const patch = {
       artist: patchFor("artist"),
@@ -167,10 +169,22 @@ const onSubmit = async () => {
         failed += chunk.length;
       }
     }
-    if (failed === 0) appToast.success(`Updated ${succeeded} file${succeeded === 1 ? "" : "s"}`);
-    else if (succeeded === 0) appToast.error("Bulk update failed", `${failed} files not updated`);
-    else appToast.warning("Partially updated", `${succeeded} updated, ${failed} failed`);
+    if (failed === 0) {
+      progress.succeed(`Updated ${countOf(succeeded, "track")}`);
+    } else if (succeeded === 0) {
+      progress.fail(
+        `Couldn't update ${countOf(failed, "track")}`,
+        "None of the changes were saved.",
+      );
+    } else {
+      progress.warn(
+        `Updated ${succeeded} of ${succeeded + failed} tracks`,
+        `${countOf(failed, "track")} kept their old details.`,
+      );
+    }
     emit("applied");
+  } catch (error) {
+    progress.fail("Couldn't update the selected tracks", error);
   } finally {
     isSaving.value = false;
   }

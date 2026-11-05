@@ -121,6 +121,7 @@ import { FACET_LABELS, type TagDto } from "@/api/tag";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import TagBadge from "@/components/dashboard/tags/TagBadge.vue";
 import { useAppToast } from "@/composables/useAppToast";
+import { quoted } from "@/features/toast/format";
 import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import { getTagsForFile, searchTag } from "@/queries/tags";
@@ -129,7 +130,9 @@ import { isAutoTagSupportedFileType } from "@/utils/files/mimetype";
 
 const { file } = defineProps<{ file: MediaFileDto }>();
 
-const appToast = useAppToast();
+const appToast = useAppToast("tags");
+
+const trackLabel = computed(() => quoted(file.title || file.fileName));
 const { mutateAsync: addTagMutate } = addTagToFile();
 const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
 const { mutateAsync: autoTagMutate, isLoading: isAutoTagging } = autoTagFile();
@@ -153,16 +156,19 @@ const handleAutoTag = async () => {
   try {
     const result = await autoTagMutate(file.fileId);
     if (result.queued) {
-      appToast.success("Auto-tag queued", "Tags will be derived in the background.");
+      appToast.success(
+        `Auto-tagging ${trackLabel.value}`,
+        "Tags appear here once the background analysis finishes.",
+      );
     } else {
-      appToast.info("Already tagged", result.message);
+      appToast.info(`${trackLabel.value} is already auto-tagged`, result.message);
     }
   } catch (error) {
     const message = extractAutoTagError(error);
     if (message.toLowerCase().includes("disabled")) {
-      appToast.info("Auto-tagging disabled", message);
+      appToast.info("Auto-tagging is turned off", message);
     } else {
-      appToast.error("Auto-tag failed", message);
+      appToast.error(`Couldn't auto-tag ${trackLabel.value}`, message, { retry: handleAutoTag });
     }
   }
 };
@@ -254,8 +260,9 @@ const handleTagAdd = async (tagId: string) => {
     await addTagMutate({ fileId: file.fileId, data: { tagIds: [tagId] } });
     selectedTagId.value = undefined;
     searchQuery.value = "";
-  } catch {
+  } catch (error) {
     selectedTagId.value = undefined;
+    appToast.error(`Couldn't add the tag to ${trackLabel.value}`, error);
   }
 };
 
@@ -271,7 +278,27 @@ const handleMenuOpen = (open: boolean) => {
 };
 
 const handleRemove = async (tagId: string) => {
-  await removeTagMutateAsync({ fileId: file.fileId, tagId });
+  const removedName = tags.value.find((tag) => tag.id === tagId)?.name;
+  const tagLabel = removedName ? quoted(removedName) : "the tag";
+
+  try {
+    await removeTagMutateAsync({ fileId: file.fileId, tagId });
+  } catch (error) {
+    appToast.error(`Couldn't remove ${tagLabel}`, error);
+    return;
+  }
+
   refreshFileTags();
+  appToast.success(`Removed ${tagLabel}`, {
+    actions: [
+      {
+        icon: "i-lucide-undo-2",
+        label: "Undo",
+        onClick: () => {
+          void handleTagAdd(tagId);
+        },
+      },
+    ],
+  });
 };
 </script>

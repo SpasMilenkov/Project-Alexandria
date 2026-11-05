@@ -11,7 +11,7 @@ const MAX_DESCRIPTION_LENGTH = 2000;
 const emit = defineEmits<{ close: [] }>();
 
 const route = useRoute();
-const toast = useAppToast();
+const toast = useAppToast("report");
 const { mutateAsync: submitReport, isLoading: isSubmitting } = useReportProblem();
 
 const description = ref("");

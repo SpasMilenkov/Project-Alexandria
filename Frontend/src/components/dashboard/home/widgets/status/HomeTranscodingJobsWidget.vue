@@ -19,7 +19,7 @@ import { useHomeStore } from "@/stores/home";
 defineProps<{ widget: HomeWidget }>();
 
 const store = useHomeStore();
-const toast = useAppToast();
+const toast = useAppToast("jobs");
 const list = ref<HTMLElement | null>(null);
 const rowCount = useHomeWidgetRows(list, () => 56);
 const retrying = ref<string | null>(null);

@@ -56,10 +56,10 @@ const goToTrackDetails = () => {
   store.closeTransientSurfaces();
 };
 
-const toast = useAppToast();
+const toast = useAppToast("playback");
 
 watch(engineLoadError, (message) => {
-  if (message) toast.error("Audio playback failed", message);
+  if (message) toast.error("Couldn't play this track", message);
 });
 
 const isShuffled = computed(() => context.value?.shuffled ?? false);
@@ -489,7 +489,7 @@ onUnmounted(() => {
         <div
           v-if="isStrip"
           id="audio-strip"
-          class="h-19 grid grid-cols-[minmax(0,1fr)_minmax(320px,560px)_minmax(0,1fr)] items-center gap-6 px-4"
+          class="h-19 grid grid-cols-[minmax(3rem,1fr)_minmax(240px,1.6fr)_minmax(max-content,1fr)] items-center gap-4 @min-[1000px]:gap-6 px-4"
         >
           <div class="flex items-center gap-3 min-w-0">
             <RouterLink
@@ -536,7 +536,9 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex flex-col justify-center min-w-0">
+          <div
+            class="flex flex-col justify-center justify-self-center w-full max-w-[560px] min-w-0"
+          >
             <div class="flex items-center justify-center gap-1">
               <button
                 class="size-9 rounded-lg flex items-center justify-center transition-colors"
@@ -609,11 +611,11 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="flex items-center justify-end gap-2 min-w-0">
-            <div class="flex items-center gap-0.5 rounded-full bg-gray-500/10 px-1 min-w-0">
-              <div class="hidden @min-[800px]:flex items-center flex-shrink-0 pr-1">
+          <div class="flex items-center justify-end gap-2">
+            <div class="flex items-center gap-0.5 rounded-full bg-gray-500/10 px-1">
+              <div class="flex items-center flex-shrink-0 @min-[1024px]:pr-1">
                 <button
-                  class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                  class="w-10 h-10 flex-shrink-0 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   :title="muteLabel"
                   :aria-label="muteLabel"
                   @click="toggleMute"
@@ -622,7 +624,7 @@ onUnmounted(() => {
                 </button>
                 <input
                   type="range"
-                  class="audio-player-range volume-slider w-24 flex-shrink-0"
+                  class="audio-player-range volume-slider hidden @min-[1024px]:block w-24 flex-shrink-0"
                   :style="{ '--player-range-fill': `${volume * 100}%` }"
                   :min="0"
                   :max="1"
@@ -637,7 +639,7 @@ onUnmounted(() => {
               <PlayerQueue />
               <PlayerSettings />
               <button
-                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
+                class="w-10 h-10 flex-shrink-0 rounded-lg flex items-center justify-center transition-colors"
                 :class="lyricsToggleClass"
                 title="Lyrics"
                 aria-label="Lyrics"
@@ -648,7 +650,7 @@ onUnmounted(() => {
               </button>
               <UDropdownMenu :items="trackMenuItems" :content="{ align: 'end' }">
                 <button
-                  class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                  class="w-10 h-10 flex-shrink-0 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   title="More options"
                   aria-label="More options"
                 >
@@ -659,7 +661,7 @@ onUnmounted(() => {
 
             <div class="flex items-center gap-0.5 flex-shrink-0">
               <button
-                class="hidden @min-[1100px]:flex w-10 h-10 rounded-lg items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                class="hidden @min-[900px]:flex w-10 h-10 rounded-lg items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                 title="Mini player"
                 aria-label="Mini player"
                 data-player-mode-toggle="strip"
