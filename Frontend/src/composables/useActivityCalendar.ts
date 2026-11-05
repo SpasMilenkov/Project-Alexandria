@@ -65,6 +65,25 @@ const MONTH_NAMES = [
   "Dec",
 ];
 
+export interface CalendarMonthBlock {
+  label: string;
+  month: number;
+  weeks: CalendarDay[][];
+}
+
+const isInMonth = (day: CalendarDay, month: number): boolean =>
+  !day.isPadding && day.date?.getMonth() === month;
+
+const toPadding = (day: CalendarDay): CalendarDay => ({
+  ...day,
+  breakdown: {},
+  count: 0,
+  date: null,
+  dayOfYear: -1,
+  intensity: 0,
+  isPadding: true,
+});
+
 export const useActivityCalendar = (
   data: Ref<ActivityStatisticsOverview | undefined>,
   selectedYear: Ref<number>,
@@ -171,21 +190,16 @@ export const useActivityCalendar = (
     return result;
   });
 
-  const monthLabelByWeek = computed<Record<number, string>>(() => {
-    const map: Record<number, string> = {};
-    let lastMonth = -1;
-    for (const day of allSlots.value) {
-      if (day.isPadding || !day.date) continue;
-      const month = day.date.getMonth();
-      if (month !== lastMonth) {
-        if (map[day.weekIndex] === undefined) {
-          map[day.weekIndex] = MONTH_NAMES[month];
-        }
-        lastMonth = month;
-      }
-    }
-    return map;
-  });
+  // Weeks straddling two months appear in both blocks, with the other month's days blanked out.
+  const monthBlocks = computed<CalendarMonthBlock[]>(() =>
+    MONTH_NAMES.map((label, month) => ({
+      label,
+      month,
+      weeks: weeks.value
+        .filter((week) => week.some((day) => isInMonth(day, month)))
+        .map((week) => week.map((day) => (isInMonth(day, month) ? day : toPadding(day)))),
+    })),
+  );
 
   const totalFiltered = computed<number>(() => {
     if (!data.value) return 0;
@@ -197,5 +211,5 @@ export const useActivityCalendar = (
     }, 0);
   });
 
-  return { weeks, monthLabelByWeek, totalFiltered };
+  return { monthBlocks, totalFiltered, weeks };
 };

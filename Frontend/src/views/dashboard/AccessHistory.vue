@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
-import { computed, ref } from "vue";
+import { computed, ref, useTemplateRef } from "vue";
 
 import { EntityType, LogSource, OperationType } from "@/api/activity";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import ActivityCalendar from "@/components/dashboard/audit/ActivityCalendar.vue";
 import { useAuditMessage } from "@/composables/useAuditMessage";
 import { SortDirection } from "@/enums/SortDirection";
@@ -14,7 +15,7 @@ const activityStore = useActivityStore();
 const authStore = useAuthStore();
 const { getMessage, getRenderedMetadata } = useAuditMessage();
 
-const { data, refresh, isLoading, error } = useQuery(() =>
+const { data, isPending, error } = useQuery(() =>
   personalPaginated({
     page: activityStore.page,
     pageSize: activityStore.pageSize,
@@ -24,35 +25,22 @@ const { data, refresh, isLoading, error } = useQuery(() =>
   }),
 );
 
-// Suppress transient auth errors (401s from token refresh cycles) — these
-// resolve automatically and should never surface a banner to the user.
+// Token refresh cycles produce transient 401s that resolve on their own.
 const isAuthError = (err: unknown): boolean => {
   if (!err) return false;
+
   const e = err as Record<string, unknown>;
-  const status = (e.status ?? e.statusCode ?? e.statusCode) as number | undefined;
+  const status = (e.status ?? e.statusCode) as number | undefined;
   if (status === 401 || status === 403) return true;
+
   const msg = String(e.message ?? "").toLowerCase();
   return msg.includes("unauthorized") || msg.includes("401") || msg.includes("forbidden");
 };
 
-const visibleError = computed(() =>
-  error.value && !isAuthError(error.value) ? error.value : null,
-);
-
-const FALLBACK_ICON_STYLE =
-  "border-gray-300/60 text-gray-400 dark:border-gray-600/60 dark:text-gray-500";
-
-const OP_ICON_STYLES: Partial<Record<OperationType, string>> = {
-  [OperationType.Read]:
-    "border-gray-300/60 text-gray-400 dark:border-gray-600/60 dark:text-gray-500",
-  [OperationType.Create]: "border-emerald-400/50 text-emerald-600 dark:text-emerald-400",
-  [OperationType.Delete]: "border-rose-400/50 text-rose-500 dark:text-rose-400",
-  [OperationType.Update]: "border-amber-400/50 text-amber-500 dark:text-amber-400",
-  [OperationType.Login]: "border-sky-400/50 text-sky-500 dark:text-sky-400",
-  [OperationType.Logout]: "border-sky-400/50 text-sky-500 dark:text-sky-400",
-};
-
-const opIconStyle = (op: OperationType): string => OP_ICON_STYLES[op] ?? FALLBACK_ICON_STYLE;
+const visibleError = computed(() => {
+  if (!error.value || isAuthError(error.value)) return null;
+  return error.value;
+});
 
 type OpColor = "success" | "error" | "warning" | "info" | "neutral";
 
@@ -65,12 +53,33 @@ const OP_COLORS: Partial<Record<OperationType, OpColor>> = {
   [OperationType.Logout]: "neutral",
 };
 
-const opColor = (op: OperationType): OpColor => OP_COLORS[op] ?? "neutral";
+const NEUTRAL_INDICATOR =
+  "bg-gray-500/10 text-gray-600 ring-1 ring-inset ring-gray-400/30 dark:text-gray-400 dark:ring-gray-500/30";
+
+const OP_INDICATORS: Partial<Record<OperationType, string>> = {
+  [OperationType.Create]:
+    "bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/30 dark:text-emerald-400",
+  [OperationType.Delete]:
+    "bg-rose-500/10 text-rose-600 ring-1 ring-inset ring-rose-500/30 dark:text-rose-400",
+  [OperationType.Update]:
+    "bg-amber-500/10 text-amber-600 ring-1 ring-inset ring-amber-500/30 dark:text-amber-400",
+  [OperationType.Login]:
+    "bg-sky-500/10 text-sky-600 ring-1 ring-inset ring-sky-500/30 dark:text-sky-400",
+};
 
 const LOG_SOURCE_LABELS: Record<LogSource, string> = {
   [LogSource.API]: "API",
   [LogSource.Trigger]: "Automated",
   [LogSource.System]: "System",
+};
+
+const ENTITY_LABELS: Record<EntityType, string> = {
+  [EntityType.File]: "File",
+  [EntityType.FileVersion]: "File version",
+  [EntityType.Directory]: "Folder",
+  [EntityType.Tag]: "Tag",
+  [EntityType.User]: "Account",
+  [EntityType.Preview]: "Preview",
 };
 
 const ENTITY_ICONS: Partial<Record<EntityType, string>> = {
@@ -93,63 +102,113 @@ const OP_ICONS: Partial<Record<OperationType, string>> = {
 const getIcon = (op: OperationType, entity: EntityType): string =>
   ENTITY_ICONS[entity] ?? OP_ICONS[op] ?? "i-lucide-eye";
 
-const rows = computed(() =>
-  !data.value
-    ? []
-    : data.value.items.map((log) => ({
-        color: opColor(log.operationType),
-        date: new Date(log.timestamp).toLocaleDateString(undefined, {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }),
-        entityId: log.entityId,
-        entityType: log.entityType,
-        icon: getIcon(log.operationType, log.entityType),
-        iconStyle: opIconStyle(log.operationType),
-        key: log.entityId + log.timestamp,
-        logSource: log.logSource,
-        logSourceLabel: LOG_SOURCE_LABELS[log.logSource] ?? "Unknown",
-        metadata: getRenderedMetadata(log.eventCode, log.metadata),
-        opLabel: OperationType[log.operationType] ?? "Unknown",
-        operationType: log.operationType,
-        time: new Date(log.timestamp).toLocaleTimeString(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        title: getMessage(log.eventCode),
-      })),
-);
+const startOfDay = (date: Date): number =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+const DAY_MS = 86_400_000;
+
+const dayLabel = (date: Date): string => {
+  const diffDays = Math.round((startOfDay(new Date()) - startOfDay(date)) / DAY_MS);
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+    year: sameYear ? undefined : "numeric",
+  });
+};
+
+const rows = computed(() => {
+  if (!data.value) return [];
+
+  return data.value.items.map((log) => {
+    const at = new Date(log.timestamp);
+
+    return {
+      color: OP_COLORS[log.operationType] ?? "neutral",
+      dayKey: startOfDay(at),
+      entityId: log.entityId,
+      entityLabel: ENTITY_LABELS[log.entityType] ?? "Item",
+      entityType: log.entityType,
+      icon: getIcon(log.operationType, log.entityType),
+      key: log.entityId + log.timestamp,
+      logSourceLabel: LOG_SOURCE_LABELS[log.logSource] ?? "Unknown",
+      metadata: getRenderedMetadata(log.eventCode, log.metadata),
+      opLabel: OperationType[log.operationType] ?? "Unknown",
+      time: at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+      timestamp: log.timestamp,
+      title: getMessage(log.eventCode),
+      ui: { indicator: OP_INDICATORS[log.operationType] ?? NEUTRAL_INDICATOR },
+    };
+  });
+});
+
+type ActivityRow = (typeof rows.value)[number];
+
+const dayGroups = computed(() => {
+  const groups: { key: number; label: string; rows: ActivityRow[] }[] = [];
+
+  for (const row of rows.value) {
+    const last = groups.at(-1);
+
+    if (last?.key === row.dayKey) {
+      last.rows.push(row);
+    } else {
+      groups.push({ key: row.dayKey, label: dayLabel(new Date(row.timestamp)), rows: [row] });
+    }
+  }
+
+  return groups;
+});
+
+const totalPages = computed(() => {
+  if (!data.value) return 1;
+  return Math.max(1, Math.ceil(data.value.totalCount / activityStore.pageSize));
+});
 
 const expandedKeys = ref<Set<string>>(new Set());
 
-const toggleExpanded = (key: string) => {
-  if (expandedKeys.value.has(key)) {
-    expandedKeys.value.delete(key);
+const setExpanded = (key: string, open: boolean) => {
+  const next = new Set(expandedKeys.value);
+
+  if (open) {
+    next.add(key);
   } else {
-    expandedKeys.value.add(key);
+    next.delete(key);
   }
+
+  expandedKeys.value = next;
 };
 
-const isExpanded = (key: string) => expandedKeys.value.has(key);
+const timelineSection = useTemplateRef<HTMLElement>("timelineSection");
 
 const changePage = (pageNumber: number) => {
   activityStore.page = pageNumber;
-  expandedKeys.value.clear();
-  refresh();
+  expandedKeys.value = new Set();
+  timelineSection.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+const TIMELINE_UI = {
+  separator: "bg-gray-200/70 dark:bg-gray-700/70",
+  wrapper: "mt-0 min-w-0 pb-3 group-last:pb-0",
 };
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
+  <div class="flex min-h-full w-full flex-col gap-3 p-3">
     <header
       class="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-gray-200/70 px-4 py-3 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
     >
-      <div class="flex items-center gap-2.5 min-w-0">
-        <UIcon name="i-lucide-activity" class="w-5 h-5 text-muted shrink-0" />
-        <h1 class="text-xl font-semibold truncate">Activity</h1>
+      <div class="flex min-w-0 items-center gap-2.5">
+        <UIcon name="i-lucide-activity" class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400" />
+        <h1 class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">Activity</h1>
         <UBadge v-if="data" color="neutral" variant="subtle" size="sm">
-          {{ data.totalCount }}
+          {{ data.totalCount.toLocaleString() }}
         </UBadge>
       </div>
     </header>
@@ -157,142 +216,128 @@ const changePage = (pageNumber: number) => {
     <ActivityCalendar />
 
     <section
-      class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[14px] border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
+      ref="timelineSection"
+      class="scroll-mt-3 rounded-[14px] border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
     >
-      <!-- Pagination row, always visible above the scrolling list -->
       <div
-        v-if="data && data.totalCount > activityStore.pageSize"
-        class="flex shrink-0 items-center justify-center border-b border-gray-200/70 px-4 py-2 dark:border-gray-700/70"
+        class="flex items-center justify-between gap-3 border-b border-gray-200/70 px-4 py-3 md:px-5 dark:border-gray-700/70"
       >
-        <UPagination
-          v-model:page="activityStore.page"
-          :total="data.totalCount"
-          :page-size="activityStore.pageSize"
-          @update:page="changePage"
-        />
+        <div class="flex items-center gap-2">
+          <UIcon name="i-lucide-history" class="h-4 w-4 text-gray-600 dark:text-gray-400" />
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Timeline</h2>
+        </div>
+
+        <p
+          v-if="data && totalPages > 1"
+          class="text-xs text-gray-500 tabular-nums dark:text-gray-500"
+        >
+          Page {{ activityStore.page }} of {{ totalPages }}
+        </p>
       </div>
 
-      <!-- Content -->
-      <div class="min-h-0 flex-1 overflow-auto">
-        <div class="space-y-4 p-4">
-          <!-- Error: auth/token-refresh errors are intentionally suppressed -->
-          <UAlert
-            v-if="visibleError"
-            color="error"
-            variant="subtle"
-            icon="i-lucide-alert-circle"
-            title="Failed to load activity"
-            :description="visibleError.message"
-          />
+      <div class="px-3 py-4 md:px-5">
+        <UAlert
+          v-if="visibleError"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-alert-circle"
+          title="Failed to load activity"
+          :description="visibleError.message"
+        />
 
-          <!-- Loading skeleton -->
-          <div v-if="isLoading" class="space-y-1">
-            <div v-for="i in 10" :key="i" class="flex items-center gap-4 px-4 py-4">
-              <USkeleton class="w-9 h-9 rounded-full shrink-0" />
-              <div class="flex-1 space-y-2">
-                <USkeleton class="h-4 w-72" />
-                <USkeleton class="h-3 w-36 opacity-50" />
-              </div>
-              <USkeleton class="h-6 w-16 rounded-full shrink-0" />
+        <div v-else-if="isPending" class="flex h-64 items-center justify-center">
+          <BlockSpinner :size="24" aria-label="Loading activity" class="text-gray-500" />
+        </div>
+
+        <div v-else-if="dayGroups.length > 0" class="flex flex-col gap-5">
+          <div v-for="group in dayGroups" :key="group.key" class="flex flex-col gap-3">
+            <div class="flex items-baseline gap-2 px-1">
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {{ group.label }}
+              </h3>
+              <span class="text-xs text-gray-500 tabular-nums dark:text-gray-500">
+                {{ group.rows.length }} {{ group.rows.length === 1 ? "event" : "events" }}
+              </span>
             </div>
-          </div>
 
-          <!-- Log list -->
-          <div v-else-if="rows.length > 0" class="relative">
-            <!-- Vertical spine -->
-            <div
-              class="absolute left-[1.55rem] top-0 bottom-0 w-px border-l border-dashed border-gray-300/40 dark:border-gray-600/40 pointer-events-none"
-            />
-
-            <!-- Rows -->
-            <div class="divide-y divide-gray-100/50 dark:divide-gray-800/50">
-              <div v-for="row in rows" :key="row.key" @click="toggleExpanded(row.key)">
-                <!-- Main row -->
-                <div
-                  class="relative flex items-center gap-4 py-3 hover:bg-neutral-300/60 dark:hover:bg-white/5 transition-colors rounded-lg px-1 cursor-pointer"
+            <UTimeline :items="group.rows" size="md" color="neutral" :ui="TIMELINE_UI">
+              <template #wrapper="{ item }">
+                <UCollapsible
+                  :open="expandedKeys.has(item.key)"
+                  @update:open="(open: boolean) => setExpanded(item.key, open)"
                 >
-                  <!-- Icon dot -->
-                  <div
-                    class="relative z-10 flex items-center justify-center w-9 h-9 rounded-full border-2 shrink-0 transition-colors bg-neutral-50 dark:bg-gray-950"
-                    :class="row.iconStyle"
+                  <button
+                    type="button"
+                    class="flex w-full items-start gap-3 rounded-lg px-2 py-1 text-left transition-colors hover:bg-gray-500/10 focus-visible:outline-2 focus-visible:outline-primary"
                   >
-                    <UIcon :name="row.icon" class="w-4 h-4" />
-                  </div>
+                    <div class="min-w-0 flex-1">
+                      <p
+                        class="text-sm leading-snug font-medium text-gray-900 sm:truncate dark:text-gray-100"
+                      >
+                        {{ item.title }}
+                      </p>
+                      <p class="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">
+                        {{ item.entityLabel }} · {{ item.logSourceLabel }}
+                      </p>
+                    </div>
 
-                  <!-- Title -->
-                  <p class="flex-1 min-w-0 text-sm font-medium leading-snug truncate">
-                    {{ row.title }}
-                  </p>
+                    <div class="flex shrink-0 items-center gap-2 pt-0.5">
+                      <span class="text-xs text-gray-500 tabular-nums dark:text-gray-500">
+                        {{ item.time }}
+                      </span>
 
-                  <!-- Right zone: timestamp · source badge · op badge · chevron -->
-                  <div class="flex items-center gap-2 shrink-0">
-                    <!-- Timestamp -->
-                    <p class="text-xs text-muted tabular-nums whitespace-nowrap hidden sm:block">
-                      {{ row.date }} · {{ row.time }}
-                    </p>
+                      <UBadge :color="item.color" variant="subtle" size="sm">
+                        {{ item.opLabel }}
+                      </UBadge>
 
-                    <!-- Log source badge -->
-                    <UBadge
-                      color="neutral"
-                      variant="outline"
-                      size="sm"
-                      class="shrink-0 hidden sm:inline-flex"
-                    >
-                      {{ row.logSourceLabel }}
-                    </UBadge>
+                      <UIcon
+                        name="i-lucide-chevron-down"
+                        class="h-4 w-4 text-gray-500 transition-transform duration-200 dark:text-gray-500"
+                        :class="expandedKeys.has(item.key) ? 'rotate-180' : ''"
+                      />
+                    </div>
+                  </button>
 
-                    <!-- Operation badge -->
-                    <UBadge
-                      :color="row.color"
-                      variant="soft"
-                      size="sm"
-                      class="shrink-0 capitalize font-medium"
-                    >
-                      {{ row.opLabel }}
-                    </UBadge>
-
-                    <!-- Expand chevron -->
-                    <UButton
-                      color="neutral"
-                      variant="ghost"
-                      size="xs"
-                      :icon="isExpanded(row.key) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                      :aria-label="isExpanded(row.key) ? 'Collapse details' : 'Expand details'"
-                      @click.stop="toggleExpanded(row.key)"
-                    />
-                  </div>
-                </div>
-
-                <!-- Expandable detail panel -->
-                <Transition
-                  enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-                  enter-from-class="opacity-0 max-h-0"
-                  enter-to-class="opacity-100 max-h-48"
-                  leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-                  leave-from-class="opacity-100 max-h-48"
-                  leave-to-class="opacity-0 max-h-0"
-                >
-                  <div v-if="isExpanded(row.key)" class="pl-13 pr-1 pb-3">
-                    <AuditDetailPanel
-                      :entity-id="row.entityId"
-                      :entity-type="row.entityType"
-                      :metadata="row.metadata"
-                    />
-                  </div>
-                </Transition>
-              </div>
-            </div>
-          </div>
-
-          <!-- Empty state -->
-          <div v-else class="flex flex-col items-center justify-center py-24 text-center gap-3">
-            <UIcon name="i-lucide-folder-open" class="w-12 h-12 text-muted" />
-            <div class="space-y-1">
-              <p class="text-sm font-medium">No activity yet</p>
-              <p class="text-xs text-muted">Actions will appear here as you use the system</p>
-            </div>
+                  <template #content>
+                    <div class="px-2 pt-2 pb-1">
+                      <AuditDetailPanel
+                        :entity-id="item.entityId"
+                        :entity-type="item.entityType"
+                        :metadata="item.metadata"
+                        :timestamp="item.timestamp"
+                        :source-label="item.logSourceLabel"
+                      />
+                    </div>
+                  </template>
+                </UCollapsible>
+              </template>
+            </UTimeline>
           </div>
         </div>
+
+        <div v-else class="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <UIcon name="i-lucide-folder-open" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+          <div class="space-y-1">
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No activity yet</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400">
+              Actions will appear here as you use the system
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="data && totalPages > 1"
+        class="flex justify-center border-t border-gray-200/70 px-4 py-3 dark:border-gray-700/70"
+      >
+        <UPagination
+          :page="activityStore.page"
+          :total="data.totalCount"
+          :items-per-page="activityStore.pageSize"
+          :sibling-count="1"
+          size="sm"
+          @update:page="changePage"
+        />
       </div>
     </section>
   </div>
