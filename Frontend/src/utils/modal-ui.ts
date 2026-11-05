@@ -1,0 +1,30 @@
+// Shared overlay preset. Single source for modal and drawer surfaces so
+// the look cannot drift per instance. Overlays are intentionally SOLID: they
+// sit over a dimmed scrim where translucency is perceptually invisible, so
+// glass would only cost legibility and mobile blur performance. The theme
+// `bg-default` token follows light/dark mode via CSS variables.
+export const glassOverlayContent = "bg-default";
+
+export const glassModalContent = glassOverlayContent;
+
+export const glassModalContentWide = `${glassOverlayContent} sm:max-w-2xl`;
+
+export const glassModalBody = "space-y-4";
+
+export const glassDrawerContent = glassOverlayContent;
+
+// Form modals own their scroll region and pinned footer inside the body, so
+// the body itself drops its padding and overflow.
+export const formModalUi = {
+  content: glassModalContentWide,
+  header: "shrink-0 p-6 md:px-8",
+  title: "text-xl font-semibold",
+  body: "flex min-h-0 flex-col overflow-hidden p-0 sm:p-0",
+};
+
+export const playlistModalUi = {
+  content: `${glassModalContent} sm:max-w-3xl`,
+  header: "shrink-0 p-6 md:px-8",
+  title: "text-xl font-semibold",
+  body: "flex min-h-0 flex-col overflow-hidden p-0 sm:p-0",
+};

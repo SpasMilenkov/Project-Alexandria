@@ -81,7 +81,7 @@ public interface IContentStorageService
         CancellationToken ct = default
     );
 
-    Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false, CancellationToken ct = default);
+    Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default);
 
     Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default);
 

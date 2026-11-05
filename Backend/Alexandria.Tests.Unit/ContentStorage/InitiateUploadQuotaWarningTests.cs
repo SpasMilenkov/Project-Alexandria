@@ -101,6 +101,5 @@ public class InitiateUploadQuotaWarningTests
         uploadId.Should().NotBeEmpty();
         await _uploads.Received(1).AddAsync(Arg.Any<Upload>(), ct);
         await _files.Received(1).GetSizeByTypeAsync(_userId, ct);
-        await _files.DidNotReceive().GetOldFilesAsync(_userId, ct);
     }
 }

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using Alexandria.Common.Exceptions.Playlist;
 using Alexandria.Common.Exceptions.Streaming;
+using Alexandria.Common.Policies;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
@@ -612,11 +613,15 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    // Only the restore window counts: past it the cleanup worker has reclaimed the content,
+    // even though the soft-deleted rows remain.
     public async Task<long> GetDeletedSizeAsync(Guid userId, CancellationToken ct = default)
     {
+        var restorableSince = TrashRetentionPolicy.RestorableSince(DateTime.UtcNow);
+
         return await context.FileVersions
             .Where(v => _files
-                .Where(f => f.OwnerId == userId && f.DeletedAt != null)
+                .Where(f => f.OwnerId == userId && f.DeletedAt != null && f.DeletedAt > restorableSince)
                 .Select(f => f.Id)
                 .Contains(v.FileId))
             .SumAsync(v => v.Size, ct);
@@ -643,20 +648,14 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
     public async Task<long> GetTotalTrashSizeAsync(CancellationToken ct = default)
     {
+        var restorableSince = TrashRetentionPolicy.RestorableSince(DateTime.UtcNow);
+
         return await context.FileVersions
             .Where(v => _files
-                .Where(f => f.DeletedAt != null)
+                .Where(f => f.DeletedAt != null && f.DeletedAt > restorableSince)
                 .Select(f => f.Id)
                 .Contains(v.FileId))
             .SumAsync(v => (long?)v.Size, ct) ?? 0;
-    }
-
-    public async Task<IEnumerable<FileSummary>> GetOldFilesAsync(Guid userId, CancellationToken ct = default)
-    {
-        return await _files.Where(f =>
-                f.OwnerId == userId && f.DeletedAt != null && f.DeletedAt < DateTime.UtcNow.AddDays(-30))
-            .Select(f => new FileSummary(f.Id, f.Name, f.MimeType))
-            .ToListAsync(ct);
     }
 
     public Task<Dictionary<string, long>> GetSizeByTypeAsync(
@@ -682,7 +681,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
     public async Task<int> RestoreFilesAsync(Guid[] fileIds, Guid userId, CancellationToken ct = default)
     {
-        var thresholdDate = DateTime.UtcNow.AddDays(-30);
+        var thresholdDate = TrashRetentionPolicy.RestorableSince(DateTime.UtcNow);
 
         var files = await _files
             .Where(f =>

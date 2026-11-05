@@ -3,7 +3,7 @@ import { Icon } from "@iconify/vue";
 import { breakpointsTailwind, useBreakpoints, useEventListener } from "@vueuse/core";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const emit = defineEmits<{ close: [] }>();
 

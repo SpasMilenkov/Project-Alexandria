@@ -3,7 +3,7 @@ import { computed, ref } from "vue";
 
 import type { HomeEditorTarget, HomeSettings } from "@/types/home";
 
-import { cloneHomeSettings, selectedHomeLayout } from "@/utils/home-layout";
+import { cloneHomeSettings, selectedHomeLayout } from "@/features/home/layout";
 
 export const useHomeStore = defineStore("home", () => {
   const ownerId = ref<string | null>(null);

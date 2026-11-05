@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from "@nuxt/ui";
 
+import { Icon } from "@iconify/vue";
 import { computed, ref, watch } from "vue";
 
 import type { NavItem } from "@/types/nav-item";
 
-import { glassDrawerContent } from "@/utils/modalUi";
+import { toDropId, useExplorerDragSession } from "@/composables/useExplorerDragSession";
+import { glassDrawerContent } from "@/utils/modal-ui";
 
 interface EllipsisItem {
   key: "__ellipsis__";
@@ -38,6 +40,16 @@ const isEllipsis = (item: VisibleItem): item is EllipsisItem => item.key === "__
 
 const currentItem = computed(() => props.items[props.items.length - 1]);
 
+const { isDragging } = useExplorerDragSession();
+
+// Compact layouts cannot open the path drawer mid-drag, so a drag shows the
+// parent folder as its own drop chip.
+const parentItem = computed(() => {
+  if (props.items.length < 2) return null;
+
+  return props.items[props.items.length - 2];
+});
+
 const visibleItems = computed((): VisibleItem[] => {
   if (props.items.length <= COLLAPSE_THRESHOLD) return props.items;
 
@@ -64,15 +76,32 @@ const handleNavigate = (key: string | null) => {
 <template>
   <div class="flex items-center min-w-0 flex-1">
     <div class="flex items-center min-w-0 flex-1 @3xl/explorer:hidden">
+      <div
+        v-if="isDragging && parentItem"
+        class="mr-1 flex shrink-0 items-center gap-1 rounded-md border border-dashed border-gray-300/70 px-2 py-1 text-xs text-gray-600 data-[drop-active=valid]:border-solid data-[drop-active=valid]:border-primary data-[drop-active=valid]:bg-primary/10 dark:border-gray-600/70 dark:text-gray-400"
+        :data-drop-dir-id="toDropId(parentItem.key)"
+        :data-drop-dir-name="parentItem.label"
+        data-drop-kind="breadcrumb"
+      >
+        <Icon icon="mdi:arrow-up" class="h-3.5 w-3.5 shrink-0" />
+        <span class="max-w-24 truncate">{{ parentItem.label }}</span>
+      </div>
+
       <button
-        class="flex items-center gap-2 min-w-0 flex-1 px-1 py-1 rounded-md hover:bg-gray-100/60 dark:hover:bg-gray-800/60 transition-colors text-left"
+        class="flex items-center gap-2 min-w-0 flex-1 px-2 py-1.5 rounded-md hover:bg-gray-500/5 dark:hover:bg-white/5 transition-colors text-left data-[drop-active=valid]:bg-primary/10 data-[drop-active=valid]:ring-1 data-[drop-active=valid]:ring-primary"
+        :data-drop-dir-id="toDropId(currentItem?.key ?? null)"
+        :data-drop-dir-name="currentItem?.label ?? 'Home'"
+        data-drop-kind="breadcrumb"
         @click="isDrawerOpen = true"
       >
-        <UIcon name="i-lucide-folder" class="w-4 h-4 text-muted shrink-0" />
-        <span class="text-sm font-medium truncate text-gray-700 dark:text-gray-200">
+        <UIcon name="i-lucide-folder" class="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
+        <span class="text-sm font-semibold truncate text-gray-900 dark:text-gray-100">
           {{ currentItem?.label ?? "Home" }}
         </span>
-        <UIcon name="i-lucide-chevron-right" class="w-4 h-4 text-muted shrink-0 ml-auto" />
+        <UIcon
+          name="i-lucide-chevron-right"
+          class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0 ml-auto"
+        />
       </button>
 
       <UDrawer
@@ -136,7 +165,7 @@ const handleNavigate = (key: string | null) => {
       </UDrawer>
     </div>
 
-    <div class="hidden @3xl/explorer:flex items-center min-w-0 flex-1 overflow-x-auto">
+    <div class="hidden @3xl/explorer:flex items-center gap-0.5 min-w-0 flex-1 overflow-x-auto">
       <template v-for="(item, index) in visibleItems" :key="String(item.key)">
         <UDropdownMenu
           v-if="isEllipsis(item)"
@@ -147,7 +176,7 @@ const handleNavigate = (key: string | null) => {
             color="neutral"
             variant="ghost"
             size="xs"
-            class="px-1 text-gray-400 dark:text-gray-500"
+            class="shrink-0 rounded-md px-1.5 text-gray-600 dark:text-gray-400"
           >
             …
           </UButton>
@@ -158,20 +187,23 @@ const handleNavigate = (key: string | null) => {
           :icon="item.icon"
           :label="item.label"
           color="neutral"
-          variant="link"
-          size="md"
-          class="p-0.5 shrink-0"
+          variant="ghost"
+          size="sm"
+          class="shrink-0 rounded-md px-1.5 data-[drop-active=valid]:bg-primary/10 data-[drop-active=valid]:ring-1 data-[drop-active=valid]:ring-primary"
+          :data-drop-dir-id="toDropId(item.key)"
+          :data-drop-dir-name="item.label"
+          data-drop-kind="breadcrumb"
           :class="
             index === visibleItems.length - 1
-              ? 'font-medium text-gray-700 dark:text-gray-200'
-              : 'font-normal text-gray-400 dark:text-gray-500'
+              ? 'font-semibold text-gray-900 dark:text-gray-100'
+              : 'font-normal text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100'
           "
           @click="handleNavigate(item.key)"
         />
 
         <span
           v-if="index < visibleItems.length - 1"
-          class="mx-1 text-gray-300 dark:text-gray-600 select-none shrink-0"
+          class="mx-0.5 shrink-0 select-none text-xs text-gray-400 dark:text-gray-500"
         >
           /
         </span>

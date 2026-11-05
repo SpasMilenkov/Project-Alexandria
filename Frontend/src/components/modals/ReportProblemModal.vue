@@ -4,14 +4,14 @@ import { useRoute } from "vue-router";
 
 import { useAppToast } from "@/composables/useAppToast";
 import { useReportProblem } from "@/mutations/monitoring";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const MAX_DESCRIPTION_LENGTH = 2000;
 
 const emit = defineEmits<{ close: [] }>();
 
 const route = useRoute();
-const toast = useAppToast();
+const toast = useAppToast("report");
 const { mutateAsync: submitReport, isLoading: isSubmitting } = useReportProblem();
 
 const description = ref("");

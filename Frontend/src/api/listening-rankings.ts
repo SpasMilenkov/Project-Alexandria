@@ -36,7 +36,9 @@ export interface JumpBackInResponse {
 }
 
 export const listeningRankingsApi = {
-  getTopSongs: async (params: TopSongsQuery): Promise<TopSongsResponse> => {
+  getTopSongs: async (
+    params: Omit<TopSongsQuery, "to"> & { to?: string },
+  ): Promise<TopSongsResponse> => {
     const result = await apiClient.get<TopSongsResponse>("/stats/top-songs", { params });
 
     return result.data;

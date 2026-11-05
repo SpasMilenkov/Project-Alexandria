@@ -169,9 +169,9 @@ import { useRoute, useRouter } from "vue-router";
 
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
+import { getHomeLandingDestination } from "@/features/home/landing";
 import { finishTour } from "@/mutations/user";
 import { useAuthStore } from "@/stores/auth";
-import { getHomeLandingDestination } from "@/utils/home-landing";
 
 useOnboardingGuard(OnboardingStep.Tour);
 

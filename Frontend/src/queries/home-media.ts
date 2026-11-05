@@ -4,9 +4,9 @@ import { playlistApi } from "@/api/playlist";
 import { statsApi } from "@/api/stats";
 import { streamingApi } from "@/api/streaming";
 import { JobStatus } from "@/enums/job-status";
+import { wrappedMonthRange } from "@/features/wrapped/month";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { STREAMING_QUERY_KEYS } from "@/queries/streaming";
-import { wrappedMonthRange } from "@/utils/wrapped-month";
 
 interface HomeMediaSession {
   userId: string;

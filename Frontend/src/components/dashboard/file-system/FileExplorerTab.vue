@@ -1,18 +1,20 @@
 <template>
   <div
-    class="@container/explorer flex flex-col min-h-0 min-w-0 h-full w-full flex-1"
+    class="@container/explorer flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-0 p-0 md:gap-3 md:p-3"
     @click="handleContainerClick"
   >
     <!-- Toolbar -->
-    <div class="flex flex-col w-full shrink-0 border-b border-b-primary">
+    <div
+      class="flex w-full shrink-0 flex-col overflow-hidden rounded-none border border-x-0 border-gray-200/70 frosted-glass glass-surface-strong md:rounded-xl md:border-x dark:border-gray-700/70"
+    >
       <!-- Desktop toolbar -->
-      <div class="hidden @3xl/explorer:flex items-center gap-2 p-3 w-full h-full">
+      <div class="hidden @3xl/explorer:flex h-full w-full items-center gap-2 px-3 py-2">
         <!-- Upload split button -->
-        <div class="flex border border-primary rounded-md overflow-hidden shrink-0">
+        <div class="flex shrink-0 overflow-hidden rounded-lg">
           <UButton
             color="primary"
             size="sm"
-            class="rounded-none border-r border-primary/40"
+            class="rounded-none font-semibold"
             @click="handleFileUpload(selectedUploadType.label as 'File' | 'Directory' | 'Archive')"
           >
             <Icon :icon="selectedUploadType.icon" class="w-4 h-4 mr-2" />
@@ -21,9 +23,8 @@
           <UDropdownMenu :items="uploadOptions" :ui="{ content: 'w-48' }">
             <UButton
               color="primary"
-              variant="ghost"
               size="sm"
-              class="rounded-none px-2"
+              class="w-8 justify-center rounded-none border-l border-white/25 px-0 dark:border-black/25"
               aria-label="Upload options"
             >
               <Icon icon="mdi:chevron-down" class="w-4 h-4" />
@@ -36,17 +37,17 @@
           variant="outline"
           color="neutral"
           size="sm"
-          class="shrink-0"
+          class="shrink-0 rounded-lg"
           @click="createNewDirectory"
         >
           <Icon icon="mdi:folder-plus" class="w-4 h-4 mr-1" />
           New Folder
         </UButton>
 
-        <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1 shrink-0" />
+        <div class="mx-1 h-5 w-px shrink-0 bg-gray-300/70 dark:bg-gray-600/70" />
 
-        <!-- Sort + direction + view toggles cluster -->
-        <div class="flex items-center gap-1 shrink-0">
+        <!-- Sort + direction cluster -->
+        <div class="flex shrink-0 items-center gap-1">
           <USelectMenu
             v-model="selectedSortBy"
             :items="sortByOptions"
@@ -64,6 +65,8 @@
             size="sm"
             variant="ghost"
             color="neutral"
+            square
+            class="justify-center rounded-lg"
             :title="
               selectedSortDirection === SortDirection.Asc
                 ? 'Switch to descending'
@@ -80,27 +83,6 @@
               "
               class="w-4 h-4"
             />
-          </UButton>
-
-          <div class="w-px h-5 bg-gray-200 dark:bg-gray-700 mx-0.5" />
-
-          <UButton
-            :variant="viewMode === 'grid' ? 'solid' : 'ghost'"
-            color="neutral"
-            size="sm"
-            aria-label="Grid view"
-            @click="viewMode = 'grid'"
-          >
-            <Icon icon="mdi:view-grid" class="w-4 h-4" />
-          </UButton>
-          <UButton
-            :variant="viewMode === 'list' ? 'solid' : 'ghost'"
-            color="neutral"
-            size="sm"
-            aria-label="List view"
-            @click="viewMode = 'list'"
-          >
-            <Icon icon="mdi:view-list" class="w-4 h-4" />
           </UButton>
         </div>
 
@@ -119,7 +101,7 @@
           <Transition name="fade-status">
             <span
               v-if="lastRefreshedLabel && !isBackgroundLoading"
-              class="opacity-40 tabular-nums"
+              class="tabular-nums text-gray-600 dark:text-gray-400"
               :title="lastRefreshedAt?.toLocaleTimeString()"
             >
               {{ lastRefreshedLabel }}
@@ -127,27 +109,66 @@
           </Transition>
         </div>
 
+        <!-- View mode -->
+        <div
+          class="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-gray-300/70 bg-gray-500/5 p-0.5 dark:border-gray-600/70 dark:bg-white/5"
+        >
+          <button
+            type="button"
+            class="flex h-7 w-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            :class="
+              viewMode === 'grid'
+                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
+                : 'text-gray-500 hover:bg-gray-500/10 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200'
+            "
+            aria-label="Grid view"
+            :aria-pressed="viewMode === 'grid'"
+            @click="viewMode = 'grid'"
+          >
+            <Icon icon="mdi:view-grid" class="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            class="flex h-7 w-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            :class="
+              viewMode === 'list'
+                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
+                : 'text-gray-500 hover:bg-gray-500/10 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200'
+            "
+            aria-label="List view"
+            :aria-pressed="viewMode === 'list'"
+            @click="viewMode = 'list'"
+          >
+            <Icon icon="mdi:view-list" class="w-4 h-4" />
+          </button>
+        </div>
+
         <!-- Search -->
         <UButton
           variant="ghost"
           color="neutral"
           size="sm"
-          class="shrink-0"
+          class="shrink-0 gap-1.5 rounded-lg"
           aria-label="Search"
           title="Quick search (⌘/)"
           @click="quickSearch"
         >
           <Icon icon="mdi:magnify" class="w-4 h-4" />
+          <kbd
+            class="rounded border border-gray-300/70 px-1 font-mono text-[11px] leading-4 text-gray-600 dark:border-gray-600/70 dark:text-gray-400"
+          >
+            ⌘/
+          </kbd>
         </UButton>
       </div>
 
       <!-- Compact toolbar also handles space taken by side panels. -->
-      <div class="flex @3xl/explorer:hidden items-center gap-2 px-3 py-2 w-full">
+      <div class="flex @3xl/explorer:hidden w-full items-center gap-2 px-3 py-2">
         <!-- Upload — opens action sheet -->
         <UButton
           color="primary"
           size="sm"
-          class="shrink-0"
+          class="shrink-0 rounded-lg font-semibold"
           aria-label="Upload"
           @click="isMobileUploadSheetOpen = true"
         >
@@ -159,7 +180,7 @@
           variant="outline"
           color="neutral"
           size="sm"
-          class="shrink-0"
+          class="shrink-0 rounded-lg"
           aria-label="Search files"
           @click="quickSearch"
         >
@@ -170,7 +191,14 @@
         <div class="flex-1" />
 
         <UDropdownMenu :items="mobileOverflowItems" :ui="{ content: 'w-52' }">
-          <UButton variant="ghost" color="neutral" size="sm" aria-label="More options">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            square
+            class="justify-center rounded-lg"
+            aria-label="More options"
+          >
             <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
           </UButton>
         </UDropdownMenu>
@@ -254,116 +282,232 @@
       </template>
     </UDrawer>
 
-    <!-- breadcrumb row -->
-    <div class="flex items-center gap-1 px-4 py-1.5 shrink-0 min-w-0">
-      <UButton
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        :disabled="!canGoBack"
-        :class="!canGoBack ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'"
-        :title="canGoBack ? 'Go back' : 'No previous location'"
-        aria-label="Back"
-        @click="navigateBack()"
-      >
-        <Icon icon="mdi:arrow-left" class="w-4 h-4" />
-      </UButton>
-      <UButton
-        size="xs"
-        variant="ghost"
-        color="neutral"
-        :disabled="!canGoForward"
-        :class="!canGoForward ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'"
-        :title="canGoForward ? 'Go forward' : 'No next location'"
-        aria-label="Forward"
-        @click="navigateForward()"
-      >
-        <Icon icon="mdi:arrow-right" class="w-4 h-4" />
-      </UButton>
-
-      <div class="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1" />
-
-      <BreadcrumbNavigation :items="breadcrumbs" @navigate="handleNavigate" />
-    </div>
-
-    <!-- mobile background refresh indicator -->
-    <Transition name="fade-status">
-      <div
-        v-if="isBackgroundLoading"
-        class="flex @3xl/explorer:hidden items-center gap-1.5 px-4 py-1 text-xs text-gray-400 dark:text-gray-500 select-none"
-        aria-live="polite"
-      >
-        <BlocksSpinner :size="11" aria-label="Refreshing" class="opacity-50" />
-        <span class="opacity-50">Refreshing…</span>
-      </div>
-    </Transition>
-
-    <!-- content area -->
-    <UContextMenu
-      :items="explorerMenuItems"
-      :ui="{ content: 'lg:min-w-56' }"
-      class="flex-1 flex flex-col min-h-0 min-w-0"
-      v-model:open="contextMenuOpen"
-      @update:open="handleMenuOpenChange"
+    <!-- explorer panel -->
+    <div
+      class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-none border border-x-0 border-t-0 border-gray-200/70 frosted-glass glass-surface md:rounded-xl md:border-x md:border-t dark:border-gray-700/70"
     >
+      <!-- breadcrumb row -->
       <div
-        ref="containerRef"
-        class="flex-1 overflow-auto relative"
-        @contextmenu.capture="handleContextMenuCapture"
-        @pointerdown.capture="handleContextMenuPointerDown"
-        @dragenter="onDragEnter"
-        @dragleave="onDragLeave"
-        @dragover="onDragOver"
-        @drop="handleDropEvent"
+        class="flex min-w-0 shrink-0 items-center gap-1 border-b border-gray-200/70 px-3 py-2 dark:border-gray-700/70"
       >
-        <div class="flex-1 overflow-auto relative">
-          <!-- drop zone overlay -->
-          <Transition name="dropzone">
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          square
+          class="justify-center rounded-md"
+          :disabled="!canGoBack"
+          :class="!canGoBack ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'"
+          :title="canGoBack ? 'Go back' : 'No previous location'"
+          aria-label="Back"
+          @click="navigateBack()"
+        >
+          <Icon icon="mdi:arrow-left" class="w-4 h-4" />
+        </UButton>
+        <UButton
+          size="xs"
+          variant="ghost"
+          color="neutral"
+          square
+          class="justify-center rounded-md"
+          :disabled="!canGoForward"
+          :class="!canGoForward ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'"
+          :title="canGoForward ? 'Go forward' : 'No next location'"
+          aria-label="Forward"
+          @click="navigateForward()"
+        >
+          <Icon icon="mdi:arrow-right" class="w-4 h-4" />
+        </UButton>
+
+        <div class="mx-1 h-5 w-px bg-gray-300/70 dark:bg-gray-600/70" />
+
+        <BreadcrumbNavigation :items="breadcrumbs" @navigate="handleNavigate" />
+      </div>
+
+      <!-- mobile background refresh indicator -->
+      <Transition name="fade-status">
+        <div
+          v-if="isBackgroundLoading"
+          class="flex @3xl/explorer:hidden items-center gap-1.5 border-b border-gray-200/70 px-4 py-1 text-xs text-gray-600 dark:border-gray-700/70 dark:text-gray-400 select-none"
+          aria-live="polite"
+        >
+          <BlocksSpinner :size="11" aria-label="Refreshing" class="opacity-50" />
+          <span>Refreshing…</span>
+        </div>
+      </Transition>
+
+      <!-- content area -->
+      <UContextMenu
+        :items="explorerMenuItems"
+        :ui="{ content: 'lg:min-w-56' }"
+        class="flex min-h-0 min-w-0 flex-1 flex-col"
+        v-model:open="contextMenuOpen"
+        @update:open="handleMenuOpenChange"
+      >
+        <div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <!-- The overlay sits outside the scroller so it stays in view at any scroll offset. -->
+          <Transition
+            enter-active-class="transition-opacity duration-150 ease-out"
+            enter-from-class="opacity-0"
+            leave-active-class="transition-opacity duration-100 ease-in"
+            leave-to-class="opacity-0"
+          >
             <div
               v-if="isOverDropZone"
-              class="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+              class="pointer-events-none absolute inset-0 z-50 flex items-end justify-center bg-primary/5 p-4 ring-2 ring-inset ring-primary"
               aria-hidden="true"
             >
-              <div class="absolute inset-0 bg-background/60 frosted-glass" />
-              <div class="absolute inset-0 bg-primary/5 pulse-tint" />
               <div
-                class="absolute inset-3 rounded-xl border-2 border-dashed border-primary/25 pulse-border"
-              />
-              <div
-                class="relative flex flex-col items-center gap-3 px-8 py-6 rounded-xl border border-primary/20 frosted-glass glass-surface shadow-sm"
+                class="flex max-w-full items-center gap-3 rounded-lg border border-gray-200/70 px-3 py-2 shadow-lg frosted-glass glass-surface-strong dark:border-gray-700/70"
               >
-                <div class="relative flex items-center justify-center">
-                  <span class="breathe absolute rounded-full border border-primary/20" />
-                  <div class="relative z-10 p-3 rounded-full bg-primary/8">
-                    <Icon :icon="dropIcon" class="w-8 h-8 text-primary/70" />
-                  </div>
+                <div
+                  class="flex shrink-0 items-center justify-center rounded-md bg-primary/10 p-1.5"
+                >
+                  <Icon :icon="dropIcon" class="h-5 w-5 text-primary" />
                 </div>
-                <div class="text-center space-y-0.5">
-                  <p class="font-medium text-base text-primary/80 tracking-tight">
+
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                     {{ dropLabel }}
                   </p>
-                  <p class="text-xs text-muted">Release to upload</p>
+                  <p class="truncate text-xs text-gray-600 dark:text-gray-400">
+                    Upload to
+                    <strong class="font-semibold text-gray-900 dark:text-gray-100">
+                      {{ currentDirName ?? "Home" }}
+                    </strong>
+                  </p>
                 </div>
               </div>
             </div>
           </Transition>
 
-          <!-- empty state: no folders or files, and nothing still loading -->
-          <ExplorerEmptyState
-            v-if="isExplorerEmpty"
-            @upload="handleFileUpload('File')"
-            @new-folder="createNewDirectory"
-          />
+          <div
+            ref="containerRef"
+            class="relative flex-1 overflow-auto data-[drop-active=valid]:ring-2 data-[drop-active=valid]:ring-inset data-[drop-active=valid]:ring-primary"
+            data-drop-scroll
+            data-drop-kind="background"
+            :data-drop-dir-id="toDropId(currentDirId)"
+            :data-drop-dir-name="currentDirName ?? 'Home'"
+            @contextmenu.capture="handleContextMenuCapture"
+            @pointerdown.capture="handleContextMenuPointerDown"
+            @dragenter="onDragEnter"
+            @dragleave="onDragLeave"
+            @dragover="onDragOver"
+            @drop="handleDropEvent"
+          >
+            <div
+              v-if="marqueeBox"
+              class="pointer-events-none absolute z-20 rounded-sm border border-primary/60 bg-primary/10"
+              :style="{
+                height: `${marqueeBox.bottom - marqueeBox.top}px`,
+                left: `${marqueeBox.left}px`,
+                top: `${marqueeBox.top}px`,
+                width: `${marqueeBox.right - marqueeBox.left}px`,
+              }"
+              aria-hidden="true"
+            />
 
-          <template v-else>
-            <!-- grid view -->
-            <div v-if="viewMode === 'grid'" class="p-4">
-              <GridPlaceholder v-if="showDirSkeleton" />
-              <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
-                <h3 class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2">
-                  Folders
-                </h3>
-                <div class="grid gap-3" :style="gridStyle">
+            <!-- empty state: no folders or files, and nothing still loading -->
+            <ExplorerEmptyState
+              v-if="isExplorerEmpty"
+              @upload="handleFileUpload('File')"
+              @new-folder="createNewDirectory"
+            />
+
+            <template v-else>
+              <!-- grid view -->
+              <div v-if="viewMode === 'grid'" class="p-4">
+                <GridPlaceholder v-if="showDirSkeleton" />
+                <div v-else-if="directoriesList.length > 0" class="mb-8 flex flex-col">
+                  <div class="mb-3 flex items-center gap-2">
+                    <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-400">Folders</h3>
+                    <span
+                      class="rounded-full bg-gray-500/10 px-1.5 text-[11px] font-medium tabular-nums text-gray-600 dark:bg-gray-400/10 dark:text-gray-400"
+                    >
+                      {{ directoriesData?.totalCount ?? directoriesList.length }}
+                    </span>
+                  </div>
+                  <div class="grid gap-3" :style="gridStyle">
+                    <DirectoryItem
+                      v-for="dir in directoriesList"
+                      :key="dir.id"
+                      :data="dir"
+                      :view-mode="viewMode"
+                      :is-selected="isDirectorySelected(dir.id)"
+                      @navigate="handleNavigate"
+                      @click="handleItemClick($event, dir.id, 'directory')"
+                      :class="{
+                        'opacity-40 grayscale-30 transition-opacity': isDimmed(dir.id, 'directory'),
+                      }"
+                    />
+                  </div>
+                  <ExplorerLoadMore
+                    v-if="directoriesData?.hasNext"
+                    label="Show more folders"
+                    :shown="directoriesList.length"
+                    :total="directoriesData?.totalCount ?? directoriesList.length"
+                    :loading="areDirectoriesLoading"
+                    @load="loadMoreDirs"
+                  />
+                </div>
+
+                <GridPlaceholder v-if="showFileSkeleton" />
+                <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
+                  <div class="mb-3 flex items-center gap-2 pt-2">
+                    <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-400">Files</h3>
+                    <span
+                      class="rounded-full bg-gray-500/10 px-1.5 text-[11px] font-medium tabular-nums text-gray-600 dark:bg-gray-400/10 dark:text-gray-400"
+                    >
+                      {{ filesData?.totalCount ?? filesList.length }}
+                    </span>
+                  </div>
+                  <div class="grid gap-3" :style="gridStyle">
+                    <FileItem
+                      v-for="file in filesList"
+                      :key="file.fileId"
+                      :data="file"
+                      :view-mode="viewMode"
+                      :is-selected="isFileSelected(file.fileId)"
+                      @open-details="activeDetailsFile = $event"
+                      @tooltip-enter="handleTooltipEnter"
+                      @tooltip-leave="handleTooltipLeave"
+                      :described-by="tooltipDescribedBy(file.fileId)"
+                      @click="handleItemClick($event, file.fileId, 'file')"
+                      :class="{
+                        'opacity-40 grayscale-30 transition-opacity': isDimmed(file.fileId, 'file'),
+                      }"
+                    />
+                  </div>
+                  <ExplorerLoadMore
+                    v-if="filesData?.hasNext"
+                    label="Show more files"
+                    :shown="filesList.length"
+                    :total="filesData?.totalCount ?? filesList.length"
+                    :loading="areFilesLoading"
+                    @load="loadMoreFiles"
+                  />
+                </div>
+              </div>
+
+              <!-- list view -->
+              <div v-else class="flex flex-col pb-2">
+                <ListPlaceholder v-if="showDirSkeleton" />
+                <div v-else-if="directoriesList.length > 0" class="flex flex-col">
+                  <div class="flex items-center gap-2 px-4 pt-4 pb-2">
+                    <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-400">Folders</h3>
+                    <span
+                      class="rounded-full bg-gray-500/10 px-1.5 text-[11px] font-medium tabular-nums text-gray-600 dark:bg-gray-400/10 dark:text-gray-400"
+                    >
+                      {{ directoriesData?.totalCount ?? directoriesList.length }}
+                    </span>
+                  </div>
+                  <div
+                    class="sticky top-0 z-10 grid h-8 grid-cols-[minmax(0,1fr)_16px] items-center gap-4 border-b border-gray-200/70 px-4 text-xs font-semibold text-gray-600 frosted-glass glass-surface-strong @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_112px_16px] dark:border-gray-700/70 dark:text-gray-400"
+                  >
+                    <span>Name</span>
+                    <span class="hidden @min-[720px]/explorer:block">Modified</span>
+                    <span />
+                  </div>
                   <DirectoryItem
                     v-for="dir in directoriesList"
                     :key="dir.id"
@@ -373,33 +517,44 @@
                     @navigate="handleNavigate"
                     @click="handleItemClick($event, dir.id, 'directory')"
                     :class="{
-                      'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id),
+                      'opacity-40 grayscale-30 transition-opacity': isDimmed(dir.id, 'directory'),
                     }"
                   />
-                </div>
-                <div
-                  v-if="directoriesData?.hasNext"
-                  class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
-                >
-                  <UButton
-                    variant="ghost"
-                    color="neutral"
-                    size="sm"
+                  <ExplorerLoadMore
+                    v-if="directoriesData?.hasNext"
                     label="Show more folders"
-                    class="w-full"
-                    @click="loadMoreDirs"
+                    :shown="directoriesList.length"
+                    :total="directoriesData?.totalCount ?? directoriesList.length"
+                    :loading="areDirectoriesLoading"
+                    @load="loadMoreDirs"
                   />
                 </div>
-              </div>
 
-              <GridPlaceholder v-if="showFileSkeleton" />
-              <div v-else-if="filesList.length > 0" class="mb-6 flex flex-col flex-1">
-                <h3
-                  class="text-xs font-medium uppercase tracking-widest text-gray-400 px-1 mb-2 pt-2"
+                <ListPlaceholder v-if="showFileSkeleton" />
+                <div
+                  v-else-if="filesList.length > 0"
+                  class="flex flex-col"
+                  :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
                 >
-                  Files
-                </h3>
-                <div class="grid gap-3" :style="gridStyle">
+                  <div
+                    class="flex items-center gap-2 px-4 pb-2"
+                    :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
+                  >
+                    <h3 class="text-xs font-semibold text-gray-600 dark:text-gray-400">Files</h3>
+                    <span
+                      class="rounded-full bg-gray-500/10 px-1.5 text-[11px] font-medium tabular-nums text-gray-600 dark:bg-gray-400/10 dark:text-gray-400"
+                    >
+                      {{ filesData?.totalCount ?? filesList.length }}
+                    </span>
+                  </div>
+                  <div
+                    class="sticky top-0 z-10 grid h-8 grid-cols-[minmax(0,1fr)_56px_88px] items-center gap-4 border-b border-gray-200/70 px-4 text-xs font-semibold text-gray-600 frosted-glass glass-surface-strong @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_56px_112px_88px] dark:border-gray-700/70 dark:text-gray-400"
+                  >
+                    <span>Name</span>
+                    <span>Type</span>
+                    <span class="hidden @min-[720px]/explorer:block">Modified</span>
+                    <span class="text-right">Size</span>
+                  </div>
                   <FileItem
                     v-for="file in filesList"
                     :key="file.fileId"
@@ -412,104 +567,44 @@
                     :described-by="tooltipDescribedBy(file.fileId)"
                     @click="handleItemClick($event, file.fileId, 'file')"
                     :class="{
-                      'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId),
+                      'opacity-40 grayscale-30 transition-opacity': isDimmed(file.fileId, 'file'),
                     }"
                   />
                 </div>
-                <div
+                <ExplorerLoadMore
                   v-if="filesData?.hasNext"
-                  class="border-t border-gray-100/70 dark:border-gray-800/70 mt-3 pt-1"
-                >
-                  <UButton
-                    variant="ghost"
-                    color="neutral"
-                    size="sm"
-                    label="Show more files"
-                    class="w-full"
-                    @click="loadMoreFiles"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- list view -->
-            <div v-else class="flex flex-col">
-              <ListPlaceholder v-if="showDirSkeleton" />
-              <div v-else-if="directoriesList.length > 0" class="flex flex-col gap-0.5">
-                <h3
-                  class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pt-4 pb-2"
-                >
-                  Folders
-                </h3>
-                <DirectoryItem
-                  v-for="dir in directoriesList"
-                  :key="dir.id"
-                  :data="dir"
-                  :view-mode="viewMode"
-                  :is-selected="isDirectorySelected(dir.id)"
-                  @navigate="handleNavigate"
-                  @click="handleItemClick($event, dir.id, 'directory')"
-                  :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutDirectory(dir.id) }"
-                />
-                <div
-                  v-if="directoriesData?.hasNext"
-                  class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-                >
-                  <UButton
-                    variant="ghost"
-                    color="neutral"
-                    size="sm"
-                    label="Show more folders"
-                    class="w-full"
-                    @click="loadMoreDirs"
-                  />
-                </div>
-              </div>
-
-              <ListPlaceholder v-if="showFileSkeleton" />
-              <div
-                v-else-if="filesList.length > 0"
-                class="flex flex-col gap-0.5"
-                :class="{ 'mt-4': (directoriesData?.items?.length ?? 0) > 0 }"
-              >
-                <h3
-                  class="text-xs font-medium uppercase tracking-widest text-gray-400 px-4 pb-2"
-                  :class="(directoriesData?.items?.length ?? 0) === 0 ? 'pt-4' : 'pt-2'"
-                >
-                  Files
-                </h3>
-                <FileItem
-                  v-for="file in filesList"
-                  :key="file.fileId"
-                  :data="file"
-                  :view-mode="viewMode"
-                  :is-selected="isFileSelected(file.fileId)"
-                  @open-details="activeDetailsFile = $event"
-                  @tooltip-enter="handleTooltipEnter"
-                  @tooltip-leave="handleTooltipLeave"
-                  :described-by="tooltipDescribedBy(file.fileId)"
-                  @click="handleItemClick($event, file.fileId, 'file')"
-                  :class="{ 'opacity-40 grayscale-30 transition-opacity': isCutFile(file.fileId) }"
-                />
-              </div>
-              <div
-                v-if="filesData?.hasNext"
-                class="border-t border-gray-100/70 dark:border-gray-800/70 mt-1 pt-1"
-              >
-                <UButton
-                  variant="ghost"
-                  color="neutral"
-                  size="sm"
                   label="Show more files"
-                  class="w-full"
-                  @click="loadMoreFiles"
+                  :shown="filesList.length"
+                  :total="filesData?.totalCount ?? filesList.length"
+                  :loading="areFilesLoading"
+                  @load="loadMoreFiles"
                 />
               </div>
-            </div>
-          </template>
+            </template>
+          </div>
         </div>
+      </UContextMenu>
+
+      <!-- status bar -->
+      <div
+        class="flex shrink-0 items-center justify-between border-t border-gray-200/70 px-4 py-2 text-xs text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
+      >
+        <span class="tabular-nums">
+          {{ totalItemCount }} item{{ totalItemCount === 1 ? "" : "s" }}
+        </span>
+        <span class="flex items-center gap-3">
+          <span
+            v-if="pendingMoveCount > 0"
+            class="flex items-center gap-1.5 tabular-nums"
+            aria-live="polite"
+          >
+            <BlocksSpinner :size="11" aria-hidden="true" class="opacity-50" />
+            Moving {{ pendingMoveCount }} item{{ pendingMoveCount === 1 ? "" : "s" }}…
+          </span>
+          <span v-if="selectedCount > 0" class="tabular-nums">{{ selectedCount }} selected</span>
+        </span>
       </div>
-    </UContextMenu>
+    </div>
 
     <!-- shared file details drawer — single instance for all FileItem triggers -->
     <FileDetailsDrawer
@@ -560,8 +655,10 @@ import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
 import { breakpointsTailwind, useBreakpoints, useEventListener } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
 import type { DirectorySummaryDto } from "@/api/directory";
+import type { ExplorerItemKind } from "@/features/explorer/drag/geometry";
 import type { NavItem } from "@/types/nav-item";
 
 import { type FileResult } from "@/api/file";
@@ -570,6 +667,13 @@ import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useDropZone } from "@/composables/useDropZone";
 import { useExplorerCommandGuard } from "@/composables/useExplorerCommands";
+import {
+  type MoveRecord,
+  toDropId,
+  useExplorerDragSession,
+} from "@/composables/useExplorerDragSession";
+import { useExplorerItemDrag } from "@/composables/useExplorerItemDrag";
+import { useExplorerMarquee } from "@/composables/useExplorerMarquee";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useFileExplorer } from "@/composables/useFileExplorer";
 import { type FileTooltipEnterKind, useFileTooltip } from "@/composables/useFileTooltip";
@@ -577,6 +681,13 @@ import { useLazyModal } from "@/composables/useLazyOverlay";
 import { useUploadLauncher } from "@/composables/useUploadLauncher";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
+import {
+  type ExplorerMenuActions,
+  type ExplorerMenuSnapshot,
+  buildExplorerMenuItems,
+  resolveContextMenuTarget,
+} from "@/features/explorer/context-menu";
+import { describeExplorerItems, quoted } from "@/features/toast/format";
 import {
   copyDirectory,
   deleteDirectory,
@@ -588,36 +699,34 @@ import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
-import {
-  type ExplorerMenuActions,
-  type ExplorerMenuSnapshot,
-  buildExplorerMenuItems,
-  resolveContextMenuTarget,
-} from "@/utils/explorerContextMenu";
-import { getFileIcon } from "@/utils/icon.utils";
+import { getFileIcon } from "@/utils/files/icons";
 import { logger } from "@/utils/logger";
-import { glassDrawerContent } from "@/utils/modalUi";
+import { glassDrawerContent } from "@/utils/modal-ui";
 
 import BreadcrumbNavigation from "./BreadcrumbNavigation.vue";
 import DirectoryItem from "./DirectoryItem.vue";
 import ExplorerEmptyState from "./ExplorerEmptyState.vue";
+import ExplorerLoadMore from "./ExplorerLoadMore.vue";
 import FileDetailsDrawer from "./FileDetailsDrawer.vue";
 import FileItem from "./FileItem.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
-import AdvancedSearchModal from "./Modals/AdvancedSearchModal.vue";
-import CreateDirectoryModal from "./Modals/CreateDirectoryModal.vue";
-import FileTransferModal from "./Modals/Filetransfermodal.vue";
-import QuickSearchModal from "./Modals/QuickSearchModal.vue";
-import ShareLinkModal from "./Modals/ShareLinkModal.vue";
-import UpdateDirectoryModal from "./Modals/UpdateDirectoryModal.vue";
-import UpdateFileModal from "./Modals/UpdateFileModal.vue";
+import AdvancedSearchModal from "@/components/dashboard/file-system/Modals/AdvancedSearchModal.vue";
+import CreateDirectoryModal from "@/components/dashboard/file-system/Modals/CreateDirectoryModal.vue";
+import FileTransferModal, {
+  type TransferResult,
+} from "@/components/dashboard/file-system/Modals/Filetransfermodal.vue";
+import QuickSearchModal from "@/components/dashboard/file-system/Modals/QuickSearchModal.vue";
+import ShareLinkModal from "@/components/dashboard/file-system/Modals/ShareLinkModal.vue";
+import UpdateDirectoryModal from "@/components/dashboard/file-system/Modals/UpdateDirectoryModal.vue";
+import UpdateFileModal from "@/components/dashboard/file-system/Modals/UpdateFileModal.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
 const settingsStore = useSettingsStore();
 const tabStore = useTabStore();
-const appToast = useAppToast();
+const appToast = useAppToast("files");
+const router = useRouter();
 
 const { tabId } = defineProps<{ tabId: string }>();
 
@@ -648,6 +757,7 @@ const {
   clearSelection,
   selectRange,
 } = useFileExplorer();
+const dragSession = useExplorerDragSession();
 const { downloadFile, downloadBulk } = useFileDownload();
 const { canHandleCommand } = useExplorerCommandGuard(tabId);
 
@@ -760,11 +870,15 @@ const isDisposed = ref(false);
 
 const invalidateDir = (dirId: string | null) => {
   if (dirId) {
-    queryCache.invalidateQueries({ key: ["directories", "sub-directories", dirId] });
+    queryCache.invalidateQueries({
+      key: ["directories", "sub-directories", dirId],
+    });
     queryCache.invalidateQueries({ key: ["files", "sub-files", dirId] });
     return;
   }
-  queryCache.invalidateQueries({ key: ["directories", "root-sub-directories"] });
+  queryCache.invalidateQueries({
+    key: ["directories", "root-sub-directories"],
+  });
   queryCache.invalidateQueries({ key: ["files", "root-sub-files"] });
 };
 
@@ -785,7 +899,9 @@ const {
 const dropIcon = computed(() =>
   dragHasDirectory.value ? "mdi:folder-upload-outline" : "mdi:cloud-upload-outline",
 );
-const dropLabel = computed(() => (dragHasDirectory.value ? "Drop folder here" : "Drop files here"));
+const dropLabel = computed(() =>
+  dragHasDirectory.value ? "Drop to upload this folder" : "Drop to upload files",
+);
 
 const handleDropEvent = async (event: DragEvent) => {
   const dropResult = await onDrop(event);
@@ -802,7 +918,6 @@ const handleDropEvent = async (event: DragEvent) => {
       invalidateDir(targetDirId);
       return;
     }
-    appToast.success("Upload complete");
     refreshDir();
   }
 };
@@ -817,14 +932,32 @@ const sortByOptions = ref([
 
 const selectedCount = computed(() => selectedFiles.value.size + selectedDirectories.value.size);
 
+const totalItemCount = computed(
+  () =>
+    (directoriesData.value?.totalCount ?? directoriesList.value.length) +
+    (filesData.value?.totalCount ?? filesList.value.length),
+);
+
 const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
 const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
 const selectedUploadType = ref({ icon: "mdi:file-outline", label: "File" });
 
 const uploadOptions = ref([
-  { icon: "mdi:file-outline", label: "File", onSelect: () => handleFileUpload("File") },
-  { icon: "mdi:folder-outline", label: "Directory", onSelect: () => handleFileUpload("Directory") },
-  { icon: "formkit:zip", label: "Archive", onSelect: () => handleFileUpload("Archive") },
+  {
+    icon: "mdi:file-outline",
+    label: "File",
+    onSelect: () => handleFileUpload("File"),
+  },
+  {
+    icon: "mdi:folder-outline",
+    label: "Directory",
+    onSelect: () => handleFileUpload("Directory"),
+  },
+  {
+    icon: "formkit:zip",
+    label: "Archive",
+    onSelect: () => handleFileUpload("Archive"),
+  },
 ] satisfies DropdownMenuItem[]);
 
 const toggleSortDirection = () => {
@@ -974,6 +1107,92 @@ const closeContextMenu = () => {
   menuAnchorRow.value = null;
 };
 
+// drag selection and drag-to-move
+
+const pendingMoveCount = dragSession.pendingMoveCount;
+
+const { marqueeBox, isSelecting: isMarqueeSelecting } = useExplorerMarquee({
+  container: containerRef,
+  enabled: () => !contextMenuOpen.value,
+  onStart: () => fileTooltip.dismiss(),
+  selectedDirectories,
+  selectedFiles,
+});
+
+const chipFor = (id: string, kind: ExplorerItemKind) => {
+  if (kind === "file") {
+    const file = filesList.value.find((item) => item.fileId === id);
+    const name = file?.fileName ?? "File";
+
+    return { icon: getFileIcon(name), id, kind, name };
+  }
+
+  const directory = directoriesList.value.find((item) => item.id === id);
+
+  return { icon: "mdi:folder", id, kind, name: directory?.name ?? "Folder" };
+};
+
+useExplorerItemDrag({
+  addToSelection: (id, kind) => {
+    toggleSelect(id, kind);
+    lastSelected.value = id;
+  },
+  chipFor,
+  container: containerRef,
+  enabled: () => !contextMenuOpen.value,
+  isSelected: (id, kind) => {
+    if (kind === "file") return isFileSelected(id);
+
+    return isDirectorySelected(id);
+  },
+  onPickUp: () => fileTooltip.dismiss(),
+  origin: () => ({
+    id: currentDirId.value,
+    name: currentDirName.value ?? "Home",
+  }),
+  selectOnly: (id, kind) => {
+    clearSelection();
+    toggleSelect(id, kind);
+    lastSelected.value = id;
+  },
+  selection: () => ({
+    directoryIds: [...selectedDirectories.value],
+    fileIds: [...selectedFiles.value],
+  }),
+});
+
+const removeMovedItems = (record: MoveRecord) => {
+  if (record.originId !== currentDirId.value) return;
+
+  const movedFiles = new Set(record.fileIds);
+  const movedDirectories = new Set(record.directoryIds);
+
+  if (movedFiles.size > 0) {
+    filesList.value = filesList.value.filter((file) => !movedFiles.has(file.fileId));
+    selectedFiles.value = new Set([...selectedFiles.value].filter((id) => !movedFiles.has(id)));
+  }
+
+  if (movedDirectories.size > 0) {
+    directoriesList.value = directoriesList.value.filter((dir) => !movedDirectories.has(dir.id));
+    selectedDirectories.value = new Set(
+      [...selectedDirectories.value].filter((id) => !movedDirectories.has(id)),
+    );
+  }
+};
+
+// A failed move restores the listing from its first page, because items that
+// were removed optimistically may belong to a page that is no longer active.
+const reloadAfterFailedMove = (record: MoveRecord) => {
+  if (record.originId !== currentDirId.value) return;
+
+  dirPagination.value.paginationParams.page = 1;
+  filePagination.value.paginationParams.page = 1;
+  refreshDir();
+};
+
+dragSession.onMoved(removeMovedItems);
+dragSession.onMoveFailed(reloadAfterFailedMove);
+
 // mobile upload sheet
 
 const isMobileUploadSheetOpen = ref(false);
@@ -1027,7 +1246,11 @@ const mobileOverflowItems = computed(() => [
     },
   },
   { type: "separator" as const },
-  { icon: "mdi:folder-plus", label: "New Folder", onSelect: () => createNewDirectory() },
+  {
+    icon: "mdi:folder-plus",
+    label: "New Folder",
+    onSelect: () => createNewDirectory(),
+  },
 ]);
 
 // modals use lazy registrations created on open with destroyOnClose
@@ -1054,7 +1277,7 @@ const fileTransferModal = useLazyModal<
     originDirId: string | null;
     originDirName: string | undefined;
   },
-  string | false
+  TransferResult | false
 >(FileTransferModal);
 const shareLinkModal = useLazyModal<{ fileId: string; fileName: string }, boolean>(ShareLinkModal);
 
@@ -1094,13 +1317,12 @@ const openTransferModal = async (
     originDirName: currentDirName.value,
   });
 
-  const destId = await instance.result;
-  if (destId) {
+  const transfer = await instance.result;
+  if (transfer) {
     if (isDisposed.value) {
       invalidateDir(currentDirId.value ?? null);
       return;
     }
-    appToast.success(mode === "move" ? "Items moved" : "Items copied");
     refreshDir();
     clearSelection();
   }
@@ -1148,18 +1370,12 @@ const handleDirectoryRename = async (directoryId: string) => {
     currentName: dir?.name ?? "",
     directoryId,
   });
-  const shouldRefresh = await instance.result;
-  if (isDisposed.value) return;
-  if (shouldRefresh) {
-    appToast.success("Directory updated successfully");
-  }
+  await instance.result;
 };
 
 const handleFileRename = async (fileId: string, originalName: string) => {
   const instance = updateFileModal.open({ fileId, originalName });
-  const shouldRefresh = await instance.result;
-  if (isDisposed.value) return;
-  if (shouldRefresh) appToast.success("File updated successfully");
+  await instance.result;
 };
 
 const handleShare = (fileId: string, fileName: string) => {
@@ -1182,7 +1398,152 @@ const handleCopy = () => {
   fileStore.modificationOriginDirId = currentDirId.value;
   directoryStore.selectedDirectories = [...selectedDirectories.value];
   directoryStore.modificationOriginDirId = currentDirId.value;
-  appToast.info("Items selected");
+
+  const fileCount = selectedFiles.value.size;
+  const folderCount = selectedDirectories.value.size;
+  if (fileCount + folderCount === 0) return;
+
+  // Cut shares this clipboard step; copyMode is already set by the caller.
+  const subject = describeExplorerItems(fileCount, folderCount);
+
+  if (copyMode.value) {
+    appToast.info(`Copied ${subject}`, {
+      description: "Open a folder and paste to place the copies there.",
+      source: "clipboard",
+    });
+    return;
+  }
+
+  appToast.info(`Cut ${subject}`, {
+    description: "Open a folder and paste to move them there.",
+    source: "clipboard",
+  });
+};
+
+const currentFolderLabel = () => {
+  if (currentDirName.value) return currentDirName.value;
+
+  return currentDirId.value ? "this folder" : "Home";
+};
+
+// Names a single item outright; larger selections fall back to counts.
+const describeSelection = (fileIds: string[], dirIds: string[]) => {
+  const [onlyFile] = fileIds;
+  const [onlyDir] = dirIds;
+
+  if (fileIds.length === 1 && dirIds.length === 0 && onlyFile) {
+    const name = filesList.value.find((file) => file.fileId === onlyFile)?.fileName;
+    if (name) return quoted(name);
+  }
+
+  if (dirIds.length === 1 && fileIds.length === 0 && onlyDir) {
+    const name = directoriesList.value.find((dir) => dir.id === onlyDir)?.name;
+    if (name) return quoted(name);
+  }
+
+  return describeExplorerItems(fileIds.length, dirIds.length);
+};
+
+const openTrashAction = {
+  icon: "i-lucide-arrow-up-right",
+  label: "Open trash",
+  onClick: () => {
+    void router.push({ name: "trash" });
+  },
+};
+
+const forceDeleteDirectories = (ids: string[]) =>
+  Promise.all(
+    ids.map((id) =>
+      deleteDirectoryMutate({
+        id,
+        options: { force: true },
+        originId: currentDirId.value,
+      }),
+    ),
+  );
+
+// Non-empty folders come back as 409 and need explicit consent before their contents go too.
+const confirmNonEmptyDelete = async (ids: string[]) => {
+  if (settingsStore.skipDeleteConfirmation) return true;
+
+  const instance = confirmModal.open({
+    alert: {
+      color: "warning",
+      icon: "i-lucide-triangle-alert",
+      title: "All sub items will also be deleted",
+    },
+    confirmIcon: "i-lucide-trash-2",
+    confirmLabel: "Delete anyway",
+    dangerMode: true,
+    description: `${ids.length} ${ids.length === 1 ? "directory" : "directories"} still contain files and will be deleted.`,
+    title: "Delete directories?",
+  });
+
+  return (await instance.result) === true;
+};
+
+interface DirectoryDeleteOutcome {
+  deleted: number;
+  failure: unknown;
+}
+
+// Folders delete one by one so a non-empty one (409) can ask for consent without blocking the rest.
+const deleteDirectoriesWithConsent = async (
+  dirIds: string[],
+): Promise<DirectoryDeleteOutcome | null> => {
+  const results = await Promise.allSettled(
+    dirIds.map((id) =>
+      deleteDirectoryMutate({
+        id,
+        options: { force: false },
+        originId: currentDirId.value,
+      }),
+    ),
+  );
+
+  const nonEmptyDirs: string[] = [];
+  const outcome: DirectoryDeleteOutcome = { deleted: 0, failure: null };
+
+  results.forEach((result, index) => {
+    const id = dirIds[index];
+
+    if (result.status === "fulfilled") {
+      outcome.deleted += 1;
+    } else if (result.reason?.response?.status === 409 && id) {
+      nonEmptyDirs.push(id);
+    } else {
+      outcome.failure ??= result.reason;
+    }
+  });
+
+  if (nonEmptyDirs.length === 0) return outcome;
+
+  const confirmed = await confirmNonEmptyDelete(nonEmptyDirs);
+  if (isDisposed.value) return null;
+
+  if (confirmed) {
+    await forceDeleteDirectories(nonEmptyDirs);
+    outcome.deleted += nonEmptyDirs.length;
+  }
+
+  return outcome;
+};
+
+const reportDeleteOutcome = (
+  subject: string,
+  requested: { dirs: number; files: number },
+  deleted: { dirs: number; files: number },
+) => {
+  if (deleted.files + deleted.dirs === 0) return;
+
+  const deletedAll = deleted.files === requested.files && deleted.dirs === requested.dirs;
+  const deletedSubject = deletedAll ? subject : describeExplorerItems(deleted.files, deleted.dirs);
+
+  appToast.success(`Moved ${deletedSubject} to the trash`, {
+    actions: [openTrashAction],
+    source: "trash",
+  });
 };
 
 const handleDelete = async (
@@ -1191,88 +1552,97 @@ const handleDelete = async (
 ) => {
   if (fileIds.length === 0 && dirIds.length === 0) return;
 
-  if (fileIds.length > 0) {
-    await deleteFilesMutate({
-      ids: fileIds,
-      directoryId: currentDirId.value ?? undefined,
+  const subject = describeSelection(fileIds, dirIds);
+  let directoryOutcome: DirectoryDeleteOutcome | null = { deleted: 0, failure: null };
+
+  try {
+    if (fileIds.length > 0) {
+      await deleteFilesMutate({
+        ids: fileIds,
+        directoryId: currentDirId.value ?? undefined,
+      });
+    }
+
+    if (dirIds.length > 0) directoryOutcome = await deleteDirectoriesWithConsent(dirIds);
+  } catch (err) {
+    if (isDisposed.value) return;
+
+    appToast.error(`Couldn't move ${subject} to the trash`, err, { source: "trash" });
+    return;
+  }
+
+  if (isDisposed.value || !directoryOutcome) return;
+
+  reportDeleteOutcome(
+    subject,
+    { dirs: dirIds.length, files: fileIds.length },
+    { dirs: directoryOutcome.deleted, files: fileIds.length },
+  );
+
+  if (directoryOutcome.failure) {
+    appToast.error("Some folders couldn't be moved to the trash", directoryOutcome.failure, {
+      source: "trash",
     });
   }
-
-  if (dirIds.length > 0) {
-    const results = await Promise.allSettled(
-      dirIds.map((id) =>
-        deleteDirectoryMutate({ id, options: { force: false }, originId: currentDirId.value }),
-      ),
-    );
-
-    const failedDirs = results
-      .map((result, index) => ({ id: dirIds[index], result }))
-      .filter((x) => x.result.status === "rejected" && x.result.reason?.response?.status === 409)
-      .map((x) => x.id);
-
-    if (failedDirs.length > 0) {
-      if (settingsStore.skipDeleteConfirmation) {
-        await Promise.all(
-          failedDirs.map((id) =>
-            deleteDirectoryMutate({ id, options: { force: true }, originId: currentDirId.value }),
-          ),
-        );
-      } else {
-        const instance = confirmModal.open({
-          alert: {
-            color: "warning",
-            icon: "i-lucide-triangle-alert",
-            title: "All sub items will also be deleted",
-          },
-          confirmIcon: "i-lucide-trash-2",
-          confirmLabel: "Delete anyway",
-          dangerMode: true,
-          description: `${failedDirs.length} ${failedDirs.length === 1 ? "directory" : "directories"} still contain files and will be deleted.`,
-          title: "Delete directories?",
-        });
-        const confirmed = await instance.result;
-        if (isDisposed.value) return;
-        if (confirmed) {
-          await Promise.all(
-            failedDirs.map((id) =>
-              deleteDirectoryMutate({ id, options: { force: true }, originId: currentDirId.value }),
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  if (isDisposed.value) return;
-  appToast.info("Items deleted");
 };
 
 const handleCut = async () => {
-  if (fileStore.selectedFiles.length > 0) {
-    await moveFilesMutate({
-      destinationId: currentDirId.value,
-      fileIds: fileStore.selectedFiles,
-      originId: fileStore.modificationOriginDirId,
+  const fileIds = [...fileStore.selectedFiles];
+  const dirIds = [...directoryStore.selectedDirectories];
+  if (fileIds.length === 0 && dirIds.length === 0) return;
+
+  const subject = describeExplorerItems(fileIds.length, dirIds.length);
+  const destination = currentFolderLabel();
+
+  try {
+    if (fileIds.length > 0) {
+      await moveFilesMutate({
+        destinationId: currentDirId.value,
+        fileIds,
+        originId: fileStore.modificationOriginDirId,
+      });
+      fileStore.selectedFiles = [];
+      fileStore.modificationOriginDirId = null;
+    }
+    if (dirIds.length > 0) {
+      await moveDirectoriesMutate({
+        destinationId: currentDirId.value,
+        directoryIds: dirIds,
+        originId: directoryStore.modificationOriginDirId,
+      });
+      directoryStore.selectedDirectories = [];
+      directoryStore.modificationOriginDirId = null;
+    }
+  } catch (err) {
+    if (isDisposed.value) return;
+
+    // The cut stays armed so pasting again retries the same items.
+    appToast.error(`Couldn't move ${subject} to ${destination}`, err, {
+      retry: handleCut,
+      source: "move",
     });
-    fileStore.selectedFiles = [];
-    fileStore.modificationOriginDirId = null;
+    return;
   }
-  if (directoryStore.selectedDirectories.length > 0) {
-    await moveDirectoriesMutate({
-      destinationId: currentDirId.value,
-      directoryIds: directoryStore.selectedDirectories,
-      originId: directoryStore.modificationOriginDirId,
-    });
-    directoryStore.selectedDirectories = [];
-    directoryStore.modificationOriginDirId = null;
-  }
+
   copyMode.value = true;
+  if (isDisposed.value) return;
+
+  appToast.success(`Moved ${subject} to ${destination}`, { source: "move" });
 };
 
 const isCutFile = (id: string) => !copyMode.value && fileStore.selectedFiles.includes(id);
 
 const isCutDirectory = (id: string) =>
   !copyMode.value && directoryStore.selectedDirectories.includes(id);
+
+const isDragSource = (id: string) => dragSession.session.value?.sourceIds.has(id) ?? false;
+
+const isDimmed = (id: string, kind: ExplorerItemKind) => {
+  if (isDragSource(id)) return true;
+  if (kind === "file") return isCutFile(id);
+
+  return isCutDirectory(id);
+};
 
 const cancelCut = () => {
   if (copyMode.value) return;
@@ -1281,30 +1651,48 @@ const cancelCut = () => {
   directoryStore.selectedDirectories = [];
   directoryStore.modificationOriginDirId = null;
   copyMode.value = true;
-  appToast.info("Cut cancelled");
+  appToast.info("Cut cancelled", { description: "Nothing was moved.", source: "clipboard" });
 };
 
 const handlePaste = async () => {
-  if (fileStore.selectedFiles.length > 0) {
-    await copyFilesMutate({
-      destinationId: currentDirId.value,
-      fileIds: fileStore.selectedFiles,
-      originId: fileStore.modificationOriginDirId,
-    });
-    fileStore.modificationOriginDirId = null;
+  const fileIds = [...fileStore.selectedFiles];
+  const dirIds = [...directoryStore.selectedDirectories];
+  if (fileIds.length === 0 && dirIds.length === 0) return;
+
+  const subject = describeExplorerItems(fileIds.length, dirIds.length);
+  const destination = currentFolderLabel();
+
+  try {
+    if (fileIds.length > 0) {
+      await copyFilesMutate({
+        destinationId: currentDirId.value,
+        fileIds,
+        originId: fileStore.modificationOriginDirId,
+      });
+      fileStore.modificationOriginDirId = null;
+    }
+    if (dirIds.length > 0) {
+      await Promise.all(
+        dirIds.map(async (dir) => {
+          await copyDirectoryMutate({
+            destinationId: currentDirId.value,
+            directoryId: dir,
+            originId: directoryStore.modificationOriginDirId,
+          });
+        }),
+      );
+      directoryStore.modificationOriginDirId = null;
+    }
+  } catch (err) {
+    if (isDisposed.value) return;
+
+    appToast.error(`Couldn't paste ${subject} into ${destination}`, err, { source: "move" });
+    return;
   }
-  if (directoryStore.selectedDirectories.length > 0) {
-    await Promise.all(
-      directoryStore.selectedDirectories.map(async (dir) => {
-        await copyDirectoryMutate({
-          destinationId: currentDirId.value,
-          directoryId: dir,
-          originId: directoryStore.modificationOriginDirId,
-        });
-      }),
-    );
-    directoryStore.modificationOriginDirId = null;
-  }
+
+  if (isDisposed.value) return;
+
+  appToast.success(`Pasted ${subject} into ${destination}`, { source: "move" });
 };
 
 const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
@@ -1328,7 +1716,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
     return;
   }
   if (!shouldRefresh && directoryStore.error) {
-    appToast.error("Upload failed", directoryStore.error);
+    appToast.error("Upload failed", directoryStore.error, { source: "upload" });
   }
 };
 
@@ -1343,13 +1731,7 @@ const breadcrumbs = computed(() => {
 
 const createNewDirectory = async () => {
   const instance = createDirectoryModal.open({ parentId: currentDirId.value });
-  const shouldRefresh = await instance.result;
-  if (isDisposed.value) return;
-  if (shouldRefresh) {
-    appToast.success("Directory creation successful");
-  } else if (directoryStore.error) {
-    appToast.error("Directory creation failed", directoryStore.error);
-  }
+  await instance.result;
 };
 
 const handleItemClick = (event: MouseEvent, id: string, type: "file" | "directory") => {
@@ -1479,11 +1861,16 @@ const handleDirectoryFavorite = async (directory: DirectorySummaryDto) => {
       };
     }
 
+    const name = quoted(directory.name);
+
     appToast.success(
-      result.isStarred ? "Folder added to favorites" : "Folder removed from favorites",
+      result.isStarred ? `Added ${name} to favorites` : `Removed ${name} from favorites`,
+      { source: "folders" },
     );
   } catch (error) {
-    appToast.error("Could not update folder favorites", error);
+    appToast.error(`Couldn't update favorites for ${quoted(directory.name)}`, error, {
+      source: "folders",
+    });
   }
 };
 
@@ -1492,7 +1879,11 @@ const handleDirectoryFavorite = async (directory: DirectorySummaryDto) => {
 // per-row controllers (bottom in grid, top in list).
 const explorerBreakpoints = useBreakpoints(breakpointsTailwind);
 const explorerIsMobile = explorerBreakpoints.smaller("md");
-const fileTooltip = useFileTooltip({ disabled: explorerIsMobile });
+const fileTooltip = useFileTooltip({
+  disabled: computed(
+    () => explorerIsMobile.value || dragSession.isDragging.value || isMarqueeSelecting.value,
+  ),
+});
 
 // Template bindings do not unwrap nested refs, so the shared tooltip state
 // is aliased to top-level bindings for the template below.
@@ -1624,6 +2015,7 @@ useEventListener(containerRef, "mousedown", handleMouseNavigate);
 // so ineligible presses reach Reka and native behavior untouched.
 const handleEscapeKey = (event: KeyboardEvent) => {
   if (event.defaultPrevented || !canHandleCommand(event)) return;
+  if (dragSession.isDragging.value) return;
   // Drawers can keep focus on their trigger, outside the dialog element.
   if (
     contextMenuOpen.value ||

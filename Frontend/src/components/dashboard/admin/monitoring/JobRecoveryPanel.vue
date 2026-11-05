@@ -8,6 +8,7 @@ import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { JobStatus, type JobType } from "@/enums";
+import { countOf } from "@/features/toast/format";
 import { useRequeueFailedJobs, useRequeueJob } from "@/mutations/jobs";
 import { adminJobs } from "@/queries/jobs";
 import { formatRelativeShort } from "@/utils/date-formatters";
@@ -35,7 +36,12 @@ watch(
   { flush: "sync" },
 );
 
-const { data, error, isLoading: isFetching, refetch } = useQuery(() =>
+const {
+  data,
+  error,
+  isLoading: isFetching,
+  refetch,
+} = useQuery(() =>
   adminJobs({ page: page.value, pageSize: PAGE_SIZE, status: statusView.value, type }),
 );
 
@@ -74,7 +80,7 @@ const errorLabel = (job: AdminJob): string => {
 
 const shortId = (id: string): string => id.slice(0, 8);
 
-const toast = useAppToast();
+const toast = useAppToast("jobs");
 const { mutateAsync: requeueJob } = useRequeueJob();
 const { mutateAsync: requeueFailed, isLoading: isRequeueingAll } = useRequeueFailedJobs();
 
@@ -84,9 +90,11 @@ const handleRequeue = async (job: AdminJob) => {
   pendingJobId.value = job.id;
   try {
     await requeueJob(job.id);
-    toast.success("Job requeued");
+    toast.success(`Requeued job ${shortId(job.id)}`);
   } catch (err) {
-    toast.error("Could not requeue job", err);
+    toast.error(`Couldn't requeue job ${shortId(job.id)}`, err, {
+      retry: () => handleRequeue(job),
+    });
   } finally {
     pendingJobId.value = null;
   }
@@ -95,9 +103,14 @@ const handleRequeue = async (job: AdminJob) => {
 const handleRequeueAll = async () => {
   try {
     const result = await requeueFailed(type);
-    toast.success(`Requeued ${result.requeued} job${result.requeued === 1 ? "" : "s"}`);
+    if (result.requeued === 0) {
+      toast.info("No failed jobs to requeue");
+      return;
+    }
+
+    toast.success(`Requeued ${countOf(result.requeued, "failed job")}`);
   } catch (err) {
-    toast.error("Could not requeue failed jobs", err);
+    toast.error("Couldn't requeue the failed jobs", err, { retry: handleRequeueAll });
   }
 };
 
@@ -112,13 +125,13 @@ const nextPage = () => {
 
 <template>
   <div
-    class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
+    class="rounded-[14px] border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
   >
     <div
       class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2 flex-wrap"
     >
-      <UIcon name="i-mdi-restore" class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
-      <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ title }}</span>
+      <UIcon name="i-mdi-restore" class="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
+      <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ title }}</span>
       <UBadge v-if="data" color="neutral" variant="subtle" size="sm">{{ totalCount }}</UBadge>
 
       <div class="ml-auto flex items-center gap-2">
@@ -150,7 +163,7 @@ const nextPage = () => {
     </div>
 
     <div v-if="isLoading" class="flex items-center justify-center py-14">
-      <BlockSpinner :size="24" aria-label="Loading jobs" class="text-gray-400 dark:text-gray-500" />
+      <BlockSpinner :size="24" aria-label="Loading jobs" class="text-gray-500" />
     </div>
 
     <UAlert
@@ -179,7 +192,7 @@ const nextPage = () => {
             <UIcon
               :name="isFailedView ? 'i-mdi-alert-circle-outline' : 'i-mdi-history'"
               class="w-4 h-4"
-              :class="isFailedView ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'"
+              :class="isFailedView ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'"
             />
           </span>
 
@@ -187,13 +200,13 @@ const nextPage = () => {
             <p class="text-sm text-gray-900 dark:text-gray-100 truncate" :title="errorLabel(job)">
               {{ errorLabel(job) }}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-500 mt-0.5">
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
               {{ shortId(job.id) }} · {{ job.retryCount }}
               {{ job.retryCount === 1 ? "retry" : "retries" }}
             </p>
           </div>
 
-          <span class="text-xs text-gray-500 dark:text-gray-500 shrink-0 tabular-nums">
+          <span class="text-xs text-gray-600 dark:text-gray-400 shrink-0 tabular-nums">
             {{ ageLabel(job) }}
           </span>
 
@@ -214,7 +227,7 @@ const nextPage = () => {
         v-if="totalPages > 1"
         class="flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-200/70 dark:border-gray-700/70"
       >
-        <span class="text-xs text-gray-500 dark:text-gray-500">
+        <span class="text-xs text-gray-600 dark:text-gray-400">
           Page {{ page }} of {{ totalPages }}
         </span>
         <div class="flex items-center gap-2">

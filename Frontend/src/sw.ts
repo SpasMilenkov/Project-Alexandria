@@ -13,7 +13,10 @@ import {
   type SerwistPlugin,
 } from "serwist";
 
-import { isProtectedRequest, resolveConfiguredApiBase } from "./utils/serviceWorkerPolicy";
+import {
+  isProtectedRequest,
+  resolveConfiguredApiBase,
+} from "@/features/auth/service-worker-policy";
 
 declare const self: ServiceWorkerGlobalScope;
 

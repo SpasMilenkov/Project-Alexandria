@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 group"
+    class="group flex items-center gap-3 rounded-xl border border-gray-200/70 px-3 py-2.5 dark:border-gray-700/70"
   >
     <div
       class="shrink-0 w-7 h-7 rounded-md flex items-center justify-center"
@@ -10,8 +10,10 @@
     </div>
 
     <div class="flex-1 min-w-0">
-      <div class="text-sm font-medium truncate">{{ actionLabel }}</div>
-      <div class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ triggerLabel }}</div>
+      <div class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+        {{ actionLabel }}
+      </div>
+      <div class="truncate text-xs text-gray-600 dark:text-gray-400">{{ triggerLabel }}</div>
     </div>
 
     <div
@@ -60,7 +62,7 @@ const emit = defineEmits<{ edit: [] }>();
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");
 
-const appToast = useAppToast();
+const appToast = useAppToast("policy");
 
 const { mutateAsync: deleteRuleMutation } = deleteRule();
 const isDeleting = ref(false);
@@ -71,7 +73,7 @@ const handleDelete = async () => {
     await deleteRuleMutation({ ruleId: rule.id, directoryId });
     appToast.success("Rule removed");
   } catch (err) {
-    appToast.error("Failed to remove rule", err);
+    appToast.error("Couldn't remove the rule", err);
   } finally {
     isDeleting.value = false;
   }
@@ -119,9 +121,9 @@ const actionLabel = computed(() => {
 const triggerLabel = computed(() => {
   switch (rule.triggerType) {
     case PolicyTriggerType.AnyFile:
-      return "Any file";
+      return "All eligible files";
     case PolicyTriggerType.FileGroup:
-      return `.${rule.triggerValue} files`;
+      return rule.triggerValue.split(";").filter(Boolean).join(", ");
     default:
       return rule.triggerValue;
   }

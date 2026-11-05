@@ -5,7 +5,9 @@ import { SETTINGS_QUERY_KEYS } from "@/queries/settings";
 import { useAuthStore } from "@/stores/auth";
 import { useSettingsStore } from "@/stores/settings";
 
-interface OwnerContext { ownerId: string | null }
+interface OwnerContext {
+  ownerId: string | null;
+}
 
 const useOwnerGuard = () => {
   const authStore = useAuthStore();
@@ -16,7 +18,7 @@ const useOwnerGuard = () => {
     isSameOwner: (ctx?: Partial<OwnerContext>): boolean =>
       Boolean(ctx?.ownerId) && currentId() === ctx?.ownerId,
   };
-}
+};
 
 export const updateAppearance = defineMutation(() => {
   const queryCache = useQueryCache();

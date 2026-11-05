@@ -1,4 +1,4 @@
-import "./assets/main.css";
+import "@/assets/main.css";
 import ui from "@nuxt/ui/vue-plugin";
 import { PiniaColada } from "@pinia/colada";
 import { PiniaColadaRetry } from "@pinia/colada-plugin-retry";
@@ -8,10 +8,10 @@ import { createApp } from "vue";
 import VueVirtualScroller from "vue-virtual-scroller";
 
 import App from "./App.vue";
+import { startSessionBoundaryWatcher } from "@/features/auth/session-boundary";
 import { registerIcons } from "./icons";
 import router from "./router";
-import { logger } from "./utils/logger";
-import { startSessionBoundaryWatcher } from "./utils/sessionBoundary";
+import { logger } from "@/utils/logger";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 
 registerIcons();

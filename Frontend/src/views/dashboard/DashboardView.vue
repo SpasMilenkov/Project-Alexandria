@@ -3,11 +3,12 @@ import { Icon } from "@iconify/vue";
 import { useMediaQuery } from "@vueuse/core";
 import { computed, onMounted, ref, useId } from "vue";
 
+import ExplorerDragLayer from "@/components/dashboard/file-system/ExplorerDragLayer.vue";
 import ExplorerTabStrip from "@/components/dashboard/file-system/ExplorerTabStrip.vue";
 import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
 import { useTabStore } from "@/stores/tab";
 import { logger } from "@/utils/logger";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 defineShortcuts({
   meta_shift_n: () => tabStore.createTab(null),
@@ -169,7 +170,8 @@ onMounted(() => {
         <button
           v-for="tab in visibleTabs"
           :key="tab.id"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm max-w-[100px] min-w-0 transition-colors select-none"
+          :data-tab-id="tab.id"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm max-w-[100px] min-w-0 transition-colors select-none data-[drop-active=valid]:ring-2 data-[drop-active=valid]:ring-primary"
           :class="
             tab.id === tabStore.activeTabId
               ? 'bg-primary/10 text-primary font-medium'
@@ -321,6 +323,8 @@ onMounted(() => {
       </div>
     </template>
   </UModal>
+
+  <ExplorerDragLayer />
 </template>
 
 <style scoped>

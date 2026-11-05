@@ -1,7 +1,7 @@
 import type { HomeLayoutKind, HomeWidgetType } from "@/enums/home-widget";
 import type { HomeWidget, HomeWidgetOptions } from "@/types/home";
 
-import { homeBoardToSettings } from "@/utils/home-widget-persistence";
+import { homeBoardToSettings } from "@/features/home/persistence";
 
 import { apiClient } from "./client";
 

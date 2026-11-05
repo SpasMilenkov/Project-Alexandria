@@ -4,6 +4,7 @@ import { useDebounceFn, useMediaQuery } from "@vueuse/core";
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 
 import { useBackgroundImageSync } from "@/composables/useBackgroundImageSync";
+import { useColorSchedule } from "@/composables/useColorSchedule";
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import { useTheme } from "@/composables/useTheme";
 import {
@@ -13,6 +14,10 @@ import {
   useSettingsStore,
 } from "@/stores/settings";
 import { logger } from "@/utils/logger";
+
+import ExplorerPreview from "./ExplorerPreview.vue";
+import SettingsChip from "./SettingsChip.vue";
+import SettingsSection from "./SettingsSection.vue";
 
 const settingsStore = useSettingsStore();
 const { isDark } = useTheme();
@@ -83,6 +88,54 @@ const listIconSize = computed({
 const isOpen = computed({
   get: () => settingsStore.isAppearanceSectionOpen,
   set: (v: boolean) => settingsStore.setAppearanceSectionOpen(v),
+});
+
+const { colorMode, schedule, setEnabled, setTimes } = useColorSchedule();
+
+type ColorModeChoice = "auto" | "light" | "dark" | "scheduled";
+
+const COLOR_MODE_OPTIONS: { label: string; value: ColorModeChoice }[] = [
+  { label: "System", value: "auto" },
+  { label: "Light", value: "light" },
+  { label: "Dark", value: "dark" },
+  { label: "Scheduled", value: "scheduled" },
+];
+
+const colorModeChoice = computed<ColorModeChoice>({
+  get: () => {
+    if (schedule.value.enabled) return "scheduled";
+
+    return colorMode.value;
+  },
+  set: (choice) => {
+    if (choice === "scheduled") {
+      setEnabled(true);
+      return;
+    }
+
+    setEnabled(false);
+    colorMode.value = choice;
+  },
+});
+
+const colorModeHint = computed(() => {
+  if (colorModeChoice.value === "scheduled") {
+    return "Switches by local time on this device. The navbar toggle overrides it until the next switch.";
+  }
+
+  if (colorModeChoice.value === "auto") return "Follows your operating system.";
+
+  return "Stays fixed until you change it here or with the navbar toggle.";
+});
+
+const lightFrom = computed({
+  get: () => schedule.value.lightFrom,
+  set: (value: string) => setTimes({ darkFrom: schedule.value.darkFrom, lightFrom: value }),
+});
+
+const darkFrom = computed({
+  get: () => schedule.value.darkFrom,
+  set: (value: string) => setTimes({ darkFrom: value, lightFrom: schedule.value.lightFrom }),
 });
 
 const previewDockOpen = ref(true);
@@ -356,266 +409,207 @@ const imageName = computed(() => {
   return settingsStore.backgroundImageKey.split("/").pop() ?? "background";
 });
 
-// Live-preview fixtures. The stage demonstrates grid tile size, list row size,
-// thumbnails and the accent selection, so plain markup bound to the store shows
-// the effect more faithfully than a full file tile with menus and tags.
-const gridIconStyle = computed(() => ({
-  height: `${gridIconSize.value}px`,
-  width: `${gridIconSize.value}px`,
-}));
+const backgroundTileClass = (name: string) => {
+  if (settingsStore.hasBackgroundImage) return "opacity-40 cursor-not-allowed";
 
-const gridThumbStyle = computed(() => ({
-  height: `${Math.round(gridIconSize.value * 1.125)}px`,
-  width: `${Math.round(gridIconSize.value * 1.5)}px`,
-}));
+  if (selectedBackground.value === name) {
+    return "border-primary ring-1 ring-primary shadow-sm scale-[1.03]";
+  }
 
-const listIconStyle = computed(() => ({
-  height: `${listIconSize.value}px`,
-  width: `${listIconSize.value}px`,
-}));
-
-const listRowStyle = computed(() => {
-  const padding = 4 + Math.round(listIconSize.value * 0.25);
-  return {
-    paddingBottom: `${padding}px`,
-    paddingTop: `${padding}px`,
-  };
-});
+  return "border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-sm";
+};
 </script>
 
 <template>
-  <UCard class="overflow-hidden frosted-glass glass-surface" :ui="{ body: 'p-2 sm:p-2' }">
-    <UCollapsible
-      v-model:open="isOpen"
-      :unmount-on-hide="false"
-      :ui="{
-        content:
-          'data-[state=open]:animate-[collapsible-down_350ms_ease-in-out] motion-reduce:animate-none!',
-      }"
-    >
-      <UButton
-        variant="ghost"
-        color="neutral"
-        block
-        class="justify-between"
-        :trailing-icon="isOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-      >
-        <div class="flex items-center gap-2 min-w-0">
-          <Icon icon="mdi:palette-outline" class="w-5 h-5 text-muted shrink-0" />
-          <h2 class="text-lg font-semibold shrink-0">Appearance</h2>
-          <span class="hidden md:block text-xs text-gray-500 dark:text-gray-400 truncate"
-            >Colors, glass effects and file tiles</span
+  <SettingsSection
+    v-model:open="isOpen"
+    icon="mdi:palette-outline"
+    title="Appearance"
+    description="Colors, glass effects and file tiles"
+    :modified="settingsStore.isAppearanceModified"
+    @reset="handleResetAppearance"
+  >
+    <template #summary>
+      <SettingsChip :swatch="`rgb(${accentRgb})`">{{ selectedColorLabel }}</SettingsChip>
+      <SettingsChip v-if="backgroundLabel">{{ backgroundLabel }}</SettingsChip>
+      <SettingsChip>{{ glassSummary }}</SettingsChip>
+    </template>
+
+    <div class="flex flex-col gap-8">
+      <!-- Live preview stage -->
+      <Teleport to="body" :disabled="!isPhone">
+        <section
+          v-show="previewVisible && (!isPhone || isOpen)"
+          ref="stageRef"
+          aria-label="Live preview"
+          class="preview-dock z-10 max-md:bg-default rounded-2xl border border-gray-200/70 dark:border-gray-700/70 p-3 sm:p-4 frosted-glass glass-surface"
+          :class="{ 'preview-dock-collapsed': !previewDockOpen }"
+        >
+          <button
+            type="button"
+            class="md:hidden flex w-full items-center justify-between py-2 cursor-pointer"
+            :aria-expanded="previewDockOpen"
+            aria-label="Toggle live preview"
+            @click="previewDockOpen = !previewDockOpen"
           >
-          <span v-if="!isOpen" class="flex flex-wrap items-center gap-1.5 ml-1">
             <span
-              class="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400"
+              class="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400"
+              >Live preview</span
+            >
+            <UIcon
+              name="i-lucide-chevron-down"
+              class="size-4.5 text-gray-600 dark:text-gray-400 transition-transform duration-200 shrink-0"
+              :class="{ 'rotate-180': !previewDockOpen }"
+            />
+          </button>
+
+          <div class="preview-cards">
+            <div class="preview-cards-inner">
+              <ExplorerPreview />
+            </div>
+          </div>
+        </section>
+      </Teleport>
+
+      <div class="flex flex-col gap-8">
+        <!-- Group: Theme -->
+        <section aria-label="Theme" class="space-y-4">
+          <div>
+            <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Theme</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+              Accent color, background and backdrop image.
+            </p>
+          </div>
+
+          <!-- Light and dark mode -->
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Light and dark</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  {{ colorModeHint }}
+                </p>
+              </div>
+              <div
+                class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
+                role="group"
+                aria-label="Light and dark"
+              >
+                <UButton
+                  v-for="opt in COLOR_MODE_OPTIONS"
+                  :key="opt.value"
+                  :label="opt.label"
+                  size="xs"
+                  :color="colorModeChoice === opt.value ? 'primary' : 'neutral'"
+                  :variant="colorModeChoice === opt.value ? 'solid' : 'ghost'"
+                  :aria-pressed="colorModeChoice === opt.value"
+                  @click="colorModeChoice = opt.value"
+                />
+              </div>
+            </div>
+
+            <div
+              v-if="colorModeChoice === 'scheduled'"
+              class="flex flex-wrap items-end gap-4 border-l-2 border-gray-200/70 pl-4 dark:border-gray-700/70"
+            >
+              <UFormField label="Light from" name="color-schedule-light">
+                <UInput v-model="lightFrom" type="time" size="sm" class="w-32" />
+              </UFormField>
+              <UFormField label="Dark from" name="color-schedule-dark">
+                <UInput v-model="darkFrom" type="time" size="sm" class="w-32" />
+              </UFormField>
+              <p v-if="lightFrom === darkFrom" class="text-xs text-error">
+                Pick two different times.
+              </p>
+            </div>
+          </div>
+
+          <!-- Accent color swatches -->
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Accent color</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                Used for the selected state, switches and the main action across the app.
+              </p>
+            </div>
+            <span
+              class="inline-flex flex-none items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300"
             >
               <span
-                class="w-2 h-2 rounded-full"
+                class="w-2.5 h-2.5 rounded-full"
                 :style="{ backgroundColor: `rgb(${accentRgb})` }"
               />
               {{ selectedColorLabel }}
             </span>
-            <span
-              v-if="backgroundLabel"
-              class="inline-flex items-center h-6 px-2.5 rounded-full bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400"
-            >
-              {{ backgroundLabel }}
-            </span>
-            <span
-              class="inline-flex items-center h-6 px-2.5 rounded-full bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400"
-            >
-              {{ glassSummary }}
-            </span>
-          </span>
-        </div>
-      </UButton>
-
-      <template #content>
-        <div class="flex flex-col gap-8 px-2 pt-4 pb-6">
-          <!-- Live preview stage -->
-          <Teleport to="body" :disabled="!isPhone">
-            <section
-              v-show="previewVisible && (!isPhone || isOpen)"
-              ref="stageRef"
-              aria-label="Live preview"
-              class="preview-dock z-10 max-md:bg-default rounded-2xl border border-gray-200/70 dark:border-gray-700/70 p-3 sm:p-4 frosted-glass glass-surface"
-              :class="{ 'preview-dock-collapsed': !previewDockOpen }"
-            >
-              <button
-                type="button"
-                class="md:hidden flex w-full items-center justify-between py-2 cursor-pointer"
-                :aria-expanded="previewDockOpen"
-                aria-label="Toggle live preview"
-                @click="previewDockOpen = !previewDockOpen"
-              >
-                <span
-                  class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-                  >Live preview</span
-                >
-                <UIcon
-                  name="i-lucide-chevron-down"
-                  class="size-4.5 text-gray-500 dark:text-gray-400 transition-transform duration-200 shrink-0"
-                  :class="{ 'rotate-180': !previewDockOpen }"
-                />
-              </button>
-
-              <div class="preview-cards">
-                <div class="preview-cards-inner">
-                  <div class="grid gap-3 sm:gap-4 md:grid-cols-2">
-                    <div>
-                      <p
-                        class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
-                      >
-                        Grid
-                      </p>
-                      <div class="flex items-end justify-center gap-3">
-                        <div
-                          class="flex flex-col items-center gap-1.5 rounded-lg px-2 py-2 outline outline-1 outline-primary -outline-offset-1 bg-primary/10"
-                        >
-                          <span
-                            v-if="thumbnailsEnabled"
-                            class="preview-thumb rounded-md"
-                            :style="gridThumbStyle"
-                          />
-                          <span
-                            v-else
-                            class="preview-size-anim grid place-items-center rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-gray-400"
-                            :style="gridIconStyle"
-                          >
-                            <UIcon name="i-lucide-image" class="w-[55%] h-[55%]" />
-                          </span>
-                          <span
-                            class="max-w-24 truncate text-[11px] text-gray-600 dark:text-gray-400"
-                            >sunset-harbor.jpg</span
-                          >
-                        </div>
-                        <div class="flex flex-col items-center gap-1.5 rounded-lg px-2 py-2">
-                          <span
-                            class="preview-size-anim grid place-items-center rounded-lg bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-gray-400"
-                            :style="gridIconStyle"
-                          >
-                            <UIcon name="i-lucide-file-text" class="w-[55%] h-[55%]" />
-                          </span>
-                          <span
-                            class="max-w-24 truncate text-[11px] text-gray-600 dark:text-gray-400"
-                            >project-specification.pdf</span
-                          >
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p
-                        class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2"
-                      >
-                        List
-                      </p>
-                      <div class="flex flex-col gap-1">
-                        <div
-                          class="preview-row-anim flex items-center gap-2.5 rounded-lg bg-primary/10 px-2"
-                          :style="listRowStyle"
-                        >
-                          <UIcon
-                            name="i-lucide-image"
-                            class="shrink-0 preview-size-anim text-gray-500 dark:text-gray-400"
-                            :style="listIconStyle"
-                          />
-                          <span
-                            class="flex-1 min-w-0 truncate text-xs text-gray-900 dark:text-gray-100"
-                            >sunset-harbor.jpg</span
-                          >
-                          <span class="flex-none text-[11px] text-gray-500 dark:text-gray-500"
-                            >2.4 MB</span
-                          >
-                        </div>
-                        <div
-                          class="preview-row-anim flex items-center gap-2.5 rounded-lg px-2"
-                          :style="listRowStyle"
-                        >
-                          <UIcon
-                            name="i-lucide-file-text"
-                            class="shrink-0 preview-size-anim text-gray-500 dark:text-gray-400"
-                            :style="listIconStyle"
-                          />
-                          <span
-                            class="flex-1 min-w-0 truncate text-xs text-gray-900 dark:text-gray-100"
-                            >project-specification.pdf</span
-                          >
-                          <span class="flex-none text-[11px] text-gray-500 dark:text-gray-500"
-                            >1.05 MB</span
-                          >
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </Teleport>
-          <div class="flex items-center justify-between">
-            <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Visual Settings</h3>
-            <UButton
-              label="Reset"
-              color="error"
-              variant="outline"
-              size="xs"
-              :disabled="!settingsStore.isAppearanceModified"
-              @click="handleResetAppearance"
-            />
           </div>
 
-          <div class="flex flex-col gap-8">
-            <!-- Group: Theme -->
-            <section aria-label="Theme" class="space-y-4">
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Theme</h3>
-                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                  Accent color, background and backdrop image.
-                </p>
-              </div>
-
-              <!-- Accent color swatches -->
-              <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Accent color</p>
-                  <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                    Used for the selected state, switches and the main action across the app.
-                  </p>
-                </div>
-                <span
-                  class="inline-flex flex-none items-center gap-1.5 text-xs font-medium text-gray-700 dark:text-gray-300"
-                >
-                  <span
-                    class="w-2.5 h-2.5 rounded-full"
-                    :style="{ backgroundColor: `rgb(${accentRgb})` }"
+          <div class="flex flex-wrap gap-3 pt-1" role="group" aria-label="Accent color">
+            <button
+              v-for="color in settingsStore.AVAILABLE_COLORS"
+              :key="color.name"
+              @click="selectedColor = color.name"
+              class="w-10 h-10 rounded-full transition-all relative"
+              :class="
+                selectedColor === color.name
+                  ? 'ring-2 ring-primary ring-offset-2 scale-105 shadow-md'
+                  : 'hover:scale-105 hover:shadow-sm'
+              "
+              :style="{ backgroundColor: `rgb(${color.value})` }"
+              :title="color.name.charAt(0).toUpperCase() + color.name.slice(1)"
+              :aria-label="color.name.charAt(0).toUpperCase() + color.name.slice(1)"
+              :aria-pressed="selectedColor === color.name"
+            >
+              <span
+                v-if="selectedColor === color.name"
+                class="absolute inset-0 flex items-center justify-center"
+                :class="checkOn(color.value)"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="3"
+                    d="M5 13l4 4L19 7"
                   />
-                  {{ selectedColorLabel }}
-                </span>
-              </div>
+                </svg>
+              </span>
+            </button>
+          </div>
 
-              <div class="flex flex-wrap gap-3 pt-1" role="group" aria-label="Accent color">
-                <button
-                  v-for="color in settingsStore.AVAILABLE_COLORS"
-                  :key="color.name"
-                  @click="selectedColor = color.name"
-                  class="w-10 h-10 rounded-full transition-all relative"
-                  :class="
-                    selectedColor === color.name
-                      ? 'ring-2 ring-primary ring-offset-2 scale-105 shadow-md'
-                      : 'hover:scale-105 hover:shadow-sm'
-                  "
-                  :style="{ backgroundColor: `rgb(${color.value})` }"
-                  :title="color.name.charAt(0).toUpperCase() + color.name.slice(1)"
-                  :aria-label="color.name.charAt(0).toUpperCase() + color.name.slice(1)"
-                  :aria-pressed="selectedColor === color.name"
+          <!-- Background preset tiles -->
+          <UFormField label="Background Color">
+            <template #description>
+              Showing
+              <span class="font-medium text-gray-700 dark:text-gray-300">{{ modeLabel }}-mode</span>
+              backgrounds, switch modes to see the other set
+            </template>
+
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-1 p-2">
+              <button
+                v-for="bg in visibleBackgrounds"
+                :key="bg.name"
+                @click="selectedBackground = bg.name"
+                :title="bg.description"
+                :disabled="settingsStore.hasBackgroundImage"
+                class="flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-all text-xs"
+                :class="backgroundTileClass(bg.name)"
+              >
+                <span
+                  class="w-full h-8 rounded border border-gray-200 dark:border-gray-600 relative block"
+                  :style="bg.name !== 'system' ? { backgroundColor: swatchFor(bg) } : {}"
+                  :class="bg.name === 'system' ? (isDark ? 'bg-zinc-900' : 'bg-white') : ''"
                 >
                   <span
-                    v-if="selectedColor === color.name"
+                    v-if="!settingsStore.hasBackgroundImage && selectedBackground === bg.name"
                     class="absolute inset-0 flex items-center justify-center"
-                    :class="checkOn(color.value)"
                   >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      class="w-4 h-4 drop-shadow"
+                      :class="isDark ? 'text-white' : 'text-gray-700'"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
@@ -624,407 +618,324 @@ const listRowStyle = computed(() => {
                       />
                     </svg>
                   </span>
-                </button>
-              </div>
-
-              <!-- Background preset tiles -->
-              <UFormField label="Background Color">
-                <template #description>
-                  Showing
-                  <span class="font-medium text-gray-700 dark:text-gray-300"
-                    >{{ modeLabel }}-mode</span
+                  <span
+                    v-if="bg.mode === 'both' && bg.name !== 'system'"
+                    class="absolute bottom-0.5 right-0.5 text-[9px] leading-none bg-black/20 text-white rounded px-0.5"
+                    >☀︎ ☾</span
                   >
-                  backgrounds, switch modes to see the other set
-                </template>
+                </span>
+                <span class="font-medium text-gray-700 dark:text-gray-300 leading-tight">{{
+                  bg.label
+                }}</span>
+                <span
+                  class="text-gray-400 dark:text-gray-500 leading-tight text-center line-clamp-1"
+                  >{{ bg.description }}</span
+                >
+              </button>
+            </div>
+          </UFormField>
 
-                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-1 p-2">
-                  <button
-                    v-for="bg in visibleBackgrounds"
-                    :key="bg.name"
-                    @click="selectedBackground = bg.name"
-                    :title="bg.description"
-                    :disabled="settingsStore.hasBackgroundImage"
-                    :class="[
-                      'flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-all text-xs',
-                      settingsStore.hasBackgroundImage
-                        ? 'opacity-40 cursor-not-allowed'
-                        : selectedBackground === bg.name
-                          ? 'border-primary ring-1 ring-primary shadow-sm scale-[1.03]'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:shadow-sm',
-                    ]"
-                  >
-                    <span
-                      class="w-full h-8 rounded border border-gray-200 dark:border-gray-600 relative block"
-                      :style="bg.name !== 'system' ? { backgroundColor: swatchFor(bg) } : {}"
-                      :class="bg.name === 'system' ? (isDark ? 'bg-zinc-900' : 'bg-white') : ''"
-                    >
-                      <span
-                        v-if="!settingsStore.hasBackgroundImage && selectedBackground === bg.name"
-                        class="absolute inset-0 flex items-center justify-center"
-                      >
-                        <svg
-                          class="w-4 h-4 drop-shadow"
-                          :class="isDark ? 'text-white' : 'text-gray-700'"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="3"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </span>
-                      <span
-                        v-if="bg.mode === 'both' && bg.name !== 'system'"
-                        class="absolute bottom-0.5 right-0.5 text-[9px] leading-none bg-black/20 text-white rounded px-0.5"
-                        >☀︎ ☾</span
-                      >
-                    </span>
-                    <span class="font-medium text-gray-700 dark:text-gray-300 leading-tight">{{
-                      bg.label
-                    }}</span>
-                    <span
-                      class="text-gray-400 dark:text-gray-500 leading-tight text-center line-clamp-1"
-                      >{{ bg.description }}</span
-                    >
-                  </button>
-                </div>
-              </UFormField>
+          <!-- Background image -->
+          <UFormField
+            label="Background Image"
+            description="Adds a custom image behind the app, blended with the color overlay above. Max 2 MB."
+          >
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/*"
+              class="hidden"
+              @change="handleFileChange"
+            />
 
-              <!-- Background image -->
-              <UFormField
-                label="Background Image"
-                description="Adds a custom image behind the app, blended with the color overlay above. Max 2 MB."
-              >
-                <input
-                  ref="fileInputRef"
-                  type="file"
-                  accept="image/*"
-                  class="hidden"
-                  @change="handleFileChange"
+            <div class="space-y-3 mt-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <UButton
+                  :label="settingsStore.hasBackgroundImage ? 'Replace image' : 'Upload image'"
+                  :icon="settingsStore.hasBackgroundImage ? 'i-lucide-image-up' : 'i-lucide-upload'"
+                  :loading="isUploading"
+                  :disabled="isUploading"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="triggerFileInput"
+                />
+                <UButton
+                  v-if="settingsStore.hasBackgroundImage"
+                  label="Remove"
+                  icon="i-lucide-x"
+                  color="error"
+                  variant="ghost"
+                  size="sm"
+                  @click="clearImage"
                 />
 
-                <div class="space-y-3 mt-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <UButton
-                      :label="settingsStore.hasBackgroundImage ? 'Replace image' : 'Upload image'"
-                      :icon="
-                        settingsStore.hasBackgroundImage ? 'i-lucide-image-up' : 'i-lucide-upload'
-                      "
-                      :loading="isUploading"
-                      :disabled="isUploading"
-                      color="neutral"
-                      variant="outline"
-                      size="sm"
-                      @click="triggerFileInput"
-                    />
-                    <UButton
-                      v-if="settingsStore.hasBackgroundImage"
-                      label="Remove"
-                      icon="i-lucide-x"
-                      color="error"
-                      variant="ghost"
-                      size="sm"
-                      @click="clearImage"
-                    />
-
-                    <span
-                      v-if="imageName"
-                      class="inline-flex items-center gap-1.5 text-xs bg-gray-100 dark:bg-neutral-800 rounded-full px-2.5 py-1 truncate max-w-50"
-                      :title="imageName"
-                    >
-                      <Icon icon="mdi:image-outline" class="w-3.5 h-3.5 shrink-0" />
-                      {{ imageName }}
-                    </span>
-                  </div>
-
-                  <p v-if="imageError" class="text-xs text-red-500 flex items-center gap-1">
-                    <Icon icon="mdi:alert-circle-outline" class="w-3.5 h-3.5 shrink-0" />
-                    {{ imageError }}
-                  </p>
-
-                  <Transition
-                    enter-active-class="transition-all duration-200 ease-out"
-                    enter-from-class="opacity-0 -translate-y-1"
-                    enter-to-class="opacity-100 translate-y-0"
-                    leave-active-class="transition-all duration-150 ease-in"
-                    leave-from-class="opacity-100 translate-y-0"
-                    leave-to-class="opacity-0 -translate-y-1"
-                  >
-                    <div
-                      v-if="settingsStore.hasBackgroundImage"
-                      class="flex items-center justify-between gap-6 pt-1"
-                    >
-                      <p class="text-sm text-gray-700 dark:text-gray-300">Image visibility</p>
-                      <div
-                        class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 shrink-0"
-                      >
-                        <UButton
-                          v-for="opt in imageVisibilityOptions"
-                          :key="opt.label"
-                          :label="opt.label"
-                          size="xs"
-                          :color="
-                            imageVisibilityWord(imageOpacity) === opt.label ? 'primary' : 'neutral'
-                          "
-                          :variant="
-                            imageVisibilityWord(imageOpacity) === opt.label ? 'solid' : 'ghost'
-                          "
-                          @click="imageOpacity = opt.value"
-                        />
-                      </div>
-                    </div>
-                  </Transition>
-                </div>
-              </UFormField>
-
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Interface font</p>
-                  <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                    Typeface used across the whole app.
-                  </p>
-                </div>
-                <div
-                  class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
-                  role="group"
-                  aria-label="Interface font"
+                <span
+                  v-if="imageName"
+                  class="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 border border-gray-200/70 dark:border-gray-700/70 rounded-full px-2.5 py-1 truncate max-w-50"
+                  :title="imageName"
                 >
-                  <UButton
-                    v-for="font in settingsStore.AVAILABLE_FONTS"
-                    :key="font.name"
-                    :label="font.label"
-                    size="xs"
-                    :color="fontFamily === font.name ? 'primary' : 'neutral'"
-                    :variant="fontFamily === font.name ? 'solid' : 'ghost'"
-                    @click="fontFamily = font.name"
-                  />
-                </div>
+                  <Icon icon="mdi:image-outline" class="w-3.5 h-3.5 shrink-0" />
+                  {{ imageName }}
+                </span>
               </div>
 
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <p v-if="imageError" class="text-xs text-error flex items-center gap-1">
+                <Icon icon="mdi:alert-circle-outline" class="w-3.5 h-3.5 shrink-0" />
+                {{ imageError }}
+              </p>
+
+              <Transition
+                enter-active-class="transition-all duration-200 ease-out"
+                enter-from-class="opacity-0 -translate-y-1"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition-all duration-150 ease-in"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 -translate-y-1"
+              >
+                <div
+                  v-if="settingsStore.hasBackgroundImage"
+                  class="flex items-center justify-between gap-6 pt-1"
+                >
+                  <p class="text-sm text-gray-700 dark:text-gray-300">Image visibility</p>
+                  <div
+                    class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 shrink-0"
+                  >
+                    <UButton
+                      v-for="opt in imageVisibilityOptions"
+                      :key="opt.label"
+                      :label="opt.label"
+                      size="xs"
+                      :color="
+                        imageVisibilityWord(imageOpacity) === opt.label ? 'primary' : 'neutral'
+                      "
+                      :variant="imageVisibilityWord(imageOpacity) === opt.label ? 'solid' : 'ghost'"
+                      @click="imageOpacity = opt.value"
+                    />
+                  </div>
+                </div>
+              </Transition>
+            </div>
+          </UFormField>
+
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Interface font</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                Typeface used across the whole app.
+              </p>
+            </div>
+            <div
+              class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
+              role="group"
+              aria-label="Interface font"
+            >
+              <UButton
+                v-for="font in settingsStore.AVAILABLE_FONTS"
+                :key="font.name"
+                :label="font.label"
+                size="xs"
+                :color="fontFamily === font.name ? 'primary' : 'neutral'"
+                :variant="fontFamily === font.name ? 'solid' : 'ghost'"
+                @click="fontFamily = font.name"
+              />
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Corner roundness</p>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                How rounded buttons, inputs, cards and dialogs are.
+              </p>
+            </div>
+            <div
+              class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
+              role="group"
+              aria-label="Corner roundness"
+            >
+              <UButton
+                v-for="opt in radiusOptions"
+                :key="opt.label"
+                :label="opt.label"
+                size="xs"
+                :color="cornerRadius === opt.value ? 'primary' : 'neutral'"
+                :variant="cornerRadius === opt.value ? 'solid' : 'ghost'"
+                @click="cornerRadius = opt.value"
+              />
+            </div>
+          </div>
+        </section>
+
+        <!-- Group: Glass look -->
+        <section aria-label="Glass look" class="space-y-4">
+          <div>
+            <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Glass look</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+              Background blur and see-through panels.
+            </p>
+          </div>
+
+          <div class="divide-y divide-gray-200/70 dark:divide-gray-700/70">
+            <div class="py-4 first:pt-0 last:pb-0 space-y-4">
+              <div class="flex items-center justify-between gap-6">
                 <div class="min-w-0">
                   <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    Corner roundness
+                    Background blur
                   </p>
                   <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                    How rounded buttons, inputs, cards and dialogs are.
+                    Soften what shows through cards, bars and popovers.
                   </p>
                 </div>
-                <div
-                  class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
-                  role="group"
-                  aria-label="Corner roundness"
-                >
-                  <UButton
-                    v-for="opt in radiusOptions"
-                    :key="opt.label"
-                    :label="opt.label"
-                    size="xs"
-                    :color="cornerRadius === opt.value ? 'primary' : 'neutral'"
-                    :variant="cornerRadius === opt.value ? 'solid' : 'ghost'"
-                    @click="cornerRadius = opt.value"
-                  />
-                </div>
-              </div>
-            </section>
-
-            <!-- Group: Glass look -->
-            <section aria-label="Glass look" class="space-y-4">
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">Glass look</h3>
-                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                  Background blur and see-through panels.
-                </p>
+                <USwitch v-model="frostEnabled" size="lg" class="shrink-0" />
               </div>
 
-              <div class="divide-y divide-gray-200/70 dark:divide-gray-700/70">
-                <div class="py-4 first:pt-0 last:pb-0 space-y-4">
-                  <div class="flex items-center justify-between gap-6">
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        Background blur
-                      </p>
-                      <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                        Soften what shows through cards, bars and popovers.
-                      </p>
-                    </div>
-                    <USwitch v-model="frostEnabled" size="lg" class="shrink-0" />
-                  </div>
-
-                  <div
-                    v-if="frostEnabled"
-                    class="pl-4 border-l-2 border-gray-200 dark:border-gray-700 space-y-4"
-                  >
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <p class="text-sm text-gray-700 dark:text-gray-300">Blur amount</p>
-                      <div
-                        class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
-                      >
-                        <UButton
-                          v-for="opt in frostOptions"
-                          :key="opt.label"
-                          :label="opt.label"
-                          size="xs"
-                          :color="frostWord(frostStrength) === opt.label ? 'primary' : 'neutral'"
-                          :variant="frostWord(frostStrength) === opt.label ? 'solid' : 'ghost'"
-                          @click="frostStrength = opt.value"
-                        />
-                      </div>
-                    </div>
-
-                    <div class="flex items-center justify-between gap-6">
-                      <div class="min-w-0">
-                        <p class="text-sm text-gray-700 dark:text-gray-300">Calm phones down</p>
-                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                          Keep small screens solid, blur can lag on older phones.
-                        </p>
-                      </div>
-                      <USwitch v-model="frostDisabledOnMobile" size="lg" class="shrink-0" />
-                    </div>
-                  </div>
-                </div>
-
-                <div class="py-4 first:pt-0 last:pb-0 space-y-4">
-                  <div class="flex items-center justify-between gap-6">
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        See-through panels
-                      </p>
-                      <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                        Let the background show through cards, bars and sheets.
-                      </p>
-                    </div>
-                    <USwitch v-model="transparencyEnabled" size="lg" class="shrink-0" />
-                  </div>
-
-                  <div
-                    v-if="transparencyEnabled"
-                    class="pl-4 border-l-2 border-gray-200 dark:border-gray-700"
-                  >
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <p class="text-sm text-gray-700 dark:text-gray-300">Panel clarity</p>
-                      <div
-                        class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
-                      >
-                        <UButton
-                          v-for="opt in opacityOptions"
-                          :key="opt.label"
-                          :label="opt.label"
-                          size="xs"
-                          :color="opacityWord(surfaceOpacity) === opt.label ? 'primary' : 'neutral'"
-                          :variant="opacityWord(surfaceOpacity) === opt.label ? 'solid' : 'ghost'"
-                          @click="surfaceOpacity = opt.value"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Group: File browsing -->
-            <section aria-label="File browsing" class="space-y-4">
-              <div>
-                <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">File browsing</h3>
-                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                  How files look in the explorer.
-                </p>
-              </div>
-
-              <div class="divide-y divide-gray-200/70 dark:divide-gray-700/70">
-                <div class="flex items-center justify-between gap-6 py-4 first:pt-0 last:pb-0">
-                  <div class="min-w-0">
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                      File thumbnails
-                    </p>
-                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                      Show image previews instead of file-type icons in the explorer grid.
-                    </p>
-                  </div>
-                  <USwitch v-model="thumbnailsEnabled" size="lg" class="shrink-0" />
-                </div>
-
-                <div
-                  class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
-                >
-                  <div class="min-w-0">
-                    <p class="text-sm text-gray-700 dark:text-gray-300">Grid tile size</p>
-                    <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                      How big icons and thumbnails are in grid view.
-                    </p>
-                  </div>
+              <div
+                v-if="frostEnabled"
+                class="pl-4 border-l-2 border-gray-200 dark:border-gray-700 space-y-4"
+              >
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <p class="text-sm text-gray-700 dark:text-gray-300">Blur amount</p>
                   <div
                     class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
                   >
                     <UButton
-                      v-for="opt in gridSizeOptions"
+                      v-for="opt in frostOptions"
                       :key="opt.label"
                       :label="opt.label"
                       size="xs"
-                      :color="gridSizeWord(gridIconSize) === opt.label ? 'primary' : 'neutral'"
-                      :variant="gridSizeWord(gridIconSize) === opt.label ? 'solid' : 'ghost'"
-                      @click="gridIconSize = opt.value"
+                      :color="frostWord(frostStrength) === opt.label ? 'primary' : 'neutral'"
+                      :variant="frostWord(frostStrength) === opt.label ? 'solid' : 'ghost'"
+                      @click="frostStrength = opt.value"
                     />
                   </div>
                 </div>
 
-                <div
-                  class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
-                >
+                <div class="flex items-center justify-between gap-6">
                   <div class="min-w-0">
-                    <p class="text-sm text-gray-700 dark:text-gray-300">List row size</p>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">Calm phones down</p>
                     <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                      How tall rows are in list view.
+                      Keep small screens solid, blur can lag on older phones.
                     </p>
                   </div>
+                  <USwitch v-model="frostDisabledOnMobile" size="lg" class="shrink-0" />
+                </div>
+              </div>
+            </div>
+
+            <div class="py-4 first:pt-0 last:pb-0 space-y-4">
+              <div class="flex items-center justify-between gap-6">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    See-through panels
+                  </p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                    Let the background show through cards, bars and sheets.
+                  </p>
+                </div>
+                <USwitch v-model="transparencyEnabled" size="lg" class="shrink-0" />
+              </div>
+
+              <div
+                v-if="transparencyEnabled"
+                class="pl-4 border-l-2 border-gray-200 dark:border-gray-700"
+              >
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <p class="text-sm text-gray-700 dark:text-gray-300">Panel clarity</p>
                   <div
                     class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
                   >
                     <UButton
-                      v-for="opt in listSizeOptions"
+                      v-for="opt in opacityOptions"
                       :key="opt.label"
                       :label="opt.label"
                       size="xs"
-                      :color="listSizeWord(listIconSize) === opt.label ? 'primary' : 'neutral'"
-                      :variant="listSizeWord(listIconSize) === opt.label ? 'solid' : 'ghost'"
-                      @click="listIconSize = opt.value"
+                      :color="opacityWord(surfaceOpacity) === opt.label ? 'primary' : 'neutral'"
+                      :variant="opacityWord(surfaceOpacity) === opt.label ? 'solid' : 'ghost'"
+                      @click="surfaceOpacity = opt.value"
                     />
                   </div>
                 </div>
               </div>
-            </section>
+            </div>
           </div>
-        </div>
-      </template>
-    </UCollapsible>
-  </UCard>
+        </section>
+
+        <!-- Group: File browsing -->
+        <section aria-label="File browsing" class="space-y-4">
+          <div>
+            <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100">File browsing</h3>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+              How files look in the explorer.
+            </p>
+          </div>
+
+          <div class="divide-y divide-gray-200/70 dark:divide-gray-700/70">
+            <div class="flex items-center justify-between gap-6 py-4 first:pt-0 last:pb-0">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">File thumbnails</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  Show image previews instead of file-type icons in the explorer grid.
+                </p>
+              </div>
+              <USwitch v-model="thumbnailsEnabled" size="lg" class="shrink-0" />
+            </div>
+
+            <div
+              class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
+            >
+              <div class="min-w-0">
+                <p class="text-sm text-gray-700 dark:text-gray-300">Grid tile size</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  How big icons and thumbnails are in grid view.
+                </p>
+              </div>
+              <div
+                class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
+              >
+                <UButton
+                  v-for="opt in gridSizeOptions"
+                  :key="opt.label"
+                  :label="opt.label"
+                  size="xs"
+                  :color="gridSizeWord(gridIconSize) === opt.label ? 'primary' : 'neutral'"
+                  :variant="gridSizeWord(gridIconSize) === opt.label ? 'solid' : 'ghost'"
+                  @click="gridIconSize = opt.value"
+                />
+              </div>
+            </div>
+
+            <div
+              class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 first:pt-0 last:pb-0"
+            >
+              <div class="min-w-0">
+                <p class="text-sm text-gray-700 dark:text-gray-300">List row size</p>
+                <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  How tall rows are in list view.
+                </p>
+              </div>
+              <div
+                class="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 self-start sm:self-auto shrink-0"
+              >
+                <UButton
+                  v-for="opt in listSizeOptions"
+                  :key="opt.label"
+                  :label="opt.label"
+                  size="xs"
+                  :color="listSizeWord(listIconSize) === opt.label ? 'primary' : 'neutral'"
+                  :variant="listSizeWord(listIconSize) === opt.label ? 'solid' : 'ghost'"
+                  @click="listIconSize = opt.value"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </SettingsSection>
 </template>
 
 <style scoped>
-.preview-thumb {
-  display: block;
-  transition:
-    width 200ms ease-out,
-    height 200ms ease-out;
-  background:
-    radial-gradient(circle at 74% 28%, #fde68a 0 12%, transparent 13%),
-    linear-gradient(160deg, #38bdf8, #6366f1 55%, #f472b6);
-}
-
-.preview-size-anim {
-  transition:
-    width 150ms ease-out,
-    height 150ms ease-out;
-}
-
-.preview-row-anim {
-  transition: padding 150ms ease-out;
-}
-
 @media (max-width: 767px) {
   .preview-dock {
     position: fixed;
@@ -1055,11 +966,6 @@ const listRowStyle = computed(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .preview-cards {
-    transition: none;
-  }
-  .preview-thumb,
-  .preview-size-anim,
-  .preview-row-anim {
     transition: none;
   }
 }

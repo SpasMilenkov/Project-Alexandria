@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Alexandria.Common.Policies;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
@@ -139,7 +140,7 @@ public class FileVersionRepository : IFileVersionRepository
         Guid ownerId,
         CancellationToken ct = default)
     {
-        var thresholdDate = DateTime.UtcNow.AddDays(-30);
+        var thresholdDate = TrashRetentionPolicy.RestorableSince(DateTime.UtcNow);
 
         var versions = await _context.FileVersions
             .Where(v =>
@@ -164,8 +165,9 @@ public class FileVersionRepository : IFileVersionRepository
     public async Task<PaginatedResult<FileVersionDto>> GetVersionsForFileAsync(Guid fileId, Guid ownerId, int page = 1,
         int pageSize = 10, CancellationToken ct = default)
     {
+        var restorableSince = TrashRetentionPolicy.RestorableSince(DateTime.UtcNow);
         var baseQuery = _dbSet.Where(f => f.FileId == fileId && f.File.OwnerId == ownerId &&
-                                          (f.DeletedAt == null || f.DeletedAt >= DateTime.UtcNow.AddDays(-30)));
+                                          (f.DeletedAt == null || f.DeletedAt >= restorableSince));
 
         var totalCount = await baseQuery.CountAsync(ct);
         var items = await baseQuery

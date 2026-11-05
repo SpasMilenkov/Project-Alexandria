@@ -25,7 +25,7 @@ import type {
   HomeWidgetSize,
   HomeWidgetType,
 } from "@/enums/home-widget";
-import type { WrappedPalette } from "@/utils/wrapped-palette.utils";
+import type { WrappedPalette } from "@/features/wrapped/palette";
 
 export interface HomeClockOptions {
   timeZone: string;

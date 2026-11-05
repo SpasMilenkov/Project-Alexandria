@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
+import { getSignInDestination } from "@/features/home/landing";
 import { useAuthStore } from "@/stores/auth";
-import { getSignInDestination } from "@/utils/home-landing";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),

@@ -1,20 +1,13 @@
 <template>
-  <UCard class="frosted-glass glass-surface">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <Icon icon="mdi-history" class="w-8 h-8 text-primary" />
-          <span class="font-semibold">Version History</span>
-        </div>
-        <UBadge color="primary" variant="soft">
-          {{ versionsData?.totalCount ?? 0 }}
-          version{{ (versionsData?.totalCount ?? 0) !== 1 ? "s" : "" }}
-        </UBadge>
-      </div>
+  <DetailsSection title="Versions">
+    <template #actions>
+      <span class="text-xs tabular-nums text-gray-500 dark:text-gray-500">{{
+        versionCountLabel
+      }}</span>
     </template>
 
-    <div v-if="versionsLoading" class="space-y-3">
-      <USkeleton v-for="i in 3" :key="i" class="h-16 w-full rounded-lg" />
+    <div v-if="versionsPending" class="flex h-24 items-center justify-center text-gray-500">
+      <BlockSpinner :size="20" />
     </div>
 
     <div v-else-if="versionsData?.items?.length" class="space-y-2">
@@ -39,7 +32,7 @@
               label="This version is encrypted"
               :delay-duration="400"
             >
-              <Icon icon="mdi-lock" class="w-3.5 h-3.5 text-primary shrink-0" />
+              <Icon icon="mdi-lock" class="w-3.5 h-3.5 text-gray-500 shrink-0" />
             </UTooltip>
 
             <UBadge
@@ -77,9 +70,7 @@
             </Transition>
           </div>
 
-          <div
-            class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400"
-          >
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
             <div class="flex items-center gap-1">
               <Icon icon="mdi-scale" class="w-3.5 h-3.5 shrink-0" />
               <span>{{ formatBytes(Number(version.size)) }}</span>
@@ -235,9 +226,9 @@
 
       <div
         v-if="versionsData.totalCount > versionsPageSize"
-        class="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-neutral-700"
+        class="flex items-center justify-between pt-2 border-t border-gray-200/70 dark:border-gray-700/70"
       >
-        <span class="text-xs text-neutral-500 dark:text-neutral-400">
+        <span class="text-xs text-gray-600 dark:text-gray-400">
           Showing {{ versionsData.items.length }} of {{ versionsData.totalCount }} versions
         </span>
         <div class="flex items-center gap-1">
@@ -266,29 +257,32 @@
 
     <div
       v-else
-      class="flex flex-col items-center gap-2 py-4 text-neutral-400 dark:text-neutral-500"
+      class="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-300/80 py-5 dark:border-gray-700/80"
     >
-      <Icon icon="mdi-history" class="w-8 h-8" />
-      <span class="text-sm">No version history available</span>
+      <Icon icon="mdi-history" class="w-8 h-8 text-gray-400 dark:text-gray-600" />
+      <span class="text-sm text-gray-600 dark:text-gray-400">No version history available</span>
     </div>
-  </UCard>
+  </DetailsSection>
 </template>
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 
 import { AudioRung, VideoRung } from "@/api/policy";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import DetailsSection from "@/components/common/details/DetailsSection.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { changeActiveVersion, deleteVersion, restoreFileVersion } from "@/mutations/files";
 import { queueTranspilationJob } from "@/mutations/streaming";
 import { getVersionsForFile } from "@/queries/files";
-import { getFileTypeReadable } from "@/utils/mimetype.utils";
-import { formatBytes } from "@/utils/size.utils";
+import { getFileTypeReadable } from "@/utils/files/mimetype";
+import { formatBytes } from "@/utils/size";
 
-import ShareLinkModal from "./Modals/ShareLinkModal.vue";
+import ShareLinkModal from "@/components/dashboard/file-system/Modals/ShareLinkModal.vue";
 
 interface FileVersionDto {
   id: string;
@@ -310,7 +304,8 @@ const emit = defineEmits<{
   "versions-changed": [];
 }>();
 
-const toast = useAppToast();
+const toast = useAppToast("versions");
+const router = useRouter();
 
 // Version status presentation
 
@@ -319,7 +314,7 @@ type VersionStatus = "deleted" | "current" | "default";
 const VERSION_ROW_CLASSES: Record<VersionStatus, string> = {
   deleted: "border-error/30 bg-error/5",
   current: "border-primary/30 bg-primary/5",
-  default: "border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/30",
+  default: "border-gray-200/70 dark:border-gray-700/70",
 };
 
 const VERSION_ICONS: Record<VersionStatus, string> = {
@@ -331,7 +326,7 @@ const VERSION_ICONS: Record<VersionStatus, string> = {
 const VERSION_ICON_CLASSES: Record<VersionStatus, string> = {
   deleted: "text-error",
   current: "text-primary",
-  default: "text-neutral-400 dark:text-neutral-500",
+  default: "text-gray-500 dark:text-gray-500",
 };
 
 const getVersionStatus = (version: FileVersionDto): VersionStatus => {
@@ -425,9 +420,15 @@ const versionsQueryParams = computed(() => ({
 
 const {
   data: versionsData,
-  isLoading: versionsLoading,
+  isPending: versionsPending,
   refresh: refreshVersions,
 } = useQuery(() => getVersionsForFile(versionsQueryParams.value));
+
+const versionCountLabel = computed(() => {
+  const count = versionsData.value?.totalCount ?? 0;
+  if (count === 1) return "1 version";
+  return `${count} versions`;
+});
 
 // Mutations
 
@@ -444,6 +445,14 @@ const queuedVersionIds = ref<Set<string>>(new Set());
 
 // Handlers
 
+const versionLabel = (versionId: string) => {
+  const number = versionsData.value?.items.find(
+    (version) => version.id === versionId,
+  )?.versionNumber;
+
+  return number === undefined ? "this version" : `version ${number}`;
+};
+
 const handleDownloadVersion = (versionId: string) => {
   downloadVersion(versionId);
 };
@@ -451,11 +460,16 @@ const handleDownloadVersion = (versionId: string) => {
 const handleDeleteVersion = async (versionId: string) => {
   deletingVersionId.value = versionId;
   try {
+    const label = versionLabel(versionId);
+
     await deleteVersionMutate({ fileId: props.fileId, versionId });
     await refreshVersions();
     emit("versions-changed");
+    toast.success(`Deleted ${label}`);
   } catch (err) {
-    toast.error("Failed to delete version", err);
+    toast.error(`Couldn't delete ${versionLabel(versionId)}`, err, {
+      retry: () => handleDeleteVersion(versionId),
+    });
   } finally {
     deletingVersionId.value = null;
   }
@@ -467,8 +481,11 @@ const handleChangeActiveVersion = async (versionId: string) => {
     await changeActiveVersionMutate({ fileId: props.fileId, versionId });
     await refreshVersions();
     emit("versions-changed");
+    toast.success(`Switched to ${versionLabel(versionId)}`);
   } catch (err) {
-    toast.error("Failed to change active version", err);
+    toast.error(`Couldn't switch to ${versionLabel(versionId)}`, err, {
+      retry: () => handleChangeActiveVersion(versionId),
+    });
   } finally {
     changingActiveVersionId.value = null;
   }
@@ -480,8 +497,11 @@ const handleRestoreVersion = async (versionId: string) => {
     await restoreVersionMutate({ fileId: props.fileId, versionId });
     await refreshVersions();
     emit("versions-changed");
+    toast.success(`Restored ${versionLabel(versionId)}`);
   } catch (err) {
-    toast.error("Failed to restore version", err);
+    toast.error(`Couldn't restore ${versionLabel(versionId)}`, err, {
+      retry: () => handleRestoreVersion(versionId),
+    });
   } finally {
     changingActiveVersionId.value = null;
   }
@@ -498,6 +518,19 @@ const handleQueueTranspilationJob = async (versionId: string, mimeType: string) 
 
     transpilationPopoverOpen[versionId] = false;
 
+    toast.success(`Queued ${versionLabel(versionId)} for transcoding`, {
+      actions: [
+        {
+          icon: "i-lucide-arrow-up-right",
+          label: "View jobs",
+          onClick: () => {
+            void router.push({ name: "transpilation-jobs" });
+          },
+        },
+      ],
+      source: "jobs",
+    });
+
     queuedVersionIds.value = new Set([...queuedVersionIds.value, versionId]);
     setTimeout(() => {
       queuedVersionIds.value = new Set(
@@ -505,7 +538,9 @@ const handleQueueTranspilationJob = async (versionId: string, mimeType: string) 
       );
     }, 2500);
   } catch (err) {
-    toast.error("Failed to queue transpilation job", err);
+    toast.error(`Couldn't queue ${versionLabel(versionId)} for transcoding`, err, {
+      source: "jobs",
+    });
   } finally {
     queuingTranspilationVersionId.value = null;
   }

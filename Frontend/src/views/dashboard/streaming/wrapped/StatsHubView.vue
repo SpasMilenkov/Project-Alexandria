@@ -1,37 +1,27 @@
 <template>
   <main class="mx-auto flex w-full flex-col gap-3 p-3">
-    <header
-      class="flex flex-col gap-4 rounded-xl border border-gray-200/70 px-4 py-4 frosted-glass glass-surface-strong sm:flex-row sm:items-end sm:justify-between md:px-5 dark:border-gray-700/70"
-    >
-      <div>
-        <p
-          class="text-xs font-semibold tracking-[0.16em] text-gray-600 uppercase dark:text-gray-400"
-        >
-          A soundtrack worth remembering
-        </p>
+    <template v-if="listeningEmpty">
+      <ListeningWelcomeHero />
 
-        <h1 class="mt-2 text-3xl font-black tracking-tight text-gray-900 dark:text-gray-100">
-          Your listening
-        </h1>
+      <ListeningPreviews />
+    </template>
 
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Your recent months, annual recaps, and daily listening history.
-        </p>
+    <template v-else>
+      <ListeningHero :key="userId" />
+
+      <div
+        :key="userId"
+        class="space-y-8 rounded-[14px] border border-gray-200/70 p-4 frosted-glass glass-surface md:p-5 dark:border-gray-700/70"
+      >
+        <div id="recaps" ref="recapsSection" class="scroll-mt-3" tabindex="-1">
+          <ListeningRecaps />
+        </div>
+
+        <div id="timeline" ref="timelineSection" class="scroll-mt-3" tabindex="-1">
+          <ListeningTimeline />
+        </div>
       </div>
-    </header>
-
-    <div
-      :key="userId"
-      class="space-y-8 rounded-[14px] border border-gray-200/70 p-4 frosted-glass glass-surface md:p-5 dark:border-gray-700/70"
-    >
-      <div id="recaps" ref="recapsSection" class="scroll-mt-3" tabindex="-1">
-        <ListeningRecaps />
-      </div>
-
-      <div id="timeline" ref="timelineSection" class="scroll-mt-3" tabindex="-1">
-        <ListeningTimeline />
-      </div>
-    </div>
+    </template>
   </main>
 </template>
 
@@ -40,14 +30,20 @@ import { useEventListener, useResizeObserver } from "@vueuse/core";
 import { computed, nextTick, ref, useTemplateRef, watch } from "vue";
 import { useRoute } from "vue-router";
 
-import ListeningRecaps from "@/components/streaming/wrapped/ListeningRecaps.vue";
-import ListeningTimeline from "@/components/streaming/wrapped/ListeningTimeline.vue";
+import ListeningHero from "@/components/streaming/wrapped/listening/ListeningHero.vue";
+import ListeningPreviews from "@/components/streaming/wrapped/listening/ListeningPreviews.vue";
+import ListeningTimeline from "@/components/streaming/wrapped/listening/ListeningTimeline.vue";
+import ListeningWelcomeHero from "@/components/streaming/wrapped/listening/ListeningWelcomeHero.vue";
+import ListeningRecaps from "@/components/streaming/wrapped/recaps/ListeningRecaps.vue";
+import { useListeningHistoryEmpty } from "@/composables/useListeningHistoryEmpty";
 import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();
 const auth = useAuthStore();
 
 const userId = computed(() => auth.user?.user.id);
+
+const { listeningEmpty } = useListeningHistoryEmpty(userId);
 
 const timelineSection = useTemplateRef("timelineSection");
 const recapsSection = useTemplateRef("recapsSection");

@@ -428,7 +428,7 @@ public partial class ContentStorageService(
     {
         try
         {
-            var breakdown = await GetStorageBreakdown(userId, summary: true, ct: ct);
+            var breakdown = await GetStorageBreakdown(userId, ct);
             if (breakdown.QuotaBytes > 0 && breakdown.UsedBytes + contentLength > breakdown.QuotaBytes)
                 LogStorageQuotaExceeded(logger, userId, breakdown.UsedBytes, contentLength, breakdown.QuotaBytes);
         }
@@ -850,14 +850,10 @@ public partial class ContentStorageService(
         batch.Clear();
     }
 
-    public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, bool summary = false,
-        CancellationToken ct = default)
+    public async Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
     {
         var trashSize = await unitOfWork.Files.GetDeletedSizeAsync(userId, ct);
         var sizeByMimeType = await unitOfWork.Files.GetSizeByTypeAsync(userId, ct);
-        IEnumerable<FileSummary> oldFiles = [];
-        if (!summary)
-            oldFiles = await unitOfWork.Files.GetOldFilesAsync(userId, ct);
         var (previewsSize, previewsCount, previewsByKind) =
             await unitOfWork.Previews.GetStorageByUserAsync(userId, ct);
         var (transcodedSize, representationsCount) =
@@ -869,7 +865,6 @@ public partial class ContentStorageService(
 
         return new StorageBreakdown
         {
-            OldFiles = oldFiles,
             SizeByType = sizeByMimeType,
             TrashSize = trashSize,
             FilesSize = filesSize,

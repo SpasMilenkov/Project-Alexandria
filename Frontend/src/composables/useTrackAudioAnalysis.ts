@@ -3,8 +3,8 @@ import { type MaybeRefOrGetter, computed, toValue } from "vue";
 
 import type { EnrichmentRowDto } from "@/api/audioAnalysis";
 
+import { buildMoodEntries, parseGenreLabel, voicePole } from "@/features/audio-analysis/taxonomy";
 import { getFileAudioAnalysis } from "@/queries/audioAnalysis";
-import { buildMoodEntries, parseGenreLabel, voicePole } from "@/utils/audio-taxonomy.utils";
 
 interface GenrePrediction {
   label: string;

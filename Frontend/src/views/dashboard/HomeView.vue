@@ -7,26 +7,23 @@ import type { HomeWidgetSize, HomeWidgetType } from "@/enums/home-widget";
 import type { HomeEditorTarget, HomeWidget, HomeWidgetOptions } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
-import HomeDashboardGrid from "@/components/dashboard/home/HomeDashboardGrid.vue";
-import HomeEditorControls from "@/components/dashboard/home/HomeEditorControls.vue";
-import HomeEditorPanel from "@/components/dashboard/home/HomeEditorPanel.vue";
-import HomeLoadError from "@/components/dashboard/home/HomeLoadError.vue";
-import HomeMobilePreview from "@/components/dashboard/home/HomeMobilePreview.vue";
-import HomeWidgetCatalogue from "@/components/dashboard/home/HomeWidgetCatalogue.vue";
-import HomeWidgetInspector from "@/components/dashboard/home/HomeWidgetInspector.vue";
+import HomeWidgetCatalogue from "@/components/dashboard/home/catalogue/HomeWidgetCatalogue.vue";
+import HomeEditorControls from "@/components/dashboard/home/editor/HomeEditorControls.vue";
+import HomeEditorPanel from "@/components/dashboard/home/editor/HomeEditorPanel.vue";
+import HomeLoadError from "@/components/dashboard/home/editor/HomeLoadError.vue";
+import HomeMobilePreview from "@/components/dashboard/home/editor/HomeMobilePreview.vue";
+import HomeWidgetInspector from "@/components/dashboard/home/editor/HomeWidgetInspector.vue";
+import HomeDashboardGrid from "@/components/dashboard/home/grid/HomeDashboardGrid.vue";
 import { HOME_WIDGET_REGISTRY } from "@/components/dashboard/home/registry";
 import { useHomeEditorHistory } from "@/composables/useHomeEditorHistory";
 import { useHomeSettings } from "@/composables/useHomeSettings";
-import { useAuthStore } from "@/stores/auth";
-import { useHomeStore } from "@/stores/home";
-import { homeClockGreeting } from "@/utils/home-clock";
+import { homeEditorKeyboardBlocked, homeResizeByCells } from "@/features/home/grid/input";
 import {
   firstFreeHomeCell,
   homeSpatialOrder,
   homeWidgetFootprint,
   placeHomeWidget,
-} from "@/utils/home-grid";
-import { homeEditorKeyboardBlocked, homeResizeByCells } from "@/utils/home-grid-input";
+} from "@/features/home/grid/placement";
 import {
   MAX_HOME_WIDGETS,
   createHomeWidget,
@@ -34,12 +31,15 @@ import {
   selectedHomeLayout,
   setSeparateMobileLayout,
   updateHomeWidgetOptions,
-} from "@/utils/home-layout";
-import { cloneHomeWidgetOptions } from "@/utils/home-widget-options";
-import { glassModalContent } from "@/utils/modalUi";
+} from "@/features/home/layout";
+import { cloneHomeWidgetOptions } from "@/features/home/widget-options";
+import { homeClockGreeting } from "@/features/home/widgets/clock/clock";
+import { useAuthStore } from "@/stores/auth";
+import { useHomeStore } from "@/stores/home";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const HomeWidgetShowcase = defineAsyncComponent(
-  () => import("@/components/dashboard/home/HomeWidgetShowcase.vue"),
+  () => import("@/components/dashboard/home/catalogue/HomeWidgetShowcase.vue"),
 );
 
 const auth = useAuthStore();
@@ -594,6 +594,8 @@ onUnmounted(() => {
       :class="{
         'frosted-glass glass-surface border-b': store.isEditing,
         'is-collapsed': !store.isEditing && !showHeaderGreeting,
+        'frosted-glass glass-surface-strong rounded-2xl border px-5 py-4':
+          !store.isEditing && showHeaderGreeting,
       }"
     >
       <div
@@ -615,7 +617,7 @@ onUnmounted(() => {
         </h1>
         <p
           v-if="!store.isEditing && showHeaderGreeting"
-          class="mt-2 text-sm text-gray-600 dark:text-gray-400"
+          class="mt-1 text-sm text-gray-600 dark:text-gray-400"
         >
           Everything in your library, arranged your way.
         </p>
@@ -728,7 +730,6 @@ onUnmounted(() => {
           </div>
         </template>
       </template>
-
     </header>
 
     <HomeLoadError v-if="showError" :retrying="isLoading" :disabled="isSaving" @retry="refresh()" />

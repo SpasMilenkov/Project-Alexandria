@@ -2,7 +2,7 @@ import { computed, shallowRef, watch } from "vue";
 
 import type { HomeEditorTarget, HomeSettings } from "@/types/home";
 
-import { cloneHomeSettings } from "@/utils/home-layout";
+import { cloneHomeSettings } from "@/features/home/layout";
 
 interface EditorContext {
   target: HomeEditorTarget;

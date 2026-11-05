@@ -1,6 +1,6 @@
 import type { PreviewKind } from "@/enums/PreviewKind";
 
-import type { FileSummary, PaginatedResponse } from "./directory";
+import type { PaginatedResponse } from "./directory";
 
 import { apiClient } from "./client";
 
@@ -19,7 +19,6 @@ export interface StorageInfo {
 export interface StorageBreakdown {
   sizeByType: Record<string, number>;
   trashSize: number;
-  oldFiles: FileSummary[];
   filesSize: number;
   previewsSize: number;
   previewsCount: number;
@@ -128,10 +127,8 @@ export interface ServerResourcesResponse {
 }
 
 export const statusApi = {
-  getMyStorage: async (summary = false): Promise<StorageBreakdown> => {
-    const result = await apiClient.get<StorageBreakdown>("/storage/my-storage", {
-      params: summary ? { summary: true } : undefined,
-    });
+  getMyStorage: async (): Promise<StorageBreakdown> => {
+    const result = await apiClient.get<StorageBreakdown>("/storage/my-storage");
     return result.data;
   },
 

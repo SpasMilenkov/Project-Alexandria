@@ -69,31 +69,31 @@ export const userQueryUiSchema = z
   })
   // Date range consistency
   .refine(
-    (d) => !d.createdAfter || !d.createdBefore || d.createdAfter.compare(d.createdBefore) < 0,
+    (d) => !d.createdAfter || !d.createdBefore || d.createdAfter.compare(d.createdBefore) <= 0,
     {
-      message: "CreatedAfter must be earlier than CreatedBefore",
+      message: "CreatedAfter cannot be later than CreatedBefore",
       path: ["createdAfter"],
     },
   )
   .refine(
-    (d) => !d.updatedAfter || !d.updatedBefore || d.updatedAfter.compare(d.updatedBefore) < 0,
+    (d) => !d.updatedAfter || !d.updatedBefore || d.updatedAfter.compare(d.updatedBefore) <= 0,
     {
-      message: "UpdatedAfter must be earlier than UpdatedBefore",
+      message: "UpdatedAfter cannot be later than UpdatedBefore",
       path: ["updatedAfter"],
     },
   )
   .refine(
-    (d) => !d.deletedAfter || !d.deletedBefore || d.deletedAfter.compare(d.deletedBefore) < 0,
+    (d) => !d.deletedAfter || !d.deletedBefore || d.deletedAfter.compare(d.deletedBefore) <= 0,
     {
-      message: "DeletedAfter must be earlier than DeletedBefore",
+      message: "DeletedAfter cannot be later than DeletedBefore",
       path: ["deletedAfter"],
     },
   )
   .refine(
     (d) =>
-      !d.lockedOutAfter || !d.lockedOutBefore || d.lockedOutAfter.compare(d.lockedOutBefore) < 0,
+      !d.lockedOutAfter || !d.lockedOutBefore || d.lockedOutAfter.compare(d.lockedOutBefore) <= 0,
     {
-      message: "LockedOutAfter must be earlier than LockedOutBefore",
+      message: "LockedOutAfter cannot be later than LockedOutBefore",
       path: ["lockedOutAfter"],
     },
   )

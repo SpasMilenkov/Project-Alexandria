@@ -20,14 +20,20 @@ import { useRoute } from "vue-router";
 import type { LyricsStatsBucket } from "@/api/lyricsStats";
 
 import { LYRICS_PROVIDER, LYRICS_STATS_BUCKET, LYRICS_STATUS } from "@/api/lyricsStats";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
 import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
+import ChartFrame from "@/components/dashboard/integrations/ChartFrame.vue";
+import IntegrationPageHeader from "@/components/dashboard/integrations/IntegrationPageHeader.vue";
+import IntegrationPanel from "@/components/dashboard/integrations/IntegrationPanel.vue";
+import SegmentedControl from "@/components/dashboard/integrations/SegmentedControl.vue";
+import StatTile from "@/components/dashboard/integrations/StatTile.vue";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { useRollingNow } from "@/composables/useRollingNow";
 import { useTheme } from "@/composables/useTheme";
 import { JobType, ServiceType } from "@/enums";
+import { parseDeepLinkQuery } from "@/features/monitoring/service-routing";
 import { lyricsOverview, lyricsTrend } from "@/queries/lyricsStats";
-import { parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
 
 ChartJS.register(
   Title,
@@ -238,203 +244,118 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
 </script>
 
 <template>
-  <div class="p-3 sm:p-5 lg:p-6">
-    <div class="max-w-400 mx-auto space-y-3 lg:space-y-4">
-      <!-- Page header -->
-      <div class="flex items-center justify-between gap-3 flex-wrap mb-1">
-        <div>
-          <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Lyrics Dashboard</h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Fetch outcomes, provider reliability and confidence for the lyrics worker
-          </p>
-        </div>
-      </div>
+  <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
+    <IntegrationPageHeader
+      title="Lyrics"
+      icon="mdi:script-text-outline"
+      :services="[ServiceType.Lyrics]"
+    >
+      <template #actions>
+        <SegmentedControl v-model="rangeMs" :options="rangeOptions" label="Time range" />
+        <SegmentedControl v-model="bucket" :options="bucketOptions" label="Bucket size" />
+      </template>
+    </IntegrationPageHeader>
 
-      <!-- Stat cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Fetched
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <div class="flex flex-col gap-3">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile label="Fetched" :loading="overviewLoading">
             {{ fetchedTotal.toLocaleString() }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Failed fetches
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
-          <p
-            v-else
-            class="text-2xl font-bold tabular-nums"
-            :class="
-              failedTotal > 0
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-gray-900 dark:text-gray-100'
-            "
+          </StatTile>
+          <StatTile
+            label="Failed fetches"
+            :loading="overviewLoading"
+            :tone="failedTotal > 0 ? 'danger' : 'default'"
           >
             {{ failedTotal.toLocaleString() }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Failure rate (window)
-          </p>
-          <USkeleton v-if="trendLoading" class="h-7 w-16 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+          </StatTile>
+          <StatTile label="Failure rate (window)" :loading="trendLoading">
             {{ windowFailureRate === null ? "—" : `${windowFailureRate}%` }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Avg confidence
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-16 mt-1" />
-          <!-- ConfidenceScore is an arbitrary 1–10 scale (matches the
-               LyricsPanel badge), not a 0–1 ratio -->
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+          </StatTile>
+          <!-- ConfidenceScore is an arbitrary 1–10 scale, not a 0–1 ratio. -->
+          <StatTile label="Avg confidence" :loading="overviewLoading">
             {{
               overview?.avgConfidence == null ? "—" : `${overview.avgConfidence.toFixed(1)} / 10`
             }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Charts -->
-      <div class="space-y-3">
-        <div class="flex items-center justify-end gap-2 flex-wrap">
-          <div class="flex items-center gap-1">
-            <UButton
-              v-for="option in rangeOptions"
-              :key="option.label"
-              size="xs"
-              :variant="rangeMs === option.value ? 'solid' : 'outline'"
-              :color="rangeMs === option.value ? 'primary' : 'neutral'"
-              @click="rangeMs = option.value"
-            >
-              {{ option.label }}
-            </UButton>
-          </div>
-          <div class="flex items-center gap-1">
-            <UButton
-              v-for="option in bucketOptions"
-              :key="option.label"
-              size="xs"
-              :variant="bucket === option.value ? 'solid' : 'outline'"
-              :color="bucket === option.value ? 'primary' : 'neutral'"
-              @click="bucket = option.value"
-            >
-              {{ option.label }}
-            </UButton>
-          </div>
+          </StatTile>
         </div>
 
-        <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4"
-        >
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Fetch attempts by outcome
-          </p>
-          <!-- Bounded height is mandatory with maintainAspectRatio:false -->
-          <div v-if="trendLoading" class="h-56">
-            <USkeleton class="h-full w-full rounded-xl" />
-          </div>
-          <div v-else class="relative h-56">
+        <IntegrationPanel title="Fetch attempts by outcome">
+          <ChartFrame :loading="trendLoading">
             <Bar :data="activityChartData" :options="activityOptions" />
-          </div>
-        </div>
+          </ChartFrame>
+        </IntegrationPanel>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <!-- Status distribution -->
-          <div
-            class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4"
-          >
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-              Status distribution
-            </p>
-            <USkeleton v-if="overviewLoading" class="h-40 w-full rounded-xl" />
-            <template v-else>
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <IntegrationPanel title="Status distribution">
+            <div v-if="overviewLoading" class="flex justify-center py-12">
+              <BlockSpinner
+                :size="24"
+                aria-label="Loading status distribution"
+                class="text-gray-500"
+              />
+            </div>
+            <div
+              v-else-if="distributionTotal === 0"
+              class="flex flex-col items-center justify-center gap-2 py-8 text-center"
+            >
+              <UIcon name="i-lucide-music" class="h-10 w-10 text-gray-400 dark:text-gray-600" />
+              <p class="text-sm text-gray-600 dark:text-gray-400">No lyrics tracked yet.</p>
+            </div>
+            <div v-else class="flex flex-col gap-2.5">
               <div
-                v-if="distributionTotal === 0"
-                class="flex flex-col items-center justify-center py-8 text-center"
+                v-for="entry in STATUS_DISTRIBUTION"
+                :key="entry.label"
+                class="flex items-center gap-3"
               >
-                <UIcon
-                  name="i-mdi-music-note-outline"
-                  class="w-8 h-8 text-gray-400 dark:text-gray-600 mb-2"
-                />
-                <p class="text-xs text-gray-500 dark:text-gray-400">No lyrics tracked yet.</p>
-              </div>
-              <div v-else class="space-y-2">
-                <div
-                  v-for="entry in STATUS_DISTRIBUTION"
-                  :key="entry.label"
-                  class="flex items-center gap-3"
-                >
-                  <span class="w-20 text-xs text-gray-500 dark:text-gray-400 shrink-0">{{
-                    entry.label
-                  }}</span>
+                <span class="w-20 shrink-0 text-xs text-gray-600 dark:text-gray-400">
+                  {{ entry.label }}
+                </span>
+                <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-500/15">
                   <div
-                    class="flex-1 h-2.5 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden"
-                  >
-                    <div
-                      class="h-full rounded-full transition-all duration-500"
-                      :class="entry.color"
-                      :style="{
-                        width: `${distributionTotal ? (entry.value / distributionTotal) * 100 : 0}%`,
-                      }"
-                    />
-                  </div>
-                  <span
-                    class="w-12 text-right text-xs font-semibold tabular-nums text-gray-700 dark:text-gray-200 shrink-0"
-                  >
-                    {{ entry.value.toLocaleString() }}
-                  </span>
+                    class="h-full rounded-full"
+                    :class="entry.color"
+                    :style="{ width: `${(entry.value / distributionTotal) * 100}%` }"
+                  />
                 </div>
+                <span
+                  class="w-12 shrink-0 text-right text-xs font-semibold tabular-nums text-gray-900 dark:text-gray-100"
+                >
+                  {{ entry.value.toLocaleString() }}
+                </span>
               </div>
-            </template>
-          </div>
+            </div>
+          </IntegrationPanel>
 
-          <!-- Provider breakdown -->
-          <div
-            class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4"
-          >
-            <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Providers</p>
-            <USkeleton v-if="overviewLoading" class="h-40 w-full rounded-xl" />
+          <IntegrationPanel title="Providers">
+            <div v-if="overviewLoading" class="flex justify-center py-12">
+              <BlockSpinner :size="24" aria-label="Loading providers" class="text-gray-500" />
+            </div>
             <div
               v-else-if="providerRows.length === 0"
-              class="flex flex-col items-center justify-center py-8 text-center"
+              class="flex flex-col items-center justify-center gap-2 py-8 text-center"
             >
-              <UIcon name="i-mdi-magnify" class="w-8 h-8 text-gray-400 dark:text-gray-600 mb-2" />
-              <p class="text-xs text-gray-500 dark:text-gray-400">No fetch attempts yet.</p>
+              <UIcon name="i-lucide-search" class="h-10 w-10 text-gray-400 dark:text-gray-600" />
+              <p class="text-sm text-gray-600 dark:text-gray-400">No fetch attempts yet.</p>
             </div>
-            <div v-else class="space-y-2">
-              <div v-for="row in providerRows" :key="row.label" class="space-y-1">
+            <div v-else class="flex flex-col gap-3">
+              <div v-for="row in providerRows" :key="row.label" class="flex flex-col gap-1">
                 <div class="flex items-center justify-between gap-2">
-                  <span class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                  <span class="truncate text-xs font-medium text-gray-900 dark:text-gray-100">
                     {{ row.label }}
                   </span>
                   <span
-                    class="text-[11px] tabular-nums shrink-0"
+                    class="shrink-0 text-xs tabular-nums"
                     :class="
                       row.failedPct > 25
                         ? 'text-red-600 dark:text-red-400'
-                        : 'text-gray-500 dark:text-gray-400'
+                        : 'text-gray-600 dark:text-gray-400'
                     "
                   >
                     {{ row.failedPct }}% failed · {{ row.total }} attempts
                   </span>
                 </div>
-                <div class="h-1.5 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+                <div class="h-1.5 overflow-hidden rounded-full bg-gray-500/15">
                   <div
                     class="h-full rounded-full"
                     :class="row.failedPct > 25 ? 'bg-red-500' : 'bg-emerald-500'"
@@ -443,24 +364,26 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
                 </div>
               </div>
             </div>
-          </div>
+          </IntegrationPanel>
         </div>
-      </div>
 
-      <JobRecoveryPanel :type="JobType.LyricsFetch" title="Lyrics jobs" />
+        <JobRecoveryPanel :type="JobType.LyricsFetch" title="Lyrics jobs" />
 
-      <!-- Incidents -->
-      <div class="space-y-2">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 px-1">
-          Lyrics incidents
-        </h2>
-        <EventsFeed
-          :date-range="feedDateRange"
-          :initial-service-type="ServiceType.Lyrics"
-          :initial-severity="initialSeverity"
-          :highlight-id="highlightId"
-          locked-service
-        />
+        <section aria-labelledby="lyrics-incidents" class="flex flex-col gap-2">
+          <h2
+            id="lyrics-incidents"
+            class="px-1 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400"
+          >
+            Incidents
+          </h2>
+          <EventsFeed
+            :date-range="feedDateRange"
+            :initial-service-type="ServiceType.Lyrics"
+            :initial-severity="initialSeverity"
+            :highlight-id="highlightId"
+            locked-service
+          />
+        </section>
       </div>
     </div>
   </div>

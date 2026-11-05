@@ -1,152 +1,198 @@
 <template>
-  <div class="flex flex-col min-h-screen px-6 py-10">
-    <header class="max-w-7xl mx-auto w-full mb-8">
-      <h1 class="font-playfair text-4xl font-bold tracking-tight leading-none mb-2">
-        Integrations
-      </h1>
-      <p class="text-base text-gray-600 dark:text-gray-400">
-        Shipped services and their admin monitoring pages
-      </p>
+  <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
+    <header
+      class="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/70 px-4 py-3 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
+    >
+      <div class="flex min-w-0 items-center gap-2.5">
+        <UIcon
+          name="mdi:puzzle-outline"
+          class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
+        />
+        <h1 class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">
+          Integrations
+        </h1>
+        <UBadge v-if="!isLoading" :color="overall.color" variant="subtle" size="sm">
+          {{ overall.label }}
+        </UBadge>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span class="hidden text-xs text-gray-600 sm:inline dark:text-gray-400">
+          Uptime over the last {{ UPTIME_WINDOW_DAYS }} days
+        </span>
+
+        <UTooltip text="Refresh">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            icon="i-lucide-refresh-cw"
+            square
+            class="justify-center"
+            aria-label="Refresh status"
+            :loading="isFetching"
+            @click="refetch"
+          />
+        </UTooltip>
+      </div>
     </header>
 
-    <main class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full">
-      <UCard
-        v-for="integration in integrations"
-        :key="integration.id"
-        :as="integration.route ? 'RouterLink' : 'div'"
-        @click="integration.route && router.push(integration.route)"
-        :ui="{
-          root: 'nav-card group relative overflow-hidden rounded-sm border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface hover:bg-white/75 dark:hover:bg-white/10 transition-all duration-200 no-underline text-inherit cursor-pointer',
-          body: 'flex flex-col gap-4 p-5',
-        }"
-      >
-        <span
-          class="absolute top-0 left-0 right-0 h-0.5 bg-black/10 dark:bg-white/10 group-hover:bg-black/20 dark:group-hover:bg-white/20 transition-colors"
-        />
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <UAlert
+        v-if="visibleError"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-alert-circle"
+        title="Couldn't load live status"
+        description="The dashboards still open; status and uptime will appear once monitoring responds."
+        class="mb-3"
+      />
 
-        <div class="flex items-start justify-between gap-2 mt-1">
-          <div class="p-2 rounded-sm border border-dashed border-black/15 dark:border-white/15">
-            <UIcon :name="integration.icon" class="w-5 h-5 text-primary" />
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        <AdminHubCard
+          v-for="card in cards"
+          :key="card.id"
+          :to="card.route"
+          :icon="card.icon"
+          :title="card.title"
+          :description="card.description"
+        >
+          <div
+            class="flex items-center justify-between gap-3 border-t border-gray-200/70 pt-3 dark:border-gray-700/70"
+          >
+            <template v-if="!card.status">
+              <span class="text-sm text-gray-600 dark:text-gray-400">{{ card.note }}</span>
+              <UBadge color="neutral" variant="outline" size="sm">Planned</UBadge>
+            </template>
+
+            <div v-else-if="isLoading" class="flex w-full justify-center py-1">
+              <BlockSpinner :size="16" aria-label="Loading status" class="text-gray-500" />
+            </div>
+
+            <template v-else>
+              <span class="flex min-w-0 items-center gap-2 text-sm">
+                <span class="h-2 w-2 shrink-0 rounded-full" :class="card.status.health.dot" />
+                <span class="font-medium" :class="card.status.health.text">
+                  {{ card.status.health.label }}
+                </span>
+                <span
+                  v-if="card.status.age"
+                  class="truncate text-xs text-gray-600 dark:text-gray-400"
+                >
+                  for {{ card.status.age }}
+                </span>
+              </span>
+
+              <span class="shrink-0 text-right">
+                <span
+                  class="text-sm font-semibold tabular-nums"
+                  :class="uptimeClass(card.status.uptime)"
+                >
+                  {{ formatUptime(card.status.uptime) }}
+                </span>
+                <span class="ml-1 text-xs text-gray-600 dark:text-gray-400">uptime</span>
+              </span>
+            </template>
           </div>
-          <UBadge
-            :color="integration.live ? 'success' : 'neutral'"
-            :variant="integration.live ? 'subtle' : 'outline'"
-            size="sm"
-            class="rounded-sm text-[0.58rem] tracking-wider"
-          >
-            {{ integration.live ? "Live stats" : "Admin stats planned" }}
-          </UBadge>
-        </div>
-
-        <div class="flex-1">
-          <p
-            class="text-[0.6rem] uppercase tracking-[0.15em] text-gray-500 dark:text-gray-400 mb-1"
-          >
-            {{ integration.chapter }}
-          </p>
-          <h2 class="font-playfair text-xl font-semibold leading-snug mb-2">
-            {{ integration.title }}
-          </h2>
-          <p class="text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-            {{ integration.description }}
-          </p>
-        </div>
-
-        <USeparator :ui="{ root: 'border-dashed opacity-40' }" />
-        <div class="flex items-center gap-1">
-          <span
-            v-for="(tag, i) in integration.tags"
-            :key="tag"
-            class="text-[0.62rem] italic text-gray-500 dark:text-gray-400"
-            >{{ tag }}{{ i < integration.tags.length - 1 ? " ·" : "" }}</span
-          >
-          <UIcon
-            v-if="integration.route"
-            name="mdi:arrow-right-thin"
-            class="w-4 h-4 ml-auto text-gray-400 dark:text-gray-500 group-hover:translate-x-0.5 transition-all"
-          />
-        </div>
-      </UCard>
-    </main>
+        </AdminHubCard>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from "vue-router";
+import { computed } from "vue";
 
-const router = useRouter();
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import AdminHubCard from "@/components/dashboard/admin/AdminHubCard.vue";
+import { formatUptime, uptimeClass, useServiceStatus } from "@/composables/useServiceStatus";
+import { ServiceType } from "@/enums";
+import { UPTIME_WINDOW_DAYS } from "@/queries/monitoring";
+import { formatRelativeShort } from "@/utils/date-formatters";
 
-const integrations = [
+interface Integration {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  route: string | null;
+  // Services whose health backs this card; empty for integrations without monitoring yet.
+  services: ServiceType[];
+  note?: string;
+}
+
+const INTEGRATIONS: Integration[] = [
   {
-    chapter: "Signal Analysis",
-    description:
-      "Queue depth, failure rates, durations, and batch history for the audio analysis worker.",
-    icon: "mdi:waveform",
+    description: "Queue depth, failure rates, durations and batch history.",
+    icon: "i-lucide-audio-lines",
     id: "audio-analysis",
-    live: true,
     route: "/dashboard/admin/integrations/audio-analysis",
-    tags: ["Queue", "Failure rate", "Batches"],
-    title: "Audio Analysis",
+    services: [ServiceType.MediaMetadata],
+    title: "Audio analysis",
   },
   {
-    chapter: "Media Processing",
-    description: "Queue depth, failure-rate trends and throughput for the transpilation worker.",
+    description: "Queue depth, failure-rate trends and throughput.",
     icon: "mdi:file-swap-outline",
-    id: "transpilations",
-    live: true,
+    id: "transpilation",
     route: "/dashboard/admin/integrations/transpilation",
-    tags: ["Queue", "Failure rate", "Volume"],
-    title: "Transpilations",
+    services: [ServiceType.Transpilation],
+    title: "Transpilation",
   },
   {
-    chapter: "Media Processing",
-    description: "Sync runs, failure-rate trends and throughput for the playlist worker.",
-    icon: "mdi:playlist-music",
-    id: "playlists",
-    live: true,
-    route: "/dashboard/admin/integrations/playlist",
-    tags: ["Sync runs", "Failure rate", "Volume"],
-    title: "Playlists",
-  },
-  {
-    chapter: "Media Processing",
-    description: "Artifact volume and incidents across the media and document preview workers.",
+    description: "Artifact volume and incidents across the media and document workers.",
     icon: "mdi:image-multiple-outline",
     id: "previews",
-    live: true,
     route: "/dashboard/admin/integrations/previews",
-    tags: ["Thumbnails", "Volume", "Incidents"],
+    services: [ServiceType.MediaPreviews, ServiceType.DocumentPreviews],
     title: "Previews",
   },
   {
-    chapter: "Classification",
-    description: "Auto-derived genre and mood tags from audio analysis output (audio only).",
-    icon: "mdi:tag-multiple-outline",
-    id: "auto-tagging",
-    live: false,
-    route: "",
-    tags: ["Genre", "Mood", "Confidence"],
-    title: "Auto-tagging",
+    description: "Sync runs, failure-rate trends and throughput.",
+    icon: "mdi:playlist-music",
+    id: "playlists",
+    route: "/dashboard/admin/integrations/playlist",
+    services: [ServiceType.Playlist],
+    title: "Playlists",
   },
   {
-    chapter: "Transcription",
-    description: "Fetch outcomes, provider reliability and confidence for the lyrics worker.",
+    description: "Fetch outcomes, provider reliability and confidence.",
     icon: "mdi:script-text-outline",
     id: "lyrics",
-    live: true,
     route: "/dashboard/admin/integrations/lyrics",
-    tags: ["Failure rate", "Providers", "Confidence"],
+    services: [ServiceType.Lyrics],
     title: "Lyrics",
   },
-] as const;
-</script>
+  {
+    description: "Genre and mood tags derived from audio analysis output.",
+    icon: "mdi:tag-multiple-outline",
+    id: "auto-tagging",
+    note: "Runs inside audio analysis",
+    route: null,
+    services: [],
+    title: "Auto-tagging",
+  },
+];
 
-<style scoped>
-.nav-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px color-mix(in srgb, currentColor 5%, transparent);
-}
-.nav-card:active {
-  transform: translateY(0);
-}
-</style>
+const MONITORED = INTEGRATIONS.flatMap((integration) => integration.services);
+
+const { isFetching, isLoading, refetch, summarize, visibleError, worstOf } = useServiceStatus();
+
+const overall = computed(() => summarize(MONITORED));
+
+const statusOf = (services: ServiceType[]) => {
+  if (services.length === 0) return null;
+
+  const worst = worstOf(services);
+
+  return {
+    // Incident age only means something while the service is in a bad state.
+    age: worst.incident ? formatRelativeShort(worst.incident.createdAt) : null,
+    health: worst.health,
+    uptime: worst.uptime,
+  };
+};
+
+const cards = computed(() =>
+  INTEGRATIONS.map((integration) => ({ ...integration, status: statusOf(integration.services) })),
+);
+</script>

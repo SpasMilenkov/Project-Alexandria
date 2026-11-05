@@ -34,22 +34,22 @@ public class GetUsersValidator : Validator<UserQueryDto>
             .IsInEnum().WithMessage("Invalid role specified.")
             .When(x => x.Role.HasValue);
 
-        // Date range consistency checks
+        // Before is inclusive of its whole day, so equal dates are a valid single-day window.
         When(x => x.CreatedAfter.HasValue && x.CreatedBefore.HasValue, () =>
             RuleFor(x => x.CreatedAfter)
-                .LessThan(x => x.CreatedBefore).WithMessage("CreatedAfter must be earlier than CreatedBefore."));
+                .LessThanOrEqualTo(x => x.CreatedBefore).WithMessage("CreatedAfter cannot be later than CreatedBefore."));
 
         When(x => x.UpdatedAfter.HasValue && x.UpdatedBefore.HasValue, () =>
             RuleFor(x => x.UpdatedAfter)
-                .LessThan(x => x.UpdatedBefore).WithMessage("UpdatedAfter must be earlier than UpdatedBefore."));
+                .LessThanOrEqualTo(x => x.UpdatedBefore).WithMessage("UpdatedAfter cannot be later than UpdatedBefore."));
 
         When(x => x.DeletedAfter.HasValue && x.DeletedBefore.HasValue, () =>
             RuleFor(x => x.DeletedAfter)
-                .LessThan(x => x.DeletedBefore).WithMessage("DeletedAfter must be earlier than DeletedBefore."));
+                .LessThanOrEqualTo(x => x.DeletedBefore).WithMessage("DeletedAfter cannot be later than DeletedBefore."));
 
         When(x => x.LockedOutAfter.HasValue && x.LockedOutBefore.HasValue, () =>
             RuleFor(x => x.LockedOutAfter)
-                .LessThan(x => x.LockedOutBefore).WithMessage("LockedOutAfter must be earlier than LockedOutBefore."));
+                .LessThanOrEqualTo(x => x.LockedOutBefore).WithMessage("LockedOutAfter cannot be later than LockedOutBefore."));
 
         // Mutual exclusivity of deletion filters
         RuleFor(x => x.ShowDeletedOnly)

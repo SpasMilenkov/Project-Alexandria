@@ -74,7 +74,7 @@ import type { UserDetailsDto } from "@/types/user";
 
 import { UserRole } from "@/enums/UserRole";
 import { type UpdateUserSchema, updateUserSchema } from "@/schemas/user";
-import { bytesToGb, parseQuotaGbInput } from "@/utils/size.utils";
+import { bytesToGb, parseQuotaGbInput } from "@/utils/size";
 
 const props = defineProps<{
   open: boolean;

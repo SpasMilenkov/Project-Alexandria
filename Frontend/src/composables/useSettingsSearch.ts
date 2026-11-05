@@ -92,6 +92,13 @@ const buildSearchIndex = (
     value: () => (settingsStore.thumbnailsEnabled ? "On" : "Off"),
   },
   {
+    desc: "System, light, dark or switch by time of day",
+    keywords: "dark mode light mode theme night day schedule time automatic",
+    section: "appearance",
+    title: "Light and dark",
+    value: () => "",
+  },
+  {
     desc: "Typeface used across the whole app",
     keywords: "font typeface text serif mono",
     section: "appearance",

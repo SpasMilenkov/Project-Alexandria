@@ -10,11 +10,11 @@ import { type MediaFileDto, type StreamHistoryResponse, streamingApi } from "@/a
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useTheme } from "@/composables/useTheme";
+import { heroTint } from "@/features/media/cover-color";
+import { coverSeed } from "@/features/media/generated-cover";
 import { mediaOverviewHistory, mediaOverviewLibrary } from "@/queries/media-overview";
 import { usePlayerStore } from "@/stores/stream-player";
-import { heroTint } from "@/utils/cover-color";
 import { formatDuration } from "@/utils/date-formatters";
-import { coverSeed } from "@/utils/generated-cover";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaEqualizer from "./MediaEqualizer.vue";
@@ -43,7 +43,7 @@ const EYEBROW: Record<HeroSubject["kind"], string> = {
 };
 
 const player = usePlayerStore();
-const toast = useAppToast();
+const toast = useAppToast("playback");
 const { isDark } = useTheme();
 const history = useQuery(() => mediaOverviewHistory({ userId, session }));
 const music = useQuery(() => mediaOverviewLibrary({ userId, session, isVideo: false }));
@@ -171,7 +171,7 @@ const play = async () => {
     const file = await streamingApi.getStreamingFile(current.fileId);
     if (file) void player.playNow([file]);
   } catch (error) {
-    toast.error("Could not resume playback", error);
+    toast.error("Couldn't resume playback", error, { retry: play });
   } finally {
     resuming.value = false;
   }

@@ -1,145 +1,66 @@
 <template>
-  <div class="p-3 sm:p-5 lg:p-6">
-    <div class="max-w-400 mx-auto space-y-3 lg:space-y-4">
-      <!-- Page header -->
-      <div class="flex items-center justify-between gap-3 flex-wrap mb-1">
-        <div>
-          <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Transpilation Dashboard
-          </h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Queue health, failure trends and throughput for the transpilation worker
-          </p>
-        </div>
-      </div>
+  <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
+    <IntegrationPageHeader
+      title="Transpilation"
+      icon="mdi:file-swap-outline"
+      :services="[ServiceType.Transpilation]"
+    >
+      <template #actions>
+        <SegmentedControl v-model="rangeMs" :options="rangeOptions" label="Time range" />
+        <SegmentedControl v-model="bucket" :options="bucketOptions" label="Bucket size" />
+      </template>
+    </IntegrationPageHeader>
 
-      <!-- Stat cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Queue depth
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-            {{ queueDepth }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Failed jobs
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
-          <p
-            v-else
-            class="text-2xl font-bold tabular-nums"
-            :class="
-              failedAllTime > 0
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-gray-900 dark:text-gray-100'
-            "
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <div class="flex flex-col gap-3">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile label="Queue depth" :loading="overviewLoading">{{ queueDepth }}</StatTile>
+          <StatTile
+            label="Failed jobs"
+            :loading="overviewLoading"
+            :tone="failedAllTime > 0 ? 'danger' : 'default'"
           >
             {{ failedAllTime }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Success rate (window)
-          </p>
-          <USkeleton v-if="trendLoading" class="h-7 w-16 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+          </StatTile>
+          <StatTile label="Success rate (window)" :loading="trendLoading">
             {{ windowSuccessRate === null ? "—" : `${windowSuccessRate}%` }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Avg duration (30d)
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-20 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
+          </StatTile>
+          <StatTile label="Avg duration (30d)" :loading="overviewLoading">
             {{ overview?.duration ? `${Math.round(overview.duration.avgMinutes)} min` : "—" }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Charts -->
-      <div class="space-y-3">
-        <!-- Range / bucket toggles -->
-        <div class="flex items-center justify-end gap-2 flex-wrap">
-          <div class="flex items-center gap-1">
-            <UButton
-              v-for="option in rangeOptions"
-              :key="option.label"
-              size="xs"
-              :variant="rangeMs === option.value ? 'solid' : 'outline'"
-              :color="rangeMs === option.value ? 'primary' : 'neutral'"
-              @click="rangeMs = option.value"
-            >
-              {{ option.label }}
-            </UButton>
-          </div>
-          <div class="flex items-center gap-1">
-            <UButton
-              v-for="option in bucketOptions"
-              :key="option.label"
-              size="xs"
-              :variant="bucket === option.value ? 'solid' : 'outline'"
-              :color="bucket === option.value ? 'primary' : 'neutral'"
-              @click="bucket = option.value"
-            >
-              {{ option.label }}
-            </UButton>
-          </div>
+          </StatTile>
         </div>
 
-        <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4"
-        >
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Failure rate %</p>
-          <!-- Bounded height is mandatory with maintainAspectRatio:false, else
-               the canvas feedback-loops into unbounded page growth -->
-          <div v-if="trendLoading" class="h-56">
-            <USkeleton class="h-full w-full rounded-xl" />
-          </div>
-          <div v-else class="relative h-56">
-            <Line :data="rateChartData" :options="rateOptions" />
-          </div>
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <IntegrationPanel title="Failure rate">
+            <ChartFrame :loading="trendLoading">
+              <Line :data="rateChartData" :options="rateOptions" />
+            </ChartFrame>
+          </IntegrationPanel>
+
+          <IntegrationPanel title="Jobs created">
+            <ChartFrame :loading="trendLoading">
+              <Bar :data="volumeChartData" :options="baseOptions" />
+            </ChartFrame>
+          </IntegrationPanel>
         </div>
 
-        <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4"
-        >
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Jobs created</p>
-          <div v-if="trendLoading" class="h-56">
-            <USkeleton class="h-full w-full rounded-xl" />
-          </div>
-          <div v-else class="relative h-56">
-            <Bar :data="volumeChartData" :options="baseOptions" />
-          </div>
-        </div>
-      </div>
+        <JobRecoveryPanel :type="JobType.Transpilation" title="Transpilation jobs" />
 
-      <JobRecoveryPanel :type="JobType.Transpilation" title="Transpilation jobs" />
-
-      <!-- Incidents -->
-      <div class="space-y-2">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 px-1">
-          Transpilation incidents
-        </h2>
-        <EventsFeed
-          :date-range="feedDateRange"
-          :initial-service-type="ServiceType.Transpilation"
-          :initial-severity="initialSeverity"
-          :highlight-id="highlightId"
-          locked-service
-        />
+        <section aria-labelledby="transpilation-incidents" class="flex flex-col gap-2">
+          <h2
+            id="transpilation-incidents"
+            class="px-1 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400"
+          >
+            Incidents
+          </h2>
+          <EventsFeed
+            :date-range="feedDateRange"
+            :initial-service-type="ServiceType.Transpilation"
+            :initial-severity="initialSeverity"
+            :highlight-id="highlightId"
+            locked-service
+          />
+        </section>
       </div>
     </div>
   </div>
@@ -169,6 +90,11 @@ import type { StatsBucket } from "@/api/transpilationStats";
 import { STATS_BUCKET, TRANSPILATION_STATUS } from "@/api/transpilationStats";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
 import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
+import ChartFrame from "@/components/dashboard/integrations/ChartFrame.vue";
+import IntegrationPageHeader from "@/components/dashboard/integrations/IntegrationPageHeader.vue";
+import IntegrationPanel from "@/components/dashboard/integrations/IntegrationPanel.vue";
+import SegmentedControl from "@/components/dashboard/integrations/SegmentedControl.vue";
+import StatTile from "@/components/dashboard/integrations/StatTile.vue";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { useRollingNow } from "@/composables/useRollingNow";
 import { useServiceDeepLink } from "@/composables/useServiceDeepLink";

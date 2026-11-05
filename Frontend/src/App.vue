@@ -7,10 +7,12 @@ import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import OnboardingLayout from "@/layouts/OnboardingLayout.vue";
 import { useAuthStore } from "@/stores/auth";
 
-import { useTheme } from "./composables/useTheme";
+import { useColorScheduleRunner } from "@/composables/useColorSchedule";
+import { useTheme } from "@/composables/useTheme";
 
 const route = useRoute();
 useTheme();
+useColorScheduleRunner();
 
 // The public status page uses the default shell for anonymous visitors but the
 // dashboard shell only after the cookie-backed identity has been verified.

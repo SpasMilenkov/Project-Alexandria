@@ -3,7 +3,6 @@ import { computed, onUnmounted, ref, shallowRef, watch } from "vue";
 
 import type { HomeLayout, HomeWidget } from "@/types/home";
 
-import { previewHomePlacement } from "@/utils/home-grid";
 import {
   type HomeResizeEdge,
   homeCanvasContains,
@@ -11,7 +10,8 @@ import {
   homePointerPosition,
   homePointerResize,
   scrollHomeGrid,
-} from "@/utils/home-grid-input";
+} from "@/features/home/grid/input";
+import { previewHomePlacement } from "@/features/home/grid/placement";
 
 interface GridDragOptions {
   board: () => HTMLElement | null;

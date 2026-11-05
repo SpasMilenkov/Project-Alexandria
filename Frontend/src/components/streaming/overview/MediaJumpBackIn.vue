@@ -3,8 +3,8 @@ import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
 import { isAuthError } from "@/api/shuffle";
+import { daysAwayLabel } from "@/features/media/overview";
 import { mediaOverviewJumpBackIn } from "@/queries/media-overview";
-import { daysAwayLabel } from "@/utils/media-overview";
 
 import MediaOverviewFile from "./MediaOverviewFile.vue";
 import MediaOverviewSection from "./MediaOverviewSection.vue";

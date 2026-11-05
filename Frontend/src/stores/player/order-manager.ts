@@ -7,19 +7,19 @@ import {
   type SourceDescriptor,
   fetchSequentialPage,
   toAnchor,
-} from "@/utils/player-source";
+} from "@/features/player/source";
 
 import type { PlayerState } from "./state";
 import type { Guard } from "./transitions";
 import type { Order, Origin, RangeBufferHooks } from "./types";
 
-import { createSequentialOrder, locateAnchor } from "./order/sequential";
+import { createSequentialOrder, locateAnchor } from "@/stores/player/order/sequential";
 import {
   type OpenedShuffle,
   isSessionGone,
   openShuffle,
   releaseShuffleSession,
-} from "./order/shuffle";
+} from "@/stores/player/order/shuffle";
 
 export type AdvanceOutcome = "advanced" | "exhausted" | "stopped";
 

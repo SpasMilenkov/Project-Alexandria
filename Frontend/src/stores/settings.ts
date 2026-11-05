@@ -3,7 +3,8 @@ import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref } from "vue";
 
 import type { AppearanceSettings, BehaviorSettings } from "@/api/settings";
-import { releaseBackgroundImageObjectUrl } from "@/utils/backgroundImageObjectUrl";
+
+import { releaseBackgroundImageObjectUrl } from "@/features/appearance/background-image";
 
 export const AVAILABLE_COLORS = [
   { name: "red", value: "239 68 68" },

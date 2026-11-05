@@ -1,75 +1,86 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 import type { MetadataRenderer } from "@/composables/useAuditMessage";
 
 import { EntityType } from "@/api/activity";
 
-const props = defineProps<{
+const { entityId, entityType, metadata, timestamp, sourceLabel } = defineProps<{
   entityId: string;
   entityType: EntityType;
   metadata: MetadataRenderer;
+  timestamp: string;
+  sourceLabel: string;
 }>();
 
 const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   [EntityType.File]: "File",
-  [EntityType.FileVersion]: "File Version",
+  [EntityType.FileVersion]: "File version",
   [EntityType.Directory]: "Folder",
   [EntityType.Tag]: "Tag",
   [EntityType.User]: "User",
   [EntityType.Preview]: "Preview",
 };
 
+const recordedAt = computed(() =>
+  new Date(timestamp).toLocaleString(undefined, {
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "long",
+    second: "2-digit",
+    year: "numeric",
+  }),
+);
+
 const copied = ref(false);
 
 const copyEntityId = async () => {
-  await navigator.clipboard.writeText(props.entityId);
+  await navigator.clipboard.writeText(entityId);
   copied.value = true;
   setTimeout(() => (copied.value = false), 2000);
 };
 </script>
 
 <template>
-  <div
-    class="mt-2 rounded-md frosted-glass glass-surface border border-gray-200/60 dark:border-gray-700/60 px-4 py-3 space-y-3"
+  <dl
+    class="grid grid-cols-1 gap-x-6 gap-y-3 rounded-lg border border-gray-200/70 bg-gray-500/5 px-4 py-3 text-sm sm:grid-cols-[max-content_minmax(0,1fr)] sm:gap-y-2.5 dark:border-gray-700/70 dark:bg-gray-400/5"
   >
-    <!-- Diff panel -->
-    <AuditDiffPanel v-if="metadata.type === 'diff'" :metadata="metadata" />
+    <template v-if="metadata.type === 'diff'">
+      <dt class="text-xs font-medium text-gray-600 sm:pt-1 dark:text-gray-400">
+        {{ metadata.label }}
+      </dt>
+      <dd class="-mt-2 min-w-0 sm:mt-0">
+        <AuditDiffPanel :metadata="metadata" />
+      </dd>
+    </template>
 
-    <!-- Divider between diff and entity detail when diff is present -->
-    <div
-      v-if="metadata.type === 'diff'"
-      class="border-t border-gray-200/50 dark:border-gray-700/50"
-    />
+    <dt class="text-xs font-medium text-gray-600 sm:pt-0.5 dark:text-gray-400">Recorded</dt>
+    <dd class="-mt-2 text-gray-900 tabular-nums sm:mt-0 dark:text-gray-100">
+      {{ recordedAt }}
+      <span class="text-gray-500 dark:text-gray-500">· {{ sourceLabel }}</span>
+    </dd>
 
-    <!-- Entity detail -->
-    <div class="flex items-center justify-between gap-4 flex-wrap">
-      <!-- Entity type label -->
-      <div class="flex items-center gap-2">
-        <p class="text-xs text-muted">Entity type</p>
-        <UBadge color="neutral" variant="subtle" size="xs">
-          {{ ENTITY_TYPE_LABELS[entityType] }}
-        </UBadge>
-      </div>
+    <dt class="text-xs font-medium text-gray-600 sm:pt-0.5 dark:text-gray-400">Entity</dt>
+    <dd class="-mt-2 flex min-w-0 items-center gap-2 sm:mt-0">
+      <UBadge color="neutral" variant="subtle" size="sm" class="shrink-0">
+        {{ ENTITY_TYPE_LABELS[entityType] ?? "Unknown" }}
+      </UBadge>
 
-      <!-- Entity ID with copy -->
-      <div class="flex items-center gap-2 min-w-0">
-        <p class="text-xs text-muted shrink-0">Entity ID</p>
-        <code
-          class="text-xs font-mono text-gray-600 dark:text-gray-400 truncate max-w-[200px] sm:max-w-xs"
-        >
-          {{ entityId }}
-        </code>
-        <UButton
-          :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          :class="copied ? 'text-emerald-500' : ''"
-          :aria-label="copied ? 'Copied' : 'Copy entity ID'"
-          @click="copyEntityId"
-        />
-      </div>
-    </div>
-  </div>
+      <code class="min-w-0 truncate font-mono text-xs text-gray-600 dark:text-gray-400">
+        {{ entityId }}
+      </code>
+
+      <UButton
+        :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        class="shrink-0 justify-center"
+        :class="copied ? 'text-emerald-600 dark:text-emerald-400' : ''"
+        :aria-label="copied ? 'Copied' : 'Copy entity ID'"
+        @click="copyEntityId"
+      />
+    </dd>
+  </dl>
 </template>

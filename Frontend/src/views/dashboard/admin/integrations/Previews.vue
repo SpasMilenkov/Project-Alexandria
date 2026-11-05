@@ -23,18 +23,23 @@ import type { PreviewJobType, PreviewStatsBucket } from "@/api/previewsStats";
 import { PREVIEW_JOB_STATUS, PREVIEW_JOB_TYPE, PREVIEW_STATS_BUCKET } from "@/api/previewsStats";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
 import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
+import ChartFrame from "@/components/dashboard/integrations/ChartFrame.vue";
+import IntegrationPageHeader from "@/components/dashboard/integrations/IntegrationPageHeader.vue";
+import IntegrationPanel from "@/components/dashboard/integrations/IntegrationPanel.vue";
+import SegmentedControl from "@/components/dashboard/integrations/SegmentedControl.vue";
+import StatTile from "@/components/dashboard/integrations/StatTile.vue";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { useRollingNow } from "@/composables/useRollingNow";
 import { useTheme } from "@/composables/useTheme";
 import { JobType, ServiceType } from "@/enums";
+import { parseDeepLinkQuery } from "@/features/monitoring/service-routing";
 import {
   previewsJobOverview,
   previewsJobTrend,
   previewsOverview,
   previewsVolume,
 } from "@/queries/previewsStats";
-import { parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
-import { formatBytes } from "@/utils/size.utils";
+import { formatBytes } from "@/utils/size";
 
 ChartJS.register(
   Title,
@@ -89,8 +94,8 @@ const setScope = (next: Scope) => {
 
 const SCOPE_TABS: { label: string; value: Scope }[] = [
   { label: "Both", value: "all" },
-  { label: "Media Previews", value: "media" },
-  { label: "Document Previews", value: "docs" },
+  { label: "Media", value: "media" },
+  { label: "Documents", value: "docs" },
 ];
 
 // Overview + volume
@@ -288,213 +293,115 @@ const incidentScopes = computed<IncidentScope[]>(() => {
 </script>
 
 <template>
-  <div class="p-3 sm:p-5 lg:p-6">
-    <div class="max-w-400 mx-auto space-y-3 lg:space-y-4">
-      <!-- Page header -->
-      <div class="flex items-center justify-between gap-3 flex-wrap mb-1">
-        <div>
-          <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Previews Dashboard</h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Artifact throughput for the media and document preview workers
-          </p>
-        </div>
-        <div class="flex items-center gap-1">
-          <UButton
-            v-for="tab in SCOPE_TABS"
-            :key="tab.value"
-            size="xs"
-            :variant="scope === tab.value ? 'solid' : 'outline'"
-            :color="scope === tab.value ? 'primary' : 'neutral'"
-            @click="setScope(tab.value)"
-          >
-            {{ tab.label }}
-          </UButton>
-        </div>
-      </div>
-
-      <!-- Stat cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Total artifacts
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-            {{ totalArtifacts.toLocaleString() }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Total size
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-20 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-            {{ formatBytes(totalSizeBytes) }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Thumbnails
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-            {{ kindTotal(0).toLocaleString() }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Preview images
-          </p>
-          <USkeleton v-if="overviewLoading" class="h-7 w-12 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-            {{ kindTotal(1).toLocaleString() }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Volume chart -->
-      <div class="space-y-3">
-        <div class="flex items-center justify-end gap-2 flex-wrap">
-          <div class="flex items-center gap-1">
-            <UButton
-              v-for="option in rangeOptions"
-              :key="option.label"
-              size="xs"
-              :variant="rangeMs === option.value ? 'solid' : 'outline'"
-              :color="rangeMs === option.value ? 'primary' : 'neutral'"
-              @click="rangeMs = option.value"
-            >
-              {{ option.label }}
-            </UButton>
-          </div>
-          <div class="flex items-center gap-1">
-            <UButton
-              v-for="option in bucketOptions"
-              :key="option.label"
-              size="xs"
-              :variant="bucket === option.value ? 'solid' : 'outline'"
-              :color="bucket === option.value ? 'primary' : 'neutral'"
-              @click="bucket = option.value"
-            >
-              {{ option.label }}
-            </UButton>
-          </div>
-        </div>
-
-        <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4"
-        >
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-            Artifacts created
-          </p>
-          <!-- Bounded height is mandatory with maintainAspectRatio:false -->
-          <div v-if="volumeLoading" class="h-56">
-            <USkeleton class="h-full w-full rounded-xl" />
-          </div>
-          <div v-else class="relative h-56">
-            <Bar :data="volumeChartData" :options="volumeOptions" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Stat cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Queue depth
-          </p>
-          <USkeleton v-if="jobOverviewLoading" class="h-7 w-12 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-            {{ queueDepth }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Failed jobs
-          </p>
-          <USkeleton v-if="jobOverviewLoading" class="h-7 w-12 mt-1" />
-          <p
-            v-else
-            class="text-2xl font-bold tabular-nums"
-            :class="
-              failedAllTime > 0
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-gray-900 dark:text-gray-100'
-            "
-          >
-            {{ failedAllTime }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Success rate (window)
-          </p>
-          <USkeleton v-if="jobTrendLoading" class="h-7 w-16 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-            {{ windowSuccessRate === null ? "—" : `${windowSuccessRate}%` }}
-          </p>
-        </div>
-        <div
-          class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm px-4 py-3"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Avg duration (30d)
-          </p>
-          <USkeleton v-if="jobOverviewLoading" class="h-7 w-20 mt-1" />
-          <p v-else class="text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100">
-            {{ jobOverview?.duration ? `${Math.round(jobOverview.duration.avgMinutes)} min` : "—" }}
-          </p>
-        </div>
-      </div>
-
-      <!-- Failure rate chart -->
-      <div class="space-y-3">
-        <div
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 bg-white/60 dark:bg-white/5 backdrop-blur-sm p-4"
-        >
-          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Failure rate %</p>
-          <!-- Bounded height is mandatory with maintainAspectRatio:false -->
-          <div v-if="jobTrendLoading" class="h-56">
-            <USkeleton class="h-full w-full rounded-xl" />
-          </div>
-          <div v-else class="relative h-56">
-            <Line :data="rateChartData" :options="rateOptions" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Recovery: failed and stalled jobs per preview worker -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
-        <JobRecoveryPanel :type="JobType.MediaPreview" title="Media preview jobs" />
-        <JobRecoveryPanel :type="JobType.DocumentPreview" title="Document preview jobs" />
-      </div>
-
-      <!-- Incidents per scope -->
-      <div v-for="incident in incidentScopes" :key="incident.service" class="space-y-2">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 px-1">
-          {{ incident.label }} incidents
-        </h2>
-        <EventsFeed
-          :date-range="feedDateRange"
-          :initial-service-type="incident.service"
-          :initial-severity="initialSeverity"
-          :highlight-id="highlightId"
-          locked-service
+  <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
+    <IntegrationPageHeader
+      title="Previews"
+      icon="mdi:image-multiple-outline"
+      :services="[ServiceType.MediaPreviews, ServiceType.DocumentPreviews]"
+    >
+      <template #actions>
+        <SegmentedControl
+          :model-value="scope"
+          :options="SCOPE_TABS"
+          label="Preview worker"
+          @update:model-value="setScope"
         />
+        <SegmentedControl v-model="rangeMs" :options="rangeOptions" label="Time range" />
+        <SegmentedControl v-model="bucket" :options="bucketOptions" label="Bucket size" />
+      </template>
+    </IntegrationPageHeader>
+
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <div class="flex flex-col gap-3">
+        <section aria-labelledby="previews-artifacts" class="flex flex-col gap-3">
+          <h2
+            id="previews-artifacts"
+            class="px-1 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400"
+          >
+            Artifacts
+          </h2>
+
+          <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatTile label="Total artifacts" :loading="overviewLoading">
+              {{ totalArtifacts.toLocaleString() }}
+            </StatTile>
+            <StatTile label="Total size" :loading="overviewLoading">
+              {{ formatBytes(totalSizeBytes) }}
+            </StatTile>
+            <StatTile label="Thumbnails" :loading="overviewLoading">
+              {{ kindTotal(0).toLocaleString() }}
+            </StatTile>
+            <StatTile label="Preview images" :loading="overviewLoading">
+              {{ kindTotal(1).toLocaleString() }}
+            </StatTile>
+          </div>
+
+          <IntegrationPanel title="Artifacts created">
+            <ChartFrame :loading="volumeLoading">
+              <Bar :data="volumeChartData" :options="volumeOptions" />
+            </ChartFrame>
+          </IntegrationPanel>
+        </section>
+
+        <section aria-labelledby="previews-jobs" class="flex flex-col gap-3">
+          <h2
+            id="previews-jobs"
+            class="px-1 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400"
+          >
+            Jobs
+          </h2>
+
+          <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatTile label="Queue depth" :loading="jobOverviewLoading">{{ queueDepth }}</StatTile>
+            <StatTile
+              label="Failed jobs"
+              :loading="jobOverviewLoading"
+              :tone="failedAllTime > 0 ? 'danger' : 'default'"
+            >
+              {{ failedAllTime }}
+            </StatTile>
+            <StatTile label="Success rate (window)" :loading="jobTrendLoading">
+              {{ windowSuccessRate === null ? "—" : `${windowSuccessRate}%` }}
+            </StatTile>
+            <StatTile label="Avg duration (30d)" :loading="jobOverviewLoading">
+              {{
+                jobOverview?.duration ? `${Math.round(jobOverview.duration.avgMinutes)} min` : "—"
+              }}
+            </StatTile>
+          </div>
+
+          <IntegrationPanel title="Failure rate">
+            <ChartFrame :loading="jobTrendLoading">
+              <Line :data="rateChartData" :options="rateOptions" />
+            </ChartFrame>
+          </IntegrationPanel>
+
+          <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <JobRecoveryPanel :type="JobType.MediaPreview" title="Media preview jobs" />
+            <JobRecoveryPanel :type="JobType.DocumentPreview" title="Document preview jobs" />
+          </div>
+        </section>
+
+        <section
+          v-for="incident in incidentScopes"
+          :key="incident.service"
+          :aria-labelledby="`previews-incidents-${incident.service}`"
+          class="flex flex-col gap-2"
+        >
+          <h2
+            :id="`previews-incidents-${incident.service}`"
+            class="px-1 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400"
+          >
+            {{ incident.label }} incidents
+          </h2>
+          <EventsFeed
+            :date-range="feedDateRange"
+            :initial-service-type="incident.service"
+            :initial-severity="initialSeverity"
+            :highlight-id="highlightId"
+            locked-service
+          />
+        </section>
       </div>
     </div>
   </div>

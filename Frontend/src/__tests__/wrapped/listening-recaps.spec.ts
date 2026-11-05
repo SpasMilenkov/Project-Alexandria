@@ -1,0 +1,371 @@
+import { PiniaColada } from "@pinia/colada";
+import { flushPromises, mount } from "@vue/test-utils";
+import { createPinia } from "pinia";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createMemoryHistory, createRouter } from "vue-router";
+
+import type { OverviewSummaryDtoResponse, OverviewSummaryHeaderDtoResponse } from "@/api/stats";
+
+import AnnualRecapCard from "@/components/streaming/wrapped/recaps/AnnualRecapCard.vue";
+import ListeningRecaps from "@/components/streaming/wrapped/recaps/ListeningRecaps.vue";
+import MonthlyRecapCard from "@/components/streaming/wrapped/recaps/MonthlyRecapCard.vue";
+import RecapLandscape from "@/components/streaming/wrapped/recaps/RecapLandscape.vue";
+import { HomeRecapPeriod } from "@/enums/home-widget";
+import { annualRecapHeaders, annualRecapMonths } from "@/features/wrapped/listening/recaps";
+import { wrappedMonth, wrappedMonthLabel, wrappedMonthRange } from "@/features/wrapped/month";
+
+const api = vi.hoisted(() => ({
+  getSummary: vi.fn(),
+  listSummaries: vi.fn(),
+  finalizeSummary: vi.fn(),
+  getWrapped: vi.fn(),
+}));
+
+vi.mock("@/api/stats", () => ({ statsApi: api }));
+
+vi.mock("@/stores/auth", () => ({ useAuthStore: () => ({ user: { user: { id: "listener" } } }) }));
+
+vi.mock("@/composables/useWrappedPalette", () => ({
+  useWrappedPalette: () => ({ paletteStyle: {} }),
+}));
+
+const year = new Date().getUTCFullYear();
+
+const header = (recapYear: number): OverviewSummaryHeaderDtoResponse => ({
+  id: `recap-${recapYear}`,
+  kind: 0,
+  periodStart: `${recapYear}-01-01T00:00:00.000Z`,
+  periodEnd: `${recapYear + 1}-01-01T00:00:00.000Z`,
+  generatedAt: `${recapYear + 1}-01-02T00:00:00.000Z`,
+  finalizedAt: `${recapYear + 1}-01-02T00:00:00.000Z`,
+  isFinal: true,
+  schemaVersion: 3,
+});
+
+const summary = (recapYear: number, seconds = 7200): OverviewSummaryDtoResponse => ({
+  ...header(recapYear),
+  isFinal: recapYear < year,
+  periodEnd: recapYear === year ? new Date().toISOString() : header(recapYear).periodEnd,
+
+  payload: {
+    type: "wrapped",
+
+    summary: {
+      seconds,
+      sessions: 83,
+      qualifiedPlayCount: 61,
+      tracks: 17,
+      artists: 6,
+      activeDays: 12,
+      knownArtistShare: 1,
+      hasPriorHistory: true,
+    },
+
+    deck: {
+      cards: [
+        {
+          type: 2,
+          headline: "Listening time",
+          entries: [],
+
+          visual: {
+            colorKey: "blue",
+            saturation: "",
+            contrast: "",
+            density: 0,
+            fillLevel: 0,
+            shapeGrammar: "landscape",
+          },
+
+          facts: {
+            seconds,
+            count: 12,
+            share: 0,
+            baselineSeconds: 0,
+            weights: [],
+            series: [{ date: `${recapYear}-01-01`, seconds, plays: 61 }],
+          },
+        },
+      ],
+    },
+
+    visualIdentity: "recap",
+    recipeVersion: 2,
+    catalogVersion: "test",
+  },
+});
+
+const observers: IntersectionObserverCallback[] = [];
+
+class RecapObserver {
+  constructor(callback: IntersectionObserverCallback) {
+    observers.push(callback);
+  }
+
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+
+const wrappers: ReturnType<typeof mount>[] = [];
+
+const mountRecaps = (component: typeof ListeningRecaps | typeof AnnualRecapCard, props = {}) => {
+  const wrapper = mount(component, {
+    props,
+
+    global: {
+      plugins: [
+        createPinia(),
+        PiniaColada,
+        createRouter({
+          history: createMemoryHistory(),
+          routes: [
+            { name: "wrapped", path: "/stats/wrapped/:year?", component: { template: "<div />" } },
+            { path: "/:pathMatch(.*)*", component: { template: "<div />" } },
+          ],
+        }),
+      ],
+
+      stubs: {
+        UIcon: true,
+        UBadge: { template: "<span><slot /></span>" },
+        UButton: { props: ["to"], template: "<button><slot /></button>" },
+      },
+    },
+  });
+
+  wrappers.push(wrapper);
+
+  return wrapper;
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  observers.length = 0;
+  vi.stubGlobal("IntersectionObserver", RecapObserver);
+  api.listSummaries.mockResolvedValue([]);
+
+  api.getSummary.mockImplementation((_kind: string, from: string) =>
+    Promise.resolve(summary(new Date(from).getUTCFullYear())),
+  );
+
+  api.getWrapped.mockImplementation((from: string, to?: string) => {
+    const value = summary(new Date(from).getUTCFullYear());
+
+    return Promise.resolve({
+      from,
+      to: to ?? new Date().toISOString(),
+      deck: value.payload.deck,
+      summary: value.payload.summary,
+    });
+  });
+});
+
+afterEach(() => {
+  wrappers.splice(0).forEach((wrapper) => wrapper.unmount());
+  vi.unstubAllGlobals();
+});
+
+describe("annual recap overview", () => {
+  it("selects only past complete calendar years, newest first", () => {
+    const monthly = { ...header(year - 1), periodEnd: `${year - 1}-02-01T00:00:00Z` };
+
+    expect(
+      annualRecapHeaders([header(year - 2), header(year), monthly, header(year - 1)], year).map(
+        (row) => row.id,
+      ),
+    ).toEqual([`recap-${year - 1}`, `recap-${year - 2}`]);
+  });
+
+  it("keeps month positions, zero months and exact supplied totals", () => {
+    const months = annualRecapMonths(
+      [
+        { date: `${year}-09-01`, seconds: 3711, plays: 11 },
+        { date: `${year - 1}-01-01`, seconds: 9999, plays: 9 },
+      ],
+      year,
+    );
+
+    expect(months).toHaveLength(12);
+    expect(months[8]).toMatchObject({ seconds: 3711, plays: 11 });
+    expect(months[0]).toMatchObject({ seconds: 0, plays: 0 });
+    expect(months.reduce((total, month) => total + month.seconds, 0)).toBe(3711);
+  });
+
+  it("features current and previous months even without archived summaries", async () => {
+    const wrapper = mountRecaps(ListeningRecaps);
+
+    await flushPromises();
+    expect(wrapper.text()).toContain("No archived years yet");
+    expect(wrapper.get("dl").text()).toContain("17");
+
+    const current = wrappedMonth(HomeRecapPeriod.CurrentMonth);
+    const previous = wrappedMonth(HomeRecapPeriod.PreviousMonth);
+
+    expect(wrapper.text()).toContain(wrappedMonthLabel(current));
+    expect(wrapper.text()).toContain(wrappedMonthLabel(previous));
+    expect(wrapper.findAllComponents(MonthlyRecapCard)).toHaveLength(2);
+    expect(api.getWrapped).toHaveBeenCalledWith(wrappedMonthRange(current).from, undefined);
+    expect(api.getWrapped).toHaveBeenCalledWith(
+      wrappedMonthRange(previous).from,
+      wrappedMonthRange(previous).to,
+    );
+    expect(api.getSummary).not.toHaveBeenCalled();
+  });
+
+  it("defers past payload requests until the card approaches the viewport", async () => {
+    const wrapper = mountRecaps(AnnualRecapCard, { year: year - 1, header: header(year - 1) });
+
+    await flushPromises();
+    expect(api.getSummary).not.toHaveBeenCalled();
+
+    observers[0]!(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    );
+
+    await flushPromises();
+
+    expect(api.getSummary).toHaveBeenCalledWith(
+      "Wrapped",
+      header(year - 1).periodStart,
+      header(year - 1).periodEnd,
+    );
+
+    expect(wrapper.text()).toContain("61 plays");
+    expect(wrapper.text()).not.toContain("83 plays");
+    expect(wrapper.get("dl").text()).toContain("17");
+    expect(wrapper.findComponent(RecapLandscape).props("series")[0].seconds).toBe(7200);
+  });
+
+  it("keeps recent months usable when the archive request fails", async () => {
+    api.listSummaries.mockRejectedValue(new Error("Archive unavailable"));
+
+    const wrapper = mountRecaps(ListeningRecaps);
+
+    await flushPromises();
+    expect(wrapper.text()).toContain("Could not load past recaps");
+    expect(wrapper.get("dl").text()).toContain("17");
+  });
+
+  it("keeps the previous month usable when the current month fails and retries it independently", async () => {
+    const current = wrappedMonth(HomeRecapPeriod.CurrentMonth);
+    const from = wrappedMonthRange(current).from;
+    const load = api.getWrapped.getMockImplementation()!;
+
+    api.getWrapped.mockImplementation((start: string, to?: string) => {
+      if (start === from) return Promise.reject(new Error("Current month unavailable"));
+
+      return load(start, to);
+    });
+
+    const wrapper = mountRecaps(ListeningRecaps);
+
+    await flushPromises();
+    // Cards run chronologically: last month first, then the month in progress.
+    const [previousCard, currentCard] = wrapper.findAllComponents(MonthlyRecapCard);
+
+    expect(currentCard!.text()).toContain("Could not load this month");
+    expect(previousCard!.get("dl").text()).toContain("17");
+
+    api.getWrapped.mockImplementation(load);
+    await currentCard!.get("button").trigger("click");
+    await flushPromises();
+
+    expect(currentCard!.get("dl").text()).toContain("17");
+    expect(api.getWrapped).toHaveBeenCalledTimes(3);
+  });
+
+  it("shows quiet monthly empty states without invented totals", async () => {
+    api.getWrapped.mockResolvedValue({ from: "", to: "", deck: { cards: [] } });
+    const wrapper = mountRecaps(ListeningRecaps);
+
+    await flushPromises();
+    const cards = wrapper.findAllComponents(MonthlyRecapCard);
+
+    expect(cards.every((card) => card.text().includes("No recorded listening"))).toBe(true);
+    expect(cards[0]!.text()).not.toContain("Browse music");
+    expect(cards[1]!.text()).toContain("Browse music");
+    expect(wrapper.find("dl").exists()).toBe(false);
+  });
+});
+
+describe("annual recap finalization and display", () => {
+  it("finalizes an eligible past period and refreshes its frozen status", async () => {
+    const pastYear = year - 1;
+
+    api.getSummary
+      .mockResolvedValueOnce({ ...summary(pastYear), isFinal: false })
+      .mockResolvedValue(summary(pastYear));
+
+    api.finalizeSummary.mockResolvedValue(summary(pastYear));
+
+    const wrapper = mountRecaps(AnnualRecapCard, {
+      year: pastYear,
+      header: { ...header(pastYear), isFinal: false },
+    });
+
+    await flushPromises();
+
+    observers[0]!(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    );
+
+    await flushPromises();
+
+    await wrapper
+      .findAll("button")
+      .find((button) => button.text() === "Finalize")!
+      .trigger("click");
+
+    await flushPromises();
+
+    expect(api.finalizeSummary).toHaveBeenCalledWith(
+      "Wrapped",
+      header(pastYear).periodStart,
+      header(pastYear).periodEnd,
+    );
+
+    expect(api.getSummary).toHaveBeenCalledTimes(2);
+    expect(wrapper.findAll("button").some((button) => button.text() === "Finalize")).toBe(false);
+    expect(wrapper.text()).toContain("Final");
+  });
+
+  it("uses a listening invitation when the current period is empty", async () => {
+    api.getSummary.mockResolvedValue(summary(year, 0));
+
+    const wrapper = mountRecaps(AnnualRecapCard, { year, current: true });
+
+    await flushPromises();
+    expect(wrapper.text()).toContain("Nothing to recap yet");
+    expect(wrapper.text()).toContain("Find your soundtrack");
+    expect(wrapper.find("dl").exists()).toBe(false);
+  });
+
+  it("does not label an unknown payload as empty listening", async () => {
+    api.getSummary.mockResolvedValue({ ...summary(year), payload: { type: "new-format" } });
+
+    const wrapper = mountRecaps(AnnualRecapCard, { year, current: true });
+
+    await flushPromises();
+    expect(wrapper.text()).toContain("This recap uses a newer format");
+    expect(wrapper.text()).not.toContain("Nothing to recap yet");
+  });
+
+  it("supports keyboard month inspection and distinguishes future months", async () => {
+    const wrapper = mount(RecapLandscape, {
+      props: {
+        year: 2026,
+        through: "2026-10-05T00:00:00Z",
+        series: [{ date: "2026-09-01", seconds: 7200, plays: 61 }],
+      },
+    });
+
+    expect(wrapper.get("figcaption").text()).toContain("Busiest month: September");
+    await wrapper.get('button[aria-label="November: still ahead"]').trigger("focus");
+    expect(wrapper.get("figcaption").text()).toBe("November: still ahead");
+    expect(wrapper.findAll('button[aria-pressed="true"]')).toHaveLength(1);
+    wrapper.unmount();
+  });
+});

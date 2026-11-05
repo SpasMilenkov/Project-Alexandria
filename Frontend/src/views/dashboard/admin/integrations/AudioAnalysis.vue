@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import {
   BarElement,
@@ -20,12 +19,19 @@ import { useRoute } from "vue-router";
 
 import type { EnrichmentBucket } from "@/api/audioAnalysis";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
 import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
+import ChartFrame from "@/components/dashboard/integrations/ChartFrame.vue";
+import IntegrationPageHeader from "@/components/dashboard/integrations/IntegrationPageHeader.vue";
+import IntegrationPanel from "@/components/dashboard/integrations/IntegrationPanel.vue";
+import SegmentedControl from "@/components/dashboard/integrations/SegmentedControl.vue";
+import StatTile from "@/components/dashboard/integrations/StatTile.vue";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { useRollingNow } from "@/composables/useRollingNow";
 import { useTheme } from "@/composables/useTheme";
 import { JobType, ServiceType } from "@/enums";
+import { parseDeepLinkQuery } from "@/features/monitoring/service-routing";
 import {
   batches,
   duration,
@@ -35,7 +41,6 @@ import {
   volumeByHour,
 } from "@/queries/audioAnalysis";
 import { formatDate, formatDuration } from "@/utils/date-formatters";
-import { parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
 
 ChartJS.register(
   Title,
@@ -239,7 +244,7 @@ const overallAvgDuration = computed(() => {
 const kpiTiles = computed(() => [
   {
     key: "inFlight",
-    icon: "mdi:waveform",
+    icon: "i-lucide-audio-lines",
     label: "In flight",
     value: `${queueTotal.value}`,
     tone: "neutral" as const,
@@ -420,538 +425,373 @@ const volumeChartOptions = computed((): ChartOptions<"bar"> => ({
 }));
 
 const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse());
+
+const queueHint = computed(
+  () => `${queueTotal.value} file${queueTotal.value === 1 ? "" : "s"} in flight`,
+);
+
+const durationStats = (row: {
+  averageSeconds: number;
+  medianSeconds: number;
+  maxSeconds: number;
+}) => [
+  { label: "Average", value: formatDuration(row.averageSeconds) },
+  { label: "Median", value: formatDuration(row.medianSeconds) },
+  { label: "Max", value: formatDuration(row.maxSeconds) },
+];
+
+const batchProgress = (batch: { filesCompleted: number; filesTotal: number }) => {
+  if (batch.filesTotal <= 0) return "0%";
+
+  return `${Math.round((batch.filesCompleted / batch.filesTotal) * 100)}%`;
+};
+
+const BATCH_COLUMNS = [
+  { align: "", label: "Backbone" },
+  { align: "", label: "Status" },
+  { align: "text-right", label: "Progress" },
+  { align: "text-right", label: "Created" },
+  { align: "text-right", label: "Completed" },
+];
 </script>
 
 <template>
-  <div class="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
-    <header class="flex items-center justify-between gap-4 flex-wrap">
-      <div>
-        <h1
-          class="font-playfair text-3xl font-bold tracking-tight leading-none text-gray-900 dark:text-gray-100"
-        >
-          Audio Analysis
-        </h1>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1.5">
-          Monitoring for the audio analysis enrichment worker
-        </p>
-      </div>
-      <div class="flex items-center gap-3">
-        <span class="text-xs text-gray-500 dark:text-gray-500">
+  <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
+    <IntegrationPageHeader
+      title="Audio analysis"
+      icon="i-lucide-audio-lines"
+      :services="[ServiceType.MediaMetadata]"
+    >
+      <template #actions>
+        <span class="hidden text-xs text-gray-600 lg:inline dark:text-gray-400">
           Updated {{ timeOnly.format(lastUpdated) }}
         </span>
-        <UButton
-          size="sm"
-          color="neutral"
-          variant="outline"
-          :loading="isRefreshing"
-          icon="i-mdi-refresh"
-          @click="handleRefresh()"
-        >
-          Refresh
-        </UButton>
-      </div>
-    </header>
-
-    <UAlert
-      v-if="hasError"
-      color="error"
-      variant="soft"
-      title="Could not reach the monitoring data"
-      description="Some sections may be stale or empty. The server may be offline."
-      icon="i-mdi-connection"
-    />
-
-    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div
-        v-for="tile in kpiTiles"
-        :key="tile.key"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-5 py-4 flex flex-col gap-2"
-      >
-        <div class="flex items-center gap-1.5">
-          <Icon
-            :icon="tile.icon"
-            class="w-3.5 h-3.5 shrink-0"
-            :class="tile.tone === 'warning' ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'"
+        <SegmentedControl v-model="rangeMs" :options="rangeOptions" label="Time range" />
+        <SegmentedControl v-model="bucket" :options="bucketOptions" label="Bucket size" />
+        <UTooltip text="Refresh">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            icon="i-lucide-refresh-cw"
+            square
+            class="justify-center"
+            aria-label="Refresh"
+            :loading="isRefreshing"
+            @click="handleRefresh()"
           />
-          <span class="text-xs font-medium text-gray-600 dark:text-gray-400 truncate">
-            {{ tile.label }}
-          </span>
-        </div>
-        <span
-          class="text-2xl font-semibold tabular-nums"
-          :class="
-            tile.tone === 'warning'
-              ? 'text-amber-600 dark:text-amber-400'
-              : 'text-gray-900 dark:text-gray-100'
-          "
-        >
-          {{ tile.value }}
-        </span>
-      </div>
-    </section>
+        </UTooltip>
+      </template>
+    </IntegrationPageHeader>
 
-    <section class="flex flex-col gap-3">
-      <div class="flex items-center gap-2">
-        <Icon icon="mdi:waveform" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Queue Depth</h2>
-        <span class="ml-auto text-xs text-gray-500 dark:text-gray-500">
-          {{ queueTotal }} file{{ queueTotal === 1 ? "" : "s" }} in flight
-        </span>
-      </div>
-
-      <div v-if="queue.status.value === 'pending'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
-          v-for="i in 2"
-          :key="i"
-          class="h-32 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
+    <div class="min-h-0 flex-1 overflow-y-auto">
+      <div class="flex flex-col gap-3">
+        <UAlert
+          v-if="hasError"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-alert-circle"
+          title="Could not reach the monitoring data"
+          description="Some sections may be stale or empty. The server may be offline."
         />
-      </div>
 
-      <div v-else-if="queueByBackbone.length" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
-          v-for="group in queueByBackbone"
-          :key="group.backbone"
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden transition-shadow duration-200 hover:shadow-sm"
-        >
-          <div
-            class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2"
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile
+            v-for="tile in kpiTiles"
+            :key="tile.key"
+            :label="tile.label"
+            :icon="tile.icon"
+            :tone="tile.tone === 'warning' ? 'warning' : 'default'"
           >
-            <span
-              class="w-2 h-2 rounded-full shrink-0"
-              :style="{ background: backboneColor(group.backbone) }"
-            />
-            <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              {{ group.backbone }}
-            </span>
-            <span class="ml-auto text-xs text-gray-500 dark:text-gray-500">
-              {{ group.rows.reduce((sum, row) => sum + row.count, 0) }} queued
-            </span>
-          </div>
-          <div class="divide-y divide-gray-200/60 dark:divide-gray-700/60">
+            {{ tile.value }}
+          </StatTile>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <IntegrationPanel title="Queue depth" :hint="queueHint" flush>
+            <div v-if="queue.status.value === 'pending'" class="flex justify-center py-12">
+              <BlockSpinner :size="24" aria-label="Loading queue depth" class="text-gray-500" />
+            </div>
+
             <div
-              v-for="row in group.rows"
-              :key="row.status"
-              class="px-5 py-2.5 flex items-center gap-3"
+              v-else-if="queueByBackbone.length"
+              class="grid grid-cols-1 divide-y divide-gray-200/70 md:grid-cols-2 md:divide-x md:divide-y-0 dark:divide-gray-700/70"
             >
-              <span
-                class="w-2 h-2 rounded-full shrink-0"
-                :class="fileStatusMeta[row.status]?.dot"
+              <div v-for="group in queueByBackbone" :key="group.backbone">
+                <p
+                  class="flex items-center gap-2 border-b border-gray-200/70 px-4 py-2.5 text-sm font-semibold text-gray-900 sm:px-5 dark:border-gray-700/70 dark:text-gray-100"
+                >
+                  <span
+                    class="h-2 w-2 shrink-0 rounded-full"
+                    :style="{ background: backboneColor(group.backbone) }"
+                  />
+                  {{ group.backbone }}
+                  <span class="ml-auto text-xs font-normal text-gray-600 dark:text-gray-400">
+                    {{ group.rows.reduce((sum, row) => sum + row.count, 0) }} queued
+                  </span>
+                </p>
+                <ul class="divide-y divide-gray-200/70 dark:divide-gray-700/70">
+                  <li
+                    v-for="row in group.rows"
+                    :key="row.status"
+                    class="flex items-center gap-3 px-4 py-2.5 sm:px-5"
+                  >
+                    <span
+                      class="h-2 w-2 shrink-0 rounded-full"
+                      :class="fileStatusMeta[row.status]?.dot"
+                    />
+                    <span class="text-sm text-gray-600 dark:text-gray-400">
+                      {{ fileStatusMeta[row.status]?.label ?? row.status }}
+                    </span>
+                    <span
+                      class="ml-auto text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100"
+                    >
+                      {{ row.count }}
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div v-else class="flex flex-col items-center gap-2 px-6 py-12 text-center">
+              <UIcon
+                name="i-lucide-audio-lines"
+                class="h-10 w-10 text-gray-400 dark:text-gray-600"
               />
-              <span class="text-sm text-gray-600 dark:text-gray-400">
-                {{ fileStatusMeta[row.status]?.label ?? row.status }}
-              </span>
-              <span
-                class="ml-auto text-sm font-semibold text-gray-800 dark:text-gray-100 tabular-nums"
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                No batches in flight
+              </p>
+              <p class="max-w-sm text-xs text-gray-600 dark:text-gray-400">
+                Files currently being analyzed will appear here as they are dispatched to the
+                worker.
+              </p>
+            </div>
+          </IntegrationPanel>
+
+          <IntegrationPanel title="Stuck files" hint="Pending past the server threshold" flush>
+            <div v-if="stuckQuery.status.value === 'pending'" class="flex justify-center py-12">
+              <BlockSpinner :size="24" aria-label="Loading stuck files" class="text-gray-500" />
+            </div>
+
+            <ul
+              v-else-if="stuckSorted.length"
+              class="divide-y divide-gray-200/70 dark:divide-gray-700/70"
+            >
+              <li
+                v-for="row in stuckSorted"
+                :key="row.fileId"
+                class="flex items-center gap-3 px-4 py-3 sm:px-5"
               >
-                {{ row.count }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+                <UIcon name="i-lucide-alert-circle" class="h-4 w-4 shrink-0 text-amber-500" />
+                <div class="min-w-0 flex-1">
+                  <p class="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {{ shortId(row.fileId) }}
+                  </p>
+                  <p class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                    Batch {{ shortId(row.batchId) }}
+                    <span
+                      class="inline-block h-1.5 w-1.5 rounded-full"
+                      :style="{ background: backboneColor(row.backbone) }"
+                    />
+                    {{ row.backbone }}
+                  </p>
+                </div>
+                <span class="shrink-0 text-xs text-gray-600 dark:text-gray-400">
+                  {{ formatDate(row.createdAt) }}
+                </span>
+              </li>
+            </ul>
 
-      <div
-        v-else
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-      >
-        <Icon icon="mdi:waveform" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-        <div class="space-y-1 max-w-sm">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No batches in flight</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            Files currently being analyzed will appear here as they are dispatched to the worker.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="flex flex-col gap-3">
-      <div class="flex items-center gap-2">
-        <Icon icon="mdi:clock-alert-outline" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Stuck Files</h2>
-        <span class="ml-auto text-xs text-gray-500 dark:text-gray-500">
-          Pending past the server threshold
-        </span>
-      </div>
-
-      <div
-        v-if="stuckQuery.status.value === 'pending'"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-5 space-y-3 animate-pulse"
-      >
-        <div v-for="i in 3" :key="i" class="h-8 rounded-lg bg-black/5 dark:bg-white/5" />
-      </div>
-
-      <div
-        v-else-if="stuckSorted.length"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface divide-y divide-gray-200/60 dark:divide-gray-700/60 overflow-hidden"
-      >
-        <div
-          v-for="row in stuckSorted"
-          :key="row.fileId"
-          class="px-5 py-3 flex items-center gap-3 transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-        >
-          <Icon icon="mdi:alert-circle-outline" class="w-4 h-4 text-amber-500 shrink-0" />
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-gray-800 dark:text-gray-100 font-mono">
-              {{ shortId(row.fileId) }}
-            </p>
-            <p class="text-xs text-gray-500 dark:text-gray-500">
-              Batch {{ shortId(row.batchId) }}
-              <span class="inline-flex items-center gap-1 ml-1">
-                <span
-                  class="w-1.5 h-1.5 rounded-full inline-block"
-                  :style="{ background: backboneColor(row.backbone) }"
-                />
-                {{ row.backbone }}
-              </span>
-            </p>
-          </div>
-          <span class="text-xs text-gray-500 dark:text-gray-500 shrink-0">
-            {{ formatDate(row.createdAt) }}
-          </span>
-        </div>
-      </div>
-
-      <div
-        v-else
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-      >
-        <Icon icon="mdi:check-circle-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-        <div class="space-y-1 max-w-sm">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No stuck files</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            No files have been pending longer than the configured threshold.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="flex flex-col gap-3">
-      <div class="flex items-center gap-2 flex-wrap">
-        <Icon icon="mdi:chart-line" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Failure Rate</h2>
-        <div class="ml-auto flex items-center gap-2">
-          <div class="flex items-center gap-1 p-1 rounded-lg bg-black/5 dark:bg-white/5">
-            <button
-              v-for="opt in rangeOptions"
-              :key="opt.label"
-              class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors"
-              :class="
-                rangeMs === opt.value
-                  ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-gray-100 shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              "
-              @click="rangeMs = opt.value"
-            >
-              {{ opt.label }}
-            </button>
-          </div>
-          <div class="flex items-center gap-1 p-1 rounded-lg bg-black/5 dark:bg-white/5">
-            <button
-              v-for="opt in bucketOptions"
-              :key="opt.value"
-              class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors"
-              :class="
-                bucket === opt.value
-                  ? 'bg-white dark:bg-white/10 text-gray-900 dark:text-gray-100 shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-              "
-              @click="bucket = opt.value"
-            >
-              {{ opt.label }}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div
-        v-if="failure.status.value === 'pending'"
-        class="h-72 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
-      />
-
-      <div
-        v-else-if="failureEmpty"
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-      >
-        <Icon icon="mdi:chart-line" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-        <div class="space-y-1 max-w-sm">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-            No data for this period
-          </p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            Completed analyses in the selected range will show failure rates per backbone.
-          </p>
-        </div>
-      </div>
-
-      <div
-        v-else
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4 h-72"
-      >
-        <Line :data="failureChartData" :options="failureChartOptions" />
-      </div>
-    </section>
-
-    <section class="flex flex-col gap-3">
-      <div class="flex items-center gap-2">
-        <Icon icon="mdi:timer-outline" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Durations</h2>
-        <span class="ml-auto text-xs text-gray-500 dark:text-gray-500">
-          Completed at minus created at
-        </span>
-      </div>
-
-      <div
-        v-if="durationQuery.status.value === 'pending'"
-        class="grid grid-cols-1 md:grid-cols-2 gap-4"
-      >
-        <div
-          v-for="i in 2"
-          :key="i"
-          class="h-28 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
-        />
-      </div>
-
-      <div
-        v-else-if="(durationQuery.data.value ?? []).length"
-        class="grid grid-cols-1 md:grid-cols-2 gap-4"
-      >
-        <div
-          v-for="row in durationQuery.data.value"
-          :key="row.backbone"
-          class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-5 py-4 transition-shadow duration-200 hover:shadow-sm"
-        >
-          <div class="flex items-center gap-2 mb-3">
-            <span
-              class="w-2 h-2 rounded-full shrink-0"
-              :style="{ background: backboneColor(row.backbone) }"
-            />
-            <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              {{ row.backbone }}
-            </span>
-          </div>
-          <div class="grid grid-cols-3 divide-x divide-gray-200/60 dark:divide-gray-700/60">
-            <div class="pr-3">
-              <p class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Average
-              </p>
-              <p class="text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums mt-0.5">
-                {{ formatDuration(row.averageSeconds) }}
-              </p>
-            </div>
-            <div class="px-3">
-              <p class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Median
-              </p>
-              <p class="text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums mt-0.5">
-                {{ formatDuration(row.medianSeconds) }}
-              </p>
-            </div>
-            <div class="pl-3">
-              <p class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Max
-              </p>
-              <p class="text-lg font-semibold text-gray-900 dark:text-gray-100 tabular-nums mt-0.5">
-                {{ formatDuration(row.maxSeconds) }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        v-else
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-      >
-        <Icon icon="mdi:timer-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-        <div class="space-y-1 max-w-sm">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No durations yet</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            Once analyses finish, average, median, and max processing times appear per backbone.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="flex flex-col gap-3">
-      <div class="flex items-center gap-2">
-        <Icon icon="mdi:chart-bar" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Volume by Hour</h2>
-        <span class="ml-auto text-xs text-gray-500 dark:text-gray-500">
-          Analyses created per hour
-        </span>
-      </div>
-
-      <div
-        v-if="volume.status.value === 'pending'"
-        class="h-60 rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface animate-pulse"
-      />
-
-      <div
-        v-else-if="volumeEmpty"
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-      >
-        <Icon icon="mdi:chart-bar" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-        <div class="space-y-1 max-w-sm">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-            No volume in this range
-          </p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            Hourly analysis volume for the selected period will appear here.
-          </p>
-        </div>
-      </div>
-
-      <div
-        v-else
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-4 h-60"
-      >
-        <Bar :data="volumeChartData" :options="volumeChartOptions" />
-      </div>
-    </section>
-
-    <section class="flex flex-col gap-3">
-      <div class="flex items-center gap-2">
-        <Icon icon="mdi:history" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Recent Batches</h2>
-        <span class="ml-auto text-xs text-gray-500 dark:text-gray-500">Latest 20</span>
-      </div>
-
-      <div
-        v-if="recent.status.value === 'pending'"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface p-5 space-y-3 animate-pulse"
-      >
-        <div v-for="i in 5" :key="i" class="h-8 rounded-lg bg-black/5 dark:bg-white/5" />
-      </div>
-
-      <div
-        v-else-if="(recent.data.value ?? []).length"
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
-      >
-        <div
-          class="hidden md:grid px-5 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 grid-cols-[1fr_90px_110px_100px_100px] gap-4 items-center"
-        >
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
-          >
-            Backbone
-          </span>
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"
-          >
-            Status
-          </span>
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 text-right"
-          >
-            Progress
-          </span>
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 text-right"
-          >
-            Created
-          </span>
-          <span
-            class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 text-right"
-          >
-            Completed
-          </span>
-        </div>
-        <!--
-          One row template, not two. Named grid areas hold identity / status /
-          progress / created / completed; only grid-template-areas and
-          grid-template-columns change at md, so the browser just repositions
-          five existing nodes instead of us shipping two full copies of the row.
-        -->
-        <div
-          v-for="(batch, index) in recent.data.value"
-          :key="batch.id"
-          class="grid grid-cols-4 gap-x-3 gap-y-2 items-center px-4 py-3 [grid-template-areas:'identity_identity_status_status'_'progress_progress_progress_progress'_'created_created_completed_completed'] md:grid-cols-[1fr_90px_110px_100px_100px] md:gap-4 md:px-5 md:[grid-template-areas:'identity_status_progress_created_completed'] transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
-          :class="{ 'border-t border-gray-200/70 dark:border-gray-700/70': index > 0 }"
-        >
-          <div class="[grid-area:identity] min-w-0 flex items-center gap-2">
-            <span
-              class="w-2 h-2 rounded-full shrink-0"
-              :style="{ background: backboneColor(batch.backbone) }"
-            />
-            <div class="min-w-0">
-              <p class="text-sm font-medium text-gray-800 dark:text-gray-100 font-mono truncate">
-                {{ shortId(batch.id) }}
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-500">{{ batch.backbone }}</p>
-            </div>
-          </div>
-
-          <span
-            class="[grid-area:status] justify-self-end md:justify-self-start text-xs font-semibold px-2.5 py-1 rounded-full"
-            :class="[
-              batchStatusMeta[batch.status]?.bg ?? 'bg-gray-500/10',
-              batchStatusMeta[batch.status]?.text ?? 'text-gray-600 dark:text-gray-400',
-            ]"
-          >
-            {{ batchStatusMeta[batch.status]?.label ?? batch.status }}
-          </span>
-
-          <div class="[grid-area:progress] flex items-center gap-2 md:justify-self-end">
-            <div
-              class="flex-1 md:flex-none md:w-12 h-1 rounded-full bg-black/8 dark:bg-white/8 overflow-hidden"
-            >
-              <div
-                class="h-full rounded-full bg-gray-500 dark:bg-gray-400"
-                :style="{
-                  width:
-                    batch.filesTotal > 0
-                      ? `${Math.round((batch.filesCompleted / batch.filesTotal) * 100)}%`
-                      : '0%',
-                }"
+            <div v-else class="flex flex-col items-center gap-2 px-6 py-12 text-center">
+              <UIcon
+                name="i-lucide-circle-check"
+                class="h-10 w-10 text-gray-400 dark:text-gray-600"
               />
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No stuck files</p>
+              <p class="max-w-sm text-xs text-gray-600 dark:text-gray-400">
+                No files have been pending longer than the configured threshold.
+              </p>
             </div>
-            <span class="text-xs text-gray-500 dark:text-gray-500 tabular-nums shrink-0">
-              {{ batch.filesCompleted }} / {{ batch.filesTotal }}
-            </span>
+          </IntegrationPanel>
+        </div>
+
+        <IntegrationPanel title="Failure rate" hint="Per backbone">
+          <ChartFrame
+            height="lg"
+            :loading="failure.status.value === 'pending'"
+            :empty="failureEmpty"
+            empty-text="Completed analyses in the selected range will show failure rates per backbone."
+          >
+            <Line :data="failureChartData" :options="failureChartOptions" />
+          </ChartFrame>
+        </IntegrationPanel>
+
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <IntegrationPanel title="Durations" hint="Completed at minus created at" flush>
+            <div v-if="durationQuery.status.value === 'pending'" class="flex justify-center py-12">
+              <BlockSpinner :size="24" aria-label="Loading durations" class="text-gray-500" />
+            </div>
+
+            <ul
+              v-else-if="(durationQuery.data.value ?? []).length"
+              class="divide-y divide-gray-200/70 dark:divide-gray-700/70"
+            >
+              <li
+                v-for="row in durationQuery.data.value"
+                :key="row.backbone"
+                class="px-4 py-3 sm:px-5"
+              >
+                <p
+                  class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+                >
+                  <span
+                    class="h-2 w-2 shrink-0 rounded-full"
+                    :style="{ background: backboneColor(row.backbone) }"
+                  />
+                  {{ row.backbone }}
+                </p>
+                <dl class="grid grid-cols-3 gap-3">
+                  <div v-for="stat in durationStats(row)" :key="stat.label">
+                    <dt class="text-xs text-gray-600 dark:text-gray-400">{{ stat.label }}</dt>
+                    <dd class="text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100">
+                      {{ stat.value }}
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            </ul>
+
+            <div v-else class="flex flex-col items-center gap-2 px-6 py-12 text-center">
+              <UIcon name="i-lucide-clock" class="h-10 w-10 text-gray-400 dark:text-gray-600" />
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No durations yet</p>
+              <p class="max-w-sm text-xs text-gray-600 dark:text-gray-400">
+                Once analyses finish, average, median and max processing times appear per backbone.
+              </p>
+            </div>
+          </IntegrationPanel>
+
+          <IntegrationPanel title="Volume by hour" hint="Analyses created per hour">
+            <ChartFrame
+              :loading="volume.status.value === 'pending'"
+              :empty="volumeEmpty"
+              empty-title="No volume in this range"
+              empty-text="Hourly analysis volume for the selected period will appear here."
+            >
+              <Bar :data="volumeChartData" :options="volumeChartOptions" />
+            </ChartFrame>
+          </IntegrationPanel>
+        </div>
+
+        <IntegrationPanel title="Recent batches" hint="Latest 20" flush>
+          <div v-if="recent.status.value === 'pending'" class="flex justify-center py-12">
+            <BlockSpinner :size="24" aria-label="Loading recent batches" class="text-gray-500" />
           </div>
 
-          <span class="[grid-area:created] text-xs text-gray-500 dark:text-gray-500 md:text-right">
-            <span class="md:hidden">Created </span>{{ formatDate(batch.createdAt) }}
-          </span>
+          <div v-else-if="(recent.data.value ?? []).length">
+            <div
+              class="hidden grid-cols-[1fr_90px_110px_100px_100px] items-center gap-4 border-b border-gray-200/70 px-5 py-2.5 md:grid dark:border-gray-700/70"
+            >
+              <span
+                v-for="column in BATCH_COLUMNS"
+                :key="column.label"
+                class="text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400"
+                :class="column.align"
+              >
+                {{ column.label }}
+              </span>
+            </div>
+            <!--
+              One row template, not two. Named grid areas hold identity / status /
+              progress / created / completed; only the areas and columns change at md.
+            -->
+            <div
+              v-for="(batch, index) in recent.data.value"
+              :key="batch.id"
+              class="grid grid-cols-4 items-center gap-x-3 gap-y-2 px-4 py-3 [grid-template-areas:'identity_identity_status_status'_'progress_progress_progress_progress'_'created_created_completed_completed'] md:grid-cols-[1fr_90px_110px_100px_100px] md:gap-4 md:px-5 md:[grid-template-areas:'identity_status_progress_created_completed']"
+              :class="{ 'border-t border-gray-200/70 dark:border-gray-700/70': index > 0 }"
+            >
+              <div class="flex min-w-0 items-center gap-2 [grid-area:identity]">
+                <span
+                  class="h-2 w-2 shrink-0 rounded-full"
+                  :style="{ background: backboneColor(batch.backbone) }"
+                />
+                <div class="min-w-0">
+                  <p
+                    class="truncate font-mono text-sm font-medium text-gray-900 dark:text-gray-100"
+                  >
+                    {{ shortId(batch.id) }}
+                  </p>
+                  <p class="text-xs text-gray-600 dark:text-gray-400">{{ batch.backbone }}</p>
+                </div>
+              </div>
 
-          <span class="[grid-area:completed] text-xs text-gray-500 dark:text-gray-500 text-right">
-            <span class="md:hidden">Completed </span
-            >{{ batch.completedAt ? formatDate(batch.completedAt) : "—" }}
-          </span>
-        </div>
+              <span
+                class="justify-self-end rounded-full px-2.5 py-1 text-xs font-semibold [grid-area:status] md:justify-self-start"
+                :class="[
+                  batchStatusMeta[batch.status]?.bg ?? 'bg-gray-500/10',
+                  batchStatusMeta[batch.status]?.text ?? 'text-gray-600 dark:text-gray-400',
+                ]"
+              >
+                {{ batchStatusMeta[batch.status]?.label ?? batch.status }}
+              </span>
+
+              <div class="flex items-center gap-2 [grid-area:progress] md:justify-self-end">
+                <div
+                  class="h-1 flex-1 overflow-hidden rounded-full bg-gray-500/15 md:w-12 md:flex-none"
+                >
+                  <div
+                    class="h-full rounded-full bg-gray-600 dark:bg-gray-400"
+                    :style="{ width: batchProgress(batch) }"
+                  />
+                </div>
+                <span class="shrink-0 text-xs tabular-nums text-gray-600 dark:text-gray-400">
+                  {{ batch.filesCompleted }} / {{ batch.filesTotal }}
+                </span>
+              </div>
+
+              <span
+                class="text-xs text-gray-600 [grid-area:created] md:text-right dark:text-gray-400"
+              >
+                <span class="md:hidden">Created </span>{{ formatDate(batch.createdAt) }}
+              </span>
+
+              <span
+                class="text-right text-xs text-gray-600 [grid-area:completed] dark:text-gray-400"
+              >
+                <span class="md:hidden">Completed </span
+                >{{ batch.completedAt ? formatDate(batch.completedAt) : "—" }}
+              </span>
+            </div>
+          </div>
+
+          <div v-else class="flex flex-col items-center gap-2 px-6 py-12 text-center">
+            <UIcon name="i-lucide-history" class="h-10 w-10 text-gray-400 dark:text-gray-600" />
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No batches yet</p>
+            <p class="max-w-sm text-xs text-gray-600 dark:text-gray-400">
+              Batches dispatched to the audio analysis worker will appear here.
+            </p>
+          </div>
+        </IntegrationPanel>
+
+        <JobRecoveryPanel :type="JobType.MetadataEnrichment" title="Enrichment jobs" />
+
+        <!-- Locked to MediaMetadata and fed by the shared deep-link contract. -->
+        <section aria-labelledby="audio-analysis-incidents" class="flex flex-col gap-2">
+          <h2
+            id="audio-analysis-incidents"
+            class="px-1 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400"
+          >
+            Incidents
+          </h2>
+          <EventsFeed
+            :date-range="feedDateRange"
+            :initial-severity="initialSeverity"
+            :highlight-id="highlightId"
+            :initial-service-type="ServiceType.MediaMetadata"
+            locked-service
+          />
+        </section>
       </div>
-
-      <div
-        v-else
-        class="flex flex-col items-center justify-center gap-3 py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface"
-      >
-        <Icon icon="mdi:history" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-        <div class="space-y-1 max-w-sm">
-          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No batches yet</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            Batches dispatched to the audio analysis worker will appear here.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <JobRecoveryPanel :type="JobType.MetadataEnrichment" title="Enrichment jobs" />
-
-    <!-- Incidents (D12): locked to MediaMetadata, fed by the deep-link contract -->
-    <section class="space-y-2">
-      <div class="flex items-center gap-2">
-        <Icon icon="mdi:alert-circle-outline" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Audio Analysis incidents
-        </h2>
-      </div>
-      <EventsFeed
-        :date-range="feedDateRange"
-        :initial-severity="initialSeverity"
-        :highlight-id="highlightId"
-        :initial-service-type="ServiceType.MediaMetadata"
-        locked-service
-      />
-    </section>
+    </div>
   </div>
 </template>

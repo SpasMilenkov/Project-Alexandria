@@ -3,11 +3,13 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 
 import { reactive } from "vue";
 
+import { useAppToast } from "@/composables/useAppToast";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { quoted } from "@/features/toast/format";
 import { updateDirectory } from "@/mutations/directories";
 import { type UpdateDirectorySchema, updateDirectorySchema } from "@/schemas/directory";
 import { logger } from "@/utils/logger";
-import { glassModalContent } from "@/utils/modalUi";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const { directoryId, currentName } = defineProps<{
   directoryId: string;
@@ -18,6 +20,8 @@ const { mutateAsync, state: mutationState } = updateDirectory();
 
 const emit = defineEmits<{ close: [boolean] }>();
 
+const appToast = useAppToast("folders");
+
 useModalBackGuard(() => emit("close", false));
 
 const state = reactive({
@@ -27,9 +31,15 @@ const state = reactive({
 
 const onSubmit = async (event: FormSubmitEvent<UpdateDirectorySchema>) => {
   logger.log("are we getting here?");
-  await mutateAsync(event.data);
+  try {
+    await mutateAsync(event.data);
+  } catch (err) {
+    appToast.error(`Couldn't rename ${quoted(currentName)}`, err);
+    return;
+  }
   logger.log("directory-updated");
   if (!mutationState.value.error) {
+    appToast.success(`Renamed ${quoted(currentName)} to ${quoted(event.data.name)}`);
     emit("close", true);
   }
 };

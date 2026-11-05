@@ -2,10 +2,9 @@ import type { TreeItem } from "@nuxt/ui";
 
 import { computed, ref } from "vue";
 
-import type { WorkerOutMessage } from "@/workers/blake3.worker";
-
 import { fileApi } from "@/api/file";
-import { formatBytes } from "@/utils/size.utils";
+import { hashFile } from "@/features/upload/hash-pool";
+import { formatBytes } from "@/utils/size";
 
 // types
 
@@ -215,56 +214,6 @@ export const useDirectoryUpload = () => {
   const buildTreeFromStatuses = (): DirectoryTreeItem[] =>
     buildFileTree(fileStatuses.value.map((s) => ({ file: s.file, relativePath: s.relativePath })));
 
-  // worker-based hashing
-
-  const hashWithWorker = (
-    file: File,
-    id: string,
-    onProgress: (pct: number) => void,
-    signal: AbortSignal,
-  ): Promise<string> =>
-    new Promise((resolve, reject) => {
-      // signal may already be aborted before we even get here (queued pending files)
-      if (signal.aborted) {
-        reject(new DOMException("Cancelled", "AbortError"));
-        return;
-      }
-
-      const worker = new Worker(new URL("@/workers/blake3.worker.ts", import.meta.url), {
-        type: "module",
-      });
-
-      const onAbort = () => {
-        worker.terminate();
-        reject(new DOMException("Cancelled", "AbortError"));
-      };
-
-      signal.addEventListener("abort", onAbort, { once: true });
-
-      worker.onmessage = ({ data }: MessageEvent<WorkerOutMessage>) => {
-        if (data.id !== id) return;
-        if (data.type === "progress") {
-          onProgress(data.percent);
-        } else if (data.type === "done") {
-          signal.removeEventListener("abort", onAbort);
-          worker.terminate();
-          resolve(data.hash);
-        } else if (data.type === "error") {
-          signal.removeEventListener("abort", onAbort);
-          worker.terminate();
-          reject(new Error(data.message));
-        }
-      };
-
-      worker.onerror = (err) => {
-        signal.removeEventListener("abort", onAbort);
-        worker.terminate();
-        reject(err);
-      };
-
-      worker.postMessage({ file, id });
-    });
-
   // concurrency limiter
   // shouldStop is checked before pulling each new task — slots drain immediately on cancel
 
@@ -312,7 +261,7 @@ export const useDirectoryUpload = () => {
       fileStatus.status = "hashing";
       fileStatus.progress = 0;
 
-      const hash = await hashWithWorker(
+      const hash = await hashFile(
         file,
         fileStatus.relativePath,
         (pct) => {
@@ -438,7 +387,7 @@ export const useDirectoryUpload = () => {
   const statusIconClass = (status: UploadStatus) => {
     switch (status) {
       case "pending":
-        return "text-muted";
+        return "text-gray-400 dark:text-gray-600";
       case "hashing":
         return "text-primary animate-spin";
       case "uploading":
@@ -460,7 +409,7 @@ export const useDirectoryUpload = () => {
       case "error":
         return "text-error";
       default:
-        return "text-muted";
+        return "text-gray-500 dark:text-gray-500";
     }
   };
 

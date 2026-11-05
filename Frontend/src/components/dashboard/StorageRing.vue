@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { RingArc } from "@/utils/storage-ring";
+import type { RingArc } from "@/features/storage/ring";
 
 const {
   arcs,

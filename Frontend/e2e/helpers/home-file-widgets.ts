@@ -69,7 +69,6 @@ export const sampleStorage = () => ({
   usedBytes: 92e9,
   quotaBytes: 150e9,
   trashSize: 5e9,
-  oldFiles: [{ id: "old-1", fileName: "Old.pdf", mimeType: "application/pdf" }],
 });
 
 export const fileWidgetFixture = async (
@@ -88,7 +87,6 @@ export const fileWidgetFixture = async (
 ) => {
   const requests = {
     storage: 0,
-    storageSummaries: 0,
     searches: [] as URL[],
     thumbnails: 0,
     directories: 0,
@@ -113,7 +111,6 @@ export const fileWidgetFixture = async (
           transcodedSize: 0,
           usedBytes: 0,
           trashSize: 0,
-          oldFiles: [],
         });
 
       await route.fulfill({ json: value });
@@ -151,7 +148,6 @@ export const fileWidgetFixture = async (
     const url = new URL(route.request().url());
 
     if (url.pathname === "/api/storage/my-storage") {
-      if (url.searchParams.get("summary") === "true") requests.storageSummaries += 1;
       await storageResponse(route);
 
       return true;

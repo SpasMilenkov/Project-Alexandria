@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { usePreferredReducedMotion } from "@vueuse/core";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
+import { sampleCoverColor } from "@/features/media/cover-color";
+import { generatedCover } from "@/features/media/generated-cover";
 import { useSettingsStore } from "@/stores/settings";
-import { sampleCoverColor } from "@/utils/cover-color";
-import { generatedCover } from "@/utils/generated-cover";
 
 const {
   fileId = undefined,
@@ -48,10 +49,31 @@ const showArtwork = computed(
 // gives way to the generated cover after the first failed attempt.
 const firstAttemptFailed = ref(false);
 
+// The cover is dropped once the artwork is fully opaque, so transparent pixels and
+// sub-pixel edges never show it through the loaded image.
+const artworkSettled = ref(false);
+const reducedMotion = usePreferredReducedMotion();
+
+// A cached image can load before its hidden state is painted, which skips the fade
+// and its transitionend, so a timer slightly longer than the fade settles it anyway.
+const SETTLE_FALLBACK_MS = 300;
+let settleTimer: ReturnType<typeof setTimeout> | null = null;
+
+const clearSettleTimer = () => {
+  if (settleTimer === null) return;
+
+  clearTimeout(settleTimer);
+  settleTimer = null;
+};
+
+onBeforeUnmount(clearSettleTimer);
+
 watch(
   () => [fileId, versionId],
   () => {
     firstAttemptFailed.value = false;
+    artworkSettled.value = false;
+    clearSettleTimer();
   },
 );
 
@@ -60,14 +82,40 @@ const isPending = computed(
     skeleton && showArtwork.value && !thumbnail.thumbnailLoaded.value && !firstAttemptFailed.value,
 );
 
+const coverStyle = computed(() => {
+  if (isPending.value) return undefined;
+  if (showArtwork.value && thumbnail.thumbnailLoaded.value && artworkSettled.value)
+    return undefined;
+  return { background: cover.value.background };
+});
+
 const onError = () => {
   firstAttemptFailed.value = true;
+  artworkSettled.value = false;
+  clearSettleTimer();
   emit("color", cover.value.base);
   thumbnail.onThumbnailError();
 };
 
+const onTransitionEnd = (event: TransitionEvent) => {
+  if (event.propertyName !== "opacity" || !thumbnail.thumbnailLoaded.value) return;
+
+  clearSettleTimer();
+  artworkSettled.value = true;
+};
+
 const onLoad = () => {
   thumbnail.onThumbnailLoad();
+
+  clearSettleTimer();
+  if (reducedMotion.value === "reduce") {
+    artworkSettled.value = true;
+  } else {
+    settleTimer = setTimeout(() => {
+      settleTimer = null;
+      if (thumbnail.thumbnailLoaded.value) artworkSettled.value = true;
+    }, SETTLE_FALLBACK_MS);
+  }
 
   if (image.value) emit("color", sampleCoverColor(image.value) ?? cover.value.base);
 };
@@ -88,7 +136,7 @@ watch(
       floating ? 'absolute' : 'relative',
       { 'animate-pulse bg-gray-500/15 motion-reduce:animate-none': isPending },
     ]"
-    :style="isPending ? undefined : { background: cover.background }"
+    :style="coverStyle"
   >
     <img
       v-if="showArtwork"
@@ -104,6 +152,7 @@ watch(
       }"
       @load="onLoad"
       @error="onError"
+      @transitionend.self="onTransitionEnd"
     />
 
     <slot />

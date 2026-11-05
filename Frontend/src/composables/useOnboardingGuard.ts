@@ -4,8 +4,8 @@ import { useRoute, useRouter } from "vue-router";
 
 import type { OnboardingStep } from "@/enums";
 
+import { getSignInDestination } from "@/features/home/landing";
 import { getOnboardingStep } from "@/queries/user";
-import { getSignInDestination } from "@/utils/home-landing";
 
 export const useOnboardingGuard = (requiredStep: OnboardingStep) => {
   const router = useRouter();

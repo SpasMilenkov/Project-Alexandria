@@ -9,7 +9,7 @@ import type { OperationalEventSeverity, ServiceType } from "@/enums";
 import ErrorCalendar from "@/components/dashboard/admin/monitoring/ErrorCalendar.vue";
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
 import ServiceHealthStrip from "@/components/dashboard/admin/monitoring/ServiceHealthStrip.vue";
-import { dayWindowFor, parseDeepLinkQuery } from "@/utils/serviceDashboardRouting";
+import { dayWindowFor, parseDeepLinkQuery } from "@/features/monitoring/service-routing";
 
 const route = useRoute();
 const router = useRouter();
@@ -95,45 +95,45 @@ const handleRefresh = async () => {
 </script>
 
 <template>
-  <div class="p-3 sm:p-5 lg:p-6">
-    <div class="max-w-400 mx-auto space-y-3 lg:space-y-4">
-      <!-- Page header -->
-      <div class="flex items-center justify-between gap-3 flex-wrap mb-1">
-        <div>
-          <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100">Incident History</h1>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Daily failure patterns, per-service health and the full incident log
-          </p>
-        </div>
-        <UButton
-          size="sm"
-          color="neutral"
-          variant="outline"
-          :loading="refreshing"
-          icon="i-mdi-refresh"
-          @click="handleRefresh()"
-        >
-          Refresh
-        </UButton>
-      </div>
-
-      <ServiceHealthStrip />
-
-      <div
-        class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface px-6 py-5"
-      >
-        <ErrorCalendar @view-day="handleViewDay" />
-      </div>
-
-      <div ref="feedSection" class="scroll-mt-24">
-        <EventsFeed
-          :date-range="feedDateRange"
-          :initial-service-type="initialServiceType"
-          :initial-severity="initialSeverity"
-          :highlight-id="highlightId"
-          @clear-date-range="handleClearDateRange"
+  <div class="flex min-h-full w-full flex-col gap-3 p-3">
+    <header
+      class="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-gray-200/70 px-4 py-3 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
+    >
+      <div class="flex min-w-0 items-center gap-2.5">
+        <UIcon
+          name="i-lucide-calendar-clock"
+          class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
         />
+        <h1 class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">Incidents</h1>
       </div>
+
+      <UTooltip text="Refresh">
+        <UButton
+          variant="ghost"
+          color="neutral"
+          size="sm"
+          icon="i-lucide-refresh-cw"
+          square
+          class="justify-center"
+          aria-label="Refresh incidents"
+          :loading="refreshing"
+          @click="handleRefresh()"
+        />
+      </UTooltip>
+    </header>
+
+    <ServiceHealthStrip />
+
+    <ErrorCalendar @view-day="handleViewDay" />
+
+    <div ref="feedSection" class="scroll-mt-3">
+      <EventsFeed
+        :date-range="feedDateRange"
+        :initial-service-type="initialServiceType"
+        :initial-severity="initialSeverity"
+        :highlight-id="highlightId"
+        @clear-date-range="handleClearDateRange"
+      />
     </div>
   </div>
 </template>

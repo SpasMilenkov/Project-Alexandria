@@ -2,7 +2,7 @@ import { computed, onScopeDispose, ref, watch } from "vue";
 
 import { attemptRefresh } from "@/api/client";
 import { fileApi } from "@/api/file";
-import { isThumbnailSupportedMimeType } from "@/utils/mimetype.utils";
+import { isThumbnailSupportedMimeType } from "@/utils/files/mimetype";
 
 export interface FileThumbnailSource {
   fileId: string;

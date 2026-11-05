@@ -54,7 +54,7 @@ import type { NavigationMenuItem } from "@nuxt/ui";
 import { computed, useId } from "vue";
 import { useRoute } from "vue-router";
 
-import { type SidebarSection, isSidebarItemActive } from "@/utils/sidebar-navigation";
+import { type SidebarSection, isSidebarItemActive } from "@/features/navigation/sidebar";
 
 const { section, collapsed = false } = defineProps<{
   section: SidebarSection;

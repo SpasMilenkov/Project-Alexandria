@@ -2,7 +2,7 @@
 import { useQuery, useQueryCache } from "@pinia/colada";
 import { computed, onUnmounted } from "vue";
 
-import MediaSearchBar from "@/components/streaming/MediaSearchBar.vue";
+import MediaSearchBar from "@/components/streaming/library/MediaSearchBar.vue";
 import { mediaOverviewKey, mediaOverviewLibrary } from "@/queries/media-overview";
 
 import MediaHero from "./MediaHero.vue";

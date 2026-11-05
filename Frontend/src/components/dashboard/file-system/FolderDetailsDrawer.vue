@@ -1,310 +1,146 @@
 <template>
-  <UDrawer
-    :title="displayDirectory?.name"
-    :description="
-      displayDirectory ? 'Created ' + formatDate(displayDirectory.createdAt) : undefined
-    "
-    :direction="isMobile ? 'bottom' : 'right'"
+  <DetailsDrawerShell
     v-model:open="isOpen"
-    :ui="drawerUi"
-    :handle-only="!isMobile"
+    :title="displayDirectory?.name ?? ''"
+    title-label="Folder name"
+    :description="drawerDescription"
   >
-    <template #body>
-      <div v-if="displayDirectory" class="flex flex-col gap-6 p-1">
-        <!-- Folder Preview/Icon Section -->
-        <div
-          class="flex items-center bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
-          :class="isMobile ? 'gap-3 p-3' : 'gap-4 p-6'"
-        >
-          <div
-            class="bg-white dark:bg-neutral-800 rounded-lg shadow-sm shrink-0"
-            :class="isMobile ? 'p-2' : 'p-4'"
-          >
-            <Icon
-              icon="mdi:folder"
-              class="text-primary"
-              :class="isMobile ? 'w-10 h-10' : 'w-16 h-16'"
-            />
-          </div>
-          <div class="flex flex-col min-w-0 flex-1">
-            <div
-              class="flex items-center gap-1 group mb-1 min-w-0"
-              :class="isMobile ? 'cursor-pointer active:opacity-60' : ''"
-              @click="isMobile && copyWithFeedback(displayDirectory.name, 'Directory name')"
-            >
-              <h3 class="font-semibold truncate" :class="isMobile ? 'text-base' : 'text-lg'">
-                {{ displayDirectory.name }}
-              </h3>
-              <UButton
-                icon="i-mdi-content-copy"
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                :class="
-                  isMobile
-                    ? 'shrink-0 opacity-50'
-                    : 'shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity'
-                "
-                aria-label="Copy directory name"
-                @click.stop="copyWithFeedback(displayDirectory.name, 'Directory name')"
-              />
-            </div>
-            <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <Icon icon="mdi:folder-open" class="w-4 h-4 shrink-0" />
-              <span>Directory</span>
-            </div>
+    <template #icon>
+      <Icon icon="mdi:folder" class="h-6 w-6" />
+    </template>
 
-            <div
-              v-if="displayDirectory.isStarred"
-              class="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400"
-            >
-              <Icon icon="mdi:star" class="w-4 h-4 shrink-0" />
-              <span>Favorite folder</span>
-            </div>
-          </div>
-        </div>
+    <template #meta>
+      <span>Folder</span>
 
-        <!-- Directory Details Grid -->
-        <div class="flex flex-col gap-4">
-          <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Details</h4>
-          <div class="grid gap-4" :class="isMobile ? 'grid-cols-1' : 'grid-cols-2'">
-            <div
-              class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
-            >
-              <Icon icon="mdi:clock-outline" class="w-8 h-8 text-gray-500 mt-0.5 shrink-0" />
-              <div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Created</div>
-                <div class="font-medium text-sm">
-                  {{ formatDate(displayDirectory.createdAt) }}
-                </div>
-              </div>
-            </div>
+      <template v-if="displayDirectory?.isStarred">
+        <span aria-hidden="true">·</span>
+        <span class="flex items-center gap-1">
+          <Icon icon="mdi:star" class="h-3.5 w-3.5" aria-hidden="true" />
+          Favorite
+        </span>
+      </template>
+    </template>
 
-            <div
-              class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
-            >
-              <Icon icon="mdi:update" class="w-8 h-8 text-gray-500 mt-0.5 shrink-0" />
-              <div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Modified</div>
-                <div class="font-medium text-sm">
-                  {{ formatDate(displayDirectory.updatedAt ?? displayDirectory.createdAt) }}
-                </div>
-              </div>
-            </div>
+    <template #actions>
+      <UTooltip v-if="displayDirectory" :text="favoriteLabel">
+        <UButton
+          :icon="displayDirectory.isStarred ? 'i-mdi-star' : 'i-mdi-star-outline'"
+          :loading="favoritePending"
+          :aria-label="favoriteLabel"
+          :aria-pressed="displayDirectory.isStarred"
+          color="neutral"
+          variant="ghost"
+          square
+          class="justify-center"
+          @click="emit('favorite', displayDirectory)"
+        />
+      </UTooltip>
+    </template>
 
-            <div
-              v-if="displayDirectory.parentId"
-              class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
-              :class="isMobile ? '' : 'col-span-2'"
-            >
-              <Icon icon="mdi:folder-arrow-up" class="w-8 h-8 text-gray-500 mt-0.5 shrink-0" />
-              <div class="min-w-0 flex-1">
-                <div class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                  Parent Directory ID
-                </div>
-                <div class="font-mono text-sm truncate">
-                  {{ displayDirectory.parentId }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <template #toolbar>
+      <div class="flex items-center gap-2">
+        <UButton
+          icon="i-mdi-pencil-outline"
+          label="Rename"
+          size="sm"
+          color="neutral"
+          variant="outline"
+          @click="handleRename"
+        />
 
-        <!-- Directory ID -->
-        <div
-          class="flex items-start gap-3 p-3 bg-neutral-100 dark:bg-neutral-800/50 rounded-lg"
-          :class="isMobile ? 'cursor-pointer active:opacity-60' : ''"
-          @click="isMobile && copyWithFeedback(displayDirectory.id, 'Directory ID')"
-        >
-          <Icon icon="mdi:identifier" class="w-8 h-8 text-gray-500 mt-0.5 shrink-0" />
-          <div class="min-w-0 flex-1">
-            <div class="text-xs mb-0.5 text-gray-500 dark:text-gray-400">Directory ID</div>
-            <div class="flex items-center gap-1 group min-w-0">
-              <div class="font-mono text-sm truncate">{{ displayDirectory.id }}</div>
-              <UButton
-                icon="i-mdi-content-copy"
-                size="xs"
-                variant="ghost"
-                color="neutral"
-                :class="
-                  isMobile
-                    ? 'shrink-0 opacity-50 ml-auto'
-                    : 'shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity'
-                "
-                aria-label="Copy directory ID"
-                @click.stop="copyWithFeedback(displayDirectory.id, 'Directory ID')"
-              />
-            </div>
-          </div>
-        </div>
+        <UButton
+          icon="i-mdi-folder-move-outline"
+          label="Move"
+          size="sm"
+          color="neutral"
+          variant="outline"
+          @click="handleMove"
+        />
 
-        <!-- Owner Section -->
-        <UCard :ui="isMobile ? { body: 'p-3' } : {}">
-          <template #header>
-            <div class="flex items-center gap-2" :class="isMobile ? 'p-3 pb-0' : ''">
-              <Icon icon="mdi:account-outline" class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              <span class="font-semibold text-sm">Owner</span>
-            </div>
-          </template>
-          <div class="flex items-center gap-3">
-            <UAvatar :alt="displayDirectory.ownerUserDto.name" :size="isMobile ? 'md' : 'lg'" />
-            <div class="min-w-0 flex-1">
-              <div class="font-medium text-sm">{{ displayDirectory.ownerUserDto.name }}</div>
-              <div
-                class="text-sm flex items-center gap-1.5 mt-0.5 text-gray-600 dark:text-gray-400 group"
-                :class="isMobile ? 'cursor-pointer active:opacity-60' : ''"
-                @click="isMobile && copyWithFeedback(displayDirectory.ownerUserDto.email, 'Email')"
-              >
-                <Icon icon="mdi:email-outline" class="w-4 h-4 shrink-0" />
-                <span class="truncate">{{ displayDirectory.ownerUserDto.email }}</span>
-                <UButton
-                  icon="i-mdi-content-copy"
-                  size="xs"
-                  variant="ghost"
-                  color="neutral"
-                  :class="
-                    isMobile
-                      ? 'shrink-0 opacity-50 ml-auto'
-                      : 'shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity ml-auto'
-                  "
-                  aria-label="Copy owner email"
-                  @click.stop="copyWithFeedback(displayDirectory.ownerUserDto.email, 'Email')"
-                />
-              </div>
-            </div>
-          </div>
-        </UCard>
+        <UButton
+          icon="i-mdi-download-outline"
+          label="Download"
+          size="sm"
+          color="neutral"
+          variant="outline"
+          @click="handleDownload"
+        />
 
-        <!-- Quick Actions -->
-        <UCard>
-          <template #header>
-            <div class="flex items-center gap-2">
-              <Icon
-                icon="mdi:lightning-bolt-outline"
-                class="w-5 h-5 text-gray-500 dark:text-gray-400"
-              />
-              <span class="font-semibold text-sm">Quick Actions</span>
-            </div>
-          </template>
+        <span
+          aria-hidden="true"
+          class="ms-auto h-5 w-px shrink-0 bg-gray-200/70 dark:bg-gray-700/70"
+        />
 
-          <div class="flex flex-col gap-3">
-            <!-- Primary action -->
-            <UButton
-              icon="i-mdi-folder-open"
-              color="primary"
-              variant="solid"
-              block
-              @click="handleOpenDirectory"
-            >
-              Open Directory
-            </UButton>
-
-            <UButton
-              :icon="displayDirectory.isStarred ? 'i-mdi-star' : 'i-mdi-star-outline'"
-              :loading="favoritePending"
-              color="neutral"
-              variant="outline"
-              block
-              @click="emit('favorite', displayDirectory)"
-            >
-              {{ displayDirectory.isStarred ? "Remove from favorites" : "Add to favorites" }}
-            </UButton>
-
-            <!-- Secondary action tiles -->
-            <div class="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                class="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 transition-colors group"
-                @click="handleRename"
-              >
-                <Icon
-                  icon="mdi:pencil-outline"
-                  class="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors"
-                />
-                <span
-                  class="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors"
-                >
-                  Rename
-                </span>
-              </button>
-
-              <button
-                type="button"
-                class="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 transition-colors group"
-                @click="handleMove"
-              >
-                <Icon
-                  icon="mdi:folder-move-outline"
-                  class="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors"
-                />
-                <span
-                  class="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors"
-                >
-                  Move
-                </span>
-              </button>
-
-              <button
-                type="button"
-                class="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-neutral-100 dark:bg-neutral-800/50 hover:bg-neutral-200 dark:hover:bg-neutral-700/50 transition-colors group"
-                @click="handleDownload"
-              >
-                <Icon
-                  icon="mdi:download-outline"
-                  class="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors"
-                />
-                <span
-                  class="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors"
-                >
-                  Download
-                </span>
-              </button>
-            </div>
-
-            <!-- Destructive action — separated per skill guidelines -->
-            <UButton
-              icon="i-mdi-delete-outline"
-              color="error"
-              variant="outline"
-              block
-              size="sm"
-              @click="handleDelete"
-            >
-              Delete
-            </UButton>
-          </div>
-        </UCard>
-        <PolicySection :key="displayDirectory.id" :directory-id="displayDirectory.id" />
+        <UTooltip text="Delete folder">
+          <UButton
+            icon="i-mdi-delete-outline"
+            size="sm"
+            color="error"
+            variant="ghost"
+            square
+            class="justify-center"
+            aria-label="Delete folder"
+            @click="handleDelete"
+          />
+        </UTooltip>
       </div>
     </template>
-  </UDrawer>
+
+    <template v-if="displayDirectory">
+      <DetailsSection title="Details">
+        <div class="grid grid-cols-2 gap-2">
+          <DetailsTile label="Created" :hint="formatDate(displayDirectory.createdAt)">
+            {{ formatCalendarDate(displayDirectory.createdAt) }}
+          </DetailsTile>
+
+          <DetailsTile label="Modified" :hint="formatDate(modifiedAt)">
+            {{ formatCalendarDate(modifiedAt) }}
+          </DetailsTile>
+
+          <DetailsTile label="Folder ID" :copy-value="displayDirectory.id" class="col-span-2">
+            <span class="block truncate font-mono text-xs font-normal">
+              {{ displayDirectory.id }}
+            </span>
+          </DetailsTile>
+        </div>
+      </DetailsSection>
+
+      <DetailsSection title="Owner">
+        <DetailsOwner
+          :name="displayDirectory.ownerUserDto.name"
+          :email="displayDirectory.ownerUserDto.email"
+        />
+      </DetailsSection>
+
+      <PolicySection :key="displayDirectory.id" :directory-id="displayDirectory.id" />
+    </template>
+
+    <template #footer>
+      <UButton
+        icon="i-mdi-folder-open-outline"
+        label="Open folder"
+        color="primary"
+        block
+        @click="handleOpenDirectory"
+      />
+    </template>
+  </DetailsDrawerShell>
 </template>
 
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
-import { breakpointsTailwind, useBreakpoints, useClipboard } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";
 
+import DetailsDrawerShell from "@/components/common/details/DetailsDrawerShell.vue";
+import DetailsOwner from "@/components/common/details/DetailsOwner.vue";
+import DetailsSection from "@/components/common/details/DetailsSection.vue";
+import DetailsTile from "@/components/common/details/DetailsTile.vue";
 import PolicySection from "@/components/policy/PolicySection.vue";
-import { formatDate } from "@/utils/date-formatters";
-import { glassDrawerContent } from "@/utils/modalUi";
+import { formatCalendarDate, formatDate } from "@/utils/date-formatters";
 
-const toast = useToast();
-const { copy } = useClipboard();
-
-const breakpoints = useBreakpoints(breakpointsTailwind);
-const isMobile = breakpoints.smaller("md");
-
-const drawerUi = computed(() => {
-  if (isMobile.value) {
-    return { content: glassDrawerContent, container: "h-[85vh] rounded-t-2xl" };
-  }
-  return { content: glassDrawerContent, container: "md:max-w-[40rem] lg:min-w-[40rem]" };
-});
-
-const { directory } = defineProps<{
+const { directory, favoritePending = false } = defineProps<{
   directory: DirectorySummaryDto | null;
   favoritePending?: boolean;
 }>();
@@ -322,6 +158,7 @@ const emit = defineEmits<{
 // Keeps the last directory rendered during the close transition, so the drawer
 // doesn't blank out mid-animation when the parent nulls the active directory.
 const displayDirectory = ref<DirectorySummaryDto | null>(null);
+
 watch(
   () => directory,
   (dir) => {
@@ -337,45 +174,30 @@ const isOpen = computed({
   },
 });
 
-const copyWithFeedback = async (value: string, label: string) => {
-  await copy(value);
-  toast.add({
-    color: "success",
-    duration: 2000,
-    icon: "i-mdi-check-circle",
-    title: `${label} copied`,
-  });
-};
+const drawerDescription = computed(() => {
+  if (!displayDirectory.value) return undefined;
+  return `Created ${formatDate(displayDirectory.value.createdAt)}`;
+});
 
-const handleOpenDirectory = () => {
+const modifiedAt = computed(() => {
+  if (!displayDirectory.value) return "";
+  return displayDirectory.value.updatedAt ?? displayDirectory.value.createdAt;
+});
+
+const favoriteLabel = computed(() => {
+  if (displayDirectory.value?.isStarred) return "Remove from favorites";
+  return "Add to favorites";
+});
+
+const closeAndEmit = (action: (dir: DirectorySummaryDto) => void) => {
   const dir = displayDirectory.value;
   isOpen.value = false;
-  if (dir) emit("navigate", dir.id, dir.name);
+  if (dir) action(dir);
 };
 
-const handleRename = () => {
-  const dir = displayDirectory.value;
-  isOpen.value = false;
-  if (dir) emit("rename", dir.id);
-};
-
-const handleMove = () => {
-  const dir = displayDirectory.value;
-  isOpen.value = false;
-  if (dir) emit("move", dir.id);
-};
-
-const handleDownload = () => {
-  const dir = displayDirectory.value;
-  isOpen.value = false;
-  if (dir) emit("download", [dir.id]);
-};
-
-const handleDelete = () => {
-  const dir = displayDirectory.value;
-  isOpen.value = false;
-  if (dir) emit("delete", [dir.id]);
-};
+const handleOpenDirectory = () => closeAndEmit((dir) => emit("navigate", dir.id, dir.name));
+const handleRename = () => closeAndEmit((dir) => emit("rename", dir.id));
+const handleMove = () => closeAndEmit((dir) => emit("move", dir.id));
+const handleDownload = () => closeAndEmit((dir) => emit("download", [dir.id]));
+const handleDelete = () => closeAndEmit((dir) => emit("delete", [dir.id]));
 </script>
-
-<style scoped></style>

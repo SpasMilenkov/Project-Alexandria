@@ -3,9 +3,9 @@ import { computed } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
+import { coverSeed } from "@/features/media/generated-cover";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatDuration } from "@/utils/date-formatters";
-import { coverSeed } from "@/utils/generated-cover";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaEqualizer from "./MediaEqualizer.vue";

@@ -3,7 +3,9 @@
     <WrappedBackdrop />
 
     <main class="mx-auto w-full max-w-[1200px] px-4 py-6 md:px-6 md:py-8">
-      <header class="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <header
+        class="mb-6 flex flex-col gap-4 rounded-2xl border border-gray-200/70 p-4 frosted-glass glass-surface-strong md:flex-row md:items-center md:justify-between md:px-6 dark:border-gray-700/70"
+      >
         <div>
           <p
             class="text-xs font-semibold tracking-[0.16em] text-gray-600 uppercase dark:text-gray-400"
@@ -135,28 +137,28 @@ import { isAxiosError } from "axios";
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import WrappedBackdrop from "@/components/streaming/wrapped/WrappedBackdrop.vue";
-import WrappedExperience from "@/components/streaming/wrapped/WrappedExperience.vue";
-import WrappedExportButton from "@/components/streaming/wrapped/WrappedExportButton.vue";
-import WrappedPaletteSwitcher from "@/components/streaming/wrapped/WrappedPaletteSwitcher.vue";
+import WrappedPaletteSwitcher from "@/components/streaming/wrapped/palette/WrappedPaletteSwitcher.vue";
+import WrappedBackdrop from "@/components/streaming/wrapped/story/WrappedBackdrop.vue";
+import WrappedExperience from "@/components/streaming/wrapped/story/WrappedExperience.vue";
+import WrappedExportButton from "@/components/streaming/wrapped/story/WrappedExportButton.vue";
 import { useWrappedPalette } from "@/composables/useWrappedPalette";
 import { HomeRecapPeriod } from "@/enums/home-widget";
-import { getSummary, getWrapped } from "@/queries/stats";
-import { useAuthStore } from "@/stores/auth";
 import {
   MIN_WRAPPED_YEAR,
   parseWrappedYear,
   wrappedEmptyState,
   yearRange,
-} from "@/utils/wrapped-display.utils";
+} from "@/features/wrapped/display";
 import {
   parseWrappedMonth,
   wrappedMonth,
   wrappedMonthLabel,
   wrappedMonthLocation,
   wrappedMonthRange,
-} from "@/utils/wrapped-month";
-import { SUMMARY_KIND_WRAPPED, summaryToWrappedDeck } from "@/utils/wrapped-summary.utils";
+} from "@/features/wrapped/month";
+import { SUMMARY_KIND_WRAPPED, summaryToWrappedDeck } from "@/features/wrapped/summary";
+import { getSummary, getWrapped } from "@/queries/stats";
+import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();
 const router = useRouter();

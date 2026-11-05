@@ -3,11 +3,12 @@ import type { AuthFormField, FormSubmitEvent } from "@nuxt/ui";
 
 import { useRoute, useRouter } from "vue-router";
 
+import { useAppToast } from "@/composables/useAppToast";
+import { getSignInDestination } from "@/features/home/landing";
 import { type LoginSchema, loginSchema } from "@/schemas/auth";
 import { useAuthStore } from "@/stores/auth";
-import { getSignInDestination } from "@/utils/home-landing";
 
-const toast = useToast();
+const toast = useAppToast("auth");
 const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
@@ -38,10 +39,7 @@ const onSubmit = async (payload: FormSubmitEvent<LoginSchema>) => {
   await authStore.login(payload.data);
 
   if (authStore.error) {
-    toast.add({
-      description: authStore.error,
-      title: "Error trying to log in",
-    });
+    toast.error("Couldn't sign you in", authStore.error);
     return;
   }
 

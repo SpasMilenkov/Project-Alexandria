@@ -2,21 +2,21 @@
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { computed, ref, shallowRef } from "vue";
 
-import type { MediaKind, Order, UpNextItem } from "./player/types";
+import type { MediaKind, Order, UpNextItem } from "@/stores/player/types";
 
-import { createAutoplayCountdown } from "./player/autoplay-countdown";
-import { createCommit } from "./player/commit";
-import { createEngineBridge } from "./player/engine-bridge";
-import { createHistory } from "./player/history";
-import { createIntents } from "./player/intents";
-import { migrateLegacyPlayer } from "./player/migrate";
-import { createNavigation } from "./player/navigation";
-import { createOrderManager } from "./player/order-manager";
-import { createQueue } from "./player/queue";
-import { createRecovery } from "./player/recovery";
-import { createPlayerState } from "./player/state";
-import { createTransitions, type RunOptions } from "./player/transitions";
-import { type VariantTrack } from "./player/transport";
+import { createAutoplayCountdown } from "@/stores/player/autoplay-countdown";
+import { createCommit } from "@/stores/player/commit";
+import { createEngineBridge } from "@/stores/player/engine-bridge";
+import { createHistory } from "@/stores/player/history";
+import { createIntents } from "@/stores/player/intents";
+import { migrateLegacyPlayer } from "@/stores/player/migrate";
+import { createNavigation } from "@/stores/player/navigation";
+import { createOrderManager } from "@/stores/player/order-manager";
+import { createQueue } from "@/stores/player/queue";
+import { createRecovery } from "@/stores/player/recovery";
+import { createPlayerState } from "@/stores/player/state";
+import { createTransitions, type RunOptions } from "@/stores/player/transitions";
+import { type VariantTrack } from "@/stores/player/transport";
 
 const UPCOMING_LIMIT = 30;
 

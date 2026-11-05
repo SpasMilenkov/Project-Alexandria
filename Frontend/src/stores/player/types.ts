@@ -1,5 +1,5 @@
 import type { MediaFileDto } from "@/api/streaming";
-import type { SourceAnchor, SourceDescriptor } from "@/utils/player-source";
+import type { SourceAnchor, SourceDescriptor } from "@/features/player/source";
 
 export type Origin = "context" | "queue" | "interrupt";
 export type MediaKind = "audio" | "video";

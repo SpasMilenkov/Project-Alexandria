@@ -112,7 +112,14 @@ export const useFileExplorer = () => {
       if (filePagination.value.paginationParams.page === 1) {
         filesList.value = [...newData.items];
       } else {
-        filesList.value.push(...newData.items);
+        // A refetched later page (after a move or refresh) must not duplicate rows.
+        const loaded = new Map(filesList.value.map((file) => [file.fileId, file]));
+
+        for (const file of newData.items) {
+          loaded.set(file.fileId, file);
+        }
+
+        filesList.value = [...loaded.values()];
       }
     },
     { immediate: true },

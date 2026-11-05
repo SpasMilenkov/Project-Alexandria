@@ -1,209 +1,38 @@
 <template>
   <UModal
-    :ui="{
-      content: glassModalContentWide,
-      header: 'border-b border-neutral-200/60 dark:border-neutral-700/60',
-      footer: 'border-t border-neutral-200/60 dark:border-neutral-700/60',
-    }"
+    :title="modalTitle"
+    :description="modalDescription"
     :close="{ onClick: () => emit('close', false) }"
+    :ui="{ content: glassModalContentWide, body: glassModalBody }"
   >
-    <template #header>
-      <div class="flex items-center gap-3">
-        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 shrink-0">
-          <Icon
-            :icon="props.mode === 'move' ? 'mdi:folder-move-outline' : 'mdi:content-copy'"
-            class="w-4 h-4 text-primary"
-          />
-        </div>
-        <div>
-          <h2 class="font-semibold text-sm leading-tight text-neutral-900 dark:text-neutral-100">
-            {{ props.mode === "move" ? "Move" : "Copy" }}
-            {{ totalCount }} {{ totalCount === 1 ? "item" : "items" }}
-          </h2>
-          <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            {{
-              props.mode === "move"
-                ? "Choose where to move these items"
-                : "Choose where to copy these items"
-            }}
-          </p>
-        </div>
-      </div>
-    </template>
-
     <template #body>
-      <div class="flex flex-col gap-5 p-1">
-        <!-- Transfer visualization -->
-        <div class="flex items-stretch gap-3">
-          <!-- Origin panel -->
-          <div
-            class="flex-1 min-w-0 flex flex-col gap-2 p-3 rounded-xl border border-neutral-200/60 dark:border-neutral-700/60 frosted-glass glass-surface"
-          >
-            <div class="flex items-center gap-1.5 mb-1">
-              <Icon
-                icon="mdi:folder-outline"
-                class="w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0"
-              />
-              <span
-                class="text-xs font-medium text-neutral-500 dark:text-neutral-400 truncate uppercase tracking-wide"
-              >
-                From
-              </span>
-            </div>
-            <p
-              class="text-xs font-semibold text-neutral-700 dark:text-neutral-200 truncate -mt-1 mb-1"
-            >
-              {{ props.originDirName ?? "Home" }}
-            </p>
+      <!-- Selected items -->
+      <ul class="flex flex-wrap gap-2" aria-label="Selected items">
+        <li
+          v-for="chip in visibleChips"
+          :key="chip.id"
+          class="flex items-center gap-1.5 max-w-48 rounded-md border border-gray-200/70 dark:border-gray-700/70 px-2 py-1"
+        >
+          <Icon :icon="chip.icon" class="w-3.5 h-3.5 shrink-0 text-gray-500 dark:text-gray-500" />
+          <span class="text-xs truncate text-gray-700 dark:text-gray-300">{{ chip.name }}</span>
+        </li>
 
-            <div class="flex flex-col gap-1">
-              <TransitionGroup name="item-leave" tag="div" class="flex flex-col gap-1">
-                <div
-                  v-for="chip in visibleOriginChips"
-                  :key="chip.id"
-                  class="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-neutral-200/50 dark:border-neutral-700/50 transition-all duration-300"
-                  :class="
-                    props.mode === 'move'
-                      ? 'opacity-35 bg-neutral-100/60 dark:bg-neutral-800/40'
-                      : 'opacity-100 bg-white/60 dark:bg-white/5'
-                  "
-                >
-                  <Icon :icon="chip.icon" class="w-4 h-4 shrink-0 text-neutral-400" />
-                  <span
-                    class="text-xs truncate text-neutral-600 dark:text-neutral-300"
-                    :class="props.mode === 'move' ? 'line-through' : ''"
-                  >
-                    {{ chip.name }}
-                  </span>
-                </div>
-              </TransitionGroup>
+        <li
+          v-if="overflowCount > 0"
+          class="flex items-center px-2 py-1 text-xs text-gray-600 dark:text-gray-400"
+        >
+          +{{ overflowCount }} more
+        </li>
+      </ul>
 
-              <div
-                v-if="overflowCount > 0"
-                class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-neutral-100/60 dark:bg-neutral-800/40"
-              >
-                <Icon icon="mdi:dots-horizontal" class="w-3.5 h-3.5 text-neutral-400" />
-                <span class="text-xs text-neutral-400 dark:text-neutral-500"
-                  >+{{ overflowCount }} more</span
-                >
-              </div>
-            </div>
-          </div>
-
-          <!-- Arrow -->
-          <div class="flex flex-col items-center justify-center shrink-0 gap-1.5 px-1">
-            <Icon
-              icon="mdi:arrow-right"
-              class="w-5 h-5 transition-colors duration-300"
-              :class="destinationDirId ? 'text-primary' : 'text-neutral-300 dark:text-neutral-600'"
-            />
-            <span
-              class="text-[10px] font-semibold uppercase tracking-widest transition-colors duration-300"
-              :class="destinationDirId ? 'text-primary' : 'text-neutral-300 dark:text-neutral-600'"
-            >
-              {{ props.mode === "move" ? "move" : "copy" }}
-            </span>
-          </div>
-
-          <!-- Destination panel -->
-          <div
-            class="flex-1 min-w-0 flex flex-col gap-2 p-3 rounded-xl border transition-colors duration-300"
-            :class="
-              destinationDirId
-                ? 'border-primary/40 bg-primary/5 dark:bg-primary/10'
-                : 'border-neutral-200/60 dark:border-neutral-700/60 frosted-glass glass-surface'
-            "
-          >
-            <div class="flex items-center gap-1.5 mb-1">
-              <Icon
-                icon="mdi:folder-outline"
-                class="w-4 h-4 shrink-0 transition-colors duration-300"
-                :class="
-                  destinationDirId ? 'text-primary' : 'text-neutral-400 dark:text-neutral-500'
-                "
-              />
-              <span
-                class="text-xs font-medium uppercase tracking-wide transition-colors duration-300"
-                :class="
-                  destinationDirId ? 'text-primary' : 'text-neutral-500 dark:text-neutral-400'
-                "
-              >
-                To
-              </span>
-            </div>
-            <p
-              class="text-xs font-semibold truncate -mt-1 mb-1 transition-colors duration-300"
-              :class="
-                destinationDirId ? 'text-primary' : 'text-neutral-400 dark:text-neutral-500 italic'
-              "
-            >
-              {{ destinationDirName ?? "No folder selected" }}
-            </p>
-
-            <div class="flex flex-col gap-1 min-h-0">
-              <TransitionGroup name="item-enter" tag="div" class="flex flex-col gap-1">
-                <div
-                  v-if="destinationDirId !== undefined"
-                  v-for="chip in visibleOriginChips"
-                  :key="'dest-' + chip.id"
-                  class="flex items-center gap-2 px-2 py-1.5 rounded-lg frosted-glass glass-surface border border-primary/20"
-                >
-                  <Icon :icon="chip.icon" class="w-4 h-4 shrink-0 text-primary/70" />
-                  <span class="text-xs truncate text-neutral-700 dark:text-neutral-200">{{
-                    chip.name
-                  }}</span>
-                </div>
-              </TransitionGroup>
-
-              <div
-                v-if="destinationDirId === undefined"
-                class="flex flex-col items-center justify-center py-4 gap-1 opacity-40"
-              >
-                <Icon icon="mdi:folder-arrow-down-outline" class="w-7 h-7 text-neutral-400" />
-              </div>
-
-              <div
-                v-else-if="overflowCount > 0"
-                class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10"
-              >
-                <Icon icon="mdi:dots-horizontal" class="w-3.5 h-3.5 text-primary/60" />
-                <span class="text-xs text-primary/60">+{{ overflowCount }} more</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Same-directory warning -->
-        <Transition name="fade-status">
-          <div
-            v-if="isSameDirectory"
-            class="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50/80 dark:bg-amber-900/20 border border-amber-200/70 dark:border-amber-700/40 text-xs text-amber-700 dark:text-amber-400"
-          >
-            <Icon icon="mdi:alert-circle-outline" class="w-4 h-4 shrink-0" />
-            Items are already in this folder.
-          </div>
-        </Transition>
-
-        <!-- Divider -->
-        <div class="w-full h-px bg-neutral-200/60 dark:bg-neutral-700/60" />
-
-        <!-- Destination picker -->
-        <div class="flex flex-col gap-3">
-          <p
-            class="text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-widest"
-          >
-            Choose destination
-          </p>
-
-          <!-- Search input -->
+      <!-- Destination picker -->
+      <div class="space-y-2">
+        <UFormField label="Destination">
           <UInput
-            ref="searchInputRef"
             v-model="searchQuery"
-            placeholder="Search directories…"
+            placeholder="Search folders…"
             icon="i-mdi-magnify"
-            size="sm"
-            :loading="isSearching"
-            autofocus
+            class="w-full"
             @update:model-value="handleSearchInput"
           >
             <template v-if="searchQuery" #trailing>
@@ -212,262 +41,168 @@
                 size="xs"
                 variant="ghost"
                 color="neutral"
+                square
+                class="justify-center"
                 aria-label="Clear search"
                 @click="clearSearch"
               />
             </template>
           </UInput>
+        </UFormField>
 
-          <!-- Browse mode: breadcrumb strip -->
-          <Transition name="fade-status">
-            <div v-if="pickerMode === 'browse'" class="flex items-center gap-1 flex-wrap">
-              <button
-                class="flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60"
-                :class="
-                  browsePath.length === 0
-                    ? 'text-primary font-semibold bg-primary/8'
-                    : 'text-neutral-500 dark:text-neutral-400'
-                "
-                @click="browseNavigateTo(null, 'Home')"
-              >
-                <Icon icon="mdi:home-outline" class="w-3.5 h-3.5" />
-                <span>Home</span>
-              </button>
-
-              <template v-for="(seg, idx) in browsePath" :key="seg.id">
-                <Icon
-                  icon="mdi:chevron-right"
-                  class="w-3.5 h-3.5 text-neutral-300 dark:text-neutral-600"
-                />
-                <button
-                  class="flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60"
-                  :class="
-                    idx === browsePath.length - 1
-                      ? 'text-primary font-semibold bg-primary/8'
-                      : 'text-neutral-500 dark:text-neutral-400'
-                  "
-                  @click="browseNavigateTo(seg.id, seg.name)"
-                >
-                  {{ seg.name }}
-                </button>
-              </template>
-            </div>
-          </Transition>
-
-          <!-- Results / subdirectory list -->
-          <div
-            class="flex flex-col rounded-xl border border-neutral-200/60 dark:border-neutral-700/60 overflow-hidden frosted-glass glass-surface"
-            style="min-height: 180px; max-height: 240px; overflow-y: auto"
+        <nav
+          v-if="pickerMode === 'browse'"
+          aria-label="Folder path"
+          class="flex items-center gap-1 min-w-0 overflow-x-auto"
+        >
+          <button
+            type="button"
+            class="flex items-center gap-1 shrink-0 rounded-md px-2 py-1 text-xs transition-colors duration-150 hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+            :class="crumbClass(browsePath.length === 0)"
+            :aria-current="browsePath.length === 0 ? 'location' : undefined"
+            @click="browseNavigateTo(null, 'Home')"
           >
-            <!-- Loading skeleton -->
-            <div v-if="isLoadingDirs" class="flex flex-col gap-2 p-3">
-              <div v-for="n in 3" :key="n" class="flex items-center gap-3 px-2 py-2">
-                <USkeleton class="w-6 h-6 rounded-md shrink-0" />
-                <USkeleton class="h-3 rounded flex-1" />
-              </div>
-            </div>
+            <Icon icon="mdi:home-outline" class="w-3.5 h-3.5" />
+            Home
+          </button>
 
-            <!-- Search results -->
-            <template v-else-if="pickerMode === 'search'">
+          <template v-for="(segment, idx) in browsePath" :key="segment.id">
+            <Icon
+              icon="mdi:chevron-right"
+              class="w-3.5 h-3.5 shrink-0 text-gray-400 dark:text-gray-600"
+            />
+
+            <button
+              type="button"
+              class="shrink-0 max-w-40 truncate rounded-md px-2 py-1 text-xs transition-colors duration-150 hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
+              :class="crumbClass(idx === browsePath.length - 1)"
+              :aria-current="idx === browsePath.length - 1 ? 'location' : undefined"
+              @click="browseNavigateTo(segment.id, segment.name)"
+            >
+              {{ segment.name }}
+            </button>
+          </template>
+        </nav>
+
+        <p v-else class="px-2 py-1 text-xs text-gray-600 dark:text-gray-400">
+          Folders matching "{{ searchQuery.trim() }}"
+        </p>
+
+        <div
+          class="h-64 overflow-y-auto rounded-lg border border-gray-200/70 dark:border-gray-700/70"
+        >
+          <div v-if="isListLoading" class="flex h-full items-center justify-center">
+            <BlockSpinner />
+          </div>
+
+          <div
+            v-else-if="pickerMode === 'search' && searchResults.length === 0"
+            class="flex h-full flex-col items-center justify-center gap-2 px-6 text-center"
+          >
+            <Icon
+              icon="mdi:folder-search-outline"
+              class="w-12 h-12 text-gray-400 dark:text-gray-600"
+            />
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No folders found</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400">Try a different name</p>
+          </div>
+
+          <ul v-else class="divide-y divide-gray-200/70 dark:divide-gray-700/70">
+            <li v-for="row in folderRows" :key="row.key">
               <div
-                v-if="searchResults.length === 0"
-                class="flex flex-col items-center justify-center gap-2 py-10 text-center"
+                role="button"
+                :tabindex="row.state === 'blocked' ? -1 : 0"
+                :aria-disabled="row.state === 'blocked'"
+                :aria-pressed="row.state === 'selected'"
+                :aria-label="rowLabel(row)"
+                class="flex items-center gap-3 px-4 py-2 min-h-11 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60"
+                :class="ROW_CLASSES[row.state]"
+                @click="selectFolder(row)"
+                @dblclick="openFolder(row)"
+                @keydown.enter.self.prevent="selectFolder(row)"
+                @keydown.space.self.prevent="selectFolder(row)"
+                @keydown.right.self.prevent="openFolder(row)"
               >
-                <Icon
-                  icon="mdi:folder-search-outline"
-                  class="w-10 h-10 text-neutral-300 dark:text-neutral-600"
-                />
-                <p class="text-sm text-neutral-400 dark:text-neutral-500">No directories found</p>
-                <p class="text-xs text-neutral-300 dark:text-neutral-600">
-                  Try a different search term
-                </p>
-              </div>
+                <Icon :icon="row.icon" class="w-5 h-5 shrink-0" :class="ICON_CLASSES[row.state]" />
 
-              <button
-                v-for="dir in searchResults"
-                :key="dir.id"
-                class="flex items-center gap-3 px-4 py-2.5 text-left transition-colors border-b last:border-b-0 border-neutral-100/60 dark:border-neutral-800/60"
-                :class="
-                  destinationDirId === dir.id
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60 text-neutral-700 dark:text-neutral-200'
-                "
-                @click="selectDestination(dir.id, dir.name)"
-              >
-                <Icon
-                  :icon="destinationDirId === dir.id ? 'mdi:folder-check' : 'mdi:folder-outline'"
-                  class="w-5 h-5 shrink-0"
-                  :class="
-                    destinationDirId === dir.id
-                      ? 'text-primary'
-                      : 'text-neutral-400 dark:text-neutral-500'
-                  "
-                />
-                <div class="flex-1 min-w-0">
-                  <span class="text-sm font-medium truncate block">{{ dir.name }}</span>
-                  <span
-                    class="text-xs text-neutral-400 dark:text-neutral-500 truncate block"
-                    v-if="dir.parentId"
-                  >
-                    ID: {{ dir.id.slice(0, 8) }}…
-                  </span>
-                </div>
-                <Icon
-                  v-if="destinationDirId === dir.id"
-                  icon="mdi:check-circle"
-                  class="w-4 h-4 text-primary shrink-0"
-                />
-                <UButton
-                  v-else
-                  icon="i-mdi-arrow-right"
-                  size="xs"
-                  variant="ghost"
-                  color="neutral"
-                  title="Browse into this folder"
-                  @click.stop="browseIntoFromSearch(dir.id, dir.name)"
-                />
-              </button>
-            </template>
-
-            <!-- Browse mode -->
-            <template v-else>
-              <!-- "Select this folder" current dir row -->
-              <button
-                class="flex items-center gap-3 px-4 py-2.5 text-left transition-colors border-b border-neutral-100/60 dark:border-neutral-800/60"
-                :class="
-                  destinationDirId === currentBrowseDirId
-                    ? 'bg-primary/10'
-                    : 'hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60'
-                "
-                @click="selectCurrentBrowseDir"
-              >
-                <Icon
-                  :icon="
-                    destinationDirId === currentBrowseDirId
-                      ? 'mdi:folder-check'
-                      : 'mdi:folder-open-outline'
-                  "
-                  class="w-5 h-5 shrink-0"
-                  :class="
-                    destinationDirId === currentBrowseDirId
-                      ? 'text-primary'
-                      : 'text-neutral-400 dark:text-neutral-500'
-                  "
-                />
-                <span
-                  class="text-sm font-medium flex-1 truncate"
-                  :class="
-                    destinationDirId === currentBrowseDirId
-                      ? 'text-primary'
-                      : 'text-neutral-700 dark:text-neutral-200'
-                  "
-                >
-                  {{ currentBrowseDirName }}
+                <span class="flex-1 min-w-0 truncate text-sm" :class="NAME_CLASSES[row.state]">
+                  {{ row.name }}
                 </span>
-                <Icon
-                  v-if="destinationDirId === currentBrowseDirId"
-                  icon="mdi:check-circle"
-                  class="w-4 h-4 text-primary shrink-0"
-                />
-              </button>
 
-              <!-- Subdirectories -->
-              <div
-                v-if="browseSubdirs.length === 0 && !isLoadingDirs"
-                class="flex flex-col items-center justify-center gap-1.5 py-8 text-center"
-              >
-                <Icon
-                  icon="mdi:folder-outline"
-                  class="w-8 h-8 text-neutral-300 dark:text-neutral-600"
-                />
-                <p class="text-xs text-neutral-400 dark:text-neutral-500">No subfolders</p>
-              </div>
-
-              <button
-                v-for="dir in browseSubdirs"
-                :key="dir.id"
-                class="flex items-center gap-3 px-4 py-2.5 text-left w-full transition-colors border-b last:border-b-0 border-neutral-100/60 dark:border-neutral-800/60"
-                :class="
-                  destinationDirId === dir.id
-                    ? 'bg-primary/10'
-                    : 'hover:bg-neutral-100/60 dark:hover:bg-neutral-800/60'
-                "
-                @click="selectDestination(dir.id, dir.name)"
-              >
-                <Icon
-                  :icon="destinationDirId === dir.id ? 'mdi:folder-check' : 'mdi:folder-outline'"
-                  class="w-5 h-5 shrink-0"
-                  :class="
-                    destinationDirId === dir.id
-                      ? 'text-primary'
-                      : 'text-neutral-400 dark:text-neutral-500'
-                  "
-                />
-                <span
-                  class="text-sm flex-1 truncate font-medium"
-                  :class="
-                    destinationDirId === dir.id
-                      ? 'text-primary'
-                      : 'text-neutral-700 dark:text-neutral-200'
-                  "
-                >
-                  {{ dir.name }}
+                <span v-if="row.hint" class="shrink-0 text-xs text-gray-500 dark:text-gray-500">
+                  {{ row.hint }}
                 </span>
-                <div class="flex items-center gap-1 shrink-0">
-                  <Icon
-                    v-if="destinationDirId === dir.id"
-                    icon="mdi:check-circle"
-                    class="w-4 h-4 text-primary"
-                  />
+
+                <Icon
+                  v-if="row.state === 'selected'"
+                  icon="mdi:check-circle"
+                  class="w-4 h-4 shrink-0 text-primary"
+                />
+
+                <UTooltip v-if="row.canOpen" text="Open folder">
                   <UButton
                     icon="i-mdi-chevron-right"
                     size="xs"
                     variant="ghost"
                     color="neutral"
-                    title="Browse into this folder"
-                    @click.stop="browseNavigateTo(dir.id, dir.name)"
+                    square
+                    class="justify-center"
+                    :aria-label="`Open ${row.name}`"
+                    @click.stop="openFolder(row)"
                   />
-                </div>
-              </button>
-            </template>
-          </div>
+                </UTooltip>
+              </div>
+            </li>
+
+            <li
+              v-if="pickerMode === 'browse' && browseSubdirs.length === 0"
+              class="px-4 py-6 text-center text-xs text-gray-500 dark:text-gray-500"
+            >
+              No subfolders here
+            </li>
+          </ul>
         </div>
       </div>
+
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        enter-from-class="opacity-0 -translate-y-1"
+        leave-active-class="transition-all duration-150 ease-in"
+        leave-to-class="opacity-0 -translate-y-1"
+      >
+        <UAlert
+          v-if="isSameDirectory"
+          color="warning"
+          variant="subtle"
+          icon="i-mdi-alert-circle-outline"
+          title="These items are already in this folder"
+        />
+      </Transition>
     </template>
 
     <template #footer>
-      <div class="flex items-center justify-between gap-3">
-        <div class="text-xs text-neutral-400 dark:text-neutral-500 min-w-0">
-          <template v-if="destinationDirId && !isSameDirectory">
-            <Icon icon="mdi:check-circle-outline" class="w-3.5 h-3.5 inline mr-1 text-primary" />
-            <span class="text-neutral-600 dark:text-neutral-300">
-              {{ props.mode === "move" ? "Moving to" : "Copying to" }}
-              <strong>{{ destinationDirName }}</strong>
+      <div class="flex w-full items-center justify-between gap-3">
+        <p class="min-w-0 truncate text-sm text-gray-600 dark:text-gray-400">
+          <template v-if="hasDestination">
+            {{ mode === "move" ? "Moving to" : "Copying to" }}
+            <span class="font-medium text-gray-900 dark:text-gray-100">
+              {{ destinationDirName }}
             </span>
           </template>
-          <template v-else-if="!destinationDirId">
-            <span class="opacity-60">Select a destination folder above</span>
-          </template>
-        </div>
+          <template v-else>Choose a folder</template>
+        </p>
 
-        <div class="flex items-center gap-2 shrink-0">
-          <UButton variant="outline" color="neutral" size="sm" @click="emit('close', false)">
-            Cancel
-          </UButton>
+        <div class="flex shrink-0 items-center gap-2">
+          <UButton label="Cancel" variant="outline" color="neutral" @click="emit('close', false)" />
           <UButton
+            :label="mode === 'move' ? 'Move here' : 'Copy here'"
+            :icon="mode === 'move' ? 'i-mdi-folder-move-outline' : 'i-mdi-content-copy'"
             variant="solid"
             color="primary"
-            size="sm"
             :loading="isConfirming"
-            :disabled="destinationDirId === undefined || isSameDirectory"
+            :disabled="!hasDestination || isSameDirectory"
             @click="handleConfirm"
-          >
-            <Icon
-              :icon="props.mode === 'move' ? 'mdi:folder-move-outline' : 'mdi:content-copy'"
-              class="w-4 h-4 mr-1.5"
-            />
-            {{ props.mode === "move" ? "Move here" : "Copy here" }}
-          </UButton>
+          />
         </div>
       </div>
     </template>
@@ -477,16 +212,23 @@
 <script setup lang="ts">
 import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 
+import { type DirectorySummaryDto, directoryApi } from "@/api/directory";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useAppToast } from "@/composables/useAppToast";
+import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { describeExplorerItems, quoted } from "@/features/toast/format";
 import { copyDirectory, moveDirectories } from "@/mutations/directories";
 import { copyFiles, moveFiles } from "@/mutations/files";
 import { directorySearchApiSchema } from "@/schemas/search";
 import { useDirectoryStore } from "@/stores/directory";
-import { useFileStore } from "@/stores/file";
 import { logger } from "@/utils/logger";
-import { glassModalContentWide } from "@/utils/modalUi";
+import { glassModalBody, glassModalContentWide } from "@/utils/modal-ui";
+
+export interface TransferResult {
+  destinationId: string | null;
+}
 
 interface FileChip {
   id: string;
@@ -503,10 +245,29 @@ interface BrowseSegment {
 interface DirSummary {
   id: string;
   name: string;
-  parentId?: string | null;
 }
 
-const props = defineProps<{
+type FolderState = "selected" | "blocked" | "idle";
+
+interface FolderRow {
+  key: string;
+  id: string | null;
+  name: string;
+  icon: string;
+  hint: string | null;
+  state: FolderState;
+  canOpen: boolean;
+}
+
+const {
+  mode,
+  files,
+  directories,
+  originDirId,
+  originDirName,
+  fileChips = [],
+  dirChips = [],
+} = defineProps<{
   mode: "move" | "copy";
   files: string[];
   directories: string[];
@@ -517,60 +278,71 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  close: [result: string | false];
+  // Success carries the destination, which is null for Home, so it cannot double as "cancelled".
+  close: [result: TransferResult | false];
 }>();
 
-// Stores & mutations
-const appToast = useAppToast();
+useModalBackGuard(() => emit("close", false));
+
+const appToast = useAppToast("move");
 const directoryStore = useDirectoryStore();
-const fileStore = useFileStore();
 
 const { mutateAsync: moveFilesMutate } = moveFiles();
 const { mutateAsync: copyFilesMutate } = copyFiles();
 const { mutateAsync: moveDirectoriesMutate } = moveDirectories();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
 
-// Item chips
+// Header and selected items
 
-const MAX_VISIBLE = 4;
+const MAX_VISIBLE_CHIPS = 6;
 
-const allChips = computed<FileChip[]>(() => {
-  const dirs: FileChip[] =
-    props.dirChips ??
-    props.directories.map((id) => ({
+const chipFor = (id: string, chips: FileChip[], fallback: Omit<FileChip, "id">): FileChip =>
+  chips.find((chip) => chip.id === id) ?? { ...fallback, id };
+
+const allChips = computed<FileChip[]>(() => [
+  ...directories.map((id) =>
+    chipFor(id, dirChips, {
       icon: "mdi:folder-outline",
-      id,
       name: "Folder",
-      type: "directory" as const,
-    }));
-  const files: FileChip[] =
-    props.fileChips ??
-    props.files.map((id) => ({
+      type: "directory",
+    }),
+  ),
+  ...files.map((id) =>
+    chipFor(id, fileChips, {
       icon: "mdi:file-outline",
-      id,
       name: "File",
-      type: "file" as const,
-    }));
-  return [...dirs, ...files];
+      type: "file",
+    }),
+  ),
+]);
+
+const totalCount = computed(() => files.length + directories.length);
+const visibleChips = computed(() => allChips.value.slice(0, MAX_VISIBLE_CHIPS));
+const overflowCount = computed(() => Math.max(0, totalCount.value - MAX_VISIBLE_CHIPS));
+
+const modalTitle = computed(() => {
+  const action = mode === "move" ? "Move" : "Copy";
+  const noun = totalCount.value === 1 ? "item" : "items";
+  return `${action} ${totalCount.value} ${noun}`;
 });
 
-const totalCount = computed(() => props.files.length + props.directories.length);
-const visibleOriginChips = computed(() => allChips.value.slice(0, MAX_VISIBLE));
-const overflowCount = computed(() => Math.max(0, totalCount.value - MAX_VISIBLE));
+const modalDescription = computed(() => `From ${originDirName ?? "Home"}`);
 
 // Destination state
 
 const destinationDirId = ref<string | null | undefined>(undefined);
 const destinationDirName = ref<string | null>(null);
 
+const hasDestination = computed(() => destinationDirId.value !== undefined);
+
 const isSameDirectory = computed(
-  () => destinationDirId.value !== undefined && destinationDirId.value === props.originDirId,
+  () => hasDestination.value && destinationDirId.value === originDirId,
 );
 
-const selectDestination = (id: string | null, name: string) => {
-  destinationDirId.value = id;
-  destinationDirName.value = name;
-};
+// A folder cannot become the destination of its own transfer.
+const transferredDirIds = computed(() => new Set(directories));
+
+const isTransferred = (id: string | null) => id !== null && transferredDirIds.value.has(id);
 
 // Browse mode
 
@@ -581,38 +353,34 @@ const browsePath = ref<BrowseSegment[]>([]);
 const browseSubdirs = ref<DirSummary[]>([]);
 const isLoadingDirs = ref(false);
 
-const currentBrowseDirId = computed<string | null>(
-  () => browsePath.value[browsePath.value.length - 1]?.id ?? null,
-);
-const currentBrowseDirName = computed(
-  () => browsePath.value[browsePath.value.length - 1]?.name ?? "Home",
-);
+let browseRequest = 0;
 
-const selectCurrentBrowseDir = () => {
-  selectDestination(currentBrowseDirId.value ?? null, currentBrowseDirName.value);
-};
+const currentBrowseDirId = computed<string | null>(() => browsePath.value.at(-1)?.id ?? null);
+const currentBrowseDirName = computed(() => browsePath.value.at(-1)?.name ?? "Home");
 
-// In loadBrowseSubdirs — same fix
+const toDirSummaries = (items: DirectorySummaryDto[] | undefined): DirSummary[] =>
+  (items ?? []).map((d) => ({ id: d.id, name: d.name }));
+
 const loadBrowseSubdirs = async (parentId: string | null) => {
+  const request = ++browseRequest;
   isLoadingDirs.value = true;
   browseSubdirs.value = [];
+
   try {
     const parsed = directorySearchApiSchema.parse({
-      parentDirectoryId: parentId ?? undefined,
       currentPage: 0,
       pageSize: 50,
+      parentDirectoryId: parentId ?? undefined,
     });
     const result = await directoryStore.searchDirectory(parsed);
-    browseSubdirs.value = (result.data?.items ?? []).map((d: any) => ({
-      id: d.id,
-      name: d.name,
-      parentId: d.parentId,
-    }));
+    if (request !== browseRequest) return;
+
+    browseSubdirs.value = toDirSummaries(result.data?.items);
   } catch (e) {
     logger.error("FileTransferModal: failed to load subdirs", e);
     appToast.error("Couldn't load folders", e);
   } finally {
-    isLoadingDirs.value = false;
+    if (request === browseRequest) isLoadingDirs.value = false;
   }
 };
 
@@ -621,18 +389,29 @@ const browseNavigateTo = (id: string | null, name: string) => {
     browsePath.value = [];
   } else {
     const existingIdx = browsePath.value.findIndex((s) => s.id === id);
-    if (existingIdx !== -1) {
-      browsePath.value = browsePath.value.slice(0, existingIdx + 1);
-    } else {
+
+    if (existingIdx === -1) {
       browsePath.value = [...browsePath.value, { id, name }];
+    } else {
+      browsePath.value = browsePath.value.slice(0, existingIdx + 1);
     }
   }
-  loadBrowseSubdirs(id);
+
+  void loadBrowseSubdirs(id);
 };
 
-const browseIntoFromSearch = (id: string, name: string) => {
+// Search results can live anywhere, so their breadcrumb comes from the server.
+const browseIntoFromSearch = async (id: string, name: string) => {
   clearSearch();
-  browseNavigateTo(id, name);
+  browsePath.value = [{ id, name }];
+  void loadBrowseSubdirs(id);
+
+  try {
+    const { pathParts } = await directoryApi.getDirectoryPath(id);
+    if (currentBrowseDirId.value === id && pathParts.length > 0) browsePath.value = pathParts;
+  } catch (e) {
+    logger.error("FileTransferModal: failed to resolve folder path", e);
+  }
 };
 
 // Search mode
@@ -641,144 +420,237 @@ const searchQuery = ref("");
 const searchResults = ref<DirSummary[]>([]);
 const isSearching = ref(false);
 
+let searchRequest = 0;
+
 const performSearch = useDebounceFn(async (query: string) => {
-  if (!query.trim()) return;
-  isSearching.value = true;
+  const trimmed = query.trim();
+  if (!trimmed) return;
+
+  const request = ++searchRequest;
+
   try {
     const parsed = directorySearchApiSchema.parse({
       currentPage: 0,
-      nameContains: query.trim(),
+      nameContains: trimmed,
       pageSize: 20,
     });
     const result = await directoryStore.searchDirectory(parsed);
-    searchResults.value = (result.data?.items ?? []).map((d: any) => ({
-      id: d.id,
-      name: d.name,
-      parentId: d.parentId,
-    }));
+    if (request !== searchRequest) return;
+
+    searchResults.value = toDirSummaries(result.data?.items);
   } catch (e) {
     logger.error("FileTransferModal: search failed", e);
     appToast.error("Search failed", e);
   } finally {
-    isSearching.value = false;
+    if (request === searchRequest) isSearching.value = false;
   }
 }, 200);
 
 const handleSearchInput = (val: string) => {
   if (val.trim()) {
     pickerMode.value = "search";
-    performSearch(val);
-  } else {
-    pickerMode.value = "browse";
-    searchResults.value = [];
+    isSearching.value = true;
+    void performSearch(val);
+    return;
   }
+
+  clearSearch();
 };
 
 const clearSearch = () => {
+  searchRequest++;
   searchQuery.value = "";
   pickerMode.value = "browse";
   searchResults.value = [];
+  isSearching.value = false;
+};
+
+// Folder list
+
+const ROW_CLASSES: Record<FolderState, string> = {
+  blocked: "cursor-not-allowed",
+  idle: "cursor-pointer hover:bg-black/[0.03] dark:hover:bg-white/[0.04]",
+  selected: "cursor-pointer bg-primary/10",
+};
+
+const ICON_CLASSES: Record<FolderState, string> = {
+  blocked: "text-gray-400 dark:text-gray-600",
+  idle: "text-gray-500 dark:text-gray-400",
+  selected: "text-primary",
+};
+
+const NAME_CLASSES: Record<FolderState, string> = {
+  blocked: "text-gray-500 dark:text-gray-500",
+  idle: "text-gray-900 dark:text-gray-100",
+  selected: "font-medium text-gray-900 dark:text-gray-100",
+};
+
+const isListLoading = computed(() => {
+  if (pickerMode.value === "search") return isSearching.value;
+  return isLoadingDirs.value;
+});
+
+// Browsing inside a transferred folder: nothing below it is a valid destination.
+const isInsideTransferred = computed(
+  () =>
+    pickerMode.value === "browse" && browsePath.value.some((segment) => isTransferred(segment.id)),
+);
+
+const folderState = (id: string | null): FolderState => {
+  if (isTransferred(id) || isInsideTransferred.value) return "blocked";
+  if (destinationDirId.value === id) return "selected";
+  return "idle";
+};
+
+const folderHint = (id: string | null): string | null => {
+  if (isTransferred(id)) return mode === "move" ? "Being moved" : "Being copied";
+  if (id === originDirId) return "Current location";
+  return null;
+};
+
+const toFolderRow = (dir: DirSummary): FolderRow => {
+  const state = folderState(dir.id);
+
+  return {
+    canOpen: state !== "blocked",
+    hint: folderHint(dir.id),
+    icon: state === "selected" ? "mdi:folder" : "mdi:folder-outline",
+    id: dir.id,
+    key: dir.id,
+    name: dir.name,
+    state,
+  };
+};
+
+const currentFolderRow = computed<FolderRow>(() => {
+  const id = currentBrowseDirId.value;
+  const isHome = id === null;
+  let locationHint = folderHint(id);
+  if (!isTransferred(id) && isInsideTransferred.value) {
+    locationHint = mode === "move" ? "Inside a moved folder" : "Inside a copied folder";
+  }
+
+  let icon = "mdi:folder-open-outline";
+  if (isHome) icon = "mdi:home-outline";
+
+  return {
+    canOpen: false,
+    hint: locationHint ?? "This folder",
+    icon,
+    id,
+    key: `current-${id ?? "home"}`,
+    name: currentBrowseDirName.value,
+    state: folderState(id),
+  };
+});
+
+const folderRows = computed<FolderRow[]>(() => {
+  if (pickerMode.value === "search") return searchResults.value.map(toFolderRow);
+  return [currentFolderRow.value, ...browseSubdirs.value.map(toFolderRow)];
+});
+
+const rowLabel = (row: FolderRow) => {
+  if (row.hint) return `${row.name}, ${row.hint}`;
+  return row.name;
+};
+
+const selectFolder = (row: FolderRow) => {
+  if (row.state === "blocked") return;
+
+  destinationDirId.value = row.id;
+  destinationDirName.value = row.name;
+};
+
+const openFolder = (row: FolderRow) => {
+  if (!row.canOpen || row.id === null) return;
+
+  if (pickerMode.value === "search") {
+    void browseIntoFromSearch(row.id, row.name);
+    return;
+  }
+
+  browseNavigateTo(row.id, row.name);
+};
+
+const crumbClass = (isCurrent: boolean) => {
+  if (isCurrent) return "font-medium text-gray-900 dark:text-gray-100";
+  return "text-gray-600 dark:text-gray-400";
 };
 
 // Confirm
 
 const isConfirming = ref(false);
 
+const transferSubject = computed(() => {
+  const [onlyChip] = allChips.value;
+  if (totalCount.value === 1 && onlyChip) return quoted(onlyChip.name);
+
+  return describeExplorerItems(files.length, directories.length);
+});
+
+const transferDestination = computed(() => destinationDirName.value ?? "Home");
+
 const handleConfirm = async () => {
   if (destinationDirId.value === undefined || isSameDirectory.value) return;
+
+  const destinationId = destinationDirId.value;
   isConfirming.value = true;
 
   try {
-    if (props.mode === "move") {
-      if (props.files.length > 0) {
+    if (mode === "move") {
+      if (files.length > 0) {
         await moveFilesMutate({
-          destinationId: destinationDirId.value,
-          fileIds: props.files,
-          originId: props.originDirId,
+          destinationId,
+          fileIds: files,
+          originId: originDirId,
         });
       }
-      if (props.directories.length > 0) {
+
+      if (directories.length > 0) {
         await moveDirectoriesMutate({
-          destinationId: destinationDirId.value,
-          directoryIds: props.directories,
-          originId: props.originDirId,
+          destinationId,
+          directoryIds: directories,
+          originId: originDirId,
         });
       }
     } else {
-      if (props.files.length > 0) {
+      if (files.length > 0) {
         await copyFilesMutate({
-          destinationId: destinationDirId.value,
-          fileIds: props.files,
-          originId: props.originDirId,
+          destinationId,
+          fileIds: files,
+          originId: originDirId,
         });
       }
-      if (props.directories.length > 0) {
+
+      if (directories.length > 0) {
         await Promise.all(
-          props.directories.map((id) =>
+          directories.map((id) =>
             copyDirectoryMutate({
-              destinationId: destinationDirId.value!,
+              destinationId,
               directoryId: id,
-              originId: props.originDirId,
+              originId: originDirId,
             }),
           ),
         );
       }
     }
-    emit("close", destinationDirId?.value ?? false);
+
+    appToast.success(
+      `${mode === "move" ? "Moved" : "Copied"} ${transferSubject.value} to ${transferDestination.value}`,
+    );
+    emit("close", { destinationId });
   } catch (e) {
     logger.error("FileTransferModal: confirm failed", e);
-    const action = props.mode === "move" ? "Move" : "Copy";
-    const count = totalCount.value;
-    const label = count === 1 ? "item" : "items";
-    appToast.error(
-      `${action} failed`,
-      e ?? `Could not ${props.mode} ${count} ${label} to ${destinationDirName.value ?? "Home"}.`,
-    );
+
+    appToast.error(`Couldn't ${mode} ${transferSubject.value} to ${transferDestination.value}`, e, {
+      retry: handleConfirm,
+    });
   } finally {
     isConfirming.value = false;
   }
 };
 
-// Init
-
 onMounted(() => {
-  loadBrowseSubdirs(null);
+  void loadBrowseSubdirs(null);
 });
 </script>
-
-<style scoped>
-.item-leave-enter-active {
-  transition: all 0.25s ease-out;
-}
-.item-leave-leave-active {
-  transition: all 0.2s ease-in;
-}
-.item-leave-enter-from {
-  opacity: 0;
-  transform: translateX(-6px);
-}
-.item-leave-leave-to {
-  opacity: 0;
-  transform: translateX(6px);
-}
-
-.item-enter-enter-active {
-  transition: all 0.3s ease-out;
-}
-.item-enter-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-}
-
-.fade-status-enter-active {
-  transition: all 0.2s ease-out;
-}
-.fade-status-leave-active {
-  transition: all 0.15s ease-in;
-}
-.fade-status-enter-from,
-.fade-status-leave-to {
-  opacity: 0;
-  transform: translateY(-3px);
-}
-</style>

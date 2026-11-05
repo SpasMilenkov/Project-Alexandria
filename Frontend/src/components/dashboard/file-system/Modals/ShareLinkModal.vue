@@ -6,11 +6,12 @@ import { computed, ref } from "vue";
 
 import type { ShareLinkSummaryDto } from "@/api/shareLinks";
 
+import { useAppToast } from "@/composables/useAppToast";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { createShareLink, revokeShareLink } from "@/mutations/shareLinks";
 import { getShareLinksForFile } from "@/queries/shareLinks";
-import { getFileIcon } from "@/utils/icon.utils";
-import { glassModalContent } from "@/utils/modalUi";
+import { getFileIcon } from "@/utils/files/icons";
+import { glassModalContent } from "@/utils/modal-ui";
 
 const { mutateAsync: createLink } = createShareLink();
 const { mutateAsync: revokeLink } = revokeShareLink();
@@ -27,7 +28,7 @@ const emit = defineEmits<{ close: [changed: boolean] }>();
 
 useModalBackGuard(() => emit("close", false));
 
-const toast = useToast();
+const toast = useAppToast("share");
 const { copy } = useClipboard();
 
 const {
@@ -51,11 +52,10 @@ const modalTitle = computed(() =>
 
 const copyWithFeedback = async (value: string, label: string) => {
   await copy(value);
-  toast.add({
-    color: "success",
-    duration: 2000,
-    icon: "i-mdi-check-circle",
-    title: `${label} copied`,
+  toast.success(`Copied the ${label.toLowerCase()}`, {
+    description: "Anyone with the link can open it until it expires or is revoked.",
+    duration: 2500,
+    source: "clipboard",
   });
 };
 
@@ -191,13 +191,8 @@ const handleRevoke = async (id: string) => {
     if (createdLink.value && targetToken === createdLink.value.token) {
       createdLink.value = null;
     }
-  } catch {
-    toast.add({
-      color: "error",
-      duration: 3000,
-      icon: "i-mdi-alert-circle",
-      title: "Failed to revoke link",
-    });
+  } catch (err) {
+    toast.error("Couldn't revoke the link", err, { retry: () => handleRevoke(id) });
   }
 };
 

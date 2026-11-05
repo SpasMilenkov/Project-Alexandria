@@ -2,11 +2,11 @@
   <div v-if="viewMode === 'grid'" class="relative group" tabindex="0" :data-file-id="data.fileId">
     <button
       type="button"
-      class="w-full flex flex-col items-center gap-2 p-4 rounded-lg transition-colors cursor-pointer"
+      class="flex h-full w-full cursor-pointer flex-col gap-2 rounded-xl border p-2 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       :class="[
         isSelected
-          ? 'bg-primary/20 ring-2 ring-primary'
-          : 'hover:bg-primary/40 dark:hover:bg-primary/35',
+          ? 'border-primary bg-primary/10 ring-1 ring-primary'
+          : 'border-gray-200/70 bg-gray-500/5 hover:border-gray-300/80 hover:bg-gray-500/10 dark:border-gray-700/70 dark:bg-gray-400/5 dark:hover:border-gray-600/80 dark:hover:bg-white/10',
       ]"
       @click="handleClick"
       @dblclick="handleDoubleClick"
@@ -19,10 +19,10 @@
       @focus="handleFocus"
       @blur="handleBlur"
       :aria-describedby="describedBy ?? undefined"
+      :aria-pressed="isSelected"
     >
       <div
-        class="relative shrink-0 flex items-center justify-center overflow-hidden rounded-md"
-        :style="{ width: `${thumbnailBox.width * 1.4}px`, height: `${thumbnailBox.height}px` }"
+        class="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg bg-gray-500/[0.07] text-gray-500 dark:bg-white/[0.06] dark:text-gray-400"
       >
         <img
           v-if="showThumbnail"
@@ -32,6 +32,7 @@
           :height="thumbnailBox.height"
           loading="lazy"
           decoding="async"
+          draggable="false"
           class="h-full w-full object-contain"
           :class="{ invisible: !thumbnailLoaded }"
           @load="onThumbnailLoad"
@@ -50,7 +51,7 @@
         </div>
         <span
           v-if="props.data.currentVersion.isEncrypted"
-          class="absolute top-1 left-1 flex items-center justify-center rounded bg-neutral-900/80 p-0.5 text-white"
+          class="absolute top-2 left-2 flex items-center justify-center rounded-md bg-neutral-900/80 p-0.5 text-white"
           data-encrypted-indicator
         >
           <Icon icon="mdi:lock" class="w-3.5 h-3.5" aria-hidden="true" />
@@ -58,25 +59,37 @@
         </span>
         <span
           v-if="fileExtension"
-          class="absolute bottom-1 right-1 text-xs leading-4 px-1.5 rounded bg-neutral-900/80 text-white shrink-0 max-w-16 truncate"
+          class="absolute bottom-2 left-2 max-w-16 truncate rounded border border-gray-200/70 px-1.5 text-[11px] leading-[18px] text-gray-700 frosted-glass glass-surface-strong dark:border-gray-700/70 dark:text-gray-200"
         >
           {{ fileExtension }}
         </span>
+        <span
+          v-if="isSelected"
+          class="absolute top-2 right-2 grid h-5 w-5 place-items-center rounded-full bg-primary text-white dark:text-neutral-900"
+          aria-hidden="true"
+        >
+          <Icon icon="mdi:check" class="w-3 h-3" />
+        </span>
       </div>
-      <span class="text-sm text-center line-clamp-2 w-full wrap-break-word">
+      <span
+        class="line-clamp-2 min-h-10 w-full wrap-break-word px-0.5 text-sm font-medium leading-5 text-gray-900 dark:text-gray-100"
+      >
         {{ props.data.fileName }}
+      </span>
+      <span class="truncate px-0.5 pb-0.5 text-xs tabular-nums text-gray-600 dark:text-gray-400">
+        {{ formatBytes(Number(props.data.currentVersion.size)) }} · {{ modifiedLabel }}
       </span>
     </button>
   </div>
 
-  <div v-else class="relative group px-2" tabindex="0" :data-file-id="data.fileId">
+  <div v-else class="relative group" tabindex="0" :data-file-id="data.fileId">
     <button
       type="button"
-      class="w-full flex items-center gap-3 px-2 py-2 rounded-lg transition-colors cursor-pointer text-left"
+      class="grid h-11 w-full cursor-pointer grid-cols-[minmax(0,1fr)_56px_88px] items-center gap-4 rounded-lg border-b border-gray-200/70 px-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_56px_112px_88px] dark:border-gray-700/70"
       :class="[
         isSelected
-          ? 'bg-primary/20 ring-2 ring-primary'
-          : 'hover:bg-primary/40 dark:hover:bg-primary/35',
+          ? 'bg-primary/10 ring-1 ring-inset ring-primary'
+          : 'hover:bg-gray-500/5 dark:hover:bg-white/5',
       ]"
       @click="handleClick"
       @dblclick="handleDoubleClick"
@@ -89,16 +102,15 @@
       @focus="handleFocus"
       @blur="handleBlur"
       :aria-describedby="describedBy ?? undefined"
+      :aria-pressed="isSelected"
     >
-      <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-500/10 shrink-0">
+      <span class="flex min-w-0 items-center gap-3 text-gray-900 dark:text-gray-100">
         <Icon
           :icon="getFileIcon(props.data.fileName)"
           :width="iconSize"
           :height="iconSize"
-          class="shrink-0 text-gray-600 dark:text-gray-400"
+          class="shrink-0 text-gray-500 dark:text-gray-400"
         />
-      </span>
-      <span class="flex-1 min-w-0 flex items-center gap-2">
         <span class="truncate">{{ props.data.fileName }}</span>
         <span
           v-if="props.data.currentVersion.isEncrypted"
@@ -108,19 +120,20 @@
           <Icon icon="mdi:lock" class="w-3.5 h-3.5" aria-hidden="true" />
           <span class="sr-only">Encrypted</span>
         </span>
-        <span
-          v-if="fileExtension"
-          class="text-xs leading-4 px-1.5 rounded border border-gray-200/70 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 shrink-0 ml-auto"
-        >
-          {{ fileExtension }}
-        </span>
-      </span>
-      <span class="hidden sm:block text-xs text-gray-500 dark:text-gray-500 tabular-nums shrink-0">
-        {{ modifiedLabel }}
       </span>
       <span
-        class="text-xs text-gray-500 dark:text-gray-500 tabular-nums shrink-0 min-w-15 text-right"
+        v-if="fileExtension"
+        class="justify-self-start rounded border border-gray-200/70 px-1.5 text-[11px] leading-[18px] text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
       >
+        {{ fileExtension }}
+      </span>
+      <span v-else />
+      <span
+        class="hidden text-xs tabular-nums text-gray-600 @min-[720px]/explorer:block dark:text-gray-400"
+      >
+        {{ modifiedLabel }}
+      </span>
+      <span class="text-right text-xs tabular-nums text-gray-600 dark:text-gray-400">
         {{ formatBytes(Number(props.data.currentVersion.size)) }}
       </span>
     </button>
@@ -134,6 +147,7 @@ import { useDebounceFn } from "@vueuse/core";
 import { computed, onUnmounted } from "vue";
 
 import { type FileResult, type PreviewResultDto } from "@/api/file";
+import { useExplorerDragSession } from "@/composables/useExplorerDragSession";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { type FileTooltipEnterKind } from "@/composables/useFileTooltip";
 import {
@@ -145,12 +159,13 @@ import {
 import { getTagsForFile } from "@/queries/tags";
 import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
-import { getFileExtension } from "@/utils/file-name.utils";
-import { getFileIcon } from "@/utils/icon.utils";
-import { formatBytes } from "@/utils/size.utils";
+import { getFileExtension } from "@/utils/files/file-name";
+import { getFileIcon } from "@/utils/files/icons";
+import { formatBytes } from "@/utils/size";
 
 const settingsStore = useSettingsStore();
 const queryCache = useQueryCache();
+const { isDragging } = useExplorerDragSession();
 
 const props = defineProps<{
   data: FileResult;
@@ -201,7 +216,10 @@ const showThumbnail = computed(
   () => settingsStore.thumbnailsEnabled && canHaveThumbnail.value && !thumbnailErrored.value,
 );
 
+// Rows a drag passes over are not being inspected, so they warm nothing.
 const prefetchDetails = useDebounceFn(() => {
+  if (isDragging.value) return;
+
   queryCache.refresh(queryCache.ensure(getFile(props.data.fileId)));
   queryCache.refresh(queryCache.ensure(getTagsForFile(props.data.fileId)));
 

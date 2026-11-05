@@ -1,11 +1,11 @@
 import type { MediaFileDto } from "@/api/streaming";
 
-import { LIBRARY_PAGE_SIZE } from "@/utils/player-source";
+import { LIBRARY_PAGE_SIZE } from "@/features/player/source";
 
 import type { PlayerState } from "./state";
 import type { AfterContextEnds } from "./types";
 
-import { releaseShuffleSession } from "./order/shuffle";
+import { releaseShuffleSession } from "@/stores/player/order/shuffle";
 
 interface LegacyPersisted {
   activeFile?: MediaFileDto | null;

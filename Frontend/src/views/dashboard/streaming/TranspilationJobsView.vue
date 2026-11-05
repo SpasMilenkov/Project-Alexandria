@@ -8,12 +8,20 @@ import type { TranspilationJobQuery, TranspilationJobResponse } from "@/api/stre
 
 import { AudioRung, VideoRung } from "@/api/policy";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
+import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
+import TranspilationJobsGhost from "@/components/streaming/ghosts/TranspilationJobsGhost.vue";
+import MediaPolicyHint from "@/components/streaming/overview/MediaPolicyHint.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { JobStatus } from "@/enums/job-status";
+import { quoted } from "@/features/toast/format";
 import { stopTranspilationJob } from "@/mutations/streaming";
 import { getTranspilationJobs } from "@/queries/streaming";
 
-const toast = useAppToast();
+const toast = useAppToast("jobs");
+
+const jobLabel = (job: TranspilationJobResponse) =>
+  job.fileName ? `the job for ${quoted(job.fileName)}` : "the job";
 
 const currentPage = ref(1);
 const pageSize = ref(50);
@@ -241,6 +249,8 @@ const groups = computed<JobGroup[]>(() => {
   }));
 });
 
+const isEmpty = computed(() => !isLoading.value && !error.value && groups.value.length === 0);
+
 const ATTENTION = new Set<JobStatus>([
   JobStatus.Queued,
   JobStatus.Partial,
@@ -271,9 +281,9 @@ const toggleError = (jobId: string) => {
 const copyError = async (text: string) => {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success("Error copied to clipboard");
-  } catch {
-    toast.error("Failed to copy");
+    toast.success("Copied the error message", { source: "clipboard" });
+  } catch (err) {
+    toast.error("Couldn't copy the error message", err, { source: "clipboard" });
   }
 };
 
@@ -354,11 +364,16 @@ const handleCancel = async (job: TranspilationJobResponse) => {
   try {
     await updateJobStatus({ jobId: job.id, status: targetStatus });
     await refetch();
-    toast.info(
-      targetStatus === JobStatus.CancellationRequested ? "Cancellation requested" : "Job cancelled",
-    );
+    if (targetStatus === JobStatus.CancellationRequested) {
+      toast.info(
+        `Stopping ${jobLabel(job)}`,
+        "It stops once the worker finishes its current step.",
+      );
+    } else {
+      toast.info(`Cancelled ${jobLabel(job)}`);
+    }
   } catch (err) {
-    toast.error("Failed to cancel job", err);
+    toast.error(`Couldn't cancel ${jobLabel(job)}`, err, { retry: () => handleCancel(job) });
   } finally {
     actionInProgress.value = null;
   }
@@ -375,9 +390,9 @@ const handleRequeue = async (job: TranspilationJobResponse) => {
     });
     requeuePopoverOpen[job.id] = false;
     await refetch();
-    toast.success("Job requeued");
+    toast.success(`Requeued ${jobLabel(job)}`);
   } catch (err) {
-    toast.error("Failed to requeue job", err);
+    toast.error(`Couldn't requeue ${jobLabel(job)}`, err);
   } finally {
     actionInProgress.value = null;
   }
@@ -507,7 +522,7 @@ const mediaFilterOptions = [
 </script>
 
 <template>
-  <div class="flex w-full flex-col gap-3 p-3">
+  <div class="flex min-h-full w-full flex-col gap-3 p-3">
     <header
       class="rounded-xl border border-gray-200/70 frosted-glass glass-surface-strong dark:border-gray-700/70"
     >
@@ -639,14 +654,9 @@ const mediaFilterOptions = [
           leave-active-class="transition-all duration-150 ease-in"
           leave-to-class="opacity-0 -translate-y-1"
         >
-          <div
-            v-if="filtersOpen"
-            class="border-t border-gray-200/70 p-4 dark:border-gray-700/70"
-          >
+          <div v-if="filtersOpen" class="border-t border-gray-200/70 p-4 dark:border-gray-700/70">
             <div class="mb-4 flex items-center gap-2">
-              <p class="m-0 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                More filters
-              </p>
+              <p class="m-0 text-sm font-semibold text-gray-900 dark:text-gray-100">More filters</p>
               <span class="flex-1" />
               <UButton
                 color="neutral"
@@ -832,6 +842,7 @@ const mediaFilterOptions = [
     <!-- Jobs panel -->
     <section
       class="overflow-hidden rounded-[14px] border border-gray-200/70 frosted-glass glass-surface dark:border-gray-700/70"
+      :class="{ 'flex flex-1 flex-col': isEmpty }"
     >
       <!-- Loading state -->
       <div v-if="isLoading" class="flex items-center justify-center py-20">
@@ -839,10 +850,7 @@ const mediaFilterOptions = [
       </div>
 
       <!-- Error state -->
-      <div
-        v-else-if="error"
-        class="flex flex-col items-center gap-3 px-4 py-20 text-center"
-      >
+      <div v-else-if="error" class="flex flex-col items-center gap-3 px-4 py-20 text-center">
         <Icon icon="lucide:circle-alert" class="w-12 h-12 text-red-400" />
         <p class="m-0 text-sm font-medium text-gray-900 dark:text-gray-100">Could not load jobs</p>
         <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
@@ -860,31 +868,37 @@ const mediaFilterOptions = [
       </div>
 
       <!-- Empty states -->
-      <div
-        v-else-if="!groups.length"
-        class="flex flex-col items-center gap-3 px-4 py-20 text-center"
-      >
-        <Icon icon="lucide:cog" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-        <p class="m-0 text-sm font-medium text-gray-900 dark:text-gray-100">
-          {{ isFiltered ? "No jobs match these filters" : "No transpilation jobs yet" }}
-        </p>
-        <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
-          {{
-            isFiltered
-              ? "Try different filters."
-              : "Jobs appear here when a file is queued for streaming."
-          }}
-        </p>
-        <UButton
+      <EmptyStatePanel v-else-if="isEmpty" :panel="false">
+        <template #ghost>
+          <TranspilationJobsGhost />
+        </template>
+
+        <GlassEmptyState
           v-if="isFiltered"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          @click="clearFilters"
+          icon="i-lucide-filter"
+          title="No jobs match these filters"
+          description="Try different filters."
+          class="m-auto"
         >
-          Clear filters
-        </UButton>
-      </div>
+          <UButton
+            color="neutral"
+            variant="outline"
+            class="rounded-full px-5"
+            @click="clearFilters"
+          >
+            Clear filters
+          </UButton>
+        </GlassEmptyState>
+
+        <GlassEmptyState v-else icon="i-lucide-cog" title="No conversions yet" class="m-auto">
+          <template #description>
+            Audio and video files uploaded to a folder with a <MediaPolicyHint /> are converted for
+            streaming. Each conversion shows up here with its progress.
+          </template>
+
+          <UButton to="/dashboard" color="primary" class="rounded-full px-5">Open files</UButton>
+        </GlassEmptyState>
+      </EmptyStatePanel>
 
       <!-- Job groups -->
       <div v-else>

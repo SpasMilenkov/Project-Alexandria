@@ -9,7 +9,7 @@ import type { PlayerState } from "./state";
 import type { Guard, RunOptions, createTransitions } from "./transitions";
 import type { AdvancementReason, MediaKind, Order } from "./types";
 
-import { isSessionGone } from "./order/shuffle";
+import { isSessionGone } from "@/stores/player/order/shuffle";
 
 const MAX_UNAVAILABLE_STREAK = 5;
 

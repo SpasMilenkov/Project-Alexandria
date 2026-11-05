@@ -1,81 +1,69 @@
 <template>
-  <UCard class="frosted-glass glass-surface">
-    <template #header>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <Icon icon="mdi:cog-play-outline" class="w-5 h-5 text-gray-500 dark:text-gray-400" />
-          <span class="font-semibold text-sm">Automation</span>
-        </div>
+  <DetailsSection title="Automation">
+    <template v-if="policy" #actions>
+      <UButton
+        icon="i-mdi-plus"
+        label="Add rule"
+        size="xs"
+        color="neutral"
+        variant="outline"
+        @click="openAddModal"
+      />
 
-        <div v-if="policy" class="flex items-center gap-1">
-          <UTooltip
-            :text="policy.inheritedByChildren ? 'Inherited by subfolders' : 'Not inherited'"
-          >
-            <UButton
-              :icon="
-                policy.inheritedByChildren ? 'i-mdi-source-branch' : 'i-mdi-source-branch-remove'
-              "
-              size="xs"
-              variant="ghost"
-              color="neutral"
-              :loading="isUpdating"
-              aria-label="Toggle inheritance"
-              @click="toggleInheritance"
-            />
-          </UTooltip>
-          <UButton
-            icon="i-mdi-plus"
-            size="xs"
-            variant="ghost"
-            color="neutral"
-            aria-label="Add rule"
-            @click="openAddModal"
-          />
-          <UButton
-            icon="i-mdi-delete-outline"
-            size="xs"
-            variant="ghost"
-            color="error"
-            :loading="isDeleting"
-            aria-label="Remove policy"
-            @click="handleDeletePolicy"
-          />
-        </div>
-      </div>
+      <UTooltip text="Remove automation">
+        <UButton
+          icon="i-mdi-delete-outline"
+          size="xs"
+          color="error"
+          variant="ghost"
+          square
+          class="justify-center"
+          :loading="isDeleting"
+          aria-label="Remove policy"
+          @click="handleDeletePolicy"
+        />
+      </UTooltip>
     </template>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="flex items-center justify-center py-6">
-      <UIcon name="i-mdi-loading" class="w-5 h-5 animate-spin text-gray-400" />
+    <div v-if="isPending" class="flex h-24 items-center justify-center text-gray-500">
+      <BlockSpinner :size="20" />
     </div>
 
-    <!-- No policy -->
-    <div v-else-if="!policy" class="flex flex-col items-center gap-3 py-6 text-center">
-      <div
-        class="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center"
-      >
-        <Icon icon="mdi:cog-outline" class="w-5 h-5 text-gray-400" />
-      </div>
+    <div
+      v-else-if="!policy"
+      class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-gray-300/80 px-4 py-6 text-center dark:border-gray-700/80"
+    >
+      <Icon icon="mdi:lightning-bolt-outline" class="h-8 w-8 text-gray-400 dark:text-gray-600" />
+
       <div>
-        <div class="text-sm font-medium">No automation configured</div>
-        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Rules run automatically when files are uploaded here
-        </div>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No automation configured</p>
+        <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
+          Rules run automatically when files are uploaded here.
+        </p>
       </div>
-      <UButton size="sm" variant="outline" :loading="isCreating" @click="handleCreatePolicy">
+
+      <UButton
+        size="sm"
+        color="neutral"
+        variant="outline"
+        :loading="isCreating"
+        @click="handleCreatePolicy"
+      >
         Set up automation
       </UButton>
     </div>
 
-    <!-- Rules list -->
     <template v-else>
       <div
         v-if="policy.rules.length === 0"
-        class="flex flex-col items-center gap-2 py-5 text-center"
+        class="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-300/80 px-4 py-5 text-center dark:border-gray-700/80"
       >
-        <div class="text-sm text-gray-500 dark:text-gray-400">No rules yet</div>
-        <UButton size="xs" variant="ghost" @click="openAddModal">Add your first rule</UButton>
+        <p class="text-sm text-gray-600 dark:text-gray-400">No rules yet</p>
+        <UButton size="xs" color="neutral" variant="outline" @click="openAddModal">
+          Add your first rule
+        </UButton>
       </div>
+
       <div v-else class="flex flex-col gap-2">
         <PolicyRuleRow
           v-for="rule in policy.rules"
@@ -85,8 +73,26 @@
           @edit="openEditModal(rule)"
         />
       </div>
+
+      <div
+        class="flex items-center justify-between gap-4 rounded-xl border border-gray-200/70 px-3 py-2.5 dark:border-gray-700/70"
+      >
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Include subfolders</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400">
+            Rules also run for files in nested folders.
+          </p>
+        </div>
+
+        <USwitch
+          :model-value="policy.inheritedByChildren"
+          :disabled="isUpdating"
+          aria-label="Include subfolders"
+          @update:model-value="toggleInheritance"
+        />
+      </div>
     </template>
-  </UCard>
+  </DetailsSection>
 
   <PolicyRuleModal
     v-if="policy"
@@ -104,6 +110,8 @@ import { ref } from "vue";
 
 import type { PolicyRuleDto } from "@/api/policy";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import DetailsSection from "@/components/common/details/DetailsSection.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { createPolicy, deletePolicy, updatePolicy } from "@/mutations/policies";
 import { getPolicyByDirectory } from "@/queries/policies";
@@ -115,9 +123,9 @@ const props = defineProps<{
   directoryId: string;
 }>();
 
-const { data: policy, isLoading } = useQuery(getPolicyByDirectory(props.directoryId));
+const { data: policy, isPending } = useQuery(getPolicyByDirectory(props.directoryId));
 
-const appToast = useAppToast();
+const appToast = useAppToast("policy");
 
 const { mutateAsync: createPolicyMutation, isLoading: isCreating } = createPolicy();
 const { mutateAsync: updatePolicyMutation, isLoading: isUpdating } = updatePolicy();
@@ -144,7 +152,7 @@ const handleCreatePolicy = async () => {
     });
     appToast.success("Automation enabled");
   } catch (err) {
-    appToast.error("Failed to enable automation", err);
+    appToast.error("Couldn't enable automation", err);
   }
 };
 
@@ -157,7 +165,7 @@ const toggleInheritance = async () => {
       inheritedByChildren: !policy.value.inheritedByChildren,
     });
   } catch (err) {
-    appToast.error("Failed to update automation", err);
+    appToast.error("Couldn't update automation", err);
   }
 };
 
@@ -170,7 +178,7 @@ const handleDeletePolicy = async () => {
     });
     appToast.success("Automation removed");
   } catch (err) {
-    appToast.error("Failed to remove automation", err);
+    appToast.error("Couldn't remove automation", err);
   }
 };
 </script>
