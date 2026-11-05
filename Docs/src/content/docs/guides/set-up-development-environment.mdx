@@ -1,42 +1,50 @@
 ---
 title: Development Setup
-description: Get Alexandria running locally with hot reload and your choice of S3 provider.
+description: Get Alexandria running locally with hot reload — Docker infrastructure plus tmux-orchestrated dev servers.
 ---
 
-import { Aside, Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import { Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
-This guide will walk you through setting up Alexandria's development environment on your local machine. The setup uses Docker for infrastructure services and tmux for orchestrating multiple development servers with hot reload.
+This guide sets up Alexandria's development environment: Docker Compose runs the infrastructure services (PostgreSQL, Garage, RabbitMQ, Nginx), and a tmux session orchestrates all backend processes and the frontend dev server with hot reload.
 
 <Aside type="tip">
-  **TL;DR**: Run `docker compose --profile garage up -d`, execute `./init-garage.sh`, configure your `.env` and `appsettings.Development.json`, then run `./run-dev.sh --s3-provider Garage`.
+  **TL;DR**: Generate dev TLS certs → fill `.env` → `docker compose -f docker-compose.dev.yml up -d` → `./init-garage.sh` → configure `appsettings.Development.json` per backend project → `pnpm install` in `Frontend/` → `./run-dev.sh`.
 </Aside>
 
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
+- **Docker** with **Docker Compose** (v2)
+- **tmux** — the launcher script orchestrates all processes inside it
+- **.NET 10 SDK** — backend
+- **Node.js 20+** and **pnpm 10+** — frontend
+- **AWS CLI** (optional) — used by `init-rustfs.sh` when running RustFS, and for the S3 connectivity check under Troubleshooting
+- **openssl** — for generating the dev TLS certificates
 
-- **Docker** (with Docker Compose)
-- **tmux** — Terminal multiplexer for managing dev servers
-- **.NET 10 SDK** — For backend development
-- **Node.js 18+** and **pnpm** — For frontend development
-- **mc (MinIO Client)** — Required only if using RustFS or Garage (optional for MinIO)
+## What Runs Where
 
-## Architecture Overview
+**Docker Compose** (`docker-compose.dev.yml`) manages the stateful side:
 
-Alexandria's dev environment runs with this architecture:
+| Service | Purpose | Host port |
+|---|---|---|
+| `postgres` | PostgreSQL 16, db `alexandria_dev`, user `alexandria_user` | 5432 |
+| `garage` | S3-compatible storage (S3 API on 9000, admin API on 9001) | 9000 / 9001 |
+| `rabbitmq` | Message broker + management UI | 5672 / 15672 |
+| `rabbitmq-config` | One-shot: renders queue definitions from template | — |
+| `nginx` | TLS termination, `/api/` proxy, authenticated `/stream/` + preview gating (host network) | 8080 → 8443 |
+| `essentia-effnet-worker` | Python genre/mood classification (waits for messages) | — |
+| `essentia-maest-worker` | Python genre classification (waits for messages) | — |
 
-- **Docker Compose** manages infrastructure services (PostgreSQL, RabbitMQ, S3 storage)
-- **tmux** orchestrates 5 development processes with hot reload:
-  - Frontend (Vue + Vite)
-  - API Server (ASP.NET Core)
-  - Document Worker
-  - Media Worker
-  - Media Metadata Worker (lyrics fetching, future metadata enrichment)
+**tmux** (created by `run-dev.sh`) hosts 7 windows:
 
-You can choose between **three S3 providers** using Docker Compose profiles:
-- **Garage** (default, lightweight, Rust-based)
-- **MinIO** (S3-compatible, feature-rich)
-- **RustFS** (experimental, minimal S3 implementation)
+| # | Window | Command |
+|---|---|---|
+| 0 | Frontend | Vite dev server (`pnpm dev`, port 5173) |
+| 1 | API | ASP.NET Core on http://0.0.0.0:5000 |
+| 2 | DocumentWorker | Preview generation worker |
+| 3 | MediaWorker | Thumbnails/metadata/preview clips worker |
+| 4 | TranspilationWorker | DASH/HLS transcoding worker |
+| 5 | MediaMetadataWorker | Enrichment orchestrator |
+| 6 | LyricsWorker | Lyrics fetching worker |
 
 ## Setup Steps
 
@@ -45,366 +53,235 @@ You can choose between **three S3 providers** using Docker Compose profiles:
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/yourusername/alexandria.git
-   cd alexandria
+   git clone https://github.com/SpasMilenkov/Project-Alexandria.git
+   cd Project-Alexandria
    ```
 
-2. **Configure environment variables**
+2. **Generate the dev TLS certificate**
 
-   Copy the environment template and fill in your values:
+   The dev Nginx terminates HTTPS on port 8443 and expects certs in `nginx/certs/` (gitignored):
+
+   ```bash
+   mkdir -p nginx/certs
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+     -keyout nginx/certs/self-signed.key \
+     -out nginx/certs/self-signed.crt \
+     -subj "/CN=localhost" \
+     -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+   ```
+
+3. **Configure environment variables**
 
    ```bash
    cp .env.template .env
    ```
 
-   Edit `.env` with your preferred credentials:
+   Four values are **required** (Compose refuses to start without them); everything else has dev defaults:
 
-   ```bash title=".env"
-   # Database
-   DB_PASSWORD=your_secure_password_here
-   
-   # MinIO (if using MinIO profile)
-   MINIO_ROOT_USER=admin
-   MINIO_ROOT_PASSWORD=your_secure_password_here
-   
-   # Garage (if using Garage profile)
-   # Credentials will be generated by init-garage.sh
-   
-   # RustFS (if using RustFS profile)
-   RUSTFS_ACCESS_KEY=dev_admin
-   RUSTFS_SECRET_KEY=your_secure_password_here
-   
-   # RabbitMQ
-   RABBITMQ_USER=dev_admin
-   RABBITMQ_PASSWORD=your_secure_password_here
-   MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD=your_secure_password_here
-   RABBITMQ_VHOST=alexandria
+   ```ini title=".env"
+   RABBITMQ_USER=alexandria          # required
+   RABBITMQ_PASSWORD=...             # required
+   API_RABBITMQ_USER=api_user        # required
+   API_RABBITMQ_PASSWORD=...         # required
 
-   # Streaming
-   LYRICS_ENABLED=true
-
-   # Ports (default values, change if needed)
-   POSTGRES_PORT=5432
-   MINIO_API_PORT=9000
-   MINIO_CONSOLE_PORT=9001
+   DB_PASSWORD=dev_password_123      # optional, has default
+   # Per-worker RabbitMQ passwords also have dev defaults
    ```
 
-3. **Start infrastructure services**
+4. **Start the infrastructure**
 
-   Choose your S3 provider and start Docker Compose:
+   ```bash
+   docker compose -f docker-compose.dev.yml up -d
+   docker compose -f docker-compose.dev.yml ps
+   ```
 
-   <Tabs>
-     <TabItem label="Garage (Recommended)">
-       ```bash
-       # Start services with Garage profile
-       docker compose -f docker-compose.dev.yml --profile garage up -d
-       
-       # Wait for services to be healthy (about 10-15 seconds)
-       docker compose ps
-       
-       # Initialize Garage buckets and keys
-       ./init-garage.sh
-       ```
-       
-       The init script will output credentials. **Save these to your appsettings.Development.json** (see step 4).
-     </TabItem>
-     
-     <TabItem label="MinIO">
-       ```bash
-       # Start services with MinIO profile
-       docker compose -f docker-compose.dev.yml --profile minio up -d
-       
-       # MinIO auto-creates buckets on first access
-       # No initialization script needed!
-       ```
-       
-       MinIO Console: http://localhost:9001
-       
-       Login with credentials from your `.env` file.
-     </TabItem>
-     
-     <TabItem label="RustFS">
-       ```bash
-       # Start services with RustFS profile
-       docker compose -f docker-compose.dev.yml--profile rustfs up -d
-       
-       # Wait for services to be healthy
-       docker compose ps
-       
-       # Initialize RustFS buckets
-       ./init-rustfs.sh
-       ```
-       
-       RustFS Console: http://localhost:9001
-     </TabItem>
-   </Tabs>
+   Wait until `postgres`, `garage`, and `rabbitmq` report healthy. The two Essentia workers will start too — they idle until the pipeline sends them work.
 
-4. **Configure backend appsettings**
+5. **Initialize Garage**
 
-   Update `appsettings.Development.json` in each backend project with your chosen S3 provider credentials:
+   ```bash
+   ./init-garage.sh
+   ```
 
-   <Tabs>
-     <TabItem label="Garage">
-       ```json title="Backend/API/appsettings.Development.json"
-       {
-         "ConnectionStrings": {
-           "DefaultConnection": "Host=localhost;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=your_db_password"
-         },
-         "S3Storage": {
-           "Endpoint": "http://localhost:9000",
+   This creates the layout and five buckets (`alexandria-files`, `alexandria-previews`, `alexandria-temp`, `alexandria-images`, `alexandria-streaming`), three access keys (`alexandria-master-key`, `alexandria-preview-key`, `alexandria-streaming-key`), website-mode endpoints for streaming/previews, and CORS on the images bucket.
+
+   Copy the printed key IDs/secrets into your `appsettings.Development.json` (next step). To retrieve them later:
+
+   ```bash
+   docker exec alexandria-garage-dev /garage key info alexandria-master-key
+   ```
+
+6. **Configure the backend projects**
+
+   Each backend project reads its own gitignored `appsettings.Development.json`. Create one next to each `appsettings.Template.json` (API + 5 workers). The API example below is verified against the real config shape; workers need the same `ConnectionStrings` / `S3Storage` / `RabbitMQ` blocks but not `Jwt` / `Csrf` / `Admin`:
+
+   ```json title="Backend/Alexandria.Api/appsettings.Development.json"
+   {
+     "Serilog": { "MinimumLevel": { "Default": "Information" } },
+     "ConnectionStrings": {
+       "AlexandriaPostgres": "Host=localhost; Port=5432; Database=alexandria_dev; Username=alexandria_user; Password=dev_password_123"
+     },
+     "Encryption": {
+       "IterationCount": 600000
+     },
+     "Features": {
+       "Autotagging": true
+     },
+     "S3Storage": {
+       "Provider": "Garage",
+       "Endpoint": "http://localhost:9000",
+       "PublicEndpoint": "https://localhost:8443/",
+       "UseHttps": false,
+       "AccessKey": "<from init-garage.sh>",
+       "SecretKey": "<from init-garage.sh>",
+       "Region": "garage",
+       "UploadBucket": "alexandria-files",
+       "PreviewBucket": "alexandria-previews",
+       "TempBucket": "alexandria-temp",
+       "ImagesBucket": "alexandria-images",
+       "ProviderSettings": {
+         "Garage": {
            "Region": "garage",
-           "AccessKey": "GK...",  // From init-garage.sh output
-           "SecretKey": "...",     // From init-garage.sh output
-           "BucketName": "alexandria-files",
-           "PreviewBucket": "alexandria-previews",
-           "TempBucket": "alexandria-temp",
            "ForcePathStyle": true,
-           "UseHttp": true
-         },
-         "RabbitMQ": {
-           "Host": "localhost",
-           "Port": 5672,
-           "Username": "dev_admin",
-           "Password": "your_rabbitmq_password",
-           "VirtualHost": "alexandria"
-         },
-         "Jwt": {
-           "SecretKey": "your-super-secret-key-min-32-chars",
-           "Issuer": "Alexandria.Dev",
-           "Audience": "Alexandria.Dev.Users",
-           "ExpiryMinutes": 60
+           "MetricsUrl": "http://localhost:9001/metrics",
+           "MetricsToken": ""
          }
        }
-       ```
-       
-        <Aside type="caution">
-          Copy this configuration to **all backend projects**:
-          - `Backend/API/appsettings.Development.json`
-          - `Backend/DocumentWorker.Service/appsettings.Development.json`
-          - `Backend/MediaWorkerService/appsettings.Development.json`
-          - `Backend/Alexandria.Workers.MediaMetadata/appsettings.Development.json`
-        </Aside>
-     </TabItem>
-     
-     <TabItem label="MinIO">
-       ```json title="Backend/API/appsettings.Development.json"
-       {
-         "ConnectionStrings": {
-           "DefaultConnection": "Host=localhost;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=your_db_password"
-         },
-         "S3Storage": {
-           "Endpoint": "http://localhost:9000",
-           "Region": "us-east-1",
-           "AccessKey": "dev_admin",  // From your .env
-           "SecretKey": "dev_password_123",  // From your .env
-           "BucketName": "alexandria-files",
-           "PreviewBucket": "alexandria-previews",
-           "TempBucket": "alexandria-temp",
-           "ForcePathStyle": true,
-           "UseHttp": true
-         },
-         "RabbitMQ": {
-           "Host": "localhost",
-           "Port": 5672,
-           "Username": "dev_admin",
-           "Password": "your_rabbitmq_password",
-           "VirtualHost": "alexandria"
-         },
-         "Jwt": {
-           "SecretKey": "your-super-secret-key-min-32-chars",
-           "Issuer": "Alexandria.Dev",
-           "Audience": "Alexandria.Dev.Users",
-           "ExpiryMinutes": 60
-         }
-       }
-       ```
-     </TabItem>
-     
-     <TabItem label="RustFS">
-       ```json title="Backend/API/appsettings.Development.json"
-       {
-         "ConnectionStrings": {
-           "DefaultConnection": "Host=localhost;Port=5432;Database=alexandria_dev;Username=alexandria_user;Password=your_db_password"
-         },
-         "S3Storage": {
-           "Endpoint": "http://localhost:9000",
-           "Region": "us-east-1",
-           "AccessKey": "dev_admin",  // From your .env
-           "SecretKey": "dev_password_123",  // From your .env
-           "BucketName": "alexandria-files",
-           "PreviewBucket": "alexandria-previews",
-           "TempBucket": "alexandria-temp",
-           "ForcePathStyle": true,
-           "UseHttp": true
-         },
-         "RabbitMQ": {
-           "Host": "localhost",
-           "Port": 5672,
-           "Username": "dev_admin",
-           "Password": "your_rabbitmq_password",
-           "VirtualHost": "alexandria"
-         },
-         "Jwt": {
-           "SecretKey": "your-super-secret-key-min-32-chars",
-           "Issuer": "Alexandria.Dev",
-           "Audience": "Alexandria.Dev.Users",
-           "ExpiryMinutes": 60
-         }
-       }
-       ```
-     </TabItem>
-   </Tabs>
-
-5. **Install frontend dependencies**
-
-   ```bash
-   cd Frontend
-   pnpm install
-   cd ..
+     },
+     "RabbitMQ": {
+       "HostName": "localhost",
+       "Port": 5672,
+       "UserName": "api_user",
+       "Password": "<API_RABBITMQ_PASSWORD from .env>",
+       "VirtualHost": "alexandria"
+     },
+     "Admin": {
+       "Email": "admin@alexandria.local",
+       "Password": "<seed admin password>",
+       "Name": "SystemAdministrator"
+     },
+     "Jwt": {
+       "Secret": "<openssl rand -base64 64>",
+       "Issuer": "Alexandria.Dev",
+       "Audience": "Alexandria.Dev.Users",
+       "AccessTokenExpiryMinutes": 15,
+       "RefreshTokenExpiryDays": 7
+     },
+     "Csrf": {
+       "SecretKey": "<openssl rand -base64 32>",
+       "ExpiryMinutes": 60
+     },
+     "Cors": {
+       "AllowedOrigins": ["https://localhost:8443", "http://localhost:5173"]
+     }
+   }
    ```
 
-6. **Start development servers**
+   <Aside type="caution">
+     Copy this file to **all five worker projects** as well, removing the `Jwt`,
+     `Csrf`, and `Admin` sections:
+     `Backend/Alexandria.Workers.Document`, `Backend/Alexandria.Workers.Media`,
+     `Backend/Alexandria.Workers.MediaTranspilation`,
+     `Backend/Alexandria.Workers.MediaMetadata`, `Backend/Alexandria.Workers.Lyrics`
+   </Aside>
 
-   The `run-dev.sh` script launches all services in a tmux session:
+   Workers also carry a top-level `Urls` key binding their health endpoint — keep the defaults when copying (`Document` 5001, `Media` 5002, `Transpilation` 5003, `MediaMetadata` 5005, `Lyrics` 5006) so the ports don't collide with the API.
+
+7. **Install frontend dependencies**
 
    ```bash
-   # Start with your chosen S3 provider
+   cd Frontend && pnpm install && cd ..
+   ```
+
+8. **Start the development servers**
+
+   ```bash
    ./run-dev.sh --s3-provider Garage
-   
-   # Or for MinIO/RustFS:
-   # ./run-dev.sh --s3-provider MinIO
-   # ./run-dev.sh --s3-provider RustFS
    ```
 
-   This creates a tmux session with 5 windows:
-   - **Frontend** — Vue dev server on http://localhost:5173
-   - **API** — ASP.NET Core API on http://localhost:5000
-   - **DocumentWorker** — Background worker for document processing
-   - **MediaWorker** — Background worker for media processing
-   - **MediaMetadata** — Background worker for lyrics fetching and metadata enrichment
+   The script pre-builds all six backend projects, then launches the 7-window tmux session described above and attaches to it.
 
 </Steps>
 
 ## Tmux Navigation
 
-Once the dev environment is running, you can navigate between windows:
-
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+b` then `w` | List all windows (interactive selector) |
-| `Ctrl+b` then `0-4` | Switch to window by number (0=Frontend, 1=API, 2=DocWorker, 3=MediaWorker, 4=MediaMetadata) |
-| `Ctrl+b` then `d` | Detach from tmux (services keep running) |
-| `tmux attach -t dev-session` | Reattach to running session |
-| `Ctrl+c` in any window | Stop that service |
+| `Ctrl+b` then `w` | Interactive window list |
+| `Ctrl+b` then `0-6` | Jump to window (see table above) |
+| `Ctrl+b` then `d` | Detach (services keep running) |
+| `tmux attach -t dev-session` | Reattach |
+| `Ctrl+c` in a window | Stop that service |
 
-To stop all services:
-```bash
-tmux kill-session -t dev-session
-docker compose down
-```
-
-## Switching S3 Providers
-
-You can switch between S3 providers during development:
+Stop everything with:
 
 ```bash
-# Stop current services
 tmux kill-session -t dev-session
-docker compose down
-
-# Start with different provider
-docker compose --profile minio up -d
-
-# Run initialization if needed (not needed for MinIO)
-# ./init-garage.sh  OR  ./init-rustfs.sh
-
-# Update appsettings.Development.json with new credentials
-
-# Restart dev environment
-./run-dev.sh --s3-provider MinIO
+docker compose -f docker-compose.dev.yml down
 ```
+
+### The `--no-analyzers` Flag
+
+```bash
+./run-dev.sh --s3-provider Garage --no-analyzers
+```
+
+Skips Roslyn analyzers during the pre-build (`-p:RunAnalyzersDuringBuild=false`). Useful for faster iteration on weaker machines; leave analyzers on when you want build-time diagnostics enforced.
+
+### S3 Provider Note
+
+The launcher accepts `Garage | RustFS` (it maps to per-project launch profiles like `API (Garage)`), but **only Garage is wired into `docker-compose.dev.yml`**. Selecting RustFS assumes you run that storage yourself and point `S3Storage:Endpoint` at it.
 
 ## Accessing Services
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| Frontend | http://localhost:5173 | N/A (Vite dev server) |
-| API | http://localhost:5000 | JWT from login |
-| PostgreSQL | localhost:5432 | User: `alexandria_user`, Password: from `.env` |
+| Frontend (via Nginx, full stack) | https://localhost:8443 | Accept self-signed cert |
+| Frontend (Vite direct) | http://localhost:5173 | — |
+| API | http://localhost:5000 | JWT after login |
 | RabbitMQ Management | http://localhost:15672 | From `.env` |
-| MinIO Console | http://localhost:9001 | From `.env` |
-| Garage Admin | http://localhost:9001 | N/A (CLI only) |
-| RustFS Console | http://localhost:9001 | From `.env` |
+| Garage S3 / Admin | http://localhost:9000 / :9001 | Keys from `init-garage.sh` |
+| PostgreSQL | localhost:5432 | `alexandria_user` / from `.env` |
 
 ## Troubleshooting
 
-### Docker containers not starting
+### Compose refuses to start
 
-```bash
-# Check container status
-docker compose ps
+Missing required env vars — set all four `RABBITMQ_*`/`API_RABBITMQ_*` values in `.env` (step 3). Check what's missing with `docker compose -f docker-compose.dev.yml config`.
 
-# View logs for specific service
-docker compose logs postgres
-docker compose logs garage
-docker compose logs rabbitmq
+### Nginx exits immediately
 
-# Restart a specific service
-docker compose restart postgres
-```
+The certs from step 2 are missing or unreadable. Re-run the openssl command and restart the container.
 
 ### Database migrations not applied
 
 ```bash
 cd Backend
-dotnet ef database update --project Data --startup-project API
+dotnet ef database update --project Alexandria.Data --startup-project Alexandria.Api
 ```
 
-### Frontend build errors
-
-```bash
-cd Frontend
-rm -rf node_modules pnpm-lock.yaml
-pnpm install
-```
+(The API also auto-applies migrations on startup unless disabled.)
 
 ### S3 connection errors
 
-Verify your S3 credentials match between:
-1. Docker Compose environment variables (`.env`)
-2. Initialization script output (Garage/RustFS)
-3. `appsettings.Development.json` in all backend projects
+Verify credentials match across three places: `.env` (broker), `init-garage.sh` output (bucket keys), and every `appsettings.Development.json`. Test connectivity:
 
-Test S3 connectivity:
 ```bash
-# For MinIO/Garage/RustFS
-mc alias set test http://localhost:9000 YOUR_ACCESS_KEY YOUR_SECRET_KEY
-mc ls test/
+AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY AWS_DEFAULT_REGION=garage \
+  aws --endpoint-url http://localhost:9000 s3 ls
 ```
 
-### "Address already in use" errors
+### "Address already in use"
 
-Check if ports are already occupied:
 ```bash
-# Check port usage
-lsof -i :5432  # PostgreSQL
-lsof -i :9000  # S3 API
-lsof -i :5672  # RabbitMQ
 lsof -i :5000  # API
-lsof -i :5173  # Frontend
-
-# Change ports in .env and docker compose.dev.yml if needed
+lsof -i :5173  # Vite
+lsof -i :8443  # Nginx
+lsof -i :5432  # PostgreSQL
+lsof -i :9000  # Garage S3
 ```
 
 ## Next Steps
 
-- [Project Structure](/overview/structure/) — Understand the codebase organization
-- [API Documentation](/api/overview/) — Explore the REST API endpoints
-- [Contributing Guide](/contributing/guidelines/) — Learn how to contribute
-
-<Aside type="tip">
-  **Pro tip**: Create a shell alias for quick startup:
-  ```bash
-  alias alex-dev='docker compose --profile garage up -d && ./run-dev.sh --s3-provider Garage'
-  ```
-</Aside>
+- [Architecture Overview](/development/architecture/) — how the system fits together
+- [Project Structure](/development/project-structure/) — repository tour

@@ -6,7 +6,7 @@ namespace Alexandria.Common.Config;
 public class S3Config
 {
     /// <summary>
-    /// S3 provider type: Garage, RustFS, or MinIO
+    /// S3 provider type: Garage or RustFS
     /// </summary>
     public S3Provider Provider { get; set; } = S3Provider.Garage;
 
@@ -126,12 +126,7 @@ public enum S3Provider
     /// <summary>
     /// RustFS object storage
     /// </summary>
-    RustFS,
-
-    /// <summary>
-    /// MinIO object storage (legacy)
-    /// </summary>
-    MinIO
+    RustFS
 }
 
 /// <summary>
