@@ -27,16 +27,38 @@ const paginated = (items: unknown[], totalCount = items.length) => ({
   totalPages: 1,
 });
 
-const timeline = (url: URL, empty: boolean) => ({
-  from: url.searchParams.get("from"),
-  to: url.searchParams.get("to"),
-  days: empty ? [] : [{ date: "2026-10-08", seconds: 3600, plays: 9, sessionCount: 10, top: [] }],
-  months: [],
-  totalSeconds: empty ? 0 : 3600,
-  sessionCount: empty ? 0 : 10,
-  qualifiedPlayCount: empty ? 0 : 9,
-  activeDays: empty ? 0 : 1,
-});
+const TIMELINE_DAYS = [
+  {
+    date: "2026-10-08",
+    seconds: 3600,
+    plays: 9,
+    sessionCount: 10,
+    top: [{ title: "Favorite 1", artist: "Artist 1", seconds: 1800 }],
+  },
+];
+
+const timeline = (url: URL, empty: boolean) => {
+  const from = url.searchParams.get("from")!;
+  const to = url.searchParams.get("to")!;
+  const days = empty
+    ? []
+    : TIMELINE_DAYS.filter((day) => {
+        const start = `${day.date}T00:00:00.000Z`;
+
+        return start >= from && start < to;
+      });
+
+  return {
+    from,
+    to,
+    days,
+    months: [],
+    totalSeconds: days.reduce((sum, day) => sum + day.seconds, 0),
+    sessionCount: days.reduce((sum, day) => sum + day.sessionCount, 0),
+    qualifiedPlayCount: days.reduce((sum, day) => sum + day.plays, 0),
+    activeDays: days.length,
+  };
+};
 
 const fulfillRanking = async (route: Route, empty: boolean, failedJumpBackIn: boolean) => {
   const url = new URL(route.request().url());

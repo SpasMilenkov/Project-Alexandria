@@ -403,6 +403,6 @@ describe("Media overview sections", () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain("1h 5m");
-    expect(wrapper.text()).toContain("3 plays · active 1 of 7 days");
+    expect(wrapper.text()).toContain("3 songs played · active 1 of 7 days");
   });
 });

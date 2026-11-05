@@ -1,5 +1,7 @@
 import type { MediaFileDto } from "@/api/streaming";
 
+import { utcDayKey } from "@/utils/date-formatters";
+
 const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
 
@@ -40,30 +42,45 @@ export const formatListeningTime = (seconds: number): string => {
 export interface WeekDay {
   date: string;
   label: string;
+  longLabel: string;
   seconds: number;
+  plays: number;
   isToday: boolean;
+}
+
+interface TimelineDayInput {
+  date: string;
+  seconds: number;
+  plays?: number;
 }
 
 const WEEKDAY = new Intl.DateTimeFormat(undefined, { weekday: "narrow", timeZone: "UTC" });
 
+const LONG_DAY = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+  weekday: "short",
+});
+
 // Timeline days are UTC buckets and only include days with listening, so the gaps are filled here.
-export const buildWeekDays = (
-  from: string,
-  days: { date: string; seconds: number }[],
-): WeekDay[] => {
+export const buildWeekDays = (from: string, days: TimelineDayInput[]): WeekDay[] => {
   const start = new Date(from);
-  const seconds = new Map(days.map((day) => [day.date, day.seconds]));
+  const byDate = new Map(days.map((day) => [day.date, day]));
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(
       Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + index),
     );
-    const key = date.toISOString().slice(0, 10);
+    const key = utcDayKey(date);
+    const day = byDate.get(key);
 
     return {
       date: key,
       label: WEEKDAY.format(date),
-      seconds: seconds.get(key) ?? 0,
+      longLabel: LONG_DAY.format(date),
+      seconds: day?.seconds ?? 0,
+      plays: day?.plays ?? 0,
       isToday: index === 6,
     };
   });

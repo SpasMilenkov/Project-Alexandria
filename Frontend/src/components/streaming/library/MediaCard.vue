@@ -10,9 +10,9 @@ import type { MediaFileDto } from "@/api/streaming";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import MediaEqualizer from "@/components/streaming/overview/MediaEqualizer.vue";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
+import { MEDIA_CARD_METADATA_HEIGHT, MEDIA_LIST_ROW_HEIGHT } from "@/features/media/grid-layout";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatDuration } from "@/utils/date-formatters";
-import { MEDIA_CARD_METADATA_HEIGHT, MEDIA_LIST_ROW_HEIGHT } from "@/utils/media-grid-layout";
 
 const {
   file,
@@ -292,12 +292,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
         </div>
         <div class="flex items-center justify-between gap-2 h-8 shrink-0">
           <div class="flex items-center gap-2 min-w-0">
-            <div
-              v-if="isActive && isAudio"
-              class="flex"
-              role="status"
-              aria-label="Now playing"
-            >
+            <div v-if="isActive && isAudio" class="flex" role="status" aria-label="Now playing">
               <MediaEqualizer :playing="isActivePlaying" class="text-primary" />
             </div>
             <Icon
@@ -359,12 +354,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
               class="pointer-events-none"
             />
           </span>
-          <div
-            v-else-if="isActive && isAudio"
-            class="flex"
-            role="status"
-            aria-label="Now playing"
-          >
+          <div v-else-if="isActive && isAudio" class="flex" role="status" aria-label="Now playing">
             <MediaEqualizer :playing="isActivePlaying" class="text-primary" />
           </div>
           <Icon
@@ -418,7 +408,9 @@ const onCardKeydown = (event: KeyboardEvent) => {
           >
             {{ displayName }}
           </p>
-          <p class="m-0 mt-0.5 flex min-w-0 items-baseline gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <p
+            class="m-0 mt-0.5 flex min-w-0 items-baseline gap-2 text-sm text-gray-600 dark:text-gray-400"
+          >
             <span class="truncate" :title="subtitle">{{ subtitle }}</span>
 
             <span v-if="file.duration" class="ml-auto shrink-0 tabular-nums sm:hidden">{{
@@ -428,7 +420,9 @@ const onCardKeydown = (event: KeyboardEvent) => {
         </div>
       </div>
 
-      <span class="hidden text-right text-sm tabular-nums text-gray-600 sm:block dark:text-gray-400">
+      <span
+        class="hidden text-right text-sm tabular-nums text-gray-600 sm:block dark:text-gray-400"
+      >
         <template v-if="file.duration">{{ formatDuration(file.duration) }}</template>
       </span>
 

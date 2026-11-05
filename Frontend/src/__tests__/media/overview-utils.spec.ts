@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import type { MediaFileDto } from "@/api/streaming";
 
-import { heroTint } from "@/utils/cover-color";
-import { coverSeed, generatedCover } from "@/utils/generated-cover";
+import { heroTint } from "@/features/media/cover-color";
+import { coverSeed, generatedCover } from "@/features/media/generated-cover";
 import {
   addedThisWeekLabel,
   buildWeekDays,
   daysAwayLabel,
   formatListeningTime,
   groupByDay,
-} from "@/utils/media-overview";
+} from "@/features/media/overview";
 
 const NOW = Date.UTC(2026, 9, 31, 12);
 
@@ -77,6 +77,15 @@ describe("media overview labels", () => {
     ]);
     expect(days[2]!.seconds).toBe(90);
     expect(days.filter((day) => day.isToday).map((day) => day.date)).toEqual(["2026-10-31"]);
+  });
+
+  it("carries plays for listened days and zeroes the gaps", () => {
+    const days = buildWeekDays("2026-10-25T00:00:00.000Z", [
+      { date: "2026-10-27", plays: 4, seconds: 90 },
+    ]);
+
+    expect(days[2]).toMatchObject({ plays: 4, seconds: 90 });
+    expect(days[3]).toMatchObject({ plays: 0, seconds: 0 });
   });
 
   it("groups consecutive history entries under one day label", () => {

@@ -157,35 +157,40 @@
           >
             <div class="flex min-w-0 items-center gap-2 sm:gap-3">
               <div class="hidden h-4 w-4 shrink-0 rounded bg-gray-200 sm:block dark:bg-white/10" />
-              <div class="size-10 shrink-0 rounded-lg sm:size-11 bg-gray-200 dark:bg-white/[0.06]" />
+              <div
+                class="size-10 shrink-0 rounded-lg sm:size-11 bg-gray-200 dark:bg-white/[0.06]"
+              />
               <div class="min-w-0 flex-1 space-y-1.5">
                 <div class="h-3 w-2/3 rounded bg-gray-200 dark:bg-white/[0.08]" />
                 <div class="h-2.5 w-1/3 rounded bg-gray-100 dark:bg-white/[0.05]" />
               </div>
             </div>
-            <div class="ml-auto hidden h-2 w-10 rounded bg-gray-100 sm:block dark:bg-white/[0.05]" />
+            <div
+              class="ml-auto hidden h-2 w-10 rounded bg-gray-100 sm:block dark:bg-white/[0.05]"
+            />
             <div class="size-9 justify-self-end rounded bg-gray-100 dark:bg-white/[0.05]" />
           </div>
         </div>
       </div>
 
       <!-- Error -->
-      <div
-        v-else-if="error && !allItems.length"
-        class="flex flex-col items-center gap-2.5 py-20 text-center"
-      >
-        <Icon icon="mdi:alert-circle-outline" class="w-9 h-9 text-red-400" />
-        <p class="text-sm text-gray-600 dark:text-gray-400 m-0">Failed to load media library</p>
+      <div v-else-if="error && !allItems.length" class="flex flex-1 min-h-0 overflow-y-auto">
+        <div
+          class="m-auto flex flex-col items-center gap-2.5 rounded-2xl border border-gray-200/70 px-8 py-6 text-center frosted-glass glass-surface-strong dark:border-gray-700/70"
+        >
+          <Icon icon="mdi:alert-circle-outline" class="w-9 h-9 text-red-400" />
+          <p class="text-sm text-gray-900 dark:text-gray-100 m-0">Failed to load media library</p>
+        </div>
       </div>
 
       <!-- Empty -->
-      <div v-else-if="!allItems.length" class="flex flex-col items-center gap-3 py-20 text-center">
-        <Icon icon="mdi:video-off-outline" class="w-10 h-10 text-gray-400 dark:text-gray-500" />
-        <p class="text-sm text-gray-600 dark:text-gray-400 m-0">No streamable media found</p>
-        <p class="text-xs text-gray-600 dark:text-gray-400 max-w-xs leading-relaxed m-0">
-          Files need a completed transcoding job before they appear here.
-        </p>
-      </div>
+      <EmptyStatePanel v-else-if="!allItems.length">
+        <template #ghost>
+          <MediaLibraryGhost :media-type="mediaType" :view-mode="viewMode" />
+        </template>
+
+        <MediaLibraryEmpty v-if="emptyMessage" :media-type="mediaType" class="m-auto" />
+      </EmptyStatePanel>
 
       <!-- List view -->
       <div
@@ -288,18 +293,25 @@ import { useRouter } from "vue-router";
 
 import { type MediaFileDto } from "@/api/streaming";
 import { isWatchedEntry, progressPercentOf, useVideoHistory } from "@/composables/useVideoHistory";
+import { MEDIA_LIST_ROW_HEIGHT, getMediaGridLayout } from "@/features/media/grid-layout";
+import { LIBRARY_PAGE_SIZE, libraryLabel, type SourceDescriptor } from "@/features/player/source";
 import { STREAMING_QUERY_KEYS, getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
-import { MEDIA_LIST_ROW_HEIGHT, getMediaGridLayout } from "@/utils/media-grid-layout";
-import { LIBRARY_PAGE_SIZE, libraryLabel, type SourceDescriptor } from "@/utils/player-source";
 
-import BlockSpinner from "../common/BlockSpinner.vue";
-import BulkMetadataDrawer from "./BulkMetadataDrawer.vue";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
+import BulkMetadataDrawer from "@/components/streaming/metadata/BulkMetadataDrawer.vue";
 import MediaCard from "./MediaCard.vue";
+import MediaLibraryEmpty from "./MediaLibraryEmpty.vue";
+import MediaLibraryGhost from "./MediaLibraryGhost.vue";
 
 // Props
 
-const { mediaType } = defineProps<{ mediaType: "video" | "audio" }>();
+// Pages that explain an empty library elsewhere keep only the ghost outline here.
+const { mediaType, emptyMessage = true } = defineProps<{
+  mediaType: "video" | "audio";
+  emptyMessage?: boolean;
+}>();
 
 // Store
 
@@ -411,15 +423,22 @@ const onFileClick = (file: MediaFileDto) => {
 };
 
 // Watch progress for video tiles (resume bars, Watched labels).
-// The query stays disabled for audio grids.
+// Disabling the query only stops fetching: audio grids still read the shared cached history,
+// which includes songs, so the file itself decides whether history applies.
 
 const { historyByFileId } = useVideoHistory(() => mediaType === "video");
 
-const progressFor = (file: MediaFileDto): number | null =>
-  progressPercentOf(historyByFileId.value.get(file.fileId), file.duration);
+const progressFor = (file: MediaFileDto): number | null => {
+  if (!file.isVideo) return null;
 
-const watchedFor = (file: MediaFileDto): boolean =>
-  isWatchedEntry(historyByFileId.value.get(file.fileId));
+  return progressPercentOf(historyByFileId.value.get(file.fileId), file.duration);
+};
+
+const watchedFor = (file: MediaFileDto): boolean => {
+  if (!file.isVideo) return false;
+
+  return isWatchedEntry(historyByFileId.value.get(file.fileId));
+};
 
 const onMediaInfo = (file: MediaFileDto) => {
   router.push(`/streaming/track/${file.fileId}`);

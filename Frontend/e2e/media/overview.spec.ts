@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { expectBoundedRequests, media, openMedia, section } from "./helpers/media-overview.js";
+import { expectBoundedRequests, media, openMedia, section } from "@e2e/helpers/media-overview.js";
 
 test("fills the dashboard with bounded lists, On repeat and direct destination links", async ({
   page,
@@ -61,7 +61,17 @@ test("the hero and this week summarize the library", async ({ page }) => {
     "Played recently 1",
   );
   await expect(section(page, "This week")).toContainText("1h");
-  await expect(section(page, "This week")).toContainText("9 plays · active 1 of 7 days");
+  await expect(section(page, "This week")).toContainText("9 songs played · active 1 of 7 days");
+  await expect(section(page, "This week")).toContainText("Busiest day");
+
+  const days = section(page, "This week").getByRole("group", { name: "Listening per day" });
+  const quietDay = days.getByRole("button").first();
+
+  await quietDay.click();
+  await expect(quietDay).toHaveAttribute("aria-pressed", "true");
+  await expect(section(page, "This week")).toContainText("No listening");
+  await quietDay.click();
+  await expect(quietDay).toHaveAttribute("aria-pressed", "false");
   await expect(
     section(page, "This week").getByRole("link", { name: "Your listening" }),
   ).toHaveAttribute("href", "/stats");
