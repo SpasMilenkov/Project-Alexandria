@@ -8,6 +8,7 @@ import {
   type OperationalEventsQuery,
   parseEventMetadata,
 } from "@/api/monitoring";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
@@ -18,17 +19,17 @@ import {
   OperationalEventStatus,
   type ServiceType,
 } from "@/enums";
-import { useResolveIncident } from "@/mutations/monitoring";
-import { operationalEvents } from "@/queries/monitoring";
-import { formatDate, formatRelativeShort } from "@/utils/date-formatters";
 import {
   EVENT_CODE_ICONS,
   EVENT_CODE_LABELS,
   SEVERITY_BADGE_COLORS,
   SEVERITY_LABELS,
   SERVICE_LABELS,
-} from "@/utils/monitoring-display.utils";
-import { buildDeepLink } from "@/utils/serviceDashboardRouting";
+} from "@/features/monitoring/display";
+import { buildDeepLink } from "@/features/monitoring/service-routing";
+import { useResolveIncident } from "@/mutations/monitoring";
+import { operationalEvents } from "@/queries/monitoring";
+import { formatDate, formatRelativeShort } from "@/utils/date-formatters";
 
 const { dateRange, initialServiceType, initialSeverity, highlightId, lockedService } = defineProps<{
   dateRange: EventCalendarRange | null;
@@ -125,9 +126,7 @@ const queryParams = computed<OperationalEventsQuery>(() => ({
   to: dateRange?.to,
 }));
 
-const { data, error, asyncStatus, refetch } = useQuery(() =>
-  operationalEvents(queryParams.value),
-);
+const { data, error, asyncStatus, refetch } = useQuery(() => operationalEvents(queryParams.value));
 
 useLiveRefresh(refetch, 30_000);
 
@@ -290,7 +289,7 @@ const dateChipLabel = computed(() => {
 });
 
 // Resolve flow
-const toast = useAppToast();
+const toast = useAppToast("monitoring");
 const { mutateAsync: resolveIncident, isLoading: isResolving } = useResolveIncident();
 
 const resolvingEvent = ref<OperationalEvent | null>(null);
@@ -308,7 +307,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
   }
   try {
     await resolveIncident({ id: resolvingEvent.value.id, note: resolveNote.value });
-    toast.success("Incident resolved");
+    toast.success("Incident resolved", "It moves to the resolved history.");
     expandedId.value = null;
     resolvingEvent.value = null;
     resolveNote.value = "";
@@ -318,7 +317,9 @@ const handleResolveModalClose = async (confirmed: boolean) => {
       toast.warning("Already resolved", "Someone resolved this first — the list is refreshing.");
       resolvingEvent.value = null;
     } else {
-      toast.error("Could not resolve incident", err);
+      toast.error("Couldn't resolve the incident", err, {
+        retry: () => handleResolveModalClose(true),
+      });
     }
   }
 };
@@ -326,16 +327,16 @@ const handleResolveModalClose = async (confirmed: boolean) => {
 
 <template>
   <div
-    class="rounded-2xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
+    class="rounded-[14px] border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface overflow-hidden"
   >
     <div
       class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2 flex-wrap"
     >
       <UIcon
         name="i-mdi-format-list-bulleted"
-        class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0"
+        class="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0"
       />
-      <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Incident Log</span>
+      <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">Incident Log</span>
 
       <!-- Active date filter chip -->
       <UBadge
@@ -456,7 +457,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
 
     <!-- Loading: centered spinner, consistent with the other admin sections -->
     <div v-if="isLoading" class="flex items-center justify-center py-14">
-      <UIcon name="i-mdi-loading" class="w-6 h-6 text-gray-400 dark:text-gray-500 animate-spin" />
+      <BlockSpinner :size="24" aria-label="Loading incidents" class="text-gray-500" />
     </div>
 
     <UAlert
@@ -521,7 +522,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                   {{ EVENT_CODE_LABELS[event.code] ?? event.code }}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                <p class="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5">
                   {{ subtitle(event) }}
                 </p>
               </div>
@@ -539,7 +540,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
               <UBadge :color="SEVERITY_BADGE_COLORS[event.severity]" variant="subtle" size="sm">
                 {{ SEVERITY_LABELS[event.severity] }}
               </UBadge>
-              <span class="text-xs text-gray-500 dark:text-gray-500 tabular-nums">
+              <span class="text-xs text-gray-600 dark:text-gray-400 tabular-nums">
                 {{ formatDate(event.createdAt) }}
               </span>
               <UTooltip
@@ -579,26 +580,26 @@ const handleResolveModalClose = async (confirmed: boolean) => {
             >
               <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 py-1">
                 <dt
-                  class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 pt-0.5"
+                  class="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400 pt-0.5"
                 >
                   Occurred
                 </dt>
-                <dd class="text-sm text-gray-700 dark:text-gray-300 tabular-nums">
+                <dd class="text-sm text-gray-900 dark:text-gray-100 tabular-nums">
                   {{ formatAbsolute(event.createdAt) }}
                 </dd>
                 <template v-if="event.resolvedAt">
                   <dt
-                    class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 pt-0.5"
+                    class="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400 pt-0.5"
                   >
                     Resolved
                   </dt>
-                  <dd class="text-sm text-gray-700 dark:text-gray-300 tabular-nums">
+                  <dd class="text-sm text-gray-900 dark:text-gray-100 tabular-nums">
                     {{ formatAbsolute(event.resolvedAt) }}
                   </dd>
                 </template>
                 <template v-if="resolutionNoteRow(event)">
                   <dt
-                    class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 pt-0.5"
+                    class="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400 pt-0.5"
                   >
                     Resolution note
                   </dt>
@@ -608,11 +609,11 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                 </template>
                 <template v-for="row in metadataRows(event)" :key="row.label">
                   <dt
-                    class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 pt-0.5"
+                    class="text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-400 pt-0.5"
                   >
                     {{ row.label }}
                   </dt>
-                  <dd class="text-sm text-gray-700 dark:text-gray-300 break-words">
+                  <dd class="text-sm text-gray-900 dark:text-gray-100 break-words">
                     {{ row.value }}
                   </dd>
                 </template>
@@ -639,7 +640,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
       <div
         class="px-5 py-3 border-t border-gray-200/70 dark:border-gray-700/70 flex items-center justify-between gap-3"
       >
-        <span class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">
+        <span class="text-xs text-gray-600 dark:text-gray-400 tabular-nums">
           Page {{ data?.currentPage ?? page }} of {{ totalPages }} ·
           {{ (data?.totalCount ?? 0).toLocaleString() }} events
         </span>

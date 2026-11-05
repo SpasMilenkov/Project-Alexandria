@@ -3,6 +3,7 @@ import { computed, type Ref } from "vue";
 import type { ErrorAggregate } from "@/api/monitoring";
 
 import { OperationalEventSeverity, ServiceType } from "@/enums";
+import { localDayKey } from "@/utils/date-formatters";
 
 export interface CalendarBreakdownEntry {
   service: ServiceType;
@@ -53,14 +54,26 @@ const MONTH_NAMES = [
   "Dec",
 ];
 
-// Matches the backend's DateOnly wire format ("yyyy-MM-dd") so aggregates can
-// be looked up without any timezone-sensitive Date parsing.
-export const toDayKey = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+export interface ErrorCalendarMonthBlock {
+  label: string;
+  month: number;
+  weeks: ErrorCalendarDay[][];
+}
+
+const isInMonth = (day: ErrorCalendarDay, month: number): boolean =>
+  !day.isPadding && day.date?.getMonth() === month;
+
+const toPadding = (day: ErrorCalendarDay): ErrorCalendarDay => ({
+  ...day,
+  count: 0,
+  date: null,
+  dayOfYear: -1,
+  entries: [],
+  hasFailure: false,
+  intensity: 0,
+  isPadding: true,
+  worstSeverity: null,
+});
 
 const severityWorstFirst = (a: OperationalEventSeverity, b: OperationalEventSeverity): number =>
   a - b;
@@ -92,7 +105,7 @@ export const useErrorCalendar = (
 
     let maxCount = 0;
     for (let d = 1; d <= totalDays; d++) {
-      const matching = (byDay.value.get(toDayKey(new Date(year, 0, d))) ?? []).filter(
+      const matching = (byDay.value.get(localDayKey(new Date(year, 0, d))) ?? []).filter(
         (entry) => service === null || entry.service === service,
       );
       const count = matching.reduce((sum, entry) => sum + entry.count, 0);
@@ -126,7 +139,7 @@ export const useErrorCalendar = (
       const dayOfWeek = totalIndex % 7;
       const date = new Date(year, 0, d);
 
-      const allEntries = byDay.value.get(toDayKey(date)) ?? [];
+      const allEntries = byDay.value.get(localDayKey(date)) ?? [];
       const entries = allEntries
         .filter((entry) => service === null || entry.service === service)
         .sort((a, b) => b.count - a.count);
@@ -157,7 +170,7 @@ export const useErrorCalendar = (
         hasFailure: false,
         worstSeverity: null,
         entries: [],
-        isPadding: false,
+        isPadding: true,
         intensity: 0,
       });
     }
@@ -173,23 +186,20 @@ export const useErrorCalendar = (
     return result;
   });
 
-  const monthLabelByWeek = computed<Record<number, string>>(() => {
-    const map: Record<number, string> = {};
-    let lastMonth = -1;
-    for (const day of allSlots.value) {
-      if (day.isPadding || !day.date) continue;
-      const month = day.date.getMonth();
-      if (month !== lastMonth && map[day.weekIndex] === undefined) {
-        map[day.weekIndex] = MONTH_NAMES[month];
-      }
-      lastMonth = month;
-    }
-    return map;
-  });
+  // Weeks straddling two months appear in both blocks, with the other month's days blanked out.
+  const monthBlocks = computed<ErrorCalendarMonthBlock[]>(() =>
+    MONTH_NAMES.map((label, month) => ({
+      label,
+      month,
+      weeks: weeks.value
+        .filter((week) => week.some((day) => isInMonth(day, month)))
+        .map((week) => week.map((day) => (isInMonth(day, month) ? day : toPadding(day)))),
+    })),
+  );
 
   const totalFiltered = computed<number>(() =>
     allSlots.value.reduce((sum, day) => sum + (day.isPadding ? 0 : day.count), 0),
   );
 
-  return { weeks, monthLabelByWeek, totalFiltered };
+  return { weeks, monthBlocks, totalFiltered };
 };

@@ -5,6 +5,8 @@ import { computed } from "vue";
 
 import type { HealthCheckEntry, HealthStatus } from "@/api/status";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import InfoHint from "@/components/common/InfoHint.vue";
 import { serverResourceUsage, serverStatus } from "@/queries/status";
 
 const { data, status, asyncStatus, refresh } = useQuery(serverStatus());
@@ -59,6 +61,16 @@ const statusConfig: Record<
 };
 
 const overallConfig = computed(() => (overall.value ? statusConfig[overall.value] : null));
+
+const OVERALL_BADGE_COLORS: Record<HealthStatus, "success" | "warning" | "error"> = {
+  Degraded: "warning",
+  Healthy: "success",
+  Unhealthy: "error",
+};
+
+const overallBadgeColor = computed(() =>
+  overall.value ? OVERALL_BADGE_COLORS[overall.value] : "neutral",
+);
 
 const lastChecked = computed(() => {
   if (!data.value?.checkedAt) {
@@ -217,6 +229,42 @@ const memLabel = computed(() => {
   return "Nearly full";
 });
 
+const MEMORY_LEVELS = [
+  { label: "Comfortable", range: "Under 60%", bar: "bg-emerald-500" },
+  { label: "Getting full", range: "60 to 80%", bar: "bg-amber-500" },
+  { label: "Nearly full", range: "80% and up", bar: "bg-red-500" },
+];
+
+// Uptime arrives as a .NET TimeSpan string: "[d.]hh:mm:ss[.fffffff]".
+const uptimeSeconds = (raw: string): number | null => {
+  const match =
+    /^(?:(?<days>\d+)\.)?(?<hours>\d+):(?<minutes>\d+):(?<seconds>\d+(?:\.\d+)?)$/u.exec(raw);
+  const parts = match?.groups;
+
+  if (!parts) return null;
+
+  return (
+    Number(parts.days ?? 0) * 86_400 +
+    Number(parts.hours) * 3600 +
+    Number(parts.minutes) * 60 +
+    Number(parts.seconds)
+  );
+};
+
+const cpuAverage = computed(() => {
+  const stats = proc.value;
+
+  if (!stats) return null;
+
+  const elapsed = uptimeSeconds(stats.uptime);
+
+  if (!elapsed || elapsed < 60) return null;
+
+  const share = (stats.cpuTimeSeconds / elapsed) * 100;
+
+  return `${share < 10 ? share.toFixed(1) : share.toFixed(0)}%`;
+});
+
 const formatMb = (mb: number) =>
   mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
 
@@ -232,33 +280,47 @@ const formatCpuTime = (s: number) => {
 </script>
 
 <template>
-  <div class="p-3 sm:p-5 lg:p-6">
-    <!-- Page header -->
-    <div class="flex items-center justify-between mb-4 max-w-400 mx-auto">
-      <div>
-        <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100">System Health</h1>
-        <p v-if="lastChecked" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-          Last checked at {{ lastChecked }}
-          <span v-if="totalDuration" class="ml-1 opacity-60">· {{ totalDuration }} total</span>
-        </p>
+  <div class="flex min-h-full w-full flex-col gap-3 p-3">
+    <header
+      class="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-gray-200/70 px-4 py-3 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
+    >
+      <div class="flex min-w-0 items-center gap-2.5">
+        <UIcon name="i-lucide-activity" class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400" />
+        <h1 class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">
+          System vitals
+        </h1>
+        <UBadge v-if="overallConfig" :color="overallBadgeColor" variant="subtle" size="sm">
+          {{ overallConfig.label }}
+        </UBadge>
       </div>
-      <div class="flex items-center gap-4">
-        <UButton
-          size="sm"
-          color="neutral"
-          variant="outline"
-          :loading="isFetching"
-          icon="i-mdi-refresh"
-          @click="handleRefresh()"
+
+      <div class="flex shrink-0 items-center gap-2">
+        <span
+          v-if="lastChecked"
+          class="hidden text-xs text-gray-600 tabular-nums sm:inline dark:text-gray-400"
         >
-          Refresh
-        </UButton>
+          Checked {{ lastChecked }}
+        </span>
+
+        <UTooltip text="Refresh">
+          <UButton
+            variant="ghost"
+            color="neutral"
+            size="sm"
+            icon="i-lucide-refresh-cw"
+            square
+            class="justify-center"
+            aria-label="Refresh system vitals"
+            :loading="isFetching"
+            @click="handleRefresh()"
+          />
+        </UTooltip>
       </div>
-    </div>
+    </header>
 
     <!-- Loading -->
     <div v-if="isLoading" class="flex items-center justify-center py-32">
-      <UIcon name="i-mdi-loading" class="w-7 h-7 text-gray-400 animate-spin" />
+      <BlockSpinner :size="24" aria-label="Loading system vitals" class="text-gray-500" />
     </div>
 
     <!-- Error -->
@@ -269,11 +331,10 @@ const formatCpuTime = (s: number) => {
       title="Could not reach server"
       description="Unable to fetch health status. The server may be offline."
       icon="i-mdi-connection"
-      class="max-w-400 mx-auto"
     />
 
     <template v-else-if="data">
-      <div class="max-w-400 mx-auto space-y-3 lg:space-y-4">
+      <div class="space-y-3 lg:space-y-4">
         <!-- Row 1: Health overview -->
         <div
           class="grid grid-cols-1 lg:grid-cols-[300px_1fr] xl:grid-cols-[340px_1fr] gap-3 lg:gap-4 items-start"
@@ -286,7 +347,7 @@ const formatCpuTime = (s: number) => {
               :class="[overallConfig?.bg, overallConfig?.ring]"
             >
               <p
-                class="text-xs font-medium uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3"
+                class="text-xs font-medium uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3"
               >
                 Overall Status
               </p>
@@ -308,28 +369,28 @@ const formatCpuTime = (s: number) => {
                 class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface py-3 px-2 flex flex-col items-center gap-1"
               >
                 <span class="w-2 h-2 rounded-full bg-emerald-500 mb-0.5" />
-                <span class="text-xl font-bold text-gray-800 dark:text-gray-100">{{
+                <span class="text-xl font-bold text-gray-900 dark:text-gray-100">{{
                   data.summary.healthy
                 }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">Healthy</span>
+                <span class="text-xs text-gray-600 dark:text-gray-400">Healthy</span>
               </div>
               <div
                 class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface py-3 px-2 flex flex-col items-center gap-1"
               >
                 <span class="w-2 h-2 rounded-full bg-amber-500 mb-0.5" />
-                <span class="text-xl font-bold text-gray-800 dark:text-gray-100">{{
+                <span class="text-xl font-bold text-gray-900 dark:text-gray-100">{{
                   data.summary.degraded
                 }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">Degraded</span>
+                <span class="text-xs text-gray-600 dark:text-gray-400">Degraded</span>
               </div>
               <div
                 class="rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface py-3 px-2 flex flex-col items-center gap-1"
               >
                 <span class="w-2 h-2 rounded-full bg-red-500 mb-0.5" />
-                <span class="text-xl font-bold text-gray-800 dark:text-gray-100">{{
+                <span class="text-xl font-bold text-gray-900 dark:text-gray-100">{{
                   data.summary.unhealthy
                 }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400">Unhealthy</span>
+                <span class="text-xs text-gray-600 dark:text-gray-400">Unhealthy</span>
               </div>
             </div>
 
@@ -338,26 +399,26 @@ const formatCpuTime = (s: number) => {
               class="flex flex-col rounded-xl border border-gray-200/70 dark:border-gray-700/70 frosted-glass glass-surface divide-y divide-gray-200/70 dark:divide-gray-700/70"
             >
               <div class="px-4 py-2.5 flex items-center justify-between">
-                <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <span class="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
                   <Icon icon="mdi:clock-outline" class="w-4 h-4" />Checked at
                 </span>
-                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{
+                <span class="text-xs font-medium text-gray-900 dark:text-gray-100">{{
                   lastChecked ?? "—"
                 }}</span>
               </div>
               <div class="px-4 py-2.5 flex items-center justify-between">
-                <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <span class="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
                   <Icon icon="mdi:timer-outline" class="w-4 h-4" />Total duration
                 </span>
-                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{
+                <span class="text-xs font-medium text-gray-900 dark:text-gray-100">{{
                   totalDuration ?? "—"
                 }}</span>
               </div>
               <div class="px-4 py-2.5 flex items-center justify-between">
-                <span class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <span class="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
                   <Icon icon="mdi:format-list-checks" class="w-4 h-4" />Total checks
                 </span>
-                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{
+                <span class="text-xs font-medium text-gray-900 dark:text-gray-100">{{
                   data.checks.length
                 }}</span>
               </div>
@@ -374,8 +435,8 @@ const formatCpuTime = (s: number) => {
               <div
                 class="px-4 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2"
               >
-                <Icon :icon="group.icon" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{
+                <Icon :icon="group.icon" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{
                   group.label
                 }}</span>
                 <span
@@ -383,7 +444,7 @@ const formatCpuTime = (s: number) => {
                   :class="
                     group.hasIssues
                       ? 'text-red-600 dark:text-red-400'
-                      : 'text-gray-500 dark:text-gray-500'
+                      : 'text-gray-600 dark:text-gray-400'
                   "
                 >
                   {{ group.hasIssues ? "Needs attention" : `${group.checks.length} healthy` }}
@@ -404,9 +465,9 @@ const formatCpuTime = (s: number) => {
                   <div class="flex items-center gap-1.5">
                     <Icon
                       :icon="checkIcon(check.name)"
-                      class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0"
+                      class="w-3.5 h-3.5 text-gray-600 dark:text-gray-400 shrink-0"
                     />
-                    <p class="text-sm font-medium text-gray-800 dark:text-gray-100">
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {{ checkLabel(check.name) }}
                     </p>
                   </div>
@@ -416,14 +477,14 @@ const formatCpuTime = (s: number) => {
                     :class="
                       check.error
                         ? 'text-red-600 dark:text-red-400'
-                        : 'text-gray-500 dark:text-gray-400'
+                        : 'text-gray-600 dark:text-gray-400'
                     "
                   >
                     {{ check.error ?? check.description }}
                   </p>
                 </div>
                 <span
-                  class="text-xs text-gray-500 dark:text-gray-400 text-right tabular-nums pt-0.5"
+                  class="text-xs text-gray-600 dark:text-gray-400 text-right tabular-nums pt-0.5"
                 >
                   {{ formatMs(check.duration) }}
                 </span>
@@ -439,7 +500,7 @@ const formatCpuTime = (s: number) => {
 
             <div
               v-if="!groupedChecks.length"
-              class="rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 px-5 py-12 text-center text-sm text-gray-400 dark:text-gray-500"
+              class="rounded-2xl border border-dashed border-gray-200/70 dark:border-gray-700/70 px-5 py-12 text-center text-sm text-gray-600 dark:text-gray-400"
             >
               No checks reported.
             </div>
@@ -454,11 +515,11 @@ const formatCpuTime = (s: number) => {
           <div
             class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2"
           >
-            <Icon icon="mdi:server" class="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300"
+            <Icon icon="mdi:server" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            <span class="text-sm font-semibold text-gray-900 dark:text-gray-100"
               >Resource Usage</span
             >
-            <span class="ml-auto text-xs text-gray-500 dark:text-gray-400">Live process stats</span>
+            <span class="ml-auto text-xs text-gray-600 dark:text-gray-400">Live process stats</span>
           </div>
 
           <div
@@ -473,22 +534,42 @@ const formatCpuTime = (s: number) => {
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex items-center gap-2">
                     <Icon icon="mdi:memory" class="w-4 h-4" :class="memColor.text" />
-                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       Memory Usage
                     </p>
-                    <UTooltip :delay-duration="200" :ui="{ content: 'tooltip-content' }">
-                      <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                      <template #content>
-                        <div class="h-full max-w-52 p-1 space-y-1">
-                          <p class="font-semibold text-xs">Memory Usage</p>
-                          <p class="text-xs text-gray-400">
-                            How much of the server's available RAM is in use — like the memory on
-                            your own computer. When it's nearly full, things slow down or crash.
-                          </p>
-                          <p class="text-xs text-emerald-400 font-medium">Lower is better.</p>
-                        </div>
+                    <InfoHint
+                      title="Memory usage"
+                      icon="i-mdi-memory"
+                      guidance="Lower is better. Staying near the limit for long is worth investigating."
+                    >
+                      How much of the server's memory limit is in use right now. When it fills up,
+                      requests slow down and the server can be stopped.
+
+                      <template #detail>
+                        <ol
+                          class="grid grid-cols-3 gap-1 rounded-xl bg-gray-500/10 p-1.5"
+                          aria-label="Memory levels"
+                        >
+                          <li
+                            v-for="level in MEMORY_LEVELS"
+                            :key="level.label"
+                            :aria-current="level.label === memLabel ? 'true' : undefined"
+                            class="flex flex-col gap-1.5 rounded-lg px-2 py-2"
+                            :class="{
+                              'bg-white shadow-sm dark:bg-neutral-800': level.label === memLabel,
+                            }"
+                          >
+                            <span class="h-1.5 w-full rounded-full" :class="level.bar" />
+                            <span class="text-xs font-semibold text-gray-900 dark:text-gray-100">{{
+                              level.label
+                            }}</span>
+                            <span class="text-xs text-gray-600 dark:text-gray-400">{{
+                              level.range
+                            }}</span>
+                          </li>
+                        </ol>
                       </template>
-                    </UTooltip>
+                    </InfoHint>
                   </div>
                   <div class="text-right shrink-0">
                     <p class="text-2xl font-bold tabular-nums" :class="memColor.text">
@@ -511,49 +592,43 @@ const formatCpuTime = (s: number) => {
                 <div class="grid grid-cols-3 gap-3">
                   <div class="text-center">
                     <p
-                      class="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1"
+                      class="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1"
                     >
                       Active use
-                      <UTooltip
-                        text="Memory actively being read or written right now."
-                        :delay-duration="200"
-                      >
-                        <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                      </UTooltip>
+                      <InfoHint title="Active use" icon="i-mdi-memory">
+                        Physical memory the server process occupies right now, including its code
+                        and cached data. This is the number measured against the limit.
+                      </InfoHint>
                     </p>
-                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 tabular-nums">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                       {{ formatMb(proc.workingSetMb) }}
                     </p>
                   </div>
                   <div class="text-center border-x border-gray-200/60 dark:border-gray-700/60">
                     <p
-                      class="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1"
+                      class="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1"
                     >
                       Allocated
-                      <UTooltip
-                        text="Total memory reserved by the server, including cached data it may release if needed."
-                        :delay-duration="200"
-                      >
-                        <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                      </UTooltip>
+                      <InfoHint title="Allocated" icon="i-mdi-memory">
+                        Memory held by the server's own data right now. Cleanups hand part of it
+                        back, so this number rises and falls on its own.
+                      </InfoHint>
                     </p>
-                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 tabular-nums">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                       {{ formatMb(proc.gcTotalMemoryMb) }}
                     </p>
                   </div>
                   <div class="text-center">
                     <p
-                      class="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1"
+                      class="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1"
                     >
                       Limit
-                      <UTooltip
-                        text="The maximum memory the server is allowed to use. Going over this causes it to crash."
-                        :delay-duration="200"
-                      >
-                        <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                      </UTooltip>
+                      <InfoHint title="Limit" icon="i-mdi-memory">
+                        The most memory the server may use, set by its container or host. Going past
+                        it gets the process stopped.
+                      </InfoHint>
                     </p>
-                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-200 tabular-nums">
+                    <p class="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums">
                       {{ formatMb(proc.memoryLimitMb) }}
                     </p>
                   </div>
@@ -564,29 +639,20 @@ const formatCpuTime = (s: number) => {
             <div class="p-4 flex flex-col gap-3">
               <!-- Sub-header -->
               <div class="flex items-center gap-1.5">
-                <Icon icon="mdi:recycle" class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                <Icon icon="mdi:recycle" class="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
                 <span
-                  class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
                 >
                   Memory Cleanups
                 </span>
-                <UTooltip :delay-duration="200" :ui="{ content: 'tooltip-content' }">
-                  <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                  <template #content>
-                    <div class="max-w-64 p-1 space-y-1">
-                      <p class="font-semibold text-xs">Memory Cleanups (Garbage Collection)</p>
-                      <p class="text-xs text-gray-400">
-                        The server periodically reclaims memory it no longer needs. Three levels —
-                        Routine is harmless, Deep is more intensive.
-                      </p>
-                      <p class="text-xs text-gray-400">
-                        Frequent
-                        <span class="text-red-500 font-medium">Deep</span>
-                        cleanups may indicate memory pressure.
-                      </p>
-                    </div>
-                  </template>
-                </UTooltip>
+                <InfoHint
+                  title="Memory cleanups"
+                  icon="i-mdi-recycle"
+                  guidance="Routine and moderate cleanups are normal. Deep cleanups piling up quickly point to memory pressure."
+                >
+                  The runtime regularly frees memory the server no longer needs. These counts run
+                  since the last restart.
+                </InfoHint>
               </div>
 
               <!-- GC rows -->
@@ -599,13 +665,13 @@ const formatCpuTime = (s: number) => {
                   <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                     <div>
-                      <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Routine</p>
-                      <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
+                      <p class="text-xs font-medium text-gray-900 dark:text-gray-100">Routine</p>
+                      <p class="text-[11px] text-gray-600 dark:text-gray-400 leading-tight">
                         Quick sweeps, always expected
                       </p>
                     </div>
                   </div>
-                  <span class="text-lg font-bold text-gray-800 dark:text-gray-100 tabular-nums">
+                  <span class="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                     {{ proc.gen0Collections }}
                   </span>
                 </div>
@@ -615,13 +681,13 @@ const formatCpuTime = (s: number) => {
                   <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
                     <div>
-                      <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Moderate</p>
-                      <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
+                      <p class="text-xs font-medium text-gray-900 dark:text-gray-100">Moderate</p>
+                      <p class="text-[11px] text-gray-600 dark:text-gray-400 leading-tight">
                         Deeper, less frequent, normal
                       </p>
                     </div>
                   </div>
-                  <span class="text-lg font-bold text-gray-800 dark:text-gray-100 tabular-nums">
+                  <span class="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                     {{ proc.gen1Collections }}
                   </span>
                 </div>
@@ -631,13 +697,13 @@ const formatCpuTime = (s: number) => {
                   <div class="flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-red-500 shrink-0" />
                     <div>
-                      <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Deep</p>
-                      <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
+                      <p class="text-xs font-medium text-gray-900 dark:text-gray-100">Deep</p>
+                      <p class="text-[11px] text-gray-600 dark:text-gray-400 leading-tight">
                         Full clean — frequent may mean pressure
                       </p>
                     </div>
                   </div>
-                  <span class="text-lg font-bold text-gray-800 dark:text-gray-100 tabular-nums">
+                  <span class="text-lg font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                     {{ proc.gen2Collections }}
                   </span>
                 </div>
@@ -647,9 +713,9 @@ const formatCpuTime = (s: number) => {
             <div class="p-4 flex flex-col gap-3">
               <!-- Sub-header -->
               <div class="flex items-center gap-1.5">
-                <Icon icon="mdi:cpu-64-bit" class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+                <Icon icon="mdi:cpu-64-bit" class="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
                 <span
-                  class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
                   >Process</span
                 >
               </div>
@@ -664,21 +730,17 @@ const formatCpuTime = (s: number) => {
                 >
                   <div class="flex items-center gap-1.5">
                     <Icon icon="mdi:timer-sand" class="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span class="text-xs text-gray-500 dark:text-gray-400">Uptime</span>
-                    <UTooltip :delay-duration="200" :ui="{ content: 'tooltip-content' }">
-                      <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                      <template #content>
-                        <div class="max-w-52 p-1 space-y-1">
-                          <p class="font-semibold text-xs">Uptime</p>
-                          <p class="text-xs text-gray-400">
-                            How long the server has been running without a restart.
-                          </p>
-                          <p class="text-xs text-emerald-400 font-medium">Longer is better.</p>
-                        </div>
-                      </template>
-                    </UTooltip>
+                    <span class="text-xs text-gray-600 dark:text-gray-400">Uptime</span>
+                    <InfoHint
+                      title="Uptime"
+                      icon="i-mdi-timer-sand"
+                      guidance="A reset you didn't expect means the server restarted, possibly after a crash."
+                    >
+                      How long the server has been running since it last started. Restarts and
+                      updates reset it.
+                    </InfoHint>
                   </div>
-                  <p class="text-sm font-bold text-gray-800 dark:text-gray-100 tabular-nums">
+                  <p class="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                     {{ formatUptime(proc.uptime) }}
                   </p>
                 </div>
@@ -688,20 +750,25 @@ const formatCpuTime = (s: number) => {
                 >
                   <div class="flex items-center gap-1.5">
                     <Icon icon="mdi:cpu-64-bit" class="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span class="text-xs text-gray-500 dark:text-gray-400">CPU Time</span>
-                    <UTooltip :delay-duration="200" :ui="{ content: 'tooltip-content' }">
-                      <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                      <template #content>
-                        <div class="max-w-52 p-1 space-y-1">
-                          <p class="font-semibold text-xs">CPU Time</p>
-                          <p class="text-xs text-gray-400">
-                            Total computing work done since startup. Grows naturally.
-                          </p>
-                        </div>
+                    <span class="text-xs text-gray-600 dark:text-gray-400">CPU Time</span>
+                    <InfoHint title="CPU time" icon="i-mdi-cpu-64-bit">
+                      Processor time the server has used since it started. It only ever grows, so
+                      read it next to uptime rather than on its own.
+
+                      <template v-if="cpuAverage" #detail>
+                        <p
+                          class="rounded-xl bg-gray-500/10 px-3 py-2 text-sm text-gray-600 dark:text-gray-400"
+                        >
+                          <span
+                            class="font-semibold text-gray-900 tabular-nums dark:text-gray-100"
+                            >{{ cpuAverage }}</span
+                          >
+                          of one core on average since startup.
+                        </p>
                       </template>
-                    </UTooltip>
+                    </InfoHint>
                   </div>
-                  <p class="text-sm font-bold text-gray-800 dark:text-gray-100 tabular-nums">
+                  <p class="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                     {{ formatCpuTime(proc.cpuTimeSeconds) }}
                   </p>
                 </div>
@@ -711,20 +778,16 @@ const formatCpuTime = (s: number) => {
                 >
                   <div class="flex items-center gap-1.5">
                     <Icon icon="mdi:source-branch" class="w-3.5 h-3.5 text-primary shrink-0" />
-                    <span class="text-xs text-gray-500 dark:text-gray-400">Threads</span>
-                    <UTooltip :delay-duration="200" :ui="{ content: 'tooltip-content' }">
-                      <UIcon name="i-lucide-info" class="size-3 text-muted/60 cursor-help" />
-                      <template #content>
-                        <div class="max-w-52 p-1 space-y-1">
-                          <p class="font-semibold text-xs">Active Threads</p>
-                          <p class="text-xs text-gray-400">
-                            Tasks the server handles in parallel. Steady is healthy.
-                          </p>
-                        </div>
-                      </template>
-                    </UTooltip>
+                    <span class="text-xs text-gray-600 dark:text-gray-400">Threads</span>
+                    <InfoHint
+                      title="Threads"
+                      icon="i-mdi-source-branch"
+                      guidance="A steady count is healthy. One that keeps climbing can mean work is stuck waiting."
+                    >
+                      Work the server runs in parallel, from incoming requests to background jobs.
+                    </InfoHint>
                   </div>
-                  <p class="text-sm font-bold text-gray-800 dark:text-gray-100 tabular-nums">
+                  <p class="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                     {{ proc.threadCount }}
                   </p>
                 </div>

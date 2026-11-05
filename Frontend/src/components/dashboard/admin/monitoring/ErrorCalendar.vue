@@ -3,20 +3,22 @@ import { useQuery } from "@pinia/colada";
 import { useIntervalFn, useMediaQuery, useNow } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 
+import type { ServiceType } from "@/enums";
+
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import {
   type CalendarBreakdownEntry,
   type ErrorCalendarDay,
   useErrorCalendar,
 } from "@/composables/useErrorCalendar";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
-import { ServiceType } from "@/enums";
-import { errorCalendar } from "@/queries/monitoring";
 import {
   MONITORED_SERVICES,
   SERVICE_LABELS,
   SEVERITY_BADGE_COLORS,
   SEVERITY_LABELS,
-} from "@/utils/monitoring-display.utils";
+} from "@/features/monitoring/display";
+import { errorCalendar } from "@/queries/monitoring";
 
 const emit = defineEmits<{ viewDay: [date: Date] }>();
 
@@ -30,10 +32,6 @@ const MIN_YEAR = computed(() => currentYear.value - 4);
 
 const selectedYear = ref(currentYear.value);
 const selectedMonth = ref(currentMonth.value);
-
-const HEATMAP_CELL = "w-3.5 h-3.5 xl:w-4 xl:h-4";
-const HEATMAP_GAP = "gap-[4px] xl:gap-[5px]";
-const HEATMAP_ROW = "h-3.5 xl:h-4";
 
 watch(selectedYear, (yr) => {
   selectedMonth.value = yr === currentYear.value ? currentMonth.value : 0;
@@ -92,20 +90,10 @@ const mobileMonthLabel = computed(() =>
   }),
 );
 
-// Service filter
-const SERVICES: ServiceType[] = MONITORED_SERVICES;
-
 const FILTERS: { label: string; value: ServiceType | null }[] = [
   { label: "All", value: null },
-  ...SERVICES.map((service) => ({ label: SERVICE_LABELS[service], value: service })),
+  ...MONITORED_SERVICES.map((service) => ({ label: SERVICE_LABELS[service], value: service })),
 ];
-
-// Compact options for the mobile <USelect> — same list, undefined instead of
-// null so it matches the sentinel convention used across the app's filters.
-const MOBILE_SERVICE_OPTIONS = FILTERS.map((filter) => ({
-  label: filter.value === null ? "All services" : filter.label,
-  value: filter.value ?? undefined,
-}));
 
 const selectedService = ref<ServiceType | null>(null);
 
@@ -114,12 +102,7 @@ const setFilter = (service: ServiceType | null) => {
   selectedDay.value = null;
 };
 
-const mobileServiceFilter = computed<ServiceType | undefined>({
-  get: () => selectedService.value ?? undefined,
-  set: (value) => setFilter(value ?? null),
-});
-
-// Data fetching — full year; mobile month view slices client-side
+// Always the full year; the mobile month view slices it client-side.
 const range = computed(() => ({
   from: new Date(Date.UTC(selectedYear.value, 0, 1)),
   to: new Date(Date.UTC(selectedYear.value + 1, 0, 1)),
@@ -127,34 +110,56 @@ const range = computed(() => ({
 
 const { data, isLoading: isFetching, error, refetch } = useQuery(() => errorCalendar(range.value));
 
-
 useLiveRefresh(refetch, 60_000);
 
 const isAuthError = (err: unknown): boolean => {
   if (!err) return false;
+
   const e = err as Record<string, unknown>;
   const status = (e.status ?? e.statusCode) as number | undefined;
   if (status === 401 || status === 403) return true;
+
   const msg = String(e.message ?? "").toLowerCase();
   return msg.includes("unauthorized") || msg.includes("401") || msg.includes("forbidden");
 };
 
 // Background polls keep the grid on screen; only a range without data shows the spinner.
 // A suppressed auth error also keeps the spinner so it never reads as an empty year.
-const isLoading = computed(
+const isPending = computed(
   () => data.value === undefined && (isFetching.value || isAuthError(error.value)),
 );
 
-const visibleError = computed(() =>
-  error.value && !isAuthError(error.value) ? error.value : null,
-);
+const visibleError = computed(() => {
+  if (!error.value || isAuthError(error.value)) return null;
+  return error.value;
+});
 
-const { weeks, monthLabelByWeek, totalFiltered } = useErrorCalendar(
-  data,
-  selectedYear,
-  selectedService,
-);
+const { weeks, monthBlocks, totalFiltered } = useErrorCalendar(data, selectedYear, selectedService);
 
+// Column 1 holds the weekday labels; each month block is followed by a spacer track.
+const desktopMonths = computed(() => {
+  let nextColumn = 2;
+
+  return monthBlocks.value.map((block) => {
+    const startColumn = nextColumn;
+    nextColumn += block.weeks.length + 1;
+
+    return { ...block, startColumn };
+  });
+});
+
+const MONTH_SPACER = "0.25rem";
+
+// Week columns fill the card up to a comfortable cell size; narrow widths scroll horizontally.
+const heatmapStyle = computed(() => {
+  const monthTracks = desktopMonths.value.map(
+    (month) => `repeat(${month.weeks.length}, minmax(0, 1.5rem))`,
+  );
+
+  return { gridTemplateColumns: `max-content ${monthTracks.join(` ${MONTH_SPACER} `)}` };
+});
+
+// Weeks straddling a month boundary are kept so the grid stays aligned; foreign days render dimmed.
 const mobileWeeks = computed(() =>
   weeks.value.filter((week) =>
     week.some((day) => !day.isPadding && day.date?.getMonth() === selectedMonth.value),
@@ -171,41 +176,53 @@ const mobileMonthTotal = computed(() =>
     .reduce((sum, d) => sum + d.count, 0),
 );
 
-const displayTotal = computed(() =>
-  isMobile.value ? mobileMonthTotal.value : totalFiltered.value,
-);
+const displayTotal = computed(() => {
+  if (isMobile.value) return mobileMonthTotal.value;
+  return totalFiltered.value;
+});
 
-// Day selection
+const incidentNoun = (count: number) => (count === 1 ? "incident" : "incidents");
+
 const selectedDay = ref<ErrorCalendarDay | null>(null);
 
+const isSelectable = (day: ErrorCalendarDay): boolean => !day.isPadding && day.count > 0;
+
+const isSelected = (day: ErrorCalendarDay): boolean =>
+  !day.isPadding && selectedDay.value?.dayOfYear === day.dayOfYear;
+
 const selectDay = (day: ErrorCalendarDay) => {
-  if (day.isPadding || day.count === 0) return;
-  selectedDay.value = selectedDay.value?.dayOfYear === day.dayOfYear ? null : day;
+  if (!isSelectable(day)) return;
+  selectedDay.value = isSelected(day) ? null : day;
 };
 
 const viewSelectedDay = () => {
   const date = selectedDay.value?.date;
   if (!date) return;
+
   emit("viewDay", date);
   selectedDay.value = null;
 };
 
-// Hover tooltip — desktop only
+// Hover tooltip is desktop only so touch taps never leave a phantom tooltip behind.
 const tooltipVisible = ref(false);
 const tooltipX = ref(0);
 const tooltipY = ref(0);
 const tooltipDay = ref<ErrorCalendarDay | null>(null);
 
+const positionTooltip = (event: MouseEvent) => {
+  tooltipX.value = event.clientX;
+  tooltipY.value = event.clientY;
+};
+
 const onCellEnter = (event: MouseEvent, day: ErrorCalendarDay) => {
-  if (isMobile.value) return;
-  if (day.isPadding || day.count === 0) return;
+  if (isMobile.value || day.isPadding) return;
+
   tooltipDay.value = day;
   tooltipVisible.value = true;
   positionTooltip(event);
 };
 
 const onCellMove = (event: MouseEvent) => {
-  if (isMobile.value) return;
   if (tooltipVisible.value) positionTooltip(event);
 };
 
@@ -214,29 +231,25 @@ const onCellLeave = () => {
   tooltipDay.value = null;
 };
 
-const positionTooltip = (event: MouseEvent) => {
-  tooltipX.value = event.clientX;
-  tooltipY.value = event.clientY;
-};
-
 const tooltipText = computed(() => {
   const day = tooltipDay.value;
   if (!day?.date) return "";
+
   const dateStr = day.date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
-  return day.count === 0
-    ? `No incidents · ${dateStr}`
-    : `${day.count} incident${day.count === 1 ? "" : "s"} · ${dateStr}`;
+  if (day.count === 0) return `No incidents · ${dateStr}`;
+
+  return `${day.count} ${incidentNoun(day.count)} · ${dateStr}`;
 });
 
-// Hue family reads the worst severity present that day (any Failure → red,
-// only Partial/Degraded → amber); intensity stays count-scaled within family.
-const EMPTY_CELL = "bg-neutral-200/60 dark:bg-neutral-700/40";
+// Hue family reads the worst severity present that day (any Failure is red, only
+// Partial/Degraded is amber); intensity stays count-scaled within the family.
+const EMPTY_CELL = "bg-gray-400/20 dark:bg-gray-500/20";
 
 const RED_RAMP: readonly string[] = [
   EMPTY_CELL,
   "bg-red-200 dark:bg-red-900",
   "bg-red-400 dark:bg-red-700",
-  "bg-red-600 dark:bg-red-400",
+  "bg-red-600 dark:bg-red-500",
   "bg-red-800 dark:bg-red-300",
 ];
 
@@ -244,95 +257,123 @@ const AMBER_RAMP: readonly string[] = [
   EMPTY_CELL,
   "bg-amber-200 dark:bg-amber-900",
   "bg-amber-400 dark:bg-amber-700",
-  "bg-amber-600 dark:bg-amber-400",
+  "bg-amber-600 dark:bg-amber-500",
   "bg-amber-800 dark:bg-amber-300",
 ];
 
-const rampFor = (day: ErrorCalendarDay): readonly string[] =>
-  day.hasFailure ? RED_RAMP : AMBER_RAMP;
+const LEGENDS = [
+  { label: "Failure", ramp: RED_RAMP },
+  { label: "Degraded", ramp: AMBER_RAMP },
+];
 
-const cellColorClass = (day: ErrorCalendarDay): string => {
-  if (day.isPadding) return "opacity-0 pointer-events-none";
-  const base = day.count === 0 ? EMPTY_CELL : rampFor(day)[day.intensity];
-  if (isMobile.value && isForeignMonthCell(day)) return `${base} opacity-30`;
-  return base;
+const intensityColor = (day: ErrorCalendarDay): string => {
+  if (day.count === 0) return EMPTY_CELL;
+
+  const ramp = day.hasFailure ? RED_RAMP : AMBER_RAMP;
+  return ramp[day.intensity] ?? EMPTY_CELL;
 };
 
-const mobileCellColorClass = (day: ErrorCalendarDay): string => {
-  if (day.isPadding) return "opacity-0 pointer-events-none";
-  if (isForeignMonthCell(day)) return "bg-neutral-200/40 dark:bg-neutral-700/20";
-  return day.count === 0 ? EMPTY_CELL : rampFor(day)[day.intensity];
+const cellClass = (day: ErrorCalendarDay): string[] => {
+  if (day.isPadding) return ["invisible"];
+
+  const classes = [intensityColor(day)];
+  if (isSelectable(day)) classes.push("interactive");
+  if (isSelected(day)) classes.push("selected");
+
+  return classes;
 };
 
-const cellSizeClass = "w-3 h-3";
+// Foreign-month days stay visible for orientation but never read as intensity.
+const mobileCellClass = (day: ErrorCalendarDay): string[] => {
+  if (day.isPadding) return ["invisible"];
+  if (isForeignMonthCell(day)) return ["bg-gray-400/10 dark:bg-gray-500/10"];
+
+  return cellClass(day);
+};
+
+// Intensity 3 and 4 are dark in light mode and light in dark mode, so the number flips.
+const mobileDayNumberClass = (day: ErrorCalendarDay): string => {
+  if (isForeignMonthCell(day)) return "text-gray-400 dark:text-gray-600";
+  if (day.count === 0) return "text-gray-500 dark:text-gray-500";
+  if (day.intensity >= 3) return "text-white dark:text-gray-900";
+  return "text-gray-800 dark:text-gray-100";
+};
 
 const MOBILE_DAY_HEADERS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-
-const mobileDayNumberClass = (day: ErrorCalendarDay): string => {
-  if (isForeignMonthCell(day)) return "text-neutral-400 dark:text-neutral-500";
-  if (day.count === 0) return "text-neutral-400 dark:text-neutral-500";
-  if (day.intensity >= 3) return "text-white dark:text-neutral-900";
-  return "text-neutral-700 dark:text-neutral-200";
-};
-
-const mobileCellInteractiveClass = (day: ErrorCalendarDay): string =>
-  !day.isPadding && day.count > 0 && !isForeignMonthCell(day) ? "interactive-mobile" : "";
 
 const DAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""];
 
 const formatDate = (day: ErrorCalendarDay): string => {
   if (!day.date) return "";
-  return day.date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+
+  const style = isMobile.value ? "short" : "long";
+
+  return day.date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: style,
+    weekday: style,
+    year: "numeric",
+  });
 };
 
 const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
   day.entries.filter((entry) => entry.count > 0);
+
+const hasNoIncidents = computed(() => Boolean(data.value) && displayTotal.value === 0);
 </script>
 
 <template>
-  <div class="space-y-4">
-    <!-- Header row -->
-    <div class="flex items-center justify-between gap-3 flex-wrap">
-      <!-- Mobile: month navigator -->
-      <div v-if="isMobile" class="flex items-center gap-2">
+  <section
+    class="flex flex-col gap-4 rounded-[14px] border border-gray-200/70 p-4 frosted-glass glass-surface md:p-5 dark:border-gray-700/70"
+  >
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div v-if="isMobile" class="flex w-full items-center justify-between gap-2">
         <UButton
           icon="i-lucide-chevron-left"
           color="neutral"
           variant="ghost"
-          size="xs"
+          size="sm"
+          class="justify-center"
           :disabled="!canGoBackMonth"
           aria-label="Previous month"
           @click="prevMonth"
         />
-        <span class="text-sm font-semibold tabular-nums w-36 text-center select-none">
-          {{ mobileMonthLabel }}
-        </span>
+
+        <div class="flex flex-col items-center">
+          <span class="text-sm font-semibold text-gray-900 select-none dark:text-gray-100">{{
+            mobileMonthLabel
+          }}</span>
+          <span class="text-xs text-gray-600 tabular-nums dark:text-gray-400">
+            {{ displayTotal.toLocaleString() }} {{ incidentNoun(displayTotal) }}
+          </span>
+        </div>
+
         <UButton
           icon="i-lucide-chevron-right"
           color="neutral"
           variant="ghost"
-          size="xs"
+          size="sm"
+          class="justify-center"
           :disabled="!canGoForwardMonth"
           aria-label="Next month"
           @click="nextMonth"
         />
-        <UBadge color="neutral" variant="subtle" size="sm">
-          {{ displayTotal.toLocaleString() }} incidents
-        </UBadge>
       </div>
 
-      <!-- Desktop: year navigator -->
       <div v-else class="flex items-center gap-2">
         <UButton
           icon="i-lucide-chevron-left"
           color="neutral"
           variant="ghost"
           size="xs"
+          class="justify-center"
           :disabled="!canGoBack"
           aria-label="Previous year"
           @click="prevYear"
         />
-        <span class="text-sm font-semibold tabular-nums w-10 text-center select-none">
+        <span
+          class="w-10 text-center text-sm font-semibold text-gray-900 tabular-nums select-none dark:text-gray-100"
+        >
           {{ selectedYear }}
         </span>
         <UButton
@@ -340,254 +381,173 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
           color="neutral"
           variant="ghost"
           size="xs"
+          class="justify-center"
           :disabled="!canGoForward"
           aria-label="Next year"
           @click="nextYear"
         />
         <UBadge color="neutral" variant="subtle" size="sm">
-          {{ displayTotal.toLocaleString() }} incidents
+          {{ displayTotal.toLocaleString() }} {{ incidentNoun(displayTotal) }}
         </UBadge>
       </div>
 
-      <!-- Desktop: filter chips -->
-      <div class="hidden sm:flex items-center gap-1 flex-wrap">
+      <div
+        class="flex w-full items-center gap-1 overflow-x-auto md:w-auto md:flex-wrap"
+        role="group"
+        aria-label="Filter by service"
+      >
         <UButton
           v-for="filter in FILTERS"
           :key="String(filter.value)"
           :variant="selectedService === filter.value ? 'solid' : 'outline'"
           :color="selectedService === filter.value ? 'primary' : 'neutral'"
           size="xs"
+          class="shrink-0"
           @click="setFilter(filter.value)"
         >
           {{ filter.label }}
         </UButton>
       </div>
-
-      <!-- Mobile: compact select, same control style as other filter menus -->
-      <USelect
-        v-model="mobileServiceFilter"
-        :items="MOBILE_SERVICE_OPTIONS"
-        placeholder="Service"
-        size="xs"
-        class="sm:hidden w-40"
-      />
     </div>
 
-    <!-- Mobile: traditional calendar grid -->
-    <div v-if="isMobile" class="w-full space-y-2">
-      <div v-if="isLoading" class="flex items-center justify-center py-16">
-        <UIcon
-          name="i-mdi-loading"
-          class="w-6 h-6 text-neutral-400 dark:text-neutral-500 animate-spin"
+    <UAlert
+      v-if="visibleError"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-alert-circle"
+      title="Failed to load incident calendar"
+      :description="visibleError.message"
+    />
+
+    <div v-else-if="isPending" class="flex h-48 items-center justify-center">
+      <BlockSpinner :size="24" aria-label="Loading incident calendar" class="text-gray-500" />
+    </div>
+
+    <div
+      v-else-if="hasNoIncidents"
+      class="flex flex-col items-center justify-center gap-3 py-10 text-center"
+    >
+      <UIcon name="i-lucide-calendar-x" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        No incidents recorded for {{ isMobile ? mobileMonthLabel : selectedYear }}
+      </p>
+    </div>
+
+    <div v-else-if="isMobile" class="flex flex-col gap-1.5">
+      <div class="grid grid-cols-7 gap-1.5">
+        <div
+          v-for="label in MOBILE_DAY_HEADERS"
+          :key="label"
+          class="py-0.5 text-center text-[11px] font-semibold tracking-wide text-gray-600 select-none dark:text-gray-400"
+        >
+          {{ label }}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-7 gap-1.5">
+        <button
+          v-for="(day, idx) in mobileWeeks.flat()"
+          :key="idx"
+          type="button"
+          class="calendar-cell-mobile relative flex aspect-square items-start justify-start rounded-[6px] p-1.5"
+          :class="mobileCellClass(day)"
+          :disabled="!isSelectable(day) || isForeignMonthCell(day)"
+          :aria-label="
+            day.date ? `${formatDate(day)}: ${day.count} ${incidentNoun(day.count)}` : undefined
+          "
+          :aria-pressed="isSelected(day)"
+          @click="selectDay(day)"
+        >
+          <span
+            v-if="!day.isPadding"
+            class="text-[11px] leading-none font-medium select-none"
+            :class="mobileDayNumberClass(day)"
+          >
+            {{ day.date?.getDate() }}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <div v-else class="overflow-x-auto pb-1">
+      <div class="grid min-w-[52rem] justify-center gap-1" :style="heatmapStyle">
+        <span
+          v-for="month in desktopMonths"
+          :key="month.label"
+          class="pb-0.5 text-[11px] leading-none whitespace-nowrap text-gray-600 dark:text-gray-400"
+          :style="{ gridColumn: `${month.startColumn} / span ${month.weeks.length}`, gridRow: 1 }"
+        >
+          {{ month.label }}
+        </span>
+
+        <span
+          v-for="(label, di) in DAY_LABELS"
+          :key="`day-${di}`"
+          class="flex items-center justify-end pr-1.5 text-[11px] leading-none text-gray-600 dark:text-gray-400"
+          :style="{ gridColumn: 1, gridRow: di + 2 }"
+        >
+          {{ label }}
+        </span>
+
+        <template v-for="month in desktopMonths" :key="`cells-${month.month}`">
+          <template v-for="(week, wi) in month.weeks" :key="wi">
+            <div
+              v-for="(day, di) in week"
+              :key="di"
+              class="calendar-cell aspect-square rounded-[3px]"
+              :class="cellClass(day)"
+              :style="{ gridColumn: month.startColumn + wi, gridRow: di + 2 }"
+              @mouseenter="onCellEnter($event, day)"
+              @mousemove="onCellMove"
+              @mouseleave="onCellLeave"
+              @click="selectDay(day)"
+            />
+          </template>
+        </template>
+      </div>
+    </div>
+
+    <div
+      v-if="!isPending && !visibleError && !hasNoIncidents"
+      class="flex flex-wrap items-center justify-end gap-x-5 gap-y-2"
+    >
+      <div v-for="legend in LEGENDS" :key="legend.label" class="flex items-center gap-1.5">
+        <span class="mr-0.5 text-[11px] text-gray-600 dark:text-gray-400">{{ legend.label }}</span>
+        <div
+          v-for="intensity in [0, 1, 2, 3, 4] as const"
+          :key="intensity"
+          class="h-3.5 w-3.5 rounded-[3px]"
+          :class="legend.ramp[intensity]"
         />
       </div>
-
-      <UAlert
-        v-else-if="visibleError"
-        color="error"
-        variant="subtle"
-        icon="i-lucide-alert-circle"
-        title="Failed to load incident calendar"
-        :description="visibleError.message"
-      />
-
-      <div
-        v-else-if="!isLoading && displayTotal === 0 && data"
-        class="flex flex-col items-center justify-center py-10 gap-3 text-center"
-      >
-        <UIcon
-          name="i-lucide-calendar-x"
-          class="w-10 h-10 text-neutral-400 dark:text-neutral-600"
-        />
-        <p class="text-sm text-neutral-500 dark:text-neutral-400">
-          No incidents recorded for {{ mobileMonthLabel }}
-        </p>
-      </div>
-
-      <template v-else>
-        <div class="grid grid-cols-7 gap-1">
-          <div
-            v-for="label in MOBILE_DAY_HEADERS"
-            :key="label"
-            class="text-center text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 select-none py-0.5 tracking-wide"
-          >
-            {{ label }}
-          </div>
-        </div>
-
-        <div class="grid grid-cols-7 gap-1">
-          <div
-            v-for="(day, idx) in mobileWeeks.flat()"
-            :key="idx"
-            class="calendar-cell-mobile relative flex items-start justify-start p-1.5 rounded-lg aspect-square"
-            :class="[
-              mobileCellColorClass(day),
-              mobileCellInteractiveClass(day),
-              selectedDay?.dayOfYear === day.dayOfYear ? 'selected-mobile' : '',
-            ]"
-            @click="selectDay(day)"
-          >
-            <span
-              v-if="!day.isPadding"
-              class="text-[11px] leading-none font-medium select-none"
-              :class="mobileDayNumberClass(day)"
-            >
-              {{ day.date?.getDate() }}
-            </span>
-          </div>
-        </div>
-
-        <div class="flex flex-col items-end gap-1 pt-1">
-          <div class="flex items-center gap-1.5">
-            <span class="text-[10px] text-neutral-500 dark:text-neutral-400 mr-1">Failure</span>
-            <div
-              v-for="intensity in [0, 1, 2, 3, 4] as const"
-              :key="`f${intensity}`"
-              class="w-4 h-4 rounded-md"
-              :class="RED_RAMP[intensity]"
-            />
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-[10px] text-neutral-500 dark:text-neutral-400 mr-1">Degraded</span>
-            <div
-              v-for="intensity in [0, 1, 2, 3, 4] as const"
-              :key="`a${intensity}`"
-              class="w-4 h-4 rounded-md"
-              :class="AMBER_RAMP[intensity]"
-            />
-          </div>
-        </div>
-      </template>
     </div>
 
-    <!-- Desktop: GitHub-style heatmap -->
-    <!-- Desktop: GitHub-style heatmap -->
-    <div v-else class="flex flex-col gap-3">
-      <div class="overflow-x-auto -mx-1 px-1 flex">
-        <div class="w-fit mx-auto">
-          <div
-            v-if="isLoading"
-            class="flex items-center justify-center py-16 w-[970px] xl:w-[1125px]"
-          >
-            <UIcon
-              name="i-mdi-loading"
-              class="w-6 h-6 text-neutral-400 dark:text-neutral-500 animate-spin"
-            />
-          </div>
-
-          <UAlert
-            v-else-if="visibleError"
-            color="error"
-            variant="subtle"
-            icon="i-lucide-alert-circle"
-            title="Failed to load incident calendar"
-            :description="visibleError.message"
-          />
-
-          <div
-            v-else-if="!isLoading && displayTotal === 0 && data"
-            class="flex flex-col items-center justify-center py-10 gap-3 text-center"
-          >
-            <UIcon
-              name="i-lucide-calendar-x"
-              class="w-10 h-10 text-neutral-400 dark:text-neutral-600"
-            />
-            <p class="text-sm text-neutral-500 dark:text-neutral-400">
-              No incidents recorded for {{ selectedYear }}
-            </p>
-          </div>
-
-          <div v-else class="inline-flex gap-1.5 min-w-max">
-            <!-- Weekday labels — spacer height, gap and row height mirror the week
-                 columns exactly; that's what keeps Mon/Wed/Fri on their rows. -->
-            <div class="flex flex-col shrink-0 w-8" :class="HEATMAP_GAP">
-              <div class="h-6" />
-              <div
-                v-for="(label, i) in DAY_LABELS"
-                :key="i"
-                class="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center justify-end leading-none"
-                :class="HEATMAP_ROW"
-              >
-                {{ label }}
-              </div>
-            </div>
-
-            <div class="flex" :class="HEATMAP_GAP">
-              <div v-for="(week, wi) in weeks" :key="wi" class="flex flex-col" :class="HEATMAP_GAP">
-                <div class="h-6 flex items-end pb-1">
-                  <span
-                    v-if="monthLabelByWeek[wi]"
-                    class="text-[11px] text-neutral-500 dark:text-neutral-400 leading-none whitespace-nowrap"
-                  >
-                    {{ monthLabelByWeek[wi] }}
-                  </span>
-                </div>
-
-                <div
-                  v-for="(day, di) in week"
-                  :key="di"
-                  class="calendar-cell rounded-sm"
-                  :class="[
-                    HEATMAP_CELL,
-                    cellColorClass(day),
-                    !day.isPadding && day.count > 0 ? 'interactive' : '',
-                    selectedDay?.dayOfYear === day.dayOfYear ? 'selected' : '',
-                  ]"
-                  @mouseenter="onCellEnter($event, day)"
-                  @mousemove="onCellMove"
-                  @mouseleave="onCellLeave"
-                  @click="selectDay(day)"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex flex-col items-end gap-1">
-        <div class="flex items-center gap-1.5">
-          <span class="text-[11px] text-neutral-500 dark:text-neutral-400 mr-1">Failure</span>
-          <div
-            v-for="intensity in [0, 1, 2, 3, 4] as const"
-            :key="`f${intensity}`"
-            :class="[HEATMAP_CELL, 'rounded-sm', RED_RAMP[intensity]]"
-          />
-        </div>
-        <div class="flex items-center gap-1.5">
-          <span class="text-[11px] text-neutral-500 dark:text-neutral-400 mr-1">Degraded</span>
-          <div
-            v-for="intensity in [0, 1, 2, 3, 4] as const"
-            :key="`a${intensity}`"
-            :class="[HEATMAP_CELL, 'rounded-sm', AMBER_RAMP[intensity]]"
-          />
-        </div>
-      </div>
-    </div>
-    <!-- Desktop: inline detail panel -->
     <Transition
-      enter-active-class="transition-all duration-200 ease-out overflow-hidden"
-      enter-from-class="opacity-0 max-h-0"
-      enter-to-class="opacity-100 max-h-32"
-      leave-active-class="transition-all duration-150 ease-in overflow-hidden"
-      leave-from-class="opacity-100 max-h-32"
-      leave-to-class="opacity-0 max-h-0"
+      enter-active-class="transition-all duration-200 ease-out"
+      enter-from-class="opacity-0 -translate-y-1"
+      enter-to-class="opacity-100 translate-y-0"
+      leave-active-class="transition-all duration-150 ease-in"
+      leave-from-class="opacity-100 translate-y-0"
+      leave-to-class="opacity-0 -translate-y-1"
     >
       <div
-        v-if="!isMobile && selectedDay"
-        class="flex items-center gap-3 flex-wrap rounded-lg frosted-glass glass-surface border border-neutral-200/70 dark:border-neutral-700/70 px-4 py-3"
+        v-if="selectedDay"
+        class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-gray-200/70 bg-gray-500/5 px-4 py-3 dark:border-gray-700/70 dark:bg-gray-400/5"
       >
-        <div class="flex items-center gap-2 shrink-0">
+        <div class="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
           <UIcon
             name="i-lucide-calendar-days"
-            class="w-4 h-4 text-neutral-400 dark:text-neutral-500"
+            class="h-4 w-4 shrink-0 text-gray-600 dark:text-gray-400"
           />
-          <span class="text-sm font-medium">{{ formatDate(selectedDay) }}</span>
-          <UBadge color="neutral" variant="subtle" size="sm">
+          <span class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+            {{ formatDate(selectedDay) }}
+          </span>
+          <UBadge color="neutral" variant="subtle" size="sm" class="shrink-0">
             {{ selectedDay.count }} total
           </UBadge>
         </div>
-        <div class="w-px h-4 bg-neutral-300/60 dark:bg-neutral-600/60 shrink-0" />
-        <div class="flex items-center gap-2 flex-wrap">
+
+        <div class="order-last flex w-full flex-wrap items-center gap-2 sm:order-none sm:w-auto">
           <UBadge
             v-for="entry in breakdownEntries(selectedDay)"
             :key="`${entry.service}-${entry.severity}`"
@@ -599,31 +559,32 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
             {{ SEVERITY_LABELS[entry.severity] }}: {{ entry.count }}
           </UBadge>
         </div>
-        <UButton
-          size="xs"
-          color="primary"
-          variant="outline"
-          icon="i-lucide-list"
-          class="ml-auto shrink-0"
-          loading-auto
-          @click="viewSelectedDay"
-        >
-          View events
-        </UButton>
-        <UButton
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          class="shrink-0"
-          aria-label="Close"
-          @click="selectedDay = null"
-        />
+
+        <div class="ml-auto flex shrink-0 items-center gap-1">
+          <UButton
+            size="xs"
+            color="primary"
+            variant="outline"
+            icon="i-lucide-list"
+            @click="viewSelectedDay"
+          >
+            View events
+          </UButton>
+
+          <UButton
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            class="justify-center"
+            aria-label="Close day details"
+            @click="selectedDay = null"
+          />
+        </div>
       </div>
     </Transition>
-  </div>
+  </section>
 
-  <!-- Mobile bottom sheet + desktop tooltip -->
   <Teleport to="body">
     <Transition
       enter-active-class="transition-opacity duration-100"
@@ -635,73 +596,10 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
     >
       <div
         v-if="tooltipVisible && tooltipDay"
-        class="fixed z-50 pointer-events-none px-2 py-1 rounded-md text-xs font-medium bg-neutral-900/90 dark:bg-neutral-100/90 text-white dark:text-neutral-900 shadow-md whitespace-nowrap"
-        :style="{ left: `${tooltipX + 12}px`, top: `${tooltipY - 28}px` }"
+        class="pointer-events-none fixed z-50 rounded-md bg-gray-900 px-2 py-1 text-xs font-medium whitespace-nowrap text-white shadow-md dark:bg-gray-100 dark:text-gray-900"
+        :style="{ left: `${tooltipX + 12}px`, top: `${tooltipY - 32}px` }"
       >
         {{ tooltipText }}
-      </div>
-    </Transition>
-
-    <Transition
-      enter-active-class="transition-all duration-300 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-all duration-200 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div v-if="isMobile && selectedDay" class="fixed inset-0 z-50 flex items-end">
-        <div class="absolute inset-0 bg-black/40 frosted-glass" @click="selectedDay = null" />
-
-        <Transition
-          enter-active-class="transition-transform duration-300 ease-out"
-          enter-from-class="translate-y-full"
-          enter-to-class="translate-y-0"
-          leave-active-class="transition-transform duration-200 ease-in"
-          leave-from-class="translate-y-0"
-          leave-to-class="translate-y-full"
-        >
-          <div
-            v-if="selectedDay"
-            class="relative w-full rounded-t-2xl frosted-glass glass-surface-strong shadow-2xl border-t border-neutral-200/70 dark:border-neutral-700/70 px-5 pt-3 pb-8 space-y-4"
-          >
-            <div class="w-10 h-1 rounded-full bg-neutral-300 dark:bg-neutral-600 mx-auto" />
-
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex items-center gap-2 min-w-0">
-                <UIcon
-                  name="i-lucide-calendar-days"
-                  class="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0"
-                />
-                <span class="text-base font-semibold truncate">{{ formatDate(selectedDay) }}</span>
-              </div>
-              <UBadge color="neutral" variant="subtle" size="sm" class="shrink-0">
-                {{ selectedDay.count }} total
-              </UBadge>
-            </div>
-
-            <div class="h-px bg-neutral-200/70 dark:bg-neutral-700/70" />
-
-            <div class="flex flex-wrap gap-2">
-              <UBadge
-                v-for="entry in breakdownEntries(selectedDay)"
-                :key="`${entry.service}-${entry.severity}`"
-                :color="SEVERITY_BADGE_COLORS[entry.severity]"
-                variant="subtle"
-              >
-                {{ SERVICE_LABELS[entry.service] ?? entry.service }} ·
-                {{ SEVERITY_LABELS[entry.severity] }}: {{ entry.count }}
-              </UBadge>
-            </div>
-
-            <div class="flex gap-2">
-              <UButton block color="primary" @click="viewSelectedDay"> View events </UButton>
-              <UButton block variant="outline" color="neutral" @click="selectedDay = null">
-                Dismiss
-              </UButton>
-            </div>
-          </div>
-        </Transition>
       </div>
     </Transition>
   </Teleport>
@@ -713,7 +611,6 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
     transform 120ms ease,
     box-shadow 120ms ease,
     background-color 80ms ease;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .calendar-cell.interactive {
@@ -721,61 +618,42 @@ const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
 }
 
 .calendar-cell.interactive:hover {
-  transform: scale(1.35);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 2px 6px rgba(0, 0, 0, 0.25);
-  z-index: 1;
+  transform: scale(1.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
   position: relative;
+  z-index: 1;
 }
 
 .calendar-cell.selected {
-  transform: scale(1.35);
   box-shadow:
-    0 0 0 1.5px rgba(156, 163, 175, 0.8),
-    0 2px 8px rgba(0, 0, 0, 0.3);
+    0 0 0 2px var(--ui-bg),
+    0 0 0 3.5px rgba(107, 114, 128, 0.9);
   position: relative;
   z-index: 2;
-}
-
-:is(.dark) .calendar-cell.interactive:hover {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 2px 6px rgba(0, 0, 0, 0.5);
-}
-
-:is(.dark) .calendar-cell.selected {
-  box-shadow:
-    0 0 0 1.5px rgba(209, 213, 219, 0.6),
-    0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 .calendar-cell-mobile {
   transition:
     background-color 80ms ease,
     box-shadow 120ms ease;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.calendar-cell-mobile.interactive-mobile {
-  cursor: pointer;
-}
-
-.calendar-cell-mobile.interactive-mobile:active {
+.calendar-cell-mobile.interactive:active {
   filter: brightness(0.85);
 }
 
-.calendar-cell-mobile.selected-mobile {
+.calendar-cell-mobile.selected {
   box-shadow:
-    0 0 0 2px rgba(107, 114, 128, 0.9),
-    0 2px 8px rgba(0, 0, 0, 0.25);
+    0 0 0 2px var(--ui-bg),
+    0 0 0 3.5px rgba(107, 114, 128, 0.9);
   position: relative;
   z-index: 2;
 }
 
-:is(.dark) .calendar-cell-mobile.selected-mobile {
+:is(.dark) .calendar-cell.selected,
+:is(.dark) .calendar-cell-mobile.selected {
   box-shadow:
-    0 0 0 2px rgba(209, 213, 219, 0.7),
-    0 2px 8px rgba(0, 0, 0, 0.5);
+    0 0 0 2px var(--ui-bg),
+    0 0 0 3.5px rgba(209, 213, 219, 0.8);
 }
 </style>
