@@ -5,13 +5,13 @@ import { computed, ref } from "vue";
 
 import type { FileResult } from "@/api/file";
 
+import MiddleTruncatedName from "@/components/common/MiddleTruncatedName.vue";
 import { useHomeWidgetRows } from "@/composables/useHomeWidgetRows";
 import { HomeRecentFilesSource, HomeRecentFilesStyle } from "@/enums/home-widget";
 import { homeFileVisual, homeRecentFileDate } from "@/features/home/widgets/files";
 import { formatRelativeShort } from "@/utils/date-formatters";
 import { formatBytes } from "@/utils/size";
 
-import HomeRecentFileName from "./HomeRecentFileName.vue";
 import HomeRecentFileThumbnail from "./HomeRecentFileThumbnail.vue";
 
 const {
@@ -241,9 +241,10 @@ useResizeObserver(tiles, (entries) => {
         />
 
         <span class="file-main">
-          <HomeRecentFileName
+          <MiddleTruncatedName
             v-if="recentStyle === HomeRecentFilesStyle.List"
-            :file-name="row.file.fileName"
+            :name="row.file.fileName"
+            class="text-xs font-medium"
           />
           <span v-else class="file-name">{{ row.file.fileName }}</span>
           <span class="file-metadata file-secondary" :title="`${row.size} · ${row.date}`"

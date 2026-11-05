@@ -3,24 +3,34 @@ import { computed } from "vue";
 
 import { getFileExtension } from "@/utils/files/file-name";
 
-const { fileName } = defineProps<{ fileName: string }>();
+// Truncates in the middle so the end of a name (and a file's extension) stays readable.
+// Typography is inherited from the caller so it fits any list or widget.
+const { name, keepExtension = true } = defineProps<{
+  name: string;
+  keepExtension?: boolean;
+}>();
+
+const TAIL_MAX = 12;
 
 const parts = computed(() => {
-  const characters = Array.from(fileName);
-  const extension = getFileExtension(fileName);
+  const characters = Array.from(name);
+  const extension = keepExtension ? getFileExtension(name) : "";
   const extensionLength = extension ? Array.from(extension).length + 1 : 0;
-  const tailLength = Math.max(extensionLength, Math.min(12, Math.floor(characters.length / 2)));
+  const tailLength = Math.max(
+    extensionLength,
+    Math.min(TAIL_MAX, Math.floor(characters.length / 2)),
+  );
   const splitAt = characters.length - tailLength;
 
   return {
-    start: characters.slice(0, splitAt).join(""),
     end: characters.slice(splitAt).join(""),
+    start: characters.slice(0, splitAt).join(""),
   };
 });
 </script>
 
 <template>
-  <span class="middle-file-name" :title="fileName" :aria-label="fileName">
+  <span class="middle-file-name" :title="name" :aria-label="name">
     <span class="name-start">{{ parts.start }}</span>
     <span class="name-end"
       ><span>{{ parts.end }}</span></span
@@ -34,14 +44,14 @@ const parts = computed(() => {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
-  font-size: 12px;
-  font-weight: 500;
 }
 
+/* Flex items drop leading and trailing spaces, so a split landing on a space would glue the words together. */
 .name-start {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: pre;
 }
 
 .name-end {
@@ -54,5 +64,6 @@ const parts = computed(() => {
 
 .name-end > span {
   flex-shrink: 0;
+  white-space: pre;
 }
 </style>
