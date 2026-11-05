@@ -1,6 +1,7 @@
 import type { WrappedCardFacts, WrappedPeriodPoint } from "@/api/stats";
 
-import { bounded } from "@/utils/wrapped-art.utils";
+import { bounded } from "@/features/wrapped/art";
+import { utcDayKey } from "@/utils/date-formatters";
 
 const utcStamp = (value?: string | null): number => {
   const time = Date.parse(value ?? "");
@@ -53,7 +54,7 @@ export const calendarMonths = (
 
     for (let day = 0; day < count; day++) {
       const time = month.getTime() + day * 86400000;
-      const date = new Date(time).toISOString().slice(0, 10);
+      const date = utcDayKey(time);
       const point = lookup.get(date);
       const inRange = time + 86400000 > start.getTime() && time < end.getTime();
 

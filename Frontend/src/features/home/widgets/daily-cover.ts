@@ -1,3 +1,5 @@
+import { mulberry32 } from "@/utils/random";
+
 const palettes = [
   ["#e4572e", "#f3a712", "#29335c", "#f5efe0"],
   ["#ef476f", "#ffd166", "#118ab2", "#fff8ec"],
@@ -6,17 +8,9 @@ const palettes = [
   ["#7b2cbf", "#ff9e00", "#14213d", "#f4ecdd"],
 ] as const;
 
-const randomFor = (seed: number) => () => {
-  seed = (seed + 0x6d2b79f5) | 0;
-  let value = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-  value ^= value + Math.imul(value ^ (value >>> 7), 61 | value);
-
-  return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
-};
-
 export const homeDailyCover = (day: string, offset = 0) => {
   const seed = Number(day.replace(/-/gu, "")) + offset;
-  const random = randomFor(seed);
+  const random = mulberry32(seed);
   const palette = palettes[seed % palettes.length]!;
   const ink = () => palette[Math.floor(random() * 3)]!;
   const circles = Array.from({ length: 6 }, () => ({

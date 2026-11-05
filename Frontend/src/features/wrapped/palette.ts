@@ -1,3 +1,5 @@
+import { parseHex, toHex } from "@/utils/color";
+
 export type WrappedPalette = [string, string, string];
 
 export const wrappedPalettePresets: { name: string; colors: WrappedPalette }[] = [
@@ -31,23 +33,18 @@ export const parseWrappedPalette = (value: unknown): WrappedPalette | null => {
   return value.map((color: string) => color.toLowerCase()) as WrappedPalette;
 };
 
-const channels = (hex: string): number[] =>
-  [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16));
-
 export const mixWrappedColor = (first: string, second: string, amount: number): string => {
-  const other = channels(second);
+  const other = parseHex(second);
 
-  return `#${channels(first)
-    .map((channel, index) =>
-      Math.round(channel + (other[index]! - channel) * amount)
-        .toString(16)
-        .padStart(2, "0"),
-    )
-    .join("")}`;
+  return toHex(
+    parseHex(first).map((channel, index) =>
+      Math.round(channel + (other[index]! - channel) * amount),
+    ),
+  );
 };
 
 const luminance = (hex: string): number => {
-  const linear = channels(hex).map((channel) => {
+  const linear = parseHex(hex).map((channel) => {
     const value = channel / 255;
 
     if (value <= 0.04045) return value / 12.92;

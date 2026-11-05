@@ -8,7 +8,8 @@ import { AuditEventCode, type AuditLogResult, OperationType } from "@/api/activi
 import { useAuditMessage } from "@/composables/useAuditMessage";
 import { ServiceType } from "@/enums";
 import { HomeActivityStyle, HomeStatusStyle } from "@/enums/home-widget";
-import { PUBLIC_SERVICE_LABELS } from "@/utils/publicStatus.utils";
+import { PUBLIC_SERVICE_LABELS } from "@/features/monitoring/public-status";
+import { localDayKey, utcDayKey } from "@/utils/date-formatters";
 
 export const HOME_STATUS_STYLES = [
   {
@@ -116,7 +117,7 @@ export const homeOverallStatus = (states: HomeServiceState[]): HomeServiceState 
 export const homeHistoryRows = (history: DailyServiceStatus[], now = new Date()) => {
   const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const dates = Array.from({ length: 30 }, (_, index) =>
-    new Date(today - (29 - index) * 86_400_000).toISOString().slice(0, 10),
+    utcDayKey(today - (29 - index) * 86_400_000),
   );
 
   return SERVICES.map((service) => {
@@ -222,8 +223,6 @@ export const HOME_ACTIVITY_PRESENTATION = {
 export const homeActivityPresentation = (operation: OperationType) =>
   HOME_ACTIVITY_PRESENTATION[operation] ?? HOME_ACTIVITY_PRESENTATION[OperationType.Read];
 
-const localDateKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-
 export interface HomeActivityGroup {
   label: string;
   events: AuditLogResult[];
@@ -234,8 +233,8 @@ export const homeActivityGroups = (
   now = new Date(),
 ): HomeActivityGroup[] => {
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const todayKey = localDateKey(now);
-  const yesterdayKey = localDateKey(yesterday);
+  const todayKey = localDayKey(now);
+  const yesterdayKey = localDayKey(yesterday);
   const groups: HomeActivityGroup[] = [
     { label: "Today", events: [] },
     { label: "Yesterday", events: [] },
@@ -243,7 +242,7 @@ export const homeActivityGroups = (
   ];
 
   for (const event of events) {
-    const key = localDateKey(new Date(event.timestamp));
+    const key = localDayKey(new Date(event.timestamp));
     let group = groups[2]!;
     if (key === todayKey) group = groups[0]!;
     else if (key === yesterdayKey) group = groups[1]!;
@@ -289,7 +288,7 @@ export const homeActivityTime = (timestamp: string, now = new Date()): string =>
   const elapsed = Math.max(0, now.getTime() - date.getTime());
   if (elapsed < 60_000) return "Just now";
   if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)}m ago`;
-  if (localDateKey(date) === localDateKey(now))
+  if (localDayKey(date) === localDayKey(now))
     return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
   return date.toLocaleDateString([], { month: "short", day: "numeric" });

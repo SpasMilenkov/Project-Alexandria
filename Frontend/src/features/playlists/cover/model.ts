@@ -1,4 +1,5 @@
 import { AutoGroupKind } from "@/enums/auto-group-kind";
+import { hashString } from "@/utils/random";
 
 export type CoverLayout = "decade" | "monogram" | "wordmark" | "mood";
 
@@ -37,15 +38,6 @@ const MOOD_GLYPHS: Record<string, MoodGlyph> = {
   voice: "waves",
 };
 
-export const hashSeed = (value: string): number => {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0;
-};
-
 export const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
   const saturation = s / 100;
   const lightness = l / 100;
@@ -72,7 +64,7 @@ export const contrastRatio = (lumA: number, lumB: number): number => {
 };
 
 export const coverPalette = (seedId: string, isDark: boolean): CoverPalette => {
-  const seed = hashSeed(seedId);
+  const seed = hashString(seedId);
   const hue = seed % 360;
   const hueShift = 28 + ((seed >>> 8) % 32);
   const saturation = 52 + (seed % 12);

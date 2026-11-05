@@ -7,15 +7,10 @@ import {
   resolveFontStack,
   useSettingsStore,
 } from "@/stores/settings";
+import { parseHex } from "@/utils/color";
 
 /** Convert a 6-digit hex color string to "r,g,b" */
-const hexToRgbChannels = (hex: string): string => {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.substring(0, 2), 16);
-  const g = parseInt(h.substring(2, 4), 16);
-  const b = parseInt(h.substring(4, 6), 16);
-  return `${r},${g},${b}`;
-};
+const hexToRgbChannels = (hex: string): string => parseHex(hex).join(",");
 
 const resolveAccentRGB = (colorName: string): string => {
   const match = AVAILABLE_COLORS.find((c) => c.name === colorName);

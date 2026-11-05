@@ -6,23 +6,23 @@ import {
   coverLayoutFor,
   coverPalette,
   decadeDigits,
-  hashSeed,
   hslToRgb,
   INK_DARK,
   INK_LIGHT,
   monogramFor,
   moodGlyphFor,
   relativeLuminance,
-} from "@/utils/playlist-cover.utils";
+} from "@/features/playlists/cover/model";
+import { hashString } from "@/utils/random";
 
-describe("hashSeed", () => {
+describe("hashString", () => {
   it("is deterministic and id-sensitive", () => {
-    expect(hashSeed("abc")).toBe(hashSeed("abc"));
-    expect(hashSeed("abc")).not.toBe(hashSeed("abd"));
+    expect(hashString("abc")).toBe(hashString("abc"));
+    expect(hashString("abc")).not.toBe(hashString("abd"));
   });
 
   it("returns an unsigned 32-bit integer", () => {
-    const seed = hashSeed("some-playlist-id");
+    const seed = hashString("some-playlist-id");
     expect(Number.isInteger(seed)).toBe(true);
     expect(seed).toBeGreaterThanOrEqual(0);
     expect(seed).toBeLessThan(2 ** 32);

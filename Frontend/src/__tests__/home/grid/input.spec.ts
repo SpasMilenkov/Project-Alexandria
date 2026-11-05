@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { homeArrowOffset, homeDragFromControl, homePointerPosition } from "@/utils/home-grid-input";
-import { defaultHomeLayout } from "@/utils/home-layout";
+import {
+  homeArrowOffset,
+  homeDragFromControl,
+  homePointerPosition,
+} from "@/features/home/grid/input";
+import { defaultHomeLayout } from "@/features/home/layout";
 
 describe("Home grid input geometry", () => {
   it("preserves the grab offset and snaps a medium clock to the right half", () => {

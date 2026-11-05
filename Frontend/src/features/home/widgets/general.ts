@@ -1,4 +1,5 @@
 import { HomeCountdownStyle, HomeDailyCoverStyle, HomeFocusStyle } from "@/enums/home-widget";
+import { localDayKey } from "@/utils/date-formatters";
 
 export const HOME_COUNTDOWN_STYLES = [
   {
@@ -64,9 +65,6 @@ export const HOME_DAILY_COVER_STYLES = [
   },
 ];
 
-export const homeLocalDay = (date: Date) =>
-  `${String(date.getFullYear()).padStart(4, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
 export const homeCalendarDate = (value: string | null): Date | null => {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return null;
 
@@ -77,7 +75,7 @@ export const homeCalendarDate = (value: string | null): Date | null => {
   date.setHours(0, 0, 0, 0);
   date.setFullYear(year, month - 1, day);
 
-  return homeLocalDay(date) === value ? date : null;
+  return localDayKey(date) === value ? date : null;
 };
 
 const calendarDayNumber = (date: Date) => {

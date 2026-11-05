@@ -8,7 +8,8 @@ import {
   decadeDigits,
   monogramFor,
   moodGlyphFor,
-} from "@/utils/playlist-cover.utils";
+} from "@/features/playlists/cover/model";
+import { hashString } from "@/utils/random";
 
 export interface CoverSpec {
   id: string;
@@ -19,17 +20,6 @@ export interface CoverSpec {
 
 const ARTIST_ALBUM_LAYOUT: CoverLayout = "monogram";
 const FONT_STACK = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-
-// Hash + palette
-
-const hashString = (s: string) => {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < s.length; i += 1) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-};
 
 interface PrintPalette {
   paper: string;
@@ -298,24 +288,9 @@ const paintInkShapes = (
 // Measure once at the base size and scale, instead of shrinking by 8% per
 // iteration and re-parsing the font string each time.
 
+// Shrinks against the widest line so several lines share one consistent font size.
 // oxlint-disable-next-line max-params
 const fitFont = (
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-  base: number,
-  weight: number,
-) => {
-  ctx.font = `${weight} ${base}px ${FONT_STACK}`;
-  const width = ctx.measureText(text).width;
-  if (width <= maxWidth) return;
-  const size = Math.max(base * 0.3, base * (maxWidth / width));
-  ctx.font = `${weight} ${size}px ${FONT_STACK}`;
-};
-
-// Same as fitFont, but shrinks against the widest of several lines so
-// they can share one consistent font size.
-const fitFontMulti = (
   ctx: CanvasRenderingContext2D,
   lines: string[],
   maxWidth: number,
@@ -557,7 +532,7 @@ const paintDecade = (
   ctx.strokeStyle = palette.anchor;
   ctx.lineJoin = "round";
   ctx.lineWidth = Math.max(4, size * 0.016);
-  fitFont(ctx, digits, size * 0.86, size * 0.42, 900);
+  fitFont(ctx, [digits], size * 0.86, size * 0.42, 900);
   ctx.strokeText(digits, size / 2, size * 0.44);
 
   ctx.lineWidth = Math.max(1.5, size * 0.006);
@@ -567,7 +542,7 @@ const paintDecade = (
   ctx.stroke();
 
   ctx.fillStyle = palette.anchor;
-  fitFont(ctx, "THE SOUND OF", size * 0.5, size * 0.058, 700);
+  fitFont(ctx, ["THE SOUND OF"], size * 0.5, size * 0.058, 700);
   fillTextSpaced(ctx, "THE SOUND OF", size / 2, size * 0.82, size * 0.024);
 };
 
@@ -583,10 +558,10 @@ const paintMonogram = (
 
   // Both sit on top of the large cropped circle, so both get a halo.
   ctx.fillStyle = palette.anchor;
-  fitFont(ctx, label, size * 0.6, size * 0.05, 700);
+  fitFont(ctx, [label], size * 0.6, size * 0.05, 700);
   fillTextSpaced(ctx, label, size / 2, size * 0.16, size * 0.024, palette.paper, haloWidth);
 
-  fitFont(ctx, initials, size * 0.7, size * 0.44, 900);
+  fitFont(ctx, [initials], size * 0.7, size * 0.44, 900);
   fillTextHalo(ctx, initials, size / 2, size * 0.56, palette.paper, haloWidth * 1.5);
 };
 
@@ -607,7 +582,7 @@ const paintMood = (
   // where multiply or screen blending can push the result surprisingly
   // dark or light. The halo is what keeps it readable there.
   ctx.fillStyle = palette.anchor;
-  fitFont(ctx, label, size * 0.78, size * 0.088, 800);
+  fitFont(ctx, [label], size * 0.78, size * 0.088, 800);
   fillTextSpaced(ctx, label, size / 2, size * 0.82, size * 0.024, palette.paper, haloWidth);
 };
 
@@ -624,11 +599,11 @@ const paintDefault = (
   ctx.fillStyle = palette.paper;
 
   if (line2) {
-    fitFontMulti(ctx, [line1, line2], size * 0.86, size * 0.15, 900);
+    fitFont(ctx, [line1, line2], size * 0.86, size * 0.15, 900);
     fillTextSpaced(ctx, line1, size / 2, size * 0.42, size * 0.006, palette.anchor, haloWidth);
     fillTextSpaced(ctx, line2, size / 2, size * 0.58, size * 0.006, palette.anchor, haloWidth);
   } else {
-    fitFont(ctx, line1, size * 0.82, size * 0.18, 900);
+    fitFont(ctx, [line1], size * 0.82, size * 0.18, 900);
     fillTextSpaced(ctx, line1, size / 2, size * 0.5, size * 0.008, palette.anchor, haloWidth);
   }
 };

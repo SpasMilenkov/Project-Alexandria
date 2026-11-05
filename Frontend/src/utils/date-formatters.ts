@@ -37,3 +37,24 @@ export const formatRelativeShort = (dateString: string): string => {
   if (minutes > 0) return `${minutes}m`;
   return "just now";
 };
+
+const CALENDAR_DATE = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+// Absolute day for detail panels, paired with the relative formatDate label.
+export const formatCalendarDate = (dateString: string): string =>
+  CALENDAR_DATE.format(new Date(dateString));
+
+// "yyyy-MM-dd" in UTC, the wire format of the backend's DateOnly day buckets.
+export const utcDayKey = (date: Date | number): string => new Date(date).toISOString().slice(0, 10);
+
+// "yyyy-MM" in UTC.
+export const utcMonthKey = (date: Date | number): string =>
+  new Date(date).toISOString().slice(0, 7);
+
+// "yyyy-MM-dd" on the viewer's local calendar, for days the user picked or sees as "today".
+export const localDayKey = (date: Date): string =>
+  `${String(date.getFullYear()).padStart(4, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;

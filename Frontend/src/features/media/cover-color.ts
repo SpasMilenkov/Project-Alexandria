@@ -1,7 +1,6 @@
-const SAMPLE_SIZE = 32;
+import { dominantColorOf, parseHex, toHex } from "@/utils/color";
 
-const toHex = (channels: number[]): string =>
-  `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+const SAMPLE_SIZE = 32;
 
 // Most common coarse color of a loaded image. Null when the canvas is unavailable or tainted.
 export const sampleCoverColor = (image: HTMLImageElement): string | null => {
@@ -15,40 +14,10 @@ export const sampleCoverColor = (image: HTMLImageElement): string | null => {
 
     context.drawImage(image, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
 
-    const { data } = context.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE);
-    const counts = new Map<string, number>();
-
-    for (let index = 0; index < data.length; index += 4) {
-      if (data[index + 3]! >= 128) {
-        const key = [0, 1, 2]
-          .map((offset) => Math.min(255, Math.round(data[index + offset]! / 32) * 32))
-          .join(",");
-        counts.set(key, (counts.get(key) ?? 0) + 1);
-      }
-    }
-
-    let dominant: string | null = null;
-    let best = 0;
-
-    for (const [key, count] of counts) {
-      if (count > best) {
-        dominant = key;
-        best = count;
-      }
-    }
-
-    if (!dominant) return null;
-
-    return toHex(dominant.split(",").map(Number));
+    return dominantColorOf(context.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE).data);
   } catch {
     return null;
   }
-};
-
-const parseHex = (hex: string): number[] => {
-  const value = hex.replace("#", "");
-
-  return [0, 2, 4].map((offset) => parseInt(value.slice(offset, offset + 2), 16));
 };
 
 // Pulls the tint toward black (dark) or white (light) first, so solid text tokens keep AA contrast.

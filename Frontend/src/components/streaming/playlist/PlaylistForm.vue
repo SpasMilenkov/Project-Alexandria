@@ -143,6 +143,7 @@ import {
   createPlaylistSchema,
   updatePlaylistSchema,
 } from "@/schemas/playlist";
+import { dominantColorOf } from "@/utils/color";
 
 export interface PlaylistFormPayload extends CreatePlaylistSchema {
   ambientTheme?: string;
@@ -236,27 +237,12 @@ const getDominantColor = (file: File): Promise<string> =>
         return;
       }
       ctx.drawImage(img, 0, 0, 50, 50);
-      const { data } = ctx.getImageData(0, 0, 50, 50);
-      const counts = new Map<string, number>();
-
-      for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] < 128) continue;
-        const r = Math.min(255, Math.round(data[i] / 32) * 32);
-        const g = Math.min(255, Math.round(data[i + 1] / 32) * 32);
-        const b = Math.min(255, Math.round(data[i + 2] / 32) * 32);
-        const key = `${r},${g},${b}`;
-        counts.set(key, (counts.get(key) ?? 0) + 1);
-      }
-
-      const [dominant] = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+      const dominant = dominantColorOf(ctx.getImageData(0, 0, 50, 50).data);
       if (!dominant) {
         reject(new Error("Image has no visible pixels"));
         return;
       }
-      const [r, g, b] = dominant[0].split(",").map(Number);
-      resolve(
-        `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`,
-      );
+      resolve(dominant);
     };
 
     img.onerror = () => {

@@ -5,8 +5,9 @@ import { computed } from "vue";
 import type { HomeWidget } from "@/types/home";
 
 import { HomeDailyCoverStyle } from "@/enums/home-widget";
+import { homeCalendarDate } from "@/features/home/widgets/general";
 import { useHomeStore } from "@/stores/home";
-import { homeCalendarDate, homeLocalDay } from "@/utils/home-general";
+import { localDayKey } from "@/utils/date-formatters";
 
 import HomeDailyCoverArt from "./HomeDailyCoverArt.vue";
 
@@ -14,7 +15,7 @@ const { widget } = defineProps<{ widget: HomeWidget }>();
 const home = useHomeStore();
 const now = useNow({ scheduler: (cb) => useIntervalFn(cb, 30_000) });
 
-const day = computed(() => homeLocalDay(now.value));
+const day = computed(() => localDayKey(now.value));
 
 const date = computed(() => homeCalendarDate(day.value)!);
 

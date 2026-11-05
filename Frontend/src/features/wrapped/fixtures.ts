@@ -14,7 +14,8 @@ import {
   WrappedDurationCategory as Category,
   WrappedDurationRelationship as Relationship,
 } from "@/enums/wrapped-story";
-import { formatWrappedDuration } from "@/utils/wrapped-art.utils";
+import { formatWrappedDuration } from "@/features/wrapped/art";
+import { utcDayKey } from "@/utils/date-formatters";
 
 interface Profile {
   id: string;
@@ -191,7 +192,7 @@ const makeDeck = (profile: Profile): WrappedDeckResponse => {
       }
 
       return {
-        date: new Date(monthStart + index * 86400000).toISOString().slice(0, 10),
+        date: utcDayKey(monthStart + index * 86400000),
         seconds,
         plays: seconds > 0 ? Math.max(1, Math.round(seconds / 240)) : 0,
       };
@@ -200,7 +201,7 @@ const makeDeck = (profile: Profile): WrappedDeckResponse => {
     days.push(...monthDays);
 
     months.push({
-      date: new Date(monthStart).toISOString().slice(0, 10),
+      date: utcDayKey(monthStart),
       seconds: total,
       plays: monthDays.reduce((sum, day) => sum + day.plays, 0),
       leader: artists[Math.floor(month / 3) % artists.length],

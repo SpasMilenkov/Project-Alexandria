@@ -5,8 +5,9 @@ import {
   HOME_GRID_MAX_HEIGHT,
   HOME_GRID_MAX_ROWS,
   HOME_GRID_ROW_HEIGHT,
-} from "@/utils/home-grid";
-import { homeWidgetDensity, homeWidgetMinimum } from "@/utils/home-widget-sizing";
+} from "@/features/home/grid/placement";
+import { homeWidgetDensity, homeWidgetMinimum } from "@/features/home/grid/sizing";
+import { clamp } from "@/utils/math";
 
 export type HomeResizeEdge =
   | "top"
@@ -129,9 +130,6 @@ export const scrollHomeGrid = (board: HTMLElement, point: { x: number; y: number
   if (point.y < 48) window.scrollBy(0, -12);
   else if (point.y > window.innerHeight - 48) window.scrollBy(0, 12);
 };
-
-const clamp = (value: number, minimum: number, maximum: number) =>
-  Math.max(minimum, Math.min(maximum, value));
 
 export const homeResizeByCells = (
   widget: HomeWidget,

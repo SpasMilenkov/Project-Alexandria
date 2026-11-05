@@ -1,3 +1,5 @@
+import { hashString } from "@/utils/random";
+
 export interface GeneratedCover {
   background: string;
   base: string;
@@ -35,20 +37,9 @@ const SPOTS: readonly (readonly [string, number])[] = [
   ["24% 24%", 20],
 ];
 
-const hashSeed = (seed: string): number => {
-  let hash = 2166136261;
-
-  for (let index = 0; index < seed.length; index++) {
-    hash ^= seed.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
-};
-
 // Stable per seed, so a placeholder never changes between visits.
 export const generatedCover = (seed: string): GeneratedCover => {
-  const hash = hashSeed(seed || "alexandria");
+  const hash = hashString(seed || "alexandria");
   const [base, mark] = COVER_PALETTE[hash % COVER_PALETTE.length]!;
   const [position, size] = SPOTS[(hash >>> 8) % SPOTS.length]!;
 

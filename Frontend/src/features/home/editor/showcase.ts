@@ -8,9 +8,9 @@ import { HomeWidgetSize, type HomeWidgetType } from "@/enums/home-widget";
 import { JobStatus } from "@/enums/job-status";
 import { ServiceType } from "@/enums/service-type";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { homeLocalDay } from "@/utils/home-general";
-import { homeWidgetFootprint } from "@/utils/home-grid";
-import { defaultHomeWidgetOptions } from "@/utils/home-widget-options";
+import { homeWidgetFootprint } from "@/features/home/grid/placement";
+import { defaultHomeWidgetOptions } from "@/features/home/widget-options";
+import { localDayKey } from "@/utils/date-formatters";
 
 const page = <T>(items: T[]): PaginatedResponse<T> => ({
   items,
@@ -36,7 +36,7 @@ export const homeWidgetShowcaseLayout = (type: HomeWidgetType): HomeLayout => ({
       options: {
         ...defaultHomeWidgetOptions(),
         countdownLabel: "Next adventure",
-        countdownTarget: homeLocalDay(new Date(Date.now() + 12 * 86_400_000)),
+        countdownTarget: localDayKey(new Date(Date.now() + 12 * 86_400_000)),
         greetingHeading: "Welcome home",
         greetingSubtitle: "A little space for everything you love.",
       } satisfies HomeWidgetOptions,

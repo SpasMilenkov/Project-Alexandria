@@ -1,6 +1,7 @@
 import type { OverviewSummaryHeaderDtoResponse, WrappedPeriodPoint } from "@/api/stats";
 
-import { MIN_WRAPPED_YEAR } from "@/utils/wrapped-display.utils";
+import { MIN_WRAPPED_YEAR } from "@/features/wrapped/display";
+import { utcDayKey } from "@/utils/date-formatters";
 
 export const annualRecapHeaders = (
   headers: OverviewSummaryHeaderDtoResponse[],
@@ -34,7 +35,7 @@ export const annualRecapMonths = (
     const point = byMonth.get(month);
 
     return {
-      date: new Date(Date.UTC(year, month, 1)).toISOString().slice(0, 10),
+      date: utcDayKey(Date.UTC(year, month, 1)),
       seconds: point?.seconds ?? 0,
       plays: point?.plays ?? 0,
     };
