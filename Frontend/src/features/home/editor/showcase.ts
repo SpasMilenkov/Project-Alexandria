@@ -81,7 +81,6 @@ export const createHomeWidgetPreview = (ownerId: string): HomeWidgetPreview => {
         "application/pdf": gib,
       },
       trashSize: gib,
-      oldFiles: [],
       filesSize: 19 * gib,
       previewsSize: gib,
       previewsCount: 1248,

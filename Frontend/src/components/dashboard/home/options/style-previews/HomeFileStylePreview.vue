@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { StorageBreakdown } from "@/api/status";
 
-import HomeStorageDisplay from "@/components/dashboard/home/widgets/HomeStorageDisplay.vue";
+import HomeStorageDisplay from "@/components/dashboard/home/widgets/storage/HomeStorageDisplay.vue";
 import { HomeRecentFilesStyle, HomeStorageStyle } from "@/enums/home-widget";
 
 defineProps<{ storageStyle?: HomeStorageStyle; recentStyle?: HomeRecentFilesStyle }>();
@@ -16,7 +16,6 @@ const sample: StorageBreakdown = {
   usedBytes: 76e9,
   quotaBytes: 100e9,
   trashSize: 0,
-  oldFiles: [],
 };
 </script>
 

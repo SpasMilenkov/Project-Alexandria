@@ -4,10 +4,10 @@ import type { HomeRecentFilesSource } from "@/enums/home-widget";
 
 import { fileApi } from "@/api/file";
 import { statusApi } from "@/api/status";
+import { homeRecentFilesSearch } from "@/features/home/widgets/files";
 import { DIRECTORY_QUERY_KEYS, favoriteDirectories } from "@/queries/directories";
 import { FILES_QUERY_KEYS } from "@/queries/files";
 import { STATUS_QUERY_KEYS } from "@/queries/status";
-import { homeRecentFilesSearch } from "@/utils/home-file-widgets";
 
 interface HomeWidgetSession {
   userId: string;
@@ -34,7 +34,7 @@ export const homeStorage = defineQueryOptions((session: HomeWidgetSession) => ({
   key: [...HOME_WIDGET_QUERY_KEYS.storageOwner(session.userId), session.epoch],
   enabled: Boolean(session.userId),
   staleTime: 30_000,
-  query: async () => ({ ...session, value: await statusApi.getMyStorage(true) }),
+  query: async () => ({ ...session, value: await statusApi.getMyStorage() }),
 }));
 
 export const homeRecentFiles = defineQueryOptions(

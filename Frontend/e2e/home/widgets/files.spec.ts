@@ -1,13 +1,12 @@
-import { type Locator, type Page, expect, test } from "@playwright/test";
-
-import { fileWidgetFixture, sampleFiles, widgetDocument } from "./helpers/home-file-widgets.js";
+import { fileWidgetFixture, sampleFiles, widgetDocument } from "@e2e/helpers/home-file-widgets.js";
 import {
   closeWidgetSettings,
   dashboardSettings,
   dragWidget,
   openWidgetTab,
   selectWidget,
-} from "./helpers/home-grid-editor.js";
+} from "@e2e/helpers/home-grid-editor.js";
+import { type Locator, type Page, expect, test } from "@playwright/test";
 
 test.use({ timezoneId: "UTC" });
 
@@ -55,7 +54,6 @@ for (const dark of [false, true]) {
     for (const widget of await page.locator("[data-widget-id]").all()) await contained(widget);
 
     expect(requests.storage).toBe(2);
-    expect(requests.storageSummaries).toBe(1);
     expect(requests.searches).toHaveLength(1);
     expect(requests.directories).toBe(0);
     for (const index of [1, 2, 3, 4]) {
@@ -404,10 +402,8 @@ test("empty recent files can open the existing upload flow", async ({ page }) =>
   await fileWidgetFixture(page, document, {}, { empty: true });
   await page.getByRole("button", { name: "Upload", exact: true }).click();
 
-  await expect(page.getByRole("dialog", { name: "Upload Files", exact: true })).toBeVisible();
-  await expect(
-    page.getByText("Drop files here or select to upload", { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Upload files", exact: true })).toBeVisible();
+  await expect(page.getByText("Drop files here", { exact: true })).toBeVisible();
 });
 
 test("Tank changes from amber to red as the quota approaches", async ({ page }) => {

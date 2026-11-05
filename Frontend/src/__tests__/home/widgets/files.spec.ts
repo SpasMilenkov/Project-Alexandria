@@ -10,7 +10,7 @@ import {
   homeRecentFilesSearch,
   homeStorageCells,
   homeStorageModel,
-} from "@/utils/home-file-widgets";
+} from "@/features/home/widgets/files";
 
 const storage = (patch: Partial<StorageBreakdown> = {}): StorageBreakdown => ({
   sizeByType: { "audio/mpeg": 30, "image/png": 10, "application/pdf": 10, "unknown/type": 10 },
@@ -22,7 +22,6 @@ const storage = (patch: Partial<StorageBreakdown> = {}): StorageBreakdown => ({
   usedBytes: 80,
   quotaBytes: 100,
   trashSize: 50,
-  oldFiles: [],
   ...patch,
 });
 
