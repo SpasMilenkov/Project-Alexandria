@@ -12,6 +12,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Seeders\Tagging\tagging-taxonomy.json"/>
+        <EmbeddedResource Include="Seeders\Tagging\tag-descriptions.json"/>
     </ItemGroup>
 
     <ItemGroup>

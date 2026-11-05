@@ -18,6 +18,11 @@ namespace Alexandria.Data.Seeders;
 /// <c>{axis}:{pole}</c> keys. Expected seed: 15 parents + 519 genre children +
 /// 8 mood tags = 542 rows.
 ///
+/// Descriptions come from <c>Seeders/Tagging/tag-descriptions.json</c>, keyed by
+/// <see cref="Tag.ExternalKey"/>. They are re-synced onto existing system tags on every
+/// run, because users cannot edit system tags and wording changes must reach installs
+/// that were seeded earlier.
+///
 /// Conventions (presentation, not taxonomy):
 ///   - Genre parents: unique Icon per parent (see <see cref="GenreParentIcons"/>) and a
 ///     unique Color per parent (see <see cref="GenrePalette"/>), both by parent order.
@@ -33,6 +38,7 @@ public class TagSeeder(
     ILogger<TagSeeder> logger) : ISeeder
 {
     private const string TaxonomyResource = "Alexandria.Data.Seeders.Tagging.tagging-taxonomy.json";
+    private const string DescriptionsResource = "Alexandria.Data.Seeders.Tagging.tag-descriptions.json";
 
     private static readonly string[] GenrePalette =
     [
@@ -63,14 +69,15 @@ public class TagSeeder(
 
     public async Task SeedAsync(CancellationToken ct = default)
     {
-        var taxonomy = await LoadTaxonomyAsync(ct);
+        var taxonomy = await LoadResourceAsync<TaggingTaxonomy>(TaxonomyResource, ct);
+        var descriptions = (await LoadResourceAsync<TagDescriptions>(DescriptionsResource, ct)).Descriptions;
 
         var existingKeys = await dbContext.Tags
             .Where(t => t.ExternalKey != null)
             .Select(t => t.ExternalKey!)
             .ToHashSetAsync(ct);
 
-        var parentsToCreate = CreateGenreParents(taxonomy, existingKeys);
+        var parentsToCreate = CreateGenreParents(taxonomy, descriptions, existingKeys);
         dbContext.Tags.AddRange(parentsToCreate);
         await dbContext.SaveChangesAsync(ct);
 
@@ -78,21 +85,53 @@ public class TagSeeder(
             .Where(t => t.Facet == TagFacet.Genre && t.ParentId == null)
             .ToDictionaryAsync(t => t.Name, t => t, ct);
 
-        var childrenToCreate = CreateGenreChildren(taxonomy, parentTags, existingKeys);
+        var childrenToCreate = CreateGenreChildren(taxonomy, parentTags, descriptions, existingKeys);
         dbContext.Tags.AddRange(childrenToCreate);
         await dbContext.SaveChangesAsync(ct);
 
-        var moodsToCreate = CreateMoodTags(taxonomy, existingKeys);
+        var moodsToCreate = CreateMoodTags(taxonomy, descriptions, existingKeys);
         dbContext.Tags.AddRange(moodsToCreate);
         await dbContext.SaveChangesAsync(ct);
 
+        var descriptionsUpdated = await SyncDescriptionsAsync(descriptions, ct);
+
         var created = parentsToCreate.Count + childrenToCreate.Count + moodsToCreate.Count;
         logger.LogInformation(
-            "Tag taxonomy seed complete: {Created} created, {Existing} already present.",
-            created, existingKeys.Count);
+            "Tag taxonomy seed complete: {Created} created, {Existing} already present, {DescriptionsUpdated} descriptions updated.",
+            created, existingKeys.Count, descriptionsUpdated);
     }
 
-    private static List<Tag> CreateGenreParents(TaggingTaxonomy taxonomy, HashSet<string> existingKeys)
+    private async Task<int> SyncDescriptionsAsync(
+        Dictionary<string, string> descriptions,
+        CancellationToken ct)
+    {
+        var systemTags = await dbContext.Tags
+            .Where(t => t.OwnerId == SystemConfig.SystemId && t.ExternalKey != null)
+            .ToListAsync(ct);
+
+        var updated = 0;
+        foreach (var tag in systemTags)
+        {
+            if (!descriptions.TryGetValue(tag.ExternalKey!, out var description)) continue;
+            if (tag.Description == description) continue;
+
+            tag.Description = description;
+            tag.UpdatedBy = SystemConfig.SystemId;
+            updated++;
+        }
+
+        if (updated > 0)
+        {
+            await dbContext.SaveChangesAsync(ct);
+        }
+
+        return updated;
+    }
+
+    private static List<Tag> CreateGenreParents(
+        TaggingTaxonomy taxonomy,
+        Dictionary<string, string> descriptions,
+        HashSet<string> existingKeys)
     {
         var tags = new List<Tag>();
         for (var i = 0; i < taxonomy.GenreParents.Count; i++)
@@ -105,7 +144,7 @@ public class TagSeeder(
                 Name = name,
                 Icon = GenreParentIcons[i % GenreParentIcons.Length],
                 Color = GenrePalette[i % GenrePalette.Length],
-                Description = $"Top-level {name} genre.",
+                Description = descriptions.GetValueOrDefault(name),
                 ExternalKey = name,
                 Facet = TagFacet.Genre,
                 OwnerId = SystemConfig.SystemId,
@@ -119,6 +158,7 @@ public class TagSeeder(
     private static List<Tag> CreateGenreChildren(
         TaggingTaxonomy taxonomy,
         Dictionary<string, Tag> parentTags,
+        Dictionary<string, string> descriptions,
         HashSet<string> existingKeys)
     {
         var tags = new List<Tag>();
@@ -146,7 +186,7 @@ public class TagSeeder(
                 Name = childName,
                 Icon = parent.Icon,
                 Color = parent.Color,
-                Description = $"{parentName} subgenre: {childName}.",
+                Description = descriptions.GetValueOrDefault(label),
                 ExternalKey = label,
                 Facet = TagFacet.Genre,
                 ParentId = parent.Id,
@@ -158,7 +198,10 @@ public class TagSeeder(
         return tags;
     }
 
-    private static List<Tag> CreateMoodTags(TaggingTaxonomy taxonomy, HashSet<string> existingKeys)
+    private static List<Tag> CreateMoodTags(
+        TaggingTaxonomy taxonomy,
+        Dictionary<string, string> descriptions,
+        HashSet<string> existingKeys)
     {
         var tags = new List<Tag>();
         foreach (var entry in taxonomy.MoodTags)
@@ -168,14 +211,13 @@ public class TagSeeder(
             var presentation = MoodPresentation.TryGetValue(entry.ExternalKey, out var known)
                 ? known
                 : (Icon: "tag", Color: "#94A3B8");
-            var axis = entry.ExternalKey.Split(':', 2)[0];
 
             tags.Add(new Tag
             {
                 Name = entry.Name,
                 Icon = presentation.Icon,
                 Color = presentation.Color,
-                Description = $"Derived by the {axis} audio classifier.",
+                Description = descriptions.GetValueOrDefault(entry.ExternalKey),
                 ExternalKey = entry.ExternalKey,
                 Facet = TagFacet.Mood,
                 OwnerId = SystemConfig.SystemId,
@@ -186,15 +228,14 @@ public class TagSeeder(
         return tags;
     }
 
-    private static async Task<TaggingTaxonomy> LoadTaxonomyAsync(CancellationToken ct)
+    private static async Task<T> LoadResourceAsync<T>(string resourceName, CancellationToken ct)
     {
-        await using var stream = typeof(TagSeeder).Assembly.GetManifestResourceStream(TaxonomyResource)
+        await using var stream = typeof(TagSeeder).Assembly.GetManifestResourceStream(resourceName)
                                  ?? throw new InvalidOperationException(
-                                     $"Embedded taxonomy resource '{TaxonomyResource}' not found.");
+                                     $"Embedded resource '{resourceName}' not found.");
 
-        return await JsonSerializer.DeserializeAsync<TaggingTaxonomy>(
-                   stream, JsonSerializerOptions, ct)
-               ?? throw new InvalidOperationException("Failed to deserialize tagging taxonomy.");
+        return await JsonSerializer.DeserializeAsync<T>(stream, JsonSerializerOptions, ct)
+               ?? throw new InvalidOperationException($"Failed to deserialize embedded resource '{resourceName}'.");
     }
 
     private static readonly JsonSerializerOptions JsonSerializerOptions =
@@ -209,6 +250,11 @@ public class TagSeeder(
         [JsonPropertyName("genreLabels")] public List<string> GenreLabels { get; set; } = [];
 
         [JsonPropertyName("moodTags")] public List<MoodTagEntry> MoodTags { get; set; } = [];
+    }
+
+    private sealed class TagDescriptions
+    {
+        [JsonPropertyName("descriptions")] public Dictionary<string, string> Descriptions { get; set; } = [];
     }
 
     private sealed class MoodTagEntry
