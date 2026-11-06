@@ -1,6 +1,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
-import { useSettingsStore } from "@/stores/settings";
+import { TAB_ICON_MATCH_ACCENT, useSettingsStore } from "@/stores/settings";
 
 export type SettingsSectionId = "appearance" | "behavior" | "auto-tagging" | "auto-playlists";
 
@@ -47,6 +47,19 @@ const buildSearchIndex = (
     title: "Accent color",
     value: () =>
       settingsStore.accentColor.charAt(0).toUpperCase() + settingsStore.accentColor.slice(1),
+  },
+  {
+    desc: "Color of the icon in your browser tab",
+    keywords: "favicon tab browser icon color",
+    section: "appearance",
+    title: "Tab icon color",
+    value: () => {
+      const color = settingsStore.tabIconColor;
+
+      if (color === TAB_ICON_MATCH_ACCENT) return "Accent";
+
+      return color.charAt(0).toUpperCase() + color.slice(1);
+    },
   },
   {
     desc: "Preset backgrounds for light and dark mode",

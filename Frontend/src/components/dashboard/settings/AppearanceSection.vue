@@ -18,6 +18,7 @@ import { logger } from "@/utils/logger";
 import ExplorerPreview from "./ExplorerPreview.vue";
 import SettingsChip from "./SettingsChip.vue";
 import SettingsSection from "./SettingsSection.vue";
+import TabIconColorPicker from "./TabIconColorPicker.vue";
 
 const settingsStore = useSettingsStore();
 const { isDark } = useTheme();
@@ -320,6 +321,7 @@ const persistAppearance = useDebounceFn(async () => {
 watch(
   () => [
     settingsStore.accentColor,
+    settingsStore.tabIconColor,
     settingsStore.backgroundColor,
     settingsStore.backgroundImageOpacity,
     settingsStore.gridIconSize,
@@ -575,6 +577,8 @@ const backgroundTileClass = (name: string) => {
               </span>
             </button>
           </div>
+
+          <TabIconColorPicker />
 
           <!-- Background preset tiles -->
           <UFormField label="Background Color">

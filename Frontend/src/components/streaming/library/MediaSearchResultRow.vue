@@ -99,10 +99,9 @@ import { computed, ref } from "vue";
 
 import { fileApi } from "@/api/file";
 import { type MediaFileDto } from "@/api/streaming";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { getPreview } from "@/queries/files";
 import { formatDuration } from "@/utils/date-formatters";
-
-import BlockSpinner from "@/components/common/BlockSpinner.vue";
 
 // Props & emits
 

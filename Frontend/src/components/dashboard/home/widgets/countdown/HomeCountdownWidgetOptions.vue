@@ -5,11 +5,10 @@ import { computed } from "vue";
 import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeCountdownOptions } from "@/types/home";
 
-import { HomeWidgetType } from "@/enums/home-widget";
-import { HOME_COUNTDOWN_STYLES } from "@/features/home/widgets/general";
-
 import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 import HomeGeneralStylePreview from "@/components/dashboard/home/options/style-previews/HomeGeneralStylePreview.vue";
+import { HomeWidgetType } from "@/enums/home-widget";
+import { HOME_COUNTDOWN_STYLES } from "@/features/home/widgets/general";
 
 const { options, section = "all" } = defineProps<{
   options: HomeCountdownOptions;

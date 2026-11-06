@@ -2,10 +2,9 @@
 import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeRecentFilesOptions } from "@/types/home";
 
-import { HOME_RECENT_FILES_SOURCES, HOME_RECENT_FILES_STYLES } from "@/features/home/widgets/files";
-
 import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 import HomeFileStylePreview from "@/components/dashboard/home/options/style-previews/HomeFileStylePreview.vue";
+import { HOME_RECENT_FILES_SOURCES, HOME_RECENT_FILES_STYLES } from "@/features/home/widgets/files";
 
 const { options, section = "all" } = defineProps<{
   options: HomeRecentFilesOptions;

@@ -1,7 +1,6 @@
-import { type Page, expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import { closeWidgetSettings, openWidgetTab } from "@e2e/helpers/home-grid-editor.js";
+import { type Page, expect, test } from "@playwright/test";
 
 test("searches the server catalogue and saves a quarter-hour zone through reload", async ({
   page,

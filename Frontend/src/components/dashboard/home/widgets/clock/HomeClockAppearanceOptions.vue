@@ -2,12 +2,11 @@
 import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeClockOptions } from "@/types/home";
 
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 import HomeClockStylePreview from "@/components/dashboard/home/options/style-previews/HomeClockStylePreview.vue";
 import HomeClockPositionPicker from "@/components/dashboard/home/widgets/clock/HomeClockPositionPicker.vue";
 import { HomeClockHourFormat, HomeClockStyle } from "@/enums/home-widget";
 import { HOME_CLOCK_HOUR_FORMATS, HOME_CLOCK_STYLES } from "@/features/home/widget-options";
-
-import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeClockOptions;

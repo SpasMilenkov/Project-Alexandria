@@ -1,7 +1,6 @@
-import { type Page, expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import { dashboardSettings, openWidgetTab, selectWidget } from "@e2e/helpers/home-grid-editor.js";
+import { type Page, expect, test } from "@playwright/test";
 
 const titleChoice = async (page: Page, choice: "Show" | "Hide" | "Default") => {
   await openWidgetTab(page, "Options");

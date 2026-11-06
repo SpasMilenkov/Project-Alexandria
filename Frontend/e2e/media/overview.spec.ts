@@ -1,6 +1,5 @@
-import { expect, test } from "@playwright/test";
-
 import { expectBoundedRequests, media, openMedia, section } from "@e2e/helpers/media-overview.js";
+import { expect, test } from "@playwright/test";
 
 test("fills the dashboard with bounded lists, On repeat and direct destination links", async ({
   page,

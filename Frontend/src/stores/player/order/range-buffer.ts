@@ -1,4 +1,5 @@
 import type { MediaFileDto } from "@/api/streaming";
+import type { Order, RangeBufferHooks, RangeLoader, RangeResult } from "@/stores/player/types";
 
 import { RANGE_SIZE } from "@/api/shuffle";
 import {
@@ -9,8 +10,6 @@ import {
   rangesToRetain,
   shouldPrefetchRange,
 } from "@/features/player/shuffle-buffer";
-
-import type { Order, RangeBufferHooks, RangeLoader, RangeResult } from "@/stores/player/types";
 
 export interface RangeOrder extends Order {
   prefetch: (position: number) => void;

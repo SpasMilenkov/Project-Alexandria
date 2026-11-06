@@ -11,6 +11,7 @@ import { useAppToast } from "@/composables/useAppToast";
 import { FALLBACK_CONTENT_TYPE } from "@/composables/useDirectoryUpload";
 import { encryptFile } from "@/composables/useFileEncryption";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { useReportUploadActivity } from "@/composables/useReportUploadActivity";
 import { countOf, quoted } from "@/features/toast/format";
 import { hashFile } from "@/features/upload/hash-pool";
 import {
@@ -177,6 +178,32 @@ const summaryBarColor = computed(() => {
   return "primary" as const;
 });
 
+useReportUploadActivity(
+  () => {
+    if (!isUploading.value) return null;
+
+    const [first] = uploads.value;
+
+    return {
+      fileCount: uploads.value.length,
+      kind: "upload",
+      label: uploads.value.length === 1 && first ? first.file.name : null,
+      progress: overallSummaryProgress.value,
+    };
+  },
+  () => {
+    const failed = uploads.value.some(
+      (u) => u.stage === UploadStage.ERROR && u.errorMessage !== "Cancelled",
+    );
+
+    if (failed) return "failed";
+
+    if (uploads.value.some((u) => u.stage === UploadStage.COMPLETE)) return "done";
+
+    return null;
+  },
+);
+
 // helpers
 
 const canEncrypt = (file: File): boolean => file.size <= ENCRYPTION_MAX_FILE_SIZE;
@@ -339,12 +366,7 @@ const uploadSingle = async (state: FileUploadState) => {
 
   state.stage = UploadStage.HASHING;
   updateProgress(state, 0);
-  const hash = await hashFile(
-    fileToUpload,
-    state.id,
-    (pct) => updateProgress(state, pct),
-    signal,
-  );
+  const hash = await hashFile(fileToUpload, state.id, (pct) => updateProgress(state, pct), signal);
   state.fileHash = hash;
 
   state.stage = UploadStage.INITIALIZING;

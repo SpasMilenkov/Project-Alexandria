@@ -1,5 +1,3 @@
-import { type Locator, type Page, expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import {
   openWidgetTab,
@@ -7,6 +5,7 @@ import {
   resizeTouchWidget,
   resizeWidget,
 } from "@e2e/helpers/home-grid-editor.js";
+import { type Locator, type Page, expect, test } from "@playwright/test";
 
 const rectangle = (widget: Locator) =>
   widget.locator("..").evaluate((element) => ({

@@ -1,4 +1,5 @@
 import { isAuthError } from "@/api/shuffle";
+import { isSessionGone } from "@/stores/player/order/shuffle";
 
 import type { createAutoplayCountdown } from "./autoplay-countdown";
 import type { createCommit } from "./commit";
@@ -8,8 +9,6 @@ import type { OrderManager } from "./order-manager";
 import type { PlayerState } from "./state";
 import type { Guard, RunOptions, createTransitions } from "./transitions";
 import type { AdvancementReason, MediaKind, Order } from "./types";
-
-import { isSessionGone } from "@/stores/player/order/shuffle";
 
 const MAX_UNAVAILABLE_STREAK = 5;
 

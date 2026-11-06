@@ -664,6 +664,15 @@ import type { NavItem } from "@/types/nav-item";
 import { type FileResult } from "@/api/file";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
+import AdvancedSearchModal from "@/components/dashboard/file-system/Modals/AdvancedSearchModal.vue";
+import CreateDirectoryModal from "@/components/dashboard/file-system/Modals/CreateDirectoryModal.vue";
+import FileTransferModal, {
+  type TransferResult,
+} from "@/components/dashboard/file-system/Modals/Filetransfermodal.vue";
+import QuickSearchModal from "@/components/dashboard/file-system/Modals/QuickSearchModal.vue";
+import ShareLinkModal from "@/components/dashboard/file-system/Modals/ShareLinkModal.vue";
+import UpdateDirectoryModal from "@/components/dashboard/file-system/Modals/UpdateDirectoryModal.vue";
+import UpdateFileModal from "@/components/dashboard/file-system/Modals/UpdateFileModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useDropZone } from "@/composables/useDropZone";
 import { useExplorerCommandGuard } from "@/composables/useExplorerCommands";
@@ -711,15 +720,6 @@ import FileDetailsDrawer from "./FileDetailsDrawer.vue";
 import FileItem from "./FileItem.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
-import AdvancedSearchModal from "@/components/dashboard/file-system/Modals/AdvancedSearchModal.vue";
-import CreateDirectoryModal from "@/components/dashboard/file-system/Modals/CreateDirectoryModal.vue";
-import FileTransferModal, {
-  type TransferResult,
-} from "@/components/dashboard/file-system/Modals/Filetransfermodal.vue";
-import QuickSearchModal from "@/components/dashboard/file-system/Modals/QuickSearchModal.vue";
-import ShareLinkModal from "@/components/dashboard/file-system/Modals/ShareLinkModal.vue";
-import UpdateDirectoryModal from "@/components/dashboard/file-system/Modals/UpdateDirectoryModal.vue";
-import UpdateFileModal from "@/components/dashboard/file-system/Modals/UpdateFileModal.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();

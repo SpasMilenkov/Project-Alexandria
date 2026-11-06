@@ -1,5 +1,3 @@
-import { type Locator, type Page, type Route, expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import {
   closeWidgetSettings,
@@ -7,6 +5,7 @@ import {
   openWidgetTab,
   selectWidget,
 } from "@e2e/helpers/home-grid-editor.js";
+import { type Locator, type Page, type Route, expect, test } from "@playwright/test";
 
 const variants = [
   { id: "beacon", type: 7, statusStyle: 0, activityStyle: 0 },

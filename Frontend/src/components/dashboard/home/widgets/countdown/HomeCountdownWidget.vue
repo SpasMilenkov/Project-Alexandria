@@ -4,11 +4,10 @@ import { computed, ref, shallowRef, watch } from "vue";
 
 import type { HomeWidget } from "@/types/home";
 
+import HomeFlipDigit from "@/components/dashboard/home/widgets/clock/HomeFlipDigit.vue";
 import { HomeCountdownStyle } from "@/enums/home-widget";
 import { homeCalendarDate, homeCountdown } from "@/features/home/widgets/general";
 import { useHomeStore } from "@/stores/home";
-
-import HomeFlipDigit from "@/components/dashboard/home/widgets/clock/HomeFlipDigit.vue";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 const home = useHomeStore();

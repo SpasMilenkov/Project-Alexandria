@@ -1,12 +1,11 @@
 <script setup lang="ts">
+import HomeDailyCoverArt from "@/components/dashboard/home/widgets/daily-cover/HomeDailyCoverArt.vue";
 import {
   HomeCountdownStyle,
   HomeDailyCoverStyle,
   HomeFocusStyle,
   HomeWidgetType,
 } from "@/enums/home-widget";
-
-import HomeDailyCoverArt from "@/components/dashboard/home/widgets/daily-cover/HomeDailyCoverArt.vue";
 
 defineProps<{ type: HomeWidgetType; variant: number }>();
 </script>

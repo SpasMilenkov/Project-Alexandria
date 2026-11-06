@@ -1,8 +1,8 @@
+import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
+import { media } from "@e2e/helpers/media-overview.js";
 import { type Page, expect, test } from "@playwright/test";
 
 import { WrappedCardType } from "@/enums/wrapped-card-type.js";
-import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
-import { media } from "@e2e/helpers/media-overview.js";
 
 const currentDate = "2026-10-09T12:00:00Z";
 

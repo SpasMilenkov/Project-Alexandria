@@ -2,6 +2,8 @@
 import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeGreetingOptions } from "@/types/home";
 
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
+import HomeGreetingStylePreview from "@/components/dashboard/home/options/style-previews/HomeGreetingStylePreview.vue";
 import { HOME_TEXT_ALIGNMENTS } from "@/features/home/widget-options";
 import {
   HOME_GREETING_COLOR_MODES,
@@ -10,8 +12,6 @@ import {
   isHomeGreetingPixelArt,
 } from "@/features/home/widgets/greeting";
 
-import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
-import HomeGreetingStylePreview from "@/components/dashboard/home/options/style-previews/HomeGreetingStylePreview.vue";
 import HomeGreetingDecoration from "./HomeGreetingDecoration.vue";
 
 const { options, section = "all" } = defineProps<{

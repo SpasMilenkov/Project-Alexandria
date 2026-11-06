@@ -292,15 +292,15 @@ import { computed, ref, watch, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 
 import { type MediaFileDto } from "@/api/streaming";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
+import BulkMetadataDrawer from "@/components/streaming/metadata/BulkMetadataDrawer.vue";
 import { isWatchedEntry, progressPercentOf, useVideoHistory } from "@/composables/useVideoHistory";
 import { MEDIA_LIST_ROW_HEIGHT, getMediaGridLayout } from "@/features/media/grid-layout";
 import { LIBRARY_PAGE_SIZE, libraryLabel, type SourceDescriptor } from "@/features/player/source";
 import { STREAMING_QUERY_KEYS, getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 
-import BlockSpinner from "@/components/common/BlockSpinner.vue";
-import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
-import BulkMetadataDrawer from "@/components/streaming/metadata/BulkMetadataDrawer.vue";
 import MediaCard from "./MediaCard.vue";
 import MediaLibraryEmpty from "./MediaLibraryEmpty.vue";
 import MediaLibraryGhost from "./MediaLibraryGhost.vue";
