@@ -36,4 +36,8 @@ public partial class TriggerConsumerWorker
 
     [LoggerMessage(22210, LogLevel.Error, "Failed to republish trigger for file {FileId} after a staging error; requeueing")]
     private static partial void LogRetryPublishFailed(ILogger logger, Exception ex, Guid fileId);
+
+    [LoggerMessage(22211, LogLevel.Information,
+        "Stopping mid-message; delivery {DeliveryTag} goes back to the queue when the channel closes.")]
+    private static partial void LogStoppingMidMessage(ILogger logger, ulong deliveryTag);
 }

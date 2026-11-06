@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using Alexandria.Common;
-using Alexandria.Common.Exceptions.Transpilation;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
@@ -92,60 +90,10 @@ public partial class VideoTranspilationService(
             $"\"{manifestPath}\""
         ]);
 
-        await RunFfmpegAsync(jobId, inputPath, string.Join(" ", args), "video DASH", manifestPath, ct);
-    }
-
-    private async Task RunFfmpegAsync(
-        Guid jobId,
-        string inputPath,
-        string arguments,
-        string operation,
-        string expectedOutput,
-        CancellationToken ct)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = Process.Start(psi)
-                            ?? throw new TranspilationFfmpegException(inputPath, operation);
-
-        using var killCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var wasCancelled = false;
-
-        var watchdog = Task.Run(async () =>
-        {
-            while (!killCts.Token.IsCancellationRequested)
-            {
-                await Task.Delay(10_000, killCts.Token).ConfigureAwait(false);
-                var status = await unitOfWork.Jobs.GetStatusAsync(jobId, killCts.Token);
-                if (status == JobStatus.CancellationRequested)
-                {
-                    wasCancelled = true;
-                    process.Kill(entireProcessTree: true);
-                    break;
-                }
-            }
-        }, killCts.Token);
-
-        var stderrTask = process.StandardError.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct);
-        await killCts.CancelAsync();
-        var stderr = await stderrTask;
-
-        if (wasCancelled)
-            throw new TranspilationCancelledException(jobId);
-
-        if (process.ExitCode != 0)
-            throw new TranspilationFfmpegException(inputPath, operation, process.ExitCode, stderr);
-
-        if (!File.Exists(expectedOutput))
-            throw new TranspilationFfmpegException(inputPath, operation, expectedOutput);
+        await TranscodeProcess.RunFfmpegAsync(
+            new TranscodeRequest(jobId, inputPath, string.Join(" ", args), "video DASH", manifestPath),
+            unitOfWork,
+            logger,
+            ct);
     }
 }

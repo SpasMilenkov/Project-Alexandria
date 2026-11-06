@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using Alexandria.Common;
-using Alexandria.Common.Exceptions.Transpilation;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files.Streaming;
@@ -73,83 +71,11 @@ public partial class AudioTranspilationService(
         ]);
 
         LogDashPassStarting(logger, inputPath);
-        await RunFfmpegAsync(jobId, inputPath, string.Join(" ", args), "audio DASH", manifestPath, ct);
+        await TranscodeProcess.RunFfmpegAsync(
+            new TranscodeRequest(jobId, inputPath, string.Join(" ", args), "audio DASH", manifestPath),
+            unitOfWork,
+            logger,
+            ct);
         LogDashPassCompleted(logger, manifestPath);
-    }
-
-    private async Task RunFfmpegAsync(
-        Guid jobId,
-        string inputPath,
-        string arguments,
-        string operation,
-        string expectedOutput,
-        CancellationToken ct)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = Process.Start(psi)
-                            ?? throw new TranspilationFfmpegException(inputPath, operation);
-
-        using var killCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var wasCancelled = false;
-
-        var watchdog = Task.Run(async () =>
-        {
-            try
-            {
-                while (!killCts.Token.IsCancellationRequested)
-                {
-                    await Task.Delay(10_000, killCts.Token).ConfigureAwait(false);
-                    var status = await unitOfWork.Jobs.GetStatusAsync(jobId, killCts.Token);
-                    if (status != JobStatus.CancellationRequested) continue;
-                    wasCancelled = true;
-                    process.Kill(entireProcessTree: true);
-                    break;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            catch (Exception ex)
-            {
-                LogWatchdogPollFailed(logger, ex, jobId);
-            }
-        }, killCts.Token);
-
-        string stderr;
-        try
-        {
-            var stderrTask = process.StandardError.ReadToEndAsync(ct);
-            await process.WaitForExitAsync(ct);
-            stderr = await stderrTask;
-        }
-        finally
-        {
-            await killCts.CancelAsync();
-            try
-            {
-                await watchdog;
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }
-
-        if (wasCancelled)
-            throw new TranspilationCancelledException(jobId);
-
-        if (process.ExitCode != 0)
-            throw new TranspilationFfmpegException(inputPath, operation, process.ExitCode, stderr);
-
-        if (!File.Exists(expectedOutput))
-            throw new TranspilationFfmpegException(inputPath, operation, expectedOutput);
     }
 }

@@ -121,12 +121,13 @@ public partial class EnrichmentBackfillWorker(
     {
         LogWorkerStopping(logger);
 
+        // Handlers have to be told to stop first: closing the channel waits for the running one.
+        await base.StopAsync(cancellationToken);
+
         if (_channel is not null)
         {
             await _channel.CloseAsync(cancellationToken);
             await _channel.DisposeAsync();
         }
-
-        await base.StopAsync(cancellationToken);
     }
 }

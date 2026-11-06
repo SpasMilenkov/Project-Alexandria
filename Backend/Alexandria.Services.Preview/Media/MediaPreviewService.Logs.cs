@@ -28,10 +28,6 @@ public partial class MediaPreviewService
         "ffprobe analysis completed for '{InputPath}'")]
     private static partial void LogFfprobeCompleted(ILogger logger, string inputPath);
 
-    [LoggerMessage(4012, LogLevel.Error,
-        "ffprobe process could not be started for '{InputPath}'")]
-    private static partial void LogFfprobeStartFailed(ILogger logger, string inputPath);
-
     [LoggerMessage(4013, LogLevel.Error,
         "ffprobe exited with code {ExitCode} for '{InputPath}': {Error}")]
     private static partial void LogFfprobeFailed(ILogger logger, int exitCode, string inputPath, string error);
@@ -49,10 +45,6 @@ public partial class MediaPreviewService
     [LoggerMessage(4021, LogLevel.Debug,
         "Thumbnail generated: '{OutputPath}'")]
     private static partial void LogThumbnailGenerated(ILogger logger, string outputPath);
-
-    [LoggerMessage(4022, LogLevel.Error,
-        "ffmpeg thumbnail process could not be started for '{InputPath}'")]
-    private static partial void LogThumbnailStartFailed(ILogger logger, string inputPath);
 
     [LoggerMessage(4023, LogLevel.Warning,
         "ffmpeg thumbnail non-fatal warning for '{InputPath}': {Error}")]
@@ -76,6 +68,10 @@ public partial class MediaPreviewService
         "Failed to extract album artwork from '{InputPath}', falling back to waveform")]
     private static partial void LogArtworkExtractionFailed(ILogger logger, Exception ex, string inputPath);
 
+    [LoggerMessage(4034, LogLevel.Warning,
+        "Failed to delete partial album artwork '{OutputPath}'")]
+    private static partial void LogArtworkCleanupFailed(ILogger logger, Exception ex, string outputPath);
+
     // Waveform
 
     [LoggerMessage(4040, LogLevel.Debug,
@@ -85,10 +81,6 @@ public partial class MediaPreviewService
     [LoggerMessage(4041, LogLevel.Debug,
         "Waveform generated: '{OutputPath}'")]
     private static partial void LogWaveformGenerated(ILogger logger, string outputPath);
-
-    [LoggerMessage(4042, LogLevel.Error,
-        "ffmpeg waveform process could not be started for '{InputPath}'")]
-    private static partial void LogWaveformStartFailed(ILogger logger, string inputPath);
 
     [LoggerMessage(4043, LogLevel.Warning,
         "ffmpeg waveform non-fatal warning for '{InputPath}': {Error}")]
@@ -104,10 +96,6 @@ public partial class MediaPreviewService
         "Video clip generated: '{OutputPath}'")]
     private static partial void LogVideoClipGenerated(ILogger logger, string outputPath);
 
-    [LoggerMessage(4052, LogLevel.Error,
-        "ffmpeg video clip process could not be started for '{InputPath}'")]
-    private static partial void LogVideoClipStartFailed(ILogger logger, string inputPath);
-
     [LoggerMessage(4053, LogLevel.Error,
         "ffmpeg video clip failed for '{InputPath}': {Error}")]
     private static partial void LogVideoClipFailed(ILogger logger, string inputPath, string error);
@@ -121,10 +109,6 @@ public partial class MediaPreviewService
     [LoggerMessage(4061, LogLevel.Debug,
         "Audio clip generated: '{OutputPath}'")]
     private static partial void LogAudioClipGenerated(ILogger logger, string outputPath);
-
-    [LoggerMessage(4062, LogLevel.Error,
-        "ffmpeg audio clip process could not be started for '{InputPath}'")]
-    private static partial void LogAudioClipStartFailed(ILogger logger, string inputPath);
 
     [LoggerMessage(4063, LogLevel.Error,
         "ffmpeg audio clip failed for '{InputPath}': {Error}")]
@@ -143,8 +127,4 @@ public partial class MediaPreviewService
     [LoggerMessage(4072, LogLevel.Debug,
         "Streaming optimization completed for '{VideoPath}'")]
     private static partial void LogOptimizationCompleted(ILogger logger, string videoPath);
-
-    [LoggerMessage(4073, LogLevel.Error,
-        "ffmpeg optimization process could not be started for '{VideoPath}'")]
-    private static partial void LogOptimizationStartFailed(ILogger logger, string videoPath);
 }
