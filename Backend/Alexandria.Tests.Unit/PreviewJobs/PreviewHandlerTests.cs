@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Alexandria.Common;
+using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -16,6 +17,7 @@ using ImageHandler = Alexandria.Workers.Media.Handlers.ImagePreviewGenerationHan
 using MediaHandler = Alexandria.Workers.Media.Handlers.MediaPreviewGenerationHandler;
 using DocumentHandler = Alexandria.Workers.Document.Handlers.PreviewGenerationHandler;
 using File = System.IO.File;
+using IoDirectory = System.IO.Directory;
 
 namespace Alexandria.Tests.Unit.PreviewJobs;
 
@@ -208,6 +210,168 @@ public class PreviewHandlerTests
         await _jobs.Received(1).UpdateStatusAsync(
             _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task media_interrupted_after_writing_outputs_removes_everything(bool cancelled)
+    {
+        StoredJob();
+        StoredVersion("video/mp4");
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        string? scratch = null;
+        var media = Substitute.For<IMediaPreviewService>();
+        media.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
+            .Returns<MediaPreviewResult?>(call =>
+            {
+                scratch = WritePartialOutputs(call.Arg<string>());
+                return InterruptJob(cancelled, cts);
+            });
+        var sut = new MediaHandler(
+            Substitute.For<ILogger<MediaHandler>>(),
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(), media, _unitOfWork);
+
+        var act = () => sut.HandleAsync(_jobId.ToString(), cts.Token);
+
+        await act.Should().ThrowAsync<Exception>();
+        scratch.Should().NotBeNull();
+        IoDirectory.Exists(scratch).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task document_interrupted_after_writing_outputs_removes_everything(bool cancelled)
+    {
+        StoredJob();
+        StoredVersion("application/pdf");
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        string? scratch = null;
+        var pdf = Substitute.For<IPdfPreviewService>();
+        pdf.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
+            .Returns<PdfPreviewResult>(call =>
+            {
+                scratch = WritePartialOutputs(call.Arg<string>());
+                InterruptJob(cancelled, cts);
+                return new PdfPreviewResult("", "");
+            });
+        var sut = new DocumentHandler(
+            Substitute.For<ILogger<DocumentHandler>>(),
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(), pdf, _unitOfWork);
+
+        var act = () => sut.HandleAsync(_jobId.ToString(), cts.Token);
+
+        await act.Should().ThrowAsync<Exception>();
+        scratch.Should().NotBeNull();
+        IoDirectory.Exists(scratch).Should().BeFalse();
+    }
+
+    // The service only hands back paths on success, so these files are unknown to the handler.
+    private static string WritePartialOutputs(string inputPath)
+    {
+        var folder = Path.GetDirectoryName(inputPath)!;
+        File.WriteAllText(Path.Combine(folder, "partial_preview.mp4"), "partial");
+        IoDirectory.CreateDirectory(Path.Combine(folder, "lu123.tmp"));
+        return folder;
+    }
+
+    private static MediaPreviewResult InterruptJob(bool cancelled, CancellationTokenSource cts)
+    {
+        if (!cancelled)
+            throw new InvalidOperationException("tool failed");
+
+        cts.Cancel();
+        throw new OperationCanceledException(cts.Token);
+    }
+
+    // Runs the handler's real predicate, so a handler that stops filtering deleted versions fails.
+    private void StoredDeletedVersion(string mimeType)
+    {
+        var deleted = new FileVersionBuilder().WithId(_versionId).WithContentHash(new byte[16]).Build();
+        deleted.DeletedAt = DateTime.UtcNow;
+
+        _versions.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<FileVersion, bool>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(call => new[] { deleted }.AsQueryable()
+                .FirstOrDefault(call.Arg<Expression<Func<FileVersion, bool>>>()));
+        _files.GetMimeTypeByVersionIdAsync(_versionId, Arg.Any<CancellationToken>()).Returns(mimeType);
+    }
+
+    private async Task AssertGivesUpWithoutRetryingAsync(Func<Task> handle)
+    {
+        await handle.Should().ThrowAsync<PreviewSourceDeletedException>();
+
+        await _jobs.Received(1).UpdateStatusAsync(
+            _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _jobs.Received(1).MarkNonRetryableAsync(_jobId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task image_deleted_version_is_not_retried()
+    {
+        StoredJob();
+        StoredDeletedVersion("image/png");
+        var storage = Substitute.For<IContentStorageService>();
+        var sut = new ImageHandler(
+            Substitute.For<ILogger<ImageHandler>>(),
+            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IImagePreviewService>(), _unitOfWork);
+
+        await AssertGivesUpWithoutRetryingAsync(
+            () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken));
+
+        await storage.DidNotReceive().DownloadSeekableFile(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task media_deleted_version_is_not_retried()
+    {
+        StoredJob();
+        StoredDeletedVersion("video/mp4");
+        var storage = Substitute.For<IContentStorageService>();
+        var sut = new MediaHandler(
+            Substitute.For<ILogger<MediaHandler>>(),
+            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IMediaPreviewService>(), _unitOfWork);
+
+        await AssertGivesUpWithoutRetryingAsync(
+            () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken));
+
+        await storage.DidNotReceive().StreamFile(Arg.Any<Guid>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task document_deleted_version_is_not_retried()
+    {
+        StoredJob();
+        StoredDeletedVersion("application/pdf");
+        var storage = Substitute.For<IContentStorageService>();
+        var sut = new DocumentHandler(
+            Substitute.For<ILogger<DocumentHandler>>(),
+            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IPdfPreviewService>(), _unitOfWork);
+
+        await AssertGivesUpWithoutRetryingAsync(
+            () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken));
+
+        await storage.DidNotReceive().StreamFile(Arg.Any<Guid>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task live_version_failure_keeps_its_retry_budget()
+    {
+        StoredJob();
+        StoredVersion("video/mp4");
+        var media = Substitute.For<IMediaPreviewService>();
+        media.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
+            .Returns(new MediaPreviewResult());
+        var sut = new MediaHandler(
+            Substitute.For<ILogger<MediaHandler>>(),
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(), media, _unitOfWork);
+
+        var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        await _jobs.DidNotReceive().MarkNonRetryableAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

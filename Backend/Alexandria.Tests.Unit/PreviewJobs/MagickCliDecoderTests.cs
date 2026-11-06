@@ -3,7 +3,9 @@ using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions.Preview.Images;
 using Alexandria.Services.Preview;
 using Alexandria.Services.Preview.Images;
+using Alexandria.Tests.Unit.Common;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NetVips;
@@ -159,6 +161,72 @@ public class MagickCliDecoderTests
             TestContext.Current.CancellationToken);
 
         (await act.Should().ThrowAsync<ImageMagickException>()).Which.ExitCode.Should().NotBe(0);
+    }
+
+    // Stands in for prlimit, which is the process the decoder actually starts.
+    private static string WriteFakeTool(string directory, string script)
+    {
+        var path = Path.Combine(directory, "fake-prlimit");
+        File.WriteAllText(path, $"#!/bin/sh\n{script}\n");
+
+        if (OperatingSystem.IsLinux())
+            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        return path;
+    }
+
+    [Fact]
+    public async Task DecodeToPngAsync_overTimeLimit_killsToolBeforeThrowing()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "This test runs a shell script and inspects /proc.");
+
+        var directory = Directory.CreateTempSubdirectory("magick-decoder-test-").FullName;
+        var duration = SleepProbe.UniqueSleepDuration(60);
+
+        try
+        {
+            var sut = CreateSut(CreateConfig(c =>
+            {
+                c.PrlimitPath = WriteFakeTool(directory, $"exec sleep {duration}");
+                c.TimeoutSeconds = 1;
+            }));
+
+            var act = () => sut.DecodeToPngAsync(new MemoryStream(Bitmap(8, 8)), "BMP",
+                TestContext.Current.CancellationToken);
+
+            (await act.Should().ThrowAsync<ImageMagickException>()).Which.Message.Should().Contain("time limit");
+            (await SleepProbe.SleepStopsWithinAsync(duration, TimeSpan.FromSeconds(2))).Should().BeTrue();
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task DecodeToPngAsync_toolRejectsInputEarly_logsAndReportsExitCode()
+    {
+        Assert.SkipUnless(OperatingSystem.IsLinux(), "This test runs a shell script.");
+
+        var directory = Directory.CreateTempSubdirectory("magick-decoder-test-").FullName;
+        var logger = new RecordingLogger<MagickCliDecoder>();
+
+        try
+        {
+            var config = CreateConfig(c => c.PrlimitPath = WriteFakeTool(directory, "exit 3"));
+            var sut = new MagickCliDecoder(Options.Create(config), logger);
+
+            // Larger than the pipe, so writing to the exited tool has to fail.
+            var act = () => sut.DecodeToPngAsync(new MemoryStream(new byte[1024 * 1024]), "BMP",
+                TestContext.Current.CancellationToken);
+
+            (await act.Should().ThrowAsync<ImageMagickException>()).Which.ExitCode.Should().Be(3);
+            logger.Entries.Should().Contain(e => e.Level == LogLevel.Information && e.Message.Contains("closed its input"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 
     [Fact]

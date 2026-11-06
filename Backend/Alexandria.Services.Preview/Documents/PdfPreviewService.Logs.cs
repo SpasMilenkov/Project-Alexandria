@@ -28,10 +28,6 @@ public partial class PdfPreviewService
         "LibreOffice conversion completed: '{InputPath}'")]
     private static partial void LogLibreOfficeCompleted(ILogger logger, string inputPath);
 
-    [LoggerMessage(3012, LogLevel.Error,
-        "LibreOffice process could not be started for '{InputPath}'")]
-    private static partial void LogLibreOfficeStartFailed(ILogger logger, string inputPath);
-
     [LoggerMessage(3013, LogLevel.Error,
         "LibreOffice exited with code {ExitCode} for '{InputPath}': {Error}")]
     private static partial void LogLibreOfficeFailed(ILogger logger, int exitCode, string inputPath, string error);
@@ -45,10 +41,6 @@ public partial class PdfPreviewService
     [LoggerMessage(3021, LogLevel.Debug,
         "Ghostscript trim completed: '{OutputPath}'")]
     private static partial void LogGhostscriptCompleted(ILogger logger, string outputPath);
-
-    [LoggerMessage(3022, LogLevel.Error,
-        "Ghostscript process could not be started for '{InputPath}'")]
-    private static partial void LogGhostscriptStartFailed(ILogger logger, string inputPath);
 
     [LoggerMessage(3023, LogLevel.Error,
         "Ghostscript exited with code {ExitCode} for '{InputPath}': {Error}")]

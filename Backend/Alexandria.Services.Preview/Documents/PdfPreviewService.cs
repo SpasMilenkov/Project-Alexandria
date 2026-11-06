@@ -1,6 +1,7 @@
-using System.Diagnostics;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Exceptions.Preview.Documents;
+using Alexandria.Common.Processes;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using ClosedXML.Excel;
@@ -11,6 +12,12 @@ namespace Alexandria.Services.Preview.Documents;
 public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdfPreviewService
 {
     private const int ThumbnailMaxDimensionPx = 320;
+
+    // The steps of one preview, fallback included, must total less than the job recovery stall
+    // threshold, because preview jobs send no heartbeat and would otherwise be failed while running.
+    private static readonly TimeSpan LibreOfficeTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan GhostscriptTimeout = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan PdftocairoTimeout = TimeSpan.FromMinutes(2);
 
     /// <inheritdoc>
     public async Task<PdfPreviewResult> GeneratePreviewAsync(string inputPath, FileCategory fileCategory,
@@ -37,7 +44,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
         {
             throw;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogPreviewFallback(logger, ex, inputPath);
             var fallbackPreview = await GenerateFullPdfAsync(inputPath, ct);
@@ -61,7 +68,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
         {
             await RunPdftocairoAsync(inputPdfPath, outputBasePath, ct);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogThumbnailFallback(logger, ex, inputPdfPath);
             await RunGhostscriptThumbnailAsync(inputPdfPath, expectedOutput, ct);
@@ -76,61 +83,37 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
 
     private async Task RunPdftocairoAsync(string inputPdfPath, string outputBasePath, CancellationToken ct)
     {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "pdftocairo",
-            Arguments = $"-png -f 1 -l 1 -scale-to {ThumbnailMaxDimensionPx} -singlefile " +
-                        $"\"{inputPdfPath}\" \"{outputBasePath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "pdftocairo",
+            $"-png -f 1 -l 1 -scale-to {ThumbnailMaxDimensionPx} -singlefile " +
+            $"\"{inputPdfPath}\" \"{outputBasePath}\"",
+            PdftocairoTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
-            throw new ThumbnailException(inputPdfPath);
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            throw new ThumbnailException(inputPdfPath, process.ExitCode, error);
-        }
+        if (result.ExitCode != 0)
+            throw new ThumbnailException(inputPdfPath, result.ExitCode, result.StdErrTail);
     }
 
     private async Task RunGhostscriptThumbnailAsync(string inputPdfPath, string outputPath, CancellationToken ct)
     {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "gs",
-            Arguments = $"-dNOPAUSE -dBATCH -dSAFER -dFirstPage=1 -dLastPage=1 " +
-                        $"-sDEVICE=png16m -r150 -dPDFFitPage " +
-                        $"-sOutputFile=\"{outputPath}\" \"{inputPdfPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "gs",
+            $"-dNOPAUSE -dBATCH -dSAFER -dFirstPage=1 -dLastPage=1 " +
+            $"-sDEVICE=png16m -r150 -dPDFFitPage " +
+            $"-sOutputFile=\"{outputPath}\" \"{inputPdfPath}\"",
+            GhostscriptTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
-            throw new ThumbnailException(inputPdfPath);
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            throw new ThumbnailException(inputPdfPath, process.ExitCode, error);
-        }
+        if (result.ExitCode != 0)
+            throw new ThumbnailException(inputPdfPath, result.ExitCode, result.StdErrTail);
     }
 
     /// <inheritdoc/>
     public async Task<string> GenerateWordPreviewAsync(string inputPath, CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}.pdf");
 
         await ConvertToPdfWithLibreOffice(inputPath, outputDir, ct);
@@ -144,7 +127,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
     /// <inheritdoc/>
     public async Task<string> GeneratePowerPointPreviewAsync(string inputPath, CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}.pdf");
 
         await ConvertToPdfWithLibreOffice(inputPath, outputDir, ct);
@@ -158,11 +141,8 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
     /// <inheritdoc/>
     public async Task<string> GenerateExcelPreviewAsync(string inputPath, CancellationToken ct)
     {
-        var tempExcelPath = Path.Combine(
-            Path.GetTempPath(),
-            $"{Path.GetFileNameWithoutExtension(inputPath)}_temp.xlsx");
-
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
+        var tempExcelPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}_temp.xlsx");
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}_temp.pdf");
         var finalOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}_preview.pdf");
 
@@ -214,7 +194,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
 
     private async Task<string> GenerateFullPdfAsync(string inputPath, CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}.pdf");
         var finalOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}_preview.pdf");
 
@@ -231,30 +211,31 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
     {
         LogLibreOfficeStarting(logger, inputPath, outputDir);
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "libreoffice",
-            Arguments = $"--headless --convert-to pdf --outdir \"{outputDir}\" \"{inputPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        ExternalProcessResult result;
 
-        using var process = Process.Start(psi);
-        if (process == null)
+        try
         {
-            LogLibreOfficeStartFailed(logger, inputPath);
-            throw new LibreOfficeException(inputPath);
+            result = await ExternalProcess.RunAsync(
+                "libreoffice",
+                $"--headless --convert-to pdf --outdir \"{outputDir}\" \"{inputPath}\"",
+                LibreOfficeTimeout,
+                // LibreOffice keeps large working files in TMPDIR and cannot remove them if it is
+                // killed, so they have to land somewhere that gets cleaned up without its help.
+                new Dictionary<string, string> { ["TMPDIR"] = outputDir },
+                logger,
+                ct);
+        }
+        catch (ExternalProcessTimeoutException ex)
+        {
+            // Surfacing as LibreOfficeException skips the fallback, which would only run
+            // LibreOffice on the same document again.
+            throw new LibreOfficeException(inputPath, LibreOfficeTimeout, ex);
         }
 
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
+        if (result.ExitCode != 0)
         {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            LogLibreOfficeFailed(logger, process.ExitCode, inputPath, error);
-            throw new LibreOfficeException(inputPath, process.ExitCode, error);
+            LogLibreOfficeFailed(logger, result.ExitCode, inputPath, result.StdErrTail);
+            throw new LibreOfficeException(inputPath, result.ExitCode, result.StdErrTail);
         }
 
         LogLibreOfficeCompleted(logger, inputPath);
@@ -268,32 +249,19 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
 
         LogGhostscriptStarting(logger, inputPdfPath, maxPages);
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "gs",
-            Arguments = $"-dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite " +
-                        $"-dFirstPage=1 -dLastPage={maxPages} " +
-                        $"-sOutputFile=\"{outputPath}\" \"{inputPdfPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "gs",
+            $"-dNOPAUSE -dBATCH -dSAFER -sDEVICE=pdfwrite " +
+            $"-dFirstPage=1 -dLastPage={maxPages} " +
+            $"-sOutputFile=\"{outputPath}\" \"{inputPdfPath}\"",
+            GhostscriptTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
+        if (result.ExitCode != 0)
         {
-            LogGhostscriptStartFailed(logger, inputPdfPath);
-            throw new GhostscriptException(inputPdfPath);
-        }
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            LogGhostscriptFailed(logger, process.ExitCode, inputPdfPath, error);
-            throw new GhostscriptException(inputPdfPath, process.ExitCode, error);
+            LogGhostscriptFailed(logger, result.ExitCode, inputPdfPath, result.StdErrTail);
+            throw new GhostscriptException(inputPdfPath, result.ExitCode, result.StdErrTail);
         }
 
         if (!File.Exists(outputPath))

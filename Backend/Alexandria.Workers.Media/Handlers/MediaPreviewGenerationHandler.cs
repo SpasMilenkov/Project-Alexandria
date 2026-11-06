@@ -1,4 +1,6 @@
 using Alexandria.Common;
+using Alexandria.Common.Exceptions.Preview;
+using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
 using Alexandria.Services.Preview.Media;
 
@@ -46,7 +48,7 @@ public class MediaPreviewGenerationHandler(
         var version =
             await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == versionId && v.DeletedAt == null, ct);
 
-        if (version is null) throw new InvalidOperationException($"Version with that ID: {message} does not exist.");
+        if (version is null) throw new PreviewSourceDeletedException(versionId);
 
         var contentHash = Convert.ToHexStringLower(version.ContentHash);
 
@@ -59,9 +61,8 @@ public class MediaPreviewGenerationHandler(
 
         // Generate temp path with correct extension based on MIME type
         var extension = GetExtensionFromMimeType(mimetype);
-        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
-        string? previewPath = null;
-        string? thumbnailPath = null;
+        var scratch = JobScratch.Create();
+        var tempPath = Path.Combine(scratch, $"{Guid.NewGuid()}{extension}");
 
         try
         {
@@ -83,8 +84,8 @@ public class MediaPreviewGenerationHandler(
                 throw new InvalidOperationException("Media preview generation failed");
             }
 
-            previewPath = result.PreviewPath;
-            thumbnailPath = result.ThumbnailPath;
+            var previewPath = result.PreviewPath;
+            var thumbnailPath = result.ThumbnailPath;
 
             var previewSize = new FileInfo(previewPath).Length;
             var thumbnailSize = new FileInfo(thumbnailPath).Length;
@@ -99,10 +100,7 @@ public class MediaPreviewGenerationHandler(
         }
         finally
         {
-            if (File.Exists(tempPath))
-                File.Delete(tempPath);
-            if (previewPath != null && File.Exists(previewPath)) File.Delete(previewPath);
-            if (thumbnailPath != null && File.Exists(thumbnailPath)) File.Delete(thumbnailPath);
+            JobScratch.Delete(scratch, logger);
         }
     }
 

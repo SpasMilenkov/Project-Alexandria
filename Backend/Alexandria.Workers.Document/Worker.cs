@@ -65,6 +65,13 @@ public class Worker(
 
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // Left unacked on purpose: a nack here would drop the message.
+                logger.LogInformation(
+                    "Stopping mid-message; delivery {DeliveryTag} goes back to the queue when the channel closes.",
+                    eventArgs.DeliveryTag);
+            }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error processing message");
@@ -88,12 +95,14 @@ public class Worker(
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         logger.LogInformation("RabbitMQ Worker stopping...");
+
+        // Handlers have to be told to stop first: closing the channel waits for the running one.
+        await base.StopAsync(cancellationToken);
+
         if (_channel != null)
         {
             await _channel.CloseAsync(cancellationToken);
             await _channel.DisposeAsync();
         }
-
-        await base.StopAsync(cancellationToken);
     }
 }

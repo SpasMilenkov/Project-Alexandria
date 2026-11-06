@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using System.Text.Json;
 using Alexandria.Common.Exceptions.Preview.Media;
+using Alexandria.Common.Processes;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Services.Preview.Media.Dto;
@@ -12,6 +12,16 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 {
     private const int PreviewDurationSeconds = 30;
     private const int ThumbnailTimeSeconds = 5;
+
+    // The steps of one preview must total less than the job recovery stall threshold, because
+    // preview jobs send no heartbeat and would otherwise be failed while still running.
+    private static readonly TimeSpan FfprobeTimeout = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan ThumbnailTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan ArtworkTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan WaveformTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan VideoClipTimeout = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan AudioClipTimeout = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan OptimizationTimeout = TimeSpan.FromMinutes(2);
 
     /// <inheritdoc/>
     public async Task<MediaPreviewResult?> GeneratePreviewAsync(
@@ -34,7 +44,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
             LogPreviewGenerated(logger, result.ThumbnailPath, result.PreviewPath);
             return result;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             LogPreviewFailed(logger, ex, inputPath);
             throw;
@@ -45,34 +55,20 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
     {
         LogFfprobeStarting(logger, inputPath);
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffprobe",
-            Arguments = $"-v quiet -print_format json -show_format -show_streams \"{inputPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "ffprobe",
+            $"-v quiet -print_format json -show_format -show_streams \"{inputPath}\"",
+            FfprobeTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
+        if (result.ExitCode != 0)
         {
-            LogFfprobeStartFailed(logger, inputPath);
-            throw new FfprobeException(inputPath);
+            LogFfprobeFailed(logger, result.ExitCode, inputPath, result.StdErrTail);
+            throw new FfprobeException(inputPath, result.ExitCode, result.StdErrTail);
         }
 
-        var output = await process.StandardOutput.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            LogFfprobeFailed(logger, process.ExitCode, inputPath, error);
-            throw new FfprobeException(inputPath, process.ExitCode, error);
-        }
-
-        var probeData = JsonSerializer.Deserialize<FFprobeOutput>(output);
+        var probeData = JsonSerializer.Deserialize<FFprobeOutput>(result.StdOut);
         if (probeData?.Format == null)
         {
             LogFfprobeParseFailed(logger, inputPath);
@@ -124,7 +120,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         MediaMetadataDto metadata,
         CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var baseName = Path.GetFileNameWithoutExtension(inputPath);
         var thumbnailPath = Path.Combine(outputDir, $"{baseName}_thumb.jpg");
         var previewPath = Path.Combine(outputDir, $"{baseName}_preview.mp4");
@@ -150,7 +146,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         MediaMetadataDto metadata,
         CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var baseName = Path.GetFileNameWithoutExtension(inputPath);
         var thumbnailPath = Path.Combine(outputDir, $"{baseName}_thumb.jpg");
         var previewPath = Path.Combine(outputDir, $"{baseName}_preview.mp3");
@@ -187,32 +183,17 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
     {
         LogThumbnailStarting(logger, inputPath, timeSeconds);
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = $"-ss {timeSeconds} -i \"{inputPath}\" -vframes 1 " +
-                        $"-vf \"scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease\" " +
-                        $"-q:v 2 \"{outputPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "ffmpeg",
+            $"-ss {timeSeconds} -i \"{inputPath}\" -vframes 1 " +
+            $"-vf \"scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease\" " +
+            $"-q:v 2 \"{outputPath}\"",
+            ThumbnailTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
-        {
-            LogThumbnailStartFailed(logger, inputPath);
-            throw new FfmpegException(inputPath, "thumbnail");
-        }
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            LogThumbnailWarning(logger, inputPath, error);
-        }
+        if (result.ExitCode != 0)
+            LogThumbnailWarning(logger, inputPath, result.StdErrTail);
 
         if (!File.Exists(outputPath))
             throw new FfmpegException(inputPath, "thumbnail", outputPath);
@@ -220,28 +201,19 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         LogThumbnailGenerated(logger, outputPath);
     }
 
-    private async Task<bool> TryExtractAlbumArtworkAsync(
+    internal async Task<bool> TryExtractAlbumArtworkAsync(
         string inputPath,
         string outputPath,
         CancellationToken ct)
     {
         try
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "ffmpeg",
-                Arguments = $"-i \"{inputPath}\" -an -vcodec mjpeg \"{outputPath}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(psi);
-            if (process == null)
-                return false;
-
-            await process.WaitForExitAsync(ct);
+            await ExternalProcess.RunAsync(
+                "ffmpeg",
+                $"-i \"{inputPath}\" -an -vcodec mjpeg \"{outputPath}\"",
+                ArtworkTimeout,
+                logger,
+                ct);
 
             if (File.Exists(outputPath) && new FileInfo(outputPath).Length > 0)
                 return true;
@@ -251,23 +223,30 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
             return false;
         }
+        catch (OperationCanceledException)
+        {
+            // Not a missing artwork: the waveform fallback must not run after a cancellation.
+            TryDeletePartialArtwork(outputPath);
+            throw;
+        }
         catch (Exception ex)
         {
             LogArtworkExtractionFailed(logger, ex, inputPath);
-
-            if (File.Exists(outputPath))
-            {
-                try
-                {
-                    File.Delete(outputPath);
-                }
-                catch
-                {
-                    /* best effort */
-                }
-            }
-
+            TryDeletePartialArtwork(outputPath);
             return false;
+        }
+    }
+
+    private void TryDeletePartialArtwork(string outputPath)
+    {
+        try
+        {
+            if (File.Exists(outputPath))
+                File.Delete(outputPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            LogArtworkCleanupFailed(logger, ex, outputPath);
         }
     }
 
@@ -278,32 +257,17 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
     {
         LogWaveformStarting(logger, inputPath);
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = $"-i \"{inputPath}\" " +
-                        $"-filter_complex \"[0:a]showwavespic=s=1920x1080:colors=0x3b82f6\" " +
-                        $"-frames:v 1 \"{outputPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "ffmpeg",
+            $"-i \"{inputPath}\" " +
+            $"-filter_complex \"[0:a]showwavespic=s=1920x1080:colors=0x3b82f6\" " +
+            $"-frames:v 1 \"{outputPath}\"",
+            WaveformTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
-        {
-            LogWaveformStartFailed(logger, inputPath);
-            throw new FfmpegException(inputPath, "waveform");
-        }
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            LogWaveformWarning(logger, inputPath, error);
-        }
+        if (result.ExitCode != 0)
+            LogWaveformWarning(logger, inputPath, result.StdErrTail);
 
         if (!File.Exists(outputPath))
             throw new FfmpegException(inputPath, "waveform", outputPath);
@@ -319,32 +283,19 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
     {
         LogVideoClipStarting(logger, inputPath, durationSeconds);
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = $"-i \"{inputPath}\" -t {durationSeconds} " +
-                        $"-c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k " +
-                        $"-movflags +faststart \"{outputPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "ffmpeg",
+            $"-i \"{inputPath}\" -t {durationSeconds} " +
+            $"-c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k " +
+            $"-movflags +faststart \"{outputPath}\"",
+            VideoClipTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
+        if (result.ExitCode != 0)
         {
-            LogVideoClipStartFailed(logger, inputPath);
-            throw new FfmpegException(inputPath, "video clip");
-        }
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            LogVideoClipFailed(logger, inputPath, error);
-            throw new FfmpegException(inputPath, "video clip", process.ExitCode, error);
+            LogVideoClipFailed(logger, inputPath, result.StdErrTail);
+            throw new FfmpegException(inputPath, "video clip", result.ExitCode, result.StdErrTail);
         }
 
         if (!File.Exists(outputPath))
@@ -361,30 +312,17 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
     {
         LogAudioClipStarting(logger, inputPath, durationSeconds);
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = $"-i \"{inputPath}\" -t {durationSeconds} -vn -c:a libmp3lame -b:a 128k \"{outputPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "ffmpeg",
+            $"-i \"{inputPath}\" -t {durationSeconds} -vn -c:a libmp3lame -b:a 128k \"{outputPath}\"",
+            AudioClipTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
+        if (result.ExitCode != 0)
         {
-            LogAudioClipStartFailed(logger, inputPath);
-            throw new FfmpegException(inputPath, "audio clip");
-        }
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync(ct);
-            LogAudioClipFailed(logger, inputPath, error);
-            throw new FfmpegException(inputPath, "audio clip", process.ExitCode, error);
+            LogAudioClipFailed(logger, inputPath, result.StdErrTail);
+            throw new FfmpegException(inputPath, "audio clip", result.ExitCode, result.StdErrTail);
         }
 
         if (!File.Exists(outputPath))
@@ -405,26 +343,14 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
 
         var tempPath = $"{videoPath}.temp.mp4";
 
-        var psi = new ProcessStartInfo
-        {
-            FileName = "ffmpeg",
-            Arguments = $"-i \"{videoPath}\" -c copy -movflags +faststart \"{tempPath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        var result = await ExternalProcess.RunAsync(
+            "ffmpeg",
+            $"-i \"{videoPath}\" -c copy -movflags +faststart \"{tempPath}\"",
+            OptimizationTimeout,
+            logger,
+            ct);
 
-        using var process = Process.Start(psi);
-        if (process == null)
-        {
-            LogOptimizationStartFailed(logger, videoPath);
-            throw new FfmpegException(videoPath, "streaming optimization");
-        }
-
-        await process.WaitForExitAsync(ct);
-
-        if (process.ExitCode == 0 && File.Exists(tempPath))
+        if (result.ExitCode == 0 && File.Exists(tempPath))
         {
             File.Delete(videoPath);
             File.Move(tempPath, videoPath);

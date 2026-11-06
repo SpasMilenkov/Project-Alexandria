@@ -52,6 +52,31 @@ public class PreviewServiceDispatchTests
             _textPreview, _archivePreview, cache);
     }
 
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task RepublishJobAsync_onlyPublishesWhenTheVersionIsNotDeleted(bool deleted, bool expected)
+    {
+        var job = new JobBuilder().WithUser(_userId).Build();
+        _previewJobs.GetByJobIdAsync(job.Id, Arg.Any<CancellationToken>())
+            .Returns(new PreviewJobBuilder().WithJob(job).WithVersion(_versionId).WithUser(_userId).Build());
+
+        var version = new FileVersionBuilder().WithId(_versionId).Build();
+        version.DeletedAt = deleted ? DateTime.UtcNow : null;
+
+        // Runs the real predicate, because the row exists either way: files are soft deleted.
+        _versions.FirstOrDefaultAsync(Arg.Any<Expression<Func<FileVersion, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new[] { version }.AsQueryable()
+                .FirstOrDefault(call.Arg<Expression<Func<FileVersion, bool>>>()));
+        _files.GetMimeTypeByVersionIdAsync(_versionId, Arg.Any<CancellationToken>()).Returns("video/mp4");
+        _storage.CategorizeFile("video/mp4").Returns(FileCategory.Video);
+
+        var result = await _sut.RepublishJobAsync(job.Id, TestContext.Current.CancellationToken);
+
+        result.Should().Be(expected);
+        await _publisher.Received(expected ? 1 : 0).PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+    }
+
     private File StoredFile(string mimeType) =>
         new FileBuilder().WithMimeType(mimeType).WithOwner(_userId).Build();
 

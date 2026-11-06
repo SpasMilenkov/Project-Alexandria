@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
 using System.Numerics;
@@ -41,6 +42,45 @@ public partial class ContentStorageService(
     IMimeTypeResolver mimeResolver)
     : IContentStorageService
 {
+    // Jobs are dispatched as soon as an upload finalizes while promotion runs in the background, so a
+    // worker can get here first. The limit covers two runs of the promotion scanner, for when the API
+    // restarted and lost its in-memory queue.
+    private static readonly TimeSpan PromotionWaitLimit = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan PromotionPollInterval = TimeSpan.FromSeconds(5);
+
+    private Task WaitUntilPromotedAsync(Guid contentObjectId, CancellationToken ct) =>
+        WaitUntilPromotedAsync(contentObjectId, PromotionWaitLimit, PromotionPollInterval, ct);
+
+    internal async Task WaitUntilPromotedAsync(
+        Guid contentObjectId,
+        TimeSpan limit,
+        TimeSpan pollInterval,
+        CancellationToken ct)
+    {
+        if (await unitOfWork.ContentObjects.IsPromotedAsync(contentObjectId, ct))
+            return;
+
+        LogWaitingForPromotion(logger, contentObjectId);
+
+        var waited = Stopwatch.StartNew();
+        using var timer = new PeriodicTimer(pollInterval);
+
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            if (await unitOfWork.ContentObjects.IsPromotedAsync(contentObjectId, ct))
+            {
+                LogPromotionWaitEnded(logger, contentObjectId, waited.Elapsed);
+                return;
+            }
+
+            if (waited.Elapsed >= limit)
+            {
+                LogPromotionWaitExpired(logger, contentObjectId, limit);
+                throw new ContentNotPromotedException(contentObjectId, limit);
+            }
+        }
+    }
+
     /// <summary>
     /// Deletes a temporary object from the temp bucket with error handling.
     /// Takes the bare temp object key; temp objects always live under the
@@ -229,6 +269,8 @@ public partial class ContentStorageService(
             throw new InvalidOperationException($"File {versionId} not found in database.");
         }
 
+        await WaitUntilPromotedAsync(version.ContentObjectId, ct);
+
         var hashString = Convert.ToHexStringLower(version.ContentHash);
         var objectName = $"content/{hashString}";
 
@@ -261,24 +303,10 @@ public partial class ContentStorageService(
                             ?? throw new InvalidOperationException(
                                 $"Content object '{contentObjectId}' was not found.");
 
-        string bucket;
-        string key;
+        await WaitUntilPromotedAsync(contentObjectId, ct);
 
-        if (contentObject.IsPromoted)
-        {
-            bucket = config.Value.UploadBucket;
-            key = contentObject.StorageKey;
-        }
-        else
-        {
-            var upload = await unitOfWork.Uploads.FirstOrDefaultAsync(
-                             u => u.Id == contentObject.UploadId && u.Status == UploadStatus.Finished, ct)
-                         ?? throw new InvalidOperationException(
-                             $"No finished upload found for content object '{contentObjectId}'.");
-
-            bucket = config.Value.TempBucket;
-            key = $"content/{upload.TempObjectKey}";
-        }
+        var bucket = config.Value.UploadBucket;
+        var key = contentObject.StorageKey;
 
         LogDownloadingContentObject(logger, contentObjectId, bucket, key);
 
@@ -394,6 +422,8 @@ public partial class ContentStorageService(
             LogFileNotFoundForStreaming(logger, versionId);
             throw new InvalidOperationException($"File with ID: {versionId} not found.");
         }
+
+        await WaitUntilPromotedAsync(version.ContentObjectId, ct);
 
         var hash = Convert.ToHexStringLower(version.ContentHash);
         try

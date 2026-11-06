@@ -36,4 +36,12 @@ public class LibreOfficeException : PreviewProcessException
         : base(inputPath, $"LibreOffice did not create expected output '{expectedOutput}' for '{inputPath}'.")
     {
     }
+
+    /// <summary>
+    /// Used when LibreOffice outran its time limit and was killed.
+    /// </summary>
+    public LibreOfficeException(string inputPath, TimeSpan timeout, Exception inner)
+        : base(inputPath, $"LibreOffice exceeded its {timeout} time limit for '{inputPath}'.", inner)
+    {
+    }
 }
