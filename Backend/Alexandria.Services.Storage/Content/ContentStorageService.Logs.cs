@@ -139,4 +139,16 @@ public partial class ContentStorageService
         "Upload {UploadId} MIME resolved from {Declared} to {Resolved} via {Source}")]
     private static partial void LogMimeCorrected(
         ILogger logger, Guid uploadId, string declared, string resolved, MimeSource source);
+
+    [LoggerMessage(1058, LogLevel.Information,
+        "Content object {ContentObjectId} is not promoted yet, waiting before reading it")]
+    private static partial void LogWaitingForPromotion(ILogger logger, Guid contentObjectId);
+
+    [LoggerMessage(1059, LogLevel.Information,
+        "Content object {ContentObjectId} was promoted after waiting {Waited}")]
+    private static partial void LogPromotionWaitEnded(ILogger logger, Guid contentObjectId, TimeSpan waited);
+
+    [LoggerMessage(1060, LogLevel.Error,
+        "Content object {ContentObjectId} was not promoted within {Limit}")]
+    private static partial void LogPromotionWaitExpired(ILogger logger, Guid contentObjectId, TimeSpan limit);
 }
