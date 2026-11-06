@@ -12,7 +12,7 @@ import { parseHex } from "@/utils/color";
 /** Convert a 6-digit hex color string to "r,g,b" */
 const hexToRgbChannels = (hex: string): string => parseHex(hex).join(",");
 
-const resolveAccentRGB = (colorName: string): string => {
+export const resolveAccentRGB = (colorName: string): string => {
   const match = AVAILABLE_COLORS.find((c) => c.name === colorName);
   const fallback = AVAILABLE_COLORS.find((c) => c.name === "amber")!;
   return match?.value ?? fallback.value;

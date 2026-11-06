@@ -19,6 +19,7 @@ import UploadProgressSummary from "@/components/dashboard/file-system/Modals/upl
 import { useAppToast } from "@/composables/useAppToast";
 import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { useReportUploadActivity } from "@/composables/useReportUploadActivity";
 import { countOf } from "@/features/toast/format";
 import { useDirectoryStore } from "@/stores/directory";
 
@@ -151,6 +152,35 @@ const progressLabel = computed(() => {
 });
 
 const showProgress = computed(() => isExtracting.value || fileStatuses.value.length > 0);
+
+useReportUploadActivity(
+  () => {
+    const label = archiveFile.value?.name ?? null;
+
+    if (isExtracting.value) {
+      return {
+        fileCount: totalEntryCount.value,
+        kind: "extract",
+        label,
+        progress: extractionProgress.value,
+      };
+    }
+
+    if (!uploading.value) return null;
+
+    return { fileCount: totalFiles.value, kind: "upload", label, progress: overallProgress.value };
+  },
+  () => {
+    if (extractionError.value) return "failed";
+
+    // Extraction alone finishing is not news: the upload still waits for a click.
+    if (cancelled.value || fileStatuses.value.length === 0) return null;
+
+    if (failedFiles.value.length > 0) return "failed";
+
+    return "done";
+  },
+);
 
 interface ArchiveStatus {
   icon: string;

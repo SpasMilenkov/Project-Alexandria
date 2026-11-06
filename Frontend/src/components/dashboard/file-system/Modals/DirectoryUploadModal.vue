@@ -11,6 +11,7 @@ import UploadProgressSummary from "@/components/dashboard/file-system/Modals/upl
 import { useAppToast } from "@/composables/useAppToast";
 import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { useReportUploadActivity } from "@/composables/useReportUploadActivity";
 import { countOf } from "@/features/toast/format";
 
 const appToast = useAppToast("upload");
@@ -102,6 +103,27 @@ const progressLabel = computed(() => {
 
 const canUpload = computed(
   () => files.value.length > 0 && !uploading.value && fileStatuses.value.length === 0,
+);
+
+useReportUploadActivity(
+  () => {
+    if (!uploading.value) return null;
+
+    return {
+      fileCount: totalFiles.value || files.value.length,
+      kind: "upload",
+      label: rootFolderName.value ?? null,
+      progress: overallProgress.value,
+    };
+  },
+  () => {
+    if (cancelled.value) return null;
+
+    // No file statuses means creating the folder structure itself failed.
+    if (fileStatuses.value.length === 0 || failedFiles.value.length > 0) return "failed";
+
+    return "done";
+  },
 );
 
 // upload
