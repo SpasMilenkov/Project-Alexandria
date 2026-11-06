@@ -1,4 +1,5 @@
 using Alexandria.Common;
+using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
 using Alexandria.Services.Preview.Media;
@@ -47,7 +48,7 @@ public class MediaPreviewGenerationHandler(
         var version =
             await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == versionId && v.DeletedAt == null, ct);
 
-        if (version is null) throw new InvalidOperationException($"Version with that ID: {message} does not exist.");
+        if (version is null) throw new PreviewSourceDeletedException(versionId);
 
         var contentHash = Convert.ToHexStringLower(version.ContentHash);
 

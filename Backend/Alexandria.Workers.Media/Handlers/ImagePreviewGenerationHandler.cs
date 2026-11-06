@@ -1,5 +1,6 @@
 using Alexandria.Common;
 using Alexandria.Common.Config;
+using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 
@@ -46,7 +47,7 @@ public class ImagePreviewGenerationHandler(
         var message = versionId.ToString();
         var version =
             await unitOfWork.FileVersions.FirstOrDefaultAsync(v => v.Id == versionId && v.DeletedAt == null, ct)
-            ?? throw new InvalidOperationException($"Version with that ID: {message} does not exist.");
+            ?? throw new PreviewSourceDeletedException(versionId);
 
         var fileHash = Convert.ToHexStringLower(version.ContentHash);
 

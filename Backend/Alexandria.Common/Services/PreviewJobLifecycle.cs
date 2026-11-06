@@ -1,3 +1,4 @@
+using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Exceptions.Preview.Images;
 using Alexandria.Common.Exceptions.Preview.Media;
 using Alexandria.Data.Models;
@@ -39,7 +40,8 @@ public static class PreviewJobLifecycle
 
     /// <summary>
     /// Records a generation failure. Failures that cannot succeed on retry (unsupported or
-    /// oversized input) exhaust the retry budget so automatic recovery leaves them alone.
+    /// oversized input, deleted source) exhaust the retry budget so automatic recovery leaves
+    /// them alone.
     /// </summary>
     public static async Task FailAsync(
         IUnitOfWork unitOfWork, Guid jobId, Exception ex, CancellationToken ct = default)
@@ -60,5 +62,6 @@ public static class PreviewJobLifecycle
     internal static bool IsPermanent(Exception ex)
         => ex is UnsupportedImageFormatException
             or ImageTooLargeException
-            or UnsupportedMediaCategoryException;
+            or UnsupportedMediaCategoryException
+            or PreviewSourceDeletedException;
 }
