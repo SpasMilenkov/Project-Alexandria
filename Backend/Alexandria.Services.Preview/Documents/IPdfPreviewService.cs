@@ -6,8 +6,8 @@ namespace Alexandria.Services.Preview.Documents;
 /// <summary>
 /// Generates PDF preview files from various document formats by delegating to
 /// LibreOffice (for conversion) and Ghostscript (for page trimming).
-/// All methods return the path to a temporary PDF file on disk; callers are
-/// responsible for deleting it after use.
+/// Everything is written next to the input file, including intermediate files that are left
+/// behind on failure, so callers should give each input its own folder and delete the folder.
 /// </summary>
 public interface IPdfPreviewService
 {
@@ -36,7 +36,7 @@ public interface IPdfPreviewService
     /// </summary>
     /// <param name="inputPath">Absolute path to the source <c>.docx</c> / <c>.doc</c> file.</param>
     /// <param name="ct">Token for cooperative cancellation.</param>
-    /// <returns>Absolute path to the generated preview PDF in the system temp directory.</returns>
+    /// <returns>Absolute path to the generated preview PDF, next to the input file.</returns>
     /// <exception cref="Exception">
     /// Thrown when LibreOffice or Ghostscript exits with a non-zero code,
     /// or when either process fails to produce its expected output file.
@@ -49,7 +49,7 @@ public interface IPdfPreviewService
     /// </summary>
     /// <param name="inputPath">Absolute path to the source <c>.pptx</c> / <c>.ppt</c> file.</param>
     /// <param name="ct">Token for cooperative cancellation.</param>
-    /// <returns>Absolute path to the generated preview PDF in the system temp directory.</returns>
+    /// <returns>Absolute path to the generated preview PDF, next to the input file.</returns>
     /// <exception cref="Exception">
     /// Thrown when LibreOffice or Ghostscript exits with a non-zero code,
     /// or when either process fails to produce its expected output file.
@@ -64,7 +64,7 @@ public interface IPdfPreviewService
     /// </summary>
     /// <param name="inputPath">Absolute path to the source <c>.xlsx</c> file.</param>
     /// <param name="ct">Token for cooperative cancellation.</param>
-    /// <returns>Absolute path to the generated preview PDF in the system temp directory.</returns>
+    /// <returns>Absolute path to the generated preview PDF, next to the input file.</returns>
     /// <exception cref="Exception">
     /// Thrown when LibreOffice exits with a non-zero code, or when it fails to produce
     /// its expected output file.

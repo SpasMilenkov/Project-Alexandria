@@ -1,3 +1,4 @@
+using Alexandria.Common.Processes;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.DocumentWorker;
 using Alexandria.Workers.Document;
@@ -30,6 +31,7 @@ try
     builder.Services.AddHostedService<Worker>();
     var host = builder.Build();
     host.MapHealthChecks("/health");
+    JobScratch.SweepLeftovers(host.Logger);
     await host.RunAsync();
 }
 catch (Exception ex)

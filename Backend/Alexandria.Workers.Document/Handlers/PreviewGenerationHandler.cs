@@ -1,5 +1,6 @@
 using Alexandria.Common;
 using Alexandria.Common.Config;
+using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Preview.Documents;
@@ -58,9 +59,8 @@ public class PreviewGenerationHandler(
 
         // Generate temp path with correct extension based on MIME type
         var extension = GetExtensionFromMimeType(mimetype);
-        var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
-        string? previewPath = null;
-        string? thumbnailPath = null;
+        var scratch = JobScratch.Create();
+        var tempPath = Path.Combine(scratch, $"{Guid.NewGuid()}{extension}");
 
         try
         {
@@ -73,11 +73,8 @@ public class PreviewGenerationHandler(
                 message, tempPath, new FileInfo(tempPath).Length);
 
             var fileCategory = storage.CategorizeFile(mimetype);
-            var (generatedPreviewPath, generatedThumbnailPath) =
+            var (previewPath, thumbnailPath) =
                 await pdfPreviewService.GeneratePreviewAsync(tempPath, fileCategory, ct);
-
-            previewPath = generatedPreviewPath;
-            thumbnailPath = generatedThumbnailPath;
 
             if (string.IsNullOrEmpty(previewPath) || !File.Exists(previewPath))
                 throw new InvalidOperationException(
@@ -115,12 +112,7 @@ public class PreviewGenerationHandler(
         }
         finally
         {
-            if (File.Exists(tempPath))
-                File.Delete(tempPath);
-            if (previewPath != null && File.Exists(previewPath))
-                File.Delete(previewPath);
-            if (thumbnailPath != null && File.Exists(thumbnailPath))
-                File.Delete(thumbnailPath);
+            JobScratch.Delete(scratch, logger);
         }
     }
 

@@ -120,7 +120,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         MediaMetadataDto metadata,
         CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var baseName = Path.GetFileNameWithoutExtension(inputPath);
         var thumbnailPath = Path.Combine(outputDir, $"{baseName}_thumb.jpg");
         var previewPath = Path.Combine(outputDir, $"{baseName}_preview.mp4");
@@ -146,7 +146,7 @@ public partial class MediaPreviewService(ILogger<MediaPreviewService> logger) : 
         MediaMetadataDto metadata,
         CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var baseName = Path.GetFileNameWithoutExtension(inputPath);
         var thumbnailPath = Path.Combine(outputDir, $"{baseName}_thumb.jpg");
         var previewPath = Path.Combine(outputDir, $"{baseName}_preview.mp3");

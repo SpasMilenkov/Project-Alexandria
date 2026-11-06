@@ -16,6 +16,7 @@ using ImageHandler = Alexandria.Workers.Media.Handlers.ImagePreviewGenerationHan
 using MediaHandler = Alexandria.Workers.Media.Handlers.MediaPreviewGenerationHandler;
 using DocumentHandler = Alexandria.Workers.Document.Handlers.PreviewGenerationHandler;
 using File = System.IO.File;
+using IoDirectory = System.IO.Directory;
 
 namespace Alexandria.Tests.Unit.PreviewJobs;
 
@@ -208,6 +209,79 @@ public class PreviewHandlerTests
         await _jobs.Received(1).UpdateStatusAsync(
             _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task media_interrupted_after_writing_outputs_removes_everything(bool cancelled)
+    {
+        StoredJob();
+        StoredVersion("video/mp4");
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        string? scratch = null;
+        var media = Substitute.For<IMediaPreviewService>();
+        media.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
+            .Returns<MediaPreviewResult?>(call =>
+            {
+                scratch = WritePartialOutputs(call.Arg<string>());
+                return InterruptJob(cancelled, cts);
+            });
+        var sut = new MediaHandler(
+            Substitute.For<ILogger<MediaHandler>>(),
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(), media, _unitOfWork);
+
+        var act = () => sut.HandleAsync(_jobId.ToString(), cts.Token);
+
+        await act.Should().ThrowAsync<Exception>();
+        scratch.Should().NotBeNull();
+        IoDirectory.Exists(scratch).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task document_interrupted_after_writing_outputs_removes_everything(bool cancelled)
+    {
+        StoredJob();
+        StoredVersion("application/pdf");
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        string? scratch = null;
+        var pdf = Substitute.For<IPdfPreviewService>();
+        pdf.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
+            .Returns<PdfPreviewResult>(call =>
+            {
+                scratch = WritePartialOutputs(call.Arg<string>());
+                InterruptJob(cancelled, cts);
+                return new PdfPreviewResult("", "");
+            });
+        var sut = new DocumentHandler(
+            Substitute.For<ILogger<DocumentHandler>>(),
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(), pdf, _unitOfWork);
+
+        var act = () => sut.HandleAsync(_jobId.ToString(), cts.Token);
+
+        await act.Should().ThrowAsync<Exception>();
+        scratch.Should().NotBeNull();
+        IoDirectory.Exists(scratch).Should().BeFalse();
+    }
+
+    // The service only hands back paths on success, so these files are unknown to the handler.
+    private static string WritePartialOutputs(string inputPath)
+    {
+        var folder = Path.GetDirectoryName(inputPath)!;
+        File.WriteAllText(Path.Combine(folder, "partial_preview.mp4"), "partial");
+        IoDirectory.CreateDirectory(Path.Combine(folder, "lu123.tmp"));
+        return folder;
+    }
+
+    private static MediaPreviewResult InterruptJob(bool cancelled, CancellationTokenSource cts)
+    {
+        if (!cancelled)
+            throw new InvalidOperationException("tool failed");
+
+        cts.Cancel();
+        throw new OperationCanceledException(cts.Token);
     }
 
     [Fact]

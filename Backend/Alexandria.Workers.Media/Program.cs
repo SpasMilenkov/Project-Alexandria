@@ -1,3 +1,4 @@
+using Alexandria.Common.Processes;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.DocumentWorker;
 using Alexandria.Workers.Media;
@@ -28,6 +29,8 @@ try
     var host = builder.Build();
 
     host.MapHealthChecks("/health");
+
+    JobScratch.SweepLeftovers(host.Logger);
 
     await host.RunAsync();
 }
