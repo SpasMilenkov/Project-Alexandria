@@ -131,6 +131,12 @@ public class PreviewService(
         if (previewJob is null)
             return false;
 
+        // Files are soft deleted, so the lookups below still find a deleted file's version.
+        var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(
+            v => v.Id == previewJob.VersionId && v.DeletedAt == null, ct);
+        if (version is null)
+            return false;
+
         var mimeType = await unitOfWork.Files.GetMimeTypeByVersionIdAsync(previewJob.VersionId, ct);
         if (mimeType is null)
             return false;
