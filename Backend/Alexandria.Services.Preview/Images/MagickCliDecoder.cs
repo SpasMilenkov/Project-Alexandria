@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
@@ -17,6 +18,8 @@ public sealed partial class MagickCliDecoder
 {
     private const int MaxErrorBytes = 2048;
     private const int ProbeTimeoutSeconds = 10;
+
+    private static readonly TimeSpan KillWait = TimeSpan.FromSeconds(10);
 
     // Only one child at a time: the limits below are per process, not per worker.
     private static readonly SemaphoreSlim Gate = new(1, 1);
@@ -215,17 +218,17 @@ public sealed partial class MagickCliDecoder
         }
         catch (OperationCanceledException) when (!callerToken.IsCancellationRequested)
         {
-            Kill(process);
+            await KillAndWaitAsync(process);
             throw new ImageMagickException($"ImageMagick exceeded its {_config.TimeoutSeconds}s time limit.");
         }
         catch
         {
-            Kill(process);
+            await KillAndWaitAsync(process);
             throw;
         }
     }
 
-    private static async Task FeedAsync(Stream? input, Stream stdin, CancellationToken token)
+    private async Task FeedAsync(Stream? input, Stream stdin, CancellationToken token)
     {
         try
         {
@@ -235,10 +238,10 @@ public sealed partial class MagickCliDecoder
                 await input.CopyToAsync(stdin, token);
             }
         }
-        catch (IOException)
+        catch (IOException ex)
         {
-            // The child closed its stdin early (usually after rejecting the input); its exit code
-            // and stderr carry the actual failure.
+            // Usually a rejected input: the exit code and stderr carry the actual failure.
+            LogStdinClosedEarly(_logger, ex);
         }
         finally
         {
@@ -246,9 +249,9 @@ public sealed partial class MagickCliDecoder
             {
                 await stdin.DisposeAsync();
             }
-            catch (IOException)
+            catch (IOException ex)
             {
-                // Same early-exit case as above.
+                LogStdinClosedEarly(_logger, ex);
             }
         }
     }
@@ -279,16 +282,26 @@ public sealed partial class MagickCliDecoder
         return buffer.ToArray();
     }
 
-    private static void Kill(Process process)
+    // The gate allows one child at a time, so this one has to be gone before the gate is released.
+    private async Task KillAndWaitAsync(Process process)
     {
         try
         {
-            if (!process.HasExited)
-                process.Kill(entireProcessTree: true);
+            process.Kill(entireProcessTree: true);
         }
-        catch (InvalidOperationException)
+        catch (Exception ex) when (ex is InvalidOperationException or AggregateException or Win32Exception)
         {
-            // Already exited between the check and the kill.
+            LogKillFailed(_logger, ex, process.Id);
+        }
+
+        try
+        {
+            using var wait = new CancellationTokenSource(KillWait);
+            await process.WaitForExitAsync(wait.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            LogStillRunningAfterKill(_logger, process.Id, KillWait);
         }
     }
 

@@ -17,4 +17,8 @@ public partial class LyricsWorker
 
     [LoggerMessage(22001, LogLevel.Information, "Lyrics consumer stopping")]
     private static partial void LogWorkerStopping(ILogger logger);
+
+    [LoggerMessage(22005, LogLevel.Information,
+        "Stopping mid-message; delivery {DeliveryTag} goes back to the queue when the channel closes.")]
+    private static partial void LogStoppingMidMessage(ILogger logger, ulong deliveryTag);
 }

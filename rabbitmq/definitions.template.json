@@ -90,6 +90,18 @@
       "arguments": {}
     }
   ],
+  "policies": [
+    {
+      "vhost": "${RABBITMQ_VHOST}",
+      "name": "transpilation-consumer-timeout",
+      "pattern": "^transpilation-queue$",
+      "apply-to": "queues",
+      "priority": 0,
+      "definition": {
+        "consumer-timeout": 25200000
+      }
+    }
+  ],
   "queues": [
     { "name": "document-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },
     { "name": "media-queue", "vhost": "${RABBITMQ_VHOST}", "durable": true, "auto_delete": false, "arguments": {} },

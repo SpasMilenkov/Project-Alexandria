@@ -8,6 +8,10 @@ public partial class TranspilationWorker
     [LoggerMessage(12001, LogLevel.Information, "Transpilation consumer stopping")]
     private static partial void LogWorkerStopping(ILogger logger);
 
+    [LoggerMessage(12003, LogLevel.Information,
+        "Stopping mid-message; delivery {DeliveryTag} goes back to the queue when the channel closes.")]
+    private static partial void LogStoppingMidMessage(ILogger logger, ulong deliveryTag);
+
     [LoggerMessage(12002, LogLevel.Warning, "Discarding transpilation message without a valid job id")]
     private static partial void LogMalformedMessage(ILogger logger);
 }

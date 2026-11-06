@@ -144,6 +144,11 @@ public partial class TriggerConsumerWorker(
                         break;
                 }
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // Not a failed attempt: the retry path would count it towards parking.
+                LogStoppingMidMessage(logger, eventArgs.DeliveryTag);
+            }
             catch (Exception ex)
             {
                 // Staging failed before any batch or Job row existed, so the
@@ -214,12 +219,13 @@ public partial class TriggerConsumerWorker(
     {
         LogWorkerStopping(logger);
 
+        // Handlers have to be told to stop first: closing the channel waits for the running one.
+        await base.StopAsync(cancellationToken);
+
         if (_channel is not null)
         {
             await _channel.CloseAsync(cancellationToken);
             await _channel.DisposeAsync();
         }
-
-        await base.StopAsync(cancellationToken);
     }
 }

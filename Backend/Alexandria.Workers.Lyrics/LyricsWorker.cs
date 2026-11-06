@@ -129,6 +129,11 @@ public partial class LyricsWorker : BackgroundService
 
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                // Not a failed attempt: the retry path would count it towards parking.
+                LogStoppingMidMessage(_logger, eventArgs.DeliveryTag);
+            }
             catch (Exception ex)
             {
                 LogConsumerError(_logger, ex);
@@ -222,9 +227,19 @@ public partial class LyricsWorker : BackgroundService
     public override async Task StopAsync(CancellationToken ct)
     {
         LogWorkerStopping(_logger);
-        _concurrencyGate.Dispose();
+
+        // Handlers have to be told to stop first: closing the channel waits for the running one.
+        await base.StopAsync(ct);
+
         if (_channel is not null)
             await _channel.CloseAsync(ct);
-        await base.StopAsync(ct);
+    }
+
+    // Not in StopAsync: a channel the broker already closed does not wait for the running handler,
+    // and that handler still releases the gate when it finishes.
+    public override void Dispose()
+    {
+        _concurrencyGate.Dispose();
+        base.Dispose();
     }
 }

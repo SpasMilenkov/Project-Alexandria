@@ -75,6 +75,10 @@ public partial class TranspilationWorker(
 
                 await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                LogStoppingMidMessage(logger, eventArgs.DeliveryTag);
+            }
             catch (Exception ex)
             {
                 LogConsumerError(logger, ex);
@@ -96,9 +100,19 @@ public partial class TranspilationWorker(
     public override async Task StopAsync(CancellationToken ct)
     {
         LogWorkerStopping(logger);
-        _concurrencyGate.Dispose();
+
+        // Handlers have to be told to stop first: closing the channel waits for the running one.
+        await base.StopAsync(ct);
+
         if (_channel is not null)
             await _channel.CloseAsync(ct);
-        await base.StopAsync(ct);
+    }
+
+    // Not in StopAsync: a channel the broker already closed does not wait for the running handler,
+    // and that handler still releases the gate when it finishes.
+    public override void Dispose()
+    {
+        _concurrencyGate.Dispose();
+        base.Dispose();
     }
 }
