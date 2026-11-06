@@ -20,12 +20,19 @@ public class UpdateAppearanceValidator : Validator<UpdateAppearanceRequest>
 
     private static readonly string[] ValidFonts = ["system", "serif", "mono"];
 
+    private const string MatchAccent = "accent";
+
     public UpdateAppearanceValidator()
     {
         RuleFor(x => x.AccentColor)
             .NotEmpty()
             .Must(v => ValidColors.Contains(v))
             .WithMessage("Invalid accent color.");
+
+        RuleFor(x => x.TabIconColor)
+            .NotEmpty()
+            .Must(v => v == MatchAccent || ValidColors.Contains(v))
+            .WithMessage("Invalid tab icon color.");
 
         RuleFor(x => x.BackgroundColor)
             .NotEmpty()

@@ -8,6 +8,7 @@ namespace Alexandria.Api.Features.Settings.Apperarance.UpdateAppearance;
 public class UpdateAppearanceRequest
 {
     public string AccentColor { get; set; } = default!;
+    public string TabIconColor { get; set; } = default!;
     public string BackgroundColor { get; set; } = default!;
     public double BackgroundImageOpacity { get; set; }
     public int GridIconSize { get; set; }
@@ -42,6 +43,7 @@ public class UpdateAppearanceEndpoint(IUserSettingsService settingsService)
         await settingsService.SetAppearanceAsync(userId, new AppearanceSettingsValue
         {
             AccentColor = req.AccentColor,
+            TabIconColor = req.TabIconColor,
             BackgroundColor = req.BackgroundColor,
             BackgroundImageKey = current.BackgroundImageKey,
             BackgroundImageUpdatedAt = current.BackgroundImageUpdatedAt,

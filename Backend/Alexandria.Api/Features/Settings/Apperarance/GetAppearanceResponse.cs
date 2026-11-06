@@ -5,6 +5,7 @@ namespace Alexandria.Api.Features.Settings.Apperarance;
 public class GetAppearanceResponse
 {
     public string AccentColor { get; set; } = default!;
+    public string TabIconColor { get; set; } = default!;
     public string BackgroundColor { get; set; } = default!;
     public string? BackgroundImageKey { get; set; }
     public DateTime? BackgroundImageUpdatedAt { get; set; }
@@ -23,6 +24,7 @@ public class GetAppearanceResponse
     public static GetAppearanceResponse FromValue(AppearanceSettingsValue s) => new()
     {
         AccentColor = s.AccentColor,
+        TabIconColor = s.TabIconColor,
         BackgroundColor = s.BackgroundColor,
         BackgroundImageKey = s.BackgroundImageKey,
         BackgroundImageUpdatedAt = s.BackgroundImageUpdatedAt,
