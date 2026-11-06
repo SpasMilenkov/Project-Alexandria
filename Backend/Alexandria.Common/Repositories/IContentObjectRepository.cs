@@ -7,6 +7,12 @@ public interface IContentObjectRepository : IRepository<ContentObject>
     Task<ContentObject?> HashExistsAsync(byte[] hash, CancellationToken ct = default);
 
     /// <summary>
+    /// Reads the flag from the database on every call, for callers polling a row that another
+    /// process updates: a tracked entity would keep returning the value it first loaded.
+    /// </summary>
+    Task<bool> IsPromotedAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
     /// Batch lookup for the temp sweeper. Returns live rows matching any of the
     /// given hashes. Orphaned rows are included so callers can distinguish a
     /// sole copy from a promoted survivor; soft-deleted rows are excluded.

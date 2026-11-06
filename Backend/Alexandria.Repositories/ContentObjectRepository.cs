@@ -16,6 +16,11 @@ public class ContentObjectRepository(AlexandriaDbContext context) : IContentObje
         return await _dbSet.FindAsync([id], ct);
     }
 
+    public async Task<bool> IsPromotedAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _dbSet.Where(c => c.Id == id).Select(c => c.IsPromoted).FirstAsync(ct);
+    }
+
     public async Task<ContentObject?> FirstOrDefaultAsync(
         Expression<Func<ContentObject, bool>> predicate,
         CancellationToken ct = default)

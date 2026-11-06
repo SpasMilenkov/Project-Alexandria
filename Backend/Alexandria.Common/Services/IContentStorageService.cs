@@ -18,9 +18,8 @@ public interface IContentStorageService
     Task<Stream> DownloadSeekableFile(Guid versionId, CancellationToken ct = default);
 
     /// <summary>
-    /// Downloads the raw content object to a local file path.
-    /// Transparently resolves whether the object lives in the promoted upload bucket
-    /// or the temporary bucket based on <see cref="ContentObject.IsPromoted"/>.
+    /// Downloads the raw content object to a local file path, first waiting for it to be promoted,
+    /// because jobs can reach a worker before promotion finishes.
     /// </summary>
     /// <param name="contentObjectId">The content object to download.</param>
     /// <param name="localFilePath">Absolute path of the file to write. The file is created or overwritten.</param>
