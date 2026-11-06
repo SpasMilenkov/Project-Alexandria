@@ -35,7 +35,12 @@
         >
           ·
         </span>
-        <p class="truncate text-xs text-gray-600 dark:text-gray-400" :title="subtitle">
+        <TagTooltip v-if="tag.description" :tag="tag">
+          <p class="truncate text-xs text-gray-600 dark:text-gray-400">
+            {{ subtitle }}
+          </p>
+        </TagTooltip>
+        <p v-else class="truncate text-xs text-gray-600 dark:text-gray-400" :title="subtitle">
           {{ subtitle }}
         </p>
       </div>
@@ -70,6 +75,7 @@ import type { TagDto } from "@/api/tag";
 import { describeTag, tagBreadcrumbPrefix } from "@/features/tags/display";
 
 import TagIconWell from "./TagIconWell.vue";
+import TagTooltip from "./TagTooltip.vue";
 
 const {
   tag,

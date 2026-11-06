@@ -37,7 +37,12 @@
         >
           ·
         </span>
-        <p class="truncate text-xs text-gray-600 dark:text-gray-400" :title="secondaryLine">
+        <TagTooltip v-if="tag.description" :tag="tag">
+          <p class="truncate text-xs text-gray-600 dark:text-gray-400">
+            {{ secondaryLine }}
+          </p>
+        </TagTooltip>
+        <p v-else class="truncate text-xs text-gray-600 dark:text-gray-400" :title="secondaryLine">
           {{ secondaryLine }}
         </p>
       </div>
@@ -80,6 +85,7 @@ import { describeTag, tagBreadcrumbPrefix } from "@/features/tags/display";
 import { formatDate } from "@/utils/date-formatters";
 
 import TagIconWell from "./TagIconWell.vue";
+import TagTooltip from "./TagTooltip.vue";
 
 const { tag, isSelected } = defineProps<{
   tag: TagDto;

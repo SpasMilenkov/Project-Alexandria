@@ -4,12 +4,12 @@
     :class="isRemovable ? 'pr-0.5' : 'pr-2.5'"
     :style="{ '--tag-color': tag.color }"
   >
-    <UTooltip :text="tooltipText">
+    <TagTooltip :tag="tag">
       <span class="flex min-w-0 items-center gap-1.5">
         <Icon :icon="iconName" class="tag-badge-glyph h-3.5 w-3.5 shrink-0" />
         <span class="max-w-40 truncate">{{ tag.name }}</span>
       </span>
-    </UTooltip>
+    </TagTooltip>
 
     <button
       v-if="isRemovable"
@@ -31,6 +31,8 @@ import type { TagDto } from "@/api/tag";
 
 import { getIconByValue } from "@/utils/files/icons";
 
+import TagTooltip from "./TagTooltip.vue";
+
 const { tag, fileId = "" } = defineProps<{
   tag: TagDto;
   fileId?: string;
@@ -44,8 +46,6 @@ const emit = defineEmits<{
 const isRemovable = computed(() => Boolean(fileId));
 
 const iconName = computed(() => getIconByValue(tag.icon) || "mdi:tag");
-
-const tooltipText = computed(() => tag.description || tag.name);
 </script>
 
 <style scoped>
