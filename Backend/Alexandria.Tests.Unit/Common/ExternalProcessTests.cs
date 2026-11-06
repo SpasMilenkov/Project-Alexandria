@@ -29,6 +29,22 @@ public class ExternalProcessTests
         ExternalProcess.RunAsync("sh", $"-c \"{script}\"", timeout, logger, ct);
 
     [Fact]
+    public async Task RunAsync_withEnvironment_toolSeesTheValue()
+    {
+        RequireLinux();
+
+        var result = await ExternalProcess.RunAsync(
+            "sh",
+            "-c \"printenv TMPDIR\"",
+            GenerousTimeout,
+            new Dictionary<string, string> { ["TMPDIR"] = "/job/folder" },
+            NullLogger.Instance,
+            TestContext.Current.CancellationToken);
+
+        result.StdOut.TrimEnd().Should().Be("/job/folder");
+    }
+
+    [Fact]
     public async Task RunAsync_stderrLargerThanPipe_returnsExitCodeAndFinalLine()
     {
         RequireLinux();

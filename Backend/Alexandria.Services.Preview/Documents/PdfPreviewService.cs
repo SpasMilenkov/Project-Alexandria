@@ -113,7 +113,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
     /// <inheritdoc/>
     public async Task<string> GenerateWordPreviewAsync(string inputPath, CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}.pdf");
 
         await ConvertToPdfWithLibreOffice(inputPath, outputDir, ct);
@@ -127,7 +127,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
     /// <inheritdoc/>
     public async Task<string> GeneratePowerPointPreviewAsync(string inputPath, CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}.pdf");
 
         await ConvertToPdfWithLibreOffice(inputPath, outputDir, ct);
@@ -141,11 +141,8 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
     /// <inheritdoc/>
     public async Task<string> GenerateExcelPreviewAsync(string inputPath, CancellationToken ct)
     {
-        var tempExcelPath = Path.Combine(
-            Path.GetTempPath(),
-            $"{Path.GetFileNameWithoutExtension(inputPath)}_temp.xlsx");
-
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
+        var tempExcelPath = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}_temp.xlsx");
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}_temp.pdf");
         var finalOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}_preview.pdf");
 
@@ -197,7 +194,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
 
     private async Task<string> GenerateFullPdfAsync(string inputPath, CancellationToken ct)
     {
-        var outputDir = Path.GetTempPath();
+        var outputDir = Path.GetDirectoryName(inputPath) ?? Path.GetTempPath();
         var expectedOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}.pdf");
         var finalOutput = Path.Combine(outputDir, $"{Path.GetFileNameWithoutExtension(inputPath)}_preview.pdf");
 
@@ -222,6 +219,9 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
                 "libreoffice",
                 $"--headless --convert-to pdf --outdir \"{outputDir}\" \"{inputPath}\"",
                 LibreOfficeTimeout,
+                // LibreOffice keeps large working files in TMPDIR and cannot remove them if it is
+                // killed, so they have to land somewhere that gets cleaned up without its help.
+                new Dictionary<string, string> { ["TMPDIR"] = outputDir },
                 logger,
                 ct);
         }

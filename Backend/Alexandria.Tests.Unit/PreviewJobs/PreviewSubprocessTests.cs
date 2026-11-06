@@ -167,6 +167,40 @@ public class PreviewSubprocessTests
         }
     }
 
+    [Theory]
+    [InlineData(FileCategory.Video, "input.mp4",
+        "-f lavfi -i testsrc2=size=160x90:rate=10:duration=1 -f lavfi -i sine=duration=1 " +
+        "-c:v libx264 -preset ultrafast -threads 1 -c:a aac")]
+    [InlineData(FileCategory.Audio, "input.flac", "-f lavfi -i sine=frequency=440:duration=1 -c:a flac")]
+    public async Task MediaGeneratePreviewAsync_writesOutputsNextToTheInput(
+        FileCategory category,
+        string inputName,
+        string encodeArguments)
+    {
+        Assert.SkipUnless(OnPath("ffmpeg") && OnPath("ffprobe"), "ffmpeg is not installed.");
+
+        var directory = Directory.CreateTempSubdirectory("preview-subprocess-test-").FullName;
+        var inputPath = Path.Combine(directory, inputName);
+
+        try
+        {
+            await RunToolAsync("ffmpeg", $"-v error {encodeArguments} \"{inputPath}\"");
+
+            var sut = new MediaPreviewService(NullLogger<MediaPreviewService>.Instance);
+
+            var result = await sut
+                .GeneratePreviewAsync(inputPath, category, TestContext.Current.CancellationToken)
+                .WaitAsync(HangLimit, TestContext.Current.CancellationToken);
+
+            Path.GetDirectoryName(result!.PreviewPath).Should().Be(directory);
+            Path.GetDirectoryName(result.ThumbnailPath).Should().Be(directory);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task PdfGeneratePreviewAsync_healthyPdf_producesPreviewAndThumbnail()
     {

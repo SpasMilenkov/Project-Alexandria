@@ -28,10 +28,21 @@ public static partial class ExternalProcess
     /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled.</exception>
     /// <exception cref="ExternalProcessTimeoutException">The tool outran <paramref name="timeout"/>.</exception>
     /// <exception cref="Win32Exception">The tool could not be started.</exception>
+    public static Task<ExternalProcessResult> RunAsync(
+        string fileName,
+        string arguments,
+        TimeSpan timeout,
+        ILogger logger,
+        CancellationToken ct) =>
+        RunAsync(fileName, arguments, timeout, environment: null, logger, ct);
+
+    /// <inheritdoc cref="RunAsync(string, string, TimeSpan, ILogger, CancellationToken)"/>
+    /// <param name="environment">Variables to set for the tool, on top of the ones it inherits.</param>
     public static async Task<ExternalProcessResult> RunAsync(
         string fileName,
         string arguments,
         TimeSpan timeout,
+        IReadOnlyDictionary<string, string>? environment,
         ILogger logger,
         CancellationToken ct)
     {
@@ -50,6 +61,12 @@ public static partial class ExternalProcess
             UseShellExecute = false,
             CreateNoWindow = true
         };
+
+        if (environment is not null)
+        {
+            foreach (var (name, value) in environment)
+                process.StartInfo.Environment[name] = value;
+        }
 
         process.Start();
 
