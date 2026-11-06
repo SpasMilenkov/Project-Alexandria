@@ -600,6 +600,46 @@ describe("useSettingsStore", () => {
     });
   });
 
+  describe("tabIconColor", () => {
+    it("matches the accent by default", () => {
+      const store = useSettingsStore();
+      expect(store.tabIconColor).toBe("accent");
+      expect(store.getAppearanceSettings.tabIconColor).toBe("accent");
+    });
+
+    it("accepts palette colors and falls back to the accent for anything else", () => {
+      const store = useSettingsStore();
+
+      store.setTabIconColor("sky");
+      expect(store.tabIconColor).toBe("sky");
+      expect(store.isAppearanceModified).toBe(true);
+
+      store.setTabIconColor("chartreuse" as never);
+      expect(store.tabIconColor).toBe("accent");
+
+      store.setTabIconColor("sky");
+      store.setTabIconColor(undefined);
+      expect(store.tabIconColor).toBe("accent");
+    });
+
+    it("hydrates from a server payload that predates the field", () => {
+      const store = useSettingsStore();
+      store.setTabIconColor("rose");
+
+      const { tabIconColor: _omitted, ...legacy } = store.getAppearanceSettings;
+      store.syncAppearanceFromServer(legacy as never);
+
+      expect(store.tabIconColor).toBe("accent");
+    });
+
+    it("resets with the rest of appearance", () => {
+      const store = useSettingsStore();
+      store.setTabIconColor("violet");
+      store.resetAppearanceSettings();
+      expect(store.tabIconColor).toBe("accent");
+    });
+  });
+
   describe("resetUIState", () => {
     it("resets UI section toggles", () => {
       const store = useSettingsStore();

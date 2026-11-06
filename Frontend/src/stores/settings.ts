@@ -28,6 +28,10 @@ export const AVAILABLE_COLORS = [
 
 export type ColorName = (typeof AVAILABLE_COLORS)[number]["name"];
 
+export const TAB_ICON_MATCH_ACCENT = "accent";
+
+export type TabIconColor = ColorName | typeof TAB_ICON_MATCH_ACCENT;
+
 export const AVAILABLE_FONTS = [
   { label: "System", name: "system" },
   { label: "Serif", name: "serif" },
@@ -178,6 +182,7 @@ export const TOAST_LEVELS = [
 
 export interface UserSettings {
   accentColor: ColorName;
+  tabIconColor: TabIconColor;
   backgroundColor: string;
   backgroundImageKey: string | null;
   backgroundImageUpdatedAt: string | null;
@@ -199,6 +204,7 @@ export interface UserSettings {
   autoPlaylistMinTracks: number;
 }
 const DEFAULT_ACCENT_COLOR = "amber";
+const DEFAULT_TAB_ICON_COLOR: TabIconColor = TAB_ICON_MATCH_ACCENT;
 const DEFAULT_BACKGROUND = "parchment";
 const DEFAULT_BACKGROUND_IMAGE = null;
 const DEFAULT_BACKGROUND_IMAGE_OPACITY = 0.35;
@@ -234,6 +240,7 @@ export const useSettingsStore = defineStore(
   // oxlint-disable-next-line max-lines-per-function
   () => {
     const accentColor = ref<ColorName>(DEFAULT_ACCENT_COLOR);
+    const tabIconColor = ref<TabIconColor>(DEFAULT_TAB_ICON_COLOR);
     const backgroundColor = ref<string>(DEFAULT_BACKGROUND);
     const backgroundImageKey = ref<string | null>(null);
     const backgroundImageUpdatedAt = ref<string | null>(null);
@@ -265,6 +272,7 @@ export const useSettingsStore = defineStore(
     // Getters
     const getSettings = computed((): UserSettings => ({
       accentColor: accentColor.value,
+      tabIconColor: tabIconColor.value,
       backgroundColor: backgroundColor.value,
       backgroundImageKey: backgroundImageKey.value,
       backgroundImageOpacity: backgroundImageOpacity.value,
@@ -296,6 +304,7 @@ export const useSettingsStore = defineStore(
     const isAppearanceModified = computed(
       () =>
         accentColor.value !== DEFAULT_ACCENT_COLOR ||
+        tabIconColor.value !== DEFAULT_TAB_ICON_COLOR ||
         backgroundColor.value !== DEFAULT_BACKGROUND ||
         backgroundImageKey.value !== DEFAULT_BACKGROUND_IMAGE ||
         backgroundImageOpacity.value !== DEFAULT_BACKGROUND_IMAGE_OPACITY ||
@@ -341,12 +350,23 @@ export const useSettingsStore = defineStore(
       thumbnailsEnabled: thumbnailsEnabled.value,
       fontFamily: fontFamily.value,
       cornerRadius: cornerRadius.value,
+      tabIconColor: tabIconColor.value,
       transparencyEnabled: transparencyEnabled.value,
     }));
 
     // Actions
     const setAccentColor = (v: ColorName) => {
       accentColor.value = v;
+    };
+    // Older servers and stale payloads may omit the field, so anything unknown falls back to the accent.
+    const setTabIconColor = (v: TabIconColor | undefined) => {
+      if (v === undefined) {
+        tabIconColor.value = DEFAULT_TAB_ICON_COLOR;
+        return;
+      }
+
+      const known = v === TAB_ICON_MATCH_ACCENT || AVAILABLE_COLORS.some((c) => c.name === v);
+      tabIconColor.value = known ? v : DEFAULT_TAB_ICON_COLOR;
     };
     const setBackgroundColor = (v: string) => {
       if (AVAILABLE_BACKGROUNDS.some((b) => b.name === v)) {
@@ -438,6 +458,7 @@ export const useSettingsStore = defineStore(
 
     const syncAppearanceFromServer = (appearance: AppearanceSettings) => {
       setAccentColor(appearance.accentColor);
+      setTabIconColor(appearance.tabIconColor);
       setBackgroundColor(appearance.backgroundColor);
       backgroundImageKey.value = appearance.backgroundImageKey;
       backgroundImageUpdatedAt.value = appearance.backgroundImageUpdatedAt;
@@ -469,6 +490,9 @@ export const useSettingsStore = defineStore(
     const updateSettings = (settings: Partial<UserSettings>) => {
       if (settings.accentColor !== undefined) {
         setAccentColor(settings.accentColor);
+      }
+      if (settings.tabIconColor !== undefined) {
+        setTabIconColor(settings.tabIconColor);
       }
       if (settings.backgroundColor !== undefined) {
         setBackgroundColor(settings.backgroundColor);
@@ -525,6 +549,7 @@ export const useSettingsStore = defineStore(
 
     const resetSettings = () => {
       accentColor.value = DEFAULT_ACCENT_COLOR;
+      tabIconColor.value = DEFAULT_TAB_ICON_COLOR;
       backgroundColor.value = DEFAULT_BACKGROUND;
       clearBackgroundImage();
       backgroundImageOpacity.value = DEFAULT_BACKGROUND_IMAGE_OPACITY;
@@ -547,6 +572,7 @@ export const useSettingsStore = defineStore(
 
     const resetAppearanceSettings = () => {
       accentColor.value = DEFAULT_ACCENT_COLOR;
+      tabIconColor.value = DEFAULT_TAB_ICON_COLOR;
       backgroundColor.value = DEFAULT_BACKGROUND;
       clearBackgroundImage();
       backgroundImageOpacity.value = DEFAULT_BACKGROUND_IMAGE_OPACITY;
@@ -640,6 +666,7 @@ export const useSettingsStore = defineStore(
       resetSessionState,
       resetUIState,
       setAccentColor,
+      setTabIconColor,
       setAllowAutoTagRegression,
       setAllowAutomaticMetadataOverwrite,
       setAutoPlaylistMinTracks,
@@ -667,6 +694,7 @@ export const useSettingsStore = defineStore(
       syncAppearanceFromServer,
       syncBehaviorFromServer,
       syncFromServer,
+      tabIconColor,
       toastLevel,
       updateSettings,
     };
@@ -675,6 +703,7 @@ export const useSettingsStore = defineStore(
     persist: {
       pick: [
         "accentColor",
+        "tabIconColor",
         "backgroundColor",
         "backgroundImageKey",
         "backgroundImageUpdatedAt",

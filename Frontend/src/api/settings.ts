@@ -1,4 +1,4 @@
-import type { ColorName, FontName } from "@/stores/settings";
+import type { ColorName, FontName, TabIconColor } from "@/stores/settings";
 
 import { apiClient } from "./client";
 
@@ -6,6 +6,7 @@ export type ToastLevel = "all" | "errors-only" | "silent";
 
 export interface AppearanceSettings {
   accentColor: ColorName;
+  tabIconColor: TabIconColor;
   backgroundColor: string;
   backgroundImageKey: string | null;
   // ISO 8601
