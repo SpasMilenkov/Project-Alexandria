@@ -1,4 +1,5 @@
 import type { MediaFileDto } from "@/api/streaming";
+import type { RangeBufferHooks, RangeResult } from "@/stores/player/types";
 
 import { RANGE_SIZE, httpStatus } from "@/api/shuffle";
 import {
@@ -8,8 +9,6 @@ import {
   fetchSequentialPage,
   indexOfAnchor,
 } from "@/features/player/source";
-
-import type { RangeBufferHooks, RangeResult } from "@/stores/player/types";
 
 import { createRangeBuffer } from "./range-buffer";
 

@@ -2,10 +2,9 @@
 import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeQuickUploadOptions } from "@/types/home";
 
-import { HOME_QUICK_UPLOAD_STYLES } from "@/features/home/widgets/quick";
-
 import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 import HomeQuickStylePreview from "@/components/dashboard/home/options/style-previews/HomeQuickStylePreview.vue";
+import { HOME_QUICK_UPLOAD_STYLES } from "@/features/home/widgets/quick";
 
 const { options, section = "all" } = defineProps<{
   options: HomeQuickUploadOptions;

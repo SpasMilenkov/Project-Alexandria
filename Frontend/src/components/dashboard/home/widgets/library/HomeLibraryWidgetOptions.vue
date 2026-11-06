@@ -2,11 +2,11 @@
 import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeLibraryOptions } from "@/types/home";
 
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
+import HomeLibraryStylePreview from "@/components/dashboard/home/options/style-previews/HomeLibraryStylePreview.vue";
 import { HomeShortcutGroup } from "@/enums/home-widget";
 import { HOME_LIBRARY_STYLES, homeLibraryPresetChange } from "@/features/home/widgets/library";
 
-import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
-import HomeLibraryStylePreview from "@/components/dashboard/home/options/style-previews/HomeLibraryStylePreview.vue";
 import HomeLibraryDestinationEditor from "./HomeLibraryDestinationEditor.vue";
 
 const { options, section = "all" } = defineProps<{

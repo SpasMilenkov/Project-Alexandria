@@ -1,6 +1,5 @@
-import { type Locator, type Page, type Route, expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
+import { type Locator, type Page, type Route, expect, test } from "@playwright/test";
 
 interface FakeFolder {
   id: string;

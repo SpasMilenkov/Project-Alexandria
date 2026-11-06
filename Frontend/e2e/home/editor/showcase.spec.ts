@@ -1,7 +1,6 @@
-import { type Page, expect, test } from "@playwright/test";
-
 import { fixture } from "@e2e/helpers/home-dashboard.js";
 import { expectRecapContentFits } from "@e2e/helpers/home-recap.js";
+import { type Page, expect, test } from "@playwright/test";
 
 const openShowcase = async (page: Page) => {
   await page.getByRole("button", { name: "Add widget", exact: true }).click();

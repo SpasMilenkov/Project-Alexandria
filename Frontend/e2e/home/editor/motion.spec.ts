@@ -1,6 +1,5 @@
-import { expect, test } from "@playwright/test";
-
 import { fixture } from "@e2e/helpers/home-dashboard.js";
+import { expect, test } from "@playwright/test";
 
 test("resize and displaced cards animate without delaying geometry or saving", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });

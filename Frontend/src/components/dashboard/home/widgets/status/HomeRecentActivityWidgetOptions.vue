@@ -2,10 +2,9 @@
 import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeActivityOptions } from "@/types/home";
 
+import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 import { HomeActivityStyle } from "@/enums/home-widget";
 import { HOME_ACTIVITY_STYLES } from "@/features/home/widgets/status-activity";
-
-import HomeStylePicker from "@/components/dashboard/home/options/HomeStylePicker.vue";
 
 const { options, section = "all" } = defineProps<{
   options: HomeActivityOptions;

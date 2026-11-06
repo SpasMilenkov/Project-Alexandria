@@ -1,7 +1,6 @@
-import { expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import { closeWidgetSettings, openWidgetTab } from "@e2e/helpers/home-grid-editor.js";
+import { expect, test } from "@playwright/test";
 
 test.use({ timezoneId: "America/New_York" });
 

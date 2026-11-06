@@ -366,12 +366,7 @@ const uploadSingle = async (state: FileUploadState) => {
 
   state.stage = UploadStage.HASHING;
   updateProgress(state, 0);
-  const hash = await hashFile(
-    fileToUpload,
-    state.id,
-    (pct) => updateProgress(state, pct),
-    signal,
-  );
+  const hash = await hashFile(fileToUpload, state.id, (pct) => updateProgress(state, pct), signal);
   state.fileHash = hash;
 
   state.stage = UploadStage.INITIALIZING;

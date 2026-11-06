@@ -8,11 +8,6 @@ import {
   fetchSequentialPage,
   toAnchor,
 } from "@/features/player/source";
-
-import type { PlayerState } from "./state";
-import type { Guard } from "./transitions";
-import type { Order, Origin, RangeBufferHooks } from "./types";
-
 import { createSequentialOrder, locateAnchor } from "@/stores/player/order/sequential";
 import {
   type OpenedShuffle,
@@ -20,6 +15,10 @@ import {
   openShuffle,
   releaseShuffleSession,
 } from "@/stores/player/order/shuffle";
+
+import type { PlayerState } from "./state";
+import type { Guard } from "./transitions";
+import type { Order, Origin, RangeBufferHooks } from "./types";
 
 export type AdvanceOutcome = "advanced" | "exhausted" | "stopped";
 

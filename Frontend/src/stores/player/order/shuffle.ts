@@ -1,3 +1,5 @@
+import type { Order, RangeBufferHooks, RangeResult } from "@/stores/player/types";
+
 import {
   RANGE_SIZE,
   type ShuffleSessionResponse,
@@ -8,8 +10,6 @@ import {
   sourceUnavailable,
 } from "@/api/shuffle";
 import { type SourceAnchor, type SourceDescriptor, sameSource } from "@/features/player/source";
-
-import type { Order, RangeBufferHooks, RangeResult } from "@/stores/player/types";
 
 import { createRangeBuffer } from "./range-buffer";
 

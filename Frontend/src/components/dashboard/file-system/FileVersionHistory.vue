@@ -274,6 +274,7 @@ import { useRouter } from "vue-router";
 import { AudioRung, VideoRung } from "@/api/policy";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import DetailsSection from "@/components/common/details/DetailsSection.vue";
+import ShareLinkModal from "@/components/dashboard/file-system/Modals/ShareLinkModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { changeActiveVersion, deleteVersion, restoreFileVersion } from "@/mutations/files";
@@ -281,8 +282,6 @@ import { queueTranspilationJob } from "@/mutations/streaming";
 import { getVersionsForFile } from "@/queries/files";
 import { getFileTypeReadable } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
-
-import ShareLinkModal from "@/components/dashboard/file-system/Modals/ShareLinkModal.vue";
 
 interface FileVersionDto {
   id: string;

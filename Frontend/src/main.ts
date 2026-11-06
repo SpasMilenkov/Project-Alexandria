@@ -7,11 +7,12 @@ import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import { createApp } from "vue";
 import VueVirtualScroller from "vue-virtual-scroller";
 
-import App from "./App.vue";
 import { startSessionBoundaryWatcher } from "@/features/auth/session-boundary";
+import { logger } from "@/utils/logger";
+
+import App from "./App.vue";
 import { registerIcons } from "./icons";
 import router from "./router";
-import { logger } from "@/utils/logger";
 import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
 
 registerIcons();

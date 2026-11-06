@@ -228,14 +228,14 @@ import type { SearchTagsSchema } from "@/schemas/tag";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
 import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
+import CreateTagModal from "@/components/dashboard/tags/modals/CreateTagModal.vue";
+import UpdateTagModal from "@/components/dashboard/tags/modals/UpdateTagModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { countOf, quoted } from "@/features/toast/format";
 import { deleteTag } from "@/mutations/tags";
 import { searchTag } from "@/queries/tags";
 import { useSettingsStore } from "@/stores/settings";
 
-import CreateTagModal from "@/components/dashboard/tags/modals/CreateTagModal.vue";
-import UpdateTagModal from "@/components/dashboard/tags/modals/UpdateTagModal.vue";
 import SystemTagSection from "./SystemTagSection.vue";
 import TagCard from "./TagCard.vue";
 import TagListItem from "./TagListItem.vue";

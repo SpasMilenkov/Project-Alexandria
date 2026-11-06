@@ -170,10 +170,10 @@ import { computed, ref, watch } from "vue";
 
 import { type PreviewResultDto, fileApi } from "@/api/file";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import AudioEqualizer from "@/components/dashboard/AudioEqualizer.vue";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { FILES_QUERY_KEYS, getPreviewByVersion } from "@/queries/files";
 
-import AudioEqualizer from "@/components/dashboard/AudioEqualizer.vue";
 import TextPreviewPane from "./TextPreviewPane.vue";
 
 const props = defineProps<{

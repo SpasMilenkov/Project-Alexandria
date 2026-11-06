@@ -2,14 +2,13 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 
+import { useColorScheduleRunner } from "@/composables/useColorSchedule";
+import { useSiteIcon } from "@/composables/useSiteIcon";
+import { useTheme } from "@/composables/useTheme";
 import DashboardLayout from "@/layouts/DashboardLayout.vue";
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
 import OnboardingLayout from "@/layouts/OnboardingLayout.vue";
 import { useAuthStore } from "@/stores/auth";
-
-import { useColorScheduleRunner } from "@/composables/useColorSchedule";
-import { useSiteIcon } from "@/composables/useSiteIcon";
-import { useTheme } from "@/composables/useTheme";
 
 const route = useRoute();
 useTheme();

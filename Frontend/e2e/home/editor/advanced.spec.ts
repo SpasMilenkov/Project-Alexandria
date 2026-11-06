@@ -1,5 +1,3 @@
-import { type Locator, type Page, expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import {
   dashboardSettings,
@@ -7,6 +5,7 @@ import {
   openWidgetTab,
   selectWidget,
 } from "@e2e/helpers/home-grid-editor.js";
+import { type Locator, type Page, expect, test } from "@playwright/test";
 
 test.use({ viewport: { width: 1440, height: 950 }, serviceWorkers: "block" });
 

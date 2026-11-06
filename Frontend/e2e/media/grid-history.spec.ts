@@ -1,7 +1,6 @@
-import { type Page, type Route, expect, test } from "@playwright/test";
-
 import { fixture, seed } from "@e2e/helpers/home-dashboard.js";
 import { media } from "@e2e/helpers/media-overview.js";
+import { type Page, type Route, expect, test } from "@playwright/test";
 
 const paginated = (items: unknown[]) => ({
   items,
