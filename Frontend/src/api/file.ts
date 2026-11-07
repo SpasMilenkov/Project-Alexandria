@@ -9,6 +9,7 @@ import type { PaginatedResponse } from "./directory";
 import type { TagDto } from "./tag";
 
 import { api } from "./client";
+import { ApiError } from "./errors";
 
 // Response Types
 export interface UpdateFileMetadataResponse {
@@ -156,10 +157,28 @@ export interface FinalizeFileUploadRequest {
   iterationCount?: number | null;
 }
 
-export interface FinalizeFileUploadResponse {
-  success: boolean;
-  fileId?: string;
+export interface InitializeFileUploadBatchResult {
+  uploadId: string | null;
+  uploadUrl: string | null;
+  error: string | null;
 }
+
+export interface InitializeFileUploadBatchResponse {
+  results: InitializeFileUploadBatchResult[];
+}
+
+export interface FinalizeFileUploadBatchResult {
+  uploadId: string;
+  success: boolean;
+  error: string | null;
+}
+
+export interface FinalizeFileUploadBatchResponse {
+  results: FinalizeFileUploadBatchResult[];
+}
+
+// Verifying a batch re-reads every file, so this sits just under nginx's 300s proxy timeout.
+const FINALIZE_BATCH_TIMEOUT_MS = 280_000;
 
 export const fileApi = {
   bulkDownloadInit: async (payload: InitBulkDownloadRequest): Promise<string> => {
@@ -206,8 +225,14 @@ export const fileApi = {
   downloadFileVersion: (id: string): Promise<DownloadInfo> =>
     api.get<DownloadInfo>(`files/versions/${id}`),
 
-  finalizeUpload: (data: FinalizeFileUploadRequest): Promise<FinalizeFileUploadResponse> =>
-    api.post<FinalizeFileUploadResponse>("/files/finalize-upload", data),
+  finalizeUploadBatch: (
+    items: FinalizeFileUploadRequest[],
+  ): Promise<FinalizeFileUploadBatchResponse> =>
+    api.post<FinalizeFileUploadBatchResponse>(
+      "/files/finalize-upload/batch",
+      { items },
+      { timeout: FINALIZE_BATCH_TIMEOUT_MS },
+    ),
 
   generateSignedUrl: (data: GenerateSignedUrlSchema): Promise<GenerateSignedUrlResponse> =>
     api.post<GenerateSignedUrlResponse>("/files/signed-url", data),
@@ -301,8 +326,10 @@ export const fileApi = {
     });
   },
 
-  initializeUpload: (data: InitializeFileUploadRequest): Promise<InitializeFileUploadResponse> =>
-    api.post<InitializeFileUploadResponse>("/files/init-upload", data),
+  initializeUploadBatch: (
+    items: InitializeFileUploadRequest[],
+  ): Promise<InitializeFileUploadBatchResponse> =>
+    api.post<InitializeFileUploadBatchResponse>("/files/init-upload/batch", { items }),
 
   moveFiles: async (fileIds: string[], destinationId: string | null) => {
     await api.post("/files/move", {
@@ -358,7 +385,12 @@ export const fileApi = {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve();
         } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
+          reject(
+            new ApiError(`Upload failed with status ${xhr.status}`, {
+              kind: "http",
+              status: xhr.status,
+            }),
+          );
         }
       });
 

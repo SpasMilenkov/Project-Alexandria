@@ -94,6 +94,10 @@ public class FinalizeReviveTests
                 Arg.Any<CancellationToken>())
             .Returns(upload);
 
+        _uploads.TryClaimForFinalizeAsync(
+                upload.Id, _userId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
         _s3.GetObjectAsync(Arg.Any<GetObjectRequest>(), Arg.Any<CancellationToken>())
             .Returns(new GetObjectResponse
             {
@@ -191,7 +195,7 @@ public class FinalizeReviveTests
         await _promotionQueue.Received(1).QueuePromotionAsync(
             contentObject.Id, upload.TempObjectKey, Arg.Any<CancellationToken>());
         await _s3.DidNotReceive().DeleteObjectAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), $"content/{upload.TempObjectKey}", Arg.Any<CancellationToken>());
     }
 
     [Fact]

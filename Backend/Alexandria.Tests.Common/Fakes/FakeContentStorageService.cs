@@ -110,6 +110,44 @@ public class FakeContentStorageService : IContentStorageService
         return Task.FromResult((uploadId, uploadUrl));
     }
 
+    public async Task<IReadOnlyList<UploadInitResult>> InitiateFileUploads(
+        IReadOnlyList<UploadInitItem> items,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var results = new List<UploadInitResult>(items.Count);
+
+        foreach (var item in items)
+        {
+            var (uploadId, uploadUrl) = await InitiateFileUpload(
+                item.ContentType, item.Hash, userId, item.ContentLength, item.DirectoryId, ct);
+
+            results.Add(new UploadInitResult(uploadId, uploadUrl, null));
+        }
+
+        return results;
+    }
+
+    public Task<VerifiedUpload> VerifyUploadAsync(
+        Guid uploadId,
+        Guid uploadedBy,
+        Guid? directoryId,
+        CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<UploadResult> CommitUploadAsync(
+        VerifiedUpload verified,
+        UploadFinalizeItem item,
+        CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task AbandonUploadAsync(Guid uploadId, string tempObjectKey, CancellationToken ct = default)
+        => Task.CompletedTask;
+
     public Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
         => Task.FromResult(new StorageBreakdown
         {

@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
-using System.Numerics;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Alexandria.Common;
@@ -48,6 +47,11 @@ public partial class ContentStorageService(
     private static readonly TimeSpan PromotionWaitLimit = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan PromotionPollInterval = TimeSpan.FromSeconds(5);
 
+    private static readonly TimeSpan SingleUploadUrlLifetime = TimeSpan.FromSeconds(60);
+
+    // Batched URLs wait for an upload slot. A URL that expires anyway is re-signed by the client.
+    private static readonly TimeSpan BatchUploadUrlLifetime = TimeSpan.FromMinutes(2);
+
     private Task WaitUntilPromotedAsync(Guid contentObjectId, CancellationToken ct) =>
         WaitUntilPromotedAsync(contentObjectId, PromotionWaitLimit, PromotionPollInterval, ct);
 
@@ -88,8 +92,15 @@ public partial class ContentStorageService(
     /// </summary>
     private async Task CleanupTempObjectAsync(string bucket, string key, CancellationToken ct)
     {
-        var objectKey = key.StartsWith("content/", StringComparison.Ordinal) ? key : $"content/{key}";
+        var objectKey = key.StartsWith(TempObjectKeys.Sealed, StringComparison.Ordinal)
+            ? key
+            : $"{TempObjectKeys.Sealed}{key}";
 
+        await DeleteTempObjectAsync(bucket, objectKey, ct);
+    }
+
+    private async Task DeleteTempObjectAsync(string bucket, string objectKey, CancellationToken ct)
+    {
         try
         {
             await s3.DeleteObjectAsync(bucket, objectKey, ct);
@@ -504,7 +515,7 @@ public partial class ContentStorageService(
             await unitOfWork.CommitAsync(ct);
 
             return (upload.Id,
-                await GenerateUploadUrl($"content/{tempObjectKey}", contentType, TimeSpan.FromSeconds(60)));
+                await GenerateUploadUrl($"{TempObjectKeys.Incoming}{tempObjectKey}", contentType, SingleUploadUrlLifetime));
         }
         catch (Exception ex)
         {
@@ -514,6 +525,108 @@ public partial class ContentStorageService(
             await CleanupTempObjectAsync(tmp, tempObjectKey, ct);
 
             throw new InvalidOperationException($"Upload failed: {ex.Message}", ex);
+        }
+    }
+
+    public async Task<IReadOnlyList<UploadInitResult>> InitiateFileUploads(
+        IReadOnlyList<UploadInitItem> items,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        if (config.Value.TempBucket is null)
+            throw new InvalidOperationException("Temp bucket not configured");
+
+        await CheckStorageQuotaWarningAsync(userId, items.Sum(item => item.ContentLength), ct);
+
+        var unavailableDirectories = await FindUnavailableDirectoriesAsync(items, userId, ct);
+
+        var uploads = new Upload?[items.Count];
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+
+            if (item.DirectoryId is { } directoryId && unavailableDirectories.Contains(directoryId))
+                continue;
+
+            uploads[i] = new Upload
+            {
+                Id = Guid.NewGuid(),
+                Status = UploadStatus.InProgress,
+                Hash = Convert.FromHexString(item.Hash),
+                Size = item.ContentLength,
+                MimeType = item.ContentType,
+                CreatedAt = DateTime.UtcNow,
+                UserId = userId,
+                TempObjectKey = Guid.NewGuid().ToString(),
+            };
+        }
+
+        var accepted = uploads.OfType<Upload>().ToList();
+
+        if (accepted.Count > 0)
+            await AddUploadsAsync(accepted, ct);
+
+        var results = new List<UploadInitResult>(items.Count);
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            if (uploads[i] is not { } upload)
+            {
+                results.Add(new UploadInitResult(null, null, UploadErrorMessages.DestinationNotFound));
+                continue;
+            }
+
+            var url = await GenerateUploadUrl(
+                $"{TempObjectKeys.Incoming}{upload.TempObjectKey}",
+                items[i].ContentType,
+                BatchUploadUrlLifetime);
+
+            results.Add(new UploadInitResult(upload.Id, url, null));
+        }
+
+        return results;
+    }
+
+    private async Task<HashSet<Guid>> FindUnavailableDirectoriesAsync(
+        IReadOnlyList<UploadInitItem> items,
+        Guid userId,
+        CancellationToken ct)
+    {
+        var unavailable = new HashSet<Guid>();
+
+        foreach (var directoryId in items.Select(item => item.DirectoryId).OfType<Guid>().Distinct())
+        {
+            try
+            {
+                await fileService.FolderWithOwnershipExistsAsync(directoryId, userId, ct);
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                LogUploadDirectoryUnavailable(logger, ex, directoryId, userId);
+                unavailable.Add(directoryId);
+            }
+        }
+
+        return unavailable;
+    }
+
+    // Validated rows can't fail this insert individually, so a failure here is an infrastructure
+    // fault that would hit every item anyway. Nothing is created and the whole request fails.
+    private async Task AddUploadsAsync(List<Upload> uploads, CancellationToken ct)
+    {
+        await unitOfWork.BeginTransactionAsync(ct);
+
+        try
+        {
+            await unitOfWork.Uploads.AddRangeAsync(uploads, ct);
+            await unitOfWork.CommitAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            LogUploadBatchInitiateFailed(logger, ex, uploads.Count);
+            await unitOfWork.RollbackAsync(CancellationToken.None);
+            throw;
         }
     }
 
@@ -529,108 +642,165 @@ public partial class ContentStorageService(
         Guid? directoryId = null,
         CancellationToken ct = default)
     {
-        if (config.Value.TempBucket is null)
-            throw new InvalidOperationException("Temp bucket not configured");
-
-        var tmp = config.Value.TempBucket;
-
-        await unitOfWork.BeginTransactionAsync(ct);
-
-        Upload? upload = null;
+        VerifiedUpload? verified = null;
 
         try
         {
-            await fileService.FolderWithOwnershipExistsAsync(directoryId, uploadedBy, ct);
+            verified = await VerifyUploadAsync(uploadId, uploadedBy, directoryId, ct);
 
-            upload = await unitOfWork.Uploads
-                .FirstOrDefaultAsync(u => u.Id == uploadId &&
-                                          u.UserId == uploadedBy &&
-                                          u.DeletedAt == null &&
-                                          u.Status == UploadStatus.InProgress,
-                    ct);
-            if (upload is null)
-                throw new InvalidOperationException("Upload not found");
+            return await CommitUploadAsync(
+                verified,
+                new UploadFinalizeItem
+                {
+                    UploadId = uploadId,
+                    DirectoryId = directoryId,
+                    FileName = objectName,
+                    IsEncrypted = isEncrypted,
+                    EncryptionIv = encryptionIv,
+                    EncryptionSalt = encryptionSalt,
+                    IntegrityTag = integrityTag,
+                    EncryptionHint = encryptionHint,
+                    IterationCount = iterationCount
+                },
+                ct);
+        }
+        catch (Exception ex)
+        {
+            LogFinalizeUploadFailed(logger, ex, objectName);
 
-            // =====================================================
-            // 1. Stream object ONCE and compute hash + size + header bytes
-            // =====================================================
-            byte[] computedHash;
-            long computedSize;
-            byte[] header;
+            if (verified is not null)
+                await AbandonUploadAsync(uploadId, verified.TempObjectKey, CancellationToken.None);
 
-            try
+            throw new InvalidOperationException($"Upload failed: {ex.Message}", ex);
+        }
+    }
+
+    public async Task<VerifiedUpload> VerifyUploadAsync(
+        Guid uploadId,
+        Guid uploadedBy,
+        Guid? directoryId,
+        CancellationToken ct = default)
+    {
+        var tmp = config.Value.TempBucket
+                  ?? throw new InvalidOperationException("Temp bucket not configured");
+
+        await fileService.FolderWithOwnershipExistsAsync(directoryId, uploadedBy, ct);
+
+        if (!await unitOfWork.Uploads.TryClaimForFinalizeAsync(uploadId, uploadedBy, DateTime.UtcNow, ct))
+            throw new InvalidOperationException("Upload not found");
+
+        var upload = await unitOfWork.Uploads.FirstOrDefaultAsync(u => u.Id == uploadId, ct)
+                     ?? throw new InvalidOperationException("Upload not found");
+
+        try
+        {
+            await SealUploadAsync(tmp, upload.TempObjectKey, ct);
+
+            var scan = await ComputeHashAndSizeFromS3Async(
+                tmp,
+                upload.TempObjectKey,
+                upload.Size > 0 ? upload.Size : null,
+                ct);
+
+            if (scan.Size > upload.Size)
+                throw new UploadVerificationException($"Size mismatch: expected {upload.Size}, got {scan.Size}");
+
+            if (!CryptographicOperations.FixedTimeEquals(scan.Hash, upload.Hash))
+                throw new UploadVerificationException("Hash mismatch between upload and server");
+
+            return new VerifiedUpload
             {
-                var scan = await ComputeHashAndSizeFromS3Async(
-                    tmp,
-                    upload.TempObjectKey,
-                    upload.Size > 0 ? (long?)upload.Size : null,
-                    ct);
+                UploadId = upload.Id,
+                UploadedBy = uploadedBy,
+                TempObjectKey = upload.TempObjectKey,
+                Hash = scan.Hash,
+                Size = scan.Size,
+                Header = scan.Header
+            };
+        }
+        catch (Exception ex)
+        {
+            LogUploadVerificationFailed(logger, ex, uploadId);
 
-                computedHash = scan.Hash;
-                computedSize = scan.Size;
-                header = scan.Header;
-            }
-            catch (Exception ex)
+            await AbandonUploadAsync(uploadId, upload.TempObjectKey, CancellationToken.None);
+
+            throw;
+        }
+    }
+
+    private async Task SealUploadAsync(string bucket, string tempObjectKey, CancellationToken ct)
+    {
+        var incomingKey = $"{TempObjectKeys.Incoming}{tempObjectKey}";
+
+        try
+        {
+            await s3.CopyObjectAsync(new CopyObjectRequest
             {
-                await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
-                throw new InvalidOperationException(
-                    $"Failed to read temp object: {ex.Message}", ex);
-            }
+                SourceBucket = bucket,
+                SourceKey = incomingKey,
+                DestinationBucket = bucket,
+                DestinationKey = $"{TempObjectKeys.Sealed}{tempObjectKey}"
+            }, ct);
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw new UploadVerificationException("The uploaded object was not found", ex);
+        }
 
-            // =====================================================
-            // 2. Validate size
-            // =====================================================
-            if ((BigInteger)computedSize > upload.Size)
-            {
-                await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
+        await DeleteTempObjectAsync(bucket, incomingKey, ct);
+    }
 
-                upload.Status = UploadStatus.Interrupted;
-                upload.FinishedAt = DateTime.UtcNow;
-                throw new InvalidOperationException(
-                    $"Size mismatch: expected {upload.Size}, got {computedSize}");
-            }
+    public async Task<UploadResult> CommitUploadAsync(
+        VerifiedUpload verified,
+        UploadFinalizeItem item,
+        CancellationToken ct = default)
+    {
+        var uploadId = verified.UploadId;
+        var uploadedBy = verified.UploadedBy;
+        var objectName = item.FileName;
+        var directoryId = item.DirectoryId;
+        var isEncrypted = item.IsEncrypted;
+        var computedHash = verified.Hash;
+        var computedSize = verified.Size;
 
-            // =====================================================
-            // 3. Validate SHA256 against Upload entity
-            // =====================================================
-            if (!CryptographicOperations.FixedTimeEquals(computedHash, upload.Hash))
-            {
-                await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
+        ContentObject contentObject;
+        bool alreadyPromoted;
+        UploadResult result;
 
-                upload.Status = UploadStatus.Interrupted;
-                upload.FinishedAt = DateTime.UtcNow;
+        await unitOfWork.BeginTransactionAsync(ct);
 
-                throw new InvalidOperationException("SHA256 mismatch between upload and server");
-            }
+        try
+        {
+            var upload = await unitOfWork.Uploads
+                             .FirstOrDefaultAsync(u => u.Id == uploadId &&
+                                                       u.UserId == uploadedBy &&
+                                                       u.DeletedAt == null &&
+                                                       u.Status == UploadStatus.Finalizing,
+                                 ct)
+                         ?? throw new InvalidOperationException("Upload not found");
 
             upload.Status = UploadStatus.Finished;
             upload.FinishedAt = DateTime.UtcNow;
 
-            // 3b. Resolve the MIME type to store. Encrypted payloads are ciphertext and are
-            // never sniffed. Upload.MimeType keeps the declared value as an audit trail.
-            // The sniffer swallows its own faults, so this step can never reject an upload.
+            // Encrypted payloads are ciphertext and are never sniffed. Upload.MimeType keeps the
+            // declared value as an audit trail. The sniffer swallows its own faults, so this
+            // step can never reject an upload.
             var resolution = isEncrypted
                 ? mimeResolver.ResolveWithoutContent(objectName, upload.MimeType)
-                : mimeResolver.Resolve(objectName, header, upload.MimeType);
+                : mimeResolver.Resolve(objectName, verified.Header, upload.MimeType);
             var resolvedMimeType = resolution.MimeType;
 
             var declaredMimeType = MimeAliases.Canonicalize(upload.MimeType);
             if (MimeAliases.IsUsable(declaredMimeType) && declaredMimeType != resolvedMimeType)
                 LogMimeCorrected(logger, upload.Id, declaredMimeType, resolvedMimeType, resolution.Source);
 
-            // =====================================================
-            // 4. Prepare hash string
-            // =====================================================
             var serverHash = Convert
                 .ToHexString(computedHash)
                 .ToLowerInvariant();
 
-            // =====================================================
-            // 5. Deduplication: check content object
-            // =====================================================
-            var contentObject = !isEncrypted ? await unitOfWork.ContentObjects.HashExistsAsync(computedHash, ct) : null;
+            var existing = !isEncrypted ? await unitOfWork.ContentObjects.HashExistsAsync(computedHash, ct) : null;
 
-            if (contentObject is null)
+            if (existing is null)
             {
                 contentObject = new ContentObject
                 {
@@ -644,9 +814,13 @@ public partial class ContentStorageService(
 
                 await unitOfWork.ContentObjects.AddAsync(contentObject, ct);
             }
+            else
+            {
+                contentObject = existing;
+            }
 
             var wasOrphaned = contentObject.OrphanedAt is not null;
-            var alreadyPromoted = contentObject.IsPromoted;
+            alreadyPromoted = contentObject.IsPromoted;
 
             if (wasOrphaned)
             {
@@ -670,10 +844,6 @@ public partial class ContentStorageService(
                 unitOfWork.ContentObjects.Update(contentObject);
             }
 
-
-            // =====================================================
-            // 6. Create / update file record
-            // =====================================================
             var file = await unitOfWork.Files.FirstOrDefaultAsync(
                 f =>
                     f.Name == objectName &&
@@ -683,102 +853,113 @@ public partial class ContentStorageService(
 
             if (file is null)
             {
-                var result = await CreateFileWithVersionAsync(
+                var created = await CreateFileWithVersionAsync(
                     objectName,
                     directoryId,
                     resolvedMimeType,
                     uploadedBy,
                     computedSize,
                     Convert.FromHexString(serverHash),
-                    encryptionHint: encryptionHint,
-                    encryptionIv: encryptionIv,
-                    encryptionSalt: encryptionSalt,
+                    encryptionHint: item.EncryptionHint,
+                    encryptionIv: item.EncryptionIv,
+                    encryptionSalt: item.EncryptionSalt,
                     isEncrypted: isEncrypted,
-                    integrityTag: integrityTag,
-                    iterationCount: iterationCount,
+                    integrityTag: item.IntegrityTag,
+                    iterationCount: item.IterationCount,
                     contentObjectId: contentObject.Id,
                     ct: ct);
-                await unitOfWork.CommitAsync(ct);
 
-                if (alreadyPromoted)
-                    // Bytes are already durable under this storage key. The new
-                    // temp copy is redundant, so remove it instead of queueing
-                    // a copy that the promotion worker would no-op.
-                    await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
-                else
-                    await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
-
-                return new UploadResult(
+                result = new UploadResult(
                     ObjectName: objectName,
                     Size: computedSize,
-                    FileId: result.file.Id,
-                    MimeType: result.file.MimeType,
-                    result.fileVersion.Id,
+                    FileId: created.file.Id,
+                    MimeType: created.file.MimeType,
+                    created.fileVersion.Id,
                     false,
-                    isEncrypted
-                );
+                    isEncrypted);
+            }
+            else
+            {
+                var currentVersion = await unitOfWork.FileVersions.GetByIdAsync(
+                                         file.CurrentVersionId ?? Guid.Empty, ct) ??
+                                     throw new InvalidOperationException("Current version missing");
+
+                var newVersion = await unitOfWork.FileVersions.AddAsync(
+                    new FileVersion
+                    {
+                        ContentHash = Convert.FromHexString(serverHash),
+                        Size = computedSize,
+                        VersionNumber = currentVersion.VersionNumber + 1,
+                        MimeType = resolvedMimeType,
+                        CreatedBy = uploadedBy,
+                        ContentObjectId = contentObject.Id,
+                        FileId = file.Id,
+                        IsEncrypted = isEncrypted,
+                        EncryptionIv = item.EncryptionIv,
+                        EncryptionSalt = item.EncryptionSalt,
+                        IntegrityTag = item.IntegrityTag,
+                        EncryptionHint = item.EncryptionHint,
+                        IterationCount = item.IterationCount,
+                        KdfVersion = 1,
+                    },
+                    ct);
+
+                file.CurrentVersionId = newVersion.Id;
+                file.MimeType = resolvedMimeType;
+
+                unitOfWork.Files.Update(file);
+
+                result = new UploadResult(
+                    objectName,
+                    computedSize,
+                    file.Id,
+                    file.MimeType,
+                    newVersion.Id,
+                    true,
+                    isEncrypted);
             }
 
-            // =====================================================
-            // 7. Create new version
-            // =====================================================
-            var currentVersion = await unitOfWork.FileVersions.GetByIdAsync(
-                                     file.CurrentVersionId ?? Guid.Empty, ct) ??
-                                 throw new InvalidOperationException("Current version missing");
-
-            var newVersion = await unitOfWork.FileVersions.AddAsync(
-                new FileVersion
-                {
-                    ContentHash = Convert.FromHexString(serverHash),
-                    Size = computedSize,
-                    VersionNumber = currentVersion.VersionNumber + 1,
-                    MimeType = resolvedMimeType,
-                    CreatedBy = uploadedBy,
-                    ContentObjectId = contentObject.Id,
-                    FileId = file.Id,
-                    IsEncrypted = isEncrypted,
-                    EncryptionIv = encryptionIv,
-                    EncryptionSalt = encryptionSalt,
-                    IntegrityTag = integrityTag,
-                    EncryptionHint = encryptionHint,
-                    IterationCount = iterationCount,
-                    KdfVersion = 1,
-                },
-                ct);
-
-            file.CurrentVersionId = newVersion.Id;
-            file.MimeType = resolvedMimeType;
-
-            unitOfWork.Files.Update(file);
-
             await unitOfWork.CommitAsync(ct);
-
-            if (alreadyPromoted)
-                await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
-            else
-                await promotionQueue.QueuePromotionAsync(contentObject.Id, upload.TempObjectKey, ct);
-
-            LogUploadFinalized(logger, file.Id, computedSize);
-
-            return new UploadResult(
-                objectName,
-                computedSize,
-                file.Id,
-                file.MimeType,
-                newVersion.Id,
-                true,
-                isEncrypted);
         }
         catch (Exception ex)
         {
-            LogFinalizeUploadFailed(logger, ex, objectName);
+            LogUploadCommitFailed(logger, ex, uploadId);
 
-            await unitOfWork.RollbackAsync(ct);
+            await unitOfWork.RollbackAsync(CancellationToken.None);
 
-            if (upload?.TempObjectKey is not null)
-                await CleanupTempObjectAsync(tmp, upload.TempObjectKey, ct);
+            throw;
+        }
 
-            throw new InvalidOperationException($"Upload failed: {ex.Message}", ex);
+        // The upload is committed, so these ignore a client disconnect. Failing here would make
+        // the caller abandon an upload that has already been saved.
+        if (alreadyPromoted)
+            // Bytes are already durable under this storage key. The new temp copy is
+            // redundant, so remove it instead of queueing a copy the worker would no-op.
+            await CleanupTempObjectAsync(config.Value.TempBucket, verified.TempObjectKey, CancellationToken.None);
+        else
+            await promotionQueue.QueuePromotionAsync(contentObject.Id, verified.TempObjectKey, CancellationToken.None);
+
+        LogUploadFinalized(logger, result.FileId, computedSize);
+
+        return result;
+    }
+
+    public async Task AbandonUploadAsync(Guid uploadId, string tempObjectKey, CancellationToken ct = default)
+    {
+        var tmp = config.Value.TempBucket
+                  ?? throw new InvalidOperationException("Temp bucket not configured");
+
+        await CleanupTempObjectAsync(tmp, tempObjectKey, ct);
+        await DeleteTempObjectAsync(tmp, $"{TempObjectKeys.Incoming}{tempObjectKey}", ct);
+
+        try
+        {
+            await unitOfWork.Uploads.MarkInterruptedAsync(uploadId, DateTime.UtcNow, ct);
+        }
+        catch (Exception ex)
+        {
+            // The sweeper retires a stranded Finalizing row once it reaches the abandoned age.
+            LogUploadAbandonFailed(logger, ex, uploadId);
         }
     }
 
@@ -799,7 +980,7 @@ public partial class ContentStorageService(
         var req = new GetObjectRequest
         {
             BucketName = bucket,
-            Key = $"content/{key}",
+            Key = $"{TempObjectKeys.Sealed}{key}",
         };
 
         using var response = await s3.GetObjectAsync(req, ct);
@@ -818,7 +999,7 @@ public partial class ContentStorageService(
 
             totalBytes += read;
             if (maxAllowedBytes.HasValue && totalBytes > maxAllowedBytes.Value)
-                throw new InvalidOperationException("File too large");
+                throw new UploadVerificationException("File too large");
         }
 
         Hash hash = hasher.Finalize();

@@ -112,6 +112,7 @@ public class AlexandriaFixture : IAsyncLifetime
         ["S3Storage:Provider"] = "Garage",
         ["S3Storage:ProviderSettings:Garage:Endpoint"] = GarageEndpoint,
         ["S3Storage:PreviewBucket"] = "alexandria-previews",
+        ["S3Storage:UploadBucket"] = "alexandria-files",
 
         ["Jwt:Secret"] = TestJwtSecret,
         ["Jwt:Issuer"] = TestJwtIssuer,

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-import { fileApi } from "@/api/file";
 import UploadEmptyState from "@/components/dashboard/file-system/Modals/upload/UploadEmptyState.vue";
 import UploadModalFooter from "@/components/dashboard/file-system/Modals/upload/UploadModalFooter.vue";
 import UploadModalShell from "@/components/dashboard/file-system/Modals/upload/UploadModalShell.vue";
@@ -20,6 +19,13 @@ import {
   strengthBarClass,
   strengthLevel,
 } from "@/features/upload/password-strength";
+import {
+  UploadItemError,
+  finalizeUpload,
+  runEncryptedUploadWindow,
+  runUploadWindow,
+  sendUpload,
+} from "@/features/upload/upload-batches";
 import { formatBytes } from "@/utils/size";
 
 const appToast = useAppToast("upload");
@@ -295,6 +301,8 @@ const HTTP_ERROR_MAP: Record<number, string> = {
 const extractErrorMessage = (err: any): string => {
   if (err instanceof DOMException && err.name === "AbortError") return "Cancelled";
 
+  if (err instanceof UploadItemError) return err.message;
+
   if (err instanceof DOMException || err?.name === "OperationError")
     return "Encryption failed. Check your password and try again.";
 
@@ -315,30 +323,6 @@ const extractErrorMessage = (err: any): string => {
   if (data?.message && data.message.length < 120) return data.message;
 
   return "An unexpected error occurred. Please try again.";
-};
-
-// concurrency limiter
-
-const runConcurrent = async <T>(
-  tasks: (() => Promise<T>)[],
-  limit: number,
-): Promise<PromiseSettledResult<T>[]> => {
-  const results: PromiseSettledResult<T>[] = new Array(tasks.length);
-  let cursor = 0;
-
-  const runSlot = async () => {
-    while (cursor < tasks.length) {
-      const i = cursor++;
-      try {
-        results[i] = { status: "fulfilled", value: await tasks[i]() };
-      } catch (e) {
-        results[i] = { reason: e, status: "rejected" };
-      }
-    }
-  };
-
-  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, runSlot));
-  return results;
 };
 
 // upload pipeline
@@ -371,38 +355,41 @@ const uploadSingle = async (state: FileUploadState) => {
 
   state.stage = UploadStage.INITIALIZING;
   updateProgress(state, 0);
-  const response = await fileApi.initializeUpload({
-    contentLength: fileToUpload.size,
+  state.uploadId = await sendUpload({
+    blob: fileToUpload,
     contentType,
-    directoryId: selectedDirectoryId.value,
-    hash,
-  });
-  state.uploadId = response.uploadId;
-  updateProgress(state, 100);
-
-  state.stage = UploadStage.UPLOADING;
-  updateProgress(state, 0);
-  await fileApi.uploadToS3(
-    response.uploadUrl,
-    fileToUpload,
-    contentType,
-    (pct) => updateProgress(state, pct),
+    onInitialized: () => {
+      updateProgress(state, 100);
+      state.stage = UploadStage.UPLOADING;
+      updateProgress(state, 0);
+    },
+    onProgress: (pct) => updateProgress(state, pct),
+    request: {
+      contentLength: fileToUpload.size,
+      contentType,
+      directoryId: selectedDirectoryId.value,
+      hash,
+    },
     signal,
-  );
+  });
 
   state.stage = UploadStage.FINALIZING;
   updateProgress(state, 0);
-  await fileApi.finalizeUpload({
-    directoryId: selectedDirectoryId.value || undefined,
-    encryptionHint: state.encryptionHint || undefined,
-    encryptionIv: state.encryptionIv ?? undefined,
-    encryptionSalt: state.encryptionSalt ?? undefined,
-    fileName: state.file.name,
-    integrityTag: state.encryptionAuthTag ?? undefined,
-    isEncrypted: state.isEncrypted,
-    iterationCount: state.isEncrypted ? (state.encryptionIterations ?? undefined) : undefined,
-    uploadId: state.uploadId!,
-  });
+  await finalizeUpload(
+    {
+      directoryId: selectedDirectoryId.value || undefined,
+      encryptionHint: state.encryptionHint || undefined,
+      encryptionIv: state.encryptionIv ?? undefined,
+      encryptionSalt: state.encryptionSalt ?? undefined,
+      fileName: state.file.name,
+      integrityTag: state.encryptionAuthTag ?? undefined,
+      isEncrypted: state.isEncrypted,
+      iterationCount: state.isEncrypted ? (state.encryptionIterations ?? undefined) : undefined,
+      uploadId: state.uploadId,
+    },
+    fileToUpload.size,
+    signal,
+  );
 
   updateProgress(state, 100);
 
@@ -415,7 +402,7 @@ const startUpload = async () => {
 
   const pending = uploads.value.filter((u) => u.stage === UploadStage.IDLE);
 
-  const tasks = pending.map((state) => async () => {
+  const runOne = async (state: FileUploadState) => {
     try {
       await uploadSingle(state);
     } catch (err: any) {
@@ -424,9 +411,15 @@ const startUpload = async () => {
       state.stage = UploadStage.ERROR;
       state.errorMessage = isCancelled ? "Cancelled" : extractErrorMessage(err);
     }
-  });
+  };
 
-  await runConcurrent(tasks, 4);
+  const sizeOf = (state: FileUploadState) => state.file.size;
+
+  if (pending.some((state) => state.isEncrypted)) {
+    await runEncryptedUploadWindow(pending, runOne, sizeOf);
+  } else {
+    await runUploadWindow(pending, runOne, sizeOf);
+  }
 
   reportBatchOutcome(pending);
 

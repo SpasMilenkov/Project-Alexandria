@@ -25,6 +25,10 @@ public class UploadConfiguration : IEntityTypeConfiguration<Upload>
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
             .IsRequired();
 
+        builder.Property(e => e.Size)
+            .HasColumnType("numeric(20,0)")
+            .IsRequired();
+
         builder.Property(e => e.Hash)
             .HasColumnType("bytea")
             .IsRequired();
