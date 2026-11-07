@@ -133,7 +133,6 @@
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
 import { useIntersectionObserver } from "@vueuse/core";
-import { isAxiosError } from "axios";
 import { computed, ref, useTemplateRef, watch } from "vue";
 
 import type { OverviewSummaryHeaderDtoResponse } from "@/api/stats";
@@ -242,7 +241,6 @@ const isFinal = computed(() => data.value?.isFinal ?? header?.isFinal ?? false);
 const isPending = computed(() => status.value === "pending");
 
 const isAuthError = (err: unknown): boolean => {
-  if (isAxiosError(err)) return err.response?.status === 401 || err.response?.status === 403;
   if (!err || typeof err !== "object") return false;
 
   const record = err as Record<string, unknown>;

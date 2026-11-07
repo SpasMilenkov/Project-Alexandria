@@ -312,7 +312,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
     resolvingEvent.value = null;
     resolveNote.value = "";
   } catch (err) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
+    const status = (err as { status?: number })?.status;
     if (status === 409) {
       toast.warning("Already resolved", "Someone resolved this first — the list is refreshing.");
       resolvingEvent.value = null;

@@ -1,14 +1,4 @@
-interface ErrorResponseLike {
-  data?: unknown;
-  status?: number;
-}
-
-interface ErrorLike {
-  code?: string;
-  isAxiosError?: boolean;
-  message?: string;
-  response?: ErrorResponseLike;
-}
+import { isApiError } from "@/api/errors";
 
 const OFFLINE = "Can't reach the server. Check your connection and try again.";
 
@@ -32,12 +22,6 @@ const HINT_FIRST_STATUSES = new Set([401, 403, 429]);
 
 // Retrying the same request cannot fix these; offering a Retry button would only repeat the failure.
 const PERMANENT_STATUSES = new Set([400, 401, 403, 404, 409, 413, 422]);
-
-const asErrorLike = (cause: unknown): ErrorLike | null => {
-  if (typeof cause !== "object" || cause === null) return null;
-
-  return cause as ErrorLike;
-};
 
 const collectValidationMessages = (errors: unknown): string[] => {
   if (Array.isArray(errors)) return errors.filter((entry) => typeof entry === "string");
@@ -64,8 +48,6 @@ const readServerMessage = (data: unknown): string | undefined => {
   return undefined;
 };
 
-const isTimeout = (error: ErrorLike) => error.code === "ECONNABORTED" || error.code === "ETIMEDOUT";
-
 const isOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
 
 const describeHttpFailure = (status: number, data: unknown): string => {
@@ -82,29 +64,22 @@ export const describeToastError = (cause: unknown): string | undefined => {
   if (cause === undefined || cause === null) return undefined;
   if (typeof cause === "string") return cause || undefined;
 
-  const error = asErrorLike(cause);
-  if (!error) return FALLBACK;
+  if (typeof cause !== "object") return FALLBACK;
 
-  const status = error.response?.status;
-  if (typeof status === "number") return describeHttpFailure(status, error.response?.data);
-
-  const serverMessage = readServerMessage(error.response?.data);
-  if (serverMessage) return serverMessage;
-
-  if (error.isAxiosError) {
-    if (isTimeout(error)) return TIMED_OUT;
+  if (isApiError(cause)) {
+    if (typeof cause.status === "number") return describeHttpFailure(cause.status, cause.data);
+    if (cause.kind === "timeout") return TIMED_OUT;
 
     return OFFLINE;
   }
 
   if (isOffline()) return OFFLINE;
 
-  return error.message || FALLBACK;
+  return (cause as { message?: string }).message || FALLBACK;
 };
 
 export const isRetriableError = (cause: unknown): boolean => {
-  const status = asErrorLike(cause)?.response?.status;
-  if (typeof status !== "number") return true;
+  if (!isApiError(cause) || typeof cause.status !== "number") return true;
 
-  return !PERMANENT_STATUSES.has(status);
+  return !PERMANENT_STATUSES.has(cause.status);
 };

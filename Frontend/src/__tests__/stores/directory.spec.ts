@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "@/api/errors";
 import { useDirectoryStore } from "@/stores/directory";
 
 const mockSearchDirectory = vi.fn();
@@ -74,12 +75,13 @@ describe("useDirectoryStore", () => {
     expect(store.error).toBe("Network error");
   });
 
-  it("searchDirectory extracts Axios response error message", async () => {
-    const axiosError = {
-      isAxiosError: true,
-      response: { data: { message: "Directory not found" } },
-    };
-    mockSearchDirectory.mockRejectedValueOnce(axiosError);
+  it("searchDirectory extracts the server's error message", async () => {
+    const apiError = new ApiError("Request failed", {
+      data: { message: "Directory not found" },
+      kind: "http",
+      status: 404,
+    });
+    mockSearchDirectory.mockRejectedValueOnce(apiError);
 
     const store = useDirectoryStore();
     const result = await store.searchDirectory({ nameContains: "lost" });

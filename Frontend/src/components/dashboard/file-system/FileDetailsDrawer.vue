@@ -234,7 +234,7 @@ const isAudioFile = computed(() =>
 );
 
 const extractAutoTagError = (err: any): string => {
-  const data = err?.response?.data;
+  const data = err?.data;
   if (data?.errors && typeof data.errors === "object") {
     const parts = Object.values(data.errors as Record<string, string[]>)
       .flat()

@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "@/api/errors";
 import { describeToastError, isRetriableError } from "@/features/toast/errors";
 
-const httpError = (status: number, data: unknown = {}) => ({
-  isAxiosError: true,
-  message: `Request failed with status code ${status}`,
-  response: { data, status },
-});
+const httpError = (status: number, data: unknown = {}) =>
+  new ApiError(`Request failed with status ${status}`, { data, kind: "http", status });
+
+const networkError = () => new ApiError("The server could not be reached", { kind: "network" });
+
+const timeoutError = () => new ApiError("The request timed out", { kind: "timeout" });
 
 describe("describeToastError", () => {
   afterEach(() => {
@@ -62,10 +64,10 @@ describe("describeToastError", () => {
   });
 
   it("tells a dropped connection apart from a timeout", () => {
-    expect(describeToastError({ code: "ERR_NETWORK", isAxiosError: true })).toBe(
+    expect(describeToastError(networkError())).toBe(
       "Can't reach the server. Check your connection and try again.",
     );
-    expect(describeToastError({ code: "ECONNABORTED", isAxiosError: true })).toBe(
+    expect(describeToastError(timeoutError())).toBe(
       "The server took too long to answer. Try again in a moment.",
     );
   });
@@ -87,7 +89,7 @@ describe("isRetriableError", () => {
   it("allows retrying transient failures", () => {
     expect(isRetriableError(httpError(503))).toBe(true);
     expect(isRetriableError(httpError(429))).toBe(true);
-    expect(isRetriableError({ code: "ERR_NETWORK", isAxiosError: true })).toBe(true);
+    expect(isRetriableError(networkError())).toBe(true);
     expect(isRetriableError(new Error("boom"))).toBe(true);
   });
 

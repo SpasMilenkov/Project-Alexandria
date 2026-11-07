@@ -3,7 +3,7 @@ import type { JobStatus } from "@/enums/job-status";
 import type { PaginatedResponse } from "./directory";
 import type { AudioRung, VideoRung } from "./policy";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export enum RepresentationStatus {
   Pending = 0,
@@ -168,88 +168,55 @@ export interface MediaFileDto {
 }
 
 export const streamingApi = {
-  getFilesForStreaming: async (
+  getFilesForStreaming: (
     query: GetFilesForStreamingQuery,
-  ): Promise<PaginatedResponse<MediaFileDto>> => {
-    const result = await apiClient.get<PaginatedResponse<MediaFileDto>>("/streaming/files", {
+  ): Promise<PaginatedResponse<MediaFileDto>> =>
+    api.get<PaginatedResponse<MediaFileDto>>("/streaming/files", {
       params: query,
-    });
-
-    return result.data;
-  },
+    }),
 
   getStreamingFile: async (fileId: string): Promise<MediaFileDto | null> => {
     try {
-      const result = await apiClient.get<MediaFileDto>(`/streaming/files/${fileId}`);
-      return result.data;
+      return await api.get<MediaFileDto>(`/streaming/files/${fileId}`);
     } catch (error: any) {
-      if (error?.response?.status === 404) return null;
+      if (error?.status === 404) return null;
       throw error;
     }
   },
 
-  getManifest: async (id: string): Promise<string> => {
-    const result = await apiClient.get<string>(`/streaming/manifest/${id}`);
-    return result.data;
-  },
+  getManifest: (id: string): Promise<string> => api.get<string>(`/streaming/manifest/${id}`),
 
-  getHistory: async (
-    query: StreamHistoryQuery,
-  ): Promise<PaginatedResponse<StreamHistoryResponse>> => {
-    const result = await apiClient.get<PaginatedResponse<StreamHistoryResponse>>(
-      "/stream-history",
-      { params: query },
-    );
-    return result.data;
-  },
+  getHistory: (query: StreamHistoryQuery): Promise<PaginatedResponse<StreamHistoryResponse>> =>
+    api.get<PaginatedResponse<StreamHistoryResponse>>("/stream-history", { params: query }),
 
-  getHistoryByFile: async (fileId: string): Promise<StreamHistoryResponse | null> => {
-    const result = await apiClient.get<StreamHistoryResponse | null>("/stream-history/by-file", {
+  getHistoryByFile: (fileId: string): Promise<StreamHistoryResponse | null> =>
+    api.get<StreamHistoryResponse | null>("/stream-history/by-file", {
       params: { fileId },
-    });
-    return result.data;
-  },
+    }),
 
-  getSessions: async (
-    streamHistoryId: string,
-  ): Promise<PaginatedResponse<StreamSessionResponse>> => {
-    const result = await apiClient.get<PaginatedResponse<StreamSessionResponse>>(
+  getSessions: (streamHistoryId: string): Promise<PaginatedResponse<StreamSessionResponse>> =>
+    api.get<PaginatedResponse<StreamSessionResponse>>(
       `/stream-history/${streamHistoryId}/sessions`,
-    );
-    return result.data;
-  },
+    ),
 
-  startSession: async (req: StartSessionRequest): Promise<StreamSessionResponse> => {
-    const result = await apiClient.post<StreamSessionResponse>("/stream-history/sessions", req);
-    return result.data;
-  },
+  startSession: (req: StartSessionRequest): Promise<StreamSessionResponse> =>
+    api.post<StreamSessionResponse>("/stream-history/sessions", req),
 
-  closeSession: async (
-    sessionId: string,
-    req: CloseSessionRequest,
-  ): Promise<StreamHistoryResponse> => {
-    const result = await apiClient.patch<StreamHistoryResponse>(
-      `/stream-history/sessions/${sessionId}/close`,
-      req,
-    );
-    return result.data;
-  },
+  closeSession: (sessionId: string, req: CloseSessionRequest): Promise<StreamHistoryResponse> =>
+    api.patch<StreamHistoryResponse>(`/stream-history/sessions/${sessionId}/close`, req),
 
-  getTranspilationJobs: async (
+  getTranspilationJobs: (
     query: TranspilationJobQuery,
-  ): Promise<PaginatedResponse<TranspilationJobResponse>> => {
-    const result = await apiClient.get<PaginatedResponse<TranspilationJobResponse>>(
-      "/streaming/jobs",
-      { params: query },
-    );
-    return result.data;
-  },
+  ): Promise<PaginatedResponse<TranspilationJobResponse>> =>
+    api.get<PaginatedResponse<TranspilationJobResponse>>("/streaming/jobs", {
+      params: query,
+    }),
 
   queueTranspilationJob: async (params: QueueTranspilationJobRequest): Promise<void> => {
-    await apiClient.post("/streaming/job", params);
+    await api.post("/streaming/job", params);
   },
 
   updateTranspilationJob: async (req: UpdateTranspilationJobRequest): Promise<void> => {
-    await apiClient.patch("/streaming/update-transpilation-status", req);
+    await api.patch("/streaming/update-transpilation-status", req);
   },
 };

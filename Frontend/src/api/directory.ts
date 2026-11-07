@@ -7,7 +7,7 @@ import type {
 } from "@/schemas/directory";
 import type { PaginationParams } from "@/types/pagination-params";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Response Types
 export interface UserDto {
@@ -143,90 +143,61 @@ export interface PaginatedResponse<T> {
 
 // oxlint-disable-next-line sort-keys
 export const directoryApi = {
-  setFavorite: async (
-    directoryId: string,
-    isStarred: boolean,
-  ): Promise<DirectoryFavoriteResponse> => {
-    const response = await apiClient.patch<DirectoryFavoriteResponse>(
-      `/directories/${directoryId}/favorite`,
-      { isStarred },
-    );
-
-    return response.data;
-  },
+  setFavorite: (directoryId: string, isStarred: boolean): Promise<DirectoryFavoriteResponse> =>
+    api.patch<DirectoryFavoriteResponse>(`/directories/${directoryId}/favorite`, {
+      isStarred,
+    }),
 
   // Create a new directory
-  createDirectory: async (data: CreateDirectorySchema): Promise<CreateDirectoryResponse> => {
-    const response = await apiClient.post<CreateDirectoryResponse>("/directories", data);
-    return response.data;
-  },
+  createDirectory: (data: CreateDirectorySchema): Promise<CreateDirectoryResponse> =>
+    api.post<CreateDirectoryResponse>("/directories", data),
 
-  uploadDirectory: async (
+  uploadDirectory: (
     parentId: string | undefined,
     paths: string[],
-  ): Promise<Record<string, string | null>> => {
-    const response = await apiClient.post<Record<string, string | null>>(
-      "/directories/create-subtree",
-      {
-        parentId,
-        paths,
-      },
-    );
-    return response.data;
-  },
+  ): Promise<Record<string, string | null>> =>
+    api.post<Record<string, string | null>>("/directories/create-subtree", {
+      parentId,
+      paths,
+    }),
 
   // Get directory by ID
-  getDirectory: async (directoryId: string): Promise<GetDirectoryResponse> => {
-    const response = await apiClient.get<GetDirectoryResponse>("/directories", {
+  getDirectory: (directoryId: string): Promise<GetDirectoryResponse> =>
+    api.get<GetDirectoryResponse>("/directories", {
       params: { directoryId },
-    });
-    return response.data;
-  },
+    }),
 
-  getRooSubDirectories: async (
+  getRooSubDirectories: (
     paginationParams: PaginationParams,
-  ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
-    const response = await apiClient.get<PaginatedResponse<DirectorySummaryDto>>(
-      "/directories/root",
-      {
-        params: {
-          page: paginationParams.page,
-          pageSize: paginationParams.pageSize,
-          sortBy: paginationParams.SortBy,
-          sortDirection: paginationParams.sortDirection,
-        },
+  ): Promise<PaginatedResponse<DirectorySummaryDto>> =>
+    api.get<PaginatedResponse<DirectorySummaryDto>>("/directories/root", {
+      params: {
+        page: paginationParams.page,
+        pageSize: paginationParams.pageSize,
+        sortBy: paginationParams.SortBy,
+        sortDirection: paginationParams.sortDirection,
       },
-    );
-    return response.data;
-  },
-  getSubDirectories: async (
+    }),
+  getSubDirectories: (
     directoryId: string,
     paginationParams: PaginationParams,
-  ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
-    const response = await apiClient.get<PaginatedResponse<DirectorySummaryDto>>(
-      "/directories/sub",
-      {
-        params: {
-          directoryId,
-          page: paginationParams.page,
-          pageSize: paginationParams.pageSize,
-          sortBy: paginationParams.SortBy,
-          sortDirection: paginationParams.sortDirection,
-        },
+  ): Promise<PaginatedResponse<DirectorySummaryDto>> =>
+    api.get<PaginatedResponse<DirectorySummaryDto>>("/directories/sub", {
+      params: {
+        directoryId,
+        page: paginationParams.page,
+        pageSize: paginationParams.pageSize,
+        sortBy: paginationParams.SortBy,
+        sortDirection: paginationParams.sortDirection,
       },
-    );
-    return response.data;
-  },
+    }),
 
-  getDirectoryPath: async (id: string): Promise<{ pathParts: { id: string; name: string }[] }> => {
-    const response = await apiClient.get<{
+  getDirectoryPath: (id: string): Promise<{ pathParts: { id: string; name: string }[] }> =>
+    api.get<{
       pathParts: { id: string; name: string }[];
-    }>(`/directories/path/${id}`);
+    }>(`/directories/path/${id}`),
 
-    return response.data;
-  },
-
-  searchDirectory: async (
+  searchDirectory: (
     query: SearchDirectoryRequest,
   ): Promise<PaginatedResponse<DirectorySummaryDto>> => {
     const cleanParams = Object.fromEntries(
@@ -234,34 +205,25 @@ export const directoryApi = {
       Object.entries(query).filter(([_, value]) => value !== null),
     );
 
-    const response = await apiClient.get<PaginatedResponse<DirectorySummaryDto>>(
-      "/directories/search",
-      {
-        params: cleanParams,
-      },
-    );
-    return response.data;
+    return api.get<PaginatedResponse<DirectorySummaryDto>>("/directories/search", {
+      params: cleanParams,
+    });
   },
 
   // Update directory
-  updateDirectory: async (data: UpdateDirectorySchema): Promise<UpdateDirectoryResponse> => {
-    const response = await apiClient.patch<UpdateDirectoryResponse>(
-      `/directories/${data.directoryId}`,
-      data,
-    );
-    return response.data;
-  },
+  updateDirectory: (data: UpdateDirectorySchema): Promise<UpdateDirectoryResponse> =>
+    api.patch<UpdateDirectoryResponse>(`/directories/${data.directoryId}`, data),
 
   // Move directory
   moveDirectories: async (directoryIds: string[], destinationId: string | null): Promise<void> => {
-    await apiClient.post("directories/move", {
+    await api.post("directories/move", {
       destinationId,
       directoryIds,
     });
   },
 
   copyDirectory: async (dirId: string, destinationId: string | null) => {
-    await apiClient.post("directories/copy", {
+    await api.post("directories/copy", {
       destinationId,
       directoryId: dirId,
     });
@@ -269,16 +231,13 @@ export const directoryApi = {
 
   // Delete directory
   deleteDirectory: async (id: string, options: DeleteDirectorySchema): Promise<void> => {
-    await apiClient.delete(`/directories/${id}`, {
-      data: options,
+    await api.delete(`/directories/${id}`, {
+      body: options,
     });
   },
 
-  restoreDirectories: async (directoryIds: string[]) => {
-    const result = await apiClient.post("directories/restore", {
+  restoreDirectories: (directoryIds: string[]) =>
+    api.post<number>("directories/restore", {
       directoryIds,
-    });
-
-    return result.data;
-  },
+    }),
 };

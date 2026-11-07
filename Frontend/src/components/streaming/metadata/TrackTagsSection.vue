@@ -141,7 +141,7 @@ const isAudioFile = computed(() => isAutoTagSupportedFileType(file.mimeType));
 const isDesktop = useMediaQuery("(min-width: 768px)");
 
 const extractAutoTagError = (err: any): string => {
-  const data = err?.response?.data;
+  const data = err?.data;
   if (data?.errors && typeof data.errors === "object") {
     const parts = Object.values(data.errors as Record<string, string[]>)
       .flat()

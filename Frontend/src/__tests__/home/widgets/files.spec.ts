@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { StorageBreakdown } from "@/api/status";
 
+import { ApiError } from "@/api/errors";
 import { isAuthError } from "@/api/shuffle";
 import { HomeRecentFilesSource } from "@/enums/home-widget";
 import { SortBy } from "@/enums/SortBy";
@@ -27,9 +28,9 @@ const storage = (patch: Partial<StorageBreakdown> = {}): StorageBreakdown => ({
 
 describe("Home file widget data", () => {
   it.each([
-    [{ response: { status: 401 } }, true],
-    [{ response: { status: 403 }, message: "Request failed with status code 403" }, true],
-    [{ response: { status: 500 }, message: "Could not read 401.txt" }, false],
+    [new ApiError("Request failed", { kind: "http", status: 401 }), true],
+    [new ApiError("Request failed with status code 403", { kind: "http", status: 403 }), true],
+    [new ApiError("Could not read 401.txt", { kind: "http", status: 500 }), false],
     [{ message: "Unauthorized filename" }, false],
     [null, false],
   ])("classifies transport auth errors by response status (%j)", (error, expected) => {

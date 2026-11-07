@@ -14,8 +14,7 @@ import {
 
 vi.mock("@/api/shuffle", () => ({
   SHUFFLE_BATCH_LIMIT: 50,
-  httpStatus: (err: unknown) =>
-    (err as { response?: { status?: number } })?.response?.status ?? null,
+  httpStatus: (err: unknown) => (err as { status?: number })?.status ?? null,
   isAuthError: () => false,
   shuffleApi: {
     newRequestId: vi.fn(),

@@ -5,7 +5,7 @@ import type { SortDirection } from "@/enums/SortDirection";
 import type { PaginatedResponse } from "./directory";
 import type { StreamingRepresentationResponse } from "./streaming";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Response types
 
@@ -103,22 +103,18 @@ export interface ReorderPlaylistItemsRequest {
 // API
 
 export const playlistApi = {
-  create: async (req: CreatePlaylistRequest): Promise<PlaylistResponse> => {
-    const result = await apiClient.post<PlaylistResponse>("/playlists", req);
-    return result.data;
-  },
+  create: (req: CreatePlaylistRequest): Promise<PlaylistResponse> =>
+    api.post<PlaylistResponse>("/playlists", req),
 
-  getById: async (id: string): Promise<PlaylistDetailResponse> => {
-    const result = await apiClient.get<PlaylistDetailResponse>(`/playlists/${id}`);
-    return result.data;
-  },
+  getById: (id: string): Promise<PlaylistDetailResponse> =>
+    api.get<PlaylistDetailResponse>(`/playlists/${id}`),
 
-  getAll: async (
+  getAll: (
     page: number,
     pageSize: number,
     filters?: GetPlaylistsFilters,
-  ): Promise<PaginatedResponse<PlaylistResponse>> => {
-    const result = await apiClient.get<PaginatedResponse<PlaylistResponse>>("/playlists", {
+  ): Promise<PaginatedResponse<PlaylistResponse>> =>
+    api.get<PaginatedResponse<PlaylistResponse>>("/playlists", {
       params: {
         page,
         pageSize,
@@ -130,27 +126,14 @@ export const playlistApi = {
         query: filters?.query ?? undefined,
         searchItems: filters?.searchItems ? true : undefined,
       },
-    });
-    return result.data;
-  },
+    }),
 
-  uploadPlaylistCover: async (playlistId: string, file: File) => {
+  uploadPlaylistCover: (playlistId: string, file: File) => {
     const form = new FormData();
     form.append("playlistId", playlistId);
     form.append("file", file);
 
-    // Drop the instance JSON content-type so the browser sets multipart
-    // with its own boundary; the default transform would stringify the form.
-    const result = await apiClient.post("/streaming/playlists/cover", form, {
-      transformRequest: [
-        (payload, headers) => {
-          headers?.delete("Content-Type");
-          return payload;
-        },
-      ],
-    });
-
-    return result.data;
+    return api.post("/streaming/playlists/cover", form);
   },
 
   // Stable, cookie-authed cover URL served by nginx (see the /covers/
@@ -161,43 +144,24 @@ export const playlistApi = {
     return updatedAt ? `${base}?v=${encodeURIComponent(updatedAt)}` : base;
   },
 
-  update: async (id: string, req: UpdatePlaylistRequest): Promise<PlaylistResponse> => {
-    const result = await apiClient.patch<PlaylistResponse>(`/playlists/${id}`, req);
-    return result.data;
-  },
+  update: (id: string, req: UpdatePlaylistRequest): Promise<PlaylistResponse> =>
+    api.patch<PlaylistResponse>(`/playlists/${id}`, req),
 
   delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/playlists/${id}`);
+    await api.delete(`/playlists/${id}`);
   },
 
-  setFavorite: async (
-    playlistId: string,
-    isStarred: boolean,
-  ): Promise<PlaylistFavoriteResponse> => {
-    const result = await apiClient.patch<PlaylistFavoriteResponse>(
-      `/playlists/${playlistId}/favorite`,
-      { isStarred },
-    );
+  setFavorite: (playlistId: string, isStarred: boolean): Promise<PlaylistFavoriteResponse> =>
+    api.patch<PlaylistFavoriteResponse>(`/playlists/${playlistId}/favorite`, { isStarred }),
 
-    return result.data;
-  },
-
-  addItem: async (
-    playlistId: string,
-    req: AddPlaylistItemRequest,
-  ): Promise<PlaylistItemResponse> => {
-    const result = await apiClient.post<PlaylistItemResponse>(
-      `/playlists/${playlistId}/items`,
-      req,
-    );
-    return result.data;
-  },
+  addItem: (playlistId: string, req: AddPlaylistItemRequest): Promise<PlaylistItemResponse> =>
+    api.post<PlaylistItemResponse>(`/playlists/${playlistId}/items`, req),
 
   removeItem: async (playlistId: string, itemId: string): Promise<void> => {
-    await apiClient.delete(`/playlists/${playlistId}/items/${itemId}`);
+    await api.delete(`/playlists/${playlistId}/items/${itemId}`);
   },
 
   reorderItems: async (playlistId: string, req: ReorderPlaylistItemsRequest): Promise<void> => {
-    await apiClient.put(`/playlists/${playlistId}/items/order`, req);
+    await api.put(`/playlists/${playlistId}/items/order`, req);
   },
 };

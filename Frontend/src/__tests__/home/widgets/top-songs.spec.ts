@@ -6,6 +6,7 @@ import { defineComponent, h, ref } from "vue";
 
 import type { TopSong, TopSongsQuery, TopSongsResponse } from "@/api/listening-rankings";
 
+import { ApiError } from "@/api/errors";
 import HomeTopSongsWidget from "@/components/dashboard/home/widgets/top-songs/HomeTopSongsWidget.vue";
 import { OnboardingStep } from "@/enums";
 import { HomeWidgetType } from "@/enums/home-widget";
@@ -238,7 +239,9 @@ describe("Home Top songs shared playback", () => {
   });
 
   it("suppresses transient authentication errors and retries transport errors", async () => {
-    api.getTopSongs.mockRejectedValueOnce({ response: { status: 401 } });
+    api.getTopSongs.mockRejectedValueOnce(
+      new ApiError("Request failed", { kind: "http", status: 401 }),
+    );
     const pending = mountWidget();
     cleanups.push(() => pending.wrapper.unmount());
     await flushPromises();

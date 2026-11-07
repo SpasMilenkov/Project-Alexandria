@@ -14,6 +14,7 @@ import {
   OperationType,
   activityApi,
 } from "@/api/activity";
+import { ApiError } from "@/api/errors";
 import { publicStatusApi } from "@/api/publicStatus";
 import HomeRecentActivityWidget from "@/components/dashboard/home/widgets/status/HomeRecentActivityWidget.vue";
 import HomeRecentActivityWidgetOptions from "@/components/dashboard/home/widgets/status/HomeRecentActivityWidgetOptions.vue";
@@ -285,7 +286,7 @@ describe("Home status and activity component lifecycle", () => {
   it("shows unknown and retry on public status errors, and suppresses transient auth errors", async () => {
     const request = vi
       .spyOn(publicStatusApi, "getCurrentStatus")
-      .mockRejectedValueOnce({ response: { status: 500 } })
+      .mockRejectedValueOnce(new ApiError("Request failed", { kind: "http", status: 500 }))
       .mockResolvedValueOnce([{ serviceType: ServiceType.Api, status: "Down" }]);
     const { wrapper } = mountWidget(HomeWidgetType.SystemStatus);
 
@@ -299,7 +300,7 @@ describe("Home status and activity component lifecycle", () => {
     expect(wrapper.text()).toContain("Service disruption");
     wrapper.unmount();
 
-    request.mockRejectedValueOnce({ response: { status: 401 } });
+    request.mockRejectedValueOnce(new ApiError("Request failed", { kind: "http", status: 401 }));
     const auth = mountWidget(HomeWidgetType.SystemStatus);
     await flushPromises();
     expect(auth.wrapper.find('[aria-label="Loading widget data"]').exists()).toBe(true);

@@ -1,4 +1,4 @@
-import { apiClient } from "@/api/client";
+import { API_BASE_URL } from "@/api/client";
 import { fileApi } from "@/api/file";
 import FileDecryptionModal from "@/components/dashboard/file-system/Modals/FileDecryptionModal.vue";
 import { decryptFile } from "@/composables/useDecrypt";
@@ -137,7 +137,7 @@ export const useFileDownload = () => {
     const token = await fileApi.bulkDownloadInit({ directoryIds, fileIds });
     logger.log("token", token);
     const a = document.createElement("a");
-    a.href = `${apiClient.defaults.baseURL}/files/download-bulk/${token}`;
+    a.href = `${API_BASE_URL}/files/download-bulk/${token}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

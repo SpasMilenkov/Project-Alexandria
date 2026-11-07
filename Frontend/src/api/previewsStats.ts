@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Backend enums serialize as numbers (no JsonStringEnumConverter)
 export const PREVIEW_STATS_BUCKET = { Hour: 0, Day: 1 } as const;
@@ -93,29 +93,21 @@ export interface PreviewVolumeResponse {
 }
 
 export const previewsStatsApi = {
-  getOverview: async (): Promise<PreviewsOverviewResponse> => {
-    const result = await apiClient.get<PreviewsOverviewResponse>("/admin/previews/overview");
-    return result.data;
-  },
+  getOverview: (): Promise<PreviewsOverviewResponse> =>
+    api.get<PreviewsOverviewResponse>("/admin/previews/overview"),
 
-  getVolume: async (params: PreviewVolumeParams): Promise<PreviewVolumeResponse> => {
-    const result = await apiClient.get<PreviewVolumeResponse>("/admin/previews/volume", {
+  getVolume: (params: PreviewVolumeParams): Promise<PreviewVolumeResponse> =>
+    api.get<PreviewVolumeResponse>("/admin/previews/volume", {
       params,
-    });
-    return result.data;
-  },
+    }),
 
-  getJobOverview: async (type?: PreviewJobType): Promise<PreviewJobOverviewResponse> => {
-    const result = await apiClient.get<PreviewJobOverviewResponse>("/admin/previews/job-overview", {
+  getJobOverview: (type?: PreviewJobType): Promise<PreviewJobOverviewResponse> =>
+    api.get<PreviewJobOverviewResponse>("/admin/previews/job-overview", {
       params: type === undefined ? {} : { type },
-    });
-    return result.data;
-  },
+    }),
 
-  getJobTrend: async (params: PreviewJobTrendParams): Promise<PreviewJobTrendResponse> => {
-    const result = await apiClient.get<PreviewJobTrendResponse>("/admin/previews/job-trend", {
+  getJobTrend: (params: PreviewJobTrendParams): Promise<PreviewJobTrendResponse> =>
+    api.get<PreviewJobTrendResponse>("/admin/previews/job-trend", {
       params,
-    });
-    return result.data;
-  },
+    }),
 };

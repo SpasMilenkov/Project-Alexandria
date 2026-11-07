@@ -1,9 +1,8 @@
-import type { AxiosError } from "axios";
-
 import { acceptHMRUpdate, defineStore } from "pinia";
 import { ref } from "vue";
 
 import { type SearchDirectoryRequest, directoryApi } from "@/api/directory";
+import { isApiError } from "@/api/errors";
 
 export const useDirectoryStore = defineStore(
   "directory",
@@ -36,8 +35,8 @@ export const useDirectoryStore = defineStore(
       if (err instanceof Error) {
         ({ message } = err);
       }
-      if ((err as AxiosError)?.response?.data) {
-        message = (err as AxiosError<{ message: string }>).response?.data?.message ?? message;
+      if (isApiError(err) && err.data) {
+        message = (err.data as { message?: string }).message ?? message;
       }
       error.value = message;
       return message;

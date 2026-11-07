@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type App, createApp, defineComponent, isVNode } from "vue";
 
+import { ApiError } from "@/api/errors";
 import { type AppToast, useAppToast } from "@/composables/useAppToast";
 import { TOAST_SOURCES, type ToastSource } from "@/features/toast/sources";
 import { useSettingsStore } from "@/stores/settings";
@@ -115,7 +116,10 @@ describe("useAppToast", () => {
     it("turns a thrown HTTP error into a readable cause line", async () => {
       const mounted = mountToast("files");
 
-      mounted.appToast.error("Couldn't rename", { response: { data: {}, status: 403 } });
+      mounted.appToast.error(
+        "Couldn't rename",
+        new ApiError("Request failed", { data: {}, kind: "http", status: 403 }),
+      );
       await flushPromises();
 
       expect(mounted.toaster.toasts.value[0]?.description).toBe(
@@ -128,7 +132,11 @@ describe("useAppToast", () => {
 
       const retry = vi.fn();
 
-      mounted.appToast.error("Couldn't load", { response: { data: {}, status: 503 } }, { retry });
+      mounted.appToast.error(
+        "Couldn't load",
+        new ApiError("Request failed", { data: {}, kind: "http", status: 503 }),
+        { retry },
+      );
       await flushPromises();
 
       const retryAction = mounted.toaster.toasts.value[0]?.actions?.find(
@@ -147,7 +155,11 @@ describe("useAppToast", () => {
 
       mounted.appToast.error(
         "Couldn't create",
-        { response: { data: { errors: { name: ["Name is taken"] } }, status: 409 } },
+        new ApiError("Request failed", {
+          data: { errors: { name: ["Name is taken"] } },
+          kind: "http",
+          status: 409,
+        }),
         { retry: vi.fn() },
       );
       await flushPromises();

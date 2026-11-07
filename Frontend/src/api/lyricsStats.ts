@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Backend enums serialize as numbers (no JsonStringEnumConverter)
 export const LYRICS_STATS_BUCKET = { Hour: 0, Day: 1 } as const;
@@ -59,13 +59,9 @@ export interface LyricsOverviewResponse {
 }
 
 export const lyricsStatsApi = {
-  getOverview: async (): Promise<LyricsOverviewResponse> => {
-    const result = await apiClient.get<LyricsOverviewResponse>("/admin/lyrics/overview");
-    return result.data;
-  },
+  getOverview: (): Promise<LyricsOverviewResponse> =>
+    api.get<LyricsOverviewResponse>("/admin/lyrics/overview"),
 
-  getTrend: async (params: LyricsTrendParams): Promise<LyricsTrendResponse> => {
-    const result = await apiClient.get<LyricsTrendResponse>("/admin/lyrics/trend", { params });
-    return result.data;
-  },
+  getTrend: (params: LyricsTrendParams): Promise<LyricsTrendResponse> =>
+    api.get<LyricsTrendResponse>("/admin/lyrics/trend", { params }),
 };

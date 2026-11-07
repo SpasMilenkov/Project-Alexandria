@@ -5,5 +5,6 @@ public enum SortBy
     Name,
     CreatedAt,
     UpdatedAt,
-    Size
+    FileCount,
+    TotalSize
 }

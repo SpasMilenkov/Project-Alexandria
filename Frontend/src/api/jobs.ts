@@ -2,7 +2,7 @@ import type { JobStatus, JobType } from "@/enums";
 
 import type { PaginatedResponse } from "./directory";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export interface AdminJob {
   id: string;
@@ -28,21 +28,17 @@ export interface RequeueFailedResult {
 }
 
 export const jobsApi = {
-  getJobs: async (query: AdminJobsQuery): Promise<PaginatedResponse<AdminJob>> => {
-    const result = await apiClient.get<PaginatedResponse<AdminJob>>("/admin/jobs", {
+  getJobs: (query: AdminJobsQuery): Promise<PaginatedResponse<AdminJob>> =>
+    api.get<PaginatedResponse<AdminJob>>("/admin/jobs", {
       params: query,
-    });
-    return result.data;
-  },
+    }),
 
-  requeueFailed: async (type: JobType): Promise<RequeueFailedResult> => {
-    const result = await apiClient.post<RequeueFailedResult>("/admin/jobs/requeue-failed", {
+  requeueFailed: (type: JobType): Promise<RequeueFailedResult> =>
+    api.post<RequeueFailedResult>("/admin/jobs/requeue-failed", {
       type,
-    });
-    return result.data;
-  },
+    }),
 
   requeueJob: async (jobId: string): Promise<void> => {
-    await apiClient.post(`/admin/jobs/${jobId}/requeue`);
+    await api.post(`/admin/jobs/${jobId}/requeue`);
   },
 };

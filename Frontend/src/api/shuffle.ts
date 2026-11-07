@@ -1,6 +1,7 @@
 import type { MediaFileDto } from "./streaming";
 
-import { apiClient } from "./client";
+import { api } from "./client";
+import { ApiError, isApiError } from "./errors";
 
 export interface PlaybackSource {
   isVideo: boolean;
@@ -40,23 +41,26 @@ export const SHUFFLE_BATCH_LIMIT = 50;
 /** Single range size shared by sequential pages and shuffle reads. */
 export const RANGE_SIZE = SHUFFLE_BATCH_LIMIT;
 
+export const httpStatus = (err: unknown): number | null => {
+  if (!isApiError(err)) return null;
+
+  return err.status ?? null;
+};
+
 export const isAuthError = (err: unknown): boolean => {
-  const status = (err as { response?: { status?: number } })?.response?.status;
+  const status = httpStatus(err);
   return status === 401 || status === 403;
 };
 
-export const httpStatus = (err: unknown): number | null => {
-  const status = (err as { response?: { status?: number } })?.response?.status;
-  return typeof status === "number" ? status : null;
-};
-
-/** Builds the client error shape the 404 recovery paths match on. */
-export const sourceUnavailable = (): unknown => ({ response: { status: 404 } });
+/** Builds the client error the 404 recovery paths match on. */
+export const sourceUnavailable = (): unknown =>
+  new ApiError("The source is no longer available", { kind: "http", status: 404 });
 
 /** Names which field a 409 response blames: requestId, anchorFileId, or null. */
 export const conflictField = (err: unknown): string | null => {
-  const errors = (err as { response?: { data?: { errors?: Record<string, string[]> } } })?.response
-    ?.data?.errors;
+  if (!isApiError(err)) return null;
+
+  const errors = (err.data as { errors?: Record<string, string[]> } | undefined)?.errors;
   if (!errors || typeof errors !== "object") return null;
   const keys = Object.keys(errors);
   if (keys.some((key) => key.toLowerCase().includes("requestid"))) return "requestId";
@@ -83,24 +87,19 @@ const newRequestId = (): string => {
 export const shuffleApi = {
   newRequestId,
 
-  createSession: async (req: CreateShuffleSessionRequest): Promise<ShuffleSessionResponse> => {
-    const result = await apiClient.post<ShuffleSessionResponse>("/streaming/shuffle-sessions", req);
-    return result.data;
-  },
+  createSession: (req: CreateShuffleSessionRequest): Promise<ShuffleSessionResponse> =>
+    api.post<ShuffleSessionResponse>("/streaming/shuffle-sessions", req),
 
-  getSession: async (
+  getSession: (
     sessionId: string,
     offset: number,
     limit: number = SHUFFLE_BATCH_LIMIT,
-  ): Promise<ShuffleSessionResponse> => {
-    const result = await apiClient.get<ShuffleSessionResponse>(
-      `/streaming/shuffle-sessions/${sessionId}`,
-      { params: { offset, limit } },
-    );
-    return result.data;
-  },
+  ): Promise<ShuffleSessionResponse> =>
+    api.get<ShuffleSessionResponse>(`/streaming/shuffle-sessions/${sessionId}`, {
+      params: { offset, limit },
+    }),
 
   deleteSession: async (sessionId: string): Promise<void> => {
-    await apiClient.delete(`/streaming/shuffle-sessions/${sessionId}`);
+    await api.delete(`/streaming/shuffle-sessions/${sessionId}`);
   },
 };

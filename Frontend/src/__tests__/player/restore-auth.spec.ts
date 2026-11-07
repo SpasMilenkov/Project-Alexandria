@@ -7,6 +7,7 @@ import { defineComponent, h } from "vue";
 import type { MediaFileDto, PaginatedResponse } from "@/api/streaming";
 import type { OnboardingStep } from "@/enums";
 
+import { ApiError } from "@/api/errors";
 import { shuffleApi } from "@/api/shuffle";
 import { streamingApi } from "@/api/streaming";
 import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext";
@@ -45,7 +46,8 @@ const installFakes = () => {
       let page = query.page;
       if (query.anchorFileId) {
         const index = all.findIndex((f) => f.fileId === query.anchorFileId);
-        if (index === -1) throw { response: { status: 404, data: {} } };
+        if (index === -1)
+          throw new ApiError("Request failed", { data: {}, kind: "http", status: 404 });
         page = Math.floor(index / query.pageSize) + 1;
       }
       return {

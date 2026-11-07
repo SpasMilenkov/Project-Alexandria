@@ -97,7 +97,26 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
         return (total, count);
     }
 
-    public async Task<PaginatedResult<UserDetailsDto>> GetUsersAsync(UserQueryDto query, CancellationToken ct = default)
+    internal sealed class UserListRow
+    {
+        public required ApplicationUser User { get; init; }
+        public string? RoleName { get; init; }
+    }
+
+    private const string LikeEscape = "\\";
+
+    // Usernames can contain underscores, which LIKE would otherwise treat as a wildcard.
+    internal static string ContainsPattern(string term)
+    {
+        var escaped = term.Trim()
+            .Replace(LikeEscape, LikeEscape + LikeEscape)
+            .Replace("%", LikeEscape + "%")
+            .Replace("_", LikeEscape + "_");
+
+        return $"%{escaped}%";
+    }
+
+    internal static IQueryable<UserListRow> BuildUserListQuery(AlexandriaDbContext context, UserQueryDto query)
     {
         var dbQuery =
             from user in context.Users
@@ -105,20 +124,26 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
             from ur in userRoles.DefaultIfEmpty()
             join role in context.Roles on ur.RoleId equals role.Id into roles
             from role in roles.DefaultIfEmpty()
-            select new { user, RoleName = role.Name };
+            select new UserListRow { User = user, RoleName = role.Name };
 
         // Deletion
         if (query.ShowDeletedOnly)
-            dbQuery = dbQuery.Where(x => x.user.DeletedAt != null);
+            dbQuery = dbQuery.Where(x => x.User.DeletedAt != null);
         else if (!query.ShowDeleted)
-            dbQuery = dbQuery.Where(x => x.user.DeletedAt == null);
+            dbQuery = dbQuery.Where(x => x.User.DeletedAt == null);
 
         // Text search
         if (!string.IsNullOrWhiteSpace(query.UserName))
-            dbQuery = dbQuery.Where(x => x.user.UserName!.Contains(query.UserName));
+        {
+            var namePattern = ContainsPattern(query.UserName);
+            dbQuery = dbQuery.Where(x => EF.Functions.ILike(x.User.UserName!, namePattern, LikeEscape));
+        }
 
         if (!string.IsNullOrWhiteSpace(query.UserEmail))
-            dbQuery = dbQuery.Where(x => x.user.Email!.Contains(query.UserEmail));
+        {
+            var emailPattern = ContainsPattern(query.UserEmail);
+            dbQuery = dbQuery.Where(x => EF.Functions.ILike(x.User.Email!, emailPattern, LikeEscape));
+        }
 
         // Role
         if (query.Role.HasValue)
@@ -132,55 +157,74 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
         {
             var now = DateTimeOffset.UtcNow;
             dbQuery = query.IsLockedOut.Value
-                ? dbQuery.Where(x => x.user.LockoutEnd != null && x.user.LockoutEnd > now)
-                : dbQuery.Where(x => x.user.LockoutEnd == null || x.user.LockoutEnd <= now);
+                ? dbQuery.Where(x => x.User.LockoutEnd != null && x.User.LockoutEnd > now)
+                : dbQuery.Where(x => x.User.LockoutEnd == null || x.User.LockoutEnd <= now);
         }
 
         // Created
         if (query.CreatedAfter.HasValue)
-            dbQuery = dbQuery.Where(x => x.user.CreatedAt >= query.CreatedAfter.Value.ToUniversalTime());
+            dbQuery = dbQuery.Where(x => x.User.CreatedAt >= query.CreatedAfter.Value.ToUniversalTime());
         if (query.CreatedBefore.HasValue)
             dbQuery = dbQuery.Where(x =>
-                x.user.CreatedAt < query.CreatedBefore.Value.Date.AddDays(1).ToUniversalTime());
+                x.User.CreatedAt < query.CreatedBefore.Value.Date.AddDays(1).ToUniversalTime());
 
         // Updated
         if (query.UpdatedAfter.HasValue)
-            dbQuery = dbQuery.Where(x => x.user.UpdatedAt >= query.UpdatedAfter.Value.ToUniversalTime());
+            dbQuery = dbQuery.Where(x => x.User.UpdatedAt >= query.UpdatedAfter.Value.ToUniversalTime());
         if (query.UpdatedBefore.HasValue)
             dbQuery = dbQuery.Where(x =>
-                x.user.UpdatedAt < query.UpdatedBefore.Value.Date.AddDays(1).ToUniversalTime());
+                x.User.UpdatedAt < query.UpdatedBefore.Value.Date.AddDays(1).ToUniversalTime());
 
         // Deleted
         if (query.DeletedAfter.HasValue)
-            dbQuery = dbQuery.Where(x => x.user.DeletedAt >= query.DeletedAfter.Value.ToUniversalTime());
+            dbQuery = dbQuery.Where(x => x.User.DeletedAt >= query.DeletedAfter.Value.ToUniversalTime());
         if (query.DeletedBefore.HasValue)
             dbQuery = dbQuery.Where(x =>
-                x.user.DeletedAt < query.DeletedBefore.Value.Date.AddDays(1).ToUniversalTime());
+                x.User.DeletedAt < query.DeletedBefore.Value.Date.AddDays(1).ToUniversalTime());
 
         // Locked out range — uses LockoutStartedAt to filter when the restriction began
         if (query.LockedOutAfter.HasValue)
-            dbQuery = dbQuery.Where(x => x.user.LockoutStartedAt >= query.LockedOutAfter.Value.ToUniversalTime());
+            dbQuery = dbQuery.Where(x => x.User.LockoutStartedAt >= query.LockedOutAfter.Value.ToUniversalTime());
         if (query.LockedOutBefore.HasValue)
             dbQuery = dbQuery.Where(x =>
-                x.user.LockoutStartedAt < query.LockedOutBefore.Value.Date.AddDays(1).ToUniversalTime());
+                x.User.LockoutStartedAt < query.LockedOutBefore.Value.Date.AddDays(1).ToUniversalTime());
 
-
-        dbQuery = query.SortBy switch
+        // The totals match what the expanded user row shows, so the list reads as sorted.
+        return query.SortBy switch
         {
             SortBy.Name => query.SortDirection == SortDirection.Asc
-                ? dbQuery.OrderBy(x => x.user.UserName)
-                : dbQuery.OrderByDescending(x => x.user.UserName),
+                ? dbQuery.OrderBy(x => x.User.UserName)
+                : dbQuery.OrderByDescending(x => x.User.UserName),
 
             SortBy.CreatedAt => query.SortDirection == SortDirection.Asc
-                ? dbQuery.OrderBy(x => x.user.CreatedAt)
-                : dbQuery.OrderByDescending(x => x.user.CreatedAt),
+                ? dbQuery.OrderBy(x => x.User.CreatedAt)
+                : dbQuery.OrderByDescending(x => x.User.CreatedAt),
 
             SortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
-                ? dbQuery.OrderBy(x => x.user.UpdatedAt)
-                : dbQuery.OrderByDescending(x => x.user.UpdatedAt),
+                ? dbQuery.OrderBy(x => x.User.UpdatedAt)
+                : dbQuery.OrderByDescending(x => x.User.UpdatedAt),
 
-            _ => dbQuery.OrderBy(x => x.user.UserName)
+            SortBy.FileCount => (query.SortDirection == SortDirection.Asc
+                    ? dbQuery.OrderBy(x => context.Files.Count(f => f.OwnerId == x.User.Id))
+                    : dbQuery.OrderByDescending(x => context.Files.Count(f => f.OwnerId == x.User.Id)))
+                .ThenBy(x => x.User.UserName),
+
+            SortBy.TotalSize => (query.SortDirection == SortDirection.Asc
+                    ? dbQuery.OrderBy(x => context.FileVersions
+                        .Where(v => v.File.OwnerId == x.User.Id && v.File.DeletedAt == null)
+                        .Sum(v => (long?)v.Size) ?? 0)
+                    : dbQuery.OrderByDescending(x => context.FileVersions
+                        .Where(v => v.File.OwnerId == x.User.Id && v.File.DeletedAt == null)
+                        .Sum(v => (long?)v.Size) ?? 0))
+                .ThenBy(x => x.User.UserName),
+
+            _ => dbQuery.OrderBy(x => x.User.UserName)
         };
+    }
+
+    public async Task<PaginatedResult<UserDetailsDto>> GetUsersAsync(UserQueryDto query, CancellationToken ct = default)
+    {
+        var dbQuery = BuildUserListQuery(context, query);
 
         var totalCount = await dbQuery.CountAsync(ct);
 
@@ -190,16 +234,16 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
             .Take(query.PageSize)
             .Select(x => new UserDetailsDto
             {
-                Id = x.user.Id,
-                UserName = x.user.UserName!,
-                Email = x.user.Email!,
-                IsLockedOut = x.user.LockoutEnd != null && x.user.LockoutEnd > DateTimeOffset.UtcNow,
+                Id = x.User.Id,
+                UserName = x.User.UserName!,
+                Email = x.User.Email!,
+                IsLockedOut = x.User.LockoutEnd != null && x.User.LockoutEnd > DateTimeOffset.UtcNow,
                 Role = x.RoleName != null ? Enum.Parse<UserRole>(x.RoleName) : null,
-                LockedOutStarted = x.user.LockoutStartedAt,
-                CreatedAt = x.user.CreatedAt,
-                UpdatedAt = x.user.UpdatedAt,
-                DeletedAt = x.user.DeletedAt,
-                StorageQuota = x.user.StorageQuota,
+                LockedOutStarted = x.User.LockoutStartedAt,
+                CreatedAt = x.User.CreatedAt,
+                UpdatedAt = x.User.UpdatedAt,
+                DeletedAt = x.User.DeletedAt,
+                StorageQuota = x.User.StorageQuota,
             })
             .ToListAsync(ct);
 

@@ -3,6 +3,7 @@ import { ref } from "vue";
 
 import type { RangeResult } from "@/stores/player/types";
 
+import { ApiError } from "@/api/errors";
 import { RANGE_SIZE, SHUFFLE_BATCH_LIMIT, conflictField, shuffleApi } from "@/api/shuffle";
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import { SHUFFLE_RANGE_SIZE } from "@/features/player/shuffle-buffer";
@@ -94,11 +95,21 @@ describe("player foundations", () => {
   });
 
   it("reads which field a 409 blames", () => {
-    const request = { response: { status: 409, data: { errors: { RequestId: ["taken"] } } } };
-    const anchor = { response: { status: 409, data: { errors: { anchorFileId: ["gone"] } } } };
+    const request = new ApiError("Request failed", {
+      data: { errors: { RequestId: ["taken"] } },
+      kind: "http",
+      status: 409,
+    });
+    const anchor = new ApiError("Request failed", {
+      data: { errors: { anchorFileId: ["gone"] } },
+      kind: "http",
+      status: 409,
+    });
     expect(conflictField(request)).toBe("requestId");
     expect(conflictField(anchor)).toBe("anchorFileId");
-    expect(conflictField({ response: { status: 409, data: {} } })).toBeNull();
+    expect(
+      conflictField(new ApiError("Request failed", { data: {}, kind: "http", status: 409 })),
+    ).toBeNull();
     expect(conflictField(new Error("boom"))).toBeNull();
   });
 
@@ -171,7 +182,11 @@ describe("player foundations", () => {
   });
 
   it("retries the same body once on a requestId 409", async () => {
-    const conflict = { response: { status: 409, data: { errors: { requestId: ["taken"] } } } };
+    const conflict = new ApiError("Request failed", {
+      data: { errors: { requestId: ["taken"] } },
+      kind: "http",
+      status: 409,
+    });
     const created = {
       sessionId: "s2",
       source: { isVideo: false, playlistId: null },
@@ -201,7 +216,11 @@ describe("player foundations", () => {
   });
 
   it("drops the anchor and mints a new id on an anchor 409", async () => {
-    const conflict = { response: { status: 409, data: { errors: { anchorFileId: ["gone"] } } } };
+    const conflict = new ApiError("Request failed", {
+      data: { errors: { anchorFileId: ["gone"] } },
+      kind: "http",
+      status: 409,
+    });
     const created = {
       sessionId: "s3",
       source: { isVideo: false, playlistId: null },

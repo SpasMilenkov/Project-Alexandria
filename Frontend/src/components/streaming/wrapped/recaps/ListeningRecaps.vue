@@ -74,7 +74,6 @@
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
 import { useIntervalFn, useNow } from "@vueuse/core";
-import { isAxiosError } from "axios";
 import { computed } from "vue";
 
 import AnnualRecapCard from "@/components/streaming/wrapped/recaps/AnnualRecapCard.vue";
@@ -106,7 +105,6 @@ const { data, status, error, refetch } = useQuery(() =>
 const isPending = computed(() => status.value === "pending");
 
 const isAuthError = (err: unknown): boolean => {
-  if (isAxiosError(err)) return err.response?.status === 401 || err.response?.status === 403;
   if (!err || typeof err !== "object") return false;
 
   const record = err as Record<string, unknown>;

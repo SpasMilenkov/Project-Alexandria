@@ -176,7 +176,7 @@ const handleCreate = async () => {
     };
     refreshLinks();
   } catch (err: any) {
-    createError.value = err?.message ?? err?.response?.data?.message ?? "Failed to create link";
+    createError.value = err?.data?.message ?? err?.message ?? "Failed to create link";
   } finally {
     isCreating.value = false;
   }

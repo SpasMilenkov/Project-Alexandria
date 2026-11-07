@@ -1,6 +1,6 @@
 import type { ColorName, FontName, TabIconColor } from "@/stores/settings";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export type ToastLevel = "all" | "errors-only" | "silent";
 
@@ -55,65 +55,40 @@ const mapBehaviorFromServer = (raw: any): BehaviorSettings => ({
 });
 
 export const settingsApi = {
-  getHomeTimeZones: async (): Promise<string[]> => {
-    const result = await apiClient.get<string[]>("/settings/home/time-zones");
+  getHomeTimeZones: (): Promise<string[]> => api.get<string[]>("/settings/home/time-zones"),
 
-    return result.data;
-  },
-
-  uploadBackgroundImage: async (file: File): Promise<AppearanceSettings> => {
+  uploadBackgroundImage: (file: File): Promise<AppearanceSettings> => {
     const form = new FormData();
     form.append("file", file);
 
-    // Drop the instance JSON content-type so the browser sets multipart
-    // with its own boundary; the default transform would stringify the form.
-    const result = await apiClient.post<AppearanceSettings>(
-      "/settings/appearance/background-image",
-      form,
-      {
-        transformRequest: [
-          (payload, headers) => {
-            headers?.delete("Content-Type");
-            return payload;
-          },
-        ],
-      },
-    );
-
-    return result.data;
+    return api.post<AppearanceSettings>("/settings/appearance/background-image", form);
   },
 
   deleteBackgroundImage: async (): Promise<void> => {
-    await apiClient.delete("/settings/appearance/background-image");
+    await api.delete("/settings/appearance/background-image");
   },
 
-  getAppearance: async (): Promise<AppearanceSettings> => {
-    const result = await apiClient.get<AppearanceSettings>("/settings/appearance");
-    return result.data;
-  },
+  getAppearance: (): Promise<AppearanceSettings> =>
+    api.get<AppearanceSettings>("/settings/appearance"),
 
   getBackgroundImageUrl: async (): Promise<string> => {
-    const result = await apiClient.get<{ url: string }>(
-      "/settings/appearance/background-image-url",
-    );
-    return result.data.url;
+    const result = await api.get<{ url: string }>("/settings/appearance/background-image-url");
+    return result.url;
   },
 
   getBehavior: async (): Promise<BehaviorSettings> => {
-    const result = await apiClient.get("/settings/behavior");
-    return mapBehaviorFromServer(result.data);
+    const result = await api.get("/settings/behavior");
+    return mapBehaviorFromServer(result);
   },
 
-  updateAppearance: async (payload: AppearanceSettings): Promise<AppearanceSettings> => {
-    const result = await apiClient.put<AppearanceSettings>("/settings/appearance", payload);
-    return result.data;
-  },
+  updateAppearance: (payload: AppearanceSettings): Promise<AppearanceSettings> =>
+    api.put<AppearanceSettings>("/settings/appearance", payload),
 
   updateBehavior: async (payload: BehaviorSettings): Promise<BehaviorSettings> => {
-    const result = await apiClient.put("/settings/behavior", {
+    const result = await api.put("/settings/behavior", {
       ...payload,
       toastLevel: TOAST_LEVEL_TO_VALUE[payload.toastLevel],
     });
-    return mapBehaviorFromServer(result.data);
+    return mapBehaviorFromServer(result);
   },
 };

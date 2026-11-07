@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "@/api/errors";
 import { useFileStore } from "@/stores/file";
 
 const mockDownloadFile = vi.fn();
@@ -110,12 +111,13 @@ describe("useFileStore", () => {
       expect(store.error).toBe("File not found");
     });
 
-    it("handles Axios errors with response data", async () => {
-      const axiosError = {
-        isAxiosError: true,
-        response: { data: { message: "Forbidden" } },
-      };
-      mockDownloadFile.mockRejectedValueOnce(axiosError);
+    it("uses the server's message from an API error", async () => {
+      const apiError = new ApiError("Request failed", {
+        data: { message: "Forbidden" },
+        kind: "http",
+        status: 403,
+      });
+      mockDownloadFile.mockRejectedValueOnce(apiError);
 
       const store = useFileStore();
       const result = await store.downloadFile({ id: "f1" });

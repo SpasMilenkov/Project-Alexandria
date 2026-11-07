@@ -1,0 +1,34 @@
+# Keep .env in the context: Vite reads the VITE_ feature flags at build time, and the
+# environment values in docker-compose only reach the nginx container at runtime.
+
+# Installed inside the image, and the host copy would overwrite that install
+**/node_modules
+
+# Build output and tool caches
+dist
+dev-dist
+coverage
+.devtools-oxc
+.vitest
+*.tsbuildinfo
+*.log
+
+# Tests, which the production build does not read
+e2e
+playwright-report
+test-results
+playwright.config.ts
+src/__tests__
+vitest.config.ts
+vitest.setup.ts
+
+# Editor settings, linters and docs
+.zed
+.vscode
+.idea
+.oxfmtrc.json
+.oxlintrc.json
+README.md
+.gitignore
+Dockerfile
+.dockerignore

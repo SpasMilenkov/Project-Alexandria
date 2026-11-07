@@ -2,7 +2,7 @@ import type { SortDirection } from "@/enums/SortDirection";
 
 import type { PaginatedResponse } from "./directory";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export enum OperationType {
   Read = 0,
@@ -118,19 +118,17 @@ export interface AuditLogQuery {
 }
 
 export const activityApi = {
-  getActivitySummary: async (query: ActivityQuery): Promise<ActivityStatisticsOverview> => {
-    const result = await apiClient.get<ActivityStatisticsOverview>("/activity/summary", {
+  getActivitySummary: (query: ActivityQuery): Promise<ActivityStatisticsOverview> =>
+    api.get<ActivityStatisticsOverview>("/activity/summary", {
       params: {
         endDate: query.endDate.toISOString(),
         entityType: query.entityType ?? undefined,
         operationType: query.operationType ?? undefined,
         startDate: query.startDate.toISOString(),
       },
-    });
-    return result.data;
-  },
-  getUserActivity: async (query: AuditLogQuery): Promise<PaginatedResponse<AuditLogResult>> => {
-    const result = await apiClient.get<PaginatedResponse<AuditLogResult>>("/activity/user", {
+    }),
+  getUserActivity: (query: AuditLogQuery): Promise<PaginatedResponse<AuditLogResult>> =>
+    api.get<PaginatedResponse<AuditLogResult>>("/activity/user", {
       params: {
         after: query.after,
         before: query.before,
@@ -144,7 +142,5 @@ export const activityApi = {
         sortDirection: query.sortDirection,
         userId: query.userId,
       },
-    });
-    return result.data;
-  },
+    }),
 };

@@ -1,4 +1,4 @@
-import { apiClient } from "@/api/client";
+import { api } from "@/api/client";
 
 export interface EnrichmentQueueDepthRow {
   backbone: string;
@@ -71,54 +71,34 @@ export interface GetFileAudioAnalysisResponse {
 }
 
 export const audioAnalysisApi = {
-  getQueueDepth: async (): Promise<EnrichmentQueueDepthRow[]> => {
-    const result = await apiClient.get<EnrichmentQueueDepthRow[]>("/admin/enrichment/queue-depth");
-    return result.data;
-  },
+  getQueueDepth: (): Promise<EnrichmentQueueDepthRow[]> =>
+    api.get<EnrichmentQueueDepthRow[]>("/admin/enrichment/queue-depth"),
 
-  getStuck: async (): Promise<EnrichmentStuckRow[]> => {
-    const result = await apiClient.get<EnrichmentStuckRow[]>("/admin/enrichment/stuck");
-    return result.data;
-  },
+  getStuck: (): Promise<EnrichmentStuckRow[]> =>
+    api.get<EnrichmentStuckRow[]>("/admin/enrichment/stuck"),
 
-  getFailureRate: async (
+  getFailureRate: (
     from: string,
     to: string,
     bucket: EnrichmentBucket,
-  ): Promise<EnrichmentFailureRatePoint[]> => {
-    const result = await apiClient.get<EnrichmentFailureRatePoint[]>(
-      "/admin/enrichment/failure-rate",
-      {
-        params: { from, to, bucket },
-      },
-    );
-    return result.data;
-  },
+  ): Promise<EnrichmentFailureRatePoint[]> =>
+    api.get<EnrichmentFailureRatePoint[]>("/admin/enrichment/failure-rate", {
+      params: { from, to, bucket },
+    }),
 
-  getDuration: async (): Promise<EnrichmentDurationRow[]> => {
-    const result = await apiClient.get<EnrichmentDurationRow[]>("/admin/enrichment/duration");
-    return result.data;
-  },
+  getDuration: (): Promise<EnrichmentDurationRow[]> =>
+    api.get<EnrichmentDurationRow[]>("/admin/enrichment/duration"),
 
-  getBatches: async (limit?: number): Promise<EnrichmentBatchRow[]> => {
-    const result = await apiClient.get<EnrichmentBatchRow[]>("/admin/enrichment/batches", {
+  getBatches: (limit?: number): Promise<EnrichmentBatchRow[]> =>
+    api.get<EnrichmentBatchRow[]>("/admin/enrichment/batches", {
       params: limit === undefined ? {} : { limit },
-    });
-    return result.data;
-  },
+    }),
 
-  getVolumeByHour: async (from: string, to: string): Promise<EnrichmentVolumePoint[]> => {
-    const result = await apiClient.get<EnrichmentVolumePoint[]>(
-      "/admin/enrichment/volume-by-hour",
-      {
-        params: { from, to },
-      },
-    );
-    return result.data;
-  },
+  getVolumeByHour: (from: string, to: string): Promise<EnrichmentVolumePoint[]> =>
+    api.get<EnrichmentVolumePoint[]>("/admin/enrichment/volume-by-hour", {
+      params: { from, to },
+    }),
 
-  getFileAudioAnalysis: async (fileId: string): Promise<GetFileAudioAnalysisResponse> => {
-    const result = await apiClient.get<GetFileAudioAnalysisResponse>(`/files/${fileId}/enrichment`);
-    return result.data;
-  },
+  getFileAudioAnalysis: (fileId: string): Promise<GetFileAudioAnalysisResponse> =>
+    api.get<GetFileAudioAnalysisResponse>(`/files/${fileId}/enrichment`),
 };

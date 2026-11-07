@@ -4,7 +4,7 @@ import type { ChangePasswordSchema } from "@/schemas/user";
 
 import { logger } from "@/utils/logger";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export interface AuthResponse {
   success: boolean;
@@ -21,26 +21,20 @@ export interface SessionResponse {
 
 export const authApi = {
   changeInitialPassword: async (payload: ChangePasswordSchema) => {
-    await apiClient.patch("/auth/change-initial-password", payload);
+    await api.patch("/auth/change-initial-password", payload);
   },
 
-  getSession: async (): Promise<SessionResponse> => {
-    const response = await apiClient.get<SessionResponse>("/auth/session", { timeout: 10_000 });
-    return response.data;
-  },
+  getSession: (): Promise<SessionResponse> =>
+    api.get<SessionResponse>("/auth/session", { timeout: 10_000 }),
 
-  login: async (credentials: LoginSchema): Promise<AuthResponse> => {
+  login: (credentials: LoginSchema): Promise<AuthResponse> => {
     logger.log("sending login request from api layer");
-    const response = await apiClient.post<AuthResponse>("/auth/login", credentials);
-    return response.data;
+    return api.post<AuthResponse>("/auth/login", credentials);
   },
 
   logout: async (): Promise<void> => {
-    await apiClient.post("/auth/logout");
+    await api.post("/auth/logout");
   },
 
-  refreshToken: async (): Promise<{ token: string }> => {
-    const response = await apiClient.post<{ token: string }>("/auth/refresh");
-    return response.data;
-  },
+  refreshToken: (): Promise<{ token: string }> => api.post<{ token: string }>("/auth/refresh"),
 };
