@@ -4,5 +4,6 @@ public enum UploadStatus
 {
     InProgress,
     Interrupted,
-    Finished
+    Finished,
+    Finalizing
 }

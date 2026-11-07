@@ -15,7 +15,7 @@ interface PooledWorker {
   worker: Worker;
 }
 
-// Matches the upload concurrency, so every upload slot can hash without waiting on another.
+// Matches the number of simultaneous PUTs, so hashing keeps pace with sending.
 const POOL_SIZE = 4;
 
 // Workers sitting unused this long are released; the next upload starts them again.

@@ -37,6 +37,7 @@ public static class ServiceExtensions
     public static IServiceCollection AddServices(this IServiceCollection services)
     {
         services.AddScoped<IContentStorageService, ContentStorageService>();
+        services.AddScoped<IUploadBatchService, UploadBatchService>();
         services.AddMimeDetection();
         services.AddScoped<IStaticAssetService, StaticAssetService>();
         services.AddScoped<IPreviewArtifactService, PreviewArtifactService>();

@@ -2,8 +2,8 @@ import type { TreeItem } from "@nuxt/ui";
 
 import { computed, ref } from "vue";
 
-import { fileApi } from "@/api/file";
 import { hashFile } from "@/features/upload/hash-pool";
+import { finalizeUpload, runUploadWindow, sendUpload } from "@/features/upload/upload-batches";
 import { formatBytes } from "@/utils/size";
 
 // types
@@ -36,7 +36,6 @@ export interface DirectoryTreeItem extends TreeItem {
 
 // constants
 
-export const CONCURRENCY = 4;
 export const VIRTUALIZE_THRESHOLD = 150;
 
 // Declared type for files whose type the browser cannot determine. The server resolves the
@@ -214,32 +213,6 @@ export const useDirectoryUpload = () => {
   const buildTreeFromStatuses = (): DirectoryTreeItem[] =>
     buildFileTree(fileStatuses.value.map((s) => ({ file: s.file, relativePath: s.relativePath })));
 
-  // concurrency limiter
-  // shouldStop is checked before pulling each new task — slots drain immediately on cancel
-
-  const runConcurrent = async <T>(
-    tasks: (() => Promise<T>)[],
-    limit: number,
-    shouldStop: () => boolean = () => false,
-  ): Promise<PromiseSettledResult<T>[]> => {
-    const results: PromiseSettledResult<T>[] = new Array(tasks.length);
-    let cursor = 0;
-
-    const runSlot = async () => {
-      while (cursor < tasks.length && !shouldStop()) {
-        const i = cursor++;
-        try {
-          results[i] = { status: "fulfilled", value: await tasks[i]() };
-        } catch (e) {
-          results[i] = { status: "rejected", reason: e };
-        }
-      }
-    };
-
-    await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, runSlot));
-    return results;
-  };
-
   // per-file upload pipeline
 
   const uploadSingleFile = async (fileStatus: FileUploadStatus): Promise<boolean> => {
@@ -271,32 +244,36 @@ export const useDirectoryUpload = () => {
       );
 
       fileStatus.progress = 25;
-      const { uploadId, uploadUrl } = await fileApi.initializeUpload({
-        contentLength: file.size,
+      const uploadId = await sendUpload({
+        blob: file,
         contentType,
-        directoryId: fileStatus.directoryId,
-        hash,
-      });
-      fileStatus.progress = 30;
-
-      fileStatus.status = "uploading";
-      await fileApi.uploadToS3(
-        uploadUrl,
-        file,
-        contentType,
-        (pct) => {
+        onInitialized: () => {
+          fileStatus.progress = 30;
+          fileStatus.status = "uploading";
+        },
+        onProgress: (pct) => {
           fileStatus.progress = 30 + Math.round(pct * 0.65);
         },
+        request: {
+          contentLength: file.size,
+          contentType,
+          directoryId: fileStatus.directoryId,
+          hash,
+        },
         signal,
-      );
+      });
 
       fileStatus.progress = 95;
-      await fileApi.finalizeUpload({
-        directoryId: fileStatus.directoryId || undefined,
-        fileName: file.name,
-        uploadId,
-        isEncrypted: false,
-      });
+      await finalizeUpload(
+        {
+          directoryId: fileStatus.directoryId || undefined,
+          fileName: file.name,
+          uploadId,
+          isEncrypted: false,
+        },
+        file.size,
+        signal,
+      );
 
       fileStatus.status = "success";
       fileStatus.progress = 100;
@@ -310,6 +287,14 @@ export const useDirectoryUpload = () => {
       return false;
     }
   };
+
+  const runFiles = (files: FileUploadStatus[]) =>
+    runUploadWindow(
+      files,
+      uploadSingleFile,
+      (fs) => fs.file.size,
+      () => cancelled.value,
+    );
 
   // main pipeline entry point — called by both modals
 
@@ -327,8 +312,7 @@ export const useDirectoryUpload = () => {
       status: "pending" as UploadStatus,
     }));
 
-    const tasks = fileStatuses.value.map((fs) => () => uploadSingleFile(fs));
-    await runConcurrent(tasks, CONCURRENCY, () => cancelled.value);
+    await runFiles(fileStatuses.value);
   };
 
   const cancelAll = () => {
@@ -354,8 +338,7 @@ export const useDirectoryUpload = () => {
       f.abortController = new AbortController();
     });
 
-    const tasks = failed.map((fs) => () => uploadSingleFile(fs));
-    await runConcurrent(tasks, CONCURRENCY, () => cancelled.value);
+    await runFiles(failed);
   };
 
   const reset = () => {
@@ -431,7 +414,6 @@ export const useDirectoryUpload = () => {
     // methods
     buildFileTree,
     buildTreeFromStatuses,
-    runConcurrent,
     uploadSingleFile,
     startUploadPipeline,
     cancelAll,

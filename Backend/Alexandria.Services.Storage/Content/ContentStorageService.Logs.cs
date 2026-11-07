@@ -151,4 +151,23 @@ public partial class ContentStorageService
     [LoggerMessage(1060, LogLevel.Error,
         "Content object {ContentObjectId} was not promoted within {Limit}")]
     private static partial void LogPromotionWaitExpired(ILogger logger, Guid contentObjectId, TimeSpan limit);
+
+    // Batched and split finalize
+
+    [LoggerMessage(1061, LogLevel.Warning, "Upload {UploadId} failed verification")]
+    private static partial void LogUploadVerificationFailed(ILogger logger, Exception ex, Guid uploadId);
+
+    [LoggerMessage(1062, LogLevel.Warning, "Commit failed for verified upload {UploadId}")]
+    private static partial void LogUploadCommitFailed(ILogger logger, Exception ex, Guid uploadId);
+
+    [LoggerMessage(1063, LogLevel.Warning, "Could not mark upload {UploadId} as interrupted")]
+    private static partial void LogUploadAbandonFailed(ILogger logger, Exception ex, Guid uploadId);
+
+    [LoggerMessage(1064, LogLevel.Information,
+        "Rejected batch upload items for directory {DirectoryId}, user {UserId}: not found or not owned")]
+    private static partial void LogUploadDirectoryUnavailable(
+        ILogger logger, Exception ex, Guid directoryId, Guid userId);
+
+    [LoggerMessage(1065, LogLevel.Error, "Could not create {Count} upload rows for a batch")]
+    private static partial void LogUploadBatchInitiateFailed(ILogger logger, Exception ex, int count);
 }

@@ -2,6 +2,7 @@ using System.Net;
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Services.Storage.Content;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.DependencyInjection;
@@ -119,6 +120,8 @@ public class TempCleanupWorker(
                 listRequest.ContinuationToken = response.NextContinuationToken;
             } while ((listRequest.ContinuationToken is not null) && !ct.IsCancellationRequested);
 
+            deletedCount += await SweepIncomingAsync(bucket, now, ct);
+
             logger.LogInformation(
                 "Temp cleanup completed: {DeletedCount} deleted, {QuarantinedCount} quarantined, {ErrorCount} errors",
                 deletedCount, quarantinedCount, errorCount);
@@ -133,6 +136,82 @@ public class TempCleanupWorker(
             logger.LogError(ex, "Failed to list temp bucket objects");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Removes what finalize never picked up from where signed URLs write: uploads that were
+    /// never finalized, and writes made after sealing. Nothing reads these objects, so age alone
+    /// decides. Returns how many were deleted.
+    /// </summary>
+    internal async Task<int> SweepIncomingAsync(string bucket, DateTime now, CancellationToken ct)
+    {
+        var deleted = 0;
+        var cutoff = now - _abandonedAge;
+
+        var listRequest = new ListObjectsV2Request
+        {
+            BucketName = bucket,
+            Prefix = TempObjectKeys.Incoming,
+            MaxKeys = S3PageSize
+        };
+
+        do
+        {
+            var response = await s3.ListObjectsV2Async(listRequest, ct);
+
+            if (response.S3Objects is null)
+                break;
+
+            var staleKeys = response.S3Objects
+                .Where(o => o.LastModified?.ToUniversalTime() <= cutoff)
+                .Select(o => o.Key.Substring(TempObjectKeys.Incoming.Length))
+                .Where(k => k.Length > 0)
+                .ToList();
+
+            foreach (var batch in staleKeys.Chunk(DbBatchSize))
+            {
+                if (ct.IsCancellationRequested)
+                    break;
+
+                deleted += await RetireIncomingBatchAsync(bucket, batch, now, ct);
+            }
+
+            listRequest.ContinuationToken = response.NextContinuationToken;
+        } while ((listRequest.ContinuationToken is not null) && !ct.IsCancellationRequested);
+
+        return deleted;
+    }
+
+    private async Task<int> RetireIncomingBatchAsync(
+        string bucket, string[] tempKeys, DateTime now, CancellationToken ct)
+    {
+        var deleted = 0;
+
+        foreach (var tempKey in tempKeys)
+        {
+            if (await DeleteObjectAsync(bucket, $"{TempObjectKeys.Incoming}{tempKey}", ct))
+                deleted++;
+        }
+
+        using var scope = serviceProvider.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        var uploads = await unitOfWork.Uploads.GetByTempKeysAsync(tempKeys, ct);
+        var unfinished = uploads
+            .Where(u => u.Status is UploadStatus.InProgress or UploadStatus.Finalizing)
+            .ToList();
+
+        foreach (var upload in unfinished)
+        {
+            upload.Status = UploadStatus.Interrupted;
+            upload.FinishedAt = now;
+            unitOfWork.Uploads.Update(upload);
+        }
+
+        if (unfinished.Count > 0)
+            await unitOfWork.SaveChangesAsync(ct);
+
+        return deleted;
     }
 
     /// <summary>
@@ -182,9 +261,9 @@ public class TempCleanupWorker(
 
             switch (upload.Status)
             {
-                case UploadStatus.InProgress when upload.CreatedAt > now - _abandonedAge:
+                case UploadStatus.InProgress or UploadStatus.Finalizing when upload.CreatedAt > now - _abandonedAge:
                     continue;
-                case UploadStatus.InProgress:
+                case UploadStatus.InProgress or UploadStatus.Finalizing:
                 {
                     if (await DeleteTempKeyAsync(bucket, tempKey, ct))
                         deleted++;
@@ -244,21 +323,24 @@ public class TempCleanupWorker(
         return (deleted, quarantined);
     }
 
-    private async Task<bool> DeleteTempKeyAsync(string bucket, string tempKey, CancellationToken ct)
+    private Task<bool> DeleteTempKeyAsync(string bucket, string tempKey, CancellationToken ct) =>
+        DeleteObjectAsync(bucket, $"{ContentPrefix}{tempKey}", ct);
+
+    private async Task<bool> DeleteObjectAsync(string bucket, string objectKey, CancellationToken ct)
     {
         try
         {
-            await s3.DeleteObjectAsync(bucket, $"{ContentPrefix}{tempKey}", ct);
+            await s3.DeleteObjectAsync(bucket, objectKey, ct);
             return true;
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            logger.LogDebug("Temp object already absent: {Key}", tempKey);
+            logger.LogDebug("Temp object already absent: {Key}", objectKey);
             return true;
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to delete temp object: {Key}", tempKey);
+            logger.LogWarning(ex, "Failed to delete temp object: {Key}", objectKey);
             return false;
         }
     }

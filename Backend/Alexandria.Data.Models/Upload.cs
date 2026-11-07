@@ -1,4 +1,3 @@
-using System.Numerics;
 using Alexandria.Data.Models.Enumerators;
 
 namespace Alexandria.Data.Models;
@@ -10,7 +9,7 @@ public class Upload : IBase
     public DateTime? FinishedAt { get; set; }
     public byte[] Hash { get; set; } = [];
     public required string TempObjectKey { get; set; }
-    public BigInteger Size { get; set; }
+    public long Size { get; set; }
     public required string MimeType { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

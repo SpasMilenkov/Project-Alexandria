@@ -80,6 +80,38 @@ public interface IContentStorageService
         CancellationToken ct = default
     );
 
+    /// <summary>
+    /// Creates upload rows and signed URLs for a batch. Results line up with
+    /// <paramref name="items"/>, and an unusable destination only fails its own items.
+    /// </summary>
+    Task<IReadOnlyList<UploadInitResult>> InitiateFileUploads(
+        IReadOnlyList<UploadInitItem> items,
+        Guid userId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Claims the upload, seals its bytes where no signed URL can write, and checks the
+    /// sealed copy. Holds no database transaction, so it can run in parallel across scopes.
+    /// A failure here abandons the upload.
+    /// </summary>
+    Task<VerifiedUpload> VerifyUploadAsync(
+        Guid uploadId,
+        Guid uploadedBy,
+        Guid? directoryId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Records a verified upload in one short transaction. A failure leaves the sealed bytes
+    /// in place so the caller can retry in a fresh scope or call <see cref="AbandonUploadAsync"/>.
+    /// </summary>
+    Task<UploadResult> CommitUploadAsync(
+        VerifiedUpload verified,
+        UploadFinalizeItem item,
+        CancellationToken ct = default);
+
+    /// <summary>Ends a claimed upload as interrupted and removes its temp objects.</summary>
+    Task AbandonUploadAsync(Guid uploadId, string tempObjectKey, CancellationToken ct = default);
+
     Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default);
 
     Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default);

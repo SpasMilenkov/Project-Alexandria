@@ -38,12 +38,19 @@ const makeStatus = (file: File): FileUploadStatus => ({
 describe("upload content type", () => {
   beforeEach(() => {
     vi.stubGlobal("Worker", FakeWorker);
-    vi.spyOn(fileApi, "initializeUpload").mockResolvedValue({
-      uploadId: "upload-id",
-      uploadUrl: "https://example.test/upload",
+    vi.spyOn(fileApi, "initializeUploadBatch").mockResolvedValue({
+      results: [
+        {
+          error: null,
+          uploadId: "upload-id",
+          uploadUrl: "https://example.test/upload",
+        },
+      ],
     });
     vi.spyOn(fileApi, "uploadToS3").mockResolvedValue();
-    vi.spyOn(fileApi, "finalizeUpload").mockResolvedValue({ success: true });
+    vi.spyOn(fileApi, "finalizeUploadBatch").mockResolvedValue({
+      results: [{ error: null, success: true, uploadId: "upload-id" }],
+    });
   });
 
   afterEach(() => {
@@ -57,9 +64,9 @@ describe("upload content type", () => {
 
     await uploadSingleFile(makeStatus(file));
 
-    expect(fileApi.initializeUpload).toHaveBeenCalledWith(
+    expect(fileApi.initializeUploadBatch).toHaveBeenCalledWith([
       expect.objectContaining({ contentType: FALLBACK_CONTENT_TYPE }),
-    );
+    ]);
     expect(fileApi.uploadToS3).toHaveBeenCalledWith(
       "https://example.test/upload",
       file,
@@ -75,9 +82,9 @@ describe("upload content type", () => {
 
     await uploadSingleFile(makeStatus(file));
 
-    expect(fileApi.initializeUpload).toHaveBeenCalledWith(
+    expect(fileApi.initializeUploadBatch).toHaveBeenCalledWith([
       expect.objectContaining({ contentType: "image/png" }),
-    );
+    ]);
     expect(fileApi.uploadToS3).toHaveBeenCalledWith(
       "https://example.test/upload",
       file,

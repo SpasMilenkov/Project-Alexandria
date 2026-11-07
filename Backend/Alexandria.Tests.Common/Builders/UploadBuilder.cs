@@ -1,4 +1,3 @@
-using System.Numerics;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 
@@ -10,7 +9,7 @@ public class UploadBuilder
     private UploadStatus _status = UploadStatus.InProgress;
     private byte[] _hash = new byte[32]; // 32 zero bytes — valid SHA-256 length
     private string _tempObjectKey = $"temp/{Guid.NewGuid()}";
-    private BigInteger _size = BigInteger.Zero;
+    private long _size;
     private string _mimeType = "text/plain";
     private readonly DateTime _createdAt = DateTime.UtcNow;
     private DateTime? _updatedAt = null;
@@ -50,7 +49,7 @@ public class UploadBuilder
         return this;
     }
 
-    public UploadBuilder WithSize(BigInteger size)
+    public UploadBuilder WithSize(long size)
     {
         _size = size;
         return this;

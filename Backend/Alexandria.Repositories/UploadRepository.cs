@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
+using Alexandria.Data.Models.Enumerators;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -51,6 +52,53 @@ public class UploadRepository(AlexandriaDbContext context) : IUploadRepository
         return await _uploads
             .Where(u => u.DeletedAt == null && keyList.Contains(u.TempObjectKey))
             .ToListAsync(ct);
+    }
+
+    public async Task<bool> TryClaimForFinalizeAsync(
+        Guid uploadId,
+        Guid userId,
+        DateTime now,
+        CancellationToken ct = default)
+    {
+        var claimed = await _uploads
+            .Where(u => u.Id == uploadId
+                        && u.UserId == userId
+                        && u.DeletedAt == null
+                        && u.Status == UploadStatus.InProgress)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(u => u.Status, UploadStatus.Finalizing)
+                .SetProperty(u => u.UpdatedAt, now), ct);
+
+        return claimed == 1;
+    }
+
+    public async Task MarkInterruptedAsync(Guid uploadId, DateTime now, CancellationToken ct = default)
+    {
+        await _uploads
+            .Where(u => u.Id == uploadId && u.Status == UploadStatus.Finalizing)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(u => u.Status, UploadStatus.Interrupted)
+                .SetProperty(u => u.FinishedAt, now)
+                .SetProperty(u => u.UpdatedAt, now), ct);
+    }
+
+    public async Task<HashSet<Guid>> GetFinishedIdsAsync(
+        IReadOnlyCollection<Guid> uploadIds,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        if (uploadIds.Count == 0)
+            return [];
+
+        var finished = await _uploads
+            .Where(u => uploadIds.Contains(u.Id)
+                        && u.UserId == userId
+                        && u.DeletedAt == null
+                        && u.Status == UploadStatus.Finished)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+
+        return finished.ToHashSet();
     }
 
     public async Task<Upload> AddAsync(Upload entity, CancellationToken ct = default)
