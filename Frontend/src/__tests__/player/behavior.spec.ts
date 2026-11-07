@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MediaFileDto, PaginatedResponse } from "@/api/streaming";
 
+import { ApiError } from "@/api/errors";
 import { shuffleApi } from "@/api/shuffle";
 import { streamingApi } from "@/api/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
@@ -64,10 +65,13 @@ let failCreate: unknown = null;
 let failGet: unknown = null;
 const failSessionIds = new Set<string>();
 
-const notFound = () => ({ response: { status: 404, data: {} } });
-const conflictOn = (field: string) => ({
-  response: { status: 409, data: { errors: { [field]: ["conflict"] } } },
-});
+const notFound = () => new ApiError("Request failed", { data: {}, kind: "http", status: 404 });
+const conflictOn = (field: string) =>
+  new ApiError("Request failed", {
+    data: { errors: { [field]: ["conflict"] } },
+    kind: "http",
+    status: 409,
+  });
 
 const sourceFiles = (source: { isVideo: boolean; playlistId: string | null }): MediaFileDto[] => {
   if (source.playlistId === "dup") return [playlistFile(1), playlistFile(1)];

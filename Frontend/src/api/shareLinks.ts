@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Response / DTO Types
 
@@ -59,49 +59,41 @@ export const shareLinkApi = {
    * @param maxAccessCount - Optional. When provided, the link stops working once the
    *                          download endpoint has been hit this many times. Null/omitted means unlimited.
    */
-  createShareLink: async (
+  createShareLink: (
     fileId: string,
     expiry?: string | null,
     fileVersionId?: string | null,
     maxAccessCount?: number | null,
-  ): Promise<CreateShareLinkResponse> => {
-    const response = await apiClient.post<CreateShareLinkResponse>(`/files/${fileId}/share`, {
+  ): Promise<CreateShareLinkResponse> =>
+    api.post<CreateShareLinkResponse>(`/files/${fileId}/share`, {
       expiry: expiry ?? null,
       fileVersionId: fileVersionId ?? null,
       maxAccessCount: maxAccessCount ?? null,
-    });
-    return response.data;
-  },
+    }),
 
   /**
    * Fetches metadata for a shared file by token. Anonymous, no auth required.
    */
-  getSharedFileMetadata: async (token: string): Promise<SharedFileMetadataDto> => {
-    const response = await apiClient.get<SharedFileMetadataDto>(`/share/${token}`);
-    return response.data;
-  },
+  getSharedFileMetadata: (token: string): Promise<SharedFileMetadataDto> =>
+    api.get<SharedFileMetadataDto>(`/share/${token}`),
 
   /**
    * Resolves a short-lived presigned S3 download URL for a shared file. Anonymous.
    */
-  getDownloadUrl: async (token: string): Promise<ShareDownloadResponse> => {
-    const response = await apiClient.get<ShareDownloadResponse>(`/share/${token}/download`);
-    return response.data;
-  },
+  getDownloadUrl: (token: string): Promise<ShareDownloadResponse> =>
+    api.get<ShareDownloadResponse>(`/share/${token}/download`),
 
   /**
    * Lists all share links for a file owned by the authenticated user.
    */
-  getShareLinksForFile: async (fileId: string): Promise<ShareLinkSummaryDto[]> => {
-    const response = await apiClient.get<ShareLinkSummaryDto[]>(`/files/${fileId}/share`);
-    return response.data;
-  },
+  getShareLinksForFile: (fileId: string): Promise<ShareLinkSummaryDto[]> =>
+    api.get<ShareLinkSummaryDto[]>(`/files/${fileId}/share`),
 
   /**
    * Revokes a share link by its ID. Only the creator can revoke.
    * Resolves on success (204 No Content); throws on 404 or other errors.
    */
   revokeShareLink: async (id: string): Promise<void> => {
-    await apiClient.delete(`/share/${id}`);
+    await api.delete(`/share/${id}`);
   },
 };

@@ -6,7 +6,7 @@ import type {
   WrappedTimeScene,
 } from "@/enums/wrapped-story";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export interface CardVisualSeedResponse {
   colorKey: string;
@@ -194,56 +194,30 @@ export interface TimelineResponse {
 // API
 
 export const statsApi = {
-  getWrapped: async (from?: string, to?: string): Promise<WrappedDeckResponse> => {
-    const result = await apiClient.get<WrappedDeckResponse>("/stats/wrapped", {
+  getWrapped: (from?: string, to?: string): Promise<WrappedDeckResponse> =>
+    api.get<WrappedDeckResponse>("/stats/wrapped", {
       params: { from, to },
-    });
+    }),
 
-    return result.data;
-  },
-
-  listSummaries: async (
+  listSummaries: (
     kind: string,
     from?: string,
     to?: string,
-  ): Promise<OverviewSummaryHeaderDtoResponse[]> => {
-    const result = await apiClient.get<OverviewSummaryHeaderDtoResponse[]>("/stats/summaries", {
+  ): Promise<OverviewSummaryHeaderDtoResponse[]> =>
+    api.get<OverviewSummaryHeaderDtoResponse[]>("/stats/summaries", {
       params: { kind, from, to },
-    });
+    }),
 
-    return result.data;
-  },
-
-  getSummary: async (
-    kind: string,
-    from?: string,
-    to?: string,
-  ): Promise<OverviewSummaryDtoResponse> => {
-    const result = await apiClient.get<OverviewSummaryDtoResponse>(`/stats/summaries/${kind}`, {
+  getSummary: (kind: string, from?: string, to?: string): Promise<OverviewSummaryDtoResponse> =>
+    api.get<OverviewSummaryDtoResponse>(`/stats/summaries/${kind}`, {
       params: { from, to },
-    });
+    }),
 
-    return result.data;
-  },
+  finalizeSummary: (kind: string, from: string, to: string): Promise<OverviewSummaryDtoResponse> =>
+    api.post<OverviewSummaryDtoResponse>(`/stats/summaries/${kind}/finalize`, { from, to }),
 
-  finalizeSummary: async (
-    kind: string,
-    from: string,
-    to: string,
-  ): Promise<OverviewSummaryDtoResponse> => {
-    const result = await apiClient.post<OverviewSummaryDtoResponse>(
-      `/stats/summaries/${kind}/finalize`,
-      { from, to },
-    );
-
-    return result.data;
-  },
-
-  getTimeline: async (from?: string, to?: string): Promise<TimelineResponse> => {
-    const result = await apiClient.get<TimelineResponse>("/stats/timeline", {
+  getTimeline: (from?: string, to?: string): Promise<TimelineResponse> =>
+    api.get<TimelineResponse>("/stats/timeline", {
       params: { from, to },
-    });
-
-    return result.data;
-  },
+    }),
 };

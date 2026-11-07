@@ -1510,7 +1510,7 @@ const deleteDirectoriesWithConsent = async (
 
     if (result.status === "fulfilled") {
       outcome.deleted += 1;
-    } else if (result.reason?.response?.status === 409 && id) {
+    } else if (result.reason?.status === 409 && id) {
       nonEmptyDirs.push(id);
     } else {
       outcome.failure ??= result.reason;

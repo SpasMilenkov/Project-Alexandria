@@ -33,7 +33,7 @@ const handleSubmit = async () => {
     description.value = "";
     dismiss();
   } catch (err) {
-    const status = (err as { response?: { status?: number } })?.response?.status;
+    const status = (err as { status?: number })?.status;
     if (status === 429) {
       toast.warning(
         "Too many reports",

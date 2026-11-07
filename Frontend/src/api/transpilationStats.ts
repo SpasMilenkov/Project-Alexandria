@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Backend enums serialize as numbers (no JsonStringEnumConverter)
 export const STATS_BUCKET = { Hour: 0, Day: 1 } as const;
@@ -59,17 +59,11 @@ export interface TranspilationTrendResponse {
 }
 
 export const transpilationStatsApi = {
-  getOverview: async (): Promise<TranspilationOverviewResponse> => {
-    const result = await apiClient.get<TranspilationOverviewResponse>(
-      "/admin/transpilation/overview",
-    );
-    return result.data;
-  },
+  getOverview: (): Promise<TranspilationOverviewResponse> =>
+    api.get<TranspilationOverviewResponse>("/admin/transpilation/overview"),
 
-  getTrend: async (params: TranspilationTrendParams): Promise<TranspilationTrendResponse> => {
-    const result = await apiClient.get<TranspilationTrendResponse>("/admin/transpilation/trend", {
+  getTrend: (params: TranspilationTrendParams): Promise<TranspilationTrendResponse> =>
+    api.get<TranspilationTrendResponse>("/admin/transpilation/trend", {
       params,
-    });
-    return result.data;
-  },
+    }),
 };

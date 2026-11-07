@@ -2,7 +2,7 @@ import type { PreviewKind } from "@/enums/PreviewKind";
 
 import type { PaginatedResponse } from "./directory";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export interface StorageInfo {
   dataAvailableBytes: number;
@@ -127,63 +127,39 @@ export interface ServerResourcesResponse {
 }
 
 export const statusApi = {
-  getMyStorage: async (): Promise<StorageBreakdown> => {
-    const result = await apiClient.get<StorageBreakdown>("/storage/my-storage");
-    return result.data;
-  },
+  getMyStorage: (): Promise<StorageBreakdown> => api.get<StorageBreakdown>("/storage/my-storage"),
 
-  getMyPreviews: async (params?: MyPreviewsParams): Promise<PaginatedResponse<UserPreview>> => {
-    const result = await apiClient.get<PaginatedResponse<UserPreview>>("/storage/my-previews", {
+  getMyPreviews: (params?: MyPreviewsParams): Promise<PaginatedResponse<UserPreview>> =>
+    api.get<PaginatedResponse<UserPreview>>("/storage/my-previews", {
       params,
-    });
-    return result.data;
-  },
+    }),
 
-  deletePreview: async (previewId: string): Promise<DeletePreviewResult> => {
-    const result = await apiClient.delete<DeletePreviewResult>(`/storage/previews/${previewId}`);
-    return result.data;
-  },
+  deletePreview: (previewId: string): Promise<DeletePreviewResult> =>
+    api.delete<DeletePreviewResult>(`/storage/previews/${previewId}`),
 
-  deletePreviewsByFile: async (
+  deletePreviewsByFile: (
     fileId: string,
     createdBefore?: string,
-  ): Promise<DeletePreviewsByFileResult> => {
-    const result = await apiClient.delete<DeletePreviewsByFileResult>(
-      `/storage/previews/by-file/${fileId}`,
-      { params: createdBefore ? { createdBefore } : undefined },
-    );
-    return result.data;
-  },
+  ): Promise<DeletePreviewsByFileResult> =>
+    api.delete<DeletePreviewsByFileResult>(`/storage/previews/by-file/${fileId}`, {
+      params: createdBefore ? { createdBefore } : undefined,
+    }),
 
-  getAdminStorageOverview: async (): Promise<AdminStorageOverview> => {
-    const result = await apiClient.get<AdminStorageOverview>("/admin/storage/overview");
-    return result.data;
-  },
+  getAdminStorageOverview: (): Promise<AdminStorageOverview> =>
+    api.get<AdminStorageOverview>("/admin/storage/overview"),
 
-  getStorageSplit: async (): Promise<StorageSplit> => {
-    const result = await apiClient.get<StorageSplit>("/admin/storage/split");
-    return result.data;
-  },
+  getStorageSplit: (): Promise<StorageSplit> => api.get<StorageSplit>("/admin/storage/split"),
 
-  getUserStorageRanking: async (top = 10): Promise<UserStorageRank[]> => {
-    const result = await apiClient.get<UserStorageRank[]>("/admin/storage/users", {
+  getUserStorageRanking: (top = 10): Promise<UserStorageRank[]> =>
+    api.get<UserStorageRank[]>("/admin/storage/users", {
       params: { top },
-    });
-    return result.data;
-  },
+    }),
 
-  getServerResources: async (): Promise<ServerResourcesResponse> => {
-    const result = await apiClient.get<ServerResourcesResponse>("/monitoring/resources");
-    return result.data;
-  },
+  getServerResources: (): Promise<ServerResourcesResponse> =>
+    api.get<ServerResourcesResponse>("/monitoring/resources"),
 
-  getServerStatus: async (): Promise<ServerStatusResponse> => {
-    const result = await apiClient.get<ServerStatusResponse>("/monitoring");
-    return result.data;
-  },
+  getServerStatus: (): Promise<ServerStatusResponse> =>
+    api.get<ServerStatusResponse>("/monitoring"),
 
-  getStorageMetrics: async (): Promise<StorageInfo> => {
-    const result = await apiClient.get<StorageInfo>("/storage/available");
-    return result.data;
-  },
+  getStorageMetrics: (): Promise<StorageInfo> => api.get<StorageInfo>("/storage/available"),
 };

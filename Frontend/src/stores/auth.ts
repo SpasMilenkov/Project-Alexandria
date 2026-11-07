@@ -1,5 +1,3 @@
-import type { AxiosError } from "axios";
-
 import { useMutationCache, useQueryCache } from "@pinia/colada";
 import { type Pinia, acceptHMRUpdate, defineStore, getActivePinia } from "pinia";
 import { computed, nextTick, ref } from "vue";
@@ -8,6 +6,7 @@ import type { LoginSchema } from "@/schemas/auth";
 
 import { type AuthResponse, authApi } from "@/api/auth";
 import { resetRefreshState } from "@/api/client";
+import { isApiError } from "@/api/errors";
 import { cancelBackgroundImageLoad } from "@/features/appearance/background-image";
 import { rotateSessionEpoch } from "@/features/auth/session-boundary";
 import { useActivityStore } from "@/stores/activity";
@@ -176,8 +175,8 @@ export const useAuthStore = defineStore(
         if (err instanceof Error) {
           ({ message } = err);
         }
-        if ((err as AxiosError)?.response?.data) {
-          message = (err as AxiosError<{ message: string }>).response?.data?.message ?? message;
+        if (isApiError(err) && err.data) {
+          message = (err.data as { message?: string }).message ?? message;
         }
         error.value = message;
         return { error: message, success: false };

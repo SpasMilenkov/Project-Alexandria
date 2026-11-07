@@ -1,7 +1,8 @@
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { apiClient, attemptRefresh, resetRefreshState } from "@/api/client";
+import { api, attemptRefresh, resetRefreshState } from "@/api/client";
+import { ApiError } from "@/api/errors";
 import { stopSessionBoundaryWatcher } from "@/features/auth/session-boundary";
 
 const { mockClearSession, mockCurrentRoute, mockPush } = vi.hoisted(() => ({
@@ -23,15 +24,10 @@ vi.mock("@/router", () => ({
   },
 }));
 
-const httpError = (status: number) => ({
-  isAxiosError: true,
-  response: { status },
-});
+const httpError = (status: number) =>
+  new ApiError(`Request failed with status ${status}`, { kind: "http", status });
 
-const networkError = () => ({
-  code: "ERR_NETWORK",
-  isAxiosError: true,
-});
+const networkError = () => new ApiError("The server could not be reached", { kind: "network" });
 
 let postSpy: ReturnType<typeof vi.spyOn>;
 
@@ -43,7 +39,7 @@ beforeEach(() => {
   mockClearSession.mockReset();
   mockPush.mockReset();
   mockCurrentRoute.value.fullPath = "/home";
-  postSpy = vi.spyOn(apiClient, "post");
+  postSpy = vi.spyOn(api, "post");
 });
 
 afterEach(() => {
@@ -57,9 +53,7 @@ describe("refresh failure policy", () => {
   it("clears the session when the refresh returns 401", async () => {
     postSpy.mockRejectedValueOnce(httpError(401));
 
-    await expect(attemptRefresh()).rejects.toMatchObject({
-      response: { status: 401 },
-    });
+    await expect(attemptRefresh()).rejects.toMatchObject({ status: 401 });
 
     expect(mockClearSession).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith({
@@ -71,9 +65,7 @@ describe("refresh failure policy", () => {
   it("does not clear the session for a server error", async () => {
     postSpy.mockRejectedValueOnce(httpError(500));
 
-    await expect(attemptRefresh()).rejects.toMatchObject({
-      response: { status: 500 },
-    });
+    await expect(attemptRefresh()).rejects.toMatchObject({ status: 500 });
 
     expect(mockClearSession).not.toHaveBeenCalled();
   });
@@ -81,15 +73,13 @@ describe("refresh failure policy", () => {
   it("does not clear the session for a network error", async () => {
     postSpy.mockRejectedValueOnce(networkError());
 
-    await expect(attemptRefresh()).rejects.toMatchObject({
-      code: "ERR_NETWORK",
-    });
+    await expect(attemptRefresh()).rejects.toMatchObject({ kind: "network" });
 
     expect(mockClearSession).not.toHaveBeenCalled();
   });
 
   it("does not clear the session after a successful refresh", async () => {
-    postSpy.mockResolvedValueOnce({ data: {} });
+    postSpy.mockResolvedValueOnce({});
 
     await expect(attemptRefresh()).resolves.toBeUndefined();
 
@@ -110,7 +100,7 @@ describe("refresh failure policy", () => {
 
     expect(postSpy).toHaveBeenCalledTimes(1);
 
-    resolveRefresh?.({ data: {} });
+    resolveRefresh?.({});
 
     await expect(Promise.all([first, second])).resolves.toEqual([undefined, undefined]);
     expect(mockClearSession).not.toHaveBeenCalled();
@@ -130,9 +120,7 @@ describe("refresh failure policy", () => {
     resetRefreshState();
     rejectRefresh?.(httpError(401));
 
-    await expect(pending).rejects.toMatchObject({
-      response: { status: 401 },
-    });
+    await expect(pending).rejects.toMatchObject({ status: 401 });
 
     expect(mockClearSession).not.toHaveBeenCalled();
   });
@@ -149,7 +137,7 @@ describe("refresh failure policy", () => {
     const pending = attemptRefresh();
 
     resetRefreshState();
-    resolveRefresh?.({ data: {} });
+    resolveRefresh?.({});
 
     await expect(pending).rejects.toThrow("Session changed during token refresh");
     expect(mockClearSession).not.toHaveBeenCalled();

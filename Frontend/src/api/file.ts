@@ -8,7 +8,7 @@ import { logger } from "@/utils/logger";
 import type { PaginatedResponse } from "./directory";
 import type { TagDto } from "./tag";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Response Types
 export interface UpdateFileMetadataResponse {
@@ -163,8 +163,8 @@ export interface FinalizeFileUploadResponse {
 
 export const fileApi = {
   bulkDownloadInit: async (payload: InitBulkDownloadRequest): Promise<string> => {
-    const response = await apiClient.post<{ token: string }>("files/bulk-download/init", payload);
-    return response.data.token;
+    const response = await api.post<{ token: string }>("files/bulk-download/init", payload);
+    return response.token;
   },
 
   changeFileVersion: async ({
@@ -174,108 +174,81 @@ export const fileApi = {
     fileId: string;
     versionId: string;
   }): Promise<void> => {
-    await apiClient.patch("files/versions", { fileId, versionId });
+    await api.patch("files/versions", { fileId, versionId });
   },
 
   copyFiles: async (fileIds: string[], destinationId: string | null) =>
-    await apiClient.post(`/files/copy`, {
+    await api.post(`/files/copy`, {
       destinationId,
       fileIds,
     }),
 
   deleteFileVersion: async (id: string): Promise<void> => {
-    await apiClient.delete(`/files/versions/${id}`);
+    await api.delete(`/files/versions/${id}`);
   },
 
   deleteFiles: async (ids: string[], hardDelete?: boolean): Promise<void> => {
-    await apiClient.delete(`/files/`, {
-      data: {
+    await api.delete(`/files/`, {
+      body: {
         hardDelete: hardDelete ?? false,
         ids,
       },
     });
   },
 
-  autoTagFile: async (fileId: string): Promise<AutoTagFileResponse> => {
-    const response = await apiClient.post<AutoTagFileResponse>(`/files/${fileId}/auto-tag`);
-    return response.data;
-  },
+  autoTagFile: (fileId: string): Promise<AutoTagFileResponse> =>
+    api.post<AutoTagFileResponse>(`/files/${fileId}/auto-tag`),
 
-  downloadFile: async (id: string): Promise<DownloadInfo> => {
-    const response = await apiClient.get<DownloadInfo>(`/files/download/${id}`);
-    return response.data;
-  },
+  downloadFile: (id: string): Promise<DownloadInfo> =>
+    api.get<DownloadInfo>(`/files/download/${id}`),
 
   // Was: downloadFileVersion: async (id: string): Promise<string>
-  downloadFileVersion: async (id: string): Promise<DownloadInfo> => {
-    const response = await apiClient.get<DownloadInfo>(`files/versions/${id}`);
-    return response.data;
-  },
+  downloadFileVersion: (id: string): Promise<DownloadInfo> =>
+    api.get<DownloadInfo>(`files/versions/${id}`),
 
-  finalizeUpload: async (data: FinalizeFileUploadRequest): Promise<FinalizeFileUploadResponse> => {
-    const response = await apiClient.post<FinalizeFileUploadResponse>(
-      "/files/finalize-upload",
-      data,
-    );
-    return response.data;
-  },
+  finalizeUpload: (data: FinalizeFileUploadRequest): Promise<FinalizeFileUploadResponse> =>
+    api.post<FinalizeFileUploadResponse>("/files/finalize-upload", data),
 
-  generateSignedUrl: async (data: GenerateSignedUrlSchema): Promise<GenerateSignedUrlResponse> => {
-    const response = await apiClient.post<GenerateSignedUrlResponse>("/files/signed-url", data);
-    return response.data;
-  },
+  generateSignedUrl: (data: GenerateSignedUrlSchema): Promise<GenerateSignedUrlResponse> =>
+    api.post<GenerateSignedUrlResponse>("/files/signed-url", data),
 
-  getFile: async (id: string): Promise<FileResult> => {
+  getFile: (id: string): Promise<FileResult> => {
     logger.log("fetching file with id", id);
-    const response = await apiClient.get<FileResult>(`/files/${id}`);
-    return response.data;
+    return api.get<FileResult>(`/files/${id}`);
   },
 
   // Hits the unversioned redirect endpoint, resolves to the file's current version
   // server-side. Prefer getPreviewByVersion when the caller already has a versionId
   // (e.g. from a MediaFileDto/FileResult already in hand), it skips the redirect hop.
-  getPreview: async (fileId: string): Promise<PreviewResultDto> => {
-    const response = await apiClient.get<PreviewResultDto>(`/files/${fileId}/preview`);
-    return response.data;
-  },
+  getPreview: (fileId: string): Promise<PreviewResultDto> =>
+    api.get<PreviewResultDto>(`/files/${fileId}/preview`),
 
-  getPreviewByVersion: async (fileId: string, versionId: string): Promise<PreviewResultDto> => {
-    const response = await apiClient.get<PreviewResultDto>(
-      `/files/${fileId}/versions/${versionId}/preview`,
-    );
-    return response.data;
-  },
+  getPreviewByVersion: (fileId: string, versionId: string): Promise<PreviewResultDto> =>
+    api.get<PreviewResultDto>(`/files/${fileId}/versions/${versionId}/preview`),
 
-  getRootFiles: async (paginationParams: PaginationParams) => {
-    const response = await apiClient.get<PaginatedResponse<FileResult>>("/files/root", {
+  getRootFiles: (paginationParams: PaginationParams) =>
+    api.get<PaginatedResponse<FileResult>>("/files/root", {
       params: {
         page: paginationParams.page,
         pageSize: paginationParams.pageSize,
         sortBy: paginationParams.SortBy,
         sortDirection: paginationParams.sortDirection,
       },
-    });
-    return response.data;
-  },
+    }),
 
-  getSubFiles: async (
+  getSubFiles: (
     directoryId: string,
     paginationParams: PaginationParams,
-  ): Promise<PaginatedResponse<FileResult>> => {
-    const response = await apiClient.get<PaginatedResponse<FileResult>>(
-      `files/directory/${directoryId}`,
-      {
-        params: {
-          directoryId,
-          page: paginationParams.page,
-          pageSize: paginationParams.pageSize,
-          sortBy: paginationParams.SortBy,
-          sortDirection: paginationParams.sortDirection,
-        },
+  ): Promise<PaginatedResponse<FileResult>> =>
+    api.get<PaginatedResponse<FileResult>>(`files/directory/${directoryId}`, {
+      params: {
+        directoryId,
+        page: paginationParams.page,
+        pageSize: paginationParams.pageSize,
+        sortBy: paginationParams.SortBy,
+        sortDirection: paginationParams.sortDirection,
       },
-    );
-    return response.data;
-  },
+    }),
 
   // URL builders, not fetch calls. Point <img :src> directly at these so the
   // browser's native HTTP cache (backed by nginx proxy_cache server-side) does
@@ -295,7 +268,7 @@ export const fileApi = {
     return coverUpdatedAt ? `${base}?v=${encodeURIComponent(coverUpdatedAt)}` : base;
   },
 
-  uploadVersionCover: async (
+  uploadVersionCover: (
     fileId: string,
     versionId: string,
     file: File,
@@ -303,29 +276,17 @@ export const fileApi = {
     const form = new FormData();
     form.append("file", file);
 
-    // Drop the instance JSON content-type so the browser sets multipart
-    // with its own boundary; the default transform would stringify the form.
-    const response = await apiClient.post<{ coverUpdatedAt: string }>(
+    return api.post<{ coverUpdatedAt: string }>(
       `/files/${fileId}/versions/${versionId}/cover`,
       form,
-      {
-        transformRequest: [
-          (payload, headers) => {
-            headers?.delete("Content-Type");
-            return payload;
-          },
-        ],
-      },
     );
-
-    return response.data;
   },
 
   removeVersionCover: async (fileId: string, versionId: string): Promise<void> => {
-    await apiClient.delete(`/files/${fileId}/versions/${versionId}/cover`);
+    await api.delete(`/files/${fileId}/versions/${versionId}/cover`);
   },
 
-  getVersionsForFile: async ({
+  getVersionsForFile: ({
     id,
     page,
     pageSize,
@@ -335,67 +296,47 @@ export const fileApi = {
     pageSize: number;
   }): Promise<PaginatedResponse<FileVersionDto>> => {
     logger.log("searching for versions for file with id", id);
-    const result = await apiClient.get<PaginatedResponse<FileVersionDto>>("/files/versions", {
+    return api.get<PaginatedResponse<FileVersionDto>>("/files/versions", {
       params: { fileId: id, page, pageSize },
     });
-    return result.data;
   },
 
-  initializeUpload: async (
-    data: InitializeFileUploadRequest,
-  ): Promise<InitializeFileUploadResponse> => {
-    const response = await apiClient.post<InitializeFileUploadResponse>("/files/init-upload", data);
-    return response.data;
-  },
+  initializeUpload: (data: InitializeFileUploadRequest): Promise<InitializeFileUploadResponse> =>
+    api.post<InitializeFileUploadResponse>("/files/init-upload", data),
 
   moveFiles: async (fileIds: string[], destinationId: string | null) => {
-    await apiClient.post("/files/move", {
+    await api.post("/files/move", {
       destinationId,
       fileIds,
     });
   },
 
-  restoreFiles: async (fileIds: string[]): Promise<number> => {
-    const result = await apiClient.post<number>("/files/restore", {
+  restoreFiles: (fileIds: string[]): Promise<number> =>
+    api.post<number>("/files/restore", {
       fileIds,
-    });
-    return result.data;
-  },
+    }),
 
   restoreVersion: async (id: string) => {
-    await apiClient.patch(`/files/versions/restore/${id}`, {});
+    await api.patch(`/files/versions/restore/${id}`, {});
   },
 
-  bulkUpdateFileMetadata: async (
+  bulkUpdateFileMetadata: (
     data: BulkUpdateFileMetadataRequest,
-  ): Promise<BulkUpdateFileMetadataResponse> => {
-    const response = await apiClient.patch<BulkUpdateFileMetadataResponse>(
-      "/files/metadata/bulk",
-      data,
-    );
-    return response.data;
-  },
+  ): Promise<BulkUpdateFileMetadataResponse> =>
+    api.patch<BulkUpdateFileMetadataResponse>("/files/metadata/bulk", data),
 
-  searchFiles: async (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {
+  searchFiles: (query: FileSearchQuery): Promise<PaginatedResponse<FileResult>> => {
     const cleanQuery = Object.fromEntries(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       Object.entries(query).filter(([_, value]) => value !== null),
     );
-    const response = await apiClient.get<PaginatedResponse<FileResult>>("/files/search", {
+    return api.get<PaginatedResponse<FileResult>>("/files/search", {
       params: cleanQuery,
     });
-    return response.data;
   },
 
-  updateFileMetadata: async (
-    data: UpdateFileMetadataSchema,
-  ): Promise<UpdateFileMetadataResponse> => {
-    const response = await apiClient.patch<UpdateFileMetadataResponse>(
-      `/files/${data.id}/metadata`,
-      data,
-    );
-    return response.data;
-  },
+  updateFileMetadata: (data: UpdateFileMetadataSchema): Promise<UpdateFileMetadataResponse> =>
+    api.patch<UpdateFileMetadataResponse>(`/files/${data.id}/metadata`, data),
 
   uploadToS3: (
     presignedUrl: string,

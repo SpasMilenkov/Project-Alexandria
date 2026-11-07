@@ -234,11 +234,11 @@
 </template>
 
 <script setup lang="ts">
-import type { AxiosError } from "axios";
-
 import { Icon } from "@iconify/vue";
 import { computed, reactive, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+
+import type { ApiError } from "@/api/errors";
 
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { OnboardingStep } from "@/enums";
@@ -260,9 +260,9 @@ const show = reactive({ confirm: false, initial: false, new: false });
 
 const serverError = computed(() => {
   if (!mutationError.value) return null;
-  const axiosErr = mutationError.value as AxiosError<{ message?: string }>;
-  const httpStatus = axiosErr?.response?.status;
-  const serverMessage = axiosErr?.response?.data?.message;
+  const apiErr = mutationError.value as ApiError<{ message?: string }>;
+  const httpStatus = apiErr?.status;
+  const serverMessage = apiErr?.data?.message;
 
   const map: Record<number, { title: string; hint?: string }> = {
     400: {

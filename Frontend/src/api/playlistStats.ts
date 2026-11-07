@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export const PLAYLIST_STATUS = {
   Queued: 0,
@@ -57,15 +57,11 @@ export interface PlaylistTrendResponse {
 }
 
 export const playlistStatsApi = {
-  getOverview: async (): Promise<PlaylistOverviewResponse> => {
-    const result = await apiClient.get<PlaylistOverviewResponse>("/admin/playlists/overview");
-    return result.data;
-  },
+  getOverview: (): Promise<PlaylistOverviewResponse> =>
+    api.get<PlaylistOverviewResponse>("/admin/playlists/overview"),
 
-  getTrend: async (params: PlaylistTrendParams): Promise<PlaylistTrendResponse> => {
-    const result = await apiClient.get<PlaylistTrendResponse>("/admin/playlists/trend", {
+  getTrend: (params: PlaylistTrendParams): Promise<PlaylistTrendResponse> =>
+    api.get<PlaylistTrendResponse>("/admin/playlists/trend", {
       params,
-    });
-    return result.data;
-  },
+    }),
 };

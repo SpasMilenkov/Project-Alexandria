@@ -7,88 +7,75 @@ import { gbToBytes } from "@/utils/size";
 
 import type { PaginatedResponse } from "./directory";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export const userApi = {
-  createUser: async (query: CreateUserSchema) => {
+  createUser: (query: CreateUserSchema) => {
     const { storageQuotaGb, ...rest } = query;
-    const result = await apiClient.post<UserDetailsDto>("/users", {
+    return api.post<UserDetailsDto>("/users", {
       ...rest,
       storageQuotaBytes: storageQuotaGb === undefined ? undefined : gbToBytes(storageQuotaGb),
     });
-
-    return result.data;
   },
 
   deleteUsers: async (userIds: string[]): Promise<void> => {
-    await apiClient.delete("/users", {
-      data: { userIds },
+    await api.delete("/users", {
+      body: { userIds },
     });
   },
 
   finishTour: async () => {
     logger.debug("HERE I AM ");
-    await apiClient.patch("/users/finish-tour", {});
+    await api.patch("/users/finish-tour", {});
   },
 
-  getFileCountPerUser: async (userId: string, deletedOnly: boolean): Promise<number> => {
-    const result = await apiClient.get<number>("/users/file-count", {
+  getFileCountPerUser: (userId: string, deletedOnly: boolean): Promise<number> =>
+    api.get<number>("/users/file-count", {
       params: {
         deletedOnly,
         userId,
       },
-    });
-    return result.data;
-  },
+    }),
 
-  getFileSizePerUser: async (userId: string, deletedOnly: boolean): Promise<number> => {
-    const result = await apiClient.get<number>("/users/file-size", {
+  getFileSizePerUser: (userId: string, deletedOnly: boolean): Promise<number> =>
+    api.get<number>("/users/file-size", {
       params: {
         deletedOnly,
         userId,
       },
-    });
-    return result.data;
-  },
+    }),
 
   getOnboardingStep: async (): Promise<OnboardingStep> => {
-    const result = await apiClient.get<{ onboardingStep: OnboardingStep }>("users/onboarding");
+    const result = await api.get<{ onboardingStep: OnboardingStep }>("users/onboarding");
 
-    return result.data.onboardingStep;
+    return result.onboardingStep;
   },
 
-  getUserProfile: async (): Promise<UserProfile> => {
-    const result = await apiClient.get<UserProfile>("/users/profile");
+  getUserProfile: (): Promise<UserProfile> => api.get<UserProfile>("/users/profile"),
 
-    return result.data;
-  },
-
-  getUsers: async (query: UserQueryDto): Promise<PaginatedResponse<UserDetailsDto>> => {
-    const result = await apiClient.get<PaginatedResponse<UserDetailsDto>>("/users", {
+  getUsers: (query: UserQueryDto): Promise<PaginatedResponse<UserDetailsDto>> =>
+    api.get<PaginatedResponse<UserDetailsDto>>("/users", {
       params: query,
-    });
-    return result.data;
-  },
+    }),
 
   restrictUser: async (userId: string, lockoutEndDate: string): Promise<void> => {
-    await apiClient.patch("/users/restrict", {
+    await api.patch("/users/restrict", {
       lockoutEndDate,
       userId,
     });
   },
 
   setupProfile: async () => {
-    await apiClient.patch("/users/setup-profile");
+    await api.patch("/users/setup-profile");
   },
 
-  updateUser: async (userId: string, payload: UpdateUserSchema): Promise<UserDetailsDto> => {
+  updateUser: (userId: string, payload: UpdateUserSchema): Promise<UserDetailsDto> => {
     const { storageQuotaGb, ...rest } = payload;
-    const result = await apiClient.patch<UserDetailsDto>(`/users/${userId}`, {
+    return api.patch<UserDetailsDto>(`/users/${userId}`, {
       payload: {
         ...rest,
         storageQuotaBytes: storageQuotaGb === undefined ? undefined : gbToBytes(storageQuotaGb),
       },
     });
-    return result.data;
   },
 };

@@ -8,7 +8,7 @@ import type {
 
 import type { PaginatedResponse } from "./directory";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Response Types
 export interface TagDto {
@@ -94,37 +94,29 @@ export interface PaginatedFilesResponse {
 }
 export const tagApi = {
   // Create a new tag
-  createTag: async (data: CreateTagSchema): Promise<CreateTagResponse> => {
-    const response = await apiClient.post<CreateTagResponse>("/tags", data);
-    return response.data;
-  },
+  createTag: (data: CreateTagSchema): Promise<CreateTagResponse> =>
+    api.post<CreateTagResponse>("/tags", data),
 
   // Get all tags with pagination
-  getAllTags: async (page: number, pageSize: number): Promise<PaginatedResponse<TagDto>> => {
-    const response = await apiClient.get<PaginatedResponse<TagDto>>("/tags", {
+  getAllTags: (page: number, pageSize: number): Promise<PaginatedResponse<TagDto>> =>
+    api.get<PaginatedResponse<TagDto>>("/tags", {
       params: { page, pageSize },
-    });
-    return response.data;
-  },
+    }),
 
   // Update a tag
-  updateTag: async (tagId: string, data: UpdateTagSchema): Promise<UpdateTagResponse> => {
-    const response = await apiClient.patch<UpdateTagResponse>(`/tags/${tagId}`, data);
-    return response.data;
-  },
+  updateTag: (tagId: string, data: UpdateTagSchema): Promise<UpdateTagResponse> =>
+    api.patch<UpdateTagResponse>(`/tags/${tagId}`, data),
 
   // Delete a tag
   deleteTag: async (tagId: string): Promise<void> => {
-    await apiClient.delete(`/tags/${tagId}`);
+    await api.delete(`/tags/${tagId}`);
   },
 
   // Search tags with filters
-  searchTags: async (query: SearchTagsSchema): Promise<PaginatedResponse<TagDto>> => {
-    const response = await apiClient.get<PaginatedResponse<TagDto>>("/tags/search", {
+  searchTags: (query: SearchTagsSchema): Promise<PaginatedResponse<TagDto>> =>
+    api.get<PaginatedResponse<TagDto>>("/tags/search", {
       params: query,
-    });
-    return response.data;
-  },
+    }),
 
   // Load the full system vocabulary (pages until the server's total count is reached).
   getAllSystemTags: async (): Promise<TagDto[]> => {
@@ -134,11 +126,11 @@ export const tagApi = {
     let total = 0;
 
     do {
-      const response = await apiClient.get<PaginatedResponse<TagDto>>("/tags/search", {
+      const response = await api.get<PaginatedResponse<TagDto>>("/tags/search", {
         params: { ownerScope: "system", page, pageSize },
       });
-      total = response.data.totalCount;
-      tags.push(...response.data.items);
+      total = response.totalCount;
+      tags.push(...response.items);
       page++;
     } while (tags.length < total && page <= 20);
 
@@ -146,27 +138,21 @@ export const tagApi = {
   },
 
   // Get all tags for a file
-  getTagsForFile: async (fileId: string): Promise<FileTagsResponse> => {
-    const response = await apiClient.get<FileTagsResponse>(`/files/${fileId}/tags`);
-    return response.data;
-  },
+  getTagsForFile: (fileId: string): Promise<FileTagsResponse> =>
+    api.get<FileTagsResponse>(`/files/${fileId}/tags`),
 
   // Add tags to a file
-  addTagsToFile: async (fileId: string, data: AddTagsToFileSchema): Promise<AddTagsResponse> => {
-    const response = await apiClient.post<AddTagsResponse>(`/files/${fileId}/tags`, data);
-    return response.data;
-  },
+  addTagsToFile: (fileId: string, data: AddTagsToFileSchema): Promise<AddTagsResponse> =>
+    api.post<AddTagsResponse>(`/files/${fileId}/tags`, data),
 
   // Remove a tag from a file
   removeTagFromFile: async (fileId: string, tagId: string): Promise<void> => {
-    await apiClient.delete(`/files/${fileId}/tags/${tagId}`);
+    await api.delete(`/files/${fileId}/tags/${tagId}`);
   },
 
   // Search files by tags
-  searchFilesByTags: async (query: SearchFilesByTagsSchema): Promise<PaginatedResponse<TagDto>> => {
-    const response = await apiClient.get<PaginatedResponse<TagDto>>("/files/search/tags", {
+  searchFilesByTags: (query: SearchFilesByTagsSchema): Promise<PaginatedResponse<TagDto>> =>
+    api.get<PaginatedResponse<TagDto>>("/files/search/tags", {
       params: query,
-    });
-    return response.data;
-  },
+    }),
 };

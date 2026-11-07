@@ -3,7 +3,7 @@ import type { HomeWidget, HomeWidgetOptions } from "@/types/home";
 
 import { homeBoardToSettings } from "@/features/home/persistence";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export interface HomeWidgetRow {
   id: string;
@@ -43,20 +43,20 @@ export interface HomeBoardChanges {
 
 export const homeApi = {
   getBoard: async () => {
-    const response = await apiClient.get<HomeBoard>("/home/widgets");
+    const response = await api.get<HomeBoard>("/home/widgets");
 
-    return homeBoardToSettings(response.data);
+    return homeBoardToSettings(response);
   },
 
   saveChanges: async (changes: HomeBoardChanges) => {
-    const response = await apiClient.patch<HomeBoard>("/home/widgets", changes);
+    const response = await api.patch<HomeBoard>("/home/widgets", changes);
 
-    return homeBoardToSettings(response.data);
+    return homeBoardToSettings(response);
   },
 
   resetBoard: async () => {
-    const response = await apiClient.delete<HomeBoard>("/home/widgets");
+    const response = await api.delete<HomeBoard>("/home/widgets");
 
-    return homeBoardToSettings(response.data);
+    return homeBoardToSettings(response);
   },
 };

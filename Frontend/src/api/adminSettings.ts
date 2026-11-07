@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export interface UploadPolicy {
   skipClientValidationForTrustedUploads: boolean;
@@ -6,18 +6,12 @@ export interface UploadPolicy {
 }
 
 export const adminSettingsApi = {
-  getUploadPolicy: async (): Promise<UploadPolicy> => {
-    const result = await apiClient.get<UploadPolicy>("/admin/settings/upload-policy");
-    return result.data;
-  },
+  getUploadPolicy: (): Promise<UploadPolicy> =>
+    api.get<UploadPolicy>("/admin/settings/upload-policy"),
 
-  resetUploadPolicy: async (): Promise<UploadPolicy> => {
-    const result = await apiClient.delete<UploadPolicy>("/admin/settings/upload-policy");
-    return result.data;
-  },
+  resetUploadPolicy: (): Promise<UploadPolicy> =>
+    api.delete<UploadPolicy>("/admin/settings/upload-policy"),
 
-  updateUploadPolicy: async (payload: UploadPolicy): Promise<UploadPolicy> => {
-    const result = await apiClient.put<UploadPolicy>("/admin/settings/upload-policy", payload);
-    return result.data;
-  },
+  updateUploadPolicy: (payload: UploadPolicy): Promise<UploadPolicy> =>
+    api.put<UploadPolicy>("/admin/settings/upload-policy", payload),
 };

@@ -298,14 +298,14 @@ const extractErrorMessage = (err: any): string => {
   if (err instanceof DOMException || err?.name === "OperationError")
     return "Encryption failed. Check your password and try again.";
 
-  if (err?.code === "ERR_NETWORK" || !err?.response)
+  if (err?.status === undefined)
     return "Could not reach the server. Check your connection and try again.";
 
-  const status: number | undefined = err?.response?.status;
+  const status: number | undefined = err?.status;
   if (status && HTTP_ERROR_MAP[status]) return HTTP_ERROR_MAP[status];
   if (status && status >= 500) return "Something went wrong on the server. Try again in a moment.";
 
-  const data = err?.response?.data;
+  const data = err?.data;
   if (data?.errors && typeof data.errors === "object") {
     const messages = Object.values(data.errors as Record<string, string[]>)
       .flat()

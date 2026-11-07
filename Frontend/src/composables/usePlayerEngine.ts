@@ -559,8 +559,7 @@ export const usePlayerEngine = (
       if (loadSequence !== loadSequenceCounter) return;
       // Report the instance this load was for. loadedInstanceId is only set
       // after the manifest resolves, so it is stale or null on a failed load.
-      const notFound =
-        err?.response?.status === 404 || (err?.code === 1001 && err?.data?.[1] === 404);
+      const notFound = err?.status === 404 || (err?.code === 1001 && err?.data?.[1] === 404);
       if (notFound) {
         await store.reportUnavailable(instanceId);
         return;

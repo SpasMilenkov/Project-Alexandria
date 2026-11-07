@@ -7,7 +7,7 @@ import {
 
 import type { PaginatedResponse } from "./directory";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Request/response types
 
@@ -172,17 +172,15 @@ export const parseEventMetadata = (raw: string | null): EventMetadata | null => 
 };
 
 export const monitoringApi = {
-  getErrorCalendar: async (range: EventCalendarRange): Promise<ErrorAggregate[]> => {
-    const result = await apiClient.get<ErrorAggregate[]>("/monitoring/events/calendar", {
+  getErrorCalendar: (range: EventCalendarRange): Promise<ErrorAggregate[]> =>
+    api.get<ErrorAggregate[]>("/monitoring/events/calendar", {
       params: { from: range.from.toISOString(), to: range.to.toISOString() },
-    });
-    return result.data;
-  },
+    }),
 
-  getOperationalEvents: async (
+  getOperationalEvents: (
     query: OperationalEventsQuery,
-  ): Promise<PaginatedResponse<OperationalEvent>> => {
-    const result = await apiClient.get<PaginatedResponse<OperationalEvent>>("/monitoring/events", {
+  ): Promise<PaginatedResponse<OperationalEvent>> =>
+    api.get<PaginatedResponse<OperationalEvent>>("/monitoring/events", {
       params: {
         code: query.code,
         from: query.from?.toISOString(),
@@ -193,38 +191,26 @@ export const monitoringApi = {
         status: query.status,
         to: query.to?.toISOString(),
       },
-    });
-    return result.data;
-  },
+    }),
 
-  getStatusHistory: async (): Promise<OperationalEvent[]> => {
-    const result = await apiClient.get<OperationalEvent[]>("/monitoring/status/history");
-    return result.data;
-  },
+  getStatusHistory: (): Promise<OperationalEvent[]> =>
+    api.get<OperationalEvent[]>("/monitoring/status/history"),
 
-  getUptime: async (service: ServiceType, range: EventCalendarRange): Promise<number> => {
-    const result = await apiClient.get<number>("/monitoring/uptime", {
+  getUptime: (service: ServiceType, range: EventCalendarRange): Promise<number> =>
+    api.get<number>("/monitoring/uptime", {
       params: { service, from: range.from.toISOString(), to: range.to.toISOString() },
-    });
-    return result.data;
-  },
+    }),
 
-  getAllUptimes: async (range: EventCalendarRange): Promise<ServiceUptime[]> => {
-    const result = await apiClient.get<ServiceUptime[]>("/monitoring/uptime/all", {
+  getAllUptimes: (range: EventCalendarRange): Promise<ServiceUptime[]> =>
+    api.get<ServiceUptime[]>("/monitoring/uptime/all", {
       params: { from: range.from.toISOString(), to: range.to.toISOString() },
-    });
-    return result.data;
-  },
+    }),
 
-  reportProblem: async (payload: ReportProblemPayload): Promise<OperationalEvent> => {
-    const result = await apiClient.post<OperationalEvent>("/monitoring/report", payload);
-    return result.data;
-  },
+  reportProblem: (payload: ReportProblemPayload): Promise<OperationalEvent> =>
+    api.post<OperationalEvent>("/monitoring/report", payload),
 
-  resolveIncident: async (id: string, note?: string): Promise<OperationalEvent> => {
-    const result = await apiClient.patch<OperationalEvent>(`/monitoring/events/${id}/resolve`, {
+  resolveIncident: (id: string, note?: string): Promise<OperationalEvent> =>
+    api.patch<OperationalEvent>(`/monitoring/events/${id}/resolve`, {
       note: note?.trim() ? note.trim() : undefined,
-    });
-    return result.data;
-  },
+    }),
 };

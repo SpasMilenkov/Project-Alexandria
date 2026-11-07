@@ -95,7 +95,7 @@ export const useFileThumbnail = (source: () => FileThumbnailSource) => {
     if (thumbnailLoaded.value || thumbnailErrored.value || retryTimer !== null) return;
     if (retryCount.value === 0) {
       // Best-effort session heal for the idle-expiry case: <img> cannot run
-      // the axios refresh flow, so kick one off here. Concurrent callers
+      // the API client's refresh flow, so kick one off here. Concurrent callers
       // share a single in-flight POST via refreshPromise in api/client, and
       // failures are ignored, the scheduled retries cover it either way.
       attemptRefresh().catch(() => undefined);

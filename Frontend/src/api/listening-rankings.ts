@@ -1,6 +1,6 @@
 import type { MediaFileDto } from "@/api/streaming";
 
-import { apiClient } from "./client";
+import { api } from "./client";
 
 export interface TopSongsQuery {
   from: string;
@@ -36,17 +36,9 @@ export interface JumpBackInResponse {
 }
 
 export const listeningRankingsApi = {
-  getTopSongs: async (
-    params: Omit<TopSongsQuery, "to"> & { to?: string },
-  ): Promise<TopSongsResponse> => {
-    const result = await apiClient.get<TopSongsResponse>("/stats/top-songs", { params });
+  getTopSongs: (params: Omit<TopSongsQuery, "to"> & { to?: string }): Promise<TopSongsResponse> =>
+    api.get<TopSongsResponse>("/stats/top-songs", { params }),
 
-    return result.data;
-  },
-
-  getJumpBackIn: async (params: JumpBackInQuery): Promise<JumpBackInResponse> => {
-    const result = await apiClient.get<JumpBackInResponse>("/stats/jump-back-in", { params });
-
-    return result.data;
-  },
+  getJumpBackIn: (params: JumpBackInQuery): Promise<JumpBackInResponse> =>
+    api.get<JumpBackInResponse>("/stats/jump-back-in", { params }),
 };

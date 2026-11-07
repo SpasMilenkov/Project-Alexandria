@@ -306,10 +306,7 @@ export const useDirectoryUpload = () => {
       fileStatus.status = "error";
       fileStatus.error = isCancelled
         ? "Cancelled"
-        : (err.response?.data?.message ??
-          err.response?.data?.error ??
-          err.message ??
-          "Unknown error");
+        : (err.data?.message ?? err.data?.error ?? err.message ?? "Unknown error");
       return false;
     }
   };

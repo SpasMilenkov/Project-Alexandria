@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from "pinia";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
+import { ApiError } from "@/api/errors";
 import { useAuthStore } from "@/stores/auth";
 
 const mockLogin = vi.fn();
@@ -74,12 +75,13 @@ describe("useAuthStore", () => {
       expect(store.isAuthenticated).toBe(false);
     });
 
-    it("extracts Axios error message from response data", async () => {
-      const axiosError = {
-        isAxiosError: true,
-        response: { data: { message: "Account locked" } },
-      };
-      mockLogin.mockRejectedValueOnce(axiosError);
+    it("extracts the server's error message from an API error", async () => {
+      const apiError = new ApiError("Request failed", {
+        data: { message: "Account locked" },
+        kind: "http",
+        status: 423,
+      });
+      mockLogin.mockRejectedValueOnce(apiError);
 
       const store = useAuthStore();
       const result = await store.login({ email: "locked@test.com", password: "pw" });

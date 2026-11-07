@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { api } from "./client";
 
 // Enums mirroring the backend
 
@@ -115,44 +115,30 @@ export interface UpdatePolicyRuleRequest {
 export const policyApi = {
   getByDirectory: async (directoryId: string): Promise<DirectoryPolicyDto | null> => {
     try {
-      const response = await apiClient.get<DirectoryPolicyDto>(
-        `/policies/by-directory/${directoryId}`,
-      );
-      return response.data;
+      return await api.get<DirectoryPolicyDto>(`/policies/by-directory/${directoryId}`);
     } catch (error: any) {
-      if (error?.response?.status === 404) return null;
+      if (error?.status === 404) return null;
       throw error;
     }
   },
 
-  create: async (data: CreateDirectoryPolicyRequest): Promise<DirectoryPolicyDto> => {
-    const response = await apiClient.post<DirectoryPolicyDto>("/policies", data);
-    return response.data;
-  },
+  create: (data: CreateDirectoryPolicyRequest): Promise<DirectoryPolicyDto> =>
+    api.post<DirectoryPolicyDto>("/policies", data),
 
-  update: async (
-    policyId: string,
-    data: UpdateDirectoryPolicyRequest,
-  ): Promise<DirectoryPolicyDto> => {
-    const response = await apiClient.patch<DirectoryPolicyDto>(`/policies/${policyId}`, data);
-    return response.data;
-  },
+  update: (policyId: string, data: UpdateDirectoryPolicyRequest): Promise<DirectoryPolicyDto> =>
+    api.patch<DirectoryPolicyDto>(`/policies/${policyId}`, data),
 
   delete: async (policyId: string): Promise<void> => {
-    await apiClient.delete(`/policies/${policyId}`);
+    await api.delete(`/policies/${policyId}`);
   },
 
-  addRule: async (policyId: string, data: AddPolicyRuleRequest): Promise<PolicyRuleDto> => {
-    const response = await apiClient.post<PolicyRuleDto>(`/policies/${policyId}/rules`, data);
-    return response.data;
-  },
+  addRule: (policyId: string, data: AddPolicyRuleRequest): Promise<PolicyRuleDto> =>
+    api.post<PolicyRuleDto>(`/policies/${policyId}/rules`, data),
 
-  updateRule: async (ruleId: string, data: UpdatePolicyRuleRequest): Promise<PolicyRuleDto> => {
-    const response = await apiClient.patch<PolicyRuleDto>(`/policies/rules/${ruleId}`, data);
-    return response.data;
-  },
+  updateRule: (ruleId: string, data: UpdatePolicyRuleRequest): Promise<PolicyRuleDto> =>
+    api.patch<PolicyRuleDto>(`/policies/rules/${ruleId}`, data),
 
   deleteRule: async (ruleId: string): Promise<void> => {
-    await apiClient.delete(`/policies/rules/${ruleId}`);
+    await api.delete(`/policies/rules/${ruleId}`);
   },
 };

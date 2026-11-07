@@ -50,7 +50,7 @@ const formattedExpires = computed(() => {
 // 410 Gone  → owner explicitly revoked the link
 // 429       → download cap was exhausted (adjust if your backend uses a different code)
 // anything else → generic not-found
-const errorStatus = computed(() => (error.value as any)?.response?.status ?? null);
+const errorStatus = computed(() => (error.value as any)?.status ?? null);
 
 type DisplayError = "expired" | "revoked" | "limit-reached" | "not-found";
 
