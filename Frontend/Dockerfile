@@ -2,8 +2,8 @@
 FROM node:24.15-alpine3.22@sha256:b689d4005875ae167178471a7a622ec2909459a3bbb32277260be1971af7a99f AS build
 WORKDIR /app
 
-# Enable corepack for pnpm
-RUN npm install -g pnpm@11.0.6
+# Keep in sync with packageManager in package.json
+RUN npm install -g pnpm@12.4.2
 
 # Copy package files for dependency caching
 COPY package.json pnpm-lock.yaml  pnpm-workspace.yaml  ./
