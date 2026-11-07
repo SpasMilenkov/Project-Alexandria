@@ -66,6 +66,7 @@ const thumbnail = useFileThumbnail(() => ({
   fileId: file.fileId,
   versionId: file.currentVersionId,
   mimeType: file.mimeType,
+  coverUpdatedAt: file.coverUpdatedAt,
 }));
 
 const showArtwork = computed(

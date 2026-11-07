@@ -55,4 +55,29 @@ public interface IPreviewArtifactService
     /// <exception cref="UnauthorizedAccessException">Not the owner and not an admin.</exception>
     Task<(int DeletedCount, long FreedBytes)> DeletePreviewsByFileAsync(
         Guid fileId, Guid userId, bool isAdmin, DateTime? createdBefore, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets an uploaded image as one audio version's cover. Automated generation leaves it
+    /// alone from then on. Returns the cover's timestamp, which clients use as a cache-buster.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">Version is missing or not owned by the user.</exception>
+    /// <exception cref="InvalidOperationException">Version or image is not eligible.</exception>
+    Task<DateTime> SetCustomCoverAsync(
+        Guid fileId, Guid versionId, Guid userId, Stream content, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes a version's manual cover, if it has one. The automatic thumbnail regenerates
+    /// on the next read.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">Version is missing or not owned by the user.</exception>
+    Task RemoveCustomCoverAsync(Guid fileId, Guid versionId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Object key to serve for a version's thumbnail: its manual cover if it has one,
+    /// otherwise the generated thumbnail shared by its content hash.
+    /// </summary>
+    Task<string> GetThumbnailContentPathAsync(Guid versionId, string contentHash, CancellationToken ct = default);
+
+    /// <summary>Cache-busting token of a version's manual cover, or null when the cover is automatic.</summary>
+    Task<string?> GetCoverStampAsync(Guid versionId, CancellationToken ct = default);
 }

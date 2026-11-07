@@ -115,4 +115,26 @@ public partial class PreviewArtifactService
     [LoggerMessage(1054, LogLevel.Debug,
         "Preview object already absent in storage: {Bucket}/{Key}")]
     private static partial void LogPreviewObjectNotFound(ILogger logger, string bucket, string key);
+
+    // Manual covers
+
+    [LoggerMessage(1055, LogLevel.Information,
+        "Keeping manual cover, generated thumbnail not applied: VersionId={VersionId}")]
+    private static partial void LogManualCoverKept(ILogger logger, Guid versionId);
+
+    [LoggerMessage(1056, LogLevel.Information,
+        "Manual cover saved: VersionId={VersionId}, Key={Key}, Size={Size}")]
+    private static partial void LogManualCoverSaved(ILogger logger, Guid versionId, string key, long size);
+
+    [LoggerMessage(1057, LogLevel.Error,
+        "Failed to save manual cover: VersionId={VersionId}, Key={Key}")]
+    private static partial void LogManualCoverSaveFailed(ILogger logger, Exception ex, Guid versionId, string key);
+
+    [LoggerMessage(1058, LogLevel.Warning,
+        "Could not delete manual cover object, it is now orphaned: Key={Key}")]
+    private static partial void LogManualCoverObjectOrphaned(ILogger logger, Exception ex, string key);
+
+    [LoggerMessage(1059, LogLevel.Information,
+        "Manual cover removed, thumbnail regenerates on next read: VersionId={VersionId}")]
+    private static partial void LogManualCoverRemoved(ILogger logger, Guid versionId);
 }

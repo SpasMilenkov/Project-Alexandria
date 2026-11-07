@@ -24,6 +24,10 @@ public class PreviewConfiguration : IEntityTypeConfiguration<Preview>
             .HasColumnType($"varchar({ValidationConstants.StringLengths.MediumString})")
             .IsRequired();
 
+        builder.Property(e => e.IsManual)
+            .HasDefaultValue(false)
+            .IsRequired();
+
         // DateTime properties
         builder.Property(e => e.CreatedAt)
             .HasColumnType("timestamp with time zone")

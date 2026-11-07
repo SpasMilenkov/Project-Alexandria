@@ -176,7 +176,7 @@ public class FileVersionRepository : IFileVersionRepository
             .Take(pageSize)
             .Select(f =>
                 new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt != null,
-                    f.IsEncrypted))
+                    f.IsEncrypted, null))
             .ToListAsync(ct);
 
         return new PaginatedResult<FileVersionDto>
@@ -214,7 +214,7 @@ public class FileVersionRepository : IFileVersionRepository
             .Where(f => f.FileId == fileId && f.File.OwnerId == userId && f.DeletedAt == null)
             .OrderByDescending(f => f.CreatedAt)
             .Select(f => new FileVersionDto(f.Id, f.Size, f.MimeType, f.VersionNumber, f.CreatedAt, f.DeletedAt == null,
-                f.IsEncrypted))
+                f.IsEncrypted, null))
             .FirstOrDefaultAsync(ct);
     }
 

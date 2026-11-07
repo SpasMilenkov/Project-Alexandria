@@ -25,7 +25,11 @@ public static class FileProjections
                 f.CurrentVersion.VersionNumber,
                 f.CurrentVersion.CreatedAt,
                 f.DeletedAt == null,
-                f.CurrentVersion.IsEncrypted
+                f.CurrentVersion.IsEncrypted,
+                f.CurrentVersion.Previews
+                    .Where(p => p.Kind == PreviewKind.Thumbnail && p.IsManual)
+                    .Select(p => p.UpdatedAt)
+                    .FirstOrDefault()
             ),
             f.FileTags!.Where(ft => ft.Source != TagSource.Suppressed && ft.Tag.DeletedAt == null)
                 .Select(ft => new TagDto

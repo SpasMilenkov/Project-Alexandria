@@ -20,7 +20,7 @@ public class StaticAssetService(
     IOptions<S3Config> config)
     : IStaticAssetService
 {
-    private const long MaxImageBytes = 4 * 1024 * 1024;
+    internal const long MaxImageBytes = 4 * 1024 * 1024;
 
     public async Task<string> UploadBackgroundImageAsync(
         Stream content,
@@ -48,7 +48,7 @@ public class StaticAssetService(
         return objectKey;
     }
 
-    private static string? DetectImageContentType(ReadOnlySpan<byte> bytes)
+    internal static string? DetectImageContentType(ReadOnlySpan<byte> bytes)
     {
         if (bytes.Length >= 3 &&
             bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF)
@@ -116,7 +116,7 @@ public class StaticAssetService(
         return objectKey;
     }
 
-    private static async Task<byte[]> ReadCappedAsync(
+    internal static async Task<byte[]> ReadCappedAsync(
         Stream content, long cap, string what, CancellationToken ct)
     {
         using var buffered = new MemoryStream();

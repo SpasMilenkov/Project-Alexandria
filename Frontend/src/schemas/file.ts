@@ -27,6 +27,19 @@ export const updateFileMetadataSchema = z.object({
 
 export type UpdateFileMetadataSchema = z.infer<typeof updateFileMetadataSchema>;
 
+// Track cover. The backend enforces the same limits by sniffing the bytes.
+export const trackCoverSchema = z.object({
+  coverFile: z
+    .instanceof(File, { message: "Choose an image" })
+    .refine((f) => f.size <= 4 * 1024 * 1024, "Max 4 MB")
+    .refine(
+      (f) => ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type),
+      "Use a JPG, PNG, WebP or GIF image",
+    ),
+});
+
+export type TrackCoverSchema = z.infer<typeof trackCoverSchema>;
+
 // Generate Signed URL Schema
 export const generateSignedUrlSchema = z.object({
   expiry: z.string().optional(),

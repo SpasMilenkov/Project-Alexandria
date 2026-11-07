@@ -37,6 +37,7 @@ const { thumbnailUrl, thumbnailErrored, canHaveThumbnail, onThumbnailLoad, onThu
     fileId: file?.fileId ?? "",
     versionId: file?.currentVersionId ?? "",
     mimeType: file?.mimeType ?? null,
+    coverUpdatedAt: file?.coverUpdatedAt,
   }));
 
 const showImage = computed(

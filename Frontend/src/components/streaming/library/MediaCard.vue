@@ -57,6 +57,7 @@ const { thumbnailUrl, thumbnailLoaded, thumbnailErrored, onThumbnailLoad, onThum
   useFileThumbnail(() => ({
     fileId: file.fileId,
     versionId: file.currentVersionId,
+    coverUpdatedAt: file.coverUpdatedAt,
   }));
 
 const showSpinner = computed(() => !thumbnailLoaded.value && !thumbnailErrored.value);

@@ -6,6 +6,7 @@ internal sealed class StreamingFileRow
     public string Name { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
     public Guid CurrentVersionId { get; set; }
+    public DateTime? CoverUpdatedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public double? Duration { get; set; }
     public string? Artist { get; set; }
@@ -40,6 +41,7 @@ internal sealed class PlaylistStreamingRow
     public string FileName { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
     public Guid CurrentVersionId { get; set; }
+    public DateTime? CoverUpdatedAt { get; set; }
     public Guid PlaybackVersionId { get; set; }
     public DateTime CreatedAt { get; set; }
     public double? Duration { get; set; }
@@ -60,6 +62,7 @@ internal sealed class LibraryPlaybackRow
     public string Name { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
     public Guid CurrentVersionId { get; set; }
+    public DateTime? CoverUpdatedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public double? Duration { get; set; }
     public string? Artist { get; set; }

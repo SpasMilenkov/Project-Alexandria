@@ -182,6 +182,7 @@ const props = defineProps<{
   fileName: string;
   mimeType: string;
   isEncrypted?: boolean;
+  coverUpdatedAt?: string | null;
 }>();
 
 // Preview query
@@ -302,7 +303,7 @@ interface ArchiveData {
 }
 
 const thumbnailSrc = computed(() =>
-  fileApi.getThumbnailUrlForVersion(props.fileId, props.currentVersionId),
+  fileApi.getThumbnailUrlForVersion(props.fileId, props.currentVersionId, props.coverUpdatedAt),
 );
 
 const archivePreviewItems = computed(() => {

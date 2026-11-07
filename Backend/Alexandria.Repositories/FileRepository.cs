@@ -1076,6 +1076,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 FileName = pi.TranspilationJob!.FileVersion.File.Name,
                 MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
                 CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
+                CoverUpdatedAt = context.Previews
+                    .Where(p => p.VersionId == pi.TranspilationJob!.FileVersion.File.CurrentVersionId && p.Kind == PreviewKind.Thumbnail && p.IsManual)
+                    .Select(p => p.UpdatedAt)
+                    .FirstOrDefault(),
                 PlaybackVersionId = pi.TranspilationJob.VersionId,
                 CreatedAt = pi.TranspilationJob!.FileVersion.File.CreatedAt,
                 Duration = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
@@ -1196,6 +1200,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             Name = f.Name,
             MimeType = f.MimeType,
             CurrentVersionId = f.CurrentVersionId!.Value,
+            CoverUpdatedAt = context.Previews
+                .Where(p => p.VersionId == f.CurrentVersionId && p.Kind == PreviewKind.Thumbnail && p.IsManual)
+                .Select(p => p.UpdatedAt)
+                .FirstOrDefault(),
             CreatedAt = f.CreatedAt,
             Duration = f.MediaMetadata == null ? null : f.MediaMetadata.Duration,
             Artist = f.MediaMetadata!.Artist,
@@ -1236,6 +1244,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             FileName = row.Name,
             MimeType = row.MimeType,
             CurrentVersionId = row.CurrentVersionId,
+            CoverUpdatedAt = row.CoverUpdatedAt,
             PlaybackVersionId = row.Job!.VersionId,
             Duration = row.Duration,
             Artist = row.Artist,
@@ -1260,6 +1269,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             FileName = row.FileName,
             MimeType = row.MimeType,
             CurrentVersionId = row.CurrentVersionId,
+            CoverUpdatedAt = row.CoverUpdatedAt,
             PlaybackVersionId = row.PlaybackVersionId,
             Duration = row.Duration,
             Artist = row.Artist,
@@ -1372,6 +1382,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 Name = f.Name,
                 MimeType = f.MimeType,
                 CurrentVersionId = f.CurrentVersionId!.Value,
+                CoverUpdatedAt = context.Previews
+                    .Where(p => p.VersionId == f.CurrentVersionId && p.Kind == PreviewKind.Thumbnail && p.IsManual)
+                    .Select(p => p.UpdatedAt)
+                    .FirstOrDefault(),
                 CreatedAt = f.CreatedAt,
                 Duration = f.MediaMetadata == null ? null : (double?)f.MediaMetadata.Duration,
                 Artist = f.MediaMetadata!.Artist,
@@ -1437,6 +1451,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 FileName = row.Name,
                 MimeType = row.MimeType,
                 CurrentVersionId = row.CurrentVersionId,
+                CoverUpdatedAt = row.CoverUpdatedAt,
                 PlaybackVersionId = chosen.VersionId,
                 Duration = row.Duration,
                 Artist = row.Artist,
@@ -1502,6 +1517,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 FileName = pi.TranspilationJob!.FileVersion.File.Name,
                 MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
                 CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
+                CoverUpdatedAt = context.Previews
+                    .Where(p => p.VersionId == pi.TranspilationJob!.FileVersion.File.CurrentVersionId && p.Kind == PreviewKind.Thumbnail && p.IsManual)
+                    .Select(p => p.UpdatedAt)
+                    .FirstOrDefault(),
                 PlaybackVersionId = pi.TranspilationJob.VersionId,
                 CreatedAt = pi.TranspilationJob!.FileVersion.File.CreatedAt,
                 Duration = pi.TranspilationJob!.FileVersion.File.MediaMetadata == null
@@ -1557,6 +1576,10 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 f.Name,
                 f.MimeType,
                 CurrentVersionId = f.CurrentVersionId!.Value,
+                CoverUpdatedAt = context.Previews
+                    .Where(p => p.VersionId == f.CurrentVersionId && p.Kind == PreviewKind.Thumbnail && p.IsManual)
+                    .Select(p => p.UpdatedAt)
+                    .FirstOrDefault(),
                 f.CreatedAt,
                 Metadata = f.MediaMetadata,
                 History = context.StreamHistories
@@ -1605,6 +1628,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             FileName = file.Name,
             MimeType = file.MimeType,
             CurrentVersionId = file.CurrentVersionId,
+            CoverUpdatedAt = file.CoverUpdatedAt,
             PlaybackVersionId = job.VersionId,
             Duration = file.Metadata == null ? null : file.Metadata.Duration,
             Artist = file.Metadata!.Artist,
