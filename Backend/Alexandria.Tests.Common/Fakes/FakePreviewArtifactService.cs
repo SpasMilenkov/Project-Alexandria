@@ -47,4 +47,23 @@ public class FakePreviewArtifactService : IPreviewArtifactService
     {
         throw new NotImplementedException();
     }
+
+    public Task<DateTime> SetCustomCoverAsync(
+        Guid fileId, Guid versionId, Guid userId, Stream content, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task RemoveCustomCoverAsync(
+        Guid fileId, Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<string> GetThumbnailContentPathAsync(
+        Guid versionId, string contentHash, CancellationToken ct = default)
+        => Task.FromResult($"thumbnails/{contentHash}");
+
+    public Task<string?> GetCoverStampAsync(Guid versionId, CancellationToken ct = default)
+        => Task.FromResult<string?>(null);
 }

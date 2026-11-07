@@ -204,6 +204,7 @@ const {
   isEncrypted: props.data.currentVersion.isEncrypted,
   mimeType: props.data.mimeType,
   versionId: props.data.currentVersion.id,
+  coverUpdatedAt: props.data.currentVersion.coverUpdatedAt,
 }));
 
 // Landscape tile scaled off the icon size (4:3, Windows-style proportions).

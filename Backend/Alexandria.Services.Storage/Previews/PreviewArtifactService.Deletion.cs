@@ -60,7 +60,11 @@ public partial class PreviewArtifactService
         if (!isAdmin && file.OwnerId != userId)
             throw new UnauthorizedAccessException("File does not belong to the user.");
 
-        var previews = await unitOfWork.Previews.GetByFileAsync(fileId, createdBefore, ct);
+        // Bulk cleanup assumes everything it removes regenerates from the file. A manual cover
+        // would not, so it only goes through an explicit single delete or cover removal.
+        var previews = (await unitOfWork.Previews.GetByFileAsync(fileId, createdBefore, ct))
+            .Where(p => !p.IsManual)
+            .ToList();
 
         await unitOfWork.BeginTransactionAsync(ct);
         try

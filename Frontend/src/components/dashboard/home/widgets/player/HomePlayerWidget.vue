@@ -28,6 +28,7 @@ const thumbnail = useHomeWidgetThumbnail(() => ({
   fileId: file.value?.fileId ?? "",
   versionId: file.value?.playbackVersionId ?? file.value?.currentVersionId ?? "",
   mimeType: file.value?.mimeType ?? null,
+  coverUpdatedAt: file.value?.coverUpdatedAt,
 }));
 
 const showArtwork = computed(

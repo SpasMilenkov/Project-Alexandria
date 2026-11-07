@@ -9,6 +9,10 @@ public sealed class MediaFileDto
     public Guid CurrentVersionId { get; set; }
     public Guid PlaybackVersionId { get; set; }
 
+    // Set when the current version has a manual cover. Thumbnail URLs are cached long-term,
+    // so clients add this to them to pick up a replaced cover.
+    public DateTime? CoverUpdatedAt { get; set; }
+
     public double? Duration { get; set; }
     public string? Artist { get; set; }
     public string? Album { get; set; }

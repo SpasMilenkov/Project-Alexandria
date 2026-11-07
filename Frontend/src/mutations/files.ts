@@ -3,9 +3,11 @@ import { type QueryCache, defineMutation, useMutation, useQueryCache } from "@pi
 import { fileApi, type BulkUpdateFileMetadataRequest } from "@/api/file";
 import { INTEGRATIONS_QUERY_KEYS } from "@/queries/audioAnalysis";
 import { FILES_QUERY_KEYS } from "@/queries/files";
+import { STATS_QUERY_KEYS } from "@/queries/stats";
 import { STREAMING_QUERY_KEYS } from "@/queries/streaming";
 import { TAGS_QUERY_KEYS } from "@/queries/tags";
 import { type UpdateFileMetadataSchema } from "@/schemas/file";
+import { usePlayerStore } from "@/stores/stream-player";
 import { logger } from "@/utils/logger";
 
 /**
@@ -22,6 +24,44 @@ const invalidateFileListings = (queryCache: QueryCache, parentId: string | null)
 
   queryCache.invalidateQueries({ key });
 };
+
+// Every list that renders artwork carries the cover stamp, so all of them go stale together.
+const invalidateCoverQueries = (queryCache: QueryCache, fileId: string) => {
+  queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(fileId) });
+  queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.root });
+  queryCache.invalidateQueries({ key: STREAMING_QUERY_KEYS.root });
+  queryCache.invalidateQueries({ key: STATS_QUERY_KEYS.root });
+  queryCache.invalidateQueries({ key: ["media-overview"] });
+  queryCache.invalidateQueries({ key: ["home", "top-songs"] });
+};
+
+export const uploadTrackCover = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return useMutation({
+    mutation: ({ fileId, versionId, file }: { fileId: string; versionId: string; file: File }) =>
+      fileApi.uploadVersionCover(fileId, versionId, file),
+    onSuccess(data, vars) {
+      usePlayerStore().setFileCover(vars.fileId, data.coverUpdatedAt);
+    },
+    onSettled(_data, _error, vars) {
+      invalidateCoverQueries(queryCache, vars.fileId);
+    },
+  });
+});
+
+export const removeTrackCover = defineMutation(() => {
+  const queryCache = useQueryCache();
+  return useMutation({
+    mutation: ({ fileId, versionId }: { fileId: string; versionId: string }) =>
+      fileApi.removeVersionCover(fileId, versionId),
+    onSuccess(_data, vars) {
+      usePlayerStore().setFileCover(vars.fileId, null);
+    },
+    onSettled(_data, _error, vars) {
+      invalidateCoverQueries(queryCache, vars.fileId);
+    },
+  });
+});
 
 export const updateFileMetadata = defineMutation(() => {
   const queryCache = useQueryCache();

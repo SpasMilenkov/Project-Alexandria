@@ -132,7 +132,7 @@ const playNow = () => {
 };
 
 const thumbnail = computed(() =>
-  fileApi.getThumbnailUrlForVersion(file.fileId, file.currentVersionId),
+  fileApi.getThumbnailUrlForVersion(file.fileId, file.currentVersionId, file.coverUpdatedAt),
 );
 
 const loadedSrc = ref<string | null>(null);

@@ -84,6 +84,7 @@ const play = () => {
       :file-id="file.fileId"
       :version-id="file.playbackVersionId ?? file.currentVersionId"
       :mime-type="file.mimeType"
+      :cover-updated-at="file.coverUpdatedAt"
       :seed="coverSeed(file)"
       zoom
       class="w-full rounded-2xl border border-gray-200/70 shadow-md transition-transform duration-200 group-hover:-translate-y-1 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0 dark:border-gray-700/70"

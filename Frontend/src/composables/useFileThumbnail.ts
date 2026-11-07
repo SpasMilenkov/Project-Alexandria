@@ -9,6 +9,7 @@ export interface FileThumbnailSource {
   versionId?: string;
   mimeType?: string | null;
   isEncrypted?: boolean;
+  coverUpdatedAt?: string | null;
 }
 
 // Retry budget: 5 attempts over ~2min. One uniform loop for every failure,
@@ -44,12 +45,14 @@ export const useFileThumbnail = (source: () => FileThumbnailSource) => {
   onScopeDispose(clearRetryTimer);
 
   const thumbnailUrl = computed(() => {
-    const { fileId, versionId } = source();
+    const { fileId, versionId, coverUpdatedAt } = source();
     const base = versionId
-      ? fileApi.getThumbnailUrlForVersion(fileId, versionId)
+      ? fileApi.getThumbnailUrlForVersion(fileId, versionId, coverUpdatedAt)
       : fileApi.getThumbnailUrl(fileId);
 
-    return retryCount.value > 0 ? `${base}?retry=${retryCount.value}` : base;
+    if (retryCount.value === 0) return base;
+
+    return `${base}${base.includes("?") ? "&" : "?"}retry=${retryCount.value}`;
   });
 
   const canHaveThumbnail = computed(() => {
@@ -59,7 +62,7 @@ export const useFileThumbnail = (source: () => FileThumbnailSource) => {
     return isThumbnailSupportedMimeType(mimeType);
   });
 
-  // Reset only on URL-affecting changes (fileId/versionId). mimeType is
+  // Reset only on URL-affecting changes (fileId/versionId/coverUpdatedAt). mimeType is
   // deliberately excluded from the reset decision: it feeds canHaveThumbnail
   // reactively, but a MIME-only update leaves the src byte-identical, so the
   // browser fires no new load/error event and a reset here would strand
@@ -69,7 +72,14 @@ export const useFileThumbnail = (source: () => FileThumbnailSource) => {
   // anyway since the object literal reads every field.
   watch(source, (current, previous) => {
     if (!previous) return;
-    if (current.fileId === previous.fileId && current.versionId === previous.versionId) return;
+    if (
+      current.fileId === previous.fileId &&
+      current.versionId === previous.versionId &&
+      (current.coverUpdatedAt ?? null) === (previous.coverUpdatedAt ?? null)
+    ) {
+      return;
+    }
+
     thumbnailLoaded.value = false;
     thumbnailErrored.value = false;
     retryCount.value = 0;

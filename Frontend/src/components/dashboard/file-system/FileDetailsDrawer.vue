@@ -34,6 +34,7 @@
         :file-name="detail.fileName"
         :mime-type="detail.currentVersion.mimeType"
         :is-encrypted="detail.currentVersion.isEncrypted"
+        :cover-updated-at="detail.currentVersion.coverUpdatedAt"
       />
 
       <DetailsSection title="Tags">

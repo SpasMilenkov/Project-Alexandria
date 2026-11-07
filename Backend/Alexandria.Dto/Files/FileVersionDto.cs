@@ -7,4 +7,5 @@ public record FileVersionDto(
     int VersionNumber,
     DateTime CreatedAt,
     bool isDeleted,
-    bool isEncrypted);
+    bool isEncrypted,
+    DateTime? CoverUpdatedAt);

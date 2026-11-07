@@ -109,6 +109,8 @@ export interface FileVersionDto {
   versionNumber: number;
   isDeleted: boolean;
   isEncrypted: boolean;
+  // Set when this version has a manual cover
+  coverUpdatedAt?: string | null;
 }
 
 export interface UserDto {
@@ -282,8 +284,46 @@ export const fileApi = {
   // transparently.
   getThumbnailUrl: (fileId: string): string => `/api/files/${fileId}/thumbnail`,
 
-  getThumbnailUrlForVersion: (fileId: string, versionId: string): string =>
-    `/api/files/${fileId}/versions/${versionId}/thumbnail`,
+  // Version URLs are cached long-term, so a replaced manual cover needs a new URL.
+  getThumbnailUrlForVersion: (
+    fileId: string,
+    versionId: string,
+    coverUpdatedAt?: string | null,
+  ): string => {
+    const base = `/api/files/${fileId}/versions/${versionId}/thumbnail`;
+
+    return coverUpdatedAt ? `${base}?v=${encodeURIComponent(coverUpdatedAt)}` : base;
+  },
+
+  uploadVersionCover: async (
+    fileId: string,
+    versionId: string,
+    file: File,
+  ): Promise<{ coverUpdatedAt: string }> => {
+    const form = new FormData();
+    form.append("file", file);
+
+    // Drop the instance JSON content-type so the browser sets multipart
+    // with its own boundary; the default transform would stringify the form.
+    const response = await apiClient.post<{ coverUpdatedAt: string }>(
+      `/files/${fileId}/versions/${versionId}/cover`,
+      form,
+      {
+        transformRequest: [
+          (payload, headers) => {
+            headers?.delete("Content-Type");
+            return payload;
+          },
+        ],
+      },
+    );
+
+    return response.data;
+  },
+
+  removeVersionCover: async (fileId: string, versionId: string): Promise<void> => {
+    await apiClient.delete(`/files/${fileId}/versions/${versionId}/cover`);
+  },
 
   getVersionsForFile: async ({
     id,

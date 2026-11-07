@@ -18,6 +18,7 @@ const thumbnail = useHomeWidgetThumbnail(() => ({
   fileId: file.fileId,
   versionId: file.currentVersion.id,
   mimeType: file.mimeType,
+  coverUpdatedAt: file.currentVersion.coverUpdatedAt,
 }));
 
 const showThumbnail = computed(

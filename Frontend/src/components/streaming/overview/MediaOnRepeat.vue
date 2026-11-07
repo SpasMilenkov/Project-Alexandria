@@ -88,6 +88,7 @@ const label = (song: TopSong) => {
             :file-id="song.file.fileId"
             :version-id="song.file.playbackVersionId ?? song.file.currentVersionId"
             :mime-type="song.file.mimeType"
+            :cover-updated-at="song.file.coverUpdatedAt"
             :seed="coverSeed(song.file)"
             class="size-11 shrink-0 rounded-lg"
           />

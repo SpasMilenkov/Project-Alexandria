@@ -4,7 +4,8 @@ using FastEndpoints;
 
 namespace Alexandria.Api.Features.Auth.PreviewCheck;
 
-internal sealed class PreviewCheckEndpoint(IFileService fileService) : EndpointWithoutRequest
+internal sealed class PreviewCheckEndpoint(IFileService fileService, IPreviewArtifactService previewArtifacts)
+    : EndpointWithoutRequest
 {
     public override void Configure()
     {
@@ -21,8 +22,8 @@ internal sealed class PreviewCheckEndpoint(IFileService fileService) : EndpointW
             return;
         }
 
-        // uri format: /preview/{versionId}/{kind}
-        var segments = uri.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        // uri format: /preview/{versionId}/{kind}, with a ?v= cache-buster on manual covers
+        var segments = uri.Split('?')[0].Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length < 3
             || !Guid.TryParse(segments[1], out var versionId)
             || (segments[2] != "preview" && segments[2] != "thumbnail"))
@@ -41,8 +42,11 @@ internal sealed class PreviewCheckEndpoint(IFileService fileService) : EndpointW
             return;
         }
 
-        var folder = kind == "thumbnail" ? "thumbnails" : "previews";
-        HttpContext.Response.Headers["X-Content-Path"] = $"{folder}/{hash}";
+        var contentPath = kind == "thumbnail"
+            ? await previewArtifacts.GetThumbnailContentPathAsync(versionId, hash, ct)
+            : $"previews/{hash}";
+
+        HttpContext.Response.Headers["X-Content-Path"] = contentPath;
         await Send.OkAsync(cancellation: ct);
     }
 }

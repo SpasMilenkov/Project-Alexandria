@@ -292,7 +292,11 @@ public partial class PreviewArtifactService(
             var existingThumbnailRecord = await unitOfWork.Previews.FirstOrDefaultAsync(
                 f => f.VersionId == versionId && f.Kind == PreviewKind.Thumbnail, ct);
 
-            if (existingThumbnailRecord != null)
+            if (existingThumbnailRecord is { IsManual: true })
+            {
+                LogManualCoverKept(logger, versionId);
+            }
+            else if (existingThumbnailRecord != null)
             {
                 LogUpdatingPreviewRecord(logger, existingThumbnailRecord.Id);
 
@@ -374,7 +378,11 @@ public partial class PreviewArtifactService(
         // and nginx's auth_request gate is what enforces ownership on every
         // read, cache hit or miss. This just needs to be a stable path.
         var kindSegment = kind == PreviewKind.Thumbnail ? "thumbnail" : "preview";
-        return $"/preview/{versionId}/{kindSegment}";
+        var path = $"/preview/{versionId}/{kindSegment}";
+
+        // A manual cover can be replaced, but this path is cached as immutable, so each
+        // upload has to resolve to a URL no browser has cached yet.
+        return preview.IsManual ? $"{path}?v={CoverStamp(preview)}" : path;
     }
 
     public Task<PaginatedResult<UserPreviewDto>> GetMyPreviewsAsync(

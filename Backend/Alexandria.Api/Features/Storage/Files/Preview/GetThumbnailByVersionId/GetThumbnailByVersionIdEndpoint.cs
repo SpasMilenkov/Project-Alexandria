@@ -38,7 +38,13 @@ internal sealed class GetThumbnailByVersionIdEndpoint(IPreviewService previewSer
             return;
         }
 
-        HttpContext.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        // A manual cover reached without the client's ?v= came from stale data. Caching that
+        // redirect under the plain URL would keep showing this cover after it is replaced or removed.
+        var isUnversionedManualCover = thumbnailPath.Contains('?') && !HttpContext.Request.Query.ContainsKey("v");
+
+        HttpContext.Response.Headers.CacheControl = isUnversionedManualCover
+            ? "no-store"
+            : "public, max-age=31536000, immutable";
 
         await Send.RedirectAsync(thumbnailPath, isPermanent: false);
     }

@@ -36,4 +36,11 @@ public class Preview : IBase
     [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
     [StringLength(ValidationConstants.StringLengths.MediumString)]
     public required string ObjectKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The owner uploaded this artifact by hand, so automated generation must leave the row
+    /// alone and cleanup must not remove it: unlike generated artifacts it cannot be rebuilt
+    /// from the file.
+    /// </summary>
+    public bool IsManual { get; set; }
 }

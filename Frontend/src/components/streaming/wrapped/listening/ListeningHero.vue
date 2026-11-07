@@ -175,6 +175,7 @@ const monthTitle = (month: YearMonthBar) => {
         :file-id="leader?.file.fileId"
         :version-id="leader?.file.playbackVersionId ?? leader?.file.currentVersionId"
         :mime-type="leader?.file.mimeType"
+        :cover-updated-at="leader?.file.coverUpdatedAt"
         :seed="leaderSeed"
         skeleton
         class="aspect-square w-40 shrink-0 rounded-2xl shadow-xl sm:w-[clamp(176px,12vw,232px)]"
@@ -292,6 +293,7 @@ const monthTitle = (month: YearMonthBar) => {
                 :file-id="song.file.fileId"
                 :version-id="song.file.playbackVersionId ?? song.file.currentVersionId"
                 :mime-type="song.file.mimeType"
+                :cover-updated-at="song.file.coverUpdatedAt"
                 :seed="coverSeed(song.file)"
                 class="size-10 shrink-0 rounded-lg"
               />

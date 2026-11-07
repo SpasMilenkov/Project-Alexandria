@@ -140,6 +140,8 @@ export interface MediaFileDto {
   mimeType: string;
   currentVersionId: string;
   playbackVersionId?: string;
+  // Set when the current version has a manual cover
+  coverUpdatedAt?: string | null;
 
   // Media metadata
   duration: number | null;

@@ -72,6 +72,7 @@
                     :file-id="track.fileId"
                     :version-id="track.currentVersionId"
                     :mime-type="track.mimeType"
+                    :cover-updated-at="track.coverUpdatedAt"
                     :seed="artworkSeed"
                     zoom
                     skeleton
@@ -159,6 +160,16 @@
                       size="lg"
                       class="rounded-full"
                       @click="isEditing = true"
+                    />
+                    <UButton
+                      v-if="canChangeCover"
+                      icon="mdi:image-outline"
+                      label="Change cover"
+                      color="neutral"
+                      variant="outline"
+                      size="lg"
+                      class="rounded-full"
+                      @click="isCoverFormOpen = true"
                     />
                   </div>
                 </div>
@@ -260,6 +271,22 @@
           </div>
         </template>
       </UModal>
+
+      <UModal
+        v-model:open="isCoverFormOpen"
+        title="Change cover"
+        :description="displayName"
+        :ui="formModalUi"
+      >
+        <template #body>
+          <TrackCoverForm
+            v-if="track"
+            :file="track"
+            @saved="isCoverFormOpen = false"
+            @cancel="isCoverFormOpen = false"
+          />
+        </template>
+      </UModal>
     </div>
   </div>
 </template>
@@ -272,6 +299,7 @@ import { useRoute, useRouter } from "vue-router";
 
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import AudioAnalysisFilePanel from "@/components/dashboard/integrations/audio-analysis/AudioAnalysisFilePanel.vue";
+import TrackCoverForm from "@/components/streaming/metadata/TrackCoverForm.vue";
 import TrackMetadataEditor from "@/components/streaming/metadata/TrackMetadataEditor.vue";
 import TrackTagsSection from "@/components/streaming/metadata/TrackTagsSection.vue";
 import MediaArtwork from "@/components/streaming/overview/MediaArtwork.vue";
@@ -285,6 +313,7 @@ import { coverSeed, generatedCover } from "@/features/media/generated-cover";
 import { getStreamingFile } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatDuration } from "@/utils/date-formatters";
+import { formModalUi } from "@/utils/modal-ui";
 
 interface GlanceItem {
   label: string;
@@ -328,15 +357,21 @@ const goBack = () => {
 
 const isEditing = ref(false);
 const isArtworkModalOpen = ref(false);
+const isCoverFormOpen = ref(false);
+
+// Mirrors the backend rule: manual covers are for audio files only.
+const canChangeCover = computed(() => track.value?.mimeType.startsWith("audio/") ?? false);
 
 watch(fileId, () => {
   isEditing.value = false;
+  isCoverFormOpen.value = false;
 });
 
 const { thumbnailUrl, thumbnailErrored, onThumbnailLoad, onThumbnailError } = useFileThumbnail(
   () => ({
     fileId: track.value?.fileId ?? "",
     versionId: track.value?.currentVersionId ?? "",
+    coverUpdatedAt: track.value?.coverUpdatedAt,
   }),
 );
 

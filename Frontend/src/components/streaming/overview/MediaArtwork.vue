@@ -11,6 +11,7 @@ const {
   fileId = undefined,
   versionId = undefined,
   mimeType = undefined,
+  coverUpdatedAt = undefined,
   seed,
   zoom = false,
   floating = false,
@@ -19,6 +20,7 @@ const {
   fileId?: string;
   versionId?: string;
   mimeType?: string;
+  coverUpdatedAt?: string | null;
   seed: string;
   zoom?: boolean;
   floating?: boolean;
@@ -35,6 +37,7 @@ const thumbnail = useFileThumbnail(() => ({
   fileId: fileId ?? "",
   versionId,
   mimeType,
+  coverUpdatedAt,
 }));
 
 const showArtwork = computed(
@@ -69,7 +72,7 @@ const clearSettleTimer = () => {
 onBeforeUnmount(clearSettleTimer);
 
 watch(
-  () => [fileId, versionId],
+  () => [fileId, versionId, coverUpdatedAt ?? null],
   () => {
     firstAttemptFailed.value = false;
     artworkSettled.value = false;

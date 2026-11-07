@@ -27,6 +27,7 @@ interface HeroSubject {
   fileId: string;
   versionId?: string;
   mimeType?: string;
+  coverUpdatedAt?: string | null;
   title: string;
   artist: string | null;
   album: string | null;
@@ -58,6 +59,7 @@ const fromFile = (file: MediaFileDto, kind: "active" | "fresh"): HeroSubject => 
   fileId: file.fileId,
   versionId: file.playbackVersionId ?? file.currentVersionId,
   mimeType: file.mimeType,
+  coverUpdatedAt: file.coverUpdatedAt,
   title: file.title || file.fileName,
   artist: file.artist,
   album: file.album,
@@ -218,6 +220,7 @@ const playUpNext = (item: UpNextItem) => {
       :file-id="subject.fileId"
       :version-id="subject.versionId"
       :mime-type="subject.mimeType"
+      :cover-updated-at="subject.coverUpdatedAt"
       :seed="subject.seed"
       skeleton
       class="aspect-square w-40 shrink-0 rounded-2xl shadow-xl sm:w-[clamp(176px,10vw,224px)]"
@@ -307,6 +310,7 @@ const playUpNext = (item: UpNextItem) => {
           :file-id="item.file.fileId"
           :version-id="item.file.playbackVersionId ?? item.file.currentVersionId"
           :mime-type="item.file.mimeType"
+          :cover-updated-at="item.file.coverUpdatedAt"
           :seed="coverSeed(item.file)"
           skeleton
           class="size-10 shrink-0 rounded-lg"

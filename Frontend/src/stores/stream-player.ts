@@ -246,6 +246,16 @@ export const usePlayerStore = defineStore(
         state.videoSurfaces.value = Math.max(0, state.videoSurfaces.value - 1);
       };
     };
+    // Now-playing and queue entries are persisted snapshots that query invalidation never
+    // reaches, so a cover change has to be written into them for the player to show it.
+    const setFileCover = (fileId: string, coverUpdatedAt: string | null) => {
+      const current = state.nowPlaying.value;
+      if (current?.file.fileId === fileId) current.file.coverUpdatedAt = coverUpdatedAt;
+
+      for (const entry of state.queueEntries.value) {
+        if (entry.file.fileId === fileId) entry.file.coverUpdatedAt = coverUpdatedAt;
+      }
+    };
     const retryError = (): Promise<void> => {
       const retry = state.error.value?.retry;
       if (!retry) return Promise.resolve();
@@ -315,6 +325,7 @@ export const usePlayerStore = defineStore(
       handleTrackEnded: recovery.handleTrackEnded,
       reportUnavailable: recovery.reportUnavailable,
       contextSourceChanged: recovery.contextSourceChanged,
+      setFileCover,
       restore: recovery.restore,
       clearOwnerState: recovery.clearOwnerState,
       releaseShuffleSession: recovery.releaseSession,
