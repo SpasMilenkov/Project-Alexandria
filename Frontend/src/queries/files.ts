@@ -17,6 +17,12 @@ export const FILES_QUERY_KEYS = {
     params.sortDirection,
     params.SortBy,
   ],
+  captureMetadata: (fileId: string, versionId: string | null) => [
+    ...FILES_QUERY_KEYS.root,
+    "capture-metadata",
+    fileId,
+    versionId,
+  ],
   // Every filter belongs in the key, otherwise changing one (e.g. a deletion window)
   // serves the cached result of the previous query.
   searchFiles: (query: FileSearchQuery) => [...FILES_QUERY_KEYS.root, "search-files", query],
@@ -50,6 +56,13 @@ export const FILES_QUERY_KEYS = {
     pageSize,
   ],
 };
+
+export const getCaptureMetadata = defineQueryOptions(
+  ({ fileId, versionId }: { fileId: string; versionId: string | null }) => ({
+    key: FILES_QUERY_KEYS.captureMetadata(fileId, versionId),
+    query: () => fileApi.getCaptureMetadata(fileId, versionId),
+  }),
+);
 
 export const subFiles = defineQueryOptions(
   ({ id, params }: { id: string; params: PaginationParams }) => ({

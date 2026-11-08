@@ -231,6 +231,7 @@ const DEFAULT_UI_STATE = {
   isSystemTagsVisible: false,
   isMediaSectionOpen: true,
   isAdminSectionOpen: true,
+  isCameraSettingsOpen: false,
 };
 
 export const MAX_BACKGROUND_IMAGE_BYTES = 4 * 1024 * 1024;
@@ -268,6 +269,7 @@ export const useSettingsStore = defineStore(
     const isSystemTagsVisible = ref(DEFAULT_UI_STATE.isSystemTagsVisible);
     const isMediaSectionOpen = ref(DEFAULT_UI_STATE.isMediaSectionOpen);
     const isAdminSectionOpen = ref(DEFAULT_UI_STATE.isAdminSectionOpen);
+    const isCameraSettingsOpen = ref(DEFAULT_UI_STATE.isCameraSettingsOpen);
 
     // Getters
     const getSettings = computed((): UserSettings => ({
@@ -456,6 +458,10 @@ export const useSettingsStore = defineStore(
       isAdminSectionOpen.value = v;
     };
 
+    const setCameraSettingsOpen = (v: boolean) => {
+      isCameraSettingsOpen.value = v;
+    };
+
     const syncAppearanceFromServer = (appearance: AppearanceSettings) => {
       setAccentColor(appearance.accentColor);
       setTabIconColor(appearance.tabIconColor);
@@ -610,6 +616,7 @@ export const useSettingsStore = defineStore(
       isSystemTagsVisible.value = DEFAULT_UI_STATE.isSystemTagsVisible;
       isMediaSectionOpen.value = DEFAULT_UI_STATE.isMediaSectionOpen;
       isAdminSectionOpen.value = DEFAULT_UI_STATE.isAdminSectionOpen;
+      isCameraSettingsOpen.value = DEFAULT_UI_STATE.isCameraSettingsOpen;
     };
 
     const resetSessionState = () => {
@@ -657,6 +664,7 @@ export const useSettingsStore = defineStore(
       isSystemTagsVisible,
       isMediaSectionOpen,
       isAdminSectionOpen,
+      isCameraSettingsOpen,
       listIconSize,
       resetAppearanceSettings,
       resetAutoPlaylistSettings,
@@ -679,6 +687,7 @@ export const useSettingsStore = defineStore(
       setBehaviorSectionOpen,
       setMediaSectionOpen,
       setAdminSectionOpen,
+      setCameraSettingsOpen,
       setFrostDisabledOnMobile,
       setFrostEnabled,
       setFrostStrength,
@@ -728,6 +737,7 @@ export const useSettingsStore = defineStore(
         "isSystemTagsVisible",
         "isMediaSectionOpen",
         "isAdminSectionOpen",
+        "isCameraSettingsOpen",
       ],
     },
   },

@@ -133,6 +133,13 @@
         </div>
       </DetailsSection>
 
+      <FileCaptureDetails
+        v-if="hasCaptureMetadata"
+        :file-id="displayFile.fileId"
+        :version-id="detail.currentVersion.id"
+        :enabled="isOpen"
+      />
+
       <DetailsSection title="Owner">
         <DetailsOwner :name="detail.owner.name" :email="detail.owner.email" />
       </DetailsSection>
@@ -170,9 +177,14 @@ import { getFile } from "@/queries/files";
 import { getTagsForFile, searchTag } from "@/queries/tags";
 import { formatCalendarDate, formatDate } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/files/icons";
-import { getFileTypeReadable, isAutoTagSupportedFileType } from "@/utils/files/mimetype";
+import {
+  getFileTypeReadable,
+  isAutoTagSupportedFileType,
+  isCaptureMetadataSupportedMimeType,
+} from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
 
+import FileCaptureDetails from "./FileCaptureDetails.vue";
 import FilePreview from "./FilePreview.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
 
@@ -232,6 +244,13 @@ const { mutateAsync: autoTagMutate, isLoading: isAutoTagging } = autoTagFile();
 const isAudioFile = computed(() =>
   detail.value ? isAutoTagSupportedFileType(detail.value.currentVersion.mimeType) : false,
 );
+
+// Encrypted versions are never read by the worker, so asking would only report "not read yet".
+const hasCaptureMetadata = computed(() => {
+  if (!detail.value || detail.value.currentVersion.isEncrypted) return false;
+
+  return isCaptureMetadataSupportedMimeType(detail.value.currentVersion.mimeType);
+});
 
 const extractAutoTagError = (err: any): string => {
   const data = err?.data;
