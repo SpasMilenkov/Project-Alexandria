@@ -66,6 +66,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<OperationalEvent> OperationalEvents { get; set; }
     public DbSet<Job> Jobs { get; set; }
     public DbSet<OverviewSummary> OverviewSummaries { get; set; }
+    public DbSet<CaptureMetadata> CaptureMetadata { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -119,6 +120,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new PlaylistConfiguration());
         builder.ApplyConfiguration(new PlaylistItemConfiguration());
         builder.ApplyConfiguration(new OverviewSummaryConfiguration());
+        builder.ApplyConfiguration(new CaptureMetadataConfiguration());
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
