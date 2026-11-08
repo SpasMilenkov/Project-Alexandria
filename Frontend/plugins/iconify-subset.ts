@@ -227,6 +227,8 @@ const ICON_SUBSETS: Record<string, string[]> = {
   ],
   "material-symbols": ["keyboard-outline-rounded", "vitals"],
   mdi: [
+    "camera-outline",
+    "map-marker-outline",
     "file-search-outline",
     "star",
     "star-outline",
