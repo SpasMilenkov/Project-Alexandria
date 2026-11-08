@@ -32,59 +32,19 @@
           </UDropdownMenu>
         </div>
 
-        <!-- New Folder — secondary -->
+        <!-- Narrow strips drop the label so the listing cluster never gets squeezed. -->
         <UButton
           variant="outline"
           color="neutral"
           size="sm"
-          class="shrink-0 rounded-lg"
+          class="shrink-0 gap-1 rounded-lg"
+          aria-label="New Folder"
+          title="New Folder"
           @click="createNewDirectory"
         >
-          <Icon icon="mdi:folder-plus" class="w-4 h-4 mr-1" />
-          New Folder
+          <Icon icon="mdi:folder-plus" class="w-4 h-4" />
+          <span class="hidden @5xl/explorer:inline">New Folder</span>
         </UButton>
-
-        <div class="mx-1 h-5 w-px shrink-0 bg-gray-300/70 dark:bg-gray-600/70" />
-
-        <!-- Sort + direction cluster -->
-        <div class="flex shrink-0 items-center gap-1">
-          <USelectMenu
-            v-model="selectedSortBy"
-            :items="sortByOptions"
-            size="sm"
-            placeholder="Sort by"
-            class="min-w-37"
-            @update:model-value="handleSorting"
-          >
-            <template #default="{ modelValue }">
-              <span>{{ modelValue?.label }}</span>
-            </template>
-          </USelectMenu>
-
-          <UButton
-            size="sm"
-            variant="ghost"
-            color="neutral"
-            square
-            class="justify-center rounded-lg"
-            :title="
-              selectedSortDirection === SortDirection.Asc
-                ? 'Switch to descending'
-                : 'Switch to ascending'
-            "
-            :aria-label="selectedSortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
-            @click="toggleSortDirection"
-          >
-            <Icon
-              :icon="
-                selectedSortDirection === SortDirection.Asc
-                  ? 'mdi:sort-ascending'
-                  : 'mdi:sort-descending'
-              "
-              class="w-4 h-4"
-            />
-          </UButton>
-        </div>
 
         <div class="flex-1" />
 
@@ -101,7 +61,7 @@
           <Transition name="fade-status">
             <span
               v-if="lastRefreshedLabel && !isBackgroundLoading"
-              class="tabular-nums text-gray-600 dark:text-gray-400"
+              class="hidden tabular-nums text-gray-600 @5xl/explorer:inline dark:text-gray-400"
               :title="lastRefreshedAt?.toLocaleTimeString()"
             >
               {{ lastRefreshedLabel }}
@@ -109,18 +69,46 @@
           </Transition>
         </div>
 
-        <!-- View mode -->
-        <div
-          class="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-gray-300/70 bg-gray-500/5 p-0.5 dark:border-gray-600/70 dark:bg-white/5"
-        >
+        <!-- Order: sort field + direction -->
+        <div :class="pillClass">
+          <UDropdownMenu :items="sortMenuItems" :ui="{ content: 'w-44' }">
+            <button
+              type="button"
+              :class="[segmentBaseClass, segmentIdleClass, 'gap-1 px-2 text-xs font-medium']"
+              title="Sort by"
+            >
+              {{ sortLabel }}
+              <Icon icon="mdi:chevron-down" class="w-3.5 h-3.5" />
+            </button>
+          </UDropdownMenu>
+
           <button
             type="button"
-            class="flex h-7 w-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            :class="
-              viewMode === 'grid'
-                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                : 'text-gray-500 hover:bg-gray-500/10 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200'
+            :class="[segmentBaseClass, segmentIdleClass, 'w-8']"
+            :title="
+              sortDirection === SortDirection.Asc ? 'Switch to descending' : 'Switch to ascending'
             "
+            :aria-label="sortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
+            @click="toggleSortDirection"
+          >
+            <Icon
+              :icon="
+                sortDirection === SortDirection.Asc ? 'mdi:sort-ascending' : 'mdi:sort-descending'
+              "
+              class="w-4 h-4"
+            />
+          </button>
+        </div>
+
+        <!-- Display: view mode + page size -->
+        <div :class="pillClass">
+          <button
+            type="button"
+            :class="[
+              segmentBaseClass,
+              'w-8',
+              viewMode === 'grid' ? segmentActiveClass : segmentIdleClass,
+            ]"
             aria-label="Grid view"
             :aria-pressed="viewMode === 'grid'"
             @click="viewMode = 'grid'"
@@ -129,19 +117,34 @@
           </button>
           <button
             type="button"
-            class="flex h-7 w-8 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            :class="
-              viewMode === 'list'
-                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                : 'text-gray-500 hover:bg-gray-500/10 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-200'
-            "
+            :class="[
+              segmentBaseClass,
+              'w-8',
+              viewMode === 'list' ? segmentActiveClass : segmentIdleClass,
+            ]"
             aria-label="List view"
             :aria-pressed="viewMode === 'list'"
             @click="viewMode = 'list'"
           >
             <Icon icon="mdi:view-list" class="w-4 h-4" />
           </button>
+
+          <span aria-hidden="true" class="mx-0.5 h-4 w-px bg-gray-300/70 dark:bg-gray-600/70" />
+
+          <UDropdownMenu :items="pageSizeMenuItems" :ui="{ content: 'w-40' }">
+            <button
+              type="button"
+              :class="[segmentBaseClass, segmentIdleClass, 'gap-1 px-2 text-xs font-medium']"
+              title="Items per page"
+            >
+              <span class="tabular-nums">{{ pageSize }}</span>
+              <span>per page</span>
+              <Icon icon="mdi:chevron-down" class="w-3.5 h-3.5" />
+            </button>
+          </UDropdownMenu>
         </div>
+
+        <div class="mx-1 h-5 w-px shrink-0 bg-gray-300/70 dark:bg-gray-600/70" />
 
         <!-- Search -->
         <UButton
@@ -696,6 +699,7 @@ import {
   buildExplorerMenuItems,
   resolveContextMenuTarget,
 } from "@/features/explorer/context-menu";
+import { EXPLORER_PAGE_SIZES } from "@/features/explorer/preferences";
 import { describeExplorerItems, quoted } from "@/features/toast/format";
 import {
   copyDirectory,
@@ -739,6 +743,12 @@ const {
   viewMode,
   filePagination,
   dirPagination,
+  sortBy,
+  sortDirection,
+  pageSize,
+  setSortBy,
+  toggleSortDirection,
+  setPageSize,
   lastSelected,
   selectedDirectories,
   selectedFiles,
@@ -924,11 +934,20 @@ const handleDropEvent = async (event: DragEvent) => {
 
 // sort & upload state
 
-const sortByOptions = ref([
+const sortByOptions = [
   { label: "Name", value: SortBy.Name },
   { label: "Date Created", value: SortBy.CreatedAt },
   { label: "Date Modified", value: SortBy.UpdatedAt },
-]);
+];
+
+// Segments share one chrome so the order and display pills read as a single cluster.
+const pillClass =
+  "inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-gray-300/70 bg-gray-500/5 p-0.5 dark:border-gray-600/70 dark:bg-white/5";
+const segmentBaseClass =
+  "flex h-7 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+const segmentIdleClass =
+  "text-gray-600 hover:bg-gray-500/10 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-gray-100";
+const segmentActiveClass = "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900";
 
 const selectedCount = computed(() => selectedFiles.value.size + selectedDirectories.value.size);
 
@@ -938,8 +957,31 @@ const totalItemCount = computed(
     (filesData.value?.totalCount ?? filesList.value.length),
 );
 
-const selectedSortBy = ref({ label: "Name", value: SortBy.Name });
-const selectedSortDirection = ref<SortDirection>(SortDirection.Asc);
+const sortLabel = computed(
+  () => sortByOptions.find((option) => option.value === sortBy.value)?.label ?? "Name",
+);
+
+// Shared by the desktop pills and the compact overflow menu so both stay in step.
+const sortMenuItems = computed<DropdownMenuItem[]>(() => [
+  { label: "Sort by", type: "label" },
+  ...sortByOptions.map((option): DropdownMenuItem => ({
+    checked: sortBy.value === option.value,
+    label: option.label,
+    onUpdateChecked: () => setSortBy(option.value),
+    type: "checkbox",
+  })),
+]);
+
+const pageSizeMenuItems = computed<DropdownMenuItem[]>(() => [
+  { label: "Items per page", type: "label" },
+  ...EXPLORER_PAGE_SIZES.map((size): DropdownMenuItem => ({
+    checked: pageSize.value === size,
+    label: String(size),
+    onUpdateChecked: () => setPageSize(size),
+    type: "checkbox",
+  })),
+]);
+
 const selectedUploadType = ref({ icon: "mdi:file-outline", label: "File" });
 
 const uploadOptions = ref([
@@ -959,18 +1001,6 @@ const uploadOptions = ref([
     onSelect: () => handleFileUpload("Archive"),
   },
 ] satisfies DropdownMenuItem[]);
-
-const toggleSortDirection = () => {
-  selectedSortDirection.value =
-    selectedSortDirection.value === SortDirection.Asc ? SortDirection.Desc : SortDirection.Asc;
-  filePagination.value.paginationParams.sortDirection = selectedSortDirection.value;
-  dirPagination.value.paginationParams.sortDirection = selectedSortDirection.value;
-};
-
-const handleSorting = () => {
-  filePagination.value.paginationParams.SortBy = selectedSortBy.value.value;
-  dirPagination.value.paginationParams.SortBy = selectedSortBy.value.value;
-};
 
 // shared context menu — one controller for row and background menus. The
 // snapshot captured below freezes target and selection at open time so later
@@ -1203,40 +1233,15 @@ const mobileUpload = (type: "File" | "Directory" | "Archive") => {
 };
 
 const mobileOverflowItems = computed(() => [
-  { label: "Sort by", type: "label" as const },
-  {
-    icon: selectedSortBy.value.value === SortBy.Name ? "mdi:check" : "",
-    label: "Name",
-    onSelect: () => {
-      selectedSortBy.value = sortByOptions.value[0];
-      handleSorting();
-    },
-  },
-  {
-    icon: selectedSortBy.value.value === SortBy.CreatedAt ? "mdi:check" : "",
-    label: "Date Created",
-    onSelect: () => {
-      selectedSortBy.value = sortByOptions.value[1];
-      handleSorting();
-    },
-  },
-  {
-    icon: selectedSortBy.value.value === SortBy.UpdatedAt ? "mdi:check" : "",
-    label: "Date Modified",
-    onSelect: () => {
-      selectedSortBy.value = sortByOptions.value[2];
-      handleSorting();
-    },
-  },
+  ...sortMenuItems.value,
   { type: "separator" as const },
   {
-    icon:
-      selectedSortDirection.value === SortDirection.Asc
-        ? "mdi:sort-ascending"
-        : "mdi:sort-descending",
-    label: selectedSortDirection.value === SortDirection.Asc ? "Ascending" : "Descending",
+    icon: sortDirection.value === SortDirection.Asc ? "mdi:sort-ascending" : "mdi:sort-descending",
+    label: sortDirection.value === SortDirection.Asc ? "Ascending" : "Descending",
     onSelect: () => toggleSortDirection(),
   },
+  { type: "separator" as const },
+  ...pageSizeMenuItems.value,
   { type: "separator" as const },
   {
     icon: viewMode.value === "grid" ? "mdi:view-list" : "mdi:view-grid",

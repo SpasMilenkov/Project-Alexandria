@@ -8,6 +8,9 @@ import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
 
 import { useFileExplorer } from "@/composables/useFileExplorer";
+import { SortBy } from "@/enums/SortBy";
+import { SortDirection } from "@/enums/SortDirection";
+import { EXPLORER_PREFERENCES_KEY } from "@/features/explorer/preferences";
 
 // Mocks
 
@@ -103,6 +106,7 @@ describe("useFileExplorer", () => {
   let mockFilesData: Ref<{ items: FileResult[]; hasNext: boolean } | null>;
 
   beforeEach(() => {
+    window.localStorage.clear();
     mockRouterPush.mockClear();
     //oxlint-disable-next-line require-typed-ref
     mockDirData = ref(null);
@@ -537,6 +541,87 @@ describe("useFileExplorer", () => {
       loadMoreFiles();
 
       expect(filePagination.value.paginationParams.page).toBe(before);
+    });
+  });
+
+  // stored preferences
+
+  describe("stored preferences", () => {
+    const readStored = () =>
+      JSON.parse(window.localStorage.getItem(EXPLORER_PREFERENCES_KEY) ?? "null");
+
+    it("starts both listings from the saved sort, direction and page size", () => {
+      window.localStorage.setItem(
+        EXPLORER_PREFERENCES_KEY,
+        JSON.stringify({
+          pageSize: 100,
+          sortBy: SortBy.UpdatedAt,
+          sortDirection: SortDirection.Desc,
+          viewMode: "list",
+        }),
+      );
+
+      const { dirPagination, filePagination, viewMode } = withSetup(() => useFileExplorer());
+
+      for (const pagination of [dirPagination, filePagination]) {
+        expect(pagination.value.paginationParams).toMatchObject({
+          SortBy: SortBy.UpdatedAt,
+          page: 1,
+          pageSize: 100,
+          sortDirection: SortDirection.Desc,
+        });
+      }
+      expect(viewMode.value).toBe("list");
+    });
+
+    it("saves sort, direction, page size and view changes", async () => {
+      const { setPageSize, setSortBy, toggleSortDirection, viewMode } = withSetup(() =>
+        useFileExplorer(),
+      );
+
+      setSortBy(SortBy.CreatedAt);
+      toggleSortDirection();
+      setPageSize(50);
+      viewMode.value = "list";
+      await nextTick();
+
+      expect(readStored()).toEqual({
+        pageSize: 50,
+        sortBy: SortBy.CreatedAt,
+        sortDirection: SortDirection.Desc,
+        viewMode: "list",
+      });
+    });
+
+    it("restarts both listings at page 1 when the order or size changes", () => {
+      const { dirPagination, filePagination, setPageSize, setSortBy, toggleSortDirection } =
+        withSetup(() => useFileExplorer());
+
+      const advance = () => {
+        dirPagination.value.paginationParams.page = 3;
+        filePagination.value.paginationParams.page = 3;
+      };
+
+      for (const change of [
+        () => setSortBy(SortBy.UpdatedAt),
+        toggleSortDirection,
+        () => setPageSize(100),
+      ]) {
+        advance();
+        change();
+        expect(dirPagination.value.paginationParams.page).toBe(1);
+        expect(filePagination.value.paginationParams.page).toBe(1);
+      }
+    });
+
+    it("keeps the current page when the same value is picked again", () => {
+      const { filePagination, setPageSize, setSortBy } = withSetup(() => useFileExplorer());
+      filePagination.value.paginationParams.page = 2;
+
+      setSortBy(SortBy.Name);
+      setPageSize(25);
+
+      expect(filePagination.value.paginationParams.page).toBe(2);
     });
   });
 });
