@@ -260,6 +260,96 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("AuditLogs", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.CaptureMetadata", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CameraMake")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("CameraModel")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("CapturedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short?>("CapturedOffsetMinutes")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("ExposureSeconds")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("ExtractorVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("FNumber")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid>("FileVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("FocalLength35mm")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("FocalLengthMm")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Iso")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("LensModel")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("RawJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Software")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CapturedAt");
+
+                    b.HasIndex("FileVersionId")
+                        .IsUnique();
+
+                    b.ToTable("CaptureMetadata", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.ContentObject", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2173,6 +2263,17 @@ namespace Alexandria.Data.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.CaptureMetadata", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.FileVersion", "FileVersion")
+                        .WithOne()
+                        .HasForeignKey("Alexandria.Data.Models.CaptureMetadata", "FileVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FileVersion");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.ContentObject", b =>

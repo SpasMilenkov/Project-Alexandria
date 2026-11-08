@@ -351,6 +351,10 @@ export const isAutoTagSupportedFileType = (mimeType: string | null | undefined):
 export const isThumbnailSupportedMimeType = (mimeType: string | null | undefined): boolean =>
   routesToPreviewWorker(mimeType);
 
+/** Whether the image worker reads capture metadata (camera, date, location) for this type. */
+export const isCaptureMetadataSupportedMimeType = (mimeType: string | null | undefined): boolean =>
+  policyGroupOf(mimeType) === "Images";
+
 export interface GroupedMimeSizeResult {
   categories: FileGroup[];
   size: number[];

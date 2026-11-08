@@ -9,6 +9,7 @@ import type { ShareLinkSummaryDto } from "@/api/shareLinks";
 import { useAppToast } from "@/composables/useAppToast";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { createShareLink, revokeShareLink } from "@/mutations/shareLinks";
+import { getCaptureMetadata } from "@/queries/files";
 import { getShareLinksForFile } from "@/queries/shareLinks";
 import { getFileIcon } from "@/utils/files/icons";
 import { glassModalContent } from "@/utils/modal-ui";
@@ -36,6 +37,11 @@ const {
   refresh: refreshLinks,
   isLoading: linksLoading,
 } = useQuery<ShareLinkSummaryDto[]>(() => getShareLinksForFile(fileId));
+
+// Share links serve the original bytes, and only previews have their metadata stripped.
+const { data: captureMetadata } = useQuery(() =>
+  getCaptureMetadata({ fileId, versionId: fileVersionId ?? null }),
+);
 
 // Only show links that match this modal's scope: pinned to this version,
 // or the "always current version" links when no version is specified.
@@ -317,6 +323,15 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
           <h4 class="text-xs font-semibold uppercase tracking-widest text-dimmed">
             Generate new link
           </h4>
+
+          <UAlert
+            v-if="captureMetadata?.hasLocation"
+            color="warning"
+            variant="subtle"
+            icon="i-mdi-map-marker-radius-outline"
+            title="This photo includes its location"
+            description="Anyone who downloads it from a share link can see where it was taken."
+          />
 
           <div class="flex flex-wrap items-end gap-3">
             <UFormField label="Expires after" class="flex-1 min-w-[140px]">

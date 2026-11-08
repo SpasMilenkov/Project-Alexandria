@@ -177,6 +177,29 @@ export interface FinalizeFileUploadBatchResponse {
   results: FinalizeFileUploadBatchResult[];
 }
 
+export interface CaptureMetadataDto {
+  fileVersionId: string;
+  /** False means not read yet or unreadable, so empty fields are unknown rather than absent. */
+  isExtracted: boolean;
+  hasLocation: boolean;
+  width: number | null;
+  height: number | null;
+  /** A true instant only when capturedOffsetMinutes is set; otherwise the camera's wall clock. */
+  capturedAt: string | null;
+  capturedOffsetMinutes: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  cameraMake: string | null;
+  cameraModel: string | null;
+  lensModel: string | null;
+  software: string | null;
+  focalLengthMm: number | null;
+  focalLength35mm: number | null;
+  fNumber: number | null;
+  exposureSeconds: number | null;
+  iso: number | null;
+}
+
 // Verifying a batch re-reads every file, so this sits just under nginx's 300s proxy timeout.
 const FINALIZE_BATCH_TIMEOUT_MS = 280_000;
 
@@ -201,6 +224,9 @@ export const fileApi = {
       destinationId,
       fileIds,
     }),
+
+  getCaptureMetadata: (fileId: string, versionId: string | null): Promise<CaptureMetadataDto> =>
+    api.get<CaptureMetadataDto>(`/files/${fileId}/capture-metadata`, { params: { versionId } }),
 
   deleteFileVersion: async (id: string): Promise<void> => {
     await api.delete(`/files/versions/${id}`);

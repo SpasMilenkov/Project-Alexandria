@@ -50,12 +50,16 @@ public class PreviewHandlerTests
         return previewJob;
     }
 
-    private void StoredVersion(string mimeType = "image/png")
+    private void StoredVersion(string mimeType = "image/png", bool isEncrypted = false)
     {
         _versions.FirstOrDefaultAsync(
                 Arg.Any<Expression<Func<FileVersion, bool>>>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new FileVersionBuilder().WithId(_versionId).WithContentHash(new byte[16]).Build());
+            .Returns(new FileVersionBuilder()
+                .WithId(_versionId)
+                .WithContentHash(new byte[16])
+                .WithIsEncrypted(isEncrypted)
+                .Build());
         _files.GetMimeTypeByVersionIdAsync(_versionId, Arg.Any<CancellationToken>()).Returns(mimeType);
     }
 
@@ -65,7 +69,7 @@ public class PreviewHandlerTests
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(),
             Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(),
-            Substitute.For<IImagePreviewService>(), _unitOfWork);
+            Substitute.For<IImagePreviewService>(), Substitute.For<ICaptureMetadataService>(), _unitOfWork);
 
         var act = () => sut.HandleAsync("not-a-guid", TestContext.Current.CancellationToken);
 
@@ -80,7 +84,7 @@ public class PreviewHandlerTests
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(),
             Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(),
-            Substitute.For<IImagePreviewService>(), _unitOfWork);
+            Substitute.For<IImagePreviewService>(), Substitute.For<ICaptureMetadataService>(), _unitOfWork);
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
@@ -96,7 +100,7 @@ public class PreviewHandlerTests
         var storage = Substitute.For<IContentStorageService>();
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(),
-            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IImagePreviewService>(), _unitOfWork);
+            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IImagePreviewService>(), Substitute.For<ICaptureMetadataService>(), _unitOfWork);
 
         await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
@@ -120,8 +124,65 @@ public class PreviewHandlerTests
             .Returns(new ImagePreviewArtifacts(
                 new ImagePreviewResult(new MemoryStream(new byte[] { 4 }), "image/webp"),
                 new ImagePreviewResult(new MemoryStream(new byte[] { 5 }), "image/webp")));
+        var captureMetadata = Substitute.For<ICaptureMetadataService>();
         var sut = new ImageHandler(
-            Substitute.For<ILogger<ImageHandler>>(), storage, artifacts, images, _unitOfWork);
+            Substitute.For<ILogger<ImageHandler>>(), storage, artifacts, images, captureMetadata, _unitOfWork);
+
+        await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
+
+        await artifacts.Received(2).UploadPreview(
+            Arg.Any<string>(), "image/webp", Arg.Any<Stream>(), _versionId,
+            Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<PreviewKind>(), Arg.Any<CancellationToken>());
+        await _jobs.Received(1).UpdateStatusAsync(
+            _jobId, JobStatus.Ready, Arg.Any<int?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        await captureMetadata.Received(1).ExtractAndStoreAsync(
+            _versionId, Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task encrypted_version_gets_no_capture_metadata_read()
+    {
+        StoredJob();
+        StoredVersion(isEncrypted: true);
+        var storage = Substitute.For<IContentStorageService>();
+        storage.DownloadSeekableFile(_versionId, Arg.Any<CancellationToken>())
+            .Returns(new MemoryStream(new byte[] { 1, 2, 3 }));
+        var images = Substitute.For<IImagePreviewService>();
+        images.GenerateAsync(Arg.Any<Stream>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new ImagePreviewArtifacts(
+                new ImagePreviewResult(new MemoryStream(new byte[] { 4 }), "image/webp"),
+                new ImagePreviewResult(new MemoryStream(new byte[] { 5 }), "image/webp")));
+        var captureMetadata = Substitute.For<ICaptureMetadataService>();
+        var sut = new ImageHandler(
+            Substitute.For<ILogger<ImageHandler>>(), storage, Substitute.For<IPreviewArtifactService>(), images,
+            captureMetadata, _unitOfWork);
+
+        await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
+
+        await captureMetadata.DidNotReceive().ExtractAndStoreAsync(
+            Arg.Any<Guid>(), Arg.Any<Stream>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task capture_metadata_failure_still_generates_the_preview()
+    {
+        StoredJob();
+        StoredVersion();
+        var storage = Substitute.For<IContentStorageService>();
+        var artifacts = Substitute.For<IPreviewArtifactService>();
+        storage.DownloadSeekableFile(_versionId, Arg.Any<CancellationToken>())
+            .Returns(new MemoryStream(new byte[] { 1, 2, 3 }));
+        var images = Substitute.For<IImagePreviewService>();
+        images.GenerateAsync(Arg.Any<Stream>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new ImagePreviewArtifacts(
+                new ImagePreviewResult(new MemoryStream(new byte[] { 4 }), "image/webp"),
+                new ImagePreviewResult(new MemoryStream(new byte[] { 5 }), "image/webp")));
+        var captureMetadata = Substitute.For<ICaptureMetadataService>();
+        captureMetadata.ExtractAndStoreAsync(_versionId, Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("broken header")));
+        var sut = new ImageHandler(
+            Substitute.For<ILogger<ImageHandler>>(), storage, artifacts, images, captureMetadata, _unitOfWork);
 
         await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
@@ -143,7 +204,7 @@ public class PreviewHandlerTests
             .Returns(Task.FromException<Stream>(new InvalidOperationException("storage down")));
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(),
-            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IImagePreviewService>(), _unitOfWork);
+            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IImagePreviewService>(), Substitute.For<ICaptureMetadataService>(), _unitOfWork);
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
@@ -316,7 +377,7 @@ public class PreviewHandlerTests
         var storage = Substitute.For<IContentStorageService>();
         var sut = new ImageHandler(
             Substitute.For<ILogger<ImageHandler>>(),
-            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IImagePreviewService>(), _unitOfWork);
+            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IImagePreviewService>(), Substitute.For<ICaptureMetadataService>(), _unitOfWork);
 
         await AssertGivesUpWithoutRetryingAsync(
             () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken));

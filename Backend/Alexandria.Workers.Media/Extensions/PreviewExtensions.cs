@@ -25,9 +25,13 @@ public static class PreviewExtensions
         services.Configure<ImagePreviewConfig>(configuration.GetSection("ImagePreview"));
         services.AddSingleton<MagickCliDecoder>();
         services.AddScoped<IImagePreviewService, ImagePreviewService>();
+        services.AddScoped<ICaptureMetadataService, CaptureMetadataService>();
         services.AddHostedService<ImagePreviewRuntimeCheck>();
         services.AddScoped<ImagePreviewGenerationHandler>();
         services.AddScoped<MediaPreviewGenerationHandler>();
+
+        services.Configure<CaptureMetadataSweepConfig>(configuration.GetSection("CaptureMetadataSweep"));
+        services.AddHostedService<CaptureMetadataSweepWorker>();
 
         services.AddHostedService(sp => new JobFailureThresholdChecker(
             sp.GetRequiredService<IJobOutcomeTracker>(),

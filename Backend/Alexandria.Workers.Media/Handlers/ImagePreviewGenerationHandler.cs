@@ -11,6 +11,7 @@ public class ImagePreviewGenerationHandler(
     IContentStorageService storage,
     IPreviewArtifactService artifacts,
     IImagePreviewService imagePreviewService,
+    ICaptureMetadataService captureMetadata,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string message, CancellationToken ct = default)
@@ -55,6 +56,10 @@ public class ImagePreviewGenerationHandler(
                        throw new InvalidOperationException("Mime type is missing");
 
         await using var fileStream = await storage.DownloadSeekableFile(versionId, ct);
+
+        if (!version.IsEncrypted)
+            await TryStoreCaptureMetadataAsync(versionId, fileStream, ct);
+
         await using var generated = await imagePreviewService.GenerateAsync(fileStream, mimetype, ct);
 
         await artifacts.UploadPreview(
@@ -78,5 +83,19 @@ public class ImagePreviewGenerationHandler(
             ct: ct);
 
         logger.LogInformation("Image preview and thumbnail generated for file {FileId}", message);
+    }
+
+    // A photo with a broken EXIF block should still get its thumbnail. The backfill sweep picks
+    // up any version left without a row.
+    private async Task TryStoreCaptureMetadataAsync(Guid versionId, Stream source, CancellationToken ct)
+    {
+        try
+        {
+            await captureMetadata.ExtractAndStoreAsync(versionId, source, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Could not store capture metadata for version {VersionId}", versionId);
+        }
     }
 }
