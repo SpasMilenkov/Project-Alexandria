@@ -4,10 +4,15 @@ import { type Ref, computed, ref, watch } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
+import type { SortBy } from "@/enums/SortBy";
 import type { PaginationParams } from "@/types/pagination-params";
 
-import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
+import {
+  type ExplorerViewMode,
+  loadExplorerPreferences,
+  saveExplorerPreferences,
+} from "@/features/explorer/preferences";
 import {
   DIRECTORY_QUERY_KEYS,
   directoryPath,
@@ -25,8 +30,13 @@ export const useFileExplorer = () => {
 
   // Default to list view on mobile — evaluated once at instantiation time.
   // useMediaQuery is synchronous on the client so .value is correct immediately.
+  // A saved choice wins, so the mobile list default only applies until the user picks a view.
   const isMobileOnInit = useMediaQuery("(max-width: 767px)");
-  const viewMode: Ref<"grid" | "list"> = ref(isMobileOnInit.value ? "list" : "grid");
+
+  // Read once per tab: open tabs keep their own choices, new tabs and reloads start
+  // from whatever was picked last.
+  const preferences = loadExplorerPreferences(isMobileOnInit.value ? "list" : "grid");
+  const viewMode: Ref<ExplorerViewMode> = ref(preferences.viewMode);
 
   // STATE
   const currentDirId: Ref<string | null> = ref(null);
@@ -38,10 +48,10 @@ export const useFileExplorer = () => {
   }> = ref({
     hasNext: false,
     paginationParams: {
-      SortBy: SortBy.Name,
+      SortBy: preferences.sortBy,
       page: 1,
-      pageSize: 25,
-      sortDirection: SortDirection.Asc,
+      pageSize: preferences.pageSize,
+      sortDirection: preferences.sortDirection,
     },
   });
 
@@ -51,12 +61,27 @@ export const useFileExplorer = () => {
   }> = ref({
     hasNext: false,
     paginationParams: {
-      SortBy: SortBy.Name,
+      SortBy: preferences.sortBy,
       page: 1,
-      pageSize: 25,
-      sortDirection: SortDirection.Asc,
+      pageSize: preferences.pageSize,
+      sortDirection: preferences.sortDirection,
     },
   });
+
+  // Directories and files always share these, so the file side is the source of truth.
+  const sortBy = computed(() => filePagination.value.paginationParams.SortBy);
+  const sortDirection = computed(() => filePagination.value.paginationParams.sortDirection);
+  const pageSize = computed(() => filePagination.value.paginationParams.pageSize);
+
+  watch(
+    () => ({
+      pageSize: pageSize.value,
+      sortBy: sortBy.value,
+      sortDirection: sortDirection.value,
+      viewMode: viewMode.value,
+    }),
+    saveExplorerPreferences,
+  );
 
   const navigationHistory = ref<(string | null)[]>([null]);
   const historyIndex = ref(0);
@@ -166,6 +191,39 @@ export const useFileExplorer = () => {
     filePagination.value.paginationParams.page++;
   };
 
+  // Later pages were fetched under the old order or size, so merging them would
+  // interleave mismatched rows. Restarting at page 1 lets the next response replace the list.
+  const restartListing = (change: Partial<PaginationParams>) => {
+    dirPagination.value.paginationParams = {
+      ...dirPagination.value.paginationParams,
+      ...change,
+      page: 1,
+    };
+    filePagination.value.paginationParams = {
+      ...filePagination.value.paginationParams,
+      ...change,
+      page: 1,
+    };
+  };
+
+  const setSortBy = (value: SortBy) => {
+    if (value === sortBy.value) return;
+    restartListing({ SortBy: value });
+  };
+
+  const toggleSortDirection = () => {
+    if (sortDirection.value === SortDirection.Asc) {
+      restartListing({ sortDirection: SortDirection.Desc });
+      return;
+    }
+    restartListing({ sortDirection: SortDirection.Asc });
+  };
+
+  const setPageSize = (value: number) => {
+    if (value === pageSize.value) return;
+    restartListing({ pageSize: value });
+  };
+
   const refreshDir = () => {
     if (currentDirId.value) {
       queryCache.invalidateQueries({ key: ["directories", "sub-directories", currentDirId.value] });
@@ -241,14 +299,20 @@ export const useFileExplorer = () => {
     navigateBack,
     navigateForward,
     navigateTo,
+    pageSize,
     pathList,
     pathQuery,
     refreshDir,
     selectRange,
     selectedDirectories,
     selectedFiles,
+    setPageSize,
     setSelection,
+    setSortBy,
+    sortBy,
+    sortDirection,
     toggleSelect,
+    toggleSortDirection,
     viewMode,
   };
 };
