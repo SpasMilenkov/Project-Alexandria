@@ -101,6 +101,7 @@ public class MimeCatalogTests
         var emitted = ExtensionMimeMap.AllTypes
             .Concat(MimeFileNameMap.AllTypes)
             .Concat(IsoBmffBrands.AllTypes)
+            .Concat(MobipocketSignature.AllTypes)
             .Distinct(StringComparer.Ordinal);
 
         foreach (var type in emitted)

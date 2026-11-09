@@ -8,6 +8,8 @@ public class FileGroupsTests
 {
     [Theory]
     [InlineData(FileGroups.Documents, "application/epub+zip")]
+    [InlineData(FileGroups.Documents, "application/vnd.amazon.mobi8-ebook")]
+    [InlineData(FileGroups.Documents, "application/x-mobipocket-ebook")]
     [InlineData(FileGroups.Documents, "application/vnd.oasis.opendocument.text")]
     [InlineData(FileGroups.Documents, "application/rtf")]
     [InlineData(FileGroups.Spreadsheets, "application/vnd.oasis.opendocument.spreadsheet")]

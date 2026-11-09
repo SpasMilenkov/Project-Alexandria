@@ -341,7 +341,8 @@ public class MimeTypeResolverTests
         foreach (var mime in ExtensionMimeMap.AllTypes
                      .Concat(MimeFamilies.AllTypes)
                      .Concat(MimeFileNameMap.AllTypes)
-                     .Concat(IsoBmffBrands.AllTypes))
+                     .Concat(IsoBmffBrands.AllTypes)
+                     .Concat(MobipocketSignature.AllTypes))
         {
             Assert.Equal(mime, MimeAliases.Canonicalize(mime));
             Assert.True(MimeAliases.HasValidShape(mime));
