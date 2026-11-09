@@ -128,6 +128,8 @@ public class MimeCatalogTests
             ["aliases"] = aliases,
             ["previewWorker"] = ToJson(MimeCategories.PreviewWorker),
             ["autoTag"] = ToJson(AutoTagSupportedFileTypes.Supported),
+            ["documentMetadata"] = ToJson(DocumentMetadataFileTypes.Supported),
+            ["books"] = ToJson(DocumentMetadataFileTypes.Books),
             ["groups"] = groups
         };
     }

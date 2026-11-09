@@ -171,6 +171,31 @@
     "prefixes": ["audio/"],
     "types": ["application/ogg"]
   },
+  "documentMetadata": {
+    "prefixes": [],
+    "types": [
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.oasis.opendocument.text",
+      "application/vnd.oasis.opendocument.spreadsheet",
+      "application/vnd.oasis.opendocument.presentation",
+      "application/pdf",
+      "application/epub+zip",
+      "application/x-mobipocket-ebook",
+      "application/vnd.amazon.mobi8-ebook",
+      "application/vnd.amazon.ebook"
+    ]
+  },
+  "books": {
+    "prefixes": [],
+    "types": [
+      "application/epub+zip",
+      "application/x-mobipocket-ebook",
+      "application/vnd.amazon.mobi8-ebook",
+      "application/vnd.amazon.ebook"
+    ]
+  },
   "groups": {
     "Images": {
       "prefixes": ["image/"],

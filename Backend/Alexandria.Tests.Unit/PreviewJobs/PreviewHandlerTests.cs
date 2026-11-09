@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Alexandria.Common;
 using Alexandria.Common.Exceptions.Preview;
+using Alexandria.Common.Exceptions.Preview.Documents;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
@@ -28,6 +29,7 @@ public class PreviewHandlerTests
     private readonly IJobRepository _jobs = Substitute.For<IJobRepository>();
     private readonly IFileRepository _files = Substitute.For<IFileRepository>();
     private readonly IFileVersionRepository _versions = Substitute.For<IFileVersionRepository>();
+    private readonly IDocumentMetadataService _documentMetadata = Substitute.For<IDocumentMetadataService>();
 
     private readonly Guid _jobId = Guid.NewGuid();
     private readonly Guid _versionId = Guid.NewGuid();
@@ -319,7 +321,8 @@ public class PreviewHandlerTests
             });
         var sut = new DocumentHandler(
             Substitute.For<ILogger<DocumentHandler>>(),
-            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(), pdf, _unitOfWork);
+            Substitute.For<IContentStorageService>(), Substitute.For<IPreviewArtifactService>(), pdf,
+            _documentMetadata, _unitOfWork);
 
         var act = () => sut.HandleAsync(_jobId.ToString(), cts.Token);
 
@@ -409,7 +412,8 @@ public class PreviewHandlerTests
         var storage = Substitute.For<IContentStorageService>();
         var sut = new DocumentHandler(
             Substitute.For<ILogger<DocumentHandler>>(),
-            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IPdfPreviewService>(), _unitOfWork);
+            storage, Substitute.For<IPreviewArtifactService>(), Substitute.For<IPdfPreviewService>(),
+            _documentMetadata, _unitOfWork);
 
         await AssertGivesUpWithoutRetryingAsync(
             () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken));
@@ -466,7 +470,45 @@ public class PreviewHandlerTests
             pdf.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
                 .Returns(new PdfPreviewResult(previewPath, thumbnailPath));
             var sut = new DocumentHandler(
-                Substitute.For<ILogger<DocumentHandler>>(), storage, artifacts, pdf, _unitOfWork);
+                Substitute.For<ILogger<DocumentHandler>>(), storage, artifacts, pdf, _documentMetadata, _unitOfWork);
+
+            await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
+
+            await _documentMetadata.Received(1).ExtractAndStoreAsync(
+                _versionId, "application/pdf", Arg.Any<string>(), Arg.Any<CancellationToken>());
+
+            await artifacts.Received(2).UploadPreview(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Stream>(), _versionId,
+                Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<PreviewKind>(), Arg.Any<CancellationToken>());
+            await _jobs.Received(1).UpdateStatusAsync(
+                _jobId, JobStatus.Ready, Arg.Any<int?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            File.Delete(previewPath);
+            File.Delete(thumbnailPath);
+        }
+    }
+
+    [Fact]
+    public async Task document_metadata_failure_still_generates_the_preview()
+    {
+        StoredJob();
+        StoredVersion("application/pdf");
+        _documentMetadata.ExtractAndStoreAsync(_versionId, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<DocumentMetadata>(new InvalidOperationException("damaged properties")));
+        var previewPath = Path.GetTempFileName();
+        var thumbnailPath = Path.GetTempFileName();
+        try
+        {
+            var artifacts = Substitute.For<IPreviewArtifactService>();
+            var pdf = Substitute.For<IPdfPreviewService>();
+            pdf.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
+                .Returns(new PdfPreviewResult(previewPath, thumbnailPath));
+            var sut = new DocumentHandler(
+                Substitute.For<ILogger<DocumentHandler>>(), Substitute.For<IContentStorageService>(), artifacts, pdf,
+                _documentMetadata, _unitOfWork);
 
             await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
@@ -476,6 +518,64 @@ public class PreviewHandlerTests
             await _jobs.Received(1).UpdateStatusAsync(
                 _jobId, JobStatus.Ready, Arg.Any<int?>(), Arg.Any<string?>(),
                 Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            File.Delete(previewPath);
+            File.Delete(thumbnailPath);
+        }
+    }
+
+    [Fact]
+    public async Task password_protected_document_fails_without_retrying_or_converting()
+    {
+        StoredJob();
+        StoredVersion("application/vnd.openxmlformats-officedocument.presentationml.presentation");
+        _documentMetadata.ExtractAndStoreAsync(_versionId, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new DocumentMetadata
+            {
+                FileVersionId = _versionId,
+                IsPasswordProtected = true,
+                RawJson = "{}"
+            });
+        var pdf = Substitute.For<IPdfPreviewService>();
+        var sut = new DocumentHandler(
+            Substitute.For<ILogger<DocumentHandler>>(), Substitute.For<IContentStorageService>(),
+            Substitute.For<IPreviewArtifactService>(), pdf, _documentMetadata, _unitOfWork);
+
+        var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<DocumentPasswordProtectedException>();
+        await pdf.DidNotReceive().GeneratePreviewAsync(
+            Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>());
+        await _jobs.Received(1).UpdateStatusAsync(
+            _jobId, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _jobs.Received(1).MarkNonRetryableAsync(_jobId, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("application/msword", false)]
+    [InlineData("application/pdf", true)]
+    public async Task document_metadata_is_skipped_for_unreadable_types_and_encrypted_versions(
+        string mimeType, bool isEncrypted)
+    {
+        StoredJob();
+        StoredVersion(mimeType, isEncrypted);
+        var previewPath = Path.GetTempFileName();
+        var thumbnailPath = Path.GetTempFileName();
+        try
+        {
+            var pdf = Substitute.For<IPdfPreviewService>();
+            pdf.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
+                .Returns(new PdfPreviewResult(previewPath, thumbnailPath));
+            var sut = new DocumentHandler(
+                Substitute.For<ILogger<DocumentHandler>>(), Substitute.For<IContentStorageService>(),
+                Substitute.For<IPreviewArtifactService>(), pdf, _documentMetadata, _unitOfWork);
+
+            await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
+
+            await _documentMetadata.DidNotReceive().ExtractAndStoreAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         }
         finally
         {
@@ -495,7 +595,7 @@ public class PreviewHandlerTests
         pdf.GeneratePreviewAsync(Arg.Any<string>(), Arg.Any<FileCategory>(), Arg.Any<CancellationToken>())
             .Returns(new PdfPreviewResult("/nonexistent/preview.pdf", "/nonexistent/thumb.jpg"));
         var sut = new DocumentHandler(
-            Substitute.For<ILogger<DocumentHandler>>(), storage, artifacts, pdf, _unitOfWork);
+            Substitute.For<ILogger<DocumentHandler>>(), storage, artifacts, pdf, _documentMetadata, _unitOfWork);
 
         var act = () => sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 
@@ -513,7 +613,7 @@ public class PreviewHandlerTests
         var pdf = Substitute.For<IPdfPreviewService>();
         var sut = new DocumentHandler(
             Substitute.For<ILogger<DocumentHandler>>(), Substitute.For<IContentStorageService>(),
-            Substitute.For<IPreviewArtifactService>(), pdf, _unitOfWork);
+            Substitute.For<IPreviewArtifactService>(), pdf, _documentMetadata, _unitOfWork);
 
         await sut.HandleAsync(_jobId.ToString(), TestContext.Current.CancellationToken);
 

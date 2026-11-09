@@ -5,6 +5,7 @@ using Alexandria.Infrastructure.Messaging;
 using Alexandria.Infrastructure.Workers;
 using Alexandria.Services.Monitoring;
 using Alexandria.Services.Preview.Documents;
+using Alexandria.Services.Preview.Documents.Metadata;
 
 namespace Alexandria.Workers.Document.Extensions;
 
@@ -18,6 +19,7 @@ public static class ServiceExtensions
         services.AddRabbitMqAsync(configuration);
 
         services.AddScoped<IPdfPreviewService, PdfPreviewService>();
+        services.AddScoped<IDocumentMetadataService, DocumentMetadataService>();
 
         services.AddHostedService(sp => new JobFailureThresholdChecker(
             sp.GetRequiredService<IJobOutcomeTracker>(),

@@ -1,4 +1,5 @@
 using Alexandria.Common.Exceptions.Preview;
+using Alexandria.Common.Exceptions.Preview.Documents;
 using Alexandria.Common.Exceptions.Preview.Images;
 using Alexandria.Common.Exceptions.Preview.Media;
 using Alexandria.Data.Models;
@@ -40,7 +41,7 @@ public static class PreviewJobLifecycle
 
     /// <summary>
     /// Records a generation failure. Failures that cannot succeed on retry (unsupported or
-    /// oversized input, deleted source) exhaust the retry budget so automatic recovery leaves
+    /// oversized input, deleted source, a document locked with a password) exhaust the retry budget so automatic recovery leaves
     /// them alone.
     /// </summary>
     public static async Task FailAsync(
@@ -63,5 +64,6 @@ public static class PreviewJobLifecycle
         => ex is UnsupportedImageFormatException
             or ImageTooLargeException
             or UnsupportedMediaCategoryException
-            or PreviewSourceDeletedException;
+            or PreviewSourceDeletedException
+            or DocumentPasswordProtectedException;
 }
