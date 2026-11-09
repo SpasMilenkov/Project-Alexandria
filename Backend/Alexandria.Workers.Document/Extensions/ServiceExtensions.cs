@@ -1,3 +1,4 @@
+using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
@@ -20,6 +21,9 @@ public static class ServiceExtensions
 
         services.AddScoped<IPdfPreviewService, PdfPreviewService>();
         services.AddScoped<IDocumentMetadataService, DocumentMetadataService>();
+
+        services.Configure<DocumentMetadataSweepConfig>(configuration.GetSection("DocumentMetadataSweep"));
+        services.AddHostedService<DocumentMetadataSweepWorker>();
 
         services.AddHostedService(sp => new JobFailureThresholdChecker(
             sp.GetRequiredService<IJobOutcomeTracker>(),
