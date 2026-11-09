@@ -25,6 +25,8 @@ const ALIASES: Readonly<Record<string, string>> = catalog.aliases;
 
 const PREVIEW_WORKER = toMatcher(catalog.previewWorker);
 const AUTO_TAG = toMatcher(catalog.autoTag);
+const DOCUMENT_METADATA = toMatcher(catalog.documentMetadata);
+const BOOKS = toMatcher(catalog.books);
 
 /** Every policy group in backend declaration order. */
 export const POLICY_FILE_GROUPS = Object.keys(catalog.groups) as PolicyFileGroup[];
@@ -65,6 +67,20 @@ export const isAutoTagSupportedMime = (mimeType: string | null | undefined): boo
   const canonical = canonicalizeMime(mimeType);
 
   return canonical.length > 0 && matches(AUTO_TAG, canonical);
+};
+
+/** True when the document worker reads this type's properties (author, dates, counts). */
+export const isDocumentMetadataSupportedMime = (mimeType: string | null | undefined): boolean => {
+  const canonical = canonicalizeMime(mimeType);
+
+  return canonical.length > 0 && matches(DOCUMENT_METADATA, canonical);
+};
+
+/** True when this type is an ebook, whose details read as a book's rather than a document's. */
+export const isBookMime = (mimeType: string | null | undefined): boolean => {
+  const canonical = canonicalizeMime(mimeType);
+
+  return canonical.length > 0 && matches(BOOKS, canonical);
 };
 
 /** The policy group that owns this type, or null when no group does. */

@@ -4,6 +4,7 @@ import {
   POLICY_FILE_GROUPS,
   canonicalizeMime,
   isAutoTagSupportedMime,
+  isDocumentMetadataSupportedMime,
   policyGroupOf,
   routesToPreviewWorker,
 } from "@/utils/files/mime-catalog";
@@ -55,6 +56,23 @@ describe("isAutoTagSupportedMime", () => {
     expect(isAutoTagSupportedMime("audio/flac")).toBe(true);
     expect(isAutoTagSupportedMime("application/ogg")).toBe(true);
     expect(isAutoTagSupportedMime("audio/x-mpegurl")).toBe(false);
+  });
+});
+
+describe("isDocumentMetadataSupportedMime", () => {
+  it("accepts PDFs and modern Office and OpenDocument files, not legacy binary formats", () => {
+    expect(isDocumentMetadataSupportedMime("application/pdf")).toBe(true);
+    expect(
+      isDocumentMetadataSupportedMime(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ),
+    ).toBe(true);
+    expect(isDocumentMetadataSupportedMime("application/vnd.oasis.opendocument.presentation")).toBe(
+      true,
+    );
+    expect(isDocumentMetadataSupportedMime("application/msword")).toBe(false);
+    expect(isDocumentMetadataSupportedMime("image/jpeg")).toBe(false);
+    expect(isDocumentMetadataSupportedMime(null)).toBe(false);
   });
 });
 

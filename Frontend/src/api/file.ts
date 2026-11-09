@@ -203,6 +203,42 @@ export interface CaptureMetadataDto {
   iso: number | null;
 }
 
+export interface DocumentMetadataDto {
+  fileVersionId: string;
+  /** False means not read yet or unreadable, so empty fields are unknown rather than absent. */
+  isExtracted: boolean;
+  /** True when the file names a person or company that a downloaded copy still carries. */
+  hasPersonalDetails: boolean;
+  isPasswordProtected: boolean;
+  /** An ebook whose pages a store's copy protection encrypts; its properties are still read. */
+  isDrmProtected: boolean;
+  title: string | null;
+  subject: string | null;
+  keywords: string | null;
+  language: string | null;
+  author: string | null;
+  lastModifiedBy: string | null;
+  company: string | null;
+  application: string | null;
+  producer: string | null;
+  /** A true instant only when authoredOffsetMinutes is set; otherwise the author's wall clock. */
+  authoredAt: string | null;
+  authoredOffsetMinutes: number | null;
+  modifiedAt: string | null;
+  modifiedOffsetMinutes: number | null;
+  pageCount: number | null;
+  wordCount: number | null;
+  slideCount: number | null;
+  sheetCount: number | null;
+  editingMinutes: number | null;
+  paperSize: string | null;
+  publisher: string | null;
+  /** Always the 13-digit form. */
+  isbn: string | null;
+  series: string | null;
+  seriesIndex: number | null;
+}
+
 // Verifying a batch re-reads every file, so this sits just under nginx's 300s proxy timeout.
 const FINALIZE_BATCH_TIMEOUT_MS = 280_000;
 
@@ -230,6 +266,9 @@ export const fileApi = {
 
   getCaptureMetadata: (fileId: string, versionId: string | null): Promise<CaptureMetadataDto> =>
     api.get<CaptureMetadataDto>(`/files/${fileId}/capture-metadata`, { params: { versionId } }),
+
+  getDocumentMetadata: (fileId: string, versionId: string | null): Promise<DocumentMetadataDto> =>
+    api.get<DocumentMetadataDto>(`/files/${fileId}/document-metadata`, { params: { versionId } }),
 
   deleteFileVersion: async (id: string): Promise<void> => {
     await api.delete(`/files/versions/${id}`);

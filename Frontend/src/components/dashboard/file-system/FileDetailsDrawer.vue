@@ -174,6 +174,14 @@
         :enabled="isOpen"
       />
 
+      <FileDocumentDetails
+        v-if="hasDocumentMetadata"
+        :file-id="displayFile.fileId"
+        :version-id="detail.currentVersion.id"
+        :is-book="isEbookMimeType(detail.currentVersion.mimeType)"
+        :enabled="isOpen"
+      />
+
       <DetailsSection title="Owner">
         <DetailsOwner :name="detail.owner.name" :email="detail.owner.email" />
       </DetailsSection>
@@ -215,10 +223,13 @@ import {
   getFileTypeReadable,
   isAutoTagSupportedFileType,
   isCaptureMetadataSupportedMimeType,
+  isDocumentMetadataSupportedMimeType,
+  isEbookMimeType,
 } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
 
 import FileCaptureDetails from "./FileCaptureDetails.vue";
+import FileDocumentDetails from "./FileDocumentDetails.vue";
 import FilePreview from "./FilePreview.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
 
@@ -284,6 +295,12 @@ const hasCaptureMetadata = computed(() => {
   if (!detail.value || detail.value.currentVersion.isEncrypted) return false;
 
   return isCaptureMetadataSupportedMimeType(detail.value.currentVersion.mimeType);
+});
+
+const hasDocumentMetadata = computed(() => {
+  if (!detail.value || detail.value.currentVersion.isEncrypted) return false;
+
+  return isDocumentMetadataSupportedMimeType(detail.value.currentVersion.mimeType);
 });
 
 const extractAutoTagError = (err: any): string => {

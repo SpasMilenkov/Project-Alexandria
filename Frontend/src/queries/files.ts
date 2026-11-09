@@ -23,6 +23,12 @@ export const FILES_QUERY_KEYS = {
     fileId,
     versionId,
   ],
+  documentMetadata: (fileId: string, versionId: string | null) => [
+    ...FILES_QUERY_KEYS.root,
+    "document-metadata",
+    fileId,
+    versionId,
+  ],
   // Every filter belongs in the key, otherwise changing one (e.g. a deletion window)
   // serves the cached result of the previous query.
   searchFiles: (query: FileSearchQuery) => [...FILES_QUERY_KEYS.root, "search-files", query],
@@ -61,6 +67,13 @@ export const getCaptureMetadata = defineQueryOptions(
   ({ fileId, versionId }: { fileId: string; versionId: string | null }) => ({
     key: FILES_QUERY_KEYS.captureMetadata(fileId, versionId),
     query: () => fileApi.getCaptureMetadata(fileId, versionId),
+  }),
+);
+
+export const getDocumentMetadata = defineQueryOptions(
+  ({ fileId, versionId }: { fileId: string; versionId: string | null }) => ({
+    key: FILES_QUERY_KEYS.documentMetadata(fileId, versionId),
+    query: () => fileApi.getDocumentMetadata(fileId, versionId),
   }),
 );
 
