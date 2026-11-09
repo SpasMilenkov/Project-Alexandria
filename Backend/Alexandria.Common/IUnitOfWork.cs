@@ -9,6 +9,7 @@ public interface IUnitOfWork : IDisposable
     IPreviewJobRepository PreviewJobs { get; }
     IMediaMetadataRepository MediaMetadata { get; }
     ICaptureMetadataRepository CaptureMetadata { get; }
+    IDocumentMetadataRepository DocumentMetadata { get; }
     IRefreshTokenRepository RefreshTokens { get; }
     ITagRepository Tags { get; }
     IDirectoryRepository Directories { get; }
