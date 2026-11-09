@@ -626,6 +626,10 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid?>("DirectoryId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("GalleryDate")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("MimeType")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -672,6 +676,12 @@ namespace Alexandria.Data.Migrations
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedName"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex(new[] { "OwnerId", "GalleryDate", "Id" }, "IX_Files_Gallery_Taken")
+                        .HasFilter("\"GalleryDate\" IS NOT NULL AND \"DeletedAt\" IS NULL");
+
+                    b.HasIndex(new[] { "OwnerId", "CreatedAt", "Id" }, "IX_Files_Gallery_Uploaded")
+                        .HasFilter("\"GalleryDate\" IS NOT NULL AND \"DeletedAt\" IS NULL");
 
                     b.ToTable("Files", (string)null);
                 });

@@ -17,6 +17,14 @@ public class File : IBase
     public string NormalizedName { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>
+    /// Where the file sits on the photo timeline: the camera's wall clock from the newest version
+    /// that has one, otherwise <see cref="CreatedAt"/>. Null keeps the file out of the gallery
+    /// (not a photo, or the current version is encrypted). A database trigger owns it because
+    /// many unrelated writes switch the current version, so EF never writes it.
+    /// </summary>
+    public DateTime? GalleryDate { get; set; }
+
     public Guid Id { get; set; }
     public DateTime? UpdatedAt { get; set; }
 

@@ -1,5 +1,6 @@
 using Alexandria.Data.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using File = Alexandria.Data.Models.File;
 
@@ -7,6 +8,8 @@ namespace Alexandria.Data.Configurations;
 
 public class FileConfiguration : IEntityTypeConfiguration<File>
 {
+    private const string GalleryIndexFilter = "\"GalleryDate\" IS NOT NULL AND \"DeletedAt\" IS NULL";
+
     public void Configure(EntityTypeBuilder<File> builder)
     {
         builder.HasKey(e => e.Id);
@@ -73,10 +76,26 @@ public class FileConfiguration : IEntityTypeConfiguration<File>
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
 
+        builder.Property(e => e.GalleryDate)
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false)
+            .ValueGeneratedOnAddOrUpdate();
+
+        builder.Property(e => e.GalleryDate).Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+        builder.Property(e => e.GalleryDate).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
+
         // Indexes for performance
         builder.HasIndex(e => e.CreatedAt);
 
         builder.HasIndex(e => e.OwnerId);
+
+        // Keyset pages read these in order, so each page is one index range scan. The filter
+        // matches the gallery query exactly, which is what lets Postgres pick the partial index.
+        builder.HasIndex(e => new { e.OwnerId, e.GalleryDate, e.Id }, "IX_Files_Gallery_Taken")
+            .HasFilter(GalleryIndexFilter);
+
+        builder.HasIndex(e => new { e.OwnerId, e.CreatedAt, e.Id }, "IX_Files_Gallery_Uploaded")
+            .HasFilter(GalleryIndexFilter);
 
         builder.HasIndex(e => e.NormalizedName)
             .HasMethod("gin")
