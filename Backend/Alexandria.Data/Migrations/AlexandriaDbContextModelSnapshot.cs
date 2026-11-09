@@ -515,6 +515,138 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("DirectoryPolicies", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.DocumentMetadata", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Application")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Author")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("AuthoredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short?>("AuthoredOffsetMinutes")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Company")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("EditingMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExtractorVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("FileVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDrmProtected")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPasswordProtected")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Isbn")
+                        .HasMaxLength(13)
+                        .HasColumnType("varchar(13)");
+
+                    b.Property<string>("Keywords")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short?>("ModifiedOffsetMinutes")
+                        .HasColumnType("smallint");
+
+                    b.Property<int?>("PageCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PaperSize")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("Producer")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Publisher")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("RawJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Series")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<decimal?>("SeriesIndex")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)");
+
+                    b.Property<int?>("SheetCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SlideCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Subject")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("WordCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthoredAt");
+
+                    b.HasIndex("FileVersionId")
+                        .IsUnique();
+
+                    b.HasIndex("Isbn");
+
+                    b.ToTable("DocumentMetadata", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.EssentiaBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2325,6 +2457,17 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Directory");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.DocumentMetadata", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.FileVersion", "FileVersion")
+                        .WithOne("DocumentMetadata")
+                        .HasForeignKey("Alexandria.Data.Models.DocumentMetadata", "FileVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FileVersion");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.EssentiaBatchFile", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.EssentiaBatch", "Batch")
@@ -2778,6 +2921,8 @@ namespace Alexandria.Data.Migrations
 
             modelBuilder.Entity("Alexandria.Data.Models.FileVersion", b =>
                 {
+                    b.Navigation("DocumentMetadata");
+
                     b.Navigation("Previews");
                 });
 
