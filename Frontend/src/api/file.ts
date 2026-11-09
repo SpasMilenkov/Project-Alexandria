@@ -23,9 +23,10 @@ export interface UpdateFileMetadataResponse {
   updatedBy: string | null;
 }
 
+// The server requires both lists, so an empty one is sent rather than left out.
 export interface InitBulkDownloadRequest {
-  fileIds?: string[] | null;
-  directoryIds?: string[] | null;
+  fileIds: string[];
+  directoryIds: string[];
 }
 
 export interface GenerateSignedUrlResponse {

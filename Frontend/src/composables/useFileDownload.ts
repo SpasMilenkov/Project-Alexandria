@@ -133,7 +133,7 @@ export const useFileDownload = () => {
     await handleEncryptedDownload(info);
   };
 
-  const downloadBulk = async (fileIds?: string[], directoryIds?: string[]) => {
+  const downloadBulk = async (fileIds: string[] = [], directoryIds: string[] = []) => {
     const token = await fileApi.bulkDownloadInit({ directoryIds, fileIds });
     logger.log("token", token);
     const a = document.createElement("a");
