@@ -101,6 +101,7 @@ public class MimeCatalogTests
         var emitted = ExtensionMimeMap.AllTypes
             .Concat(MimeFileNameMap.AllTypes)
             .Concat(IsoBmffBrands.AllTypes)
+            .Concat(MobipocketSignature.AllTypes)
             .Distinct(StringComparer.Ordinal);
 
         foreach (var type in emitted)
@@ -127,6 +128,8 @@ public class MimeCatalogTests
             ["aliases"] = aliases,
             ["previewWorker"] = ToJson(MimeCategories.PreviewWorker),
             ["autoTag"] = ToJson(AutoTagSupportedFileTypes.Supported),
+            ["documentMetadata"] = ToJson(DocumentMetadataFileTypes.Supported),
+            ["books"] = ToJson(DocumentMetadataFileTypes.Books),
             ["groups"] = groups
         };
     }

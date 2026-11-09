@@ -211,6 +211,32 @@ public class MimeDetectiveSnifferTests
         Assert.Null(IsoBmffBrands.Detect(header));
     }
 
+    // The title opens the file as plain text, which the default definitions read as an email.
+    [Theory]
+    [InlineData("crusoe.azw3", "application/vnd.amazon.mobi8-ebook")]
+    [InlineData("crusoe.mobi", "application/x-mobipocket-ebook")]
+    [InlineData("crusoe.azw", "application/vnd.amazon.ebook")]
+    [InlineData("crusoe.prc", "application/x-mobipocket-ebook")]
+    public void S22_a_kindle_book_resolves_by_extension_within_the_mobipocket_family(string fileName, string expected)
+    {
+        var resolver = new MimeTypeResolver(MakeSniffer());
+
+        var result = resolver.Resolve(fileName, MakePalmBook("The_Life_and_Adventures_of_Robi"), "message/rfc822");
+
+        Assert.Equal(expected, result.MimeType);
+        Assert.Equal("application/x-mobipocket-ebook", result.Sniffed);
+    }
+
+    [Fact]
+    public void S23_a_palm_database_of_another_type_is_not_a_book()
+    {
+        var header = MakePalmBook("Notes");
+        "TEXtREAd"u8.CopyTo(header.AsSpan(60));
+
+        Assert.Null(MobipocketSignature.Detect(header));
+        Assert.Null(MobipocketSignature.Detect(header.AsSpan(0, 67).ToArray()));
+    }
+
     private static MimeDetectiveSniffer MakeSniffer()
         => new(NullLogger<MimeDetectiveSniffer>.Instance);
 
@@ -226,6 +252,17 @@ public class MimeDetectiveSnifferTests
 
         for (var i = 0; i < compatibleBrands.Length; i++)
             Encoding.ASCII.GetBytes(compatibleBrands[i]).CopyTo(header.AsSpan(16 + 4 * i));
+
+        return header;
+    }
+
+    /// <summary>A Palm database header of type BOOK/MOBI: a 32-byte name, then the type codes at 60.</summary>
+    private static byte[] MakePalmBook(string name)
+    {
+        var header = new byte[256];
+
+        Encoding.ASCII.GetBytes(name).CopyTo(header.AsSpan(0, 31));
+        "BOOKMOBI"u8.CopyTo(header.AsSpan(60));
 
         return header;
     }

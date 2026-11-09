@@ -51,4 +51,8 @@ public class FileVersion : IBase
     public Guid FileId { get; set; }
     public File File { get; set; } = null!;
     public ICollection<Preview> Previews { get; set; } = new List<Preview>();
+
+    // Null until the worker has read the document's properties, and always null for types it
+    // cannot read.
+    public DocumentMetadata? DocumentMetadata { get; set; }
 }

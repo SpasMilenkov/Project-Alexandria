@@ -1,10 +1,14 @@
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions.Preview;
+using Alexandria.Common.Exceptions.Preview.Documents;
+using Alexandria.Common.Helpers;
 using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Preview.Documents;
+using File = System.IO.File;
 
 namespace Alexandria.Workers.Document.Handlers;
 
@@ -13,6 +17,7 @@ public class PreviewGenerationHandler(
     IContentStorageService storage,
     IPreviewArtifactService artifacts,
     IPdfPreviewService pdfPreviewService,
+    IDocumentMetadataService documentMetadata,
     IUnitOfWork unitOfWork) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string message, CancellationToken ct = default)
@@ -73,6 +78,16 @@ public class PreviewGenerationHandler(
             logger.LogInformation("File {FileId} downloaded to {TempPath}, size: {Size}",
                 message, tempPath, new FileInfo(tempPath).Length);
 
+            if (!version.IsEncrypted && DocumentMetadataFileTypes.FormatOf(mimetype) is not null)
+            {
+                var metadata = await TryStoreDocumentMetadataAsync(versionId, mimetype, tempPath, ct);
+
+                // LibreOffice refuses a locked file outright and Ghostscript renders zero pages
+                // from one, so converting would only fail after spending the tool's startup.
+                if (metadata?.IsPasswordProtected == true)
+                    throw new DocumentPasswordProtectedException(versionId);
+            }
+
             var fileCategory = storage.CategorizeFile(mimetype);
             var (previewPath, thumbnailPath) =
                 await pdfPreviewService.GeneratePreviewAsync(tempPath, fileCategory, ct);
@@ -114,6 +129,23 @@ public class PreviewGenerationHandler(
         finally
         {
             JobScratch.Delete(scratch, logger);
+        }
+    }
+
+    // A document with broken properties should still get its preview. The backfill sweep picks
+    // up any version left without a row.
+    private async Task<DocumentMetadata?> TryStoreDocumentMetadataAsync(Guid versionId, string mimeType,
+        string path, CancellationToken ct)
+    {
+        try
+        {
+            return await documentMetadata.ExtractAndStoreAsync(versionId, mimeType, path, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Could not store document metadata for version {VersionId}", versionId);
+
+            return null;
         }
     }
 

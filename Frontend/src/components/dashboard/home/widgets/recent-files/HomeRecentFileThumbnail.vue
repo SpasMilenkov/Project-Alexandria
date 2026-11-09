@@ -25,6 +25,7 @@ const showThumbnail = computed(
   () =>
     settings.thumbnailsEnabled &&
     !file.currentVersion.isEncrypted &&
+    !file.currentVersion.isPasswordProtected &&
     thumbnail.canHaveThumbnail.value &&
     !thumbnail.thumbnailErrored.value,
 );

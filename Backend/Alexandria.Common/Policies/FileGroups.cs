@@ -34,7 +34,10 @@ public static class FileGroups
             "application/vnd.ms-word.document.macroenabled.12",
             "application/vnd.oasis.opendocument.text",
             "application/rtf",
-            "application/epub+zip"
+            "application/epub+zip",
+            "application/x-mobipocket-ebook",
+            "application/vnd.amazon.mobi8-ebook",
+            "application/vnd.amazon.ebook"
         ])),
         (Spreadsheets, new MimeMatcher(types:
         [

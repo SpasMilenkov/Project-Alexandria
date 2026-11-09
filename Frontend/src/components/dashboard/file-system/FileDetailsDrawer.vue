@@ -24,11 +24,45 @@
           Encrypted
         </span>
       </template>
+
+      <template v-else-if="detail.currentVersion.isPasswordProtected">
+        <span aria-hidden="true">·</span>
+        <span class="flex items-center gap-1">
+          <Icon icon="mdi:file-lock" class="h-3.5 w-3.5" aria-hidden="true" />
+          Password protected
+        </span>
+      </template>
     </template>
 
     <template v-if="displayFile && detail">
+      <section
+        v-if="detail.currentVersion.isPasswordProtected"
+        class="flex flex-col gap-3"
+        data-password-protected-notice
+      >
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview</h3>
+
+        <div
+          class="flex items-start gap-3 rounded-lg border border-gray-200/70 p-3 dark:border-gray-700/70"
+        >
+          <Icon
+            icon="mdi:file-lock"
+            class="mt-0.5 h-5 w-5 shrink-0 text-gray-500 dark:text-gray-400"
+            aria-hidden="true"
+          />
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+              No preview for locked documents
+            </p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              The document needs a password to open. Download it and open it with the password.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <FilePreview
-        v-if="!detail.currentVersion.isEncrypted"
+        v-else-if="!detail.currentVersion.isEncrypted"
         :file-id="displayFile.fileId"
         :current-version-id="detail.currentVersion.id"
         :file-name="detail.fileName"
@@ -140,6 +174,14 @@
         :enabled="isOpen"
       />
 
+      <FileDocumentDetails
+        v-if="hasDocumentMetadata"
+        :file-id="displayFile.fileId"
+        :version-id="detail.currentVersion.id"
+        :is-book="isEbookMimeType(detail.currentVersion.mimeType)"
+        :enabled="isOpen"
+      />
+
       <DetailsSection title="Owner">
         <DetailsOwner :name="detail.owner.name" :email="detail.owner.email" />
       </DetailsSection>
@@ -181,10 +223,13 @@ import {
   getFileTypeReadable,
   isAutoTagSupportedFileType,
   isCaptureMetadataSupportedMimeType,
+  isDocumentMetadataSupportedMimeType,
+  isEbookMimeType,
 } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
 
 import FileCaptureDetails from "./FileCaptureDetails.vue";
+import FileDocumentDetails from "./FileDocumentDetails.vue";
 import FilePreview from "./FilePreview.vue";
 import FileVersionHistory from "./FileVersionHistory.vue";
 
@@ -250,6 +295,12 @@ const hasCaptureMetadata = computed(() => {
   if (!detail.value || detail.value.currentVersion.isEncrypted) return false;
 
   return isCaptureMetadataSupportedMimeType(detail.value.currentVersion.mimeType);
+});
+
+const hasDocumentMetadata = computed(() => {
+  if (!detail.value || detail.value.currentVersion.isEncrypted) return false;
+
+  return isDocumentMetadataSupportedMimeType(detail.value.currentVersion.mimeType);
 });
 
 const extractAutoTagError = (err: any): string => {

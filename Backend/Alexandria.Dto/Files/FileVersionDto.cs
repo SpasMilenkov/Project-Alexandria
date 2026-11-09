@@ -8,4 +8,5 @@ public record FileVersionDto(
     DateTime CreatedAt,
     bool isDeleted,
     bool isEncrypted,
-    DateTime? CoverUpdatedAt);
+    DateTime? CoverUpdatedAt,
+    bool IsPasswordProtected);

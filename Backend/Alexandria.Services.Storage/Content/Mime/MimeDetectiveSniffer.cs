@@ -9,7 +9,8 @@ namespace Alexandria.Services.Storage.Content.Mime;
 /// <see cref="IMimeSniffer"/> backed by MimeDetective. The content inspector is built once in the
 /// constructor because building is expensive. The built-in default definitions are used because
 /// the optional Condensed and Exhaustive packs carry the upstream TrID non-commercial terms.
-/// Those defaults cannot tell ISO BMFF brands apart, so <see cref="IsoBmffBrands"/> is consulted first.
+/// Those defaults cannot tell ISO BMFF brands apart and mistake Kindle books for email, so
+/// <see cref="IsoBmffBrands"/> and <see cref="MobipocketSignature"/> are consulted first.
 /// This is the only catch in the MIME path: any failure is logged at debug level (never with file
 /// content) and reported as "no match", so sniffing can never reject an upload.
 /// </summary>
@@ -41,7 +42,7 @@ public sealed partial class MimeDetectiveSniffer : IMimeSniffer
 
         try
         {
-            return IsoBmffBrands.Detect(header) ?? inspect(header);
+            return IsoBmffBrands.Detect(header) ?? MobipocketSignature.Detect(header) ?? inspect(header);
         }
         catch (Exception ex)
         {

@@ -22,8 +22,8 @@ public static class MimeCategories
                 "application/x-sh", "application/x-php", "application/dart"
             ])),
 
-        // EPUB is deliberately absent: the document worker has no EPUB renderer, so routing it there
-        // would only queue a job that is bound to fail and be retried.
+        // Ebooks (EPUB, Mobipocket, Kindle) are deliberately absent: the document worker has no book
+        // renderer, so routing them there would only queue a job that is bound to fail and be retried.
         (FileCategory.Document, new MimeMatcher(types:
         [
             "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

@@ -9,6 +9,7 @@ export interface FileThumbnailSource {
   versionId?: string;
   mimeType?: string | null;
   isEncrypted?: boolean;
+  isPasswordProtected?: boolean;
   coverUpdatedAt?: string | null;
 }
 
@@ -26,8 +27,8 @@ const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 30_000, 60_000];
 // When mimeType is provided and outside the backend thumbnail allowlist
 // (text, archives, unknown), canHaveThumbnail is false so callers can skip
 // mounting the <img> entirely instead of firing a doomed request.
-// Encrypted versions force the same gate: the backend generates no previews
-// for them, so a request would only burn the retry budget.
+// Encrypted and password-protected versions force the same gate: the backend
+// generates no previews for them, so a request would only burn the retry budget.
 // mimeType and isEncrypted omitted preserve the legacy behavior (URL always built).
 export const useFileThumbnail = (source: () => FileThumbnailSource) => {
   const thumbnailLoaded = ref(false);
@@ -57,6 +58,7 @@ export const useFileThumbnail = (source: () => FileThumbnailSource) => {
 
   const canHaveThumbnail = computed(() => {
     if (source().isEncrypted === true) return false;
+    if (source().isPasswordProtected === true) return false;
     const mimeType = source().mimeType;
     if (mimeType === undefined) return true;
     return isThumbnailSupportedMimeType(mimeType);

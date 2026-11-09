@@ -29,7 +29,10 @@ public static class FileProjections
                 f.CurrentVersion.Previews
                     .Where(p => p.Kind == PreviewKind.Thumbnail && p.IsManual)
                     .Select(p => p.UpdatedAt)
-                    .FirstOrDefault()
+                    .FirstOrDefault(),
+                f.CurrentVersion.DocumentMetadata != null
+                && f.CurrentVersion.DocumentMetadata.DeletedAt == null
+                && f.CurrentVersion.DocumentMetadata.IsPasswordProtected
             ),
             f.FileTags!.Where(ft => ft.Source != TagSource.Suppressed && ft.Tag.DeletedAt == null)
                 .Select(ft => new TagDto

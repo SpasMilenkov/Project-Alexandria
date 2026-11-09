@@ -11,6 +11,7 @@ public sealed class UnitOfWork(
     IPreviewJobRepository previewJobs,
     IMediaMetadataRepository mediaData,
     ICaptureMetadataRepository captureMetadata,
+    IDocumentMetadataRepository documentMetadata,
     IRefreshTokenRepository refreshTokens,
     ITagRepository tags,
     IDirectoryRepository directories,
@@ -43,6 +44,7 @@ public sealed class UnitOfWork(
     public IPreviewJobRepository PreviewJobs { get; } = previewJobs;
     public IMediaMetadataRepository MediaMetadata { get; } = mediaData;
     public ICaptureMetadataRepository CaptureMetadata { get; } = captureMetadata;
+    public IDocumentMetadataRepository DocumentMetadata { get; } = documentMetadata;
     public IRefreshTokenRepository RefreshTokens { get; } = refreshTokens;
     public ITagRepository Tags { get; } = tags;
     public IDirectoryRepository Directories { get; } = directories;

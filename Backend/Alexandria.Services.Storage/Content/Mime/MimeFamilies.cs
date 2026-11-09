@@ -10,6 +10,7 @@ internal static class MimeFamilies
     private const string IsoBmff = "iso-bmff";
     private const string Matroska = "matroska";
     private const string Ogg = "ogg";
+    private const string Mobipocket = "mobipocket";
 
     private static readonly Dictionary<string, string> FamilyByMime = Build(
         (ZipBased,
@@ -27,7 +28,8 @@ internal static class MimeFamilies
         ]),
         (IsoBmff, ["video/mp4", "audio/mp4", "video/x-m4v", "video/quicktime"]),
         (Matroska, ["video/webm", "audio/webm", "video/x-matroska", "audio/x-matroska"]),
-        (Ogg, ["audio/ogg", "video/ogg", "application/ogg"]));
+        (Ogg, ["audio/ogg", "video/ogg", "application/ogg"]),
+        (Mobipocket, ["application/x-mobipocket-ebook", "application/vnd.amazon.mobi8-ebook", "application/vnd.amazon.ebook"]));
 
     public static string? FamilyOf(string canonical)
         => FamilyByMime.GetValueOrDefault(canonical);

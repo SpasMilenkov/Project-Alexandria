@@ -3,6 +3,8 @@ import { formatBytes } from "@/utils/size";
 import {
   canonicalizeMime,
   isAutoTagSupportedMime,
+  isBookMime,
+  isDocumentMetadataSupportedMime,
   policyGroupOf,
   routesToPreviewWorker,
 } from "./mime-catalog";
@@ -48,6 +50,9 @@ export const MIME_META: Readonly<Record<string, MimeMeta>> = {
   },
   "application/rtf": { group: "Documents", label: "Rich Text Document" },
   "application/epub+zip": { group: "Documents", label: "EPUB Book" },
+  "application/x-mobipocket-ebook": { group: "Documents", label: "Mobipocket Book" },
+  "application/vnd.amazon.mobi8-ebook": { group: "Documents", label: "Kindle Book" },
+  "application/vnd.amazon.ebook": { group: "Documents", label: "Kindle Book" },
   "text/markdown": { group: "Text", label: "Markdown Document" },
 
   // Spreadsheets
@@ -354,6 +359,14 @@ export const isThumbnailSupportedMimeType = (mimeType: string | null | undefined
 /** Whether the image worker reads capture metadata (camera, date, location) for this type. */
 export const isCaptureMetadataSupportedMimeType = (mimeType: string | null | undefined): boolean =>
   policyGroupOf(mimeType) === "Images";
+
+/** Whether the document worker reads properties (author, dates, counts) for this type. */
+export const isDocumentMetadataSupportedMimeType = (mimeType: string | null | undefined): boolean =>
+  isDocumentMetadataSupportedMime(mimeType);
+
+/** Whether the type is an ebook (EPUB, Mobipocket, Kindle); the list comes from the backend catalog. */
+export const isEbookMimeType = (mimeType: string | null | undefined): boolean =>
+  isBookMime(mimeType);
 
 export interface GroupedMimeSizeResult {
   categories: FileGroup[];
