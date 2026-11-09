@@ -184,13 +184,17 @@ const deviceFact = (m: CaptureMetadataDto): CaptureFact | null => {
   return fact;
 };
 
+// Dimensions the parser could not read come back as zero, which says nothing worth showing.
 const sizeFact = (m: CaptureMetadataDto): CaptureFact | null => {
-  if (m.width === null || m.height === null) return null;
+  if (!m.width || !m.height) return null;
+
+  const shape = describeShape(m.width, m.height);
+  const megapixels = formatMegapixels(m.width, m.height);
 
   return {
     key: "size",
     icon: "mdi:image-outline",
-    title: `${describeShape(m.width, m.height)} · ${formatMegapixels(m.width, m.height)}`,
+    title: megapixels ? `${shape} · ${megapixels}` : shape,
     detail: `${m.width} × ${m.height} pixels`,
   };
 };

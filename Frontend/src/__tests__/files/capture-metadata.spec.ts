@@ -149,6 +149,12 @@ describe("size and place", () => {
     expect(formatMegapixels(4032, 3024)).toBe("12.2 MP");
   });
 
+  it("gives no megapixel figure for images too small to round above zero", () => {
+    expect(formatMegapixels(200, 200)).toBeNull();
+    expect(formatMegapixels(0, 0)).toBeNull();
+    expect(formatMegapixels(400, 300)).toBe("0.1 MP");
+  });
+
   it("formats coordinates with hemispheres", () => {
     expect(formatCoordinates(48.858_37, -2.294_48)).toBe("48.85837° N, 2.29448° W");
     expect(formatCoordinates(-33.8688, 151.2093)).toBe("33.86880° S, 151.20930° E");

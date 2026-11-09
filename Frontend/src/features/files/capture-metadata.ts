@@ -92,8 +92,12 @@ export const formatAperture = (fNumber: number): string => `f/${trimNumber(fNumb
 export const formatFocalLength = (millimetres: number): string =>
   `${trimNumber(millimetres, 1)} mm`;
 
-export const formatMegapixels = (width: number, height: number): string =>
-  `${trimNumber((width * height) / 1_000_000, 1)} MP`;
+// Null below a tenth of a megapixel, where the rounded figure would read "0 MP".
+export const formatMegapixels = (width: number, height: number): string | null => {
+  const megapixels = trimNumber((width * height) / 1_000_000, 1);
+
+  return megapixels === "0" ? null : `${megapixels} MP`;
+};
 
 export const describeShape = (width: number, height: number): string => {
   const ratio = Math.max(width, height) / Math.min(width, height);
