@@ -6,6 +6,7 @@ import type { GalleryPhoto } from "@/api/gallery";
 import GalleryTile from "@/components/gallery/GalleryTile.vue";
 
 const photo: GalleryPhoto = {
+  directoryId: null,
   fileId: "file-1",
   height: 3000,
   mimeType: "image/jpeg",

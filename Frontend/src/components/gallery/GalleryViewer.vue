@@ -28,6 +28,7 @@ const emit = defineEmits<{
   close: [];
   closed: [];
   share: [photo: GalleryPhoto];
+  showInFolder: [photo: GalleryPhoto];
   trash: [photo: GalleryPhoto];
 }>();
 
@@ -236,6 +237,16 @@ const isOpen = computed({
               class="text-gray-900 hover:bg-gray-900/10 dark:text-white dark:hover:bg-white/10"
               :class="{ 'bg-gray-900/10 dark:bg-white/15': infoOpen }"
               @click="infoOpen = !infoOpen"
+            />
+
+            <UButton
+              icon="i-lucide-folder-open"
+              color="neutral"
+              variant="ghost"
+              aria-label="Show in folder"
+              title="Show in folder"
+              class="text-gray-900 hover:bg-gray-900/10 dark:text-white dark:hover:bg-white/10"
+              @click="emit('showInFolder', photo)"
             />
 
             <UButton

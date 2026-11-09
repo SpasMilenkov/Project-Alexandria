@@ -7,6 +7,8 @@ export interface GalleryPhoto {
   versionId: string;
   name: string;
   mimeType: string;
+  // Null when the file sits at the root.
+  directoryId: string | null;
   // The camera's wall clock labeled UTC: read it with UTC getters, never local ones.
   takenAt: string;
   // A real instant: local getters give the viewer's time.

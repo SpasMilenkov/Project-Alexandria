@@ -13,6 +13,7 @@ import {
 } from "@/features/gallery/viewer";
 
 const photo = (id: string): GalleryPhoto => ({
+  directoryId: null,
   fileId: id,
   height: 3000,
   mimeType: "image/jpeg",

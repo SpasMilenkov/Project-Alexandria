@@ -655,6 +655,7 @@ const trashViewed = async (photo: GalleryPhoto) => {
       @close="closeViewer"
       @closed="onViewerClosed"
       @share="actions.share"
+      @show-in-folder="actions.showInFolder"
       @trash="trashViewed"
     />
   </div>

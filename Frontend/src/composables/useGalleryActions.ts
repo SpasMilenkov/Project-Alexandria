@@ -11,6 +11,7 @@ import { useLazyModal } from "@/composables/useLazyOverlay";
 import { monthsHolding, photosSubject } from "@/features/gallery/selection";
 import { deleteFiles, restoreFiles } from "@/mutations/files";
 import { GALLERY_QUERY_KEYS } from "@/queries/gallery";
+import { useTabStore } from "@/stores/tab";
 
 interface GalleryActionsOptions {
   months: () => GalleryMonth[];
@@ -24,6 +25,7 @@ export const useGalleryActions = ({ months, loader, onRemoved }: GalleryActionsO
   const toast = useAppToast("files");
   const queryCache = useQueryCache();
   const router = useRouter();
+  const tabStore = useTabStore();
   const { downloadBulk, downloadVersion } = useFileDownload();
   const { mutateAsync: trashFiles } = deleteFiles();
   const { mutateAsync: untrashFiles } = restoreFiles();
@@ -114,5 +116,11 @@ export const useGalleryActions = ({ months, loader, onRemoved }: GalleryActionsO
     shareLinkModal.open({ fileId: photo.fileId, fileName: photo.name });
   };
 
-  return { download, share, trash };
+  // A new tab, so the explorer tabs already open stay where the user left them.
+  const showInFolder = (photo: GalleryPhoto) => {
+    tabStore.createTab(photo.directoryId, photo.fileId);
+    void router.push({ name: "dashboard" });
+  };
+
+  return { download, share, showInFolder, trash };
 };

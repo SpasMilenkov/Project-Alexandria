@@ -23,6 +23,7 @@ const metrics: TimelineMetrics = {
 };
 
 const photo = (index: number, width = 4000, height = 3000): GalleryPhoto => ({
+  directoryId: null,
   fileId: `file-${index}`,
   height,
   mimeType: "image/jpeg",
