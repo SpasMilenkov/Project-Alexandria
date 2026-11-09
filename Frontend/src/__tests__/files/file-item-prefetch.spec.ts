@@ -87,6 +87,31 @@ describe("FileItem prefetch", () => {
     expect(refresh).toHaveBeenCalledTimes(3);
   });
 
+  it("warms the image details for images so the drawer opens at full height", async () => {
+    const image = makeFile("f1");
+    image.mimeType = "image/jpeg";
+    image.currentVersion.mimeType = "image/jpeg";
+    const wrapper = mountRow(image);
+    await wrapper.find("button").trigger("mouseenter");
+    vi.advanceTimersByTime(150);
+
+    const ensuredKeys = ensure.mock.calls.map(([options]) => (options as { key: unknown[] }).key);
+    expect(ensuredKeys.some((key) => key.includes("capture-metadata"))).toBe(true);
+    expect(refresh).toHaveBeenCalledTimes(5);
+  });
+
+  it("skips the image details warmup for encrypted images", async () => {
+    const image = makeFile("f1", true);
+    image.mimeType = "image/jpeg";
+    image.currentVersion.mimeType = "image/jpeg";
+    const wrapper = mountRow(image);
+    await wrapper.find("button").trigger("mouseenter");
+    vi.advanceTimersByTime(150);
+
+    const ensuredKeys = ensure.mock.calls.map(([options]) => (options as { key: unknown[] }).key);
+    expect(ensuredKeys.some((key) => key.includes("capture-metadata"))).toBe(false);
+  });
+
   it("cancels a pending warmup when interest moves away", async () => {
     const wrapper = mountRow();
     await wrapper.find("button").trigger("mouseenter");

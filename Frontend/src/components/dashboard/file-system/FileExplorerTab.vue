@@ -686,6 +686,7 @@ import {
 } from "@/composables/useExplorerDragSession";
 import { useExplorerItemDrag } from "@/composables/useExplorerItemDrag";
 import { useExplorerMarquee } from "@/composables/useExplorerMarquee";
+import { useExplorerReveal } from "@/composables/useExplorerReveal";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useFileExplorer } from "@/composables/useFileExplorer";
 import { type FileTooltipEnterKind, useFileTooltip } from "@/composables/useFileTooltip";
@@ -2038,6 +2039,24 @@ const handleEscapeKey = (event: KeyboardEvent) => {
 useEventListener(window, "keydown", (event) => {
   if (event.key === "Escape") handleEscapeKey(event);
 });
+
+const revealFileId = tabStore.takeRevealFileId(tabId);
+
+if (revealFileId) {
+  useExplorerReveal({
+    fileId: revealFileId,
+    directoryId: tabStore.getTab(tabId)?.activeDirId ?? null,
+    currentDirId,
+    filesList,
+    hasMoreFiles: () => filePagination.value.hasNext,
+    loadMoreFiles,
+    select: (fileId) => {
+      clearSelection();
+      toggleSelect(fileId, "file");
+      lastSelected.value = fileId;
+    },
+  });
+}
 
 onMounted(() => {
   const tab = tabStore.getTab(tabId);

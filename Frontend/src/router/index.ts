@@ -271,6 +271,12 @@ const router = createRouter({
       path: "/onboarding/tour",
     },
     {
+      component: () => import("@/views/dashboard/GalleryView.vue"),
+      meta: { layout: "dashboard", requiresAuth: true, siteIcon: "photos", title: "Photos" },
+      name: "gallery",
+      path: "/gallery",
+    },
+    {
       component: () => import("@/views/dashboard/streaming/MediaOverviewView.vue"),
       meta: { layout: "dashboard", requiresAuth: true, siteIcon: "music", title: "Media" },
       name: "media-overview",

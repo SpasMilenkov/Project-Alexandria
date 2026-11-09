@@ -13,6 +13,7 @@ using Alexandria.Services.Storage.AutoTagging;
 using Alexandria.Services.Storage.Cleanup;
 using Alexandria.Services.Storage.Content;
 using Alexandria.Services.Storage.Directories;
+using Alexandria.Services.Storage.Gallery;
 using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Previews;
 using Alexandria.Services.Storage.Promotions;
@@ -82,6 +83,8 @@ public static class ServiceExtensions
         services.AddScoped<IListeningStatsService, ListeningStatsService>();
         services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();
         services.AddScoped<ICaptureMetadataRepository, CaptureMetadataRepository>();
+        services.AddScoped<IGalleryRepository, GalleryRepository>();
+        services.AddScoped<IGalleryService, GalleryService>();
         services.AddScoped<ISummaryGenerator, WrappedSummaryGenerator>();
         services.AddScoped<IOverviewSummaryService, OverviewSummaryService>();
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();

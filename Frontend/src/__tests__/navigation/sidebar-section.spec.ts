@@ -47,7 +47,7 @@ describe("SidebarSection", () => {
     const wrapper = await mountSection({ section: library });
 
     expect(wrapper.find("button").exists()).toBe(false);
-    expect(linksIn(wrapper, "Library navigation")).toHaveLength(5);
+    expect(linksIn(wrapper, "Library navigation")).toHaveLength(6);
   });
 
   it("highlights only the leaf for the current page", async () => {
