@@ -24,6 +24,7 @@ export interface SidebarOptions {
 const LIBRARY_ITEMS: SidebarItem[] = [
   { label: "Home", icon: "i-lucide-house", to: "/home", activeRoutes: ["home"] },
   { label: "Files", icon: "i-lucide-folder", to: "/dashboard", activeRoutes: ["dashboard"] },
+  { label: "Photos", icon: "i-lucide-images", to: "/gallery", activeRoutes: ["gallery"] },
   { label: "Tags", icon: "i-lucide-tag", to: "/dashboard/tags", activeRoutes: ["tags"] },
   {
     label: "Access history",

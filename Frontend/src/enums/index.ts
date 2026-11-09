@@ -4,6 +4,7 @@ import type { SortDirection } from "./SortDirection";
 import type { UserRole } from "./UserRole";
 
 import { AutoGroupKind } from "./auto-group-kind";
+import { GallerySort } from "./gallery-sort";
 import {
   HomeClockHourFormat,
   HomeClockStyle,
@@ -52,6 +53,7 @@ export {
   HomeRecentFilesStyle,
   HomeStorageStyle,
   AutoGroupKind,
+  GallerySort,
   HomeShortcutGroup,
   HomeClockHourFormat,
   HomeClockStyle,
