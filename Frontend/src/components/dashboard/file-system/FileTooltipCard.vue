@@ -48,6 +48,14 @@
         <dd>Yes</dd>
       </div>
 
+      <div v-if="props.data.currentVersion.isPasswordProtected" class="tooltip-card__meta-row">
+        <dt>
+          <UIcon name="i-mdi-file-lock" class="tooltip-card__meta-icon" />
+          Password
+        </dt>
+        <dd>Required</dd>
+      </div>
+
       <div class="tooltip-card__meta-row">
         <dt>
           <UIcon name="i-heroicons-user" class="tooltip-card__meta-icon" />

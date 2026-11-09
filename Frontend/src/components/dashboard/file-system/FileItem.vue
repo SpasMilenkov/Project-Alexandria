@@ -58,6 +58,14 @@
           <span class="sr-only">Encrypted</span>
         </span>
         <span
+          v-else-if="props.data.currentVersion.isPasswordProtected"
+          class="absolute top-2 left-2 flex items-center justify-center rounded-md bg-neutral-900/80 p-0.5 text-white"
+          data-password-protected-indicator
+        >
+          <Icon icon="mdi:file-lock" class="w-3.5 h-3.5" aria-hidden="true" />
+          <span class="sr-only">Password protected</span>
+        </span>
+        <span
           v-if="fileExtension"
           class="absolute bottom-2 left-2 max-w-16 truncate rounded border border-gray-200/70 px-1.5 text-[11px] leading-[18px] text-gray-700 frosted-glass glass-surface-strong dark:border-gray-700/70 dark:text-gray-200"
         >
@@ -119,6 +127,14 @@
         >
           <Icon icon="mdi:lock" class="w-3.5 h-3.5" aria-hidden="true" />
           <span class="sr-only">Encrypted</span>
+        </span>
+        <span
+          v-else-if="props.data.currentVersion.isPasswordProtected"
+          class="flex shrink-0 items-center text-gray-500 dark:text-gray-500"
+          data-password-protected-indicator
+        >
+          <Icon icon="mdi:file-lock" class="w-3.5 h-3.5" aria-hidden="true" />
+          <span class="sr-only">Password protected</span>
         </span>
       </span>
       <span
@@ -204,6 +220,7 @@ const {
 } = useFileThumbnail(() => ({
   fileId: props.data.fileId,
   isEncrypted: props.data.currentVersion.isEncrypted,
+  isPasswordProtected: props.data.currentVersion.isPasswordProtected,
   mimeType: props.data.mimeType,
   versionId: props.data.currentVersion.id,
   coverUpdatedAt: props.data.currentVersion.coverUpdatedAt,
@@ -226,9 +243,10 @@ const prefetchDetails = useDebounceFn(() => {
   queryCache.refresh(queryCache.ensure(getFile(props.data.fileId)));
   queryCache.refresh(queryCache.ensure(getTagsForFile(props.data.fileId)));
 
-  // Encrypted versions have no backend preview, so warming that query would
-  // only spend a doomed request.
-  if (!props.data.currentVersion.isEncrypted) {
+  // Encrypted and password-protected versions have no backend preview, so
+  // warming that query would only spend a doomed request.
+  const { isEncrypted, isPasswordProtected } = props.data.currentVersion;
+  if (!isEncrypted && !isPasswordProtected) {
     const { fileId } = props.data;
     const versionId = props.data.currentVersion.id;
 

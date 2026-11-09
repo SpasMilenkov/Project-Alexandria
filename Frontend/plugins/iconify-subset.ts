@@ -342,6 +342,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "eye-outline",
     "file",
     "file-document",
+    "file-lock",
     "file-outline",
     "folder",
     "folder-arrow-up",

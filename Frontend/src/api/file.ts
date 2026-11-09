@@ -111,6 +111,8 @@ export interface FileVersionDto {
   versionNumber: number;
   isDeleted: boolean;
   isEncrypted: boolean;
+  // The document itself needs a password to open, so the worker renders no preview for it
+  isPasswordProtected: boolean;
   // Set when this version has a manual cover
   coverUpdatedAt?: string | null;
 }

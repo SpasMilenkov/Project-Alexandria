@@ -35,6 +35,14 @@
               <Icon icon="mdi-lock" class="w-3.5 h-3.5 text-gray-500 shrink-0" />
             </UTooltip>
 
+            <UTooltip
+              v-else-if="version.isPasswordProtected"
+              label="This version needs a password to open"
+              :delay-duration="400"
+            >
+              <Icon icon="mdi:file-lock" class="w-3.5 h-3.5 text-gray-500 shrink-0" />
+            </UTooltip>
+
             <UBadge
               v-if="version.isDeleted"
               color="error"
@@ -290,6 +298,7 @@ interface FileVersionDto {
   mimeType: string;
   isDeleted: boolean;
   isEncrypted: boolean;
+  isPasswordProtected: boolean;
 }
 
 const props = defineProps<{

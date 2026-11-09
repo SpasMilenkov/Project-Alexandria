@@ -119,6 +119,7 @@ export const createHomeWidgetPreview = (ownerId: string): HomeWidgetPreview => {
           versionNumber: 1,
           isDeleted: false,
           isEncrypted: false,
+          isPasswordProtected: false,
         },
         tags: [],
         owner,
