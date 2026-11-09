@@ -9,7 +9,7 @@ import type { ShareLinkSummaryDto } from "@/api/shareLinks";
 import { useAppToast } from "@/composables/useAppToast";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { createShareLink, revokeShareLink } from "@/mutations/shareLinks";
-import { getCaptureMetadata } from "@/queries/files";
+import { getCaptureMetadata, getDocumentMetadata } from "@/queries/files";
 import { getShareLinksForFile } from "@/queries/shareLinks";
 import { getFileIcon } from "@/utils/files/icons";
 import { glassModalContent } from "@/utils/modal-ui";
@@ -41,6 +41,10 @@ const {
 // Share links serve the original bytes, and only previews have their metadata stripped.
 const { data: captureMetadata } = useQuery(() =>
   getCaptureMetadata({ fileId, versionId: fileVersionId ?? null }),
+);
+
+const { data: documentMetadata } = useQuery(() =>
+  getDocumentMetadata({ fileId, versionId: fileVersionId ?? null }),
 );
 
 // Only show links that match this modal's scope: pinned to this version,
@@ -331,6 +335,15 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
             icon="i-mdi-map-marker-radius-outline"
             title="This photo includes its location"
             description="Anyone who downloads it from a share link can see where it was taken."
+          />
+
+          <UAlert
+            v-if="documentMetadata?.hasPersonalDetails"
+            color="warning"
+            variant="subtle"
+            icon="i-mdi-account-alert-outline"
+            title="This document names who wrote it"
+            description="Anyone who downloads it from a share link can see the author and company saved in it."
           />
 
           <div class="flex flex-wrap items-end gap-3">
