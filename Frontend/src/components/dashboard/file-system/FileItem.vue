@@ -152,6 +152,7 @@ import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { type FileTooltipEnterKind } from "@/composables/useFileTooltip";
 import {
   FILES_QUERY_KEYS,
+  getCaptureMetadata,
   getFile,
   getPreviewByVersion,
   getVersionsForFile,
@@ -161,6 +162,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { formatDate } from "@/utils/date-formatters";
 import { getFileExtension } from "@/utils/files/file-name";
 import { getFileIcon } from "@/utils/files/icons";
+import { isCaptureMetadataSupportedMimeType } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
 
 const settingsStore = useSettingsStore();
@@ -242,6 +244,12 @@ const prefetchDetails = useDebounceFn(() => {
         }),
       ),
     );
+
+    // The image details section grows from a spinner to a full list, so it
+    // has to be warm too or the drawer jumps on first open.
+    if (isCaptureMetadataSupportedMimeType(props.data.mimeType)) {
+      queryCache.refresh(queryCache.ensure(getCaptureMetadata({ fileId, versionId })));
+    }
   }
 
   queryCache.refresh(
