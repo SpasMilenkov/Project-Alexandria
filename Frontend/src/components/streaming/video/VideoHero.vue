@@ -5,7 +5,7 @@ import { computed } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
-import { formatPlaybackTime } from "@/utils/date-formatters";
+import { formatDuration, formatPlaybackTime } from "@/utils/date-formatters";
 
 const { file, positionSeconds } = defineProps<{
   file: MediaFileDto;
@@ -44,13 +44,9 @@ const progressPercent = computed(() => {
 const remainingText = computed(() => {
   if (!file.duration || file.duration <= 0) return null;
   if (positionSeconds === null) return null;
-  const remaining = Math.max(0, Math.round(file.duration - positionSeconds));
-  if (remaining >= 3600) {
-    const hours = Math.floor(remaining / 3600);
-    const minutes = Math.round((remaining % 3600) / 60);
-    return `${hours}h ${minutes}m left`;
-  }
-  return `${Math.max(1, Math.round(remaining / 60))} min left`;
+  // Whole minutes, at least one: seconds left are noise on a resume card.
+  const minutes = Math.max(1, Math.round((file.duration - positionSeconds) / 60));
+  return `${formatDuration(minutes * 60)} left`;
 });
 
 const metaText = computed(() => {

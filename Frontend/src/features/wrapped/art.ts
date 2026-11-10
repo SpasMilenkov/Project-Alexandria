@@ -1,6 +1,7 @@
 import type { WrappedCardFacts, WrappedCardResponse, WrappedPeriodPoint } from "@/api/stats";
 
 import { WrappedCardType } from "@/enums/wrapped-card-type";
+import { formatDuration } from "@/utils/date-formatters";
 
 type WrappedArtFamily = "orbit" | "ribbons" | "constellation";
 
@@ -207,12 +208,9 @@ export const buildWrappedRecipe = (
   return recipe;
 };
 
-export const formatWrappedDuration = (seconds: number): string => {
-  if (seconds < 60) return `${Math.round(seconds)} sec`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
-
-  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(seconds / 3600)} hr`;
-};
+// Wrapped copy reads its durations in sentences, and a year of music stays in hours, not days.
+export const formatWrappedDuration = (seconds: number): string =>
+  formatDuration(seconds, { largestUnit: "hour", style: "short" });
 
 export const monthLabel = (point: WrappedPeriodPoint): string =>
   new Intl.DateTimeFormat(undefined, { month: "short", timeZone: "UTC" }).format(

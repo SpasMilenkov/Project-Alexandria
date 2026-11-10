@@ -1,6 +1,7 @@
 import { formatOffset } from "./capture-metadata";
 
 import { formatNumber } from "@/utils/count";
+import { formatDuration } from "@/utils/date-formatters";
 
 // Formatters run in UTC on a pre-shifted timestamp, so the digits stay those of the author's
 // clock instead of moving into the viewer's zone.
@@ -37,16 +38,9 @@ export const describeDocumentMoment = (
   return moment;
 };
 
-export const formatEditingTime = (minutes: number): string => {
-  if (minutes < 60) return `${minutes} min`;
-
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-
-  if (rest === 0) return `${formatNumber(hours)} h`;
-
-  return `${formatNumber(hours)} h ${rest} min`;
-};
+/** Files record editing time in minutes; long totals stay in hours, the way editors report them. */
+export const formatEditingTime = (minutes: number): string =>
+  formatDuration(minutes * 60, { largestUnit: "hour", style: "short" });
 
 /** A readable language name for a tag like "en-US", or the tag itself when it is not one. */
 export const formatLanguage = (tag: string): string => {

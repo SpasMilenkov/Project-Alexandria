@@ -11,6 +11,7 @@ import {
   formatDayMonth,
   formatDayMonthRange,
   formatDaysAgo,
+  formatDuration,
   formatFullDate,
   formatPlaybackTime,
   formatTimeAgo,
@@ -183,6 +184,39 @@ describe("formatPlaybackTime", () => {
     expect(formatPlaybackTime(Number.NaN)).toBe("0:00");
     expect(formatPlaybackTime(Number.POSITIVE_INFINITY)).toBe("0:00");
     expect(formatPlaybackTime(-4)).toBe("0:00");
+  });
+});
+
+describe("formatDuration", () => {
+  it("shows the two largest units, dropping zero parts", () => {
+    expect(formatDuration(252)).toBe("4m 12s");
+    expect(formatDuration(3900)).toBe("1h 5m");
+    expect(formatDuration(7200)).toBe("2h");
+    expect(formatDuration(2 * 86_400 + 3 * 3600 + 240)).toBe("2d 3h");
+    expect(formatDuration(2 * 86_400 + 240, { maxUnits: 3 })).toBe("2d 4m");
+  });
+
+  it("drops smaller units instead of rounding up", () => {
+    expect(formatDuration(3599)).toBe("59m 59s");
+    expect(formatDuration(3599, { maxUnits: 1 })).toBe("59m");
+  });
+
+  it("keeps a tenth of a second under a minute and milliseconds under a second", () => {
+    expect(formatDuration(12.34)).toBe("12.3s");
+    expect(formatDuration(45)).toBe("45s");
+    expect(formatDuration(0.85)).toBe("850ms");
+    expect(formatDuration(0)).toBe("0s");
+  });
+
+  it("spells units out for sentences and can stay in hours", () => {
+    expect(formatDuration(3900, { style: "short" })).toBe("1 hr 5 min");
+    expect(formatDuration(30, { style: "short" })).toBe("30 sec");
+    expect(formatDuration(122 * 3600, { largestUnit: "hour" })).toBe("122h");
+  });
+
+  it("reads missing or negative input as zero", () => {
+    expect(formatDuration(Number.NaN)).toBe("0s");
+    expect(formatDuration(-5)).toBe("0s");
   });
 });
 

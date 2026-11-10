@@ -26,7 +26,11 @@
             {{ windowSuccessRate === null ? "—" : `${windowSuccessRate}%` }}
           </StatTile>
           <StatTile label="Avg duration (30d)" :loading="overviewLoading">
-            {{ overview?.duration ? formatDuration(overview.duration.avgMinutes) : "—" }}
+            {{
+              overview?.duration
+                ? formatDuration(overview.duration.avgMinutes * 60, { style: "short" })
+                : "—"
+            }}
           </StatTile>
         </div>
 
@@ -98,6 +102,7 @@ import { useServiceDeepLink } from "@/composables/useServiceDeepLink";
 import { useTheme } from "@/composables/useTheme";
 import { ServiceType } from "@/enums";
 import { playlistOverview, playlistTrend } from "@/queries/playlistStats";
+import { formatDuration } from "@/utils/date-formatters";
 
 ChartJS.register(
   Title,
@@ -167,13 +172,6 @@ const windowSuccessRate = computed(() => {
 
 // Sync runs finish in seconds, not minutes: show seconds below one
 // minute, whole minutes above, so the card never reads "0 min".
-const formatDuration = (avgMinutes: number): string => {
-  if (avgMinutes < 1) {
-    return `${Math.round(avgMinutes * 60)} sec`;
-  }
-  return `${Math.round(avgMinutes)} min`;
-};
-
 const gridColor = computed(() =>
   isDark.value ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)",
 );

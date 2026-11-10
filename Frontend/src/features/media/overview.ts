@@ -22,17 +22,6 @@ export const addedThisWeekLabel = (
   return `${added}${more ? "+" : ""} added this week`;
 };
 
-export const formatListeningTime = (seconds: number): string => {
-  const totalMinutes = Math.floor(seconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours === 0) return `${minutes}m`;
-  if (minutes === 0) return `${hours}h`;
-
-  return `${hours}h ${minutes}m`;
-};
-
 export interface WeekDay {
   date: string;
   label: string;

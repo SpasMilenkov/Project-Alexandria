@@ -155,7 +155,7 @@ interface ElapsedUnit {
 }
 
 // Counts round down, so a moment never reads as further away than it is.
-const largestUnit = (elapsedMs: number): ElapsedUnit => {
+const largestElapsedUnit = (elapsedMs: number): ElapsedUnit => {
   const hours = Math.floor(elapsedMs / HOUR_MS);
   const days = Math.floor(elapsedMs / DAY_MS);
 
@@ -200,18 +200,75 @@ export const formatTimeAgo = (value: DateInput, options: TimeAgoOptions = {}): s
     return formatCalendarDate(time);
   if (elapsedMs < MINUTE_MS) return "just now";
 
-  const { unit, value: count } = largestUnit(elapsedMs);
+  const { unit, value: count } = largestElapsedUnit(elapsedMs);
 
   return RELATIVE_FORMATS[style].format(offsetMs < 0 ? -count : count, unit);
 };
 
-const narrowUnit = (unit: "second" | "minute" | "hour" | "day") =>
-  new Intl.NumberFormat(undefined, { style: "unit", unit, unitDisplay: "narrow" });
+type DurationUnit = "day" | "hour" | "minute" | "second" | "millisecond";
 
-const AGE_SECONDS = narrowUnit("second");
-const AGE_MINUTES = narrowUnit("minute");
-const AGE_HOURS = narrowUnit("hour");
-const AGE_DAYS = narrowUnit("day");
+export type DurationStyle = "narrow" | "short";
+
+const unitFormatters = new Map<string, Intl.NumberFormat>();
+
+const formatUnit = (value: number, unit: DurationUnit, style: DurationStyle): string => {
+  const key = `${unit}|${style}`;
+  let formatter = unitFormatters.get(key);
+
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(undefined, {
+      maximumFractionDigits: 1,
+      style: "unit",
+      unit,
+      unitDisplay: style,
+    });
+    unitFormatters.set(key, formatter);
+  }
+
+  return formatter.format(value);
+};
+
+const UNIT_SECONDS: readonly (readonly [DurationUnit, number])[] = [
+  ["day", 86_400],
+  ["hour", 3600],
+  ["minute", 60],
+  ["second", 1],
+];
+
+export interface DurationOptions {
+  /** "narrow" reads "1h 5m" for dense rows and stats; "short" reads "1 hr 5 min" in sentences. */
+  style?: DurationStyle;
+  /** Units shown, largest first. The rest are dropped rather than rounded, so 59m 50s never reads 1h. */
+  maxUnits?: number;
+  /** "hour" keeps long totals such as listening time in hours ("122h") instead of days. */
+  largestUnit?: "day" | "hour";
+}
+
+/**
+ * A span of time for people to read: "850ms", "12.3s", "4m 12s", "1h 5m", "2d 3h". Not the
+ * player clock, which is formatPlaybackTime.
+ */
+export const formatDuration = (seconds: number, options: DurationOptions = {}): string => {
+  const { largestUnit = "day", maxUnits = 2, style = "narrow" } = options;
+  const total = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+
+  if (total > 0 && total < 1) return formatUnit(Math.round(total * 1000), "millisecond", style);
+  if (total < 60) return formatUnit(Math.floor(total * 10) / 10, "second", style);
+
+  const units = UNIT_SECONDS.filter(([unit]) => largestUnit === "day" || unit !== "day");
+  const first = units.findIndex(([, size]) => total >= size);
+  const parts: string[] = [];
+  let rest = Math.floor(total);
+
+  for (const [unit, size] of units.slice(first, first + maxUnits)) {
+    const value = Math.floor(rest / size);
+    rest -= value * size;
+
+    if (value > 0) parts.push(formatUnit(value, unit, style));
+  }
+
+  return parts.join(" ");
+};
 
 /**
  * How long something has lasted since `value`, as a bare span for "for 12m" phrasing. Stops at
@@ -221,11 +278,11 @@ export const formatAgeShort = (value: DateInput, now = Date.now()): string => {
   const elapsedMs = Math.max(0, now - new Date(value).getTime());
 
   if (Number.isNaN(elapsedMs)) return "";
-  if (elapsedMs < MINUTE_MS) return AGE_SECONDS.format(Math.floor(elapsedMs / SECOND_MS));
-  if (elapsedMs < HOUR_MS) return AGE_MINUTES.format(Math.floor(elapsedMs / MINUTE_MS));
-  if (elapsedMs < DAY_MS) return AGE_HOURS.format(Math.floor(elapsedMs / HOUR_MS));
+  if (elapsedMs < MINUTE_MS) return formatUnit(Math.floor(elapsedMs / SECOND_MS), "second", "narrow");
+  if (elapsedMs < HOUR_MS) return formatUnit(Math.floor(elapsedMs / MINUTE_MS), "minute", "narrow");
+  if (elapsedMs < DAY_MS) return formatUnit(Math.floor(elapsedMs / HOUR_MS), "hour", "narrow");
 
-  return AGE_DAYS.format(Math.floor(elapsedMs / DAY_MS));
+  return formatUnit(Math.floor(elapsedMs / DAY_MS), "day", "narrow");
 };
 
 // Counts midnights on the viewer's calendar rather than 24-hour spans, so 23:50 the night before
