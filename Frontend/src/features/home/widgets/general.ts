@@ -1,4 +1,5 @@
 import { HomeCountdownStyle, HomeDailyCoverStyle, HomeFocusStyle } from "@/enums/home-widget";
+import { pluralize } from "@/utils/count";
 import { formatFullDate, localDayKey } from "@/utils/date-formatters";
 
 export const HOME_COUNTDOWN_STYLES = [
@@ -92,7 +93,7 @@ export const homeCountdown = (target: string | Date | null, now: Date, dateLabel
 
   const days = calendarDayNumber(date) - calendarDayNumber(now);
   const minutes = Math.max(0, Math.floor((date.getTime() - now.getTime()) / 60_000));
-  let unit = Math.abs(days) === 1 ? "day" : "days";
+  let unit = pluralize(Math.abs(days), "day");
 
   if (days < 0) unit += " ago";
   if (days === 0) unit = "";

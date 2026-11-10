@@ -17,10 +17,10 @@ import {
 } from "@/composables/useLyrics";
 import { LyricsProvider } from "@/enums/lyrics-provider";
 import { LyricsStatus } from "@/enums/lyrics-status";
-import { countOf } from "@/features/toast/format";
 import { changeProvider, deleteLyrics, requeueLyrics, uploadLyrics } from "@/mutations/lyrics";
 import { getLyrics, lyricsPollInterval } from "@/queries/lyrics";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatCount } from "@/utils/count";
 import { formatTimeAgo } from "@/utils/date-formatters";
 
 import LyricsEmptyState from "./LyricsEmptyState.vue";
@@ -269,7 +269,7 @@ const manualFormat = computed(() => {
       ? parseSyncedLyrics(raw).length
       : raw.split("\n").filter((line) => line.trim()).length;
 
-  return { ...FORMAT_META[format], count: countOf(lineCount, FORMAT_META[format].unit) };
+  return { ...FORMAT_META[format], count: formatCount(lineCount, FORMAT_META[format].unit) };
 });
 
 const manualUploadTitle = computed(() =>

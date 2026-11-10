@@ -5,6 +5,7 @@ import { computed, watch } from "vue";
 
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import { useSettingsStore } from "@/stores/settings";
+import { formatCount } from "@/utils/count";
 
 import SettingsChip from "./SettingsChip.vue";
 import SettingsSection from "./SettingsSection.vue";
@@ -66,7 +67,7 @@ const handleResetAutoPlaylists = () => {
     @reset="handleResetAutoPlaylists"
   >
     <template #summary>
-      <SettingsChip>Minimum {{ settingsStore.autoPlaylistMinTracks }} tracks</SettingsChip>
+      <SettingsChip>Minimum {{ formatCount(settingsStore.autoPlaylistMinTracks, "track") }}</SettingsChip>
     </template>
 
     <div class="space-y-6">
@@ -112,7 +113,7 @@ const handleResetAutoPlaylists = () => {
             "
           />
           {{ group.name }}
-          <span class="font-normal text-gray-600 dark:text-gray-400">{{ group.count }} tracks</span>
+          <span class="font-normal text-gray-600 dark:text-gray-400">{{ formatCount(group.count, "track") }}</span>
         </span>
       </div>
       <p class="text-xs text-gray-600 dark:text-gray-400 -mt-3">

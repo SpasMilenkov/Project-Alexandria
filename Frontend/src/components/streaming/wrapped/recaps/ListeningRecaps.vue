@@ -17,7 +17,7 @@
           v-if="!isPending && !visibleError && !authWaiting"
           class="text-xs text-gray-600 tabular-nums dark:text-gray-400"
         >
-          {{ rows.length }} {{ rows.length === 1 ? "recap" : "recaps" }}
+          {{ formatCount(rows.length, "recap") }}
         </p>
       </header>
 
@@ -85,6 +85,7 @@ import { wrappedMonth } from "@/features/wrapped/month";
 import { SUMMARY_KIND_WRAPPED, summaryYear } from "@/features/wrapped/summary";
 import { listSummaries } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
+import { formatCount } from "@/utils/count";
 
 const auth = useAuthStore();
 const { paletteStyle } = useWrappedPalette();

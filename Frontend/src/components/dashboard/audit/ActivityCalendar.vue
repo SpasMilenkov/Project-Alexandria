@@ -7,6 +7,7 @@ import { OperationType } from "@/api/activity";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { type CalendarDay, useActivityCalendar } from "@/composables/useActivityCalendar";
 import { activitySummary } from "@/queries/activities";
+import { formatCount } from "@/utils/count";
 import { formatDayMonth, formatFullDate } from "@/utils/date-formatters";
 
 const isMobile = useMediaQuery("(max-width: 767px)");
@@ -210,8 +211,7 @@ const tooltipText = computed(() => {
   const dateStr = formatDayMonth(day.date);
   if (day.count === 0) return `No activity · ${dateStr}`;
 
-  const noun = day.count === 1 ? "action" : "actions";
-  return `${day.count} ${noun} · ${dateStr}`;
+  return `${formatCount(day.count, "action")} · ${dateStr}`;
 });
 
 const EMPTY_CELL = "bg-gray-400/20 dark:bg-gray-500/20";
@@ -348,7 +348,7 @@ const hasNoActivity = computed(() => Boolean(data.value) && displayTotal.value =
         <div class="flex flex-col items-center">
           <span class="text-sm font-semibold select-none">{{ mobileMonthLabel }}</span>
           <span class="text-xs text-gray-500 tabular-nums dark:text-gray-500">
-            {{ displayTotal.toLocaleString() }} actions
+            {{ formatCount(displayTotal, "action") }}
           </span>
         </div>
 
@@ -389,7 +389,7 @@ const hasNoActivity = computed(() => Boolean(data.value) && displayTotal.value =
           @click="nextYear"
         />
         <UBadge color="neutral" variant="subtle" size="sm">
-          {{ displayTotal.toLocaleString() }} actions
+          {{ formatCount(displayTotal, "action") }}
         </UBadge>
       </div>
 
@@ -454,7 +454,7 @@ const hasNoActivity = computed(() => Boolean(data.value) && displayTotal.value =
           class="calendar-cell-mobile relative flex aspect-square items-start justify-start rounded-[6px] p-1.5"
           :class="mobileCellClass(day)"
           :disabled="!isSelectable(day) || isForeignMonthCell(day)"
-          :aria-label="day.date ? `${dayTitle(day)}: ${day.count} actions` : undefined"
+          :aria-label="day.date ? `${dayTitle(day)}: ${formatCount(day.count, 'action')}` : undefined"
           :aria-pressed="isSelected(day)"
           @click="selectDay(day)"
         >

@@ -17,6 +17,7 @@ import { JobStatus } from "@/enums/job-status";
 import { quoted } from "@/features/toast/format";
 import { stopTranspilationJob } from "@/mutations/streaming";
 import { getTranspilationJobs } from "@/queries/streaming";
+import { formatCount } from "@/utils/count";
 import { formatDateTime, formatDayMonth, formatTimeAgo } from "@/utils/date-formatters";
 
 const toast = useAppToast("jobs");
@@ -519,8 +520,8 @@ const mediaFilterOptions = [
             Transpilation Jobs
           </h1>
           <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
-            {{ groups.length }} file{{ groups.length !== 1 ? "s" : "" }},
-            {{ data?.totalCount ?? 0 }} job{{ (data?.totalCount ?? 0) !== 1 ? "s" : "" }}
+            {{ formatCount(groups.length, "file") }},
+            {{ formatCount(data?.totalCount ?? 0, "job") }}
           </p>
         </div>
         <span
@@ -897,7 +898,7 @@ const mediaFilterOptions = [
             class="w-4 h-4 shrink-0 text-red-600 dark:text-red-400"
           />
           <span class="text-xs text-gray-900 dark:text-gray-100">
-            {{ failedCount }} job{{ failedCount !== 1 ? "s" : "" }} failed and may need a retry.
+            {{ formatCount(failedCount, "job") }} failed and may need a retry.
           </span>
           <span class="flex-1" />
           <UButton
@@ -932,9 +933,7 @@ const mediaFilterOptions = [
                   v-if="group.fileName && group.versionNumber != null"
                   class="text-xs text-gray-600 dark:text-gray-400"
                 >
-                  Version {{ group.versionNumber }}, {{ group.jobs.length }} run{{
-                    group.jobs.length !== 1 ? "s" : ""
-                  }}
+                  Version {{ group.versionNumber }}, {{ formatCount(group.jobs.length, "run") }}
                 </span>
               </span>
               <span class="hidden flex-wrap items-center justify-end gap-4 sm:flex">

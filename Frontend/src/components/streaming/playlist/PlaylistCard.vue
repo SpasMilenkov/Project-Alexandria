@@ -66,7 +66,7 @@
         </p>
         <div class="flex items-center gap-2 mt-1.5">
           <span class="text-xs text-gray-400 dark:text-white/35">
-            {{ playlist.itemCount }} {{ playlist.itemCount === 1 ? "track" : "tracks" }}
+            {{ formatCount(playlist.itemCount, "track") }}
           </span>
           <span class="text-xs text-gray-300 dark:text-white/20">·</span>
           <span class="text-xs text-gray-400 dark:text-white/35">{{
@@ -97,6 +97,7 @@ import { type PlaylistResponse, playlistApi } from "@/api/playlist";
 import PlaylistCover from "@/components/streaming/playlist/PlaylistCover.vue";
 import PlaylistFavoriteButton from "@/components/streaming/playlist/PlaylistFavoriteButton.vue";
 import { playlistBadgeLabel } from "@/features/playlists/display";
+import { formatCount } from "@/utils/count";
 import { formatTimeAgo } from "@/utils/date-formatters";
 
 const { playlist, isPlaying, isLoading } = defineProps<{

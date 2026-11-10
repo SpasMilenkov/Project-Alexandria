@@ -2,6 +2,8 @@ import type { GalleryMonth, GalleryPhoto } from "@/api/gallery";
 
 import { monthKey } from "./months";
 
+import { formatCount } from "@/utils/count";
+
 type LoadedMonths = ReadonlyMap<string, GalleryPhoto[]>;
 
 /** Every loaded photo in timeline order, newest first, skipping months not loaded yet. */
@@ -40,13 +42,11 @@ export const monthsHolding = (
     ),
   );
 
-const COUNT_FORMAT = new Intl.NumberFormat();
-
 /** "the photo" style subjects for toasts: a name for one, a count for several. */
 export const photosSubject = (photos: GalleryPhoto[]) => {
   if (photos.length === 1) return `"${photos[0].name}"`;
 
-  return `${COUNT_FORMAT.format(photos.length)} photos`;
+  return formatCount(photos.length, "photo");
 };
 
 /**

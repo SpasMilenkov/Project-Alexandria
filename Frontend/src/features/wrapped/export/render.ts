@@ -23,6 +23,7 @@ import {
   vinylGroove,
   waveformDays,
 } from "@/features/wrapped/story";
+import { formatCount } from "@/utils/count";
 import { mulberry32 } from "@/utils/random";
 
 export type WrappedExportFormat = "png" | "jpeg";
@@ -463,7 +464,7 @@ export const renderWrappedExport = async (
         { signal: colors.rose, quiet: colors.muted, marker: colors.text },
       );
 
-      const days = `${new Intl.NumberFormat().format(facts.count)} ${facts.count === 1 ? "day" : "days"} away`;
+      const days = `${formatCount(facts.count, "day")} away`;
 
       text(
         days,
@@ -559,7 +560,12 @@ export const renderWrappedExport = async (
     if (summary)
       y =
         text(
-          `${summary.tracks} tracks · ${summary.artists} artists · ${summary.qualifiedPlayCount} plays · ${summary.activeDays} listening days`,
+          [
+            formatCount(summary.tracks, "track"),
+            formatCount(summary.artists, "artist"),
+            formatCount(summary.qualifiedPlayCount, "play"),
+            formatCount(summary.activeDays, "listening day"),
+          ].join(" · "),
           56,
           y,
           968,

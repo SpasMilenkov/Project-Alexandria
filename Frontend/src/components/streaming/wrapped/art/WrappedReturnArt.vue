@@ -94,6 +94,7 @@
 import { computed } from "vue";
 
 import { dateLabel, returnGeometry } from "@/features/wrapped/story";
+import { formatNumber, pluralize } from "@/utils/count";
 
 const props = defineProps<{ from?: string | null; to?: string | null; count: number }>();
 
@@ -106,9 +107,9 @@ const rippleDelay = computed(
   () => `${((geometry.value.apex.x / geometry.value.width) * REVEAL_SECONDS).toFixed(2)}s`,
 );
 
-const unit = computed(() => (props.count === 1 ? "day" : "days"));
+const unit = computed(() => pluralize(props.count, "day"));
 
-const countLabel = computed(() => new Intl.NumberFormat().format(props.count));
+const countLabel = computed(() => formatNumber(props.count));
 
 const ariaLabel = computed(() => `${countLabel.value} ${unit.value} between recorded plays.`);
 

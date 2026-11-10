@@ -593,7 +593,7 @@
         class="flex shrink-0 items-center justify-between border-t border-gray-200/70 px-4 py-2 text-xs text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
       >
         <span class="tabular-nums">
-          {{ totalItemCount }} item{{ totalItemCount === 1 ? "" : "s" }}
+          {{ formatCount(totalItemCount, "item") }}
         </span>
         <span class="flex items-center gap-3">
           <span
@@ -602,7 +602,7 @@
             aria-live="polite"
           >
             <BlocksSpinner :size="11" aria-hidden="true" class="opacity-50" />
-            Moving {{ pendingMoveCount }} item{{ pendingMoveCount === 1 ? "" : "s" }}…
+            Moving {{ formatCount(pendingMoveCount, "item") }}…
           </span>
           <span v-if="selectedCount > 0" class="tabular-nums">{{ selectedCount }} selected</span>
         </span>
@@ -713,6 +713,7 @@ import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
+import { formatCount } from "@/utils/count";
 import { formatClockTime, formatTimeAgo } from "@/utils/date-formatters";
 import { getFileIcon } from "@/utils/files/icons";
 import { logger } from "@/utils/logger";
@@ -1476,7 +1477,7 @@ const confirmNonEmptyDelete = async (ids: string[]) => {
     confirmIcon: "i-lucide-trash-2",
     confirmLabel: "Delete anyway",
     dangerMode: true,
-    description: `${ids.length} ${ids.length === 1 ? "directory" : "directories"} still contain files and will be deleted.`,
+    description: `${formatCount(ids.length, "directory", "directories")} still contain files and will be deleted.`,
     title: "Delete directories?",
   });
 

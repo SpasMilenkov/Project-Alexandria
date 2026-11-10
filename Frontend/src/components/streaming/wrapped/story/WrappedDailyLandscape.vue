@@ -5,6 +5,7 @@ import type { WrappedPeriodPoint } from "@/api/stats";
 
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { type WrappedDayBar, wrappedDailyLandscape } from "@/features/wrapped/daily-landscape";
+import { formatCount } from "@/utils/count";
 
 const { month, through, series } = defineProps<{
   month: string;
@@ -105,7 +106,7 @@ const move = (event: KeyboardEvent) => {
       <span class="font-semibold text-gray-900 dark:text-gray-100">{{ selectedLabel }}</span>
 
       <span v-if="current" class="text-gray-600 dark:text-gray-400">
-        {{ formatWrappedDuration(current.seconds) }} · {{ current.plays }} plays
+        {{ formatWrappedDuration(current.seconds) }} · {{ formatCount(current.plays, "play") }}
       </span>
     </figcaption>
 

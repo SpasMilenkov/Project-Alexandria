@@ -231,10 +231,11 @@ import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
 import CreateTagModal from "@/components/dashboard/tags/modals/CreateTagModal.vue";
 import UpdateTagModal from "@/components/dashboard/tags/modals/UpdateTagModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
-import { countOf, quoted } from "@/features/toast/format";
+import { quoted } from "@/features/toast/format";
 import { deleteTag } from "@/mutations/tags";
 import { searchTag } from "@/queries/tags";
 import { useSettingsStore } from "@/stores/settings";
+import { formatCount } from "@/utils/count";
 
 import SystemTagSection from "./SystemTagSection.vue";
 import TagCard from "./TagCard.vue";
@@ -402,10 +403,10 @@ const handleBulkDelete = async () => {
   }
   refetch();
 
-  if (deletedCount > 0) toast.success(`Deleted ${countOf(deletedCount, "tag")}`);
+  if (deletedCount > 0) toast.success(`Deleted ${formatCount(deletedCount, "tag")}`);
 
   if (firstFailure) {
-    toast.error(`Couldn't delete ${countOf(failedIds.length, "tag")}`, firstFailure.reason);
+    toast.error(`Couldn't delete ${formatCount(failedIds.length, "tag")}`, firstFailure.reason);
   }
 };
 

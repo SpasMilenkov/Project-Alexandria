@@ -9,6 +9,7 @@ import { useRollingNow } from "@/composables/useRollingNow";
 import { OperationalEventSeverity, type ServiceType } from "@/enums";
 import { serviceHealth } from "@/features/monitoring/display";
 import { UPTIME_WINDOW_DAYS, serviceUptimes, statusHistory } from "@/queries/monitoring";
+import { formatCount } from "@/utils/count";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -28,8 +29,6 @@ const levelOf = (event: OperationalEvent | undefined): HealthLevel => {
 
   return "degraded";
 };
-
-const plural = (count: number) => `${count} service${count === 1 ? "" : "s"}`;
 
 /**
  * Live per-service health (active incident) and trailing uptime, shared by the admin
@@ -121,9 +120,9 @@ export const useServiceStatus = ({ poll = true }: { poll?: boolean } = {}) => {
       return { color: "error", label: `${down} down, ${degraded} degraded` };
     }
 
-    if (down > 0) return { color: "error", label: `${plural(down)} down` };
+    if (down > 0) return { color: "error", label: `${formatCount(down, "service")} down` };
 
-    if (degraded > 0) return { color: "warning", label: `${plural(degraded)} degraded` };
+    if (degraded > 0) return { color: "warning", label: `${formatCount(degraded, "service")} degraded` };
 
     return { color: "success", label: "All systems operational" };
   };

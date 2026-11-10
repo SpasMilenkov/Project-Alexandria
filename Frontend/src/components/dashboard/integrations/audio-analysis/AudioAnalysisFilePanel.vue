@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useTrackAudioAnalysis } from "@/composables/useTrackAudioAnalysis";
 import { formatConfidence } from "@/features/audio-analysis/taxonomy";
+import { formatCount } from "@/utils/count";
 import { formatTimeAgo } from "@/utils/date-formatters";
 
 import AudioConfidenceBar from "./AudioConfidenceBar.vue";
@@ -147,7 +148,7 @@ const historySummary = computed(() => {
   if (!latest) return "No dispatch attempts yet";
 
   const count = batchRows.value.length;
-  const attempts = count === 1 ? "1 attempt" : `${count} attempts`;
+  const attempts = formatCount(count, "attempt");
 
   return `${attempts} · last ${latest.batch.label.toLowerCase()} ${formatTimeAgo(latest.createdAt)}`;
 });

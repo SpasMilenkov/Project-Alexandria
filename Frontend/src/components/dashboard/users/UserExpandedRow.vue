@@ -151,7 +151,7 @@
           <p class="text-sm font-medium text-default leading-tight tabular-nums">
             {{ fileCount?.toLocaleString() ?? "—" }}
             <span class="text-xs font-normal text-muted">
-              {{ fileCount === 1 ? "file" : "files" }}
+              {{ pluralize(fileCount ?? 0, "file") }}
             </span>
           </p>
         </template>
@@ -259,6 +259,7 @@ import { computed } from "vue";
 import type { UserDetailsDto } from "@/types/user";
 
 import { getUserCount, getUserStorage } from "@/queries/user";
+import { pluralize } from "@/utils/count";
 import { formatTimeAgo } from "@/utils/date-formatters";
 import { formatBytes } from "@/utils/size";
 

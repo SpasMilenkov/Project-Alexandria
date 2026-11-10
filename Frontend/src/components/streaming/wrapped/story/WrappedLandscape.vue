@@ -8,7 +8,7 @@
 
       <span class="text-gray-600 dark:text-gray-400"
         >{{ current ? formatWrappedDuration(current.seconds) : "No recorded listening"
-        }}<span v-if="current"> · {{ current.plays }} plays</span></span
+        }}<span v-if="current"> · {{ formatCount(current.plays, "play") }}</span></span
       >
     </figcaption>
 
@@ -71,6 +71,7 @@ import type { WrappedPeriodPoint } from "@/api/stats";
 
 import { formatWrappedDuration, monthLabel } from "@/features/wrapped/art";
 import { monthlyLandscape } from "@/features/wrapped/ranking";
+import { formatCount } from "@/utils/count";
 
 const props = defineProps<{ series: WrappedPeriodPoint[] }>();
 const selected = ref<string | null>(null);

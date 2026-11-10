@@ -1,4 +1,5 @@
 import { GallerySort } from "@/enums/gallery-sort";
+import { formatCount } from "@/utils/count";
 
 export const monthKey = (year: number, month: number) =>
   `${year}-${String(month).padStart(2, "0")}`;
@@ -35,9 +36,6 @@ const MONTH_NAME_FORMAT = new Intl.DateTimeFormat(undefined, { month: "long", ti
 export const monthName = (month: number) =>
   MONTH_NAME_FORMAT.format(new Date(Date.UTC(2000, month - 1, 1)));
 
-const COUNT_FORMAT = new Intl.NumberFormat();
-
-export const photoCountLabel = (count: number) =>
-  `${COUNT_FORMAT.format(count)} ${count === 1 ? "photo" : "photos"}`;
+export const photoCountLabel = (count: number) => formatCount(count, "photo");
 
 export const viewerTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";

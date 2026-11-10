@@ -40,6 +40,7 @@ import {
   stuck,
   volumeByHour,
 } from "@/queries/audioAnalysis";
+import { formatCount } from "@/utils/count";
 import { formatClockTime, formatDuration, formatTimeAgo } from "@/utils/date-formatters";
 
 ChartJS.register(
@@ -426,7 +427,7 @@ const volumeChartOptions = computed((): ChartOptions<"bar"> => ({
 const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse());
 
 const queueHint = computed(
-  () => `${queueTotal.value} file${queueTotal.value === 1 ? "" : "s"} in flight`,
+  () => `${formatCount(queueTotal.value, "file")} in flight`,
 );
 
 const durationStats = (row: {

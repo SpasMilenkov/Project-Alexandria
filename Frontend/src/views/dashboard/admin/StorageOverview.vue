@@ -158,6 +158,7 @@ import IntegrationPanel from "@/components/dashboard/integrations/IntegrationPan
 import StatTile from "@/components/dashboard/integrations/StatTile.vue";
 import StorageBreakdownChart from "@/components/dashboard/metrics/StorageBreakdownChart.vue";
 import { adminStorageOverview, storageSplit, userStorageRanking } from "@/queries/status";
+import { formatCount } from "@/utils/count";
 import { formatBytes } from "@/utils/size";
 
 const SPLIT_LABELS = ["Files", "Previews", "Transcoded", "Trash"];
@@ -206,12 +207,6 @@ const visibleError = computed(() => visibleOf(error.value));
 const visibleSplitError = computed(() => visibleOf(splitError.value));
 const visibleRankingError = computed(() => visibleOf(rankingError.value));
 
-const plural = (count: number, singular: string, pluralForm: string): string => {
-  if (count === 1) return `${count} ${singular}`;
-
-  return `${count} ${pluralForm}`;
-};
-
 const assignedPercent = computed(() => {
   const capacity = data.value?.capacity.garageCapacityBytes ?? 0;
 
@@ -227,11 +222,11 @@ const assignedBadge = computed(() => {
 });
 
 const nodesCaption = computed(() =>
-  plural(data.value?.capacity.garageNodes.length ?? 0, "assigned node", "assigned nodes"),
+  formatCount(data.value?.capacity.garageNodes.length ?? 0, "assigned node"),
 );
 
 const quotaCaption = computed(
-  () => `across ${plural(data.value?.totalUsers ?? 0, "account", "accounts")}`,
+  () => `across ${formatCount(data.value?.totalUsers ?? 0, "account")}`,
 );
 
 const connectionLabel = (connected: boolean): string => {

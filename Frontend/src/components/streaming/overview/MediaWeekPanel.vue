@@ -6,6 +6,7 @@ import { isAuthError } from "@/api/shuffle";
 import { type WeekDay, buildWeekDays, formatListeningTime } from "@/features/media/overview";
 import { homeTopSongsPeriod } from "@/features/media/top-songs";
 import { mediaOverviewWeek } from "@/queries/media-overview";
+import { formatCount } from "@/utils/count";
 
 import MediaOverviewSection from "./MediaOverviewSection.vue";
 
@@ -22,13 +23,7 @@ const timeline = computed(() => query.data.value);
 const days = computed(() => buildWeekDays(from, timeline.value?.days ?? []));
 const isQuiet = computed(() => (timeline.value?.totalSeconds ?? 0) === 0);
 
-const plural = (count: number, singular: string, pluralForm: string): string => {
-  if (count === 1) return `${count.toLocaleString()} ${singular}`;
-
-  return `${count.toLocaleString()} ${pluralForm}`;
-};
-
-const songsPlayed = (count: number) => `${plural(count, "song", "songs")} played`;
+const songsPlayed = (count: number) => `${formatCount(count, "song")} played`;
 
 const summary = computed(() => {
   const data = timeline.value;

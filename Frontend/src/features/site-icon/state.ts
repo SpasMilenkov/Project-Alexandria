@@ -1,5 +1,5 @@
 import { ACTIVITY_GLYPHS, PLACE_GLYPHS, type SiteIconPlace } from "@/features/site-icon/places";
-import { countOf } from "@/features/toast/format";
+import { formatCount } from "@/utils/count";
 
 export interface UploadActivity {
   kind: "upload" | "extract";
@@ -95,7 +95,7 @@ const resolveDot = (input: SiteIconInput): string | null => {
 
 const uploadTitle = (upload: UploadActivity): string => {
   const percent = `${Math.round(upload.progress)}%`;
-  const subject = upload.label ?? countOf(upload.fileCount, "file");
+  const subject = upload.label ?? formatCount(upload.fileCount, "file");
 
   if (upload.kind === "extract") return `${percent} · Extracting ${subject}`;
 
@@ -114,11 +114,11 @@ const resolveTitle = (input: SiteIconInput): string => {
   if (input.playback) return input.playback.title;
 
   if (input.health && input.health.down > 0) {
-    return `${countOf(input.health.down, "service")} down · ${page}`;
+    return `${formatCount(input.health.down, "service")} down · ${page}`;
   }
 
   if (input.health && input.health.degraded > 0) {
-    return `${countOf(input.health.degraded, "service")} degraded · ${page}`;
+    return `${formatCount(input.health.degraded, "service")} degraded · ${page}`;
   }
 
   if (input.uploadOutcome === "done") return `✓ Upload finished · ${page}`;

@@ -7,6 +7,7 @@ import ExplorerDragLayer from "@/components/dashboard/file-system/ExplorerDragLa
 import ExplorerTabStrip from "@/components/dashboard/file-system/ExplorerTabStrip.vue";
 import FileExplorer from "@/components/dashboard/file-system/FileExplorerTab.vue";
 import { useTabStore } from "@/stores/tab";
+import { pluralize } from "@/utils/count";
 import { logger } from "@/utils/logger";
 import { glassModalContent } from "@/utils/modal-ui";
 
@@ -311,7 +312,7 @@ onMounted(() => {
           <h3 class="text-base font-semibold text-gray-900 dark:text-white">Close all tabs?</h3>
           <p class="text-sm text-gray-500 dark:text-gray-400">
             This will close all {{ tabStore.tabs.length }} open
-            {{ tabStore.tabs.length === 1 ? "tab" : "tabs" }}. This action cannot be undone.
+            {{ pluralize(tabStore.tabs.length, "tab") }}. This action cannot be undone.
           </p>
         </div>
         <div class="flex gap-3 justify-end">

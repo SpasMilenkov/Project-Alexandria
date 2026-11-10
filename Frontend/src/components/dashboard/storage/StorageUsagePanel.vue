@@ -72,17 +72,12 @@ import { computed } from "vue";
 
 import type { StorageBreakdown } from "@/api/status";
 
+import { formatCount } from "@/utils/count";
 import { formatBytes } from "@/utils/size";
 
 const { data } = defineProps<{
   data: StorageBreakdown;
 }>();
-
-const pluralize = (count: number, singular: string, plural: string) => {
-  if (count === 1) return `1 ${singular}`;
-
-  return `${count.toLocaleString()} ${plural}`;
-};
 
 const isUnlimited = computed(() => data.quotaBytes <= 0);
 
@@ -138,14 +133,14 @@ const tiles = computed(() => [
     value: formatBytes(data.filesSize),
   },
   {
-    detail: `${pluralize(data.previewsCount, "artifact", "artifacts")}, regenerable`,
+    detail: `${formatCount(data.previewsCount, "artifact")}, regenerable`,
     icon: "i-lucide-image",
     label: "Previews",
     to: null,
     value: formatBytes(data.previewsSize),
   },
   {
-    detail: `${pluralize(data.representationsCount, "representation", "representations")} for streaming`,
+    detail: `${formatCount(data.representationsCount, "representation")} for streaming`,
     icon: "i-lucide-layers",
     label: "Transcoded",
     to: null,

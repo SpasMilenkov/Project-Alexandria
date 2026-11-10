@@ -1,5 +1,7 @@
 import { formatOffset } from "./capture-metadata";
 
+import { formatNumber } from "@/utils/count";
+
 // Formatters run in UTC on a pre-shifted timestamp, so the digits stay those of the author's
 // clock instead of moving into the viewer's zone.
 const DOCUMENT_DATE = new Intl.DateTimeFormat(undefined, {
@@ -14,8 +16,6 @@ const LANGUAGE_NAMES = new Intl.DisplayNames(undefined, { type: "language" });
 // Intl throws on malformed tags, and files carry whatever their app wrote, so only tags shaped
 // like BCP 47 are handed to it.
 const LANGUAGE_TAG = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/iu;
-
-const NUMBER = new Intl.NumberFormat();
 
 export interface DocumentMoment {
   date: string;
@@ -43,9 +43,9 @@ export const formatEditingTime = (minutes: number): string => {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
 
-  if (rest === 0) return `${NUMBER.format(hours)} h`;
+  if (rest === 0) return `${formatNumber(hours)} h`;
 
-  return `${NUMBER.format(hours)} h ${rest} min`;
+  return `${formatNumber(hours)} h ${rest} min`;
 };
 
 /** A readable language name for a tag like "en-US", or the tag itself when it is not one. */
@@ -56,7 +56,7 @@ export const formatLanguage = (tag: string): string => {
 };
 
 /** "Book 2", or "Book 2.5" for the novellas series slot in between. */
-export const formatSeriesPosition = (index: number): string => `Book ${NUMBER.format(index)}`;
+export const formatSeriesPosition = (index: number): string => `Book ${formatNumber(index)}`;
 
 export interface DocumentCounts {
   pageCount: number | null;
@@ -76,19 +76,19 @@ export const countTiles = (counts: DocumentCounts): CountTile[] => {
   const tiles: CountTile[] = [];
 
   if (counts.pageCount !== null) {
-    tiles.push({ key: "pages", label: "Pages", value: NUMBER.format(counts.pageCount) });
+    tiles.push({ key: "pages", label: "Pages", value: formatNumber(counts.pageCount) });
   }
 
   if (counts.slideCount !== null) {
-    tiles.push({ key: "slides", label: "Slides", value: NUMBER.format(counts.slideCount) });
+    tiles.push({ key: "slides", label: "Slides", value: formatNumber(counts.slideCount) });
   }
 
   if (counts.sheetCount !== null) {
-    tiles.push({ key: "sheets", label: "Sheets", value: NUMBER.format(counts.sheetCount) });
+    tiles.push({ key: "sheets", label: "Sheets", value: formatNumber(counts.sheetCount) });
   }
 
   if (counts.wordCount !== null) {
-    tiles.push({ key: "words", label: "Words", value: NUMBER.format(counts.wordCount) });
+    tiles.push({ key: "words", label: "Words", value: formatNumber(counts.wordCount) });
   }
 
   return tiles;

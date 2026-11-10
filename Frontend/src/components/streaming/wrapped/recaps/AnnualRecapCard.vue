@@ -72,7 +72,7 @@
         <strong class="font-semibold text-gray-900 dark:text-gray-100">{{
           formatWrappedDuration(facts!.seconds)
         }}</strong>
-        · {{ numberFormat.format(facts!.qualifiedPlayCount) }} plays
+        · {{ formatCount(facts!.qualifiedPlayCount, "play") }}
       </p>
 
       <RecapLandscape
@@ -147,6 +147,7 @@ import { SUMMARY_KIND_WRAPPED, summaryToWrappedDeck } from "@/features/wrapped/s
 import { finalizeSummary } from "@/mutations/stats";
 import { getSummary } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
+import { formatCount, formatNumber } from "@/utils/count";
 
 const {
   year,
@@ -214,15 +215,13 @@ const landscapeSeries = computed(
       ?.series,
 );
 
-const numberFormat = new Intl.NumberFormat();
-
 const displayFacts = computed(() => {
   if (!facts.value) return [];
 
   const items = [
-    { label: "Tracks", value: numberFormat.format(facts.value.tracks) },
-    { label: "Artists", value: numberFormat.format(facts.value.artists) },
-    { label: "Listening days", value: numberFormat.format(facts.value.activeDays) },
+    { label: "Tracks", value: formatNumber(facts.value.tracks) },
+    { label: "Artists", value: formatNumber(facts.value.artists) },
+    { label: "Listening days", value: formatNumber(facts.value.activeDays) },
   ];
 
   if (current)

@@ -40,7 +40,7 @@
         v-if="totalCount !== null"
         class="ml-auto shrink-0 pl-2 text-xs tabular-nums text-gray-500 dark:text-gray-500"
       >
-        {{ totalCount }} item{{ totalCount === 1 ? "" : "s" }}
+        {{ formatCount(totalCount, "item") }}
       </span>
     </div>
 
@@ -113,6 +113,7 @@ import { computed } from "vue";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import { toDropId } from "@/composables/useExplorerDragSession";
 import { previewDirectoriesQuery, previewFilesQuery } from "@/features/explorer/drag/drop-preview";
+import { formatCount } from "@/utils/count";
 import { getFileIcon } from "@/utils/files/icons";
 
 export interface PreviewTrailSegment {

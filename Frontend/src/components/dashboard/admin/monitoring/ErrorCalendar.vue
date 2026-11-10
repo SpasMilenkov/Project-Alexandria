@@ -19,6 +19,7 @@ import {
   SEVERITY_LABELS,
 } from "@/features/monitoring/display";
 import { errorCalendar } from "@/queries/monitoring";
+import { formatCount } from "@/utils/count";
 import { formatDayMonth, formatFullDate } from "@/utils/date-formatters";
 
 const emit = defineEmits<{ viewDay: [date: Date] }>();
@@ -182,8 +183,6 @@ const displayTotal = computed(() => {
   return totalFiltered.value;
 });
 
-const incidentNoun = (count: number) => (count === 1 ? "incident" : "incidents");
-
 const selectedDay = ref<ErrorCalendarDay | null>(null);
 
 const isSelectable = (day: ErrorCalendarDay): boolean => !day.isPadding && day.count > 0;
@@ -239,7 +238,7 @@ const tooltipText = computed(() => {
   const dateStr = formatDayMonth(day.date);
   if (day.count === 0) return `No incidents · ${dateStr}`;
 
-  return `${day.count} ${incidentNoun(day.count)} · ${dateStr}`;
+  return `${formatCount(day.count, "incident")} · ${dateStr}`;
 });
 
 // Hue family reads the worst severity present that day (any Failure is red, only
@@ -335,7 +334,7 @@ const hasNoIncidents = computed(() => Boolean(data.value) && displayTotal.value 
             mobileMonthLabel
           }}</span>
           <span class="text-xs text-gray-600 tabular-nums dark:text-gray-400">
-            {{ displayTotal.toLocaleString() }} {{ incidentNoun(displayTotal) }}
+            {{ formatCount(displayTotal, "incident") }}
           </span>
         </div>
 
@@ -378,7 +377,7 @@ const hasNoIncidents = computed(() => Boolean(data.value) && displayTotal.value 
           @click="nextYear"
         />
         <UBadge color="neutral" variant="subtle" size="sm">
-          {{ displayTotal.toLocaleString() }} {{ incidentNoun(displayTotal) }}
+          {{ formatCount(displayTotal, "incident") }}
         </UBadge>
       </div>
 
@@ -444,7 +443,7 @@ const hasNoIncidents = computed(() => Boolean(data.value) && displayTotal.value 
           :class="mobileCellClass(day)"
           :disabled="!isSelectable(day) || isForeignMonthCell(day)"
           :aria-label="
-            day.date ? `${dayTitle(day)}: ${day.count} ${incidentNoun(day.count)}` : undefined
+            day.date ? `${dayTitle(day)}: ${formatCount(day.count, 'incident')}` : undefined
           "
           :aria-pressed="isSelected(day)"
           @click="selectDay(day)"

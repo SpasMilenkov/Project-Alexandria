@@ -11,7 +11,7 @@ import { FALLBACK_CONTENT_TYPE } from "@/composables/useDirectoryUpload";
 import { encryptFile } from "@/composables/useFileEncryption";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { useReportUploadActivity } from "@/composables/useReportUploadActivity";
-import { countOf, quoted } from "@/features/toast/format";
+import { quoted } from "@/features/toast/format";
 import { hashFile } from "@/features/upload/hash-pool";
 import {
   STRENGTH_IDLE_TEXT,
@@ -26,6 +26,7 @@ import {
   runUploadWindow,
   sendUpload,
 } from "@/features/upload/upload-batches";
+import { formatCount } from "@/utils/count";
 import { formatBytes } from "@/utils/size";
 
 const appToast = useAppToast("upload");
@@ -438,7 +439,7 @@ const nameUploads = (states: FileUploadState[]) => {
   const [first] = states;
   if (states.length === 1 && first) return quoted(first.file.name);
 
-  return countOf(states.length, "file");
+  return formatCount(states.length, "file");
 };
 
 const listFailedNames = (states: FileUploadState[]) => {
@@ -484,7 +485,7 @@ const reportBatchOutcome = (batch: FileUploadState[]) => {
   }
 
   appToast.warning(
-    `Uploaded ${finished.length} of ${batch.length} files${destinationSuffix.value}`,
+    `Uploaded ${finished.length} of ${formatCount(batch.length, "file")}${destinationSuffix.value}`,
     {
       actions: [retryFailedAction],
       description: `${listFailedNames(failed)} failed. ${firstCause}`.trim(),
@@ -610,7 +611,7 @@ const onDrop = (e: DragEvent) => {
         <template #header>
           <p class="min-w-0 flex-1 truncate text-sm text-gray-600 dark:text-gray-400">
             <span class="font-medium text-gray-900 dark:text-gray-100">
-              {{ countOf(uploads.length, "file") }}
+              {{ formatCount(uploads.length, "file") }}
             </span>
             · {{ formatBytes(totalSize) }}
           </p>

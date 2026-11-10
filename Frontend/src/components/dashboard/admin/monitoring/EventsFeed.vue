@@ -29,6 +29,7 @@ import {
 import { buildDeepLink } from "@/features/monitoring/service-routing";
 import { useResolveIncident } from "@/mutations/monitoring";
 import { operationalEvents } from "@/queries/monitoring";
+import { formatCount } from "@/utils/count";
 import { formatCalendarDate, formatDateTime, formatTimeAgo } from "@/utils/date-formatters";
 
 const { dateRange, initialServiceType, initialSeverity, highlightId, lockedService } = defineProps<{
@@ -625,7 +626,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
       >
         <span class="text-xs text-gray-600 dark:text-gray-400 tabular-nums">
           Page {{ data?.currentPage ?? page }} of {{ totalPages }} ·
-          {{ (data?.totalCount ?? 0).toLocaleString() }} events
+          {{ formatCount(data?.totalCount ?? 0, "event") }}
         </span>
         <div class="flex items-center gap-2">
           <UButton

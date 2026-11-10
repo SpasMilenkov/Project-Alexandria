@@ -167,7 +167,7 @@
               >Playlists unavailable</template
             >
             <template v-else-if="total === 0">0 playlists</template>
-            <template v-else>{{ firstResult }}–{{ lastResult }} of {{ total }} playlists</template>
+            <template v-else>{{ firstResult }}–{{ lastResult }} of {{ formatCount(total, "playlist") }}</template>
           </p>
           <span
             v-for="pill in activeFilterPills"
@@ -382,7 +382,7 @@ import {
   parsePlaylistBrowseQuery,
   playlistBrowseQuery,
 } from "@/features/playlists/display";
-import { countOf, quoted } from "@/features/toast/format";
+import { quoted } from "@/features/toast/format";
 import {
   createPlaylist,
   deletePlaylist,
@@ -391,6 +391,7 @@ import {
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatCount } from "@/utils/count";
 import { glassModalContent, playlistModalUi } from "@/utils/modal-ui";
 
 const route = useRoute();
@@ -680,7 +681,7 @@ const addPlaylistToQueue = async (playlistId: string, label?: string) => {
       toast.warning(`${name} has no tracks yet`, "Add some tracks before queueing it.");
       return;
     }
-    toast.success(`Added ${countOf(queuedCount, "track")} to the queue`, {
+    toast.success(`Added ${formatCount(queuedCount, "track")} to the queue`, {
       description: label ? `From ${quoted(label)}` : undefined,
       source: "playback",
     });

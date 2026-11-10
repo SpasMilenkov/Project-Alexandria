@@ -156,9 +156,9 @@ import { isAuthError } from "@/api/shuffle";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { PreviewKind } from "@/enums/PreviewKind";
-import { countOf } from "@/features/toast/format";
 import { useDeletePreview, useDeletePreviewsByFile } from "@/mutations/storage";
 import { type MyPreviewsFilters, myPreviews } from "@/queries/status";
+import { formatCount } from "@/utils/count";
 import { formatTimeAgo } from "@/utils/date-formatters";
 import { getFileIcon } from "@/utils/files/icons";
 import { formatBytes } from "@/utils/size";
@@ -322,7 +322,7 @@ const deleteDialog = computed(() => {
   const pageBytes = groups.value.reduce((sum, group) => sum + group.totalBytes, 0);
 
   return {
-    description: `Removes the previews of the ${groups.value.length} files on this page (${formatBytes(pageBytes)}). They regenerate from their files when needed.`,
+    description: `Removes the previews of the ${formatCount(groups.value.length, "file")} on this page (${formatBytes(pageBytes)}). They regenerate from their files when needed.`,
     title: "Delete this page",
   };
 });
@@ -368,7 +368,7 @@ const runDelete = async (target: DeleteTarget) => {
 
   if (result.failed && result.deletedCount > 0) {
     toast.warning(
-      `Deleted ${countOf(result.deletedCount, "preview")}, some files failed`,
+      `Deleted ${formatCount(result.deletedCount, "preview")}, some files failed`,
       `Freed ${formatBytes(result.freedBytes)}. Run the delete again for the rest.`,
     );
     return;
@@ -379,7 +379,7 @@ const runDelete = async (target: DeleteTarget) => {
     return;
   }
 
-  notifySuccess(`Deleted ${countOf(result.deletedCount, "preview")}`, result.freedBytes);
+  notifySuccess(`Deleted ${formatCount(result.deletedCount, "preview")}`, result.freedBytes);
 };
 
 const handleDialogClose = async (confirmed: boolean) => {

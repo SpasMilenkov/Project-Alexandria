@@ -41,7 +41,7 @@
         v-if="span !== null && card.entries.length > 1"
         class="mt-6 text-sm text-gray-600 dark:text-gray-400"
       >
-        {{ span }} {{ span === 1 ? "day" : "days" }} between these plays.
+        {{ formatCount(span, "day") }} between these plays.
       </p>
 
       <WrappedStoryNotes class="mt-4" :card="card" />
@@ -58,6 +58,7 @@ import type { WrappedCardResponse } from "@/api/stats";
 import WrappedVinylArt from "@/components/streaming/wrapped/art/WrappedVinylArt.vue";
 import WrappedStoryNotes from "@/components/streaming/wrapped/story/WrappedStoryNotes.vue";
 import { factsFor } from "@/features/wrapped/art";
+import { formatCount } from "@/utils/count";
 
 const props = defineProps<{
   card: WrappedCardResponse;

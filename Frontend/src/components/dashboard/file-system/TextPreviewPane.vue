@@ -5,6 +5,7 @@ import type { TextPreviewDto, TextPreviewLine } from "@/api/file";
 import type { RenderedLine, RenderedSegment } from "@/types/preview/code-preview";
 
 import { TextPreviewTruncation } from "@/enums";
+import { formatCount } from "@/utils/count";
 import { formatBytes } from "@/utils/size";
 
 import TextPreviewCode from "./TextPreviewCode.vue";
@@ -135,7 +136,7 @@ const truncationLabel = computed(() => {
   if (!current?.truncated) return null;
 
   if (current.truncation === TextPreviewTruncation.Lines) {
-    return `Showing the first ${current.lineCount.toLocaleString()} lines`;
+    return `Showing the first ${formatCount(current.lineCount, "line")}`;
   }
 
   const shown = formatBytes(current.bytesShown);
@@ -168,7 +169,7 @@ const copy = async (): Promise<void> => {
     >
       <span class="font-medium text-gray-700 dark:text-gray-300">{{ languageLabel }}</span>
       <span v-if="data" class="tabular-nums text-gray-600 dark:text-gray-400">
-        · {{ data.lineCount }} {{ data.lineCount === 1 ? "line" : "lines" }}
+        · {{ formatCount(data.lineCount, "line") }}
       </span>
 
       <div class="ml-auto flex items-center gap-1">

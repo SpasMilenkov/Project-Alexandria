@@ -10,6 +10,7 @@ import { SortDirection } from "@/enums/SortDirection";
 import { personalPaginated } from "@/queries/activities";
 import { useActivityStore } from "@/stores/activity";
 import { useAuthStore } from "@/stores/auth";
+import { formatCount } from "@/utils/count";
 import { formatClockTime } from "@/utils/date-formatters";
 
 const activityStore = useActivityStore();
@@ -257,7 +258,7 @@ const TIMELINE_UI = {
                 {{ group.label }}
               </h3>
               <span class="text-xs text-gray-500 tabular-nums dark:text-gray-500">
-                {{ group.rows.length }} {{ group.rows.length === 1 ? "event" : "events" }}
+                {{ formatCount(group.rows.length, "event") }}
               </span>
             </div>
 

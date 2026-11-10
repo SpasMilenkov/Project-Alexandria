@@ -13,6 +13,7 @@ import {
 } from "@/features/wrapped/month";
 import { getWrapped } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
+import { formatCount, formatNumber } from "@/utils/count";
 
 const { month, now } = defineProps<{ month: string; now: Date }>();
 
@@ -40,7 +41,6 @@ const daily = computed(() => {
 });
 
 const maximum = computed(() => Math.max(0, ...daily.value.map((day) => day.seconds)));
-const numberFormat = new Intl.NumberFormat();
 
 const displayFacts = computed(() => {
   const summary = data.value?.summary;
@@ -48,9 +48,9 @@ const displayFacts = computed(() => {
   if (!summary) return [];
 
   return [
-    { label: "Tracks", value: numberFormat.format(summary.tracks) },
-    { label: "Artists", value: numberFormat.format(summary.artists) },
-    { label: "Listening days", value: numberFormat.format(summary.activeDays) },
+    { label: "Tracks", value: formatNumber(summary.tracks) },
+    { label: "Artists", value: formatNumber(summary.artists) },
+    { label: "Listening days", value: formatNumber(summary.activeDays) },
   ];
 });
 
@@ -130,7 +130,7 @@ const favorites = computed(() => {
           {{ formatWrappedDuration(data.summary.seconds) }}
         </p>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          with your music · {{ numberFormat.format(data.summary.qualifiedPlayCount) }} plays
+          with your music · {{ formatCount(data.summary.qualifiedPlayCount, "play") }}
         </p>
       </div>
 

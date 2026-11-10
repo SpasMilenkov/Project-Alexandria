@@ -223,6 +223,7 @@ import { copyDirectory, moveDirectories } from "@/mutations/directories";
 import { copyFiles, moveFiles } from "@/mutations/files";
 import { directorySearchApiSchema } from "@/schemas/search";
 import { useDirectoryStore } from "@/stores/directory";
+import { formatCount } from "@/utils/count";
 import { logger } from "@/utils/logger";
 import { glassModalBody, glassModalContentWide } from "@/utils/modal-ui";
 
@@ -322,8 +323,7 @@ const overflowCount = computed(() => Math.max(0, totalCount.value - MAX_VISIBLE_
 
 const modalTitle = computed(() => {
   const action = mode === "move" ? "Move" : "Copy";
-  const noun = totalCount.value === 1 ? "item" : "items";
-  return `${action} ${totalCount.value} ${noun}`;
+  return `${action} ${formatCount(totalCount.value, "item")}`;
 });
 
 const modalDescription = computed(() => `From ${originDirName ?? "Home"}`);

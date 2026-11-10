@@ -9,6 +9,7 @@ import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
 import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
 import StreamHistoryGhost from "@/components/streaming/ghosts/StreamHistoryGhost.vue";
 import { getHistory } from "@/queries/streaming";
+import { formatCount } from "@/utils/count";
 import {
   type DateInput,
   formatCalendarDate,
@@ -59,7 +60,7 @@ const totalPages = computed(() => data.value?.totalPages ?? 1);
 const hasItems = computed(() => (data.value?.items?.length ?? 0) > 0);
 
 const countText = computed(
-  () => `${totalCount.value} ${totalCount.value === 1 ? "entry" : "entries"}`,
+  () => formatCount(totalCount.value, "entry", "entries"),
 );
 
 const rangeText = computed(() => {

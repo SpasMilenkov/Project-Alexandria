@@ -20,8 +20,8 @@ import { useAppToast } from "@/composables/useAppToast";
 import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { useReportUploadActivity } from "@/composables/useReportUploadActivity";
-import { countOf } from "@/features/toast/format";
 import { useDirectoryStore } from "@/stores/directory";
+import { formatCount } from "@/utils/count";
 
 // configure zip.js to use its own built-in workers for decompression
 configure({ useWebWorkers: true });
@@ -139,13 +139,13 @@ const progressLabel = computed(() => {
 
   if (extractionPhase.value === "scanning") return "Reading the archive…";
   if (extractionPhase.value === "extracting") {
-    return `Unpacking ${extractedCount.value} of ${totalEntryCount.value} files…`;
+    return `Unpacking ${extractedCount.value} of ${formatCount(totalEntryCount.value, "file")}…`;
   }
   if (uploading.value) {
     return `Uploading ${activeFiles.value}, ${successfulFiles.value} done${failedNote}`;
   }
   if (fileStatuses.value.length > 0) {
-    return `${completedFiles.value} of ${totalFiles.value} files${failedNote}`;
+    return `${completedFiles.value} of ${formatCount(totalFiles.value, "file")}${failedNote}`;
   }
 
   return "";
@@ -202,7 +202,7 @@ const archiveStatus = computed((): ArchiveStatus => {
     return {
       icon: "i-lucide-check-circle",
       iconClass: "text-success",
-      text: `${countOf(extractedFiles.value.length, "file")} unpacked`,
+      text: `${formatCount(extractedFiles.value.length, "file")} unpacked`,
     };
   }
 
@@ -319,7 +319,7 @@ const uploadSubject = computed(() => {
 });
 
 const uploadSummary = (count: number, outcome: string) =>
-  `${countOf(count, "file")} ${outcome} to ${destinationName.value}`;
+  `${formatCount(count, "file")} ${outcome} to ${destinationName.value}`;
 
 // upload
 
@@ -356,7 +356,7 @@ const startUpload = async () => {
     } else {
       appToast.warning(
         `Uploaded ${success} of ${success + failed} files from ${uploadSubject.value}`,
-        `${countOf(failed, "file")} failed. Use Retry in the upload window.`,
+        `${formatCount(failed, "file")} failed. Use Retry in the upload window.`,
       );
     }
   } catch (err) {
@@ -378,7 +378,7 @@ const handleRetry = async () => {
     setTimeout(() => emit("close", true), 1000);
   } else {
     appToast.warning(
-      `${countOf(stillFailed, "file")} from ${uploadSubject.value} still failed`,
+      `${formatCount(stillFailed, "file")} from ${uploadSubject.value} still failed`,
       "Check each file's error in the upload window.",
     );
     uploading.value = false;

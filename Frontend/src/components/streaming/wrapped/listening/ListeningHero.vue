@@ -18,6 +18,7 @@ import { type YearMonthBar, yearBounds, yearMonthBars } from "@/features/wrapped
 import { getTimeline, getTopSongs } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatNumber } from "@/utils/count";
 
 const TOP_SONG_LIMIT = 5;
 
@@ -51,16 +52,14 @@ const leader = computed(() => songs.value[0] ?? null);
 const totalSeconds = computed(() => timeline.data.value?.totalSeconds ?? 0);
 const empty = computed(() => totalSeconds.value <= 0 && songs.value.length === 0);
 
-const numberFormat = new Intl.NumberFormat();
-
 const facts = computed(() => {
   const data = timeline.data.value;
 
   if (!data) return [];
 
   return [
-    { label: "Plays", value: numberFormat.format(data.qualifiedPlayCount) },
-    { label: "Listening days", value: numberFormat.format(data.activeDays) },
+    { label: "Plays", value: formatNumber(data.qualifiedPlayCount) },
+    { label: "Listening days", value: formatNumber(data.activeDays) },
   ];
 });
 
