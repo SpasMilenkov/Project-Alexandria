@@ -72,7 +72,7 @@
         <strong class="font-semibold text-gray-900 dark:text-gray-100">{{
           formatWrappedDuration(facts!.seconds)
         }}</strong>
-        · {{ formatCount(facts!.qualifiedPlayCount, "play") }}
+        · {{ formatSongsPlayed(facts!.qualifiedPlayCount) }}
       </p>
 
       <RecapLandscape
@@ -140,6 +140,7 @@ import type { OverviewSummaryHeaderDtoResponse } from "@/api/stats";
 import RecapLandscape from "@/components/streaming/wrapped/recaps/RecapLandscape.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { wrappedEmptyState, yearRange } from "@/features/wrapped/display";
 import { recapTimestamp } from "@/features/wrapped/listening/recaps";
@@ -147,7 +148,7 @@ import { SUMMARY_KIND_WRAPPED, summaryToWrappedDeck } from "@/features/wrapped/s
 import { finalizeSummary } from "@/mutations/stats";
 import { getSummary } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
-import { formatCount, formatNumber } from "@/utils/count";
+import { formatNumber } from "@/utils/count";
 
 const {
   year,

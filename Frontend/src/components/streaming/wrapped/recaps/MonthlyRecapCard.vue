@@ -4,6 +4,7 @@ import { computed } from "vue";
 
 import { isAuthError } from "@/api/shuffle";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { factsFor, formatWrappedDuration } from "@/features/wrapped/art";
 import { wrappedDailyLandscape } from "@/features/wrapped/daily-landscape";
 import {
@@ -13,7 +14,7 @@ import {
 } from "@/features/wrapped/month";
 import { getWrapped } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
-import { formatCount, formatNumber } from "@/utils/count";
+import { formatNumber } from "@/utils/count";
 
 const { month, now } = defineProps<{ month: string; now: Date }>();
 
@@ -130,7 +131,7 @@ const favorites = computed(() => {
           {{ formatWrappedDuration(data.summary.seconds) }}
         </p>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          with your music · {{ formatCount(data.summary.qualifiedPlayCount, "play") }}
+          with your music · {{ formatSongsPlayed(data.summary.qualifiedPlayCount) }}
         </p>
       </div>
 

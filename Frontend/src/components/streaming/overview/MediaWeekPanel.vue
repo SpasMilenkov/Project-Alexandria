@@ -4,9 +4,9 @@ import { computed, ref } from "vue";
 
 import { isAuthError } from "@/api/shuffle";
 import { type WeekDay, buildWeekDays } from "@/features/media/overview";
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { homeTopSongsPeriod } from "@/features/media/top-songs";
 import { mediaOverviewWeek } from "@/queries/media-overview";
-import { formatCount } from "@/utils/count";
 import { formatDuration } from "@/utils/date-formatters";
 
 import MediaOverviewSection from "./MediaOverviewSection.vue";
@@ -24,13 +24,11 @@ const timeline = computed(() => query.data.value);
 const days = computed(() => buildWeekDays(from, timeline.value?.days ?? []));
 const isQuiet = computed(() => (timeline.value?.totalSeconds ?? 0) === 0);
 
-const songsPlayed = (count: number) => `${formatCount(count, "song")} played`;
-
 const summary = computed(() => {
   const data = timeline.value;
   if (!data) return "";
 
-  return `${songsPlayed(data.qualifiedPlayCount)} · active ${data.activeDays} of 7 days`;
+  return `${formatSongsPlayed(data.qualifiedPlayCount)} · active ${data.activeDays} of 7 days`;
 });
 
 const peak = computed(() => Math.max(1, ...days.value.map((day) => day.seconds)));
@@ -90,7 +88,7 @@ const detailHeading = computed(() => {
 const dayStats = (day: WeekDay): string => {
   if (day.seconds === 0) return "No listening";
 
-  return `${formatDuration(day.seconds, { largestUnit: "hour" })} · ${songsPlayed(day.plays)}`;
+  return `${formatDuration(day.seconds, { largestUnit: "hour" })} · ${formatSongsPlayed(day.plays)}`;
 };
 
 const dayAriaLabel = (day: WeekDay): string => `${day.longLabel}, ${dayStats(day)}`;

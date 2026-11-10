@@ -59,7 +59,7 @@ describe("stream history qualified plays", () => {
 
     try {
       expect(wrapper.text()).toContain("Played");
-      expect(wrapper.text()).toContain("Plays");
+      expect(wrapper.text()).toContain("Times played");
       expect(wrapper.text()).toContain("Last played");
       expect(wrapper.text()).not.toContain("Completed");
       expect(wrapper.text()).not.toContain("Times completed");

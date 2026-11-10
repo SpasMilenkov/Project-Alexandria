@@ -62,7 +62,7 @@ const facts = computed(() => {
   if (!data) return [];
 
   return [
-    { label: "Plays", value: formatNumber(data.qualifiedPlayCount) },
+    { label: "Songs played", value: formatNumber(data.qualifiedPlayCount) },
     { label: "Listening days", value: formatNumber(data.activeDays) },
   ];
 });

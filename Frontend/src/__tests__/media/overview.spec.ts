@@ -169,7 +169,7 @@ describe("Media overview", () => {
     ]);
     expect(wrapper.text()).toContain("37 tracks");
     expect(wrapper.text()).toContain("Favorite");
-    expect(wrapper.text()).toContain("12 plays");
+    expect(wrapper.text()).toContain("50m");
     expect(wrapper.text()).toContain("Old favorite");
     expect(player.playTrackInContext).not.toHaveBeenCalled();
     expect(player.togglePlay).not.toHaveBeenCalled();

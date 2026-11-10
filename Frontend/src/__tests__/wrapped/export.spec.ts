@@ -89,8 +89,8 @@ describe("Wrapped polish and export", () => {
 
       const text = fillText.mock.calls.map(([value]) => value).join("\n");
 
-      expect(text).toContain(`${plays} plays`);
-      expect(text).not.toContain("4 plays");
+      expect(text).toContain(`${plays} songs played`);
+      expect(text).not.toContain("4 songs played");
       expect(canvas.height).toBeGreaterThan(0);
     } finally {
       createElement.mockRestore();

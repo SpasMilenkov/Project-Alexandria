@@ -63,6 +63,7 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedCardFacts } from "@/api/stats";
 
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { calendarMonths, dateLabel, type CalendarCell } from "@/features/wrapped/story";
 
@@ -92,7 +93,7 @@ const cellColor = (cell: CalendarCell) => {
 };
 
 const describe = (cell: CalendarCell) =>
-  `${dateLabel(cell.date)} · ${formatWrappedDuration(cell.seconds)} · ${cell.plays} plays${cell.streak ? " · longest streak" : ""}`;
+  `${dateLabel(cell.date)} · ${formatWrappedDuration(cell.seconds)} · ${formatSongsPlayed(cell.plays)}${cell.streak ? " · longest streak" : ""}`;
 
 const focusDate = (cells: (CalendarCell | null)[]) =>
   cells.find((cell) => cell?.date === selected.value?.date)?.date ??

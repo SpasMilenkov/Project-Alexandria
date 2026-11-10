@@ -232,8 +232,8 @@ describe("annual recap overview", () => {
       header(year - 1).periodEnd,
     );
 
-    expect(wrapper.text()).toContain("61 plays");
-    expect(wrapper.text()).not.toContain("83 plays");
+    expect(wrapper.text()).toContain("61 songs played");
+    expect(wrapper.text()).not.toContain("83 songs played");
     expect(wrapper.get("dl").text()).toContain("17");
     expect(wrapper.findComponent(RecapLandscape).props("series")[0].seconds).toBe(7200);
   });
