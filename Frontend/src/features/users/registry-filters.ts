@@ -9,6 +9,7 @@ import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
 import { UserRole } from "@/enums/UserRole";
 import { userQueryApiSchema, userQueryUiSchema } from "@/schemas/user";
+import { formatDayMonth, formatDayMonthRange } from "@/utils/date-formatters";
 
 type DateFilterKey = "created" | "updated" | "deleted" | "lockedOut";
 
@@ -129,16 +130,14 @@ export const pageSizeOptions = [
   { label: "100 per page", value: 100 },
 ];
 
-const pillFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
-
 const formatRangePill = (start: CalendarDate, end: CalendarDate) => {
   const startDate = start.toDate(getLocalTimeZone());
 
   if (start.compare(end) === 0) {
-    return pillFormatter.format(startDate);
+    return formatDayMonth(startDate);
   }
 
-  return pillFormatter.formatRange(startDate, end.toDate(getLocalTimeZone()));
+  return formatDayMonthRange(startDate, end.toDate(getLocalTimeZone()));
 };
 
 type CountableState = { userEmail?: string; role?: UserRole } & Partial<Record<DateField, unknown>>;

@@ -23,15 +23,126 @@ export const formatDuration = (seconds: number): string => {
   return `${m}:${pad(sec)}`;
 };
 
-const CALENDAR_DATE = new Intl.DateTimeFormat(undefined, {
+export interface DateFormatOptions {
+  /** "UTC" for days the backend buckets in UTC, so they do not shift a day for the viewer. */
+  timeZone?: string;
+}
+
+export interface TimeFormatOptions extends DateFormatOptions {
+  seconds?: boolean;
+}
+
+export interface FullDateOptions extends DateFormatOptions {
+  /** "Wed, Mar 4, 2026" for narrow layouts instead of "Wednesday, March 4, 2026". */
+  compact?: boolean;
+}
+
+const formatterCache = new Map<string, Intl.DateTimeFormat>();
+
+// Building an Intl formatter costs far more than using one, and lists format many rows.
+const formatterFor = (options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat => {
+  const key = JSON.stringify(options);
+  const cached = formatterCache.get(key);
+
+  if (cached) return cached;
+
+  const formatter = new Intl.DateTimeFormat(undefined, options);
+  formatterCache.set(key, formatter);
+
+  return formatter;
+};
+
+const toValidDate = (value: DateInput): Date | null => {
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+// Intl throws on an invalid date, and a blank label beats a crashed render.
+const formatWith = (options: Intl.DateTimeFormatOptions, value: DateInput): string => {
+  const date = toValidDate(value);
+
+  return date ? formatterFor(options).format(date) : "";
+};
+
+const formatRangeWith = (
+  options: Intl.DateTimeFormatOptions,
+  start: DateInput,
+  end: DateInput,
+): string => {
+  const from = toValidDate(start);
+  const to = toValidDate(end);
+
+  if (!from || !to) return "";
+
+  return formatterFor(options).formatRange(from, to);
+};
+
+const dayMonthOptions = ({ timeZone }: DateFormatOptions): Intl.DateTimeFormatOptions => ({
   day: "numeric",
   month: "short",
+  timeZone,
+});
+
+const calendarOptions = ({ timeZone }: DateFormatOptions): Intl.DateTimeFormatOptions => ({
+  day: "numeric",
+  month: "short",
+  timeZone,
   year: "numeric",
 });
 
-// Absolute day for detail panels, paired with the relative formatTimeAgo label.
-export const formatCalendarDate = (value: DateInput): string =>
-  CALENDAR_DATE.format(new Date(value));
+const clockOptions = ({ seconds, timeZone }: TimeFormatOptions): Intl.DateTimeFormatOptions => ({
+  hour: "numeric",
+  minute: "2-digit",
+  second: seconds ? "2-digit" : undefined,
+  timeZone,
+});
+
+/** "Mar 4", for chips and tooltips where the year is obvious. */
+export const formatDayMonth = (value: DateInput, options: DateFormatOptions = {}): string =>
+  formatWith(dayMonthOptions(options), value);
+
+/** "Mar 4 – 9", collapsing whatever the two ends share. */
+export const formatDayMonthRange = (
+  start: DateInput,
+  end: DateInput,
+  options: DateFormatOptions = {},
+): string => formatRangeWith(dayMonthOptions(options), start, end);
+
+/** "Mar 4, 2026", the absolute day paired with a relative formatTimeAgo label. */
+export const formatCalendarDate = (value: DateInput, options: DateFormatOptions = {}): string =>
+  formatWith(calendarOptions(options), value);
+
+/** "Mar 4 – 9, 2026", collapsing whatever the two ends share. */
+export const formatCalendarDateRange = (
+  start: DateInput,
+  end: DateInput,
+  options: DateFormatOptions = {},
+): string => formatRangeWith(calendarOptions(options), start, end);
+
+/** "Wednesday, March 4, 2026", for headings that name a single day. */
+export const formatFullDate = (value: DateInput, options: FullDateOptions = {}): string => {
+  const style = options.compact ? "short" : "long";
+
+  return formatWith(
+    {
+      day: "numeric",
+      month: style,
+      timeZone: options.timeZone,
+      weekday: style,
+      year: "numeric",
+    },
+    value,
+  );
+};
+
+/** "2:07 PM", or "14:07" where the viewer's locale uses a 24-hour clock. */
+export const formatClockTime = (value: DateInput, options: TimeFormatOptions = {}): string =>
+  formatWith(clockOptions(options), value);
+
+/** "Mar 4, 2026, 2:07 PM", for an exact moment such as an audit entry or an expiry. */
+export const formatDateTime = (value: DateInput, options: TimeFormatOptions = {}): string =>
+  formatWith({ ...calendarOptions(options), ...clockOptions(options) }, value);
 
 interface ElapsedUnit {
   unit: Intl.RelativeTimeFormatUnit;

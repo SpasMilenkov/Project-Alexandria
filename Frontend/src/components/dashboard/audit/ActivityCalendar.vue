@@ -7,6 +7,7 @@ import { OperationType } from "@/api/activity";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { type CalendarDay, useActivityCalendar } from "@/composables/useActivityCalendar";
 import { activitySummary } from "@/queries/activities";
+import { formatDayMonth, formatFullDate } from "@/utils/date-formatters";
 
 const isMobile = useMediaQuery("(max-width: 767px)");
 
@@ -206,7 +207,7 @@ const tooltipText = computed(() => {
   const day = tooltipDay.value;
   if (!day?.date) return "";
 
-  const dateStr = day.date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const dateStr = formatDayMonth(day.date);
   if (day.count === 0) return `No activity · ${dateStr}`;
 
   const noun = day.count === 1 ? "action" : "actions";
@@ -314,18 +315,8 @@ const OP_BADGE_COLORS: Partial<Record<OperationType, BadgeColor>> = {
   [OperationType.Login]: "info",
 };
 
-const formatDate = (day: CalendarDay): string => {
-  if (!day.date) return "";
-
-  const style = isMobile.value ? "short" : "long";
-
-  return day.date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: style,
-    weekday: style,
-    year: "numeric",
-  });
-};
+const dayTitle = (day: CalendarDay): string =>
+  day.date ? formatFullDate(day.date, { compact: isMobile.value }) : "";
 
 const breakdownEntries = (
   breakdown: Partial<Record<OperationType, number>>,
@@ -463,7 +454,7 @@ const hasNoActivity = computed(() => Boolean(data.value) && displayTotal.value =
           class="calendar-cell-mobile relative flex aspect-square items-start justify-start rounded-[6px] p-1.5"
           :class="mobileCellClass(day)"
           :disabled="!isSelectable(day) || isForeignMonthCell(day)"
-          :aria-label="day.date ? `${formatDate(day)}: ${day.count} actions` : undefined"
+          :aria-label="day.date ? `${dayTitle(day)}: ${day.count} actions` : undefined"
           :aria-pressed="isSelected(day)"
           @click="selectDay(day)"
         >
@@ -548,7 +539,7 @@ const hasNoActivity = computed(() => Boolean(data.value) && displayTotal.value =
             class="h-4 w-4 shrink-0 text-gray-600 dark:text-gray-400"
           />
           <span class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-            {{ formatDate(selectedDay) }}
+            {{ dayTitle(selectedDay) }}
           </span>
           <UBadge color="neutral" variant="subtle" size="sm" class="shrink-0">
             {{ selectedDay.count }} total

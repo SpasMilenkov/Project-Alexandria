@@ -1,6 +1,7 @@
 import type { DailyStatusPoint, PublicServiceState } from "@/api/publicStatus";
 
 import { ServiceType } from "@/enums";
+import { formatCalendarDate } from "@/utils/date-formatters";
 
 // Friendlier copy than the admin maps — this surface is read by non-admins and
 // deliberately decoupled from the admin severity/label vocabulary (D11).
@@ -137,12 +138,6 @@ export const describeLastIssue = (daysSince: number | null, windowDays: number) 
   return `Last issue ${describeDaysSince(daysSince).toLowerCase()}`;
 };
 
-const dayFormatter = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-  year: "numeric",
-});
-
 // History days are UTC calendar dates; formatting in UTC keeps them from shifting a day.
-export const formatStatusDay = (date: string) => dayFormatter.format(new Date(`${date}T00:00:00Z`));
+export const formatStatusDay = (date: string) =>
+  formatCalendarDate(`${date}T00:00:00Z`, { timeZone: "UTC" });

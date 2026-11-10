@@ -19,6 +19,7 @@ import {
   SEVERITY_LABELS,
 } from "@/features/monitoring/display";
 import { errorCalendar } from "@/queries/monitoring";
+import { formatDayMonth, formatFullDate } from "@/utils/date-formatters";
 
 const emit = defineEmits<{ viewDay: [date: Date] }>();
 
@@ -235,7 +236,7 @@ const tooltipText = computed(() => {
   const day = tooltipDay.value;
   if (!day?.date) return "";
 
-  const dateStr = day.date.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const dateStr = formatDayMonth(day.date);
   if (day.count === 0) return `No incidents · ${dateStr}`;
 
   return `${day.count} ${incidentNoun(day.count)} · ${dateStr}`;
@@ -303,18 +304,8 @@ const MOBILE_DAY_HEADERS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
 const DAY_LABELS = ["Mon", "", "Wed", "", "Fri", "", ""];
 
-const formatDate = (day: ErrorCalendarDay): string => {
-  if (!day.date) return "";
-
-  const style = isMobile.value ? "short" : "long";
-
-  return day.date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: style,
-    weekday: style,
-    year: "numeric",
-  });
-};
+const dayTitle = (day: ErrorCalendarDay): string =>
+  day.date ? formatFullDate(day.date, { compact: isMobile.value }) : "";
 
 const breakdownEntries = (day: ErrorCalendarDay): CalendarBreakdownEntry[] =>
   day.entries.filter((entry) => entry.count > 0);
@@ -453,7 +444,7 @@ const hasNoIncidents = computed(() => Boolean(data.value) && displayTotal.value 
           :class="mobileCellClass(day)"
           :disabled="!isSelectable(day) || isForeignMonthCell(day)"
           :aria-label="
-            day.date ? `${formatDate(day)}: ${day.count} ${incidentNoun(day.count)}` : undefined
+            day.date ? `${dayTitle(day)}: ${day.count} ${incidentNoun(day.count)}` : undefined
           "
           :aria-pressed="isSelected(day)"
           @click="selectDay(day)"
@@ -540,7 +531,7 @@ const hasNoIncidents = computed(() => Boolean(data.value) && displayTotal.value 
             class="h-4 w-4 shrink-0 text-gray-600 dark:text-gray-400"
           />
           <span class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-            {{ formatDate(selectedDay) }}
+            {{ dayTitle(selectedDay) }}
           </span>
           <UBadge color="neutral" variant="subtle" size="sm" class="shrink-0">
             {{ selectedDay.count }} total

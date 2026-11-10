@@ -1,5 +1,5 @@
 import { HomeCountdownStyle, HomeDailyCoverStyle, HomeFocusStyle } from "@/enums/home-widget";
-import { localDayKey } from "@/utils/date-formatters";
+import { formatFullDate, localDayKey } from "@/utils/date-formatters";
 
 export const HOME_COUNTDOWN_STYLES = [
   {
@@ -101,14 +101,7 @@ export const homeCountdown = (target: string | Date | null, now: Date, dateLabel
     days,
     value: days === 0 ? "Today" : String(Math.abs(days)),
     unit,
-    date:
-      dateLabel ??
-      date.toLocaleDateString(undefined, {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      }),
+    date: dateLabel ?? formatFullDate(date),
     progress: Math.min(1, Math.max(0, (30 - days) / 30)),
     fullDays: Math.floor(minutes / 1440),
     hours: Math.floor(minutes / 60) % 24,

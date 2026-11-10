@@ -67,6 +67,7 @@ import ServiceHealthStrip from "@/components/dashboard/admin/monitoring/ServiceH
 import { useServiceStatus } from "@/composables/useServiceStatus";
 import { ServiceType } from "@/enums";
 import { MONITORED_SERVICES } from "@/features/monitoring/display";
+import { formatFullDate } from "@/utils/date-formatters";
 
 interface HubLink {
   id: string;
@@ -155,10 +156,5 @@ const integrationsStatus = computed(() => {
   return status;
 });
 
-const todayLabel = new Date().toLocaleDateString(undefined, {
-  day: "numeric",
-  month: "long",
-  weekday: "long",
-  year: "numeric",
-});
+const todayLabel = formatFullDate(new Date());
 </script>

@@ -40,7 +40,7 @@ import {
   stuck,
   volumeByHour,
 } from "@/queries/audioAnalysis";
-import { formatDuration, formatTimeAgo } from "@/utils/date-formatters";
+import { formatClockTime, formatDuration, formatTimeAgo } from "@/utils/date-formatters";
 
 ChartJS.register(
   Title,
@@ -158,7 +158,6 @@ useLiveRefresh(() => {
 // Tracks when the last successful refresh finished, so the header can show a
 // quiet "Updated 2:41 PM" instead of leaving the user guessing about staleness.
 const lastUpdated = ref(new Date());
-const timeOnly = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 watch(isRefreshing, (loading, wasLoading) => {
   if (wasLoading && !loading) {
     lastUpdated.value = new Date();
@@ -464,7 +463,7 @@ const BATCH_COLUMNS = [
     >
       <template #actions>
         <span class="hidden text-xs text-gray-600 lg:inline dark:text-gray-400">
-          Updated {{ timeOnly.format(lastUpdated) }}
+          Updated {{ formatClockTime(lastUpdated) }}
         </span>
         <SegmentedControl v-model="rangeMs" :options="rangeOptions" label="Time range" />
         <SegmentedControl v-model="bucket" :options="bucketOptions" label="Bucket size" />

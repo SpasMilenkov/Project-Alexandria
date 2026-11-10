@@ -8,6 +8,7 @@ import HomeFlipDigit from "@/components/dashboard/home/widgets/clock/HomeFlipDig
 import { HomeCountdownStyle } from "@/enums/home-widget";
 import { homeCalendarDate, homeCountdown } from "@/features/home/widgets/general";
 import { useHomeStore } from "@/stores/home";
+import { formatFullDate } from "@/utils/date-formatters";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 const home = useHomeStore();
@@ -16,14 +17,7 @@ const now = shallowRef(new Date());
 const delay = ref(60_000);
 
 const target = computed(() => homeCalendarDate(widget.options.countdownTarget));
-const dateLabel = computed(() =>
-  target.value?.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }),
-);
+const dateLabel = computed(() => (target.value ? formatFullDate(target.value) : undefined));
 
 const countdown = computed(() => homeCountdown(target.value, now.value, dateLabel.value));
 

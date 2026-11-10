@@ -4,6 +4,7 @@ import { computed, ref } from "vue";
 import type { MetadataRenderer } from "@/composables/useAuditMessage";
 
 import { EntityType } from "@/api/activity";
+import { formatDateTime } from "@/utils/date-formatters";
 
 const { entityId, entityType, metadata, timestamp, sourceLabel } = defineProps<{
   entityId: string;
@@ -22,16 +23,7 @@ const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
   [EntityType.Preview]: "Preview",
 };
 
-const recordedAt = computed(() =>
-  new Date(timestamp).toLocaleString(undefined, {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "long",
-    second: "2-digit",
-    year: "numeric",
-  }),
-);
+const recordedAt = computed(() => formatDateTime(timestamp, { seconds: true }));
 
 const copied = ref(false);
 

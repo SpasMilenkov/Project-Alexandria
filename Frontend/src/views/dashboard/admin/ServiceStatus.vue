@@ -8,6 +8,7 @@ import type { HealthCheckEntry, HealthStatus } from "@/api/status";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import InfoHint from "@/components/common/InfoHint.vue";
 import { serverResourceUsage, serverStatus } from "@/queries/status";
+import { formatClockTime } from "@/utils/date-formatters";
 
 const { data, status, asyncStatus, refresh } = useQuery(serverStatus());
 const { data: resources, refresh: refreshResources } = useQuery(serverResourceUsage());
@@ -76,11 +77,7 @@ const lastChecked = computed(() => {
   if (!data.value?.checkedAt) {
     return null;
   }
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(new Date(data.value.checkedAt));
+  return formatClockTime(data.value.checkedAt, { seconds: true });
 });
 
 const totalDuration = computed(() => (data.value ? `${data.value.duration.toFixed(0)} ms` : null));

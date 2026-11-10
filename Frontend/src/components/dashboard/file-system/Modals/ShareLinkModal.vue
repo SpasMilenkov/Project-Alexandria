@@ -11,6 +11,7 @@ import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { createShareLink, revokeShareLink } from "@/mutations/shareLinks";
 import { getCaptureMetadata, getDocumentMetadata } from "@/queries/files";
 import { getShareLinksForFile } from "@/queries/shareLinks";
+import { formatCalendarDate } from "@/utils/date-formatters";
 import { getFileIcon } from "@/utils/files/icons";
 import { glassModalContent } from "@/utils/modal-ui";
 
@@ -98,13 +99,6 @@ const isCreating = ref(false);
 const createError = ref<string | null>(null);
 
 const shareBaseUrl = computed(() => `${window.location.origin}/share/`);
-
-const formatDate = (dateStr: string) =>
-  new Date(dateStr).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
 
 const formatAccessCount = (link: ShareLinkSummaryDto) => {
   if (link.maxAccessCount === null) return `${link.accessCount} downloads`;
@@ -287,10 +281,10 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
                   </span>
                 </div>
                 <div class="flex items-center gap-2 text-[11px] text-muted flex-wrap">
-                  <span>{{ formatDate(link.createdAt) }}</span>
+                  <span>{{ formatCalendarDate(link.createdAt) }}</span>
                   <template v-if="!link.isRevoked">
                     <span>·</span>
-                    <span>Expires {{ formatDate(link.expiresAt) }}</span>
+                    <span>Expires {{ formatCalendarDate(link.expiresAt) }}</span>
                   </template>
                   <span>·</span>
                   <span>{{ formatAccessCount(link) }}</span>

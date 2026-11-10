@@ -62,7 +62,7 @@
             <span
               v-if="lastRefreshedLabel && !isBackgroundLoading"
               class="hidden tabular-nums text-gray-600 @5xl/explorer:inline dark:text-gray-400"
-              :title="lastRefreshedAt?.toLocaleTimeString()"
+              :title="lastRefreshedAt ? formatClockTime(lastRefreshedAt, { seconds: true }) : undefined"
             >
               {{ lastRefreshedLabel }}
             </span>
@@ -713,7 +713,7 @@ import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
-import { formatTimeAgo } from "@/utils/date-formatters";
+import { formatClockTime, formatTimeAgo } from "@/utils/date-formatters";
 import { getFileIcon } from "@/utils/files/icons";
 import { logger } from "@/utils/logger";
 import { glassDrawerContent } from "@/utils/modal-ui";

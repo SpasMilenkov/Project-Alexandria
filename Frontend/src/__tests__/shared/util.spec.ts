@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { formatAgeShort, formatCalendarDate, formatTimeAgo } from "@/utils/date-formatters";
+import {
+  formatAgeShort,
+  formatCalendarDate,
+  formatCalendarDateRange,
+  formatClockTime,
+  formatDateTime,
+  formatDayMonth,
+  formatDayMonthRange,
+  formatFullDate,
+  formatTimeAgo,
+} from "@/utils/date-formatters";
 import { getIconByValue, getFileIcon } from "@/utils/files/icons";
 import { getFileTypeReadable, groupMimeSizeRecord } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
@@ -82,6 +92,41 @@ describe("formatAgeShort", () => {
 
   it("returns an empty label for an unreadable date", () => {
     expect(formatAgeShort("not a date", NOW)).toBe("");
+  });
+});
+
+describe("absolute date presets", () => {
+  const MOMENT = "2026-03-04T14:07:09Z";
+  const UTC = { timeZone: "UTC" };
+
+  it("formats each preset in one shared style", () => {
+    expect(formatDayMonth(MOMENT, UTC)).toBe("Mar 4");
+    expect(formatCalendarDate(MOMENT, UTC)).toBe("Mar 4, 2026");
+    expect(formatFullDate(MOMENT, UTC)).toBe("Wednesday, March 4, 2026");
+    expect(formatFullDate(MOMENT, { compact: true, timeZone: "UTC" })).toBe("Wed, Mar 4, 2026");
+    expect(formatClockTime(MOMENT, UTC)).toBe("2:07 PM");
+    expect(formatClockTime(MOMENT, { seconds: true, timeZone: "UTC" })).toBe("2:07:09 PM");
+    expect(formatDateTime(MOMENT, UTC)).toBe("Mar 4, 2026, 2:07 PM");
+  });
+
+  it("reads a UTC day bucket as that day whatever the viewer's zone", () => {
+    expect(formatCalendarDate(Date.UTC(2026, 2, 4), UTC)).toBe("Mar 4, 2026");
+    expect(formatDayMonth("2026-03-04T23:30:00Z", UTC)).toBe("Mar 4");
+  });
+
+  it("collapses what the two ends of a range share", () => {
+    expect(formatDayMonthRange("2026-03-04T12:00:00Z", "2026-03-09T12:00:00Z", UTC)).toBe(
+      "Mar 4\u2009–\u20099",
+    );
+    expect(formatCalendarDateRange("2026-03-04T12:00:00Z", "2026-04-02T12:00:00Z", UTC)).toBe(
+      "Mar 4\u2009–\u2009Apr 2, 2026",
+    );
+  });
+
+  it("returns an empty label instead of throwing on an unreadable date", () => {
+    expect(formatCalendarDate("not a date")).toBe("");
+    expect(formatDateTime(Number.NaN)).toBe("");
+    expect(formatDayMonthRange("not a date", MOMENT)).toBe("");
   });
 });
 

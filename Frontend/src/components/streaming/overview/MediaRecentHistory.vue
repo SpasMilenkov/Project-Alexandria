@@ -9,7 +9,7 @@ import { isAuthError } from "@/api/shuffle";
 import { coverSeed } from "@/features/media/generated-cover";
 import { groupByDay } from "@/features/media/overview";
 import { mediaOverviewHistory } from "@/queries/media-overview";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatClockTime, formatDuration } from "@/utils/date-formatters";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaOverviewSection from "./MediaOverviewSection.vue";
@@ -17,7 +17,6 @@ import MediaOverviewSection from "./MediaOverviewSection.vue";
 const { userId, session } = defineProps<{ userId: string; session: string }>();
 const query = useQuery(() => mediaOverviewHistory({ userId, session }));
 const groups = computed(() => groupByDay(query.data.value?.items ?? []));
-const TIME = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 
 const subtitle = (entry: StreamHistoryResponse) => {
   if (!entry.isVideo) return entry.artist || entry.album || "Unknown artist";
@@ -79,7 +78,7 @@ const subtitle = (entry: StreamHistoryResponse) => {
               <time
                 :datetime="entry.lastAccessedAt"
                 class="shrink-0 text-xs tabular-nums text-gray-600 dark:text-gray-400"
-                >{{ TIME.format(new Date(entry.lastAccessedAt)) }}</time
+                >{{ formatClockTime(entry.lastAccessedAt) }}</time
               >
             </RouterLink>
           </li>

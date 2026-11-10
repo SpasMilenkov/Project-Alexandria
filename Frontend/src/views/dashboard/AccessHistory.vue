@@ -10,6 +10,7 @@ import { SortDirection } from "@/enums/SortDirection";
 import { personalPaginated } from "@/queries/activities";
 import { useActivityStore } from "@/stores/activity";
 import { useAuthStore } from "@/stores/auth";
+import { formatClockTime } from "@/utils/date-formatters";
 
 const activityStore = useActivityStore();
 const authStore = useAuthStore();
@@ -140,7 +141,7 @@ const rows = computed(() => {
       logSourceLabel: LOG_SOURCE_LABELS[log.logSource] ?? "Unknown",
       metadata: getRenderedMetadata(log.eventCode, log.metadata),
       opLabel: OperationType[log.operationType] ?? "Unknown",
-      time: at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+      time: formatClockTime(at),
       timestamp: log.timestamp,
       title: getMessage(log.eventCode),
       ui: { indicator: OP_INDICATORS[log.operationType] ?? NEUTRAL_INDICATOR },

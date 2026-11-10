@@ -82,6 +82,8 @@ import {
 } from "@internationalized/date";
 import { computed, ref, shallowRef, watch } from "vue";
 
+import { formatCalendarDate, formatCalendarDateRange } from "@/utils/date-formatters";
+
 export interface DateRangeValue {
   start?: CalendarDate;
   end?: CalendarDate;
@@ -127,12 +129,6 @@ const PRESETS: Preset[] = [
   },
 ];
 
-const formatter = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-
 const isOpen = ref(false);
 const emptyRange = (): CalendarRange => ({ end: undefined, start: undefined });
 
@@ -162,10 +158,10 @@ const summary = computed(() => {
   }
 
   if (isSameDay(start, end)) {
-    return formatter.format(toJsDate(start));
+    return formatCalendarDate(toJsDate(start));
   }
 
-  return formatter.formatRange(toJsDate(start), toJsDate(end));
+  return formatCalendarDateRange(toJsDate(start), toJsDate(end));
 });
 
 const summaryClass = computed(() => {

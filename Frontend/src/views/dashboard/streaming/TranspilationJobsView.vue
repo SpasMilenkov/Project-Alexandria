@@ -17,7 +17,7 @@ import { JobStatus } from "@/enums/job-status";
 import { quoted } from "@/features/toast/format";
 import { stopTranspilationJob } from "@/mutations/streaming";
 import { getTranspilationJobs } from "@/queries/streaming";
-import { formatTimeAgo } from "@/utils/date-formatters";
+import { formatDateTime, formatDayMonth, formatTimeAgo } from "@/utils/date-formatters";
 
 const toast = useAppToast("jobs");
 
@@ -189,11 +189,9 @@ interface ActiveChip {
   label: string;
 }
 
+// The picked day is built at UTC midnight, so it is read back in UTC to keep the same day.
 const formatShortDay = (value: DayValue) =>
-  new Date(Date.UTC(value.year, value.month - 1, value.day)).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
+  formatDayMonth(Date.UTC(value.year, value.month - 1, value.day), { timeZone: "UTC" });
 
 const activeChips = computed<ActiveChip[]>(() => {
   const chips: ActiveChip[] = [];
@@ -485,13 +483,6 @@ const rungChips = (job: TranspilationJobResponse): string[] => {
     return (job.videoRungs ?? []).map((rung) => VIDEO_RUNG_LABELS[rung] ?? `${rung}`);
   return (job.audioRungs ?? []).map((rung) => AUDIO_RUNG_LABELS[rung] ?? `${rung}`);
 };
-
-const formatDate = (iso?: string) =>
-  iso
-    ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-        new Date(iso),
-      )
-    : "—";
 
 const formatRelative = (iso?: string) => {
   if (!iso) return "—";
@@ -1024,7 +1015,7 @@ const mediaFilterOptions = [
                     <Icon icon="lucide:rotate-ccw" class="w-3.5 h-3.5" />
                     {{ job.retryCount }}
                   </span>
-                  <span :title="formatDate(job.createdAt)">
+                  <span :title="formatDateTime(job.createdAt)">
                     {{ formatRelative(job.createdAt) }}
                   </span>
                 </div>

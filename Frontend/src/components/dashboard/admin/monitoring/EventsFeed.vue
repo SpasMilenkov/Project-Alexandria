@@ -29,7 +29,7 @@ import {
 import { buildDeepLink } from "@/features/monitoring/service-routing";
 import { useResolveIncident } from "@/mutations/monitoring";
 import { operationalEvents } from "@/queries/monitoring";
-import { formatTimeAgo } from "@/utils/date-formatters";
+import { formatCalendarDate, formatDateTime, formatTimeAgo } from "@/utils/date-formatters";
 
 const { dateRange, initialServiceType, initialSeverity, highlightId, lockedService } = defineProps<{
   dateRange: EventCalendarRange | null;
@@ -235,15 +235,6 @@ const metadataRows = (event: OperationalEvent): MetadataRow[] => {
   return [];
 };
 
-const formatAbsolute = (iso: string): string =>
-  new Date(iso).toLocaleString(undefined, {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-
 const ageLabel = (event: OperationalEvent): string =>
   formatTimeAgo(event.createdAt, { style: "narrow" });
 
@@ -267,13 +258,7 @@ const statusIconColor = (event: OperationalEvent): string =>
 
 // Day windows are UTC days (matching backend bucketing), so the chip must not shift
 // them into the viewer's local day.
-const formatUtcDay = (date: Date): string =>
-  date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "long",
-    timeZone: "UTC",
-    year: "numeric",
-  });
+const formatUtcDay = (date: Date): string => formatCalendarDate(date, { timeZone: "UTC" });
 
 const dateChipLabel = computed(() => {
   if (!dateRange) return "";
@@ -583,7 +568,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                   Occurred
                 </dt>
                 <dd class="text-sm text-gray-900 dark:text-gray-100 tabular-nums">
-                  {{ formatAbsolute(event.createdAt) }}
+                  {{ formatDateTime(event.createdAt) }}
                 </dd>
                 <template v-if="event.resolvedAt">
                   <dt
@@ -592,7 +577,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                     Resolved
                   </dt>
                   <dd class="text-sm text-gray-900 dark:text-gray-100 tabular-nums">
-                    {{ formatAbsolute(event.resolvedAt) }}
+                    {{ formatDateTime(event.resolvedAt) }}
                   </dd>
                 </template>
                 <template v-if="resolutionNoteRow(event)">
@@ -712,7 +697,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
           />
           <span class="text-xs text-gray-600 dark:text-gray-300 tabular-nums truncate">
             {{ SERVICE_LABELS[resolvingEvent.serviceType] ?? resolvingEvent.serviceType }} ·
-            occurred {{ formatAbsolute(resolvingEvent.createdAt) }} ({{ ageLabel(resolvingEvent) }})
+            occurred {{ formatDateTime(resolvingEvent.createdAt) }} ({{ ageLabel(resolvingEvent) }})
           </span>
         </div>
 
