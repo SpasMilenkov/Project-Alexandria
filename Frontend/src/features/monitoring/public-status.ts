@@ -1,7 +1,7 @@
 import type { DailyStatusPoint, PublicServiceState } from "@/api/publicStatus";
 
 import { ServiceType } from "@/enums";
-import { formatCalendarDate } from "@/utils/date-formatters";
+import { formatCalendarDate, formatDaysAgo } from "@/utils/date-formatters";
 
 // Friendlier copy than the admin maps — this surface is read by non-admins and
 // deliberately decoupled from the admin severity/label vocabulary (D11).
@@ -119,13 +119,7 @@ export const describeDaysSince = (daysSince: number | null) => {
   if (daysSince === null) {
     return "None";
   }
-  if (daysSince === 0) {
-    return "Today";
-  }
-  if (daysSince === 1) {
-    return "Yesterday";
-  }
-  return `${daysSince} days ago`;
+  return formatDaysAgo(daysSince, { capitalize: true });
 };
 
 export const describeLastIssue = (daysSince: number | null, windowDays: number) => {
@@ -135,7 +129,7 @@ export const describeLastIssue = (daysSince: number | null, windowDays: number) 
   if (daysSince === 0) {
     return "Issue today";
   }
-  return `Last issue ${describeDaysSince(daysSince).toLowerCase()}`;
+  return `Last issue ${formatDaysAgo(daysSince)}`;
 };
 
 // History days are UTC calendar dates; formatting in UTC keeps them from shifting a day.

@@ -223,6 +223,53 @@ export const formatAgeShort = (value: DateInput, now = Date.now()): string => {
   return AGE_DAYS.format(Math.floor(elapsedMs / DAY_MS));
 };
 
+// Counts midnights on the viewer's calendar rather than 24-hour spans, so 23:50 the night before
+// is one day back and a daylight-saving day still counts as one.
+const localDayNumber = (date: Date): number => {
+  const utc = new Date(0);
+  utc.setUTCFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+
+  return utc.getTime() / DAY_MS;
+};
+
+/** Whole calendar days from `from` to `to` on the viewer's calendar; negative when `to` is earlier. */
+export const calendarDaysBetween = (from: DateInput, to: DateInput): number =>
+  localDayNumber(new Date(to)) - localDayNumber(new Date(from));
+
+const RELATIVE_DAYS = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+const capitalizeFirst = (text: string): string => text.charAt(0).toLocaleUpperCase() + text.slice(1);
+
+export interface DaysAgoOptions {
+  /** "Today" for a heading or a tile, rather than "today" inside a sentence. */
+  capitalize?: boolean;
+}
+
+/** "today", "yesterday", "12 days ago", or "in 3 days", for a distance in calendar days. */
+export const formatDaysAgo = (days: number, options: DaysAgoOptions = {}): string => {
+  const label = RELATIVE_DAYS.format(-days, "day");
+
+  return options.capitalize ? capitalizeFirst(label) : label;
+};
+
+/**
+ * Heading for a day in a grouped history: "Today", "Yesterday", the weekday within the past
+ * week, then "Mar 4", with the year added once it is no longer the current one.
+ */
+export const formatDayLabel = (value: DateInput, now: DateInput = Date.now()): string => {
+  const date = toValidDate(value);
+
+  if (!date) return "";
+
+  const days = calendarDaysBetween(date, now);
+
+  if (days === 0 || days === 1) return formatDaysAgo(days, { capitalize: true });
+  if (days > 1 && days < 7) return formatWith({ weekday: "long" }, date);
+  if (date.getFullYear() === new Date(now).getFullYear()) return formatDayMonth(date);
+
+  return formatCalendarDate(date);
+};
+
 // "yyyy-MM-dd" in UTC, the wire format of the backend's DateOnly day buckets.
 export const utcDayKey = (date: Date | number): string => new Date(date).toISOString().slice(0, 10);
 

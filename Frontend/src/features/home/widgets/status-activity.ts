@@ -10,8 +10,10 @@ import { ServiceType } from "@/enums";
 import { HomeActivityStyle, HomeStatusStyle } from "@/enums/home-widget";
 import { PUBLIC_SERVICE_LABELS } from "@/features/monitoring/public-status";
 import {
+  calendarDaysBetween,
   formatClockTime,
   formatDayMonth,
+  formatDaysAgo,
   formatTimeAgo,
   localDayKey,
   utcDayKey,
@@ -238,20 +240,17 @@ export const homeActivityGroups = (
   events: AuditLogResult[],
   now = new Date(),
 ): HomeActivityGroup[] => {
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const todayKey = localDayKey(now);
-  const yesterdayKey = localDayKey(yesterday);
   const groups: HomeActivityGroup[] = [
-    { label: "Today", events: [] },
-    { label: "Yesterday", events: [] },
+    { label: formatDaysAgo(0, { capitalize: true }), events: [] },
+    { label: formatDaysAgo(1, { capitalize: true }), events: [] },
     { label: "Earlier", events: [] },
   ];
 
   for (const event of events) {
-    const key = localDayKey(new Date(event.timestamp));
+    const days = calendarDaysBetween(event.timestamp, now);
     let group = groups[2]!;
-    if (key === todayKey) group = groups[0]!;
-    else if (key === yesterdayKey) group = groups[1]!;
+    if (days === 0) group = groups[0]!;
+    else if (days === 1) group = groups[1]!;
 
     group.events.push(event);
   }

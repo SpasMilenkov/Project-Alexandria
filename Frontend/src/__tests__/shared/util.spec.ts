@@ -1,13 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  calendarDaysBetween,
   formatAgeShort,
   formatCalendarDate,
   formatCalendarDateRange,
   formatClockTime,
   formatDateTime,
+  formatDayLabel,
   formatDayMonth,
   formatDayMonthRange,
+  formatDaysAgo,
   formatFullDate,
   formatTimeAgo,
 } from "@/utils/date-formatters";
@@ -127,6 +130,38 @@ describe("absolute date presets", () => {
     expect(formatCalendarDate("not a date")).toBe("");
     expect(formatDateTime(Number.NaN)).toBe("");
     expect(formatDayMonthRange("not a date", MOMENT)).toBe("");
+  });
+});
+
+describe("calendar days", () => {
+  const NOW = new Date(2026, 9, 31, 12);
+
+  it("counts midnights crossed, not 24-hour spans", () => {
+    expect(calendarDaysBetween(new Date(2026, 9, 30, 23, 50), new Date(2026, 9, 31, 0, 10))).toBe(1);
+    expect(calendarDaysBetween(new Date(2026, 9, 31, 0, 5), NOW)).toBe(0);
+    expect(calendarDaysBetween(new Date(2026, 2, 28, 12), new Date(2026, 3, 1, 12))).toBe(4);
+    expect(calendarDaysBetween(NOW, new Date(2026, 9, 29))).toBe(-2);
+  });
+
+  it("words a day distance the way relative time does", () => {
+    expect(formatDaysAgo(0)).toBe("today");
+    expect(formatDaysAgo(1)).toBe("yesterday");
+    expect(formatDaysAgo(12)).toBe("12 days ago");
+    expect(formatDaysAgo(-3)).toBe("in 3 days");
+    expect(formatDaysAgo(0, { capitalize: true })).toBe("Today");
+  });
+
+  it("labels history days from today back through the week, then by date", () => {
+    expect(formatDayLabel(new Date(2026, 9, 31, 0, 5), NOW)).toBe("Today");
+    expect(formatDayLabel(new Date(2026, 9, 30, 23, 50), NOW)).toBe("Yesterday");
+    expect(formatDayLabel(new Date(2026, 9, 28, 9), NOW)).toBe("Wednesday");
+    expect(formatDayLabel(new Date(2026, 9, 24, 9), NOW)).toBe("Oct 24");
+    expect(formatDayLabel(new Date(2025, 11, 30, 9), NOW)).toBe("Dec 30, 2025");
+  });
+
+  it("never calls a later day today and returns nothing for an unreadable date", () => {
+    expect(formatDayLabel(new Date(2026, 10, 1, 9), NOW)).toBe("Nov 1");
+    expect(formatDayLabel("not a date", NOW)).toBe("");
   });
 });
 
