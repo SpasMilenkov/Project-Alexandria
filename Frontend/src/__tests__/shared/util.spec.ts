@@ -152,7 +152,9 @@ describe("formatBucketLabel", () => {
   it("names the day on hourly buckets so a multi-day window stays readable", () => {
     const start = "2026-03-04T14:00:00Z";
 
-    expect(formatBucketLabel(start, "hour")).toBe(`${formatDayMonth(start)}, ${formatClockTime(start)}`);
+    expect(formatBucketLabel(start, "hour")).toBe(
+      `${formatDayMonth(start)}, ${formatClockTime(start)}`,
+    );
   });
 });
 
@@ -160,7 +162,9 @@ describe("calendar days", () => {
   const NOW = new Date(2026, 9, 31, 12);
 
   it("counts midnights crossed, not 24-hour spans", () => {
-    expect(calendarDaysBetween(new Date(2026, 9, 30, 23, 50), new Date(2026, 9, 31, 0, 10))).toBe(1);
+    expect(calendarDaysBetween(new Date(2026, 9, 30, 23, 50), new Date(2026, 9, 31, 0, 10))).toBe(
+      1,
+    );
     expect(calendarDaysBetween(new Date(2026, 9, 31, 0, 5), NOW)).toBe(0);
     expect(calendarDaysBetween(new Date(2026, 2, 28, 12), new Date(2026, 3, 1, 12))).toBe(4);
     expect(calendarDaysBetween(NOW, new Date(2026, 9, 29))).toBe(-2);

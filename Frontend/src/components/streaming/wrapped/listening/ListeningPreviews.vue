@@ -4,7 +4,8 @@ import MediaCoverFan from "@/components/streaming/overview/MediaCoverFan.vue";
 const PREVIEWS = [
   {
     title: "Your year at a glance",
-    description: "Hours listened, plays, listening days and the song you keep coming back to.",
+    description:
+      "Hours listened, songs played, listening days and the song you keep coming back to.",
     seed: "listening-preview-year",
   },
   {

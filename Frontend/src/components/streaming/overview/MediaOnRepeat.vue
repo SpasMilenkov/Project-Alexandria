@@ -9,7 +9,7 @@ import { coverSeed } from "@/features/media/generated-cover";
 import {
   homeTopSongArtist,
   homeTopSongBar,
-  homeTopSongPlays,
+  homeTopSongListened,
   homeTopSongTitle,
   homeTopSongsPeriod,
 } from "@/features/media/top-songs";
@@ -26,7 +26,7 @@ const player = usePlayerStore();
 const period = { ...homeTopSongsPeriod(), limit: MEDIA_OVERVIEW_PAGE_SIZES.onRepeat };
 const query = useQuery(() => mediaOverviewOnRepeat({ userId, session, ...period }));
 const disabled = computed(() => player.playbackOwnerId !== userId || player.orderBusy);
-const leadingCount = computed(() => query.data.value?.items[0]?.qualifiedPlayCount ?? 0);
+const leadingSeconds = computed(() => query.data.value?.items[0]?.totalListenedSeconds ?? 0);
 
 const isActive = (song: TopSong) => player.activeFile?.fileId === song.file.fileId;
 
@@ -98,25 +98,23 @@ const label = (song: TopSong) => {
               homeTopSongTitle(song)
             }}</span>
 
-            <span class="mt-1 flex min-w-0 items-center gap-2">
-              <span class="truncate text-xs text-gray-600 dark:text-gray-400">{{
-                homeTopSongArtist(song)
-              }}</span>
+            <span class="block truncate text-xs text-gray-600 dark:text-gray-400">{{
+              homeTopSongArtist(song)
+            }}</span>
 
+            <span
+              class="mt-1.5 block h-[3px] w-full overflow-hidden rounded-full bg-gray-500/15"
+              aria-hidden="true"
+            >
               <span
-                class="h-[3px] min-w-10 flex-1 overflow-hidden rounded-full bg-gray-500/15"
-                aria-hidden="true"
-              >
-                <span
-                  class="block h-full rounded-full bg-gray-700 dark:bg-gray-300"
-                  :style="{ width: `${homeTopSongBar(song, leadingCount)}%` }"
-                />
-              </span>
+                class="block h-full rounded-full bg-gray-700 dark:bg-gray-300"
+                :style="{ width: `${homeTopSongBar(song, leadingSeconds)}%` }"
+              />
             </span>
           </span>
 
           <span class="shrink-0 text-xs tabular-nums text-gray-600 dark:text-gray-400">{{
-            homeTopSongPlays(song)
+            homeTopSongListened(song)
           }}</span>
         </button>
       </li>

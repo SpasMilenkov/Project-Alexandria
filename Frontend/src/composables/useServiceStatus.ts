@@ -122,7 +122,8 @@ export const useServiceStatus = ({ poll = true }: { poll?: boolean } = {}) => {
 
     if (down > 0) return { color: "error", label: `${formatCount(down, "service")} down` };
 
-    if (degraded > 0) return { color: "warning", label: `${formatCount(degraded, "service")} degraded` };
+    if (degraded > 0)
+      return { color: "warning", label: `${formatCount(degraded, "service")} degraded` };
 
     return { color: "success", label: "All systems operational" };
   };

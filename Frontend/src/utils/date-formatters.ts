@@ -306,7 +306,8 @@ export const formatAgeShort = (value: DateInput, now = Date.now()): string => {
   const elapsedMs = Math.max(0, now - new Date(value).getTime());
 
   if (Number.isNaN(elapsedMs)) return "";
-  if (elapsedMs < MINUTE_MS) return formatUnit(Math.floor(elapsedMs / SECOND_MS), "second", "narrow");
+  if (elapsedMs < MINUTE_MS)
+    return formatUnit(Math.floor(elapsedMs / SECOND_MS), "second", "narrow");
   if (elapsedMs < HOUR_MS) return formatUnit(Math.floor(elapsedMs / MINUTE_MS), "minute", "narrow");
   if (elapsedMs < DAY_MS) return formatUnit(Math.floor(elapsedMs / HOUR_MS), "hour", "narrow");
 
@@ -328,7 +329,8 @@ export const calendarDaysBetween = (from: DateInput, to: DateInput): number =>
 
 const RELATIVE_DAYS = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 
-const capitalizeFirst = (text: string): string => text.charAt(0).toLocaleUpperCase() + text.slice(1);
+const capitalizeFirst = (text: string): string =>
+  text.charAt(0).toLocaleUpperCase() + text.slice(1);
 
 export interface DaysAgoOptions {
   /** "Today" for a heading or a tile, rather than "today" inside a sentence. */

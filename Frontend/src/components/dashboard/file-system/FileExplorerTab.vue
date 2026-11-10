@@ -62,7 +62,9 @@
             <span
               v-if="lastRefreshedLabel && !isBackgroundLoading"
               class="hidden tabular-nums text-gray-600 @5xl/explorer:inline dark:text-gray-400"
-              :title="lastRefreshedAt ? formatClockTime(lastRefreshedAt, { seconds: true }) : undefined"
+              :title="
+                lastRefreshedAt ? formatClockTime(lastRefreshedAt, { seconds: true }) : undefined
+              "
             >
               {{ lastRefreshedLabel }}
             </span>

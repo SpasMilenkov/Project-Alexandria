@@ -431,7 +431,9 @@ const {
   refresh: refreshVersions,
 } = useQuery(() => getVersionsForFile(versionsQueryParams.value));
 
-const versionCountLabel = computed(() => formatCount(versionsData.value?.totalCount ?? 0, "version"));
+const versionCountLabel = computed(() =>
+  formatCount(versionsData.value?.totalCount ?? 0, "version"),
+);
 
 // Mutations
 

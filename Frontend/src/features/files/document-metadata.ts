@@ -1,7 +1,7 @@
-import { formatOffset } from "./capture-metadata";
-
 import { formatNumber } from "@/utils/count";
 import { formatDuration } from "@/utils/date-formatters";
+
+import { formatOffset } from "./capture-metadata";
 
 // Formatters run in UTC on a pre-shifted timestamp, so the digits stay those of the author's
 // clock instead of moving into the viewer's zone.

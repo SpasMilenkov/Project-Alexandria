@@ -3,9 +3,9 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedPeriodPoint } from "@/api/stats";
 
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { type WrappedDayBar, wrappedDailyLandscape } from "@/features/wrapped/daily-landscape";
-import { formatCount } from "@/utils/count";
 import { formatFullDate } from "@/utils/date-formatters";
 
 const { month, through, series } = defineProps<{
@@ -51,7 +51,7 @@ const describe = (day: WrappedDayBar) => {
   if (day.future) return `${name}: still ahead`;
   if (!day.seconds) return `${name}: no recorded listening`;
 
-  return `${name}: ${formatWrappedDuration(day.seconds)}, ${day.plays} plays`;
+  return `${name}: ${formatWrappedDuration(day.seconds)}, ${formatSongsPlayed(day.plays)}`;
 };
 
 const selectedLabel = computed(() => {
@@ -102,7 +102,7 @@ const move = (event: KeyboardEvent) => {
       <span class="font-semibold text-gray-900 dark:text-gray-100">{{ selectedLabel }}</span>
 
       <span v-if="current" class="text-gray-600 dark:text-gray-400">
-        {{ formatWrappedDuration(current.seconds) }} · {{ formatCount(current.plays, "play") }}
+        {{ formatWrappedDuration(current.seconds) }} · {{ formatSongsPlayed(current.plays) }}
       </span>
     </figcaption>
 

@@ -45,20 +45,20 @@ public class TopSongRankingQueryTests
     };
 
     [Fact]
-    public void TopSongRankingsQuery_counts_stored_qualification_sums_all_seconds_and_keeps_stable_ties()
+    public void TopSongRankingsQuery_ranks_by_listening_time_then_qualified_plays_and_keeps_stable_ties()
     {
         var sessions = new[]
         {
-            Session(FileC, 1000, true), Session(FileB, 10, true), Session(FileB, 10, true),
+            Session(FileC, 1000, true), Session(FileB, 120, true),
             Session(FileA, 10, true), Session(FileA, 10, true), Session(FileA, 100, false)
         }.AsQueryable();
         var ids = new[] { FileA, FileB, FileC }.AsQueryable();
 
         var ranking = StreamHistoryRepository.TopSongRankingsQuery(sessions, ids, Owner, From, To, 3).ToList();
 
-        ranking.Select(r => r.FileId).Should().Equal(FileA, FileB, FileC);
-        ranking.Select(r => r.QualifiedPlayCount).Should().Equal(2, 2, 1);
-        ranking.Select(r => r.TotalListenedSeconds).Should().Equal(120, 20, 1000);
+        ranking.Select(r => r.FileId).Should().Equal(FileC, FileA, FileB);
+        ranking.Select(r => r.QualifiedPlayCount).Should().Equal(1, 2, 1);
+        ranking.Select(r => r.TotalListenedSeconds).Should().Equal(1000, 120, 120);
 
         sessions = new[] { Session(FileB, 20, true), Session(FileA, 20, true) }.AsQueryable();
         ranking = StreamHistoryRepository.TopSongRankingsQuery(sessions, ids, Owner, From, To, 3).ToList();

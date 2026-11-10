@@ -67,7 +67,9 @@ const handleResetAutoPlaylists = () => {
     @reset="handleResetAutoPlaylists"
   >
     <template #summary>
-      <SettingsChip>Minimum {{ formatCount(settingsStore.autoPlaylistMinTracks, "track") }}</SettingsChip>
+      <SettingsChip
+        >Minimum {{ formatCount(settingsStore.autoPlaylistMinTracks, "track") }}</SettingsChip
+      >
     </template>
 
     <div class="space-y-6">
@@ -113,7 +115,9 @@ const handleResetAutoPlaylists = () => {
             "
           />
           {{ group.name }}
-          <span class="font-normal text-gray-600 dark:text-gray-400">{{ formatCount(group.count, "track") }}</span>
+          <span class="font-normal text-gray-600 dark:text-gray-400">{{
+            formatCount(group.count, "track")
+          }}</span>
         </span>
       </div>
       <p class="text-xs text-gray-600 dark:text-gray-400 -mt-3">

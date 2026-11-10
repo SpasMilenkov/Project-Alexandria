@@ -196,6 +196,7 @@ import { isAuthError } from "@/api/shuffle";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import TimelineHeatmap from "@/components/streaming/wrapped/listening/TimelineHeatmap.vue";
 import { useWrappedPalette } from "@/composables/useWrappedPalette";
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { MIN_WRAPPED_YEAR } from "@/features/wrapped/display";
 import {
@@ -272,7 +273,7 @@ const activeSummary = computed(() => {
 
   if (!day) return "Nothing played";
 
-  return `${formatWrappedDuration(day.seconds)} · ${formatCount(day.plays, "play")}`;
+  return `${formatWrappedDuration(day.seconds)} · ${formatSongsPlayed(day.plays)}`;
 });
 
 const shift = (steps: number) => {

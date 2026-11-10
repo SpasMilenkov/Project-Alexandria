@@ -2,6 +2,7 @@ import type { WrappedCardResponse, WrappedDeckResponse } from "@/api/stats";
 
 import { WrappedCardType as Type } from "@/enums/wrapped-card-type";
 import { WrappedRhythmEvidence, WrappedTimeScene } from "@/enums/wrapped-story";
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import {
   bounded,
   buildWrappedRecipe,
@@ -518,7 +519,7 @@ export const renderWrappedExport = async (
 
       cursor =
         text(
-          `Full marks: ${tally.unit} plays each. Final mark: ${tally.marks[tally.marks.length - 1]?.value ?? 0}.`,
+          `Each full mark is ${tally.unit} times played. Final mark: ${tally.marks[tally.marks.length - 1]?.value ?? 0}.`,
           left,
           cursor,
           width,
@@ -563,7 +564,7 @@ export const renderWrappedExport = async (
           [
             formatCount(summary.tracks, "track"),
             formatCount(summary.artists, "artist"),
-            formatCount(summary.qualifiedPlayCount, "play"),
+            formatSongsPlayed(summary.qualifiedPlayCount),
             formatCount(summary.activeDays, "listening day"),
           ].join(" · "),
           56,

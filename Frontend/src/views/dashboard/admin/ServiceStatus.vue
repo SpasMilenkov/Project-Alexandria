@@ -80,7 +80,9 @@ const lastChecked = computed(() => {
   return formatClockTime(data.value.checkedAt, { seconds: true });
 });
 
-const totalDuration = computed(() => (data.value ? formatDuration(data.value.duration / 1000) : null));
+const totalDuration = computed(() =>
+  data.value ? formatDuration(data.value.duration / 1000) : null,
+);
 
 const sortedChecks = computed<HealthCheckEntry[]>(() => {
   if (!data.value?.checks) {

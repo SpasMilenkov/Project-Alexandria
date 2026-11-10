@@ -35,7 +35,7 @@ const subtitle = (entry: StreamHistoryResponse) => {
     :failed="Boolean(query.error.value)"
     :empty="query.data.value?.items.length === 0"
     empty-seed="empty-history"
-    empty-title="No plays yet"
+    empty-title="Nothing played yet"
     empty-description="Everything you listen to or watch appears here, newest first."
     @retry="query.refetch()"
   >

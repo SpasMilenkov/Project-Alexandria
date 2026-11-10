@@ -26,9 +26,9 @@
     </div>
 
     <figcaption class="text-center text-xs text-gray-600 dark:text-gray-400">
-      <span v-if="tally.unit === 1">One mark for every play.</span>
+      <span v-if="tally.unit === 1">One mark for each time you played it.</span>
       <span v-else
-        >Each full mark is {{ tally.unit }} plays.<span v-if="tally.remainder">
+        >Each full mark is {{ tally.unit }} times played.<span v-if="tally.remainder">
           The final mark is {{ tally.remainder }}.</span
         ></span
       >

@@ -8,7 +8,7 @@
 
       <span class="text-gray-600 dark:text-gray-400"
         >{{ current ? formatWrappedDuration(current.seconds) : "No recorded listening"
-        }}<span v-if="current"> · {{ formatCount(current.plays, "play") }}</span></span
+        }}<span v-if="current"> · {{ formatSongsPlayed(current.plays) }}</span></span
       >
     </figcaption>
 
@@ -22,7 +22,7 @@
         :key="peak.month.date"
         type="button"
         class="group relative flex min-w-0 flex-1 flex-col justify-end rounded-t-lg focus-visible:outline-2 focus-visible:outline-primary"
-        :aria-label="`${monthName(peak.month)}: ${formatWrappedDuration(peak.month.seconds)}, ${peak.month.plays} plays`"
+        :aria-label="`${monthName(peak.month)}: ${formatWrappedDuration(peak.month.seconds)}, ${formatSongsPlayed(peak.month.plays)}`"
         :aria-pressed="current?.date === peak.month.date"
         @click="selected = peak.month.date"
         @focus="selected = peak.month.date"
@@ -69,9 +69,9 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedPeriodPoint } from "@/api/stats";
 
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { formatWrappedDuration, monthLabel } from "@/features/wrapped/art";
 import { monthlyLandscape } from "@/features/wrapped/ranking";
-import { formatCount } from "@/utils/count";
 import { formatMonthYear } from "@/utils/date-formatters";
 
 const props = defineProps<{ series: WrappedPeriodPoint[] }>();

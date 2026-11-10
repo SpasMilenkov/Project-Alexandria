@@ -214,8 +214,12 @@ const isOpen = computed({
             />
 
             <div class="flex min-w-0 flex-1 flex-col">
-              <span class="truncate text-sm font-medium text-gray-900 dark:text-white">{{ photo.name }}</span>
-              <span class="truncate text-xs text-gray-600 tabular-nums dark:text-gray-300">{{ dateLabel }}</span>
+              <span class="truncate text-sm font-medium text-gray-900 dark:text-white">{{
+                photo.name
+              }}</span>
+              <span class="truncate text-xs text-gray-600 tabular-nums dark:text-gray-300">{{
+                dateLabel
+              }}</span>
             </div>
 
             <UButton

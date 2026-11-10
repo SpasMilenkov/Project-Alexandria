@@ -63,6 +63,7 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 import type { TimelineDayPoint } from "@/api/stats";
 
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { type HeatmapCell, heatLevel, heatmapWeeks } from "@/features/wrapped/listening/year";
 import { dateLabel } from "@/features/wrapped/story";
@@ -119,7 +120,7 @@ const cellStyle = (cell: HeatmapCell, column: number, row: number) => {
 };
 
 const describe = (cell: HeatmapCell) =>
-  `${dateLabel(cell.date)} · ${formatWrappedDuration(cell.seconds)} · ${cell.plays} plays`;
+  `${dateLabel(cell.date)} · ${formatWrappedDuration(cell.seconds)} · ${formatSongsPlayed(cell.plays)}`;
 
 const select = (date: string) => emit("update:modelValue", date);
 

@@ -62,6 +62,7 @@ import { computed, ref, watch } from "vue";
 import type { WrappedCardFacts, WrappedPeriodPoint } from "@/api/stats";
 
 import { WrappedCardType } from "@/enums/wrapped-card-type";
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { wrappedStoryNote } from "@/features/wrapped/copy";
 import { dateLabel, waveformDays } from "@/features/wrapped/story";
@@ -95,7 +96,7 @@ const focusIndex = computed(() =>
 );
 
 const describe = (day: WrappedPeriodPoint) =>
-  `${dateLabel(day.date)} · ${formatWrappedDuration(day.seconds)} · ${day.plays} plays${day.date === props.facts.from ? " · your peak day" : ""}`;
+  `${dateLabel(day.date)} · ${formatWrappedDuration(day.seconds)} · ${formatSongsPlayed(day.plays)}${day.date === props.facts.from ? " · your peak day" : ""}`;
 
 const move = (event: KeyboardEvent, index: number) => {
   if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;

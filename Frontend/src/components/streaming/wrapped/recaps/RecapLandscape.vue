@@ -68,6 +68,7 @@ import { computed, ref, watch } from "vue";
 
 import type { WrappedPeriodPoint } from "@/api/stats";
 
+import { formatSongsPlayed } from "@/features/media/play-counts";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { annualRecapMonths } from "@/features/wrapped/listening/recaps";
 import { monthlyLandscape } from "@/features/wrapped/ranking";
@@ -115,6 +116,6 @@ const monthDescription = (month: WrappedPeriodPoint) => {
   if (through && Date.parse(month.date) > Date.parse(through)) return `${name}: still ahead`;
   if (!month.seconds) return `${name}: no recorded listening`;
 
-  return `${name}: ${formatWrappedDuration(month.seconds)}, ${month.plays} plays`;
+  return `${name}: ${formatWrappedDuration(month.seconds)}, ${formatSongsPlayed(month.plays)}`;
 };
 </script>

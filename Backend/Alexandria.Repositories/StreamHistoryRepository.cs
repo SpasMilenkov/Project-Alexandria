@@ -309,8 +309,8 @@ public class StreamHistoryRepository(AlexandriaDbContext context) : IStreamHisto
                 TotalListenedSeconds = g.Sum(s => s.ListenedSeconds)
             })
             .Where(s => s.QualifiedPlayCount > 0)
-            .OrderByDescending(s => s.QualifiedPlayCount)
-            .ThenByDescending(s => s.TotalListenedSeconds)
+            .OrderByDescending(s => s.TotalListenedSeconds)
+            .ThenByDescending(s => s.QualifiedPlayCount)
             .ThenBy(s => s.FileId)
             .Take(limit);
     }

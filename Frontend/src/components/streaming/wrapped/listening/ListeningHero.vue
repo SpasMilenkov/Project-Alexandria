@@ -12,7 +12,11 @@ import MediaArtwork from "@/components/streaming/overview/MediaArtwork.vue";
 import { useTheme } from "@/composables/useTheme";
 import { coverInk, heroTint } from "@/features/media/cover-color";
 import { coverSeed, generatedCover } from "@/features/media/generated-cover";
-import { homeTopSongArtist, homeTopSongPlays, homeTopSongTitle } from "@/features/media/top-songs";
+import {
+  homeTopSongArtist,
+  homeTopSongListened,
+  homeTopSongTitle,
+} from "@/features/media/top-songs";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { type YearMonthBar, yearBounds, yearMonthBars } from "@/features/wrapped/listening/year";
 import { getTimeline, getTopSongs } from "@/queries/stats";
@@ -58,7 +62,7 @@ const facts = computed(() => {
   if (!data) return [];
 
   return [
-    { label: "Plays", value: formatNumber(data.qualifiedPlayCount) },
+    { label: "Songs played", value: formatNumber(data.qualifiedPlayCount) },
     { label: "Listening days", value: formatNumber(data.activeDays) },
   ];
 });
@@ -309,7 +313,7 @@ const monthTitle = (month: YearMonthBar) => {
               </span>
 
               <span class="shrink-0 text-xs text-gray-600 tabular-nums dark:text-gray-400">{{
-                homeTopSongPlays(song)
+                homeTopSongListened(song)
               }}</span>
             </RouterLink>
           </li>

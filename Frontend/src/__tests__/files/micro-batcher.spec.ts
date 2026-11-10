@@ -10,9 +10,8 @@ import {
 const httpError = (status: number) => new ApiError("failed", { kind: "http", status });
 
 const setup = (overrides: Partial<MicroBatcherOptions<string, string>> = {}) => {
-  const send = vi.fn(
-    (items: string[]): Promise<(string | Error)[]> =>
-      Promise.resolve(items.map((item) => `done:${item}`)),
+  const send = vi.fn((items: string[]): Promise<(string | Error)[]> =>
+    Promise.resolve(items.map((item) => `done:${item}`)),
   );
 
   const batcher = createMicroBatcher<string, string>({
@@ -216,9 +215,9 @@ describe("createMicroBatcher", () => {
   it("rejects straight away when already aborted", async () => {
     const { batcher, send } = setup();
 
-    await expect(
-      batcher.submit("a", { signal: AbortSignal.abort() }),
-    ).rejects.toMatchObject({ name: "AbortError" });
+    await expect(batcher.submit("a", { signal: AbortSignal.abort() })).rejects.toMatchObject({
+      name: "AbortError",
+    });
 
     await vi.advanceTimersByTimeAsync(5000);
 

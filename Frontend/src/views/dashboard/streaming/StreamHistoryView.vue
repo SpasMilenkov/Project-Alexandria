@@ -59,9 +59,7 @@ const totalCount = computed(() => data.value?.totalCount ?? 0);
 const totalPages = computed(() => data.value?.totalPages ?? 1);
 const hasItems = computed(() => (data.value?.items?.length ?? 0) > 0);
 
-const countText = computed(
-  () => formatCount(totalCount.value, "entry", "entries"),
-);
+const countText = computed(() => formatCount(totalCount.value, "entry", "entries"));
 
 const rangeText = computed(() => {
   const start = (currentPage.value - 1) * pageSize + 1;
@@ -71,7 +69,7 @@ const rangeText = computed(() => {
 
 const emptyState = computed(() => {
   if (qualifiedFilter.value === true) {
-    return { canReset: true, title: "No plays yet" };
+    return { canReset: true, title: "Nothing played yet" };
   }
   if (qualifiedFilter.value === false) {
     return { canReset: true, title: "No brief listens" };
@@ -87,7 +85,7 @@ const statusOf = (entry: HistoryEntry) => {
     return {
       color: "success" as const,
       icon: "mdi:check-circle-outline",
-      label: `${entry.qualifiedPlayCount} plays`,
+      label: `Played ${entry.qualifiedPlayCount} times`,
     };
   }
   if (entry.qualifiedPlayCount === 1) {
@@ -250,7 +248,7 @@ const subtitleOf = (entry: HistoryEntry) => {
               </div>
 
               <div>
-                <dt class="text-xs text-gray-600 dark:text-gray-400">Plays</dt>
+                <dt class="text-xs text-gray-600 dark:text-gray-400">Times played</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">
                   {{ entry.qualifiedPlayCount }}
                 </dd>

@@ -205,7 +205,11 @@ const columns: TableColumn<UserDetailsDto>[] = [
   {
     accessorKey: "createdAt",
     cell: ({ row }) =>
-      h("span", { class: "text-sm text-muted tabular-nums" }, formatTimeAgo(row.original.createdAt)),
+      h(
+        "span",
+        { class: "text-sm text-muted tabular-nums" },
+        formatTimeAgo(row.original.createdAt),
+      ),
     header: "Created",
     meta: { class: { td: "w-32", th: "w-32" } },
   },
