@@ -125,6 +125,19 @@ export const formatCalendarDateRange = (
   options: DateFormatOptions = {},
 ): string => formatRangeWith(calendarOptions(options), start, end);
 
+export type ChartBucket = "hour" | "day";
+
+/**
+ * Axis and tooltip label for a time-series bucket. Hourly buckets name their day too, because a
+ * 24h window crosses midnight and a week of hours would repeat the same times. Daily buckets
+ * start at UTC midnight on the backend, so they are read in UTC to keep their own date.
+ */
+export const formatBucketLabel = (value: DateInput, bucket: ChartBucket): string => {
+  if (bucket === "day") return formatDayMonth(value, { timeZone: "UTC" });
+
+  return formatWith({ ...dayMonthOptions({}), ...clockOptions({}) }, value);
+};
+
 /** "Wednesday, March 4, 2026", for headings that name a single day. */
 export const formatFullDate = (value: DateInput, options: FullDateOptions = {}): string => {
   const style = options.compact ? "short" : "long";

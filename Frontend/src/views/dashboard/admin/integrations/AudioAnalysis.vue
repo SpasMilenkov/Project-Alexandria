@@ -41,7 +41,12 @@ import {
   volumeByHour,
 } from "@/queries/audioAnalysis";
 import { formatCount } from "@/utils/count";
-import { formatClockTime, formatPlaybackTime, formatTimeAgo } from "@/utils/date-formatters";
+import {
+  formatBucketLabel,
+  formatClockTime,
+  formatPlaybackTime,
+  formatTimeAgo,
+} from "@/utils/date-formatters";
 
 ChartJS.register(
   Title,
@@ -275,20 +280,6 @@ const kpiTiles = computed(() => [
   },
 ]);
 
-const shortTime = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  month: "short",
-});
-
-const shortDay = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
-
-const formatBucketLabel = (iso: string) =>
-  bucket.value === "day" ? shortDay.format(new Date(iso)) : shortTime.format(new Date(iso));
-
-const formatHourLabel = (iso: string) => shortTime.format(new Date(iso));
-
 const failureChartData = computed((): ChartData<"line"> => {
   const points = failure.data.value ?? [];
   const backbones = Array.from(new Set(points.map((p) => p.backbone)));
@@ -315,7 +306,7 @@ const failureChartData = computed((): ChartData<"line"> => {
         tension: 0.3,
       };
     }),
-    labels: buckets.map(formatBucketLabel),
+    labels: buckets.map((start) => formatBucketLabel(start, bucket.value)),
   };
 });
 
@@ -384,7 +375,7 @@ const volumeChartData = computed((): ChartData<"bar"> => {
         label: "Files",
       },
     ],
-    labels: points.map((p) => formatHourLabel(p.hour)),
+    labels: points.map((p) => formatBucketLabel(p.hour, "hour")),
   };
 });
 

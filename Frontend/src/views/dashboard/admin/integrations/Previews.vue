@@ -39,6 +39,7 @@ import {
   previewsOverview,
   previewsVolume,
 } from "@/queries/previewsStats";
+import { formatBucketLabel } from "@/utils/date-formatters";
 import { formatBytes } from "@/utils/size";
 
 ChartJS.register(
@@ -193,12 +194,8 @@ const gridColor = computed(() =>
 );
 const tickColor = computed(() => (isDark.value ? "#9ca3af" : "#6b7280"));
 
-const bucketLabel = (iso: string): string => {
-  const date = new Date(iso);
-  return bucket.value === PREVIEW_STATS_BUCKET.Hour
-    ? date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-};
+const bucketLabel = (iso: string): string =>
+  formatBucketLabel(iso, bucket.value === PREVIEW_STATS_BUCKET.Hour ? "hour" : "day");
 
 const volumeChartData = computed<ChartData<"bar">>(() => ({
   labels: (volume.value?.points ?? []).map((p) => bucketLabel(p.bucketStart)),

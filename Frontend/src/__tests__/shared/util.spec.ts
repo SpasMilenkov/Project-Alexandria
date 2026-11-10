@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   calendarDaysBetween,
   formatAgeShort,
+  formatBucketLabel,
   formatCalendarDate,
   formatCalendarDateRange,
   formatClockTime,
@@ -132,6 +133,18 @@ describe("absolute date presets", () => {
     expect(formatCalendarDate("not a date")).toBe("");
     expect(formatDateTime(Number.NaN)).toBe("");
     expect(formatDayMonthRange("not a date", MOMENT)).toBe("");
+  });
+});
+
+describe("formatBucketLabel", () => {
+  it("reads a UTC day bucket as its own date", () => {
+    expect(formatBucketLabel("2026-03-04T00:00:00Z", "day")).toBe("Mar 4");
+  });
+
+  it("names the day on hourly buckets so a multi-day window stays readable", () => {
+    const start = "2026-03-04T14:00:00Z";
+
+    expect(formatBucketLabel(start, "hour")).toBe(`${formatDayMonth(start)}, ${formatClockTime(start)}`);
   });
 });
 
