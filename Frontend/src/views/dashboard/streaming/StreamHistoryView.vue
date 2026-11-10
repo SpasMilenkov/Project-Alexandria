@@ -13,7 +13,7 @@ import { formatCount } from "@/utils/count";
 import {
   type DateInput,
   formatCalendarDate,
-  formatDuration,
+  formatPlaybackTime,
   formatTimeAgo,
 } from "@/utils/date-formatters";
 
@@ -98,9 +98,9 @@ const statusOf = (entry: HistoryEntry) => {
 
 const subtitleOf = (entry: HistoryEntry) => {
   if (entry.qualifiedPlayCount > 0) {
-    return `Listened ${formatDuration(entry.totalListenedSeconds)}`;
+    return `Listened ${formatPlaybackTime(entry.totalListenedSeconds)}`;
   }
-  return `Resume at ${formatDuration(entry.positionSeconds)}`;
+  return `Resume at ${formatPlaybackTime(entry.positionSeconds)}`;
 };
 </script>
 
@@ -235,17 +235,17 @@ const subtitleOf = (entry: HistoryEntry) => {
               <div>
                 <dt class="text-xs text-gray-600 dark:text-gray-400">Resume at</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">
-                  {{ formatDuration(entry.positionSeconds) }}
+                  {{ formatPlaybackTime(entry.positionSeconds) }}
                 </dd>
                 <dd class="text-xs text-gray-500 dark:text-gray-500 tabular-nums">
-                  Furthest {{ formatDuration(entry.maxPositionReachedSeconds) }}
+                  Furthest {{ formatPlaybackTime(entry.maxPositionReachedSeconds) }}
                 </dd>
               </div>
 
               <div>
                 <dt class="text-xs text-gray-600 dark:text-gray-400">Total listened</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-gray-100 tabular-nums">
-                  {{ formatDuration(entry.totalListenedSeconds) }}
+                  {{ formatPlaybackTime(entry.totalListenedSeconds) }}
                 </dd>
               </div>
 

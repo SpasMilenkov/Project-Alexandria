@@ -9,7 +9,7 @@ import { HomePlayerStyle } from "@/enums/home-widget";
 import { useHomeStore } from "@/stores/home";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/stream-player";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 const { widget } = defineProps<{ widget: HomeWidget }>();
 
@@ -180,7 +180,7 @@ const seek = (event: Event) => {
           :disabled="disabled || Boolean(failure) || !duration"
           :tabindex="home.isEditing ? -1 : undefined"
           aria-label="Seek playback"
-          :aria-valuetext="`${formatDuration(position)} of ${duration ? formatDuration(duration) : 'unknown duration'}`"
+          :aria-valuetext="`${formatPlaybackTime(position)} of ${duration ? formatPlaybackTime(duration) : 'unknown duration'}`"
           class="player-seek block w-full"
           :style="{ '--player-progress': `${progress}%` }"
           @input="seek"
@@ -189,8 +189,8 @@ const seek = (event: Event) => {
         <div
           class="player-times flex justify-between gap-2 text-xs tabular-nums text-gray-200 dark:text-gray-200"
         >
-          <span>{{ formatDuration(position) }}</span>
-          <span>{{ duration ? formatDuration(duration) : "--:--" }}</span>
+          <span>{{ formatPlaybackTime(position) }}</span>
+          <span>{{ duration ? formatPlaybackTime(duration) : "--:--" }}</span>
         </div>
       </div>
 

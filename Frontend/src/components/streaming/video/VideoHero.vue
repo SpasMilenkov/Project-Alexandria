@@ -5,7 +5,7 @@ import { computed } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 const { file, positionSeconds } = defineProps<{
   file: MediaFileDto;
@@ -55,10 +55,10 @@ const remainingText = computed(() => {
 
 const metaText = computed(() => {
   if (positionSeconds === null) {
-    if (file.duration) return formatDuration(file.duration);
+    if (file.duration) return formatPlaybackTime(file.duration);
     return file.artist ?? "Video";
   }
-  const stopped = `stopped at ${formatDuration(positionSeconds)}`;
+  const stopped = `stopped at ${formatPlaybackTime(positionSeconds)}`;
   if (remainingText.value) return `${remainingText.value}, ${stopped}`;
   return stopped;
 });

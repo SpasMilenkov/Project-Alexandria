@@ -41,7 +41,7 @@ import {
   volumeByHour,
 } from "@/queries/audioAnalysis";
 import { formatCount } from "@/utils/count";
-import { formatClockTime, formatDuration, formatTimeAgo } from "@/utils/date-formatters";
+import { formatClockTime, formatPlaybackTime, formatTimeAgo } from "@/utils/date-formatters";
 
 ChartJS.register(
   Title,
@@ -270,7 +270,7 @@ const kpiTiles = computed(() => [
     key: "avgDuration",
     icon: "mdi:timer-outline",
     label: "Avg duration",
-    value: overallAvgDuration.value === null ? "—" : formatDuration(overallAvgDuration.value),
+    value: overallAvgDuration.value === null ? "—" : formatPlaybackTime(overallAvgDuration.value),
     tone: "neutral" as const,
   },
 ]);
@@ -435,9 +435,9 @@ const durationStats = (row: {
   medianSeconds: number;
   maxSeconds: number;
 }) => [
-  { label: "Average", value: formatDuration(row.averageSeconds) },
-  { label: "Median", value: formatDuration(row.medianSeconds) },
-  { label: "Max", value: formatDuration(row.maxSeconds) },
+  { label: "Average", value: formatPlaybackTime(row.averageSeconds) },
+  { label: "Median", value: formatPlaybackTime(row.medianSeconds) },
+  { label: "Max", value: formatPlaybackTime(row.maxSeconds) },
 ];
 
 const batchProgress = (batch: { filesCompleted: number; filesTotal: number }) => {

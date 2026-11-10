@@ -129,16 +129,16 @@
                 :step="0.5"
                 :value="currentTime"
                 aria-label="Seek"
-                :aria-valuetext="`${formatTime(currentTime)} of ${formatTime(duration)}`"
+                :aria-valuetext="`${formatPlaybackTime(currentTime)} of ${formatPlaybackTime(duration)}`"
                 @input="onSeekInput"
               />
 
               <div class="flex justify-between">
                 <span class="seek-time text-gray-500 dark:text-gray-500">{{
-                  formatTime(currentTime)
+                  formatPlaybackTime(currentTime)
                 }}</span>
                 <span class="seek-time text-gray-500 dark:text-gray-500">{{
-                  formatTime(duration)
+                  formatPlaybackTime(duration)
                 }}</span>
               </div>
             </div>
@@ -249,6 +249,7 @@ import PlayerArtwork from "@/components/streaming/player/PlayerArtwork.vue";
 import QueueContent from "@/components/streaming/player/QueueContent.vue";
 import SettingsContent from "@/components/streaming/player/SettingsContent.vue";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 import { logger } from "@/utils/logger";
 
 type Presentation = "pill" | "card" | "sheet";
@@ -342,13 +343,6 @@ const tabs = [
   { id: "queue", label: "Queue", icon: "mdi:playlist-play" },
   { id: "settings", label: "Settings", icon: "mdi:tune-variant" },
 ] as const;
-
-const formatTime = (seconds: number) => {
-  if (!isFinite(seconds) || seconds < 0) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-};
 
 const onSeekInput = (e: Event) => {
   store.seek(Number((e.target as HTMLInputElement).value));

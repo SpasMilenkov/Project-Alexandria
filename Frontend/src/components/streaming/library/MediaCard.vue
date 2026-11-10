@@ -12,7 +12,7 @@ import MediaEqualizer from "@/components/streaming/overview/MediaEqualizer.vue";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { MEDIA_CARD_METADATA_HEIGHT, MEDIA_LIST_ROW_HEIGHT } from "@/features/media/grid-layout";
 import { usePlayerStore } from "@/stores/stream-player";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 const {
   file,
@@ -261,7 +261,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
           v-if="isVideo && file.duration"
           class="absolute right-2 bottom-2 px-1.5 py-px rounded text-[11px] tabular-nums bg-black/70 text-white pointer-events-none"
         >
-          {{ formatDuration(file.duration) }}
+          {{ formatPlaybackTime(file.duration) }}
         </div>
         <span
           v-if="showProgress"
@@ -308,7 +308,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
               v-if="file.duration && !isVideo"
               class="text-xs tabular-nums text-gray-600 dark:text-gray-400"
             >
-              {{ formatDuration(file.duration) }}
+              {{ formatPlaybackTime(file.duration) }}
             </span>
           </div>
           <button
@@ -415,7 +415,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
             <span class="truncate" :title="subtitle">{{ subtitle }}</span>
 
             <span v-if="file.duration" class="ml-auto shrink-0 tabular-nums sm:hidden">{{
-              formatDuration(file.duration)
+              formatPlaybackTime(file.duration)
             }}</span>
           </p>
         </div>
@@ -424,7 +424,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
       <span
         class="hidden text-right text-sm tabular-nums text-gray-600 sm:block dark:text-gray-400"
       >
-        <template v-if="file.duration">{{ formatDuration(file.duration) }}</template>
+        <template v-if="file.duration">{{ formatPlaybackTime(file.duration) }}</template>
       </span>
 
       <div class="flex justify-end">

@@ -8,6 +8,7 @@ import "@/assets/player-range.css";
 import { useAppToast } from "@/composables/useAppToast";
 import { usePlayerModeTransition } from "@/composables/usePlayerModeTransition";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 import PlayerArtwork from "./PlayerArtwork.vue";
 import PlayerQueue from "./PlayerQueue.vue";
@@ -108,13 +109,6 @@ const lyricsToggleClass = computed(() => {
 });
 const cardRef = ref<HTMLDivElement | null>(null);
 const layoutRef = ref<HTMLDivElement | null>(null);
-
-const formatTime = (seconds: number) => {
-  if (!isFinite(seconds) || seconds < 0) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
-};
 
 const seekProgress = computed(() => {
   if (
@@ -442,7 +436,7 @@ onUnmounted(() => {
           </div>
           <div class="flex items-center gap-2 px-3 pt-2">
             <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
-              formatTime(currentTime)
+              formatPlaybackTime(currentTime)
             }}</span>
             <input
               type="range"
@@ -452,11 +446,11 @@ onUnmounted(() => {
               :step="0.5"
               :value="currentTime"
               aria-label="Seek"
-              :aria-valuetext="`${formatTime(currentTime)} of ${formatTime(duration)}`"
+              :aria-valuetext="`${formatPlaybackTime(currentTime)} of ${formatPlaybackTime(duration)}`"
               @input="onSeekInput"
             />
             <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
-              formatTime(duration)
+              formatPlaybackTime(duration)
             }}</span>
           </div>
           <div class="flex items-center justify-center gap-0.5 px-3 pb-2">
@@ -592,7 +586,7 @@ onUnmounted(() => {
             </div>
             <div class="-mb-1.5 flex items-center gap-2">
               <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
-                formatTime(currentTime)
+                formatPlaybackTime(currentTime)
               }}</span>
               <input
                 type="range"
@@ -602,11 +596,11 @@ onUnmounted(() => {
                 :step="0.5"
                 :value="currentTime"
                 aria-label="Seek"
-                :aria-valuetext="`${formatTime(currentTime)} of ${formatTime(duration)}`"
+                :aria-valuetext="`${formatPlaybackTime(currentTime)} of ${formatPlaybackTime(duration)}`"
                 @input="onSeekInput"
               />
               <span class="seek-time flex-shrink-0 text-gray-500 dark:text-gray-500">{{
-                formatTime(duration)
+                formatPlaybackTime(duration)
               }}</span>
             </div>
           </div>

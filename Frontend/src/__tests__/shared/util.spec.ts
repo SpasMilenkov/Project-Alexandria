@@ -12,6 +12,7 @@ import {
   formatDayMonthRange,
   formatDaysAgo,
   formatFullDate,
+  formatPlaybackTime,
   formatTimeAgo,
 } from "@/utils/date-formatters";
 import { getIconByValue, getFileIcon } from "@/utils/files/icons";
@@ -162,6 +163,26 @@ describe("calendar days", () => {
   it("never calls a later day today and returns nothing for an unreadable date", () => {
     expect(formatDayLabel(new Date(2026, 10, 1, 9), NOW)).toBe("Nov 1");
     expect(formatDayLabel("not a date", NOW)).toBe("");
+  });
+});
+
+describe("formatPlaybackTime", () => {
+  it("shows minutes and padded seconds under an hour", () => {
+    expect(formatPlaybackTime(0)).toBe("0:00");
+    expect(formatPlaybackTime(7.9)).toBe("0:07");
+    expect(formatPlaybackTime(187)).toBe("3:07");
+    expect(formatPlaybackTime(3599)).toBe("59:59");
+  });
+
+  it("adds hours past an hour and keeps counting them past a day", () => {
+    expect(formatPlaybackTime(3723)).toBe("1:02:03");
+    expect(formatPlaybackTime(26 * 3600 + 5)).toBe("26:00:05");
+  });
+
+  it("reads unloaded media as 0:00", () => {
+    expect(formatPlaybackTime(Number.NaN)).toBe("0:00");
+    expect(formatPlaybackTime(Number.POSITIVE_INFINITY)).toBe("0:00");
+    expect(formatPlaybackTime(-4)).toBe("0:00");
   });
 });
 

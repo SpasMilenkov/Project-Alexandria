@@ -9,18 +9,23 @@ const DAY_MS = 24 * HOUR_MS;
 const MONTH_DAYS = 30.4375;
 const YEAR_DAYS = 365.25;
 
-export const formatDuration = (seconds: number): string => {
-  const s = Math.floor(seconds);
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
+const pad = (value: number) => String(value).padStart(2, "0");
 
-  const pad = (n: number) => String(n).padStart(2, "0");
+/**
+ * Player clock time: "3:07", or "1:02:03" past an hour, with hours counting on past a day.
+ * Players report NaN or a negative value before media loads, which reads as "0:00".
+ */
+export const formatPlaybackTime = (seconds: number): string => {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
 
-  if (d > 0) return `${d}:${pad(h)}:${pad(m)}:${pad(sec)}`;
-  if (h > 0) return `${h}:${pad(m)}:${pad(sec)}`;
-  return `${m}:${pad(sec)}`;
+  const whole = Math.floor(seconds);
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const rest = whole % 60;
+
+  if (hours > 0) return `${hours}:${pad(minutes)}:${pad(rest)}`;
+
+  return `${minutes}:${pad(rest)}`;
 };
 
 export interface DateFormatOptions {
@@ -279,4 +284,4 @@ export const utcMonthKey = (date: Date | number): string =>
 
 // "yyyy-MM-dd" on the viewer's local calendar, for days the user picked or sees as "today".
 export const localDayKey = (date: Date): string =>
-  `${String(date.getFullYear()).padStart(4, "0")}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  `${String(date.getFullYear()).padStart(4, "0")}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;

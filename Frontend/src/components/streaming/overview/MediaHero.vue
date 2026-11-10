@@ -14,7 +14,7 @@ import { heroTint } from "@/features/media/cover-color";
 import { coverSeed } from "@/features/media/generated-cover";
 import { mediaOverviewHistory, mediaOverviewLibrary } from "@/queries/media-overview";
 import { usePlayerStore } from "@/stores/stream-player";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaEqualizer from "./MediaEqualizer.vue";
@@ -257,8 +257,8 @@ const playUpNext = (item: UpNextItem) => {
         </div>
 
         <div class="flex justify-between text-xs tabular-nums text-gray-600 dark:text-gray-400">
-          <span>{{ formatDuration(subject.position) }}</span>
-          <span>{{ formatDuration(subject.duration) }}</span>
+          <span>{{ formatPlaybackTime(subject.position) }}</span>
+          <span>{{ formatPlaybackTime(subject.duration) }}</span>
         </div>
       </div>
 
@@ -329,7 +329,7 @@ const playUpNext = (item: UpNextItem) => {
         <span
           v-if="item.file.duration"
           class="shrink-0 text-xs tabular-nums text-gray-600 dark:text-gray-400"
-          >{{ formatDuration(item.file.duration) }}</span
+          >{{ formatPlaybackTime(item.file.duration) }}</span
         >
       </button>
     </div>

@@ -9,7 +9,7 @@ import { isAuthError } from "@/api/shuffle";
 import { coverSeed } from "@/features/media/generated-cover";
 import { groupByDay } from "@/features/media/overview";
 import { mediaOverviewHistory } from "@/queries/media-overview";
-import { formatClockTime, formatDuration } from "@/utils/date-formatters";
+import { formatClockTime, formatPlaybackTime } from "@/utils/date-formatters";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaOverviewSection from "./MediaOverviewSection.vue";
@@ -22,7 +22,7 @@ const subtitle = (entry: StreamHistoryResponse) => {
   if (!entry.isVideo) return entry.artist || entry.album || "Unknown artist";
   if (entry.hasFinished || entry.positionSeconds <= 0) return "Video";
 
-  return `Video · stopped at ${formatDuration(entry.positionSeconds)}`;
+  return `Video · stopped at ${formatPlaybackTime(entry.positionSeconds)}`;
 };
 </script>
 

@@ -5,7 +5,7 @@ import type { MediaFileDto } from "@/api/streaming";
 
 import { coverSeed } from "@/features/media/generated-cover";
 import { usePlayerStore } from "@/stores/stream-player";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 import MediaArtwork from "./MediaArtwork.vue";
 import MediaEqualizer from "./MediaEqualizer.vue";
@@ -99,7 +99,7 @@ const play = () => {
       <span
         v-if="file.isVideo && file.duration"
         class="absolute bottom-3 right-2.5 inline-flex min-h-6 items-center rounded-md bg-gray-950/80 px-2 text-xs font-semibold tabular-nums text-gray-100"
-        >{{ formatDuration(file.duration) }}</span
+        >{{ formatPlaybackTime(file.duration) }}</span
       >
 
       <span
@@ -153,7 +153,7 @@ const play = () => {
       <span class="truncate">{{ subtitle }}</span>
 
       <span v-if="!file.isVideo && file.duration != null" class="shrink-0 text-xs tabular-nums">{{
-        formatDuration(file.duration)
+        formatPlaybackTime(file.duration)
       }}</span>
     </span>
   </button>
