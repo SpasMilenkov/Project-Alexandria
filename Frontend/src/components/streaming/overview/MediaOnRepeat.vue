@@ -98,20 +98,18 @@ const label = (song: TopSong) => {
               homeTopSongTitle(song)
             }}</span>
 
-            <span class="mt-1 flex min-w-0 items-center gap-2">
-              <span class="truncate text-xs text-gray-600 dark:text-gray-400">{{
-                homeTopSongArtist(song)
-              }}</span>
+            <span class="block truncate text-xs text-gray-600 dark:text-gray-400">{{
+              homeTopSongArtist(song)
+            }}</span>
 
+            <span
+              class="mt-1.5 block h-[3px] w-full overflow-hidden rounded-full bg-gray-500/15"
+              aria-hidden="true"
+            >
               <span
-                class="h-[3px] min-w-10 flex-1 overflow-hidden rounded-full bg-gray-500/15"
-                aria-hidden="true"
-              >
-                <span
-                  class="block h-full rounded-full bg-gray-700 dark:bg-gray-300"
-                  :style="{ width: `${homeTopSongBar(song, leadingSeconds)}%` }"
-                />
-              </span>
+                class="block h-full rounded-full bg-gray-700 dark:bg-gray-300"
+                :style="{ width: `${homeTopSongBar(song, leadingSeconds)}%` }"
+              />
             </span>
           </span>
 
