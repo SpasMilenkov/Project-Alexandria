@@ -9,7 +9,7 @@ import { coverSeed } from "@/features/media/generated-cover";
 import {
   homeTopSongArtist,
   homeTopSongBar,
-  homeTopSongPlays,
+  homeTopSongListened,
   homeTopSongTitle,
   homeTopSongsPeriod,
 } from "@/features/media/top-songs";
@@ -26,7 +26,7 @@ const player = usePlayerStore();
 const period = { ...homeTopSongsPeriod(), limit: MEDIA_OVERVIEW_PAGE_SIZES.onRepeat };
 const query = useQuery(() => mediaOverviewOnRepeat({ userId, session, ...period }));
 const disabled = computed(() => player.playbackOwnerId !== userId || player.orderBusy);
-const leadingCount = computed(() => query.data.value?.items[0]?.qualifiedPlayCount ?? 0);
+const leadingSeconds = computed(() => query.data.value?.items[0]?.totalListenedSeconds ?? 0);
 
 const isActive = (song: TopSong) => player.activeFile?.fileId === song.file.fileId;
 
@@ -109,14 +109,14 @@ const label = (song: TopSong) => {
               >
                 <span
                   class="block h-full rounded-full bg-gray-700 dark:bg-gray-300"
-                  :style="{ width: `${homeTopSongBar(song, leadingCount)}%` }"
+                  :style="{ width: `${homeTopSongBar(song, leadingSeconds)}%` }"
                 />
               </span>
             </span>
           </span>
 
           <span class="shrink-0 text-xs tabular-nums text-gray-600 dark:text-gray-400">{{
-            homeTopSongPlays(song)
+            homeTopSongListened(song)
           }}</span>
         </button>
       </li>

@@ -50,7 +50,7 @@ public class TopSongsServiceTests
     [Fact]
     public async Task GetTopSongsAsync_preserves_repository_ranking_when_hydration_returns_another_order()
     {
-        ArrangeRankings(3, Ranking(FileB, 2, 30), Ranking(FileA, 2, 20), Ranking(FileC, 1, 1000));
+        ArrangeRankings(3, Ranking(FileC, 1, 1000), Ranking(FileB, 2, 30), Ranking(FileA, 2, 20));
         ArrangePlayable(new MediaFileDto { FileId = FileC }, new MediaFileDto { FileId = FileA },
             new MediaFileDto { FileId = FileB });
 
@@ -58,9 +58,9 @@ public class TopSongsServiceTests
 
         result.From.Should().Be(From);
         result.To.Should().Be(To);
-        result.Items.Select(s => s.File.FileId).Should().Equal(FileB, FileA, FileC);
-        result.Items.Select(s => s.QualifiedPlayCount).Should().Equal(2, 2, 1);
-        result.Items.Select(s => s.TotalListenedSeconds).Should().Equal(30, 20, 1000);
+        result.Items.Select(s => s.File.FileId).Should().Equal(FileC, FileB, FileA);
+        result.Items.Select(s => s.QualifiedPlayCount).Should().Equal(1, 2, 2);
+        result.Items.Select(s => s.TotalListenedSeconds).Should().Equal(1000, 30, 20);
     }
 
     [Fact]

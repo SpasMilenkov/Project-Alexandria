@@ -11,7 +11,7 @@ import { useHomeWidgetRows } from "@/composables/useHomeWidgetRows";
 import {
   homeTopSongArtist,
   homeTopSongBar,
-  homeTopSongPlays,
+  homeTopSongListened,
   homeTopSongTitle,
   homeTopSongsPeriod,
 } from "@/features/media/top-songs";
@@ -81,8 +81,8 @@ const visibleRows = computed(
       rank: index + 1,
       title: homeTopSongTitle(song),
       artist: homeTopSongArtist(song),
-      plays: homeTopSongPlays(song),
-      bar: homeTopSongBar(song, data.value?.[0]?.qualifiedPlayCount ?? 0),
+      listened: homeTopSongListened(song),
+      bar: homeTopSongBar(song, data.value?.[0]?.totalListenedSeconds ?? 0),
     })) ?? [],
 );
 
@@ -180,8 +180,8 @@ const play = (song: TopSong) => {
           type="button"
           class="song-row flex h-14 shrink-0 flex-col justify-center gap-1 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-[-2px] enabled:hover:bg-gray-100/60 dark:enabled:hover:bg-gray-800/60"
           :disabled="playbackDisabled"
-          :aria-label="`Play ${row.title} by ${row.artist}, ranked ${row.rank}, ${row.plays}`"
-          :title="`${row.title} · ${row.artist} · ${row.plays}`"
+          :aria-label="`Play ${row.title} by ${row.artist}, ranked ${row.rank}, ${row.listened} listened`"
+          :title="`${row.title} · ${row.artist} · ${row.listened}`"
           @click="play(row.song)"
         >
           <span class="flex min-w-0 items-center gap-2">
@@ -198,7 +198,7 @@ const play = (song: TopSong) => {
               }}</span>
             </span>
 
-            <span class="shrink-0 text-xs font-medium tabular-nums">{{ row.plays }}</span>
+            <span class="shrink-0 text-xs font-medium tabular-nums">{{ row.listened }}</span>
           </span>
 
           <span

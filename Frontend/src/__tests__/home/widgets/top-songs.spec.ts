@@ -122,8 +122,8 @@ describe("Home Top songs period and ranking", () => {
     );
   });
 
-  it("keeps bars relative to the leading play count and falls back to the file name", () => {
-    expect(homeTopSongBar(song("a", 3), 12)).toBe(25);
+  it("keeps bars relative to the leading listening time and falls back to the file name", () => {
+    expect(homeTopSongBar(song("a", 3), 12 * 240)).toBe(25);
     expect(homeTopSongBar(song("a", 12), 0)).toBe(0);
     expect(homeTopSongBar(song("a", 12), Number.NaN)).toBe(0);
 
@@ -143,18 +143,18 @@ describe("Home Top songs period and ranking", () => {
 });
 
 describe("Home Top songs shared playback", () => {
-  it("shows ranked plays and dispatches a row through the existing player command", async () => {
+  it("shows ranked listening time and dispatches a row through the existing player command", async () => {
     const { wrapper, player } = mountWidget();
     cleanups.push(() => wrapper.unmount());
     const playNow = vi.spyOn(player, "playNow").mockResolvedValue(undefined);
     await flushPromises();
 
     expect(wrapper.text()).toContain("Last 7 days · UTC");
-    expect(wrapper.text()).toContain("12 plays");
-    expect(wrapper.text()).toContain("3 plays");
+    expect(wrapper.text()).toContain("48m");
+    expect(wrapper.text()).toContain("12m");
     expect(wrapper.findAll(".song-row").map((row) => row.attributes("aria-label"))).toEqual([
-      "Play Midnight City a by M83, ranked 1, 12 plays",
-      "Play Midnight City b by M83, ranked 2, 3 plays",
+      "Play Midnight City a by M83, ranked 1, 48m listened",
+      "Play Midnight City b by M83, ranked 2, 12m listened",
     ]);
     expect(wrapper.findAll(".song-row > span:last-child > span")[1]?.attributes("style")).toContain(
       "25%",

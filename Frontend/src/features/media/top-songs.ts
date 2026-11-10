@@ -1,6 +1,6 @@
 import type { TopSong, TopSongsQuery } from "@/api/listening-rankings";
 
-import { formatCount } from "@/utils/count";
+import { formatDuration } from "@/utils/date-formatters";
 
 export const homeTopSongsPeriod = (now = new Date()): TopSongsQuery => ({
   from: new Date(
@@ -14,15 +14,12 @@ export const homeTopSongTitle = (song: TopSong) => song.file.title?.trim() || so
 
 export const homeTopSongArtist = (song: TopSong) => song.file.artist?.trim() || "Unknown artist";
 
-export const homeTopSongBar = (song: TopSong, leadingCount: number) => {
-  if (!Number.isFinite(leadingCount) || leadingCount <= 0) return 0;
-  if (!Number.isFinite(song.qualifiedPlayCount) || song.qualifiedPlayCount <= 0) return 0;
+export const homeTopSongBar = (song: TopSong, leadingSeconds: number) => {
+  if (!Number.isFinite(leadingSeconds) || leadingSeconds <= 0) return 0;
+  if (!Number.isFinite(song.totalListenedSeconds) || song.totalListenedSeconds <= 0) return 0;
 
-  return Math.min(100, (song.qualifiedPlayCount / leadingCount) * 100);
+  return Math.min(100, (song.totalListenedSeconds / leadingSeconds) * 100);
 };
 
-export const homeTopSongPlays = (song: TopSong) => {
-  const count = song.qualifiedPlayCount;
-
-  return formatCount(count, "play");
-};
+export const homeTopSongListened = (song: TopSong) =>
+  formatDuration(song.totalListenedSeconds, { largestUnit: "hour" });
