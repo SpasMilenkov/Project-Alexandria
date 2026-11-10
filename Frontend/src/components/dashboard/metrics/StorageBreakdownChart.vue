@@ -51,7 +51,7 @@
               class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
             >
               <span
-                class="text-2xl font-semibold leading-none tabular-nums text-gray-900 @4xl:text-3xl dark:text-gray-100"
+                class="whitespace-nowrap text-2xl font-semibold leading-none tabular-nums text-gray-900 @4xl:text-3xl dark:text-gray-100"
               >
                 {{ topCategory.size }}
               </span>
@@ -89,7 +89,7 @@
             </div>
 
             <span
-              class="w-16 shrink-0 text-right text-xs font-medium tabular-nums text-gray-900 dark:text-gray-100"
+              class="min-w-16 shrink-0 whitespace-nowrap text-right text-xs font-medium tabular-nums text-gray-900 dark:text-gray-100"
             >
               {{ item.size }}
             </span>
