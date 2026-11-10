@@ -40,7 +40,13 @@ import {
   stuck,
   volumeByHour,
 } from "@/queries/audioAnalysis";
-import { formatDate, formatDuration } from "@/utils/date-formatters";
+import { formatCount } from "@/utils/count";
+import {
+  formatBucketLabel,
+  formatClockTime,
+  formatPlaybackTime,
+  formatTimeAgo,
+} from "@/utils/date-formatters";
 
 ChartJS.register(
   Title,
@@ -158,7 +164,6 @@ useLiveRefresh(() => {
 // Tracks when the last successful refresh finished, so the header can show a
 // quiet "Updated 2:41 PM" instead of leaving the user guessing about staleness.
 const lastUpdated = ref(new Date());
-const timeOnly = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 watch(isRefreshing, (loading, wasLoading) => {
   if (wasLoading && !loading) {
     lastUpdated.value = new Date();
@@ -270,24 +275,10 @@ const kpiTiles = computed(() => [
     key: "avgDuration",
     icon: "mdi:timer-outline",
     label: "Avg duration",
-    value: overallAvgDuration.value === null ? "—" : formatDuration(overallAvgDuration.value),
+    value: overallAvgDuration.value === null ? "—" : formatPlaybackTime(overallAvgDuration.value),
     tone: "neutral" as const,
   },
 ]);
-
-const shortTime = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  month: "short",
-});
-
-const shortDay = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
-
-const formatBucketLabel = (iso: string) =>
-  bucket.value === "day" ? shortDay.format(new Date(iso)) : shortTime.format(new Date(iso));
-
-const formatHourLabel = (iso: string) => shortTime.format(new Date(iso));
 
 const failureChartData = computed((): ChartData<"line"> => {
   const points = failure.data.value ?? [];
@@ -315,7 +306,7 @@ const failureChartData = computed((): ChartData<"line"> => {
         tension: 0.3,
       };
     }),
-    labels: buckets.map(formatBucketLabel),
+    labels: buckets.map((start) => formatBucketLabel(start, bucket.value)),
   };
 });
 
@@ -384,7 +375,7 @@ const volumeChartData = computed((): ChartData<"bar"> => {
         label: "Files",
       },
     ],
-    labels: points.map((p) => formatHourLabel(p.hour)),
+    labels: points.map((p) => formatBucketLabel(p.hour, "hour")),
   };
 });
 
@@ -427,7 +418,7 @@ const volumeChartOptions = computed((): ChartOptions<"bar"> => ({
 const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse());
 
 const queueHint = computed(
-  () => `${queueTotal.value} file${queueTotal.value === 1 ? "" : "s"} in flight`,
+  () => `${formatCount(queueTotal.value, "file")} in flight`,
 );
 
 const durationStats = (row: {
@@ -435,9 +426,9 @@ const durationStats = (row: {
   medianSeconds: number;
   maxSeconds: number;
 }) => [
-  { label: "Average", value: formatDuration(row.averageSeconds) },
-  { label: "Median", value: formatDuration(row.medianSeconds) },
-  { label: "Max", value: formatDuration(row.maxSeconds) },
+  { label: "Average", value: formatPlaybackTime(row.averageSeconds) },
+  { label: "Median", value: formatPlaybackTime(row.medianSeconds) },
+  { label: "Max", value: formatPlaybackTime(row.maxSeconds) },
 ];
 
 const batchProgress = (batch: { filesCompleted: number; filesTotal: number }) => {
@@ -464,7 +455,7 @@ const BATCH_COLUMNS = [
     >
       <template #actions>
         <span class="hidden text-xs text-gray-600 lg:inline dark:text-gray-400">
-          Updated {{ timeOnly.format(lastUpdated) }}
+          Updated {{ formatClockTime(lastUpdated) }}
         </span>
         <SegmentedControl v-model="rangeMs" :options="rangeOptions" label="Time range" />
         <SegmentedControl v-model="bucket" :options="bucketOptions" label="Bucket size" />
@@ -597,7 +588,7 @@ const BATCH_COLUMNS = [
                   </p>
                 </div>
                 <span class="shrink-0 text-xs text-gray-600 dark:text-gray-400">
-                  {{ formatDate(row.createdAt) }}
+                  {{ formatTimeAgo(row.createdAt) }}
                 </span>
               </li>
             </ul>
@@ -752,14 +743,14 @@ const BATCH_COLUMNS = [
               <span
                 class="text-xs text-gray-600 [grid-area:created] md:text-right dark:text-gray-400"
               >
-                <span class="md:hidden">Created </span>{{ formatDate(batch.createdAt) }}
+                <span class="md:hidden">Created </span>{{ formatTimeAgo(batch.createdAt) }}
               </span>
 
               <span
                 class="text-right text-xs text-gray-600 [grid-area:completed] dark:text-gray-400"
               >
                 <span class="md:hidden">Completed </span
-                >{{ batch.completedAt ? formatDate(batch.completedAt) : "—" }}
+                >{{ batch.completedAt ? formatTimeAgo(batch.completedAt) : "—" }}
               </span>
             </div>
           </div>

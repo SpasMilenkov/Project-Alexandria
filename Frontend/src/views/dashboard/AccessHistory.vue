@@ -10,6 +10,8 @@ import { SortDirection } from "@/enums/SortDirection";
 import { personalPaginated } from "@/queries/activities";
 import { useActivityStore } from "@/stores/activity";
 import { useAuthStore } from "@/stores/auth";
+import { formatCount } from "@/utils/count";
+import { formatClockTime, formatDayLabel, localDayKey } from "@/utils/date-formatters";
 
 const activityStore = useActivityStore();
 const authStore = useAuthStore();
@@ -102,27 +104,6 @@ const OP_ICONS: Partial<Record<OperationType, string>> = {
 const getIcon = (op: OperationType, entity: EntityType): string =>
   ENTITY_ICONS[entity] ?? OP_ICONS[op] ?? "i-lucide-eye";
 
-const startOfDay = (date: Date): number =>
-  new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-
-const DAY_MS = 86_400_000;
-
-const dayLabel = (date: Date): string => {
-  const diffDays = Math.round((startOfDay(new Date()) - startOfDay(date)) / DAY_MS);
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-
-  const sameYear = date.getFullYear() === new Date().getFullYear();
-
-  return date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "long",
-    weekday: "long",
-    year: sameYear ? undefined : "numeric",
-  });
-};
-
 const rows = computed(() => {
   if (!data.value) return [];
 
@@ -131,7 +112,7 @@ const rows = computed(() => {
 
     return {
       color: OP_COLORS[log.operationType] ?? "neutral",
-      dayKey: startOfDay(at),
+      dayKey: localDayKey(at),
       entityId: log.entityId,
       entityLabel: ENTITY_LABELS[log.entityType] ?? "Item",
       entityType: log.entityType,
@@ -140,7 +121,7 @@ const rows = computed(() => {
       logSourceLabel: LOG_SOURCE_LABELS[log.logSource] ?? "Unknown",
       metadata: getRenderedMetadata(log.eventCode, log.metadata),
       opLabel: OperationType[log.operationType] ?? "Unknown",
-      time: at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+      time: formatClockTime(at),
       timestamp: log.timestamp,
       title: getMessage(log.eventCode),
       ui: { indicator: OP_INDICATORS[log.operationType] ?? NEUTRAL_INDICATOR },
@@ -151,7 +132,7 @@ const rows = computed(() => {
 type ActivityRow = (typeof rows.value)[number];
 
 const dayGroups = computed(() => {
-  const groups: { key: number; label: string; rows: ActivityRow[] }[] = [];
+  const groups: { key: string; label: string; rows: ActivityRow[] }[] = [];
 
   for (const row of rows.value) {
     const last = groups.at(-1);
@@ -159,7 +140,7 @@ const dayGroups = computed(() => {
     if (last?.key === row.dayKey) {
       last.rows.push(row);
     } else {
-      groups.push({ key: row.dayKey, label: dayLabel(new Date(row.timestamp)), rows: [row] });
+      groups.push({ key: row.dayKey, label: formatDayLabel(row.timestamp), rows: [row] });
     }
   }
 
@@ -256,7 +237,7 @@ const TIMELINE_UI = {
                 {{ group.label }}
               </h3>
               <span class="text-xs text-gray-500 tabular-nums dark:text-gray-500">
-                {{ group.rows.length }} {{ group.rows.length === 1 ? "event" : "events" }}
+                {{ formatCount(group.rows.length, "event") }}
               </span>
             </div>
 

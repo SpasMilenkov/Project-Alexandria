@@ -29,7 +29,8 @@ import {
 import { buildDeepLink } from "@/features/monitoring/service-routing";
 import { useResolveIncident } from "@/mutations/monitoring";
 import { operationalEvents } from "@/queries/monitoring";
-import { formatDate, formatRelativeShort } from "@/utils/date-formatters";
+import { formatCount } from "@/utils/count";
+import { formatCalendarDate, formatDateTime, formatTimeAgo } from "@/utils/date-formatters";
 
 const { dateRange, initialServiceType, initialSeverity, highlightId, lockedService } = defineProps<{
   dateRange: EventCalendarRange | null;
@@ -235,26 +236,15 @@ const metadataRows = (event: OperationalEvent): MetadataRow[] => {
   return [];
 };
 
-const formatAbsolute = (iso: string): string =>
-  new Date(iso).toLocaleString(undefined, {
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-
-const ageLabel = (event: OperationalEvent): string => {
-  const age = formatRelativeShort(event.createdAt);
-  return age === "just now" ? age : `${age} ago`;
-};
+const ageLabel = (event: OperationalEvent): string =>
+  formatTimeAgo(event.createdAt, { style: "narrow" });
 
 const resolutionNoteRow = (event: OperationalEvent): string | null =>
   parseEventMetadata(event.metadataJson)?.resolutionNote ?? null;
 
 const subtitle = (event: OperationalEvent): string => {
   const parts = [SERVICE_LABELS[event.serviceType] ?? event.serviceType];
-  if (event.resolvedAt) parts.push(`resolved ${formatDate(event.resolvedAt)}`);
+  if (event.resolvedAt) parts.push(`resolved ${formatTimeAgo(event.resolvedAt)}`);
   return parts.join(" · ");
 };
 
@@ -269,13 +259,7 @@ const statusIconColor = (event: OperationalEvent): string =>
 
 // Day windows are UTC days (matching backend bucketing), so the chip must not shift
 // them into the viewer's local day.
-const formatUtcDay = (date: Date): string =>
-  date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "long",
-    timeZone: "UTC",
-    year: "numeric",
-  });
+const formatUtcDay = (date: Date): string => formatCalendarDate(date, { timeZone: "UTC" });
 
 const dateChipLabel = computed(() => {
   if (!dateRange) return "";
@@ -541,7 +525,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                 {{ SEVERITY_LABELS[event.severity] }}
               </UBadge>
               <span class="text-xs text-gray-600 dark:text-gray-400 tabular-nums">
-                {{ formatDate(event.createdAt) }}
+                {{ formatTimeAgo(event.createdAt) }}
               </span>
               <UTooltip
                 :text="`Open ${SERVICE_LABELS[event.serviceType] ?? event.serviceType} details`"
@@ -585,7 +569,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                   Occurred
                 </dt>
                 <dd class="text-sm text-gray-900 dark:text-gray-100 tabular-nums">
-                  {{ formatAbsolute(event.createdAt) }}
+                  {{ formatDateTime(event.createdAt) }}
                 </dd>
                 <template v-if="event.resolvedAt">
                   <dt
@@ -594,7 +578,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                     Resolved
                   </dt>
                   <dd class="text-sm text-gray-900 dark:text-gray-100 tabular-nums">
-                    {{ formatAbsolute(event.resolvedAt) }}
+                    {{ formatDateTime(event.resolvedAt) }}
                   </dd>
                 </template>
                 <template v-if="resolutionNoteRow(event)">
@@ -642,7 +626,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
       >
         <span class="text-xs text-gray-600 dark:text-gray-400 tabular-nums">
           Page {{ data?.currentPage ?? page }} of {{ totalPages }} ·
-          {{ (data?.totalCount ?? 0).toLocaleString() }} events
+          {{ formatCount(data?.totalCount ?? 0, "event") }}
         </span>
         <div class="flex items-center gap-2">
           <UButton
@@ -714,7 +698,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
           />
           <span class="text-xs text-gray-600 dark:text-gray-300 tabular-nums truncate">
             {{ SERVICE_LABELS[resolvingEvent.serviceType] ?? resolvingEvent.serviceType }} ·
-            occurred {{ formatAbsolute(resolvingEvent.createdAt) }} ({{ ageLabel(resolvingEvent) }})
+            occurred {{ formatDateTime(resolvingEvent.createdAt) }} ({{ ageLabel(resolvingEvent) }})
           </span>
         </div>
 

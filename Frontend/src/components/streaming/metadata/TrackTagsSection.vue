@@ -125,6 +125,7 @@ import { quoted } from "@/features/toast/format";
 import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import { getTagsForFile, searchTag } from "@/queries/tags";
+import { formatCount } from "@/utils/count";
 import { getIconByValue } from "@/utils/files/icons";
 import { isAutoTagSupportedFileType } from "@/utils/files/mimetype";
 
@@ -230,9 +231,9 @@ const groups = computed(() => {
 const summary = computed(() => {
   const count = tags.value.length;
   if (!count) return "No tags yet";
-  const tagLabel = count === 1 ? "tag" : "tags";
-  if (groups.value.length < 2) return `${count} ${tagLabel}`;
-  return `${count} ${tagLabel} in ${groups.value.length} groups`;
+  const tagLabel = formatCount(count, "tag");
+  if (groups.value.length < 2) return tagLabel;
+  return `${tagLabel} in ${groups.value.length} groups`;
 });
 
 // Mobile only: the largest group starts open, the rest start collapsed.

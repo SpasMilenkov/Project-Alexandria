@@ -8,7 +8,7 @@
 
       <span class="text-gray-600 dark:text-gray-400"
         >{{ current ? formatWrappedDuration(current.seconds) : "No recorded listening"
-        }}<span v-if="current"> · {{ current.plays }} plays</span></span
+        }}<span v-if="current"> · {{ formatCount(current.plays, "play") }}</span></span
       >
     </figcaption>
 
@@ -71,6 +71,8 @@ import type { WrappedPeriodPoint } from "@/api/stats";
 
 import { formatWrappedDuration, monthLabel } from "@/features/wrapped/art";
 import { monthlyLandscape } from "@/features/wrapped/ranking";
+import { formatCount } from "@/utils/count";
+import { formatMonthYear } from "@/utils/date-formatters";
 
 const props = defineProps<{ series: WrappedPeriodPoint[] }>();
 const selected = ref<string | null>(null);
@@ -93,10 +95,7 @@ const current = computed(
   () => props.series.find((month) => month.date === selected.value) ?? busiest.value,
 );
 
-const monthName = (month: WrappedPeriodPoint) =>
-  new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric", timeZone: "UTC" }).format(
-    new Date(month.date),
-  );
+const monthName = (month: WrappedPeriodPoint) => formatMonthYear(month.date, { timeZone: "UTC" });
 
 const selectedLabel = computed(() => {
   if (!current.value) return "Your listening, month by month";

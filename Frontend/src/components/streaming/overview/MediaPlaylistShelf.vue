@@ -9,6 +9,7 @@ import { isAuthError } from "@/api/shuffle";
 import HomeCollectionCover from "@/components/dashboard/home/widgets/collections/HomeCollectionCover.vue";
 import { autoGroupKindLabel } from "@/features/playlists/display";
 import { mediaOverviewPlaylists } from "@/queries/media-overview";
+import { formatCount } from "@/utils/count";
 
 import MediaOverviewSection from "./MediaOverviewSection.vue";
 import MediaShelfScroller from "./MediaShelfScroller.vue";
@@ -27,8 +28,7 @@ const destination = computed(() => ({
   query: { origin: automatic ? "auto" : "manual" },
 }));
 
-const trackCount = (playlist: PlaylistResponse) =>
-  `${playlist.itemCount.toLocaleString()} ${playlist.itemCount === 1 ? "track" : "tracks"}`;
+const trackCount = (playlist: PlaylistResponse) => formatCount(playlist.itemCount, "track");
 
 const collectionMeta = (playlist: PlaylistResponse) =>
   `${autoGroupKindLabel(playlist.autoGroupKind) ?? "Collection"} · ${trackCount(playlist)}`;

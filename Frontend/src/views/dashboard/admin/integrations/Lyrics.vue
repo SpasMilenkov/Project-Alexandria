@@ -34,6 +34,7 @@ import { useTheme } from "@/composables/useTheme";
 import { JobType, ServiceType } from "@/enums";
 import { parseDeepLinkQuery } from "@/features/monitoring/service-routing";
 import { lyricsOverview, lyricsTrend } from "@/queries/lyricsStats";
+import { formatBucketLabel } from "@/utils/date-formatters";
 
 ChartJS.register(
   Title,
@@ -120,12 +121,8 @@ const gridColor = computed(() =>
 );
 const tickColor = computed(() => (isDark.value ? "#9ca3af" : "#6b7280"));
 
-const bucketLabel = (iso: string): string => {
-  const date = new Date(iso);
-  return bucket.value === LYRICS_STATS_BUCKET.Hour
-    ? date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-};
+const bucketLabel = (iso: string): string =>
+  formatBucketLabel(iso, bucket.value === LYRICS_STATS_BUCKET.Hour ? "hour" : "day");
 
 // Attempts per bucket split by terminal outcome
 const activityChartData = computed<ChartData<"bar">>(() => ({

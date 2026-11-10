@@ -8,10 +8,10 @@ import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useLiveRefresh } from "@/composables/useLiveRefresh";
 import { JobStatus, type JobType } from "@/enums";
-import { countOf } from "@/features/toast/format";
 import { useRequeueFailedJobs, useRequeueJob } from "@/mutations/jobs";
 import { adminJobs } from "@/queries/jobs";
-import { formatRelativeShort } from "@/utils/date-formatters";
+import { formatCount } from "@/utils/count";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 const { type, title } = defineProps<{
   type: JobType;
@@ -66,11 +66,8 @@ const emptyDescription = computed(() => {
   return "Jobs currently being worked on appear here; stalled ones can be requeued.";
 });
 
-const ageLabel = (job: AdminJob): string => {
-  const age = formatRelativeShort(job.completedAt ?? job.updatedAt ?? job.createdAt);
-  if (age === "just now") return age;
-  return `${age} ago`;
-};
+const ageLabel = (job: AdminJob): string =>
+  formatTimeAgo(job.completedAt ?? job.updatedAt ?? job.createdAt, { style: "narrow" });
 
 const errorLabel = (job: AdminJob): string => {
   if (job.errorDetail) return job.errorDetail;
@@ -108,7 +105,7 @@ const handleRequeueAll = async () => {
       return;
     }
 
-    toast.success(`Requeued ${countOf(result.requeued, "failed job")}`);
+    toast.success(`Requeued ${formatCount(result.requeued, "failed job")}`);
   } catch (err) {
     toast.error("Couldn't requeue the failed jobs", err, { retry: handleRequeueAll });
   }
@@ -201,8 +198,7 @@ const nextPage = () => {
               {{ errorLabel(job) }}
             </p>
             <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-              {{ shortId(job.id) }} · {{ job.retryCount }}
-              {{ job.retryCount === 1 ? "retry" : "retries" }}
+              {{ shortId(job.id) }} · {{ formatCount(job.retryCount, "retry", "retries") }}
             </p>
           </div>
 

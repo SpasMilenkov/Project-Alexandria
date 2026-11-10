@@ -7,8 +7,6 @@ import { coverSeed, generatedCover } from "@/features/media/generated-cover";
 import {
   addedThisWeekLabel,
   buildWeekDays,
-  daysAwayLabel,
-  formatListeningTime,
   groupByDay,
 } from "@/features/media/overview";
 
@@ -54,13 +52,6 @@ describe("media overview labels", () => {
     expect(addedThisWeekLabel([file(recent), file(old)], 2, NOW)).toBe("1 added this week");
     expect(addedThisWeekLabel([file(recent), file(recent)], 40, NOW)).toBe("2+ added this week");
     expect(addedThisWeekLabel([file(old), file(null)], 2, NOW)).toBeNull();
-  });
-
-  it("formats listening time and days since a play", () => {
-    expect(formatListeningTime(0)).toBe("0m");
-    expect(formatListeningTime(3600)).toBe("1h");
-    expect(formatListeningTime(15_120)).toBe("4h 12m");
-    expect(daysAwayLabel(new Date(NOW - 40 * 86_400_000).toISOString(), NOW)).toBe("40 days ago");
   });
 
   it("fills missing UTC days so the week always has seven bars", () => {

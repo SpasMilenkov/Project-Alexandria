@@ -8,6 +8,7 @@ import type { HealthCheckEntry, HealthStatus } from "@/api/status";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import InfoHint from "@/components/common/InfoHint.vue";
 import { serverResourceUsage, serverStatus } from "@/queries/status";
+import { formatClockTime, formatDuration } from "@/utils/date-formatters";
 
 const { data, status, asyncStatus, refresh } = useQuery(serverStatus());
 const { data: resources, refresh: refreshResources } = useQuery(serverResourceUsage());
@@ -76,14 +77,10 @@ const lastChecked = computed(() => {
   if (!data.value?.checkedAt) {
     return null;
   }
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(new Date(data.value.checkedAt));
+  return formatClockTime(data.value.checkedAt, { seconds: true });
 });
 
-const totalDuration = computed(() => (data.value ? `${data.value.duration.toFixed(0)} ms` : null));
+const totalDuration = computed(() => (data.value ? formatDuration(data.value.duration / 1000) : null));
 
 const sortedChecks = computed<HealthCheckEntry[]>(() => {
   if (!data.value?.checks) {
@@ -96,9 +93,6 @@ const sortedChecks = computed<HealthCheckEntry[]>(() => {
   };
   return [...data.value.checks].sort((a, b) => order[a.status] - order[b.status]);
 });
-
-const formatMs = (ms: number) =>
-  ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${ms.toFixed(0)} ms`;
 
 // Explicit names/icons for the checks the server reports today. New checks
 // that aren't listed here fall through to fallbackLabel below instead of
@@ -167,29 +161,22 @@ const groupedChecks = computed<CheckGroup[]>(() => {
 
 const proc = computed(() => resources.value?.process ?? null);
 
-const formatUptime = (raw: string): string => {
-  let days = 0,
-    hours = 0,
-    minutes = 0;
-  const dayMatch = raw.match(/^(\d+)\./);
-  if (dayMatch) {
-    days = parseInt(dayMatch[1]);
-    raw = raw.slice(dayMatch[0].length);
-  }
-  const parts = raw.split(":").map(Number);
-  hours = parts[0] ?? 0;
-  minutes = parts[1] ?? 0;
-  const pieces: string[] = [];
-  if (days) {
-    pieces.push(`${days}d`);
-  }
-  if (hours) {
-    pieces.push(`${hours}h`);
-  }
-  if (minutes) {
-    pieces.push(`${minutes}m`);
-  }
-  return pieces.length ? pieces.join(" ") : "just started";
+// The API sends a .NET TimeSpan, "d.hh:mm:ss.fffffff", with the day part only past 24 hours.
+const TIME_SPAN = /^(?:(?<days>\d+)\.)?(?<hours>\d+):(?<minutes>\d+):(?<seconds>\d+(?:\.\d+)?)$/u;
+
+const formatProcessUptime = (raw: string): string => {
+  const parts = TIME_SPAN.exec(raw)?.groups;
+  if (!parts) return raw;
+
+  const seconds =
+    Number(parts.days ?? 0) * 86_400 +
+    Number(parts.hours) * 3600 +
+    Number(parts.minutes) * 60 +
+    Number(parts.seconds);
+  if (seconds < 60) return "just started";
+
+  // Seconds are dropped so a long uptime reads "3h 4m", not "3h 4m 5s".
+  return formatDuration(Math.floor(seconds / 60) * 60, { maxUnits: 3 });
 };
 
 const memoryColor = (pct: number) => {
@@ -267,16 +254,6 @@ const cpuAverage = computed(() => {
 
 const formatMb = (mb: number) =>
   mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb.toFixed(0)} MB`;
-
-const formatCpuTime = (s: number) => {
-  if (s < 60) {
-    return `${s.toFixed(1)}s`;
-  }
-  if (s < 3600) {
-    return `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
-  }
-  return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
-};
 </script>
 
 <template>
@@ -486,7 +463,7 @@ const formatCpuTime = (s: number) => {
                 <span
                   class="text-xs text-gray-600 dark:text-gray-400 text-right tabular-nums pt-0.5"
                 >
-                  {{ formatMs(check.duration) }}
+                  {{ formatDuration(check.duration / 1000) }}
                 </span>
                 <div class="flex justify-end pt-0.5">
                   <span
@@ -741,7 +718,7 @@ const formatCpuTime = (s: number) => {
                     </InfoHint>
                   </div>
                   <p class="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
-                    {{ formatUptime(proc.uptime) }}
+                    {{ formatProcessUptime(proc.uptime) }}
                   </p>
                 </div>
                 <!-- CPU Time -->
@@ -769,7 +746,7 @@ const formatCpuTime = (s: number) => {
                     </InfoHint>
                   </div>
                   <p class="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
-                    {{ formatCpuTime(proc.cpuTimeSeconds) }}
+                    {{ formatDuration(proc.cpuTimeSeconds) }}
                   </p>
                 </div>
                 <!-- Threads -->

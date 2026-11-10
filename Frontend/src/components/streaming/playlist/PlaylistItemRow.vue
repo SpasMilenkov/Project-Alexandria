@@ -70,7 +70,7 @@
     </div>
 
     <UBadge
-      :label="`${item.representations.length} rep${item.representations.length !== 1 ? 's' : ''}`"
+      :label="formatCount(item.representations.length, 'rep')"
       color="neutral"
       variant="subtle"
       size="sm"
@@ -97,6 +97,7 @@ import { fileApi } from "@/api/file";
 import MediaEqualizer from "@/components/streaming/overview/MediaEqualizer.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatCount } from "@/utils/count";
 import { isThumbnailSupportedMimeType } from "@/utils/files/mimetype";
 
 const { item, draggedItemId, isPlaying } = defineProps<{

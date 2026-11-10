@@ -44,9 +44,9 @@ import { computed, reactive, ref, watch } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 
 import { useAppToast } from "@/composables/useAppToast";
-import { countOf } from "@/features/toast/format";
 import { bulkUpdateFileMetadata } from "@/mutations/files";
 import { chunkArray } from "@/utils/chunk";
+import { formatCount } from "@/utils/count";
 import { glassDrawerContent } from "@/utils/modal-ui";
 
 const BULK_CHUNK_SIZE = 100;
@@ -76,7 +76,7 @@ const onOpenChange = (value: boolean) => {
 
 const description = computed(() => {
   const count = files.length;
-  return `${count} file${count === 1 ? "" : "s"} selected`;
+  return `${formatCount(count, "file")} selected`;
 });
 
 const distinctValues = (pick: (file: MediaFileDto) => string | null): string[] => {
@@ -145,7 +145,7 @@ const isSubmittable = computed(
 const onSubmit = async () => {
   if (!isSubmittable.value || isSaving.value) return;
   isSaving.value = true;
-  const progress = appToast.track(`Updating ${countOf(files.length, "track")}…`);
+  const progress = appToast.track(`Updating ${formatCount(files.length, "track")}…`);
   try {
     const patch = {
       artist: patchFor("artist"),
@@ -170,16 +170,16 @@ const onSubmit = async () => {
       }
     }
     if (failed === 0) {
-      progress.succeed(`Updated ${countOf(succeeded, "track")}`);
+      progress.succeed(`Updated ${formatCount(succeeded, "track")}`);
     } else if (succeeded === 0) {
       progress.fail(
-        `Couldn't update ${countOf(failed, "track")}`,
+        `Couldn't update ${formatCount(failed, "track")}`,
         "None of the changes were saved.",
       );
     } else {
       progress.warn(
         `Updated ${succeeded} of ${succeeded + failed} tracks`,
-        `${countOf(failed, "track")} kept their old details.`,
+        `${formatCount(failed, "track")} kept their old details.`,
       );
     }
     emit("applied");

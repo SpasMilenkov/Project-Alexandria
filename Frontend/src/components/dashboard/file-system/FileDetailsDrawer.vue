@@ -145,7 +145,7 @@
 
           <DetailsTile
             label="Created"
-            :hint="formatDate(detail.createdAt)"
+            :hint="formatTimeAgo(detail.createdAt)"
             :class="{ 'col-span-2': !detail.updatedAt }"
           >
             {{ formatCalendarDate(detail.createdAt) }}
@@ -154,7 +154,7 @@
           <DetailsTile
             v-if="detail.updatedAt"
             label="Modified"
-            :hint="formatDate(detail.updatedAt)"
+            :hint="formatTimeAgo(detail.updatedAt)"
           >
             {{ formatCalendarDate(detail.updatedAt) }}
           </DetailsTile>
@@ -217,7 +217,7 @@ import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
 import { getFile } from "@/queries/files";
 import { getTagsForFile, searchTag } from "@/queries/tags";
-import { formatCalendarDate, formatDate } from "@/utils/date-formatters";
+import { formatCalendarDate, formatTimeAgo } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/files/icons";
 import {
   getFileTypeReadable,
@@ -273,7 +273,7 @@ const detail = computed(() => fileDetail.value ?? displayFile.value);
 
 const drawerDescription = computed(() => {
   if (!detail.value) return undefined;
-  return `Created ${formatDate(detail.value.createdAt)}`;
+  return `Created ${formatTimeAgo(detail.value.createdAt)}`;
 });
 
 const fileTypeLabel = computed(() => {

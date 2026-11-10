@@ -417,6 +417,7 @@ import {
 } from "@/schemas/search";
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
+import { formatCount } from "@/utils/count";
 import { logger } from "@/utils/logger";
 import { glassModalContent } from "@/utils/modal-ui";
 
@@ -618,8 +619,6 @@ const sortDirectionIcon = computed(() =>
 
 const hasResults = computed(() => directoryResults.value.length + fileResults.value.length > 0);
 
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-
 const resultsStatus = computed(() => {
   if (isSearching.value) {
     return "Searching";
@@ -627,8 +626,8 @@ const resultsStatus = computed(() => {
   if (!hasSearched.value) {
     return "Set your filters, then search";
   }
-  const dirText = plural(directoryResults.value.length, "folder", "folders");
-  const fileText = plural(fileResults.value.length, "file", "files");
+  const dirText = formatCount(directoryResults.value.length, "folder");
+  const fileText = formatCount(fileResults.value.length, "file");
   if (searchMode.value === "directories") {
     return `${dirText} found`;
   }

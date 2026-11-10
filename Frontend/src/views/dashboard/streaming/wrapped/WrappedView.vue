@@ -158,6 +158,7 @@ import {
 import { SUMMARY_KIND_WRAPPED, summaryToWrappedDeck } from "@/features/wrapped/summary";
 import { getSummary, getWrapped } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
+import { formatDayMonth } from "@/utils/date-formatters";
 
 const route = useRoute();
 const router = useRouter();
@@ -307,11 +308,7 @@ const periodLabel = computed(() => {
 
   if (!deck.value?.generatedAt) return "Your soundtrack so far";
 
-  const through = new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(deck.value.generatedAt));
+  const through = formatDayMonth(deck.value.generatedAt, { timeZone: "UTC" });
 
   return `Your soundtrack through ${through}`;
 });

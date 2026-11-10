@@ -3,9 +3,11 @@ import { useQuery } from "@pinia/colada";
 import { computed, ref } from "vue";
 
 import { isAuthError } from "@/api/shuffle";
-import { type WeekDay, buildWeekDays, formatListeningTime } from "@/features/media/overview";
+import { type WeekDay, buildWeekDays } from "@/features/media/overview";
 import { homeTopSongsPeriod } from "@/features/media/top-songs";
 import { mediaOverviewWeek } from "@/queries/media-overview";
+import { formatCount } from "@/utils/count";
+import { formatDuration } from "@/utils/date-formatters";
 
 import MediaOverviewSection from "./MediaOverviewSection.vue";
 
@@ -22,13 +24,7 @@ const timeline = computed(() => query.data.value);
 const days = computed(() => buildWeekDays(from, timeline.value?.days ?? []));
 const isQuiet = computed(() => (timeline.value?.totalSeconds ?? 0) === 0);
 
-const plural = (count: number, singular: string, pluralForm: string): string => {
-  if (count === 1) return `${count.toLocaleString()} ${singular}`;
-
-  return `${count.toLocaleString()} ${pluralForm}`;
-};
-
-const songsPlayed = (count: number) => `${plural(count, "song", "songs")} played`;
+const songsPlayed = (count: number) => `${formatCount(count, "song")} played`;
 
 const summary = computed(() => {
   const data = timeline.value;
@@ -94,7 +90,7 @@ const detailHeading = computed(() => {
 const dayStats = (day: WeekDay): string => {
   if (day.seconds === 0) return "No listening";
 
-  return `${formatListeningTime(day.seconds)} · ${songsPlayed(day.plays)}`;
+  return `${formatDuration(day.seconds, { largestUnit: "hour" })} · ${songsPlayed(day.plays)}`;
 };
 
 const dayAriaLabel = (day: WeekDay): string => `${day.longLabel}, ${dayStats(day)}`;
@@ -134,7 +130,7 @@ const dayLabelClass = (day: WeekDay): string => {
           class="text-3xl font-bold tracking-tight"
           :class="isQuiet ? 'text-gray-500 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'"
         >
-          {{ formatListeningTime(timeline?.totalSeconds ?? 0) }}
+          {{ formatDuration(timeline?.totalSeconds ?? 0, { largestUnit: "hour" }) }}
         </p>
 
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">

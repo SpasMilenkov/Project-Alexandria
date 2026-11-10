@@ -61,7 +61,7 @@
           v-if="file.duration"
           class="text-[11px] text-gray-400 dark:text-white/30 m-0 leading-snug tabular-nums"
         >
-          {{ formatDuration(file.duration) }}
+          {{ formatPlaybackTime(file.duration) }}
         </p>
       </div>
 
@@ -101,7 +101,7 @@ import { fileApi } from "@/api/file";
 import { type MediaFileDto } from "@/api/streaming";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { getPreview } from "@/queries/files";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 // Props & emits
 

@@ -29,8 +29,9 @@ describe("describeDocumentMoment", () => {
 describe("formatEditingTime", () => {
   it("reads minutes, hours, and both", () => {
     expect(formatEditingTime(42)).toBe("42 min");
-    expect(formatEditingTime(120)).toBe("2 h");
-    expect(formatEditingTime(68)).toBe("1 h 8 min");
+    expect(formatEditingTime(120)).toBe("2 hr");
+    expect(formatEditingTime(68)).toBe("1 hr 8 min");
+    expect(formatEditingTime(3000)).toBe("50 hr");
   });
 });
 

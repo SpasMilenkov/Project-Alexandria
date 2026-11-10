@@ -326,7 +326,6 @@ import EditUserModal from "@/components/dashboard/users/EditUserModal.vue";
 import RestrictUserModal from "@/components/dashboard/users/RestrictUserModal.vue";
 import UsersTable from "@/components/dashboard/users/UsersTable.vue";
 import { useAppToast } from "@/composables/useAppToast";
-import { countOf } from "@/features/toast/format";
 import {
   DATE_FILTERS,
   accountOptions,
@@ -338,6 +337,7 @@ import {
 } from "@/features/users/registry-filters";
 import { useCreateUser, useDeleteUsers, useRestrictUser, useUpdateUser } from "@/mutations/user";
 import { USER_QUERY_KEYS } from "@/queries/user";
+import { formatCount } from "@/utils/count";
 
 const toast = useAppToast("users");
 
@@ -467,7 +467,7 @@ const resultSummary = computed(() => {
 
   const first = uiState.page * uiState.pageSize + 1;
   const last = Math.min(first + uiState.pageSize - 1, total);
-  return `${first}–${last} of ${total.toLocaleString()} users`;
+  return `${first}–${last} of ${formatCount(total, "user")}`;
 });
 
 // Selection
@@ -555,11 +555,11 @@ const submitDelete = async () => {
 
   try {
     await deleteUsersMutation(ids);
-    toast.success(`Deleted ${countOf(ids.length, "user")}`);
+    toast.success(`Deleted ${formatCount(ids.length, "user")}`);
     selectedUserIds.value = selectedUserIds.value.filter((id) => !ids.includes(id));
     closeModal();
   } catch (err) {
-    toast.error(`Couldn't delete ${countOf(ids.length, "user")}`, err);
+    toast.error(`Couldn't delete ${formatCount(ids.length, "user")}`, err);
   }
 };
 </script>

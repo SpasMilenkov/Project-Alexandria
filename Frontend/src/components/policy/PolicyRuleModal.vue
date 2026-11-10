@@ -338,6 +338,7 @@ import {
   VideoRung,
 } from "@/api/policy";
 import { addRule, updateRule } from "@/mutations/policies";
+import { formatCount } from "@/utils/count";
 import { POLICY_FILE_GROUPS, type PolicyFileGroup } from "@/utils/files/mime-catalog";
 import { glassModalContent } from "@/utils/modal-ui";
 
@@ -563,20 +564,15 @@ const runStepNumber = computed(() => {
   return 4;
 });
 
-const pluralize = (count: number, noun: string) => {
-  if (count === 1) return `${count} ${noun} quality`;
-  return `${count} ${noun} qualities`;
-};
-
 const ladderSummary = computed(() => {
   const parts: string[] = [];
 
   if (hasVideoTarget.value && transcodeParams.videoRungs.length > 0) {
-    parts.push(pluralize(transcodeParams.videoRungs.length, "video"));
+    parts.push(formatCount(transcodeParams.videoRungs.length, "video quality", "video qualities"));
   }
 
   if (hasAudioTarget.value && transcodeParams.audioRungs.length > 0) {
-    parts.push(pluralize(transcodeParams.audioRungs.length, "audio"));
+    parts.push(formatCount(transcodeParams.audioRungs.length, "audio quality", "audio qualities"));
   }
 
   if (parts.length === 0) return "";

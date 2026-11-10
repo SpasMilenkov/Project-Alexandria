@@ -9,7 +9,15 @@ import { useAuditMessage } from "@/composables/useAuditMessage";
 import { ServiceType } from "@/enums";
 import { HomeActivityStyle, HomeStatusStyle } from "@/enums/home-widget";
 import { PUBLIC_SERVICE_LABELS } from "@/features/monitoring/public-status";
-import { localDayKey, utcDayKey } from "@/utils/date-formatters";
+import {
+  calendarDaysBetween,
+  formatClockTime,
+  formatDayMonth,
+  formatDaysAgo,
+  formatTimeAgo,
+  localDayKey,
+  utcDayKey,
+} from "@/utils/date-formatters";
 
 export const HOME_STATUS_STYLES = [
   {
@@ -232,20 +240,17 @@ export const homeActivityGroups = (
   events: AuditLogResult[],
   now = new Date(),
 ): HomeActivityGroup[] => {
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  const todayKey = localDayKey(now);
-  const yesterdayKey = localDayKey(yesterday);
   const groups: HomeActivityGroup[] = [
-    { label: "Today", events: [] },
-    { label: "Yesterday", events: [] },
+    { label: formatDaysAgo(0, { capitalize: true }), events: [] },
+    { label: formatDaysAgo(1, { capitalize: true }), events: [] },
     { label: "Earlier", events: [] },
   ];
 
   for (const event of events) {
-    const key = localDayKey(new Date(event.timestamp));
+    const days = calendarDaysBetween(event.timestamp, now);
     let group = groups[2]!;
-    if (key === todayKey) group = groups[0]!;
-    else if (key === yesterdayKey) group = groups[1]!;
+    if (days === 0) group = groups[0]!;
+    else if (days === 1) group = groups[1]!;
 
     group.events.push(event);
   }
@@ -286,10 +291,9 @@ export const homeActivityTime = (timestamp: string, now = new Date()): string =>
   if (!Number.isFinite(date.getTime())) return "Date unavailable";
 
   const elapsed = Math.max(0, now.getTime() - date.getTime());
-  if (elapsed < 60_000) return "Just now";
-  if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)}m ago`;
+  if (elapsed < 3_600_000) return formatTimeAgo(date, { now: now.getTime(), style: "narrow" });
   if (localDayKey(date) === localDayKey(now))
-    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    return formatClockTime(date);
 
-  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  return formatDayMonth(date);
 };

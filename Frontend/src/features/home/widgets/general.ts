@@ -1,5 +1,6 @@
 import { HomeCountdownStyle, HomeDailyCoverStyle, HomeFocusStyle } from "@/enums/home-widget";
-import { localDayKey } from "@/utils/date-formatters";
+import { pluralize } from "@/utils/count";
+import { calendarDaysBetween, formatFullDate, localDayKey } from "@/utils/date-formatters";
 
 export const HOME_COUNTDOWN_STYLES = [
   {
@@ -78,21 +79,13 @@ export const homeCalendarDate = (value: string | null): Date | null => {
   return localDayKey(date) === value ? date : null;
 };
 
-const calendarDayNumber = (date: Date) => {
-  const utc = new Date(0);
-  utc.setUTCFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-  utc.setUTCHours(0, 0, 0, 0);
-
-  return utc.getTime() / 86_400_000;
-};
-
 export const homeCountdown = (target: string | Date | null, now: Date, dateLabel?: string) => {
   const date = target instanceof Date ? target : homeCalendarDate(target);
   if (!date) return null;
 
-  const days = calendarDayNumber(date) - calendarDayNumber(now);
+  const days = calendarDaysBetween(now, date);
   const minutes = Math.max(0, Math.floor((date.getTime() - now.getTime()) / 60_000));
-  let unit = Math.abs(days) === 1 ? "day" : "days";
+  let unit = pluralize(Math.abs(days), "day");
 
   if (days < 0) unit += " ago";
   if (days === 0) unit = "";
@@ -101,14 +94,7 @@ export const homeCountdown = (target: string | Date | null, now: Date, dateLabel
     days,
     value: days === 0 ? "Today" : String(Math.abs(days)),
     unit,
-    date:
-      dateLabel ??
-      date.toLocaleDateString(undefined, {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      }),
+    date: dateLabel ?? formatFullDate(date),
     progress: Math.min(1, Math.max(0, (30 - days) / 30)),
     fullDays: Math.floor(minutes / 1440),
     hours: Math.floor(minutes / 60) % 24,

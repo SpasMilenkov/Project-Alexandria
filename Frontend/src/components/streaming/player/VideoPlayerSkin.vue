@@ -7,6 +7,7 @@ import { fileApi } from "@/api/file";
 import { VIDEO_SHAKA_UI_CONFIG, usePlayerEngine } from "@/composables/usePlayerEngine";
 import { useTheme } from "@/composables/useTheme";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 import PlayerSettings from "./PlayerSettings.vue";
 
@@ -78,13 +79,6 @@ const handlePlayToggle = () => {
     return;
   }
   store.togglePlay();
-};
-
-const formattedTime = (seconds: number) => {
-  if (!isFinite(seconds) || isNaN(seconds)) return "0:00";
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
 const progressPercent = computed(() => {
@@ -320,14 +314,14 @@ defineExpose({ toggleFullscreen });
         </div>
         <div class="vps-dock">
           <div class="vps-seekrow">
-            <span class="vps-time">{{ formattedTime(currentTime) }}</span>
+            <span class="vps-time">{{ formatPlaybackTime(currentTime) }}</span>
             <div class="vps-seek" @click="onProgressClick">
               <div class="vps-seek-track">
                 <div class="vps-seek-played" :style="{ width: `${progressPercent}%` }" />
               </div>
               <div class="vps-seek-thumb" :style="{ left: `${progressPercent}%` }" />
             </div>
-            <span class="vps-time vps-time-right">{{ formattedTime(duration) }}</span>
+            <span class="vps-time vps-time-right">{{ formatPlaybackTime(duration) }}</span>
           </div>
 
           <div class="vps-row">
@@ -552,7 +546,7 @@ defineExpose({ toggleFullscreen });
       <Transition name="vps-fade">
         <div v-if="resumePrompt" class="vps-resume-prompt">
           <p class="vps-resume-label">
-            Resume from {{ formattedTime(resumePrompt.positionSeconds) }}?
+            Resume from {{ formatPlaybackTime(resumePrompt.positionSeconds) }}?
           </p>
           <div class="vps-resume-actions">
             <button class="vps-resume-btn vps-resume-btn-primary" @click="acceptResumePrompt">

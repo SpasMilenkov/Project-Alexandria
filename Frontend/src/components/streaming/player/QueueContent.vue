@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { computed, nextTick, ref, watch } from "vue";
 
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 const store = usePlayerStore();
 const {
@@ -50,12 +51,9 @@ const scrollToActive = (smooth = true) => {
   active?.scrollIntoView({ block: "nearest", behavior: smooth ? "smooth" : "instant" });
 };
 
-const fmtDuration = (secs: number | null): string => {
-  if (!secs || !isFinite(secs)) return "--:--";
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-};
+// A queued file without a probed duration shows a placeholder rather than a misleading 0:00.
+const durationLabel = (seconds: number | null): string =>
+  seconds && Number.isFinite(seconds) ? formatPlaybackTime(seconds) : "--:--";
 
 defineExpose({ scrollToActive });
 </script>
@@ -178,7 +176,7 @@ defineExpose({ scrollToActive });
             </p>
           </div>
           <span class="text-[11px] tabular-nums flex-shrink-0 text-gray-400 dark:text-white/30">
-            {{ fmtDuration(item.file.duration) }}
+            {{ durationLabel(item.file.duration) }}
           </span>
         </li>
       </template>
@@ -226,7 +224,7 @@ defineExpose({ scrollToActive });
             <Icon icon="mdi:close" class="w-3 h-3" />
           </button>
           <span class="text-[11px] tabular-nums flex-shrink-0 text-gray-400 dark:text-white/30">
-            {{ fmtDuration(item.file.duration) }}
+            {{ durationLabel(item.file.duration) }}
           </span>
         </li>
       </template>
@@ -272,7 +270,7 @@ defineExpose({ scrollToActive });
             </p>
           </div>
           <span class="text-[11px] tabular-nums flex-shrink-0 text-gray-400 dark:text-white/30">
-            {{ fmtDuration(item.file.duration) }}
+            {{ durationLabel(item.file.duration) }}
           </span>
         </li>
       </template>

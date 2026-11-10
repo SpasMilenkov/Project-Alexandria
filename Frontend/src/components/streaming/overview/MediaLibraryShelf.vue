@@ -7,7 +7,8 @@ import type { MediaFileDto } from "@/api/streaming";
 import { isAuthError } from "@/api/shuffle";
 import { addedThisWeekLabel } from "@/features/media/overview";
 import { mediaOverviewLibrary } from "@/queries/media-overview";
-import { formatDate } from "@/utils/date-formatters";
+import { formatCount } from "@/utils/count";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 import MediaOverviewFile from "./MediaOverviewFile.vue";
 import MediaOverviewSection from "./MediaOverviewSection.vue";
@@ -29,7 +30,7 @@ const description = computed(() => {
   if (!data || query.error.value) return "The newest additions, ready to play.";
 
   const noun = isVideo ? "video" : "track";
-  const total = `${data.totalCount.toLocaleString()} ${noun}${data.totalCount === 1 ? "" : "s"}`;
+  const total = formatCount(data.totalCount, noun);
   const added = addedThisWeekLabel(data.items, data.totalCount);
 
   if (isVideo || !added) return total;
@@ -40,7 +41,7 @@ const description = computed(() => {
 const chipFor = (file: MediaFileDto) => {
   if (isVideo || !file.createdAt) return null;
 
-  return formatDate(file.createdAt);
+  return formatTimeAgo(file.createdAt);
 };
 </script>
 

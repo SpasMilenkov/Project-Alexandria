@@ -52,7 +52,7 @@
       v-if="!isReadOnly"
       class="hidden shrink-0 text-xs font-medium text-gray-600 sm:block dark:text-gray-400"
     >
-      {{ formatDate(tag.createdAt) }}
+      {{ formatTimeAgo(tag.createdAt) }}
     </span>
 
     <div
@@ -82,7 +82,7 @@ import { computed } from "vue";
 import type { TagDto } from "@/api/tag";
 
 import { describeTag, tagBreadcrumbPrefix } from "@/features/tags/display";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 import TagIconWell from "./TagIconWell.vue";
 import TagTooltip from "./TagTooltip.vue";

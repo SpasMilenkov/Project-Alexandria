@@ -175,9 +175,7 @@
                   class="flex items-center justify-between gap-2 pt-1 border-t border-neutral-200/70 dark:border-neutral-700/70"
                 >
                   <span class="text-xs text-neutral-400">
-                    {{ selectedRungCount(version.id, version.mimeType) }} rung{{
-                      selectedRungCount(version.id, version.mimeType) !== 1 ? "s" : ""
-                    }}
+                    {{ formatCount(selectedRungCount(version.id, version.mimeType), "rung") }}
                     selected
                   </span>
                   <UButton
@@ -288,6 +286,7 @@ import { useFileDownload } from "@/composables/useFileDownload";
 import { changeActiveVersion, deleteVersion, restoreFileVersion } from "@/mutations/files";
 import { queueTranspilationJob } from "@/mutations/streaming";
 import { getVersionsForFile } from "@/queries/files";
+import { formatCount } from "@/utils/count";
 import { getFileTypeReadable } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
 
@@ -432,11 +431,7 @@ const {
   refresh: refreshVersions,
 } = useQuery(() => getVersionsForFile(versionsQueryParams.value));
 
-const versionCountLabel = computed(() => {
-  const count = versionsData.value?.totalCount ?? 0;
-  if (count === 1) return "1 version";
-  return `${count} versions`;
-});
+const versionCountLabel = computed(() => formatCount(versionsData.value?.totalCount ?? 0, "version"));
 
 // Mutations
 

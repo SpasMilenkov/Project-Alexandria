@@ -1,51 +1,243 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { formatDate } from "@/utils/date-formatters";
+import {
+  calendarDaysBetween,
+  formatAgeShort,
+  formatBucketLabel,
+  formatCalendarDate,
+  formatCalendarDateRange,
+  formatClockTime,
+  formatDateTime,
+  formatDayLabel,
+  formatDayMonth,
+  formatDayMonthRange,
+  formatDaysAgo,
+  formatDuration,
+  formatFullDate,
+  formatMonth,
+  formatMonthYear,
+  formatPlaybackTime,
+  formatTimeAgo,
+} from "@/utils/date-formatters";
 import { getIconByValue, getFileIcon } from "@/utils/files/icons";
 import { getFileTypeReadable, groupMimeSizeRecord } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
 
-// formatDate
+// formatTimeAgo / formatAgeShort
 
-describe("formatDate", () => {
-  // Pin "now" so tests don't drift depending on when they run
-  const FAKE_NOW = new Date("2024-06-15T12:00:00Z");
+describe("formatTimeAgo", () => {
+  const NOW = Date.parse("2024-06-15T12:00:00Z");
+  const ago = (ms: number) => new Date(NOW - ms).toISOString();
+  const MINUTE = 60_000;
+  const HOUR = 60 * MINUTE;
+  const DAY = 24 * HOUR;
 
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(FAKE_NOW);
+  it('returns "just now" inside a minute, in either direction', () => {
+    expect(formatTimeAgo(ago(30_000), { now: NOW })).toBe("just now");
+    expect(formatTimeAgo(ago(-30_000), { now: NOW, style: "narrow" })).toBe("just now");
   });
 
-  afterEach(() => {
+  it("picks the largest whole unit and rounds down", () => {
+    expect(formatTimeAgo(ago(MINUTE), { now: NOW })).toBe("1 minute ago");
+    expect(formatTimeAgo(ago(59 * MINUTE), { now: NOW })).toBe("59 minutes ago");
+    expect(formatTimeAgo(ago(5 * HOUR), { now: NOW })).toBe("5 hours ago");
+    expect(formatTimeAgo(ago(30 * HOUR), { now: NOW })).toBe("1 day ago");
+    expect(formatTimeAgo(ago(6 * DAY), { now: NOW })).toBe("6 days ago");
+    expect(formatTimeAgo(ago(7 * DAY), { now: NOW })).toBe("1 week ago");
+    expect(formatTimeAgo(ago(29 * DAY), { now: NOW })).toBe("4 weeks ago");
+    expect(formatTimeAgo(ago(30 * DAY), { now: NOW })).toBe("1 month ago");
+    expect(formatTimeAgo(ago(364 * DAY), { now: NOW })).toBe("11 months ago");
+    expect(formatTimeAgo(ago(365 * DAY), { now: NOW })).toBe("1 year ago");
+    expect(formatTimeAgo(ago(1100 * DAY), { now: NOW })).toBe("3 years ago");
+  });
+
+  it("reads future moments forward instead of as a negative age", () => {
+    expect(formatTimeAgo(ago(-3 * DAY), { now: NOW })).toBe("in 3 days");
+  });
+
+  it("uses the compact form for narrow rows", () => {
+    expect(formatTimeAgo(ago(12 * MINUTE), { now: NOW, style: "narrow" })).toBe("12m ago");
+    expect(formatTimeAgo(ago(3 * HOUR), { now: NOW, style: "narrow" })).toBe("3h ago");
+    expect(formatTimeAgo(ago(2 * DAY), { now: NOW, style: "narrow" })).toBe("2d ago");
+  });
+
+  it("switches to a calendar date past the absolute threshold", () => {
+    const old = ago(8 * DAY);
+
+    expect(formatTimeAgo(old, { absoluteAfterDays: 7, now: NOW })).toBe(formatCalendarDate(old));
+    expect(formatTimeAgo(ago(6 * DAY), { absoluteAfterDays: 7, now: NOW })).toBe("6 days ago");
+  });
+
+  it("falls back to the real clock and accepts dates and timestamps", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+
+    expect(formatTimeAgo(new Date(NOW - 2 * HOUR))).toBe("2 hours ago");
+    expect(formatTimeAgo(NOW - 2 * DAY)).toBe("2 days ago");
+
     vi.useRealTimers();
   });
 
-  it('returns "Today" for a date earlier the same day', () => {
-    expect(formatDate("2024-06-15T08:00:00Z")).toBe("Today");
+  it("returns an empty label for an unreadable date", () => {
+    expect(formatTimeAgo("not a date", { now: NOW })).toBe("");
+  });
+});
+
+describe("formatAgeShort", () => {
+  const NOW = Date.parse("2024-06-15T12:00:00Z");
+  const ago = (ms: number) => new Date(NOW - ms).toISOString();
+
+  it("gives a bare span that stops at days", () => {
+    expect(formatAgeShort(ago(45_000), NOW)).toBe("45s");
+    expect(formatAgeShort(ago(12 * 60_000), NOW)).toBe("12m");
+    expect(formatAgeShort(ago(3 * 3_600_000), NOW)).toBe("3h");
+    expect(formatAgeShort(ago(45 * 86_400_000), NOW)).toBe("45d");
   });
 
-  it('returns "Yesterday" for exactly 1 day ago', () => {
-    expect(formatDate("2024-06-14T12:00:00Z")).toBe("Yesterday");
+  it("never reads negative for a clock slightly behind the server", () => {
+    expect(formatAgeShort(ago(-5_000), NOW)).toBe("0s");
   });
 
-  it("returns days ago for 2–6 days ago", () => {
-    expect(formatDate("2024-06-12T12:00:00Z")).toBe("3 days ago");
-    expect(formatDate("2024-06-09T12:00:00Z")).toBe("6 days ago");
+  it("returns an empty label for an unreadable date", () => {
+    expect(formatAgeShort("not a date", NOW)).toBe("");
+  });
+});
+
+describe("absolute date presets", () => {
+  const MOMENT = "2026-03-04T14:07:09Z";
+  const UTC = { timeZone: "UTC" };
+
+  it("formats each preset in one shared style", () => {
+    expect(formatDayMonth(MOMENT, UTC)).toBe("Mar 4");
+    expect(formatCalendarDate(MOMENT, UTC)).toBe("Mar 4, 2026");
+    expect(formatFullDate(MOMENT, UTC)).toBe("Wednesday, March 4, 2026");
+    expect(formatFullDate(MOMENT, { compact: true, timeZone: "UTC" })).toBe("Wed, Mar 4, 2026");
+    expect(formatFullDate(MOMENT, { showYear: false, timeZone: "UTC" })).toBe("Wednesday, March 4");
+    expect(formatMonth(MOMENT, UTC)).toBe("March");
+    expect(formatMonth(MOMENT, { style: "short", timeZone: "UTC" })).toBe("Mar");
+    expect(formatMonth(MOMENT, { style: "narrow", timeZone: "UTC" })).toBe("M");
+    expect(formatMonthYear(MOMENT, UTC)).toBe("March 2026");
+    expect(formatClockTime(MOMENT, UTC)).toBe("2:07 PM");
+    expect(formatClockTime(MOMENT, { seconds: true, timeZone: "UTC" })).toBe("2:07:09 PM");
+    expect(formatDateTime(MOMENT, UTC)).toBe("Mar 4, 2026, 2:07 PM");
   });
 
-  it("returns weeks ago for 7–29 days ago", () => {
-    expect(formatDate("2024-06-08T12:00:00Z")).toBe("1 week ago");
-    expect(formatDate("2024-05-25T12:00:00Z")).toBe("3 weeks ago");
+  it("reads a UTC day bucket as that day whatever the viewer's zone", () => {
+    expect(formatCalendarDate(Date.UTC(2026, 2, 4), UTC)).toBe("Mar 4, 2026");
+    expect(formatMonthYear("2026-03-01T00:00:00Z", UTC)).toBe("March 2026");
+    expect(formatDayMonth("2026-03-04T23:30:00Z", UTC)).toBe("Mar 4");
   });
 
-  it("returns months ago for 30–364 days ago", () => {
-    expect(formatDate("2024-05-15T12:00:00Z")).toBe("1 month ago");
-    expect(formatDate("2023-12-15T12:00:00Z")).toBe("6 months ago");
+  it("collapses what the two ends of a range share", () => {
+    expect(formatDayMonthRange("2026-03-04T12:00:00Z", "2026-03-09T12:00:00Z", UTC)).toBe(
+      "Mar 4\u2009–\u20099",
+    );
+    expect(formatCalendarDateRange("2026-03-04T12:00:00Z", "2026-04-02T12:00:00Z", UTC)).toBe(
+      "Mar 4\u2009–\u2009Apr 2, 2026",
+    );
   });
 
-  it("returns years ago for 365+ days ago", () => {
-    expect(formatDate("2023-06-15T12:00:00Z")).toBe("1 year ago");
-    expect(formatDate("2021-06-15T12:00:00Z")).toBe("3 years ago");
+  it("returns an empty label instead of throwing on an unreadable date", () => {
+    expect(formatCalendarDate("not a date")).toBe("");
+    expect(formatDateTime(Number.NaN)).toBe("");
+    expect(formatDayMonthRange("not a date", MOMENT)).toBe("");
+  });
+});
+
+describe("formatBucketLabel", () => {
+  it("reads a UTC day bucket as its own date", () => {
+    expect(formatBucketLabel("2026-03-04T00:00:00Z", "day")).toBe("Mar 4");
+  });
+
+  it("names the day on hourly buckets so a multi-day window stays readable", () => {
+    const start = "2026-03-04T14:00:00Z";
+
+    expect(formatBucketLabel(start, "hour")).toBe(`${formatDayMonth(start)}, ${formatClockTime(start)}`);
+  });
+});
+
+describe("calendar days", () => {
+  const NOW = new Date(2026, 9, 31, 12);
+
+  it("counts midnights crossed, not 24-hour spans", () => {
+    expect(calendarDaysBetween(new Date(2026, 9, 30, 23, 50), new Date(2026, 9, 31, 0, 10))).toBe(1);
+    expect(calendarDaysBetween(new Date(2026, 9, 31, 0, 5), NOW)).toBe(0);
+    expect(calendarDaysBetween(new Date(2026, 2, 28, 12), new Date(2026, 3, 1, 12))).toBe(4);
+    expect(calendarDaysBetween(NOW, new Date(2026, 9, 29))).toBe(-2);
+  });
+
+  it("words a day distance the way relative time does", () => {
+    expect(formatDaysAgo(0)).toBe("today");
+    expect(formatDaysAgo(1)).toBe("yesterday");
+    expect(formatDaysAgo(12)).toBe("12 days ago");
+    expect(formatDaysAgo(-3)).toBe("in 3 days");
+    expect(formatDaysAgo(0, { capitalize: true })).toBe("Today");
+  });
+
+  it("labels history days from today back through the week, then by date", () => {
+    expect(formatDayLabel(new Date(2026, 9, 31, 0, 5), NOW)).toBe("Today");
+    expect(formatDayLabel(new Date(2026, 9, 30, 23, 50), NOW)).toBe("Yesterday");
+    expect(formatDayLabel(new Date(2026, 9, 28, 9), NOW)).toBe("Wednesday");
+    expect(formatDayLabel(new Date(2026, 9, 24, 9), NOW)).toBe("Oct 24");
+    expect(formatDayLabel(new Date(2025, 11, 30, 9), NOW)).toBe("Dec 30, 2025");
+  });
+
+  it("never calls a later day today and returns nothing for an unreadable date", () => {
+    expect(formatDayLabel(new Date(2026, 10, 1, 9), NOW)).toBe("Nov 1");
+    expect(formatDayLabel("not a date", NOW)).toBe("");
+  });
+});
+
+describe("formatPlaybackTime", () => {
+  it("shows minutes and padded seconds under an hour", () => {
+    expect(formatPlaybackTime(0)).toBe("0:00");
+    expect(formatPlaybackTime(7.9)).toBe("0:07");
+    expect(formatPlaybackTime(187)).toBe("3:07");
+    expect(formatPlaybackTime(3599)).toBe("59:59");
+  });
+
+  it("adds hours past an hour and keeps counting them past a day", () => {
+    expect(formatPlaybackTime(3723)).toBe("1:02:03");
+    expect(formatPlaybackTime(26 * 3600 + 5)).toBe("26:00:05");
+  });
+
+  it("reads unloaded media as 0:00", () => {
+    expect(formatPlaybackTime(Number.NaN)).toBe("0:00");
+    expect(formatPlaybackTime(Number.POSITIVE_INFINITY)).toBe("0:00");
+    expect(formatPlaybackTime(-4)).toBe("0:00");
+  });
+});
+
+describe("formatDuration", () => {
+  it("shows the two largest units, dropping zero parts", () => {
+    expect(formatDuration(252)).toBe("4m 12s");
+    expect(formatDuration(3900)).toBe("1h 5m");
+    expect(formatDuration(7200)).toBe("2h");
+    expect(formatDuration(2 * 86_400 + 3 * 3600 + 240)).toBe("2d 3h");
+    expect(formatDuration(2 * 86_400 + 240, { maxUnits: 3 })).toBe("2d 4m");
+  });
+
+  it("drops smaller units instead of rounding up", () => {
+    expect(formatDuration(3599)).toBe("59m 59s");
+    expect(formatDuration(3599, { maxUnits: 1 })).toBe("59m");
+  });
+
+  it("keeps a tenth of a second under a minute and milliseconds under a second", () => {
+    expect(formatDuration(12.34)).toBe("12.3s");
+    expect(formatDuration(45)).toBe("45s");
+    expect(formatDuration(0.85)).toBe("850ms");
+    expect(formatDuration(0)).toBe("0s");
+  });
+
+  it("spells units out for sentences and can stay in hours", () => {
+    expect(formatDuration(3900, { style: "short" })).toBe("1 hr 5 min");
+    expect(formatDuration(30, { style: "short" })).toBe("30 sec");
+    expect(formatDuration(122 * 3600, { largestUnit: "hour" })).toBe("122h");
+  });
+
+  it("reads missing or negative input as zero", () => {
+    expect(formatDuration(Number.NaN)).toBe("0s");
+    expect(formatDuration(-5)).toBe("0s");
   });
 });
 

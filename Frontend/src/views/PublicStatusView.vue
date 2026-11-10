@@ -22,6 +22,7 @@ import {
   serviceWindowStats,
 } from "@/features/monitoring/public-status";
 import { publicCurrentStatus, publicStatusHistory } from "@/queries/publicStatus";
+import { formatClockTime } from "@/utils/date-formatters";
 
 const DAYS = 90;
 const MOBILE_DAYS = 30;
@@ -79,13 +80,11 @@ watch(current, (value) => {
   }
 });
 
-const timeFormatter = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
-
 const lastUpdatedLabel = computed(() => {
   if (!lastUpdated.value) {
     return "";
   }
-  return `Updated ${timeFormatter.format(lastUpdated.value)}`;
+  return `Updated ${formatClockTime(lastUpdated.value)}`;
 });
 
 const isRefreshing = computed(() => currentRefreshing.value || historyRefreshing.value);

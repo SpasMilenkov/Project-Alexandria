@@ -47,7 +47,7 @@
             />
           </button>
           <span class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0">
-            {{ formatTime(currentTime) }}
+            {{ formatPlaybackTime(currentTime) }}
           </span>
           <input
             ref="progressBar"
@@ -59,7 +59,7 @@
             class="seek-range"
           />
           <span class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0">
-            {{ formatTime(duration) }}
+            {{ formatPlaybackTime(duration) }}
           </span>
           <UPopover :content="{ side: 'top' }" class="shrink-0">
             <button
@@ -173,6 +173,7 @@ import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import AudioEqualizer from "@/components/dashboard/AudioEqualizer.vue";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { FILES_QUERY_KEYS, getPreviewByVersion } from "@/queries/files";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 import TextPreviewPane from "./TextPreviewPane.vue";
 
@@ -358,13 +359,6 @@ const archivePreviewItems = computed(() => {
 });
 
 // Formatters
-
-const formatTime = (seconds: number): string => {
-  if (!seconds || !isFinite(seconds)) return "0:00";
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
 
 // MIME helpers
 

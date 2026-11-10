@@ -9,6 +9,7 @@ import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetData
 import { useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
 import { homeCollections } from "@/queries/home-media";
 import { useHomeStore } from "@/stores/home";
+import { pluralize } from "@/utils/count";
 
 import HomeCollectionCover from "./HomeCollectionCover.vue";
 
@@ -102,7 +103,7 @@ const sleevePositions = [
             {{ collections.totalCount }}
           </p>
           <p class="collection-label mt-2 text-xs text-gray-600 dark:text-gray-400">
-            {{ collections.totalCount === 1 ? "collection" : "collections" }}
+            {{ pluralize(collections.totalCount, "collection") }}
           </p>
           <p class="collections-hint mt-2 text-xs text-gray-500 dark:text-gray-500">
             Built from your library

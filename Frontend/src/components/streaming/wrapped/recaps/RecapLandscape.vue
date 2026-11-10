@@ -71,6 +71,7 @@ import type { WrappedPeriodPoint } from "@/api/stats";
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { annualRecapMonths } from "@/features/wrapped/listening/recaps";
 import { monthlyLandscape } from "@/features/wrapped/ranking";
+import { formatMonth } from "@/utils/date-formatters";
 
 const {
   year,
@@ -106,10 +107,7 @@ const selected = computed(
   () => months.value.find((month) => month.date === chosenDate.value) ?? busiest.value,
 );
 
-const monthName = (month: WrappedPeriodPoint) =>
-  new Intl.DateTimeFormat(undefined, { month: "long", timeZone: "UTC" }).format(
-    new Date(month.date),
-  );
+const monthName = (month: WrappedPeriodPoint) => formatMonth(month.date, { timeZone: "UTC" });
 
 const monthDescription = (month: WrappedPeriodPoint) => {
   const name = monthName(month);

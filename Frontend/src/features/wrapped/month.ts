@@ -1,6 +1,6 @@
 import { HomeRecapPeriod } from "@/enums/home-widget";
 import { MIN_WRAPPED_YEAR } from "@/features/wrapped/display";
-import { utcMonthKey } from "@/utils/date-formatters";
+import { formatMonthYear, utcMonthKey } from "@/utils/date-formatters";
 
 export const wrappedMonth = (period: HomeRecapPeriod, now = new Date()): string => {
   const offset = period === HomeRecapPeriod.PreviousMonth ? 1 : 0;
@@ -28,9 +28,7 @@ export const wrappedMonthRange = (month: string, now = new Date()) => {
 };
 
 export const wrappedMonthLabel = (month: string): string =>
-  new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric", timeZone: "UTC" }).format(
-    new Date(`${month}-01T00:00:00Z`),
-  );
+  formatMonthYear(`${month}-01T00:00:00Z`, { timeZone: "UTC" });
 
 export const wrappedMonthLocation = (month: string) => ({
   name: "wrapped",

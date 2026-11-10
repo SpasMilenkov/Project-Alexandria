@@ -68,7 +68,7 @@
             <span
               class="text-[11px] font-medium tracking-wide text-gray-400 dark:text-white/30 uppercase"
             >
-              {{ totalCount }} result{{ totalCount !== 1 ? "s" : "" }}
+              {{ formatCount(totalCount, "result") }}
             </span>
             <UButton
               size="xs"
@@ -109,6 +109,7 @@ import { computed, ref, watch } from "vue";
 import { type MediaFileDto, streamingApi } from "@/api/streaming";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatCount } from "@/utils/count";
 
 import MediaSearchResultRow from "./MediaSearchResultRow.vue";
 

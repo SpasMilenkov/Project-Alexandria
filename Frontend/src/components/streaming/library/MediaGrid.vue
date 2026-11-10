@@ -46,7 +46,7 @@
               v-if="data && !isInitialLoad"
               class="text-xs text-gray-600 dark:text-gray-400 tabular-nums whitespace-nowrap"
             >
-              {{ data.totalCount ?? 0 }} file{{ (data.totalCount ?? 0) !== 1 ? "s" : "" }}
+              {{ formatCount(data.totalCount ?? 0, "file") }}
             </span>
           </div>
 
@@ -300,6 +300,7 @@ import { MEDIA_LIST_ROW_HEIGHT, getMediaGridLayout } from "@/features/media/grid
 import { LIBRARY_PAGE_SIZE, libraryLabel, type SourceDescriptor } from "@/features/player/source";
 import { STREAMING_QUERY_KEYS, getFilesForStreaming } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatCount } from "@/utils/count";
 
 import MediaCard from "./MediaCard.vue";
 import MediaLibraryEmpty from "./MediaLibraryEmpty.vue";

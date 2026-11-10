@@ -105,6 +105,7 @@ import { describeMove, executeExplorerMove, reverseMove } from "@/features/explo
 import { moveDirectories } from "@/mutations/directories";
 import { moveFiles } from "@/mutations/files";
 import { useTabStore } from "@/stores/tab";
+import { formatCount } from "@/utils/count";
 
 import DropTargetPreview, { type PreviewTrailSegment } from "./DropTargetPreview.vue";
 
@@ -180,7 +181,7 @@ const status = computed(() => {
   return {
     icon: "mdi:folder-move-outline",
     name: "",
-    prefix: `Move ${count} item${count === 1 ? "" : "s"}`,
+    prefix: `Move ${formatCount(count, "item")}`,
   };
 });
 
@@ -538,7 +539,7 @@ const attach = (current: DragSession) => {
   window.addEventListener("keydown", handleKeydown, true);
   window.addEventListener("blur", handleBlur);
   autoScroll.start(point, null);
-  announcement.value = `Picked up ${current.count} item${current.count === 1 ? "" : "s"}`;
+  announcement.value = `Picked up ${formatCount(current.count, "item")}`;
 };
 
 const detach = () => {

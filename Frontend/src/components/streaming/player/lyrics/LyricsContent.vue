@@ -17,10 +17,11 @@ import {
 } from "@/composables/useLyrics";
 import { LyricsProvider } from "@/enums/lyrics-provider";
 import { LyricsStatus } from "@/enums/lyrics-status";
-import { countOf } from "@/features/toast/format";
 import { changeProvider, deleteLyrics, requeueLyrics, uploadLyrics } from "@/mutations/lyrics";
 import { getLyrics, lyricsPollInterval } from "@/queries/lyrics";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatCount } from "@/utils/count";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 import LyricsEmptyState from "./LyricsEmptyState.vue";
 
@@ -128,26 +129,10 @@ const PROVIDER_LABELS: Record<LyricsProvider, string> = {
 
 const providerLabel = computed(() => (data.value ? PROVIDER_LABELS[data.value.provider] : ""));
 
-const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-
 const formatFetchedAt = (iso: string | null): string => {
   if (!iso) return "Unknown date";
-  const date = new Date(iso);
-  const diffMs = date.getTime() - Date.now();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-  if (Math.abs(diffDays) >= 1 && Math.abs(diffDays) < 30) {
-    return relativeTimeFormatter.format(diffDays, "day");
-  }
-  if (Math.abs(diffDays) >= 30) {
-    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  }
-  const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-  if (Math.abs(diffHours) >= 1) {
-    return relativeTimeFormatter.format(diffHours, "hour");
-  }
-  const diffMinutes = Math.round(diffMs / (1000 * 60));
-  return relativeTimeFormatter.format(diffMinutes, "minute");
+  return formatTimeAgo(iso, { absoluteAfterDays: 30 });
 };
 
 const fetchedAtLabel = computed(() => formatFetchedAt(data.value?.fetchedAt ?? null));
@@ -284,7 +269,7 @@ const manualFormat = computed(() => {
       ? parseSyncedLyrics(raw).length
       : raw.split("\n").filter((line) => line.trim()).length;
 
-  return { ...FORMAT_META[format], count: countOf(lineCount, FORMAT_META[format].unit) };
+  return { ...FORMAT_META[format], count: formatCount(lineCount, FORMAT_META[format].unit) };
 });
 
 const manualUploadTitle = computed(() =>

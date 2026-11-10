@@ -78,7 +78,7 @@
           <div class="min-w-0">
             <dt class="text-xs text-gray-600 dark:text-gray-400">Listening days</dt>
             <dd class="mt-1 text-xl font-bold text-gray-900 tabular-nums dark:text-gray-100">
-              {{ numberFormat.format(data.activeDays) }}
+              {{ formatNumber(data.activeDays) }}
             </dd>
           </div>
 
@@ -207,6 +207,8 @@ import {
 import { dateLabel } from "@/features/wrapped/story";
 import { getTimeline } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
+import { formatCount, formatNumber } from "@/utils/count";
+import { formatDayMonth } from "@/utils/date-formatters";
 
 const auth = useAuthStore();
 const { paletteStyle } = useWrappedPalette();
@@ -218,8 +220,6 @@ const presentYear = new Date(today).getUTCFullYear();
 
 const year = ref(presentYear);
 const selectedDate = ref<string | null>(null);
-
-const numberFormat = new Intl.NumberFormat();
 
 const atPresent = computed(() => year.value >= presentYear);
 
@@ -246,13 +246,10 @@ const busiest = computed(() => busiestDay(data.value?.days ?? []));
 const streakLabel = computed(() => {
   const streak = longestStreak(data.value?.days ?? []);
 
-  return `${numberFormat.format(streak)} ${streak === 1 ? "day" : "days"}`;
+  return formatCount(streak, "day");
 });
 
-const shortDate = (date: string) =>
-  new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" }).format(
-    new Date(date),
-  );
+const shortDate = (date: string) => formatDayMonth(date, { timeZone: "UTC" });
 
 // Until a day is picked the panel shows the latest listening, so it never sits empty.
 const latestListening = computed(() => {
@@ -275,7 +272,7 @@ const activeSummary = computed(() => {
 
   if (!day) return "Nothing played";
 
-  return `${formatWrappedDuration(day.seconds)} · ${numberFormat.format(day.plays)} ${day.plays === 1 ? "play" : "plays"}`;
+  return `${formatWrappedDuration(day.seconds)} · ${formatCount(day.plays, "play")}`;
 });
 
 const shift = (steps: number) => {

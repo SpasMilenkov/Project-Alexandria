@@ -1,5 +1,7 @@
 import type { TopSong, TopSongsQuery } from "@/api/listening-rankings";
 
+import { formatCount } from "@/utils/count";
+
 export const homeTopSongsPeriod = (now = new Date()): TopSongsQuery => ({
   from: new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6),
@@ -22,5 +24,5 @@ export const homeTopSongBar = (song: TopSong, leadingCount: number) => {
 export const homeTopSongPlays = (song: TopSong) => {
   const count = song.qualifiedPlayCount;
 
-  return `${count.toLocaleString()} ${count === 1 ? "play" : "plays"}`;
+  return formatCount(count, "play");
 };

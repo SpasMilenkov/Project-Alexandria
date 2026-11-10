@@ -127,7 +127,7 @@ import type { DirectorySummaryDto } from "@/api/directory";
 import { useExplorerDragSession } from "@/composables/useExplorerDragSession";
 import { getPolicyByDirectory } from "@/queries/policies";
 import { useSettingsStore } from "@/stores/settings";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 const settingsStore = useSettingsStore();
 const queryCache = useQueryCache();
@@ -148,7 +148,7 @@ const iconSize = computed(() =>
   props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
 );
 
-const modifiedLabel = computed(() => formatDate(props.data.updatedAt || props.data.createdAt));
+const modifiedLabel = computed(() => formatTimeAgo(props.data.updatedAt || props.data.createdAt));
 
 const prefetchPolicy = useDebounceFn(() => {
   if (isDragging.value) return;

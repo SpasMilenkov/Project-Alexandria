@@ -11,6 +11,7 @@ import {
   prefersOriginal,
   stepFrom,
 } from "@/features/gallery/viewer";
+import { formatDateTime } from "@/utils/date-formatters";
 
 const photo = (id: string): GalleryPhoto => ({
   directoryId: null,
@@ -97,13 +98,7 @@ describe("stepFrom", () => {
 describe("photoDateLabel", () => {
   it("reads capture times on the camera's clock regardless of the viewer's zone", () => {
     const label = photoDateLabel(photo("a"), GallerySort.Taken);
-    const expected = new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "UTC",
-    }).format(new Date("2019-06-12T18:15:00.000Z"));
-
-    expect(label).toBe(expected);
+    expect(label).toBe(formatDateTime("2019-06-12T18:15:00.000Z", { timeZone: "UTC" }));
   });
 });
 

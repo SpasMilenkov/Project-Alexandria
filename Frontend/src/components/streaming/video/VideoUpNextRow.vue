@@ -5,7 +5,7 @@ import { computed } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 
 const {
   file,
@@ -93,7 +93,7 @@ const onSelect = () => emit("select", file);
         v-if="file.duration"
         class="absolute right-1.5 bottom-1.5 px-1.5 py-px rounded text-[11px] tabular-nums bg-black/70 text-white"
       >
-        {{ formatDuration(file.duration) }}
+        {{ formatPlaybackTime(file.duration) }}
       </span>
       <span
         v-if="showProgress"

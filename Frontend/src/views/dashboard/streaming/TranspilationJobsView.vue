@@ -17,6 +17,8 @@ import { JobStatus } from "@/enums/job-status";
 import { quoted } from "@/features/toast/format";
 import { stopTranspilationJob } from "@/mutations/streaming";
 import { getTranspilationJobs } from "@/queries/streaming";
+import { formatCount } from "@/utils/count";
+import { formatDateTime, formatDayMonth, formatTimeAgo } from "@/utils/date-formatters";
 
 const toast = useAppToast("jobs");
 
@@ -188,11 +190,9 @@ interface ActiveChip {
   label: string;
 }
 
+// The picked day is built at UTC midnight, so it is read back in UTC to keep the same day.
 const formatShortDay = (value: DayValue) =>
-  new Date(Date.UTC(value.year, value.month - 1, value.day)).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
+  formatDayMonth(Date.UTC(value.year, value.month - 1, value.day), { timeZone: "UTC" });
 
 const activeChips = computed<ActiveChip[]>(() => {
   const chips: ActiveChip[] = [];
@@ -485,23 +485,10 @@ const rungChips = (job: TranspilationJobResponse): string[] => {
   return (job.audioRungs ?? []).map((rung) => AUDIO_RUNG_LABELS[rung] ?? `${rung}`);
 };
 
-const formatDate = (iso?: string) =>
-  iso
-    ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-        new Date(iso),
-      )
-    : "—";
-
 const formatRelative = (iso?: string) => {
   if (!iso) return "—";
-  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 8) return `${days} d ago`;
-  return formatDate(iso);
+
+  return formatTimeAgo(iso, { absoluteAfterDays: 7, style: "narrow" });
 };
 
 const statusFilterOptions = [
@@ -533,8 +520,8 @@ const mediaFilterOptions = [
             Transpilation Jobs
           </h1>
           <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
-            {{ groups.length }} file{{ groups.length !== 1 ? "s" : "" }},
-            {{ data?.totalCount ?? 0 }} job{{ (data?.totalCount ?? 0) !== 1 ? "s" : "" }}
+            {{ formatCount(groups.length, "file") }},
+            {{ formatCount(data?.totalCount ?? 0, "job") }}
           </p>
         </div>
         <span
@@ -911,7 +898,7 @@ const mediaFilterOptions = [
             class="w-4 h-4 shrink-0 text-red-600 dark:text-red-400"
           />
           <span class="text-xs text-gray-900 dark:text-gray-100">
-            {{ failedCount }} job{{ failedCount !== 1 ? "s" : "" }} failed and may need a retry.
+            {{ formatCount(failedCount, "job") }} failed and may need a retry.
           </span>
           <span class="flex-1" />
           <UButton
@@ -946,9 +933,7 @@ const mediaFilterOptions = [
                   v-if="group.fileName && group.versionNumber != null"
                   class="text-xs text-gray-600 dark:text-gray-400"
                 >
-                  Version {{ group.versionNumber }}, {{ group.jobs.length }} run{{
-                    group.jobs.length !== 1 ? "s" : ""
-                  }}
+                  Version {{ group.versionNumber }}, {{ formatCount(group.jobs.length, "run") }}
                 </span>
               </span>
               <span class="hidden flex-wrap items-center justify-end gap-4 sm:flex">
@@ -1029,7 +1014,7 @@ const mediaFilterOptions = [
                     <Icon icon="lucide:rotate-ccw" class="w-3.5 h-3.5" />
                     {{ job.retryCount }}
                   </span>
-                  <span :title="formatDate(job.createdAt)">
+                  <span :title="formatDateTime(job.createdAt)">
                     {{ formatRelative(job.createdAt) }}
                   </span>
                 </div>

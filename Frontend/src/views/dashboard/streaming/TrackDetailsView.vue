@@ -130,7 +130,7 @@
                       class="flex shrink-0 items-center gap-1 tabular-nums"
                     >
                       <UIcon name="mdi:clock-outline" class="w-3.5 h-3.5" />
-                      {{ formatDuration(track.duration) }}
+                      {{ formatPlaybackTime(track.duration) }}
                     </span>
                     <span
                       class="shrink-0 rounded-md border border-gray-200/70 px-1.5 py-0.5 font-semibold text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
@@ -312,7 +312,7 @@ import { coverInk, heroTint } from "@/features/media/cover-color";
 import { coverSeed, generatedCover } from "@/features/media/generated-cover";
 import { getStreamingFile } from "@/queries/streaming";
 import { usePlayerStore } from "@/stores/stream-player";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 import { formModalUi } from "@/utils/modal-ui";
 
 interface GlanceItem {

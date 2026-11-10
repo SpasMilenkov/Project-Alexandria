@@ -7,6 +7,7 @@ import { useRoute } from "vue-router";
 import type { ShareDownloadResponse, SharedFileMetadataDto } from "@/api/shareLinks";
 
 import { getSharedFileDownloadUrl, getSharedFileMetadata } from "@/queries/shareLinks";
+import { formatDateTime } from "@/utils/date-formatters";
 import { getFileIcon } from "@/utils/files/icons";
 import { formatBytes } from "@/utils/size";
 
@@ -40,10 +41,7 @@ const isExpired = computed(() => {
 
 const formattedExpires = computed(() => {
   if (!metadata.value) return "";
-  return new Date(metadata.value.expiresAt).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatDateTime(metadata.value.expiresAt);
 });
 
 // Map HTTP status codes to specific terminal states so each gets its own message.

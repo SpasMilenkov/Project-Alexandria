@@ -1,6 +1,7 @@
 import type { GalleryMonth, GalleryPhoto } from "@/api/gallery";
 
 import { GallerySort } from "@/enums/gallery-sort";
+import { formatDateTime } from "@/utils/date-formatters";
 
 import { monthKey } from "./months";
 
@@ -74,22 +75,11 @@ export const stepFrom = (
   return { kind: "end" };
 };
 
-const TAKEN_FORMAT = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-  timeZone: "UTC",
-});
-
-const UPLOADED_FORMAT = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
 /** The date the timeline files a photo under, read the same way its month was bucketed. */
 export const photoDateLabel = (photo: GalleryPhoto, sort: GallerySort) => {
-  if (sort === GallerySort.Taken) return TAKEN_FORMAT.format(new Date(photo.takenAt));
+  if (sort === GallerySort.Taken) return formatDateTime(photo.takenAt, { timeZone: "UTC" });
 
-  return UPLOADED_FORMAT.format(new Date(photo.uploadedAt));
+  return formatDateTime(photo.uploadedAt);
 };
 
 // Formats every browser renders as-is. Anything else (HEIC, TIFF, RAW) waits for the server's

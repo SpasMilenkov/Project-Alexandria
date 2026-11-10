@@ -5,6 +5,8 @@ import type { WrappedPeriodPoint } from "@/api/stats";
 
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { type WrappedDayBar, wrappedDailyLandscape } from "@/features/wrapped/daily-landscape";
+import { formatCount } from "@/utils/count";
+import { formatFullDate } from "@/utils/date-formatters";
 
 const { month, through, series } = defineProps<{
   month: string;
@@ -41,12 +43,7 @@ const currentIndex = computed(() =>
 );
 
 const dayName = (day: WrappedDayBar) =>
-  new Intl.DateTimeFormat(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${day.date}T00:00:00Z`));
+  formatFullDate(`${day.date}T00:00:00Z`, { showYear: false, timeZone: "UTC" });
 
 const describe = (day: WrappedDayBar) => {
   const name = dayName(day);
@@ -105,7 +102,7 @@ const move = (event: KeyboardEvent) => {
       <span class="font-semibold text-gray-900 dark:text-gray-100">{{ selectedLabel }}</span>
 
       <span v-if="current" class="text-gray-600 dark:text-gray-400">
-        {{ formatWrappedDuration(current.seconds) }} · {{ current.plays }} plays
+        {{ formatWrappedDuration(current.seconds) }} · {{ formatCount(current.plays, "play") }}
       </span>
     </figcaption>
 

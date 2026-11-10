@@ -34,6 +34,7 @@ import {
 } from "@/features/gallery/timeline";
 import { findPhoto, locatePhoto, stepFrom } from "@/features/gallery/viewer";
 import { galleryTimeline } from "@/queries/gallery";
+import { formatCount, formatNumber } from "@/utils/count";
 
 import GalleryEmpty from "./GalleryEmpty.vue";
 import GalleryGhost from "./GalleryGhost.vue";
@@ -345,8 +346,7 @@ useEventListener(window, "keydown", (event: KeyboardEvent) => {
   if (event.key === "Escape" && selecting.value && !viewerOpen.value) selection.clear();
 });
 
-const COUNT_FORMAT = new Intl.NumberFormat();
-const selectedLabel = computed(() => `${COUNT_FORMAT.format(selectedCount.value)} selected`);
+const selectedLabel = computed(() => `${formatNumber(selectedCount.value)} selected`);
 
 const trashing = ref(false);
 
@@ -461,7 +461,7 @@ const trashViewed = async (photo: GalleryPhoto) => {
           v-if="timeline"
           class="text-xs whitespace-nowrap text-gray-600 tabular-nums dark:text-gray-400"
         >
-          {{ total }} photo{{ total === 1 ? "" : "s" }}
+          {{ formatCount(total, "photo") }}
         </span>
 
         <div class="flex-1" />

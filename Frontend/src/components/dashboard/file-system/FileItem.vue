@@ -175,7 +175,7 @@ import {
 } from "@/queries/files";
 import { getTagsForFile } from "@/queries/tags";
 import { useSettingsStore } from "@/stores/settings";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 import { getFileExtension } from "@/utils/files/file-name";
 import { getFileIcon } from "@/utils/files/icons";
 import { isCaptureMetadataSupportedMimeType } from "@/utils/files/mimetype";
@@ -205,7 +205,7 @@ const iconSize = computed(() =>
 
 const fileExtension = computed(() => getFileExtension(props.data.fileName));
 
-const modifiedLabel = computed(() => formatDate(props.data.updatedAt || props.data.createdAt));
+const modifiedLabel = computed(() => formatTimeAgo(props.data.updatedAt || props.data.createdAt));
 
 // Version-scoped thumbnail URL: permanently cacheable, browser + nginx do the
 // work, no fetch layer. MIME guard skips the <img> for text/archive/unknown

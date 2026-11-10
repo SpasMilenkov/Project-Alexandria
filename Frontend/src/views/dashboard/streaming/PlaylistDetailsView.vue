@@ -392,7 +392,7 @@ import PlaylistTrackSearch from "@/components/streaming/playlist/PlaylistTrackSe
 import { useAppToast } from "@/composables/useAppToast";
 import { useTheme } from "@/composables/useTheme";
 import { findPlaylistItemIndex, loadPlaylistAnchorPage } from "@/features/player/source";
-import { countOf, quoted } from "@/features/toast/format";
+import { quoted } from "@/features/toast/format";
 import {
   addPlaylistItem,
   deletePlaylist,
@@ -403,6 +403,7 @@ import {
 } from "@/mutations/playlists";
 import { PLAYLIST_QUERY_KEYS } from "@/queries/playlist";
 import { usePlayerStore } from "@/stores/stream-player";
+import { formatCount } from "@/utils/count";
 import { glassModalContent, playlistModalUi } from "@/utils/modal-ui";
 
 const store = usePlayerStore();
@@ -426,7 +427,7 @@ const addAllToQueue = async () => {
       toast.warning(`${playlistLabel()} has no tracks yet`, "Add some tracks before queueing it.");
       return;
     }
-    toast.success(`Added ${countOf(total, "track")} to the queue`, {
+    toast.success(`Added ${formatCount(total, "track")} to the queue`, {
       description: `From ${playlistLabel()}`,
       source: "playback",
     });
@@ -603,10 +604,7 @@ const showRemoveItemModal = ref(false);
 const removeItemTarget = ref<string | null>(null);
 
 // Header display helpers
-const itemCountLabel = computed(() => {
-  const count = localItems.value.length;
-  return `${count} ${count === 1 ? "item" : "items"}`;
-});
+const itemCountLabel = computed(() => formatCount(localItems.value.length, "item"));
 
 const addTracksIcon = computed(() => (showSearch.value ? "mdi:close" : "mdi:plus"));
 const addTracksLabel = computed(() => (showSearch.value ? "Cancel" : "Add tracks"));

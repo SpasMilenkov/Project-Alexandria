@@ -101,6 +101,7 @@ import { useServiceDeepLink } from "@/composables/useServiceDeepLink";
 import { useTheme } from "@/composables/useTheme";
 import { JobType, ServiceType } from "@/enums";
 import { transpilationOverview, transpilationTrend } from "@/queries/transpilationStats";
+import { formatBucketLabel } from "@/utils/date-formatters";
 
 ChartJS.register(
   Title,
@@ -180,13 +181,8 @@ const gridColor = computed(() =>
 );
 const tickColor = computed(() => (isDark.value ? "#9ca3af" : "#6b7280"));
 
-const bucketLabel = (iso: string): string => {
-  const date = new Date(iso);
-  if (bucket.value === STATS_BUCKET.Hour) {
-    return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-  }
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-};
+const bucketLabel = (iso: string): string =>
+  formatBucketLabel(iso, bucket.value === STATS_BUCKET.Hour ? "hour" : "day");
 
 const rateChartData = computed<ChartData<"line">>(() => ({
   labels: (trend.value?.failureRate ?? []).map((p) => bucketLabel(p.bucketStart)),

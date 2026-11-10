@@ -12,7 +12,7 @@ import { useAppToast } from "@/composables/useAppToast";
 import { type FileEntry, useDirectoryUpload } from "@/composables/useDirectoryUpload";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { useReportUploadActivity } from "@/composables/useReportUploadActivity";
-import { countOf } from "@/features/toast/format";
+import { formatCount } from "@/utils/count";
 
 const appToast = useAppToast("upload");
 
@@ -71,7 +71,7 @@ const uploadSubject = computed(() =>
 const totalSize = computed(() => files.value.reduce((sum, entry) => sum + entry.file.size, 0));
 
 const uploadSummary = (count: number, outcome: string) =>
-  `${countOf(count, "file")} ${outcome} to ${destinationName.value}`;
+  `${formatCount(count, "file")} ${outcome} to ${destinationName.value}`;
 
 const directoryInputRef = ref<HTMLInputElement | null>(null);
 
@@ -98,7 +98,7 @@ const progressLabel = computed(() => {
   if (uploading.value)
     return `Uploading ${activeFiles.value}, ${successfulFiles.value} done${failedNote}`;
 
-  return `${completedFiles.value} of ${totalFiles.value} files${failedNote}`;
+  return `${completedFiles.value} of ${formatCount(totalFiles.value, "file")}${failedNote}`;
 });
 
 const canUpload = computed(
@@ -161,7 +161,7 @@ const uploadDirectoryStructure = async () => {
     } else {
       appToast.warning(
         `Uploaded ${success} of ${success + failed} files from ${uploadSubject.value}`,
-        `${countOf(failed, "file")} failed. Use Retry in the upload window.`,
+        `${formatCount(failed, "file")} failed. Use Retry in the upload window.`,
       );
     }
   } catch (err) {
@@ -185,7 +185,7 @@ const handleRetry = async () => {
     setTimeout(() => emit("close", true), 1000);
   } else {
     appToast.warning(
-      `${countOf(stillFailed, "file")} from ${uploadSubject.value} still failed`,
+      `${formatCount(stillFailed, "file")} from ${uploadSubject.value} still failed`,
       "Check each file's error in the upload window.",
     );
     uploading.value = false;
@@ -233,7 +233,7 @@ const clearFiles = () => {
       <template #header>
         <p class="min-w-0 flex-1 truncate text-sm text-gray-600 dark:text-gray-400">
           <span class="font-medium text-gray-900 dark:text-gray-100">
-            {{ countOf(files.length, "file") }}
+            {{ formatCount(files.length, "file") }}
           </span>
           · {{ formatBytes(totalSize) }}
         </p>
