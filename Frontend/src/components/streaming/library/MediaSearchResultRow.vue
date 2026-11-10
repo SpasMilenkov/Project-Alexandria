@@ -83,8 +83,19 @@
             size="xs"
             variant="ghost"
             color="neutral"
-            icon="i-heroicons-plus"
+            icon="i-mdi-plus"
             @click.stop="emit('enqueue', file)"
+          />
+        </UTooltip>
+        <UTooltip v-if="mediaType === 'audio'" text="Track details">
+          <UButton
+            size="xs"
+            variant="ghost"
+            color="neutral"
+            icon="i-mdi-information-outline"
+            :to="{ name: 'track-details', params: { fileId: file.fileId } }"
+            :aria-label="`Track details for ${file.title ?? file.fileName}`"
+            @click.stop
           />
         </UTooltip>
       </div>
