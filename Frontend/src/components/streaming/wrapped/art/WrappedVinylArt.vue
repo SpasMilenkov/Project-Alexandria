@@ -83,6 +83,7 @@ import type { WrappedCardFacts } from "@/api/stats";
 
 import { formatWrappedDuration } from "@/features/wrapped/art";
 import { dateLabel, vinylGroove } from "@/features/wrapped/story";
+import { formatMonth } from "@/utils/date-formatters";
 
 const props = defineProps<{ facts: WrappedCardFacts; from: string; to: string }>();
 
@@ -110,9 +111,7 @@ const months = computed(() => {
     date,
     seconds,
 
-    label: new Intl.DateTimeFormat(undefined, { month: "short", timeZone: "UTC" }).format(
-      new Date(`${date}-01`),
-    ),
+    label: formatMonth(`${date}-01T00:00:00Z`, { style: "short", timeZone: "UTC" }),
   }));
 });
 </script>

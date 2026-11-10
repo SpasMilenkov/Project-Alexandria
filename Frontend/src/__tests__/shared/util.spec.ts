@@ -14,6 +14,8 @@ import {
   formatDaysAgo,
   formatDuration,
   formatFullDate,
+  formatMonth,
+  formatMonthYear,
   formatPlaybackTime,
   formatTimeAgo,
 } from "@/utils/date-formatters";
@@ -110,6 +112,11 @@ describe("absolute date presets", () => {
     expect(formatCalendarDate(MOMENT, UTC)).toBe("Mar 4, 2026");
     expect(formatFullDate(MOMENT, UTC)).toBe("Wednesday, March 4, 2026");
     expect(formatFullDate(MOMENT, { compact: true, timeZone: "UTC" })).toBe("Wed, Mar 4, 2026");
+    expect(formatFullDate(MOMENT, { showYear: false, timeZone: "UTC" })).toBe("Wednesday, March 4");
+    expect(formatMonth(MOMENT, UTC)).toBe("March");
+    expect(formatMonth(MOMENT, { style: "short", timeZone: "UTC" })).toBe("Mar");
+    expect(formatMonth(MOMENT, { style: "narrow", timeZone: "UTC" })).toBe("M");
+    expect(formatMonthYear(MOMENT, UTC)).toBe("March 2026");
     expect(formatClockTime(MOMENT, UTC)).toBe("2:07 PM");
     expect(formatClockTime(MOMENT, { seconds: true, timeZone: "UTC" })).toBe("2:07:09 PM");
     expect(formatDateTime(MOMENT, UTC)).toBe("Mar 4, 2026, 2:07 PM");
@@ -117,6 +124,7 @@ describe("absolute date presets", () => {
 
   it("reads a UTC day bucket as that day whatever the viewer's zone", () => {
     expect(formatCalendarDate(Date.UTC(2026, 2, 4), UTC)).toBe("Mar 4, 2026");
+    expect(formatMonthYear("2026-03-01T00:00:00Z", UTC)).toBe("March 2026");
     expect(formatDayMonth("2026-03-04T23:30:00Z", UTC)).toBe("Mar 4");
   });
 

@@ -1,7 +1,7 @@
 import type { WrappedCardFacts, WrappedCardResponse, WrappedPeriodPoint } from "@/api/stats";
 
 import { WrappedCardType } from "@/enums/wrapped-card-type";
-import { formatDuration } from "@/utils/date-formatters";
+import { formatDuration, formatMonth } from "@/utils/date-formatters";
 
 type WrappedArtFamily = "orbit" | "ribbons" | "constellation";
 
@@ -213,6 +213,4 @@ export const formatWrappedDuration = (seconds: number): string =>
   formatDuration(seconds, { largestUnit: "hour", style: "short" });
 
 export const monthLabel = (point: WrappedPeriodPoint): string =>
-  new Intl.DateTimeFormat(undefined, { month: "short", timeZone: "UTC" }).format(
-    new Date(point.date),
-  );
+  formatMonth(point.date, { style: "short", timeZone: "UTC" });

@@ -1,7 +1,7 @@
 import type { WrappedCardFacts, WrappedPeriodPoint } from "@/api/stats";
 
 import { bounded } from "@/features/wrapped/art";
-import { utcDayKey } from "@/utils/date-formatters";
+import { formatCalendarDate, formatMonthYear, utcDayKey } from "@/utils/date-formatters";
 
 const utcStamp = (value?: string | null): number => {
   const time = Date.parse(value ?? "");
@@ -12,12 +12,7 @@ const utcStamp = (value?: string | null): number => {
 export const dateLabel = (value?: string | null): string => {
   if (!value || !Number.isFinite(Date.parse(value))) return "Unknown date";
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
+  return formatCalendarDate(value, { timeZone: "UTC" });
 };
 
 export interface CalendarCell {
@@ -76,11 +71,7 @@ export const calendarMonths = (
     months.push({
       key: month.toISOString(),
 
-      label: new Intl.DateTimeFormat(undefined, {
-        month: "long",
-        year: "numeric",
-        timeZone: "UTC",
-      }).format(month),
+      label: formatMonthYear(month, { timeZone: "UTC" }),
 
       cells,
     });

@@ -1,7 +1,7 @@
 import type { OverviewSummaryHeaderDtoResponse, WrappedPeriodPoint } from "@/api/stats";
 
 import { MIN_WRAPPED_YEAR } from "@/features/wrapped/display";
-import { utcDayKey } from "@/utils/date-formatters";
+import { formatCalendarDate, utcDayKey } from "@/utils/date-formatters";
 
 export const annualRecapHeaders = (
   headers: OverviewSummaryHeaderDtoResponse[],
@@ -47,12 +47,7 @@ export const recapTimestamp = (iso: string, current: boolean): string => {
 
   if (!Number.isFinite(date.getTime())) return "";
 
-  const label = new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
+  const label = formatCalendarDate(date, { timeZone: "UTC" });
 
   if (current) return `Updated ${label}`;
 

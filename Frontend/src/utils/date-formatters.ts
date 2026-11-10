@@ -40,6 +40,13 @@ export interface TimeFormatOptions extends DateFormatOptions {
 export interface FullDateOptions extends DateFormatOptions {
   /** "Wed, Mar 4, 2026" for narrow layouts instead of "Wednesday, March 4, 2026". */
   compact?: boolean;
+  /** False where the surrounding view already names the year ("Wednesday, March 4"). */
+  showYear?: boolean;
+}
+
+export interface MonthFormatOptions extends DateFormatOptions {
+  /** "long" reads "March", "short" reads "Mar", and "narrow" reads "M" for tight chart axes. */
+  style?: "long" | "short" | "narrow";
 }
 
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -148,11 +155,19 @@ export const formatFullDate = (value: DateInput, options: FullDateOptions = {}):
       month: style,
       timeZone: options.timeZone,
       weekday: style,
-      year: "numeric",
+      year: options.showYear === false ? undefined : "numeric",
     },
     value,
   );
 };
+
+/** The month alone: "March", "Mar", or "M". */
+export const formatMonth = (value: DateInput, options: MonthFormatOptions = {}): string =>
+  formatWith({ month: options.style ?? "long", timeZone: options.timeZone }, value);
+
+/** "March 2026", for a month heading or a month-long period. */
+export const formatMonthYear = (value: DateInput, options: DateFormatOptions = {}): string =>
+  formatWith({ month: "long", timeZone: options.timeZone, year: "numeric" }, value);
 
 /** "2:07 PM", or "14:07" where the viewer's locale uses a 24-hour clock. */
 export const formatClockTime = (value: DateInput, options: TimeFormatOptions = {}): string =>

@@ -208,6 +208,7 @@ import { dateLabel } from "@/features/wrapped/story";
 import { getTimeline } from "@/queries/stats";
 import { useAuthStore } from "@/stores/auth";
 import { formatCount, formatNumber } from "@/utils/count";
+import { formatDayMonth } from "@/utils/date-formatters";
 
 const auth = useAuthStore();
 const { paletteStyle } = useWrappedPalette();
@@ -248,10 +249,7 @@ const streakLabel = computed(() => {
   return formatCount(streak, "day");
 });
 
-const shortDate = (date: string) =>
-  new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", timeZone: "UTC" }).format(
-    new Date(date),
-  );
+const shortDate = (date: string) => formatDayMonth(date, { timeZone: "UTC" });
 
 // Until a day is picked the panel shows the latest listening, so it never sits empty.
 const latestListening = computed(() => {

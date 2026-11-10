@@ -1,6 +1,6 @@
 import type { TimelineDayPoint, TimelineMonthPoint } from "@/api/stats";
 
-import { utcDayKey, utcMonthKey } from "@/utils/date-formatters";
+import { formatMonth, utcDayKey, utcMonthKey } from "@/utils/date-formatters";
 
 const DAY_MS = 86_400_000;
 
@@ -42,7 +42,6 @@ export const heatmapWeeks = (days: TimelineDayPoint[], year: number, today: numb
   const start = Date.UTC(year, 0, 1);
   const end = Date.UTC(year + 1, 0, 1);
   const leading = (new Date(start).getUTCDay() + 6) % 7;
-  const monthFormat = new Intl.DateTimeFormat(undefined, { month: "short", timeZone: "UTC" });
   const weeks: HeatmapWeek[] = [];
 
   for (let cursor = start - leading * DAY_MS; cursor < end; cursor += 7 * DAY_MS) {
@@ -57,7 +56,7 @@ export const heatmapWeeks = (days: TimelineDayPoint[], year: number, today: numb
       const date = utcDayKey(stamp);
       const point = lookup.get(date);
 
-      if (stamp.getUTCDate() === 1) month = monthFormat.format(stamp);
+      if (stamp.getUTCDate() === 1) month = formatMonth(stamp, { style: "short", timeZone: "UTC" });
 
       return {
         date,
@@ -117,8 +116,6 @@ export const yearMonthBars = (
 ): YearMonthBar[] => {
   const lookup = new Map(months.map((month) => [month.date.slice(0, 7), month]));
   const max = Math.max(0, ...months.map((month) => month.seconds));
-  const longFormat = new Intl.DateTimeFormat(undefined, { month: "long", timeZone: "UTC" });
-  const shortFormat = new Intl.DateTimeFormat(undefined, { month: "narrow", timeZone: "UTC" });
   const currentKey = utcMonthKey(now);
 
   return Array.from({ length: 12 }, (_, index) => {
@@ -129,8 +126,8 @@ export const yearMonthBars = (
 
     return {
       key,
-      label: longFormat.format(stamp),
-      initial: shortFormat.format(stamp),
+      label: formatMonth(stamp, { timeZone: "UTC" }),
+      initial: formatMonth(stamp, { style: "narrow", timeZone: "UTC" }),
       seconds,
       plays: point?.plays ?? 0,
       height: seconds > 0 && max > 0 ? Math.max(4, (seconds / max) * 100) : 0,
