@@ -4,11 +4,7 @@ import type { MediaFileDto } from "@/api/streaming";
 
 import { heroTint } from "@/features/media/cover-color";
 import { coverSeed, generatedCover } from "@/features/media/generated-cover";
-import {
-  addedThisWeekLabel,
-  buildWeekDays,
-  groupByDay,
-} from "@/features/media/overview";
+import { addedThisWeekLabel, buildWeekDays, groupByDay } from "@/features/media/overview";
 
 const NOW = Date.UTC(2026, 9, 31, 12);
 

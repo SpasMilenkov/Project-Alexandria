@@ -59,9 +59,7 @@ const totalCount = computed(() => data.value?.totalCount ?? 0);
 const totalPages = computed(() => data.value?.totalPages ?? 1);
 const hasItems = computed(() => (data.value?.items?.length ?? 0) > 0);
 
-const countText = computed(
-  () => formatCount(totalCount.value, "entry", "entries"),
-);
+const countText = computed(() => formatCount(totalCount.value, "entry", "entries"));
 
 const rangeText = computed(() => {
   const start = (currentPage.value - 1) * pageSize + 1;

@@ -167,7 +167,9 @@
               >Playlists unavailable</template
             >
             <template v-else-if="total === 0">0 playlists</template>
-            <template v-else>{{ firstResult }}–{{ lastResult }} of {{ formatCount(total, "playlist") }}</template>
+            <template v-else
+              >{{ firstResult }}–{{ lastResult }} of {{ formatCount(total, "playlist") }}</template
+            >
           </p>
           <span
             v-for="pill in activeFilterPills"

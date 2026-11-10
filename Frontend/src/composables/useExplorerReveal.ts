@@ -29,9 +29,7 @@ export const useExplorerReveal = ({
   const scrollToFile = async () => {
     await nextTick();
 
-    const element = document.querySelector<HTMLElement>(
-      `[data-file-id="${CSS.escape(fileId)}"]`,
-    );
+    const element = document.querySelector<HTMLElement>(`[data-file-id="${CSS.escape(fileId)}"]`);
 
     element?.scrollIntoView({ block: "center" });
     element?.focus({ preventScroll: true });

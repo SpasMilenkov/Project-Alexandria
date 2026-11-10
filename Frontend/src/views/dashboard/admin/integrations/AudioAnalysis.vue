@@ -417,9 +417,7 @@ const volumeChartOptions = computed((): ChartOptions<"bar"> => ({
 
 const stuckSorted = computed(() => [...(stuckQuery.data.value ?? [])].reverse());
 
-const queueHint = computed(
-  () => `${formatCount(queueTotal.value, "file")} in flight`,
-);
+const queueHint = computed(() => `${formatCount(queueTotal.value, "file")} in flight`);
 
 const durationStats = (row: {
   averageSeconds: number;

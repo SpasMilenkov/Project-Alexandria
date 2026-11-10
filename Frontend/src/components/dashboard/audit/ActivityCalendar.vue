@@ -454,7 +454,9 @@ const hasNoActivity = computed(() => Boolean(data.value) && displayTotal.value =
           class="calendar-cell-mobile relative flex aspect-square items-start justify-start rounded-[6px] p-1.5"
           :class="mobileCellClass(day)"
           :disabled="!isSelectable(day) || isForeignMonthCell(day)"
-          :aria-label="day.date ? `${dayTitle(day)}: ${formatCount(day.count, 'action')}` : undefined"
+          :aria-label="
+            day.date ? `${dayTitle(day)}: ${formatCount(day.count, 'action')}` : undefined
+          "
           :aria-pressed="isSelected(day)"
           @click="selectDay(day)"
         >

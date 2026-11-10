@@ -1,8 +1,8 @@
 import type { GalleryMonth, GalleryPhoto } from "@/api/gallery";
 
-import { monthKey } from "./months";
-
 import { formatCount } from "@/utils/count";
+
+import { monthKey } from "./months";
 
 type LoadedMonths = ReadonlyMap<string, GalleryPhoto[]>;
 

@@ -292,8 +292,7 @@ export const homeActivityTime = (timestamp: string, now = new Date()): string =>
 
   const elapsed = Math.max(0, now.getTime() - date.getTime());
   if (elapsed < 3_600_000) return formatTimeAgo(date, { now: now.getTime(), style: "narrow" });
-  if (localDayKey(date) === localDayKey(now))
-    return formatClockTime(date);
+  if (localDayKey(date) === localDayKey(now)) return formatClockTime(date);
 
   return formatDayMonth(date);
 };

@@ -48,7 +48,9 @@ const cancelled = () => new DOMException("Cancelled", "AbortError");
  * Collects individual requests into paced batches. The minimum interval between sends is what
  * keeps a caller under an API rate limit, however quickly items arrive.
  */
-export const createMicroBatcher = <TItem, TResult>(options: MicroBatcherOptions<TItem, TResult>) => {
+export const createMicroBatcher = <TItem, TResult>(
+  options: MicroBatcherOptions<TItem, TResult>,
+) => {
   const queue: QueuedItem<TItem, TResult>[] = [];
 
   let inFlight = 0;
