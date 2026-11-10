@@ -159,7 +159,7 @@ import { PreviewKind } from "@/enums/PreviewKind";
 import { countOf } from "@/features/toast/format";
 import { useDeletePreview, useDeletePreviewsByFile } from "@/mutations/storage";
 import { type MyPreviewsFilters, myPreviews } from "@/queries/status";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 import { getFileIcon } from "@/utils/files/icons";
 import { formatBytes } from "@/utils/size";
 
@@ -269,7 +269,7 @@ const describeGroup = (group: PreviewFileGroup) => {
     (item) => `${KIND_LABELS[item.kind]} ${formatBytes(item.sizeBytes)}`,
   );
 
-  parts.push(`created ${formatDate(group.newestAt).toLowerCase()}`);
+  parts.push(`created ${formatTimeAgo(group.newestAt)}`);
 
   return parts.join(" · ");
 };

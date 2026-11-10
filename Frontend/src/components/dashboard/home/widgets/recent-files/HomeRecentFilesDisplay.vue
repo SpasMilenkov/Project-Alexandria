@@ -9,7 +9,7 @@ import MiddleTruncatedName from "@/components/common/MiddleTruncatedName.vue";
 import { useHomeWidgetRows } from "@/composables/useHomeWidgetRows";
 import { HomeRecentFilesSource, HomeRecentFilesStyle } from "@/enums/home-widget";
 import { homeFileVisual, homeRecentFileDate } from "@/features/home/widgets/files";
-import { formatRelativeShort } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 import { formatBytes } from "@/utils/size";
 
 import HomeRecentFileThumbnail from "./HomeRecentFileThumbnail.vue";
@@ -49,9 +49,7 @@ const age = (file: FileResult) => {
   const date = homeRecentFileDate(file, source);
   if (!date) return "";
 
-  const value = formatRelativeShort(date);
-
-  return value === "just now" ? value : `${value} ago`;
+  return formatTimeAgo(date, { style: "narrow" });
 };
 
 const absoluteDate = (file: FileResult) => {

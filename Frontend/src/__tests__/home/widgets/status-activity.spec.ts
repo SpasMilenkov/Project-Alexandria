@@ -215,7 +215,7 @@ describe("Home recent activity formatting", () => {
   it("formats short recent times and tolerates malformed timestamps", () => {
     const now = new Date("2026-10-08T12:00:00Z");
 
-    expect(homeActivityTime("2026-10-08T11:59:50Z", now)).toBe("Just now");
+    expect(homeActivityTime("2026-10-08T11:59:50Z", now)).toBe("just now");
     expect(homeActivityTime("2026-10-08T11:55:00Z", now)).toBe("5m ago");
     expect(homeActivityTime("not a date", now)).toBe("Date unavailable");
   });

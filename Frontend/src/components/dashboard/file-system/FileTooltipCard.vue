@@ -90,7 +90,7 @@ import type { FileResult } from "@/api/file";
 import type { TagDto } from "@/api/tag";
 
 import { getTagsForFile } from "@/queries/tags";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 import { getFileIcon, getIconByValue } from "@/utils/files/icons";
 import { getFileTypeReadable } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
@@ -110,7 +110,7 @@ const readableType = computed(() =>
   getFileTypeReadable(props.data.currentVersion.mimeType, props.data.fileName),
 );
 
-const readableDate = computed(() => formatDate(props.data.createdAt));
+const readableDate = computed(() => formatTimeAgo(props.data.createdAt));
 </script>
 
 <style scoped>

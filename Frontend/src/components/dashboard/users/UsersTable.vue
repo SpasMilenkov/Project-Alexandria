@@ -51,7 +51,7 @@ import type { UserDetailsDto } from "@/types/user";
 
 import UserExpandedRow from "@/components/dashboard/users/UserExpandedRow.vue";
 import { UserRole } from "@/enums/UserRole";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 // Props & emits
 
@@ -205,7 +205,7 @@ const columns: TableColumn<UserDetailsDto>[] = [
   {
     accessorKey: "createdAt",
     cell: ({ row }) =>
-      h("span", { class: "text-sm text-muted tabular-nums" }, formatDate(row.original.createdAt)),
+      h("span", { class: "text-sm text-muted tabular-nums" }, formatTimeAgo(row.original.createdAt)),
     header: "Created",
     meta: { class: { td: "w-32", th: "w-32" } },
   },

@@ -7,7 +7,7 @@ import type { MediaFileDto } from "@/api/streaming";
 import { isAuthError } from "@/api/shuffle";
 import { addedThisWeekLabel } from "@/features/media/overview";
 import { mediaOverviewLibrary } from "@/queries/media-overview";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 import MediaOverviewFile from "./MediaOverviewFile.vue";
 import MediaOverviewSection from "./MediaOverviewSection.vue";
@@ -40,7 +40,7 @@ const description = computed(() => {
 const chipFor = (file: MediaFileDto) => {
   if (isVideo || !file.createdAt) return null;
 
-  return formatDate(file.createdAt);
+  return formatTimeAgo(file.createdAt);
 };
 </script>
 

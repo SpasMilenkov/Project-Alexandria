@@ -230,7 +230,7 @@ import { restoreDirectories } from "@/mutations/directories";
 import { restoreFiles } from "@/mutations/files";
 import { searchDirectory } from "@/queries/directories";
 import { searchFile } from "@/queries/files";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 import { getFileIcon } from "@/utils/files/icons";
 import { formatBytes } from "@/utils/size";
 
@@ -391,7 +391,7 @@ const emptyState = computed(() => {
 const deletedLabel = (file: FileResult) => {
   if (!file.deletedAt) return null;
 
-  return `Deleted ${formatDate(file.deletedAt).toLowerCase()}`;
+  return `Deleted ${formatTimeAgo(file.deletedAt)}`;
 };
 
 const toggleIn = (set: Set<string>, id: string) => {

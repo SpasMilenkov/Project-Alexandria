@@ -1,5 +1,5 @@
 import { FACET_LABELS, type TagDto } from "@/api/tag";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 export const tagBreadcrumb = (tag: TagDto): string | null => {
   if (!tag.isSystem) return null;
@@ -25,5 +25,5 @@ export const describeTag = (tag: TagDto): string => {
 
   if (tag.isSystem) return tagBreadcrumb(tag) ?? "System vocabulary";
 
-  return `Created ${formatDate(tag.createdAt).toLowerCase()}`;
+  return `Created ${formatTimeAgo(tag.createdAt)}`;
 };

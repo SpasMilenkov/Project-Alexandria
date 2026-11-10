@@ -70,7 +70,7 @@
           </span>
           <span class="text-xs text-gray-300 dark:text-white/20">·</span>
           <span class="text-xs text-gray-400 dark:text-white/35">{{
-            formatDate(playlist.updatedAt ?? playlist.createdAt)
+            formatTimeAgo(playlist.updatedAt ?? playlist.createdAt)
           }}</span>
         </div>
       </div>
@@ -97,7 +97,7 @@ import { type PlaylistResponse, playlistApi } from "@/api/playlist";
 import PlaylistCover from "@/components/streaming/playlist/PlaylistCover.vue";
 import PlaylistFavoriteButton from "@/components/streaming/playlist/PlaylistFavoriteButton.vue";
 import { playlistBadgeLabel } from "@/features/playlists/display";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 const { playlist, isPlaying, isLoading } = defineProps<{
   playlist: PlaylistResponse;

@@ -11,7 +11,7 @@ import { JobStatus, type JobType } from "@/enums";
 import { countOf } from "@/features/toast/format";
 import { useRequeueFailedJobs, useRequeueJob } from "@/mutations/jobs";
 import { adminJobs } from "@/queries/jobs";
-import { formatRelativeShort } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 const { type, title } = defineProps<{
   type: JobType;
@@ -66,11 +66,8 @@ const emptyDescription = computed(() => {
   return "Jobs currently being worked on appear here; stalled ones can be requeued.";
 });
 
-const ageLabel = (job: AdminJob): string => {
-  const age = formatRelativeShort(job.completedAt ?? job.updatedAt ?? job.createdAt);
-  if (age === "just now") return age;
-  return `${age} ago`;
-};
+const ageLabel = (job: AdminJob): string =>
+  formatTimeAgo(job.completedAt ?? job.updatedAt ?? job.createdAt, { style: "narrow" });
 
 const errorLabel = (job: AdminJob): string => {
   if (job.errorDetail) return job.errorDetail;

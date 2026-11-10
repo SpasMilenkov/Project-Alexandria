@@ -713,6 +713,7 @@ import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useSettingsStore } from "@/stores/settings";
 import { useTabStore } from "@/stores/tab";
+import { formatTimeAgo } from "@/utils/date-formatters";
 import { getFileIcon } from "@/utils/files/icons";
 import { logger } from "@/utils/logger";
 import { glassDrawerContent } from "@/utils/modal-ui";
@@ -838,14 +839,7 @@ const lastRefreshedAt = ref<Date | null>(null);
 const lastRefreshedLabel = ref<string>("");
 let labelTimer: ReturnType<typeof setInterval> | null = null;
 
-const formatRelative = (date: Date): string => {
-  const secs = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (secs < 5) return "just now";
-  if (secs < 60) return `${secs}s ago`;
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
-  return `${Math.floor(mins / 60)}h ago`;
-};
+const formatRelative = (date: Date): string => formatTimeAgo(date, { style: "narrow" });
 
 const startLabelTimer = (date: Date) => {
   if (labelTimer) clearInterval(labelTimer);

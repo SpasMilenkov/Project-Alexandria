@@ -43,7 +43,7 @@
         </div>
         <template v-if="user.updatedAt">
           <p class="text-sm font-medium text-default leading-tight">
-            {{ formatDate(user.updatedAt) }}
+            {{ formatTimeAgo(user.updatedAt) }}
           </p>
         </template>
         <template v-else>
@@ -79,7 +79,7 @@
         </div>
         <template v-if="user.isLockedOut && user.lockedOutStarted">
           <p class="text-sm font-medium text-warning leading-tight">
-            Restricted since {{ formatDate(user.lockedOutStarted) }}
+            Restricted since {{ formatTimeAgo(user.lockedOutStarted) }}
           </p>
         </template>
         <template v-else-if="user.isLockedOut">
@@ -118,7 +118,7 @@
         </div>
         <template v-if="user.deletedAt">
           <p class="text-sm font-medium text-error leading-tight">
-            Deleted {{ formatDate(user.deletedAt) }}
+            Deleted {{ formatTimeAgo(user.deletedAt) }}
           </p>
         </template>
         <template v-else>
@@ -259,7 +259,7 @@ import { computed } from "vue";
 import type { UserDetailsDto } from "@/types/user";
 
 import { getUserCount, getUserStorage } from "@/queries/user";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 import { formatBytes } from "@/utils/size";
 
 const props = defineProps<{

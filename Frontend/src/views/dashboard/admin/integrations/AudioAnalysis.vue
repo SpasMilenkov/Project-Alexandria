@@ -40,7 +40,7 @@ import {
   stuck,
   volumeByHour,
 } from "@/queries/audioAnalysis";
-import { formatDate, formatDuration } from "@/utils/date-formatters";
+import { formatDuration, formatTimeAgo } from "@/utils/date-formatters";
 
 ChartJS.register(
   Title,
@@ -597,7 +597,7 @@ const BATCH_COLUMNS = [
                   </p>
                 </div>
                 <span class="shrink-0 text-xs text-gray-600 dark:text-gray-400">
-                  {{ formatDate(row.createdAt) }}
+                  {{ formatTimeAgo(row.createdAt) }}
                 </span>
               </li>
             </ul>
@@ -752,14 +752,14 @@ const BATCH_COLUMNS = [
               <span
                 class="text-xs text-gray-600 [grid-area:created] md:text-right dark:text-gray-400"
               >
-                <span class="md:hidden">Created </span>{{ formatDate(batch.createdAt) }}
+                <span class="md:hidden">Created </span>{{ formatTimeAgo(batch.createdAt) }}
               </span>
 
               <span
                 class="text-right text-xs text-gray-600 [grid-area:completed] dark:text-gray-400"
               >
                 <span class="md:hidden">Completed </span
-                >{{ batch.completedAt ? formatDate(batch.completedAt) : "—" }}
+                >{{ batch.completedAt ? formatTimeAgo(batch.completedAt) : "—" }}
               </span>
             </div>
           </div>

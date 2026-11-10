@@ -29,7 +29,7 @@ import {
 import { buildDeepLink } from "@/features/monitoring/service-routing";
 import { useResolveIncident } from "@/mutations/monitoring";
 import { operationalEvents } from "@/queries/monitoring";
-import { formatDate, formatRelativeShort } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 const { dateRange, initialServiceType, initialSeverity, highlightId, lockedService } = defineProps<{
   dateRange: EventCalendarRange | null;
@@ -244,17 +244,15 @@ const formatAbsolute = (iso: string): string =>
     year: "numeric",
   });
 
-const ageLabel = (event: OperationalEvent): string => {
-  const age = formatRelativeShort(event.createdAt);
-  return age === "just now" ? age : `${age} ago`;
-};
+const ageLabel = (event: OperationalEvent): string =>
+  formatTimeAgo(event.createdAt, { style: "narrow" });
 
 const resolutionNoteRow = (event: OperationalEvent): string | null =>
   parseEventMetadata(event.metadataJson)?.resolutionNote ?? null;
 
 const subtitle = (event: OperationalEvent): string => {
   const parts = [SERVICE_LABELS[event.serviceType] ?? event.serviceType];
-  if (event.resolvedAt) parts.push(`resolved ${formatDate(event.resolvedAt)}`);
+  if (event.resolvedAt) parts.push(`resolved ${formatTimeAgo(event.resolvedAt)}`);
   return parts.join(" · ");
 };
 
@@ -541,7 +539,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                 {{ SEVERITY_LABELS[event.severity] }}
               </UBadge>
               <span class="text-xs text-gray-600 dark:text-gray-400 tabular-nums">
-                {{ formatDate(event.createdAt) }}
+                {{ formatTimeAgo(event.createdAt) }}
               </span>
               <UTooltip
                 :text="`Open ${SERVICE_LABELS[event.serviceType] ?? event.serviceType} details`"

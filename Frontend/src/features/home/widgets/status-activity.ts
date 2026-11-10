@@ -9,7 +9,7 @@ import { useAuditMessage } from "@/composables/useAuditMessage";
 import { ServiceType } from "@/enums";
 import { HomeActivityStyle, HomeStatusStyle } from "@/enums/home-widget";
 import { PUBLIC_SERVICE_LABELS } from "@/features/monitoring/public-status";
-import { localDayKey, utcDayKey } from "@/utils/date-formatters";
+import { formatTimeAgo, localDayKey, utcDayKey } from "@/utils/date-formatters";
 
 export const HOME_STATUS_STYLES = [
   {
@@ -286,8 +286,7 @@ export const homeActivityTime = (timestamp: string, now = new Date()): string =>
   if (!Number.isFinite(date.getTime())) return "Date unavailable";
 
   const elapsed = Math.max(0, now.getTime() - date.getTime());
-  if (elapsed < 60_000) return "Just now";
-  if (elapsed < 3_600_000) return `${Math.floor(elapsed / 60_000)}m ago`;
+  if (elapsed < 3_600_000) return formatTimeAgo(date, { now: now.getTime(), style: "narrow" });
   if (localDayKey(date) === localDayKey(now))
     return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 

@@ -22,12 +22,6 @@ export const addedThisWeekLabel = (
   return `${added}${more ? "+" : ""} added this week`;
 };
 
-export const daysAwayLabel = (lastPlayedAt: string, now = Date.now()): string => {
-  const days = Math.max(1, Math.floor((now - new Date(lastPlayedAt).getTime()) / DAY_MS));
-
-  return `${days} ${days === 1 ? "day" : "days"} ago`;
-};
-
 export const formatListeningTime = (seconds: number): string => {
   const totalMinutes = Math.floor(seconds / 60);
   const hours = Math.floor(totalMinutes / 60);

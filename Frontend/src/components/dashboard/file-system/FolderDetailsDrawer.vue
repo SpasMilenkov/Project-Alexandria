@@ -89,11 +89,11 @@
     <template v-if="displayDirectory">
       <DetailsSection title="Details">
         <div class="grid grid-cols-2 gap-2">
-          <DetailsTile label="Created" :hint="formatDate(displayDirectory.createdAt)">
+          <DetailsTile label="Created" :hint="formatTimeAgo(displayDirectory.createdAt)">
             {{ formatCalendarDate(displayDirectory.createdAt) }}
           </DetailsTile>
 
-          <DetailsTile label="Modified" :hint="formatDate(modifiedAt)">
+          <DetailsTile label="Modified" :hint="formatTimeAgo(modifiedAt)">
             {{ formatCalendarDate(modifiedAt) }}
           </DetailsTile>
 
@@ -138,7 +138,7 @@ import DetailsOwner from "@/components/common/details/DetailsOwner.vue";
 import DetailsSection from "@/components/common/details/DetailsSection.vue";
 import DetailsTile from "@/components/common/details/DetailsTile.vue";
 import PolicySection from "@/components/policy/PolicySection.vue";
-import { formatCalendarDate, formatDate } from "@/utils/date-formatters";
+import { formatCalendarDate, formatTimeAgo } from "@/utils/date-formatters";
 
 const { directory, favoritePending = false } = defineProps<{
   directory: DirectorySummaryDto | null;
@@ -176,7 +176,7 @@ const isOpen = computed({
 
 const drawerDescription = computed(() => {
   if (!displayDirectory.value) return undefined;
-  return `Created ${formatDate(displayDirectory.value.createdAt)}`;
+  return `Created ${formatTimeAgo(displayDirectory.value.createdAt)}`;
 });
 
 const modifiedAt = computed(() => {

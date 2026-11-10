@@ -108,7 +108,7 @@ import AdminHubCard from "@/components/dashboard/admin/AdminHubCard.vue";
 import { formatUptime, uptimeClass, useServiceStatus } from "@/composables/useServiceStatus";
 import { ServiceType } from "@/enums";
 import { UPTIME_WINDOW_DAYS } from "@/queries/monitoring";
-import { formatRelativeShort } from "@/utils/date-formatters";
+import { formatAgeShort } from "@/utils/date-formatters";
 
 interface Integration {
   id: string;
@@ -186,7 +186,7 @@ const statusOf = (services: ServiceType[]) => {
 
   return {
     // Incident age only means something while the service is in a bad state.
-    age: worst.incident ? formatRelativeShort(worst.incident.createdAt) : null,
+    age: worst.incident ? formatAgeShort(worst.incident.createdAt) : null,
     health: worst.health,
     uptime: worst.uptime,
   };

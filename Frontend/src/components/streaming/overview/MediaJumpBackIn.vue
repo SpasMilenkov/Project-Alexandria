@@ -3,8 +3,8 @@ import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
 import { isAuthError } from "@/api/shuffle";
-import { daysAwayLabel } from "@/features/media/overview";
 import { mediaOverviewJumpBackIn } from "@/queries/media-overview";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 import MediaOverviewFile from "./MediaOverviewFile.vue";
 import MediaOverviewSection from "./MediaOverviewSection.vue";
@@ -37,7 +37,7 @@ const inactiveDays = computed(() => query.data.value?.inactiveDays ?? 30);
         :file="song.file"
         :user-id="userId"
         playback="single"
-        :chip="daysAwayLabel(song.lastPlayedAt)"
+        :chip="formatTimeAgo(song.lastPlayedAt)"
         class="w-[clamp(160px,9.2vw,232px)] shrink-0"
       />
     </MediaShelfScroller>

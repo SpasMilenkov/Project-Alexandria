@@ -9,7 +9,12 @@ import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
 import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
 import StreamHistoryGhost from "@/components/streaming/ghosts/StreamHistoryGhost.vue";
 import { getHistory } from "@/queries/streaming";
-import { formatDate, formatDuration } from "@/utils/date-formatters";
+import {
+  type DateInput,
+  formatCalendarDate,
+  formatDuration,
+  formatTimeAgo,
+} from "@/utils/date-formatters";
 
 const pageSize = 20;
 const currentPage = ref(1);
@@ -24,7 +29,6 @@ const query = computed<StreamHistoryQuery>(() => ({
 const { data, error, isLoading, refetch } = useQuery(() => getHistory(query.value));
 
 type HistoryEntry = NonNullable<NonNullable<typeof data.value>["items"]>[number];
-type DateInput = Parameters<typeof formatDate>[0];
 
 const filterDefs: { label: string; value: boolean | undefined }[] = [
   { label: "All", value: undefined },
@@ -74,26 +78,8 @@ const emptyState = computed(() => {
   return { canReset: false, title: "No history yet" };
 });
 
-const relativeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-
 // Relative time for the last week, absolute date for anything older
-const formatWhen = (value: DateInput) => {
-  const diffMinutes = Math.round((new Date(value as string).getTime() - Date.now()) / 60000);
-  const absMinutes = Math.abs(diffMinutes);
-  if (Number.isNaN(diffMinutes) || absMinutes >= 7 * 24 * 60) {
-    return formatDate(value);
-  }
-  if (absMinutes < 1) {
-    return "Just now";
-  }
-  if (absMinutes < 60) {
-    return relativeFormatter.format(diffMinutes, "minute");
-  }
-  if (absMinutes < 24 * 60) {
-    return relativeFormatter.format(Math.round(diffMinutes / 60), "hour");
-  }
-  return relativeFormatter.format(Math.round(diffMinutes / 1440), "day");
-};
+const formatWhen = (value: DateInput) => formatTimeAgo(value, { absoluteAfterDays: 7 });
 
 const statusOf = (entry: HistoryEntry) => {
   if (entry.qualifiedPlayCount > 1) {
@@ -229,7 +215,7 @@ const subtitleOf = (entry: HistoryEntry) => {
               </UBadge>
               <span
                 class="text-xs text-gray-500 dark:text-gray-500 tabular-nums sm:w-28 sm:text-right"
-                :title="String(formatDate(entry.lastAccessedAt))"
+                :title="formatCalendarDate(entry.lastAccessedAt)"
               >
                 {{ formatWhen(entry.lastAccessedAt) }}
               </span>

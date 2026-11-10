@@ -9,7 +9,7 @@ import { formatUptime, uptimeClass, useServiceStatus } from "@/composables/useSe
 import { MONITORED_SERVICES, SERVICE_ICONS, SERVICE_LABELS } from "@/features/monitoring/display";
 import { buildDeepLink } from "@/features/monitoring/service-routing";
 import { UPTIME_WINDOW_DAYS } from "@/queries/monitoring";
-import { formatRelativeShort } from "@/utils/date-formatters";
+import { formatAgeShort } from "@/utils/date-formatters";
 
 const { activeIncident, healthOf, isLoading, summarize, uptimeOf, visibleError } =
   useServiceStatus();
@@ -20,7 +20,7 @@ const rows = computed(() =>
 
     return {
       // Incident age only makes sense while a service is actually in a bad state.
-      age: active ? formatRelativeShort(active.createdAt) : null,
+      age: active ? formatAgeShort(active.createdAt) : null,
       health: healthOf(service),
       icon: SERVICE_ICONS[service],
       label: SERVICE_LABELS[service],

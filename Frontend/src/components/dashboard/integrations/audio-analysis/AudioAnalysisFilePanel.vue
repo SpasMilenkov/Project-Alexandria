@@ -5,7 +5,7 @@ import { computed, ref } from "vue";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useTrackAudioAnalysis } from "@/composables/useTrackAudioAnalysis";
 import { formatConfidence } from "@/features/audio-analysis/taxonomy";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 import AudioConfidenceBar from "./AudioConfidenceBar.vue";
 import AudioMoodBalance from "./AudioMoodBalance.vue";
@@ -60,7 +60,7 @@ const voiceIcon = computed(() => {
 });
 
 const analyzedLabel = computed(() => {
-  if (latestAnalyzedAt.value) return `Analyzed ${formatDate(latestAnalyzedAt.value).toLowerCase()}`;
+  if (latestAnalyzedAt.value) return `Analyzed ${formatTimeAgo(latestAnalyzedAt.value)}`;
 
   return "Genre and mood, read from the audio itself";
 });
@@ -149,7 +149,7 @@ const historySummary = computed(() => {
   const count = batchRows.value.length;
   const attempts = count === 1 ? "1 attempt" : `${count} attempts`;
 
-  return `${attempts} · last ${latest.batch.label.toLowerCase()} ${formatDate(latest.createdAt).toLowerCase()}`;
+  return `${attempts} · last ${latest.batch.label.toLowerCase()} ${formatTimeAgo(latest.createdAt)}`;
 });
 </script>
 
@@ -211,7 +211,7 @@ const historySummary = computed(() => {
             v-if="genreEnrichment"
             class="ml-auto text-xs font-medium text-gray-600 dark:text-gray-400"
           >
-            {{ formatDate(genreEnrichment.createdAt) }}
+            {{ formatTimeAgo(genreEnrichment.createdAt) }}
           </span>
         </div>
 
@@ -312,7 +312,7 @@ const historySummary = computed(() => {
             v-if="moodEnrichment"
             class="ml-auto text-xs font-medium text-gray-600 dark:text-gray-400"
           >
-            {{ formatDate(moodEnrichment.createdAt) }}
+            {{ formatTimeAgo(moodEnrichment.createdAt) }}
           </span>
         </div>
 
@@ -424,7 +424,7 @@ const historySummary = computed(() => {
               </span>
 
               <span class="ml-auto text-xs font-medium text-gray-600 dark:text-gray-400">
-                {{ formatDate(row.createdAt) }}
+                {{ formatTimeAgo(row.createdAt) }}
               </span>
 
               <p

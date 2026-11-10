@@ -117,7 +117,7 @@ import {
 } from "@/features/files/capture-metadata";
 import { getCaptureMetadata } from "@/queries/files";
 import { useSettingsStore } from "@/stores/settings";
-import { formatDate } from "@/utils/date-formatters";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 interface CaptureFact {
   key: string;
@@ -168,7 +168,7 @@ const momentFact = (m: CaptureMetadataDto): CaptureFact | null => {
     key: "moment",
     icon: "mdi:calendar-clock-outline",
     title: moment.headline,
-    detail: `${moment.date} at ${moment.time} · ${formatDate(m.capturedAt)}`,
+    detail: `${moment.date} at ${moment.time} · ${formatTimeAgo(m.capturedAt)}`,
     note: moment.zoneNote,
   };
 };

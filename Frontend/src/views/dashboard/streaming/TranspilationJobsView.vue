@@ -17,6 +17,7 @@ import { JobStatus } from "@/enums/job-status";
 import { quoted } from "@/features/toast/format";
 import { stopTranspilationJob } from "@/mutations/streaming";
 import { getTranspilationJobs } from "@/queries/streaming";
+import { formatTimeAgo } from "@/utils/date-formatters";
 
 const toast = useAppToast("jobs");
 
@@ -494,14 +495,8 @@ const formatDate = (iso?: string) =>
 
 const formatRelative = (iso?: string) => {
   if (!iso) return "—";
-  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 8) return `${days} d ago`;
-  return formatDate(iso);
+
+  return formatTimeAgo(iso, { absoluteAfterDays: 7, style: "narrow" });
 };
 
 const statusFilterOptions = [
