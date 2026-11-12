@@ -14,10 +14,9 @@ public class LogoutEndpoint(IAuthService authService) : EndpointWithoutRequest
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        if (HttpContext.Request.Cookies.TryGetValue(AuthCookies.RefreshToken, out var refreshToken))
-        {
-            await authService.RevokeRefreshTokenAsync(refreshToken, ct);
-        }
+        HttpContext.Request.Cookies.TryGetValue(AuthCookies.RefreshToken, out var refreshToken);
+
+        await authService.LogoutAsync(User.GetUserId(), refreshToken, ct);
 
         HttpContext.Response.ClearSessionCookies();
 

@@ -46,11 +46,13 @@
 import type { TableColumn } from "@nuxt/ui";
 
 import { h, resolveComponent } from "vue";
+import { useRouter } from "vue-router";
 
 import type { UserDetailsDto } from "@/types/user";
 
 import UserExpandedRow from "@/components/dashboard/users/UserExpandedRow.vue";
 import { UserRole } from "@/enums/UserRole";
+import { toAuditRouteQuery } from "@/features/audit/query";
 import { formatTimeAgo } from "@/utils/date-formatters";
 
 // Props & emits
@@ -110,6 +112,12 @@ const avatarBg = (user: UserDetailsDto) => {
   return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
 };
 
+const router = useRouter();
+
+const openActivity = (user: UserDetailsDto) => {
+  void router.push({ name: "admin-activity-log", query: toAuditRouteQuery({ owner: user.id }) });
+};
+
 const rowActions = (user: UserDetailsDto) => [
   [
     {
@@ -121,6 +129,11 @@ const rowActions = (user: UserDetailsDto) => [
       icon: user.isLockedOut ? "i-lucide-lock-open" : "i-lucide-lock",
       label: user.isLockedOut ? "Remove restriction" : "Restrict",
       onSelect: () => emit("restrict", user),
+    },
+    {
+      icon: "i-lucide-history",
+      label: "View activity",
+      onSelect: () => openActivity(user),
     },
   ],
   [

@@ -9,6 +9,7 @@ using Alexandria.Services.Preview;
 using Alexandria.Services.Preview.Archives;
 using Alexandria.Services.Preview.Text;
 using Alexandria.Services.Storage;
+using Alexandria.Services.Storage.Access;
 using Alexandria.Services.Storage.AutoTagging;
 using Alexandria.Services.Storage.Cleanup;
 using Alexandria.Services.Storage.Content;
@@ -63,6 +64,7 @@ public static class ServiceExtensions
         services.AddScoped<IFileService, FileService>();
         services.AddHttpClient<MetricsService>();
         services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<IAccessOverviewService, AccessOverviewService>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -122,6 +124,7 @@ public static class ServiceExtensions
         services.AddHostedService<PromotionQueueWorker>();
         services.AddHostedService<PromotionScannerWorker>();
         services.AddHostedService<TempCleanupWorker>();
+        services.AddHostedService<AuditRetentionWorker>();
         services.AddHostedService<OverviewSummaryFinalizeWorker>();
         services.AddHostedService<OrphanedCleanupWorker>();
         services.AddHostedService<PreviewSizeBackfillWorker>();

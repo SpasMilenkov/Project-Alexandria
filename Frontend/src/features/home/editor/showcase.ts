@@ -3,9 +3,12 @@ import type { MediaFileDto } from "@/api/streaming";
 import type { HomeLayout, HomeWidgetOptions } from "@/types/home";
 import type { HomeWidgetPreview } from "@/types/home-widget-preview";
 
-import { AuditEventCode, EntityType, LogSource, OperationType } from "@/api/activity";
+import { AuditEventCode } from "@/enums/audit-event-code";
+import { EntityType } from "@/enums/entity-type";
 import { HomeWidgetSize, type HomeWidgetType } from "@/enums/home-widget";
 import { JobStatus } from "@/enums/job-status";
+import { LogSource } from "@/enums/log-source";
+import { OperationType } from "@/enums/operation-type";
 import { ServiceType } from "@/enums/service-type";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
 import { homeWidgetFootprint } from "@/features/home/grid/placement";
@@ -62,6 +65,25 @@ const showcaseMedia = (): MediaFileDto[] =>
       segmentPrefix: null,
     }),
   );
+
+const showcaseActivity = (ownerId: string, name: string, index: number, timestamp: string) => ({
+  id: `showcase-activity-${index}`,
+  operationType: OperationType.Create,
+  entityType: EntityType.File,
+  userId: ownerId,
+  userName: null,
+  entityId: `showcase-file-${index}`,
+  ownerId,
+  parentEntityId: null,
+  correlationId: null,
+  entityName: name,
+  eventCode: AuditEventCode.FileCreated,
+  fallbackDescription: null,
+  ipAddress: null,
+  metadata: JSON.stringify({ name }),
+  timestamp,
+  logSource: LogSource.API,
+});
 
 export const createHomeWidgetPreview = (ownerId: string): HomeWidgetPreview => {
   const now = Date.now();
@@ -151,16 +173,7 @@ export const createHomeWidgetPreview = (ownerId: string): HomeWidgetPreview => {
         "Photography",
         "Weekend reel.mp4",
         "Reading list.txt",
-      ].map((name, index) => ({
-        operationType: OperationType.Create,
-        entityType: EntityType.File,
-        userId: ownerId,
-        entityId: `showcase-file-${index}`,
-        eventCode: AuditEventCode.FileCreated,
-        metadata: JSON.stringify({ name }),
-        timestamp: date(index * 8 + 1),
-        logSource: LogSource.API,
-      })),
+      ].map((name, index) => showcaseActivity(ownerId, name, index, date(index * 8 + 1))),
     ),
     topSongs: media.map((file, index) => ({
       file,

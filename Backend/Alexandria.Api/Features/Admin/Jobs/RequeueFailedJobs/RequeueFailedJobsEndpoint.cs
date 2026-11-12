@@ -1,6 +1,9 @@
+using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Audit;
 using FastEndpoints;
 using FluentValidation;
 
@@ -23,7 +26,10 @@ public class RequeueFailedJobsRequestValidator : Validator<RequeueFailedJobsRequ
     }
 }
 
-sealed class RequeueFailedJobsEndpoint(IJobRequeueService requeueService)
+sealed class RequeueFailedJobsEndpoint(
+    IJobRequeueService requeueService,
+    IAuditWriter auditWriter,
+    IUnitOfWork unitOfWork)
     : Endpoint<RequeueFailedJobsRequest, RequeueFailedJobsResponse>
 {
     public override void Configure()
@@ -37,6 +43,24 @@ sealed class RequeueFailedJobsEndpoint(IJobRequeueService requeueService)
         try
         {
             var requeued = await requeueService.RequeueFailedAsync(req.Type, req.Limit, ct);
+
+            if (requeued > 0)
+            {
+                auditWriter.Record(new AuditEntry
+                {
+                    EventCode = AuditEventCode.JobsRequeuedBulk,
+                    OperationType = OperationType.Update,
+                    EntityType = EntityType.Job,
+                    Metadata = new Dictionary<string, object?>
+                    {
+                        ["job_type"] = req.Type.ToString(),
+                        ["requeued"] = requeued,
+                        ["limit"] = req.Limit,
+                    },
+                });
+                await unitOfWork.SaveChangesAsync(ct);
+            }
+
             await Send.OkAsync(new RequeueFailedJobsResponse(requeued), ct);
         }
         catch (MessageBrokerUnavailableException ex)

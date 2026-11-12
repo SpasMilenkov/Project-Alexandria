@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Tests.Common.Builders;
@@ -19,6 +20,7 @@ public class UpdateFileMetadataTests
     private readonly Services.Storage.FileService _sut;
     private readonly Guid _fileId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly IAuditWriter _auditWriter = Substitute.For<IAuditWriter>();
 
     public UpdateFileMetadataTests()
     {
@@ -29,6 +31,7 @@ public class UpdateFileMetadataTests
             _unitOfWork,
             Substitute.For<IDirectoryService>(),
             Substitute.For<IPublisherService>(),
+            _auditWriter,
             Substitute.For<ILogger<Services.Storage.FileService>>());
     }
 

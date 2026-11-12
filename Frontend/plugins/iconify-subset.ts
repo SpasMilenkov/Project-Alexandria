@@ -221,6 +221,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "settings",
     "guitar",
     "disc-3",
+    "smartphone",
     "smile",
     "cloud-rain",
     "leaf",
@@ -229,6 +230,9 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "clock-alert",
     "cog",
     "infinity",
+    "app-window",
+    "database",
+    "server-cog",
   ],
   "material-symbols": ["keyboard-outline-rounded", "vitals"],
   mdi: [

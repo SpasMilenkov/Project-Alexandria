@@ -1,10 +1,12 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Audit;
 using Alexandria.Dto.Extensions;
 using Alexandria.Dto.Files.Streaming.Lyrics;
 
@@ -13,7 +15,8 @@ namespace Alexandria.Services.Streaming;
 public class TrackLyricsService(
     IUnitOfWork unitOfWork,
     IPublisherService publisher,
-    IMessageBrokerStatus brokerStatus) : ITrackLyricsService
+    IMessageBrokerStatus brokerStatus,
+    IAuditWriter auditWriter) : ITrackLyricsService
 {
     /// <inheritdoc/>
     public async Task<LyricsDto> GetLyricsForMediaAsync(Guid jobId, Guid userId, CancellationToken ct = default)
@@ -24,9 +27,10 @@ public class TrackLyricsService(
         if (lyrics is not null) return lyrics.ToDto();
 
         // A read must not fail or leave a pending row behind while the broker is down; the
-        // first read after recovery queues the fetch.
+        // first read after recovery queues the fetch. Fetching on first view is derived data, like
+        // auto-tags and generated previews, so it is not audited the way a user's refetch is.
         if (brokerStatus.IsAvailable)
-            await QueueLyricsRefetchAsync(jobId, userId, ct);
+            await QueueFetchAsync(jobId, userId, recordAudit: false, ct);
 
         return new LyricsDto
         {
@@ -36,7 +40,12 @@ public class TrackLyricsService(
     }
 
     /// <inheritdoc/>
-    public async Task QueueLyricsRefetchAsync(Guid jobId, Guid userId, CancellationToken ct = default)
+    public Task QueueLyricsRefetchAsync(Guid jobId, Guid userId, CancellationToken ct = default)
+    {
+        return QueueFetchAsync(jobId, userId, recordAudit: true, ct);
+    }
+
+    private async Task QueueFetchAsync(Guid jobId, Guid userId, bool recordAudit, CancellationToken ct)
     {
         MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
 
@@ -52,6 +61,14 @@ public class TrackLyricsService(
             existing.Status = LyricsStatus.PendingFetch;
             existing.FetchedAt = null;
             unitOfWork.Lyrics.Update(existing);
+
+            if (recordAudit)
+            {
+                await RecordAsync(AuditEventCode.LyricsRefetchQueued, OperationType.Update, jobId, userId,
+                    existing.Id, new Dictionary<string, object?> { ["provider"] = existing.SourceProvider.ToString() },
+                    ct);
+            }
+
             await unitOfWork.SaveChangesAsync(ct);
 
             await RequeueAndPublishAsync(existing.JobId, "lyrics.job", ct);
@@ -71,12 +88,18 @@ public class TrackLyricsService(
         };
         await unitOfWork.Jobs.AddAsync(job, ct);
 
-        var lyrics = await unitOfWork.Lyrics.AddAsync(new TrackLyrics
+        var lyricsId = Guid.NewGuid();
+        await unitOfWork.Lyrics.AddAsync(new TrackLyrics
         {
+            Id = lyricsId,
             TranspilationJobId = jobId,
             Status = LyricsStatus.PendingFetch,
             JobId = job.Id
         }, ct);
+
+        if (recordAudit)
+            await RecordAsync(AuditEventCode.LyricsRefetchQueued, OperationType.Create, jobId, userId, lyricsId,
+                null, ct);
 
         await unitOfWork.SaveChangesAsync(ct);
 
@@ -114,6 +137,8 @@ public class TrackLyricsService(
 
         lyrics.DeletedAt = DateTime.UtcNow;
         unitOfWork.Lyrics.Update(lyrics);
+        await RecordAsync(AuditEventCode.LyricsDeleted, OperationType.Delete, lyrics.TranspilationJobId, userId,
+            lyrics.Id, new Dictionary<string, object?> { ["provider"] = lyrics.SourceProvider.ToString() }, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 
@@ -130,6 +155,8 @@ public class TrackLyricsService(
 
         var existing = await unitOfWork.Lyrics.FirstOrDefaultAsync(
             l => l.TranspilationJobId == jobId && l.TranspilationJob!.UserId == userId, ct);
+
+        var lyricsId = existing?.Id ?? Guid.NewGuid();
 
         if (existing is not null)
         {
@@ -168,6 +195,7 @@ public class TrackLyricsService(
 
             await unitOfWork.Lyrics.AddAsync(new TrackLyrics
             {
+                Id = lyricsId,
                 TranspilationJobId = jobId,
                 PlainLyrics = plainLyrics,
                 SyncedLyrics = syncedLyrics,
@@ -179,6 +207,15 @@ public class TrackLyricsService(
             }, ct);
         }
 
+        var operation = existing is null ? OperationType.Create : OperationType.Update;
+
+        await RecordAsync(AuditEventCode.LyricsUploaded, operation, jobId, userId, lyricsId,
+            new Dictionary<string, object?>
+            {
+                ["replaced"] = existing is not null,
+                ["has_plain"] = plainLyrics is not null,
+                ["has_synced"] = syncedLyrics is not null,
+            }, ct);
         await unitOfWork.SaveChangesAsync(ct);
     }
 
@@ -198,6 +235,7 @@ public class TrackLyricsService(
                          l => l.Id == lyricsId && l.TranspilationJob!.UserId == userId, ct)
                      ?? throw new LyricsNotFoundException(lyricsId);
 
+        var previousProvider = lyrics.SourceProvider;
         lyrics.SourceProvider = provider;
         lyrics.Status = LyricsStatus.PendingFetch;
         lyrics.PlainLyrics = null;
@@ -207,8 +245,49 @@ public class TrackLyricsService(
         lyrics.FetchedAt = null;
         lyrics.Cached = false;
         unitOfWork.Lyrics.Update(lyrics);
+        await RecordAsync(AuditEventCode.LyricsProviderChanged, OperationType.Update, lyrics.TranspilationJobId,
+            userId, lyrics.Id, new Dictionary<string, object?>
+            {
+                ["old"] = previousProvider.ToString(),
+                ["new"] = provider.ToString(),
+            }, ct);
         await unitOfWork.SaveChangesAsync(ct);
 
         await RequeueAndPublishAsync(lyrics.JobId, "lyrics.change", ct);
+    }
+
+    // Lyrics hang off a transcode, so the row is filed under the track's file to show up in its
+    // history. TrackLyrics has no trigger because the lyrics worker rewrites it constantly.
+    private async Task RecordAsync(
+        AuditEventCode code,
+        OperationType operation,
+        Guid transpilationJobId,
+        Guid userId,
+        Guid lyricsId,
+        Dictionary<string, object?>? extra,
+        CancellationToken ct)
+    {
+        var track = await unitOfWork.TranspilationJobs.GetTrackFileAsync(transpilationJobId, ct);
+
+        var metadata = new Dictionary<string, object?>
+        {
+            ["lyrics_id"] = lyricsId,
+            ["transpilation_job_id"] = transpilationJobId,
+            ["version_id"] = track?.VersionId,
+        };
+
+        foreach (var (key, value) in extra ?? [])
+            metadata[key] = value;
+
+        auditWriter.Record(new AuditEntry
+        {
+            EventCode = code,
+            OperationType = operation,
+            EntityType = EntityType.File,
+            EntityId = track?.FileId,
+            OwnerId = userId,
+            EntityName = track?.FileName,
+            Metadata = metadata,
+        });
     }
 }

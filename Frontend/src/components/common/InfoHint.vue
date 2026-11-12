@@ -1,18 +1,28 @@
 <script setup lang="ts">
 import { useMediaQuery } from "@vueuse/core";
+import { computed } from "vue";
 
 const {
   title,
   icon,
   guidance = undefined,
+  wide = false,
 } = defineProps<{
   title: string;
   icon: string;
   guidance?: string;
+  // For hints with side-by-side detail, which would run off short screens as a tall column.
+  wide?: boolean;
 }>();
 
 // Hover cards never open on touch screens, so devices without hover open them with a tap.
 const canHover = useMediaQuery("(hover: hover)");
+
+const contentClass = computed(() => {
+  const width = wide ? "w-[min(40rem,calc(100vw-2rem))]" : "w-[min(20rem,calc(100vw-2rem))]";
+
+  return `bg-default ${width} rounded-2xl border border-gray-200/70 p-0 shadow-2xl ring-0 dark:border-gray-700/70`;
+});
 </script>
 
 <template>
@@ -21,10 +31,7 @@ const canHover = useMediaQuery("(hover: hover)");
     :open-delay="150"
     :close-delay="200"
     :content="{ side: 'top', align: 'center', sideOffset: 8, collisionPadding: 16 }"
-    :ui="{
-      content:
-        'bg-default w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-gray-200/70 p-0 shadow-2xl ring-0 dark:border-gray-700/70',
-    }"
+    :ui="{ content: contentClass }"
   >
     <button
       type="button"

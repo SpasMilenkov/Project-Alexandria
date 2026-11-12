@@ -1,6 +1,8 @@
 import { computed, type Ref } from "vue";
 
-import { OperationType, type ActivityStatisticsOverview } from "@/api/activity";
+import type { ActivityStatisticsOverview } from "@/api/activity";
+
+import { OperationType } from "@/enums/operation-type";
 
 export interface CalendarDay {
   date: Date | null;
@@ -84,6 +86,24 @@ const toPadding = (day: CalendarDay): CalendarDay => ({
   isPadding: true,
 });
 
+interface NormalizedDay {
+  totalOperations: number;
+  countPerOperation: Partial<Record<OperationType, number>>;
+}
+
+const pad = (value: number) => String(value).padStart(2, "0");
+
+// The API keys days as "yyyy-MM-dd" UTC days; calendar cells are built from the same parts.
+export const calendarDayKey = (year: number, month: number, day: number): string =>
+  `${year}-${pad(month + 1)}-${pad(day)}`;
+
+const dayCount = (summary: NormalizedDay | undefined, op: OperationType | null): number => {
+  if (!summary) return 0;
+  if (op === null) return Number(summary.totalOperations);
+
+  return summary.countPerOperation[op] ?? 0;
+};
+
 export const useActivityCalendar = (
   data: Ref<ActivityStatisticsOverview | undefined>,
   selectedYear: Ref<number>,
@@ -95,28 +115,18 @@ export const useActivityCalendar = (
     const totalDays = isLeapYear(year) ? 366 : 365;
 
     // Pre-normalize all breakdowns once per recompute
-    const normalizedDays: Record<
-      number,
-      { totalOperations: number; countPerOperation: Partial<Record<OperationType, number>> }
-    > = data.value
-      ? Object.fromEntries(
-          Object.entries(data.value.activityPerDay).map(([k, summary]) => [
-            k,
-            {
-              totalOperations: summary.totalOperations,
-              countPerOperation: normalizeBreakdown(summary.countPerOperation),
-            },
-          ]),
-        )
-      : {};
+    const normalizedDays: Record<string, NormalizedDay> = {};
+    for (const [key, summary] of Object.entries(data.value?.activityPerDay ?? {})) {
+      normalizedDays[key] = {
+        countPerOperation: normalizeBreakdown(summary.countPerOperation),
+        totalOperations: summary.totalOperations,
+      };
+    }
 
     // Compute max count for intensity scaling relative to the active filter
     let maxCount = 0;
-    for (let d = 1; d <= totalDays; d++) {
-      const summary = normalizedDays[d];
-      if (!summary) continue;
-      const count =
-        op === null ? Number(summary.totalOperations) : (summary.countPerOperation[op] ?? 0);
+    for (const summary of Object.values(normalizedDays)) {
+      const count = dayCount(summary, op);
       if (count > maxCount) maxCount = count;
     }
 
@@ -146,12 +156,8 @@ export const useActivityCalendar = (
       const weekIndex = Math.floor(totalIndex / 7);
       const dayOfWeek = totalIndex % 7;
       const date = new Date(year, 0, d);
-      const summary = normalizedDays[d];
-      const count = summary
-        ? op === null
-          ? Number(summary.totalOperations)
-          : (summary.countPerOperation[op] ?? 0)
-        : 0;
+      const summary = normalizedDays[calendarDayKey(year, date.getMonth(), date.getDate())];
+      const count = dayCount(summary, op);
 
       slots.push({
         date,

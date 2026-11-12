@@ -1,12 +1,15 @@
 using System.Linq.Expressions;
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Audit;
+using Alexandria.Dto.Files.Streaming.Lyrics;
 using Alexandria.Services.Streaming;
 using AwesomeAssertions;
 using NSubstitute;
@@ -23,6 +26,8 @@ public class TrackLyricsServiceTests
     private readonly IUnitOfWork _uow = Substitute.For<IUnitOfWork>();
     private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
     private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
+    private readonly IAuditWriter _audit = Substitute.For<IAuditWriter>();
+    private readonly Guid _fileId = Guid.NewGuid();
 
     private readonly TrackLyricsService _sut;
 
@@ -38,7 +43,9 @@ public class TrackLyricsServiceTests
             .Returns(ci => ci.Arg<Job>());
         _broker.IsEnabled.Returns(true);
         _broker.IsAvailable.Returns(true);
-        _sut = new TrackLyricsService(_uow, _publisher, _broker);
+        _transcodes.GetTrackFileAsync(_jobId, Arg.Any<CancellationToken>())
+            .Returns(new TrackFileRef(Guid.NewGuid(), _fileId, "song.flac"));
+        _sut = new TrackLyricsService(_uow, _publisher, _broker, _audit);
     }
 
     // ---- GetLyricsForMediaAsync ----
@@ -416,5 +423,78 @@ public class TrackLyricsServiceTests
         var act = async () => await _sut.ChangeProviderAsync(Guid.NewGuid(), _userId, LyricsProvider.LrclibPublic);
 
         await act.Should().ThrowAsync<LyricsNotFoundException>();
+    }
+
+    // ---- Audit ----
+
+    [Fact]
+    public async Task get_lyrics_first_view_queues_the_fetch_without_an_audit_row()
+    {
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((TrackLyrics?)null);
+
+        await _sut.GetLyricsForMediaAsync(_jobId, _userId, TestContext.Current.CancellationToken);
+
+        await _lyricsRepo.Received(1).AddAsync(Arg.Any<TrackLyrics>(), Arg.Any<CancellationToken>());
+        _audit.DidNotReceiveWithAnyArgs().Record(default!);
+    }
+
+    [Fact]
+    public async Task queue_refetch_records_the_new_rows_id_against_the_tracks_file()
+    {
+        TrackLyrics? added = null;
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((TrackLyrics?)null);
+        _lyricsRepo.AddAsync(Arg.Do<TrackLyrics>(l => added = l), Arg.Any<CancellationToken>());
+
+        await _sut.QueueLyricsRefetchAsync(_jobId, _userId, TestContext.Current.CancellationToken);
+
+        added.Should().NotBeNull();
+        _audit.Received(1).Record(Arg.Is<AuditEntry>(e =>
+            e.EventCode == AuditEventCode.LyricsRefetchQueued
+            && e.EntityId == _fileId
+            && e.EntityName == "song.flac"
+            && Equals(e.Metadata!["lyrics_id"], added!.Id)));
+    }
+
+    [Fact]
+    public async Task upload_new_lyrics_records_a_create_with_the_new_rows_id()
+    {
+        TrackLyrics? added = null;
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns((TrackLyrics?)null);
+        _lyricsRepo.AddAsync(Arg.Do<TrackLyrics>(l => added = l), Arg.Any<CancellationToken>());
+
+        await _sut.UploadLyricsAsync(_jobId, _userId, "plain", null, TestContext.Current.CancellationToken);
+
+        added.Should().NotBeNull();
+        added!.Id.Should().NotBe(Guid.Empty);
+        _audit.Received(1).Record(Arg.Is<AuditEntry>(e =>
+            e.EventCode == AuditEventCode.LyricsUploaded
+            && e.OperationType == OperationType.Create
+            && Equals(e.Metadata!["lyrics_id"], added.Id)));
+    }
+
+    [Fact]
+    public async Task upload_replacing_lyrics_records_an_update_with_the_existing_id()
+    {
+        var existing = new TrackLyrics
+        {
+            Id = Guid.NewGuid(),
+            TranspilationJobId = _jobId,
+            SourceProvider = LyricsProvider.LrclibPublic,
+            JobId = Guid.NewGuid(),
+        };
+        _lyricsRepo.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<TrackLyrics, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(existing);
+
+        await _sut.UploadLyricsAsync(_jobId, _userId, "plain", null, TestContext.Current.CancellationToken);
+
+        _audit.Received(1).Record(Arg.Is<AuditEntry>(e =>
+            e.OperationType == OperationType.Update && Equals(e.Metadata!["lyrics_id"], existing.Id)));
     }
 }

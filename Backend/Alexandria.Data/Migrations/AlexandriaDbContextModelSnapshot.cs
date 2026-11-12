@@ -204,8 +204,15 @@ namespace Alexandria.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CorrelationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("EntityId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("EntityName")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
@@ -225,9 +232,6 @@ namespace Alexandria.Data.Migrations
                         .HasMaxLength(45)
                         .HasColumnType("character varying(45)");
 
-                    b.Property<bool>("IsEnriched")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("MetadataJson")
                         .HasColumnType("jsonb");
 
@@ -235,6 +239,12 @@ namespace Alexandria.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ParentEntityId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Source")
                         .IsRequired()
@@ -244,18 +254,24 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("UserId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CorrelationId");
 
                     b.HasIndex("EventCode");
 
                     b.HasIndex("Timestamp");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("OwnerId", "Timestamp");
 
-                    b.HasIndex("EntityType", "EntityId");
+                    b.HasIndex("ParentEntityId", "Timestamp");
+
+                    b.HasIndex("UserId", "Timestamp");
+
+                    b.HasIndex("EntityType", "EntityId", "Timestamp");
 
                     b.ToTable("AuditLogs", (string)null);
                 });
@@ -1695,6 +1711,10 @@ namespace Alexandria.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<string>("CreatedByIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1705,6 +1725,9 @@ namespace Alexandria.Data.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("SessionStartedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Token")
@@ -1718,6 +1741,10 @@ namespace Alexandria.Data.Migrations
                     b.Property<Guid?>("UpdatedBy")
                         .HasMaxLength(100)
                         .HasColumnType("uuid");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");

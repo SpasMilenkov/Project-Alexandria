@@ -10,6 +10,7 @@ public class AuthResult
     public IList<string> UserRoles { get; set; }
     public string? RefreshToken { get; set; }
     public OnboardingStep OnboardingStep { get; set; }
+    public LoginFailureReason? FailureReason { get; set; }
 
     public static AuthResult SetSuccess(ApplicationUser user)
     {
@@ -19,5 +20,10 @@ public class AuthResult
     public static AuthResult Failed()
     {
         return new AuthResult { Succeeded = false };
+    }
+
+    public static AuthResult Failed(LoginFailureReason reason)
+    {
+        return new AuthResult { Succeeded = false, FailureReason = reason };
     }
 }

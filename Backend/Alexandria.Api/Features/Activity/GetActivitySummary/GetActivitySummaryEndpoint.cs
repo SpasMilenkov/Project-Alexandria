@@ -3,6 +3,7 @@ using Alexandria.Common.Services;
 using Alexandria.Dto.Audit;
 using FastEndpoints;
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Alexandria.Api.Features.Activity.GetActivitySummary;
 
@@ -33,6 +34,7 @@ internal sealed class GetActivitySummaryEndpoint(IAuditService auditService)
     {
         Get("/activity/summary");
         Policies(Common.Auth.Policies.RequireUser);
+        ResponseCache(0, ResponseCacheLocation.None, noStore: true);
     }
 
     public override async Task HandleAsync(ActivityQuery req, CancellationToken ct)

@@ -1,6 +1,10 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
+using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Audit;
 using FastEndpoints;
 using FluentValidation;
 
@@ -26,7 +30,10 @@ sealed class ResolveIncidentRequestValidator : Validator<ResolveIncidentRequest>
     }
 }
 
-sealed class ResolveIncidentEndpoint(IOperationalEventService service)
+sealed class ResolveIncidentEndpoint(
+    IOperationalEventService service,
+    IAuditWriter auditWriter,
+    IUnitOfWork unitOfWork)
     : Endpoint<ResolveIncidentRequest, OperationalEvent>
 {
     public override void Configure()
@@ -43,7 +50,24 @@ sealed class ResolveIncidentEndpoint(IOperationalEventService service)
         switch (result.Outcome)
         {
             case ResolveOutcome.Resolved:
-                await Send.OkAsync(result.Event!, ct);
+                auditWriter.Record(new AuditEntry
+                {
+                    EventCode = AuditEventCode.IncidentResolved,
+                    OperationType = OperationType.Update,
+                    EntityType = EntityType.Incident,
+                    EntityId = req.Id,
+                    EntityName = result.Event!.Code.ToString(),
+                    Metadata = new Dictionary<string, object?>
+                    {
+                        ["service"] = result.Event.ServiceType.ToString(),
+                        ["code"] = result.Event.Code.ToString(),
+                        ["severity"] = result.Event.Severity.ToString(),
+                        ["note"] = req.Note,
+                    },
+                });
+                await unitOfWork.SaveChangesAsync(ct);
+
+                await Send.OkAsync(result.Event, ct);
                 break;
             case ResolveOutcome.AlreadyResolved:
                 AddError(x => x.Id, "This incident has already been resolved.");

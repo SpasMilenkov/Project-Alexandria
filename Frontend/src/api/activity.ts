@@ -1,78 +1,14 @@
+import type { AuditEventCode } from "@/enums/audit-event-code";
+import type { AuditExportFormat } from "@/enums/audit-export-format";
+import type { AuditSortBy } from "@/enums/audit-sort-by";
+import type { EntityType } from "@/enums/entity-type";
+import type { LogSource } from "@/enums/log-source";
+import type { OperationType } from "@/enums/operation-type";
 import type { SortDirection } from "@/enums/SortDirection";
 
 import type { PaginatedResponse } from "./directory";
 
 import { api } from "./client";
-
-export enum OperationType {
-  Read = 0,
-  Create = 1,
-  Update = 2,
-  Delete = 3,
-  Login = 4,
-  Logout = 5,
-}
-
-export enum LogSource {
-  API = 1,
-  Trigger = 2,
-  System = 3,
-}
-
-export enum EntityType {
-  File = 0,
-  FileVersion = 1,
-  Directory = 2,
-  Tag = 3,
-  User = 4,
-  Preview = 5,
-}
-
-export enum AuditEventCode {
-  // File events
-  FileCreated = 0,
-  FileRenamed = 1,
-  FileMoved = 2,
-  FileSoftDeleted = 3,
-  FileRestored = 4,
-  FileDeletedPermanently = 5,
-  // FileVersion events
-  FileVersionCreated = 6,
-  FileVersionSoftDeleted = 7,
-  FileVersionRestored = 8,
-  FileVersionDeletedPermanently = 9,
-  // Directory events
-  DirectoryCreated = 10,
-  DirectoryRenamed = 11,
-  DirectoryMoved = 12,
-  DirectorySoftDeleted = 13,
-  DirectoryRestored = 14,
-  DirectoryDeletedPermanently = 15,
-  // Preview events
-  PreviewCreated = 16,
-  PreviewSoftDeleted = 17,
-  PreviewRestored = 18,
-  PreviewDeletedPermanently = 19,
-  // Tag events
-  TagCreated = 20,
-  TagRenamed = 21,
-  TagUpdated = 22,
-  TagSoftDeleted = 23,
-  TagRestored = 24,
-  TagDeletedPermanently = 25,
-  // User events
-  UserCreated = 26,
-  UserDeleted = 27,
-  UserLogin = 28,
-  UserEmailChanged = 29,
-  UserPasswordChanged = 30,
-  UserLockedOut = 31,
-  UserLockoutLifted = 32,
-  UserTwoFactorEnabled = 33,
-  UserTwoFactorDisabled = 34,
-  // Sentinel
-  Unknown = 35,
-}
 
 export interface ActivityQuery {
   startDate: Date;
@@ -88,45 +24,135 @@ export interface ActivitySummary {
 
 export interface ActivityStatisticsOverview {
   totalActivity: number;
-  activityPerDay: Record<number, ActivitySummary>;
+  // Keyed by UTC day, "yyyy-MM-dd".
+  activityPerDay: Record<string, ActivitySummary>;
 }
 
 export interface AuditLogResult {
+  id: string;
   operationType: OperationType;
   entityType: EntityType;
   userId: string;
+  // Actor display name; null for the system user or a deleted account.
+  userName: string | null;
   entityId: string;
+  ownerId: string | null;
+  parentEntityId: string | null;
+  correlationId: string | null;
+  entityName: string | null;
   eventCode: AuditEventCode;
-  metadata?: string;
+  fallbackDescription: string | null;
+  ipAddress: string | null;
+  metadata: string | null;
   timestamp: string;
   logSource: LogSource;
 }
 
+// The caller's own history. The backend always scopes it to the signed-in user.
 export interface AuditLogQuery {
   page: number;
   pageSize: number;
-  sortBy: string;
-  sortDirection: SortDirection;
+  sortBy?: AuditSortBy;
+  sortDirection?: SortDirection;
 
-  userId?: string;
   entityId?: string;
   operationType?: OperationType;
   entityType?: EntityType;
+  source?: LogSource;
   ipAddress?: string;
-  before?: Date;
-  after?: Date;
+  before?: string;
+  after?: string;
+}
+
+// Filters shared by the exports and the admin explorer.
+export interface AuditFilterRequest {
+  entityType?: EntityType;
+  entityId?: string;
+  eventCodes?: AuditEventCode[];
+  operationType?: OperationType;
+  source?: LogSource;
+  ipAddress?: string;
+  from?: string;
+  to?: string;
+  correlationId?: string;
+}
+
+// Row positions bounding one file of a split export, as the plan hands them out.
+export interface AuditExportBounds {
+  startAt: string;
+  startId: string;
+  endAt: string | null;
+  endId: string | null;
+}
+
+export interface AuditExportPart extends AuditExportBounds {
+  index: number;
+  rows: number;
+  oldestAt: string;
+}
+
+export interface AuditExportPlan {
+  total: number;
+  partSize: number;
+  parts: AuditExportPart[];
+}
+
+export interface EntityHistoryQuery {
+  entityType: EntityType;
+  entityId: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface KnownIpAddress {
+  ipAddress: string;
+  loginCount: number;
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export interface SecuritySummary {
+  recentLogins: AuditLogResult[];
+  recentFailedAttempts: AuditLogResult[];
+  failedAttemptsLast30Days: number;
+  knownIpAddresses: KnownIpAddress[];
 }
 
 export const activityApi = {
+  exportActivity: (
+    filters: AuditFilterRequest,
+    format: AuditExportFormat,
+    bounds?: AuditExportBounds,
+  ): Promise<Blob> =>
+    api.get<Blob>("/activity/export", {
+      params: { ...filters, ...bounds, format },
+      responseType: "blob",
+      // Exports stream up to the server's row cap, which can take a while on a big history.
+      timeout: 300_000,
+    }),
+
   getActivitySummary: (query: ActivityQuery): Promise<ActivityStatisticsOverview> =>
     api.get<ActivityStatisticsOverview>("/activity/summary", {
       params: {
-        endDate: query.endDate.toISOString(),
-        entityType: query.entityType ?? undefined,
-        operationType: query.operationType ?? undefined,
-        startDate: query.startDate.toISOString(),
+        endDate: query.endDate,
+        entityType: query.entityType,
+        operationType: query.operationType,
+        startDate: query.startDate,
       },
     }),
+
+  getCorrelatedActivity: (correlationId: string): Promise<AuditLogResult[]> =>
+    api.get<AuditLogResult[]>(`/activity/correlation/${correlationId}`),
+
+  getEntityHistory: (query: EntityHistoryQuery): Promise<PaginatedResponse<AuditLogResult>> =>
+    api.get<PaginatedResponse<AuditLogResult>>(
+      `/activity/entity/${query.entityType}/${query.entityId}`,
+      { params: { page: query.page, pageSize: query.pageSize } },
+    ),
+
+  getSecuritySummary: (): Promise<SecuritySummary> =>
+    api.get<SecuritySummary>("/activity/security"),
+
   getUserActivity: (query: AuditLogQuery): Promise<PaginatedResponse<AuditLogResult>> =>
     api.get<PaginatedResponse<AuditLogResult>>("/activity/user", {
       params: {
@@ -140,7 +166,10 @@ export const activityApi = {
         pageSize: query.pageSize,
         sortBy: query.sortBy,
         sortDirection: query.sortDirection,
-        userId: query.userId,
+        source: query.source,
       },
     }),
+
+  planActivityExport: (filters: AuditFilterRequest): Promise<AuditExportPlan> =>
+    api.get<AuditExportPlan>("/activity/export/plan", { params: filters }),
 };

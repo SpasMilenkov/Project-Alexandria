@@ -1,5 +1,6 @@
 using Alexandria.Api.Features.Auth;
 using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Models;
 using AwesomeAssertions;
@@ -18,6 +19,7 @@ public class RefreshTokenTests
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IRefreshTokenRepository _refreshTokens = Substitute.For<IRefreshTokenRepository>();
+    private readonly IAuditActorAccessor _auditActor = Substitute.For<IAuditActorAccessor>();
 
     public RefreshTokenTests()
     {
@@ -40,13 +42,75 @@ public class RefreshTokenTests
     {
         var storedToken = StoredToken(CreateUser());
         _userManager.IsLockedOutAsync(storedToken.User!).Returns(false);
+        _refreshTokens.RevokeIfActiveAsync(storedToken.Id, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(true);
 
         var result = await CreateSut().RefreshTokenAsync(TokenValue, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
         result.RefreshToken.Should().NotBeNullOrEmpty().And.NotBe(TokenValue);
-        storedToken.IsRevoked.Should().BeTrue();
-        await _refreshTokens.Received(1).AddAsync(Arg.Any<RefreshToken>(), Arg.Any<CancellationToken>());
+        await _refreshTokens.Received(1).AddAsync(
+            Arg.Is<RefreshToken>(t => t.SessionStartedAt == storedToken.SessionStartedAt),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_lostTheRaceToAnotherTab_returnsTheSessionsCurrentToken()
+    {
+        var storedToken = StoredToken(CreateUser());
+        var successor = Successor(storedToken);
+        _refreshTokens.RevokeIfActiveAsync(storedToken.Id, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        var result = await CreateSut().RefreshTokenAsync(TokenValue, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.RefreshToken.Should().Be(successor.Token);
+        await _refreshTokens.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_justRotatedToken_returnsTheSessionsCurrentToken()
+    {
+        var storedToken = StoredToken(CreateUser());
+        storedToken.IsRevoked = true;
+        storedToken.RevokedAt = DateTime.UtcNow.AddSeconds(-5);
+        var successor = Successor(storedToken);
+
+        var result = await CreateSut().RefreshTokenAsync(TokenValue, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        result.RefreshToken.Should().Be(successor.Token);
+        await _refreshTokens.DidNotReceiveWithAnyArgs().RevokeIfActiveAsync(default, default, default);
+        await _refreshTokens.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_tokenSpentLongAgo_failsWithoutLookingForASuccessor()
+    {
+        var storedToken = StoredToken(CreateUser());
+        storedToken.IsRevoked = true;
+        storedToken.RevokedAt = DateTime.UtcNow.AddMinutes(-2);
+        Successor(storedToken);
+
+        var result = await CreateSut().RefreshTokenAsync(TokenValue, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        await _refreshTokens.DidNotReceiveWithAnyArgs().GetLiveSuccessorAsync(default, default, default, default, default);
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_signedOutSession_failsEvenWithinTheGracePeriod()
+    {
+        var storedToken = StoredToken(CreateUser());
+        storedToken.IsRevoked = true;
+        storedToken.RevokedAt = DateTime.UtcNow.AddSeconds(-1);
+        _refreshTokens.GetLiveSuccessorAsync(Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<DateTime>(),
+            Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns((RefreshToken?)null);
+
+        var result = await CreateSut().RefreshTokenAsync(TokenValue, TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
     }
 
     [Fact]
@@ -89,7 +153,8 @@ public class RefreshTokenTests
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
 
-        return new AuthService(_userManager, null!, _unitOfWork, config);
+        return new AuthService(_userManager, null!, _unitOfWork, config, Substitute.For<IAuditWriter>(),
+            _auditActor);
     }
 
     private RefreshToken StoredToken(ApplicationUser user)
@@ -100,12 +165,31 @@ public class RefreshTokenTests
             Token = TokenValue,
             UserId = user.Id,
             User = user,
-            ExpiresAt = DateTime.UtcNow.AddDays(1)
+            ExpiresAt = DateTime.UtcNow.AddDays(1),
+            SessionStartedAt = DateTime.UtcNow.AddDays(-3),
+            CreatedAt = DateTime.UtcNow.AddMinutes(-10),
         };
 
         _refreshTokens.GetByTokenWithUserAsync(TokenValue, Arg.Any<CancellationToken>()).Returns(storedToken);
 
         return storedToken;
+    }
+
+    private RefreshToken Successor(RefreshToken spent)
+    {
+        var successor = new RefreshToken
+        {
+            Id = Guid.NewGuid(),
+            Token = "successor-token",
+            UserId = spent.UserId,
+            SessionStartedAt = spent.SessionStartedAt,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+        };
+
+        _refreshTokens.GetLiveSuccessorAsync(spent.UserId, spent.SessionStartedAt, spent.CreatedAt,
+            Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(successor);
+
+        return successor;
     }
 
     private static ApplicationUser CreateUser()

@@ -13,12 +13,18 @@
     <ItemGroup>
         <EmbeddedResource Include="Seeders\Tagging\tagging-taxonomy.json"/>
         <EmbeddedResource Include="Seeders\Tagging\tag-descriptions.json"/>
+        <EmbeddedResource Include="Sql\**\*.sql"/>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions"/>
         <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore"/>
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Alexandria.Tests.Unit"/>
+        <InternalsVisibleTo Include="Alexandria.Tests.Integration"/>
     </ItemGroup>
 
     <ItemGroup>

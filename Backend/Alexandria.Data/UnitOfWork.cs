@@ -112,6 +112,11 @@ public sealed class UnitOfWork(
 
     public async Task RollbackAsync(CancellationToken cancellationToken = default)
     {
+        // Rolling back the database leaves whatever the failed work staged in the context, and the
+        // next save on the same context would write it after all. This runs before the early
+        // return because a failed CommitAsync has already disposed the transaction by now.
+        dbContext.ChangeTracker.Clear();
+
         if (_transaction is null) return;
 
         // Reset the counter since we're rolling back

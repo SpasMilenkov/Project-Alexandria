@@ -9,7 +9,8 @@ public interface IFileVersionRepository : IRepository<FileVersion>
     Task<int> SoftDeleteFileVersionsAsync(Guid[] fileIds, Guid ownerId, CancellationToken ct = default);
     Task<int> SoftDeleteFileVersionsAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
     Task<int> RestoreFileVersionsAsync(Guid[] fileIds, Guid ownerId, CancellationToken ct = default);
-    Task<DownloadMetadata?> GetDownloadMetadataAsync(Guid versionId, Guid userId, CancellationToken ct = default);
+    Task<(DownloadMetadata Metadata, Guid FileId, int VersionNumber)?> GetDownloadMetadataAsync(Guid versionId,
+        Guid userId, CancellationToken ct = default);
 
     Task<PaginatedResult<FileVersionDto>> GetVersionsForFileAsync(Guid fileId, Guid ownerId, int page = 1,
         int pageSize = 10,

@@ -45,6 +45,19 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 
         builder.Property(e => e.IsRevoked)
             .IsRequired();
+
+        builder.Property(e => e.SessionStartedAt)
+            .HasColumnType("timestamp with time zone")
+            .IsRequired();
+
+        builder.Property(e => e.CreatedByIp)
+            .HasMaxLength(ValidationConstants.StringLengths.IpAddress)
+            .IsRequired(false);
+
+        builder.Property(e => e.UserAgent)
+            .HasMaxLength(ValidationConstants.StringLengths.MediumString)
+            .IsRequired(false);
+
         // Relations
         builder.HasOne(e => e.User)
             .WithMany()

@@ -60,6 +60,7 @@ public static class ApiExtensions
         services.AddHostedService<IncidentExpiryService>();
 
         services.Configure<JobRecoveryOptions>(config.GetSection("Monitoring:JobRecovery"));
+        services.Configure<AuditOptions>(config.GetSection("Audit"));
         services.AddScoped<JobRecoveryService>();
         services.AddScoped<IJobRequeueService, JobRequeueService>();
         services.AddHostedService<JobRecoveryWorker>();

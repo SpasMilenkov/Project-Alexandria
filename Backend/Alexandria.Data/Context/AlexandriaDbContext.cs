@@ -1,8 +1,7 @@
 using Alexandria.Common.Audit;
+using Alexandria.Data.Audit;
 using Alexandria.Data.Configurations;
-using Alexandria.Data.Interceptors;
 using Alexandria.Data.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using File = Alexandria.Data.Models.File;
@@ -12,27 +11,22 @@ namespace Alexandria.Data.Context;
 
 public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
-    private readonly IHttpContextAccessor? _httpContextAccessor;
-
-    private readonly AuditContext? _auditContext;
+    private readonly IAuditActorAccessor? _auditActor;
 
     // Constructor for DI (used at runtime)
     public AlexandriaDbContext(
         DbContextOptions<AlexandriaDbContext> options,
-        AuditContext auditContext,
-        IHttpContextAccessor httpContextAccessor)
+        IAuditActorAccessor auditActor)
         : base(options)
     {
-        _httpContextAccessor = httpContextAccessor;
-        _auditContext = auditContext;
+        _auditActor = auditActor;
     }
 
-    // Constructor for migrations (when IHttpContextAccessor is not available)
+    // Constructor for migrations and tests, which write without an audit actor
     public AlexandriaDbContext(DbContextOptions<AlexandriaDbContext> options)
         : base(options)
     {
-        _httpContextAccessor = null;
-        _auditContext = null;
+        _auditActor = null;
     }
 
     public DbSet<File> Files { get; set; }
@@ -127,10 +121,11 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        // Only add interceptor if we have HttpContext (not during migrations)
-        if (_httpContextAccessor != null)
-        {
-            optionsBuilder.AddInterceptors(new AuditInterceptor(_httpContextAccessor, _auditContext));
-        }
+        if (_auditActor is null)
+            return;
+
+        optionsBuilder.AddInterceptors(
+            new AuditTransactionInterceptor(_auditActor),
+            new AuditCommandInterceptor(_auditActor));
     }
 }

@@ -1141,13 +1141,14 @@ public partial class ContentStorageService(
         };
     }
 
-    public async Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId,
+    public async Task<VersionDownload> GetFilVersioneDownloadDetails(Guid versionId, Guid userId,
         CancellationToken ct = default)
     {
-        var downloadInfo = await unitOfWork.FileVersions.GetDownloadMetadataAsync(versionId, userId, ct) ??
-                           throw new InvalidOperationException("File not found");
+        var (downloadInfo, fileId, versionNumber) =
+            await unitOfWork.FileVersions.GetDownloadMetadataAsync(versionId, userId, ct) ??
+            throw new InvalidOperationException("File not found");
 
-        return new DownloadInfo
+        var info = new DownloadInfo
         {
             PresignedUrl = await GetVersionPresignedUrl(versionId, userId, ct),
             FileName = downloadInfo.FileName,
@@ -1159,6 +1160,8 @@ public partial class ContentStorageService(
             IsEncrypted = downloadInfo.IsEncrypted,
             IterationCount = downloadInfo.IterationCount
         };
+
+        return new VersionDownload(info, fileId, versionNumber);
     }
 
     public async Task StreamBulkZipAsync(

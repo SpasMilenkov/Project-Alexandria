@@ -9,7 +9,6 @@ import { resetRefreshState } from "@/api/client";
 import { isApiError } from "@/api/errors";
 import { cancelBackgroundImageLoad } from "@/features/appearance/background-image";
 import { rotateSessionEpoch } from "@/features/auth/session-boundary";
-import { useActivityStore } from "@/stores/activity";
 import { useDirectoryStore } from "@/stores/directory";
 import { useFileStore } from "@/stores/file";
 import { useHomeStore } from "@/stores/home";
@@ -38,7 +37,6 @@ const clearSessionCaches = (pinia: Pinia) => {
 
 const resetOwnerStores = (pinia: Pinia) => {
   cancelBackgroundImageLoad();
-  useActivityStore(pinia).resetSessionState();
   useDirectoryStore(pinia).resetSessionState();
   useFileStore(pinia).resetSessionState();
   useHomeStore(pinia).resetSessionState();

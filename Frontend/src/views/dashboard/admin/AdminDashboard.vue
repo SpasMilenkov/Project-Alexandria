@@ -124,6 +124,13 @@ const GROUPS: { id: string; label: string; links: HubLink[] }[] = [
         route: "/dashboard/admin/storage",
         title: "Storage",
       },
+      {
+        description: "Sign-ins, sessions, failed attempts and account changes, plus the full log.",
+        icon: "mdi:shield-account-outline",
+        id: "activity",
+        route: "/dashboard/admin/activity",
+        title: "Access & security",
+      },
     ],
   },
   {
@@ -131,7 +138,7 @@ const GROUPS: { id: string; label: string; links: HubLink[] }[] = [
     label: "Configuration",
     links: [
       {
-        description: "Feature flags, capability toggles and system-wide policies.",
+        description: "System-wide policies, such as how long activity history is kept.",
         icon: "mdi:tune-vertical",
         id: "configuration",
         route: "/dashboard/admin/system-configuration",

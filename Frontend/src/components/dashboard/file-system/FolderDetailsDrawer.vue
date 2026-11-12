@@ -113,6 +113,12 @@
       </DetailsSection>
 
       <PolicySection :key="displayDirectory.id" :directory-id="displayDirectory.id" />
+
+      <EntityHistorySection
+        :entity-type="EntityType.Directory"
+        :entity-id="displayDirectory.id"
+        :enabled="isOpen"
+      />
     </template>
 
     <template #footer>
@@ -137,7 +143,9 @@ import DetailsDrawerShell from "@/components/common/details/DetailsDrawerShell.v
 import DetailsOwner from "@/components/common/details/DetailsOwner.vue";
 import DetailsSection from "@/components/common/details/DetailsSection.vue";
 import DetailsTile from "@/components/common/details/DetailsTile.vue";
+import EntityHistorySection from "@/components/dashboard/audit/EntityHistorySection.vue";
 import PolicySection from "@/components/policy/PolicySection.vue";
+import { EntityType } from "@/enums/entity-type";
 import { formatCalendarDate, formatTimeAgo } from "@/utils/date-formatters";
 
 const { directory, favoritePending = false } = defineProps<{

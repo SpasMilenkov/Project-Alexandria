@@ -1,5 +1,9 @@
+using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Audit;
 using Alexandria.Dto.Jobs;
 using FastEndpoints;
 
@@ -12,7 +16,10 @@ public class RequeueJobRequest
 
 public sealed record RequeueJobResponse(Guid JobId, JobRequeueOutcome Outcome);
 
-sealed class RequeueJobEndpoint(IJobRequeueService requeueService)
+sealed class RequeueJobEndpoint(
+    IJobRequeueService requeueService,
+    IAuditWriter auditWriter,
+    IUnitOfWork unitOfWork)
     : Endpoint<RequeueJobRequest, RequeueJobResponse>
 {
     public override void Configure()
@@ -44,6 +51,15 @@ sealed class RequeueJobEndpoint(IJobRequeueService requeueService)
 
         if (outcome == JobRequeueOutcome.Requeued)
         {
+            auditWriter.Record(new AuditEntry
+            {
+                EventCode = AuditEventCode.JobRequeued,
+                OperationType = OperationType.Update,
+                EntityType = EntityType.Job,
+                EntityId = req.JobId,
+            });
+            await unitOfWork.SaveChangesAsync(ct);
+
             await Send.OkAsync(new RequeueJobResponse(req.JobId, outcome), ct);
             return;
         }

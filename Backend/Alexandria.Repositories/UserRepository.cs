@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
@@ -95,6 +96,18 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
         var total = await live.SumAsync(u => (long?)u.StorageQuota, ct) ?? 0;
         var count = await live.CountAsync(ct);
         return (total, count);
+    }
+
+    public async Task<IReadOnlyList<AccountStateRow>> GetAccountStatesAsync(CancellationToken ct = default)
+    {
+        var systemId = SystemConfig.SystemId;
+
+        return await context.Users
+            .AsNoTracking()
+            .Where(u => u.DeletedAt == null && u.Id != systemId)
+            .OrderBy(u => u.Name)
+            .Select(u => new AccountStateRow(u.Id, u.Name, u.Email ?? string.Empty, u.LockoutEnd))
+            .ToListAsync(ct);
     }
 
     internal sealed class UserListRow

@@ -127,10 +127,29 @@ describe("request URLs", () => {
     expect(searchParams.get("after")).toBe("2026-11-07T10:30:00.000Z");
   });
 
+  it("repeats the key for every array item", async () => {
+    fetchMock.mockResolvedValueOnce(emptyResponse(200));
+
+    await api.get("/activity/export", { params: { eventCodes: [1, 4], format: 0 } });
+
+    const { searchParams } = new URL(requestedUrl(), "http://localhost");
+
+    expect(searchParams.getAll("eventCodes")).toEqual(["1", "4"]);
+    expect(searchParams.get("format")).toBe("0");
+  });
+
+  it("sends no key for an empty array", async () => {
+    fetchMock.mockResolvedValueOnce(emptyResponse(200));
+
+    await api.get("/activity/export", { params: { eventCodes: [] } });
+
+    expect(requestedUrl()).toBe(`${API_BASE_URL}/activity/export`);
+  });
+
   it.each([
-    ["an array", ["a", "b"]],
-    ["an empty array", []],
     ["an object", { nested: true }],
+    ["an array of objects", [{ nested: true }]],
+    ["a nested array", [["a"]]],
   ])("rejects %s without sending the request", async (_label, value) => {
     const request = api.get("/files/search/tags", { params: { tagIds: value } });
 
@@ -140,7 +159,9 @@ describe("request URLs", () => {
   });
 
   it("does not report a bad param as a network failure", async () => {
-    const outcome = await api.get("/thing", { params: { ids: [1] } }).catch((err: unknown) => err);
+    const outcome = await api
+      .get("/thing", { params: { ids: { nested: true } } })
+      .catch((err: unknown) => err);
 
     expect(isApiError(outcome)).toBe(false);
   });
@@ -241,6 +262,27 @@ describe("response bodies", () => {
     );
 
     await expect(api.get("/thing")).resolves.toEqual({ title: "Bad" });
+  });
+
+  it("returns the raw body as a blob when asked", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("a,b\n1,2", { headers: { "Content-Type": "text/csv" } }),
+    );
+
+    const body = await api.get<Blob>("/activity/export", { responseType: "blob" });
+
+    // fetch and jsdom each bring their own Blob class, so the shape is checked instead.
+    expect(body.type).toBe("text/csv");
+    await expect(body.text()).resolves.toBe("a,b\n1,2");
+  });
+
+  it("still parses a JSON error body when a blob was asked for", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ errors: { from: ["Too early"] } }, 400));
+
+    const err = await catchError(api.get("/activity/export", { responseType: "blob" }));
+
+    expect(err.status).toBe(400);
+    expect(err.data).toEqual({ errors: { from: ["Too early"] } });
   });
 
   it("resolves to undefined for an empty body", async () => {

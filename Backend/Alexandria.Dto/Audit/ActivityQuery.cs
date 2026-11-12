@@ -5,8 +5,8 @@ namespace Alexandria.Dto.Audit;
 
 public class ActivityQuery
 {
-    public DateTime StartDate { get; set; }
-    public DateTime EndDate { get; set; }
+    public DateTimeOffset StartDate { get; set; }
+    public DateTimeOffset EndDate { get; set; }
     public EntityType? EntityType { get; set; }
     public OperationType? OperationType { get; set; }
 }

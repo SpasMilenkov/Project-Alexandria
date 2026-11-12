@@ -33,6 +33,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Alexandria.Tests.Integration" />
+    <InternalsVisibleTo Include="Alexandria.Tests.Unit" />
     <InternalsVisibleTo Include="Alexandria.Tests.Common" />
   </ItemGroup>
   

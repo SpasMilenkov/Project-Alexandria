@@ -74,7 +74,7 @@ public class FakeContentStorageService : IContentStorageService
         throw new NotImplementedException();
     }
 
-    public Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default)
+    public Task<VersionDownload> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }
