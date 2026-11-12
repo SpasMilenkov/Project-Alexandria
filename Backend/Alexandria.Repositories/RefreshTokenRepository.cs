@@ -169,4 +169,27 @@ public class RefreshTokenRepository(AlexandriaDbContext context) : IRefreshToken
         _refreshTokens.UpdateRange(userTokens);
         await context.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyList<RefreshToken>> GetActiveByUserAsync(
+        Guid userId,
+        DateTime now,
+        CancellationToken ct = default)
+    {
+        return await _refreshTokens
+            .AsNoTracking()
+            .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.DeletedAt == null && rt.ExpiresAt > now)
+            .OrderByDescending(rt => rt.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<RefreshToken?> GetActiveByIdAsync(
+        Guid id,
+        Guid userId,
+        DateTime now,
+        CancellationToken ct = default)
+    {
+        return await _refreshTokens
+            .FirstOrDefaultAsync(rt =>
+                rt.Id == id && rt.UserId == userId && !rt.IsRevoked && rt.DeletedAt == null && rt.ExpiresAt > now, ct);
+    }
 }

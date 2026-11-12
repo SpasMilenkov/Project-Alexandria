@@ -8,6 +8,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto;
 using Alexandria.Dto.Audit;
+using Alexandria.Dto.Sessions;
 using FastEndpoints.Security;
 using Microsoft.AspNetCore.Identity;
 
@@ -71,6 +72,54 @@ public class AuthService(
             return;
 
         await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<UserSessionDto>> GetSessionsAsync(Guid userId, string? currentRefreshToken,
+        CancellationToken ct = default)
+    {
+        var tokens = await unitOfWork.RefreshTokens.GetActiveByUserAsync(userId, DateTime.UtcNow, ct);
+
+        return tokens
+            .Select(t => new UserSessionDto
+            {
+                Id = t.Id,
+                SessionStartedAt = t.SessionStartedAt,
+                LastActiveAt = t.CreatedAt,
+                ExpiresAt = t.ExpiresAt,
+                IpAddress = t.CreatedByIp,
+                UserAgent = t.UserAgent,
+                IsCurrent = currentRefreshToken is not null && t.Token == currentRefreshToken,
+            })
+            .ToList();
+    }
+
+    public async Task<bool> RevokeSessionAsync(Guid userId, Guid sessionId, CancellationToken ct = default)
+    {
+        var token = await unitOfWork.RefreshTokens.GetActiveByIdAsync(sessionId, userId, DateTime.UtcNow, ct);
+        if (token is null)
+            return false;
+
+        token.IsRevoked = true;
+        token.RevokedAt = DateTime.UtcNow;
+        unitOfWork.RefreshTokens.Update(token);
+
+        auditWriter.Record(new AuditEntry
+        {
+            EventCode = AuditEventCode.UserSessionRevoked,
+            OperationType = OperationType.Update,
+            EntityType = EntityType.Session,
+            EntityId = token.Id,
+            OwnerId = userId,
+            Metadata = new Dictionary<string, object?>
+            {
+                ["session_started_at"] = token.SessionStartedAt,
+                ["ip_address"] = token.CreatedByIp,
+                ["user_agent"] = token.UserAgent,
+            },
+        });
+
+        await unitOfWork.SaveChangesAsync(ct);
+        return true;
     }
 
     private async Task RecordLoginAsync(ApplicationUser user, CancellationToken ct)
@@ -197,7 +246,10 @@ public class AuthService(
                     RandomNumberGenerator.GetBytes(64)
                 ),
                 UserId = storedToken.UserId,
-                ExpiresAt = DateTime.UtcNow.AddDays(config.GetValue("Jwt:RefreshTokenExpiryDays", 7))
+                ExpiresAt = DateTime.UtcNow.AddDays(config.GetValue("Jwt:RefreshTokenExpiryDays", 7)),
+                SessionStartedAt = storedToken.SessionStartedAt,
+                CreatedByIp = auditActor.IpAddress ?? storedToken.CreatedByIp,
+                UserAgent = auditActor.UserAgent ?? storedToken.UserAgent,
             };
 
             await unitOfWork.RefreshTokens.AddAsync(newRefreshToken, ct);
@@ -259,7 +311,10 @@ public class AuthService(
         {
             Token = tokenValue,
             UserId = user.Id,
-            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiry)
+            ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiry),
+            SessionStartedAt = DateTime.UtcNow,
+            CreatedByIp = auditActor.IpAddress,
+            UserAgent = auditActor.UserAgent,
         };
 
         await unitOfWork.RefreshTokens.AddAsync(refreshToken, ct);

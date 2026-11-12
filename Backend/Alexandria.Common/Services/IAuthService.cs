@@ -1,5 +1,6 @@
 using Alexandria.Data.Models;
 using Alexandria.Dto;
+using Alexandria.Dto.Sessions;
 
 namespace Alexandria.Common.Services;
 
@@ -13,6 +14,12 @@ public interface IAuthService
 
     /// <summary>Records the sign-out and revokes the session's refresh token when there is one.</summary>
     Task LogoutAsync(Guid userId, string? refreshToken, CancellationToken ct = default);
+
+    Task<IReadOnlyList<UserSessionDto>> GetSessionsAsync(Guid userId, string? currentRefreshToken,
+        CancellationToken ct = default);
+
+    /// <summary>False when the session does not exist, belongs to someone else or already ended.</summary>
+    Task<bool> RevokeSessionAsync(Guid userId, Guid sessionId, CancellationToken ct = default);
     string GenerateAccessToken(ApplicationUser user);
     Task<string> GenerateRefreshTokenAsync(ApplicationUser user, CancellationToken ct = default);
 
