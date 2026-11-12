@@ -25,6 +25,8 @@ public class AuthService(
 {
     private const int MaxRecordedEmailLength = 256;
 
+    private static readonly TimeSpan RotationGrace = TimeSpan.FromSeconds(30);
+
     public async Task<AuthResult> AuthenticateAsync(string email, string password, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(email);
@@ -233,13 +235,22 @@ public class AuthService(
             return AuthResult.Failed();
         }
 
+        if (storedToken.IsRevoked)
+            return await ResumeRotatedSessionAsync(storedToken, storedToken.RevokedAt, ct);
+
         try
         {
             await unitOfWork.BeginTransactionAsync(ct);
 
-            storedToken.IsRevoked = true;
-            storedToken.RevokedAt = DateTime.UtcNow;
-            unitOfWork.RefreshTokens.Update(storedToken);
+            var revokedAt = DateTime.UtcNow;
+
+            if (!await unitOfWork.RefreshTokens.RevokeIfActiveAsync(storedToken.Id, revokedAt, ct))
+            {
+                // Another request rotated this token while this one was on its way.
+                await unitOfWork.RollbackAsync(ct);
+                return await ResumeRotatedSessionAsync(storedToken, revokedAt, ct);
+            }
+
             var newRefreshToken = new Data.Models.RefreshToken
             {
                 Token = Convert.ToBase64String(
@@ -267,6 +278,30 @@ public class AuthService(
             await unitOfWork.RollbackAsync(ct);
             throw;
         }
+    }
+
+    // Tabs share one refresh cookie, so two of them can spend the same token at once. The loser
+    // gets the session's current token instead of a failure, which would clear the cookies and
+    // sign every tab out. Past the grace period a spent token is refused as before.
+    private async Task<AuthResult> ResumeRotatedSessionAsync(Data.Models.RefreshToken spent, DateTime? revokedAt,
+        CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+
+        if (revokedAt is null || now - revokedAt.Value > RotationGrace)
+            return AuthResult.Failed();
+
+        // A token revoked by sign-out or session removal has no successor, so it stays refused.
+        var successor = await unitOfWork.RefreshTokens.GetLiveSuccessorAsync(
+            spent.UserId, spent.SessionStartedAt, spent.CreatedAt, now, ct);
+
+        if (successor is null)
+            return AuthResult.Failed();
+
+        var result = AuthResult.SetSuccess(spent.User!);
+        result.RefreshToken = successor.Token;
+
+        return result;
     }
 
     public async Task<bool> RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct = default)

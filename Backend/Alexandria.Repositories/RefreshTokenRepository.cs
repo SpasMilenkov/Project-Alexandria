@@ -29,7 +29,34 @@ public class RefreshTokenRepository(AlexandriaDbContext context) : IRefreshToken
         return await _refreshTokens
             .Include(rt => rt.User)
             .Where(rt => rt.DeletedAt == null)
-            .FirstOrDefaultAsync(rt => rt.Token == token && !rt.IsRevoked, ct);
+            .FirstOrDefaultAsync(rt => rt.Token == token, ct);
+    }
+
+    public async Task<bool> RevokeIfActiveAsync(Guid id, DateTime revokedAt, CancellationToken ct = default)
+    {
+        var updated = await _refreshTokens
+            .Where(rt => rt.Id == id && !rt.IsRevoked && rt.DeletedAt == null)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(rt => rt.IsRevoked, true)
+                .SetProperty(rt => rt.RevokedAt, revokedAt)
+                .SetProperty(rt => rt.UpdatedAt, revokedAt), ct);
+
+        return updated == 1;
+    }
+
+    public async Task<RefreshToken?> GetLiveSuccessorAsync(Guid userId, DateTime sessionStartedAt,
+        DateTime issuedAfter, DateTime now, CancellationToken ct = default)
+    {
+        return await _refreshTokens
+            .AsNoTracking()
+            .Where(rt => rt.UserId == userId
+                && rt.SessionStartedAt == sessionStartedAt
+                && rt.CreatedAt > issuedAfter
+                && !rt.IsRevoked
+                && rt.DeletedAt == null
+                && rt.ExpiresAt > now)
+            .OrderByDescending(rt => rt.CreatedAt)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<RefreshToken?> FirstOrDefaultAsync(Expression<Func<RefreshToken, bool>> predicate,
