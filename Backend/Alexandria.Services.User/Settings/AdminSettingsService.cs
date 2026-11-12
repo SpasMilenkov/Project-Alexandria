@@ -5,12 +5,14 @@ using Alexandria.Common.Settings.Keys;
 using Alexandria.Common.Settings.Values;
 using Alexandria.Data.Models;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 
 namespace Alexandria.Services.User.Settings;
 
-public class AdminSettingsService(
+public partial class AdminSettingsService(
     IUnitOfWork unitOfWork,
-    IMemoryCache cache) : IAdminSettingsService
+    IMemoryCache cache,
+    ILogger<AdminSettingsService> logger) : IAdminSettingsService
 {
     private static readonly MemoryCacheEntryOptions CacheOptions = new()
     {
@@ -29,6 +31,26 @@ public class AdminSettingsService(
 
     public Task ResetUploadPolicyAsync(Guid updatedBy, CancellationToken ct = default)
         => SetUploadPolicyAsync(new UploadPolicyValue(), updatedBy, ct);
+
+    // The range is only enforced on save, and the purge deletes everything older than this, so a
+    // value written straight to the table (0, negative, absurdly large) must never reach it as-is.
+    public async Task<AuditRetentionValue> GetAuditRetentionAsync(CancellationToken ct = default)
+    {
+        var stored = await GetAsync<AuditRetentionValue>(AdminSettingKeys.AuditRetention, ct);
+        var days = Math.Clamp(stored.RetentionDays, AuditRetentionValue.MinDays, AuditRetentionValue.MaxDays);
+
+        if (days == stored.RetentionDays)
+            return stored;
+
+        LogRetentionOutOfRange(logger, stored.RetentionDays, days);
+        return new AuditRetentionValue { RetentionDays = days };
+    }
+
+    public async Task SetAuditRetentionAsync(AuditRetentionValue value, Guid updatedBy, CancellationToken ct = default)
+    {
+        Validate(value);
+        await UpsertAsync(AdminSettingKeys.AuditRetention, value, updatedBy, ct);
+    }
 
     private async Task<T> GetAsync<T>(string key, CancellationToken ct) where T : new()
     {

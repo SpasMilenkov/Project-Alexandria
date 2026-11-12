@@ -124,6 +124,7 @@ public static class ServiceExtensions
         services.AddHostedService<PromotionQueueWorker>();
         services.AddHostedService<PromotionScannerWorker>();
         services.AddHostedService<TempCleanupWorker>();
+        services.AddHostedService<AuditRetentionWorker>();
         services.AddHostedService<OverviewSummaryFinalizeWorker>();
         services.AddHostedService<OrphanedCleanupWorker>();
         services.AddHostedService<PreviewSizeBackfillWorker>();
