@@ -115,6 +115,30 @@ const router = createRouter({
       path: "/dashboard/admin/user-registry",
     },
     {
+      component: () => import("@/views/dashboard/admin/AccessSecurity.vue"),
+      meta: {
+        layout: "dashboard",
+        requiresAdmin: true,
+        requiresAuth: true,
+        siteIcon: "admin",
+        title: "Access & security",
+      },
+      name: "admin-activity",
+      path: "/dashboard/admin/activity",
+    },
+    {
+      component: () => import("@/views/dashboard/admin/ActivityChronicles.vue"),
+      meta: {
+        layout: "dashboard",
+        requiresAdmin: true,
+        requiresAuth: true,
+        siteIcon: "admin",
+        title: "Full log",
+      },
+      name: "admin-activity-log",
+      path: "/dashboard/admin/activity/log",
+    },
+    {
       component: () => import("@/views/dashboard/admin/StorageOverview.vue"),
       meta: {
         layout: "dashboard",

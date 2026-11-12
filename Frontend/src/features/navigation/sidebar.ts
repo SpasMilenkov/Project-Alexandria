@@ -95,6 +95,12 @@ const ADMIN_ITEMS: SidebarItem[] = [
     activeRoutes: ["admin-storage"],
   },
   {
+    label: "Access & security",
+    icon: "i-lucide-shield-check",
+    to: "/dashboard/admin/activity",
+    activeRoutes: ["admin-activity", "admin-activity-log"],
+  },
+  {
     label: "System vitals",
     icon: "i-lucide-activity",
     to: "/dashboard/admin/service-status",
