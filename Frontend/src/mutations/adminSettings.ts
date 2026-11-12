@@ -1,22 +1,18 @@
-import { defineMutation, useQueryCache } from "@pinia/colada";
+import { defineMutation, useMutation, useQueryCache } from "@pinia/colada";
 
-import { type UploadPolicy, adminSettingsApi } from "@/api/adminSettings";
+import { adminSettingsApi } from "@/api/adminSettings";
 import { ADMIN_SETTINGS_QUERY_KEYS } from "@/queries/adminSettings";
 
-export const updateUploadPolicy = defineMutation({
-  mutation: (data: UploadPolicy) => adminSettingsApi.updateUploadPolicy(data),
-  onSettled() {
-    useQueryCache().invalidateQueries({
-      key: ADMIN_SETTINGS_QUERY_KEYS.uploadPolicy(),
-    });
-  },
-});
+export const updateAuditRetention = defineMutation(() => {
+  const queryCache = useQueryCache();
 
-export const resetUploadPolicy = defineMutation({
-  mutation: () => adminSettingsApi.resetUploadPolicy(),
-  onSettled() {
-    useQueryCache().invalidateQueries({
-      key: ADMIN_SETTINGS_QUERY_KEYS.uploadPolicy(),
-    });
-  },
+  return useMutation({
+    mutation: (retentionDays: number) => adminSettingsApi.updateAuditRetention(retentionDays),
+    onSuccess(data) {
+      queryCache.setQueryData(ADMIN_SETTINGS_QUERY_KEYS.auditRetention(), data);
+    },
+    onSettled() {
+      queryCache.invalidateQueries({ key: ADMIN_SETTINGS_QUERY_KEYS.auditRetention() });
+    },
+  });
 });

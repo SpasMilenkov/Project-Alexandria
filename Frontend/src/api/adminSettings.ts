@@ -1,17 +1,17 @@
 import { api } from "./client";
 
-export interface UploadPolicy {
-  skipClientValidationForTrustedUploads: boolean;
-  skipUploadOnHashMatch: boolean;
+export interface AuditRetention {
+  retentionDays: number;
+  minDays: number;
+  maxDays: number;
+  lastPurgeAt: string | null;
+  lastPurgeDeletedCount: number | null;
 }
 
 export const adminSettingsApi = {
-  getUploadPolicy: (): Promise<UploadPolicy> =>
-    api.get<UploadPolicy>("/admin/settings/upload-policy"),
+  getAuditRetention: (): Promise<AuditRetention> =>
+    api.get<AuditRetention>("/admin/settings/audit-retention"),
 
-  resetUploadPolicy: (): Promise<UploadPolicy> =>
-    api.delete<UploadPolicy>("/admin/settings/upload-policy"),
-
-  updateUploadPolicy: (payload: UploadPolicy): Promise<UploadPolicy> =>
-    api.put<UploadPolicy>("/admin/settings/upload-policy", payload),
+  updateAuditRetention: (retentionDays: number): Promise<AuditRetention> =>
+    api.put<AuditRetention>("/admin/settings/audit-retention", { retentionDays }),
 };
