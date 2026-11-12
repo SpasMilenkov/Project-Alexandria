@@ -5,6 +5,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Files.Streaming.Lyrics;
 using Alexandria.Dto.Files.Streaming.Playlist;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,15 @@ namespace Alexandria.Repositories;
 public class TranspilationJobRepository(AlexandriaDbContext context) : ITranspilationJobRepository
 {
     private readonly DbSet<TranspilationJob> _jobs = context.TranspilationJobs;
+
+    public async Task<TrackFileRef?> GetTrackFileAsync(Guid transpilationJobId, CancellationToken ct = default)
+    {
+        return await _jobs
+            .AsNoTracking()
+            .Where(t => t.Id == transpilationJobId)
+            .Select(t => new TrackFileRef(t.VersionId, t.FileVersion.FileId, t.FileVersion.File.Name))
+            .FirstOrDefaultAsync(ct);
+    }
 
     public async Task<TranspilationJob?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _jobs

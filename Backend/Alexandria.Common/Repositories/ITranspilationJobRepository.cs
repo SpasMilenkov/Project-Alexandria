@@ -2,6 +2,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
+using Alexandria.Dto.Files.Streaming.Lyrics;
 using Alexandria.Dto.Files.Streaming.Playlist;
 
 namespace Alexandria.Common.Repositories;
@@ -14,6 +15,9 @@ public interface ITranspilationJobRepository : IRepository<TranspilationJob>
     /// Job id is the canonical identifier flowing through the queue.
     /// </summary>
     Task<TranspilationJob?> GetByJobIdAsync(Guid jobId, CancellationToken ct = default);
+
+    /// <summary>The version and file behind a transcode, in one projected query. No tracking.</summary>
+    Task<TrackFileRef?> GetTrackFileAsync(Guid transpilationJobId, CancellationToken ct = default);
 
     Task<TranspilationJob?> GetByVersionId(Guid versionId, CancellationToken ct = default);
     Task<TranspilationJob?> GetByVersionId(Guid versionId, Guid userId, CancellationToken ct = default);
