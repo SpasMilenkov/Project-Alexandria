@@ -1,7 +1,5 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
-using Alexandria.Data.Models.Enumerators;
-using Alexandria.Dto.Audit;
 using Alexandria.Dto.Files;
 using FastEndpoints;
 
@@ -10,12 +8,10 @@ namespace Alexandria.Api.Features.Auth.Login;
 public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
 {
     private readonly IAuthService _authService;
-    private readonly IAuditService _auditService;
 
-    public LoginEndpoint(IAuthService authService, IAuditService auditService)
+    public LoginEndpoint(IAuthService authService)
     {
         _authService = authService;
-        _auditService = auditService;
     }
 
     public override void Configure()
@@ -28,7 +24,7 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
 
     public override async Task HandleAsync(LoginRequest req, CancellationToken ct)
     {
-        var result = await _authService.AuthenticateAsync(req.Email, req.Password);
+        var result = await _authService.AuthenticateAsync(req.Email, req.Password, ct);
 
         if (!result.Succeeded || result.User is null)
         {
@@ -40,17 +36,6 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
         var refreshToken = await _authService.GenerateRefreshTokenAsync(result.User, ct);
 
         HttpContext.Response.AppendSessionCookies(accessToken, refreshToken);
-
-        await _auditService.LogAsync(
-            new AuditLogDto(
-                OperationType.Login,
-                EntityType.User,
-                result.User.Id,
-                result.User.Id,
-                AuditEventCode.UserLogin,
-                null,
-                HttpContext.Connection.RemoteIpAddress?.ToString() ?? ""
-            ));
 
         await Send.OkAsync(new LoginResponse
         {

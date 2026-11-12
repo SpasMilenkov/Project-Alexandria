@@ -1,5 +1,6 @@
 using Alexandria.Api.Features.Auth;
 using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Models;
 using AwesomeAssertions;
@@ -89,7 +90,8 @@ public class RefreshTokenTests
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
 
-        return new AuthService(_userManager, null!, _unitOfWork, config);
+        return new AuthService(_userManager, null!, _unitOfWork, config, Substitute.For<IAuditWriter>(),
+            Substitute.For<IAuditActorAccessor>());
     }
 
     private RefreshToken StoredToken(ApplicationUser user)

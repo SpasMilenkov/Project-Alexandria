@@ -1,11 +1,13 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto;
+using Alexandria.Dto.Audit;
 using FastEndpoints.Security;
 using Microsoft.AspNetCore.Identity;
 
@@ -15,20 +17,33 @@ public class AuthService(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     IUnitOfWork unitOfWork,
-    IConfiguration config)
+    IConfiguration config,
+    IAuditWriter auditWriter,
+    IAuditActorAccessor auditActor)
     : IAuthService
 {
-    public async Task<AuthResult> AuthenticateAsync(string email, string password)
+    private const int MaxRecordedEmailLength = 256;
+
+    public async Task<AuthResult> AuthenticateAsync(string email, string password, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(email);
 
         if (user is not { DeletedAt: null } || user.Id == SystemConfig.SystemId)
-            return AuthResult.Failed();
+        {
+            await RecordLoginFailedAsync(null, email, LoginFailureReason.UnknownUser, ct);
+            return AuthResult.Failed(LoginFailureReason.UnknownUser);
+        }
 
         var result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
 
         if (!result.Succeeded)
-            return AuthResult.Failed();
+        {
+            var reason = FailureReasonOf(result);
+            await RecordLoginFailedAsync(user, email, reason, ct);
+            return AuthResult.Failed(reason);
+        }
+
+        await RecordLoginAsync(user, ct);
 
         var authResult = AuthResult.SetSuccess(user);
 
@@ -39,6 +54,106 @@ public class AuthService(
 
         return authResult;
     }
+
+    public async Task LogoutAsync(Guid userId, string? refreshToken, CancellationToken ct = default)
+    {
+        auditWriter.Record(new AuditEntry
+        {
+            EventCode = AuditEventCode.UserLogout,
+            OperationType = OperationType.Logout,
+            EntityType = EntityType.User,
+            EntityId = userId,
+            OwnerId = userId,
+        });
+
+        // Revoking saves the context, which also commits the staged entry.
+        if (!string.IsNullOrEmpty(refreshToken) && await RevokeRefreshTokenAsync(refreshToken, ct))
+            return;
+
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    private async Task RecordLoginAsync(ApplicationUser user, CancellationToken ct)
+    {
+        var ip = auditActor.IpAddress;
+        bool? newIp = null;
+
+        if (ip is not null)
+        {
+            var seenBefore = await unitOfWork.AuditLogs.AnyAsync(new AuditLogFilter
+            {
+                OwnerId = user.Id,
+                EventCodes = [AuditEventCode.UserLogin],
+                IpAddress = ip,
+            }, ct);
+
+            newIp = !seenBefore;
+        }
+
+        // The request is still anonymous at this point, so the actor is set explicitly.
+        auditWriter.Record(new AuditEntry
+        {
+            EventCode = AuditEventCode.UserLogin,
+            OperationType = OperationType.Login,
+            EntityType = EntityType.User,
+            EntityId = user.Id,
+            OwnerId = user.Id,
+            EntityName = user.UserName,
+            ActorId = user.Id,
+            Metadata = new Dictionary<string, object?>
+            {
+                ["user_agent"] = auditActor.UserAgent,
+                ["new_ip"] = newIp,
+            },
+        });
+
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    // Nobody is signed in yet, so the system is the actor; the targeted account is the owner and
+    // sees the attempt in its security history.
+    private async Task RecordLoginFailedAsync(ApplicationUser? user, string email, LoginFailureReason reason,
+        CancellationToken ct)
+    {
+        var recordedEmail = email.Length > MaxRecordedEmailLength ? email[..MaxRecordedEmailLength] : email;
+
+        auditWriter.Record(new AuditEntry
+        {
+            EventCode = AuditEventCode.UserLoginFailed,
+            OperationType = OperationType.Login,
+            EntityType = EntityType.User,
+            EntityId = user?.Id,
+            OwnerId = user?.Id,
+            EntityName = user?.UserName,
+            Metadata = new Dictionary<string, object?>
+            {
+                ["reason"] = ReasonName(reason),
+                ["email"] = recordedEmail,
+                ["user_agent"] = auditActor.UserAgent,
+            },
+        });
+
+        await unitOfWork.SaveChangesAsync(ct);
+    }
+
+    private static LoginFailureReason FailureReasonOf(SignInResult result)
+    {
+        if (result.IsLockedOut)
+            return LoginFailureReason.LockedOut;
+
+        if (result.IsNotAllowed)
+            return LoginFailureReason.NotAllowed;
+
+        return LoginFailureReason.BadPassword;
+    }
+
+    private static string ReasonName(LoginFailureReason reason) => reason switch
+    {
+        LoginFailureReason.UnknownUser => "unknown_user",
+        LoginFailureReason.LockedOut => "locked_out",
+        LoginFailureReason.NotAllowed => "not_allowed",
+        _ => "bad_password",
+    };
 
     public async Task<AuthResult> GetSessionAsync(Guid userId, CancellationToken ct = default)
     {

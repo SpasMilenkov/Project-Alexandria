@@ -1,5 +1,6 @@
 using Alexandria.Api.Features.Auth;
 using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
@@ -34,7 +35,9 @@ public class GetSessionTests
             _userManager,
             null!,
             Substitute.For<IUnitOfWork>(),
-            null!);
+            null!,
+            Substitute.For<IAuditWriter>(),
+            Substitute.For<IAuditActorAccessor>());
     }
 
     [Fact]
