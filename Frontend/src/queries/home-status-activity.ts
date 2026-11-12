@@ -2,6 +2,7 @@ import { defineQueryOptions } from "@pinia/colada";
 
 import { activityApi } from "@/api/activity";
 import { publicStatusApi } from "@/api/publicStatus";
+import { AuditSortBy } from "@/enums/audit-sort-by";
 import { SortDirection } from "@/enums/SortDirection";
 
 interface HomeWidgetSession {
@@ -44,10 +45,9 @@ export const homeRecentActivity = defineQueryOptions((session: HomeWidgetSession
   query: async () => ({
     ...session,
     value: await activityApi.getUserActivity({
-      userId: session.userId,
       page: 1,
       pageSize: 20,
-      sortBy: "timestamp",
+      sortBy: AuditSortBy.Timestamp,
       sortDirection: SortDirection.Desc,
     }),
   }),

@@ -6,21 +6,21 @@ import { createApp, defineComponent, ref } from "vue";
 
 import type { PaginatedResponse } from "@/api/directory";
 
-import {
-  AuditEventCode,
-  type AuditLogResult,
-  EntityType,
-  LogSource,
-  OperationType,
-  activityApi,
-} from "@/api/activity";
+import { type AuditLogResult, activityApi } from "@/api/activity";
 import { ApiError } from "@/api/errors";
 import { publicStatusApi } from "@/api/publicStatus";
 import HomeRecentActivityWidget from "@/components/dashboard/home/widgets/status/HomeRecentActivityWidget.vue";
 import HomeRecentActivityWidgetOptions from "@/components/dashboard/home/widgets/status/HomeRecentActivityWidgetOptions.vue";
 import HomeSystemStatusWidget from "@/components/dashboard/home/widgets/status/HomeSystemStatusWidget.vue";
 import HomeSystemStatusWidgetOptions from "@/components/dashboard/home/widgets/status/HomeSystemStatusWidgetOptions.vue";
-import { ServiceType } from "@/enums";
+import {
+  AuditEventCode,
+  AuditSortBy,
+  EntityType,
+  LogSource,
+  OperationType,
+  ServiceType,
+} from "@/enums";
 import { HomeActivityStyle, HomeStatusStyle, HomeWidgetType } from "@/enums/home-widget";
 import { SortDirection } from "@/enums/SortDirection";
 import { createHomeWidget, defaultHomeLayout } from "@/features/home/layout";
@@ -39,13 +39,22 @@ import { useHomeStore } from "@/stores/home";
 vi.mock("@/composables/useHomeWidgetRows", () => ({ useHomeWidgetRows: () => ref(100) }));
 
 const event = (patch: Partial<AuditLogResult> = {}): AuditLogResult => ({
+  id: "row",
   entityId: "file",
   entityType: EntityType.File,
+  entityName: null,
   eventCode: AuditEventCode.FileCreated,
   operationType: OperationType.Create,
   logSource: LogSource.Trigger,
   timestamp: "2026-10-08T12:00:00Z",
   userId: "alice",
+  userName: "Alice",
+  ownerId: "alice",
+  parentEntityId: null,
+  correlationId: null,
+  fallbackDescription: null,
+  ipAddress: null,
+  metadata: null,
   ...patch,
 });
 
@@ -151,12 +160,24 @@ describe("Home recent activity formatting", () => {
     ).toBe("File moved");
   });
 
-  it.each([undefined, "{", "null", "[]", '{"name":{"unsafe":"object"}}', '{"name":"  "}'])(
+  it.each([null, "{", "null", "[]", '{"name":{"unsafe":"object"}}', '{"name":"  "}'])(
     "falls back to existing labels for malformed or missing names (%s)",
     (metadata) => {
       expect(homeActivityDescription(event({ metadata }))).toBe("File created");
     },
   );
+
+  it("prefers the recorded entity name, which survives deletes", () => {
+    expect(
+      homeActivityDescription(
+        event({
+          eventCode: AuditEventCode.FileDeletedPermanently,
+          entityName: "report.pdf",
+          metadata: null,
+        }),
+      ),
+    ).toBe("File permanently deleted · report.pdf");
+  });
 
   it("does not substitute unsupported device claims or expose account metadata", () => {
     expect(
@@ -268,10 +289,9 @@ describe("Home status and activity queries", () => {
     await cache.fetch(entry);
 
     expect(request).toHaveBeenCalledWith({
-      userId: "alice",
       page: 1,
       pageSize: 20,
-      sortBy: "timestamp",
+      sortBy: AuditSortBy.Timestamp,
       sortDirection: SortDirection.Desc,
     });
     expect(entry.state.value.data).toEqual({ userId: "alice", epoch: 1, value: page([]) });
@@ -309,17 +329,19 @@ describe("Home status and activity component lifecycle", () => {
   });
 
   it("drops previous-account activity immediately and ignores its late completion", async () => {
-    let finishAlice: (value: PaginatedResponse<AuditLogResult>) => void = () => {
-      throw new Error("Alice's activity request has not started");
-    };
-    let finishBob: (value: PaginatedResponse<AuditLogResult>) => void = () => {
-      throw new Error("Bob's activity request has not started");
+    // The backend scopes the request to the signed-in account, so requests are told apart by
+    // order: the first belongs to Alice, the second to Bob.
+    const pending: ((value: PaginatedResponse<AuditLogResult>) => void)[] = [];
+    const finish = (index: number, value: PaginatedResponse<AuditLogResult>) => {
+      const resolve = pending[index];
+      if (!resolve) throw new Error(`Activity request ${index + 1} has not started`);
+
+      resolve(value);
     };
     vi.spyOn(activityApi, "getUserActivity").mockImplementation(
-      ({ userId }) =>
+      () =>
         new Promise((resolve) => {
-          if (userId === "alice") finishAlice = resolve;
-          else finishBob = resolve;
+          pending.push(resolve);
         }),
     );
     const { wrapper, store } = mountWidget(HomeWidgetType.RecentActivity);
@@ -327,12 +349,12 @@ describe("Home status and activity component lifecycle", () => {
 
     store.setOwner("bob");
     await flushPromises();
-    finishAlice(page([event({ metadata: '{"name":"private-alice-file.txt"}' })]));
+    finish(0, page([event({ metadata: '{"name":"private-alice-file.txt"}' })]));
     await flushPromises();
     expect(wrapper.text()).not.toContain("private-alice-file.txt");
     expect(wrapper.find('[aria-label="Loading widget data"]').exists()).toBe(true);
 
-    finishBob(page([event({ userId: "bob", metadata: '{"name":"bob-file.txt"}' })]));
+    finish(1, page([event({ userId: "bob", metadata: '{"name":"bob-file.txt"}' })]));
     await flushPromises();
     expect(wrapper.text()).toContain("bob-file.txt");
     wrapper.unmount();

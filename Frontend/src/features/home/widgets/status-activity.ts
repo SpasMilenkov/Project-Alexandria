@@ -1,13 +1,14 @@
+import type { AuditLogResult } from "@/api/activity";
 import type {
   DailyServiceStatus,
   PublicServiceCurrent,
   PublicServiceState,
 } from "@/api/publicStatus";
 
-import { AuditEventCode, type AuditLogResult, OperationType } from "@/api/activity";
-import { useAuditMessage } from "@/composables/useAuditMessage";
-import { ServiceType } from "@/enums";
+import { getAuditMessage } from "@/composables/useAuditMessage";
+import { AuditEventCode, OperationType, ServiceType } from "@/enums";
 import { HomeActivityStyle, HomeStatusStyle } from "@/enums/home-widget";
+import { auditEntityName } from "@/features/audit/links";
 import { PUBLIC_SERVICE_LABELS } from "@/features/monitoring/public-status";
 import {
   calendarDaysBetween,
@@ -142,6 +143,7 @@ export const homeHistoryRows = (history: DailyServiceStatus[], now = new Date())
   });
 };
 
+// Account events stay unnamed: their names are usernames and email addresses.
 const NAMED_EVENTS = new Set([
   AuditEventCode.FileCreated,
   AuditEventCode.FileRenamed,
@@ -149,6 +151,13 @@ const NAMED_EVENTS = new Set([
   AuditEventCode.FileSoftDeleted,
   AuditEventCode.FileRestored,
   AuditEventCode.FileDeletedPermanently,
+  AuditEventCode.FileVersionCreated,
+  AuditEventCode.FileVersionSoftDeleted,
+  AuditEventCode.FileVersionRestored,
+  AuditEventCode.FileVersionDeletedPermanently,
+  AuditEventCode.FileActiveVersionChanged,
+  AuditEventCode.FileDownloaded,
+  AuditEventCode.FileVersionDownloaded,
   AuditEventCode.DirectoryCreated,
   AuditEventCode.DirectoryRenamed,
   AuditEventCode.DirectoryMoved,
@@ -161,32 +170,32 @@ const NAMED_EVENTS = new Set([
   AuditEventCode.TagSoftDeleted,
   AuditEventCode.TagRestored,
   AuditEventCode.TagDeletedPermanently,
-]);
-
-const RENAMED_EVENTS = new Set([
-  AuditEventCode.FileRenamed,
-  AuditEventCode.DirectoryRenamed,
-  AuditEventCode.TagRenamed,
+  AuditEventCode.FileTagApplied,
+  AuditEventCode.FileTagRemoved,
+  AuditEventCode.ShareLinkCreated,
+  AuditEventCode.ShareLinkRevoked,
+  AuditEventCode.ShareLinkAccessed,
+  AuditEventCode.PlaylistCreated,
+  AuditEventCode.PlaylistRenamed,
+  AuditEventCode.PlaylistSoftDeleted,
+  AuditEventCode.PlaylistRestored,
+  AuditEventCode.PlaylistDeletedPermanently,
+  AuditEventCode.PlaylistItemsChanged,
+  AuditEventCode.TrackCoverSet,
+  AuditEventCode.TrackCoverRemoved,
+  AuditEventCode.MediaMetadataEdited,
+  AuditEventCode.LyricsUploaded,
+  AuditEventCode.LyricsDeleted,
 ]);
 
 export const homeActivityDescription = (event: AuditLogResult): string => {
-  const { getMessage } = useAuditMessage();
-  const label = getMessage(event.eventCode);
-  if (!NAMED_EVENTS.has(event.eventCode) || !event.metadata) return label;
+  const label = getAuditMessage(event.eventCode);
+  if (!NAMED_EVENTS.has(event.eventCode)) return label;
 
-  try {
-    const metadata: unknown = JSON.parse(event.metadata);
-    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return label;
+  const name = auditEntityName(event);
+  if (!name) return label;
 
-    const values = metadata as Record<string, unknown>;
-    let name = values.name;
-    if (RENAMED_EVENTS.has(event.eventCode) && typeof values.new === "string") name = values.new;
-    if (typeof name !== "string" || !name.trim()) return label;
-
-    return `${label} · ${name.trim()}`;
-  } catch {
-    return label;
-  }
+  return `${label} · ${name}`;
 };
 
 export const HOME_ACTIVITY_PRESENTATION = {
