@@ -1,4 +1,5 @@
 using Alexandria.Common.Audit;
+using Alexandria.Data.Audit;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Microsoft.AspNetCore.Identity;
@@ -13,6 +14,9 @@ public static class WorkerDbExtensions
     public static IServiceCollection AddWorkerDatabase(this IServiceCollection services, IConfiguration config)
     {
         services.AddScoped<AuditContext>();
+        services.AddHttpContextAccessor();
+        services.AddScoped<IAuditActorAccessor, AuditActorAccessor>();
+        services.AddScoped<IAuditWriter, AuditWriter>();
 
         var connStr = config.GetConnectionString("AlexandriaPostgres");
         services.AddDbContext<AlexandriaDbContext>(opt => opt.UseNpgsql(connStr));

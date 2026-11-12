@@ -1,4 +1,5 @@
 using Alexandria.Common.Audit;
+using Alexandria.Data.Audit;
 using Alexandria.Data.Context;
 using Alexandria.Data.Seeders;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,9 @@ public static class DatabaseExtensions
     public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration config)
     {
         services.AddScoped<AuditContext>();
+        services.AddHttpContextAccessor();
+        services.AddScoped<IAuditActorAccessor, AuditActorAccessor>();
+        services.AddScoped<IAuditWriter, AuditWriter>();
 
         services.AddDbContext<AlexandriaDbContext>((sp, opt) =>
         {
