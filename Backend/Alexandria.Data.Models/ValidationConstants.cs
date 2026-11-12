@@ -9,6 +9,7 @@ public static class ValidationConstants
         public const int LongString = 1000;
         public const int ExtraLongString = 2000;
         public const int UserId = 450; // ASP.NET Identity standard
+        public const int IpAddress = 45; // longest textual IPv6 form
     }
 
     public static class FileConstants

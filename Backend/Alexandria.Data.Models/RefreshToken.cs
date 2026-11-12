@@ -10,6 +10,11 @@ public class RefreshToken : IBase
     public bool IsRevoked { get; set; }
     public DateTime? RevokedAt { get; set; }
 
+    // Tokens rotate on every refresh, so these carry the session across rotations
+    public DateTime SessionStartedAt { get; set; }
+    public string? CreatedByIp { get; set; }
+    public string? UserAgent { get; set; }
+
     // IBase properties
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

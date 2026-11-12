@@ -7,5 +7,14 @@ public enum EntityType
     Directory,
     Tag,
     User,
-    Preview
+    Preview,
+    ShareLink,
+    Playlist,
+    Policy,
+    Setting,
+    FileTag,
+    Job,
+    Incident,
+    Session,
+    System
 }

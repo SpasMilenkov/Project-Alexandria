@@ -40,17 +40,25 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .IsRequired();
 
         builder.Property(a => a.IpAddress)
-            .HasMaxLength(45); // IPv6 max length
+            .HasMaxLength(ValidationConstants.StringLengths.IpAddress);
 
         builder.Property(a => a.Timestamp)
             .IsRequired();
 
+        // Triggers fall back to the system user, so a row always has an actor
         builder.Property(a => a.UserId)
+            .IsRequired();
+
+        builder.Property(a => a.EntityName)
+            .HasMaxLength(ValidationConstants.StringLengths.LongString)
             .IsRequired(false);
 
         builder.HasIndex(a => a.Timestamp);
-        builder.HasIndex(a => a.UserId);
         builder.HasIndex(a => a.EventCode);
-        builder.HasIndex(a => new { a.EntityType, a.EntityId });
+        builder.HasIndex(a => new { a.EntityType, a.EntityId, a.Timestamp });
+        builder.HasIndex(a => new { a.UserId, a.Timestamp });
+        builder.HasIndex(a => new { a.OwnerId, a.Timestamp });
+        builder.HasIndex(a => new { a.ParentEntityId, a.Timestamp });
+        builder.HasIndex(a => a.CorrelationId);
     }
 }
