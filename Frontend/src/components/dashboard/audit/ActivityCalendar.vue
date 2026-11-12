@@ -3,12 +3,34 @@ import { useQuery } from "@pinia/colada";
 import { useMediaQuery } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 
-import { OperationType } from "@/api/activity";
+import type { EntityType } from "@/enums/entity-type";
+
+import { isAuthError } from "@/api/shuffle";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { type CalendarDay, useActivityCalendar } from "@/composables/useActivityCalendar";
+import { OperationType } from "@/enums/operation-type";
+import { utcDayRange } from "@/features/audit/query";
 import { activitySummary } from "@/queries/activities";
+import { useAuthStore } from "@/stores/auth";
 import { formatCount } from "@/utils/count";
 import { formatDayMonth, formatFullDate } from "@/utils/date-formatters";
+
+const {
+  entityType = undefined,
+  from = undefined,
+  to = undefined,
+} = defineProps<{
+  entityType?: EntityType;
+  // The page's date filter, so a day picked here clears once that filter changes elsewhere.
+  from?: string;
+  to?: string;
+}>();
+
+const emit = defineEmits<{
+  "select-day": [range: { from: string; to: string } | null];
+}>();
+
+const authStore = useAuthStore();
 
 const isMobile = useMediaQuery("(max-width: 767px)");
 
@@ -91,24 +113,24 @@ const setFilter = (op: OperationType | null) => {
 };
 
 // Always the full year; the mobile month view slices it client-side.
-// oxlint-disable-next-line sort-keys
 const { data, isPending, error } = useQuery(() =>
   activitySummary({
-    startDate: new Date(Date.UTC(selectedYear.value, 0, 1)),
-    endDate: new Date(Date.UTC(selectedYear.value + 1, 0, 1)),
+    query: {
+      endDate: new Date(Date.UTC(selectedYear.value + 1, 0, 1)),
+      entityType,
+      startDate: new Date(Date.UTC(selectedYear.value, 0, 1)),
+    },
+    userId: authStore.user?.user.id ?? "",
   }),
 );
 
-const isAuthError = (err: unknown): boolean => {
-  if (!err) return false;
-
-  const e = err as Record<string, unknown>;
-  const status = (e.status ?? e.statusCode) as number | undefined;
-  if (status === 401 || status === 403) return true;
-
-  const msg = String(e.message ?? "").toLowerCase();
-  return msg.includes("unauthorized") || msg.includes("401") || msg.includes("forbidden");
-};
+// A filter change rescales the heatmap, so a picked day may no longer mean the same thing.
+watch(
+  () => entityType,
+  () => {
+    selectedDay.value = null;
+  },
+);
 
 const visibleError = computed(() => {
   if (!error.value || isAuthError(error.value)) return null;
@@ -173,8 +195,42 @@ const isSelected = (day: CalendarDay): boolean =>
 
 const selectDay = (day: CalendarDay) => {
   if (!isSelectable(day)) return;
-  selectedDay.value = isSelected(day) ? null : day;
+
+  if (isSelected(day) || !day.date) {
+    selectedDay.value = null;
+    return;
+  }
+
+  selectedDay.value = day;
 };
+
+const dayRange = (day: CalendarDay | null) => {
+  if (!day?.date) return null;
+
+  return utcDayRange(day.date.getFullYear(), day.date.getMonth(), day.date.getDate());
+};
+
+const isPageFilter = (range: { from: string; to: string } | null) =>
+  Boolean(range) && range?.from === from && range?.to === to;
+
+watch(
+  () => [from, to] as const,
+  () => {
+    const range = dayRange(selectedDay.value);
+    if (range && !isPageFilter(range)) selectedDay.value = null;
+  },
+);
+
+// Clearing a day only clears the page filter while that filter is still the day's own.
+watch(selectedDay, (day, previous) => {
+  const range = dayRange(day);
+  if (range) {
+    emit("select-day", range);
+    return;
+  }
+
+  if (isPageFilter(dayRange(previous ?? null))) emit("select-day", null);
+});
 
 // Hover tooltip is desktop only so touch taps never leave a phantom tooltip behind.
 const tooltipVisible = ref(false);
