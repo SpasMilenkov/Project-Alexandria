@@ -19,4 +19,11 @@ public static class AuditFilterMapping
         To = request.To,
         CorrelationId = request.CorrelationId,
     };
+
+    public static AuditLogFilter ToExportFilter(this AuditExportRequest request, Guid? userId, Guid? ownerId) =>
+        request.ToFilter(userId, ownerId) with
+        {
+            UpTo = request.StartCursor(),
+            After = request.EndCursor(),
+        };
 }
