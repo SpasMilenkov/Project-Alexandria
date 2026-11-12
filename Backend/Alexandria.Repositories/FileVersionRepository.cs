@@ -274,21 +274,33 @@ public class FileVersionRepository : IFileVersionRepository
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<DownloadMetadata?> GetDownloadMetadataAsync(Guid versionId, Guid userId,
-        CancellationToken ct = default)
+    public async Task<(DownloadMetadata Metadata, Guid FileId, int VersionNumber)?> GetDownloadMetadataAsync(
+        Guid versionId, Guid userId, CancellationToken ct = default)
     {
-        return await _dbSet.Where(v => v.Id == versionId && v.File.OwnerId == userId && v.DeletedAt == null).Select(v =>
-            new DownloadMetadata
+        var row = await _dbSet
+            .Where(v => v.Id == versionId && v.File.OwnerId == userId && v.DeletedAt == null)
+            .Select(v => new
             {
-                FileName = v.File.Name,
-                MimeType = v.File.MimeType,
-                EncryptionHint = v.EncryptionHint,
-                EncryptionIv = v.EncryptionIv,
-                IsEncrypted = v.IsEncrypted,
-                EncryptionSalt = v.EncryptionSalt,
-                IntegrityTag = v.IntegrityTag,
-                IterationCount = v.IterationCount,
-            }).FirstOrDefaultAsync(ct);
+                Metadata = new DownloadMetadata
+                {
+                    FileName = v.File.Name,
+                    MimeType = v.File.MimeType,
+                    EncryptionHint = v.EncryptionHint,
+                    EncryptionIv = v.EncryptionIv,
+                    IsEncrypted = v.IsEncrypted,
+                    EncryptionSalt = v.EncryptionSalt,
+                    IntegrityTag = v.IntegrityTag,
+                    IterationCount = v.IterationCount,
+                },
+                v.FileId,
+                v.VersionNumber,
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (row is null)
+            return null;
+
+        return (row.Metadata, row.FileId, row.VersionNumber);
     }
 
     public async Task<bool> IsEncryptedAsync(Guid versionId, CancellationToken ct = default)

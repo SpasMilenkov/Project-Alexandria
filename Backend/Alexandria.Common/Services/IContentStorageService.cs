@@ -46,7 +46,7 @@ public interface IContentStorageService
 
     Task<string> GetStreamManifest(Guid versionId, Guid userId, CancellationToken ct = default);
     Task<DownloadInfo> GetFileDownloadDetails(Guid fileId, Guid userId, CancellationToken ct = default);
-    Task<DownloadInfo> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default);
+    Task<VersionDownload> GetFilVersioneDownloadDetails(Guid versionId, Guid userId, CancellationToken ct = default);
 
     Task StreamFile(
         Guid versionId,
