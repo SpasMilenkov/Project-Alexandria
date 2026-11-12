@@ -193,6 +193,12 @@
         :current-version-number="detail.currentVersion.versionNumber"
         @versions-changed="refreshDetail"
       />
+
+      <EntityHistorySection
+        :entity-type="EntityType.File"
+        :entity-id="displayFile.fileId"
+        :enabled="isOpen"
+      />
     </template>
   </DetailsDrawerShell>
 </template>
@@ -211,7 +217,9 @@ import DetailsDrawerShell from "@/components/common/details/DetailsDrawerShell.v
 import DetailsOwner from "@/components/common/details/DetailsOwner.vue";
 import DetailsSection from "@/components/common/details/DetailsSection.vue";
 import DetailsTile from "@/components/common/details/DetailsTile.vue";
+import EntityHistorySection from "@/components/dashboard/audit/EntityHistorySection.vue";
 import { useAppToast } from "@/composables/useAppToast";
+import { EntityType } from "@/enums/entity-type";
 import { quoted } from "@/features/toast/format";
 import { autoTagFile } from "@/mutations/files";
 import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
