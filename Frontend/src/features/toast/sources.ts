@@ -6,6 +6,7 @@ export interface ToastSourceMeta {
 // Each toast names the part of the app that raised it, so a stack of toasts stays tellable apart.
 export const TOAST_SOURCES = {
   account: { icon: "i-lucide-user-round", label: "Account" },
+  activity: { icon: "i-lucide-history", label: "Activity" },
   auth: { icon: "i-lucide-log-in", label: "Sign in" },
   clipboard: { icon: "i-lucide-clipboard-check", label: "Clipboard" },
   files: { icon: "i-lucide-file", label: "Files" },
