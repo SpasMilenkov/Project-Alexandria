@@ -11,6 +11,8 @@ const REFRESH_PATH = "/auth/refresh";
 export interface RequestOptions {
   params?: object;
   timeout?: number;
+  // "blob" hands back the raw body of a successful response, for file downloads.
+  responseType?: "json" | "blob";
 }
 
 export interface RequestOptionsWithBody extends RequestOptions {
@@ -40,10 +42,28 @@ const toQueryValue = (key: string, value: unknown): string => {
   if (value instanceof Date) return value.toISOString();
 
   if (typeof value === "object") {
-    throw new TypeError(`Query param "${key}" must be a single value, not an array or object`);
+    throw new TypeError(`Query param "${key}" must be a single value, not an object`);
   }
 
   return String(value);
+};
+
+// Arrays repeat the key (?ids=1&ids=2), which is how the backend binds list parameters.
+const appendQueryParam = (query: URLSearchParams, key: string, value: unknown) => {
+  if (value === null || value === undefined) return;
+
+  if (!Array.isArray(value)) {
+    query.append(key, toQueryValue(key, value));
+    return;
+  }
+
+  for (const item of value) {
+    if (Array.isArray(item)) {
+      throw new TypeError(`Query param "${key}" must be a flat list, not a nested array`);
+    }
+
+    if (item !== null && item !== undefined) query.append(key, toQueryValue(key, item));
+  }
 };
 
 const buildUrl = (path: string, params?: object): string => {
@@ -53,9 +73,7 @@ const buildUrl = (path: string, params?: object): string => {
 
   const query = new URLSearchParams();
 
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== null && value !== undefined) query.append(key, toQueryValue(key, value));
-  }
+  for (const [key, value] of Object.entries(params)) appendQueryParam(query, key, value);
 
   const queryString = query.toString();
 
@@ -106,10 +124,13 @@ const toTransportError = (cause: unknown): ApiError => {
   return new ApiError("The server could not be reached", { cause, kind: "network" });
 };
 
-const fetchResponse = async (url: string, init: RequestInit) => {
+const fetchResponse = async (url: string, init: RequestInit, responseType?: "json" | "blob") => {
   try {
     const response = await fetch(url, init);
-    const data = await readBody(response);
+
+    // Error bodies are still read as JSON so ApiError keeps the validation details.
+    const data =
+      responseType === "blob" && response.ok ? await response.blob() : await readBody(response);
 
     return { data, response };
   } catch (cause) {
@@ -120,7 +141,7 @@ const fetchResponse = async (url: string, init: RequestInit) => {
 const sendOnce = async <T>(config: RequestConfig): Promise<T> => {
   const url = buildUrl(config.path, config.params);
   const init = buildRequestInit(config);
-  const { data, response } = await fetchResponse(url, init);
+  const { data, response } = await fetchResponse(url, init, config.responseType);
 
   if (!response.ok) {
     throw new ApiError(`Request failed with status ${response.status}`, {
