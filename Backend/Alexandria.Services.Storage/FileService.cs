@@ -1,6 +1,8 @@
 using Alexandria.Common;
+using Alexandria.Common.Audit;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Audit;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Alexandria.Services.Storage.Playlists;
@@ -13,6 +15,7 @@ public class FileService(
     IUnitOfWork unitOfWork,
     IDirectoryService dirService,
     IPublisherService publisher,
+    IAuditWriter auditWriter,
     ILogger<FileService> logger) : IFileService
 {
     public async Task FolderWithOwnershipExistsAsync(Guid? directoryId, Guid ownerId, CancellationToken ct = default)
@@ -27,7 +30,24 @@ public class FileService(
     {
         await FolderWithOwnershipExistsAsync(destinationId, userId, ct);
 
-        await unitOfWork.Files.MoveFilesAsync(fileIds, destinationId, userId, ct);
+        await unitOfWork.BeginTransactionAsync(ct);
+
+        try
+        {
+            await unitOfWork.Files.MoveFilesAsync(fileIds, destinationId, userId, ct);
+
+            // Each file already gets a FileMoved row from the trigger; the summary lets the
+            // history collapse the whole move into one line.
+            if (fileIds.Length > 1)
+                await RecordBulkAsync(AuditEventCode.FilesMovedBulk, fileIds, destinationId, userId, ct);
+
+            await unitOfWork.CommitAsync(ct);
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(ct);
+            throw;
+        }
     }
 
     public async Task CopyFilesAsync(Guid[] fileIds, Guid? destinationId, Guid userId, CancellationToken ct = default)
@@ -36,6 +56,9 @@ public class FileService(
         await FolderWithOwnershipExistsAsync(destinationId, userId, ct);
 
         await unitOfWork.Files.CopyFilesAsync(fileIds, destinationId, userId, ct);
+
+        // The copies only show up as FileCreated rows, which do not say where they came from.
+        await RecordBulkAsync(AuditEventCode.FilesCopied, fileIds, destinationId, userId, ct);
 
         await unitOfWork.CommitAsync(ct);
     }
@@ -60,6 +83,25 @@ public class FileService(
 
             if (filesDeleted == 0)
                 throw new InvalidOperationException("No files found exception");
+
+            if (fileIds.Length > 1)
+            {
+                auditWriter.Record(new AuditEntry
+                {
+                    EventCode = AuditEventCode.FilesDeletedBulk,
+                    // Moving to trash is a delete to the person doing it, even though the row stays.
+                    OperationType = OperationType.Delete,
+                    EntityType = EntityType.File,
+                    OwnerId = userId,
+                    Metadata = new Dictionary<string, object?>
+                    {
+                        ["file_count"] = filesDeleted,
+                        ["version_count"] = versionsDeleted,
+                        ["hard_delete"] = hardDelete,
+                        ["file_ids"] = fileIds,
+                    },
+                });
+            }
 
             await unitOfWork.CommitAsync(ct);
         }
@@ -114,6 +156,27 @@ public class FileService(
                     Id = Guid.NewGuid(),
                     FileId = fileId,
                 };
+
+                var changes = new Dictionary<string, object?>();
+                AddChange(changes, "title", metadata.Title, newTitle);
+                AddChange(changes, "artist", metadata.Artist, newArtist);
+                AddChange(changes, "album", metadata.Album, newAlbum);
+                AddChange(changes, "year", metadata.Year, newYear);
+
+                // MediaMetadata is worker-derived and has no trigger, so user edits are recorded here.
+                if (changes.Count > 0)
+                {
+                    auditWriter.Record(new AuditEntry
+                    {
+                        EventCode = AuditEventCode.MediaMetadataEdited,
+                        OperationType = OperationType.Update,
+                        EntityType = EntityType.File,
+                        EntityId = fileId,
+                        OwnerId = fileEntity.OwnerId,
+                        EntityName = fileEntity.Name,
+                        Metadata = new Dictionary<string, object?> { ["changes"] = changes },
+                    });
+                }
 
                 if (!string.IsNullOrEmpty(newTitle))
                     metadata.Title = newTitle;
@@ -211,7 +274,78 @@ public class FileService(
             }
         }
 
+        var updated = results.Count(r => r.Success);
+
+        if (updated > 1)
+        {
+            auditWriter.Record(new AuditEntry
+            {
+                EventCode = AuditEventCode.MediaMetadataEditedBulk,
+                OperationType = OperationType.Update,
+                EntityType = EntityType.File,
+                OwnerId = updatedBy,
+                Metadata = new Dictionary<string, object?>
+                {
+                    ["file_count"] = updated,
+                    ["failed_count"] = results.Count - updated,
+                    ["fields"] = ChangedFieldNames(newTitle, newArtist, newAlbum, newYear),
+                },
+            });
+
+            await unitOfWork.SaveChangesAsync(ct);
+        }
+
         return results;
+    }
+
+    private async Task RecordBulkAsync(AuditEventCode code, Guid[] fileIds, Guid? destinationId, Guid userId,
+        CancellationToken ct)
+    {
+        string? destinationName = null;
+
+        if (destinationId.HasValue)
+        {
+            var destination = await unitOfWork.Directories.GetByIdAsync(destinationId.Value, ct);
+            destinationName = destination?.Name;
+        }
+
+        auditWriter.Record(new AuditEntry
+        {
+            EventCode = code,
+            OperationType = code == AuditEventCode.FilesCopied ? OperationType.Create : OperationType.Update,
+            EntityType = EntityType.File,
+            OwnerId = userId,
+            ParentEntityId = destinationId,
+            EntityName = destinationName,
+            Metadata = new Dictionary<string, object?>
+            {
+                ["file_count"] = fileIds.Length,
+                ["destination_id"] = destinationId,
+                ["destination_name"] = destinationName,
+                ["file_ids"] = fileIds,
+            },
+        });
+    }
+
+    private static void AddChange(Dictionary<string, object?> changes, string field, string? oldValue,
+        string? newValue)
+    {
+        if (string.IsNullOrEmpty(newValue) || newValue == oldValue)
+            return;
+
+        changes[field] = new Dictionary<string, object?> { ["old"] = oldValue, ["new"] = newValue };
+    }
+
+    private static List<string> ChangedFieldNames(string? title, string? artist, string? album, string? year)
+    {
+        var fields = new List<string>();
+
+        if (!string.IsNullOrEmpty(title)) fields.Add("title");
+        if (!string.IsNullOrEmpty(artist)) fields.Add("artist");
+        if (!string.IsNullOrEmpty(album)) fields.Add("album");
+        if (!string.IsNullOrEmpty(year)) fields.Add("year");
+
+        return fields;
     }
 
     public async Task<PaginatedResult<FileResult>> GetRootFilesAsync(Guid ownerId, int page = 1,
