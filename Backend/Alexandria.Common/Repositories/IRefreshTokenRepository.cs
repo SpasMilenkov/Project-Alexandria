@@ -1,4 +1,5 @@
 using Alexandria.Data.Models;
+using Alexandria.Dto.Audit;
 
 namespace Alexandria.Common.Repositories;
 
@@ -29,6 +30,9 @@ public interface IRefreshTokenRepository
 
     /// <summary>Unrevoked, unexpired tokens of the user: one per signed-in device or browser.</summary>
     Task<IReadOnlyList<RefreshToken>> GetActiveByUserAsync(Guid userId, DateTime now, CancellationToken ct = default);
+
+    /// <summary>Every account's unrevoked, unexpired tokens, reduced to holder and browser.</summary>
+    Task<IReadOnlyList<AccountSessionRow>> GetAllActiveAsync(DateTime now, CancellationToken ct = default);
 
     Task<RefreshToken?> GetActiveByIdAsync(Guid id, Guid userId, DateTime now, CancellationToken ct = default);
 }

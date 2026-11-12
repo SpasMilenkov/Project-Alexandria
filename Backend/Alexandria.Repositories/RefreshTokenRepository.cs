@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
+using Alexandria.Dto.Audit;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -195,6 +196,15 @@ public class RefreshTokenRepository(AlexandriaDbContext context) : IRefreshToken
 
         _refreshTokens.UpdateRange(userTokens);
         await context.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<AccountSessionRow>> GetAllActiveAsync(DateTime now, CancellationToken ct = default)
+    {
+        return await _refreshTokens
+            .AsNoTracking()
+            .Where(rt => !rt.IsRevoked && rt.DeletedAt == null && rt.ExpiresAt > now)
+            .Select(rt => new AccountSessionRow(rt.UserId, rt.UserAgent))
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<RefreshToken>> GetActiveByUserAsync(

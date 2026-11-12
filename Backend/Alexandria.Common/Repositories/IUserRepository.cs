@@ -13,6 +13,9 @@ public interface IUserRepository : IRepository<ApplicationUser>
     /// <summary>Sum of designated quotas over live accounts, plus the account count.</summary>
     Task<(long TotalQuotaBytes, int UserCount)> GetTotalStorageQuotaAsync(CancellationToken ct = default);
 
+    /// <summary>Every live account except the system account, with its lockout end.</summary>
+    Task<IReadOnlyList<AccountStateRow>> GetAccountStatesAsync(CancellationToken ct = default);
+
     Task<UserProfileDto?> GetUserProfileAsync(Guid userId, CancellationToken ct = default);
     Task SetupProfileAsync(Guid userId, CancellationToken ct = default);
     Task<OnboardingStep?> GetOnboardingStatusAsync(Guid userId, CancellationToken ct);
