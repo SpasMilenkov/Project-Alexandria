@@ -221,6 +221,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "settings",
     "guitar",
     "disc-3",
+    "smartphone",
     "smile",
     "cloud-rain",
     "leaf",

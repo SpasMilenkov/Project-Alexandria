@@ -19,10 +19,22 @@ export interface SessionResponse {
   onboardingStep: OnboardingStep;
 }
 
+export interface UserSession {
+  id: string;
+  sessionStartedAt: string;
+  lastActiveAt: string;
+  expiresAt: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  isCurrent: boolean;
+}
+
 export const authApi = {
   changeInitialPassword: async (payload: ChangePasswordSchema) => {
     await api.patch("/auth/change-initial-password", payload);
   },
+
+  getSessions: (): Promise<UserSession[]> => api.get<UserSession[]>("/auth/sessions"),
 
   getSession: (): Promise<SessionResponse> =>
     api.get<SessionResponse>("/auth/session", { timeout: 10_000 }),
@@ -34,6 +46,10 @@ export const authApi = {
 
   logout: async (): Promise<void> => {
     await api.post("/auth/logout");
+  },
+
+  revokeSession: async (sessionId: string): Promise<void> => {
+    await api.delete(`/auth/sessions/${sessionId}`);
   },
 
   refreshToken: (): Promise<{ token: string }> => api.post<{ token: string }>("/auth/refresh"),
