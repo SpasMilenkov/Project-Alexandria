@@ -103,6 +103,8 @@ const muteLabel = computed(() => {
   return "Mute";
 });
 
+const lyricsEnabled = import.meta.env.VITE_LYRICS_ENABLED === "true";
+
 const lyricsToggleClass = computed(() => {
   if (lyricsOpen.value) return "text-primary";
   return "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100";
@@ -633,6 +635,7 @@ onUnmounted(() => {
               <PlayerQueue />
               <PlayerSettings />
               <button
+                v-if="lyricsEnabled"
                 class="w-10 h-10 flex-shrink-0 rounded-lg flex items-center justify-center transition-colors"
                 :class="lyricsToggleClass"
                 title="Lyrics"

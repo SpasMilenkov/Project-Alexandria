@@ -98,4 +98,23 @@ public sealed class AudioBackboneTests
         compose.Should().Contain("HealthChecks__Workers__5__Url: http://playlist-worker:8080/health");
         compose.Should().Contain("RabbitMQ__Consumer__SyncQueueName: playlist-queue");
     }
+
+    [Fact]
+    public void FrontendBuild_hidesLyricsAndTaggingWhenTheirWorkersAreOff()
+    {
+        // Tagging needs both the toggle and a model, so the frontend follows
+        // the combined audio analysis switch rather than the toggle alone
+        var features = FeatureSelection.FromDefaults();
+        features.SetEnabled(FeatureCatalog.Lyrics.Id, false);
+        features.SetAudioBackbone("off");
+        var environment = EnvGenerator.BuildValues(features, new Dictionary<string, string>(), new AdminAccountInput(), null);
+        var compose = new ConfigurationService(new TemplateService("Local"))
+            .GenerateDockerCompose(new InstallationConfig { Features = features, Ports = new() { ["HTTPS_PORT"] = 8443 } });
+
+        environment["LYRICS_ENABLED"].Should().Be("false");
+        environment["AUTOTAGGING_ENABLED"].Should().Be("true");
+        environment["AUDIO_ANALYSIS_ENABLED"].Should().Be("false");
+        compose.Should().Contain("VITE_LYRICS_ENABLED: \"${LYRICS_ENABLED:?LYRICS_ENABLED is required}\"");
+        compose.Should().Contain("VITE_AUTOTAGGING_ENABLED: \"${AUDIO_ANALYSIS_ENABLED:?AUDIO_ANALYSIS_ENABLED is required}\"");
+    }
 }

@@ -72,7 +72,7 @@
             </button>
 
             <button
-              v-if="mediaType === 'audio'"
+              v-if="mediaType === 'audio' && lyricsEnabled"
               class="flex size-9 items-center justify-center rounded-md transition-all duration-150"
               :class="
                 lyricsOpen
@@ -320,6 +320,7 @@ const playerStore = usePlayerStore();
 // Lyrics live in the shared dashboard side panel (desktop) or the mobile
 // sheet, toggled through the player store. This grid owns no lyrics instance.
 const lyricsOpen = computed(() => playerStore.lyricsOpen);
+const lyricsEnabled = import.meta.env.VITE_LYRICS_ENABLED === "true";
 
 const queryCache = useQueryCache();
 const router = useRouter();

@@ -114,7 +114,10 @@
         VITE_API_BASE_URL: /api
         VITE_STREAMING_ENABLED: "true"
         VITE_PBKDF2_ITERATIONS: "${PBKDF2_ITERATION_COUNT:?PBKDF2_ITERATION_COUNT is required}"
-        VITE_AUTOTAGGING_ENABLED: "${AUTOTAGGING_ENABLED:?AUTOTAGGING_ENABLED is required}"
+        # Tagging only runs when a model is chosen as well, which is what
+        # AUDIO_ANALYSIS_ENABLED records, so the UI follows that instead
+        VITE_AUTOTAGGING_ENABLED: "${AUDIO_ANALYSIS_ENABLED:?AUDIO_ANALYSIS_ENABLED is required}"
+        VITE_LYRICS_ENABLED: "${LYRICS_ENABLED:?LYRICS_ENABLED is required}"
     container_name: alexandria-frontend
     restart: always
 

@@ -2,7 +2,7 @@ import type * as vueUse from "@vueuse/core";
 
 import { mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ref } from "vue";
 
 import { PolicyActionType, type PolicyRuleDto, PolicyTriggerType } from "@/api/policy";
@@ -52,6 +52,10 @@ describe("PolicyRuleRow", () => {
     isMobile.value = false;
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   const mountRow = () =>
     mount(PolicyRuleRow, {
       global: { plugins: [createPinia()] },
@@ -89,5 +93,17 @@ describe("PolicyRuleRow", () => {
     await wrapper.find('[aria-label="Delete rule"]').trigger("click");
     expect(errorToast).toHaveBeenCalledWith("Couldn't remove the rule", expect.any(Error));
     expect(successToast).not.toHaveBeenCalled();
+  });
+
+  it("warns that an Auto-tag rule does nothing while auto-tagging is off", () => {
+    vi.stubEnv("VITE_AUTOTAGGING_ENABLED", "false");
+
+    expect(mountRow().text()).toContain("Auto-tagging is turned off for this installation");
+  });
+
+  it("shows no warning while auto-tagging is on", () => {
+    vi.stubEnv("VITE_AUTOTAGGING_ENABLED", "true");
+
+    expect(mountRow().text()).not.toContain("Auto-tagging is turned off");
   });
 });
