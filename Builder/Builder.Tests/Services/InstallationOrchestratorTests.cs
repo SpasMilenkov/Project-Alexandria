@@ -331,6 +331,32 @@ public class InstallationOrchestratorTests : IDisposable
         _docker.DidNotReceive().ComposeDown(Arg.Any<string>());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Execute_redirectPortOccupiedAfterReview_startsOnlyIfOwnedByThisInstallation(bool owned)
+    {
+        WriteHandoff();
+        _context.Config.Ports[PublicEndpoint.HttpRedirectPortKey] = PublicEndpoint.HttpRedirectPort;
+        _systemChecker.IsPortAvailable(PublicEndpoint.HttpRedirectPort).Returns(false);
+        _docker.IsHttpRedirectPortOwned(_directory, PublicEndpoint.HttpRedirectPort).Returns(owned);
+
+        var action = () => Execute();
+
+        if (owned)
+        {
+            action.Should().NotThrow();
+            _docker.Received(1).ComposeUpAll(_directory, Arg.Any<Action<string>?>());
+        }
+        else
+        {
+            action.Should().Throw<InvalidOperationException>().WithMessage("*redirect became occupied*preserved*");
+            _docker.DidNotReceive().ComposeUpAll(Arg.Any<string>(), Arg.Any<Action<string>?>());
+        }
+
+        _docker.DidNotReceive().ComposeDown(Arg.Any<string>());
+    }
+
     [Fact]
     public void Execute_containersReadyButPublicHttpsFails_doesNotReportSuccessOrTearDown()
     {

@@ -24,17 +24,60 @@ public class PortsScreenTests
     }
 
     [Fact]
-    public void Run_freeDefault_publishesOnlyHttpsAndKeepsLanHost()
+    public void Run_freeDefault_publishesHttpsWithHttpRedirectAndKeepsLanHost()
     {
         using var harness = new ShellHarness(new FakeKeys().Enter().Enter().Enter());
         var checker = CheckerWith();
 
         PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
 
-        harness.Context.Config.Ports.Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, int>("HTTPS_PORT", 443));
+        harness.Context.Config.Ports.Should().BeEquivalentTo(new Dictionary<string, int>
+        {
+            ["HTTPS_PORT"] = 443,
+            [PublicEndpoint.HttpRedirectPortKey] = PublicEndpoint.HttpRedirectPort,
+        });
         harness.Context.Config.PublicEndpoint.Origin.Should().Be("https://192.0.2.10");
-        harness.Output.Should().Contain("one");
         harness.Output.Should().Contain("internal services stay private");
+        harness.Output.Should().Contain("forward here automatically");
+    }
+
+    [Fact]
+    public void Run_busyPort80_skipsRedirectAndSaysSo()
+    {
+        using var harness = new ShellHarness(new FakeKeys().Enter().Enter().Enter());
+        var checker = CheckerWith(80);
+
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
+
+        harness.Context.Config.Ports.Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, int>("HTTPS_PORT", 443));
+        harness.Output.Should().Contain("Port 80 is not available");
+    }
+
+    [Fact]
+    public void Run_httpsOnPort80_neverPublishesRedirectOnTheSamePort()
+    {
+        var checker = CheckerWith();
+        using var harness = new ShellHarness(new FakeKeys().Enter().Down().Enter()
+            .Press(ConsoleKey.U, 'u', ctrl: true).Text("80").Enter().Enter());
+
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
+
+        harness.Context.Config.Ports.Should().ContainSingle().Which.Should().Be(new KeyValuePair<string, int>("HTTPS_PORT", 80));
+    }
+
+    [Fact]
+    public void Run_repairOwningPort80_keepsRedirectAlthoughThePortIsBound()
+    {
+        var checker = CheckerWith(80, 443);
+        using var harness = new ShellHarness(new FakeKeys().Enter().Enter().Enter());
+        harness.Context.IsRepair = true;
+        harness.Context.OwnedHttpsPort = 443;
+        harness.Context.OwnsHttpRedirectPort = true;
+        harness.Context.Config.Ports = new() { ["HTTPS_PORT"] = 443, [PublicEndpoint.HttpRedirectPortKey] = 80 };
+
+        PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
+
+        harness.Context.Config.Ports.Should().ContainKey(PublicEndpoint.HttpRedirectPortKey);
     }
 
     [Fact]
@@ -67,7 +110,11 @@ public class PortsScreenTests
 
         PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
 
-        harness.Context.Config.Ports.Should().ContainSingle();
+        harness.Context.Config.Ports.Should().BeEquivalentTo(new Dictionary<string, int>
+        {
+            ["HTTPS_PORT"] = 9000,
+            [PublicEndpoint.HttpRedirectPortKey] = PublicEndpoint.HttpRedirectPort,
+        });
         harness.Context.Config.PublicEndpoint.Origin.Should().Be("https://192.0.2.10:9000");
     }
 
@@ -96,7 +143,8 @@ public class PortsScreenTests
 
         PortsScreen.Run(harness.Shell, new PortResolver(checker), checker).Should().Be(ScreenOutcome.Continue);
 
-        harness.Context.Config.Ports.Should().ContainSingle();
+        harness.Context.Config.Ports.Should().NotContainKeys("HTTP_PORT", "GRAFANA_PORT");
+        harness.Context.Config.Ports["HTTPS_PORT"].Should().Be(9443);
         harness.Context.Config.PublicEndpoint.HttpsPort.Should().Be(9443);
     }
 

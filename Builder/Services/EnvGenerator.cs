@@ -86,7 +86,6 @@ public static class EnvGenerator
 
             // The reviewed endpoint supplies browser origins before any artifacts are written.
             ["CORS_ALLOWED_ORIGINS__0"] = string.Empty,
-            ["CORS_ORIGIN"] = string.Empty,
 
             // Frontend / feature switches derived from the wizard selection
             ["PBKDF2_ITERATION_COUNT"] = "800000",

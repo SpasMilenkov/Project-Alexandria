@@ -39,7 +39,7 @@ public static class PortsScreen
 
         IRenderable Header(string message) => new Rows(
             Views.Title("One secure port"),
-            Views.Note("A port is a numbered network connection. Alexandria publishes one; its internal services stay private."),
+            Views.Note("A port is a numbered network connection. Alexandria publishes one for HTTPS; its internal services stay private."),
             Views.Note(message),
             new Markup(Markup.Escape(new PublicEndpoint { Host = host, HttpsPort = mapping.AssignedPort }.Origin)));
 
@@ -84,8 +84,17 @@ public static class PortsScreen
         context.Config.OriginalPorts = mapping.AssignedPort == 443
             ? new Dictionary<string, int>()
             : new Dictionary<string, int> { ["HTTPS_PORT"] = 443 };
+
+        var redirect = mapping.AssignedPort != PublicEndpoint.HttpRedirectPort &&
+                       (context.IsRepair && context.OwnsHttpRedirectPort || checker.IsPortAvailable(PublicEndpoint.HttpRedirectPort));
+
+        if (redirect) context.Config.Ports[PublicEndpoint.HttpRedirectPortKey] = PublicEndpoint.HttpRedirectPort;
+
         shell.SetMain(new Rows(Header("Your devices will use this HTTPS address."),
-            Views.Note("Any previous HTTP or separate monitoring port will close when the new configuration starts."),
+            Views.Note(redirect
+                ? "Plain http:// addresses on port 80 forward here automatically."
+                : $"Port {PublicEndpoint.HttpRedirectPort} is not available, so plain http:// addresses will not forward here; use the https:// address."),
+            Views.Note("Any previous separate monitoring port will close when the new configuration starts."),
             Views.Note("Press Enter to continue; Esc returns to your choices.")));
 
         return IntroScreen.WaitEnter(shell) ? ScreenOutcome.Back : ScreenOutcome.Continue;

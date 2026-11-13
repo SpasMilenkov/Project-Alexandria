@@ -21,8 +21,32 @@ public class NginxConfigurationRendererTests
         configuration.Should().Contain("absolute_redirect off;");
         configuration.Should().Contain("ssl_certificate     /etc/nginx/certs/server.crt;");
         configuration.Should().Contain("ssl_certificate_key /etc/nginx/certs/server.key;");
-        configuration.Should().NotContain("return 301");
         configuration.Should().NotContain("{{");
+    }
+
+    [Theory]
+    [InlineData("https://alexandria.lan", "https://alexandria.lan")]
+    [InlineData("https://192.168.1.20:8443/", "https://192.168.1.20:8443")]
+    public void Render_httpRedirect_forwardsPlainHttpToTheCanonicalOrigin(string origin, string canonical)
+    {
+        var configuration = NginxConfigurationRenderer.Render(origin, monitoring: false, httpRedirect: true);
+        var listeners = Regex.Matches(configuration, @"^\s*listen ([^;]+);", RegexOptions.Multiline)
+            .Select(match => match.Groups[1].Value)
+            .ToArray();
+
+        listeners.Should().BeEquivalentTo(new[] { "80 default_server", "443 ssl", "127.0.0.1:8081" });
+        configuration.Should().Contain($"return 301 {canonical}$request_uri;");
+        configuration.Should().NotContain("return 301 https://$host");
+        configuration.Should().NotContain("{{");
+    }
+
+    [Fact]
+    public void Render_plainHttpOnTheTlsPort_redirectsWithoutAnExtraListener()
+    {
+        var configuration = NginxConfigurationRenderer.Render("https://alexandria.lan:8443", monitoring: false);
+
+        configuration.Should().Contain("error_page 497 =301 https://alexandria.lan:8443$request_uri;");
+        configuration.Should().NotContain("listen 80");
     }
 
     [Theory]

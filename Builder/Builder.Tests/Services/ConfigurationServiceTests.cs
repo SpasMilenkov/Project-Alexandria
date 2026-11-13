@@ -141,6 +141,27 @@ public class ConfigurationServiceTests
     }
 
     [Fact]
+    public void GenerateDockerCompose_httpRedirectChosen_publishesPort80ToNginx()
+    {
+        var config = CreateConfig();
+        config.Ports[PublicEndpoint.HttpRedirectPortKey] = PublicEndpoint.HttpRedirectPort;
+
+        var compose = CreateSut().GenerateDockerCompose(config);
+
+        compose.Should().Contain("- \"443:443\"");
+        compose.Should().Contain("- \"80:80\"");
+    }
+
+    [Fact]
+    public void GenerateDockerCompose_legacyHttpPortWithoutRedirectChoice_publishesOnlyHttps()
+    {
+        var compose = CreateSut().GenerateDockerCompose(CreateConfig());
+
+        compose.Should().Contain("- \"443:443\"");
+        compose.Should().NotContain(":80\"");
+    }
+
+    [Fact]
     public void GenerateDockerCompose_monitoringDisabled_hasNoObservabilityNetwork()
     {
         var sut = CreateSut();

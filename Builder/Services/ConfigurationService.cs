@@ -65,6 +65,10 @@ public class ConfigurationService : IConfigurationService
             ? "      - observability-net"
             : string.Empty;
 
+        tokens["NGINX_HTTP_REDIRECT_PORT"] = config.Ports.TryGetValue(PublicEndpoint.HttpRedirectPortKey, out var redirectPort)
+            ? $"      - \"{redirectPort}:80\""
+            : string.Empty;
+
         tokens["RABBITMQ_ESSENTIA_NET"] = capabilities.Networks.Contains("essentia-net")
             ? "      - essentia-net"
             : string.Empty;
@@ -345,7 +349,9 @@ public class ConfigurationService : IConfigurationService
             ["garage.toml"] = GenerateGarageToml(config),
             ["rabbitmq/rabbitmq.conf"] = brokerConfiguration,
             ["rabbitmq/definitions.json"] = BrokerDefinitionsRenderer.Render(brokerTemplate, config.EnvironmentValues),
-            ["nginx/nginx.conf"] = NginxConfigurationRenderer.Render(config.PublicEndpoint.Origin, config.Features.IsEnabled(FeatureCatalog.Monitoring.Id)),
+            ["nginx/nginx.conf"] = NginxConfigurationRenderer.Render(config.PublicEndpoint.Origin,
+                config.Features.IsEnabled(FeatureCatalog.Monitoring.Id),
+                config.Ports.ContainsKey(PublicEndpoint.HttpRedirectPortKey)),
         };
 
         if (config.Features.IsEnabled(FeatureCatalog.Monitoring.Id))

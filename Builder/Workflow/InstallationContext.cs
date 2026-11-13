@@ -14,6 +14,7 @@ public class InstallationContext
     public string? TargetPathDraft { get; set; }
     public string? PublicHostDraft { get; set; }
     public int? OwnedHttpsPort { get; set; }
+    public bool OwnsHttpRedirectPort { get; set; }
     public bool AdminUsernameCustomized { get; set; }
     public bool IsRepair { get; set; }
     public bool ExistingStackReady { get; set; }

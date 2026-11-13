@@ -23,6 +23,7 @@ public interface IDockerService
     bool WaitForMonitoring(string target, TimeSpan timeout, Action<string>? onOutput = null) => false;
     bool ComposeUpApi(string target, Action<string>? onOutput = null) => false;
     bool IsHttpsPortOwned(string target, int port) => false;
+    bool IsHttpRedirectPortOwned(string target, int port) => false;
     IReadOnlyList<ContainerStatus> GetServiceStatuses(string target, Action<string>? onOutput = null) => [];
     IReadOnlyList<string> GetServiceLogs(string target, string service, int tail = 100) => [];
     bool WaitForServices(string target, IReadOnlyCollection<string> expectedServices, TimeSpan timeout,
@@ -165,9 +166,13 @@ public class DockerService : IDockerService
         return false;
     }
 
-    public bool IsHttpsPortOwned(string target, int port)
+    public bool IsHttpsPortOwned(string target, int port) => IsNginxPortOwned(target, "443/tcp", port);
+
+    public bool IsHttpRedirectPortOwned(string target, int port) => IsNginxPortOwned(target, "80/tcp", port);
+
+    private bool IsNginxPortOwned(string target, string containerPort, int port)
     {
-        if (_projectName is null) throw new InvalidOperationException("Configure the installation identity before checking its HTTPS port.");
+        if (_projectName is null) throw new InvalidOperationException("Configure the installation identity before checking its published ports.");
 
         var containers = RunQuery(target,
             ["ps", "--quiet", "--filter", "label=com.docker.compose.project=" + _projectName, "--filter", "label=com.docker.compose.service=nginx"],
@@ -181,7 +186,7 @@ public class DockerService : IDockerService
 
         foreach (var ports in DockerJson.Objects(inspected.StandardOutput))
         {
-            if (!ports.TryGetProperty("443/tcp", out var bindings) || bindings.ValueKind != JsonValueKind.Array) continue;
+            if (!ports.TryGetProperty(containerPort, out var bindings) || bindings.ValueKind != JsonValueKind.Array) continue;
 
             if (bindings.EnumerateArray().Any(binding => DockerJson.Text(binding, "HostPort") == port.ToString(System.Globalization.CultureInfo.InvariantCulture))) return true;
         }

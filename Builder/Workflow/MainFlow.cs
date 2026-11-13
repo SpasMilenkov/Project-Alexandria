@@ -90,6 +90,8 @@ public class MainFlow
                 Context.OwnedHttpsPort = inspection.HasEnvironment
                     ? Context.Config.Ports.GetValueOrDefault("HTTPS_PORT", Context.Config.PublicEndpoint.HttpsPort)
                     : null;
+                Context.OwnsHttpRedirectPort = inspection.HasEnvironment &&
+                                               Context.Config.Ports.ContainsKey(PublicEndpoint.HttpRedirectPortKey);
                 Context.InspectedTarget = target;
 
                 if (string.IsNullOrEmpty(Context.Config.PublicEndpoint.Host) &&

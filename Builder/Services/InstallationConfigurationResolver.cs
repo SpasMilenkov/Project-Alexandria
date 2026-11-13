@@ -297,8 +297,9 @@ public static class InstallationConfigurationResolver
         ValidateGarageConfiguration(target, values);
         values["BASE_URL"] = endpoint.Origin;
         values["GARAGE_S3_PUBLIC_ENDPOINT"] = endpoint.Origin;
-        values["CORS_ORIGIN"] = endpoint.Origin;
         values["CORS_ALLOWED_ORIGINS__0"] = endpoint.Origin;
+        // Garage bucket CORS is gone (uploads are same-origin through nginx), so repairs drop its origin.
+        values.Remove("CORS_ORIGIN");
         values["GRAFANA_ROOT_URL"] = endpoint.Origin + "/monitoring/";
 
         foreach (var key in values.Keys.Where(key => Regex.IsMatch(key, "^CORS_ALLOWED_ORIGINS__[0-9]+$") && key != "CORS_ALLOWED_ORIGINS__0").ToArray())
@@ -347,7 +348,7 @@ public static class InstallationConfigurationResolver
             Features = draft.Features,
             ModelSourceDirectory = draft.ModelSourceDirectory,
             AllowModelDownloads = draft.AllowModelDownloads,
-            Ports = new Dictionary<string, int> { ["HTTPS_PORT"] = endpoint.HttpsPort },
+            Ports = ResolvePorts(draft.Ports, endpoint.HttpsPort),
             OriginalPorts = endpoint.HttpsPort == 443 ? new() : new() { ["HTTPS_PORT"] = 443 },
             InstallPath = target,
             SourceRoot = source,
@@ -429,6 +430,21 @@ public static class InstallationConfigurationResolver
         {
             throw new InvalidOperationException("The installation metadata is invalid or damaged. Restore the original metadata before continuing.");
         }
+    }
+
+    // The network step decides whether the http:// redirect is published; only that choice
+    // carries over, so legacy HTTP or monitoring ports from older metadata are dropped.
+    private static Dictionary<string, int> ResolvePorts(IReadOnlyDictionary<string, int> draftPorts, int httpsPort)
+    {
+        var ports = new Dictionary<string, int> { ["HTTPS_PORT"] = httpsPort };
+
+        if (draftPorts.TryGetValue(PublicEndpoint.HttpRedirectPortKey, out var redirect) &&
+            redirect == PublicEndpoint.HttpRedirectPort && httpsPort != PublicEndpoint.HttpRedirectPort)
+        {
+            ports[PublicEndpoint.HttpRedirectPortKey] = redirect;
+        }
+
+        return ports;
     }
 
     private static void RequireEstablishedValue(IReadOnlyDictionary<string, string> values, string key)

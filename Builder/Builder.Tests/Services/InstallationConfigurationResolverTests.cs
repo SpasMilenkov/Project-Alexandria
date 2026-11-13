@@ -80,17 +80,35 @@ public class InstallationConfigurationResolverTests : IDisposable
 
         var effective = InstallationConfigurationResolver.Resolve(context, _credentials);
 
-        foreach (var key in new[] { "BASE_URL", "GARAGE_S3_PUBLIC_ENDPOINT", "CORS_ORIGIN", "CORS_ALLOWED_ORIGINS__0" })
+        foreach (var key in new[] { "BASE_URL", "GARAGE_S3_PUBLIC_ENDPOINT", "CORS_ALLOWED_ORIGINS__0" })
         {
             effective.EnvironmentValues[key].Should().Be("https://files.example:9443");
         }
 
         effective.EnvironmentValues["GRAFANA_ROOT_URL"].Should().Be("https://files.example:9443/monitoring/");
         effective.EnvironmentValues.Should().NotContainKey("CORS_ALLOWED_ORIGINS__1");
+        effective.EnvironmentValues.Should().NotContainKey("CORS_ORIGIN");
         effective.EnvironmentValues["DB_PASSWORD"].Should().Be(original["DB_PASSWORD"]);
         effective.EnvironmentValues["CUSTOM_SETTING"].Should().Be(original["CUSTOM_SETTING"]);
         effective.Ports.Should().ContainSingle().Which.Key.Should().Be("HTTPS_PORT");
         _credentials.DidNotReceive().GenerateAllCredentials(Arg.Any<FeatureSelection>());
+    }
+
+    [Fact]
+    public void Resolve_httpRedirectChosen_keepsItAndDropsLegacyPorts()
+    {
+        var context = CreateRecognizedInstallation();
+        context.Config.Ports = new Dictionary<string, int>
+        {
+            ["HTTP_PORT"] = 8080,
+            ["GRAFANA_PORT"] = 3000,
+            ["HTTPS_PORT"] = 443,
+            [PublicEndpoint.HttpRedirectPortKey] = PublicEndpoint.HttpRedirectPort,
+        };
+
+        var effective = InstallationConfigurationResolver.Resolve(context, _credentials);
+
+        effective.Ports.Keys.Should().BeEquivalentTo("HTTPS_PORT", PublicEndpoint.HttpRedirectPortKey);
     }
 
     [Theory]

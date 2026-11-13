@@ -9,6 +9,11 @@ namespace Builder.Models;
 
 public sealed class PublicEndpoint
 {
+    // Plain http:// on the standard port only forwards to the HTTPS origin, so it is
+    // published when free and skipped otherwise; another port number would not help.
+    public const string HttpRedirectPortKey = "HTTP_REDIRECT_PORT";
+    public const int HttpRedirectPort = 80;
+
     public string Host { get; set; } = string.Empty;
     public int HttpsPort { get; set; } = 443;
 

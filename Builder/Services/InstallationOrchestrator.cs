@@ -113,6 +113,13 @@ public sealed class InstallationOrchestrator(IConfigurationService configuration
                     "Existing services were preserved. Return to network access and choose a free port before retrying.");
             }
 
+            if (config.Ports.TryGetValue(PublicEndpoint.HttpRedirectPortKey, out var redirectPort) &&
+                !checker.IsPortAvailable(redirectPort) && !docker.IsHttpRedirectPortOwned(target, redirectPort))
+            {
+                throw new InvalidOperationException($"Port {redirectPort} for the http:// redirect became occupied by another service. " +
+                    "Existing services were preserved. Return to network access so the installer can skip the redirect, then retry.");
+            }
+
             Require(docker.ComposeUpAll(target, output), "Alexandria services could not start.");
             SaveStage("services-started");
         });

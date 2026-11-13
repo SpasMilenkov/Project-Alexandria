@@ -18,7 +18,7 @@ Have the following available on the installation host:
 - A complete Alexandria source checkout, including `Backend/`, `Frontend/`, `Builder/`, scripts and configuration assets. Keep this checkout available after installation: generated Compose also mounts some source files.
 - A working local Docker engine and the `docker compose` plugin, accessible to your account. A remote SSH/TCP Docker context cannot mount these local folders and is unsupported.
 - The .NET 10 SDK to run Builder from source. A native executable, when supplied with its matching `Templates/Local` folder, runs without a .NET runtime but still needs the source checkout for Docker builds.
-- A stable LAN IPv4 address or a DNS name that resolves on every client, plus one available TCP port for HTTPS (443 by default). IPv6 and localhost are not supported as the public address.
+- A stable LAN IPv4 address or a DNS name that resolves on every client, plus one available TCP port for HTTPS (443 by default). Port 80 is optional: when it is free, plain `http://` addresses forward to the HTTPS address. IPv6 and localhost are not supported as the public address.
 - Space for Docker images, stored files, temporary processing, models and backups. Docker's data filesystem and the installation settings filesystem can be different disks.
 
 Builder checks prerequisites and explains failures; it does not install missing tools. Git is useful for obtaining and tracking source but Builder does not clone a repository for you. Developer hot reload is a separate [development workflow](/guides/set-up-development-environment/).
@@ -114,7 +114,7 @@ wizard's download choice, useful when preparing a cache in advance.
 
 New Garage layouts default to **10 decimal GB** and require at least **1 GB**. This is an object-store layout capacity, not disk preallocation, available disk space or a per-user quota. Repair reads and preserves the actual capacity. Resizing an existing layout or moving its data disk requires a separate operation; a conflicting capacity request stops rather than silently resizing data.
 
-Choose one stable host address and HTTPS port. If a port is busy, choose an available alternative in the wizard and use the resulting full address everywhere. The generated origin drives browser/API access, signed object URLs, CORS and monitoring. Application, storage, database, broker and monitoring ports stay internal; Grafana has no separate host port.
+Choose one stable host address and HTTPS port. If a port is busy, choose an available alternative in the wizard and use the resulting full address everywhere. The generated origin drives browser/API access, signed object URLs, CORS and monitoring. Builder also publishes port 80 when it is free, only to forward plain `http://` requests to that origin; if port 80 is taken, setup continues without the redirect. Plain HTTP sent to the HTTPS port is redirected as well. Application, storage, database, broker and monitoring ports stay internal; Grafana has no separate host port.
 
 Builder generates an installation-owned local certificate authority and a server certificate for the chosen address, or accepts a valid matching imported PEM certificate/key. Repairs reuse the trust identity. A generated certificate does not become trusted on other devices automatically: follow `nginx/CLIENT-TRUST.txt`, verify its fingerprint and import only the public trust certificate on each client. See [first steps](/getting-started/first-steps/).
 

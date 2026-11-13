@@ -2,7 +2,7 @@ namespace Builder.Services;
 
 public static class NginxConfigurationRenderer
 {
-    public static string Render(string publicOrigin, bool monitoring)
+    public static string Render(string publicOrigin, bool monitoring, bool httpRedirect = false)
     {
         if (string.IsNullOrWhiteSpace(publicOrigin)
             || publicOrigin.Any(character => char.IsWhiteSpace(character) || char.IsControl(character))
@@ -32,7 +32,13 @@ public static class NginxConfigurationRenderer
                 .Replace("{{MONITORING_SECURITY_HEADERS}}", Indent(CommonSecurityHeaders, 12), StringComparison.Ordinal)
             : string.Empty;
 
+        var httpRedirectServer = httpRedirect
+            ? HttpRedirectServer.Replace("{{PUBLIC_ORIGIN}}", canonicalOrigin, StringComparison.Ordinal)
+            : string.Empty;
+
         return Configuration
+            .Replace("{{HTTP_REDIRECT_SERVER}}", httpRedirectServer, StringComparison.Ordinal)
+            .Replace("{{PUBLIC_ORIGIN}}", canonicalOrigin, StringComparison.Ordinal)
             .Replace("{{PUBLIC_HOST}}", origin.IdnHost, StringComparison.Ordinal)
             .Replace("{{SERVER_SECURITY_HEADERS}}", Indent(SecurityHeaders, 8), StringComparison.Ordinal)
             .Replace("{{LOCATION_SECURITY_HEADERS}}", Indent(SecurityHeaders, 12), StringComparison.Ordinal)
@@ -88,6 +94,18 @@ public static class NginxConfigurationRenderer
 
         {{MONITORING_SECURITY_HEADERS}}
                 }
+        """;
+
+    // Forwards to the canonical origin rather than echoing the request's Host header.
+    private const string HttpRedirectServer = """
+            server {
+                listen 80 default_server;
+                server_name _;
+
+                location / {
+                    return 301 {{PUBLIC_ORIGIN}}$request_uri;
+                }
+            }
         """;
 
     private const string Configuration = """
@@ -162,10 +180,15 @@ public static class NginxConfigurationRenderer
                 }
             }
 
+        {{HTTP_REDIRECT_SERVER}}
+
             server {
                 listen 443 ssl;
                 server_name {{PUBLIC_HOST}};
                 absolute_redirect off;
+
+                # 497: plain HTTP sent to the TLS port, e.g. http://host:8443.
+                error_page 497 =301 {{PUBLIC_ORIGIN}}$request_uri;
 
                 ssl_certificate     /etc/nginx/certs/server.crt;
                 ssl_certificate_key /etc/nginx/certs/server.key;

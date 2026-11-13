@@ -9,8 +9,6 @@ db_engine = "lmdb"
 # Single-node local setup
 replication_factor = 1
 
-s3_region = "garage"
-
 compression_level = 0
 block_size = "4M"
 block_max_concurrent_writes_per_request = 32
