@@ -83,7 +83,7 @@ public static class ServiceCatalog
             extraTemplates: ["config/garage.toml.template"], infrastructure: true),
         S("garage-init", "Storage setup", "Core", 0, StorageTemplate,
             "One-time helper that creates secure keys and storage folders.",
-            sourceFiles: ["scripts/garage-init/Dockerfile", "scripts/garage-init/init.sh", "scripts/garage-init/cors.json"],
+            sourceFiles: ["scripts/garage-init/Dockerfile", "scripts/garage-init/init.sh"],
             volumes: ["garage_local_meta_data"], networks: ["data-net"], infrastructure: true, oneShot: true),
         S("rabbitmq-config", "Messaging setup", "Core", 0, StorageTemplate,
             "One-time helper that prepares message queues and permissions.",
@@ -104,7 +104,7 @@ public static class ServiceCatalog
                 "Frontend/pnpm-workspace.yaml", "Frontend/src/main.ts", "Frontend/nginx.conf"], networks: ["app-net"]),
         S("nginx", "Front door", "Core", 64, AppsTemplate,
             "One web address for everything; routes traffic and keeps it secure.",
-            sourceFiles: ["nginx/Dockerfile", "nginx/nginx.conf", "nginx/gpg/arut.key"], networks: ["frontend-net", "app-net"]),
+            sourceFiles: ["nginx/Dockerfile", "nginx/nginx.conf", "nginx/502.html", "nginx/gpg/pluknet.key"], networks: ["frontend-net", "app-net"]),
 
         S("document-worker", "Document previews", "Document previews", 1024,
             "docker-compose/document-worker.yml.template", "Generates preview images for documents like PDFs.",

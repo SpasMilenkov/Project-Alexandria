@@ -69,7 +69,6 @@
     environment:
       GARAGE_CAPACITY: ${GARAGE_CAPACITY:-}
       GARAGE_CAPACITY_CHANGE_REQUESTED: "${GARAGE_CAPACITY_CHANGE_REQUESTED:-false}"
-      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
       ALEXANDRIA_GENERATION_ID: ${ALEXANDRIA_GENERATION_ID:?ALEXANDRIA_GENERATION_ID is required}
       GARAGE_FORCE_CREDENTIAL_EXPORT: "${GARAGE_FORCE_CREDENTIAL_EXPORT:-false}"
 
@@ -77,7 +76,6 @@
       - ./garage.toml:/etc/garage.toml:ro
       - garage_local_meta_data:/var/lib/garage/meta
       - ./init-output:/output
-      - {{SOURCE_ROOT}}/scripts/garage-init/cors.json:/config/cors.json:ro
 
     networks:
       - data-net
