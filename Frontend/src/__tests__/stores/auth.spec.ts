@@ -151,4 +151,31 @@ describe("useAuthStore", () => {
       expect(store.error).toBeNull();
     });
   });
+
+  describe("applyProfile", () => {
+    it("patches the signed-in user without touching the rest", async () => {
+      mockLogin.mockResolvedValueOnce(
+        makeAuthResponse({ user: { email: "user@test.com", id: "user-1", name: "old" } }),
+      );
+
+      const store = useAuthStore();
+      await store.login({ email: "user@test.com", password: "secret" });
+      store.applyProfile({ avatarUrl: "/avatars/user-1/a", name: "new" });
+
+      expect(store.user?.user).toEqual({
+        avatarUrl: "/avatars/user-1/a",
+        email: "user@test.com",
+        id: "user-1",
+        name: "new",
+      });
+      expect(store.user?.userRoles).toEqual(["User"]);
+    });
+
+    it("does nothing while signed out", () => {
+      const store = useAuthStore();
+      store.applyProfile({ name: "ghost" });
+
+      expect(store.user).toBeNull();
+    });
+  });
 });

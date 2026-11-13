@@ -5,13 +5,14 @@
         class="overflow-hidden rounded-2xl border border-gray-200/60 bg-white shadow-lg shadow-black/5 dark:border-gray-700/50 dark:bg-neutral-900"
       >
         <div class="flex flex-col lg:flex-row lg:min-h-120">
-          <!-- LEFT: placeholder pane -->
-          <div
-            class="flex flex-col justify-between p-8 lg:w-[42%] lg:border-r lg:border-gray-200/60 lg:dark:border-gray-700/50"
+          <!-- LEFT: profile form -->
+          <form
+            class="flex flex-col justify-between gap-8 p-4 md:p-8 lg:w-[52%] lg:border-r lg:border-gray-200/60 lg:dark:border-gray-700/50"
+            novalidate
+            @submit.prevent="handleContinue"
           >
-            <!-- Header -->
-            <div>
-              <div class="mb-7 flex items-start gap-4">
+            <div class="flex flex-col gap-6">
+              <div class="flex items-start gap-4">
                 <div
                   class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10"
                 >
@@ -19,115 +20,58 @@
                 </div>
                 <div>
                   <h1 class="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                    Your profile
+                    Set up your profile
                   </h1>
-                  <p class="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-500">
-                    Personalize your account so others can identify you easily.
+                  <p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                    Choose how you appear in Alexandria. Both are optional and you can change them
+                    later from My account.
                   </p>
                 </div>
               </div>
 
-              <!-- Avatar placeholder -->
-              <div class="mb-6 flex flex-col items-center text-center py-4">
-                <div
-                  class="mb-4 flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-300/70 bg-neutral-100 dark:border-gray-600/60 dark:bg-neutral-800"
-                >
-                  <Icon
-                    icon="mdi:account-outline"
-                    class="h-10 w-10 text-gray-300 dark:text-gray-600"
-                  />
-                </div>
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-500">
-                  Profile setup coming soon
-                </p>
-                <p class="mt-1.5 max-w-xs text-xs leading-relaxed text-gray-500 dark:text-gray-500">
-                  Avatar, display name, and preferences will be available in a future update.
-                </p>
-              </div>
+              <OnboardingAvatarPicker :name="previewName" :avatar-url="avatarUrl" />
 
-              <!-- Upcoming features -->
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div
-                  v-for="feature in UPCOMING_FEATURES"
-                  :key="feature.label"
-                  class="flex items-start gap-2.5 rounded-lg border border-gray-200/60 bg-neutral-50 px-3 py-3 dark:border-gray-700/40 dark:bg-neutral-800"
-                >
-                  <Icon
-                    :icon="feature.icon"
-                    class="mt-0.5 h-4 w-4 shrink-0 text-gray-500 dark:text-gray-500"
-                  />
-                  <p class="text-sm font-medium text-gray-600 dark:text-gray-500">
-                    {{ feature.label }}
-                  </p>
-                </div>
-              </div>
+              <OnboardingUsernameField
+                v-model="draftName"
+                :error="nameError"
+                :disabled="isBusy"
+                @edit="clearNameError"
+              />
             </div>
 
-            <!-- Server error + CTA -->
-            <div class="mt-8 flex flex-col gap-4">
+            <div class="flex flex-col gap-4">
               <Transition
                 enter-active-class="transition-all duration-200 ease-out"
                 enter-from-class="opacity-0 -translate-y-1"
                 leave-active-class="transition-all duration-150 ease-in"
                 leave-to-class="opacity-0"
               >
-                <div
+                <UAlert
                   v-if="serverError"
-                  class="flex items-start gap-3 rounded-xl border border-red-200/70 bg-red-50/70 px-4 py-3.5 dark:border-red-900/50 dark:bg-red-950/30"
-                >
-                  <Icon
-                    icon="mdi:alert-circle-outline"
-                    class="mt-0.5 h-4 w-4 shrink-0 text-red-500"
-                  />
-                  <p class="text-sm text-red-600 dark:text-red-400">{{ serverError }}</p>
-                </div>
+                  color="error"
+                  variant="subtle"
+                  icon="i-lucide-alert-circle"
+                  :title="serverError"
+                />
               </Transition>
 
               <UButton
+                type="submit"
                 color="primary"
                 variant="solid"
                 size="lg"
                 block
                 trailing-icon="i-mdi-arrow-right"
-                @click="handleContinue"
+                :loading="isBusy"
               >
                 Continue
               </UButton>
             </div>
-          </div>
+          </form>
 
-          <!-- RIGHT: context pane -->
-          <div
-            class="flex flex-col justify-center gap-8 bg-neutral-50 p-8 dark:bg-neutral-800 lg:flex-1"
-          >
-            <div>
-              <p
-                class="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-500"
-              >
-                Where your profile appears
-              </p>
-              <div class="space-y-3">
-                <div
-                  v-for="context in PROFILE_CONTEXTS"
-                  :key="context.label"
-                  class="flex items-start gap-4 rounded-xl border border-gray-200/60 px-4 py-4 dark:border-gray-700/40"
-                >
-                  <div
-                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100/80 dark:bg-white/5"
-                  >
-                    <Icon :icon="context.icon" class="h-4 w-4 text-gray-500 dark:text-gray-500" />
-                  </div>
-                  <div>
-                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {{ context.label }}
-                    </p>
-                    <p class="mt-0.5 text-xs leading-relaxed text-gray-500 dark:text-gray-500">
-                      {{ context.desc }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <!-- RIGHT: live preview -->
+          <div class="flex flex-col justify-center bg-neutral-50 p-4 md:p-8 lg:flex-1 dark:bg-neutral-800">
+            <OnboardingProfilePreview :name="previewName" :email="email" :avatar-url="avatarUrl" />
           </div>
         </div>
       </div>
@@ -136,62 +80,64 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
-import { computed, watch } from "vue";
+import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import OnboardingAvatarPicker from "@/components/onboarding/OnboardingAvatarPicker.vue";
+import OnboardingProfilePreview from "@/components/onboarding/OnboardingProfilePreview.vue";
+import OnboardingUsernameField from "@/components/onboarding/OnboardingUsernameField.vue";
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
+import { useUsernameEditor } from "@/composables/useUsernameEditor";
 import { OnboardingStep } from "@/enums";
 import { setupProfile } from "@/mutations/user";
+import { useAuthStore } from "@/stores/auth";
+import { logger } from "@/utils/logger";
 
 useOnboardingGuard(OnboardingStep.CompleteProfile);
 
 const router = useRouter();
 const route = useRoute();
-const { mutate, error: mutationError, status } = setupProfile();
+const authStore = useAuthStore();
 
-watch(status, (s) => {
-  if (s === "success") router.replace({ name: "tour", query: route.query });
-});
+const currentName = computed(() => authStore.user?.user.name ?? "");
+const email = computed(() => authStore.user?.user.email ?? "");
+const avatarUrl = computed(() => authStore.user?.user.avatarUrl ?? null);
+
+const {
+  clearError: clearNameError,
+  draft: draftName,
+  error: nameError,
+  isSaving: isSavingName,
+  save: saveName,
+} = useUsernameEditor(() => currentName.value);
+
+const { mutateAsync: finishStep, error: stepError, isLoading: isFinishing } = setupProfile();
+
+const isBusy = computed(() => isSavingName.value || isFinishing.value);
+
+// The preview follows the field as you type, falling back to the saved name while it is blank.
+const previewName = computed(() => draftName.value.trim() || currentName.value);
 
 const serverError = computed(() => {
-  if (!mutationError.value) return null;
-  return mutationError.value instanceof Error
-    ? mutationError.value.message
-    : "Something went wrong. Please try again.";
+  if (!stepError.value) return null;
+  if (stepError.value instanceof Error) return stepError.value.message;
+
+  return "Something went wrong. Please try again.";
 });
 
-const UPCOMING_FEATURES = [
-  { icon: "mdi:image-outline", label: "Profile avatar" },
-  { icon: "mdi:tune-variant", label: "Preferences" },
-  { icon: "mdi:bell-outline", label: "Notifications" },
-  { icon: "mdi:shield-account-outline", label: "Privacy" },
-] as const;
+const handleContinue = async () => {
+  if (isBusy.value) return;
 
-const PROFILE_CONTEXTS = [
-  {
-    desc: "Files you upload are attributed to your profile so teammates know who added them.",
-    icon: "mdi:folder-open-outline",
-    label: "File Explorer",
-  },
-  {
-    desc: "Every action in the log — uploads, edits, deletions — is tied to your display name.",
-    icon: "mdi:history",
-    label: "Access History",
-  },
-  {
-    desc: "When files are shared with you, others see your name and avatar in the permission list.",
-    icon: "mdi:account-group-outline",
-    label: "Shared access",
-  },
-  {
-    desc: "Tags you create show your name as the author so teams can coordinate ownership.",
-    icon: "mdi:tag-outline",
-    label: "Tags & Categories",
-  },
-] as const;
+  // Renaming is safe to repeat, so a retry after a failed step just saves the same name again.
+  const result = await saveName();
+  if (result === "invalid") return;
 
-const handleContinue = () => {
-  mutate();
+  try {
+    await finishStep();
+    await router.replace({ name: "tour", query: route.query });
+  } catch (err) {
+    // The alert above already shows this to the user.
+    logger.warn("Finishing the profile step failed:", err);
+  }
 };
 </script>

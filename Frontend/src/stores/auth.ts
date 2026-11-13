@@ -4,7 +4,7 @@ import { computed, nextTick, ref } from "vue";
 
 import type { LoginSchema } from "@/schemas/auth";
 
-import { type AuthResponse, authApi } from "@/api/auth";
+import { type AuthResponse, type SessionUser, authApi } from "@/api/auth";
 import { resetRefreshState } from "@/api/client";
 import { isApiError } from "@/api/errors";
 import { cancelBackgroundImageLoad } from "@/features/appearance/background-image";
@@ -224,6 +224,13 @@ export const useAuthStore = defineStore(
       error.value = null;
     };
 
+    // Profile edits land here directly so the sidebar updates without another session round trip.
+    const applyProfile = (patch: Partial<Pick<SessionUser, "avatarUrl" | "name">>) => {
+      if (!user.value) return;
+
+      user.value = { ...user.value, user: { ...user.value.user, ...patch } };
+    };
+
     // oxlint-disable-next-line sort-keys
     return {
       // State
@@ -235,6 +242,7 @@ export const useAuthStore = defineStore(
       isAdmin,
       isSessionVerified,
       // Actions
+      applyProfile,
       login,
       logout,
       clearError,

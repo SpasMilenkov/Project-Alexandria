@@ -16,4 +16,7 @@ public class ApplicationUser : IdentityUser<Guid>, IBase
     public DateTime? DeletedAt { get; set; }
     public Guid? UpdatedBy { get; set; }
     public long StorageQuota { get; set; }
+
+    /// <summary>Current profile picture. Each upload gets a fresh id, so its public URL never changes bytes.</summary>
+    public Guid? AvatarId { get; set; }
 }

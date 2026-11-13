@@ -2,6 +2,7 @@ using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions.Playlist;
 using Alexandria.Common.Services;
+using Alexandria.Dto.Users;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace Alexandria.Services.Storage.Static;
 
 /// <summary>
-/// User-facing static bytes (background images, playlist covers).
+/// User-facing static bytes (background images, playlist covers, profile pictures).
 /// Mechanical extraction from <c>S3Service</c>; behavior preserved byte-for-byte, bugs included.
 /// </summary>
 public class StaticAssetService(
@@ -21,6 +22,20 @@ public class StaticAssetService(
     : IStaticAssetService
 {
     internal const long MaxImageBytes = 4 * 1024 * 1024;
+
+    // The browser crops and re-encodes still avatars to a small square before upload, so anything
+    // near this cap did not come from the app.
+    internal const long MaxAvatarBytes = 1024 * 1024;
+
+    // GIFs upload untouched to keep their animation, so they get more room but a hard size limit:
+    // every page that lists users decodes them.
+    internal const long MaxGifAvatarBytes = 4 * 1024 * 1024;
+    internal const int MaxGifAvatarDimension = 1024;
+
+    private const int DeleteBatchSize = 1000;
+
+    private static readonly HashSet<string> AvatarContentTypes =
+        ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
     public async Task<string> UploadBackgroundImageAsync(
         Stream content,
@@ -114,6 +129,86 @@ public class StaticAssetService(
         }, ct);
 
         return objectKey;
+    }
+
+    public async Task<Guid> UploadAvatarAsync(Stream content, Guid userId, CancellationToken ct = default)
+    {
+        var bytes = await ReadCappedAsync(content, MaxGifAvatarBytes, "Profile picture", ct);
+
+        var contentType = DetectImageContentType(bytes);
+        if (contentType is null || !AvatarContentTypes.Contains(contentType))
+            throw new InvalidOperationException("Profile pictures must be JPEG, PNG, WebP or GIF images.");
+
+        if (contentType == "image/gif")
+            EnsureGifFits(bytes);
+        else if (bytes.Length > MaxAvatarBytes)
+            throw new InvalidOperationException($"Profile picture exceeds the {MaxAvatarBytes} byte limit.");
+
+        var avatarId = Guid.NewGuid();
+
+        using var buffered = new MemoryStream(bytes, writable: false);
+
+        await s3.PutObjectAsync(new PutObjectRequest
+        {
+            BucketName = config.Value.ImagesBucket,
+            Key = AvatarPaths.Key(userId, avatarId),
+            InputStream = buffered,
+            ContentType = contentType,
+            DisableDefaultChecksumValidation = true,
+        }, ct);
+
+        return avatarId;
+    }
+
+    public async Task<int> DeleteAvatarsExceptAsync(Guid userId, Guid? keepAvatarId, CancellationToken ct = default)
+    {
+        string? keepKey = null;
+        if (keepAvatarId is not null)
+            keepKey = AvatarPaths.Key(userId, keepAvatarId.Value);
+
+        var listRequest = new ListObjectsV2Request
+        {
+            BucketName = config.Value.ImagesBucket,
+            Prefix = AvatarPaths.OwnerPrefix(userId),
+        };
+
+        var staleKeys = new List<string>();
+
+        do
+        {
+            var response = await s3.ListObjectsV2Async(listRequest, ct);
+            if (response.S3Objects is null)
+                break;
+
+            staleKeys.AddRange(response.S3Objects.Select(o => o.Key).Where(key => key != keepKey));
+            listRequest.ContinuationToken = response.NextContinuationToken;
+        } while (listRequest.ContinuationToken is not null);
+
+        foreach (var batch in staleKeys.Chunk(DeleteBatchSize))
+        {
+            await s3.DeleteObjectsAsync(new DeleteObjectsRequest
+            {
+                BucketName = config.Value.ImagesBucket,
+                Objects = batch.Select(key => new KeyVersion { Key = key }).ToList(),
+            }, ct);
+        }
+
+        return staleKeys.Count;
+    }
+
+    // The logical screen size sits right after the 6-byte signature, little-endian, and bounds
+    // every frame, so it is enough to keep oversized animations out.
+    internal static void EnsureGifFits(ReadOnlySpan<byte> bytes)
+    {
+        if (bytes.Length < 10)
+            throw new InvalidOperationException("Profile picture is not a complete GIF.");
+
+        var width = bytes[6] | (bytes[7] << 8);
+        var height = bytes[8] | (bytes[9] << 8);
+
+        if (width > MaxGifAvatarDimension || height > MaxGifAvatarDimension)
+            throw new InvalidOperationException(
+                $"Animated profile pictures can be at most {MaxGifAvatarDimension}x{MaxGifAvatarDimension} pixels.");
     }
 
     internal static async Task<byte[]> ReadCappedAsync(

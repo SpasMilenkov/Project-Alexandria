@@ -87,6 +87,9 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "user-solid",
   ],
   lucide: [
+    "camera",
+    "headphones",
+    "link",
     "undo-2",
     "redo-2",
     "activity",

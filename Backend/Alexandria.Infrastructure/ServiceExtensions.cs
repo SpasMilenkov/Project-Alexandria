@@ -67,6 +67,7 @@ public static class ServiceExtensions
         services.AddScoped<IAccessOverviewService, AccessOverviewService>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IUserAvatarService, UserAvatarService>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
         services.AddScoped<IHomeWidgetRepository, HomeWidgetRepository>();

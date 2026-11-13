@@ -9,7 +9,7 @@
       class="gap-2.5 data-[state=open]:bg-elevated/60"
       :class="collapsed ? 'justify-center p-1' : 'justify-start px-2 py-1.5'"
     >
-      <UAvatar :alt="userName" :size="collapsed ? 'xs' : 'sm'" />
+      <UAvatar :src="avatarUrl" :alt="userName" :size="collapsed ? 'xs' : 'sm'" />
 
       <template v-if="!collapsed">
         <span class="flex min-w-0 flex-1 flex-col text-left leading-tight">
@@ -98,7 +98,7 @@
                 :emphasized="detailsOpen"
                 @hover-segment="activeKey = $event"
               >
-                <UAvatar :alt="userName" size="lg" />
+                <UAvatar :src="avatarUrl" :alt="userName" size="lg" />
               </StorageRing>
             </button>
 
@@ -282,6 +282,7 @@ const storageError = computed(() => Boolean(error.value) && !isAuthError(error.v
 
 const userName = computed(() => authStore.user?.user.name || "Account");
 const userEmail = computed(() => authStore.user?.user.email ?? "");
+const avatarUrl = computed(() => authStore.user?.user.avatarUrl ?? undefined);
 
 const quotaBytes = computed(() => data.value?.quotaBytes ?? 0);
 const usedBytes = computed(() => data.value?.usedBytes ?? 0);

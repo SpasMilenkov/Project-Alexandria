@@ -1,6 +1,6 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
-using Alexandria.Dto.Files;
+using Alexandria.Dto.Users;
 using FastEndpoints;
 
 namespace Alexandria.Api.Features.Auth.Login;
@@ -40,11 +40,12 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
         await Send.OkAsync(new LoginResponse
         {
             Success = true,
-            User = new UserDto
+            User = new SessionUserDto
             {
                 Id = result.User.Id,
                 Email = result.User.Email ?? throw new InvalidOperationException(),
-                Name = result.User.UserName ?? throw new InvalidOperationException()
+                Name = result.User.UserName ?? throw new InvalidOperationException(),
+                AvatarUrl = AvatarPaths.Url(result.User.Id, result.User.AvatarId)
             },
             UserRoles = result.UserRoles,
             OnboardingStep = result.User.OnboardinStep

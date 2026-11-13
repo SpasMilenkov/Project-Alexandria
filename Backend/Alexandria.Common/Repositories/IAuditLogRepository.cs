@@ -66,7 +66,11 @@ public interface IAuditLogRepository
         DateTimeOffset? from = null,
         CancellationToken ct = default);
 
-    Task<IReadOnlyList<AuditActivityRow>> GetActivityRowsAsync(
+    /// <summary>
+    /// One row per UTC day and operation with how many there were, counted in the database so
+    /// a long range never loads its rows one by one.
+    /// </summary>
+    Task<IReadOnlyList<AuditActivityDayCount>> GetActivityDayCountsAsync(
         Guid userId,
         ActivityQuery query,
         CancellationToken ct = default);

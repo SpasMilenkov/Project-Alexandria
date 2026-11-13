@@ -49,8 +49,8 @@ public class AuditService(IUnitOfWork unitOfWork, IOptions<AuditOptions> options
     public async Task<ActivityStatisticsOverview> GetActivityOverviewAsync(Guid userId, ActivityQuery query,
         CancellationToken ct = default)
     {
-        var rows = await unitOfWork.AuditLogs.GetActivityRowsAsync(userId, query, ct);
-        return BuildOverview(rows);
+        var counts = await unitOfWork.AuditLogs.GetActivityDayCountsAsync(userId, query, ct);
+        return BuildOverview(counts);
     }
 
     public Task<PaginatedResult<AuditLogResult>> SearchAsync(AuditViewer viewer, AuditLogFilter filter,
@@ -220,20 +220,20 @@ public class AuditService(IUnitOfWork unitOfWork, IOptions<AuditOptions> options
         After = filter.After,
     };
 
-    internal static ActivityStatisticsOverview BuildOverview(IReadOnlyList<AuditActivityRow> rows)
+    internal static ActivityStatisticsOverview BuildOverview(IReadOnlyList<AuditActivityDayCount> counts)
     {
-        var perDay = rows
-            .GroupBy(r => DateOnly.FromDateTime(r.Timestamp.UtcDateTime))
+        var perDay = counts
+            .GroupBy(c => c.Day)
             .OrderBy(g => g.Key)
             .ToDictionary(g => g.Key, g => new ActivitySummary
             {
-                TotalOperations = g.Count(),
-                CountPerOperation = g.GroupBy(r => r.OperationType).ToDictionary(o => o.Key, o => o.Count())
+                TotalOperations = g.Sum(c => c.Count),
+                CountPerOperation = g.GroupBy(c => c.OperationType).ToDictionary(o => o.Key, o => o.Sum(c => c.Count))
             });
 
         return new ActivityStatisticsOverview
         {
-            TotalActivity = rows.Count,
+            TotalActivity = counts.Sum(c => c.Count),
             ActivityPerDay = perDay
         };
     }

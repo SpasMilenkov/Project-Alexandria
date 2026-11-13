@@ -11,6 +11,7 @@ export interface UserDetailsDto {
   updatedAt: string | null;
   deletedAt: string | null;
   storageQuota: number;
+  avatarUrl: string | null;
 }
 
 export interface UpdateUserDto {
@@ -41,8 +42,23 @@ export interface UserQueryDto {
   lockedOutAfter?: string | null;
 }
 
+export interface UserProfileStats {
+  files: number;
+  folders: number;
+  photos: number;
+  tracks: number;
+  videos: number;
+  playlists: number;
+  tags: number;
+  activeShareLinks: number;
+  listenedSeconds: number;
+  plays: number;
+}
+
 export interface UserProfile {
+  id: string;
   username: string;
   email: string;
-  createdAt: Date;
+  createdAt: string;
+  avatarUrl: string | null;
 }

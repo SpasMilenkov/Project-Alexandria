@@ -152,7 +152,7 @@ public class AuditLogRepository(AlexandriaDbContext context) : IAuditLogReposito
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<AuditActivityRow>> GetActivityRowsAsync(
+    public async Task<IReadOnlyList<AuditActivityDayCount>> GetActivityDayCountsAsync(
         Guid userId,
         ActivityQuery query,
         CancellationToken ct = default)
@@ -174,9 +174,16 @@ public class AuditLogRepository(AlexandriaDbContext context) : IAuditLogReposito
         if (query.OperationType.HasValue)
             rows = rows.Where(a => a.OperationType == query.OperationType);
 
-        return await rows
-            .Select(a => new AuditActivityRow(a.OperationType, a.Timestamp))
+        // Npgsql truncates a timestamptz's Date in UTC whatever the session time zone, matching the
+        // API's UTC day keys.
+        var counts = await rows
+            .GroupBy(a => new { Day = a.Timestamp.Date, a.OperationType })
+            .Select(g => new { g.Key.Day, g.Key.OperationType, Count = g.Count() })
             .ToListAsync(ct);
+
+        return counts
+            .Select(c => new AuditActivityDayCount(DateOnly.FromDateTime(c.Day), c.OperationType, c.Count))
+            .ToList();
     }
 
     internal static int TotalPages(int count, int pageSize) =>

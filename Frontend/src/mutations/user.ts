@@ -1,10 +1,17 @@
 import { defineMutation, useMutation, useQueryCache } from "@pinia/colada";
 
-import type { ChangePasswordSchema, CreateUserSchema, UpdateUserSchema } from "@/schemas/user";
+import type {
+  ChangePasswordSchema,
+  CreateUserSchema,
+  UpdateProfileSchema,
+  UpdateUserSchema,
+} from "@/schemas/user";
+import type { UserProfile } from "@/types/user";
 
 import { authApi } from "@/api/auth";
 import { userApi } from "@/api/users";
 import { USER_QUERY_KEYS } from "@/queries/user";
+import { useAuthStore } from "@/stores/auth";
 
 export const useCreateUser = defineMutation(() => {
   const queryCache = useQueryCache();
@@ -74,6 +81,59 @@ export const finishTour = defineMutation(() => {
     mutation: () => userApi.finishTour(),
     onSuccess() {
       queryCache.invalidateQueries({ key: USER_QUERY_KEYS.getOnboardingStep() });
+    },
+  });
+});
+
+export const useUpdateProfile = defineMutation(() => {
+  const queryCache = useQueryCache();
+  const authStore = useAuthStore();
+
+  return useMutation({
+    mutation: (payload: UpdateProfileSchema) => userApi.updateProfile(payload),
+    onSuccess(profile) {
+      queryCache.setQueryData(USER_QUERY_KEYS.getProfile(), profile);
+      authStore.applyProfile({ name: profile.username });
+    },
+    onSettled() {
+      // Admin lists show usernames too.
+      queryCache.invalidateQueries({ key: USER_QUERY_KEYS.root });
+    },
+  });
+});
+
+const patchCachedAvatar = (
+  queryCache: ReturnType<typeof useQueryCache>,
+  avatarUrl: string | null,
+) => {
+  const cached = queryCache.getQueryData<UserProfile>(USER_QUERY_KEYS.getProfile());
+  if (!cached) return;
+
+  queryCache.setQueryData(USER_QUERY_KEYS.getProfile(), { ...cached, avatarUrl });
+};
+
+export const useUploadAvatar = defineMutation(() => {
+  const queryCache = useQueryCache();
+  const authStore = useAuthStore();
+
+  return useMutation({
+    mutation: (image: Blob) => userApi.uploadAvatar(image),
+    onSuccess({ avatarUrl }) {
+      patchCachedAvatar(queryCache, avatarUrl);
+      authStore.applyProfile({ avatarUrl });
+    },
+  });
+});
+
+export const useRemoveAvatar = defineMutation(() => {
+  const queryCache = useQueryCache();
+  const authStore = useAuthStore();
+
+  return useMutation({
+    mutation: () => userApi.deleteAvatar(),
+    onSuccess() {
+      patchCachedAvatar(queryCache, null);
+      authStore.applyProfile({ avatarUrl: null });
     },
   });
 });
