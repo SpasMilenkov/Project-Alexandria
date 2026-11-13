@@ -74,32 +74,64 @@ public class NginxConfigurationRendererTests
         monitoring.Should().NotContain("add_header Content-Security-Policy");
     }
 
-    [Theory]
-    [InlineData("~ ^/alexandria-previews/covers/")]
-    [InlineData("~ ^/alexandria-images/")]
-    [InlineData("~ ^/(alexandria-files|alexandria-temp)/")]
-    public void Render_signedBucketRoutes_preservesOriginalUriQueryAndExternalHost(string location)
+    [Fact]
+    public void Render_signedBucketRoute_preservesOriginalUriQueryAndExternalHost()
     {
         var configuration = NginxConfigurationRenderer.Render("https://alexandria.lan:8443", monitoring: false);
-        var route = Location(configuration, location);
+        var route = Location(configuration, "~ ^/(alexandria-files|alexandria-temp)/");
 
         route.Should().Contain("proxy_pass http://garage:3900;");
         route.Should().Contain("proxy_set_header Host $http_host;");
         route.Should().NotContain("proxy_set_header Host $host;");
         route.Should().NotContain("rewrite");
         route.Should().NotContain("proxy_pass http://garage:3900/");
+        route.Should().Contain("proxy_request_buffering off;");
+    }
 
-        if (location.Contains("covers", StringComparison.Ordinal))
-        {
-            route.Should().Contain("limit_except PUT");
-            route.Should().Contain("deny all;");
-        }
+    [Fact]
+    public void Render_onlyPresignedUploadBucketsReachTheS3Port()
+    {
+        var configuration = NginxConfigurationRenderer.Render("https://alexandria.lan", monitoring: false);
+
+        Regex.Matches(configuration, @"proxy_pass http://garage:3900").Should().HaveCount(1);
+        configuration.Should().NotContain("alexandria-previews/covers");
+        configuration.Should().NotContain("location ~ ^/alexandria-images/");
+    }
+
+    [Fact]
+    public void Render_avatars_servePublicImmutableImagesWithoutForwardingTheSession()
+    {
+        var configuration = NginxConfigurationRenderer.Render("https://alexandria.lan", monitoring: false);
+        var route = Location(configuration,
+            "~ \"^/avatars/(?<avatar_owner>[0-9a-fA-F-]{36})/(?<avatar_id>[0-9a-fA-F-]{36})$\"");
+
+        route.Should().Contain("limit_except GET { deny all; }");
+        route.Should().NotContain("auth_request");
+        route.Should().Contain("proxy_set_header Cookie \"\";");
+        route.Should().Contain("proxy_set_header Authorization \"\";");
+        route.Should().Contain("proxy_hide_header Set-Cookie;");
+        route.Should().Contain("proxy_pass http://garage:3902/avatars/$avatar_owner/$avatar_id;");
+        route.Should().Contain("proxy_set_header Host alexandria-images.web.garage.localhost;");
+        route.Should().Contain("immutable");
+        route.Should().Contain("add_header Content-Security-Policy");
+    }
+
+    [Fact]
+    public void Render_upstreamFailures_serveTheBundledErrorPage()
+    {
+        var configuration = NginxConfigurationRenderer.Render("https://alexandria.lan", monitoring: false);
+        var page = Location(configuration, "= /502.html");
+
+        configuration.Should().Contain("error_page 502 503 504 /502.html;");
+        page.Should().Contain("root /etc/nginx/html;");
+        page.Should().Contain("internal;");
     }
 
     [Theory]
     [InlineData("/stream/", "stream")]
     [InlineData("~ ^/preview/(?<version_id>[0-9a-fA-F-]+)/(?<kind>preview|thumbnail)$", "preview")]
     [InlineData("~ ^/covers/(?<playlist_id>[0-9a-fA-F-]+)$", "cover")]
+    [InlineData("~ ^/images/(?<user_id>[0-9a-fA-F-]+)$", "image")]
     public void Render_protectedRoutes_requiresInternalCookieAuthorizationBeforeStorage(string location, string check)
     {
         var configuration = NginxConfigurationRenderer.Render("https://alexandria.lan", monitoring: false);
@@ -133,10 +165,12 @@ public class NginxConfigurationRendererTests
 
     private static string Location(string configuration, string location)
     {
-        var start = configuration.IndexOf($"location {location} {{", StringComparison.Ordinal);
+        var header = $"location {location} {{";
+        var start = configuration.IndexOf(header, StringComparison.Ordinal);
         start.Should().BeGreaterThanOrEqualTo(0);
 
-        var opening = configuration.IndexOf('{', start);
+        // The block opens at the header's own brace; a regex location can contain braces itself.
+        var opening = start + header.Length - 1;
         var depth = 1;
         var end = opening + 1;
 

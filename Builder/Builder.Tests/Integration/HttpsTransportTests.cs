@@ -53,7 +53,7 @@ public sealed class HttpsTransportTests
         await VerifyUnauthorizedAssets(fixture);
         await Login(fixture, client);
         await VerifyRefresh(client);
-        await VerifyImageUpload(fixture, client);
+        await VerifyImageUpload(client);
         await VerifyEncryptedFileRoundTrip(fixture, client);
         await VerifyEscapedS3Keys(fixture, client);
         await VerifyGrafana(fixture, client);
@@ -167,17 +167,28 @@ public sealed class HttpsTransportTests
             "Refresh must rotate its secure cookie through the selected origin.");
     }
 
-    private async Task VerifyImageUpload(CachedHttpsFixture fixture, HttpClient client)
+    // Background images upload through the API and are read back through the gated /images/ route.
+    private async Task VerifyImageUpload(HttpClient client)
     {
-        using var initialized = await client.PostAsync("/api/settings/appearance/background-image", content: null, _ct);
-        RequireStatus(initialized, HttpStatusCode.OK, "image upload initialization");
-        using var body = await ReadJson(initialized);
-        var url = body.RootElement.GetProperty("uploadUrl").GetString()!;
-        AssertPublicUrl(fixture, url, "alexandria-images");
         var image = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6w2QAAAAASUVORK5CYII=");
-        using var content = new ByteArrayContent(image);
-        using var uploaded = await client.PutAsync(url, content, _ct);
-        RequireStatus(uploaded, HttpStatusCode.OK, "presigned image upload");
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(image);
+        file.Headers.ContentType = new("image/png");
+        form.Add(file, "file", "background.png");
+        using var uploaded = await client.PostAsync("/api/settings/appearance/background-image", form, _ct);
+        RequireStatus(uploaded, HttpStatusCode.OK, "background image upload");
+
+        using var located = await client.GetAsync("/api/settings/appearance/background-image-url", _ct);
+        RequireStatus(located, HttpStatusCode.OK, "background image address");
+        using var body = await ReadJson(located);
+        var url = body.RootElement.GetProperty("url").GetString()!;
+        CachedHttpsFixture.Require(url.StartsWith("/images/", StringComparison.Ordinal),
+            "Background images must be served through the gated /images/ route.");
+
+        using var downloaded = await client.GetAsync(url, _ct);
+        RequireStatus(downloaded, HttpStatusCode.OK, "background image read through the proxy");
+        CachedHttpsFixture.Require((await downloaded.Content.ReadAsByteArrayAsync(_ct)).SequenceEqual(image),
+            "The proxied background image must return the uploaded bytes.");
     }
 
     private async Task VerifyEncryptedFileRoundTrip(CachedHttpsFixture fixture, HttpClient client)

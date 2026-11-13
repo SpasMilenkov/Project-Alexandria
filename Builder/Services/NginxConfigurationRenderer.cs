@@ -184,6 +184,14 @@ public static class NginxConfigurationRenderer
                     return 200 "ok\n";
                 }
 
+                # The page ships in the nginx image (nginx/Dockerfile copies nginx/502.html).
+                error_page 502 503 504 /502.html;
+
+                location = /502.html {
+                    root /etc/nginx/html;
+                    internal;
+                }
+
                 location /api/ {
                     limit_req zone=api burst=100 nodelay;
                     proxy_pass http://api:8080/api/;
@@ -232,6 +240,17 @@ public static class NginxConfigurationRenderer
                 location = /api/auth/cover-check {
                     internal;
                     proxy_pass http://api:8080/api/auth/cover-check;
+                    proxy_pass_request_body off;
+                    proxy_set_header Content-Length "";
+                    proxy_set_header X-Original-URI $request_uri;
+                    proxy_set_header Cookie $http_cookie;
+                    proxy_set_header Host $http_host;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                }
+
+                location = /api/auth/image-check {
+                    internal;
+                    proxy_pass http://api:8080/api/auth/image-check;
                     proxy_pass_request_body off;
                     proxy_set_header Content-Length "";
                     proxy_set_header X-Original-URI $request_uri;
@@ -315,31 +334,79 @@ public static class NginxConfigurationRenderer
                     proxy_read_timeout 300s;
                 }
 
-                location ~ ^/alexandria-previews/covers/ {
-                    limit_except PUT {
-                        deny all;
-                    }
+                # User background images. Keys rotate per upload, so the URL is stable but its
+                # bytes are not: clients bust the cache with ?v=<updatedAt>.
+                location ~ ^/images/(?<user_id>[0-9a-fA-F-]+)$ {
+                    auth_request /api/auth/image-check;
+                    auth_request_set $content_path $upstream_http_x_content_path;
 
                     limit_conn s3_conn 300;
-                    proxy_pass http://garage:3900;
-                    proxy_set_header Host $http_host;
+
+                    proxy_cache previews_cache;
+                    proxy_cache_key "$scheme$host$content_path$arg_v";
+                    proxy_cache_valid 200 30d;
+                    proxy_cache_valid 404 1m;
+                    proxy_cache_valid 500 502 503 504 5s;
+
+                    proxy_cache_lock on;
+                    proxy_cache_lock_timeout 10s;
+                    proxy_cache_lock_age 10s;
+
+                    proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+                    proxy_cache_background_update on;
+
+        {{LOCATION_SECURITY_HEADERS}}
+                    add_header Cache-Control "public, max-age=31536000" always;
+                    add_header X-Cache-Status $upstream_cache_status;
+
+                    proxy_pass http://garage:3902/$content_path;
+                    proxy_set_header Host alexandria-images.web.garage.localhost;
                     client_max_body_size 500M;
                     proxy_read_timeout 300s;
                 }
 
-                location ~ ^/alexandria-images/ {
+                # Profile pictures skip the auth hop: every upload gets a fresh id, so the URL is
+                # unguessable and its bytes never change. The strict pattern keeps every other key
+                # in the images bucket behind /images/ and its check.
+                location ~ "^/avatars/(?<avatar_owner>[0-9a-fA-F-]{36})/(?<avatar_id>[0-9a-fA-F-]{36})$" {
+                    limit_except GET { deny all; }
                     limit_conn s3_conn 300;
-                    proxy_pass http://garage:3900;
-                    proxy_set_header Host $http_host;
-                    client_max_body_size 500M;
-                    proxy_read_timeout 300s;
+
+                    proxy_cache previews_cache;
+                    proxy_cache_key "$scheme$host/avatars/$avatar_owner/$avatar_id";
+                    proxy_cache_valid 200 30d;
+                    proxy_cache_valid 404 1m;
+                    proxy_cache_valid 500 502 503 504 5s;
+
+                    proxy_cache_lock on;
+                    proxy_cache_lock_timeout 10s;
+                    proxy_cache_lock_age 10s;
+
+                    proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+                    proxy_cache_background_update on;
+
+                    # The bucket never sees the session.
+                    proxy_set_header Cookie "";
+                    proxy_set_header Authorization "";
+                    proxy_hide_header Set-Cookie;
+
+        {{LOCATION_SECURITY_HEADERS}}
+                    add_header Cache-Control "public, max-age=31536000, immutable" always;
+                    add_header X-Cache-Status $upstream_cache_status;
+
+                    proxy_pass http://garage:3902/avatars/$avatar_owner/$avatar_id;
+                    proxy_set_header Host alexandria-images.web.garage.localhost;
+                    proxy_read_timeout 60s;
                 }
 
+                # Presigned browser uploads and downloads. Cover and background uploads go
+                # through the API instead, so no other bucket is reachable on the S3 port.
                 location ~ ^/(alexandria-files|alexandria-temp)/ {
                     limit_conn s3_conn 300;
                     proxy_pass http://garage:3900;
                     proxy_set_header Host $http_host;
-                    client_max_body_size 500M;
+                    client_max_body_size 30G;
+                    proxy_request_buffering off;
                     proxy_read_timeout 300s;
                 }
 
