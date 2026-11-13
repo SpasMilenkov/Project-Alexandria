@@ -1,6 +1,7 @@
 using Builder.Models;
 using Builder.Services;
 using Builder.UI.Shell.Splash;
+using Builder.Workflow;
 using Spectre.Console.Rendering;
 
 namespace Builder.UI.Shell.Screens;
@@ -48,7 +49,7 @@ public static class SuccessScreen
                 Views.Blank(),
                 Views.Facts(facts),
                 Views.Blank(),
-                Views.WarningPanel("Client trust is not verified. Follow nginx/CLIENT-TRUST.txt in the settings folder."),
+                TrustNote(context),
                 Views.Note("Data uses Docker-managed volumes. Back up settings and data separately."),
                 Views.Note("Full details, trust fingerprint and start/stop/repair commands: " + Path.Combine(context.InstallPath, InstallationSummary.FileName)),
                 Views.Note("Services keep running after setup closes."));
@@ -69,5 +70,21 @@ public static class SuccessScreen
         }
 
         return ScreenOutcome.Continue;
+    }
+
+    // Trusting the certificate is a normal step after a successful install,
+    // not a failure, so it reads as the next thing to do rather than a warning
+    private static IRenderable TrustNote(InstallationContext context)
+    {
+        var steps = Markup.Escape(Path.Combine(context.InstallPath, "nginx", "CLIENT-TRUST.txt"));
+
+        if (context.Config.Certificates.Mode == CertificateSettings.ImportedMode)
+        {
+            return Views.InfoPanel("Using your certificate",
+                $"If a browser warns about the address, the steps are in {steps}");
+        }
+
+        return Views.InfoPanel("Next: trust this address on your devices",
+            $"Setup made its own certificate, so browsers warn until each device trusts it once. The steps are in {steps}");
     }
 }

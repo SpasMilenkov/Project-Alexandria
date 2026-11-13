@@ -20,7 +20,7 @@ public static class InstallationSummary
             context.AdminLoginVerified
                 ? "Fresh administrator login and authenticated profile verified over HTTPS."
                 : "Existing account preserved. Current password and browser sign-in were not verified; sign in to confirm access.",
-            "Client trust: not verified. Follow " + Path.Combine(context.InstallPath, "nginx/CLIENT-TRUST.txt"),
+            "Device trust: set up once on each device. Steps: " + Path.Combine(context.InstallPath, "nginx/CLIENT-TRUST.txt"),
             "Configuration folder: " + context.InstallPath,
             "Environment: " + Path.Combine(context.InstallPath, ".env"),
             "Compose: " + Path.Combine(context.InstallPath, "docker-compose.yml"),
