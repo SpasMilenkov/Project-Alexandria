@@ -16,4 +16,6 @@ public class UserDetailsDto
 
     /// <summary>Designated quota in bytes. 0 means unlimited.</summary>
     public long StorageQuota { get; set; }
+
+    public string? AvatarUrl { get; set; }
 }

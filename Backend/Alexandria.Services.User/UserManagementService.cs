@@ -104,6 +104,7 @@ public class UserManagementService(
             UpdatedAt = user.UpdatedAt,
             DeletedAt = user.DeletedAt,
             StorageQuota = user.StorageQuota,
+            AvatarUrl = AvatarPaths.Url(user.Id, user.AvatarId),
         };
     }
 
@@ -173,7 +174,37 @@ public class UserManagementService(
     public async Task<UserProfileDto> GetUserProfileAsync(Guid userId, CancellationToken ct = default)
     {
         return await unitOfWork.Users.GetUserProfileAsync(userId, ct) ??
-               throw new InvalidOperationException("User not found exception");
+               throw new UserNotFoundException(userId);
+    }
+
+    public async Task<UserProfileStatsDto> GetProfileStatsAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await unitOfWork.Users.GetProfileStatsAsync(userId, DateTime.UtcNow, ct) ??
+               throw new UserNotFoundException(userId);
+    }
+
+    public async Task<UserProfileDto> UpdateProfileAsync(Guid userId, UpdateProfileDto dto,
+        CancellationToken ct = default)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+        if (user is null || user.DeletedAt is not null)
+            throw new UserNotFoundException(userId);
+
+        var userName = dto.UserName.Trim();
+
+        if (!string.Equals(user.UserName, userName, StringComparison.Ordinal))
+        {
+            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedBy = userId;
+
+            var result = await userManager.SetUserNameAsync(user, userName);
+            if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.DuplicateUserName)))
+                throw new UserNameTakenException(userName);
+
+            ThrowIfFailed(result);
+        }
+
+        return await GetUserProfileAsync(userId, ct);
     }
 
     public async Task SetupProfileAsync(Guid userId, CancellationToken ct = default)

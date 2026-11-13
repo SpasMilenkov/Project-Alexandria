@@ -1,4 +1,5 @@
 using Alexandria.Api.Features.Auth.Extensions;
+using Alexandria.Common.Exceptions;
 using Alexandria.Common.Services;
 using Alexandria.Dto.Users;
 using FastEndpoints;
@@ -16,10 +17,14 @@ sealed class GetUserProfileEndpoint(IUserManagementService userManagementService
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        var userId = User.GetUserId();
-
-        await userManagementService.GetUserProfileAsync(userId, ct);
-
-        await Send.OkAsync(await userManagementService.GetUserProfileAsync(userId, ct), cancellation: ct);
+        try
+        {
+            var profile = await userManagementService.GetUserProfileAsync(User.GetUserId(), ct);
+            await Send.OkAsync(profile, cancellation: ct);
+        }
+        catch (UserNotFoundException)
+        {
+            await Send.NotFoundAsync(ct);
+        }
     }
 }

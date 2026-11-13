@@ -12,5 +12,6 @@ public static class ApplicationUserExtensions
         Email = user.Email,
         CreatedAt = user.CreatedAt,
         StorageQuota = user.StorageQuota,
+        AvatarUrl = AvatarPaths.Url(user.Id, user.AvatarId),
     };
 }

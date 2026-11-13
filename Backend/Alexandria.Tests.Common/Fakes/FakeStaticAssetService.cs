@@ -28,4 +28,14 @@ public class FakeStaticAssetService : IStaticAssetService
     {
         throw new NotImplementedException();
     }
+
+    public Task<Guid> UploadAvatarAsync(Stream content, Guid userId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<int> DeleteAvatarsExceptAsync(Guid userId, Guid? keepAvatarId, CancellationToken ct = default)
+    {
+        return Task.FromResult(0);
+    }
 }
