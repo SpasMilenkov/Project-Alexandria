@@ -1,6 +1,8 @@
 using Builder.Services;
 using Builder.Workflow;
 using Builder.UI.Shell.Screens;
+using Builder.UI.Shell.Splash;
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using Spectre.Console;
 using Spectre.Console.Rendering;
@@ -27,6 +29,9 @@ public sealed class Shell : IDisposable
 
     private const int MainPadding = 2;
     private const int SidebarPadding = 1;
+
+    // How long the splash takes to fold away after a full build
+    private const double SplashUnwindSeconds = 0.7;
 
     private static readonly KeyHint[] DefaultHints = [new("Enter", "continue"), new("Esc", "back")];
 
@@ -67,6 +72,10 @@ public sealed class Shell : IDisposable
     // Test seam: TestConsole reports interactive but buffers Live frames away
     // from Output; harnesses disable Live to assert rendered content
     public bool EnableLive { get; set; } = true;
+
+    // Plays the opening city before the first screen; off for repair runs
+    // and tests, which should land on the wizard straight away
+    public bool ShowSplash { get; init; }
 
     // While a widget captures raw text, printable keys (including T) must
     // reach the buffer; only Ctrl+C stays global
@@ -146,10 +155,11 @@ public sealed class Shell : IDisposable
             .Start(liveContext =>
             {
                 lock (_frameGate) _liveContext = liveContext;
-                StartFrameTimer();
 
                 try
                 {
+                    PlaySplash(liveContext);
+                    StartFrameTimer();
                     WalkScreens(screens);
                 }
                 catch (ShellAbortException)
@@ -161,6 +171,104 @@ public sealed class Shell : IDisposable
                     StopFrameTimer();
                 }
             });
+    }
+
+    // The splash owns the whole window until a key is pressed. A key then
+    // plays the build backwards, quicker than it was built, from wherever it
+    // had got to, so the map folds away into the wizard instead of being cut
+    // off. A second key skips the rest. It is left out where it could not
+    // look right: small, colorless or non-Unicode terminals.
+    private void PlaySplash(LiveDisplayContext liveContext)
+    {
+        if (!ShowSplash || !SplashFits()) return;
+
+        var clock = Stopwatch.StartNew();
+        var painted = (Width: 0, Height: 0, Settled: false);
+
+        while (SplashFits())
+        {
+            var elapsed = clock.Elapsed.TotalSeconds;
+            var frame = (Width: AnsiConsole.Profile.Width, Height: AnsiConsole.Profile.Height, Settled: elapsed >= CityScene.Duration);
+
+            // A settled scene is repainted only when the window changes size
+            if (frame != painted)
+            {
+                PaintSplash(liveContext, elapsed);
+                painted = frame.Settled ? frame : default;
+            }
+
+            if (Keys.Poll() is { } key)
+            {
+                AbortOnCtrlC(key);
+                UnwindSplash(liveContext, Math.Min(elapsed, CityScene.Duration));
+
+                return;
+            }
+
+            Thread.Sleep(elapsed < CityScene.Duration ? 33 : 120);
+        }
+    }
+
+    private void UnwindSplash(LiveDisplayContext liveContext, double from)
+    {
+        var duration = SplashUnwindSeconds * from / CityScene.Duration;
+        var clock = Stopwatch.StartNew();
+
+        while (SplashFits())
+        {
+            var progress = Math.Min(1, clock.Elapsed.TotalSeconds / Math.Max(0.001, duration));
+
+            // Eased at both ends so the fold starts and lands gently
+            var eased = progress * progress * (3 - 2 * progress);
+
+            PaintSplash(liveContext, from * (1 - eased));
+
+            if (progress >= 1) return;
+
+            if (Keys.Poll() is { } key)
+            {
+                AbortOnCtrlC(key);
+
+                return;
+            }
+
+            Thread.Sleep(33);
+        }
+    }
+
+    private void PaintSplash(LiveDisplayContext liveContext, double elapsed)
+    {
+        ClearOnResize();
+        _layout.Update(new Rows(
+            new CityScene { Height = AnsiConsole.Profile.Height - 2, Splash = true, Elapsed = elapsed },
+            SplashPrompt(elapsed)));
+        liveContext.Refresh();
+    }
+
+    // Ctrl+C keeps its meaning during the splash: it aborts and never returns
+    private void AbortOnCtrlC(ConsoleKeyInfo key)
+    {
+        if (key.Key == ConsoleKey.C && key.Modifiers.HasFlag(ConsoleModifiers.Control))
+        {
+            HandleGlobalKey(key);
+        }
+    }
+
+    private static bool SplashFits()
+    {
+        var profile = AnsiConsole.Profile;
+
+        return profile.Capabilities.Unicode &&
+               profile.Capabilities.ColorSystem != ColorSystem.NoColors &&
+               profile.Width >= CityPlan.MinSplashWidth &&
+               profile.Height - 2 >= CityPlan.MinSplashHeight;
+    }
+
+    private static IRenderable SplashPrompt(double elapsed)
+    {
+        if (elapsed < CityScene.Duration) return new Text(string.Empty);
+
+        return new Markup($"{Ui.Muted("press")} [bold {Theme.Active.Ac}]any key[/] {Ui.Muted("to begin")}").Centered();
     }
 
     // Back steps to the previous screen; at the first screen it re-renders.

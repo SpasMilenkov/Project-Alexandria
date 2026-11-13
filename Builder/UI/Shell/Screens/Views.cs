@@ -12,11 +12,14 @@ public static class Views
     // Two rows of block glyphs: narrow enough for an 80-column terminal,
     // unlike a figlet banner that wraps under the content cap, and drawn
     // from block elements every terminal font ships
-    private static readonly string[] Wordmark =
+    internal static readonly string[] Wordmark =
     [
         "▄▀█ █   █▀▀ ▀▄▀ ▄▀█ █▄ █ █▀▄ █▀█ █ ▄▀█",
         "█▀█ █▄▄ ██▄ █ █ █▀█ █ ▀█ █▄▀ █▀▄ █ █▀█",
     ];
+
+    internal const string Tagline = "self-hosted files, media and music";
+    internal const string InstallerVersion = "installer v0.4";
 
     private const string SpinnerGlyphs = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
 
@@ -26,7 +29,7 @@ public static class Views
 
         return new Rows(
             new Markup(wordmark),
-            new Markup($"[{Theme.Active.As}]self-hosted files, media and music[/]  {Ui.Muted("installer v0.4")}"),
+            new Markup($"[{Theme.Active.As}]{Tagline}[/]  {Ui.Muted(InstallerVersion)}"),
             Blank());
     }
 

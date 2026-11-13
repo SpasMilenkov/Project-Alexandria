@@ -18,6 +18,8 @@ public static class Themes
         ErrorColor = Color.IndianRed1,
         MutedColor = Color.Grey62,
         BorderColor = Color.Grey37,
+        WaterFill = new Color(16, 52, 62),
+        WaterColor = Color.CadetBlue,
         ChartColors =
         [
             Color.Gold1,
@@ -41,6 +43,8 @@ public static class Themes
         ErrorColor = Color.IndianRed1,
         MutedColor = Color.Grey62,
         BorderColor = Color.Grey37,
+        WaterFill = new Color(22, 30, 70),
+        WaterColor = Color.SteelBlue1,
         ChartColors =
         [
             Color.MediumPurple2,

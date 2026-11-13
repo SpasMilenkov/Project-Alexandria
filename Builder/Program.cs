@@ -5,7 +5,8 @@ using Builder.Workflow;
 
 Theme.Use(Themes.Resolve(UiPreferencesStore.Load()));
 
-var flow = new MainFlow();
+// A plain launch opens on the city; --settings repairs go straight to work
+var flow = new MainFlow { ShowSplash = args.Length == 0 };
 
 try
 {

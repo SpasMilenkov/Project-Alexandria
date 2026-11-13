@@ -22,6 +22,11 @@ public sealed class ThemeDefinition
     public required Color BorderColor { get; init; }
     public required IReadOnlyList<Color> ChartColors { get; init; }
 
+    // The splash map's water: a filled background so the coastline reads as
+    // a shape, with wave marks drawn over it
+    public required Color WaterFill { get; init; }
+    public required Color WaterColor { get; init; }
+
     public Style AccentStyle => new(Accent);
     public Style BorderStyle => new(BorderColor);
     public Style MutedStyle => new(MutedColor);

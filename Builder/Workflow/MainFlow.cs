@@ -17,6 +17,8 @@ public class MainFlow
 
     public InstallationContext Context { get; } = new();
 
+    public bool ShowSplash { get; set; }
+
     public MainFlow()
     {
         var runner = new ProcessRunner();
@@ -37,7 +39,7 @@ public class MainFlow
     {
         var context = Context;
 
-        using var shell = new Shell(context);
+        using var shell = new Shell(context) { ShowSplash = ShowSplash };
 
         shell.OnAbort = () => Cleanup();
 

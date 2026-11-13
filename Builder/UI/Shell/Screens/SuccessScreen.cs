@@ -1,5 +1,6 @@
 using Builder.Models;
 using Builder.Services;
+using Builder.UI.Shell.Splash;
 using Spectre.Console.Rendering;
 
 namespace Builder.UI.Shell.Screens;
@@ -38,7 +39,10 @@ public static class SuccessScreen
             facts.Add(("Installer log", context.DeploymentLogPath ?? "not recorded"));
             facts.Add(("Capabilities", string.Join(", ", FeatureCatalog.All.Where(feature => capabilities.IsEnabled(feature.Id)).Select(feature => feature.Label))));
 
+            // The city from the opening splash, now with every block built
             return new Rows(
+                new CityScene { Height = 7, Complete = true },
+                Views.Blank(),
                 new Markup($"[bold {Theme.Active.Su}]✓ Alexandria is up and running[/]"),
                 Views.Highlight(origin),
                 Views.Blank(),
@@ -52,7 +56,7 @@ public static class SuccessScreen
 
         while (true)
         {
-            shell.SetMain(Build, [new KeyHint("D", "details and commands"), new KeyHint("Enter", "close setup")]);
+            shell.SetMain(Build, [new KeyHint("D", "details and commands"), new KeyHint("Enter", "close setup")], readFromTop: true);
             var key = shell.Keys.Wait();
 
             if (shell.HandleGlobalKey(key)) continue;
