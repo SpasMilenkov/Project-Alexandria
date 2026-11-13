@@ -171,7 +171,7 @@ public sealed class AdminLoginVerifierTests
                     headers.Add(headers[0]);
                     break;
                 case "wrong-path":
-                    headers[1] = headers[1].Replace("Path=/api/auth/refresh", "Path=/", StringComparison.Ordinal);
+                    headers[1] = headers[1].Replace("Path=/api/auth;", "Path=/;", StringComparison.Ordinal);
                     break;
                 case "expired":
                     headers[0] += "; Max-Age=0";
@@ -311,9 +311,12 @@ public sealed class AdminLoginVerifierTests
     {
         var response = JsonResponse(body);
         response.Headers.Add("Set-Cookie", "access_token=" + AccessToken + "; Path=/; Secure; HttpOnly; SameSite=Lax");
-        response.Headers.Add("Set-Cookie", "refresh_token=" + RefreshToken + "; Path=/api/auth/refresh; Secure; HttpOnly; SameSite=Lax");
+        response.Headers.Add("Set-Cookie", "refresh_token=" + RefreshToken + "; Path=/api/auth; Secure; HttpOnly; SameSite=Lax");
 
         if (csrf) response.Headers.Add("Set-Cookie", "csrf_token=" + CsrfToken + "; Path=/; Secure; SameSite=Lax");
+
+        // The API deletes the refresh cookie at its pre-widening path on every sign-in
+        response.Headers.Add("Set-Cookie", "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/api/auth/refresh");
 
         return response;
     }

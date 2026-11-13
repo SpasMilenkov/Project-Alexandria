@@ -1,37 +1,79 @@
 using Builder.Models;
 using Builder.Services;
-using Builder.Workflow;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
 namespace Builder.UI.Shell.Screens;
 
-// Renderable builders shared across screens. Everything that used to write
-// straight to the console now returns renderables so the frame stays intact.
+// Renderable building blocks shared by every screen, so headings, notices,
+// lists and facts look the same wherever they appear.
 public static class Views
 {
+    // Two rows of block glyphs: narrow enough for an 80-column terminal,
+    // unlike a figlet banner that wraps under the content cap, and drawn
+    // from block elements every terminal font ships
+    private static readonly string[] Wordmark =
+    [
+        "▄▀█ █   █▀▀ ▀▄▀ ▄▀█ █▄ █ █▀▄ █▀█ █ ▄▀█",
+        "█▀█ █▄▄ ██▄ █ █ █▀█ █ ▀█ █▄▀ █▀▄ █ █▀█",
+    ];
+
+    private const string SpinnerGlyphs = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+
     public static IRenderable Banner()
     {
+        var wordmark = string.Join("\n", Wordmark.Select(line => $"[bold {Theme.Active.Ac}]{line}[/]"));
+
         return new Rows(
-            new FigletText("ALEXANDRIA").Color(Theme.Active.Accent),
-            new Rule($"[{Theme.Active.As}]{Theme.Active.DisplayName} look[/]  " +
-                     Ui.Dim($"installer v0.4 - {Theme.Active.Tagline}"))
-                .RuleStyle(Theme.Active.BorderStyle));
+            new Markup(wordmark),
+            new Markup($"[{Theme.Active.As}]self-hosted files, media and music[/]  {Ui.Muted("installer v0.4")}"),
+            Blank());
     }
 
     public static IRenderable Title(string text)
     {
-        return new Markup($"[bold white]{Markup.Escape(text)}[/]");
+        return new Markup($"[bold]{Markup.Escape(text)}[/]");
     }
 
-    private const string SpinnerGlyphs = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+    // A page heading with its lead paragraph and breathing room below
+    public static IRenderable Heading(string title, params string[] notes)
+    {
+        var rows = new List<IRenderable> { Title(title) };
 
-    // Wall-clock derived so animation survives even when no screen code runs
-    // (Live repaints from the frame timer, nothing needs to count ticks)
+        rows.AddRange(notes.Select(Note));
+        rows.Add(Blank());
+
+        return new Rows(rows);
+    }
+
+    public static IRenderable Section(string title)
+    {
+        return new Rule($"[{Theme.Active.Ac}]{Markup.Escape(title)}[/]")
+            .LeftJustified()
+            .RuleStyle(Theme.Active.BorderStyle);
+    }
+
+    public static IRenderable Note(string text)
+    {
+        return new Markup(Ui.Muted(text));
+    }
+
+    public static IRenderable Highlight(string text)
+    {
+        return new Markup($"[bold {Theme.Active.Ac}]{Markup.Escape(text)}[/]");
+    }
+
+    public static IRenderable Blank()
+    {
+        return new Text(string.Empty);
+    }
+
     public static string SpinnerFrame()
     {
         const long frameTicks = TimeSpan.TicksPerMillisecond * 120;
 
+        // Wall-clock derived so the spinner moves on every repaint without
+        // anything counting ticks
         return SpinnerFrame((int)(DateTime.UtcNow.Ticks / frameTicks));
     }
 
@@ -40,53 +82,91 @@ public static class Views
         return SpinnerGlyphs[Math.Abs(tick) % SpinnerGlyphs.Length].ToString();
     }
 
-    public static IRenderable Note(string text)
-    {
-        return new Markup($"[dim]{Markup.Escape(text)}[/]");
-    }
-
+    // Body arguments are markup; callers escape any value they did not write
     public static IRenderable InfoPanel(string title, string body)
     {
-        return new Panel(new Markup(body))
-        {
-            Header = new PanelHeader($"[{Theme.Active.Ac}]{Markup.Escape(title)}[/]"),
-            Border = BoxBorder.Rounded,
-            BorderStyle = Theme.Active.BorderStyle,
-            Padding = new Padding(2, 1),
-            Expand = true,
-        };
+        return Notice("●", Theme.Active.As, title, body);
     }
 
     public static IRenderable WarningPanel(string body)
     {
-        return new Panel(new Markup($"[{Theme.Active.Wa}]{Markup.Escape(body)}[/]"))
-        {
-            Header = new PanelHeader($"[{Theme.Active.Wa}]![/]"),
-            Border = BoxBorder.Rounded,
-            BorderStyle = Theme.Active.BorderStyle,
-            Padding = new Padding(2, 1),
-            Expand = true,
-        };
+        return Notice("!", Theme.Active.Wa, null, Markup.Escape(body));
     }
 
     public static IRenderable ErrorPanel(string title, string body)
     {
-        return new Panel(new Markup(body))
-        {
-            Header = new PanelHeader($"[{Theme.Active.Er}]{Markup.Escape(title)}[/]"),
-            Border = BoxBorder.Heavy,
-            BorderStyle = Theme.Active.ErrorStyle,
-            Padding = new Padding(2, 1),
-            Expand = true,
-        };
+        return Notice("✗", Theme.Active.Er, title, body);
     }
 
-    public static IRenderable CheckRow(string label, bool ok, string? detail = null)
+    public static IRenderable SuccessPanel(string title, string body)
     {
-        var icon = ok ? $"[{Theme.Active.Su}]◆[/]" : $"[{Theme.Active.Er}]✗[/]";
-        var extra = detail is null ? string.Empty : $" [dim]{Markup.Escape(detail)}[/]";
+        return Notice("✓", Theme.Active.Su, title, body);
+    }
 
-        return new Markup($"  {icon} {Markup.Escape(label)}{extra}");
+    private static IRenderable Notice(string icon, string color, string? title, string body)
+    {
+        var rows = new List<IRenderable>();
+
+        if (title is not null)
+        {
+            rows.Add(new Markup($"[bold {color}]{icon} {Markup.Escape(title)}[/]"));
+            rows.Add(new Markup(body));
+        }
+        else
+        {
+            rows.Add(new Markup($"[bold {color}]{icon}[/] {body}"));
+        }
+
+        return new Rows(new Callout(new Rows(rows), Style.Parse(color)), Blank());
+    }
+
+    public static IRenderable CheckList(IEnumerable<(string Label, bool Ok, string? Detail)> checks)
+    {
+        var grid = new Grid()
+            .AddColumn(new GridColumn().NoWrap().PadRight(1))
+            .AddColumn(new GridColumn().NoWrap().PadRight(2))
+            .AddColumn();
+
+        foreach (var (label, ok, detail) in checks)
+        {
+            var icon = ok ? Ui.Success("✓") : Ui.Error("✗");
+
+            grid.AddRow(new Markup(icon), new Markup(Markup.Escape(label)), new Markup(Ui.Muted(detail ?? string.Empty)));
+        }
+
+        return grid;
+    }
+
+    // Label/value pairs with the labels in one aligned, muted column
+    public static IRenderable Facts(IEnumerable<(string Label, string Value)> facts)
+    {
+        var grid = new Grid()
+            .AddColumn(new GridColumn().NoWrap().PadRight(3))
+            .AddColumn();
+
+        foreach (var (label, value) in facts)
+        {
+            grid.AddRow(new Markup(Ui.Muted(label)), new Markup(Markup.Escape(value)));
+        }
+
+        return grid;
+    }
+
+    // A small sample of a palette, drawn in the candidate's own colors rather
+    // than the active theme's, so looks can be compared before choosing
+    public static IRenderable ThemeSample(ThemeDefinition definition)
+    {
+        var swatches = string.Join(" ", new[]
+        {
+            definition.Ac, definition.As, definition.Su, definition.Wa, definition.Er,
+        }.Select(color => $"[{color}]██[/]"));
+
+        var content = new Rows(
+            new Markup($"[bold {definition.Ac}]{Markup.Escape(definition.DisplayName)}[/]  [{definition.Mu}]{Markup.Escape(definition.Tagline)}[/]"),
+            new Markup(swatches),
+            new Markup($"[{definition.Ac}]❯ Selected item[/]  [{definition.Su}]✓ Ready[/]  [{definition.Wa}]! Close to the limit[/]"));
+
+        return new Callout(content, new Style(definition.Accent));
     }
 
     public static IRenderable MemoryChart(FeatureSelection features)
@@ -97,9 +177,8 @@ public static class Views
             Theme.Active.ChartColors[index % Theme.Active.ChartColors.Count])).ToArray();
 
         return new BarChart()
-            .Width(56)
-            .Label("[dim]gigabytes of memory, including headroom[/]")
-            .CenterLabel()
+            .Width(60)
+            .Label(Ui.Muted("gigabytes of memory, including headroom"))
             .WithMaxValue(Math.Max(6, estimates.Max(estimate => estimate.MemoryMb / 1024.0)))
             .AddItems(items);
     }
@@ -112,65 +191,32 @@ public static class Views
                 Theme.Active.ChartColors[index % Theme.Active.ChartColors.Count])).ToArray();
 
         return new BreakdownChart()
-            .Width(56)
+            .Width(60)
+            .HideTagValues()
             .AddItems(items);
     }
 
     public static IRenderable FileTree(FeatureSelection features)
     {
-        var root = new Tree("[bold]./[/] [dim]- your Alexandria folder[/]")
+        string Entry(string name, string description) => $"[bold]{Markup.Escape(name)}[/]  {Ui.Muted(description)}";
+
+        var root = new Tree(Entry("./", "your Alexandria settings folder"))
             .Style(Theme.Active.BorderStyle);
 
-        root.AddNode("[bold]docker-compose.yml[/] [dim]- how the services run[/]");
-        root.AddNode("[bold].env[/] [dim]- all settings and passwords, locked to your user only[/]");
-        root.AddNode("[bold]garage.toml[/] [dim]- storage configuration[/]");
-        root.AddNode("[bold]alexandria-config.json[/] [dim]- record of your choices[/]");
-        root.AddNode("[bold]init-output/[/] [dim]- temporary storage bootstrap files[/]");
+        root.AddNode(Entry("docker-compose.yml", "how the services run"));
+        root.AddNode(Entry(".env", "all settings and passwords, locked to your user only"));
+        root.AddNode(Entry("garage.toml", "storage configuration"));
+        root.AddNode(Entry("alexandria-config.json", "record of your choices"));
+        root.AddNode(Entry("init-output/", "temporary storage bootstrap files"));
 
         if (features.IsEnabled(FeatureCatalog.Monitoring.Id))
         {
-            var prometheus = root.AddNode("[bold]prometheus/[/]");
+            var prometheus = root.AddNode(Entry("prometheus/", "monitoring"));
 
-            prometheus.AddNode("prometheus.yml [dim]- monitoring dashboard configuration[/]");
-            prometheus.AddNode("secrets/ [dim]- its access token, kept out of the config[/]");
+            prometheus.AddNode(Entry("prometheus.yml", "monitoring dashboard configuration"));
+            prometheus.AddNode(Entry("secrets/", "its access token, kept out of the config"));
         }
 
         return root;
-    }
-
-    public static IRenderable SuccessGrid(InstallationContext context)
-    {
-        var address = context.Config.PublicEndpoint.Origin;
-
-        var grid = new Grid().AddColumn(new GridColumn().PadRight(3)).AddColumn();
-
-        grid.AddRow(
-            new Markup($"[{Theme.Active.Ac}]Open Alexandria[/]"),
-            new Markup($"[{Theme.Active.Ac}]{address}[/]"));
-
-        if (context.Features.IsEnabled(FeatureCatalog.Monitoring.Id))
-        {
-            grid.AddRow(
-                new Markup($"[{Theme.Active.Ac}]Monitoring[/]"),
-                new Markup($"[{Theme.Active.Ac}]{Markup.Escape(address)}/monitoring/[/]"));
-        }
-
-        grid.AddRow(
-            new Markup($"[{Theme.Active.Ac}]Your settings[/]"),
-            new Markup($"{Markup.Escape(Path.Combine(context.InstallPath, ".env"))} [dim]- passwords live here[/]"));
-
-        grid.AddRow(
-            new Markup($"[{Theme.Active.Ac}]Stop later[/]"),
-            new Markup(Markup.Escape(InstallationCommands.Compose(context.Config, "stop"))));
-
-        grid.AddRow(
-            new Markup($"[{Theme.Active.Ac}]Start again[/]"),
-            new Markup(Markup.Escape(InstallationCommands.Compose(context.Config, "up -d --no-build --pull never"))));
-
-        grid.AddRow(
-            new Markup($"[{Theme.Active.Ac}]See activity[/]"),
-            new Markup(Markup.Escape(InstallationCommands.Compose(context.Config, "logs -f"))));
-
-        return grid;
     }
 }

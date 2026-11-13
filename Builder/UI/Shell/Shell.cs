@@ -1,4 +1,3 @@
-using Builder.Models;
 using Builder.Services;
 using Builder.Workflow;
 using Builder.UI.Shell.Screens;
@@ -8,77 +7,112 @@ using Spectre.Console.Rendering;
 
 namespace Builder.UI.Shell;
 
-public static class ShellRenderableExtensions
-{
-    // Layout.Update has an IRenderable overload only; strings are ubiquitous
-    public static void Update(this Layout layout, string text)
-    {
-        layout.Update(new Markup(text));
-    }
-}
-
 // The persistent frame. One Live session spans the entire wizard; screens
-// swap the main pane and mutate the sidebar without ever tearing chrome down
-// (locked decisions D32/D33).
+// swap the main pane and mutate the sidebar without ever tearing chrome down.
 //
 // Global keys are handled before screens see anything:
-//   T     - cycle palette, apply instantly, persist per press (D32)
-//   Ctrl+C- graceful abort routed to the cleanup hook
+//   T          cycle the look, apply instantly, persist per press
+//   PgUp/PgDn  scroll the main pane when its content is taller than the window
+//   Ctrl+C     graceful abort routed to the cleanup hook
 public sealed class Shell : IDisposable
 {
-    public const int MinFullWidth = 80;
-    public const int SidebarWidth = 40;
-    private const int SidebarCompactWidth = 25;
-    private IRenderable? _mainPanel;
+    public const int MinFullWidth = 100;
+    public const int SidebarWidth = 34;
+
+    // On wide terminals the main pane's text is capped to a readable measure
+    internal const int MaxContentMeasure = 78;
+
+    // Constant content inset, so every screen starts in the same column
+    internal const int MainContentInset = 2;
+
+    private const int MainPadding = 2;
+    private const int SidebarPadding = 1;
+
+    private static readonly KeyHint[] DefaultHints = [new("Enter", "continue"), new("Esc", "back")];
 
     private readonly object _frameGate = new();
-    private readonly Layout _layout;
+    private readonly Layout _layout = new("root");
     private readonly IKeySource _keys;
     private LiveDisplayContext? _liveContext;
     private SidebarModel _sidebar = new();
-    private IRenderable? _mainContent;
-
-    public InstallationContext Context { get; }
-    public IKeySource Keys => _keys;
-    public Action? OnAbort { get; set; }
-
-    // Test seam: redirects palette persistence (D32) to a scratch store
-    internal Func<string, bool>? ThemeSaver { get; set; }
+    private IRenderable _mainContent = new Text(string.Empty);
+    private Func<IRenderable>? _mainBuilder;
+    private IReadOnlyList<KeyHint> _hints = DefaultHints;
+    private IRenderable? _mainPanel;
+    private bool _readFromTop;
+    private int _scroll;
+    private int _scrollPage;
+    private bool _mainOverflows;
+    private bool _escapeRequested;
+    private CancellationTokenSource? _frameTimerCts;
+    private Task? _frameTask;
+    private int _lastWidth = -1;
+    private int _lastHeight = -1;
 
     public Shell(InstallationContext context, IKeySource? keys = null)
     {
         Context = context;
         _keys = new CancellableKeySource(keys ?? ConsoleKeySource.Instance, context.Cancellation.Token);
-        _layout = BuildLayout();
     }
 
+    public InstallationContext Context { get; }
+
+    public IKeySource Keys => _keys;
+
+    public Action? OnAbort { get; set; }
+
+    // Test seam: redirects look persistence to a scratch store
+    internal Func<string, bool>? ThemeSaver { get; set; }
+
     // Test seam: TestConsole reports interactive but buffers Live frames away
-    // from Output - harnesses disable Live to assert rendered content
+    // from Output; harnesses disable Live to assert rendered content
     public bool EnableLive { get; set; } = true;
 
     // While a widget captures raw text, printable keys (including T) must
-    // reach the buffer - only Ctrl+C stays global
+    // reach the buffer; only Ctrl+C stays global
     public bool GlobalsSuppressed { get; set; }
+
+    public bool AbortRequested { get; private set; }
+
+    public int StepIndex { get; private set; }
+
+    public int TotalSteps { get; private set; }
+
+    public string ScreenTitle { get; private set; } = string.Empty;
+
+    internal IReadOnlyList<string> StepTitles { get; set; } = [];
+
+    internal SidebarModel CurrentSidebar => _sidebar;
+
+    // Width the main pane gives its content, for screens that wrap text
+    // themselves (log viewers)
+    public static int MainContentWidth
+    {
+        get
+        {
+            var width = AnsiConsole.Profile.Width;
+            var column = width < MinFullWidth ? width : width - SidebarWidth - 1;
+
+            return Math.Max(12, Math.Min(MaxContentMeasure, column - 2 - 2 * MainPadding - MainContentInset));
+        }
+    }
 
     private bool UseLive => EnableLive && AnsiConsole.Profile.Capabilities.Interactive;
 
     public void RunAll(IReadOnlyList<(string Title, Func<Shell, ScreenOutcome> Screen)> screens)
     {
-        if (!UseLive)
-        {
-            WalkScreensGuarded(screens);
-
-            return;
-        }
-
-        // D39: alternate screen gives us the whole canvas - resizes cannot
-        // corrupt scrollback and exit restores the user's terminal pristine
-        var useAltBuffer = AnsiConsole.Profile.Capabilities.AlternateBuffer;
+        StepTitles = screens.Select(screen => screen.Title).ToArray();
 
         try
         {
-            if (useAltBuffer)
+            if (!UseLive)
             {
+                WalkScreens(screens);
+            }
+            else if (AnsiConsole.Profile.Capabilities.AlternateBuffer)
+            {
+                // The alternate screen gives the frame the whole canvas: resizes
+                // cannot corrupt scrollback and exit restores the terminal
                 AnsiConsole.AlternateScreen(() => RunLive(screens));
             }
             else
@@ -103,8 +137,8 @@ public sealed class Shell : IDisposable
 
     private void RunLive(IReadOnlyList<(string Title, Func<Shell, ScreenOutcome> Screen)> screens)
     {
-        // Crop/Top keeps an oversized frame from spilling into alt-buffer
-        // scrollback - the freshest rows stay visible, nothing scrolls
+        // The frame is sized to the window, but a resize between measurement
+        // and paint can still overflow; cropping the top keeps the key bar
         AnsiConsole.Live(_layout)
             .AutoClear(true)
             .Overflow(VerticalOverflow.Crop)
@@ -120,7 +154,7 @@ public sealed class Shell : IDisposable
                 }
                 catch (ShellAbortException)
                 {
-                    // unwinding only
+                    // Leave Live normally so it restores the terminal itself
                 }
                 finally
                 {
@@ -129,137 +163,29 @@ public sealed class Shell : IDisposable
             });
     }
 
-    private void WalkScreensGuarded(IReadOnlyList<(string Title, Func<Shell, ScreenOutcome> Screen)> screens)
-    {
-        try
-        {
-            WalkScreens(screens);
-        }
-        catch (ShellAbortException)
-        {
-        }
-        catch (OperationCanceledException) when (Context.Cancellation.IsCancellationRequested)
-        {
-            Context.ShouldAbort = true;
-        }
-    }
-
-    private CancellationTokenSource? _frameTimerCts;
-    private Task? _frameTask;
-    private int _lastWidth = -1;
-    private int _lastHeight = -1;
-
-    // Live only paints on explicit Refresh() (unlike Progress/Status, there is
-    // no internal refresher), and ReadKey never sees resizes - this timer is
-    // the single repaint heartbeat. Screens stay stateless: animated glyphs
-    // derive from wall-clock time, not from ticks raised here.
-    private void StartFrameTimer()
-    {
-        if (_frameTimerCts is not null) return;
-
-        _frameTimerCts = new CancellationTokenSource();
-
-        var token = _frameTimerCts.Token;
-
-        _frameTask = Task.Run(async () =>
-        {
-            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(120));
-
-            try
-            {
-                while (await timer.WaitForNextTickAsync(token))
-                {
-                    lock (_frameGate)
-                    {
-                        CheckResize();
-                        Refresh();
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-            }
-        }, token);
-    }
-
-    private void StopFrameTimer()
-    {
-        var cancellation = _frameTimerCts;
-        var frameTask = _frameTask;
-        _frameTimerCts = null;
-        _frameTask = null;
-        cancellation?.Cancel();
-
-        try
-        {
-            frameTask?.GetAwaiter().GetResult();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        finally
-        {
-            cancellation?.Dispose();
-        }
-    }
-
-    // D40: resizes are invisible to a blocking ReadKey loop - the heartbeat
-    // notices dimension changes and triggers clear + full recompose
-    private bool CheckResize()
-    {
-        int width, height;
-
-        try
-        {
-            width = Console.WindowWidth;
-            height = Console.WindowHeight;
-        }
-        catch
-        {
-            return false; // redirected output has no window metrics
-        }
-
-        if (_lastWidth == -1)
-        {
-            _lastWidth = width;
-            _lastHeight = height;
-
-            return false;
-        }
-
-        if (width == _lastWidth && height == _lastHeight)
-        {
-            return false;
-        }
-
-        _lastWidth = width;
-        _lastHeight = height;
-
-        AnsiConsole.Clear();
-        ComposeFrame();
-
-        return true;
-    }
-
-    // Back steps to the previous screen (D38); at the first screen it is a
-    // no-op re-render. Abort leaves the walk immediately.
+    // Back steps to the previous screen; at the first screen it re-renders.
+    // Abort leaves the walk immediately.
     private void WalkScreens(IReadOnlyList<(string Title, Func<Shell, ScreenOutcome> Screen)> screens)
     {
-        var total = screens.Count;
+        TotalSteps = screens.Count;
 
-        for (var i = 0; i < total;)
+        for (var i = 0; i < screens.Count;)
         {
             var (title, screen) = screens[i];
-            StepIndex = i + 1;
-            TotalSteps = total;
-            ScreenTitle = title;
 
-            RefreshSidebarModel();
-            SetMain(new Markup(string.Empty));
+            lock (_frameGate)
+            {
+                StepIndex = i + 1;
+                ScreenTitle = title;
+                _scroll = 0;
+            }
 
-            var outcome = screen(this);
+            // An Esc a screen left unconsumed must not send the next one back
+            _escapeRequested = false;
 
-            switch (outcome)
+            SetMain(new Text(string.Empty));
+
+            switch (screen(this))
             {
                 case ScreenOutcome.Abort:
                     Context.ShouldAbort = true;
@@ -276,17 +202,29 @@ public sealed class Shell : IDisposable
         Context.Completed = true;
     }
 
-    public int StepIndex { get; private set; }
+    // Replaces the main pane. Hints describe the keys the screen listens to;
+    // null means the usual Enter/Esc pair. Content taller than the window is
+    // anchored to its end (where inputs live) unless readFromTop is set.
+    public void SetMain(IRenderable renderable, IReadOnlyList<KeyHint>? hints = null, bool readFromTop = false)
+    {
+        SetMain(() => renderable, hints, readFromTop);
+    }
 
-    public int TotalSteps { get; private set; }
-
-    public string ScreenTitle { get; private set; } = string.Empty;
-
-    public void SetMain(IRenderable renderable)
+    // Builder form: the page is rebuilt when the look changes, so colors baked
+    // into its markup follow the new theme while the screen waits for a key
+    public void SetMain(Func<IRenderable> build, IReadOnlyList<KeyHint>? hints = null, bool readFromTop = false)
     {
         lock (_frameGate)
         {
-            _mainContent = renderable;
+            if (readFromTop != _readFromTop)
+            {
+                _scroll = 0;
+            }
+
+            _mainBuilder = build;
+            _mainContent = build();
+            _hints = hints ?? DefaultHints;
+            _readFromTop = readFromTop;
             ComposeFrame();
 
             if (UseLive)
@@ -319,7 +257,17 @@ public sealed class Shell : IDisposable
         }
     }
 
-    // Returns true when the key was consumed as a global command
+    public void Refresh()
+    {
+        lock (_frameGate)
+        {
+            ComposeFrame();
+            _liveContext?.Refresh();
+        }
+    }
+
+    // Returns true when the key was consumed as a global command; the caller
+    // then redraws its page so the change shows
     public bool HandleGlobalKey(ConsoleKeyInfo key)
     {
         if (key.Key == ConsoleKey.C && key.Modifiers.HasFlag(ConsoleModifiers.Control))
@@ -329,6 +277,13 @@ public sealed class Shell : IDisposable
             Context.Cancellation.Cancel();
             OnAbort?.Invoke();
             throw ShellAbortException.Instance;
+        }
+
+        if (_mainOverflows && key.Key is ConsoleKey.PageUp or ConsoleKey.PageDown)
+        {
+            Scroll(key.Key == ConsoleKey.PageDown);
+
+            return true;
         }
 
         if (GlobalsSuppressed)
@@ -345,8 +300,6 @@ public sealed class Shell : IDisposable
 
         return false;
     }
-
-    public bool AbortRequested { get; private set; }
 
     public T RunResponsive<T>(Func<T> operation, Action? onTick = null)
     {
@@ -389,9 +342,7 @@ public sealed class Shell : IDisposable
         return result;
     }
 
-    private bool _escapeRequested;
-
-    // Widgets signal Esc; screens consume it to step back one screen (D38)
+    // Widgets signal Esc; screens consume it to step back one screen
     public void SignalEscape() => _escapeRequested = true;
 
     public bool TakeEscape()
@@ -403,154 +354,8 @@ public sealed class Shell : IDisposable
         return taken;
     }
 
-    internal SidebarModel CurrentSidebar => _sidebar;
-
-    private void CycleTheme()
-    {
-        lock (_frameGate)
-        {
-            var all = Themes.All;
-            var nextIndex = 0;
-
-            for (var i = 0; i < all.Count; i++)
-            {
-                if (ReferenceEquals(all[i], Theme.Active))
-                {
-                    nextIndex = (i + 1) % all.Count;
-                    break;
-                }
-            }
-
-            var next = all[nextIndex];
-
-            Theme.Use(next);
-
-            var saved = ThemeSaver?.Invoke(next.Id) ?? UiPreferencesStore.Save(next.Id);
-
-            _sidebar.SaveWarning = saved
-                ? null
-                : $"Look not saved - resets on next start";
-
-            Refresh();
-        }
-    }
-
-    private Layout BuildLayout()
-    {
-        // Single region: the whole frame is composed as one renderable and
-        // centered inside it - Layout is just the Live carrier now
-        return new Layout("root");
-    }
-
-    private bool IsNarrow()
-    {
-        return AnsiConsole.Profile.Width < MinFullWidth;
-    }
-
-    public void Refresh()
-    {
-        lock (_frameGate)
-        {
-            ComposeFrame();
-            _liveContext?.Refresh();
-        }
-    }
-
-    private void RefreshSidebarModel()
-    {
-        lock (_frameGate)
-        {
-            _sidebar.StepLabel = TotalSteps > 0
-                ? $"Step {StepIndex} / {TotalSteps} - {ScreenTitle}"
-                : ScreenTitle;
-
-            ComposeFrame();
-        }
-    }
-
-    // Content measure cap: on wide terminals the main pane's inner block is
-    // centered and capped so text never stretches across the whole panel
-    internal const int MaxContentMeasure = 78;
-
-    private const int HorizontalBreathing = 3;
-
-    // D52: constant content inset - identical column on every screen
-    internal const int MainContentInset = 4;
-
-    // Full-width chrome; the main pane's inner content is measure-capped and
-    // centered (D41 rev.2). Below MinFullWidth the sidebar column is dropped
-    // entirely - no ghost gap.
-    private void ComposeFrame()
-    {
-        var width = AnsiConsole.Profile.Width;
-        var totalRows = Math.Max(6, AnsiConsole.Profile.Height);
-        var narrow = IsNarrow();
-
-        var sidebarWidth = narrow ? SidebarCompactWidth : SidebarWidth;
-        var mainColWidth = narrow ? width : width - sidebarWidth - 1; // Columns spacing
-
-        var stepBar = BuildStepCard();
-        var sidebarInner = narrow ? BuildCompactSidebar() : BuildSidebarContent();
-
-        var mainInnerWidth = Math.Max(8, mainColWidth - 2 /* borders */ - 2 * HorizontalBreathing);
-
-        var (mainContent, _, _) = FixedInset(
-            PadHorizontal(_mainContent ?? new Markup(string.Empty), 1),
-            mainInnerWidth,
-            MainContentInset,
-            MaxContentMeasure);
-
-        var mainPanel = BuildFramedPanel(
-            titleMarkup: $"{stepBar}  [bold white]{Markup.Escape(ScreenTitle)}[/]",
-            content: mainContent,
-            columnWidth: mainColWidth,
-            totalRows: totalRows,
-            horizontalPadding: HorizontalBreathing);
-
-        IRenderable body;
-
-        if (narrow)
-        {
-            // D41 rev.2: below full width the sidebar is dropped entirely -
-            // the main pane takes the whole terminal, no ghost gap
-            body = mainPanel;
-        }
-        else
-        {
-            var sidebarPanel = BuildFramedPanel(
-                titleMarkup: $"[{Theme.Active.Ac}]{Theme.Active.DisplayName}[/] [dim]look[/]",
-                content: PadHorizontal(sidebarInner, 1),
-                columnWidth: sidebarWidth,
-                totalRows: totalRows,
-                horizontalPadding: 1);
-
-            body = new Columns(mainPanel, sidebarPanel).Collapse();
-        }
-
-        _layout.Update(new Rows(new Markup(string.Empty), body));
-        _mainPanel = mainPanel;
-
-        // Pure layout update - repaint happens exclusively through Refresh(),
-        // never here (ComposeFrame -> Refresh -> ComposeFrame recursion bug)
-    }
-
-    private string BuildStepCard()
-    {
-        if (TotalSteps == 0)
-        {
-            return string.Empty;
-        }
-
-        const int cells = 9;
-        var filled = Math.Min(cells, (int)Math.Ceiling((double)StepIndex / TotalSteps * cells));
-        var bar = $"[bold {Theme.Active.Ac}]{new string('█', filled)}[/][dim]{new string('░', cells - filled)}[/]";
-
-        return $"{bar} [dim]{StepIndex}/{TotalSteps}[/]";
-    }
-
-    // D52: content starts at a constant inset derived from nothing but the
-    // geometry knobs - identical on every screen, regardless of what the
-    // screen renders. The right padding enforces MaxContentMeasure.
+    // Content starts at a constant inset derived from the geometry alone, so
+    // it is identical on every screen. The right padding enforces the measure.
     internal static (IRenderable Renderable, int LeftPad, int RightPad) FixedInset(
         IRenderable content,
         int availableWidth,
@@ -563,157 +368,283 @@ public sealed class Shell : IDisposable
         return (renderable, inset, rightPad);
     }
 
-    private static IRenderable PadHorizontal(IRenderable content, int pad)
+    private void Scroll(bool forward)
     {
-        return new Padder(content, new Padding(pad, 0, pad, 0));
+        lock (_frameGate)
+        {
+            var step = Math.Max(1, _scrollPage - 1);
+
+            // The offset counts away from the anchor, so "forward" means
+            // toward it only when reading from the bottom
+            _scroll += forward == _readFromTop ? step : -step;
+            _scroll = Math.Max(0, _scroll);
+            Refresh();
+        }
     }
 
-    private static IRenderable[] BlankLines(int count)
+    private void CycleTheme()
     {
-        var blanks = new IRenderable[count];
-
-        for (var i = 0; i < count; i++)
+        lock (_frameGate)
         {
-            blanks[i] = new Markup(" ");
-        }
+            var next = Themes.After(Theme.Active);
 
-        return blanks;
+            Theme.Use(next);
+
+            var saved = ThemeSaver?.Invoke(next.Id) ?? UiPreferencesStore.Save(next.Id);
+
+            _sidebar.SaveWarning = saved ? null : "Look not saved; resets on next start";
+
+            if (_mainBuilder is not null)
+            {
+                _mainContent = _mainBuilder();
+            }
+
+            Refresh();
+        }
     }
 
-    private IRenderable BuildFramedPanel(
-        string titleMarkup,
-        IRenderable content,
-        int columnWidth,
-        int totalRows,
-        int horizontalPadding = 2)
+    // Live only paints on explicit Refresh() and ReadKey never sees resizes;
+    // this timer is the single repaint heartbeat. Screens stay stateless:
+    // animated glyphs derive from wall-clock time, not from ticks raised here.
+    private void StartFrameTimer()
     {
-        const int borderRows = 2;
-        var horizontalChrome = 2 /* borders */ + 2 * horizontalPadding;
+        if (_frameTimerCts is not null) return;
 
-        var innerWidth = Math.Max(8, columnWidth - horizontalChrome);
-        var innerRows = Math.Max(3, totalRows - borderRows);
-        var contentRows = MeasureLines(content, innerWidth);
+        _frameTimerCts = new CancellationTokenSource();
 
-        var parts = new List<IRenderable> { content };
+        var token = _frameTimerCts.Token;
 
-        if (contentRows < innerRows)
+        _frameTask = Task.Run(async () =>
         {
-            parts.AddRange(BlankLines(innerRows - contentRows));
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(120));
+
+            try
+            {
+                while (await timer.WaitForNextTickAsync(token))
+                {
+                    lock (_frameGate)
+                    {
+                        ClearOnResize();
+                        Refresh();
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                // The timer stops when the frame closes
+            }
+        }, token);
+    }
+
+    private void StopFrameTimer()
+    {
+        var cancellation = _frameTimerCts;
+        var frameTask = _frameTask;
+        _frameTimerCts = null;
+        _frameTask = null;
+        cancellation?.Cancel();
+
+        try
+        {
+            frameTask?.GetAwaiter().GetResult();
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled before the loop started; nothing was painted
+        }
+        finally
+        {
+            cancellation?.Dispose();
+        }
+    }
+
+    // Resizes are invisible to a blocking ReadKey loop; the heartbeat notices
+    // dimension changes and clears so the next paint is a full recompose
+    private void ClearOnResize()
+    {
+        int width, height;
+
+        try
+        {
+            width = Console.WindowWidth;
+            height = Console.WindowHeight;
+        }
+        catch (Exception error) when (error is IOException or PlatformNotSupportedException or InvalidOperationException)
+        {
+            // Redirected output has no window metrics to compare
+            return;
         }
 
-        return new Panel(new Rows(parts.ToArray()))
+        if (width == _lastWidth && height == _lastHeight)
         {
-            Header = new PanelHeader(titleMarkup),
+            return;
+        }
+
+        var first = _lastWidth == -1;
+
+        _lastWidth = width;
+        _lastHeight = height;
+
+        if (!first)
+        {
+            AnsiConsole.Clear();
+        }
+    }
+
+    // Pure layout update; repainting happens only through Refresh() or
+    // SetMain(), never here
+    private void ComposeFrame()
+    {
+        var width = AnsiConsole.Profile.Width;
+        // One row stays blank above the frame so the last frame row never
+        // lands on the terminal's final line, where a newline would scroll it
+        var rows = Math.Max(8, AnsiConsole.Profile.Height - 1);
+        var narrow = width < MinFullWidth;
+        var mainWidth = narrow ? width : width - SidebarWidth - 1;
+
+        var mainPanel = BuildMainPanel(mainWidth, rows);
+        IRenderable body = mainPanel;
+
+        if (!narrow)
+        {
+            var sidebarInner = SidebarWidth - 2 - 2 * SidebarPadding;
+            var sidebar = SidebarView.Build(_sidebar, Context, StepTitles, StepIndex, sidebarInner, rows - 2);
+
+            body = new Columns(mainPanel, Frame(sidebar, "[bold white]Alexandria setup[/]", SidebarWidth, SidebarPadding)).Collapse();
+        }
+
+        _layout.Update(new Rows(new Text(string.Empty), body));
+        _mainPanel = mainPanel;
+    }
+
+    private IRenderable BuildMainPanel(int columnWidth, int totalRows)
+    {
+        var innerWidth = Math.Max(8, columnWidth - 2 - 2 * MainPadding);
+        var innerRows = Math.Max(3, totalRows - 2);
+        var (content, _, _) = FixedInset(_mainContent, innerWidth, MainContentInset, MaxContentMeasure);
+        var lines = SegmentLines.Render(content, innerWidth);
+        var hints = new List<KeyHint>(_hints);
+        var footer = Footer(hints, innerWidth);
+        var available = innerRows - footer.Count;
+
+        // Only a live window has a height to respect; dry output prints the
+        // whole page so nothing is lost when stdout is not a terminal
+        _mainOverflows = UseLive && lines.Count > available;
+
+        if (_mainOverflows)
+        {
+            hints.Add(new KeyHint("PgUp/PgDn", "scroll"));
+            footer = Footer(hints, innerWidth);
+            available = innerRows - footer.Count;
+            lines = Viewport(lines, Math.Max(3, available), innerWidth);
+        }
+
+        var parts = new List<IRenderable> { new SegmentLines(lines) };
+
+        for (var i = lines.Count + footer.Count; i < innerRows; i++)
+        {
+            parts.Add(new Text(string.Empty));
+        }
+
+        parts.Add(new SegmentLines(footer));
+
+        return Frame(new Rows(parts), Header(), columnWidth, MainPadding);
+    }
+
+    private List<SegmentLine> Viewport(List<SegmentLine> lines, int rows, int width)
+    {
+        var lastFirst = lines.Count - rows;
+        _scroll = Math.Clamp(_scroll, 0, lastFirst);
+        _scrollPage = rows;
+
+        var first = _readFromTop ? _scroll : lastFirst - _scroll;
+        var view = lines.Skip(first).Take(rows).ToList();
+
+        if (first > 0)
+        {
+            view[0] = Marker("↑ more above", width);
+        }
+
+        if (first + rows < lines.Count)
+        {
+            view[^1] = Marker("↓ more below", width);
+        }
+
+        return view;
+    }
+
+    private static SegmentLine Marker(string text, int width)
+    {
+        var (line, _, _) = FixedInset(new Markup(Ui.Muted(text)), width, MainContentInset, MaxContentMeasure);
+
+        return SegmentLines.Render(line, width)[0];
+    }
+
+    private List<SegmentLine> Footer(IEnumerable<KeyHint> hints, int width)
+    {
+        var all = hints.ToList();
+
+        if (!GlobalsSuppressed)
+        {
+            all.Add(new KeyHint("T", "look"));
+        }
+
+        all.Add(new KeyHint("Ctrl+C", "quit"));
+
+        // Wrapped by hand so a key never lands on a different line than its action
+        var lines = new List<string> { string.Empty };
+        var lineWidth = 0;
+
+        foreach (var hint in all)
+        {
+            var cells = hint.Key.GetCellWidth() + 1 + hint.Action.GetCellWidth();
+            var markup = $"[bold {Theme.Active.Ac}]{Markup.Escape(hint.Key)}[/] {Ui.Muted(hint.Action)}";
+
+            if (lineWidth > 0 && lineWidth + 3 + cells > width)
+            {
+                lines.Add(string.Empty);
+                lineWidth = 0;
+            }
+
+            if (lineWidth > 0)
+            {
+                lines[^1] += "   ";
+                lineWidth += 3;
+            }
+
+            lines[^1] += markup;
+            lineWidth += cells;
+        }
+
+        return SegmentLines.Render(new Rows(new Rule().RuleStyle(Theme.Active.BorderStyle), new Markup(string.Join("\n", lines))), width);
+    }
+
+    private string Header()
+    {
+        var title = $"[bold white]{Markup.Escape(ScreenTitle)}[/]";
+
+        if (TotalSteps == 0)
+        {
+            return title;
+        }
+
+        var done = new string('█', StepIndex);
+        var left = new string('░', TotalSteps - StepIndex);
+
+        return $"[{Theme.Active.Ac}]{done}[/][{Theme.Active.Bo}]{left}[/]  {title}  {Ui.Muted($"{StepIndex}/{TotalSteps}")}";
+    }
+
+    private static Panel Frame(IRenderable content, string header, int width, int padding)
+    {
+        return new Panel(content)
+        {
+            Header = new PanelHeader($" {header} "),
             Border = BoxBorder.Rounded,
             BorderStyle = Theme.Active.BorderStyle,
-            Padding = new Padding(horizontalPadding, 0, horizontalPadding, 0),
+            Padding = new Padding(padding, 0, padding, 0),
             Expand = true,
-            Width = columnWidth,
+            Width = width,
         };
-    }
-
-    // Renders to a throwaway console to count wrapped output lines
-    private static int MeasureLines(IRenderable renderable, int width)
-    {
-        var text = RenderToString(renderable, width);
-        var lines = 0;
-
-        foreach (var _ in text.Split('\n'))
-        {
-            lines++;
-        }
-
-        return lines;
-    }
-
-    private static string RenderToString(IRenderable renderable, int width)
-    {
-        var writer = new StringWriter();
-
-        var console = AnsiConsole.Create(new AnsiConsoleSettings
-        {
-            Out = new AnsiConsoleOutput(writer),
-        });
-
-        console.Profile.Width = width;
-        console.Profile.Height = 1000;
-        console.Profile.Capabilities.Interactive = false;
-        console.Write(renderable);
-
-        return writer.ToString();
-    }
-
-    private IRenderable BuildCompactSidebar()
-    {
-        return new Rows(
-            new Markup($"[{Theme.Active.Ac}]{Theme.Active.DisplayName}[/]"),
-            new Markup($"[dim]{_sidebar.StepLabel}[/]"),
-            new Markup("[dim]T look[/]"));
-    }
-
-    // Inner sidebar content; the framed panel around it is built by
-    // ComposeFrame so both panes share identical height and chrome.
-    // D47: per-feature dots appear once features have been selected.
-    internal IRenderable BuildSidebarContent()
-    {
-        var rows = new List<IRenderable>
-        {
-            new Markup($"[{Theme.Active.Ac}]{Theme.Active.DisplayName}[/] [dim]look[/]"),
-            new Markup($"[dim]{new string('█', 8)}[/] [dim]([/]T[dim] switch)[/]"),
-            new Rule().RuleStyle(Theme.Active.BorderStyle),
-            new Markup($"[dim]{_sidebar.StepLabel}[/]"),
-            new Rule().RuleStyle(Theme.Active.BorderStyle),
-            BuildStats(),
-        };
-
-        if (Context.FeaturesSelected)
-        {
-            rows.Add(new Rule().RuleStyle(Theme.Active.BorderStyle));
-            rows.Add(new Markup("[dim]Features[/]"));
-
-            foreach (var feature in FeatureCatalog.All)
-            {
-                var on = Context.Features.IsEnabled(feature.Id);
-                var dot = on ? $"[{Theme.Active.Su}]●[/]" : "[dim]○[/]";
-                var label = TruncateLabel(feature.Label, 24);
-
-                rows.Add(new Markup(on
-                    ? $"{dot} {Markup.Escape(label)}"
-                    : $"{dot} [dim]{Markup.Escape(label)}[/]"));
-            }
-        }
-
-        if (_sidebar.SaveWarning is not null)
-        {
-            rows.Add(new Markup($"[{Theme.Active.Wa}]⚠ {_sidebar.SaveWarning}[/]"));
-        }
-
-        rows.Add(new Rule().RuleStyle(Theme.Active.BorderStyle));
-        rows.Add(new Markup(string.Join("\n", SidebarModel.Legend.Select(l => $"[dim]{l}[/]"))));
-
-        return new Rows(rows.ToArray());
-    }
-
-    private static string TruncateLabel(string label, int max)
-    {
-        return label.Length <= max ? label : label[..(max - 1)] + "…";
-    }
-
-    private IRenderable BuildStats()
-    {
-        if (_sidebar.Stats.Count == 0)
-        {
-            return new Markup("[dim]Nothing measured yet[/]");
-        }
-
-        var grid = new Grid().AddColumn().AddColumn();
-
-        foreach (var (label, value) in _sidebar.Stats)
-        {
-            grid.AddRow(new Markup($"[dim]{label}[/]"), new Markup(value));
-        }
-
-        return grid;
     }
 
     public void Dispose()

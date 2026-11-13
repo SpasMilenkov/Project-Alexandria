@@ -31,9 +31,12 @@ public static class DeployScreen
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            shell.SetMain(new Rows(Views.ErrorPanel("Cannot create the installation log", Markup.Escape(redactor.Redact(error.Message))),
-                Views.Note("Deployment has not started. Check folder permissions. Press Enter to return to the summary.")));
-            IntroScreen.WaitEnter(shell);
+            var message = redactor.Redact(error.Message);
+
+            shell.SetMain(() => new Rows(Views.ErrorPanel("Cannot create the installation log", Markup.Escape(message)),
+                    Views.Note("Deployment has not started. Check folder permissions.")),
+                [new KeyHint("Enter", "back to summary")]);
+            Widgets.WaitForEnter(shell);
 
             return ScreenOutcome.Back;
         }
@@ -166,33 +169,49 @@ public static class DeployScreen
         {
             Stage[] snapshot;
 
-            lock (stateGate) snapshot = stages.TakeLast(4).ToArray();
+            lock (stateGate) snapshot = stages.TakeLast(6).ToArray();
 
-            var rows = new List<IRenderable> { Views.Title("Installing Alexandria") };
-            var current = snapshot.LastOrDefault();
-
-            if (current is not null)
+            var rows = new List<IRenderable>
             {
-                rows.Add(Views.Note(current.Label));
-
-                if (current.Detail is not null) rows.Add(new Text(current.Detail.Length > 600 ? current.Detail[..600] : current.Detail));
-            }
+                Views.Heading("Installing Alexandria",
+                    "This takes a while on the first run: images are built from your source code."),
+            };
+            var current = snapshot.LastOrDefault();
+            var grid = new Grid()
+                .AddColumn(new GridColumn().NoWrap().PadRight(1))
+                .AddColumn(new GridColumn().PadRight(2))
+                .AddColumn(new GridColumn().NoWrap().RightAligned());
 
             foreach (var stage in snapshot)
             {
                 var icon = stage.State switch
                 {
-                    "done" => $"[{Theme.Active.Su}]✓[/]",
-                    "failed" => $"[{Theme.Active.Er}]✗[/]",
-                    _ => $"[{Theme.Active.Ac}]{Views.SpinnerFrame()}[/]",
+                    "done" => Ui.Success("✓"),
+                    "failed" => Ui.Error("✗"),
+                    _ => $"[bold {Theme.Active.Ac}]{Views.SpinnerFrame()}[/]",
                 };
+                var label = stage.State == "running"
+                    ? $"[bold]{Markup.Escape(stage.Label)}[/]"
+                    : Markup.Escape(stage.Label);
                 var elapsed = stage.State == "running" ? Stopwatch.GetElapsedTime(stage.Started) : stage.Elapsed;
-                rows.Add(new Markup($"{icon} {Markup.Escape(stage.Label)} [dim]{elapsed.TotalSeconds:0}s[/]"));
+
+                grid.AddRow(new Markup(icon), new Markup(label), new Markup(Ui.Muted($"{elapsed.TotalSeconds:0}s")));
             }
 
-            rows.Add(Views.Note("T changes the look · Ctrl+C stops child work and preserves services/data."));
+            rows.Add(grid);
+
+            if (current?.Detail is not null)
+            {
+                var detail = current.Detail.Length > 600 ? current.Detail[..600] : current.Detail;
+
+                rows.Add(Views.Blank());
+                rows.Add(new Callout(new Text(detail, Theme.Active.MutedStyle), Theme.Active.BorderStyle));
+            }
+
+            rows.Add(Views.Blank());
+            rows.Add(Views.Note("Ctrl+C stops child work and preserves services and data."));
             rows.Add(Views.Note("Log: " + log.FilePath));
-            shell.SetMain(new Rows(rows));
+            shell.SetMain(new Rows(rows), []);
         }
 
         void ValidateResume()
@@ -303,27 +322,56 @@ public static class DeployScreen
 
         while (true)
         {
-            var width = ContentWidth();
-            var rows = new List<IRenderable>
-            {
-                Views.Title("Installation stopped"),
-                new Text(error[..Math.Min(error.Length, width * 2)]),
-                new Text(last[..Math.Min(last.Length, width * 2)]),
-                Views.Note("What now? ↑/↓ choose · Enter selects · L opens full evidence · Esc exits"),
-                new Markup($"[{Theme.Active.Ac}]▸ {Markup.Escape(choices[index])}[/]"),
-                Views.Note("Services/data preserved; started services keep running."),
-                new Text("Log: " + logPath),
-            };
+            var width = Shell.MainContentWidth;
+            var roomy = AnsiConsole.Profile.Height >= 26;
+            var menu = new Grid().AddColumn();
 
-            if (AnsiConsole.Profile.Height >= 26)
+            for (var i = 0; i < choices.Length; i++)
             {
-                rows.Add(Views.Note("Stage: " + stage));
-                rows.Add(Views.Note("Last output: " + last));
-                rows.Add(Views.Note(stage == "Building Alexandria" ? "The failing command was docker compose build." : "Retry uses the saved project and settings."));
-                rows.Add(Views.Note(string.Join("\n", choices.Where((_, item) => item != index))));
+                menu.AddRow(new Markup(i == index
+                    ? $"[bold {Theme.Active.Ac}]❯ {Markup.Escape(choices[i])}[/]"
+                    : "  " + Markup.Escape(choices[i])));
             }
 
-            shell.SetMain(new Rows(rows));
+            var facts = new List<(string Label, string Value)> { ("Stage", stage) };
+
+            if (roomy)
+            {
+                facts.Add(("Last output", last));
+                facts.Add(("Next attempt", stage == "Building Alexandria" ? "Runs docker compose build again." : "Uses the saved project and settings."));
+            }
+
+            facts.Add(("Log", logPath));
+
+            // Short terminals drop the spacing and the closing note so the
+            // error and the whole menu still fit on one screen
+            var rows = new List<IRenderable> { Views.Title("Installation stopped") };
+
+            if (roomy)
+            {
+                rows.Add(Views.Blank());
+            }
+
+            rows.Add(Views.ErrorPanel("Failed", Markup.Escape(error[..Math.Min(error.Length, width * 2)])));
+
+            if (!roomy)
+            {
+                rows.Add(new Text(last[..Math.Min(last.Length, width * 2)], Theme.Active.MutedStyle));
+            }
+
+            rows.Add(Views.Facts(facts));
+            rows.Add(Views.Blank());
+            rows.Add(Views.Title("What now?"));
+            rows.Add(menu);
+
+            if (roomy)
+            {
+                rows.Add(Views.Blank());
+                rows.Add(Views.Note("Services and data are preserved; started services keep running."));
+            }
+
+            shell.SetMain(new Rows(rows),
+                [new KeyHint("↑↓", "choose"), new KeyHint("Enter", "select"), new KeyHint("L", "full log"), new KeyHint("Esc", "exit")]);
             var key = shell.Keys.Wait();
 
             if (shell.HandleGlobalKey(key)) continue;
@@ -335,27 +383,23 @@ public static class DeployScreen
         }
     }
 
-    private static int ContentWidth()
-    {
-        var available = AnsiConsole.Profile.Width - 18;
-        if (AnsiConsole.Profile.Width >= Shell.MinFullWidth) available -= Shell.SidebarWidth;
-
-        return Math.Max(12, Math.Min(Shell.MaxContentMeasure, available));
-    }
-
     internal static void Inspect(Shell shell, string title, string logPath, IReadOnlyList<string> lines)
     {
         var offset = 0;
 
         while (true)
         {
-            var width = ContentWidth();
+            var width = Shell.MainContentWidth;
             var wrapped = lines.SelectMany(line => Wrap(line, width)).ToArray();
+
+            // Frame borders, heading, log path and the key bar take the rest
             var pageSize = Math.Max(1, AnsiConsole.Profile.Height - 10);
             offset = Math.Clamp(offset, 0, Math.Max(0, wrapped.Length - pageSize));
-            shell.SetMain(new Rows(Views.Title(title), new Text($"Lines {offset + 1}–{Math.Min(wrapped.Length, offset + pageSize)} / {wrapped.Length}"),
-                new Text(string.Join("\n", wrapped.Skip(offset).Take(pageSize))),
-                Views.Note("↑/↓ scroll · PgUp/PgDn page · Enter/Esc returns"), Views.Note("Log: " + logPath)));
+            shell.SetMain(new Rows(
+                    new Markup($"[bold]{Markup.Escape(title)}[/]  {Ui.Muted($"lines {offset + 1}–{Math.Min(wrapped.Length, offset + pageSize)} of {wrapped.Length}")}"),
+                    new Text(string.Join("\n", wrapped.Skip(offset).Take(pageSize))),
+                    Views.Note("Log: " + logPath)),
+                [new KeyHint("↑↓", "scroll"), new KeyHint("PgUp/PgDn", "page"), new KeyHint("Home/End", "jump"), new KeyHint("Enter", "back")]);
             var key = shell.Keys.Wait();
 
             if (shell.HandleGlobalKey(key)) continue;

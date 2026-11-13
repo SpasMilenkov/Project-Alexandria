@@ -12,34 +12,47 @@ public static class SuccessScreen
 
         if (!context.DeploymentVerified)
         {
-            shell.SetMain(Views.ErrorPanel("Installation is not verified", "Required checks have not completed."));
+            shell.SetMain(Views.ErrorPanel("Installation is not verified", "Required checks have not completed."), []);
 
             return ScreenOutcome.Abort;
         }
 
-        while (true)
+        IRenderable Build()
         {
             var capabilities = ServiceCatalog.Resolve(context.Features);
-            var parts = new List<IRenderable>
+            var origin = context.Config.PublicEndpoint.Origin;
+            var facts = new List<(string Label, string Value)>
             {
-                Views.Title("Alexandria is up and running"),
-                new Text(context.Config.PublicEndpoint.Origin),
-                Views.Note("D opens scrollable details · Enter closes setup; services keep running."),
-                Views.Note("Account: " + context.Config.EnvironmentValues.GetValueOrDefault("ADMIN_EMAIL", context.AdminAccount.Email)),
-                Views.Note(context.AdminLoginVerified
+                ("Account", context.Config.EnvironmentValues.GetValueOrDefault("ADMIN_EMAIL", context.AdminAccount.Email)),
+                ("Sign-in", context.AdminLoginVerified
                     ? "Fresh administrator login verified over HTTPS."
                     : "Existing account preserved; current password and browser sign-in were not verified."),
-                Views.Note("Client trust is not verified. Follow nginx/CLIENT-TRUST.txt in the settings folder."),
-                Views.Note("Settings: " + context.InstallPath),
-                Views.Note("Installer log: " + context.DeploymentLogPath),
-                Views.Note("Data uses Docker-managed volumes. Back up settings and data separately."),
-                Views.Note("Capabilities: " + string.Join(", ", FeatureCatalog.All.Where(feature => capabilities.IsEnabled(feature.Id)).Select(feature => feature.Label))),
-                Views.Note("Full details, trust fingerprint and start/stop/repair commands: " + Path.Combine(context.InstallPath, InstallationSummary.FileName)),
             };
 
-            if (capabilities.MonitoringEnabled) parts.Add(new Text("Grafana: " + context.Config.PublicEndpoint.Origin + "/monitoring/"));
+            if (capabilities.MonitoringEnabled)
+            {
+                facts.Add(("Monitoring", origin + "/monitoring/"));
+            }
 
-            shell.SetMain(new Rows(parts));
+            facts.Add(("Settings", context.InstallPath));
+            facts.Add(("Installer log", context.DeploymentLogPath ?? "not recorded"));
+            facts.Add(("Capabilities", string.Join(", ", FeatureCatalog.All.Where(feature => capabilities.IsEnabled(feature.Id)).Select(feature => feature.Label))));
+
+            return new Rows(
+                new Markup($"[bold {Theme.Active.Su}]✓ Alexandria is up and running[/]"),
+                Views.Highlight(origin),
+                Views.Blank(),
+                Views.Facts(facts),
+                Views.Blank(),
+                Views.WarningPanel("Client trust is not verified. Follow nginx/CLIENT-TRUST.txt in the settings folder."),
+                Views.Note("Data uses Docker-managed volumes. Back up settings and data separately."),
+                Views.Note("Full details, trust fingerprint and start/stop/repair commands: " + Path.Combine(context.InstallPath, InstallationSummary.FileName)),
+                Views.Note("Services keep running after setup closes."));
+        }
+
+        while (true)
+        {
+            shell.SetMain(Build, [new KeyHint("D", "details and commands"), new KeyHint("Enter", "close setup")]);
             var key = shell.Keys.Wait();
 
             if (shell.HandleGlobalKey(key)) continue;

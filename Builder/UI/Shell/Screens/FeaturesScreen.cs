@@ -11,7 +11,8 @@ public static class FeaturesScreen
     {
         var features = shell.Context.Features;
 
-        IRenderable Header() => Views.Title("What should Alexandria be able to do?");
+        IRenderable Header() => Views.Heading("What should Alexandria be able to do?",
+            "Everything can be changed later by running setup again on the same folder.");
 
         void PushStats()
         {
@@ -33,7 +34,7 @@ public static class FeaturesScreen
             Widgets.AskMultiToggle(
                 shell,
                 Header(),
-                "Features - Space toggles, Enter confirms",
+                "Features",
                 FeatureCatalog.ToggleFeatures,
                 f => features.IsEnabled(f.Id),
                 (f, on) =>
@@ -47,24 +48,23 @@ public static class FeaturesScreen
                     var feature = FeatureCatalog.ToggleFeatures[index];
                     var components = ServiceCatalog.ForFeature(feature.Id).ToList();
 
-                    var rows = new List<IRenderable>
+                    var body = new List<string>
                     {
-                        new Markup($"[bold]{Markup.Escape(feature.Label)}[/]"),
-                        new Markup(Markup.Escape(feature.Description)),
-                        new Markup($"[dim]{Markup.Escape(feature.Cost)}[/]"),
+                        Markup.Escape(feature.Description),
+                        Ui.Muted(feature.Cost),
                     };
 
                     if (components.Count > 0)
                     {
-                        rows.Add(new Markup($"[dim]{(components.All(component => component.AlwaysEnabled) ? "Uses: " : "Turns on: ")}[/]" +
-                            Markup.Escape(string.Join(", ", components.Select(c => c.Name)))));
+                        var verb = components.All(component => component.AlwaysEnabled) ? "Uses: " : "Turns on: ";
                         var memoryMb = components.Where(component => !component.OneShot)
                             .Sum(component => component.MemoryMb + component.MemoryHeadroomMb);
 
-                        rows.Add(new Markup($"[dim]Components estimate: {memoryMb / 1024.0:0.##} GB of memory, including headroom.[/]"));
+                        body.Add(Ui.Muted(verb) + Markup.Escape(string.Join(", ", components.Select(c => c.Name))));
+                        body.Add(Ui.Muted($"Components estimate: {memoryMb / 1024.0:0.##} GB of memory, including headroom."));
                     }
 
-                    return new Rows(rows.ToArray());
+                    return Views.InfoPanel(feature.Label, string.Join("\n", body));
                 });
 
             if (shell.TakeEscape())
@@ -72,26 +72,37 @@ public static class FeaturesScreen
                 return ScreenOutcome.Back;
             }
 
-            var backboneHeader = new List<IRenderable> { Header() };
+            var backboneHeader = new List<IRenderable>
+            {
+                Views.Heading("Which audio analysis model?",
+                    "Automatic tagging reads genre and mood from your music with one of these models."),
+            };
 
             if (features.HasLegacyDualAudioSelection)
             {
-                backboneHeader.Add(new Markup("[yellow]This saved setup selected both models. Its coordinator used Effnet. Confirm one model to continue.[/]"));
+                backboneHeader.Add(Views.WarningPanel("This saved setup selected both models. Its coordinator used Effnet. Confirm one model to continue."));
             }
 
             if (!features.IsEnabled(FeatureCatalog.Autotagging.Id))
             {
-                backboneHeader.Add(new Markup("[dim]Automatic tagging is off. Your model choice is saved, but no analysis worker or models will be installed.[/]"));
+                backboneHeader.Add(Views.InfoPanel("Automatic tagging is off",
+                    Markup.Escape("Your model choice is saved, but no analysis worker or models will be installed.")));
             }
 
             var choices = new[] { "off", "effnet", "maest" };
             var backbone = Widgets.AskSingleSelect(shell, new Rows(backboneHeader), "Audio analysis model", choices,
                 choice => choice switch
                 {
-                    "effnet" => "Effnet - genre and mood; about 23 MB of models, 2 GB worker memory",
-                    "maest" => "MAEST - deeper genre analysis plus mood; about 353 MB of models, 2 GB worker memory",
-                    _ => "Off - descriptive media metadata remains available",
-                }, Array.IndexOf(choices, features.AudioBackbone));
+                    "effnet" => "Effnet - genre and mood",
+                    "maest" => "MAEST - deeper genre analysis plus mood",
+                    _ => "Off",
+                }, Array.IndexOf(choices, features.AudioBackbone),
+                choice => Views.Note(choice switch
+                {
+                    "effnet" => "About 23 MB of models and 2 GB of worker memory. The lighter choice.",
+                    "maest" => "About 353 MB of models and 2 GB of worker memory. Slower, with finer genre labels.",
+                    _ => "No analysis worker or models are installed. Descriptive media metadata remains available.",
+                }));
 
             if (shell.TakeEscape()) continue;
             if (backbone is null) continue;

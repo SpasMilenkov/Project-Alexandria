@@ -17,13 +17,18 @@ public static class CertificateScreen
 
         if (CanKeepSavedImport()) selected = [keepSaved, .. selected];
 
-        IRenderable Header() => new Rows(Views.Title("HTTPS certificate"),
-            Views.Note("HTTPS protects sign-in and encrypted files. Your devices must trust the certificate before you use Alexandria."),
-            Views.Note("Generated certificates use a local CA kept in your setup folder. Import a certificate already trusted by your devices if you have one."));
+        IRenderable Header() => Views.Heading("HTTPS certificate",
+            "HTTPS protects sign-in and encrypted files. Your devices must trust the certificate before you use Alexandria.");
 
         while (true)
         {
-            var choice = Widgets.AskSingleSelect(shell, Header(), "Certificate", selected, value => value);
+            var choice = Widgets.AskSingleSelect(shell, Header(), "Certificate", selected, value => value,
+                detailFor: value => Views.Note(value switch
+                {
+                    keepSaved => "Reuse the certificate and key this installation already imported.",
+                    _ when value == options[1] => "Use a certificate your devices already trust. Its files are copied into the setup folder.",
+                    _ => "Setup creates a local CA in your setup folder. Each device trusts it once, following nginx/CLIENT-TRUST.txt.",
+                }));
 
             if (choice is null) return ScreenOutcome.Back;
 
@@ -49,10 +54,13 @@ public static class CertificateScreen
             }
             catch (Exception exception) when (exception is IOException or InvalidOperationException or System.Security.Cryptography.CryptographicException)
             {
-                shell.SetMain(new Rows(Header(), Views.ErrorPanel("Certificate needs attention", Markup.Escape(exception.Message)),
-                    Views.Note("Enter retries your choices; Esc goes back. Existing certificate files are preserved.")));
+                var message = exception.Message;
 
-                if (IntroScreen.WaitEnter(shell)) return ScreenOutcome.Back;
+                shell.SetMain(() => new Rows(Header(), Views.ErrorPanel("Certificate needs attention", Markup.Escape(message)),
+                        Views.Note("Existing certificate files are preserved.")),
+                    [new KeyHint("Enter", "change choices"), new KeyHint("Esc", "back")]);
+
+                if (Widgets.WaitForEnter(shell)) return ScreenOutcome.Back;
             }
         }
 

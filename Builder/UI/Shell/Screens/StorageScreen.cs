@@ -1,13 +1,14 @@
 using System.Globalization;
 using Builder.Models;
 using Builder.Services;
-using Spectre.Console;
 using Spectre.Console.Rendering;
 
 namespace Builder.UI.Shell.Screens;
 
 public static class StorageScreen
 {
+    private const string Title = "Storage for your files";
+
     public static ScreenOutcome Run(Shell shell)
     {
         var context = shell.Context;
@@ -16,15 +17,15 @@ public static class StorageScreen
         if (context.IsRepair || settings.PreserveExistingCapacity)
         {
             settings.PreserveExistingCapacity = true;
-            shell.SetMain(new Rows(new IRenderable[] { Views.Title("Storage for your files") }
-                .Concat(StorageSummary.Describe(context.Config, context.Resources).Select(Views.Note)).ToArray()));
-            return IntroScreen.WaitEnter(shell) ? ScreenOutcome.Back : ScreenOutcome.Continue;
+            shell.SetMain(() => new Rows(new IRenderable[] { Views.Title(Title), Views.Blank() }
+                .Concat(StorageSummary.Describe(context.Config, context.Resources).Select(Views.Note))));
+
+            return Widgets.WaitForEnter(shell) ? ScreenOutcome.Back : ScreenOutcome.Continue;
         }
 
-        var raw = Widgets.AskText(shell, new Rows(
-            Views.Title("Storage for your files"),
-            Views.Note("Set the new Garage storage layout capacity. The initial default is 10 GB."),
-            Views.Note("This does not reserve disk space or set user quotas. Keep room for the database, previews, temporary processing and Docker images.")),
+        var raw = Widgets.AskText(shell, Views.Heading(Title,
+                "Set the new Garage storage layout capacity. The initial default is 10 GB.",
+                "This does not reserve disk space or set user quotas. Keep room for the database, previews, temporary processing and Docker images."),
             new TextFieldSpec
             {
                 Label = "Garage capacity in GB",
@@ -35,8 +36,10 @@ public static class StorageScreen
             });
 
         if (shell.TakeEscape()) return ScreenOutcome.Back;
+
         settings.GarageCapacityGb = long.Parse(raw, CultureInfo.InvariantCulture);
         settings.CapacityReviewed = true;
+
         return ScreenOutcome.Continue;
     }
 }

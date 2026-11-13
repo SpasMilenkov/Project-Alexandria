@@ -117,11 +117,14 @@ public class MainFlow
             }
             catch (Exception ex) when (ex is IOException or InvalidOperationException or FormatException or System.Text.Json.JsonException)
             {
-                shell.SetMain(new Spectre.Console.Rows(
-                    Views.ErrorPanel("Existing configuration needs attention", Spectre.Console.Markup.Escape(ex.Message)),
-                    Views.Note("Nothing has been replaced. Enter chooses another folder; Esc goes back.")));
+                var message = ex.Message;
 
-                if (IntroScreen.WaitEnter(shell)) return ScreenOutcome.Back;
+                shell.SetMain(() => new Spectre.Console.Rows(
+                        Views.ErrorPanel("Existing configuration needs attention", Spectre.Console.Markup.Escape(message)),
+                        Views.Note("Nothing has been replaced.")),
+                    [new KeyHint("Enter", "choose another folder"), new KeyHint("Esc", "back")]);
+
+                if (Widgets.WaitForEnter(shell)) return ScreenOutcome.Back;
             }
         }
     }
@@ -169,10 +172,13 @@ public class MainFlow
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or FormatException or System.Text.Json.JsonException)
         {
-            shell.SetMain(new Spectre.Console.Rows(
-                Views.ErrorPanel("Setup cannot continue", Spectre.Console.Markup.Escape(ex.Message)),
-                Views.Note("Existing services and settings are preserved. Enter or Esc returns to your choices.")));
-            IntroScreen.WaitEnter(shell);
+            var message = ex.Message;
+
+            shell.SetMain(() => new Spectre.Console.Rows(
+                    Views.ErrorPanel("Setup cannot continue", Spectre.Console.Markup.Escape(message)),
+                    Views.Note("Existing services and settings are preserved.")),
+                [new KeyHint("Enter", "back to your choices")]);
+            Widgets.WaitForEnter(shell);
 
             return ScreenOutcome.Back;
         }

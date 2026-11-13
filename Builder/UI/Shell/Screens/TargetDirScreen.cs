@@ -1,4 +1,3 @@
-using Builder.UI;
 using Builder.Workflow;
 using Spectre.Console.Rendering;
 
@@ -15,9 +14,18 @@ public static class TargetDirScreen
             ? RepoRootOverride()
             : DetectRepoRoot(context.LaunchDirectory);
 
-        IRenderable Header(string note) => new Rows(
-            Views.Title("Where should Alexandria live?"),
-            Views.Note(note));
+        IRenderable Header(string note, params (string Label, bool Ok, string? Detail)[] chosen)
+        {
+            var rows = new List<IRenderable> { Views.Heading("Where should Alexandria live?", note) };
+
+            if (chosen.Length > 0)
+            {
+                rows.Add(Views.CheckList(chosen));
+                rows.Add(Views.Blank());
+            }
+
+            return new Rows(rows);
+        }
 
         var sourceInitial = context.SourcePathDraft ?? context.SourceRoot;
 
@@ -56,7 +64,8 @@ public static class TargetDirScreen
         while (true)
         {
             IRenderable targetHeader = Header(
-                "This folder holds setup settings. Database and uploaded files use Docker-managed volumes.");
+                "This folder holds setup settings. Database and uploaded files use Docker-managed volumes.",
+                ("Source code", true, resolvedSource));
 
             if (writeError is not null)
             {
@@ -81,9 +90,9 @@ public static class TargetDirScreen
 
             var confirmation = new List<IRenderable>
             {
-                Header("Review the resolved folders. Enter continues; Esc goes back without creating files."),
-                Views.CheckRow("Source code", true, resolvedSource),
-                Views.CheckRow("Setup settings", true, resolvedTarget),
+                Header("Review the resolved folders. Nothing is created until you continue.",
+                    ("Source code", true, resolvedSource),
+                    ("Setup settings", true, resolvedTarget)),
                 Views.Note("Database and uploaded files live in Docker-managed volumes, outside this settings folder."),
             };
 
@@ -96,7 +105,7 @@ public static class TargetDirScreen
 
             shell.SetMain(new Rows(confirmation.ToArray()));
 
-            if (IntroScreen.WaitEnter(shell)) return ScreenOutcome.Back;
+            if (Widgets.WaitForEnter(shell)) return ScreenOutcome.Back;
 
             writeError = PathResolver.ValidateTarget(resolvedTarget);
 

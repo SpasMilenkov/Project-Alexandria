@@ -1,6 +1,5 @@
 using Builder.Models;
 using Builder.Services;
-using Builder.UI;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -29,15 +28,13 @@ public static class SystemCheckScreen
         ISystemChecker checker,
         IResourceCalculator calculator)
     {
-        var rows = new List<IRenderable>
-        {
-            Views.Title("Checking your machine"),
-            new Rule().RuleStyle(Theme.Active.BorderStyle),
-        };
+        var checks = new List<(string Label, bool Ok, string? Detail)>();
 
-        void Render()
+        // Keys only apply once the checks finish and something follows them
+        void Render(params Func<IRenderable>[] after)
         {
-            shell.SetMain(new Rows(rows.ToArray()));
+            shell.SetMain(() => new Rows([Heading(), Views.CheckList(checks), .. after.Select(build => build())]),
+                after.Length == 0 ? [] : null);
         }
 
         Render();
@@ -46,55 +43,55 @@ public static class SystemCheckScreen
 
         if (!string.IsNullOrWhiteSpace(hostError))
         {
-            return Fail(shell, rows, "Host platform unsupported", hostError);
+            return Fail(shell, checks, "Host platform unsupported", hostError);
         }
 
-        rows.Add(Views.CheckRow("Host platform", true, "Linux x64 (glibc)"));
+        checks.Add(("Host platform", true, "Linux x64 (glibc)"));
         Render();
 
         if (!checker.IsDockerInstalled())
         {
-            return Fail(shell, rows, "Docker is not installed or cannot run",
+            return Fail(shell, checks, "Docker is not installed or cannot run",
                 FailureDetails(checker, "The Docker command must be available in your terminal before continuing."));
         }
 
-        rows.Add(Views.CheckRow("Docker", true, ShortVersion(checker.GetDockerVersion())));
+        checks.Add(("Docker", true, ShortVersion(checker.GetDockerVersion())));
         Render();
 
         if (!checker.IsDockerComposeInstalled())
         {
-            return Fail(shell, rows, "Docker Compose plugin unavailable",
+            return Fail(shell, checks, "Docker Compose plugin unavailable",
                 FailureDetails(checker, "This installer requires the docker compose command. " +
                                         "The standalone docker-compose command cannot be used."));
         }
 
-        rows.Add(Views.CheckRow("Docker Compose", true, ShortVersion(checker.GetDockerComposeVersion())));
+        checks.Add(("Docker Compose", true, ShortVersion(checker.GetDockerComposeVersion())));
         Render();
 
         var contextError = checker.GetDockerContextError();
 
         if (!string.IsNullOrWhiteSpace(contextError))
         {
-            return Fail(shell, rows, "Docker connection cannot use local folders", contextError);
+            return Fail(shell, checks, "Docker connection cannot use local folders", contextError);
         }
 
         if (!checker.IsDockerDaemonRunning())
         {
-            return Fail(shell, rows, "Docker connection unavailable",
+            return Fail(shell, checks, "Docker connection unavailable",
                 FailureDetails(checker, "Start Docker on this machine and check that your account has Docker access."));
         }
 
-        rows.Add(Views.CheckRow("Docker daemon", true, "running"));
+        checks.Add(("Docker daemon", true, "running"));
         Render();
 
         var daemonPlatformError = checker.GetDockerPlatformError();
 
         if (!string.IsNullOrWhiteSpace(daemonPlatformError))
         {
-            return Fail(shell, rows, "Docker platform unsupported or unavailable", daemonPlatformError);
+            return Fail(shell, checks, "Docker platform unsupported or unavailable", daemonPlatformError);
         }
 
-        rows.Add(Views.CheckRow("Docker platform", true, "Linux amd64"));
+        checks.Add(("Docker platform", true, "Linux amd64"));
         Render();
 
         var resources = checker.GetSystemResources();
@@ -103,33 +100,39 @@ public static class SystemCheckScreen
 
         var cpu = resources.DockerCpuCores ?? resources.CpuCores;
         var memory = resources.DockerMemoryMb ?? resources.TotalMemoryMb;
-        rows.Add(Views.CheckRow(resources.DockerCpuCores.HasValue ? "Docker CPU" : "Host CPU (Docker limit unknown)", cpu >= 2, $"{cpu} cores"));
+        checks.Add((resources.DockerCpuCores.HasValue ? "Docker CPU" : "Host CPU (Docker limit unknown)", cpu >= 2, $"{cpu} cores"));
 
         if (memory > 0)
         {
-            rows.Add(Views.CheckRow(resources.DockerMemoryMb.HasValue ? "Docker memory" : "Host memory (Docker limit unknown)", memory >= 2048, $"{memory / 1024.0:0.#} GiB"));
+            checks.Add((resources.DockerMemoryMb.HasValue ? "Docker memory" : "Host memory (Docker limit unknown)", memory >= 2048, $"{memory / 1024.0:0.#} GiB"));
         }
+
+        var after = new List<Func<IRenderable>> { Views.Blank };
 
         if (resources.DockerAvailableDiskMb.HasValue)
         {
-            rows.Add(Views.CheckRow("Docker disk free", resources.DockerAvailableDiskMb >= 10240,
+            checks.Add(("Docker disk free", resources.DockerAvailableDiskMb >= 10240,
                 $"{resources.DockerAvailableDiskMb / 1024.0:0.#} GiB at {resources.DockerDataDirectory}"));
         }
         else
         {
-            rows.Add(Views.Note("Docker disk free: unknown. " + resources.DiskSpaceDetails));
+            after.Add(() => Views.Note("Docker disk free: unknown. " + resources.DiskSpaceDetails));
         }
 
-        foreach (var warning in calculator.GetWarnings(resources, shell.Context.Features))
+        var warnings = calculator.GetWarnings(resources, shell.Context.Features).ToList();
+
+        if (warnings.Count > 0)
         {
-            rows.Add(new Markup($"  [{Theme.Active.Wa}]![/] [dim]{Markup.Escape(warning)}[/]"));
+            after.Add(() => Views.WarningPanel(string.Join("\n", warnings)));
+        }
+        else
+        {
+            after.Add(() => Views.SuccessPanel("Ready to continue", Markup.Escape("This machine meets the requirements for your selection.")));
         }
 
-        rows.Add(new Rule().RuleStyle(Theme.Active.BorderStyle));
-        rows.Add(Views.Note("All good? Press Enter to continue - Esc takes you back."));
-        Render();
+        Render([.. after]);
 
-        if (IntroScreen.WaitEnter(shell))
+        if (Widgets.WaitForEnter(shell))
         {
             return ScreenOutcome.Back;
         }
@@ -137,11 +140,16 @@ public static class SystemCheckScreen
         return ScreenOutcome.Continue;
     }
 
-    private static ScreenOutcome? Fail(Shell shell, List<IRenderable> rows, string title, string body)
+    private static IRenderable Heading() => Views.Heading("Checking your machine",
+        "Alexandria runs in Docker. These checks confirm it can build and start here.");
+
+    private static ScreenOutcome? Fail(Shell shell,
+        List<(string Label, bool Ok, string? Detail)> checks, string title, string body)
     {
-        rows.Add(Views.ErrorPanel(title, Markup.Escape(body)));
-        rows.Add(Views.Note("Fix the issue, then press R to check again. Esc goes back; Enter exits."));
-        shell.SetMain(new Rows(rows.ToArray()));
+        shell.SetMain(() => new Rows(Heading(), Views.CheckList(checks), Views.Blank(),
+                Views.ErrorPanel(title, Markup.Escape(body)),
+                Views.Note("Fix the issue, then check again. Nothing has been installed.")),
+            [new KeyHint("R", "check again"), new KeyHint("Esc", "back"), new KeyHint("Enter", "exit")]);
 
         while (true)
         {

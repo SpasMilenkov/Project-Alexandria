@@ -144,9 +144,13 @@ public sealed class AdminLoginVerifier : IAdminLoginVerifier
     {
         var headers = response.Headers.TryGetValues("Set-Cookie", out var values) ? values.ToArray() : [];
 
-        foreach (var (name, path) in new[] { ("access_token", "/"), ("refresh_token", "/api/auth/refresh") })
+        // The refresh cookie covers every auth route so logout can revoke it
+        foreach (var (name, path) in new[] { ("access_token", "/"), ("refresh_token", "/api/auth") })
         {
-            var matching = headers.Where(header => header.StartsWith(name + "=", StringComparison.Ordinal)).ToArray();
+            // Sign-in also deletes the refresh cookie left at its older, narrower
+            // path; that empty-valued header is cleanup, not a second session
+            var matching = headers.Where(header => header.StartsWith(name + "=", StringComparison.Ordinal) &&
+                                                   !header.StartsWith(name + "=;", StringComparison.Ordinal)).ToArray();
             var issued = cookies.GetCookies(new Uri(origin, path))[name];
 
             if (matching.Length != 1 || issued is null || string.IsNullOrEmpty(issued.Value) || !issued.Secure || !issued.HttpOnly || issued.Path != path)

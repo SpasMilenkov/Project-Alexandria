@@ -6,32 +6,51 @@ namespace Builder.UI.Shell.Screens;
 
 public static class AccountScreen
 {
+    // Fixed length, so the summary of entered fields never reveals the
+    // password's length
+    private const string MaskedPassword = "••••••••";
+
     public static ScreenOutcome Run(Shell shell)
     {
         var context = shell.Context;
 
         if (context.IsRepair)
         {
-            shell.SetMain(new Rows(
-                Views.Title("Existing admin account"),
-                Views.Note($"Keeping the account for {context.AdminAccount.Email}."),
-                Views.Note("Repair preserves the existing password and roles. Enter continues; Esc goes back.")));
+            shell.SetMain(() => new Rows(
+                Views.Heading("Existing admin account",
+                    "Repair preserves the existing password and roles."),
+                Views.Facts([("Email", context.AdminAccount.Email)])));
 
-            return IntroScreen.WaitEnter(shell) ? ScreenOutcome.Back : ScreenOutcome.Continue;
+            return Widgets.WaitForEnter(shell) ? ScreenOutcome.Back : ScreenOutcome.Continue;
         }
 
-        const string header0 = "This is the account you will sign in with. Write it down somewhere safe.";
+        IRenderable Header(string? note, params (string Label, string Value)[] entered)
+        {
+            var rows = new List<IRenderable>
+            {
+                Views.Heading("Your admin account",
+                    "This is the account you will sign in with. Write it down somewhere safe."),
+            };
 
-        IRenderable Header(string? note = null) => new Rows(
-            Views.Title("Your admin account"),
-            Views.Note(header0),
-            note is null ? new Markup(string.Empty) : Views.Note(note));
+            if (entered.Length > 0)
+            {
+                rows.Add(Views.CheckList(entered.Select(field => (field.Label, true, (string?)field.Value))));
+                rows.Add(Views.Blank());
+            }
 
-        var email = Widgets.AskText(shell, Header(), new TextFieldSpec
+            if (note is not null)
+            {
+                rows.Add(Views.Note(note));
+            }
+
+            return new Rows(rows);
+        }
+
+        var email = Widgets.AskText(shell, Header(null), new TextFieldSpec
         {
             Label = "Email address",
             Initial = context.AdminAccount.Email,
-            Hint = "used for signing in, e.g. you@example.com",
+            Hint = "Used for signing in, e.g. you@example.com",
             Validator = AccountValidationRules.ValidateEmail,
         });
 
@@ -46,11 +65,11 @@ public static class AccountScreen
 
         var suggestion = AccountValidationRules.SuggestUsername(email);
 
-        var username = Widgets.AskText(shell, Header(), new TextFieldSpec
+        var username = Widgets.AskText(shell, Header(null, ("Email", email.Trim())), new TextFieldSpec
         {
             Label = "Username",
             Initial = context.AdminUsernameCustomized ? context.AdminAccount.Username : suggestion,
-            Hint = "shown inside the app; no spaces",
+            Hint = "Shown inside the app; no spaces",
             Validator = AccountValidationRules.ValidateUsername,
         });
 
@@ -64,7 +83,7 @@ public static class AccountScreen
 
         if (shell.TakeEscape()) return ScreenOutcome.Back;
 
-        var password = Widgets.AskText(shell, Header(), new TextFieldSpec
+        var password = Widgets.AskText(shell, Header(null, ("Email", email.Trim()), ("Username", username)), new TextFieldSpec
         {
             Label = "Password",
             Initial = context.AdminAccount.Password,
@@ -82,12 +101,15 @@ public static class AccountScreen
 
         if (shell.TakeEscape()) return ScreenOutcome.Back;
 
-        _ = Widgets.AskText(shell, Header("Repeat the password to make sure it matches"), new TextFieldSpec
-        {
-            Label = "Repeat password",
-            Secret = true,
-            Validator = v => v == password ? null : "Passwords do not match - start again",
-        });
+        _ = Widgets.AskText(shell,
+            Header("Repeat the password to make sure it matches.",
+                ("Email", email.Trim()), ("Username", username), ("Password", MaskedPassword)),
+            new TextFieldSpec
+            {
+                Label = "Repeat password",
+                Secret = true,
+                Validator = v => v == password ? null : "Passwords do not match - start again",
+            });
 
         if (shell.TakeEscape()) return ScreenOutcome.Back;
 

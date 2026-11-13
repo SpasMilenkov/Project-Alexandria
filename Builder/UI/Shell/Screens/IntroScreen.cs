@@ -4,19 +4,15 @@ using Spectre.Console.Rendering;
 
 namespace Builder.UI.Shell.Screens;
 
-public enum ScreenOutcome
-{
-    Continue,
-    Back,
-    Abort,
-}
-
-// Entry screen: banner + main menu. The palette is no longer gated here -
-// the sidebar's [T] and the "Change the installer's look" entry cover it
-// (locked decision D32). Theme persistence arrives as a parameter so tests
-// inject a scratch store instead of this class reaching for statics.
+// Entry screen: wordmark and main menu. The look can also change anytime
+// with T; the menu entry adds a side-by-side preview. Theme persistence
+// arrives as a parameter so tests inject a scratch store.
 public static class IntroScreen
 {
+    private const string SetUp = "Set up Alexandria on this machine";
+    private const string ChangeLook = "Change the installer's look";
+    private const string Production = "Production deployment (coming soon)";
+
     public static ScreenOutcome Run(
         Shell shell,
         Func<string, bool>? saveTheme = null)
@@ -25,31 +21,30 @@ public static class IntroScreen
         {
             var header = new Rows(
                 Views.Banner(),
-                Views.Note("Pick what to do - you can change your mind before anything is installed."));
+                Views.Note("Pick what to do. Nothing is installed until you confirm the final summary."),
+                Views.Blank());
 
             var choice = Widgets.AskSingleSelect(
                 shell,
                 header,
-                "Main menu",
-                [
-                    "Set up Alexandria on this machine",
-                    "Change the installer's look",
-                    "Production deployment (coming soon)",
-                ],
-                c => c);
+                "What would you like to do?",
+                [SetUp, ChangeLook, Production],
+                c => c,
+                detailFor: Describe);
 
-            // Esc on the entry screen has nowhere to go back to - re-render
+            // Esc on the entry screen has nowhere to go back to; re-render
             if (choice is null)
             {
+                shell.TakeEscape();
                 continue;
             }
 
             switch (choice)
             {
-                case "Set up Alexandria on this machine":
+                case SetUp:
                     return ScreenOutcome.Continue;
 
-                case "Change the installer's look":
+                case ChangeLook:
                     PickTheme(shell, saveTheme ?? UiPreferencesStore.Save);
                     break;
 
@@ -61,30 +56,33 @@ public static class IntroScreen
         }
     }
 
+    private static IRenderable Describe(string choice)
+    {
+        var text = choice switch
+        {
+            SetUp => "A guided local install: features, network address, HTTPS and your admin account.",
+            ChangeLook => "Preview the color themes. T switches the look on any screen.",
+            _ => "Server deployment from the installer is on the roadmap.",
+        };
+
+        return Views.Note(text);
+    }
+
     private static void PickTheme(Shell shell, Func<string, bool> saveTheme)
     {
-        var initialIndex = 0;
-
-        for (var i = 0; i < Themes.All.Count; i++)
-        {
-            if (ReferenceEquals(Themes.All[i], Theme.Active))
-            {
-                initialIndex = i;
-                break;
-            }
-        }
-
         var selected = Widgets.AskSingleSelect(
             shell,
-            new Rows(Views.Banner(), Views.Note("Which look do you prefer?")),
+            new Rows(Views.Banner(), Views.Heading("Choose a look", "Each look keeps the same layout; only the colors change.")),
             "Looks",
             Themes.All,
-            t => $"{t.DisplayName}  -  {t.Tagline}",
-            initialIndex: initialIndex);
+            t => t.DisplayName,
+            initialIndex: Themes.IndexOf(Theme.Active),
+            detailFor: Views.ThemeSample);
 
-        // Esc here means "never mind" - keep the current look and go back
+        // Esc here means "never mind": keep the current look and go back
         if (selected is null)
         {
+            shell.TakeEscape();
             return;
         }
 
@@ -95,10 +93,11 @@ public static class IntroScreen
             shell.SetMain(new Rows(
                 Views.Banner(),
                 Views.WarningPanel(
-                    $"Your look is applied for this session, but it could not be saved. " +
+                    "Your look is applied for this session, but it could not be saved. " +
                     $"Next time you run the installer it will start as {Themes.Default.DisplayName} again.")));
 
-            WaitEnter(shell);
+            Widgets.WaitForEnter(shell);
+            shell.TakeEscape();
         }
     }
 
@@ -108,34 +107,10 @@ public static class IntroScreen
             Views.Banner(),
             Views.InfoPanel(
                 "Coming soon",
-                "[dim]Deploying to a server from inside the installer is on the roadmap.\n" +
-                "For now, production setups are documented in the project's manual installation guide.[/]")));
+                Markup.Escape("Deploying to a server from inside the installer is on the roadmap.\n" +
+                              "For now, production setups are documented in the project's manual installation guide."))),
+            [new KeyHint("Enter", "exit")]);
 
-        WaitEnter(shell);
-    }
-
-    // Returns true when the user pressed Esc - callers decide whether that
-    // means going back a screen or just leaving an informational pause
-    internal static bool WaitEnter(Shell shell)
-    {
-        while (true)
-        {
-            var key = shell.Keys.Wait();
-
-            if (shell.HandleGlobalKey(key))
-            {
-                continue;
-            }
-
-            switch (key.Key)
-            {
-                case ConsoleKey.Enter:
-                    return false;
-                case ConsoleKey.Escape:
-                    shell.SignalEscape();
-
-                    return true;
-            }
-        }
+        Widgets.WaitForEnter(shell);
     }
 }

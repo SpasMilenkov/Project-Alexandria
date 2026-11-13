@@ -1,46 +1,73 @@
-using Builder.Models;
+using Builder.UI.Shell.Screens;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
 namespace Builder.UI.Shell;
 
 // In-frame replacements for Spectre prompts, which cannot run inside the
-// persistent Layout. Every control redraws the whole main pane on each
+// persistent Live frame. Every control redraws the whole main pane on each
 // keystroke through the shell, so the sidebar never stops being live.
-
-public sealed class TextFieldSpec
-{
-    public required string Label { get; init; }
-    public string Initial { get; init; } = string.Empty;
-    public bool Secret { get; init; }
-    public Func<string, string?>? Validator { get; init; } // null = valid, string = error
-    public string? Hint { get; init; }
-}
-
 public static class Widgets
 {
+    private static readonly KeyHint[] TextHints =
+    [
+        new("Enter", "accept"),
+        new("Esc", "back"),
+        new("Ctrl+U", "clear"),
+    ];
+
+    private static readonly KeyHint[] SelectHints =
+    [
+        new("↑↓", "move"),
+        new("Enter", "select"),
+        new("Esc", "back"),
+    ];
+
+    private static readonly KeyHint[] ToggleHints =
+    [
+        new("↑↓", "move"),
+        new("Space", "toggle"),
+        new("Enter", "confirm"),
+        new("Esc", "back"),
+    ];
+
     public static string AskText(Shell shell, IRenderable header, TextFieldSpec spec)
     {
         var editor = new TextEditor(spec.Initial, spec.Secret);
         string? error = null;
         var previousSuppression = shell.GlobalsSuppressed;
 
+        // Printable keys, T included, belong to the text being typed
         shell.GlobalsSuppressed = true;
 
         try
         {
             while (true)
             {
-                var body = new Rows(
+                var rows = new List<IRenderable>
+                {
                     header,
-                    new Rule().RuleStyle(Theme.Active.BorderStyle),
-                    new Markup($"[{Theme.Active.Ac}]▸[/] [bold]{Markup.Escape(spec.Label)}[/]"),
-                    editor,
-                    new Markup(spec.Hint is null ? string.Empty : $"[dim]{Markup.Escape(spec.Hint)}[/]"),
-                    new Markup("[dim]Enter accepts · Esc back · Ctrl+U clears[/]"),
-                    ErrorLine(error));
+                    new Markup($"[bold]{Markup.Escape(spec.Label)}[/]"),
+                    new Panel(editor)
+                    {
+                        Border = BoxBorder.Rounded,
+                        BorderStyle = error is null ? Theme.Active.AccentStyle : Theme.Active.ErrorStyle,
+                        Padding = new Padding(1, 0),
+                        Expand = true,
+                    },
+                };
 
-                shell.SetMain(body);
+                if (error is not null)
+                {
+                    rows.Add(new Markup($"[{Theme.Active.Er}]✗ {Markup.Escape(error)}[/]"));
+                }
+
+                if (spec.Hint is not null)
+                {
+                    rows.Add(Views.Note(spec.Hint));
+                }
+
+                shell.SetMain(new Rows(rows), TextHints);
 
                 var key = shell.Keys.Wait();
 
@@ -78,55 +105,17 @@ public static class Widgets
         }
     }
 
-    // y / n pressed directly; Enter accepts the default
-    public static bool AskConfirm(Shell shell, IRenderable header, string question, bool defaultValue)
-    {
-        var current = defaultValue;
-
-        while (true)
-        {
-            var body = new Rows(
-                header,
-                new Rule().RuleStyle(Theme.Active.BorderStyle),
-                new Markup($"[bold]{Markup.Escape(question)}[/]"),
-                new Markup(RenderToggle(current)));
-
-            shell.SetMain(body);
-
-            var key = shell.Keys.Wait();
-
-            if (shell.HandleGlobalKey(key))
-            {
-                continue;
-            }
-
-            switch (key.Key)
-            {
-                case ConsoleKey.Y:
-                    current = true;
-                    break;
-                case ConsoleKey.N:
-                    current = false;
-                    break;
-                case ConsoleKey.Escape:
-                    shell.SignalEscape();
-
-                    return current;
-                case ConsoleKey.Enter:
-                    return current;
-            }
-        }
-    }
-
-    // Returns null when the user pressed Esc - callers decide whether that
-    // means "go back a screen" or "re-render this menu"
+    // Returns null when the user pressed Esc; callers decide whether that
+    // means "go back a screen" or "re-render this menu". The detail renderable
+    // describes the highlighted item below the list.
     public static T? AskSingleSelect<T>(
         Shell shell,
         IRenderable header,
         string title,
         IReadOnlyList<T> items,
         Func<T, string> convert,
-        int initialIndex = 0) where T : class
+        int initialIndex = 0,
+        Func<T, IRenderable?>? detailFor = null) where T : class
     {
         var index = Math.Clamp(initialIndex, 0, items.Count - 1);
 
@@ -136,16 +125,10 @@ public static class Widgets
 
             for (var i = 0; i < items.Count; i++)
             {
-                list.AddRow(new Markup(i == index
-                    ? $"[{Theme.Active.Ac}]▸ {convert(items[i])}[/]"
-                    : $"[dim]  {Markup.Escape(convert(items[i]))}[/]"));
+                list.AddRow(new Markup(ChoiceLine(convert(items[i]), i == index, marker: null, enabled: true)));
             }
 
-            shell.SetMain(new Rows(
-                header,
-                new Rule().RuleStyle(Theme.Active.BorderStyle),
-                new Markup($"[bold]{Markup.Escape(title)}[/]"),
-                list));
+            shell.SetMain(Compose(header, title, list, detailFor?.Invoke(items[index])), SelectHints);
 
             var key = shell.Keys.Wait();
 
@@ -172,7 +155,7 @@ public static class Widgets
         }
     }
 
-    // Space toggles the highlighted entry; onChanged fires immediately so the
+    // Space toggles the highlighted entry; setEnabled fires immediately so the
     // caller can push fresh stats into the sidebar between keystrokes.
     public static IReadOnlyList<T> AskMultiToggle<T>(
         Shell shell,
@@ -192,31 +175,13 @@ public static class Widgets
 
             for (var i = 0; i < items.Count; i++)
             {
-                var marker = isEnabled(items[i])
-                    ? $"[{Theme.Active.Su}]●[/]"
-                    : $"[dim]○[/]";
+                var enabled = isEnabled(items[i]);
+                var marker = enabled ? Ui.Success("●") : Ui.Muted("○");
 
-                var label = i == index
-                    ? $"[{Theme.Active.Ac}]{marker} {Markup.Escape(convert(items[i]))}[/]"
-                    : $"{marker} [dim]{Markup.Escape(convert(items[i]))}[/]";
-
-                list.AddRow(new Markup(label));
+                list.AddRow(new Markup(ChoiceLine(convert(items[i]), i == index, marker, enabled)));
             }
 
-            var detail = detailFor?.Invoke(index);
-            var parts = new List<IRenderable> { header };
-
-            parts.Add(new Rule().RuleStyle(Theme.Active.BorderStyle));
-            parts.Add(new Markup($"[bold]{Markup.Escape(title)}[/]"));
-            parts.Add(list);
-
-            if (detail is not null)
-            {
-                parts.Add(new Rule().RuleStyle(Theme.Active.BorderStyle));
-                parts.Add(detail);
-            }
-
-            shell.SetMain(new Rows(parts.ToArray()));
+            shell.SetMain(Compose(header, title, list, detailFor?.Invoke(index)), ToggleHints);
 
             var key = shell.Keys.Wait();
 
@@ -246,18 +211,60 @@ public static class Widgets
         }
     }
 
-    private static string RenderToggle(bool value)
+    // Shows a page until Enter (returns false) or Esc (returns true, after
+    // signalling the escape so screens can step back)
+    public static bool WaitForEnter(Shell shell)
     {
-        var yes = value ? $"[bold {Theme.Active.Su}]Yes[/]" : "[dim]Yes[/]";
-        var no = !value ? $"[bold {Theme.Active.Er}]No[/]" : "[dim]No[/]";
+        while (true)
+        {
+            var key = shell.Keys.Wait();
 
-        return $"{yes}   {no}   [dim](Y/N, Enter keeps highlighted)[/]";
+            if (shell.HandleGlobalKey(key))
+            {
+                continue;
+            }
+
+            switch (key.Key)
+            {
+                case ConsoleKey.Enter:
+                    return false;
+                case ConsoleKey.Escape:
+                    shell.SignalEscape();
+
+                    return true;
+            }
+        }
     }
 
-    private static Markup ErrorLine(string? error)
+    private static string ChoiceLine(string label, bool highlighted, string? marker, bool enabled)
     {
-        return error is null
-            ? new Markup(string.Empty)
-            : new Markup($"[{Theme.Active.Er}]{Markup.Escape(error)}[/]");
+        var prefix = marker is null ? string.Empty : marker + " ";
+
+        if (highlighted)
+        {
+            return $"[bold {Theme.Active.Ac}]❯[/] {prefix}[bold {Theme.Active.Ac}]{Markup.Escape(label)}[/]";
+        }
+
+        return enabled
+            ? $"  {prefix}{Markup.Escape(label)}"
+            : $"  {prefix}{Ui.Muted(label)}";
+    }
+
+    private static IRenderable Compose(IRenderable header, string title, IRenderable list, IRenderable? detail)
+    {
+        var rows = new List<IRenderable>
+        {
+            header,
+            new Markup($"[bold]{Markup.Escape(title)}[/]"),
+            list,
+        };
+
+        if (detail is not null)
+        {
+            rows.Add(Views.Blank());
+            rows.Add(detail);
+        }
+
+        return new Rows(rows);
     }
 }
