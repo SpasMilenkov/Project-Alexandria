@@ -9,6 +9,21 @@ public sealed class InstallationOrchestrator(IConfigurationService configuration
 {
     private static readonly TimeSpan ReadinessTimeout = TimeSpan.FromMinutes(5);
 
+    // Stages run for every install, plus one each for audio models and for
+    // monitoring checks when those features are on; Execute must stay in step
+    private const int AlwaysRunStages = 12;
+
+    // How many stages a full run reports, so progress can be shown as a share
+    public static int StageCount(ResolvedCapabilities capabilities)
+    {
+        var count = AlwaysRunStages;
+
+        if (capabilities.AudioAnalysisEnabled) count++;
+        if (capabilities.MonitoringEnabled) count++;
+
+        return count;
+    }
+
     public void Execute(InstallationContext context, Action<string, Action<Action<string>>> runStage, Action? poll = null)
     {
         var config = context.Config;
