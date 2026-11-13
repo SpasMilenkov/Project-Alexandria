@@ -151,16 +151,15 @@ public class AuditServiceTests
     public void BuildOverview_daysAcrossYearBoundary_doNotCollide()
     {
         // Same day-of-year in two different years used to land in one bucket.
-        var rows = new List<AuditActivityRow>
+        var counts = new List<AuditActivityDayCount>
         {
-            new(OperationType.Create, new DateTimeOffset(2025, 3, 1, 10, 0, 0, TimeSpan.Zero)),
-            new(OperationType.Update, new DateTimeOffset(2026, 3, 1, 10, 0, 0, TimeSpan.Zero)),
-            new(OperationType.Update, new DateTimeOffset(2026, 3, 1, 23, 30, 0, TimeSpan.Zero)),
-            new(OperationType.Delete, new DateTimeOffset(2025, 12, 31, 23, 59, 0, TimeSpan.Zero)),
-            new(OperationType.Delete, new DateTimeOffset(2026, 1, 1, 0, 1, 0, TimeSpan.Zero)),
+            new(new DateOnly(2025, 3, 1), OperationType.Create, 1),
+            new(new DateOnly(2026, 3, 1), OperationType.Update, 2),
+            new(new DateOnly(2025, 12, 31), OperationType.Delete, 1),
+            new(new DateOnly(2026, 1, 1), OperationType.Delete, 1),
         };
 
-        var overview = AuditService.BuildOverview(rows);
+        var overview = AuditService.BuildOverview(counts);
 
         overview.TotalActivity.Should().Be(5);
         overview.ActivityPerDay.Keys.Should().BeEquivalentTo(
@@ -172,15 +171,20 @@ public class AuditServiceTests
     }
 
     [Fact]
-    public void BuildOverview_bucketsOnUtcDay()
+    public void BuildOverview_sumsEveryOperationOfOneDay()
     {
-        // 01:00 at +02:00 is still the previous day in UTC.
-        var rows = new List<AuditActivityRow>
-        {
-            new(OperationType.Create, new DateTimeOffset(2026, 6, 2, 1, 0, 0, TimeSpan.FromHours(2))),
-        };
+        var day = new DateOnly(2026, 6, 1);
 
-        AuditService.BuildOverview(rows).ActivityPerDay.Keys.Should().Equal(new DateOnly(2026, 6, 1));
+        var overview = AuditService.BuildOverview(
+        [
+            new AuditActivityDayCount(day, OperationType.Create, 3),
+            new AuditActivityDayCount(day, OperationType.Read, 4),
+        ]);
+
+        overview.TotalActivity.Should().Be(7);
+        overview.ActivityPerDay[day].TotalOperations.Should().Be(7);
+        overview.ActivityPerDay[day].CountPerOperation.Should().BeEquivalentTo(
+            new Dictionary<OperationType, int> { [OperationType.Create] = 3, [OperationType.Read] = 4 });
     }
 
     [Fact]
@@ -188,7 +192,7 @@ public class AuditServiceTests
     {
         var overview = AuditService.BuildOverview(
         [
-            new AuditActivityRow(OperationType.Create, new DateTimeOffset(2026, 1, 5, 12, 0, 0, TimeSpan.Zero))
+            new AuditActivityDayCount(new DateOnly(2026, 1, 5), OperationType.Create, 1)
         ]);
 
         var json = JsonSerializer.Serialize(overview, new JsonSerializerOptions(JsonSerializerDefaults.Web));
