@@ -6,15 +6,23 @@ import { logger } from "@/utils/logger";
 
 import { api } from "./client";
 
+export interface SessionUser {
+  id: string;
+  email: string;
+  name: string;
+  // Missing on sessions persisted before profile pictures existed.
+  avatarUrl?: string | null;
+}
+
 export interface AuthResponse {
   success: boolean;
-  user: { id: string; email: string; name: string };
+  user: SessionUser;
   userRoles: string[];
   onboardingStep: OnboardingStep;
 }
 
 export interface SessionResponse {
-  user: { id: string; email: string; name: string };
+  user: SessionUser;
   userRoles: string[];
   onboardingStep: OnboardingStep;
 }

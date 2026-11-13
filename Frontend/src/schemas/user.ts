@@ -203,9 +203,19 @@ export const changePasswordSchema = z
 
 // Inferred Types
 
+export const updateProfileSchema = z.object({
+  userName: z
+    .string()
+    .trim()
+    .min(2, "Must be at least 2 characters")
+    .max(50, "Max 50 characters")
+    .regex(/^[a-zA-Z0-9_.-]+$/u, "Only letters, numbers, underscores, dots, and hyphens"),
+});
+
 export type UserQueryUiState = z.infer<typeof userQueryUiSchema>;
 export type UserQueryApiState = z.infer<typeof userQueryApiSchema>;
 export type UpdateUserSchema = z.infer<typeof updateUserSchema>;
 export type RestrictUserSchema = z.infer<typeof restrictUserSchema>;
 export type DeleteUsersSchema = z.infer<typeof deleteUsersSchema>;
 export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
+export type UpdateProfileSchema = z.infer<typeof updateProfileSchema>;

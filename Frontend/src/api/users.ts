@@ -1,6 +1,6 @@
 import type { OnboardingStep } from "@/enums";
-import type { CreateUserSchema, UpdateUserSchema } from "@/schemas/user";
-import type { UserDetailsDto, UserProfile, UserQueryDto } from "@/types/user";
+import type { CreateUserSchema, UpdateProfileSchema, UpdateUserSchema } from "@/schemas/user";
+import type { UserDetailsDto, UserProfile, UserProfileStats, UserQueryDto } from "@/types/user";
 
 import { logger } from "@/utils/logger";
 import { gbToBytes } from "@/utils/size";
@@ -16,6 +16,10 @@ export const userApi = {
       ...rest,
       storageQuotaBytes: storageQuotaGb === undefined ? undefined : gbToBytes(storageQuotaGb),
     });
+  },
+
+  deleteAvatar: async (): Promise<void> => {
+    await api.delete("/users/profile/avatar");
   },
 
   deleteUsers: async (userIds: string[]): Promise<void> => {
@@ -53,6 +57,9 @@ export const userApi = {
 
   getUserProfile: (): Promise<UserProfile> => api.get<UserProfile>("/users/profile"),
 
+  getUserProfileStats: (): Promise<UserProfileStats> =>
+    api.get<UserProfileStats>("/users/profile/stats"),
+
   getUsers: (query: UserQueryDto): Promise<PaginatedResponse<UserDetailsDto>> =>
     api.get<PaginatedResponse<UserDetailsDto>>("/users", {
       params: query,
@@ -67,6 +74,16 @@ export const userApi = {
 
   setupProfile: async () => {
     await api.patch("/users/setup-profile");
+  },
+
+  updateProfile: (payload: UpdateProfileSchema): Promise<UserProfile> =>
+    api.patch<UserProfile>("/users/profile", payload),
+
+  uploadAvatar: (image: Blob): Promise<{ avatarUrl: string }> => {
+    const form = new FormData();
+    form.append("file", image, "avatar");
+
+    return api.post<{ avatarUrl: string }>("/users/profile/avatar", form);
   },
 
   updateUser: (userId: string, payload: UpdateUserSchema): Promise<UserDetailsDto> => {

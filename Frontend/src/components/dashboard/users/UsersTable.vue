@@ -76,6 +76,7 @@ const emit = defineEmits<{
 const UButton = resolveComponent("UButton");
 const UBadge = resolveComponent("UBadge");
 const UDropdownMenu = resolveComponent("UDropdownMenu");
+const UAvatar = resolveComponent("UAvatar");
 
 // Cell helpers
 
@@ -110,6 +111,34 @@ const avatarBg = (user: UserDetailsDto) => {
     return "bg-primary/15 text-primary";
   }
   return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
+};
+
+// A photo hides the tinted background, so the same status moves to a ring around it.
+const avatarRing = (user: UserDetailsDto) => {
+  if (user.deletedAt) return "ring-2 ring-red-500/70 grayscale";
+  if (user.isLockedOut) return "ring-2 ring-amber-500/70";
+  if (user.role === UserRole.Admin) return "ring-2 ring-primary/60";
+
+  return "ring-1 ring-gray-200/70 dark:ring-gray-700/70";
+};
+
+const avatarCell = (user: UserDetailsDto) => {
+  if (user.avatarUrl) {
+    return h(UAvatar, {
+      alt: user.userName,
+      class: `size-7 shrink-0 ${avatarRing(user)}`,
+      loading: "lazy",
+      src: user.avatarUrl,
+    });
+  }
+
+  return h(
+    "div",
+    {
+      class: `flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${avatarBg(user)}`,
+    },
+    user.userName?.charAt(0)?.toUpperCase() ?? "?",
+  );
 };
 
 const router = useRouter();
@@ -169,13 +198,7 @@ const columns: TableColumn<UserDetailsDto>[] = [
   {
     cell: ({ row }) =>
       h("div", { class: "flex items-center gap-2.5 min-w-0" }, [
-        h(
-          "div",
-          {
-            class: `flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${avatarBg(row.original)}`,
-          },
-          row.original.userName?.charAt(0)?.toUpperCase() ?? "?",
-        ),
+        avatarCell(row.original),
         h("div", { class: "min-w-0" }, [
           h(
             "p",
