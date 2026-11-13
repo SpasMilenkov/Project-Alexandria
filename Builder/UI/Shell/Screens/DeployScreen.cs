@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Builder.Models;
 using Builder.Services;
+using Builder.UI.Shell.Splash;
 using Builder.Workflow;
 using Spectre.Console;
 using Spectre.Console.Rendering;
@@ -9,6 +10,15 @@ namespace Builder.UI.Shell.Screens;
 
 public static class DeployScreen
 {
+    // The city strip only shows when the window has room for it above the
+    // progress list; shorter windows keep the list alone
+    internal const int CityStripRows = 7;
+    private const int CityStripMinHeight = 32;
+
+    // How fast the drawing catches up after a stage finishes, in reveal
+    // seconds per real second, so each step builds in rather than jumping
+    private const double CityCatchUpRate = 1.5;
+
     private sealed record Stage(string Label, string State, string? Detail, TimeSpan Elapsed)
     {
         public long Started { get; } = Stopwatch.GetTimestamp();
@@ -23,6 +33,10 @@ public static class DeployScreen
         var redactor = new SecretRedactor(() => context.Config.EnvironmentValues);
         var stateGate = new object();
         var completedPreparation = new HashSet<string>(StringComparer.Ordinal);
+        var finishedStages = new HashSet<string>(StringComparer.Ordinal);
+        var expectedStages = InstallationOrchestrator.StageCount(ServiceCatalog.Resolve(context.Config.Features));
+        var cityShown = 0.0;
+        var cityClock = Stopwatch.StartNew();
         DeploymentLog log;
 
         try
@@ -117,6 +131,7 @@ public static class DeployScreen
 
             if (completedPreparation.Contains(label))
             {
+                lock (stateGate) finishedStages.Add(label);
                 log.Write("resume", "Retaining completed preparation: " + label);
                 return;
             }
@@ -148,7 +163,11 @@ public static class DeployScreen
                 });
                 context.Cancellation.Token.ThrowIfCancellationRequested();
 
-                lock (stateGate) stages[index] = stages[index] with { State = "done", Detail = null, Elapsed = clock.Elapsed };
+                lock (stateGate)
+                {
+                    stages[index] = stages[index] with { State = "done", Detail = null, Elapsed = clock.Elapsed };
+                    finishedStages.Add(label);
+                }
 
                 if (label is "Writing configuration files" or "Preparing and verifying audio models" or "Building Alexandria")
                 {
@@ -168,8 +187,18 @@ public static class DeployScreen
         void Render()
         {
             Stage[] snapshot;
+            double built;
 
-            lock (stateGate) snapshot = stages.TakeLast(6).ToArray();
+            lock (stateGate)
+            {
+                snapshot = stages.TakeLast(6).ToArray();
+
+                // A running stage counts for part of its share, so the
+                // drawing moves when a long stage starts, not only when it ends
+                var running = snapshot.LastOrDefault()?.State == "running" ? 0.4 : 0;
+
+                built = Math.Min(1, (finishedStages.Count + running) / Math.Max(1, expectedStages));
+            }
 
             var rows = new List<IRenderable>
             {
@@ -177,6 +206,18 @@ public static class DeployScreen
                     "This takes a while on the first run: images are built from your source code."),
             };
             var current = snapshot.LastOrDefault();
+
+            // The city from the splash is laid out as the install advances
+            // and only moves when a stage does; a failure leaves it where it got to
+            cityShown = Math.Min(built * CityScene.Duration, cityShown + cityClock.Elapsed.TotalSeconds * CityCatchUpRate);
+            cityClock.Restart();
+
+            if (AnsiConsole.Profile.Height >= CityStripMinHeight)
+            {
+                rows.Add(new CityScene { Height = CityStripRows, Complete = true, Elapsed = cityShown });
+                rows.Add(Views.Blank());
+            }
+
             var grid = new Grid()
                 .AddColumn(new GridColumn().NoWrap().PadRight(1))
                 .AddColumn(new GridColumn().PadRight(2))

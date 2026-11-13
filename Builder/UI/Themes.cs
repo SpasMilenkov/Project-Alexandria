@@ -20,6 +20,8 @@ public static class Themes
         BorderColor = Color.Grey37,
         WaterFill = new Color(16, 52, 62),
         WaterColor = Color.CadetBlue,
+        // Six distinct colors, one per feature that brings its own services;
+        // grey stays free for the core that always runs
         ChartColors =
         [
             Color.Gold1,
@@ -27,7 +29,7 @@ public static class Themes
             Color.SandyBrown,
             Color.DarkGoldenrod,
             Color.PaleGreen1,
-            Color.Grey62,
+            Color.CadetBlue,
         ],
     };
 
@@ -52,7 +54,7 @@ public static class Themes
             Color.Plum2,
             Color.SkyBlue1,
             Color.PaleGreen1,
-            Color.Grey62,
+            Color.LightSalmon1,
         ],
     };
 

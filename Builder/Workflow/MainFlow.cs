@@ -47,7 +47,7 @@ public class MainFlow
         [
             ("Welcome", s => IntroScreen.Run(s, UiPreferencesStore.Save)),
             ("Where to install", SelectTarget),
-            ("Features", s => FeaturesScreen.Run(s, _resourceCalculator)),
+            ("Features", s => FeaturesScreen.Run(s, _resourceCalculator, MachineMemoryMb())),
             ("System check", s => SystemCheckScreen.Run(s, _systemChecker, _resourceCalculator)),
             ("File storage", StorageScreen.Run),
             ("Network access", s => PortsScreen.Run(s, _portResolver, _systemChecker)),
@@ -186,6 +186,15 @@ public class MainFlow
         }
     }
 
+
+    // The runtime's view of physical memory: no process to start, so it is
+    // cheap enough for the feature screen; System check measures Docker's own
+    private static long? MachineMemoryMb()
+    {
+        var bytes = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes;
+
+        return bytes > 0 ? bytes / (1024 * 1024) : null;
+    }
 
     public void Cleanup()
     {

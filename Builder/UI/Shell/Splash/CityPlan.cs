@@ -1,6 +1,6 @@
 namespace Builder.UI.Shell.Splash;
 
-// AlexandriaMap projected onto a grid of terminal cells, with everything the
+// CityMapData projected onto a grid of terminal cells, with everything the
 // scene needs worked out once per size: which cells are water, which streets
 // survive at this scale, the blocks between them and where the title
 // cartouche, place names, compass and scale bar fit without covering the city.
@@ -194,8 +194,8 @@ internal sealed class CityPlan
             }
         }
 
-        KeepStreets(AlexandriaMap.LongStreets, _rows, ToRow, ToColumn, MinRowGap, Height);
-        KeepStreets(AlexandriaMap.CrossStreets, _columns, ToColumn, ToRow, MinColumnGap, Width);
+        KeepStreets(CityMapData.LongStreets, _rows, ToRow, ToColumn, MinRowGap, Height);
+        KeepStreets(CityMapData.CrossStreets, _columns, ToColumn, ToRow, MinColumnGap, Width);
         Trim(_columns, _rows);
 
         var canopic = _rows.FirstOrDefault(row => row.Value.Major);
@@ -208,7 +208,7 @@ internal sealed class CityPlan
         LayCauseway();
         FindBlocks();
 
-        var (lightX, lightY) = ToCell(AlexandriaMap.Lighthouse.U, AlexandriaMap.Lighthouse.V);
+        var (lightX, lightY) = ToCell(CityMapData.Lighthouse.U, CityMapData.Lighthouse.V);
 
         _lighthouse = InView(lightX, lightY) ? (lightX, lightY) : null;
         Occupy(lightX - 1, lightY, 3, 1);
@@ -217,15 +217,15 @@ internal sealed class CityPlan
     // Fit the whole map in the window, or for the strip fill its width
     private void Project(int reserve)
     {
-        var spanU = AlexandriaMap.Right - AlexandriaMap.Left;
-        var spanV = AlexandriaMap.Bottom - AlexandriaMap.Top;
-        var centreU = (AlexandriaMap.Left + AlexandriaMap.Right) / 2;
+        var spanU = CityMapData.Right - CityMapData.Left;
+        var spanV = CityMapData.Bottom - CityMapData.Top;
+        var centreU = (CityMapData.Left + CityMapData.Right) / 2;
 
         if (!Splash)
         {
             _unitsPerColumn = spanU / Width;
             _left = centreU - Width * _unitsPerColumn / 2;
-            _top = AlexandriaMap.CityMiddle - Height * _unitsPerColumn;
+            _top = CityMapData.CityMiddle - Height * _unitsPerColumn;
 
             return;
         }
@@ -236,7 +236,7 @@ internal sealed class CityPlan
         // the map distance of a column
         _unitsPerColumn = Math.Max(spanU / Width, spanV / (2.0 * rows));
         _left = centreU - Width * _unitsPerColumn / 2;
-        _top = (AlexandriaMap.Top + AlexandriaMap.Bottom) / 2 - (rows + 2 * reserve) * _unitsPerColumn;
+        _top = (CityMapData.Top + CityMapData.Bottom) / 2 - (rows + 2 * reserve) * _unitsPerColumn;
     }
 
     private (double U, double V) CellCentre(int x, int y) =>
@@ -258,7 +258,7 @@ internal sealed class CityPlan
 
         var inside = false;
 
-        foreach (var outline in AlexandriaMap.Land)
+        foreach (var outline in CityMapData.Land)
         {
             for (int i = 0, j = outline.Length - 2; i < outline.Length; j = i, i += 2)
             {
@@ -332,7 +332,7 @@ internal sealed class CityPlan
     // mainland outwards
     private void LayCauseway()
     {
-        var points = AlexandriaMap.Causeway;
+        var points = CityMapData.Causeway;
         var step = 0;
 
         for (var i = 0; i + 1 < points.Length; i++)
@@ -465,7 +465,7 @@ internal sealed class CityPlan
     {
         PlaceStreetName();
 
-        foreach (var place in AlexandriaMap.Labels)
+        foreach (var place in CityMapData.Labels)
         {
             var (x, y) = ToCell(place.U, place.V);
             var spaced = string.Join(' ', place.Text.ToCharArray());
@@ -493,7 +493,7 @@ internal sealed class CityPlan
             break;
         }
 
-        var length = Math.Max(4, (int)Math.Round(AlexandriaMap.UnitsPerKilometre / _unitsPerColumn) + 1);
+        var length = Math.Max(4, (int)Math.Round(CityMapData.UnitsPerKilometre / _unitsPerColumn) + 1);
         var span = length + " 1 km".Length;
 
         foreach (var x in new[] { 1, Width - span - 1 })

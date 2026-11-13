@@ -110,7 +110,7 @@ public static class ServiceCatalog
             "docker-compose/document-worker.yml.template", "Generates preview images for documents like PDFs.",
             features: [FeatureCatalog.DocumentPreviews.Id], sourceFiles: ["Backend/Alexandria.Workers.Document/Dockerfile"],
             volumes: ["document_worker_scratch"], networks: ["data-net"]),
-        S("media-worker", "Media metadata and previews", "Core", 1024,
+        S("media-worker", "Media metadata and previews", "Media metadata and previews", 1024,
             "docker-compose/media-worker.yml.template", "Reads media details; creates thumbnails and clips when previews are enabled.",
             features: [FeatureCatalog.MediaProcessing.Id], sourceFiles: ["Backend/Alexandria.Workers.Media/Dockerfile"],
             volumes: ["media_worker_scratch"], networks: ["data-net"], alwaysEnabled: true),

@@ -41,7 +41,7 @@ public class CitySceneTests
         var large = Render(new CityScene { Height = 41, Splash = true }, 140);
 
         StreetRows(large).Should().BeGreaterThan(StreetRows(small));
-        StreetRows(large).Should().BeLessThanOrEqualTo(AlexandriaMap.LongStreets.Length);
+        StreetRows(large).Should().BeLessThanOrEqualTo(CityMapData.LongStreets.Length);
     }
 
     [Fact]

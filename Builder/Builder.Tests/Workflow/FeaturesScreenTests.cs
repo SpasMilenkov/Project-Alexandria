@@ -46,6 +46,43 @@ public class FeaturesScreenTests
     }
 
     [Fact]
+    public void Run_featureTurnedOff_previewsWhatItWouldAdd()
+    {
+        // Monitoring is the last toggle; Space turns it off while it is highlighted
+        using var h = new ShellHarness(new FakeKeys().Down().Down().Down().Down().Down().Space().Enter().Enter());
+        h.Context.Features.SetEnabled(FeatureCatalog.Monitoring.Id, true);
+
+        FeaturesScreen.Run(h.Shell, new ResourceCalculator());
+
+        h.Context.Features.IsEnabled(FeatureCatalog.Monitoring.Id).Should().BeFalse();
+        h.Output.Should().Contain("Would turn on ·").And.Contain("+1.5 GB with Monitoring dashboard");
+        h.Output.Should().Contain("Metrics collector").And.Contain("▒");
+    }
+
+    [Fact]
+    public void Run_mediaPreviewsHighlighted_showsTheWorkerThatRunsEitherWay()
+    {
+        // Media previews is the first row and only changes what an
+        // always-running worker does, so its memory is shown, not added
+        using var h = new ShellHarness(new FakeKeys().Enter().Enter());
+
+        FeaturesScreen.Run(h.Shell, new ResourceCalculator());
+
+        h.Output.Should().Contain("Runs whether this is on or off").And.Contain("highlighted part runs either way");
+        h.Output.Should().Contain("█ Media metadata and previews 1 GB");
+    }
+
+    [Fact]
+    public void Run_selectionLargerThanThisComputer_saysSoBesideTheBar()
+    {
+        using var h = new ShellHarness(new FakeKeys().Enter().Enter());
+
+        FeaturesScreen.Run(h.Shell, new ResourceCalculator(), machineMemoryMb: 4096);
+
+        h.Output.Should().Contain("more than this computer's 4 GB");
+    }
+
+    [Fact]
     public void Run_highlightingStreaming_showsItsComponents()
     {
         // Adaptive streaming sits two rows below the highlight start; the
@@ -56,7 +93,7 @@ public class FeaturesScreenTests
         var outcome = FeaturesScreen.Run(h.Shell, new ResourceCalculator());
 
         outcome.Should().Be(ScreenOutcome.Continue);
-        h.Output.Should().Contain("Turns on:");
+        h.Output.Should().Contain("Turns on ·");
         h.Output.Should().Contain("Transpilation worker");
     }
 

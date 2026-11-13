@@ -175,9 +175,9 @@ public static class Views
     public static IRenderable MemoryChart(FeatureSelection features)
     {
         var estimates = ServiceCatalog.Resolve(features).MemoryEstimates;
-        var items = estimates.Select((estimate, index) => new BarChartItem(
+        var items = estimates.Select(estimate => new BarChartItem(
             estimate.Label, estimate.MemoryMb / 1024.0,
-            Theme.Active.ChartColors[index % Theme.Active.ChartColors.Count])).ToArray();
+            MemoryBudget.GroupColor(estimate.Label))).ToArray();
 
         return new BarChart()
             .Width(60)
@@ -188,10 +188,10 @@ public static class Views
 
     public static IRenderable MemoryBreakdown(FeatureSelection features)
     {
-        var items = ServiceCatalog.Resolve(features).MemoryEstimates.Select((estimate, index) =>
+        var items = ServiceCatalog.Resolve(features).MemoryEstimates.Select(estimate =>
             new BreakdownChartItem($"{estimate.Label} ({estimate.MemoryMb / 1024.0:0.#} GB)",
                 estimate.MemoryMb / 1024.0,
-                Theme.Active.ChartColors[index % Theme.Active.ChartColors.Count])).ToArray();
+                MemoryBudget.GroupColor(estimate.Label))).ToArray();
 
         return new BreakdownChart()
             .Width(60)

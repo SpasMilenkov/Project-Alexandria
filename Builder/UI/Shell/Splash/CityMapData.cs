@@ -5,7 +5,7 @@ namespace Builder.UI.Shell.Splash;
 // at 1:100,000, rotated by GridBearing so the street grid, which the city's
 // founders laid out at that angle to north, runs straight across the
 // terminal. North therefore points up and slightly to the right.
-internal static class AlexandriaMap
+internal static class CityMapData
 {
     public const double GridBearing = 22.75;
 

@@ -41,7 +41,7 @@ public static class SuccessScreen
 
             // The city from the opening splash, now with every block built
             return new Rows(
-                new CityScene { Height = 7, Complete = true },
+                new CityScene { Height = DeployScreen.CityStripRows, Complete = true },
                 Views.Blank(),
                 new Markup($"[bold {Theme.Active.Su}]✓ Alexandria is up and running[/]"),
                 Views.Highlight(origin),

@@ -139,6 +139,28 @@ public class InstallationOrchestratorTests : IDisposable
         _docker.DidNotReceive().ComposeDown(Arg.Any<string>());
     }
 
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void StageCount_matchesTheStagesAFullRunReports(bool audio, bool monitoring)
+    {
+        WriteHandoff();
+        _context.Config.Features.SetEnabled(FeatureCatalog.Monitoring.Id, monitoring);
+        _context.Config.Features.SetEnabled(FeatureCatalog.Autotagging.Id, audio);
+        var capabilities = ServiceCatalog.Resolve(_context.Config.Features);
+        var stages = new List<string>();
+
+        _docker.GetExpectedServices(Arg.Any<string>(), Arg.Any<Action<string>?>()).Returns(capabilities.ServiceIds.ToArray());
+
+        new InstallationOrchestrator(_configuration, _docker, _systemChecker, _httpsVerifier, _models, _adminLogin).Execute(_context, (label, action) =>
+        {
+            stages.Add(label);
+            action(_ => { });
+        });
+
+        stages.Should().HaveCount(InstallationOrchestrator.StageCount(capabilities));
+    }
+
     [Fact]
     public void Execute_invalidCompose_stopsBeforeBuildOrInfrastructure()
     {
