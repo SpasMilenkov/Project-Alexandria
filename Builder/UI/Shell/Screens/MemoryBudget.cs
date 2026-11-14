@@ -20,8 +20,10 @@ internal static class MemoryBudget
     private static readonly string[] Owners = GroupOwners.OfType<string>().Distinct().ToArray();
 
 
-    // A note explains a highlighted share that the toggle does not change
-    public static IRenderable Build(IReadOnlyList<MemorySegment> segments, long? machineMb, string featureLabel, string? note = null)
+    // A note explains a highlighted share that the toggle does not change;
+    // limitOwner names whose memory the bar is drawn against
+    public static IRenderable Build(IReadOnlyList<MemorySegment> segments, long? machineMb, string featureLabel, string? note = null,
+        string limitOwner = "this computer")
     {
         var width = Math.Min(Shell.MainContentWidth, MaxBarWidth);
         var usedMb = segments.Where(segment => !segment.Preview).Sum(segment => segment.MemoryMb);
@@ -30,7 +32,7 @@ internal static class MemoryBudget
 
         return new Rows(
             new Markup(Bar(segments, width, scaleMb, machineMb)),
-            new Markup(Summary(usedMb, previewMb, machineMb, featureLabel, note)),
+            new Markup(Summary(usedMb, previewMb, machineMb, featureLabel, note, limitOwner)),
             new Markup(Legend(segments, width)));
     }
 
@@ -92,15 +94,15 @@ internal static class MemoryBudget
         }
     }
 
-    private static string Summary(long usedMb, long previewMb, long? machineMb, string featureLabel, string? note)
+    private static string Summary(long usedMb, long previewMb, long? machineMb, string featureLabel, string? note, string limitOwner)
     {
         var text = $"[bold]{Gigabytes(usedMb)}[/] {Ui.Muted("estimated")}";
 
         if (machineMb is { } machine)
         {
             text += usedMb > machine
-                ? $" {Ui.Muted("·")} {Ui.Warning($"more than this computer's {Gigabytes(machine)}")}"
-                : $" {Ui.Muted($"· this computer has {Gigabytes(machine)}")}";
+                ? $" {Ui.Muted("·")} {Ui.Warning($"more than {limitOwner}'s {Gigabytes(machine)}")}"
+                : $" {Ui.Muted($"· {limitOwner} has {Gigabytes(machine)}")}";
         }
 
         if (previewMb > 0)

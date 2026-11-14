@@ -18,18 +18,7 @@ public static class FeaturesScreen
         IRenderable Header() => Views.Heading("What should Alexandria be able to do?",
             "Everything can be changed later by running setup again on the same folder.");
 
-        void PushStats()
-        {
-            var capabilities = ServiceCatalog.Resolve(features);
-
-            shell.UpdateSidebarStats(stats =>
-            {
-                stats.Clear();
-                stats.Add(("RAM estimate", $"{calculator.CalculateMinimumRamMb(features) / 1024.0:0.#} GB"));
-                stats.Add(("Services", $"{capabilities.RunningServiceCount} ongoing"));
-                stats.Add(("Setup jobs", $"{capabilities.OneShotServiceIds.Count} run once"));
-            });
-        }
+        void PushStats() => SidebarStats.Push(shell, calculator);
 
         PushStats();
 

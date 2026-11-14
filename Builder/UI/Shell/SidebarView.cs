@@ -117,12 +117,24 @@ internal static class SidebarView
             .AddColumn(new GridColumn().NoWrap().PadRight(2))
             .AddColumn(new GridColumn().NoWrap());
 
-        foreach (var (label, value) in model.Stats)
+        foreach (var stat in model.Stats)
         {
-            grid.AddRow(new Markup(Ui.Muted(label)), new Markup($"[bold]{Markup.Escape(value)}[/]"));
+            grid.AddRow(new Markup(Ui.Muted(stat.Label)), new Markup(StatValue(stat)));
         }
 
         return grid;
+    }
+
+    private static string StatValue(SidebarStat stat)
+    {
+        var value = Markup.Escape(stat.Value);
+
+        return stat.Tone switch
+        {
+            StatTone.Error => $"[bold {Theme.Active.Er}]{value}[/]",
+            StatTone.Warning => $"[bold {Theme.Active.Wa}]{value}[/]",
+            _ => $"[bold]{value}[/]",
+        };
     }
 
     private static IRenderable? Features(InstallationContext context, int width)

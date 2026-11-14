@@ -4,7 +4,7 @@ namespace Builder.UI.Shell;
 // shell renders whatever is current on every refresh.
 public sealed class SidebarModel
 {
-    public List<(string Label, string Value)> Stats { get; } = [];
+    public List<SidebarStat> Stats { get; } = [];
 
     public string? SaveWarning { get; set; }
 }

@@ -45,6 +45,7 @@ public sealed class Shell : IDisposable
     private IReadOnlyList<KeyHint> _hints = DefaultHints;
     private IRenderable? _mainPanel;
     private bool _readFromTop;
+    private bool _animateMain;
     private int _scroll;
     private int _scrollPage;
     private bool _mainOverflows;
@@ -320,7 +321,11 @@ public sealed class Shell : IDisposable
 
     // Builder form: the page is rebuilt when the look changes, so colors baked
     // into its markup follow the new theme while the screen waits for a key
-    public void SetMain(Func<IRenderable> build, IReadOnlyList<KeyHint>? hints = null, bool readFromTop = false)
+    // An animated page is rebuilt on every frame tick, so wall-clock glyphs
+    // keep moving while the screen's thread is blocked on slow work. Its
+    // builder runs off that thread and must only read captured snapshots.
+    public void SetMain(Func<IRenderable> build, IReadOnlyList<KeyHint>? hints = null, bool readFromTop = false,
+        bool animated = false)
     {
         lock (_frameGate)
         {
@@ -331,6 +336,7 @@ public sealed class Shell : IDisposable
 
             _mainBuilder = build;
             _mainContent = build();
+            _animateMain = animated;
             _hints = hints ?? DefaultHints;
             _readFromTop = readFromTop;
             ComposeFrame();
@@ -356,7 +362,7 @@ public sealed class Shell : IDisposable
         }
     }
 
-    public void UpdateSidebarStats(Action<List<(string Label, string Value)>> mutate)
+    public void UpdateSidebarStats(Action<List<SidebarStat>> mutate)
     {
         lock (_frameGate)
         {
@@ -533,6 +539,12 @@ public sealed class Shell : IDisposable
                     lock (_frameGate)
                     {
                         ClearOnResize();
+
+                        if (_animateMain && _mainBuilder is not null)
+                        {
+                            _mainContent = _mainBuilder();
+                        }
+
                         Refresh();
                     }
                 }

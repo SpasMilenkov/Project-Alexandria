@@ -140,6 +140,76 @@ public static class Views
         return grid;
     }
 
+    // Points keep a hanging indent so wrapped advice stays readable; severe
+    // marks a problem setup can continue past but should not ignore
+    public static IRenderable AttentionPanel(string title, IReadOnlyList<string> points, bool severe)
+    {
+        var color = severe ? Theme.Active.Er : Theme.Active.Wa;
+        var list = new Grid()
+            .AddColumn(new GridColumn().NoWrap().PadRight(1))
+            .AddColumn();
+
+        foreach (var point in points)
+        {
+            list.AddRow(new Markup(Ui.Muted("•")), new Markup(Markup.Escape(point)));
+        }
+
+        var content = new Rows(new Markup($"[bold {color}]! {Markup.Escape(title)}[/]"), list);
+
+        return new Rows(new Callout(content, Style.Parse(color)), Blank());
+    }
+
+    // A fixed label width lets several lists line up as one table
+    public static IRenderable CheckRows(IEnumerable<CheckRow> rows, int labelWidth)
+    {
+        var grid = new Grid()
+            .AddColumn(new GridColumn().NoWrap().PadRight(1))
+            .AddColumn(new GridColumn { Width = labelWidth }.NoWrap().PadRight(2))
+            .AddColumn(new GridColumn().NoWrap().PadRight(2))
+            .AddColumn();
+
+        foreach (var row in rows)
+        {
+            grid.AddRow(
+                new Markup(CheckIcon(row.State)),
+                new Markup(CheckLabel(row)),
+                new Markup(CheckDetail(row)),
+                new Markup(Ui.Muted(row.Requirement ?? string.Empty)));
+        }
+
+        return grid;
+    }
+
+    private static string CheckIcon(CheckState state) => state switch
+    {
+        CheckState.Passed => Ui.Success("✓"),
+        CheckState.Warning => Ui.Warning("!"),
+        CheckState.Failed => Ui.Error("✗"),
+        CheckState.Running => $"[bold {Theme.Active.Ac}]{SpinnerFrame()}[/]",
+        CheckState.Unknown => Ui.Muted("?"),
+        _ => Ui.Muted("·"),
+    };
+
+    private static string CheckLabel(CheckRow row) => row.State switch
+    {
+        CheckState.Pending or CheckState.Skipped => Ui.Muted(row.Label),
+        CheckState.Running => Ui.Strong(row.Label),
+        _ => Markup.Escape(row.Label),
+    };
+
+    private static string CheckDetail(CheckRow row)
+    {
+        var detail = row.Detail ?? string.Empty;
+
+        return row.State switch
+        {
+            CheckState.Passed => Markup.Escape(detail),
+            CheckState.Warning => Ui.Warning(detail),
+            CheckState.Failed => Ui.Error(detail),
+            _ => Ui.Muted(detail),
+        };
+    }
+
     // Label/value pairs with the labels in one aligned, muted column
     public static IRenderable Facts(IEnumerable<(string Label, string Value)> facts)
     {

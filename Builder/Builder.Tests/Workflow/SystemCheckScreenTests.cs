@@ -111,4 +111,85 @@ public class SystemCheckScreenTests
         h.Context.ShouldAbort.Should().BeTrue();
         h.Output.Should().Contain("Docker is not installed");
     }
+
+    [Fact]
+    public void Run_healthySystem_showsTrimmedVersionsAndReadyVerdict()
+    {
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+
+        harness.Context.Features = FeatureSelection.FromDefaults();
+
+        SystemCheckScreen.Run(harness.Shell, HealthyChecker(), new ResourceCalculator());
+
+        harness.Output.Should().Contain("27.0.1").And.Contain("v2.29.0").And.Contain("Room for your selection");
+        harness.Output.Should().NotContain("Docker version 27.0.1,");
+    }
+
+    [Fact]
+    public void Run_dockerMemoryBelowSelection_flagsMemoryAndStillContinues()
+    {
+        var checker = HealthyChecker();
+        checker.GetSystemResources().Returns(new SystemResources
+        {
+            CpuCores = 8,
+            TotalMemoryMb = 16384,
+            DockerCpuCores = 8,
+            DockerMemoryMb = 1024,
+            DockerAvailableDiskMb = 51200,
+        });
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+
+        harness.Context.Features = FeatureSelection.FromDefaults();
+
+        var outcome = SystemCheckScreen.Run(harness.Shell, checker, new ResourceCalculator());
+
+        outcome.Should().Be(ScreenOutcome.Continue);
+        harness.Output.Should().Contain("Not enough memory for this selection").And.Contain("continue anyway");
+    }
+
+    [Fact]
+    public void Run_measuredResources_putDockerLimitsInSidebar()
+    {
+        var checker = HealthyChecker();
+        checker.GetSystemResources().Returns(new SystemResources
+        {
+            CpuCores = 16,
+            TotalMemoryMb = 32768,
+            DockerCpuCores = 6,
+            DockerMemoryMb = 1024,
+            DockerAvailableDiskMb = 51200,
+        });
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+
+        harness.Context.Features = FeatureSelection.FromDefaults();
+
+        SystemCheckScreen.Run(harness.Shell, checker, new ResourceCalculator());
+
+        var stats = harness.Shell.CurrentSidebar.Stats;
+
+        stats.Should().Contain(stat => stat.Label == "Memory" && stat.Value.EndsWith("of 1 GB") && stat.Tone == StatTone.Error);
+        stats.Should().Contain(stat => stat.Label == "CPU" && stat.Value == "6 cores");
+    }
+
+    [Fact]
+    public void Run_failedCheck_marksLaterChecksSkipped()
+    {
+        var checker = HealthyChecker();
+        checker.IsDockerComposeInstalled().Returns(false);
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+
+        SystemCheckScreen.Run(harness.Shell, checker, new ResourceCalculator());
+
+        harness.Output.Should().Contain("Docker Compose plugin unavailable").And.Contain("skipped");
+        checker.DidNotReceive().GetSystemResources();
+    }
+
+    [Theory]
+    [InlineData("Docker version 27.0.1, build abc", "27.0.1")]
+    [InlineData("Docker Compose version v2.29.0", "v2.29.0")]
+    [InlineData("synthetic", "synthetic")]
+    public void ShortVersion_keepsOnlyTheVersionNumber(string line, string expected)
+    {
+        SystemCheckScreen.ShortVersion(line).Should().Be(expected);
+    }
 }
