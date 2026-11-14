@@ -1,4 +1,5 @@
 using Builder.UI.Shell;
+using Builder.UI.Shell.Input;
 using Spectre.Console;
 
 namespace Builder.Tests.Support;

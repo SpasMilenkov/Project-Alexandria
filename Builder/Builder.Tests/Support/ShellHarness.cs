@@ -1,5 +1,6 @@
-using Builder.UI;
 using Builder.UI.Shell;
+using Builder.UI.Shell.Input;
+using Builder.UI.Theming;
 using Builder.Workflow;
 using Spectre.Console;
 using Spectre.Console.Testing;
@@ -28,7 +29,7 @@ public sealed class ShellHarness : IDisposable
         AnsiConsole.Console = Console;
 
         Context = new InstallationContext();
-        Context.Config.PublicEndpoint = new Builder.Models.PublicEndpoint { Host = "192.0.2.10", HttpsPort = 443 };
+        Context.Config.PublicEndpoint = new Builder.Network.PublicEndpoint { Host = "192.0.2.10", HttpsPort = 443 };
         Context.Config.ProjectName = "builder-ui-test";
 
         Shell = new Shell(Context, keys)

@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Builder.Services;
+using Builder.Docker;
 using Builder.Tests.Support;
 using Builder.Workflow;
 using NSubstitute;

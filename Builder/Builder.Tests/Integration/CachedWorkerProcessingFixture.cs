@@ -3,8 +3,10 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Builder.Models;
-using Builder.Services;
+using Builder.Catalog;
+using Builder.Common;
+using Builder.Configuration;
+using Builder.Credentials;
 using Builder.Workflow;
 
 namespace Builder.Tests.Integration;

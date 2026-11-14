@@ -2,8 +2,10 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using Builder.Models;
-using Builder.Services;
+using Builder.AudioModels;
+using Builder.Catalog;
+using Builder.Common;
+using Builder.Docker;
 
 namespace Builder.Tests.Integration;
 

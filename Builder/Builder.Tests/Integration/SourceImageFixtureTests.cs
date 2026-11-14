@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using AwesomeAssertions;
-using Builder.Services;
+using Builder.Common;
 
 namespace Builder.Tests.Integration;
 

@@ -1,6 +1,7 @@
 using System.Diagnostics;
-using Builder.Models;
-using Builder.Services;
+using Builder.Common;
+using Builder.Configuration;
+using Builder.Docker;
 
 namespace Builder.Tests.Integration;
 

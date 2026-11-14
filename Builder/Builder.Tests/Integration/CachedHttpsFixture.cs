@@ -9,8 +9,15 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Builder.Models;
-using Builder.Services;
+using Builder.Catalog;
+using Builder.Certificates;
+using Builder.Common;
+using Builder.Configuration;
+using Builder.Credentials;
+using Builder.Deployment;
+using Builder.Docker;
+using Builder.Network;
+using Builder.Storage;
 using Builder.Workflow;
 
 namespace Builder.Tests.Integration;

@@ -1,6 +1,6 @@
 global using Spectre.Console;
-using Builder.Services;
-using Builder.UI;
+using Builder.Preferences;
+using Builder.UI.Theming;
 using Builder.Workflow;
 
 Theme.Use(Themes.Resolve(UiPreferencesStore.Load()));

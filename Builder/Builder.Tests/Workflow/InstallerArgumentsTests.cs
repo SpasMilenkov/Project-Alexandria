@@ -1,8 +1,7 @@
-using AwesomeAssertions;
-using Builder.Models;
-using Builder.Services;
-using Builder.Workflow;
 using System.Text.Json;
+using AwesomeAssertions;
+using Builder.Configuration;
+using Builder.Workflow;
 
 namespace Builder.Tests.Workflow;
 

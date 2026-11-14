@@ -1,8 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
 using AwesomeAssertions;
-using Builder.Models;
-using Builder.Services;
+using Builder.Configuration;
+using Builder.Deployment;
+using Builder.Network;
 
 namespace Builder.Tests.Integration;
 

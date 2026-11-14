@@ -2,8 +2,9 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Builder.Services;
-using Builder.Tests.Services;
+using Builder.Common;
+using Builder.Docker;
+using Builder.Tests.Configuration;
 
 namespace Builder.Tests.Integration;
 

@@ -1,7 +1,11 @@
 using System.Diagnostics;
 using System.Text.Json;
-using Builder.Models;
-using Builder.Services;
+using Builder.Common;
+using Builder.Configuration;
+using Builder.Credentials;
+using Builder.Deployment;
+using Builder.Docker;
+using Builder.Network;
 using Builder.Workflow;
 
 namespace Builder.Tests.Integration;

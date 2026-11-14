@@ -1,5 +1,6 @@
 using AwesomeAssertions;
-using Builder.Services;
+using Builder.Configuration;
+using Builder.Storage;
 
 namespace Builder.Tests.Integration;
 

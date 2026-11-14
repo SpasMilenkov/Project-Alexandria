@@ -1,9 +1,12 @@
-using Builder.Services;
-using Builder.Workflow;
-using Builder.UI.Shell.Screens;
-using Builder.UI.Shell.Splash;
 using System.Diagnostics;
 using System.Runtime.ExceptionServices;
+using Builder.Preferences;
+using Builder.UI.Shell.Input;
+using Builder.UI.Shell.Screens;
+using Builder.UI.Shell.Sidebar;
+using Builder.UI.Shell.Splash;
+using Builder.UI.Theming;
+using Builder.Workflow;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 

@@ -75,4 +75,4 @@ User guides:
 - [Operations, named failures, backup and restore](../Docs/src/content/docs/guides/operations.mdx)
 - [Separate reference Compose workflow](../Docs/src/content/docs/getting-started/manual-installation.mdx)
 
-Developer hot reload remains the separate `run-dev.sh` / `docker-compose.dev.yml` workflow. Test and acceptance commands are in [the integration-test guide](Builder.Tests/Integration/README.md).
+Developer hot reload remains the separate `run-dev.sh` / `docker-compose.dev.yml` workflow. Test and acceptance commands are in [the test guide](Builder.Tests/README.md).

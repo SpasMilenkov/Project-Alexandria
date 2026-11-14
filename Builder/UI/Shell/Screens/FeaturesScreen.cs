@@ -1,6 +1,9 @@
 using System.Diagnostics;
-using Builder.Models;
-using Builder.Services;
+using Builder.Catalog;
+using Builder.SystemCheck;
+using Builder.UI.Shell.Input;
+using Builder.UI.Shell.Screens.Components;
+using Builder.UI.Theming;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 

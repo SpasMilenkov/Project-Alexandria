@@ -1,5 +1,6 @@
 using AwesomeAssertions;
-using Builder.Models;
+using Builder.Catalog;
+using Builder.Tests.UI.Screens;
 using Builder.Workflow;
 
 namespace Builder.Tests.Workflow;

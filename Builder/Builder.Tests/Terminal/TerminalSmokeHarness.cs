@@ -4,11 +4,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
-using Builder.Models;
-using Builder.Services;
-using Builder.UI;
+using Builder.Catalog;
+using Builder.Common;
+using Builder.Configuration;
+using Builder.Docker;
+using Builder.Network;
+using Builder.SystemCheck;
 using Builder.UI.Shell;
 using Builder.UI.Shell.Screens;
+using Builder.UI.Theming;
 using Builder.Workflow;
 
 namespace Builder.Tests.Terminal;

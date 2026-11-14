@@ -1,4 +1,7 @@
-using Builder.Services;
+using Builder.Preferences;
+using Builder.UI.Shell.Input;
+using Builder.UI.Shell.Screens.Components;
+using Builder.UI.Theming;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 

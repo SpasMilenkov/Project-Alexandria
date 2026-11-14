@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using Builder.Services;
-using Builder.Tests.Services;
+using Builder.Common;
+using Builder.Tests.Configuration;
 
 namespace Builder.Tests.Integration;
 

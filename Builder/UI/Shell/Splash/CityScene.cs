@@ -1,4 +1,6 @@
 using Builder.UI.Shell.Screens;
+using Builder.UI.Shell.Screens.Components;
+using Builder.UI.Theming;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 

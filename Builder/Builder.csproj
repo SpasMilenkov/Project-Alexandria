@@ -12,7 +12,7 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="Builder.Tests"/>
-        <Compile Include="..\Backend\Alexandria.Common\Auth\AccountValidationRules.cs" Link="Models\AccountValidationRules.cs" />
+        <Compile Include="..\Backend\Alexandria.Common\Auth\AccountValidationRules.cs" Link="Credentials\AccountValidationRules.cs" />
     </ItemGroup>
 
     <ItemGroup>

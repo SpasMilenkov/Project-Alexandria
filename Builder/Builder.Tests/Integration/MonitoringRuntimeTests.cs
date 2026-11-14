@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Builder.Services;
-using Builder.Tests.Services;
+using Builder.Docker;
+using Builder.Tests.Configuration;
 
 namespace Builder.Tests.Integration;
 
