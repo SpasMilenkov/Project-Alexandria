@@ -22,7 +22,7 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 /// <c>Tagging:RetryCooldownHours</c> (default 24h), skipping client-encrypted files.
 /// Throttled by the attempt cooldown — no per-file failure counters.</item>
 /// </list>
-/// Registered only while <c>Features:Autotagging</c> is enabled.
+/// Registered only while <see cref="ProcessingCapabilities.AutoTaggingActive"/> holds.
 /// </summary>
 public partial class AutoTagSweepWorker(
     ILogger<AutoTagSweepWorker> logger,
@@ -30,7 +30,7 @@ public partial class AutoTagSweepWorker(
     IServiceProvider serviceProvider,
     AutoTagQueueService queue,
     IPublisherService publisher,
-    IOptions<ProcessingCapabilities>? capabilities = null) : BackgroundService
+    IOptions<ProcessingCapabilities> capabilities) : BackgroundService
 {
     private const string EnrichRoutingKey = "media-metadata.enrich";
 
@@ -74,7 +74,7 @@ public partial class AutoTagSweepWorker(
 
     internal async Task SweepAsync(IServiceScope scope, CancellationToken ct)
     {
-        if (!(capabilities?.Value.AudioAnalysis ?? true))
+        if (!capabilities.Value.AutoTaggingActive)
             return;
 
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();

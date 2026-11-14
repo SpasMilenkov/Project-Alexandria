@@ -1,4 +1,5 @@
 using System.Text;
+using Alexandria.Common.Config;
 using Alexandria.Infrastructure.Messaging;
 using Alexandria.Tests.Unit.Common;
 using Alexandria.Workers.Lyrics;
@@ -80,7 +81,7 @@ public class WorkerShutdownTests
             Trigger => Build<TriggerConsumerWorker>(l =>
                 new TriggerConsumerWorker(l, broker, provider, rabbit, new AccumulatorBuffer())),
             Results => Build<ResultsConsumerWorker>(l => new ResultsConsumerWorker(
-                l, broker, provider, rabbit, Options.Create(new EssentiaConfig()), configuration,
+                l, broker, provider, rabbit, Options.Create(new EssentiaConfig()), Options.Create(new ProcessingCapabilities()),
                 Substitute.For<IAutoTagQueue>())),
             Backfill => Build<EnrichmentBackfillWorker>(l => new EnrichmentBackfillWorker(l, broker, provider, rabbit)),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)

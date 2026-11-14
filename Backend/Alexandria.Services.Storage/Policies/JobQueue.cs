@@ -2,7 +2,6 @@ using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,13 +12,10 @@ public class JobQueue(
     IPreviewService previewService,
     IPublisherService publisher,
     IUnitOfWork unitOfWork,
-    IConfiguration configuration,
     ILogger<JobQueue> logger,
-    IOptions<ProcessingCapabilities>? capabilities = null) : IJobQueue
+    IOptions<ProcessingCapabilities> capabilities) : IJobQueue
 {
-    private readonly bool _autoTaggingEnabled =
-        bool.TryParse(configuration["Features:Autotagging"], out var enabled) && enabled
-        && (capabilities?.Value.AudioAnalysis ?? true);
+    private readonly bool _autoTaggingEnabled = capabilities.Value.AutoTaggingActive;
 
     public async Task QueueTranspilationJobAsync(Guid versionId, Guid fileId, Guid userId,
         TranscodeParameters parameters, CancellationToken ct = default)

@@ -11,7 +11,6 @@ using Alexandria.Dto.Enrichment;
 using Alexandria.Dto.Policies;
 using Alexandria.Services.Storage.Policies;
 using AwesomeAssertions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -58,12 +57,9 @@ public class DirectoryPolicyBackfillTriggerTests
 
     private DirectoryPolicyService CreateSut(bool enabled = true, bool audioAnalysis = true)
     {
-        var configuration = Substitute.For<IConfiguration>();
-        configuration["Features:Autotagging"].Returns(enabled ? "true" : "false");
-
         return new DirectoryPolicyService(_unitOfWork, Substitute.For<IDirectoryService>(),
-            _publisher, configuration, Substitute.For<ILogger<DirectoryPolicyService>>(),
-            Options.Create(new ProcessingCapabilities { AudioAnalysis = audioAnalysis }));
+            _publisher, Substitute.For<ILogger<DirectoryPolicyService>>(),
+            Options.Create(new ProcessingCapabilities { Autotagging = enabled, AudioAnalysis = audioAnalysis }));
     }
 
     private static bool MatchesRequest(byte[] body, DateTime cutoff)

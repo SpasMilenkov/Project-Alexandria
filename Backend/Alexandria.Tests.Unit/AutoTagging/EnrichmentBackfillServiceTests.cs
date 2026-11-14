@@ -9,7 +9,6 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Enrichment;
 using Alexandria.Services.Storage.Policies;
 using AwesomeAssertions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -45,13 +44,10 @@ public class EnrichmentBackfillServiceTests
 
     private EnrichmentBackfillService CreateSut(bool enabled = true, bool audioAnalysis = true)
     {
-        var configuration = Substitute.For<IConfiguration>();
-        configuration["Features:Autotagging"].Returns(enabled ? "true" : "false");
-
         return new EnrichmentBackfillService(
-            _unitOfWork, _publisher, configuration,
+            _unitOfWork, _publisher,
             Substitute.For<ILogger<EnrichmentBackfillService>>(),
-            Options.Create(new ProcessingCapabilities { AudioAnalysis = audioAnalysis }));
+            Options.Create(new ProcessingCapabilities { Autotagging = enabled, AudioAnalysis = audioAnalysis }));
     }
 
     private DirectoryPolicy GivenPolicy(bool inherited = false)

@@ -28,7 +28,6 @@ public class AutoTagFileResponse
 public class AutoTagFileEndpoint(
     IPublisherService publisher,
     IUnitOfWork unitOfWork,
-    IConfiguration configuration,
     IOptions<ProcessingCapabilities> capabilities) : EndpointWithoutRequest<AutoTagFileResponse>
 {
     public override void Configure()
@@ -70,8 +69,7 @@ public class AutoTagFileEndpoint(
             return;
         }
 
-        var autoTaggingEnabled = bool.TryParse(configuration["Features:Autotagging"], out var enabled)
-                                 && enabled && capabilities.Value.AudioAnalysis;
+        var autoTaggingEnabled = capabilities.Value.AutoTaggingActive;
 
         try
         {

@@ -74,22 +74,14 @@ public sealed partial class LrcLibPublicProvider(HttpClient http, ILogger<LrcLib
         var query = BuildQuery(trackName, artistName, albumName, durationSeconds);
         var url = $"{BaseUrl}/get?{query}";
 
-        try
-        {
-            var response = await http.GetAsync(url, ct);
+        var response = await http.GetAsync(url, ct);
 
-            if (response.StatusCode == HttpStatusCode.NotFound)
-                return null;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
 
-            response.EnsureSuccessStatusCode();
+        response.EnsureSuccessStatusCode();
 
-            return await response.Content.ReadFromJsonAsync<LrcLibResponse>(ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            LogRequestFailed(url, ex);
-            throw;
-        }
+        return await response.Content.ReadFromJsonAsync<LrcLibResponse>(ct);
     }
 
     private static string NormalizeTitle(string input)
@@ -113,30 +105,22 @@ public sealed partial class LrcLibPublicProvider(HttpClient http, ILogger<LrcLib
         var query = BuildQuery(trackName, artistName, albumName: null, durationSeconds: null);
         var url = $"{BaseUrl}/search?{query}";
 
-        try
-        {
-            var response = await http.GetAsync(url, ct);
+        var response = await http.GetAsync(url, ct);
 
-            if (response.StatusCode == HttpStatusCode.NotFound)
-                return null;
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
 
-            response.EnsureSuccessStatusCode();
+        response.EnsureSuccessStatusCode();
 
-            var results = await response.Content.ReadFromJsonAsync<List<LrcLibResponse>>(ct);
+        var results = await response.Content.ReadFromJsonAsync<List<LrcLibResponse>>(ct);
 
-            if (results is null or { Count: 0 })
-                return null;
+        if (results is null or { Count: 0 })
+            return null;
 
-            // Prefer the result with the closest duration when available
-            return durationSeconds.HasValue
-                ? results.MinBy(r => Math.Abs(r.Duration - durationSeconds.Value))
-                : results.FirstOrDefault();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            LogRequestFailed(url, ex);
-            throw;
-        }
+        // Prefer the result with the closest duration when available
+        return durationSeconds.HasValue
+            ? results.MinBy(r => Math.Abs(r.Duration - durationSeconds.Value))
+            : results.FirstOrDefault();
     }
 
     private static string ExtractPrimaryArtist(string artist)

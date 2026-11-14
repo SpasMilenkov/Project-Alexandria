@@ -5,8 +5,8 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 
 /// <summary>
 /// Drains the in-process <see cref="AutoTagQueueService"/> and applies auto-tags to each
-/// file on its own scoped unit of work. Registered only while <c>Features:Autotagging</c>
-/// is enabled. Tag-sync failures are logged and never abort the drain.
+/// file on its own scoped unit of work. Registered only while
+/// <see cref="ProcessingCapabilities.AutoTaggingActive"/> holds. Tag-sync failures are logged and never abort the drain.
 /// </summary>
 public partial class AutoTagSyncWorker(
     IServiceProvider serviceProvider,

@@ -1,6 +1,5 @@
 using Alexandria.Common.Config;
 using Alexandria.Common.Services;
-using Alexandria.Common.Config;
 using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Messaging;

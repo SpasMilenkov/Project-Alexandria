@@ -8,7 +8,6 @@ using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Enrichment;
 using Alexandria.Dto.Policies;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DirectoryNotFoundException = Alexandria.Common.Exceptions.Directories.DirectoryNotFoundException;
@@ -19,16 +18,13 @@ public sealed partial class DirectoryPolicyService(
     IUnitOfWork unitOfWork,
     IDirectoryService directoryService,
     IPublisherService publisher,
-    IConfiguration configuration,
     ILogger<DirectoryPolicyService> logger,
-    IOptions<ProcessingCapabilities>? capabilities = null)
+    IOptions<ProcessingCapabilities> capabilities)
     : IDirectoryPolicyService
 {
     private static readonly JsonSerializerOptions BackfillJsonOptions = new(JsonSerializerDefaults.Web);
 
-    private readonly bool _autoTaggingEnabled =
-        bool.TryParse(configuration["Features:Autotagging"], out var enabled) && enabled
-        && (capabilities?.Value.AudioAnalysis ?? true);
+    private readonly bool _autoTaggingEnabled = capabilities.Value.AutoTaggingActive;
 
     public async Task<DirectoryPolicyDto?> GetPolicyAsync(Guid directoryId, Guid ownerId,
         CancellationToken ct = default)

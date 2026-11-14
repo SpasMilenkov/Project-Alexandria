@@ -9,7 +9,6 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Storage.Policies;
 using AwesomeAssertions;
 using NSubstitute;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -24,13 +23,9 @@ public class AutoTagTriggerTests
     public async Task QueueAutoTagAsync_policy_enabled_analysis_disabled_refuses_without_publish()
     {
         var (publisher, unitOfWork) = Create();
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Features:Autotagging"] = "true"
-        }).Build();
         var sut = new JobQueue(Substitute.For<ITranspilationJobService>(), Substitute.For<IPreviewService>(),
-            publisher, unitOfWork, configuration, Substitute.For<ILogger<JobQueue>>(),
-            Options.Create(new ProcessingCapabilities { AudioAnalysis = false }));
+            publisher, unitOfWork, Substitute.For<ILogger<JobQueue>>(),
+            Options.Create(new ProcessingCapabilities { Autotagging = true, AudioAnalysis = false }));
 
         var act = () => sut.QueueAutoTagAsync(FileId, new AutoTagParameters(TagSource.Auto), AudioMime,
             TestContext.Current.CancellationToken);

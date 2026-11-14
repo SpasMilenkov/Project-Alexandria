@@ -32,7 +32,7 @@ public class AutoTagSweepCapabilityTests
         var publisher = Substitute.For<IPublisherService>();
         var sut = new AutoTagSweepWorker(Substitute.For<ILogger<AutoTagSweepWorker>>(),
             Options.Create(new AutoTaggingOptions()), provider, new AutoTagQueueService(), publisher,
-            Options.Create(new ProcessingCapabilities { AudioAnalysis = enabled }));
+            Options.Create(new ProcessingCapabilities { Autotagging = true, AudioAnalysis = enabled }));
 
         await sut.SweepAsync(scope, TestContext.Current.CancellationToken);
 

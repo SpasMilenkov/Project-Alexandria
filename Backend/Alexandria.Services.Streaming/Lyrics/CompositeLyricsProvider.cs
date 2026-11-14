@@ -73,7 +73,7 @@ public sealed partial class CompositeLyricsProvider(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "{Provider} threw unexpectedly, trying next", provider.GetType().Name);
+                logger.LogError(ex, "{Provider} failed, trying next", provider.GetType().Name);
                 providerFailure ??= ex;
             }
         }

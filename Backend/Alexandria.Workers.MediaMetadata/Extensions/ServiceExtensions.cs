@@ -41,8 +41,12 @@ public static class ServiceExtensions
         services.AddSingleton<IAutoTagQueue>(sp =>
             sp.GetRequiredService<AutoTagQueueService>());
 
-        var audioAnalysisEnabled = configuration.GetValue("Features:AudioAnalysis", true);
-        if (configuration.GetValue<bool>("Features:Autotagging") && audioAnalysisEnabled)
+        // Registration happens before the container exists, so the switches are bound
+        // here with the same class and section the injected options use
+        var capabilities = configuration.GetSection(ProcessingCapabilities.SectionName).Get<ProcessingCapabilities>()
+                           ?? new ProcessingCapabilities();
+
+        if (capabilities.AutoTaggingActive)
         {
             services.AddScoped<IAutoTagDerivationService, AutoTagDerivationService>();
             services.AddScoped<IAutoTagSyncService, AutoTagSyncService>();
@@ -59,7 +63,7 @@ public static class ServiceExtensions
 
         services.AddScoped<IStagingService, StagingService>();
 
-        if (audioAnalysisEnabled)
+        if (capabilities.AudioAnalysis)
         {
             services.AddHostedService<TriggerConsumerWorker>();
             services.AddHostedService<AccumulatorWorker>();
