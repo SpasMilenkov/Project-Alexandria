@@ -444,6 +444,11 @@ namespace Alexandria.Data.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("DirectFilesSize")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
                     b.Property<bool>("IsStarred")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

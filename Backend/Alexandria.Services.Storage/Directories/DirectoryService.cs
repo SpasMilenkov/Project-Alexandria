@@ -66,7 +66,8 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 
-            return directory.ToSummaryDto();
+            // A folder that was just created holds nothing yet.
+            return directory.ToSummaryDto(treeSize: 0);
         }
         catch
         {
@@ -129,7 +130,9 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
         var dir = await unitOfWork.Directories.GetDirectoryMetadataAsync(id, userId, ct) ??
                   throw new DirectoryNotFoundException(id);
 
-        return dir.ToSummaryDto();
+        var treeSizes = await unitOfWork.Directories.GetTreeSizesAsync([dir.Id], ct);
+
+        return dir.ToSummaryDto(treeSizes.GetValueOrDefault(dir.Id));
     }
 
     /// <inheritdoc/>
@@ -199,7 +202,10 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
             await unitOfWork.SaveChangesAsync(ct);
             await unitOfWork.CommitAsync(ct);
 
-            return directory.ToDto();
+            var childIds = directory.Children?.Select(c => c.Id).ToList() ?? [];
+            var childTreeSizes = await unitOfWork.Directories.GetTreeSizesAsync(childIds, ct);
+
+            return directory.ToDto(childTreeSizes);
         }
         catch
         {

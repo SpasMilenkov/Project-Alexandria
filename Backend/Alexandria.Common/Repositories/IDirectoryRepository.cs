@@ -10,6 +10,12 @@ public interface IDirectoryRepository : IRepository<Directory>
 {
     Task<Directory?> GetDirectoryMetadataAsync(Guid id, Guid ownerId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Subtree size of each folder, keyed by id. Trashed or missing folders report zero.
+    /// </summary>
+    Task<Dictionary<Guid, long>> GetTreeSizesAsync(IReadOnlyCollection<Guid> directoryIds,
+        CancellationToken ct = default);
+
     Task<IEnumerable<File>> GetAllFilesInDirectoryAsync(Guid directoryId,
         bool includeSubdirectories = false, CancellationToken ct = default);
 
@@ -53,6 +59,7 @@ public interface IDirectoryRepository : IRepository<Directory>
         CancellationToken ct = default);
 
     Task<List<PathPartDto>> GetDirectoryPathAsync(Guid directoryId, CancellationToken ct = default);
+
     Task<bool> SetDirectoryFavoriteAsync(Guid directoryId, Guid userId, bool isStarred,
         CancellationToken ct = default);
 
