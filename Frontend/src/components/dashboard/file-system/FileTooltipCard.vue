@@ -1,88 +1,56 @@
 <template>
-  <div class="tooltip-card">
-    <!-- Header: icon + name -->
-    <div class="tooltip-card__header">
-      <div class="tooltip-card__icon-wrap">
-        <Icon :icon="getFileIcon(data.fileName)" class="tooltip-card__icon" />
-      </div>
-      <div class="tooltip-card__name-block">
-        <p class="tooltip-card__name">{{ data.fileName }}</p>
-        <p class="tooltip-card__type">{{ readableType }}</p>
-      </div>
-    </div>
+  <ExplorerTooltipCard
+    :icon="getFileIcon(data.fileName)"
+    :name="data.fileName"
+    :subtitle="readableType"
+  >
+    <ExplorerTooltipStat label="Size" emphasis>{{ sizeLabel }}</ExplorerTooltipStat>
 
-    <!-- Divider -->
-    <div class="tooltip-card__divider" />
+    <ExplorerTooltipStat label="Version">
+      v{{ data.currentVersion.versionNumber }}
+    </ExplorerTooltipStat>
 
-    <!-- Meta rows -->
-    <dl class="tooltip-card__meta">
-      <div class="tooltip-card__meta-row">
-        <dt>
-          <UIcon name="i-heroicons-scale" class="tooltip-card__meta-icon" />
-          Size
-        </dt>
-        <dd>{{ formatBytes(Number(props.data.currentVersion.size)) }}</dd>
-      </div>
+    <ExplorerTooltipStat label="Created">{{ createdLabel }}</ExplorerTooltipStat>
 
-      <div class="tooltip-card__meta-row">
-        <dt>
-          <UIcon name="i-heroicons-clock" class="tooltip-card__meta-icon" />
-          Created
-        </dt>
-        <dd>{{ readableDate }}</dd>
-      </div>
+    <ExplorerTooltipStat label="Owner">{{ data.owner.name }}</ExplorerTooltipStat>
 
-      <div class="tooltip-card__meta-row">
-        <dt>
-          <UIcon name="i-heroicons-archive-box" class="tooltip-card__meta-icon" />
-          Version
-        </dt>
-        <dd>v{{ data.currentVersion.versionNumber }}</dd>
-      </div>
+    <template v-if="hasNotes" #notes>
+      <ExplorerTooltipNote v-if="data.currentVersion.isEncrypted" icon="i-mdi-lock">
+        This file is encrypted
+      </ExplorerTooltipNote>
 
-      <div v-if="props.data.currentVersion.isEncrypted" class="tooltip-card__meta-row">
-        <dt>
-          <UIcon name="i-mdi-lock" class="tooltip-card__meta-icon" />
-          Encryption
-        </dt>
-        <dd>Yes</dd>
-      </div>
-
-      <div v-if="props.data.currentVersion.isPasswordProtected" class="tooltip-card__meta-row">
-        <dt>
-          <UIcon name="i-mdi-file-lock" class="tooltip-card__meta-icon" />
-          Password
-        </dt>
-        <dd>Required</dd>
-      </div>
-
-      <div class="tooltip-card__meta-row">
-        <dt>
-          <UIcon name="i-heroicons-user" class="tooltip-card__meta-icon" />
-          Owner
-        </dt>
-        <dd>{{ data.owner.name }}</dd>
-      </div>
-    </dl>
-
-    <!-- Tags -->
-    <template v-if="tooltipTags.length > 0">
-      <div class="tooltip-card__divider" />
-      <div class="tooltip-card__tags">
-        <span v-for="tag in tooltipTags.slice(0, 4)" :key="tag.id" class="tooltip-card__tag">
-          <Icon v-if="tag.icon" :icon="getIconByValue(tag.icon)" class="size-3" />
-          {{ tag.name }}
-        </span>
-        <span v-if="tooltipTags.length > 4" class="tooltip-card__tag tooltip-card__tag--overflow">
-          +{{ tooltipTags.length - 4 }}
-        </span>
-      </div>
+      <ExplorerTooltipNote v-if="data.currentVersion.isPasswordProtected" icon="i-mdi-file-lock">
+        Opening it needs the document's password
+      </ExplorerTooltipNote>
     </template>
-  </div>
+
+    <template v-if="tooltipTags.length > 0" #footer>
+      <ul class="flex flex-wrap gap-1.5" aria-label="Tags">
+        <li
+          v-for="tag in visibleTags"
+          :key="tag.id"
+          class="inline-flex max-w-full items-center gap-1.5 rounded-full border border-gray-200/70 px-2 py-0.5 text-xs font-medium text-gray-900 dark:border-gray-700/70 dark:text-gray-100"
+        >
+          <span
+            class="size-2 shrink-0 rounded-full"
+            :style="{ backgroundColor: tag.color }"
+            aria-hidden="true"
+          />
+          <span class="truncate">{{ tag.name }}</span>
+        </li>
+
+        <li
+          v-if="hiddenTagCount > 0"
+          class="inline-flex items-center rounded-full bg-gray-500/10 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400"
+        >
+          +{{ hiddenTagCount }}
+        </li>
+      </ul>
+    </template>
+  </ExplorerTooltipCard>
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
@@ -91,158 +59,40 @@ import type { TagDto } from "@/api/tag";
 
 import { getTagsForFile } from "@/queries/tags";
 import { formatTimeAgo } from "@/utils/date-formatters";
-import { getFileIcon, getIconByValue } from "@/utils/files/icons";
+import { getFileIcon } from "@/utils/files/icons";
 import { getFileTypeReadable } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
 
-const props = defineProps<{
+import ExplorerTooltipCard from "./tooltip/ExplorerTooltipCard.vue";
+import ExplorerTooltipNote from "./tooltip/ExplorerTooltipNote.vue";
+import ExplorerTooltipStat from "./tooltip/ExplorerTooltipStat.vue";
+
+const MAX_VISIBLE_TAGS = 4;
+
+const { data } = defineProps<{
   data: FileResult;
 }>();
 
 // Authoritative tag source with the listing snapshot as instant fallback.
 // Row hover already warms this query, so tooltip reads are usually cached and
 // tag edits converge here without refetching the whole file listing.
-const { data: fileTags } = useQuery(() => getTagsForFile(props.data.fileId));
+const { data: fileTags } = useQuery(() => getTagsForFile(data.fileId));
 
-const tooltipTags = computed((): TagDto[] => fileTags.value?.tags ?? props.data.tags ?? []);
+const tooltipTags = computed((): TagDto[] => fileTags.value?.tags ?? data.tags ?? []);
 
-const readableType = computed(() =>
-  getFileTypeReadable(props.data.currentVersion.mimeType, props.data.fileName),
+const visibleTags = computed(() => tooltipTags.value.slice(0, MAX_VISIBLE_TAGS));
+
+const hiddenTagCount = computed(() => tooltipTags.value.length - visibleTags.value.length);
+
+const hasNotes = computed(
+  () => data.currentVersion.isEncrypted || data.currentVersion.isPasswordProtected,
 );
 
-const readableDate = computed(() => formatTimeAgo(props.data.createdAt));
+const readableType = computed(() =>
+  getFileTypeReadable(data.currentVersion.mimeType, data.fileName),
+);
+
+const sizeLabel = computed(() => formatBytes(Number(data.currentVersion.size)));
+
+const createdLabel = computed(() => formatTimeAgo(data.createdAt));
 </script>
-
-<style scoped>
-/* Card shell */
-.tooltip-card {
-  min-width: 220px;
-  max-width: 280px;
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-}
-
-/* Header */
-.tooltip-card__header {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-}
-
-.tooltip-card__icon-wrap {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 0.4rem;
-  background: color-mix(in srgb, var(--ui-primary) 10%, transparent);
-}
-
-.tooltip-card__icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  color: var(--ui-primary);
-}
-
-.tooltip-card__name-block {
-  min-width: 0;
-  flex: 1;
-}
-
-.tooltip-card__name {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  line-height: 1.3;
-  /* allow up to 2 lines before truncating */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.tooltip-card__type {
-  font-size: 0.6875rem;
-  color: var(--ui-text-muted);
-  margin-top: 0.125rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/*  Divider */
-.tooltip-card__divider {
-  height: 1px;
-  background: var(--ui-border);
-  margin: 0 -0.125rem;
-}
-
-/* Meta list */
-.tooltip-card__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.tooltip-card__meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-}
-
-.tooltip-card__meta-row dt {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--ui-text-muted);
-  white-space: nowrap;
-}
-
-.tooltip-card__meta-icon {
-  width: 0.75rem;
-  height: 0.75rem;
-  flex-shrink: 0;
-}
-
-.tooltip-card__meta-row dd {
-  font-weight: 500;
-  text-align: right;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 130px;
-}
-
-/* Tags */
-.tooltip-card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-}
-
-.tooltip-card__tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  padding: 0.15rem 0.45rem;
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--ui-primary) 10%, transparent);
-  color: var(--ui-primary);
-  border: 1px solid color-mix(in srgb, var(--ui-primary) 20%, transparent);
-  white-space: nowrap;
-}
-
-.tooltip-card__tag--overflow {
-  background: color-mix(in srgb, var(--ui-text-muted) 10%, transparent);
-  color: var(--ui-text-muted);
-  border-color: color-mix(in srgb, var(--ui-text-muted) 20%, transparent);
-}
-</style>

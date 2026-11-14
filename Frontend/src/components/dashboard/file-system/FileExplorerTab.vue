@@ -441,6 +441,9 @@
                       :is-selected="isDirectorySelected(dir.id)"
                       @navigate="handleNavigate"
                       @click="handleItemClick($event, dir.id, 'directory')"
+                      @tooltip-enter="handleDirectoryTooltipEnter"
+                      @tooltip-leave="handleTooltipLeave"
+                      :described-by="tooltipDescribedBy('directory', dir.id)"
                       :class="{
                         'opacity-40 grayscale-30 transition-opacity': isDimmed(dir.id, 'directory'),
                       }"
@@ -474,9 +477,9 @@
                       :view-mode="viewMode"
                       :is-selected="isFileSelected(file.fileId)"
                       @open-details="activeDetailsFile = $event"
-                      @tooltip-enter="handleTooltipEnter"
+                      @tooltip-enter="handleFileTooltipEnter"
                       @tooltip-leave="handleTooltipLeave"
-                      :described-by="tooltipDescribedBy(file.fileId)"
+                      :described-by="tooltipDescribedBy('file', file.fileId)"
                       @click="handleItemClick($event, file.fileId, 'file')"
                       :class="{
                         'opacity-40 grayscale-30 transition-opacity': isDimmed(file.fileId, 'file'),
@@ -507,10 +510,11 @@
                     </span>
                   </div>
                   <div
-                    class="sticky top-0 z-10 grid h-8 grid-cols-[minmax(0,1fr)_16px] items-center gap-4 border-b border-gray-200/70 px-4 text-xs font-semibold text-gray-600 frosted-glass glass-surface-strong @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_112px_16px] dark:border-gray-700/70 dark:text-gray-400"
+                    class="sticky top-0 z-10 grid h-8 grid-cols-[minmax(0,1fr)_88px_16px] items-center gap-4 border-b border-gray-200/70 px-4 text-xs font-semibold text-gray-600 frosted-glass glass-surface-strong @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_112px_88px_16px] dark:border-gray-700/70 dark:text-gray-400"
                   >
                     <span>Name</span>
                     <span class="hidden @min-[720px]/explorer:block">Modified</span>
+                    <span class="text-right">Size</span>
                     <span />
                   </div>
                   <DirectoryItem
@@ -521,6 +525,9 @@
                     :is-selected="isDirectorySelected(dir.id)"
                     @navigate="handleNavigate"
                     @click="handleItemClick($event, dir.id, 'directory')"
+                    @tooltip-enter="handleDirectoryTooltipEnter"
+                    @tooltip-leave="handleTooltipLeave"
+                    :described-by="tooltipDescribedBy('directory', dir.id)"
                     :class="{
                       'opacity-40 grayscale-30 transition-opacity': isDimmed(dir.id, 'directory'),
                     }"
@@ -567,9 +574,9 @@
                     :view-mode="viewMode"
                     :is-selected="isFileSelected(file.fileId)"
                     @open-details="activeDetailsFile = $event"
-                    @tooltip-enter="handleTooltipEnter"
+                    @tooltip-enter="handleFileTooltipEnter"
                     @tooltip-leave="handleTooltipLeave"
-                    :described-by="tooltipDescribedBy(file.fileId)"
+                    :described-by="tooltipDescribedBy('file', file.fileId)"
                     @click="handleItemClick($event, file.fileId, 'file')"
                     :class="{
                       'opacity-40 grayscale-30 transition-opacity': isDimmed(file.fileId, 'file'),
@@ -630,23 +637,24 @@
       @delete="handleDelete"
     />
 
-    <!-- shared rich file tooltip — single controller for all FileItem triggers -->
+    <!-- shared rich tooltip — single controller for every FileItem and DirectoryItem trigger -->
     <UTooltip
       :reference="tooltipAnchor ?? undefined"
       v-model:open="tooltipOpen"
       :delay-duration="600"
       :disabled="explorerIsMobile"
-      :content="fileTooltipContent"
-      :ui="fileTooltipUi"
+      :content="tooltipContent"
+      :ui="tooltipUi"
     >
       <template #content>
         <div
-          v-if="tooltipFile"
-          id="explorer-file-tooltip"
-          @mouseenter="fileTooltip.contentEnter()"
-          @mouseleave="fileTooltip.contentLeave()"
+          v-if="tooltipTarget"
+          :id="EXPLORER_TOOLTIP_ID"
+          @mouseenter="explorerTooltip.contentEnter()"
+          @mouseleave="explorerTooltip.contentLeave()"
         >
-          <FileTooltipCard :data="tooltipFile" />
+          <FileTooltipCard v-if="tooltipTarget.kind === 'file'" :data="tooltipTarget.file" />
+          <DirectoryTooltipCard v-else :data="tooltipTarget.directory" />
         </div>
       </template>
     </UTooltip>
@@ -689,9 +697,9 @@ import {
 import { useExplorerItemDrag } from "@/composables/useExplorerItemDrag";
 import { useExplorerMarquee } from "@/composables/useExplorerMarquee";
 import { useExplorerReveal } from "@/composables/useExplorerReveal";
+import { type TooltipEnterKind, useExplorerTooltip } from "@/composables/useExplorerTooltip";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useFileExplorer } from "@/composables/useFileExplorer";
-import { type FileTooltipEnterKind, useFileTooltip } from "@/composables/useFileTooltip";
 import { useLazyModal } from "@/composables/useLazyOverlay";
 import { useUploadLauncher } from "@/composables/useUploadLauncher";
 import { SortBy } from "@/enums/SortBy";
@@ -703,6 +711,7 @@ import {
   resolveContextMenuTarget,
 } from "@/features/explorer/context-menu";
 import { EXPLORER_PAGE_SIZES } from "@/features/explorer/preferences";
+import { type ExplorerTooltipTarget, isTooltipTargetFor } from "@/features/explorer/tooltip-target";
 import { describeExplorerItems, quoted } from "@/features/toast/format";
 import {
   copyDirectory,
@@ -729,6 +738,7 @@ import FileDetailsDrawer from "./FileDetailsDrawer.vue";
 import FileItem from "./FileItem.vue";
 import FileTooltipCard from "./FileTooltipCard.vue";
 import FolderDetailsDrawer from "./FolderDetailsDrawer.vue";
+import DirectoryTooltipCard from "./tooltip/DirectoryTooltipCard.vue";
 
 const fileStore = useFileStore();
 const directoryStore = useDirectoryStore();
@@ -877,16 +887,13 @@ const queryCache = useQueryCache();
 const isDisposed = ref(false);
 
 const invalidateDir = (dirId: string | null) => {
+  // Folder listings carry subtree sizes, so ancestors of the changed folder go stale too.
+  queryCache.invalidateQueries({ key: ["directories"] });
+
   if (dirId) {
-    queryCache.invalidateQueries({
-      key: ["directories", "sub-directories", dirId],
-    });
     queryCache.invalidateQueries({ key: ["files", "sub-files", dirId] });
     return;
   }
-  queryCache.invalidateQueries({
-    key: ["directories", "root-sub-directories"],
-  });
   queryCache.invalidateQueries({ key: ["files", "root-sub-files"] });
 };
 
@@ -1073,7 +1080,7 @@ const explorerMenuItems = computed(() =>
 
 const captureMenuTarget = (event: Event) => {
   // A context menu replaces the tooltip; never show both side by side.
-  fileTooltip.dismiss();
+  explorerTooltip.dismiss();
   const resolved = resolveContextMenuTarget(event.target);
   if (resolved.kind === "background") {
     menuSnapshot.value = backgroundSnapshot();
@@ -1142,7 +1149,7 @@ const pendingMoveCount = dragSession.pendingMoveCount;
 const { marqueeBox, isSelecting: isMarqueeSelecting } = useExplorerMarquee({
   container: containerRef,
   enabled: () => !contextMenuOpen.value,
-  onStart: () => fileTooltip.dismiss(),
+  onStart: () => explorerTooltip.dismiss(),
   selectedDirectories,
   selectedFiles,
 });
@@ -1173,7 +1180,7 @@ useExplorerItemDrag({
 
     return isDirectorySelected(id);
   },
-  onPickUp: () => fileTooltip.dismiss(),
+  onPickUp: () => explorerTooltip.dismiss(),
   origin: () => ({
     id: currentDirId.value,
     name: currentDirName.value ?? "Home",
@@ -1741,7 +1748,7 @@ const handleItemClick = (event: MouseEvent, id: string, type: "file" | "director
   const isCtrlOrCmd = event.ctrlKey || event.metaKey;
   const isShift = event.shiftKey;
 
-  fileTooltip.dismiss();
+  explorerTooltip.dismiss();
 
   if (isShift && lastSelected.value) {
     selectRange(lastSelected.value, id);
@@ -1822,7 +1829,7 @@ const activeDetailsDirectory = ref<DirectorySummaryDto | null>(null);
 // with its explorer instead of lingering over unrelated content.
 watch(currentDirId, () => {
   activeDetailsDirectory.value = null;
-  fileTooltip.release();
+  explorerTooltip.release();
   closeContextMenu();
 });
 
@@ -1834,6 +1841,11 @@ watch(directoriesList, (list) => {
 
   if (target) {
     activeDetailsDirectory.value = list.find((dir) => dir.id === target.id) ?? null;
+  }
+
+  const tooltip = explorerTooltip.target.value;
+  if (tooltip?.kind === "directory" && !list.some((dir) => dir.id === tooltip.directory.id)) {
+    explorerTooltip.release();
   }
 
   const menuTarget = menuSnapshot.value?.targetDirectory;
@@ -1877,12 +1889,12 @@ const handleDirectoryFavorite = async (directory: DirectorySummaryDto) => {
   }
 };
 
-// shared rich file tooltip — one controller for every FileItem. Rows report
-// hover/focus intent with their trigger anchor; placement mirrors the previous
-// per-row controllers (bottom in grid, top in list).
+// shared rich tooltip — one controller for every FileItem and DirectoryItem.
+// Rows report hover/focus intent with their trigger anchor; it sits below rows
+// in grid and above them in list.
 const explorerBreakpoints = useBreakpoints(breakpointsTailwind);
 const explorerIsMobile = explorerBreakpoints.smaller("md");
-const fileTooltip = useFileTooltip({
+const explorerTooltip = useExplorerTooltip<ExplorerTooltipTarget>({
   disabled: computed(
     () => explorerIsMobile.value || dragSession.isDragging.value || isMarqueeSelecting.value,
   ),
@@ -1890,55 +1902,66 @@ const fileTooltip = useFileTooltip({
 
 // Template bindings do not unwrap nested refs, so the shared tooltip state
 // is aliased to top-level bindings for the template below.
-const tooltipAnchor = fileTooltip.anchor;
-const tooltipFile = fileTooltip.file;
-const tooltipOpen = fileTooltip.open;
+const tooltipAnchor = explorerTooltip.anchor;
+const tooltipTarget = explorerTooltip.target;
+const tooltipOpen = explorerTooltip.open;
 
-const fileTooltipContent = computed(() => {
-  if (viewMode.value === "grid") return { align: "center" as const, side: "bottom" as const };
-  return { align: "center" as const, side: "top" as const };
+const EXPLORER_TOOLTIP_ID = "explorer-item-tooltip";
+
+const tooltipContent = computed(() => {
+  const placement = { align: "center" as const, collisionPadding: 16, sideOffset: 8 };
+
+  if (viewMode.value === "grid") return { ...placement, side: "bottom" as const };
+  return { ...placement, side: "top" as const };
 });
 
-const fileTooltipUi = computed(() => {
-  // Controlled opens always report `instant-open` (Reka only marks `delayed-open`
-  // on its internal trigger path), so both states carry the enter animation.
-  if (viewMode.value === "grid") {
-    return {
-      content:
-        "ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=instant-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto",
-    };
-  }
-  return {
-    content:
-      "z-50 ring-0 h-auto p-0 rounded-md select-none data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=instant-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto",
-  };
+// Same solid card as the informational hints: overlays stay opaque so the
+// details read cleanly over any background.
+// Controlled opens always report `instant-open` (Reka only marks `delayed-open`
+// on its internal trigger path), so both states carry the enter animation.
+const TOOLTIP_CONTENT_CLASS =
+  "bg-default w-[min(20rem,calc(100vw-2rem))] h-auto p-0 rounded-2xl border border-gray-200/70 shadow-2xl ring-0 select-none dark:border-gray-700/70 data-[state=delayed-open]:animate-[scale-in_100ms_ease-out] data-[state=instant-open]:animate-[scale-in_100ms_ease-out] data-[state=closed]:animate-[scale-out_100ms_ease-in] origin-(--reka-tooltip-content-transform-origin) pointer-events-auto";
+
+const tooltipUi = computed(() => {
+  if (viewMode.value === "grid") return { content: TOOLTIP_CONTENT_CLASS };
+  return { content: `z-50 ${TOOLTIP_CONTENT_CLASS}` };
 });
 
-const handleTooltipEnter = (file: FileResult, anchor: HTMLElement, kind: FileTooltipEnterKind) => {
-  fileTooltip.enter(file, anchor, kind);
+const handleFileTooltipEnter = (file: FileResult, anchor: HTMLElement, kind: TooltipEnterKind) => {
+  explorerTooltip.enter({ file, kind: "file" }, anchor, kind);
 };
 
-const handleTooltipLeave = (kind: FileTooltipEnterKind) => {
-  fileTooltip.leave(kind);
+const handleDirectoryTooltipEnter = (
+  directory: DirectorySummaryDto,
+  anchor: HTMLElement,
+  kind: TooltipEnterKind,
+) => {
+  explorerTooltip.enter({ directory, kind: "directory" }, anchor, kind);
 };
 
-const tooltipDescribedBy = (fileId: string) => {
-  if (fileTooltip.open.value && fileTooltip.file.value?.fileId === fileId) {
-    return "explorer-file-tooltip";
+const handleTooltipLeave = (kind: TooltipEnterKind) => {
+  explorerTooltip.leave(kind);
+};
+
+const tooltipDescribedBy = (kind: ExplorerTooltipTarget["kind"], id: string) => {
+  if (explorerTooltip.open.value && isTooltipTargetFor(explorerTooltip.target.value, kind, id)) {
+    return EXPLORER_TOOLTIP_ID;
   }
   return null;
 };
 
 // View changes remount row triggers, so the shared anchor would dangle.
 watch(viewMode, () => {
-  fileTooltip.release();
+  explorerTooltip.release();
 });
 
 // A removed file must never keep a stale anchored tooltip.
 watch(filesList, (list) => {
   if (!fileHasLoaded.value) return;
-  const target = fileTooltip.file.value;
-  if (target && !list.some((file) => file.fileId === target.fileId)) fileTooltip.release();
+  const target = explorerTooltip.target.value;
+  if (target?.kind === "file" && !list.some((file) => file.fileId === target.file.fileId)) {
+    explorerTooltip.release();
+  }
   const menuTarget = menuSnapshot.value?.targetFile;
   if (menuTarget && !list.some((file) => file.fileId === menuTarget.fileId)) {
     closeContextMenu();
@@ -2063,7 +2086,7 @@ onMounted(() => {
 onUnmounted(() => {
   isDisposed.value = true;
   activeDetailsDirectory.value = null;
-  fileTooltip.release();
+  explorerTooltip.release();
   closeContextMenu();
   if (labelTimer) clearInterval(labelTimer);
 });

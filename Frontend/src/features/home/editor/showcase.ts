@@ -156,6 +156,7 @@ export const createHomeWidgetPreview = (ownerId: string): HomeWidgetPreview => {
         createdAt: date(24),
         updatedAt: date(1),
         ownerUserDto: owner,
+        size: 0,
       })),
     ),
     currentStatus: services.map((serviceType) => ({ serviceType, status: "Healthy" })),

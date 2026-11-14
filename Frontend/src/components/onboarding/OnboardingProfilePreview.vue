@@ -1,5 +1,9 @@
 <script setup lang="ts">
-const { name, email, avatarUrl = null } = defineProps<{
+const {
+  name,
+  email,
+  avatarUrl = null,
+} = defineProps<{
   name: string;
   email: string;
   avatarUrl?: string | null;

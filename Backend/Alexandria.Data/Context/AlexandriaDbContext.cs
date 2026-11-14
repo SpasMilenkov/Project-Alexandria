@@ -1,6 +1,7 @@
 using Alexandria.Common.Audit;
 using Alexandria.Data.Audit;
 using Alexandria.Data.Configurations;
+using Alexandria.Data.Context.Functions;
 using Alexandria.Data.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -117,6 +118,8 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new OverviewSummaryConfiguration());
         builder.ApplyConfiguration(new CaptureMetadataConfiguration());
         builder.ApplyConfiguration(new DocumentMetadataConfiguration());
+
+        builder.MapDatabaseFunctions();
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

@@ -91,9 +91,9 @@ describe("FileItem tooltip intent", () => {
   it("associates the trigger with the shared tooltip content", () => {
     expect(mountRow().find("button").attributes("aria-describedby")).toBeUndefined();
     expect(
-      mountRow({ describedBy: "explorer-file-tooltip" })
+      mountRow({ describedBy: "explorer-item-tooltip" })
         .find("button")
         .attributes("aria-describedby"),
-    ).toBe("explorer-file-tooltip");
+    ).toBe("explorer-item-tooltip");
   });
 });

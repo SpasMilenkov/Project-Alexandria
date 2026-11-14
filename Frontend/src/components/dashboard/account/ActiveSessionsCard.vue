@@ -21,7 +21,9 @@ import SessionsGhost from "./SessionsGhost.vue";
 const appToast = useAppToast("account");
 const authStore = useAuthStore();
 
-const { data, isPending, error, refetch } = useQuery(() => userSessions(authStore.user?.user.id ?? ""));
+const { data, isPending, error, refetch } = useQuery(() =>
+  userSessions(authStore.user?.user.id ?? ""),
+);
 
 const visibleError = computed(() => {
   if (!error.value || isAuthError(error.value)) return null;

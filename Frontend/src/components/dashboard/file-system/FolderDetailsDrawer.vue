@@ -97,6 +97,10 @@
             {{ formatCalendarDate(modifiedAt) }}
           </DetailsTile>
 
+          <DetailsTile label="Size" hint="Including subfolders" class="col-span-2">
+            {{ formatBytes(displayDirectory.size) }}
+          </DetailsTile>
+
           <DetailsTile label="Folder ID" :copy-value="displayDirectory.id" class="col-span-2">
             <span class="block truncate font-mono text-xs font-normal">
               {{ displayDirectory.id }}
@@ -147,6 +151,7 @@ import EntityHistorySection from "@/components/dashboard/audit/EntityHistorySect
 import PolicySection from "@/components/policy/PolicySection.vue";
 import { EntityType } from "@/enums/entity-type";
 import { formatCalendarDate, formatTimeAgo } from "@/utils/date-formatters";
+import { formatBytes } from "@/utils/size";
 
 const { directory, favoritePending = false } = defineProps<{
   directory: DirectorySummaryDto | null;

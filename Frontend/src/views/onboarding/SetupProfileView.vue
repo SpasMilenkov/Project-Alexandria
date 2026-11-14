@@ -70,7 +70,9 @@
           </form>
 
           <!-- RIGHT: live preview -->
-          <div class="flex flex-col justify-center bg-neutral-50 p-4 md:p-8 lg:flex-1 dark:bg-neutral-800">
+          <div
+            class="flex flex-col justify-center bg-neutral-50 p-4 md:p-8 lg:flex-1 dark:bg-neutral-800"
+          >
             <OnboardingProfilePreview :name="previewName" :email="email" :avatar-url="avatarUrl" />
           </div>
         </div>

@@ -2,6 +2,7 @@ import { type QueryCache, defineMutation, useMutation, useQueryCache } from "@pi
 
 import { fileApi, type BulkUpdateFileMetadataRequest } from "@/api/file";
 import { INTEGRATIONS_QUERY_KEYS } from "@/queries/audioAnalysis";
+import { DIRECTORY_QUERY_KEYS } from "@/queries/directories";
 import { FILES_QUERY_KEYS } from "@/queries/files";
 import { STATS_QUERY_KEYS } from "@/queries/stats";
 import { STREAMING_QUERY_KEYS } from "@/queries/streaming";
@@ -23,6 +24,12 @@ const invalidateFileListings = (queryCache: QueryCache, parentId: string | null)
       : [...FILES_QUERY_KEYS.root, "sub-files", parentId];
 
   queryCache.invalidateQueries({ key });
+};
+
+// Folder listings carry subtree sizes, so any change to which files count, or to their current
+// version, moves the totals of every folder above them.
+const invalidateFolderSizes = (queryCache: QueryCache) => {
+  queryCache.invalidateQueries({ key: DIRECTORY_QUERY_KEYS.root });
 };
 
 // Every list that renders artwork carries the cover stamp, so all of them go stale together.
@@ -133,6 +140,7 @@ export const deleteFiles = defineMutation(() => {
       { hardDelete, directoryId }: { ids: string[]; hardDelete?: boolean; directoryId?: string },
     ) {
       invalidateFileListings(queryCache, directoryId ?? null);
+      invalidateFolderSizes(queryCache);
 
       if (!hardDelete) {
         queryCache.invalidateQueries({ key: [...FILES_QUERY_KEYS.root, "search-files"] });
@@ -161,6 +169,7 @@ export const copyFiles = defineMutation(() => {
     ) {
       // Origin is unchanged — only the destination gains new entries.
       invalidateFileListings(queryCache, destinationId);
+      invalidateFolderSizes(queryCache);
     },
   });
 });
@@ -191,6 +200,7 @@ export const moveFiles = defineMutation(() => {
 
       invalidateFileListings(queryCache, originId);
       invalidateFileListings(queryCache, destinationId);
+      invalidateFolderSizes(queryCache);
     },
   });
 });
@@ -203,6 +213,7 @@ export const restoreFiles = defineMutation(() => {
       // We don't know which directories these files were restored to,
       // so we must do a broad invalidation here.
       queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.root });
+      invalidateFolderSizes(queryCache);
     },
   });
 });
@@ -230,6 +241,7 @@ export const changeActiveVersion = defineMutation(() => {
       queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.getFile(fileId) });
       // current version changed, the unversioned preview redirect target changed too
       queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.preview(fileId) });
+      invalidateFolderSizes(queryCache);
     },
   });
 });
@@ -245,6 +257,7 @@ export const restoreFileVersion = defineMutation(() => {
         key: [...FILES_QUERY_KEYS.root, "versions-for-file", fileId],
       });
       queryCache.invalidateQueries({ exact: true, key: FILES_QUERY_KEYS.preview(fileId) });
+      invalidateFolderSizes(queryCache);
     },
   });
 });

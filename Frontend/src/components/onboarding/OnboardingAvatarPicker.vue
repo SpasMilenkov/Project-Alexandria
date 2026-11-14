@@ -97,13 +97,7 @@ const copy = computed(() => {
       />
     </div>
 
-    <input
-      ref="fileInput"
-      type="file"
-      :accept="accept"
-      class="hidden"
-      @change="handleFileChange"
-    />
+    <input ref="fileInput" type="file" :accept="accept" class="hidden" @change="handleFileChange" />
 
     <AvatarCropModal :file="pickedFile" @close="clearPicked" />
 

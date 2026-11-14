@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Common.Exceptions.Directories;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
+using Alexandria.Data.Context.Functions;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Directories;
@@ -29,6 +30,19 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .Include(d => d.Owner)
             .FirstOrDefaultAsync(d =>
                 d.Id == id && d.OwnerId == ownerId && d.DeletedAt == null, ct);
+    }
+
+    public async Task<Dictionary<Guid, long>> GetTreeSizesAsync(IReadOnlyCollection<Guid> directoryIds,
+        CancellationToken ct = default)
+    {
+        if (directoryIds.Count == 0)
+            return [];
+
+        return await context.Directories
+            .AsNoTracking()
+            .Where(d => directoryIds.Contains(d.Id))
+            .Select(d => new { d.Id, Size = DatabaseFunctions.DirectoryTreeSize(d.Id) })
+            .ToDictionaryAsync(x => x.Id, x => x.Size, ct);
     }
 
     public async Task<Directory?> FirstOrDefaultAsync(Expression<Func<Directory, bool>> predicate,
@@ -200,7 +214,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Id = d.OwnerId,
                     Name = d.Owner.Name,
                     Email = d.Owner.Email
-                }, d.IsStarred)).ToListAsync(cancellationToken: ct);
+                }, d.IsStarred, DatabaseFunctions.DirectoryTreeSize(d.Id))).ToListAsync(cancellationToken: ct);
 
         return new PaginatedResult<DirectorySummaryDto>
         {
@@ -413,7 +427,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Email = d.Owner.Email,
                     Name = d.Owner.Name
                 },
-                d.IsStarred
+                d.IsStarred,
+                DatabaseFunctions.DirectoryTreeSize(d.Id)
             ))
             .ToListAsync(ct);
 
@@ -472,7 +487,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Id = d.Owner.Id,
                     Email = d.Owner.Email,
                     Name = d.Owner.Name
-                }, d.IsStarred))
+                }, d.IsStarred, DatabaseFunctions.DirectoryTreeSize(d.Id)))
             .ToListAsync(ct);
 
         return new PaginatedResult<DirectorySummaryDto>
@@ -613,7 +628,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                  SELECT
                      "Id", "Name", "NormalizedName", "SearchVector",
                      "ParentId", "CreatedAt", "UpdatedAt", "DeletedAt", "IsStarred",
-                     "UpdatedBy", "OwnerId"
+                     "UpdatedBy", "OwnerId", "DirectFilesSize"
                  FROM RecursiveDirs;
                  """)
             .AsNoTracking()

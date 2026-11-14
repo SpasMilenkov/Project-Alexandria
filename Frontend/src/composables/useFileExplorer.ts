@@ -225,11 +225,13 @@ export const useFileExplorer = () => {
   };
 
   const refreshDir = () => {
+    // Every folder listing carries subtree sizes, so a change here also moves the totals
+    // shown for this folder's ancestors.
+    queryCache.invalidateQueries({ key: DIRECTORY_QUERY_KEYS.root });
+
     if (currentDirId.value) {
-      queryCache.invalidateQueries({ key: ["directories", "sub-directories", currentDirId.value] });
       queryCache.invalidateQueries({ key: ["files", "sub-files", currentDirId.value] });
     } else {
-      queryCache.invalidateQueries({ key: [DIRECTORY_QUERY_KEYS.root[0], "root-sub-directories"] });
       queryCache.invalidateQueries({ key: [FILES_QUERY_KEYS.root[0], "root-sub-files"] });
     }
   };

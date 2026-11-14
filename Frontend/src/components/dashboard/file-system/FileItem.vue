@@ -164,8 +164,8 @@ import { computed, onUnmounted } from "vue";
 
 import { type FileResult, type PreviewResultDto } from "@/api/file";
 import { useExplorerDragSession } from "@/composables/useExplorerDragSession";
+import { type TooltipEnterKind } from "@/composables/useExplorerTooltip";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
-import { type FileTooltipEnterKind } from "@/composables/useFileTooltip";
 import {
   FILES_QUERY_KEYS,
   getCaptureMetadata,
@@ -195,8 +195,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   click: [event: MouseEvent];
   "open-details": [file: FileResult];
-  "tooltip-enter": [file: FileResult, anchor: HTMLElement, kind: FileTooltipEnterKind];
-  "tooltip-leave": [kind: FileTooltipEnterKind];
+  "tooltip-enter": [file: FileResult, anchor: HTMLElement, kind: TooltipEnterKind];
+  "tooltip-leave": [kind: TooltipEnterKind];
 }>();
 
 const iconSize = computed(() =>

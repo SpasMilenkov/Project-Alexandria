@@ -41,7 +41,8 @@ const canCrop = computed(() => frame.value !== null && !isGif.value);
 const copy = computed(() => {
   if (isGif.value) {
     return {
-      description: "GIFs keep their animation, so they're centred in the circle instead of cropped.",
+      description:
+        "GIFs keep their animation, so they're centred in the circle instead of cropped.",
       title: "Preview your picture",
     };
   }

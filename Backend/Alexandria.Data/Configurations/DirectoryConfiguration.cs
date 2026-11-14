@@ -1,5 +1,6 @@
 using Alexandria.Data.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Directory = Alexandria.Data.Models.Directory;
 
@@ -45,6 +46,13 @@ public class DirectoryConfiguration : IEntityTypeConfiguration<Directory>
         builder.Property(e => e.UpdatedBy)
             .HasColumnType("uuid")
             .IsRequired(false);
+
+        builder.Property(e => e.DirectFilesSize)
+            .HasDefaultValue(0L)
+            .ValueGeneratedOnAddOrUpdate();
+
+        builder.Property(e => e.DirectFilesSize).Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
+        builder.Property(e => e.DirectFilesSize).Metadata.SetAfterSaveBehavior(PropertySaveBehavior.Ignore);
 
         // DateTime properties
         builder.Property(e => e.CreatedAt)

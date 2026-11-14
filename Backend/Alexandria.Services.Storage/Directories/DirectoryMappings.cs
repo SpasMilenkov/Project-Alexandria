@@ -10,7 +10,8 @@ public static class DirectoryMappings
 {
     extension(Directory dir)
     {
-        public DirectoryDto ToDto()
+        /// <param name="childTreeSizes">Subtree sizes of the loaded children, keyed by id.</param>
+        public DirectoryDto ToDto(IReadOnlyDictionary<Guid, long> childTreeSizes)
         {
             ArgumentNullException.ThrowIfNull(dir);
 
@@ -22,12 +23,14 @@ public static class DirectoryMappings
                 UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
                 OwnerUserDto: dir.Owner?.ToUserDto(),
                 Files: dir.Files?.Select(f => f.ToFileSummary()).ToList() ?? [],
-                Directories: dir.Children?.Select(c => c.ToSummaryDto()).ToList() ?? [],
+                Directories: dir.Children?.Select(c => c.ToSummaryDto(childTreeSizes.GetValueOrDefault(c.Id)))
+                    .ToList() ?? [],
                 IsStarred: dir.IsStarred
             );
         }
 
-        public DirectorySummaryDto ToSummaryDto()
+        /// <param name="treeSize">The folder's subtree size, which the entity alone cannot provide.</param>
+        public DirectorySummaryDto ToSummaryDto(long treeSize)
         {
             ArgumentNullException.ThrowIfNull(dir);
 
@@ -38,7 +41,8 @@ public static class DirectoryMappings
                 CreatedAt: dir.CreatedAt,
                 UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
                 OwnerUserDto: dir.Owner?.ToUserDto() ?? new UserDto(),
-                IsStarred: dir.IsStarred
+                IsStarred: dir.IsStarred,
+                Size: treeSize
             );
         }
     }
