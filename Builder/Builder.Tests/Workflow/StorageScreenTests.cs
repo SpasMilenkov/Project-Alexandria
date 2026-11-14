@@ -54,4 +54,27 @@ public sealed class StorageScreenTests
 
         harness.Context.Config.Storage.GarageCapacityGb.Should().Be(10);
     }
+
+    [Fact]
+    public void Run_capacityAboveFreeDisk_flagsTheFitWhileTyping()
+    {
+        using var harness = new ShellHarness(new FakeKeys().Press(ConsoleKey.U, 'u', ctrl: true).Text("500").Enter());
+        harness.Context.Resources = new SystemResources { DockerAvailableDiskMb = 100 * 1024, DockerDataDirectory = "/var/lib/docker" };
+
+        StorageScreen.Run(harness.Shell).Should().Be(ScreenOutcome.Continue);
+
+        harness.Output.Should().Contain("500 GB").And.Contain("more than Docker has free");
+        harness.Context.Config.Storage.GarageCapacityGb.Should().Be(500);
+    }
+
+    [Fact]
+    public void Run_capacityWellUnderFreeDisk_showsPlainFit()
+    {
+        using var harness = new ShellHarness(new FakeKeys().Enter());
+        harness.Context.Resources = new SystemResources { DockerAvailableDiskMb = 200 * 1024, DockerDataDirectory = "/var/lib/docker" };
+
+        StorageScreen.Run(harness.Shell);
+
+        harness.Output.Should().Contain("200 GB free for Docker").And.NotContain("more than Docker has free");
+    }
 }

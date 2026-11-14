@@ -44,7 +44,7 @@ public static class SummaryScreen
                 Views.Note("Planning estimate including memory headroom; actual use varies with workload."),
                 Views.Blank(),
                 Views.Section("Storage"),
-                new Rows(StorageSummary.Describe(context.Config, context.Resources).Select(Views.Note)),
+                StorageFacts(StorageSummary.Describe(context.Config, context.Resources)),
                 Views.Blank(),
                 Views.Section("Files that will be created"),
                 Views.FileTree(context.Features),
@@ -91,6 +91,11 @@ public static class SummaryScreen
                     return ScreenOutcome.Back;
             }
         }
+    }
+
+    private static IRenderable StorageFacts(StorageOverview overview)
+    {
+        return Views.Facts(overview.Facts.Prepend(("Garage layout", overview.Layout)));
     }
 
     // When the setup folder differs from the checkout, make the read-only

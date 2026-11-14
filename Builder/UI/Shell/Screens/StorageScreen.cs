@@ -17,22 +17,25 @@ public static class StorageScreen
         if (context.IsRepair || settings.PreserveExistingCapacity)
         {
             settings.PreserveExistingCapacity = true;
-            shell.SetMain(() => new Rows(new IRenderable[] { Views.Title(Title), Views.Blank() }
-                .Concat(StorageSummary.Describe(context.Config, context.Resources).Select(Views.Note))));
+            shell.SetMain(() => new Rows(
+                Views.Heading(Title, "Setup keeps your existing storage layout."),
+                Details(context.Config, context.Resources, includeLayout: true)));
 
             return Widgets.WaitForEnter(shell) ? ScreenOutcome.Back : ScreenOutcome.Continue;
         }
 
         var raw = Widgets.AskText(shell, Views.Heading(Title,
-                "Set the new Garage storage layout capacity. The initial default is 10 GB.",
-                "This does not reserve disk space or set user quotas. Keep room for the database, previews, temporary processing and Docker images."),
+                "How much room Garage, the file store, plans its layout around."),
             new TextFieldSpec
             {
                 Label = "Garage capacity in GB",
                 Initial = settings.GarageCapacityGb.ToString(CultureInfo.InvariantCulture),
-                Hint = "Whole decimal GB, at least 1. Existing storage layouts are preserved on repair.",
-                Validator = value => long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var gb)
-                    && gb >= 1 && gb <= long.MaxValue / StorageSettings.BytesPerGb ? null : "Enter a whole number of GB, at least 1.",
+                Hint = "Whole GB, at least 1.",
+                Validator = value => TryParseCapacity(value, out _) ? null : "Enter a whole number of GB, at least 1.",
+                Preview = value => new Rows(
+                    Fit(value, context.Resources),
+                    Views.Blank(),
+                    Details(context.Config, context.Resources, includeLayout: false)),
             });
 
         if (shell.TakeEscape()) return ScreenOutcome.Back;
@@ -41,5 +44,35 @@ public static class StorageScreen
         settings.CapacityReviewed = true;
 
         return ScreenOutcome.Continue;
+    }
+
+    // Half-typed or invalid input keeps the bar's place with a prompt, so the
+    // page does not jump while the number is being edited
+    private static IRenderable Fit(string value, SystemResources resources)
+    {
+        if (!TryParseCapacity(value, out var gb))
+        {
+            return new Rows(Views.Note("Enter a whole number to see how it fits."), Views.Blank());
+        }
+
+        return StorageFit.Build(gb, resources.DockerAvailableDiskMb);
+    }
+
+    private static IRenderable Details(InstallationConfig config, SystemResources resources, bool includeLayout)
+    {
+        var overview = StorageSummary.Describe(config, resources);
+        var facts = includeLayout ? overview.Facts.Prepend(("Garage layout", overview.Layout)) : overview.Facts;
+
+        return new Rows(
+            Views.Section("Where your data lives"),
+            Views.Facts(facts),
+            Views.Blank(),
+            Views.InfoPointsPanel("Good to know", overview.Points));
+    }
+
+    private static bool TryParseCapacity(string value, out long gb)
+    {
+        return long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out gb)
+               && gb >= 1 && gb <= long.MaxValue / StorageSettings.BytesPerGb;
     }
 }

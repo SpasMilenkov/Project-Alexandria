@@ -145,6 +145,17 @@ public static class Views
     public static IRenderable AttentionPanel(string title, IReadOnlyList<string> points, bool severe)
     {
         var color = severe ? Theme.Active.Er : Theme.Active.Wa;
+
+        return PointsCallout("!", color, title, points);
+    }
+
+    public static IRenderable InfoPointsPanel(string title, IReadOnlyList<string> points)
+    {
+        return PointsCallout("●", Theme.Active.As, title, points);
+    }
+
+    private static IRenderable PointsCallout(string icon, string color, string title, IReadOnlyList<string> points)
+    {
         var list = new Grid()
             .AddColumn(new GridColumn().NoWrap().PadRight(1))
             .AddColumn();
@@ -154,7 +165,7 @@ public static class Views
             list.AddRow(new Markup(Ui.Muted("•")), new Markup(Markup.Escape(point)));
         }
 
-        var content = new Rows(new Markup($"[bold {color}]! {Markup.Escape(title)}[/]"), list);
+        var content = new Rows(new Markup($"[bold {color}]{icon} {Markup.Escape(title)}[/]"), list);
 
         return new Rows(new Callout(content, Style.Parse(color)), Blank());
     }

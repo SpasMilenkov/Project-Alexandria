@@ -4,34 +4,45 @@ namespace Builder.Services;
 
 public static class StorageSummary
 {
-    public static IReadOnlyList<string> Describe(InstallationConfig config, SystemResources resources)
+    public const string PreservedLayout = "existing size, read and preserved during setup";
+
+    public static StorageOverview Describe(InstallationConfig config, SystemResources resources)
     {
         var settings = config.Storage;
-        string capacity;
+        string layout;
 
         if (settings.ActualGarageCapacityBytes.HasValue)
         {
-            capacity = $"Garage layout: {settings.ActualGarageCapacityBytes.Value / (double)StorageSettings.BytesPerGb:0.###} GB, preserved.";
+            layout = $"{settings.ActualGarageCapacityBytes.Value / (double)StorageSettings.BytesPerGb:0.###} GB · preserved";
         }
         else if (settings.PreserveExistingCapacity)
         {
-            capacity = "Garage layout: existing capacity will be read and preserved during initialization.";
+            layout = PreservedLayout;
         }
         else
         {
-            capacity = $"Garage layout: {settings.GarageCapacityGb} GB for the new installation.";
+            layout = $"{settings.GarageCapacityGb} GB, new layout";
         }
-        var available = resources.DockerAvailableDiskMb.HasValue
-            ? $"Docker data filesystem free: {resources.DockerAvailableDiskMb.Value / 1024.0:0.#} GiB ({resources.DockerDataDirectory})."
-            : $"Docker data filesystem free: unknown. {resources.DiskSpaceDetails}";
 
-        return
-        [
-            capacity,
-            "This layout capacity does not reserve disk space or enforce per-user quotas.",
-            available,
-            "Database and file data use Docker-managed volumes; setup settings and verified model cache use the installation folder.",
-            "Leave additional free space for existing data, temporary processing, container images, models, and backups. User quotas stay in Alexandria's settings.",
-        ];
+        var disk = resources.DockerAvailableDiskMb.HasValue
+            ? $"{resources.DockerAvailableDiskMb.Value / 1024.0:0} GB free at {resources.DockerDataDirectory}"
+            : $"unknown · {resources.DiskSpaceDetails}";
+
+        return new StorageOverview
+        {
+            Layout = layout,
+            Facts =
+            [
+                ("Docker disk", disk),
+                ("Files & database", "Docker-managed volumes"),
+                ("Settings & models", "the installation folder"),
+            ],
+            Points =
+            [
+                "The layout size does not reserve disk space or set user quotas.",
+                "User quotas stay in Alexandria's settings.",
+                "Leave room for existing data, previews, temporary processing, container images, models and backups.",
+            ],
+        };
     }
 }

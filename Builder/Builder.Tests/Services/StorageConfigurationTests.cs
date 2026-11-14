@@ -63,8 +63,8 @@ public sealed class StorageConfigurationTests : IDisposable
 
         environment["GARAGE_CAPACITY"].Should().BeEmpty();
         result.ActualGarageCapacityBytes.Should().BeNull();
-        StorageSummary.Describe(new InstallationConfig { Storage = result }, new SystemResources())
-            .Should().Contain("Garage layout: existing capacity will be read and preserved during initialization.");
+        StorageSummary.Describe(new InstallationConfig { Storage = result }, new SystemResources()).Layout
+            .Should().Be(StorageSummary.PreservedLayout);
     }
 
     [Fact]

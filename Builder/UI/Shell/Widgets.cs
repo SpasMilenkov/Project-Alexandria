@@ -67,6 +67,12 @@ public static class Widgets
                     rows.Add(Views.Note(spec.Hint));
                 }
 
+                if (spec.Preview?.Invoke(editor.Value) is { } preview)
+                {
+                    rows.Add(Views.Blank());
+                    rows.Add(preview);
+                }
+
                 shell.SetMain(new Rows(rows), TextHints);
 
                 var key = shell.Keys.Wait();
