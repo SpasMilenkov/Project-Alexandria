@@ -61,7 +61,10 @@ const savePart = async (part: AuditExportPart) => {
 
   try {
     const blob = await download(format, exportBounds(part));
-    saveBlob(blob, exportFileName(baseName, stamp, format, { count: plan.parts.length, index: part.index }));
+    saveBlob(
+      blob,
+      exportFileName(baseName, stamp, format, { count: plan.parts.length, index: part.index }),
+    );
     statuses.value = { ...statuses.value, [part.index]: "saved" };
   } catch (error) {
     statuses.value = { ...statuses.value, [part.index]: "idle" };
@@ -105,10 +108,7 @@ const buttonIcon = (part: AuditExportPart) => {
     :ui="{ content: glassModalContent }"
   >
     <template #body>
-      <ul
-        class="divide-y divide-gray-200/70 dark:divide-gray-700/70"
-        aria-label="Export parts"
-      >
+      <ul class="divide-y divide-gray-200/70 dark:divide-gray-700/70" aria-label="Export parts">
         <li v-for="part in plan.parts" :key="part.index" class="flex items-center gap-3 py-3">
           <UIcon
             name="i-lucide-file-text"

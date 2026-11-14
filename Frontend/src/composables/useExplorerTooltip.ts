@@ -1,32 +1,30 @@
 import { type Ref, computed, onScopeDispose, ref, shallowRef } from "vue";
 
-import type { FileResult } from "@/api/file";
+type TooltipEnterKind = "pointer" | "focus";
 
-type FileTooltipEnterKind = "pointer" | "focus";
-
-interface SharedFileTooltipOptions {
+interface ExplorerTooltipOptions {
   delay?: number;
   grace?: number;
   disabled?: Ref<boolean>;
 }
 
 /**
- * Explorer-owned rich file tooltip state.
+ * Explorer-owned rich tooltip state, shared by every row whatever it shows.
  * Rows report hover/focus intent with their trigger anchor; the single shared
- * tooltip opens on the same timing as the previous per-row controllers
- * (delayed open on pointer, immediate on focus) and closes with a short grace
- * so pointer travel into the hoverable content does not dismiss it.
- * The target file is held in a shallow ref: hover targets are replaced wholesale,
+ * tooltip opens with a delay on pointer and immediately on focus, and closes
+ * with a short grace so pointer travel into the hoverable content does not
+ * dismiss it. Moving between rows swaps the target without closing.
+ * The target is held in a shallow ref: hover targets are replaced wholesale,
  * never mutated, so there is no reason to deep-track them, and the pending-open
  * identity guard keeps working (a deep ref would proxy the object and break it).
  * All timers die with the owning explorer scope.
  */
-export const useFileTooltip = (options?: SharedFileTooltipOptions) => {
+export const useExplorerTooltip = <T extends object>(options?: ExplorerTooltipOptions) => {
   const delay = options?.delay ?? 600;
   const grace = options?.grace ?? 200;
   const disabled = options?.disabled;
 
-  const file = shallowRef<FileResult | null>(null);
+  const target = shallowRef<T | null>(null);
   const anchor = ref<HTMLElement | null>(null);
   const isOpen = ref(false);
 
@@ -60,10 +58,10 @@ export const useFileTooltip = (options?: SharedFileTooltipOptions) => {
     },
   });
 
-  const enter = (next: FileResult, el: HTMLElement, kind: FileTooltipEnterKind) => {
+  const enter = (next: T, el: HTMLElement, kind: TooltipEnterKind) => {
     if (disabled?.value) return;
     clearCloseTimer();
-    file.value = next;
+    target.value = next;
     anchor.value = el;
     if (kind === "focus") {
       clearOpenTimer();
@@ -75,12 +73,12 @@ export const useFileTooltip = (options?: SharedFileTooltipOptions) => {
     openTimer = setTimeout(() => {
       openTimer = null;
       if (anchor.value !== el || !el.isConnected) return;
-      if (file.value !== next) return;
+      if (target.value !== next) return;
       isOpen.value = true;
     }, delay);
   };
 
-  const leave = (kind: FileTooltipEnterKind) => {
+  const leave = (kind: TooltipEnterKind) => {
     if (kind === "focus") {
       clearTimers();
       isOpen.value = false;
@@ -112,7 +110,7 @@ export const useFileTooltip = (options?: SharedFileTooltipOptions) => {
   const release = () => {
     clearTimers();
     isOpen.value = false;
-    file.value = null;
+    target.value = null;
     anchor.value = null;
   };
 
@@ -126,11 +124,11 @@ export const useFileTooltip = (options?: SharedFileTooltipOptions) => {
     contentLeave,
     dismiss,
     enter,
-    file,
     leave,
     open,
     release,
+    target,
   };
 };
 
-export type { FileTooltipEnterKind, SharedFileTooltipOptions };
+export type { ExplorerTooltipOptions, TooltipEnterKind };

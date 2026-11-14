@@ -26,6 +26,11 @@
       ]"
       @click="handleClick"
       @dblclick="handleDoubleClick"
+      @pointerenter="handlePointerEnter"
+      @pointerleave="handlePointerLeave"
+      @focus="handleFocus"
+      @blur="handleBlur"
+      :aria-describedby="describedBy ?? undefined"
     >
       <div
         class="relative flex aspect-[4/3] w-full items-center justify-center rounded-lg bg-gray-500/[0.07] text-gray-500 dark:bg-white/[0.06] dark:text-gray-400"
@@ -53,7 +58,7 @@
         {{ data.name }}
       </span>
       <span class="truncate px-0.5 pb-0.5 text-xs tabular-nums text-gray-600 dark:text-gray-400">
-        {{ modifiedLabel }}
+        {{ sizeLabel }} · {{ modifiedLabel }}
       </span>
     </button>
   </div>
@@ -77,7 +82,7 @@
   >
     <button
       type="button"
-      class="grid h-11 w-full cursor-pointer grid-cols-[minmax(0,1fr)_16px] items-center gap-4 rounded-lg border-b border-gray-200/70 px-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_112px_16px] dark:border-gray-700/70 group-data-[drop-active=valid]:bg-primary/10 group-data-[drop-active=valid]:ring-2 group-data-[drop-active=valid]:ring-inset group-data-[drop-active=valid]:ring-primary"
+      class="grid h-11 w-full cursor-pointer grid-cols-[minmax(0,1fr)_88px_16px] items-center gap-4 rounded-lg border-b border-gray-200/70 px-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_112px_88px_16px] dark:border-gray-700/70 group-data-[drop-active=valid]:bg-primary/10 group-data-[drop-active=valid]:ring-2 group-data-[drop-active=valid]:ring-inset group-data-[drop-active=valid]:ring-primary"
       :class="[
         isSelected
           ? 'bg-primary/10 ring-1 ring-inset ring-primary'
@@ -85,6 +90,11 @@
       ]"
       @click="handleClick"
       @dblclick="handleDoubleClick"
+      @pointerenter="handlePointerEnter"
+      @pointerleave="handlePointerLeave"
+      @focus="handleFocus"
+      @blur="handleBlur"
+      :aria-describedby="describedBy ?? undefined"
     >
       <span class="flex min-w-0 items-center gap-3 text-gray-900 dark:text-gray-100">
         <Icon
@@ -108,6 +118,9 @@
       >
         {{ modifiedLabel }}
       </span>
+      <span class="text-right text-xs tabular-nums text-gray-600 dark:text-gray-400">
+        {{ sizeLabel }}
+      </span>
       <Icon
         icon="mdi:chevron-right"
         class="w-4 h-4 justify-self-end text-gray-400 dark:text-gray-500"
@@ -125,9 +138,11 @@ import { computed, onUnmounted } from "vue";
 import type { DirectorySummaryDto } from "@/api/directory";
 
 import { useExplorerDragSession } from "@/composables/useExplorerDragSession";
+import { type TooltipEnterKind } from "@/composables/useExplorerTooltip";
 import { getPolicyByDirectory } from "@/queries/policies";
 import { useSettingsStore } from "@/stores/settings";
 import { formatTimeAgo } from "@/utils/date-formatters";
+import { formatBytes } from "@/utils/size";
 
 const settingsStore = useSettingsStore();
 const queryCache = useQueryCache();
@@ -137,11 +152,14 @@ const props = defineProps<{
   data: DirectorySummaryDto;
   viewMode: "grid" | "list";
   isSelected: boolean;
+  describedBy?: string | null;
 }>();
 
 const emit = defineEmits<{
   navigate: [directoryId: string, dirName: string];
   click: [event: MouseEvent];
+  "tooltip-enter": [directory: DirectorySummaryDto, anchor: HTMLElement, kind: TooltipEnterKind];
+  "tooltip-leave": [kind: TooltipEnterKind];
 }>();
 
 const iconSize = computed(() =>
@@ -149,6 +167,8 @@ const iconSize = computed(() =>
 );
 
 const modifiedLabel = computed(() => formatTimeAgo(props.data.updatedAt || props.data.createdAt));
+
+const sizeLabel = computed(() => formatBytes(props.data.size));
 
 const prefetchPolicy = useDebounceFn(() => {
   if (isDragging.value) return;
@@ -165,14 +185,35 @@ const cancelPrefetch = () => {
 
 onUnmounted(cancelPrefetch);
 
-// Row actions live in the shared explorer-owned context menu. Rows forward
-// click intent and keep no menu trees, menu-building state, or global
+// Row actions and the rich tooltip live in the explorer. Rows forward click
+// and tooltip intent and keep no menu trees, menu-building state, or global
 // shortcuts of their own.
 
 const handleClick = (event: MouseEvent) => emit("click", event);
 
 const handleDoubleClick = () => {
   emit("navigate", props.data.id, props.data.name);
+};
+
+const handlePointerEnter = (event: PointerEvent) => {
+  if (event.pointerType === "touch") return;
+  if (event.currentTarget instanceof HTMLElement) {
+    emit("tooltip-enter", props.data, event.currentTarget, "pointer");
+  }
+};
+
+const handlePointerLeave = () => {
+  emit("tooltip-leave", "pointer");
+};
+
+const handleFocus = (event: FocusEvent) => {
+  if (event.currentTarget instanceof HTMLElement) {
+    emit("tooltip-enter", props.data, event.currentTarget, "focus");
+  }
+};
+
+const handleBlur = () => {
+  emit("tooltip-leave", "focus");
 };
 </script>
 

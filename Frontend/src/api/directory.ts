@@ -32,6 +32,8 @@ export interface DirectorySummaryDto {
   createdAt: string;
   updatedAt: string;
   ownerUserDto: UserDto;
+  // Bytes of the current versions of every live file in the folder and its subfolders.
+  size: number;
 }
 
 export interface RootContentDto {

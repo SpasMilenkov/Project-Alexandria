@@ -3,7 +3,7 @@ import { ref } from "vue";
 
 import type { FileResult } from "@/api/file";
 
-import { useFileTooltip } from "@/composables/useFileTooltip";
+import { useExplorerTooltip } from "@/composables/useExplorerTooltip";
 
 const makeFile = (fileId: string): FileResult => ({
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -34,7 +34,7 @@ const makeAnchor = (): HTMLElement => {
   return anchor;
 };
 
-describe("useFileTooltip", () => {
+describe("useExplorerTooltip", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -45,18 +45,18 @@ describe("useFileTooltip", () => {
   });
 
   it("opens after the pointer delay", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "pointer");
     expect(tooltip.open.value).toBe(false);
     vi.advanceTimersByTime(599);
     expect(tooltip.open.value).toBe(false);
     vi.advanceTimersByTime(1);
     expect(tooltip.open.value).toBe(true);
-    expect(tooltip.file.value?.fileId).toBe("f1");
+    expect(tooltip.target.value?.fileId).toBe("f1");
   });
 
   it("cancels a pending open when the pointer leaves early", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "pointer");
     vi.advanceTimersByTime(300);
     tooltip.leave("pointer");
@@ -65,20 +65,20 @@ describe("useFileTooltip", () => {
   });
 
   it("opens immediately on keyboard focus", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "focus");
     expect(tooltip.open.value).toBe(true);
   });
 
   it("closes immediately on blur", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "focus");
     tooltip.leave("focus");
     expect(tooltip.open.value).toBe(false);
   });
 
   it("swaps content without closing on rapid target changes", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     const first = makeAnchor();
     tooltip.enter(makeFile("f1"), first, "pointer");
     vi.advanceTimersByTime(600);
@@ -86,13 +86,13 @@ describe("useFileTooltip", () => {
     tooltip.leave("pointer");
     tooltip.enter(makeFile("f2"), makeAnchor(), "pointer");
     expect(tooltip.open.value).toBe(true);
-    expect(tooltip.file.value?.fileId).toBe("f2");
+    expect(tooltip.target.value?.fileId).toBe("f2");
     vi.advanceTimersByTime(1000);
     expect(tooltip.open.value).toBe(true);
   });
 
   it("closes after the grace period when the pointer leaves", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "pointer");
     vi.advanceTimersByTime(600);
     tooltip.leave("pointer");
@@ -104,7 +104,7 @@ describe("useFileTooltip", () => {
   });
 
   it("keeps the tooltip open while the pointer is over its content", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "pointer");
     vi.advanceTimersByTime(600);
     tooltip.leave("pointer");
@@ -116,7 +116,7 @@ describe("useFileTooltip", () => {
   });
 
   it("dismiss cancels pending work and closes", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "pointer");
     tooltip.dismiss();
     vi.advanceTimersByTime(1000);
@@ -124,17 +124,17 @@ describe("useFileTooltip", () => {
   });
 
   it("releases anchor and item references", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "pointer");
     vi.advanceTimersByTime(600);
     tooltip.release();
     expect(tooltip.open.value).toBe(false);
-    expect(tooltip.file.value).toBeNull();
+    expect(tooltip.target.value).toBeNull();
     expect(tooltip.anchor.value).toBeNull();
   });
 
   it("aborts a pending open when the anchor disconnects", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     const anchor = makeAnchor();
     document.body.appendChild(anchor);
     tooltip.enter(makeFile("f1"), anchor, "pointer");
@@ -145,16 +145,16 @@ describe("useFileTooltip", () => {
 
   it("ignores intent while disabled", () => {
     const disabled = ref(true);
-    const tooltip = useFileTooltip({ disabled });
+    const tooltip = useExplorerTooltip<FileResult>({ disabled });
     tooltip.enter(makeFile("f1"), makeAnchor(), "pointer");
     tooltip.enter(makeFile("f1"), makeAnchor(), "focus");
     vi.advanceTimersByTime(1000);
     expect(tooltip.open.value).toBe(false);
-    expect(tooltip.file.value).toBeNull();
+    expect(tooltip.target.value).toBeNull();
   });
 
   it("closing through the open setter cancels pending work", () => {
-    const tooltip = useFileTooltip();
+    const tooltip = useExplorerTooltip<FileResult>();
     tooltip.enter(makeFile("f1"), makeAnchor(), "pointer");
     tooltip.open.value = false;
     vi.advanceTimersByTime(1000);
