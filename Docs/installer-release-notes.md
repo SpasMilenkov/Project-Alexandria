@@ -220,7 +220,7 @@ HTTPS acceptance used one temporary loopback port.
 UX; then P6 source-image/native-AOT delivery and complete installation acceptance. Permanent
 client CA trust and expanded manual browser checks remain open. Details and reproducible
 test instructions are in [the inventory](installer-capability-inventory.md) and
-[the test README](../Builder/Builder.Tests/Integration/README.md).
+[the test README](../Builder/Builder.Tests/README.md).
 
 ## 2026-10-11 — P4.1 shared capability foundation
 
