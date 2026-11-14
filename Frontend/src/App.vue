@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 
+import RouteErrorBoundary from "@/components/common/RouteErrorBoundary.vue";
 import { useColorScheduleRunner } from "@/composables/useColorSchedule";
 import { useSiteIcon } from "@/composables/useSiteIcon";
 import { useTheme } from "@/composables/useTheme";
@@ -15,8 +16,10 @@ useTheme();
 useColorScheduleRunner();
 useSiteIcon();
 
-// The public status page uses the default shell for anonymous visitors but the
-// dashboard shell only after the cookie-backed identity has been verified.
+// These pages use the default shell for anonymous visitors but the dashboard shell
+// only after the cookie-backed identity has been verified.
+const SESSION_AWARE_ROUTES = new Set(["public-status", "not-found"]);
+
 const authStore = useAuthStore();
 
 if (authStore.isAuthenticated && !authStore.isSessionVerified) {
@@ -32,7 +35,9 @@ const layouts = {
 };
 
 const layoutName = computed<LayoutName>(() => {
-  if (route.name === "public-status" && authStore.isSessionVerified) return "dashboard";
+  if (SESSION_AWARE_ROUTES.has(String(route.name)) && authStore.isSessionVerified) {
+    return "dashboard";
+  }
   return (route.meta.layout as LayoutName) || "default";
 });
 </script>
@@ -40,7 +45,9 @@ const layoutName = computed<LayoutName>(() => {
 <template>
   <UApp>
     <component :is="layouts[layoutName]">
-      <RouterView />
+      <RouteErrorBoundary v-slot="{ attempt }">
+        <RouterView :key="attempt" />
+      </RouteErrorBoundary>
     </component>
     <UFooter />
   </UApp>

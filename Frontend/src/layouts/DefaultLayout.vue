@@ -12,7 +12,7 @@
   </UHeader>
 
   <UMain class="flex items-center justify-center">
-    <RouterView />
+    <slot />
   </UMain>
   <UFooter>
     <template #left>

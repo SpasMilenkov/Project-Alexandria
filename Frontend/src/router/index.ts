@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from "vue-router";
 
+import { isStaleChunkError, reloadForStaleChunk } from "@/features/app-errors/stale-chunks";
 import { getSignInDestination } from "@/features/home/landing";
 import { useAuthStore } from "@/stores/auth";
+import { logger } from "@/utils/logger";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -453,7 +455,20 @@ const router = createRouter({
       name: "videos",
       path: "/streaming/videos",
     },
+    {
+      component: () => import("@/views/NotFoundView.vue"),
+      meta: { layout: "default", requiresAuth: false, siteIcon: "home", title: "Page not found" },
+      name: "not-found",
+      path: "/:pathMatch(.*)*",
+    },
   ],
+});
+
+// Tabs opened before a deploy still reference the old build's chunks, which the deploy removed.
+router.onError((error, to) => {
+  if (isStaleChunkError(error) && reloadForStaleChunk(router.resolve(to).href)) return;
+
+  logger.error("Navigation failed", error);
 });
 
 // Navigation Guard
@@ -462,8 +477,13 @@ router.beforeEach(async (to) => {
 
   // Guest pages and the landing redirect a signed-in visitor, so they need a verified
   // session too; otherwise a fresh page load leaves that visitor on the sign-in page.
+  // The not-found page waits as well so it opens in the right shell instead of swapping.
   const dependsOnSession =
-    to.meta.requiresAuth || to.meta.requiresAdmin || to.meta.guestOnly || to.name === "index";
+    to.meta.requiresAuth ||
+    to.meta.requiresAdmin ||
+    to.meta.guestOnly ||
+    to.name === "index" ||
+    to.name === "not-found";
 
   if (dependsOnSession && authStore.isAuthenticated && !authStore.isSessionVerified) {
     await authStore.ensureSessionVerified();
