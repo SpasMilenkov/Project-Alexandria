@@ -9,7 +9,7 @@ public static class ModelSourceScreen
     {
         var config = shell.Context.Config;
         var capabilities = ServiceCatalog.Resolve(config.Features);
-        if (!capabilities.AudioAnalysisEnabled) return ScreenOutcome.Continue;
+        if (!capabilities.AudioAnalysisEnabled) return ScreenOutcome.Skip;
 
         var service = new ModelPreparationService();
         var plan = service.CreatePlan(config.SourceRoot, config.InstallPath, capabilities.AudioBackbone,

@@ -34,7 +34,7 @@ public sealed class ModelSourceScreenTests : IDisposable
         using var harness = new ShellHarness(new FakeKeys());
         harness.Context.Features = new FeatureSelection();
 
-        ModelSourceScreen.Run(harness.Shell).Should().Be(ScreenOutcome.Continue);
+        ModelSourceScreen.Run(harness.Shell).Should().Be(ScreenOutcome.Skip);
 
         harness.Output.Should().BeEmpty();
         Directory.Exists(_root).Should().BeFalse();

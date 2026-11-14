@@ -278,6 +278,8 @@ public sealed class Shell : IDisposable
     {
         TotalSteps = screens.Count;
 
+        var movingBack = false;
+
         for (var i = 0; i < screens.Count;)
         {
             var (title, screen) = screens[i];
@@ -300,9 +302,17 @@ public sealed class Shell : IDisposable
                     Context.ShouldAbort = true;
                     return;
                 case ScreenOutcome.Back when i > 0:
+                    movingBack = true;
                     i -= 1;
                     break;
+                case ScreenOutcome.Skip when movingBack && i > 0:
+                    i -= 1;
+                    break;
+                case ScreenOutcome.Skip:
+                    i += 1;
+                    break;
                 default:
+                    movingBack = false;
                     i += 1;
                     break;
             }
