@@ -1,3 +1,33 @@
+# Backend images carry no appsettings.json (Backend/.dockerignore keeps secrets out of
+# the images), so every service setting is passed here as environment.
+x-backend-logging: &backend-logging
+  Serilog__MinimumLevel__Default: Information
+  Serilog__MinimumLevel__Override__Microsoft.AspNetCore: Warning
+  Serilog__MinimumLevel__Override__System: Warning
+  Serilog__WriteTo__0__Name: Console
+  Serilog__WriteTo__0__Args__formatter: "Serilog.Formatting.Json.JsonFormatter, Serilog"
+  Serilog__Enrich__0: FromLogContext
+
+x-garage-storage: &garage-storage
+  S3Storage__Provider: Garage
+  S3Storage__Endpoint: http://garage:3900
+  S3Storage__UseHttps: "true"
+  S3Storage__Region: garage
+  S3Storage__UploadBucket: alexandria-files
+  S3Storage__PreviewBucket: alexandria-previews
+  S3Storage__TempBucket: alexandria-temp
+  S3Storage__ImagesBucket: alexandria-images
+  S3Storage__StreamingBucket: alexandria-streaming
+  S3Storage__ProviderSettings__Garage__Region: garage
+  S3Storage__ProviderSettings__Garage__ForcePathStyle: "true"
+  S3Storage__ProviderSettings__Garage__UseAccelerateEndpoint: "false"
+  S3Storage__ProviderSettings__Garage__UseDualstackEndpoint: "false"
+
+x-rabbitmq-connection: &rabbitmq-connection
+  RabbitMQ__HostName: rabbitmq
+  RabbitMQ__Port: "5672"
+  RabbitMQ__ChannelPoolSize: "10"
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -352,6 +382,7 @@ services:
         VITE_PBKDF2_ITERATIONS: ${PBKDF2_ITERATION_COUNT:-800000}
         VITE_STREAMING_ENABLED: ${STREAMING_ENABLED:-false}
         VITE_AUTOTAGGING_ENABLED: ${AUTOTAGGING_ENABLED:-false}
+        VITE_LYRICS_ENABLED: ${LYRICS_ENABLED:-false}
     container_name: alexandria-frontend
     restart: always
     depends_on:
@@ -375,7 +406,9 @@ services:
       - "logs.collect=true"
     restart: on-failure:3
     environment:
+      <<: [*backend-logging, *garage-storage, *rabbitmq-connection]
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}; GssEncryptionMode=Disable"
+      S3Storage__ProviderSettings__Garage__MetricsUrl: http://garage:3903/metrics
       S3Storage__AccessKey: ${GARAGE_S3_ACCESS_KEY:?GARAGE_S3_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_SECRET_KEY:?GARAGE_S3_SECRET_KEY is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
@@ -392,8 +425,29 @@ services:
       ADMIN__EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL is required}
       ADMIN__PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
       ADMIN__NAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required}
-      CORS_ALLOWED_ORIGINS__0: ${CORS_ALLOWED_ORIGINS__0:?CORS_ALLOWED_ORIGINS__0 is required}
-      CORS_ALLOWED_ORIGINS__1: ${CORS_ALLOWED_ORIGINS__1:?CORS_ALLOWED_ORIGINS__1 is required}
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGINS__0:?CORS_ALLOWED_ORIGINS__0 is required}
+      Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGINS__1:?CORS_ALLOWED_ORIGINS__1 is required}
+      HealthChecks__Database__Enabled: "true"
+      HealthChecks__Storage__Enabled: "true"
+      HealthChecks__MessageBroker__Enabled: "true"
+      HealthChecks__Workers__0__Name: DocumentWorker
+      HealthChecks__Workers__0__Url: http://document-worker:8080/health
+      HealthChecks__Workers__0__Enabled: "true"
+      HealthChecks__Workers__1__Name: MediaWorker
+      HealthChecks__Workers__1__Url: http://media-worker:8080/health
+      HealthChecks__Workers__1__Enabled: "true"
+      HealthChecks__Workers__2__Name: TranspilationWorker
+      HealthChecks__Workers__2__Url: http://transpilation-worker:8080/health
+      HealthChecks__Workers__2__Enabled: "true"
+      HealthChecks__Workers__3__Name: MediaMetadataWorker
+      HealthChecks__Workers__3__Url: http://media-metadata-worker:8080/health
+      HealthChecks__Workers__3__Enabled: "true"
+      HealthChecks__Workers__4__Name: LyricsWorker
+      HealthChecks__Workers__4__Url: http://lyrics-worker:8080/health
+      HealthChecks__Workers__4__Enabled: "true"
+      HealthChecks__Workers__5__Name: PlaylistWorker
+      HealthChecks__Workers__5__Url: http://playlist-worker:8080/health
+      HealthChecks__Workers__5__Enabled: "true"
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
     depends_on:
@@ -437,6 +491,7 @@ services:
       - document_worker_scratch:/tmp/worker-scratch
     environment:
       DOTNET_ENVIRONMENT: Production
+      <<: [*backend-logging, *garage-storage, *rabbitmq-connection]
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
@@ -446,6 +501,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       TMPDIR: /tmp/worker-scratch
       RabbitMQ__Consumer__QueueName: document-queue
+      RabbitMQ__Consumer__PrefetchCount: "10"
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
     depends_on:
       postgres:
@@ -488,6 +544,7 @@ services:
       - media_worker_scratch:/tmp/worker-scratch
     environment:
       DOTNET_ENVIRONMENT: Production
+      <<: [*backend-logging, *garage-storage, *rabbitmq-connection]
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
@@ -497,6 +554,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       TMPDIR: /tmp/worker-scratch
       RabbitMQ__Consumer__QueueName: media-queue
+      RabbitMQ__Consumer__PrefetchCount: "10"
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
     depends_on:
       postgres:
@@ -539,6 +597,7 @@ services:
       - transpilation_worker_scratch:/tmp/worker-scratch
     environment:
       DOTNET_ENVIRONMENT: Production
+      <<: [*backend-logging, *garage-storage, *rabbitmq-connection]
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_TRANSPILATION_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_TRANSPILATION_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
@@ -548,6 +607,8 @@ services:
       ASPNETCORE_URLS: http://+:8080
       TMPDIR: /tmp/worker-scratch
       RabbitMQ__Consumer__QueueName: transpilation-queue
+      RabbitMQ__Consumer__PrefetchCount: "10"
+      PollingIntervalSeconds: "60"
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
 
     depends_on:
@@ -592,11 +653,12 @@ services:
       - media_audio_data:/data
     environment:
       DOTNET_ENVIRONMENT: Production
+      <<: [*backend-logging, *garage-storage, *rabbitmq-connection]
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
       S3Storage__PublicEndpoint: ${GARAGE_S3_PUBLIC_ENDPOINT:?GARAGE_S3_PUBLIC_ENDPOINT is required}
-      RabbitMQ__HostName: rabbitmq
+      S3Storage__ProviderSettings__Garage__MetricsUrl: http://garage:3903/metrics
       RabbitMQ__UserName: ${RABBITMQ_MEDIA_METADATA_WORKER:?RABBITMQ_MEDIA_METADATA_WORKER is required}
       RabbitMQ__Password: ${MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD:?MEDIA_METADATA_WORKER_RABBITMQ_PASSWORD is required}
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
@@ -650,14 +712,15 @@ services:
     restart: always
     environment:
       DOTNET_ENVIRONMENT: Production
+      <<: [*backend-logging, *rabbitmq-connection]
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
-      RabbitMQ__HostName: rabbitmq
       RabbitMQ__UserName: ${RABBITMQ_PLAYLIST_WORKER:?RABBITMQ_PLAYLIST_WORKER is required}
       RabbitMQ__Password: ${PLAYLIST_WORKER_RABBITMQ_PASSWORD:?PLAYLIST_WORKER_RABBITMQ_PASSWORD is required}
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
       RabbitMQ__Consumer__ExchangeName: content-exchange
       RabbitMQ__Consumer__SyncQueueName: playlist-queue
       RabbitMQ__Consumer__SyncRoutingKey: playlist.sync
+      RabbitMQ__Consumer__CoalesceWindowMilliseconds: "750"
       ASPNETCORE_URLS: http://+:8080
     depends_on:
       postgres:
@@ -696,6 +759,7 @@ services:
     restart: always
     environment:
       DOTNET_ENVIRONMENT: Production
+      <<: [*backend-logging, *garage-storage, *rabbitmq-connection]
       ConnectionStrings__AlexandriaPostgres: "Host=postgres;Port=${DB_PORT:?DB_PORT is required};Database=${DB_NAME:?DB_NAME is required};Username=${DB_USERNAME:?DB_USERNAME is required};Password=${DB_PASSWORD:?DB_PASSWORD is required}"
       S3Storage__AccessKey: ${GARAGE_S3_WORKER_ACCESS_KEY:?GARAGE_S3_WORKER_ACCESS_KEY is required}
       S3Storage__SecretKey: ${GARAGE_S3_WORKER_SECRET_KEY:?GARAGE_S3_WORKER_SECRET_KEY is required}
@@ -705,6 +769,8 @@ services:
       Features__Lyrics: ${LYRICS_ENABLED:?LYRICS_ENABLED is required}
       ASPNETCORE_URLS: http://+:8080
       RabbitMQ__Consumer__QueueName: lyrics-queue
+      RabbitMQ__Consumer__PrefetchCount: "10"
+      RabbitMQ__Consumer__Concurrency: "2"
       RabbitMQ__VirtualHost: ${RABBITMQ_VHOST:-alexandria}
     depends_on:
       postgres:
