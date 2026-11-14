@@ -1,21 +1,21 @@
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Enrichment;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Services.Storage.Policies;
 
 public sealed partial class EnrichmentBackfillService(
     IUnitOfWork unitOfWork,
     IPublisherService publisher,
-    IConfiguration configuration,
-    ILogger<EnrichmentBackfillService> logger) : IEnrichmentBackfillService
+    ILogger<EnrichmentBackfillService> logger,
+    IOptions<ProcessingCapabilities> capabilities) : IEnrichmentBackfillService
 {
-    private readonly bool _autoTaggingEnabled =
-        bool.TryParse(configuration["Features:Autotagging"], out var enabled) && enabled;
+    private readonly bool _autoTaggingEnabled = capabilities.Value.AutoTaggingActive;
 
     public async Task<EnrichmentBackfillResult> BackfillRuleAsync(EnrichmentBackfillRequest request,
         CancellationToken ct = default)

@@ -14,6 +14,14 @@
         {{ actionLabel }}
       </div>
       <div class="truncate text-xs text-gray-600 dark:text-gray-400">{{ triggerLabel }}</div>
+      <p
+        v-if="isInactiveAutoTag"
+        class="mt-1 flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+      >
+        <Icon icon="mdi:alert-circle-outline" class="mt-px h-3.5 w-3.5 shrink-0" />
+        Auto-tagging is turned off for this installation, so this rule does nothing. Run setup again
+        to turn it back on; the rule is kept.
+      </p>
     </div>
 
     <div
@@ -58,6 +66,11 @@ const { directoryId, rule } = defineProps<{
 }>();
 
 const emit = defineEmits<{ edit: [] }>();
+
+const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
+const isInactiveAutoTag = computed(
+  () => rule.actionType === PolicyActionType.AutoTag && !autoTaggingEnabled,
+);
 
 const breakpoints = useBreakpoints(breakpointsTailwind);
 const isMobile = breakpoints.smaller("md");

@@ -26,12 +26,16 @@ public partial class AccumulatorWorker(
     AccumulatorBuffer buffer,
     IOptions<EssentiaConfig> essentiaOptions,
     IPublisherService publisher,
-    IServiceProvider serviceProvider) : BackgroundService
+    IServiceProvider serviceProvider,
+    IOptions<ProcessingCapabilities>? capabilities = null) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!(capabilities?.Value.AudioAnalysis ?? true))
+            return;
+
         var config = essentiaOptions.Value;
         var backbone = ParseBackbone(config.Backbone);
         var batchSize = Math.Max(config.BatchSize, 1);
@@ -76,7 +80,7 @@ public partial class AccumulatorWorker(
 
             try
             {
-                await FlushAsync(batch, backbone, routingKey, config, stoppingToken);
+                await FlushAsync(batch, config, stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -88,11 +92,14 @@ public partial class AccumulatorWorker(
 
     internal async Task FlushAsync(
         List<StagedFile> batch,
-        EssentiaBackbone backbone,
-        string routingKey,
         EssentiaConfig config,
         CancellationToken stoppingToken)
     {
+        if (!(capabilities?.Value.AudioAnalysis ?? true))
+            return;
+
+        var backbone = ParseBackbone(config.Backbone);
+        var routingKey = $"media-metadata.classify.audio.{config.Backbone.ToLowerInvariant()}";
         var batchId = Guid.NewGuid();
         var batchDir = StagingPaths.BatchDirectory(config.StagedDir, batchId);
 

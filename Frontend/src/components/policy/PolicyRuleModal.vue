@@ -47,8 +47,17 @@
             <Icon icon="mdi:lock-outline" class="h-4 w-4 shrink-0 text-gray-500" />
           </div>
 
+          <p
+            v-if="isEditing && form.actionType === PolicyActionType.AutoTag && !autoTaggingEnabled"
+            class="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+          >
+            <Icon icon="mdi:alert-circle-outline" class="mt-px h-3.5 w-3.5 shrink-0" />
+            Auto-tagging is turned off for this installation, so this rule does nothing. Run setup
+            again to turn it back on; the rule is kept.
+          </p>
+
           <UFormField v-else :error="errors.actionType">
-            <div role="radiogroup" aria-label="Action" class="grid gap-2 lg:grid-cols-3">
+            <div role="radiogroup" aria-label="Action" class="grid gap-2" :class="actionGridClass">
               <button
                 v-for="action in actionOptions"
                 :key="action.value"
@@ -390,7 +399,7 @@ interface ActionOption {
   tileClass: string;
 }
 
-const actionOptions: ActionOption[] = [
+const allActionOptions: ActionOption[] = [
   {
     value: PolicyActionType.Transcode,
     label: "Transcode",
@@ -413,6 +422,16 @@ const actionOptions: ActionOption[] = [
     tileClass: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
   },
 ];
+
+// The backend saves an Auto-tag rule even when tagging is off but never acts
+// on it, so new rules can't pick it; existing ones stay editable with a note
+const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
+
+const actionOptions = allActionOptions.filter(
+  (action) => autoTaggingEnabled || action.value !== PolicyActionType.AutoTag,
+);
+
+const actionGridClass = actionOptions.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-2";
 
 const ANY_FILE_HINTS: Record<PolicyActionType, string> = {
   [PolicyActionType.Transcode]: "Every video and audio file added here.",
@@ -534,7 +553,7 @@ watch(open, (isOpen) => {
 });
 
 const selectedAction = computed(() =>
-  actionOptions.find((action) => action.value === form.actionType),
+  allActionOptions.find((action) => action.value === form.actionType),
 );
 
 const eligibleGroups = computed(() => {

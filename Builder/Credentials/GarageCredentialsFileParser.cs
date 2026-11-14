@@ -1,0 +1,62 @@
+using Builder.Configuration;
+
+namespace Builder.Credentials;
+
+// Parses the exact contract of init-output/garage-credentials.env written by
+// scripts/garage-init/init.sh (locked decision D6). Tolerates comments, blank
+// lines, CRLF and whitespace around '='; anything else is a hard error so a
+// partial or corrupted file is never merged silently.
+public static class GarageCredentialsFileParser
+{
+    private const string AccessKeyKey = "GARAGE_S3_ACCESS_KEY";
+    private const string AccessSecretKey = "GARAGE_S3_SECRET_KEY";
+    private const string PreviewKeyIdKey = "GARAGE_PREVIEW_KEY_ID";
+    private const string PreviewSecretKey = "GARAGE_PREVIEW_SECRET";
+    private const string StreamingKeyIdKey = "GARAGE_STREAMING_KEY_ID";
+    private const string StreamingSecretKey = "GARAGE_STREAMING_SECRET";
+
+    public static GarageCredentialSet? Parse(string fileContent)
+    {
+        if (string.IsNullOrWhiteSpace(fileContent))
+        {
+            return null;
+        }
+
+        var values = EnvGenerator.Parse(fileContent);
+
+        var credentials = new GarageCredentialSet(
+            AccessKey: GetValue(values, AccessKeyKey),
+            AccessSecret: GetValue(values, AccessSecretKey),
+            PreviewKeyId: GetValue(values, PreviewKeyIdKey),
+            PreviewSecret: GetValue(values, PreviewSecretKey),
+            StreamingKeyId: GetValue(values, StreamingKeyIdKey),
+            StreamingSecret: GetValue(values, StreamingSecretKey));
+
+        return credentials.IsComplete ? credentials : null;
+    }
+
+    // Maps the parsed key set onto the .env variable names consumed by the
+    // compose fragments (master -> api, preview -> workers, streaming -> transpilation)
+    public static Dictionary<string, string> ToEnvValues(GarageCredentialSet credentials)
+    {
+        return new Dictionary<string, string>
+        {
+            ["GARAGE_S3_ACCESS_KEY"] = credentials.AccessKey,
+            ["GARAGE_S3_SECRET_KEY"] = credentials.AccessSecret,
+            ["GARAGE_S3_WORKER_ACCESS_KEY"] = credentials.PreviewKeyId,
+            ["GARAGE_S3_WORKER_SECRET_KEY"] = credentials.PreviewSecret,
+            ["GARAGE_S3_TRANSPILATION_WORKER_ACCESS_KEY"] = credentials.StreamingKeyId,
+            ["GARAGE_S3_TRANSPILATION_WORKER_SECRET_KEY"] = credentials.StreamingSecret,
+        };
+    }
+
+    private static string GetValue(Dictionary<string, string> values, string key)
+    {
+        if (!values.TryGetValue(key, out var value) || value.Equals("placeholder", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        return value;
+    }
+}

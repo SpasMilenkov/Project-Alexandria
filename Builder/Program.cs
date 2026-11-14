@@ -1,14 +1,52 @@
 global using Spectre.Console;
+using Builder.Preferences;
+using Builder.UI.Theming;
 using Builder.Workflow;
 
-var flow = new MainFlow();
+Theme.Use(Themes.Resolve(UiPreferencesStore.Load()));
 
-Console.CancelKeyPress += (_, e) =>
+// A plain launch opens on the city; --settings repairs go straight to work
+var flow = new MainFlow { ShowSplash = args.Length == 0 };
+
+try
+{
+    if (!InstallerArguments.Apply(args, flow.Context))
+    {
+        Console.WriteLine(InstallerArguments.Usage);
+        flow.Context.Cancellation.Dispose();
+        return 0;
+    }
+}
+catch (Exception ex) when (ex is ArgumentException or IOException or InvalidOperationException or FormatException or System.Text.Json.JsonException)
+{
+    Console.Error.WriteLine(ex.Message);
+    flow.Context.Cancellation.Dispose();
+    return 2;
+}
+
+ConsoleCancelEventHandler cancelHandler = (_, e) =>
 {
     e.Cancel = true;
-    flow.Cleanup();
-    AnsiConsole.MarkupLine("\n[yellow]Installation cancelled by user.[/]");
-    System.Environment.Exit(1);
+    flow.Cancel();
 };
 
-flow.ExecuteFlow();
+Console.CancelKeyPress += cancelHandler;
+
+try
+{
+    flow.ExecuteFlow();
+
+    if (flow.Context.Cancellation.IsCancellationRequested)
+    {
+        AnsiConsole.MarkupLine("[yellow]Installation cancelled. Existing services and data were preserved.[/]");
+
+        return 130;
+    }
+
+    return flow.Context.Completed && !flow.Context.ShouldAbort ? 0 : 1;
+}
+finally
+{
+    Console.CancelKeyPress -= cancelHandler;
+    flow.Context.Cancellation.Dispose();
+}

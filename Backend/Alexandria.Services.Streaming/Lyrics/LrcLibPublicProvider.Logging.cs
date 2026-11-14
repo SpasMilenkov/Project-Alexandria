@@ -15,7 +15,4 @@ public sealed partial class LrcLibPublicProvider
     [LoggerMessage(Level = LogLevel.Debug,
         Message = "'{TrackName}' by '{ArtistName}' is instrumental, skipping lyrics")]
     private partial void LogInstrumental(string trackName, string? artistName);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "lrclib request failed for '{Url}'")]
-    private partial void LogRequestFailed(string url, Exception ex);
 }

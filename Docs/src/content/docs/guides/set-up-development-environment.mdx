@@ -103,7 +103,7 @@ This guide sets up Alexandria's development environment: Docker Compose runs the
    ./init-garage.sh
    ```
 
-   This creates the layout and five buckets (`alexandria-files`, `alexandria-previews`, `alexandria-temp`, `alexandria-images`, `alexandria-streaming`), three access keys (`alexandria-master-key`, `alexandria-preview-key`, `alexandria-streaming-key`), website-mode endpoints for streaming/previews, and CORS on the images bucket.
+   This creates the layout and five buckets (`alexandria-files`, `alexandria-previews`, `alexandria-temp`, `alexandria-images`, `alexandria-streaming`), three access keys (`alexandria-master-key`, `alexandria-preview-key`, `alexandria-streaming-key`), and website-mode endpoints for streaming, previews and images. No bucket CORS is needed: browsers reach storage through nginx on the same origin.
 
    Copy the printed key IDs/secrets into your `appsettings.Development.json` (next step). To retrieve them later:
 

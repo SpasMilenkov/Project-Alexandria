@@ -20,6 +20,11 @@ public interface IPreviewArtifactService
         PreviewKind kind,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Stores media metadata without preview artifacts, for installations with media previews off.
+    /// </summary>
+    Task SaveMediaMetadataAsync(Guid versionId, MediaMetadataDto metadata, CancellationToken ct = default);
+
     Task UploadMediaData(Stream previewStream,
         Stream thumbnailStream,
         long previewSize,

@@ -10,7 +10,7 @@
         </div>
 
         <UButton
-          v-if="isAudioFile"
+          v-if="isAudioFile && autoTaggingEnabled"
           icon="i-mdi-tag-outline"
           label="Auto-tag"
           size="lg"
@@ -138,6 +138,7 @@ const { mutateAsync: addTagMutate } = addTagToFile();
 const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
 const { mutateAsync: autoTagMutate, isLoading: isAutoTagging } = autoTagFile();
 
+const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
 const isAudioFile = computed(() => isAutoTagSupportedFileType(file.mimeType));
 const isDesktop = useMediaQuery("(min-width: 768px)");
 

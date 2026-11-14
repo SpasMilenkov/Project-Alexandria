@@ -247,6 +247,9 @@ const router = createRouter({
       path: "/dashboard/admin/integrations/previews",
     },
     {
+      // A bookmarked link lands on the hub when lyrics fetching is turned off
+      beforeEnter: () =>
+        import.meta.env.VITE_LYRICS_ENABLED === "true" ? true : { name: "integrations-dashboard" },
       component: () => import("@/views/dashboard/admin/integrations/Lyrics.vue"),
       meta: {
         layout: "dashboard",

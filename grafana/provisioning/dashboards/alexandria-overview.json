@@ -1,0 +1,756 @@
+{
+  "uid": "alexandria-overview",
+  "title": "Alexandria overview",
+  "description": "Scrape availability, selected installation containers, database activity and broker backlog. Metrics retention is up to 15 days or 2 GB; logs are retained for 14 days. cAdvisor requires host access and reports this Compose project only.",
+  "id": null,
+  "tags": [
+    "alexandria"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Overview",
+      "url": "/monitoring/d/alexandria-overview",
+      "type": "link"
+    },
+    {
+      "title": "API",
+      "url": "/monitoring/d/alexandria-api",
+      "type": "link"
+    },
+    {
+      "title": "Logs",
+      "url": "/monitoring/d/alexandria-logs",
+      "type": "link"
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "API scrape",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Down",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Up",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "up{job=\"alexandria-api\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Database scrape",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Down",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Up",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "up{job=\"postgres-exporter\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Broker scrape",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Down",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Up",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "up{job=\"rabbitmq\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Storage scrape",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Down",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Up",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "up{job=\"garage\"}",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Scrape target availability",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "up",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Container memory",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{job=\"cadvisor\",container_label_com_docker_compose_service!=\"\"})",
+          "legendFormat": "{{container_label_com_docker_compose_service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Container CPU cores used",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{job=\"cadvisor\",container_label_com_docker_compose_service!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{container_label_com_docker_compose_service}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Database connections",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "pg_stat_database_numbackends{job=\"postgres-exporter\",datname!~\"template.*\"}",
+          "legendFormat": "{{datname}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Broker messages awaiting delivery",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "rabbitmq_queue_messages_ready{job=\"rabbitmq\"}",
+          "legendFormat": "Ready",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Broker unacknowledged messages",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "rabbitmq_queue_messages_unacked{job=\"rabbitmq\"}",
+          "legendFormat": "Unacknowledged",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Storage filesystem space available",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "garage_local_disk_avail{job=\"garage\"}",
+          "legendFormat": "{{volume}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Collector scrape duration",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "alexandria-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "alexandria-prometheus"
+          },
+          "expr": "scrape_duration_seconds",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

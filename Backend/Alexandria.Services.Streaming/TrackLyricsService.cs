@@ -1,6 +1,7 @@
 using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Audit;
+using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Streaming.Lyrics;
 using Alexandria.Common.Services;
@@ -9,6 +10,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Audit;
 using Alexandria.Dto.Extensions;
 using Alexandria.Dto.Files.Streaming.Lyrics;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Services.Streaming;
 
@@ -16,8 +18,11 @@ public class TrackLyricsService(
     IUnitOfWork unitOfWork,
     IPublisherService publisher,
     IMessageBrokerStatus brokerStatus,
-    IAuditWriter auditWriter) : ITrackLyricsService
+    IAuditWriter auditWriter,
+    IOptions<ProcessingCapabilities>? capabilities = null) : ITrackLyricsService
 {
+    private readonly ProcessingCapabilities _capabilities = capabilities?.Value ?? new();
+
     /// <inheritdoc/>
     public async Task<LyricsDto> GetLyricsForMediaAsync(Guid jobId, Guid userId, CancellationToken ct = default)
     {
@@ -25,6 +30,8 @@ public class TrackLyricsService(
             l => l.TranspilationJobId == jobId && l.TranspilationJob!.UserId == userId && l.DeletedAt == null, ct);
 
         if (lyrics is not null) return lyrics.ToDto();
+
+        EnsureLyricsAvailable();
 
         // A read must not fail or leave a pending row behind while the broker is down; the
         // first read after recovery queues the fetch. Fetching on first view is derived data, like
@@ -47,6 +54,7 @@ public class TrackLyricsService(
 
     private async Task QueueFetchAsync(Guid jobId, Guid userId, bool recordAudit, CancellationToken ct)
     {
+        EnsureLyricsAvailable();
         MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
 
         var existing = await unitOfWork.Lyrics.FirstOrDefaultAsync(
@@ -229,6 +237,7 @@ public class TrackLyricsService(
         if (provider == LyricsProvider.Manual)
             throw new ArgumentException("Use UploadLyricsAsync to submit user lyrics.");
 
+        EnsureLyricsAvailable();
         MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
 
         var lyrics = await unitOfWork.Lyrics.FirstOrDefaultAsync(
@@ -289,5 +298,11 @@ public class TrackLyricsService(
             EntityName = track?.FileName,
             Metadata = metadata,
         });
+    }
+
+    private void EnsureLyricsAvailable()
+    {
+        if (!_capabilities.Lyrics)
+            throw new CapabilityUnavailableException("Lyrics lookup");
     }
 }

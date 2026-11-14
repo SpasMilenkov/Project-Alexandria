@@ -148,7 +148,7 @@
             <div class="flex-1 min-w-0 overflow-y-auto h-full">
               <slot />
             </div>
-            <div class="hidden md:contents">
+            <div v-if="lyricsEnabled" class="hidden md:contents">
               <LyricsPanel v-model:open="player.lyricsOpen" />
             </div>
           </div>
@@ -193,6 +193,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { usePlayerStore } from "@/stores/stream-player";
 
 const streamingEnabled = import.meta.env.VITE_STREAMING_ENABLED === "true";
+const lyricsEnabled = import.meta.env.VITE_LYRICS_ENABLED === "true";
 
 // Add after the existing composable calls (useSettingsSync, useOnboardingGuard)
 // The guard matches the streamingEnabled flag already used in the template.

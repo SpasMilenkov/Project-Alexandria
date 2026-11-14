@@ -444,7 +444,6 @@ Dockerfile.*
 docker-compose.override.yml
 docker-compose.*.yml
 !docker-compose.yml
-.dockerignore
 
 # Logs
 logs/

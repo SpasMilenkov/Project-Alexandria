@@ -74,7 +74,7 @@
       <DetailsSection title="Tags">
         <template #actions>
           <UButton
-            v-if="isAudioFile"
+            v-if="isAudioFile && autoTaggingEnabled"
             icon="i-mdi-tag-outline"
             label="Auto-tag"
             size="xs"
@@ -292,6 +292,8 @@ const fileTypeLabel = computed(() => {
 const { mutateAsync: addTagMutate } = addTagToFile();
 const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
 const { mutateAsync: autoTagMutate, isLoading: isAutoTagging } = autoTagFile();
+
+const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
 
 // Supports tag-derivation (narrower than "is music"), so it only gates Auto-tag.
 const isAudioFile = computed(() =>

@@ -173,7 +173,17 @@ const INTEGRATIONS: Integration[] = [
   },
 ];
 
-const MONITORED = INTEGRATIONS.flatMap((integration) => integration.services);
+const lyricsEnabled = import.meta.env.VITE_LYRICS_ENABLED === "true";
+const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
+
+const HIDDEN_WHEN_OFF: Record<string, boolean> = {
+  "auto-tagging": !autoTaggingEnabled,
+  lyrics: !lyricsEnabled,
+};
+
+const AVAILABLE = INTEGRATIONS.filter((integration) => !HIDDEN_WHEN_OFF[integration.id]);
+
+const MONITORED = AVAILABLE.flatMap((integration) => integration.services);
 
 const { isFetching, isLoading, refetch, summarize, visibleError, worstOf } = useServiceStatus();
 
@@ -193,6 +203,6 @@ const statusOf = (services: ServiceType[]) => {
 };
 
 const cards = computed(() =>
-  INTEGRATIONS.map((integration) => ({ ...integration, status: statusOf(integration.services) })),
+  AVAILABLE.map((integration) => ({ ...integration, status: statusOf(integration.services) })),
 );
 </script>

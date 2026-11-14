@@ -1,4 +1,5 @@
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
@@ -9,7 +10,6 @@ using Alexandria.Workers.MediaMetadata.Messages;
 using Alexandria.Workers.MediaMetadata.Queueing;
 using Alexandria.Workers.MediaMetadata.Workers;
 using AwesomeAssertions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -57,7 +57,7 @@ public class ResultsConsumerWorkerTests : IDisposable
             provider,
             Options.Create(new RabbitMqConsumerConfig()),
             essentiaOptions,
-            Substitute.For<IConfiguration>(),
+            Options.Create(new ProcessingCapabilities()),
             Substitute.For<IAutoTagQueue>());
     }
 

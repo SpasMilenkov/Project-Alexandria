@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Transpilation;
 using Alexandria.Common.Services;
@@ -9,6 +10,7 @@ using Alexandria.Dto.Extensions;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Services.Streaming;
 
@@ -16,8 +18,11 @@ public partial class TranspilationJobService(
     IUnitOfWork unitOfWork,
     IPublisherService publisherService,
     IMessageBrokerStatus brokerStatus,
-    ILogger<TranspilationJobService> logger) : ITranspilationJobService
+    ILogger<TranspilationJobService> logger,
+    IOptions<ProcessingCapabilities>? capabilities = null) : ITranspilationJobService
 {
+    private readonly ProcessingCapabilities _capabilities = capabilities?.Value ?? new();
+
     private static readonly IReadOnlyDictionary<JobStatus, IReadOnlySet<JobStatus>>
         AllowedTransitions =
             new Dictionary<JobStatus, IReadOnlySet<JobStatus>>
@@ -44,6 +49,7 @@ public partial class TranspilationJobService(
         VideoRung[] videoRungs,
         CancellationToken ct = default)
     {
+        EnsureTranspilationAvailable();
         MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
 
         var isVideo = await unitOfWork.ContentObjects.IsVideo(versionId, userId, ct);
@@ -179,6 +185,7 @@ public partial class TranspilationJobService(
 
         if (targetStatus == JobStatus.Queued)
         {
+            EnsureTranspilationAvailable();
             MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
 
             if (audioRungs is not null) transpilation.AudioRungs = audioRungs;
@@ -212,6 +219,9 @@ public partial class TranspilationJobService(
     public async Task UpdateStatusAsync(Guid jobId, Guid userId, JobStatus status,
         CancellationToken ct = default)
     {
+        if (status == JobStatus.Queued)
+            EnsureTranspilationAvailable();
+
         var transpilation = await unitOfWork.TranspilationJobs.FirstOrDefaultAsync(
                                 j => j.Id == jobId && j.UserId == userId, ct)
                             ?? throw new TranspilationJobNotFoundException(jobId);
@@ -273,5 +283,11 @@ public partial class TranspilationJobService(
             await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: "publish failed", ct: ct);
             throw;
         }
+    }
+
+    private void EnsureTranspilationAvailable()
+    {
+        if (!_capabilities.AdaptiveStreaming)
+            throw new CapabilityUnavailableException("Adaptive streaming");
     }
 }

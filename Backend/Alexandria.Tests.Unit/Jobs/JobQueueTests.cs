@@ -1,10 +1,11 @@
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Storage.Policies;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Alexandria.Tests.Unit.Jobs;
@@ -20,8 +21,8 @@ public class JobQueueTests
             preview,
             Substitute.For<IPublisherService>(),
             Substitute.For<IUnitOfWork>(),
-            new ConfigurationBuilder().Build(),
-            NullLogger<JobQueue>.Instance);
+            NullLogger<JobQueue>.Instance,
+            Options.Create(new ProcessingCapabilities()));
 
         var versionId = Guid.NewGuid();
         var fileId = Guid.NewGuid();

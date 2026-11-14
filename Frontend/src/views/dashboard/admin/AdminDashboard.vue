@@ -77,6 +77,11 @@ interface HubLink {
   route: string;
 }
 
+const integrationsDescription =
+  import.meta.env.VITE_LYRICS_ENABLED === "true"
+    ? "Dashboards for audio analysis, transpilation, previews, playlists and lyrics."
+    : "Dashboards for audio analysis, transpilation, previews and playlists.";
+
 const GROUPS: { id: string; label: string; links: HubLink[] }[] = [
   {
     id: "operations",
@@ -97,8 +102,7 @@ const GROUPS: { id: string; label: string; links: HubLink[] }[] = [
         title: "Incident history",
       },
       {
-        description:
-          "Dashboards for audio analysis, transpilation, previews, playlists and lyrics.",
+        description: integrationsDescription,
         icon: "mdi:puzzle-outline",
         id: "integrations",
         route: "/dashboard/admin/integrations",

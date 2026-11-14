@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Policies;
 using Alexandria.Common.Services;
@@ -21,14 +22,15 @@ namespace Alexandria.Workers.MediaMetadata.Workers;
 /// <c>Tagging:RetryCooldownHours</c> (default 24h), skipping client-encrypted files.
 /// Throttled by the attempt cooldown — no per-file failure counters.</item>
 /// </list>
-/// Registered only while <c>Features:Autotagging</c> is enabled.
+/// Registered only while <see cref="ProcessingCapabilities.AutoTaggingActive"/> holds.
 /// </summary>
 public partial class AutoTagSweepWorker(
     ILogger<AutoTagSweepWorker> logger,
     IOptions<AutoTaggingOptions> taggingOptions,
     IServiceProvider serviceProvider,
     AutoTagQueueService queue,
-    IPublisherService publisher) : BackgroundService
+    IPublisherService publisher,
+    IOptions<ProcessingCapabilities> capabilities) : BackgroundService
 {
     private const string EnrichRoutingKey = "media-metadata.enrich";
 
@@ -70,8 +72,11 @@ public partial class AutoTagSweepWorker(
         }
     }
 
-    private async Task SweepAsync(IServiceScope scope, CancellationToken ct)
+    internal async Task SweepAsync(IServiceScope scope, CancellationToken ct)
     {
+        if (!capabilities.Value.AutoTaggingActive)
+            return;
+
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var cooldown = TimeSpan.FromHours(Math.Max(taggingOptions.Value.RetryCooldownHours, 1));
 

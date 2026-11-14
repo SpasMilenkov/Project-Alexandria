@@ -30,7 +30,7 @@ public partial class ResultsConsumerWorker(
     IServiceProvider serviceProvider,
     IOptions<RabbitMqConsumerConfig> rabbitOptions,
     IOptions<EssentiaConfig> essentiaOptions,
-    IConfiguration configuration,
+    IOptions<ProcessingCapabilities> capabilities,
     IAutoTagQueue autoTagQueue) : BackgroundService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -50,7 +50,7 @@ public partial class ResultsConsumerWorker(
         var exchangeName = config.ExchangeName;
         var queueName = config.ResultsQueueName;
 
-        _autoTagEnabled = configuration.GetValue<bool>("Features:Autotagging");
+        _autoTagEnabled = capabilities.Value.AutoTaggingActive;
 
         _channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
 

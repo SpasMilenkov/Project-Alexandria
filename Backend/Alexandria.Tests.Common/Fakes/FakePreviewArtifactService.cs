@@ -7,6 +7,9 @@ namespace Alexandria.Tests.Common.Fakes;
 
 public class FakePreviewArtifactService : IPreviewArtifactService
 {
+    public Task SaveMediaMetadataAsync(Guid versionId, MediaMetadataDto metadata, CancellationToken ct = default)
+        => Task.CompletedTask;
+
     public Task UploadPreview(string objectName, string contentType, Stream fileStream, Guid versionId,
         Guid uploadedBy, long contentLength, PreviewKind kind, CancellationToken ct = default)
     {

@@ -221,7 +221,7 @@
 
           <div v-show="presentation === 'sheet'" class="px-2 pb-2">
             <div class="h-[min(52dvh,480px)] min-h-0 overflow-hidden flex flex-col">
-              <div v-show="pane === 'lyrics'" class="h-full min-h-0">
+              <div v-if="lyricsEnabled" v-show="pane === 'lyrics'" class="h-full min-h-0">
                 <LyricsContent @close="collapseToCard" />
               </div>
               <div v-show="pane === 'queue'" class="h-full min-h-0">
@@ -273,7 +273,8 @@ const {
 } = storeToRefs(store);
 
 const presentation = ref<Presentation>("pill");
-const pane = ref<Pane>("lyrics");
+const lyricsEnabled = import.meta.env.VITE_LYRICS_ENABLED === "true";
+const pane = ref<Pane>(lyricsEnabled ? "lyrics" : "queue");
 
 const rootRef = ref<HTMLElement | null>(null);
 const sheetRef = ref<HTMLElement | null>(null);
@@ -338,11 +339,13 @@ const goToTrackDetails = () => {
   store.closeTransientSurfaces();
 };
 
-const tabs = [
+const allTabs: { id: Pane; label: string; icon: string }[] = [
   { id: "lyrics", label: "Lyrics", icon: "mdi:script-text-outline" },
   { id: "queue", label: "Queue", icon: "mdi:playlist-play" },
   { id: "settings", label: "Settings", icon: "mdi:tune-variant" },
-] as const;
+];
+
+const tabs = allTabs.filter((tab) => lyricsEnabled || tab.id !== "lyrics");
 
 const onSeekInput = (e: Event) => {
   store.seek(Number((e.target as HTMLInputElement).value));

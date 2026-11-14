@@ -1,8 +1,10 @@
 using Alexandria.Common;
+using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
 using Alexandria.Services.Preview.Media;
+using Microsoft.Extensions.Options;
 
 namespace Alexandria.Workers.Media.Handlers;
 
@@ -11,7 +13,8 @@ public class MediaPreviewGenerationHandler(
     IContentStorageService storage,
     IPreviewArtifactService artifacts,
     IMediaPreviewService mediaPreviewService,
-    IUnitOfWork unitOfWork) : IPreviewGenerationHandler
+    IUnitOfWork unitOfWork,
+    IOptions<ProcessingCapabilities>? capabilities = null) : IPreviewGenerationHandler
 {
     public async Task HandleAsync(string message, CancellationToken ct = default)
     {
@@ -75,6 +78,13 @@ public class MediaPreviewGenerationHandler(
                 message, tempPath, new FileInfo(tempPath).Length);
 
             var fileCategory = storage.CategorizeFile(mimetype);
+
+            if (!(capabilities?.Value.MediaPreviews ?? true))
+            {
+                var metadata = await mediaPreviewService.ExtractMetadataAsync(tempPath, ct);
+                await artifacts.SaveMediaMetadataAsync(versionId, metadata, ct);
+                return;
+            }
 
             // Generate media previews (thumbnail + preview clip)
             var result = await mediaPreviewService.GeneratePreviewAsync(tempPath, fileCategory, ct);

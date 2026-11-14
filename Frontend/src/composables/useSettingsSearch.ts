@@ -205,7 +205,12 @@ const buildSearchIndex = (
 export const useSettingsSearch = () => {
   const settingsStore = useSettingsStore();
 
-  const searchIndex = buildSearchIndex(settingsStore);
+  // Hidden sections must not surface in search either, or a result would
+  // scroll to a section that isn't on the page
+  const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
+  const searchIndex = buildSearchIndex(settingsStore).filter(
+    (entry) => autoTaggingEnabled || entry.section !== "auto-tagging",
+  );
   const searchQuery = ref("");
   const searchOpen = ref(false);
   const searchActive = ref(0);

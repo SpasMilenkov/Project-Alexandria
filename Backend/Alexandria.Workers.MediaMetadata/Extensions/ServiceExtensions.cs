@@ -1,4 +1,5 @@
 using Alexandria.Common.Services;
+using Alexandria.Common.Config;
 using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.Workers;
@@ -22,6 +23,11 @@ public static class ServiceExtensions
         IConfiguration configuration)
     {
         services.AddCoreWorkerServices();
+        services.Configure<ProcessingCapabilities>(configuration.GetSection(ProcessingCapabilities.SectionName));
+
+        // Must stay the first hosted service: it clears crash leftovers before any worker
+        // stages or batches files.
+        services.AddHostedService<StagingRecoveryService>();
 
         services.AddScoped<IContentStorageService, ContentStorageService>();
         services.AddScoped<IStaticAssetService, StaticAssetService>();
@@ -35,7 +41,12 @@ public static class ServiceExtensions
         services.AddSingleton<IAutoTagQueue>(sp =>
             sp.GetRequiredService<AutoTagQueueService>());
 
-        if (configuration.GetValue<bool>("Features:Autotagging"))
+        // Registration happens before the container exists, so the switches are bound
+        // here with the same class and section the injected options use
+        var capabilities = configuration.GetSection(ProcessingCapabilities.SectionName).Get<ProcessingCapabilities>()
+                           ?? new ProcessingCapabilities();
+
+        if (capabilities.AutoTaggingActive)
         {
             services.AddScoped<IAutoTagDerivationService, AutoTagDerivationService>();
             services.AddScoped<IAutoTagSyncService, AutoTagSyncService>();
@@ -51,6 +62,14 @@ public static class ServiceExtensions
         services.AddSingleton<AccumulatorBuffer>();
 
         services.AddScoped<IStagingService, StagingService>();
+
+        if (capabilities.AudioAnalysis)
+        {
+            services.AddHostedService<TriggerConsumerWorker>();
+            services.AddHostedService<AccumulatorWorker>();
+            services.AddHostedService<ResultsConsumerWorker>();
+            services.AddHostedService<TimeoutSweepWorker>();
+        }
 
         services.AddHostedService(sp => new JobFailureThresholdChecker(
             sp.GetRequiredService<IJobOutcomeTracker>(),
