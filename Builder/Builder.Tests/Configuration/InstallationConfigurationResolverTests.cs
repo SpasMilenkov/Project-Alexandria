@@ -25,6 +25,23 @@ public class InstallationConfigurationResolverTests : IDisposable
     }
 
     [Fact]
+    public void Resolve_recordsTheSourceRevisionAndInstallerVersion()
+    {
+        const string commit = "65e9b0ef1d2c3b4a5f60718293a4b5c6d7e8f901";
+        var context = CreateContext();
+        var gitDirectory = Path.Combine(context.Config.SourceRoot, ".git");
+
+        Directory.CreateDirectory(Path.Combine(gitDirectory, "refs", "heads"));
+        File.WriteAllText(Path.Combine(gitDirectory, "HEAD"), "ref: refs/heads/main\n");
+        File.WriteAllText(Path.Combine(gitDirectory, "refs", "heads", "main"), commit + "\n");
+
+        var resolved = InstallationConfigurationResolver.Resolve(context, _credentials);
+
+        resolved.SourceVersion.Should().Be(commit);
+        resolved.InstallerVersion.Should().Be(BuilderVersion.Current);
+    }
+
+    [Fact]
     public void Resolve_freshReviewRepeated_retainsIdentityAndSecretsAndUpdatesDerivedFeatureChoice()
     {
         var context = CreateContext();

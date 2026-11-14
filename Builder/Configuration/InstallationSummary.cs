@@ -29,6 +29,8 @@ public static class InstallationSummary
             "Compose: " + Path.Combine(context.InstallPath, "docker-compose.yml"),
             "Installer log: " + (context.DeploymentLogPath ?? "not recorded"),
             "Source: " + context.SourceRoot,
+            "Source revision: " + config.SourceVersion,
+            "Installer version: " + config.InstallerVersion,
             "Project: " + config.ProjectName,
             "Data: Docker-managed named volumes, separate from the configuration folder. Back up both settings and data volumes.",
             "Volumes: " + string.Join(", ", capabilities.Volumes.Select(volume => config.VolumeNames.GetValueOrDefault(volume, config.ProjectName + "_" + volume))),

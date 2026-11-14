@@ -356,7 +356,8 @@ public static class InstallationConfigurationResolver
             OriginalPorts = endpoint.HttpsPort == 443 ? new() : new() { ["HTTPS_PORT"] = 443 },
             InstallPath = target,
             SourceRoot = source,
-            SourceVersion = ReadSourceVersion(source),
+            SourceVersion = SourceRevisionReader.Read(source),
+            InstallerVersion = BuilderVersion.Current,
             InstalledAt = installedAt,
             Stage = saved?.Stage ?? draft.Stage,
             GenerationId = saved?.GenerationId ?? draft.GenerationId,
@@ -544,37 +545,5 @@ public static class InstallationConfigurationResolver
         if (!PathResolver.TryResolve(value, launchDirectory, out var path, out var error)) throw new InvalidOperationException(error);
 
         return path;
-    }
-
-    private static string ReadSourceVersion(string source)
-    {
-        try
-        {
-            var gitDirectory = Path.Combine(source, ".git");
-
-            if (File.Exists(gitDirectory))
-            {
-                var link = File.ReadAllText(gitDirectory).Trim();
-                if (!link.StartsWith("gitdir: ", StringComparison.Ordinal)) return "unknown";
-                gitDirectory = Path.GetFullPath(link[8..], source);
-            }
-
-            var head = Path.Combine(gitDirectory, "HEAD");
-            if (!File.Exists(head)) return "unknown";
-            var version = File.ReadAllText(head).Trim();
-
-            if (version.StartsWith("ref: ", StringComparison.Ordinal))
-            {
-                var reference = Path.Combine(gitDirectory, version[5..]);
-                if (!File.Exists(reference)) return "unknown";
-                version = File.ReadAllText(reference).Trim();
-            }
-
-            return Regex.IsMatch(version, "^[0-9a-fA-F]{40,64}$") ? version : "unknown";
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            return "unknown";
-        }
     }
 }

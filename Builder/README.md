@@ -64,7 +64,7 @@ Point the wizard to the real source and settings folders. Changing the current d
 
 ## Completion and operations
 
-`INSTALLATION.txt` records the exact HTTPS address, project/volume identity, log locations and correctly quoted management commands. `nginx/CLIENT-TRUST.txt` records the public certificate and fingerprints. Trust only the public CA/certificate on clients; keep `.env` and private keys protected. Server readiness does not prove a second device trusts the certificate.
+`INSTALLATION.txt` records the exact HTTPS address, project/volume identity, source revision, installer version, log locations and correctly quoted management commands. `alexandria-config.json` keeps the same revision and version as `SourceVersion` and `InstallerVersion`; either reads `unknown` when it could not be determined, such as a source folder without git metadata. `nginx/CLIENT-TRUST.txt` records the public certificate and fingerprints. Trust only the public CA/certificate on clients; keep `.env` and private keys protected. Server readiness does not prove a second device trusts the certificate.
 
 Use `stop` for ordinary downtime and `up -d --no-build --pull never` with the saved explicit project arguments to restart. `down -v` deletes data volumes. Repair/retry retains authoritative settings and already-started services; cancellation stops child work and can leave services running. Back up the complete settings folder **and all named volumes** consistently. There is no automatic backup scheduler or database/schema downgrade rollback.
 

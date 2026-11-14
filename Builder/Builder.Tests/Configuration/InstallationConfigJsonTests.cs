@@ -21,6 +21,8 @@ public class InstallationConfigJsonTests
         InstallPath = "/opt/alexandria",
         SourceRoot = "/home/user/repos/Project-Alexandria",
         AllowModelDownloads = true,
+        SourceVersion = "65e9b0ef1d2c3b4a5f60718293a4b5c6d7e8f901",
+        InstallerVersion = "0.4.0",
         InstalledAt = new DateTimeOffset(2026, 8, 25, 12, 0, 0, TimeSpan.Zero),
     };
 
@@ -48,6 +50,8 @@ public class InstallationConfigJsonTests
         restored.SourceRoot.Should().Be(config.SourceRoot);
         restored.AllowModelDownloads.Should().BeTrue();
         restored.InstalledAt.Should().Be(config.InstalledAt);
+        restored.SourceVersion.Should().Be(config.SourceVersion);
+        restored.InstallerVersion.Should().Be(config.InstallerVersion);
         restored.Features.IsEnabled(FeatureCatalog.Monitoring.Id).Should().BeTrue();
     }
 
@@ -57,6 +61,15 @@ public class InstallationConfigJsonTests
         var config = JsonSerializer.Deserialize("{}", AlexandriaJsonContext.Default.InstallationConfig);
 
         config!.AllowModelDownloads.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Deserialize_metadataFromBeforeVersionsWereRecorded_reportsThemUnknown()
+    {
+        var config = JsonSerializer.Deserialize("{}", AlexandriaJsonContext.Default.InstallationConfig);
+
+        config!.SourceVersion.Should().Be("unknown");
+        config.InstallerVersion.Should().Be("unknown");
     }
 
     [Fact]

@@ -11,6 +11,7 @@ public class InstallationConfig
     public int SchemaVersion { get; set; } = 2;
     public string ProjectName { get; set; } = string.Empty;
     public string SourceVersion { get; set; } = "unknown";
+    public string InstallerVersion { get; set; } = "unknown";
     public string Stage { get; set; } = "draft";
     public string GenerationId { get; set; } = string.Empty;
     public bool PreserveFixedContainerNames { get; set; }

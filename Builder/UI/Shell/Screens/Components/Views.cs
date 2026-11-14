@@ -1,4 +1,5 @@
 using Builder.Catalog;
+using Builder.Configuration;
 using Builder.UI.Theming;
 using Spectre.Console;
 using Spectre.Console.Rendering;
@@ -19,7 +20,7 @@ public static class Views
     ];
 
     internal const string Tagline = "self-hosted files, media and music";
-    internal const string InstallerVersion = "installer v0.4";
+    internal const string InstallerVersion = "installer v" + BuilderVersion.Current;
 
     private const string SpinnerGlyphs = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
 
