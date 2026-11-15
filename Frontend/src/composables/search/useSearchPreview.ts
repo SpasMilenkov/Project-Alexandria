@@ -74,15 +74,9 @@ export const useSearchPreview = (
     previewTarget.value = target;
   }, PREVIEW_DWELL_MS);
 
-  const previewDirectory = (directory: DirectorySummaryDto) => {
+  const preview = (target: SearchPreviewTarget) => {
     if (canPreview.value) {
-      setPreview({ directory, kind: "directory" });
-    }
-  };
-
-  const previewFile = (file: FileResult) => {
-    if (canPreview.value) {
-      setPreview({ file, kind: "file" });
+      setPreview(target);
     }
   };
 
@@ -109,8 +103,7 @@ export const useSearchPreview = (
     modalContent,
     paneContentClass,
     paneEdgeClass,
-    previewDirectory,
-    previewFile,
+    preview,
     shownPreview,
   };
 };

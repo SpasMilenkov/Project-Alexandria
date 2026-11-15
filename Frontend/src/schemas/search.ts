@@ -17,16 +17,11 @@ type DateField =
 //oxlint-disable sort-keys
 export const baseSearchUiSchema = z
   .object({
-    // Identity & structure
-    directoryId: z.uuid().nullish(),
+    // Structure
     parentDirectoryId: z.uuid().nullish(),
 
     // Text search
     nameContains: z.string().optional(),
-
-    // Ownership & sharing
-    ownerId: z.uuid().nullish(),
-    isShared: z.boolean().default(false),
 
     // Time filters (UI types)
     createdAfter: dateValueSchema.nullish(),
@@ -131,16 +126,6 @@ export const unifiedSearchUiSchema = baseSearchUiSchema.extend({
   hasSubdirectories: z.boolean().nullable().default(null),
 });
 
-export const baseSearchApiSchema = baseSearchUiSchema.transform((v) => ({
-  ...v,
-  createdAfter: v.createdAfter?.toString() ?? null,
-  createdBefore: v.createdBefore?.toString() ?? null,
-  deletedAfter: v.deletedAfter?.toString() ?? null,
-  deletedBefore: v.deletedBefore?.toString() ?? null,
-  updatedAfter: v.updatedAfter?.toString() ?? null,
-  updatedBefore: v.updatedBefore?.toString() ?? null,
-}));
-
 export const fileSearchApiSchema = fileSearchUiSchema.transform((v) => ({
   ...v,
   isDeleted: v.isDeleted || v.onlyDeleted,
@@ -162,31 +147,5 @@ export const directorySearchApiSchema = directorySearchUiSchema.transform((v) =>
   updatedBefore: v.updatedBefore?.toString() ?? null,
 }));
 
-export const bothSearchApiSchema = unifiedSearchUiSchema.transform((v) => ({
-  ...v,
-  createdAfter: v.createdAfter?.toString() ?? null,
-  createdBefore: v.createdBefore?.toString() ?? null,
-  deletedAfter: v.deletedAfter?.toString() ?? null,
-  deletedBefore: v.deletedBefore?.toString() ?? null,
-  updatedAfter: v.updatedAfter?.toString() ?? null,
-  updatedBefore: v.updatedBefore?.toString() ?? null,
-}));
-
-export const hybridSearchSchema = z.discriminatedUnion("mode", [
-  z.object({
-    mode: z.literal("files"),
-    query: fileSearchApiSchema,
-  }),
-  z.object({
-    mode: z.literal("directories"),
-    query: directorySearchApiSchema,
-  }),
-  z.object({
-    mode: z.literal("both"),
-    query: bothSearchApiSchema,
-  }),
-]);
-
-export type UnifiedSearchUiState = z.infer<typeof unifiedSearchUiSchema>;
 export type FileSearchQuery = z.infer<typeof fileSearchApiSchema>;
 export type DirectorySearchQuery = z.infer<typeof directorySearchApiSchema>;

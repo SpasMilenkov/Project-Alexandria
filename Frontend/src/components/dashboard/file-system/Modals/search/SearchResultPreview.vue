@@ -19,9 +19,11 @@ import { computed } from "vue";
 
 import type { SearchPreviewTarget } from "@/types/search-preview-target";
 
+import DropTargetPreview, {
+  type PreviewTrailSegment,
+} from "@/components/dashboard/file-system/DropTargetPreview.vue";
 import { directoryPath } from "@/queries/directories";
 
-import DropTargetPreview, { type PreviewTrailSegment } from "./DropTargetPreview.vue";
 import SearchFilePreview from "./SearchFilePreview.vue";
 
 const { target } = defineProps<{ target: SearchPreviewTarget }>();

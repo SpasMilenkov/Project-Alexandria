@@ -76,15 +76,14 @@ import { useQuery, useQueryCache } from "@pinia/colada";
 import { computed, ref, watch, watchEffect } from "vue";
 
 import { type FileResult, type PreviewResultDto } from "@/api/file";
+import FileTooltipCard from "@/components/dashboard/file-system/FileTooltipCard.vue";
+import TextPreviewPane from "@/components/dashboard/file-system/TextPreviewPane.vue";
 import { useFileDownload } from "@/composables/useFileDownload";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { useLoadHold } from "@/composables/useLoadHold";
 import { FILES_QUERY_KEYS, getPreviewByVersion } from "@/queries/files";
 import { getFileIcon } from "@/utils/files/icons";
 import { getFileTypeReadable } from "@/utils/files/mimetype";
-
-import FileTooltipCard from "./FileTooltipCard.vue";
-import TextPreviewPane from "./TextPreviewPane.vue";
 
 const { file } = defineProps<{ file: FileResult }>();
 

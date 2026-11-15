@@ -169,7 +169,6 @@ export const homeRecentFilesSearch = (source: HomeRecentFilesSource): FileSearch
   isDeleted: false,
   onlyDeleted: false,
   isStarred: false,
-  isShared: false,
   currentPage: 0,
   pageSize: 40,
   sortBy: source === HomeRecentFilesSource.Updated ? SortBy.UpdatedAt : SortBy.CreatedAt,

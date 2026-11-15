@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-import { CalendarDate } from "@internationalized/date";
+import { CalendarDate, getLocalTimeZone } from "@internationalized/date";
 
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
@@ -224,6 +224,21 @@ export const searchDatePresets = (today: CalendarDate) => [
     },
   },
 ];
+
+// "3 Nov 2026", or a compact range such as "3 – 10 Nov 2026", in the viewer's locale.
+export const formatSearchDateRange = (from: CalendarDate, to: CalendarDate) => {
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const zone = getLocalTimeZone();
+
+  if (from.compare(to) === 0) {
+    return formatter.format(from.toDate(zone));
+  }
+  return formatter.formatRange(from.toDate(zone), to.toDate(zone));
+};
 
 export const formatSearchSize = (bytes: number) =>
   formatBytes(bytes, { roundingPrecision: 1 }).replace(".0 ", " ");
