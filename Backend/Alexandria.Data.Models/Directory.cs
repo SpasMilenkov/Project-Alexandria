@@ -2,7 +2,7 @@ using NpgsqlTypes;
 
 namespace Alexandria.Data.Models;
 
-public class Directory : IBase
+public class Directory : IBase, ISearchableByName
 {
     public Guid Id { get; set; }
 
