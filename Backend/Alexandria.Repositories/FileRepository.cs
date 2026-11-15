@@ -45,7 +45,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                     ft.Source != TagSource.Suppressed &&
                     ft.Tag.DeletedAt == null)),
 
-            TagMatchType.All => ApplyAllTagsFilter(filesQuery, query.TagIds),
+            TagMatchType.All => filesQuery.WhereHasAllTags(query.TagIds),
 
             TagMatchType.Exact => filesQuery.Where(f =>
                 f.FileTags.Count(ft => ft.Source != TagSource.Suppressed && ft.Tag.DeletedAt == null) ==
@@ -161,6 +161,9 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         if (query.ParentDirectoryId.HasValue)
             dbQuery = dbQuery.Where(f => f.DirectoryId == query.ParentDirectoryId.Value);
+
+        if (query.TagIds.Count > 0)
+            dbQuery = dbQuery.WhereHasAllTags(query.TagIds);
 
         if (query.MinSize.HasValue)
             dbQuery = dbQuery.Where(f => f.CurrentVersion.Size >= query.MinSize.Value);
@@ -1627,21 +1630,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             IntegrityTag = row.IntegrityTag,
             IterationCount = row.IterationCount
         }, row.ContentHash);
-    }
-
-    private static IQueryable<File> ApplyAllTagsFilter(IQueryable<File> query, ICollection<Guid> tagIds)
-    {
-        foreach (var tagId in tagIds)
-        {
-            var currentTagId = tagId;
-            query = query.Where(f =>
-                f.FileTags.Any(ft =>
-                    ft.TagId == currentTagId &&
-                    ft.Source != TagSource.Suppressed &&
-                    ft.Tag.DeletedAt == null));
-        }
-
-        return query;
     }
 
     public async Task<IEnumerable<File>> GetAllAsync(CancellationToken ct = default)

@@ -6,6 +6,8 @@ namespace Alexandria.Api.Features.Storage.Files.SearchFile;
 
 public class SearchFileRequestValidator : Validator<FileSearchQuery>
 {
+    private const int MaxTagIds = 20;
+
     public SearchFileRequestValidator()
     {
         RuleFor(x => x.CurrentPage)
@@ -55,6 +57,14 @@ public class SearchFileRequestValidator : Validator<FileSearchQuery>
             .Must(x => x.DeletedAfter!.Value <= x.DeletedBefore!.Value)
             .When(x => x.DeletedAfter.HasValue && x.DeletedBefore.HasValue)
             .WithMessage("DeletedAfter must be before or equal to DeletedBefore");
+
+        RuleFor(x => x.TagIds)
+            .Must(ids => ids.Count <= MaxTagIds)
+            .WithMessage($"Search by at most {MaxTagIds} tags");
+
+        RuleForEach(x => x.TagIds)
+            .NotEqual(Guid.Empty)
+            .WithMessage("Tag ids cannot be empty GUIDs");
 
         RuleFor(x => x.ParentDirectoryId)
             .NotEqual(Guid.Empty)

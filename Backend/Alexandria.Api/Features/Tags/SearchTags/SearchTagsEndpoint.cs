@@ -22,7 +22,7 @@ public class SearchTagsEndpoint(IFileTagService tagService) : Endpoint<SearchTag
             {
                 NameContains = "important",
                 HasFiles = true,
-                Page = 0,
+                Page = 1,
                 PageSize = 20
             };
         });

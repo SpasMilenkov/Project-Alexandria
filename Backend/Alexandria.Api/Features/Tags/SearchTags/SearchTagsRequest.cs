@@ -20,6 +20,7 @@ public class SearchTagsRequest
     /// <summary>Which owner boundary to search within (default: the user only).</summary>
     public OwnerScope OwnerScope { get; set; } = OwnerScope.User;
 
-    public int Page { get; set; } = 0;
+    // Pages start at 1
+    public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
 }

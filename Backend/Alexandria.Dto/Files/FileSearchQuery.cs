@@ -15,6 +15,9 @@ public class FileSearchQuery
     public long? MaxSize { get; set; }
     public string? MimeType { get; set; }
 
+    // Every listed tag must be on the file
+    public ICollection<Guid> TagIds { get; set; } = [];
+
     // Whole UTC days, inclusive on both ends
     public DateOnly? CreatedAfter { get; set; }
     public DateOnly? CreatedBefore { get; set; }

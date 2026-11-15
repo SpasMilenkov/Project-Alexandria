@@ -91,6 +91,21 @@ public class SearchQueryTranslationTests
     }
 
     [Fact]
+    public void WhereHasAllTags_adds_one_live_tag_check_per_tag()
+    {
+        using var context = TranslationContext();
+
+        var sql = context.Files
+            .WhereHasAllTags([Guid.NewGuid(), Guid.NewGuid()])
+            .ToQueryString();
+
+        var where = sql[sql.IndexOf("WHERE", StringComparison.Ordinal)..];
+        where.Split("EXISTS").Should().HaveCount(3);
+        where.Should().Contain("\"Source\" <>");
+        where.Should().Contain("\"DeletedAt\" IS NULL");
+    }
+
+    [Fact]
     public void StartOfUtcDay_returns_midnight_in_utc()
     {
         var start = SearchDateFilters.StartOfUtcDay(new DateOnly(2026, 11, 14));
