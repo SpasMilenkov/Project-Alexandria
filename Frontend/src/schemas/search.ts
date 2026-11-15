@@ -139,6 +139,7 @@ export const baseSearchApiSchema = baseSearchUiSchema.transform((v) => ({
 
 export const fileSearchApiSchema = fileSearchUiSchema.transform((v) => ({
   ...v,
+  isDeleted: v.isDeleted || v.onlyDeleted,
   createdAfter: v.createdAfter?.toString() ?? null,
   createdBefore: v.createdBefore?.toString() ?? null,
   deletedAfter: v.deletedAfter?.toString() ?? null,
