@@ -54,8 +54,8 @@
               autocomplete="off"
               spellcheck="false"
               aria-label="Search by name or filter"
-              aria-controls="search-suggestions"
-              :aria-expanded="isPanelOpen"
+              :aria-controls="isPanelOpen ? 'search-suggestions' : 'search-results'"
+              :aria-expanded="isPanelOpen || hasResults"
               :aria-activedescendant="activeOptionId"
               :placeholder="placeholder"
               class="min-w-32 flex-1 bg-transparent py-1 text-base text-gray-900 outline-none placeholder:text-gray-500 dark:text-gray-100 dark:placeholder:text-gray-500"
@@ -81,56 +81,34 @@
 
           <div class="relative mt-2 h-[min(28rem,60dvh)]">
             <div class="h-full overflow-y-auto">
-              <div
-                v-if="!hasCriteria"
-                class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
-              >
-                <UIcon name="i-lucide-search" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-                <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Search your files
-                </h4>
-                <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
-                  Type a name, or narrow things down with filters like in:, tag: and uploaded:.
-                </p>
-              </div>
+              <SearchEmptyState v-if="!hasCriteria" kind="idle" @filter="chooseKey" />
 
-              <div
+              <SearchEmptyState
                 v-else-if="scope === 'none'"
-                class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
-              >
-                <UIcon
-                  name="i-lucide-folder-x"
-                  class="w-12 h-12 text-gray-400 dark:text-gray-600"
-                />
-                <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  These filters don't combine
-                </h4>
-                <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
-                  Some filters only apply to files and others only to folders. Remove one to see
-                  results.
-                </p>
-              </div>
+                kind="conflict"
+                has-filters
+                @clear-filters="clearFilters"
+              />
 
               <BlockSpinner v-else-if="isWaiting" :size="32" />
 
-              <div
+              <SearchEmptyState
                 v-else-if="!hasResults"
-                class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
-              >
-                <UIcon
-                  name="i-lucide-folder-x"
-                  class="w-12 h-12 text-gray-400 dark:text-gray-600"
-                />
-                <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  No results found
-                </h4>
-                <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
-                  Nothing matches this search. Try another name or remove a filter.
-                </p>
-              </div>
+                kind="no-results"
+                :query="nameText"
+                :has-filters="filters.length > 0"
+                @clear-filters="clearFilters"
+                @clear-text="clearText"
+              />
 
-              <div v-else class="space-y-6 py-4">
-                <div v-if="directoryResults.length > 0">
+              <div
+                v-else
+                id="search-results"
+                role="listbox"
+                aria-label="Search results"
+                class="space-y-6 py-4"
+              >
+                <div v-if="directoryResults.length > 0" role="group" aria-label="Folders">
                   <div class="mb-3 flex items-center gap-2 px-4">
                     <UIcon
                       name="i-lucide-folder"
@@ -143,20 +121,27 @@
                     </h4>
                   </div>
                   <div class="space-y-1.5">
-                    <DirectoryItem
-                      v-for="dir in directoryResults"
+                    <div
+                      v-for="(dir, index) in directoryResults"
+                      :id="resultOptionId(index)"
                       :key="dir.id"
-                      :data="dir"
-                      view-mode="list"
-                      :is-selected="false"
-                      @navigate="handleNavigate(dir.id)"
-                      @click="handleNavigate(dir.id)"
-                      @tooltip-enter="previewDirectory"
-                    />
+                      role="option"
+                      :aria-selected="index === activeResultIndex"
+                      @mousemove="setActiveResult(index)"
+                    >
+                      <DirectoryItem
+                        :data="dir"
+                        view-mode="list"
+                        :is-selected="index === activeResultIndex"
+                        @navigate="handleNavigate(dir.id)"
+                        @click="handleNavigate(dir.id)"
+                        @tooltip-enter="previewDirectory"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div v-if="fileResults.length > 0">
+                <div v-if="fileResults.length > 0" role="group" aria-label="Files">
                   <div class="mb-3 flex items-center gap-2 px-4">
                     <UIcon name="i-lucide-file" class="w-4 h-4 text-gray-500 dark:text-gray-500" />
                     <h4
@@ -166,16 +151,23 @@
                     </h4>
                   </div>
                   <div class="space-y-1.5">
-                    <FileItem
-                      v-for="file in fileResults"
+                    <div
+                      v-for="(file, index) in fileResults"
+                      :id="resultOptionId(directoryResults.length + index)"
                       :key="file.fileId"
-                      :data="file"
-                      :tags="file.tags"
-                      view-mode="list"
-                      :is-selected="false"
-                      @click="handleNavigate(file.directoryId)"
-                      @tooltip-enter="previewFile"
-                    />
+                      role="option"
+                      :aria-selected="directoryResults.length + index === activeResultIndex"
+                      @mousemove="setActiveResult(directoryResults.length + index)"
+                    >
+                      <FileItem
+                        :data="file"
+                        :tags="file.tags"
+                        view-mode="list"
+                        :is-selected="directoryResults.length + index === activeResultIndex"
+                        @click="handleNavigate(file.directoryId)"
+                        @tooltip-enter="previewFile"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -292,8 +284,12 @@ import { useQuery } from "@pinia/colada";
 import { refDebounced } from "@vueuse/core";
 import { computed, nextTick, ref, shallowRef, watch } from "vue";
 
+import type { SearchPreviewTarget } from "@/types/search-preview-target";
+
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import SearchEmptyState from "@/components/dashboard/file-system/SearchEmptyState.vue";
 import SearchResultPreview from "@/components/dashboard/file-system/SearchResultPreview.vue";
+import { useListNavigation } from "@/composables/useListNavigation";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
 import { useSearchPreview } from "@/composables/useSearchPreview";
 import {
@@ -470,6 +466,48 @@ const {
   shownPreview,
 } = useSearchPreview(fileResults, directoryResults);
 
+// Results, in the order they are listed, for moving through them from the input.
+const results = computed<SearchPreviewTarget[]>(() => [
+  ...directoryResults.value.map((directory) => ({ directory, kind: "directory" as const })),
+  ...fileResults.value.map((file) => ({ file, kind: "file" as const })),
+]);
+
+const resultKey = (result: SearchPreviewTarget) =>
+  result.kind === "file" ? `file:${result.file.fileId}` : `folder:${result.directory.id}`;
+
+const {
+  activeIndex: activeResultIndex,
+  activeItem: activeResult,
+  handleKey: handleResultKey,
+  setActive: setActiveResult,
+} = useListNavigation(() => results.value, resultKey);
+
+const resultOptionId = (index: number) => `search-result-${index}`;
+
+const openResult = (result: SearchPreviewTarget) => {
+  if (result.kind === "file") {
+    handleNavigate(result.file.directoryId);
+  } else {
+    handleNavigate(result.directory.id);
+  }
+};
+
+watch(activeResult, async (result) => {
+  if (!result) {
+    return;
+  }
+  if (result.kind === "file") {
+    previewFile(result.file);
+  } else {
+    previewDirectory(result.directory);
+  }
+
+  await nextTick();
+  document
+    .getElementById(resultOptionId(activeResultIndex.value))
+    ?.scrollIntoView({ block: "nearest" });
+});
+
 // Suggestions
 
 const folderSuggestionsQuery = useQuery(() => ({
@@ -581,7 +619,10 @@ const emptySuggestionText = computed(() => {
 });
 
 const activeOptionId = computed(() => {
-  if (!isPanelOpen.value || calendarKey.value || !suggestions.value[highlighted.value]) {
+  if (!isPanelOpen.value) {
+    return activeResultIndex.value === -1 ? undefined : resultOptionId(activeResultIndex.value);
+  }
+  if (calendarKey.value || !suggestions.value[highlighted.value]) {
     return undefined;
   }
   return `search-option-${highlighted.value}`;
@@ -637,6 +678,16 @@ const commitFilter = (filter: SearchFilter) => {
   const active = trigger.value;
   setText(active ? stripSearchTrigger(text.value, active) : text.value);
   isDismissed.value = true;
+};
+
+const clearFilters = () => {
+  filters.value = [];
+  focusInput();
+};
+
+// Keeps the filter chips and drops only what was typed.
+const clearText = () => {
+  setText("");
 };
 
 const removeFilter = (filter: SearchFilter) => {
@@ -763,6 +814,7 @@ const onKeydown = (event: KeyboardEvent) => {
     return;
   }
   if (!isPanelOpen.value) {
+    handleResultKey(event, openResult);
     return;
   }
 

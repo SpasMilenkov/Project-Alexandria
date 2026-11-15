@@ -50,19 +50,36 @@
         <BlocksSpinner :size="18" aria-label="Loading folder" />
       </div>
 
-      <p
+      <div
         v-else-if="hasError"
-        class="flex h-full items-center justify-center px-4 text-center text-sm text-gray-600 dark:text-gray-400"
+        class="flex h-full flex-col items-center justify-center gap-3 px-6 text-center"
       >
-        Couldn't load this folder
-      </p>
+        <span
+          class="flex size-12 items-center justify-center rounded-2xl bg-default text-gray-900 shadow-sm ring ring-default dark:text-gray-100"
+        >
+          <UIcon name="i-lucide-folder-x" class="size-6" aria-hidden="true" />
+        </span>
+        <div class="flex flex-col gap-1">
+          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            Couldn't load this folder
+          </p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Try again in a moment.</p>
+        </div>
+      </div>
 
       <div
         v-else-if="isEmpty"
-        class="flex h-full flex-col items-center justify-center gap-2 px-4 text-center"
+        class="flex h-full flex-col items-center justify-center gap-3 px-6 text-center"
       >
-        <Icon icon="mdi:folder-outline" class="h-8 w-8 text-gray-400 dark:text-gray-600" />
-        <p class="text-sm text-gray-600 dark:text-gray-400">Empty folder</p>
+        <span
+          class="flex size-12 items-center justify-center rounded-2xl bg-default text-gray-900 shadow-sm ring ring-default dark:text-gray-100"
+        >
+          <UIcon name="i-lucide-folder-open" class="size-6" aria-hidden="true" />
+        </span>
+        <div class="flex flex-col gap-1">
+          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Empty folder</p>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Nothing has been added here yet.</p>
+        </div>
       </div>
 
       <template v-else>

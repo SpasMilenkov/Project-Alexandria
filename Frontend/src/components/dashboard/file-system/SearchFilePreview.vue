@@ -17,12 +17,36 @@
         alt=""
         class="absolute inset-0 h-full w-full object-contain"
       />
-      <Icon
-        v-else-if="!shown"
-        :icon="fileIcon"
-        class="h-12 w-12 text-gray-400 dark:text-gray-600"
-        aria-hidden="true"
-      />
+      <div v-else-if="!shown" class="flex flex-col items-center gap-4 px-6 text-center">
+        <!-- The file's own icon on a raised tile, with a badge for why there is no picture. -->
+        <span
+          class="relative flex size-20 items-center justify-center rounded-3xl bg-default text-gray-900 shadow-md ring ring-default dark:text-gray-100"
+        >
+          <Icon :icon="fileIcon" class="size-10" aria-hidden="true" />
+          <span
+            v-if="fallback?.icon"
+            class="absolute -right-1.5 -bottom-1.5 flex size-8 items-center justify-center rounded-full bg-elevated text-gray-900 shadow-sm ring-2 ring-(--ui-bg) dark:text-gray-100"
+          >
+            <UIcon :name="fallback.icon" class="size-4" aria-hidden="true" />
+          </span>
+        </span>
+
+        <div v-if="fallback" class="flex flex-col gap-1">
+          <p
+            class="text-xs font-semibold uppercase tracking-widest text-gray-600 dark:text-gray-400"
+          >
+            {{ readableType }}
+          </p>
+          <p
+            class="text-lg font-bold leading-tight tracking-tight text-gray-900 dark:text-gray-100"
+          >
+            {{ fallback.title }}
+          </p>
+          <p class="max-w-60 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+            {{ fallback.description }}
+          </p>
+        </div>
+      </div>
       <img
         v-if="hasThumbnail && !isFullShown"
         :src="thumbnailUrl"
@@ -57,6 +81,7 @@ import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { useLoadHold } from "@/composables/useLoadHold";
 import { FILES_QUERY_KEYS, getPreviewByVersion } from "@/queries/files";
 import { getFileIcon } from "@/utils/files/icons";
+import { getFileTypeReadable } from "@/utils/files/mimetype";
 
 import FileTooltipCard from "./FileTooltipCard.vue";
 import TextPreviewPane from "./TextPreviewPane.vue";
@@ -67,6 +92,10 @@ const queryCache = useQueryCache();
 const { downloadVersion } = useFileDownload();
 
 const fileIcon = computed(() => getFileIcon(file.fileName));
+
+const readableType = computed(() =>
+  getFileTypeReadable(file.currentVersion.mimeType, file.fileName),
+);
 
 const isProtected = computed(
   () => file.currentVersion.isEncrypted || file.currentVersion.isPasswordProtected,
@@ -187,6 +216,47 @@ const textPreview = computed(() => {
 
 watchEffect(() => {
   showsText.value = textPreview.value !== null;
+});
+
+// Why there is no picture, once that is settled. While a picture or an excerpt
+// is still on its way only the file's icon shows, so no message flashes first.
+const isExcerptLoading = computed(
+  () =>
+    isPreviewEnabled.value &&
+    !canHaveThumbnail.value &&
+    (previewData.value === undefined || isPlaceholderData.value),
+);
+
+const fallback = computed(() => {
+  if (file.currentVersion.isEncrypted) {
+    return {
+      description: "Encrypted files are never previewed.",
+      icon: "i-lucide-lock",
+      title: "Encrypted",
+    };
+  }
+  if (file.currentVersion.isPasswordProtected) {
+    return {
+      description: "Opening it needs the document's password.",
+      icon: "i-lucide-lock-keyhole",
+      title: "Password protected",
+    };
+  }
+  if (thumbnailErrored.value) {
+    return {
+      description: "It may still be generating. Check back in a little while.",
+      icon: "i-lucide-image-off",
+      title: "No preview yet",
+    };
+  }
+  if (!canHaveThumbnail.value && !isExcerptLoading.value) {
+    return {
+      description: "Its details are listed below.",
+      icon: null,
+      title: "No preview for this kind of file",
+    };
+  }
+  return null;
 });
 
 const downloadPreview = () => {
