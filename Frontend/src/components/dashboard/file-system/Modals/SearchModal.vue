@@ -2,241 +2,279 @@
   <UModal
     title="Search"
     description="Search files and folders by name, narrowed with filters"
-    :ui="{ body: 'p-2 sm:p-2', content: glassModalContentWide, header: 'hidden' }"
+    :ui="{ body: 'p-2 sm:p-2', content: modalContent, header: 'hidden' }"
   >
     <template #body>
-      <div
-        class="flex flex-wrap items-center gap-1.5 rounded-md bg-default px-3 py-2 ring ring-inset ring-accented focus-within:ring-2 focus-within:ring-primary"
-        @click="focusInput"
-      >
-        <UIcon name="i-lucide-search" class="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-500" />
-
-        <span
-          v-for="chip in chips"
-          :key="chip.id"
-          class="inline-flex max-w-full items-center rounded-full bg-elevated text-sm"
-        >
-          <button
-            type="button"
-            class="inline-flex min-w-0 items-center gap-1 rounded-l-full py-0.5 pl-2.5 pr-1 hover:bg-accented"
-            :aria-label="`Change filter ${chip.key}: ${chip.value}`"
-            @click.stop="editFilter(chip.filter)"
+      <div :class="layoutClass">
+        <div class="min-w-0">
+          <div
+            class="flex flex-wrap items-center gap-1.5 rounded-md bg-default px-3 py-2 ring ring-inset ring-accented focus-within:ring-2 focus-within:ring-primary"
+            @click="focusInput"
           >
             <UIcon
-              :name="chip.icon"
-              class="w-3.5 h-3.5 shrink-0 text-gray-500 dark:text-gray-500"
+              name="i-lucide-search"
+              class="w-5 h-5 shrink-0 text-gray-500 dark:text-gray-500"
             />
-            <span class="text-gray-600 dark:text-gray-400">{{ chip.key }}:</span>
-            <span class="max-w-40 truncate text-gray-900 dark:text-gray-100">{{ chip.value }}</span>
-          </button>
-          <button
-            type="button"
-            class="inline-flex items-center rounded-r-full py-1 pl-0.5 pr-2 text-gray-500 hover:bg-accented hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100"
-            :aria-label="`Remove filter ${chip.key}: ${chip.value}`"
-            @click.stop="removeFilter(chip.filter)"
-          >
-            <UIcon name="i-lucide-x" class="w-3.5 h-3.5" />
-          </button>
-        </span>
 
-        <input
-          ref="inputRef"
-          v-model="text"
-          type="text"
-          role="combobox"
-          autocomplete="off"
-          spellcheck="false"
-          aria-label="Search by name or filter"
-          aria-controls="search-suggestions"
-          :aria-expanded="isPanelOpen"
-          :aria-activedescendant="activeOptionId"
-          :placeholder="placeholder"
-          class="min-w-32 flex-1 bg-transparent py-1 text-base text-gray-900 outline-none placeholder:text-gray-500 dark:text-gray-100 dark:placeholder:text-gray-500"
-          @input="onInput"
-          @keydown="onKeydown"
-          @focus="isFocused = true"
-          @blur="isFocused = false"
-        />
-
-        <UButton
-          icon="i-lucide-sliders-horizontal"
-          size="sm"
-          color="neutral"
-          :variant="isPanelOpen ? 'subtle' : 'ghost'"
-          square
-          class="justify-center"
-          :aria-label="isPanelOpen ? 'Hide filters' : 'Show filters'"
-          :aria-pressed="isPanelOpen"
-          @mousedown.prevent
-          @click.stop="toggleFilterList"
-        />
-      </div>
-
-      <div class="relative mt-2 h-80">
-        <div class="h-full overflow-y-auto">
-          <div
-            v-if="!hasCriteria"
-            class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
-          >
-            <UIcon name="i-lucide-search" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-            <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Search your files
-            </h4>
-            <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
-              Type a name, or narrow things down with filters like in:, tag: and uploaded:.
-            </p>
-          </div>
-
-          <div
-            v-else-if="scope === 'none'"
-            class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
-          >
-            <UIcon name="i-lucide-folder-x" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-            <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-              These filters don't combine
-            </h4>
-            <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
-              Some filters only apply to files and others only to folders. Remove one to see
-              results.
-            </p>
-          </div>
-
-          <BlockSpinner v-else-if="isWaiting" :size="32" />
-
-          <div
-            v-else-if="!hasResults"
-            class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
-          >
-            <UIcon name="i-lucide-folder-x" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
-            <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-              No results found
-            </h4>
-            <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
-              Nothing matches this search. Try another name or remove a filter.
-            </p>
-          </div>
-
-          <div v-else class="space-y-6 py-4">
-            <div v-if="directoryResults.length > 0">
-              <div class="mb-3 flex items-center gap-2 px-4">
-                <UIcon name="i-lucide-folder" class="w-4 h-4 text-gray-500 dark:text-gray-500" />
-                <h4
-                  class="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400"
-                >
-                  Folders ({{ directoryCountLabel }})
-                </h4>
-              </div>
-              <div class="space-y-1.5">
-                <DirectoryItem
-                  v-for="dir in directoryResults"
-                  :key="dir.id"
-                  :data="dir"
-                  view-mode="list"
-                  :is-selected="false"
-                  @navigate="handleNavigate(dir.id)"
-                  @click="handleNavigate(dir.id)"
+            <span
+              v-for="chip in chips"
+              :key="chip.id"
+              class="inline-flex max-w-full items-center rounded-full bg-elevated text-sm"
+            >
+              <button
+                type="button"
+                class="inline-flex min-w-0 items-center gap-1 rounded-l-full py-0.5 pl-2.5 pr-1 hover:bg-accented"
+                :aria-label="`Change filter ${chip.key}: ${chip.value}`"
+                @click.stop="editFilter(chip.filter)"
+              >
+                <UIcon
+                  :name="chip.icon"
+                  class="w-3.5 h-3.5 shrink-0 text-gray-500 dark:text-gray-500"
                 />
+                <span class="text-gray-600 dark:text-gray-400">{{ chip.key }}:</span>
+                <span class="max-w-40 truncate text-gray-900 dark:text-gray-100">{{
+                  chip.value
+                }}</span>
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center rounded-r-full py-1 pl-0.5 pr-2 text-gray-500 hover:bg-accented hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100"
+                :aria-label="`Remove filter ${chip.key}: ${chip.value}`"
+                @click.stop="removeFilter(chip.filter)"
+              >
+                <UIcon name="i-lucide-x" class="w-3.5 h-3.5" />
+              </button>
+            </span>
+
+            <input
+              ref="inputRef"
+              v-model="text"
+              type="text"
+              role="combobox"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Search by name or filter"
+              aria-controls="search-suggestions"
+              :aria-expanded="isPanelOpen"
+              :aria-activedescendant="activeOptionId"
+              :placeholder="placeholder"
+              class="min-w-32 flex-1 bg-transparent py-1 text-base text-gray-900 outline-none placeholder:text-gray-500 dark:text-gray-100 dark:placeholder:text-gray-500"
+              @input="onInput"
+              @keydown="onKeydown"
+              @focus="isFocused = true"
+              @blur="isFocused = false"
+            />
+
+            <UButton
+              icon="i-lucide-sliders-horizontal"
+              size="sm"
+              color="neutral"
+              :variant="isPanelOpen ? 'subtle' : 'ghost'"
+              square
+              class="justify-center"
+              :aria-label="isPanelOpen ? 'Hide filters' : 'Show filters'"
+              :aria-pressed="isPanelOpen"
+              @mousedown.prevent
+              @click.stop="toggleFilterList"
+            />
+          </div>
+
+          <div class="relative mt-2 h-[min(28rem,60dvh)]">
+            <div class="h-full overflow-y-auto">
+              <div
+                v-if="!hasCriteria"
+                class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
+              >
+                <UIcon name="i-lucide-search" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+                <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  Search your files
+                </h4>
+                <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
+                  Type a name, or narrow things down with filters like in:, tag: and uploaded:.
+                </p>
+              </div>
+
+              <div
+                v-else-if="scope === 'none'"
+                class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
+              >
+                <UIcon
+                  name="i-lucide-folder-x"
+                  class="w-12 h-12 text-gray-400 dark:text-gray-600"
+                />
+                <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  These filters don't combine
+                </h4>
+                <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
+                  Some filters only apply to files and others only to folders. Remove one to see
+                  results.
+                </p>
+              </div>
+
+              <BlockSpinner v-else-if="isWaiting" :size="32" />
+
+              <div
+                v-else-if="!hasResults"
+                class="flex h-full flex-col items-center justify-center gap-2 p-6 text-center"
+              >
+                <UIcon
+                  name="i-lucide-folder-x"
+                  class="w-12 h-12 text-gray-400 dark:text-gray-600"
+                />
+                <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  No results found
+                </h4>
+                <p class="max-w-sm text-sm text-gray-600 dark:text-gray-400">
+                  Nothing matches this search. Try another name or remove a filter.
+                </p>
+              </div>
+
+              <div v-else class="space-y-6 py-4">
+                <div v-if="directoryResults.length > 0">
+                  <div class="mb-3 flex items-center gap-2 px-4">
+                    <UIcon
+                      name="i-lucide-folder"
+                      class="w-4 h-4 text-gray-500 dark:text-gray-500"
+                    />
+                    <h4
+                      class="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400"
+                    >
+                      Folders ({{ directoryCountLabel }})
+                    </h4>
+                  </div>
+                  <div class="space-y-1.5">
+                    <DirectoryItem
+                      v-for="dir in directoryResults"
+                      :key="dir.id"
+                      :data="dir"
+                      view-mode="list"
+                      :is-selected="false"
+                      @navigate="handleNavigate(dir.id)"
+                      @click="handleNavigate(dir.id)"
+                      @tooltip-enter="previewDirectory"
+                    />
+                  </div>
+                </div>
+
+                <div v-if="fileResults.length > 0">
+                  <div class="mb-3 flex items-center gap-2 px-4">
+                    <UIcon name="i-lucide-file" class="w-4 h-4 text-gray-500 dark:text-gray-500" />
+                    <h4
+                      class="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400"
+                    >
+                      Files ({{ fileCountLabel }})
+                    </h4>
+                  </div>
+                  <div class="space-y-1.5">
+                    <FileItem
+                      v-for="file in fileResults"
+                      :key="file.fileId"
+                      :data="file"
+                      :tags="file.tags"
+                      view-mode="list"
+                      :is-selected="false"
+                      @click="handleNavigate(file.directoryId)"
+                      @tooltip-enter="previewFile"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div v-if="fileResults.length > 0">
-              <div class="mb-3 flex items-center gap-2 px-4">
-                <UIcon name="i-lucide-file" class="w-4 h-4 text-gray-500 dark:text-gray-500" />
-                <h4
-                  class="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400"
-                >
-                  Files ({{ fileCountLabel }})
-                </h4>
+            <!-- Covers the results in place so closing the menu brings them back where they were. -->
+            <Transition
+              enter-active-class="transition-all duration-200 ease-out motion-reduce:transition-none"
+              enter-from-class="-translate-y-1 opacity-0"
+              leave-active-class="transition-all duration-150 ease-in motion-reduce:transition-none"
+              leave-to-class="-translate-y-1 opacity-0"
+            >
+              <div
+                v-if="isPanelOpen"
+                id="search-suggestions"
+                role="listbox"
+                :aria-label="panelTitle"
+                class="absolute inset-0 overflow-y-auto bg-default p-1"
+                @mousedown.prevent
+                @keydown.esc="onPanelEscape"
+              >
+                <p class="px-2 pb-1 pt-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+                  {{ panelTitle }}
+                </p>
+
+                <div v-if="calendarKey" class="space-y-2 p-2">
+                  <UCalendar v-model="calendarRange" range :max-value="todayDate" />
+                  <div class="flex justify-end gap-2">
+                    <UButton size="sm" color="neutral" variant="outline" @click="closeCalendar">
+                      Cancel
+                    </UButton>
+                    <UButton
+                      size="sm"
+                      color="primary"
+                      :disabled="!canApplyRange"
+                      @click="applyCalendar"
+                    >
+                      Apply
+                    </UButton>
+                  </div>
+                </div>
+
+                <template v-else>
+                  <button
+                    v-for="(item, index) in suggestions"
+                    :id="`search-option-${index}`"
+                    :key="item.id"
+                    type="button"
+                    role="option"
+                    :aria-selected="index === highlighted"
+                    class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                    :class="index === highlighted ? 'bg-elevated' : ''"
+                    @mouseenter="highlighted = index"
+                    @click="item.apply()"
+                  >
+                    <UIcon
+                      :name="item.icon"
+                      class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-500"
+                    />
+                    <span class="truncate font-medium text-gray-900 dark:text-gray-100">
+                      {{ item.label }}
+                    </span>
+                    <span
+                      v-if="item.hint"
+                      class="ml-auto shrink-0 pl-2 text-xs text-gray-500 dark:text-gray-500"
+                    >
+                      {{ item.hint }}
+                    </span>
+                  </button>
+
+                  <p
+                    v-if="suggestions.length === 0"
+                    class="px-2 py-1.5 text-sm text-gray-600 dark:text-gray-400"
+                  >
+                    {{ emptySuggestionText }}
+                  </p>
+                </template>
               </div>
-              <div class="space-y-1.5">
-                <FileItem
-                  v-for="file in fileResults"
-                  :key="file.fileId"
-                  :data="file"
-                  :tags="file.tags"
-                  view-mode="list"
-                  :is-selected="false"
-                  @click="handleNavigate(file.directoryId)"
-                />
-              </div>
-            </div>
+            </Transition>
           </div>
         </div>
 
-        <!-- Covers the results in place so closing the menu brings them back where they were. -->
-        <Transition
-          enter-active-class="transition-all duration-200 ease-out motion-reduce:transition-none"
-          enter-from-class="-translate-y-1 opacity-0"
-          leave-active-class="transition-all duration-150 ease-in motion-reduce:transition-none"
-          leave-to-class="-translate-y-1 opacity-0"
+        <!--
+          The content sits out of flow at its full width, so a tall preview never
+          stretches the modal and nothing inside reflows while the column opens.
+        -->
+        <div
+          v-if="canPreview"
+          class="relative overflow-hidden border-l transition-[border-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
+          :class="paneEdgeClass"
+          :inert="!isPreviewOpen"
         >
           <div
-            v-if="isPanelOpen"
-            id="search-suggestions"
-            role="listbox"
-            :aria-label="panelTitle"
-            class="absolute inset-0 overflow-y-auto bg-default p-1"
-            @mousedown.prevent
-            @keydown.esc="onPanelEscape"
+            class="absolute inset-y-0 left-0 w-[21rem] overflow-y-auto pl-3 transition-[opacity,translate] ease-out motion-reduce:transition-none"
+            :class="paneContentClass"
           >
-            <p class="px-2 pb-1 pt-1.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-              {{ panelTitle }}
-            </p>
-
-            <div v-if="calendarKey" class="space-y-2 p-2">
-              <UCalendar v-model="calendarRange" range :max-value="todayDate" />
-              <div class="flex justify-end gap-2">
-                <UButton size="sm" color="neutral" variant="outline" @click="closeCalendar">
-                  Cancel
-                </UButton>
-                <UButton
-                  size="sm"
-                  color="primary"
-                  :disabled="!canApplyRange"
-                  @click="applyCalendar"
-                >
-                  Apply
-                </UButton>
-              </div>
-            </div>
-
-            <template v-else>
-              <button
-                v-for="(item, index) in suggestions"
-                :id="`search-option-${index}`"
-                :key="item.id"
-                type="button"
-                role="option"
-                :aria-selected="index === highlighted"
-                class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                :class="index === highlighted ? 'bg-elevated' : ''"
-                @mouseenter="highlighted = index"
-                @click="item.apply()"
-              >
-                <UIcon
-                  :name="item.icon"
-                  class="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-500"
-                />
-                <span class="truncate font-medium text-gray-900 dark:text-gray-100">
-                  {{ item.label }}
-                </span>
-                <span
-                  v-if="item.hint"
-                  class="ml-auto shrink-0 pl-2 text-xs text-gray-500 dark:text-gray-500"
-                >
-                  {{ item.hint }}
-                </span>
-              </button>
-
-              <p
-                v-if="suggestions.length === 0"
-                class="px-2 py-1.5 text-sm text-gray-600 dark:text-gray-400"
-              >
-                {{ emptySuggestionText }}
-              </p>
-            </template>
+            <SearchResultPreview v-if="shownPreview" :target="shownPreview" />
           </div>
-        </Transition>
+        </div>
       </div>
     </template>
   </UModal>
@@ -255,7 +293,9 @@ import { refDebounced } from "@vueuse/core";
 import { computed, nextTick, ref, shallowRef, watch } from "vue";
 
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
+import SearchResultPreview from "@/components/dashboard/file-system/SearchResultPreview.vue";
 import { useModalBackGuard } from "@/composables/useModalBackGuard";
+import { useSearchPreview } from "@/composables/useSearchPreview";
 import {
   type DateFilterKey,
   type SearchFilter,
@@ -281,7 +321,6 @@ import { searchDirectory } from "@/queries/directories";
 import { searchFile } from "@/queries/files";
 import { searchTag } from "@/queries/tags";
 import { directorySearchApiSchema, fileSearchApiSchema } from "@/schemas/search";
-import { glassModalContentWide } from "@/utils/modal-ui";
 
 interface SuggestionItem {
   apply: () => void;
@@ -416,6 +455,20 @@ const fileCountLabel = computed(() =>
 const directoryCountLabel = computed(() =>
   countLabel(directoryResults.value.length, directoriesQuery.data.value?.totalCount),
 );
+
+// Preview
+
+const {
+  canPreview,
+  isPreviewOpen,
+  layoutClass,
+  modalContent,
+  paneContentClass,
+  paneEdgeClass,
+  previewDirectory,
+  previewFile,
+  shownPreview,
+} = useSearchPreview(fileResults, directoryResults);
 
 // Suggestions
 

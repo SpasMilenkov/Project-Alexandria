@@ -1,6 +1,7 @@
 <template>
   <div
-    class="flex h-80 w-72 flex-col overflow-hidden rounded-xl border border-gray-200/70 shadow-lg frosted-glass glass-surface-strong transition-shadow data-[drop-active=valid]:ring-2 data-[drop-active=valid]:ring-primary dark:border-gray-700/70"
+    class="flex flex-col overflow-hidden"
+    :class="surfaceClasses[variant]"
     :data-drop-dir-id="toDropId(folder.id)"
     :data-drop-dir-name="folder.name"
     data-drop-kind="panel"
@@ -112,6 +113,7 @@ import { computed } from "vue";
 
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import { toDropId } from "@/composables/useExplorerDragSession";
+import { useLoadHold } from "@/composables/useLoadHold";
 import { previewDirectoriesQuery, previewFilesQuery } from "@/features/explorer/drag/drop-preview";
 import { formatCount } from "@/utils/count";
 import { getFileIcon } from "@/utils/files/icons";
@@ -123,10 +125,23 @@ export interface PreviewTrailSegment {
 
 const MAX_VISIBLE_TRAIL = 3;
 
-const { trail, excludedIds } = defineProps<{
+const {
+  trail,
+  excludedIds,
+  variant = "floating",
+} = defineProps<{
   trail: PreviewTrailSegment[];
   excludedIds: string[];
+  // Floating is the card that follows a drag; inline fills a pane inside a
+  // solid overlay, where glass and a shadow would only add noise.
+  variant?: "floating" | "inline";
 }>();
+
+const surfaceClasses: Record<"floating" | "inline", string> = {
+  floating:
+    "h-80 w-72 rounded-xl border border-gray-200/70 shadow-lg frosted-glass glass-surface-strong transition-shadow data-[drop-active=valid]:ring-2 data-[drop-active=valid]:ring-primary dark:border-gray-700/70",
+  inline: "h-full w-full",
+};
 
 const folder = computed(() => trail[trail.length - 1]);
 
@@ -139,8 +154,17 @@ const filesQuery = useQuery(() => previewFilesQuery(folder.value.id));
 const directories = computed(() => directoriesQuery.data.value?.items ?? []);
 const files = computed(() => filesQuery.data.value?.items ?? []);
 
+// Inline previews keep the previous listing up briefly while the next one loads.
+// A drag never does: dropping onto a listing that belongs to another folder
+// would be misleading.
+const { isHolding } = useLoadHold(
+  () => folder.value.id ?? "root",
+  () => variant === "inline",
+);
+
 const isLoading = computed(
   () =>
+    !isHolding.value &&
     !directoriesQuery.error.value &&
     !filesQuery.error.value &&
     (directoriesQuery.data.value === undefined ||
