@@ -106,6 +106,9 @@ export const fileSearchUiSchema = baseSearchUiSchema.extend({
   mimeType: z.string().nullish(),
   minSize: z.number().int().nullish(),
   onlyDeleted: z.boolean().default(false),
+  // Accepts any id shape the backend's Guid binding accepts, so a tag id is
+  // never dropped here by a stricter UUID check.
+  tagIds: z.array(z.guid()).optional(),
 });
 
 export const directorySearchUiSchema = baseSearchUiSchema.extend({
@@ -121,6 +124,7 @@ export const unifiedSearchUiSchema = baseSearchUiSchema.extend({
   maxSize: z.number().int().nullish(),
   mimeType: z.string().nullish(),
   onlyDeleted: z.boolean().default(false),
+  tagIds: z.array(z.guid()).optional(),
 
   // Directory-only
   hasFiles: z.boolean().nullable().default(null),

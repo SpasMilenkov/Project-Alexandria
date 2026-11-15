@@ -32,7 +32,7 @@ export const searchTagsSchema = z.object({
   hasFiles: z.boolean().optional().nullable(),
   nameContains: z.string().optional().nullable(),
   ownerScope: z.enum(["user", "system", "all"]).default("user"),
-  page: z.number().int().min(0).default(0),
+  page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(100).default(20),
   updatedAfter: z.iso.datetime().optional().nullable(),
   updatedBefore: z.iso.datetime().optional().nullable(),

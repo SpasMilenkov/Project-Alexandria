@@ -155,8 +155,8 @@
           size="sm"
           class="shrink-0 gap-1.5 rounded-lg"
           aria-label="Search"
-          title="Quick search (⌘/)"
-          @click="quickSearch"
+          title="Search (⌘/)"
+          @click="openSearch"
         >
           <Icon icon="mdi:magnify" class="w-4 h-4" />
           <kbd
@@ -187,7 +187,7 @@
           size="sm"
           class="shrink-0 rounded-lg"
           aria-label="Search files"
-          @click="quickSearch"
+          @click="openSearch"
         >
           <Icon icon="mdi:magnify" class="w-4 h-4 mr-1.5" />
           Search
@@ -677,12 +677,11 @@ import type { NavItem } from "@/types/nav-item";
 import { type FileResult } from "@/api/file";
 import BlocksSpinner from "@/components/common/BlockSpinner.vue";
 import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
-import AdvancedSearchModal from "@/components/dashboard/file-system/Modals/AdvancedSearchModal.vue";
 import CreateDirectoryModal from "@/components/dashboard/file-system/Modals/CreateDirectoryModal.vue";
 import FileTransferModal, {
   type TransferResult,
 } from "@/components/dashboard/file-system/Modals/Filetransfermodal.vue";
-import QuickSearchModal from "@/components/dashboard/file-system/Modals/QuickSearchModal.vue";
+import SearchModal from "@/components/dashboard/file-system/Modals/SearchModal.vue";
 import ShareLinkModal from "@/components/dashboard/file-system/Modals/ShareLinkModal.vue";
 import UpdateDirectoryModal from "@/components/dashboard/file-system/Modals/UpdateDirectoryModal.vue";
 import UpdateFileModal from "@/components/dashboard/file-system/Modals/UpdateFileModal.vue";
@@ -1271,8 +1270,10 @@ const createDirectoryModal = useLazyModal<{ parentId: string | null }, boolean>(
 const updateDirectoryModal = useLazyModal<{ currentName: string; directoryId: string }, boolean>(
   UpdateDirectoryModal,
 );
-const advancedSearchModal = useLazyModal<Record<string, never>, string>(AdvancedSearchModal);
-const quickSearchModal = useLazyModal<Record<string, never>, string>(QuickSearchModal);
+const searchModal = useLazyModal<
+  { currentDirectoryId: string | null; currentDirectoryName?: string },
+  string
+>(SearchModal);
 const confirmModal = useLazyModal<Record<string, unknown>, boolean>(ConfirmModal);
 const updateFileModal = useLazyModal<{ fileId: string; originalName: string }, boolean>(
   UpdateFileModal,
@@ -1338,23 +1339,15 @@ const openTransferModal = async (
   }
 };
 
-const advancedSearch = async () => {
-  const instance = advancedSearchModal.open();
-  const result = await instance.result;
-  if (isDisposed.value) return;
-  if (result === "close") return;
-  else if (result === "root") handleNavigate(null);
-  else if (typeof result === "string") handleNavigate(result);
-};
-
-const quickSearch = async () => {
-  const instance = quickSearchModal.open();
+const openSearch = async () => {
+  const instance = searchModal.open({
+    currentDirectoryId: currentDirId.value ?? null,
+    currentDirectoryName: currentDirName.value,
+  });
   const result = await instance.result;
 
-  if (isDisposed.value) return;
-  if (result === "close") return;
-  else if (result === "root") handleNavigate(null);
-  else if (result === "advanced") advancedSearch();
+  if (isDisposed.value || result === "close") return;
+  if (result === "root") handleNavigate(null);
   else if (typeof result === "string") handleNavigate(result);
 };
 
@@ -2004,7 +1997,7 @@ defineShortcuts({
   alt_arrowright: guarded(() => {
     if (canGoForward.value) navigateForward();
   }),
-  "meta_/": guarded(() => quickSearch()),
+  "meta_/": guarded(() => openSearch()),
   meta_c: guarded(() => {
     copyMode.value = true;
     handleCopy();
@@ -2017,8 +2010,7 @@ defineShortcuts({
     copyMode.value = false;
     handleCopy();
   }),
-  shift_k: guarded(() => quickSearch()),
-  shift_l: guarded(() => advancedSearch()),
+  shift_k: guarded(() => openSearch()),
 
   // new — single-key, input-safe
   r: guarded(() => handleRenameSelected()),

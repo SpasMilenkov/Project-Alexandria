@@ -46,9 +46,8 @@ const shortcutSections: ShortcutSection[] = [
     icon: "mdi:magnify",
     id: "search",
     shortcuts: [
-      { description: "Quick search", keys: ["shift", "K"] },
-      { description: "Quick search", keys: ["meta", "/"] },
-      { description: "Advanced search", keys: ["shift", "L"] },
+      { description: "Search", keys: ["shift", "K"] },
+      { description: "Search", keys: ["meta", "/"] },
     ],
     title: "Search",
   },
