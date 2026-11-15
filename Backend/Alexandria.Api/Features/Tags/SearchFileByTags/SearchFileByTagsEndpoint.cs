@@ -48,17 +48,16 @@ public class SearchFilesByTagsEndpoint(IFileTagService tagService)
             {
                 TagIds = req.TagIds,
                 MatchType = matchType,
-                UserId = userId,
                 CurrentPage = req.Page,
                 PageSize = req.PageSize,
                 MinFileSize = req.MinFileSize,
                 MaxFileSize = req.MaxFileSize,
                 MimeTypePrefix = req.MimeTypePrefix,
-                CreatedAfter = req.CreatedAfter,
-                CreatedBefore = req.CreatedBefore
+                CreatedAfter = req.CreatedAfter?.UtcDateTime,
+                CreatedBefore = req.CreatedBefore?.UtcDateTime
             };
 
-            var result = await tagService.FindFilesByTagsAsync(query, ct);
+            var result = await tagService.FindFilesByTagsAsync(query, userId, ct);
 
             await Send.OkAsync(result, ct);
         }

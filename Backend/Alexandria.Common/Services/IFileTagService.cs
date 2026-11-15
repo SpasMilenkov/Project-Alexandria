@@ -99,9 +99,11 @@ public interface IFileTagService
     /// Supports multiple match types: Any (OR), All (AND), or Exact match.
     /// </summary>
     /// <param name="query">Search query with filters and pagination parameters</param>
+    /// <param name="userId">Only this user's files are searched</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Paginated result of files matching the criteria</returns>
-    Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query, CancellationToken ct = default);
+    Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query, Guid userId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Gets all tags associated with a specific file.
