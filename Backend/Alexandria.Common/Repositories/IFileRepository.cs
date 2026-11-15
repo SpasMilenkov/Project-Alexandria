@@ -34,7 +34,7 @@ public interface IFileRepository : IRepository<File>
 
     Task<FileMetadata?> GetUserFileMetadataAsync(Guid fileId, Guid userId, CancellationToken ct = default);
 
-    Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
+    Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query, Guid userId,
         CancellationToken ct = default);
 
     /// <summary>

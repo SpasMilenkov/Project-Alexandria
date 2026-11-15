@@ -22,20 +22,16 @@ public class SearchDirectoryEndpoint(IDirectoryService directoryService)
 
         var query = new DirectorySearchQuery
         {
-            DirectoryId = req.DirectoryId,
             ParentDirectoryId = req.ParentDirectoryId,
 
             NameContains = req.NameContains,
 
-            OwnerId = req.OwnerId,
-            IsShared = req.IsShared,
-
-            CreatedAfter = req.CreatedAfter?.ToUniversalTime(),
-            CreatedBefore = req.CreatedBefore?.ToUniversalTime(),
-            UpdatedAfter = req.UpdatedAfter?.ToUniversalTime(),
-            UpdatedBefore = req.UpdatedBefore?.ToUniversalTime(),
-            DeletedBefore = req.DeletedBefore?.ToUniversalTime(),
-            DeletedAfter = req.DeletedAfter?.ToUniversalTime(),
+            CreatedAfter = req.CreatedAfter,
+            CreatedBefore = req.CreatedBefore,
+            UpdatedAfter = req.UpdatedAfter,
+            UpdatedBefore = req.UpdatedBefore,
+            DeletedAfter = req.DeletedAfter,
+            DeletedBefore = req.DeletedBefore,
 
             HasFiles = req.HasFiles,
             HasSubdirectories = req.HasSubdirectories,

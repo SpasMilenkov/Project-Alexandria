@@ -3,7 +3,7 @@ using NpgsqlTypes;
 
 namespace Alexandria.Data.Models;
 
-public class File : IBase
+public class File : IBase, ISearchableByName
 {
     [Required(ErrorMessage = ValidationConstants.ErrorMessages.Required)]
     [StringLength(ValidationConstants.StringLengths.MediumString)]

@@ -30,13 +30,12 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(f => f.Id == id, ct);
     }
 
-    public async Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
+    public async Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query, Guid userId,
         CancellationToken ct = default)
     {
         var filesQuery = _files
-            .Include(f => f.FileTags)
-            .ThenInclude(ft => ft.Tag)
-            .Where(f => f.DeletedAt == null);
+            .AsNoTracking()
+            .Where(f => f.OwnerId == userId && f.DeletedAt == null);
 
         filesQuery = query.MatchType switch
         {
@@ -46,7 +45,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                     ft.Source != TagSource.Suppressed &&
                     ft.Tag.DeletedAt == null)),
 
-            TagMatchType.All => ApplyAllTagsFilter(filesQuery, query.TagIds),
+            TagMatchType.All => filesQuery.WhereHasAllTags(query.TagIds),
 
             TagMatchType.Exact => filesQuery.Where(f =>
                 f.FileTags.Count(ft => ft.Source != TagSource.Suppressed && ft.Tag.DeletedAt == null) ==
@@ -59,31 +58,34 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             _ => throw new UnreachableException($"Unhandled match type: {query.MatchType}")
         };
 
-        if (query.UserId.HasValue)
-            filesQuery = filesQuery.Where(f =>
-                f.FileTags.Any(ft =>
-                    ft.Tag.OwnerId == query.UserId.Value &&
-                    ft.Source != TagSource.Suppressed &&
-                    ft.Tag.DeletedAt == null));
-
         if (!string.IsNullOrWhiteSpace(query.MimeTypePrefix))
             filesQuery = filesQuery.Where(f => f.MimeType.StartsWith(query.MimeTypePrefix));
 
-        if (query.CreatedAfter.HasValue) filesQuery = filesQuery.Where(f => f.CreatedAt >= query.CreatedAfter.Value);
-        if (query.CreatedBefore.HasValue) filesQuery = filesQuery.Where(f => f.CreatedAt <= query.CreatedBefore.Value);
+        if (query.MinFileSize.HasValue)
+            filesQuery = filesQuery.Where(f => f.CurrentVersion.Size >= query.MinFileSize.Value);
+
+        if (query.MaxFileSize.HasValue)
+            filesQuery = filesQuery.Where(f => f.CurrentVersion.Size <= query.MaxFileSize.Value);
+
+        if (query.CreatedAfter.HasValue)
+            filesQuery = filesQuery.Where(f => f.CreatedAt >= query.CreatedAfter.Value);
+
+        if (query.CreatedBefore.HasValue)
+            filesQuery = filesQuery.Where(f => f.CreatedAt <= query.CreatedBefore.Value);
 
         var totalCount = await filesQuery.CountAsync(ct);
 
         var files = await filesQuery
             .OrderByDescending(f => f.CreatedAt)
-            .Take(query.PageSize)
+            .ThenBy(f => f.Id)
             .Skip(query.CurrentPage * query.PageSize)
+            .Take(query.PageSize)
             .Select(FileProjections.ToFileResult)
             .ToListAsync(ct);
 
         return new PaginatedResult<FileResult>
         {
-            Items = [.. files],
+            Items = files,
             CurrentPage = query.CurrentPage,
             PageSize = query.PageSize,
             TotalCount = totalCount,
@@ -139,117 +141,57 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(query.PageSize, 0);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(query.PageSize, 100);
 
-        IQueryable<File> dbQuery;
+        var terms = SearchTerms.ParseOptional(query.NameContains);
 
-        // Check for text search FIRST
-        var isSearching = !string.IsNullOrWhiteSpace(query.NameContains);
+        // Text made only of separators has no words to match, so nothing can rank.
+        if (terms is { IsEmpty: true })
+            return EmptyFilePage(query.CurrentPage, query.PageSize);
 
-        if (isSearching)
-        {
-            var searchTerm = query.NameContains!.Trim().ToLower();
+        var dbQuery = _files.AsNoTracking().Where(f => f.OwnerId == userId);
 
-            dbQuery = context.Files.FromSqlInterpolated($@"
-                    SELECT *,
-                        (similarity(""NormalizedName"", {searchTerm}) * 2.0 +
-                         ts_rank(""SearchVector"", plainto_tsquery('simple', {searchTerm}))) as search_score
-                    FROM ""Files""
-                    WHERE
-                        similarity(""NormalizedName"", {searchTerm}) > 0.1
-                        OR
-                        ""SearchVector"" @@ plainto_tsquery('simple', {searchTerm})
-                    ORDER BY
-                        search_score DESC
-                ");
-        }
-        else
-        {
-            dbQuery = context.Files.AsQueryable();
-        }
-
-        // User ownership filter - always applied
-        dbQuery = dbQuery.Where(f => f.OwnerId == userId);
-
-        // Deletion filters
-        if (query.OnlyDeleted || query.IsDeleted)
+        if (query.IsDeleted)
             dbQuery = dbQuery.Where(f => f.DeletedAt != null);
         else
             dbQuery = dbQuery.Where(f => f.DeletedAt == null);
 
-        if (query.DeletedAfter.HasValue)
-        {
-            var dateUtc = DateTime.SpecifyKind(query.DeletedAfter.Value.Date, DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(f => f.CreatedAt >= dateUtc);
-        }
-
-        if (query.DeletedBefore.HasValue)
-        {
-            var nextDayUtc = DateTime.SpecifyKind(query.DeletedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(f => f.CreatedAt < nextDayUtc);
-        }
-
-        // Identity & structure filters
-        if (query.DirectoryId.HasValue) dbQuery = dbQuery.Where(f => f.Id == query.DirectoryId.Value);
+        dbQuery = dbQuery
+            .WhereCreatedWithin(query.CreatedAfter, query.CreatedBefore)
+            .WhereUpdatedWithin(query.UpdatedAfter, query.UpdatedBefore)
+            .WhereDeletedWithin(query.DeletedAfter, query.DeletedBefore);
 
         if (query.ParentDirectoryId.HasValue)
             dbQuery = dbQuery.Where(f => f.DirectoryId == query.ParentDirectoryId.Value);
 
-        if (query.OwnerId.HasValue) dbQuery = dbQuery.Where(f => f.OwnerId == query.OwnerId.Value);
+        if (query.TagIds.Count > 0)
+            dbQuery = dbQuery.WhereHasAllTags(query.TagIds);
 
-        // File-specific filters
-        if (query.MinSize.HasValue) dbQuery = dbQuery.Where(f => f.CurrentVersion.Size >= query.MinSize.Value);
+        if (query.MinSize.HasValue)
+            dbQuery = dbQuery.Where(f => f.CurrentVersion.Size >= query.MinSize.Value);
 
-        if (query.MaxSize.HasValue) dbQuery = dbQuery.Where(f => f.CurrentVersion.Size <= query.MaxSize.Value);
+        if (query.MaxSize.HasValue)
+            dbQuery = dbQuery.Where(f => f.CurrentVersion.Size <= query.MaxSize.Value);
 
         if (!string.IsNullOrWhiteSpace(query.MimeType))
-            dbQuery = dbQuery.Where(f => f.MimeType == query.MimeType.Trim());
-
-        // Time filters
-        if (query.CreatedAfter.HasValue)
         {
-            var dateUtc = DateTime.SpecifyKind(query.CreatedAfter.Value.Date, DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(f => f.CreatedAt >= dateUtc);
+            var mimeType = query.MimeType.Trim();
+            dbQuery = dbQuery.Where(f => f.MimeType == mimeType);
         }
 
-        if (query.CreatedBefore.HasValue)
+        IOrderedQueryable<File> ordered;
+
+        if (terms is null)
         {
-            var nextDayUtc = DateTime.SpecifyKind(query.CreatedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(f => f.CreatedAt < nextDayUtc);
+            ordered = dbQuery.OrderByRequested(query.SortBy, query.SortDirection);
         }
-
-        if (query.UpdatedAfter.HasValue)
+        else
         {
-            var dateUtc = DateTime.SpecifyKind(query.UpdatedAfter.Value.Date, DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(f => f.UpdatedAt >= dateUtc);
+            dbQuery = dbQuery.WhereNameMatches(terms);
+            ordered = dbQuery.OrderByNameRelevance(terms);
         }
-
-        if (query.UpdatedBefore.HasValue)
-        {
-            var nextDayUtc = DateTime.SpecifyKind(query.UpdatedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(f => f.UpdatedAt < nextDayUtc);
-        }
-
-        if (!isSearching)
-            dbQuery = query.SortBy switch
-            {
-                SortBy.Name => query.SortDirection == SortDirection.Asc
-                    ? dbQuery.OrderBy(f => f.Name)
-                    : dbQuery.OrderByDescending(f => f.Name),
-
-                SortBy.CreatedAt => query.SortDirection == SortDirection.Asc
-                    ? dbQuery.OrderBy(f => f.CreatedAt)
-                    : dbQuery.OrderByDescending(f => f.CreatedAt),
-
-                SortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
-                    ? dbQuery.OrderBy(f => f.UpdatedAt)
-                    : dbQuery.OrderByDescending(f => f.UpdatedAt),
-
-                _ => dbQuery.OrderBy(f => f.Name)
-            };
 
         var totalCount = await dbQuery.CountAsync(ct);
 
-        var items = await dbQuery
-            .AsNoTracking()
+        var items = await ordered
             .Skip(query.CurrentPage * query.PageSize)
             .Take(query.PageSize)
             .Select(FileProjections.ToFileResult)
@@ -843,7 +785,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         Guid userId, string query, int page, int pageSize, HashSet<Guid> viableVersionIds,
         List<Guid>? playlistFileIds, bool isVideo, CancellationToken ct)
     {
-        var terms = StreamingSearchTerms.Parse(query);
+        var terms = SearchTerms.Parse(query);
 
         if (terms.IsEmpty)
             return EmptyStreamingPage(page, pageSize, 0);
@@ -900,12 +842,12 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     // inside SQL so other users' rows are never materialized. Lyrics use phrase matching
     // without trigram fuzziness, which on long text would match nearly every song.
     private async Task<List<StreamingSearchHitRow>> FindStreamingSearchHitsAsync(
-        Guid userId, StreamingSearchTerms terms, int page, int pageSize,
+        Guid userId, SearchTerms terms, int page, int pageSize,
         HashSet<Guid> viableVersionIds, List<Guid>? playlistFileIds, CancellationToken ct)
     {
         var searchTerm = terms.NormalizedQuery;
         var pattern = $"%{searchTerm}%";
-        var metadataTsQuery = terms.MetadataTsQuery;
+        var prefixTsQuery = terms.PrefixTsQuery;
         var lyricsTsQuery = terms.LyricsTsQuery;
         var searchesLyrics = terms.SearchesLyrics;
         var fetchedStatus = (int)LyricsStatus.Fetched;
@@ -936,12 +878,12 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 SELECT c.""Id"" AS ""FileId"",
                     (CASE WHEN lower(m.""Title"") LIKE {pattern} THEN 8.0 ELSE 0.0 END
                         + word_similarity({searchTerm}, m.""NormalizedSearch"") * 2.0
-                        + ts_rank(m.""SearchVector"", to_tsquery('simple', {metadataTsQuery}))
+                        + ts_rank(m.""SearchVector"", to_tsquery('simple', {prefixTsQuery}))
                     )::double precision AS ""Rank""
                 FROM ""MediaMetadata"" AS m
                 JOIN candidates AS c ON c.""Id"" = m.""FileId""
                 WHERE {searchTerm} <% m.""NormalizedSearch""
-                    OR m.""SearchVector"" @@ to_tsquery('simple', {metadataTsQuery})
+                    OR m.""SearchVector"" @@ to_tsquery('simple', {prefixTsQuery})
                     OR lower(m.""Title"") LIKE {pattern}
             ),
             lyrics_hits AS (
@@ -990,7 +932,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
     // Only lyrics rows that actually match are read, preferring the current version's
     // lyrics, so the snippet comes from the same text the search hit.
     private async Task<Dictionary<Guid, string>> GetLyricsSnippetsAsync(
-        Guid userId, List<Guid> fileIds, StreamingSearchTerms terms, CancellationToken ct)
+        Guid userId, List<Guid> fileIds, SearchTerms terms, CancellationToken ct)
     {
         if (fileIds.Count == 0)
             return [];
@@ -1029,6 +971,16 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         return snippets;
     }
+
+    private static PaginatedResult<FileResult> EmptyFilePage(int page, int pageSize) =>
+        new PaginatedResult<FileResult>
+        {
+            Items = [],
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalCount = 0,
+            TotalPages = 0
+        };
 
     private static PaginatedResult<MediaFileDto> EmptyStreamingPage(int page, int pageSize, int totalCount) =>
         new PaginatedResult<MediaFileDto>
@@ -1678,21 +1630,6 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             IntegrityTag = row.IntegrityTag,
             IterationCount = row.IterationCount
         }, row.ContentHash);
-    }
-
-    private static IQueryable<File> ApplyAllTagsFilter(IQueryable<File> query, ICollection<Guid> tagIds)
-    {
-        foreach (var tagId in tagIds)
-        {
-            var currentTagId = tagId;
-            query = query.Where(f =>
-                f.FileTags.Any(ft =>
-                    ft.TagId == currentTagId &&
-                    ft.Source != TagSource.Suppressed &&
-                    ft.Tag.DeletedAt == null));
-        }
-
-        return query;
     }
 
     public async Task<IEnumerable<File>> GetAllAsync(CancellationToken ct = default)

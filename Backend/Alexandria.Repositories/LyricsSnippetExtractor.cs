@@ -12,7 +12,7 @@ internal static partial class LyricsSnippetExtractor
     internal const int MaxSnippetLength = 140;
     internal const string LineJoiner = " / ";
 
-    public static string? Extract(string? plainLyrics, string? syncedLyrics, StreamingSearchTerms terms)
+    public static string? Extract(string? plainLyrics, string? syncedLyrics, SearchTerms terms)
     {
         if (terms.IsEmpty)
             return null;
@@ -22,7 +22,7 @@ internal static partial class LyricsSnippetExtractor
         if (lines.Count == 0)
             return null;
 
-        var words = lines.Select(StreamingSearchTerms.Tokenize).ToList();
+        var words = lines.Select(SearchTerms.Tokenize).ToList();
 
         for (var i = 0; i < lines.Count; i++)
         {
@@ -59,7 +59,7 @@ internal static partial class LyricsSnippetExtractor
             .ToList();
     }
 
-    private static bool ContainsPhrase(IReadOnlyList<string> words, StreamingSearchTerms terms)
+    private static bool ContainsPhrase(IReadOnlyList<string> words, SearchTerms terms)
     {
         var tokenCount = terms.Tokens.Count;
 
@@ -77,7 +77,7 @@ internal static partial class LyricsSnippetExtractor
         return false;
     }
 
-    private static bool MatchesToken(string word, StreamingSearchTerms terms, int tokenIndex)
+    private static bool MatchesToken(string word, SearchTerms terms, int tokenIndex)
     {
         var token = terms.Tokens[tokenIndex];
         var isPrefix = tokenIndex == terms.Tokens.Count - 1 && terms.PrefixesLastLyricsToken;
@@ -88,7 +88,7 @@ internal static partial class LyricsSnippetExtractor
         return word == token;
     }
 
-    private static bool MatchesAnyToken(string word, StreamingSearchTerms terms) =>
+    private static bool MatchesAnyToken(string word, SearchTerms terms) =>
         Enumerable.Range(0, terms.Tokens.Count).Any(index => MatchesToken(word, terms, index));
 
     private static string Truncate(string snippet)

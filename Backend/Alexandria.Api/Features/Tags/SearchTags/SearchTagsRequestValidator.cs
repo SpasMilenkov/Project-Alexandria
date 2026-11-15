@@ -41,8 +41,8 @@ public sealed class SearchTagsRequestValidator
 
         // Pagination
         RuleFor(x => x.Page)
-            .GreaterThanOrEqualTo(0)
-            .WithMessage("Page must be 0 or greater.");
+            .GreaterThanOrEqualTo(1)
+            .WithMessage("Page must be 1 or greater.");
 
         RuleFor(x => x.PageSize)
             .InclusiveBetween(1, 100)

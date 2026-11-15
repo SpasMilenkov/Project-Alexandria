@@ -4,8 +4,7 @@ namespace Alexandria.Dto.Files;
 
 public class FileSearchQuery
 {
-    // Identity & structure
-    public Guid? DirectoryId { get; set; }
+    // Structure
     public Guid? ParentDirectoryId { get; set; }
 
     // Text search
@@ -16,25 +15,21 @@ public class FileSearchQuery
     public long? MaxSize { get; set; }
     public string? MimeType { get; set; }
 
-    // Ownership & sharing
-    public Guid? OwnerId { get; set; }
-    public bool? IsShared { get; set; }
+    // Every listed tag must be on the file
+    public ICollection<Guid> TagIds { get; set; } = [];
 
-    // Time filters
-    public DateTime? CreatedAfter { get; set; }
-    public DateTime? CreatedBefore { get; set; }
-    public DateTime? UpdatedAfter { get; set; }
-    public DateTime? UpdatedBefore { get; set; }
-    public DateTime? DeletedBefore { get; set; }
+    // Whole UTC days, inclusive on both ends
+    public DateOnly? CreatedAfter { get; set; }
+    public DateOnly? CreatedBefore { get; set; }
+    public DateOnly? UpdatedAfter { get; set; }
+    public DateOnly? UpdatedBefore { get; set; }
+    public DateOnly? DeletedAfter { get; set; }
+    public DateOnly? DeletedBefore { get; set; }
 
-    public DateTime? DeletedAfter { get; set; }
+    // Trash: true lists only deleted files, false only live ones
+    public bool IsDeleted { get; set; }
 
-    // Flags
-    public bool IsDeleted { get; set; } = false;
-    public bool IsStarred { get; set; } = false;
-    public bool OnlyDeleted { get; set; } = false;
-
-    // Paging & sorting
+    // Paging & sorting; sorting applies only without search text, which ranks by relevance
     public int CurrentPage { get; set; } = 0;
     public int PageSize { get; set; } = 20;
     public SortBy SortBy { get; set; } = SortBy.Name;

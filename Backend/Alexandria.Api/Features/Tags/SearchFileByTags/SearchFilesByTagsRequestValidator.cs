@@ -58,11 +58,5 @@ public sealed class SearchFilesByTagsRequestValidator
             .MaximumLength(50)
             .When(x => !string.IsNullOrEmpty(x.MimeTypePrefix))
             .WithMessage("MimeTypePrefix cannot exceed 50 characters.");
-
-        // Optional UserId check (if provided, must not be empty GUID)
-        RuleFor(x => x.UserId)
-            .NotEqual(Guid.Empty)
-            .When(x => x.UserId.HasValue)
-            .WithMessage("UserId cannot be an empty GUID.");
     }
 }

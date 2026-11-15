@@ -168,6 +168,7 @@ const ICON_SUBSETS: Record<string, string[]> = {
     "shield-check",
     "shield-x",
     "sliders-horizontal",
+    "star",
     "tag",
     "tag-off",
     "tags",

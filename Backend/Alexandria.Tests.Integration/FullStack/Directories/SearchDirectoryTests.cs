@@ -79,4 +79,44 @@ public class SearchDirectoryTests(AlexandriaFixture fixture) : FullStackTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task DeletedAfter_FiltersByDeletionDate_NotCreationDate()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var monthAgo = today.AddDays(-30).ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc);
+        var startOfToday = today.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+
+        await SeedDirectoryAsync(configure: b => b
+            .WithName("old-but-just-deleted")
+            .WithCreatedAt(monthAgo)
+            .WithDeletedAt(startOfToday));
+        await SeedDirectoryAsync(configure: b => b
+            .WithName("new-but-deleted-long-ago")
+            .WithCreatedAt(startOfToday)
+            .WithDeletedAt(monthAgo));
+
+        var response = await Auth.GetAsync(
+            $"{BaseRoute}?isDeleted=true&deletedAfter={today.AddDays(-7):yyyy-MM-dd}",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(
+            cancellationToken: TestContext.Current.CancellationToken);
+        body!.Items.Should().ContainSingle(d => d.Name == "old-but-just-deleted");
+    }
+
+    [Fact]
+    public async Task NameContains_RanksClosestNameFirst()
+    {
+        await SeedDirectoryAsync(configure: b => b.WithName("holiday photos archive"));
+        await SeedDirectoryAsync(configure: b => b.WithName("photos"));
+
+        var response = await Auth.GetAsync($"{BaseRoute}?nameContains=photos", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<PaginatedResult<DirectorySummaryDto>>(
+            cancellationToken: TestContext.Current.CancellationToken);
+        body!.Items.Select(d => d.Name).Should().Equal("photos", "holiday photos archive");
+    }
 }

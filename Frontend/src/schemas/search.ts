@@ -17,16 +17,11 @@ type DateField =
 //oxlint-disable sort-keys
 export const baseSearchUiSchema = z
   .object({
-    // Identity & structure
-    directoryId: z.uuid().nullish(),
+    // Structure
     parentDirectoryId: z.uuid().nullish(),
 
     // Text search
     nameContains: z.string().optional(),
-
-    // Ownership & sharing
-    ownerId: z.uuid().nullish(),
-    isShared: z.boolean().default(false),
 
     // Time filters (UI types)
     createdAfter: dateValueSchema.nullish(),
@@ -106,6 +101,9 @@ export const fileSearchUiSchema = baseSearchUiSchema.extend({
   mimeType: z.string().nullish(),
   minSize: z.number().int().nullish(),
   onlyDeleted: z.boolean().default(false),
+  // Accepts any id shape the backend's Guid binding accepts, so a tag id is
+  // never dropped here by a stricter UUID check.
+  tagIds: z.array(z.guid()).optional(),
 });
 
 export const directorySearchUiSchema = baseSearchUiSchema.extend({
@@ -121,24 +119,16 @@ export const unifiedSearchUiSchema = baseSearchUiSchema.extend({
   maxSize: z.number().int().nullish(),
   mimeType: z.string().nullish(),
   onlyDeleted: z.boolean().default(false),
+  tagIds: z.array(z.guid()).optional(),
 
   // Directory-only
   hasFiles: z.boolean().nullable().default(null),
   hasSubdirectories: z.boolean().nullable().default(null),
 });
 
-export const baseSearchApiSchema = baseSearchUiSchema.transform((v) => ({
-  ...v,
-  createdAfter: v.createdAfter?.toString() ?? null,
-  createdBefore: v.createdBefore?.toString() ?? null,
-  deletedAfter: v.deletedAfter?.toString() ?? null,
-  deletedBefore: v.deletedBefore?.toString() ?? null,
-  updatedAfter: v.updatedAfter?.toString() ?? null,
-  updatedBefore: v.updatedBefore?.toString() ?? null,
-}));
-
 export const fileSearchApiSchema = fileSearchUiSchema.transform((v) => ({
   ...v,
+  isDeleted: v.isDeleted || v.onlyDeleted,
   createdAfter: v.createdAfter?.toString() ?? null,
   createdBefore: v.createdBefore?.toString() ?? null,
   deletedAfter: v.deletedAfter?.toString() ?? null,
@@ -157,31 +147,5 @@ export const directorySearchApiSchema = directorySearchUiSchema.transform((v) =>
   updatedBefore: v.updatedBefore?.toString() ?? null,
 }));
 
-export const bothSearchApiSchema = unifiedSearchUiSchema.transform((v) => ({
-  ...v,
-  createdAfter: v.createdAfter?.toString() ?? null,
-  createdBefore: v.createdBefore?.toString() ?? null,
-  deletedAfter: v.deletedAfter?.toString() ?? null,
-  deletedBefore: v.deletedBefore?.toString() ?? null,
-  updatedAfter: v.updatedAfter?.toString() ?? null,
-  updatedBefore: v.updatedBefore?.toString() ?? null,
-}));
-
-export const hybridSearchSchema = z.discriminatedUnion("mode", [
-  z.object({
-    mode: z.literal("files"),
-    query: fileSearchApiSchema,
-  }),
-  z.object({
-    mode: z.literal("directories"),
-    query: directorySearchApiSchema,
-  }),
-  z.object({
-    mode: z.literal("both"),
-    query: bothSearchApiSchema,
-  }),
-]);
-
-export type UnifiedSearchUiState = z.infer<typeof unifiedSearchUiSchema>;
 export type FileSearchQuery = z.infer<typeof fileSearchApiSchema>;
 export type DirectorySearchQuery = z.infer<typeof directorySearchApiSchema>;

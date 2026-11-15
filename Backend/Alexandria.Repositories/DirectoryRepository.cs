@@ -268,150 +268,65 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(query.PageSize);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(query.PageSize, 100);
 
-        var dbQuery = context.Directories.AsQueryable();
-        var isSearching = !string.IsNullOrWhiteSpace(query.NameContains);
+        var terms = SearchTerms.ParseOptional(query.NameContains);
 
-        if (isSearching)
+        // Text made only of separators has no words to match, so nothing can rank.
+        if (terms is { IsEmpty: true })
         {
-            var searchTerm = query.NameContains!.Trim().ToLower();
-
-            dbQuery = context.Directories.FromSqlInterpolated($@"
-                    SELECT *,
-                        (similarity(""NormalizedName"", {searchTerm}) * 2.0 +
-                         ts_rank(""SearchVector"", plainto_tsquery('simple', {searchTerm}))) as search_score
-                    FROM ""Directories""
-                    WHERE
-                        similarity(""NormalizedName"", {searchTerm}) > 0.1
-                        OR
-                        ""SearchVector"" @@ plainto_tsquery('simple', {searchTerm})
-                    ORDER BY
-                        search_score DESC
-                ");
-        }
-
-        //When file and directory sharing comes later on this will be optional in combination
-        //with the new access policies for Now users have no access to directories of other users
-        dbQuery = dbQuery.Where(d => d.OwnerId == userId);
-
-        if (query.IsStarred)
-        {
-            dbQuery = dbQuery.Where(d => d.IsStarred);
-        }
-
-        if (query.IsDeleted)
-        {
-            dbQuery = dbQuery.Where(d => d.DeletedAt != null);
-        }
-        else
-        {
-            dbQuery = dbQuery.Where(d => d.DeletedAt == null);
-        }
-
-        if (query.DeletedAfter.HasValue)
-        {
-            var dateUtc = DateTime.SpecifyKind(query.DeletedAfter.Value.Date, DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(d => d.CreatedAt >= dateUtc);
-        }
-
-        if (query.DeletedBefore.HasValue)
-        {
-            var nextDayUtc = DateTime.SpecifyKind(query.DeletedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(d => d.CreatedAt < nextDayUtc);
-        }
-
-        if (query.DirectoryId.HasValue)
-        {
-            dbQuery = dbQuery.Where(d => d.Id == query.DirectoryId.Value);
-        }
-
-        if (query.OwnerId.HasValue)
-        {
-            dbQuery = dbQuery.Where(d => d.OwnerId == query.OwnerId.Value);
-        }
-
-        // --- Created Filters ---
-        if (query.CreatedAfter.HasValue)
-        {
-            // Start of the day (00:00:00) on the selected date
-            var startOfAfterDay = DateTime.SpecifyKind(query.CreatedAfter.Value.Date, DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(d => d.CreatedAt >= startOfAfterDay);
-        }
-
-        if (query.CreatedBefore.HasValue)
-        {
-            // Start of the NEXT day (00:00:00)
-            // This effectively captures everything UP TO 23:59:59 on the 'Before' day
-            var startOfNextDay = DateTime.SpecifyKind(query.CreatedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(d => d.CreatedAt < startOfNextDay);
-        }
-
-        // --- Updated Filters ---
-        if (query.UpdatedAfter.HasValue)
-        {
-            var startOfAfterDay = DateTime.SpecifyKind(query.UpdatedAfter.Value.Date, DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(d => d.UpdatedAt >= startOfAfterDay);
-        }
-
-        if (query.UpdatedBefore.HasValue)
-        {
-            var startOfNextDay = DateTime.SpecifyKind(query.UpdatedBefore.Value.Date.AddDays(1), DateTimeKind.Utc);
-            dbQuery = dbQuery.Where(d => d.UpdatedAt < startOfNextDay);
-        }
-
-        if (query.HasFiles.HasValue)
-        {
-            if (query.HasFiles.Value)
+            return new PaginatedResult<DirectorySummaryDto>
             {
-                dbQuery = dbQuery.Where(d => d.Files.Any());
-            }
-            else
-            {
-                dbQuery = dbQuery.Where(d => !d.Files.Any());
-            }
-        }
-
-        if (query.HasSubdirectories.HasValue)
-        {
-            if (query.HasSubdirectories.Value)
-            {
-                dbQuery = dbQuery.Where(d => d.Children.Any());
-            }
-            else
-            {
-                dbQuery = dbQuery.Where(d => !d.Children.Any());
-            }
-        }
-
-        if (!isSearching)
-        {
-            dbQuery = query.SortBy switch
-            {
-                SortBy.Name => query.SortDirection == SortDirection.Asc
-                    ? dbQuery.OrderBy(f => f.Name)
-                    : dbQuery.OrderByDescending(f => f.Name),
-
-                SortBy.CreatedAt => query.SortDirection == SortDirection.Asc
-                    ? dbQuery.OrderBy(f => f.CreatedAt)
-                    : dbQuery.OrderByDescending(f => f.CreatedAt),
-
-                SortBy.UpdatedAt => query.SortDirection == SortDirection.Asc
-                    ? dbQuery.OrderBy(f => f.UpdatedAt)
-                    : dbQuery.OrderByDescending(f => f.UpdatedAt),
-
-                _ => dbQuery.OrderBy(f => f.Name)
+                Items = [],
+                TotalCount = 0,
+                CurrentPage = query.CurrentPage,
+                PageSize = query.PageSize,
+                TotalPages = 0
             };
         }
 
+        // Users only see their own directories until sharing between users exists.
+        var dbQuery = context.Directories.AsNoTracking().Where(d => d.OwnerId == userId);
+
+        if (query.IsDeleted)
+            dbQuery = dbQuery.Where(d => d.DeletedAt != null);
+        else
+            dbQuery = dbQuery.Where(d => d.DeletedAt == null);
+
+        if (query.IsStarred)
+            dbQuery = dbQuery.Where(d => d.IsStarred);
+
+        dbQuery = dbQuery
+            .WhereCreatedWithin(query.CreatedAfter, query.CreatedBefore)
+            .WhereUpdatedWithin(query.UpdatedAfter, query.UpdatedBefore)
+            .WhereDeletedWithin(query.DeletedAfter, query.DeletedBefore);
 
         if (query.ParentDirectoryId.HasValue)
-        {
             dbQuery = dbQuery.Where(d => d.ParentId == query.ParentDirectoryId.Value);
+
+        if (query.HasFiles == true)
+            dbQuery = dbQuery.Where(d => d.Files!.Any());
+        else if (query.HasFiles == false)
+            dbQuery = dbQuery.Where(d => d.Files!.Any());
+
+        if (query.HasSubdirectories == true)
+            dbQuery = dbQuery.Where(d => d.Children!.Any());
+        else if (query.HasSubdirectories == false)
+            dbQuery = dbQuery.Where(d => !d.Children!.Any());
+
+        IOrderedQueryable<Directory> ordered;
+
+        if (terms is null)
+        {
+            ordered = dbQuery.OrderByRequested(query.SortBy, query.SortDirection);
+        }
+        else
+        {
+            dbQuery = dbQuery.WhereNameMatches(terms);
+            ordered = dbQuery.OrderByNameRelevance(terms);
         }
 
         var totalCount = await dbQuery.CountAsync(ct);
 
-        var items = await dbQuery
-            .AsNoTracking()
+        var items = await ordered
             .Skip(query.CurrentPage * query.PageSize)
             .Take(query.PageSize)
             .Select(d => new DirectorySummaryDto
@@ -432,7 +347,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             ))
             .ToListAsync(ct);
 
-        return new PaginatedResult<DirectorySummaryDto>()
+        return new PaginatedResult<DirectorySummaryDto>
         {
             Items = items,
             TotalCount = totalCount,

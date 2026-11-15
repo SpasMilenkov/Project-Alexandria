@@ -3,23 +3,23 @@ using AwesomeAssertions;
 
 namespace Alexandria.Tests.Unit.Repositories;
 
-public class StreamingSearchTermsTests
+public class SearchTermsTests
 {
     [Fact]
     public void Parse_cyrillic_query_keeps_tokens()
     {
-        var terms = StreamingSearchTerms.Parse("  Обичам Те ");
+        var terms = SearchTerms.Parse("  Обичам Те ");
 
         terms.IsEmpty.Should().BeFalse();
         terms.NormalizedQuery.Should().Be("обичам те");
         terms.Tokens.Should().Equal("обичам", "те");
-        terms.MetadataTsQuery.Should().Be("обичам:* & те:*");
+        terms.PrefixTsQuery.Should().Be("обичам:* & те:*");
     }
 
     [Fact]
     public void Parse_apostrophe_splits_like_postgres_parser()
     {
-        var terms = StreamingSearchTerms.Parse("Don't stop");
+        var terms = SearchTerms.Parse("Don't stop");
 
         terms.Tokens.Should().Equal("don", "t", "stop");
     }
@@ -27,7 +27,7 @@ public class StreamingSearchTermsTests
     [Fact]
     public void Parse_punctuation_only_query_is_empty()
     {
-        var terms = StreamingSearchTerms.Parse("!? -- ...");
+        var terms = SearchTerms.Parse("!? -- ...");
 
         terms.IsEmpty.Should().BeTrue();
         terms.SearchesLyrics.Should().BeFalse();
@@ -37,7 +37,7 @@ public class StreamingSearchTermsTests
     [Fact]
     public void LyricsTsQuery_multiple_words_builds_phrase_with_prefixed_last_word()
     {
-        var terms = StreamingSearchTerms.Parse("never gonna giv");
+        var terms = SearchTerms.Parse("never gonna giv");
 
         terms.SearchesLyrics.Should().BeTrue();
         terms.LyricsTsQuery.Should().Be("never <-> gonna <-> giv:*");
@@ -46,7 +46,7 @@ public class StreamingSearchTermsTests
     [Fact]
     public void LyricsTsQuery_short_last_word_is_matched_whole()
     {
-        var terms = StreamingSearchTerms.Parse("let it be");
+        var terms = SearchTerms.Parse("let it be");
 
         terms.PrefixesLastLyricsToken.Should().BeFalse();
         terms.LyricsTsQuery.Should().Be("let <-> it <-> be");
@@ -55,9 +55,25 @@ public class StreamingSearchTermsTests
     [Fact]
     public void SearchesLyrics_query_shorter_than_minimum_is_skipped()
     {
-        StreamingSearchTerms.Parse("u2").SearchesLyrics.Should().BeFalse();
-        StreamingSearchTerms.Parse("a b").SearchesLyrics.Should().BeFalse();
-        StreamingSearchTerms.Parse("sky").SearchesLyrics.Should().BeTrue();
+        SearchTerms.Parse("u2").SearchesLyrics.Should().BeFalse();
+        SearchTerms.Parse("a b").SearchesLyrics.Should().BeFalse();
+        SearchTerms.Parse("sky").SearchesLyrics.Should().BeTrue();
+    }
+
+    [Fact]
+    public void TrigramText_joins_tokens_with_single_spaces_like_stored_names()
+    {
+        var terms = SearchTerms.Parse("Photos-2024 (Paris)");
+
+        terms.TrigramText.Should().Be("photos 2024 paris");
+    }
+
+    [Fact]
+    public void ParseOptional_blank_text_means_no_text_filter()
+    {
+        SearchTerms.ParseOptional(null).Should().BeNull();
+        SearchTerms.ParseOptional("   ").Should().BeNull();
+        SearchTerms.ParseOptional("--")!.IsEmpty.Should().BeTrue();
     }
 
     [Fact]
@@ -65,7 +81,7 @@ public class StreamingSearchTermsTests
     {
         var decomposed = "café";
 
-        var terms = StreamingSearchTerms.Parse(decomposed);
+        var terms = SearchTerms.Parse(decomposed);
 
         terms.Tokens.Should().Equal("café");
     }

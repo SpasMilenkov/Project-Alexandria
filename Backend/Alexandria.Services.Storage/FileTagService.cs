@@ -273,7 +273,7 @@ public partial class FileTagService(
         }
     }
 
-    public async Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query,
+    public async Task<PaginatedResult<FileResult>> FindFilesByTagsAsync(FileTagSearchQuery query, Guid userId,
         CancellationToken ct = default)
     {
         if (query.TagIds == null || !query.TagIds.Any())
@@ -287,7 +287,7 @@ public partial class FileTagService(
 
         try
         {
-            return await unitOfWork.Files.FindFilesByTagsAsync(query, ct);
+            return await unitOfWork.Files.FindFilesByTagsAsync(query, userId, ct);
         }
         catch (Exception ex)
         {
