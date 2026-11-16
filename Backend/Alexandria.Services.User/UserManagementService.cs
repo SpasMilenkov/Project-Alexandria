@@ -212,26 +212,6 @@ public class UserManagementService(
         await unitOfWork.Users.SetupProfileAsync(userId, ct);
     }
 
-    public async Task FinishTourAsync(Guid userId, CancellationToken ct = default)
-    {
-        try
-        {
-            await unitOfWork.BeginTransactionAsync(ct);
-
-            var user = await unitOfWork.Users.GetByIdAsync(userId, ct) ??
-                       throw new InvalidOperationException("User not found exception");
-
-            user.OnboardinStep = OnboardingStep.Done;
-            unitOfWork.Users.Update(user);
-
-            await unitOfWork.CommitAsync(ct);
-        }
-        catch
-        {
-            await unitOfWork.RollbackAsync(ct);
-        }
-    }
-
     public async Task<OnboardingStep?> GetOnboardingStepAsync(Guid userId, CancellationToken ct)
     {
         return await unitOfWork.Users.GetOnboardingStatusAsync(userId, ct);

@@ -360,6 +360,20 @@ public class UserRepository(AlexandriaDbContext context, UserManager<Application
             .ExecuteUpdateAsync(u => u.SetProperty(u => u.OnboardinStep, OnboardingStep.Tour), ct);
     }
 
+    public async Task<bool> AdvanceOnboardingAsync(Guid userId, OnboardingStep from, OnboardingStep to,
+        CancellationToken ct = default)
+    {
+        var now = DateTime.UtcNow;
+
+        var updated = await context.Users
+            .Where(u => u.Id == userId && u.DeletedAt == null && u.OnboardinStep == from)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(x => x.OnboardinStep, to)
+                .SetProperty(x => x.UpdatedAt, now), ct);
+
+        return updated > 0;
+    }
+
     public async Task<OnboardingStep?> GetOnboardingStatusAsync(Guid userId, CancellationToken ct)
     {
         var result = await context.Users.Where(u => userId == u.Id && u.DeletedAt == null).Select(u => u.OnboardinStep)

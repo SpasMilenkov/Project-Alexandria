@@ -23,6 +23,5 @@ public interface IUserManagementService
     Task<UserProfileDto> UpdateProfileAsync(Guid userId, UpdateProfileDto dto, CancellationToken ct = default);
 
     Task SetupProfileAsync(Guid userId, CancellationToken ct = default);
-    Task FinishTourAsync(Guid userId, CancellationToken ct = default);
     Task<OnboardingStep?> GetOnboardingStepAsync(Guid userId, CancellationToken ct);
 }

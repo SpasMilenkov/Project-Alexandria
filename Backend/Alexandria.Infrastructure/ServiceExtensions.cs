@@ -16,6 +16,7 @@ using Alexandria.Services.Storage.Cleanup;
 using Alexandria.Services.Storage.Content;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Gallery;
+using Alexandria.Services.Storage.Library;
 using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Previews;
 using Alexandria.Services.Storage.Promotions;
@@ -103,6 +104,7 @@ public static class ServiceExtensions
         services.AddScoped<IDirectoryPolicyRepository, DirectoryPolicyRepository>();
         services.AddScoped<IPolicyDispatcher, PolicyDispatcher>();
         services.AddScoped<IDirectoryPolicyService, DirectoryPolicyService>();
+        services.AddScoped<ILibrarySetupService, LibrarySetupService>();
         services.AddScoped<IJobQueue, JobQueue>();
         services.AddScoped<ISignedUrlRepository, SignedUrlRepository>();
         services.AddScoped<ISignedUrlService, SignedUrlService>();
