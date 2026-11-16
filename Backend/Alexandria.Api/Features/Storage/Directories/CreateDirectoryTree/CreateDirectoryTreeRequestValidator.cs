@@ -1,3 +1,5 @@
+using Alexandria.Common.Validation;
+using Alexandria.Data.Models;
 using FastEndpoints;
 using FluentValidation;
 
@@ -16,33 +18,38 @@ public class CreateDirectoryTreeRequestValidator
             .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .MaximumLength(5000)
-            .Must(BeValidRelativePath)
-            .WithMessage("Invalid path format.");
+            .Must(BeRelativePath)
+            .WithMessage("Invalid path format.")
+            .Must(path => FindSegmentProblem(path) is null)
+            .WithMessage((_, path) => FindSegmentProblem(path) ?? string.Empty);
 
         RuleFor(x => x.Paths)
             .Must(p => p.Distinct().Count() == p.Count)
             .WithMessage("Duplicate paths are not allowed.");
     }
 
-    private static bool BeValidRelativePath(string path)
+    private static bool BeRelativePath(string path)
     {
-        if (path.StartsWith('/'))
-            return false;
+        return !path.StartsWith('/') && !path.Contains("..");
+    }
 
-        if (path.Contains(".."))
-            return false;
+    // The last segment is the file itself, which only has the file name length limit.
+    // Segments are not filtered for empties because the tree builder would create an unnamed folder.
+    private static string? FindSegmentProblem(string path)
+    {
+        var segments = path.Split('/');
 
-        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var segment in segments)
+        foreach (var folder in segments[..^1])
         {
-            if (segment.Length > 255)
-                return false;
-
-            if (segment.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-                return false;
+            var problem = DirectoryNameRules.FindProblem(folder);
+            if (problem is not null) return $"\"{path}\": {problem}";
         }
 
-        return true;
+        if (segments[^1].Length > ValidationConstants.StringLengths.MediumString)
+        {
+            return $"\"{path}\": File name cannot exceed {ValidationConstants.StringLengths.MediumString} characters.";
+        }
+
+        return null;
     }
 }

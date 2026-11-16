@@ -1,7 +1,7 @@
-using System.Buffers;
 using Alexandria.Common;
 using Alexandria.Common.Exceptions.Directories;
 using Alexandria.Common.Services;
+using Alexandria.Common.Validation;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Directories;
 using Alexandria.Dto.Files;
@@ -15,8 +15,6 @@ using DirectoryNotFoundException = Common.Exceptions.Directories.DirectoryNotFou
 
 public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
 {
-    private static readonly SearchValues<char> SInvalidChars = SearchValues.Create("/\\:*?\"<>|");
-
     public Task<bool> SetDirectoryFavoriteAsync(Guid directoryId, Guid userId, bool isStarred,
         CancellationToken ct = default)
     {
@@ -309,20 +307,11 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
 
     private static void ValidateDirectoryName(string name)
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new InvalidDirectoryNameException(name, "Directory name cannot be empty.");
-        }
+        var problem = DirectoryNameRules.FindProblem(name);
 
-        if (name.Length > 255)
+        if (problem is not null)
         {
-            throw new InvalidDirectoryNameException(name, "Directory name cannot exceed 255 characters.");
-        }
-
-        if (name.AsSpan().IndexOfAny(SInvalidChars) >= 0)
-        {
-            throw new InvalidDirectoryNameException(name,
-                $"Directory name contains invalid characters: {string.Join(", ", SInvalidChars)}");
+            throw new InvalidDirectoryNameException(name, problem);
         }
     }
 }

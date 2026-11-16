@@ -26,4 +26,11 @@ public interface IUserRepository : IRepository<ApplicationUser>
 
     Task SetupProfileAsync(Guid userId, CancellationToken ct = default);
     Task<OnboardingStep?> GetOnboardingStatusAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>
+    /// Moves a live account from one onboarding step to the next in a single conditional update,
+    /// so of two concurrent calls only one wins. False when the account was not at <paramref name="from"/>.
+    /// </summary>
+    Task<bool> AdvanceOnboardingAsync(Guid userId, OnboardingStep from, OnboardingStep to,
+        CancellationToken ct = default);
 }

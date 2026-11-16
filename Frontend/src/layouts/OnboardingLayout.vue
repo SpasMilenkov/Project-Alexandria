@@ -166,7 +166,7 @@ const ONBOARDING_STEPS = [
     label: "Your profile",
   },
   {
-    description: "See what's available to you",
+    description: "Look around and set up your library",
     key: "tour",
     label: "Quick tour",
   },

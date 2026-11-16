@@ -48,16 +48,37 @@
   <rect x="140" y="108" width="6" height="6" rx="1" fill="#666"/>
   <rect x="152" y="110" width="22" height="3" rx="1" fill="#888"/>
 
-  <!-- FOLDERS -->
+  <!-- FOLDERS: the starter library; music and movies carry automation -->
   <rect x="140" y="126" width="30" height="4" rx="2" fill="#777"/>
-  <path d="M148,148 Q148,144 152,144 L162,144 Q165,144 166,146 L178,146 Q181,146 181,149 L181,168 Q181,170 179,170 L148,170 Q146,170 146,168 Z" fill="none" stroke="#aaa" stroke-width="1.5"/>
-  <rect x="148" y="174" width="30" height="3" rx="1" fill="#666"/>
-  <path d="M218,148 Q218,144 222,144 L232,144 Q235,144 236,146 L248,146 Q251,146 251,149 L251,168 Q251,170 249,170 L218,170 Q216,170 216,168 Z" fill="none" stroke="#aaa" stroke-width="1.5"/>
-  <rect x="218" y="174" width="26" height="3" rx="1" fill="#666"/>
-  <path d="M288,148 Q288,144 292,144 L302,144 Q305,144 306,146 L318,146 Q321,146 321,149 L321,168 Q321,170 319,170 L288,170 Q286,170 286,168 Z" fill="none" stroke="#aaa" stroke-width="1.5"/>
-  <rect x="288" y="174" width="22" height="3" rx="1" fill="#666"/>
-  <path d="M358,148 Q358,144 362,144 L372,144 Q375,144 376,146 L388,146 Q391,146 391,149 L391,168 Q391,170 389,170 L358,170 Q356,170 356,168 Z" fill="none" stroke="#aaa" stroke-width="1.5"/>
-  <rect x="358" y="174" width="34" height="3" rx="1" fill="#666"/>
+
+  <path d="M139,148 Q139,144 143,144 L149,144 C151.5,144 152,147 154.5,147 L169,147 Q173,147 173,151 L173,165 Q173,169 169,169 L143,169 Q139,169 139,165 Z" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linejoin="round"/>
+  <circle cx="154.5" cy="161.5" r="2" fill="#888"/>
+  <path d="M156.5,161.5 L156.5,153.5 Q159.5,154 160,157" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="141" y="174" width="30" height="3" rx="1.5" fill="#666"/>
+  <circle cx="172" cy="147" r="6.5" fill="#e07b30" stroke="#1a1a1a" stroke-width="1.5"/>
+  <path d="M173.26,143.22 L169.69,147.63 L172.00,147.63 L170.74,150.78 L174.31,146.37 L172.00,146.37 Z" fill="#2a1a0c" stroke="#2a1a0c" stroke-width="0.9" stroke-linejoin="round"/>
+
+  <path d="M199,148 Q199,144 203,144 L209,144 C211.5,144 212,147 214.5,147 L229,147 Q233,147 233,151 L233,165 Q233,169 229,169 L203,169 Q199,169 199,165 Z" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M213.5,154 L213.5,162 L220,158 Z" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="203" y="174" width="26" height="3" rx="1.5" fill="#666"/>
+  <circle cx="232" cy="147" r="6.5" fill="#e07b30" stroke="#1a1a1a" stroke-width="1.5"/>
+  <path d="M233.26,143.22 L229.69,147.63 L232.00,147.63 L230.74,150.78 L234.31,146.37 L232.00,146.37 Z" fill="#2a1a0c" stroke="#2a1a0c" stroke-width="0.9" stroke-linejoin="round"/>
+
+  <path d="M259,148 Q259,144 263,144 L269,144 C271.5,144 272,147 274.5,147 L289,147 Q293,147 293,151 L293,165 Q293,169 289,169 L263,169 Q259,169 259,165 Z" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linejoin="round"/>
+  <circle cx="272.5" cy="155" r="1.5" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M270,163 L274,159 L277,161.5 L279.5,158.5 L282.5,163" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="265" y="174" width="22" height="3" rx="1.5" fill="#666"/>
+
+  <path d="M319,148 Q319,144 323,144 L329,144 C331.5,144 332,147 334.5,147 L349,147 Q353,147 353,151 L353,165 Q353,169 349,169 L323,169 Q319,169 319,165 Z" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="329.5" y="154.5" width="9" height="7.5" rx="2" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M338.5,157 L342,155.5 L342,161 L338.5,159.5" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="319" y="174" width="34" height="3" rx="1.5" fill="#666"/>
+
+  <path d="M379,148 Q379,144 383,144 L389,144 C391.5,144 392,147 394.5,147 L409,147 Q413,147 413,151 L413,165 Q413,169 409,169 L383,169 Q379,169 379,165 Z" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linejoin="round"/>
+  <path d="M391,155 L401,155" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M391,158.5 L401,158.5" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M391,162 L397.5,162" fill="none" stroke="#888" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="381" y="174" width="30" height="3" rx="1.5" fill="#666"/>
 
   <!-- FILES -->
   <rect x="140" y="195" width="22" height="4" rx="2" fill="#777"/>

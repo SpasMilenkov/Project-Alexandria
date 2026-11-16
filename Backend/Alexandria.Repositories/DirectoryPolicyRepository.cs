@@ -3,6 +3,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Alexandria.Dto.Policies;
+using Alexandria.Repositories.Projections;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -141,19 +142,53 @@ public sealed class DirectoryPolicyRepository(AlexandriaDbContext context)
         var direct = await GetByDirectoryIdAsync(directoryId, ct);
         if (direct is not null) return direct;
 
-        var parentId = await context.Directories
-            .Where(d => d.Id == directoryId && d.DeletedAt == null)
-            .Select(d => d.ParentId)
-            .FirstOrDefaultAsync(ct);
+        // The starting folder is excluded: its own policy was checked above, and an ancestor
+        // only counts when it shares its rules with nested folders.
+        var ancestors = await context.Database.SqlQuery<DirectoryAncestorRow>($"""
+            WITH RECURSIVE chain AS (
+                SELECT "Id", "ParentId", 0 AS "Depth"
+                FROM "Directories"
+                WHERE "Id" = {directoryId}
+                  AND "DeletedAt" IS NULL
 
-        if (parentId is null) return null;
+                UNION ALL
 
-        var ancestor = await _policies
-            .Where(p => p.DirectoryId == parentId && p.InheritedByChildren && p.DeletedAt == null)
+                SELECT d."Id", d."ParentId", c."Depth" + 1
+                FROM "Directories" d
+                JOIN chain c ON d."Id" = c."ParentId"
+                WHERE d."DeletedAt" IS NULL
+            )
+            SELECT "Id", "Depth"
+            FROM chain
+            WHERE "Depth" > 0
+            """)
+            .ToListAsync(ct);
+
+        if (ancestors.Count == 0) return null;
+
+        var ancestorIds = ancestors.Select(a => a.Id).ToList();
+
+        var inheritable = await _policies
+            .Where(p => ancestorIds.Contains(p.DirectoryId) && p.InheritedByChildren && p.DeletedAt == null)
             .Include(p => p.Rules.Where(r => r.DeletedAt == null))
-            .FirstOrDefaultAsync(ct);
+            .ToListAsync(ct);
 
-        return ancestor is null ? null : DirectoryPolicyDto.FromEntity(ancestor);
+        return PickNearest(ancestors, inheritable);
+    }
+
+    internal static DirectoryPolicyDto? PickNearest(
+        IReadOnlyCollection<DirectoryAncestorRow> ancestors,
+        IReadOnlyCollection<DirectoryPolicy> inheritable)
+    {
+        if (inheritable.Count == 0) return null;
+
+        var depthById = ancestors.ToDictionary(a => a.Id, a => a.Depth);
+
+        var nearest = inheritable
+            .Where(p => depthById.ContainsKey(p.DirectoryId))
+            .MinBy(p => depthById[p.DirectoryId]);
+
+        return nearest is null ? null : DirectoryPolicyDto.FromEntity(nearest);
     }
 
     public async Task<bool> ExistsForDirectoryAsync(Guid directoryId, CancellationToken ct = default)
