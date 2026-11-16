@@ -33,6 +33,7 @@ import {
 } from "./home-widget";
 import { JobStatus } from "./job-status";
 import { JobType } from "./job-type";
+import { LibraryFolderKind } from "./library-folder-kind";
 import { LogSource } from "./log-source";
 import { LoginFailureReason } from "./login-failure-reason";
 import { LyricsProvider } from "./lyrics-provider";
@@ -82,6 +83,7 @@ export {
   OnboardingStep,
   JobStatus,
   JobType,
+  LibraryFolderKind,
   LyricsProvider,
   LyricsStatus,
   OperationalEventCode,

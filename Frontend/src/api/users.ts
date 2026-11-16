@@ -1,13 +1,26 @@
-import type { OnboardingStep } from "@/enums";
+import type { AudioRung, VideoRung } from "@/api/policy";
+import type { LibraryFolderKind, OnboardingStep } from "@/enums";
 import type { CreateUserSchema, UpdateProfileSchema, UpdateUserSchema } from "@/schemas/user";
 import type { UserDetailsDto, UserProfile, UserProfileStats, UserQueryDto } from "@/types/user";
 
-import { logger } from "@/utils/logger";
 import { gbToBytes } from "@/utils/size";
 
 import type { PaginatedResponse } from "./directory";
 
 import { api } from "./client";
+
+export interface LibraryFolderChoice {
+  kind: LibraryFolderKind;
+  name: string;
+  automationEnabled: boolean;
+  audioRungs: AudioRung[];
+  videoRungs: VideoRung[];
+  autoTag: boolean;
+}
+
+export interface FinishTourRequest {
+  folders: LibraryFolderChoice[];
+}
 
 export const userApi = {
   createUser: (query: CreateUserSchema) => {
@@ -28,9 +41,8 @@ export const userApi = {
     });
   },
 
-  finishTour: async () => {
-    logger.debug("HERE I AM ");
-    await api.patch("/users/finish-tour", {});
+  finishTour: async (request: FinishTourRequest): Promise<void> => {
+    await api.patch("/users/finish-tour", request);
   },
 
   getFileCountPerUser: (userId: string, deletedOnly: boolean): Promise<number> =>

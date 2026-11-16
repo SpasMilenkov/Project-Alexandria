@@ -9,7 +9,8 @@ import type {
 import type { UserProfile } from "@/types/user";
 
 import { authApi } from "@/api/auth";
-import { userApi } from "@/api/users";
+import { type FinishTourRequest, userApi } from "@/api/users";
+import { DIRECTORY_QUERY_KEYS } from "@/queries/directories";
 import { USER_QUERY_KEYS } from "@/queries/user";
 import { useAuthStore } from "@/stores/auth";
 
@@ -78,9 +79,10 @@ export const setupProfile = defineMutation(() => {
 export const finishTour = defineMutation(() => {
   const queryCache = useQueryCache();
   return useMutation({
-    mutation: () => userApi.finishTour(),
+    mutation: (request: FinishTourRequest) => userApi.finishTour(request),
     onSuccess() {
       queryCache.invalidateQueries({ key: USER_QUERY_KEYS.getOnboardingStep() });
+      queryCache.invalidateQueries({ key: DIRECTORY_QUERY_KEYS.root });
     },
   });
 });

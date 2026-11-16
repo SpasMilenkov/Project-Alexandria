@@ -56,8 +56,12 @@ import { Icon } from "@iconify/vue";
 import { breakpointsTailwind, useBreakpoints } from "@vueuse/core";
 import { computed, ref } from "vue";
 
-import { PolicyActionType, type PolicyRuleDto, PolicyTriggerType } from "@/api/policy";
+import { PolicyActionType, type PolicyRuleDto } from "@/api/policy";
 import { useAppToast } from "@/composables/useAppToast";
+import {
+  policyActionPresentation,
+  policyTriggerLabel,
+} from "@/features/policies/rule-presentation";
 import { deleteRule } from "@/mutations/policies";
 
 const { directoryId, rule } = defineProps<{
@@ -92,53 +96,9 @@ const handleDelete = async () => {
   }
 };
 
-const actionIcon = computed(() => {
-  switch (rule.actionType) {
-    case PolicyActionType.Transcode:
-      return "mdi:film-open-outline";
-    case PolicyActionType.Backup:
-      return "mdi:cloud-upload-outline";
-    case PolicyActionType.AutoTag:
-      return "mdi:tag-outline";
-    default:
-      return "mdi:cog-outline";
-  }
-});
-
-const actionColorClass = computed(() => {
-  switch (rule.actionType) {
-    case PolicyActionType.Transcode:
-      return "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400";
-    case PolicyActionType.Backup:
-      return "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400";
-    case PolicyActionType.AutoTag:
-      return "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400";
-    default:
-      return "bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400";
-  }
-});
-
-const actionLabel = computed(() => {
-  switch (rule.actionType) {
-    case PolicyActionType.Transcode:
-      return "Transcode media";
-    case PolicyActionType.Backup:
-      return "Backup";
-    case PolicyActionType.AutoTag:
-      return "Auto-tag";
-    default:
-      return rule.actionType;
-  }
-});
-
-const triggerLabel = computed(() => {
-  switch (rule.triggerType) {
-    case PolicyTriggerType.AnyFile:
-      return "All eligible files";
-    case PolicyTriggerType.FileGroup:
-      return rule.triggerValue.split(";").filter(Boolean).join(", ");
-    default:
-      return rule.triggerValue;
-  }
-});
+const presentation = computed(() => policyActionPresentation(rule.actionType));
+const actionIcon = computed(() => presentation.value.icon);
+const actionColorClass = computed(() => presentation.value.colorClass);
+const actionLabel = computed(() => presentation.value.label);
+const triggerLabel = computed(() => policyTriggerLabel(rule.triggerType, rule.triggerValue));
 </script>

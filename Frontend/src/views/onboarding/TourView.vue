@@ -10,9 +10,9 @@
       <!-- Progress dots -->
       <div class="mb-8 flex items-center justify-center gap-2">
         <button
-          v-for="(f, i) in tourFeatures"
-          :key="i"
-          :aria-label="`Go to ${f.title}`"
+          v-for="(slide, i) in slides"
+          :key="slide.id"
+          :aria-label="`Go to ${slide.title}`"
           class="rounded-full focus:outline-none transition-all duration-300"
           :class="
             i === current
@@ -34,52 +34,49 @@
           <div
             class="flex flex-col justify-between p-8 lg:w-[42%] lg:border-r lg:border-gray-200/60 lg:dark:border-gray-700/50"
           >
-            <Transition :name="transitionName" mode="out-in">
-              <div :key="current" class="flex flex-col gap-5">
-                <!-- Icon -->
-                <div
-                  :class="[
-                    'flex h-12 w-12 items-center justify-center rounded-xl transition-colors duration-300',
-                    tourFeatures[current].highlight
-                      ? 'bg-primary/15 text-primary'
-                      : 'bg-gray-100/80 text-gray-500 dark:bg-white/10 dark:text-gray-400',
-                  ]"
-                >
-                  <Icon :icon="tourFeatures[current].icon" class="h-6 w-6" />
+            <div class="grid">
+              <!--
+                Desktop sizer: the feature and library slides render invisibly in one grid cell,
+                so the card starts at the tallest of them and keeps that height while stepping.
+                The automation slide is left out on purpose and may grow to its full height.
+              -->
+              <div
+                class="invisible col-start-1 row-start-1 hidden lg:grid"
+                aria-hidden="true"
+                inert
+              >
+                <div v-for="slide in sizedSlides" :key="slide.id" class="col-start-1 row-start-1">
+                  <TourFeatureSlide v-if="slide.kind === 'feature'" :feature="slide.feature" />
+                  <TourLibrarySlide
+                    v-else
+                    :drafts="drafts"
+                    :capabilities="capabilities"
+                    :errors="nameErrors"
+                  />
                 </div>
-
-                <!-- Title + description -->
-                <div>
-                  <h2 class="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
-                    {{ tourFeatures[current].title }}
-                  </h2>
-                  <p class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-                    {{ tourFeatures[current].description }}
-                  </p>
-                </div>
-
-                <!-- Tips -->
-                <ul class="space-y-2.5">
-                  <li
-                    v-for="(tip, i) in tourFeatures[current].tips"
-                    :key="tip"
-                    class="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300"
-                  >
-                    <div
-                      :class="[
-                        'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-                        tourFeatures[current].highlight
-                          ? 'bg-primary/15 text-primary'
-                          : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400',
-                      ]"
-                    >
-                      {{ i + 1 }}
-                    </div>
-                    {{ tip }}
-                  </li>
-                </ul>
               </div>
-            </Transition>
+
+              <Transition :name="transitionName" mode="out-in">
+                <div :key="current" class="col-start-1 row-start-1">
+                  <TourFeatureSlide v-if="activeFeature" :feature="activeFeature" />
+
+                  <TourLibrarySlide
+                    v-else-if="activeSlide.kind === 'library'"
+                    v-model:drafts="drafts"
+                    :capabilities="capabilities"
+                    :errors="nameErrors"
+                  />
+
+                  <TourAutomationSlide
+                    v-else
+                    v-model:drafts="drafts"
+                    :capabilities="capabilities"
+                    :errors="qualityErrors"
+                    @focus="focusedKind = $event"
+                  />
+                </div>
+              </Transition>
+            </div>
 
             <!-- Navigation — always at the bottom of content pane -->
             <div class="mt-8 flex items-center gap-3">
@@ -99,6 +96,7 @@
                 variant="solid"
                 size="lg"
                 class="flex-1"
+                :loading="isFinishing"
                 :trailing-icon="isLast ? 'i-mdi-rocket-launch-outline' : 'i-mdi-arrow-right'"
                 @click="isLast ? handleFinish() : next()"
               >
@@ -126,8 +124,9 @@
             <Transition :name="transitionName" mode="out-in">
               <div :key="current" class="relative w-full p-6 lg:p-8">
                 <img
+                  v-if="activeFeature"
                   :src="imageUrl"
-                  :alt="`${tourFeatures[current].title} preview`"
+                  :alt="`${activeFeature.title} preview`"
                   class="w-full rounded-lg shadow-2xl ring-1"
                   :class="
                     isDark ? 'shadow-black/40 ring-white/10' : 'shadow-black/15 ring-black/10'
@@ -135,6 +134,18 @@
                   style="aspect-ratio: 520/340; object-fit: cover"
                   loading="lazy"
                   decoding="async"
+                />
+
+                <LibraryExplorerPreview
+                  v-else-if="activeSlide.kind === 'library'"
+                  :drafts="drafts"
+                  :capabilities="capabilities"
+                />
+
+                <AutomationDrawerPreview
+                  v-else-if="focusedDraft"
+                  :draft="focusedDraft"
+                  :capabilities="capabilities"
                 />
               </div>
             </Transition>
@@ -167,9 +178,26 @@ import { useDark } from "@vueuse/core";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import AutomationDrawerPreview from "@/components/onboarding/tour/AutomationDrawerPreview.vue";
+import LibraryExplorerPreview from "@/components/onboarding/tour/LibraryExplorerPreview.vue";
+import TourAutomationSlide from "@/components/onboarding/tour/TourAutomationSlide.vue";
+import TourFeatureSlide from "@/components/onboarding/tour/TourFeatureSlide.vue";
+import TourLibrarySlide from "@/components/onboarding/tour/TourLibrarySlide.vue";
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
-import { OnboardingStep } from "@/enums";
+import { type LibraryFolderKind, OnboardingStep } from "@/enums";
 import { getHomeLandingDestination } from "@/features/home/landing";
+import {
+  LIBRARY_FOLDER_PRESETS,
+  type LibraryErrors,
+  type LibraryFolderDraft,
+  buildFinishTourRequest,
+  createLibraryDrafts,
+  hasAnyAutomation,
+  isAutomatable,
+  readLibraryCapabilities,
+  validateFolderNames,
+  validateQualities,
+} from "@/features/onboarding/library-setup";
 import { finishTour } from "@/mutations/user";
 import { useAuthStore } from "@/stores/auth";
 
@@ -180,7 +208,7 @@ const route = useRoute();
 const authStore = useAuthStore();
 const isDark = useDark();
 
-const { mutate, error: mutationError, status } = finishTour();
+const { mutate, error: mutationError, status, isLoading: isFinishing } = finishTour();
 
 watch(status, (s) => {
   if (s !== "success") return;
@@ -197,39 +225,37 @@ const serverError = computed(() => {
     : "Something went wrong. Please try again.";
 });
 
-// Carousel
-const current = ref(0);
-const direction = ref<"forward" | "back">("forward");
-const transitionName = computed(() =>
-  direction.value === "forward" ? "slide-left" : "slide-right",
+// Library setup
+const capabilities = readLibraryCapabilities();
+const drafts = ref<LibraryFolderDraft[]>(createLibraryDrafts(capabilities));
+const nameErrors = ref<LibraryErrors>({});
+const qualityErrors = ref<LibraryErrors>({});
+const validationAttempted = ref(false);
+
+const firstAutomatable = LIBRARY_FOLDER_PRESETS.find((preset) =>
+  isAutomatable(preset, capabilities),
 );
-const isLast = computed(() => current.value === tourFeatures.length - 1);
+const focusedKind = ref<LibraryFolderKind | null>(firstAutomatable?.kind ?? null);
+const focusedDraft = computed(
+  () => drafts.value.find((draft) => draft.kind === focusedKind.value) ?? null,
+);
 
-// Resolves the correct image from /public/images/onboarding/{dark|light}/
-const imageUrl = computed(() => {
-  const theme = isDark.value ? "dark" : "light";
-  return `/images/onboarding/${theme}/${tourFeatures[current.value].image}`;
-});
+const hasErrors = (errors: LibraryErrors) => Object.keys(errors).length > 0;
 
-const next = () => {
-  if (!isLast.value) {
-    direction.value = "forward";
-    current.value++;
-  }
+const validateLibrary = () => {
+  validationAttempted.value = true;
+  nameErrors.value = validateFolderNames(drafts.value);
+  qualityErrors.value = validateQualities(drafts.value, capabilities);
 };
-const prev = () => {
-  if (current.value > 0) {
-    direction.value = "back";
-    current.value--;
-  }
-};
-const goTo = (i: number) => {
-  direction.value = i > current.value ? "forward" : "back";
-  current.value = i;
-};
-const handleFinish = () => {
-  mutate();
-};
+
+// Errors clear as the user fixes them, but a fresh form stays quiet until the first attempt.
+watch(
+  drafts,
+  () => {
+    if (validationAttempted.value) validateLibrary();
+  },
+  { deep: true },
+);
 
 // Features
 // `image` is the filename only — path is resolved by imageUrl computed
@@ -301,10 +327,105 @@ const tourFeatures: TourFeature[] = [
   },
 ];
 
+// Carousel
+type TourSlide =
+  | { id: string; kind: "feature"; title: string; feature: TourFeature }
+  | { id: string; kind: "library"; title: string }
+  | { id: string; kind: "automation"; title: string };
+
+// The library slides come last so the final "Get started" is the step that applies the choices.
+const slides: TourSlide[] = [
+  ...tourFeatures.map((feature): TourSlide => ({
+    feature,
+    id: feature.id,
+    kind: "feature",
+    title: feature.title,
+  })),
+  { id: "library", kind: "library", title: "Your library" },
+];
+
+if (hasAnyAutomation(capabilities)) {
+  slides.push({ id: "automation", kind: "automation", title: "Automation" });
+}
+
+const current = ref(0);
+const direction = ref<"forward" | "back">("forward");
+const transitionName = computed(() =>
+  direction.value === "forward" ? "slide-left" : "slide-right",
+);
+
+const activeSlide = computed(() => slides[current.value]);
+const sizedSlides = slides.filter((slide) => slide.kind !== "automation");
+const activeFeature = computed(() => {
+  const slide = activeSlide.value;
+  if (slide.kind !== "feature") return null;
+
+  return slide.feature;
+});
+const isLast = computed(() => current.value === slides.length - 1);
+
+// Resolves the correct image from /public/images/onboarding/{dark|light}/
+const imageUrl = computed(() => {
+  if (!activeFeature.value) return "";
+
+  const theme = isDark.value ? "dark" : "light";
+  return `/images/onboarding/${theme}/${activeFeature.value.image}`;
+});
+
+const slideIndex = (kind: TourSlide["kind"]) => slides.findIndex((slide) => slide.kind === kind);
+
+const next = () => {
+  if (isLast.value) return;
+
+  if (activeSlide.value.kind === "library") {
+    validateLibrary();
+    if (hasErrors(nameErrors.value)) return;
+  }
+
+  direction.value = "forward";
+  current.value++;
+};
+const prev = () => {
+  if (current.value > 0) {
+    direction.value = "back";
+    current.value--;
+  }
+};
+const goTo = (i: number) => {
+  direction.value = i > current.value ? "forward" : "back";
+  current.value = i;
+};
+
+const handleFinish = () => {
+  validateLibrary();
+
+  if (hasErrors(nameErrors.value)) {
+    goTo(slideIndex("library"));
+    return;
+  }
+
+  if (hasErrors(qualityErrors.value)) {
+    goTo(slideIndex("automation"));
+    return;
+  }
+
+  mutate(buildFinishTourRequest(drafts.value, capabilities));
+};
+
+// Enter inside a field or on a control belongs to that control, not to the carousel.
+const INTERACTIVE_SELECTOR =
+  "input, textarea, select, button, a, [role='switch'], [role='checkbox']";
+
 const handleEnter = (e: KeyboardEvent) => {
   if (e.key !== "Enter") return;
+  if (e.target instanceof HTMLElement && e.target.closest(INTERACTIVE_SELECTOR)) return;
 
-  return isLast.value ? handleFinish() : next();
+  if (isLast.value) {
+    handleFinish();
+    return;
+  }
+
+  next();
 };
 
 onMounted(() => document.addEventListener("keydown", handleEnter));
