@@ -55,7 +55,7 @@ internal static partial class EpubReader
         return fields.ToFields();
     }
 
-    private static string? DrmScheme(ZipArchive archive, ILogger logger)
+    internal static string? DrmScheme(ZipArchive archive, ILogger logger)
     {
         foreach (var (path, scheme) in LicenseFiles)
         {
@@ -84,7 +84,7 @@ internal static partial class EpubReader
         }
     }
 
-    private static ZipArchiveEntry? FindPackage(ZipArchive archive, ILogger logger)
+    internal static ZipArchiveEntry? FindPackage(ZipArchive archive, ILogger logger)
     {
         var container = PackagePart.Find(archive, "META-INF/container.xml");
         if (container is not null)

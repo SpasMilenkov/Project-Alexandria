@@ -39,7 +39,7 @@ internal static partial class OpenDocumentReader
         return fields.ToFields();
     }
 
-    private static bool IsEncrypted(ZipArchive archive, ILogger logger)
+    internal static bool IsEncrypted(ZipArchive archive, ILogger logger)
     {
         var manifest = PackagePart.Find(archive, "META-INF/manifest.xml");
         if (manifest is null)

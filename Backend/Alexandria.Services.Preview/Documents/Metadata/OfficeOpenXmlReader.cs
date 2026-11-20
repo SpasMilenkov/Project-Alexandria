@@ -1,7 +1,7 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using System.Xml;
-using System.Xml.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace Alexandria.Services.Preview.Documents.Metadata;
@@ -37,7 +37,7 @@ internal static partial class OfficeOpenXmlReader
         return fields.ToFields();
     }
 
-    private static bool StartsWithCompoundFileSignature(Stream source)
+    internal static bool StartsWithCompoundFileSignature(Stream source)
     {
         Span<byte> header = stackalloc byte[CompoundFileSignature.Length];
         var read = source.ReadAtLeast(header, header.Length, throwOnEndOfStream: false);
@@ -117,10 +117,10 @@ internal static partial class OfficeOpenXmlReader
         var sheets = archive.Entries.Count(e => SheetPart().IsMatch(e.FullName));
 
         if (slides > 0)
-            fields.Add("package:slides", slides.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            fields.Add("package:slides", slides.ToString(CultureInfo.InvariantCulture));
 
         if (sheets > 0)
-            fields.Add("package:sheets", sheets.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            fields.Add("package:sheets", sheets.ToString(CultureInfo.InvariantCulture));
     }
 
     [GeneratedRegex(@"^ppt/slides/slide\d+\.xml$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
