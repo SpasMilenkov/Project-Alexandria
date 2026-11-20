@@ -10,6 +10,7 @@ public interface IUnitOfWork : IDisposable
     IMediaMetadataRepository MediaMetadata { get; }
     ICaptureMetadataRepository CaptureMetadata { get; }
     IDocumentMetadataRepository DocumentMetadata { get; }
+    IDocumentTextRepository DocumentText { get; }
     IRefreshTokenRepository RefreshTokens { get; }
     ITagRepository Tags { get; }
     IDirectoryRepository Directories { get; }

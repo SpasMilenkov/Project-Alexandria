@@ -91,6 +91,7 @@ public static class ServiceExtensions
         services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();
         services.AddScoped<ICaptureMetadataRepository, CaptureMetadataRepository>();
         services.AddScoped<IDocumentMetadataRepository, DocumentMetadataRepository>();
+        services.AddScoped<IDocumentTextRepository, DocumentTextRepository>();
         services.AddScoped<IGalleryRepository, GalleryRepository>();
         services.AddScoped<IGalleryService, GalleryService>();
         services.AddScoped<ISummaryGenerator, WrappedSummaryGenerator>();
