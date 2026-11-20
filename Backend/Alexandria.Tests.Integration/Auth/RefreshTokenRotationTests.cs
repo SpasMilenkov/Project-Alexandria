@@ -15,6 +15,8 @@ namespace Alexandria.Tests.Integration.Auth;
 public class RefreshTokenRotationTests(DatabaseFixture fixture) : IAsyncLifetime
 {
     private readonly Guid _userId = Guid.NewGuid();
+    private readonly Guid _sessionId = Guid.NewGuid();
+    private readonly Guid _otherSessionId = Guid.NewGuid();
     private readonly DateTime _sessionStart = new(2026, 11, 1, 8, 0, 0, DateTimeKind.Utc);
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -34,7 +36,7 @@ public class RefreshTokenRotationTests(DatabaseFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task RevokeIfActive_concurrentCallers_exactlyOneWins()
     {
-        var token = await SeedAsync(_sessionStart, createdAt: _sessionStart);
+        var token = await SeedAsync(_sessionId, createdAt: _sessionStart);
 
         var attempts = Enumerable.Range(0, 5).Select(async _ =>
         {
@@ -50,14 +52,14 @@ public class RefreshTokenRotationTests(DatabaseFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task GetLiveSuccessor_findsTheSessionsNewestLiveToken()
     {
-        var spent = await SeedAsync(_sessionStart, createdAt: _sessionStart.AddHours(1), revoked: true);
-        var successor = await SeedAsync(_sessionStart, createdAt: _sessionStart.AddHours(2));
-        await SeedAsync(_sessionStart.AddDays(-1), createdAt: _sessionStart.AddHours(3));
-        await SeedAsync(_sessionStart, createdAt: _sessionStart.AddHours(4), revoked: true);
+        var spent = await SeedAsync(_sessionId, createdAt: _sessionStart.AddHours(1), revoked: true);
+        var successor = await SeedAsync(_sessionId, createdAt: _sessionStart.AddHours(2));
+        await SeedAsync(_otherSessionId, createdAt: _sessionStart.AddHours(3));
+        await SeedAsync(_sessionId, createdAt: _sessionStart.AddHours(4), revoked: true);
 
         await using var db = fixture.CreateDbContext();
         var found = await new RefreshTokenRepository(db).GetLiveSuccessorAsync(
-            _userId, _sessionStart, spent.CreatedAt, DateTime.UtcNow, Ct);
+            _userId, _sessionId, spent.CreatedAt, DateTime.UtcNow, Ct);
 
         found.Should().NotBeNull();
         found!.Id.Should().Be(successor.Id);
@@ -66,23 +68,61 @@ public class RefreshTokenRotationTests(DatabaseFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task GetLiveSuccessor_signedOutSession_findsNothing()
     {
-        var spent = await SeedAsync(_sessionStart, createdAt: _sessionStart, revoked: true);
+        var spent = await SeedAsync(_sessionId, createdAt: _sessionStart, revoked: true);
 
         await using var db = fixture.CreateDbContext();
         var found = await new RefreshTokenRepository(db).GetLiveSuccessorAsync(
-            _userId, _sessionStart, spent.CreatedAt, DateTime.UtcNow, Ct);
+            _userId, _sessionId, spent.CreatedAt, DateTime.UtcNow, Ct);
 
         found.Should().BeNull();
     }
 
-    private async Task<RefreshToken> SeedAsync(DateTime sessionStart, DateTime createdAt, bool revoked = false)
+    [Fact]
+    public async Task RevokeSessionTokens_revokesOnlyThatSessionsLiveTokens()
+    {
+        await SeedAsync(_sessionId, createdAt: _sessionStart, revoked: true);
+        var live = await SeedAsync(_sessionId, createdAt: _sessionStart.AddHours(1));
+        var otherSession = await SeedAsync(_otherSessionId, createdAt: _sessionStart.AddHours(2));
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var revoked = await new RefreshTokenRepository(db).RevokeSessionTokensAsync(
+                _userId, _sessionId, DateTime.UtcNow, Ct);
+
+            revoked.Should().Be(1);
+        }
+
+        await using var check = fixture.CreateDbContext();
+        (await check.RefreshTokens.FindAsync([live.Id], Ct))!.IsRevoked.Should().BeTrue();
+        (await check.RefreshTokens.FindAsync([otherSession.Id], Ct))!.IsRevoked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetActiveBySession_findsTheLiveToken_onlyForItsOwner()
+    {
+        await SeedAsync(_sessionId, createdAt: _sessionStart, revoked: true);
+        var live = await SeedAsync(_sessionId, createdAt: _sessionStart.AddHours(1));
+
+        await using var db = fixture.CreateDbContext();
+        var repository = new RefreshTokenRepository(db);
+
+        var own = await repository.GetActiveBySessionAsync(_sessionId, _userId, DateTime.UtcNow, Ct);
+        var foreign = await repository.GetActiveBySessionAsync(_sessionId, Guid.NewGuid(), DateTime.UtcNow, Ct);
+
+        own.Should().NotBeNull();
+        own!.Id.Should().Be(live.Id);
+        foreign.Should().BeNull();
+    }
+
+    private async Task<RefreshToken> SeedAsync(Guid sessionId, DateTime createdAt, bool revoked = false)
     {
         var token = new RefreshToken
         {
             Id = Guid.NewGuid(),
             Token = Guid.NewGuid().ToString("N"),
             UserId = _userId,
-            SessionStartedAt = sessionStart,
+            SessionId = sessionId,
+            SessionStartedAt = _sessionStart,
             CreatedAt = createdAt,
             ExpiresAt = DateTime.UtcNow.AddDays(7),
             IsRevoked = revoked,

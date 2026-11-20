@@ -45,17 +45,31 @@ public class RefreshTokenRepository(AlexandriaDbContext context) : IRefreshToken
         return updated == 1;
     }
 
-    public async Task<RefreshToken?> GetLiveSuccessorAsync(Guid userId, DateTime sessionStartedAt,
+    public async Task<int> RevokeSessionTokensAsync(Guid userId, Guid sessionId, DateTime revokedAt,
+        CancellationToken ct = default)
+    {
+        return await _refreshTokens
+            .Where(rt => rt.UserId == userId
+                         && rt.SessionId == sessionId
+                         && !rt.IsRevoked
+                         && rt.DeletedAt == null)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(rt => rt.IsRevoked, true)
+                .SetProperty(rt => rt.RevokedAt, revokedAt)
+                .SetProperty(rt => rt.UpdatedAt, revokedAt), ct);
+    }
+
+    public async Task<RefreshToken?> GetLiveSuccessorAsync(Guid userId, Guid sessionId,
         DateTime issuedAfter, DateTime now, CancellationToken ct = default)
     {
         return await _refreshTokens
             .AsNoTracking()
             .Where(rt => rt.UserId == userId
-                && rt.SessionStartedAt == sessionStartedAt
-                && rt.CreatedAt > issuedAfter
-                && !rt.IsRevoked
-                && rt.DeletedAt == null
-                && rt.ExpiresAt > now)
+                         && rt.SessionId == sessionId
+                         && rt.CreatedAt > issuedAfter
+                         && !rt.IsRevoked
+                         && rt.DeletedAt == null
+                         && rt.ExpiresAt > now)
             .OrderByDescending(rt => rt.CreatedAt)
             .FirstOrDefaultAsync(ct);
     }
@@ -219,14 +233,18 @@ public class RefreshTokenRepository(AlexandriaDbContext context) : IRefreshToken
             .ToListAsync(ct);
     }
 
-    public async Task<RefreshToken?> GetActiveByIdAsync(
-        Guid id,
+    public async Task<RefreshToken?> GetActiveBySessionAsync(
+        Guid sessionId,
         Guid userId,
         DateTime now,
         CancellationToken ct = default)
     {
         return await _refreshTokens
-            .FirstOrDefaultAsync(rt =>
-                rt.Id == id && rt.UserId == userId && !rt.IsRevoked && rt.DeletedAt == null && rt.ExpiresAt > now, ct);
+            .AsNoTracking()
+            .Where(rt =>
+                rt.SessionId == sessionId && rt.UserId == userId && !rt.IsRevoked && rt.DeletedAt == null
+                && rt.ExpiresAt > now)
+            .OrderByDescending(rt => rt.CreatedAt)
+            .FirstOrDefaultAsync(ct);
     }
 }

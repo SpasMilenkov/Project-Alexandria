@@ -9,6 +9,10 @@ public class AuthResult
     public ApplicationUser? User { get; set; }
     public IList<string> UserRoles { get; set; }
     public string? RefreshToken { get; set; }
+
+    /// <summary>The session <see cref="RefreshToken"/> belongs to, which the access token names.</summary>
+    public Guid? SessionId { get; set; }
+
     public OnboardingStep OnboardingStep { get; set; }
     public LoginFailureReason? FailureReason { get; set; }
 

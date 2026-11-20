@@ -1,5 +1,6 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators;
 using FastEndpoints;
 
 namespace Alexandria.Api.Features.Auth.RefreshToken;
@@ -22,16 +23,16 @@ public class RefreshTokenEndpoint(IAuthService authService)
             return;
         }
 
-        var result = await authService.RefreshTokenAsync(refreshToken, ct);
+        var result = await authService.RefreshTokenAsync(refreshToken, SessionClient.Browser, ct);
 
-        if (!result.Succeeded || result.User is null || result.RefreshToken is null)
+        if (!result.Succeeded || result.User is null || result.RefreshToken is null || result.SessionId is null)
         {
             HttpContext.Response.ClearSessionCookies();
             await Send.UnauthorizedAsync(ct);
             return;
         }
 
-        var newAccessToken = authService.GenerateAccessToken(result.User);
+        var newAccessToken = authService.GenerateAccessToken(result.User, result.SessionId.Value);
 
         HttpContext.Response.AppendSessionCookies(newAccessToken, result.RefreshToken);
 

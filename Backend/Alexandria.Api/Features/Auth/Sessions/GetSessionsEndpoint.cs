@@ -18,9 +18,9 @@ sealed class GetSessionsEndpoint(IAuthService authService) : EndpointWithoutRequ
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        HttpContext.Request.Cookies.TryGetValue(AuthCookies.RefreshToken, out var currentToken);
-
-        var sessions = await authService.GetSessionsAsync(User.GetUserId(), currentToken, ct);
+        // The access token names its session, so a native client, which has no cookie, sees its
+        // own session marked as well as a browser does.
+        var sessions = await authService.GetSessionsAsync(User.GetUserId(), User.GetSessionId(), ct);
         await Send.OkAsync(sessions, ct);
     }
 }
