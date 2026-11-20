@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ContextMenuItem } from "@nuxt/ui";
 
-import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
 import { computed, onUnmounted, ref, useTemplateRef } from "vue";
 
@@ -38,7 +37,7 @@ const isActivePlaying = computed(() => isActive.value && isPlaying.value);
 const isAudio = computed(() => !file.isVideo);
 const isVideo = computed(() => file.isVideo);
 const typeLabel = computed(() => (isVideo.value ? "Video" : "Audio"));
-const typeIcon = computed(() => (isVideo.value ? "mdi:file-video" : "mdi:music-note"));
+const typeIcon = computed(() => (isVideo.value ? "i-lucide-file-play" : "i-lucide-music"));
 
 const displayName = computed(() => file.title ?? file.fileName);
 const subtitle = computed(() => {
@@ -110,7 +109,7 @@ const contextItems = computed((): ContextMenuItem[][] => [
   [
     {
       label: "Play",
-      icon: "i-mdi-play",
+      icon: "i-lucide-play",
       onSelect: () => emit("select", file),
     },
   ],
@@ -118,12 +117,12 @@ const contextItems = computed((): ContextMenuItem[][] => [
     isQueued.value
       ? {
           label: "Remove from queue",
-          icon: "i-mdi-playlist-minus",
+          icon: "i-lucide-list-minus",
           onSelect: () => store.removeFromQueue(queueIndex.value),
         }
       : {
           label: "Add to queue",
-          icon: "i-mdi-playlist-plus",
+          icon: "i-lucide-list-plus",
           onSelect: () => store.addToQueue([file]),
         },
   ],
@@ -235,7 +234,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
           <BlockSpinner :size="20" class="text-gray-600 dark:text-gray-400" />
         </div>
         <div v-if="showFallbackIcon" class="absolute inset-0 flex items-center justify-center">
-          <Icon :icon="typeIcon" class="w-8 h-8 text-gray-500 dark:text-gray-400" />
+          <UIcon :name="typeIcon" class="w-8 h-8 text-gray-500 dark:text-gray-400" />
         </div>
 
         <div
@@ -254,7 +253,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
           class="absolute bottom-4 right-4 w-10 h-10 rounded-full frosted-glass glass-surface-strong flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity duration-150 pointer-events-none"
           aria-hidden="true"
         >
-          <Icon icon="mdi:play" class="w-5 h-5 text-gray-900 dark:text-gray-100" />
+          <UIcon name="i-lucide-play" class="w-5 h-5 icon-solid text-gray-900 dark:text-gray-100" />
         </div>
 
         <div
@@ -296,9 +295,9 @@ const onCardKeydown = (event: KeyboardEvent) => {
             <div v-if="isActive && isAudio" class="flex" role="status" aria-label="Now playing">
               <MediaEqualizer :playing="isActivePlaying" class="text-primary" />
             </div>
-            <Icon
+            <UIcon
               v-else-if="isActive"
-              icon="mdi:eye-outline"
+              name="i-lucide-eye"
               class="w-4 h-4 text-primary shrink-0"
               :class="isActivePlaying ? 'animate-blink' : ''"
               role="status"
@@ -320,7 +319,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
             @pointerdown.stop
             @click.stop="emit('info', file)"
           >
-            <Icon icon="mdi:information-outline" class="size-4.5" />
+            <UIcon name="i-lucide-info" class="size-4.5" />
           </button>
         </div>
       </div>
@@ -358,18 +357,18 @@ const onCardKeydown = (event: KeyboardEvent) => {
           <div v-else-if="isActive && isAudio" class="flex" role="status" aria-label="Now playing">
             <MediaEqualizer :playing="isActivePlaying" class="text-primary" />
           </div>
-          <Icon
+          <UIcon
             v-else-if="isActive"
-            icon="mdi:eye-outline"
+            name="i-lucide-eye"
             class="w-4 h-4 text-primary shrink-0"
             :class="isActivePlaying ? 'animate-blink' : ''"
             role="status"
             aria-label="Now playing"
           />
-          <Icon
+          <UIcon
             v-else
-            icon="mdi:play"
-            class="w-4 h-4 text-gray-500 transition-colors group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200"
+            name="i-lucide-play"
+            class="w-4 h-4 icon-solid text-gray-500 transition-colors group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-200"
             aria-hidden="true"
           />
         </div>
@@ -397,7 +396,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
             <BlockSpinner :size="20" class="text-gray-600 dark:text-gray-400" />
           </div>
           <div v-if="showFallbackIcon" class="w-full h-full flex items-center justify-center">
-            <Icon :icon="typeIcon" class="size-5 text-gray-500 dark:text-gray-400" />
+            <UIcon :name="typeIcon" class="size-5 text-gray-500 dark:text-gray-400" />
           </div>
         </div>
 
@@ -437,7 +436,7 @@ const onCardKeydown = (event: KeyboardEvent) => {
           @pointerdown.stop
           @click.stop="emit('info', file)"
         >
-          <Icon icon="mdi:information-outline" class="w-4 h-4" />
+          <UIcon name="i-lucide-info" class="w-4 h-4" />
         </button>
       </div>
     </div>

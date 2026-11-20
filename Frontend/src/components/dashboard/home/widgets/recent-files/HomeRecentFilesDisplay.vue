@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useResizeObserver } from "@vueuse/core";
 import { computed, ref } from "vue";
 
@@ -152,8 +151,8 @@ useResizeObserver(tiles, (entries) => {
           :aria-label="`Open ${row.file.fileName}`"
           @click="emit('open', row.file)"
         >
-          <Icon
-            :icon="row.icon"
+          <UIcon
+            :name="row.icon"
             class="size-5 shrink-0"
             :style="{ color: row.color }"
             aria-hidden="true"
@@ -188,8 +187,8 @@ useResizeObserver(tiles, (entries) => {
               :aria-label="`Open ${row.file.fileName}`"
               @click="emit('open', row.file)"
             >
-              <Icon
-                :icon="row.icon"
+              <UIcon
+                :name="row.icon"
                 class="size-4 shrink-0"
                 :style="{ color: row.color }"
                 aria-hidden="true"
@@ -230,9 +229,9 @@ useResizeObserver(tiles, (entries) => {
           /></span>
         </template>
 
-        <Icon
+        <UIcon
           v-else
-          :icon="row.icon"
+          :name="row.icon"
           class="size-5 shrink-0"
           :style="{ color: row.color }"
           aria-hidden="true"

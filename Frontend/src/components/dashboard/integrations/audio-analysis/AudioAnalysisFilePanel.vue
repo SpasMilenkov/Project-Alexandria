@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed, ref } from "vue";
 
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
@@ -55,9 +54,9 @@ const isGenreLowConfidence = computed(
 );
 
 const voiceIcon = computed(() => {
-  if (voice.value?.name === "Instrumental") return "lucide:audio-lines";
+  if (voice.value?.name === "Instrumental") return "i-lucide-audio-lines";
 
-  return "mdi:microphone-variant";
+  return "i-lucide-mic-vocal";
 });
 
 const analyzedLabel = computed(() => {
@@ -177,7 +176,7 @@ const historySummary = computed(() => {
         </label>
 
         <UButton
-          icon="i-mdi-refresh"
+          icon="i-lucide-refresh-cw"
           color="neutral"
           variant="ghost"
           size="sm"
@@ -195,7 +194,7 @@ const historySummary = computed(() => {
         variant="soft"
         title="Could not load the analysis"
         description="The server may be offline, or this file hasn't been analyzed yet."
-        icon="i-mdi-connection"
+        icon="i-lucide-plug"
       />
     </div>
 
@@ -206,7 +205,7 @@ const historySummary = computed(() => {
     <div v-else class="grid grid-cols-1 @3xl:grid-cols-2">
       <div class="flex min-w-0 flex-col gap-5 p-5 @3xl:col-start-1 @3xl:row-start-1 @3xl:p-6">
         <div class="flex items-center gap-2">
-          <Icon icon="mdi:music-note" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <UIcon name="i-lucide-music" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
           <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Genre</h3>
           <span
             v-if="genreEnrichment"
@@ -220,8 +219,8 @@ const historySummary = computed(() => {
           v-if="!genreEnrichment || !topGenre"
           class="flex flex-col items-center gap-2 py-10 text-center"
         >
-          <Icon
-            icon="mdi:music-note-off-outline"
+          <UIcon
+            name="i-mdi-music-note-off-outline"
             class="w-12 h-12 text-gray-400 dark:text-gray-600"
           />
           <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -303,10 +302,10 @@ const historySummary = computed(() => {
         :class="DIVIDER_CLASS"
       >
         <div class="flex items-center gap-2">
-          <Icon icon="mdi:emoticon-outline" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          <UIcon name="i-lucide-smile" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
           <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Mood profile</h3>
           <span v-if="voice" :class="[CHIP_CLASS, 'flex items-center gap-1']">
-            <Icon :icon="voiceIcon" class="w-3 h-3" />
+            <UIcon :name="voiceIcon" class="w-3 h-3" />
             {{ voice.name }}
           </span>
           <span
@@ -321,7 +320,7 @@ const historySummary = computed(() => {
           v-if="!moodEnrichment || !topMood"
           class="flex flex-col items-center gap-2 py-10 text-center"
         >
-          <Icon icon="mdi:emoticon-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+          <UIcon name="i-lucide-smile" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
           <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">No mood analysis yet</p>
           <p class="max-w-xs text-xs text-gray-600 dark:text-gray-400">
             This file hasn't been through the mood model, or the result hasn't arrived yet.
@@ -380,14 +379,14 @@ const historySummary = computed(() => {
         type="button"
         class="flex w-full items-center gap-3 px-5 py-3.5 text-left disabled:cursor-default"
       >
-        <Icon icon="mdi:history" class="w-4 h-4 shrink-0 text-gray-600 dark:text-gray-400" />
+        <UIcon name="i-lucide-history" class="w-4 h-4 shrink-0 text-gray-600 dark:text-gray-400" />
         <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Processing history</span>
         <span class="min-w-0 truncate text-xs text-gray-600 dark:text-gray-400">
           {{ historySummary }}
         </span>
-        <Icon
+        <UIcon
           v-if="batchRows.length"
-          icon="mdi:chevron-down"
+          name="i-lucide-chevron-down"
           class="ml-auto w-4 h-4 shrink-0 text-gray-600 transition-transform duration-200 motion-reduce:transition-none dark:text-gray-400"
           :class="{ 'rotate-180': isHistoryOpen }"
         />

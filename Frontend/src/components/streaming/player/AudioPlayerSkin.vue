@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
 import { computed, onUnmounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import "@/assets/player-range.css";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { usePlayerModeTransition } from "@/composables/usePlayerModeTransition";
 import { usePlayerStore } from "@/stores/stream-player";
@@ -44,7 +44,7 @@ const trackMenuItems = [
   [
     {
       label: "Track details",
-      icon: "mdi:information-outline",
+      icon: "i-lucide-info",
       onSelect: () => {
         store.closeTransientSurfaces();
         if (trackDetailsTo.value) void router.push(trackDetailsTo.value);
@@ -74,8 +74,8 @@ const shuffleTitle = computed(() => {
 });
 
 const playPauseIcon = computed(() => {
-  if (isPlaying.value) return "mdi:pause";
-  return "mdi:play";
+  if (isPlaying.value) return "i-lucide-pause";
+  return "i-lucide-play";
 });
 
 const playPauseLabel = computed(() => {
@@ -84,8 +84,8 @@ const playPauseLabel = computed(() => {
 });
 
 const repeatIcon = computed(() => {
-  if (repeatMode.value === "one") return "mdi:repeat-once";
-  return "mdi:repeat";
+  if (repeatMode.value === "one") return "i-lucide-repeat-1";
+  return "i-lucide-repeat";
 });
 
 const shuffleToggleClass = computed(() => {
@@ -131,9 +131,9 @@ const premuteVolume = ref(1);
 const isMuted = computed(() => volume.value === 0);
 
 const volumeIcon = computed(() => {
-  if (volume.value === 0) return "mdi:volume-off";
-  if (volume.value < 0.5) return "mdi:volume-medium";
-  return "mdi:volume-high";
+  if (volume.value === 0) return "i-lucide-volume-x";
+  if (volume.value < 0.5) return "i-lucide-volume-1";
+  return "i-lucide-volume-2";
 });
 
 const toggleMute = () => {
@@ -279,8 +279,8 @@ const cardStyle = computed(() => {
 });
 
 const modeIcon = computed(() => {
-  if (playerMode.value === "strip") return "mdi:picture-in-picture-bottom-right";
-  return "mdi:dock-bottom";
+  if (playerMode.value === "strip") return "i-lucide-picture-in-picture-2";
+  return "i-lucide-panel-bottom";
 });
 
 const cardVariantClass = computed(() => {
@@ -355,7 +355,7 @@ onUnmounted(() => {
             @mousedown="onMouseDown"
             @touchstart.prevent="onTouchStart"
           >
-            <Icon icon="lucide:grip-vertical" class="w-5 h-5" />
+            <UIcon name="i-lucide-grip-vertical" class="w-5 h-5" />
           </span>
           <p
             class="font-semibold truncate text-sm text-gray-800 dark:text-white/90"
@@ -373,7 +373,7 @@ onUnmounted(() => {
             data-player-mode-toggle="pip"
             @click="cycleMode"
           >
-            <Icon :icon="modeIcon" class="w-5 h-5" />
+            <UIcon :name="modeIcon" class="w-5 h-5" />
           </button>
           <button
             class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-500 dark:hover:text-red-400 transition-colors"
@@ -381,7 +381,7 @@ onUnmounted(() => {
             aria-label="Close player"
             @click="store.closePlayer()"
           >
-            <Icon icon="mdi:close" class="w-5 h-5" />
+            <UIcon name="i-lucide-x" class="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -412,7 +412,7 @@ onUnmounted(() => {
                 aria-label="Previous"
                 @click="store.previous()"
               >
-                <Icon icon="mdi:skip-previous" class="w-6 h-6" />
+                <UIcon name="i-lucide-skip-back" class="w-6 h-6 icon-solid" />
               </button>
               <button
                 class="w-12 h-12 rounded-full flex items-center justify-center bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
@@ -422,8 +422,8 @@ onUnmounted(() => {
                 data-player-transport-focus
                 @click="store.togglePlay()"
               >
-                <Icon v-if="isBuffering" icon="mdi:loading" class="w-6 h-6 animate-spin" />
-                <Icon v-else :icon="playPauseIcon" class="w-6 h-6" />
+                <BlockSpinner v-if="isBuffering" :size="24" />
+                <UIcon v-else :name="playPauseIcon" class="w-6 h-6 icon-solid" />
               </button>
               <button
                 class="w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -432,7 +432,7 @@ onUnmounted(() => {
                 aria-label="Next"
                 @click="store.next()"
               >
-                <Icon icon="mdi:skip-next" class="w-6 h-6" />
+                <UIcon name="i-lucide-skip-forward" class="w-6 h-6 icon-solid" />
               </button>
             </div>
           </div>
@@ -464,8 +464,8 @@ onUnmounted(() => {
               :aria-label="shuffleTitle"
               @click="store.toggleShuffle()"
             >
-              <Icon v-if="orderBusy" icon="mdi:loading" class="w-4 h-4 animate-spin" />
-              <Icon v-else icon="mdi:shuffle-variant" class="w-4 h-4" />
+              <BlockSpinner v-if="orderBusy" :size="16" />
+              <UIcon v-else name="i-lucide-shuffle" class="w-4 h-4" />
             </button>
             <button
               class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
@@ -474,7 +474,7 @@ onUnmounted(() => {
               aria-label="Repeat"
               @click="store.toggleLoop()"
             >
-              <Icon :icon="repeatIcon" class="w-4 h-4" />
+              <UIcon :name="repeatIcon" class="w-4 h-4" />
             </button>
             <PlayerQueue />
             <PlayerSettings />
@@ -544,8 +544,8 @@ onUnmounted(() => {
                 :aria-label="shuffleTitle"
                 @click="store.toggleShuffle()"
               >
-                <Icon v-if="orderBusy" icon="mdi:loading" class="w-5 h-5 animate-spin" />
-                <Icon v-else icon="mdi:shuffle-variant" class="w-5 h-5" />
+                <BlockSpinner v-if="orderBusy" :size="20" />
+                <UIcon v-else name="i-lucide-shuffle" class="w-5 h-5" />
               </button>
               <button
                 class="size-9 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -554,7 +554,7 @@ onUnmounted(() => {
                 aria-label="Previous"
                 @click="store.previous()"
               >
-                <Icon icon="mdi:skip-previous" class="w-6 h-6" />
+                <UIcon name="i-lucide-skip-back" class="w-6 h-6 icon-solid" />
               </button>
               <button
                 class="size-10 mx-1 rounded-full flex-shrink-0 flex items-center justify-center bg-primary text-white shadow-md hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
@@ -564,8 +564,8 @@ onUnmounted(() => {
                 data-player-transport-focus
                 @click="store.togglePlay()"
               >
-                <Icon v-if="isBuffering" icon="mdi:loading" class="w-6 h-6 animate-spin" />
-                <Icon v-else :icon="playPauseIcon" class="w-6 h-6" />
+                <BlockSpinner v-if="isBuffering" :size="24" />
+                <UIcon v-else :name="playPauseIcon" class="w-6 h-6 icon-solid" />
               </button>
               <button
                 class="size-9 rounded-lg flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -574,7 +574,7 @@ onUnmounted(() => {
                 aria-label="Next"
                 @click="store.next()"
               >
-                <Icon icon="mdi:skip-next" class="w-6 h-6" />
+                <UIcon name="i-lucide-skip-forward" class="w-6 h-6 icon-solid" />
               </button>
               <button
                 class="size-9 rounded-lg flex items-center justify-center transition-colors"
@@ -583,7 +583,7 @@ onUnmounted(() => {
                 aria-label="Repeat"
                 @click="store.toggleLoop()"
               >
-                <Icon :icon="repeatIcon" class="w-5 h-5" />
+                <UIcon :name="repeatIcon" class="w-5 h-5" />
               </button>
             </div>
             <div class="-mb-1.5 flex items-center gap-2">
@@ -616,7 +616,7 @@ onUnmounted(() => {
                   :aria-label="muteLabel"
                   @click="toggleMute"
                 >
-                  <Icon :icon="volumeIcon" class="w-5 h-5" />
+                  <UIcon :name="volumeIcon" class="w-5 h-5" />
                 </button>
                 <input
                   type="range"
@@ -643,7 +643,7 @@ onUnmounted(() => {
                 :aria-pressed="lyricsOpen"
                 @click="store.toggleLyrics()"
               >
-                <Icon icon="mdi:script-text-outline" class="w-5 h-5" />
+                <UIcon name="i-lucide-scroll-text" class="w-5 h-5" />
               </button>
               <UDropdownMenu :items="trackMenuItems" :content="{ align: 'end' }">
                 <button
@@ -651,7 +651,7 @@ onUnmounted(() => {
                   title="More options"
                   aria-label="More options"
                 >
-                  <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
+                  <UIcon name="i-lucide-ellipsis" class="w-5 h-5" />
                 </button>
               </UDropdownMenu>
             </div>
@@ -664,7 +664,7 @@ onUnmounted(() => {
                 data-player-mode-toggle="strip"
                 @click="cycleMode"
               >
-                <Icon :icon="modeIcon" class="w-5 h-5" />
+                <UIcon :name="modeIcon" class="w-5 h-5" />
               </button>
               <button
                 class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
@@ -672,7 +672,7 @@ onUnmounted(() => {
                 aria-label="Close player"
                 @click="store.closePlayer()"
               >
-                <Icon icon="mdi:close" class="w-5 h-5" />
+                <UIcon name="i-lucide-x" class="w-5 h-5" />
               </button>
             </div>
           </div>

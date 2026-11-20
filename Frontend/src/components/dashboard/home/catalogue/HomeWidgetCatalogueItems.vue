@@ -60,7 +60,7 @@ const startDrag = (type: HomeWidgetType, event: PointerEvent) => {
     <div class="shrink-0 px-3 pb-3">
       <UInput
         v-model="search"
-        icon="i-heroicons-magnifying-glass"
+        icon="i-lucide-search"
         placeholder="Search widgets"
         aria-label="Search widgets"
         autofocus

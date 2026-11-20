@@ -6,6 +6,7 @@ import type { HomeOptionsSection } from "@/features/home/editor/styles";
 import type { HomeClockOptions } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import {
   homeTimeZoneCatalogue,
   homeTimeZoneChoices,
@@ -57,11 +58,7 @@ const changeZone = (timeZone: string | undefined) => {
       description="Choose the place this clock follows."
     >
       <div v-if="(isLoading && !identifiers) || authPending" class="flex justify-center p-4">
-        <UIcon
-          name="i-mdi-loading"
-          class="size-5 animate-spin text-primary"
-          aria-label="Loading time zones"
-        />
+        <BlockSpinner :size="20" class="text-primary" aria-label="Loading time zones" />
       </div>
 
       <div v-else-if="!identifiers" class="flex flex-col items-start gap-2" role="alert">

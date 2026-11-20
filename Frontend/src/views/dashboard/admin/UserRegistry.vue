@@ -373,9 +373,9 @@ const isFilterPanelOpen = ref(false);
 
 const sortDirectionIcon = computed(() => {
   if (isAscending.value) {
-    return "mdi-sort-ascending";
+    return "i-lucide-arrow-up-narrow-wide";
   }
-  return "mdi-sort-descending";
+  return "i-lucide-arrow-down-wide-narrow";
 });
 
 const sortDirectionLabel = computed(() => {

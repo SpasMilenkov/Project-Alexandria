@@ -36,7 +36,7 @@ export const LIBRARY_FOLDER_PRESETS: LibraryFolderPreset[] = [
   {
     autoTag: true,
     defaultName: "Music",
-    icon: "mdi:music-note-outline",
+    icon: "i-lucide-music",
     kind: LibraryFolderKind.Music,
     purpose: "Songs and albums, ready to stream",
     transcode: "audio",
@@ -44,7 +44,7 @@ export const LIBRARY_FOLDER_PRESETS: LibraryFolderPreset[] = [
   {
     autoTag: false,
     defaultName: "Movies",
-    icon: "mdi:film-open-outline",
+    icon: "i-lucide-film",
     kind: LibraryFolderKind.Movies,
     purpose: "Films and series, ready to stream",
     transcode: "video",
@@ -52,7 +52,7 @@ export const LIBRARY_FOLDER_PRESETS: LibraryFolderPreset[] = [
   {
     autoTag: false,
     defaultName: "Pictures",
-    icon: "mdi:image-outline",
+    icon: "i-lucide-image",
     kind: LibraryFolderKind.Pictures,
     purpose: "Photos from your camera and phone",
     transcode: null,
@@ -60,7 +60,7 @@ export const LIBRARY_FOLDER_PRESETS: LibraryFolderPreset[] = [
   {
     autoTag: false,
     defaultName: "Videos",
-    icon: "mdi:video-outline",
+    icon: "i-lucide-video",
     kind: LibraryFolderKind.Videos,
     purpose: "Home videos and clips",
     transcode: null,
@@ -68,7 +68,7 @@ export const LIBRARY_FOLDER_PRESETS: LibraryFolderPreset[] = [
   {
     autoTag: false,
     defaultName: "Documents",
-    icon: "mdi:file-document-outline",
+    icon: "i-lucide-file-text",
     kind: LibraryFolderKind.Documents,
     purpose: "PDFs, notes and office files",
     transcode: null,

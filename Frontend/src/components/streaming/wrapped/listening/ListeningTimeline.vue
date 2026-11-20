@@ -8,7 +8,7 @@
 
       <div class="flex shrink-0 items-center gap-2" role="group" aria-label="Timeline year">
         <UButton
-          icon="i-mdi-chevron-left"
+          icon="i-lucide-chevron-left"
           color="neutral"
           variant="ghost"
           square
@@ -19,7 +19,7 @@
         />
 
         <UButton
-          icon="i-mdi-chevron-right"
+          icon="i-lucide-chevron-right"
           color="neutral"
           variant="ghost"
           square
@@ -62,7 +62,7 @@
         v-else-if="!data?.days.length"
         class="flex h-40 flex-col items-center justify-center text-center"
       >
-        <UIcon name="mdi:music-note" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+        <UIcon name="i-lucide-music" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
 
         <h3 class="mt-4 font-semibold text-gray-900 dark:text-gray-100">
           No listening in {{ year }}

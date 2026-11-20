@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { usePlayerStore } from "@/stores/stream-player";
@@ -89,7 +88,7 @@ watch(
       title="Player settings"
       @click.stop="toggle"
     >
-      <Icon icon="mdi:tune-variant" class="w-4 h-4" />
+      <UIcon name="i-lucide-sliders-horizontal" class="w-4 h-4" />
     </button>
 
     <Teleport to="body">

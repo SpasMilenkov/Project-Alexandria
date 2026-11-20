@@ -65,7 +65,7 @@ const gutter = computed(() => (variant === "shelf" ? "pr-4 sm:pr-6" : ""));
         color="neutral"
         variant="ghost"
         size="sm"
-        trailing-icon="i-mdi-chevron-right"
+        trailing-icon="i-lucide-chevron-right"
         class="-mr-2 min-h-11 shrink-0"
       >
         {{ linkLabel

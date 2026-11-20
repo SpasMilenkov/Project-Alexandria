@@ -127,7 +127,7 @@ const nextPage = () => {
     <div
       class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2 flex-wrap"
     >
-      <UIcon name="i-mdi-restore" class="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
+      <UIcon name="i-lucide-rotate-ccw" class="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
       <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ title }}</span>
       <UBadge v-if="data" color="neutral" variant="subtle" size="sm">{{ totalCount }}</UBadge>
 
@@ -150,7 +150,7 @@ const nextPage = () => {
           size="xs"
           color="neutral"
           variant="outline"
-          icon="i-mdi-restore"
+          icon="i-lucide-rotate-ccw"
           :loading="isRequeueingAll"
           @click="handleRequeueAll()"
         >
@@ -167,14 +167,14 @@ const nextPage = () => {
       v-else-if="error && !data"
       color="error"
       variant="subtle"
-      icon="i-mdi-alert-circle-outline"
+      icon="i-lucide-circle-alert"
       title="Failed to load jobs"
       :description="error.message"
       class="m-4"
     />
 
     <div v-else-if="jobs.length === 0" class="flex flex-col items-center text-center px-6 py-10">
-      <UIcon name="i-mdi-check-circle-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+      <UIcon name="i-lucide-circle-check" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
       <p class="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">{{ emptyHeading }}</p>
       <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">{{ emptyDescription }}</p>
     </div>
@@ -187,7 +187,7 @@ const nextPage = () => {
             :class="isFailedView ? 'bg-red-500/10' : 'bg-gray-500/10'"
           >
             <UIcon
-              :name="isFailedView ? 'i-mdi-alert-circle-outline' : 'i-mdi-history'"
+              :name="isFailedView ? 'i-lucide-circle-alert' : 'i-lucide-history'"
               class="w-4 h-4"
               :class="isFailedView ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'"
             />

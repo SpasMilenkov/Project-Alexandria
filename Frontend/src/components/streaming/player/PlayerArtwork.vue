@@ -1,7 +1,7 @@
 <template>
   <div class="relative h-full w-full" data-player-artwork>
     <div class="absolute inset-0 flex items-center justify-center">
-      <Icon icon="mdi:music-note" :class="iconClass" />
+      <UIcon name="i-lucide-music" :class="iconClass" />
     </div>
     <img
       v-if="showImage"
@@ -15,7 +15,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";

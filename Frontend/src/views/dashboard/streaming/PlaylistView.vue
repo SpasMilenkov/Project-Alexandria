@@ -24,7 +24,7 @@
           </div>
         </div>
         <UButton
-          icon="i-heroicons-plus"
+          icon="i-lucide-plus"
           label="New playlist"
           color="primary"
           variant="solid"
@@ -45,7 +45,7 @@
           <div class="relative flex w-full flex-col gap-2 md:max-w-xl md:flex-1">
             <UInput
               v-model="searchTerm"
-              icon="i-heroicons-magnifying-glass"
+              icon="i-lucide-search"
               placeholder="Search playlists"
               aria-label="Search playlists"
               :maxlength="PLAYLIST_SEARCH_MAX_LENGTH"
@@ -56,7 +56,7 @@
               class="flex items-center gap-1 max-md:justify-between md:absolute md:inset-y-1 md:right-1"
             >
               <UButton
-                :icon="searchItems ? 'mdi-check' : undefined"
+                :icon="searchItems ? 'i-lucide-check' : undefined"
                 label="Inside tracks"
                 size="sm"
                 :color="searchItems ? 'primary' : 'neutral'"
@@ -70,7 +70,7 @@
                 variant="ghost"
                 color="neutral"
                 size="sm"
-                icon="i-heroicons-x-mark"
+                icon="i-lucide-x"
                 aria-label="Clear search"
                 class="h-8 w-8 justify-center rounded-lg"
                 @click="clearSearch"
@@ -95,7 +95,9 @@
               "
               :aria-label="sortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
               :icon="
-                sortDirection === SortDirection.Asc ? 'mdi-sort-ascending' : 'mdi-sort-descending'
+                sortDirection === SortDirection.Asc
+                  ? 'i-lucide-arrow-up-narrow-wide'
+                  : 'i-lucide-arrow-down-wide-narrow'
               "
               class="h-10 w-10 shrink-0 justify-center rounded-xl"
               @click="toggleSortDirection"
@@ -178,7 +180,7 @@
           >
             {{ pill.label }}
             <UButton
-              icon="i-heroicons-x-mark"
+              icon="i-lucide-x"
               size="xs"
               color="primary"
               variant="ghost"
@@ -216,16 +218,16 @@
 
       <div class="flex flex-1 flex-col p-4 sm:p-6" :aria-busy="isFetching">
         <div v-if="playlistsQuery.status.value === 'pending'" class="flex justify-center py-16">
-          <Icon
-            icon="mdi:loading"
-            class="w-6 h-6 animate-spin text-gray-600 dark:text-gray-400"
+          <BlockSpinner
+            :size="24"
+            class="text-gray-600 dark:text-gray-400"
             aria-label="Loading playlists"
           />
         </div>
 
         <UAlert
           v-else-if="playlistsQuery.status.value === 'error'"
-          icon="i-mdi-alert-circle-outline"
+          icon="i-lucide-circle-alert"
           color="error"
           variant="subtle"
           title="Failed to load playlists"
@@ -239,7 +241,7 @@
 
           <GlassEmptyState
             v-if="hasActiveFilters"
-            icon="i-mdi-magnify"
+            icon="i-lucide-search"
             title="No playlists match"
             description="Try another search, collection, or kind."
             class="m-auto"
@@ -255,14 +257,14 @@
 
           <GlassEmptyState
             v-else
-            icon="i-mdi-playlist-music"
+            icon="i-lucide-list-music"
             title="No playlists yet"
             description="Create your first playlist to get started. Automatic mixes appear here on their own as your library grows."
             class="m-auto"
           >
             <UButton
               label="New playlist"
-              icon="i-heroicons-plus"
+              icon="i-lucide-plus"
               color="neutral"
               variant="outline"
               class="rounded-full px-5"
@@ -358,13 +360,13 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
 import { useDebounceFn } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import EmptyStatePanel from "@/components/common/EmptyStatePanel.vue";
 import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
 import PlaylistCard from "@/components/streaming/playlist/PlaylistCard.vue";

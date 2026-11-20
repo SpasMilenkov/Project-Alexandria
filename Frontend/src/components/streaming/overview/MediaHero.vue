@@ -266,7 +266,8 @@ const playUpNext = (item: UpNextItem) => {
         <UButton
           color="primary"
           size="lg"
-          :icon="isPlaying ? 'i-mdi-pause' : 'i-mdi-play'"
+          :icon="isPlaying ? 'i-lucide-pause' : 'i-lucide-play'"
+          :ui="{ leadingIcon: resuming ? '' : 'icon-solid' }"
           :loading="resuming"
           :disabled="disabled"
           class="min-h-11 rounded-full px-6"

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from "@nuxt/ui";
 
-import { Icon } from "@iconify/vue";
 import { computed, ref, watch } from "vue";
 
 import type { NavItem } from "@/types/nav-item";
@@ -83,7 +82,7 @@ const handleNavigate = (key: string | null) => {
         :data-drop-dir-name="parentItem.label"
         data-drop-kind="breadcrumb"
       >
-        <Icon icon="mdi:arrow-up" class="h-3.5 w-3.5 shrink-0" />
+        <UIcon name="i-lucide-arrow-up" class="h-3.5 w-3.5 shrink-0" />
         <span class="max-w-24 truncate">{{ parentItem.label }}</span>
       </div>
 

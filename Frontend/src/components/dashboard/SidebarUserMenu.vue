@@ -132,11 +132,7 @@
             <span class="text-gray-600 dark:text-gray-400">Storage</span>
 
             <span class="flex min-w-0 items-center gap-2">
-              <UIcon
-                v-if="isPending"
-                name="i-mdi-loading"
-                class="size-4 animate-spin text-gray-500 dark:text-gray-500"
-              />
+              <BlockSpinner v-if="isPending" :size="16" class="text-gray-500 dark:text-gray-500" />
               <span v-else class="truncate text-gray-900 tabular-nums dark:text-gray-100">
                 {{ usageLabel }}
               </span>
@@ -190,6 +186,7 @@ import { useRoute, useRouter } from "vue-router";
 
 import type { StorageBreakdown } from "@/api/status";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import StorageRing from "@/components/dashboard/StorageRing.vue";
 import { type RingArc, buildRingArcs } from "@/features/storage/ring";
 import { myStorage } from "@/queries/status";

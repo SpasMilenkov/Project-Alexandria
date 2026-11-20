@@ -163,7 +163,7 @@
                 v-for="dir in directories"
                 :key="dir.id"
                 :name="dir.name"
-                icon="mdi:folder"
+                icon="i-lucide-folder"
                 detail="Folder"
                 :is-selected="selectedDirectories.has(dir.id)"
                 :disabled="isRestoring"

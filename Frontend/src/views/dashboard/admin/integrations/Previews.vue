@@ -293,7 +293,7 @@ const incidentScopes = computed<IncidentScope[]>(() => {
   <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
     <IntegrationPageHeader
       title="Previews"
-      icon="mdi:image-multiple-outline"
+      icon="i-lucide-images"
       :services="[ServiceType.MediaPreviews, ServiceType.DocumentPreviews]"
     >
       <template #actions>

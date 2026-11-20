@@ -6,7 +6,7 @@
   >
     <TagTooltip :tag="tag">
       <span class="flex min-w-0 items-center gap-1.5">
-        <Icon :icon="iconName" class="tag-badge-glyph h-3.5 w-3.5 shrink-0" />
+        <UIcon :name="iconName" class="tag-badge-glyph h-3.5 w-3.5 shrink-0" />
         <span class="max-w-40 truncate">{{ tag.name }}</span>
       </span>
     </TagTooltip>
@@ -24,7 +24,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import type { TagDto } from "@/api/tag";
@@ -45,7 +44,7 @@ const emit = defineEmits<{
 // Removal only makes sense when the badge is attached to a file; previews render it bare.
 const isRemovable = computed(() => Boolean(fileId));
 
-const iconName = computed(() => getIconByValue(tag.icon) || "mdi:tag");
+const iconName = computed(() => getIconByValue(tag.icon) || "i-lucide-tag");
 </script>
 
 <style scoped>

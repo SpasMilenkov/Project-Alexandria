@@ -51,7 +51,7 @@ describe("explorer drag session", () => {
     first.start({
       directoryIds: ["d1"],
       fileIds: ["f1"],
-      lead: { icon: "mdi:folder", id: "d1", kind: "directory", name: "Docs" },
+      lead: { icon: "i-lucide-folder", id: "d1", kind: "directory", name: "Docs" },
       originId: null,
       originName: "Home",
       point: { x: 0, y: 0 },

@@ -22,8 +22,8 @@
         class="flex flex-col divide-y divide-gray-200/70 rounded-xl border border-gray-200/70 dark:divide-gray-700/70 dark:border-gray-700/70"
       >
         <li v-for="fact in facts" :key="fact.key" class="flex items-start gap-3 p-3">
-          <Icon
-            :icon="fact.icon"
+          <UIcon
+            :name="fact.icon"
             class="mt-0.5 h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
             aria-hidden="true"
           />
@@ -62,7 +62,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
@@ -134,7 +133,7 @@ const protectedFact = (m: DocumentMetadataDto): DocumentFact | null => {
 
   return {
     key: "protected",
-    icon: "mdi:file-lock-outline",
+    icon: "i-lucide-file-lock",
     title: "Password protected",
     detail: "Details stay hidden until the file is opened with the password.",
   };
@@ -145,7 +144,7 @@ const drmFact = (m: DocumentMetadataDto): DocumentFact | null => {
 
   return {
     key: "drm",
-    icon: "mdi:shield-lock-outline",
+    icon: "i-lucide-shield-ban",
     title: "Copy protected",
     detail: "The store that sold it locked the pages, so only its reading apps can open them.",
   };
@@ -154,7 +153,7 @@ const drmFact = (m: DocumentMetadataDto): DocumentFact | null => {
 const seriesFact = (m: DocumentMetadataDto): DocumentFact | null => {
   if (!m.series) return null;
 
-  const fact: DocumentFact = { key: "series", icon: "mdi:book-multiple-outline", title: m.series };
+  const fact: DocumentFact = { key: "series", icon: "i-lucide-book-copy", title: m.series };
   if (m.seriesIndex !== null) fact.detail = formatSeriesPosition(m.seriesIndex);
 
   return fact;
@@ -163,7 +162,7 @@ const seriesFact = (m: DocumentMetadataDto): DocumentFact | null => {
 const titleFact = (m: DocumentMetadataDto): DocumentFact | null => {
   if (!m.title) return null;
 
-  const fact: DocumentFact = { key: "title", icon: "mdi:text-box-outline", title: m.title };
+  const fact: DocumentFact = { key: "title", icon: "i-lucide-letter-text", title: m.title };
   if (m.subject) fact.detail = m.subject;
 
   return fact;
@@ -173,12 +172,12 @@ const authorFact = (m: DocumentMetadataDto): DocumentFact | null => {
   let fact: DocumentFact | null = null;
 
   if (m.author) {
-    fact = { key: "author", icon: "mdi:account-outline", title: m.author };
+    fact = { key: "author", icon: "i-lucide-user", title: m.author };
     if (m.lastModifiedBy && m.lastModifiedBy !== m.author) {
       fact.detail = `Last edited by ${m.lastModifiedBy}`;
     }
   } else if (m.lastModifiedBy) {
-    fact = { key: "author", icon: "mdi:account-outline", title: m.lastModifiedBy };
+    fact = { key: "author", icon: "i-lucide-user", title: m.lastModifiedBy };
     fact.detail = "Last to edit it";
   }
 
@@ -188,7 +187,7 @@ const authorFact = (m: DocumentMetadataDto): DocumentFact | null => {
 };
 
 const momentFact = (m: DocumentMetadataDto): DocumentFact | null => {
-  const icon = "mdi:calendar-clock-outline";
+  const icon = "i-lucide-calendar-clock";
   const written = m.authoredAt
     ? describeDocumentMoment(m.authoredAt, m.authoredOffsetMinutes)
     : null;
@@ -220,7 +219,7 @@ const appFact = (m: DocumentMetadataDto): DocumentFact | null => {
   const title = m.application ?? m.producer;
   if (!title) return null;
 
-  const fact: DocumentFact = { key: "app", icon: "mdi:pencil-outline", title };
+  const fact: DocumentFact = { key: "app", icon: "i-lucide-pencil", title };
   if (m.application && m.producer && m.producer !== m.application) {
     fact.detail = `Saved as PDF with ${m.producer}`;
   }

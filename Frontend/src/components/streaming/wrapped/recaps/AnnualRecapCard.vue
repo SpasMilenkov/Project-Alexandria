@@ -14,7 +14,7 @@
         </h2>
         <h3 v-else class="flex items-baseline gap-2 text-gray-900 dark:text-gray-100">
           <UIcon
-            name="mdi:gift-outline"
+            name="i-lucide-gift"
             class="h-5 w-5 self-center text-gray-500 dark:text-gray-500"
           />
           <span class="text-2xl font-black tracking-tight tabular-nums">{{ year }}</span>
@@ -27,7 +27,7 @@
       </div>
 
       <UBadge color="neutral" variant="subtle" class="shrink-0">
-        <UIcon v-if="isFinal" name="mdi:lock-outline" class="mr-1 h-3.5 w-3.5" />{{
+        <UIcon v-if="isFinal" name="i-lucide-lock" class="mr-1 h-3.5 w-3.5" />{{
           isFinal ? "Final" : "So far"
         }}
       </UBadge>
@@ -40,7 +40,7 @@
       role="status"
       :aria-label="`Loading ${year} recap`"
     >
-      <UIcon name="i-mdi-loading" class="h-8 w-8 animate-spin text-gray-400 dark:text-gray-600" />
+      <BlockSpinner :size="32" class="text-gray-400 dark:text-gray-600" />
     </div>
     <div v-else-if="visibleError" class="flex-1 py-8 text-center">
       <p class="font-semibold text-gray-900 dark:text-gray-100">Could not load {{ year }} recap</p>
@@ -59,7 +59,7 @@
       </p>
     </div>
     <div v-else-if="!hasListening" class="flex flex-1 flex-col items-center py-8 text-center">
-      <UIcon name="mdi:music-note-outline" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+      <UIcon name="i-lucide-music" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
       <h3 class="mt-4 font-semibold text-gray-900 dark:text-gray-100">{{ emptyState.title }}</h3>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">{{ emptyState.description }}</p>
 
@@ -137,6 +137,7 @@ import { computed, ref, useTemplateRef, watch } from "vue";
 
 import type { OverviewSummaryHeaderDtoResponse } from "@/api/stats";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import RecapLandscape from "@/components/streaming/wrapped/recaps/RecapLandscape.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { WrappedCardType } from "@/enums/wrapped-card-type";

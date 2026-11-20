@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
 import { computed, nextTick, ref, watch } from "vue";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { usePlayerStore } from "@/stores/stream-player";
 import { formatPlaybackTime } from "@/utils/date-formatters";
 
@@ -85,21 +85,24 @@ defineExpose({ scrollToActive });
           v-if="isShuffled"
           class="flex items-center gap-1 text-[10px] font-medium text-primary dark:text-primary bg-primary/10 dark:bg-primary/[0.12] px-1.5 py-0.5 rounded-full select-none"
         >
-          <Icon icon="mdi:shuffle-variant" class="w-3 h-3" />
+          <UIcon name="i-lucide-shuffle" class="w-3 h-3" />
           shuffled
         </span>
         <span
           v-if="repeatMode !== 'off'"
           class="flex items-center gap-1 text-[10px] font-medium text-primary dark:text-primary bg-primary/10 dark:bg-primary/[0.12] px-1.5 py-0.5 rounded-full ml-1 select-none"
         >
-          <Icon :icon="repeatMode === 'one' ? 'mdi:repeat-once' : 'mdi:repeat'" class="w-3 h-3" />
+          <UIcon
+            :name="repeatMode === 'one' ? 'i-lucide-repeat-1' : 'i-lucide-repeat'"
+            class="w-3 h-3"
+          />
           {{ repeatMode === "one" ? "repeat one" : "loop" }}
         </span>
         <button
           class="ml-1.5 w-6 h-6 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/30 hover:text-gray-700 dark:hover:text-white/70 transition-colors"
           @click.stop="close"
         >
-          <Icon icon="mdi:close" class="w-3.5 h-3.5" />
+          <UIcon name="i-lucide-x" class="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
@@ -111,7 +114,7 @@ defineExpose({ scrollToActive });
         :title="`Resume ${snapshot.label}`"
         @click="store.resumePrevious()"
       >
-        <Icon icon="mdi:history" class="w-3.5 h-3.5" />
+        <UIcon name="i-lucide-history" class="w-3.5 h-3.5" />
         Resume {{ snapshot.label }}
       </button>
     </div>
@@ -135,7 +138,7 @@ defineExpose({ scrollToActive });
         title="Dismiss"
         @click.stop="store.dismissNotices()"
       >
-        <Icon icon="mdi:close" class="w-3 h-3" />
+        <UIcon name="i-lucide-x" class="w-3 h-3" />
       </button>
     </div>
 
@@ -160,7 +163,7 @@ defineExpose({ scrollToActive });
           class="flex items-center gap-3 px-3 py-2 mx-1.5 rounded-xl select-none opacity-60"
         >
           <div class="w-6 flex-shrink-0 flex items-center justify-center">
-            <Icon icon="mdi:check" class="w-3.5 h-3.5 text-gray-400 dark:text-white/30" />
+            <UIcon name="i-lucide-check" class="w-3.5 h-3.5 text-gray-400 dark:text-white/30" />
           </div>
           <div class="flex-1 min-w-0">
             <p
@@ -205,7 +208,7 @@ defineExpose({ scrollToActive });
           @click="store.skipToQueue(item.queueIndex)"
         >
           <div class="w-6 flex-shrink-0 flex items-center justify-center">
-            <Icon icon="mdi:playlist-play" class="w-3.5 h-3.5 text-primary opacity-60" />
+            <UIcon name="i-lucide-list-video" class="w-3.5 h-3.5 text-primary opacity-60" />
           </div>
           <div class="flex-1 min-w-0">
             <p
@@ -221,7 +224,7 @@ defineExpose({ scrollToActive });
             class="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-400 transition-all"
             @click.stop="store.removeFromQueue(item.queueIndex)"
           >
-            <Icon icon="mdi:close" class="w-3 h-3" />
+            <UIcon name="i-lucide-x" class="w-3 h-3" />
           </button>
           <span class="text-[11px] tabular-nums flex-shrink-0 text-gray-400 dark:text-white/30">
             {{ durationLabel(item.file.duration) }}
@@ -251,9 +254,9 @@ defineExpose({ scrollToActive });
             >
               {{ item.position + 1 }}
             </span>
-            <Icon
-              icon="mdi:play"
-              class="w-3.5 h-3.5 text-gray-400 dark:text-white/40 hidden group-hover:block"
+            <UIcon
+              name="i-lucide-play"
+              class="w-3.5 h-3.5 icon-solid text-gray-400 dark:text-white/40 hidden group-hover:block"
             />
           </div>
           <div class="flex-1 min-w-0">
@@ -279,7 +282,7 @@ defineExpose({ scrollToActive });
         v-if="orderBusy"
         class="flex items-center justify-center gap-2 py-3 text-gray-300 dark:text-white/20"
       >
-        <Icon icon="mdi:loading" class="w-3.5 h-3.5 animate-spin" />
+        <BlockSpinner :size="14" />
         <span class="text-xs">Loading more…</span>
       </li>
 
@@ -299,7 +302,7 @@ defineExpose({ scrollToActive });
         v-if="!upNextItems.length && queueStatus === 'loading'"
         class="flex items-center justify-center gap-2 py-10 text-gray-600 dark:text-gray-400"
       >
-        <Icon icon="mdi:loading" class="w-5 h-5 animate-spin" />
+        <BlockSpinner :size="20" />
         <span class="text-xs">Finding what plays next…</span>
       </li>
 
@@ -307,7 +310,7 @@ defineExpose({ scrollToActive });
         v-else-if="!upNextItems.length && queueStatus === 'ready'"
         class="flex flex-col items-center justify-center gap-2 py-10 text-gray-600 dark:text-gray-400"
       >
-        <Icon icon="mdi:playlist-remove" class="w-8 h-8" />
+        <UIcon name="i-lucide-list-x" class="w-8 h-8" />
         <span v-if="snapshot" class="text-xs">Resume {{ snapshot.label }} when ready</span>
         <span v-else class="text-xs">Nothing queued</span>
       </li>
@@ -319,8 +322,8 @@ defineExpose({ scrollToActive });
       class="flex items-center gap-2 px-4 py-2.5 border-t border-black/[0.06] dark:border-white/[0.07] flex-shrink-0"
     >
       <template v-if="queueEnded">
-        <Icon
-          icon="mdi:playlist-check"
+        <UIcon
+          name="i-lucide-list-checks"
           class="w-3.5 h-3.5 flex-shrink-0 text-gray-400 dark:text-white/30"
         />
         <p class="text-[11px] text-gray-600 dark:text-gray-400 flex-1">Playback ended</p>
@@ -333,7 +336,7 @@ defineExpose({ scrollToActive });
         </button>
       </template>
       <template v-else>
-        <Icon icon="mdi:music-note" class="w-3.5 h-3.5 flex-shrink-0 text-primary" />
+        <UIcon name="i-lucide-music" class="w-3.5 h-3.5 flex-shrink-0 text-primary" />
 
         <p class="text-[11px] text-gray-400 dark:text-white/30 truncate">
           Playing from {{ playingFrom }} ·

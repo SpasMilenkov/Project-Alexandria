@@ -10,7 +10,7 @@
         aria-hidden="true"
         class="absolute top-0.5 left-0 flex h-9 w-9 items-center justify-center rounded-xl bg-gray-500/10"
       >
-        <Icon icon="mdi:lightning-bolt-outline" class="h-5 w-5 text-gray-600 dark:text-gray-400" />
+        <UIcon name="i-lucide-zap" class="h-5 w-5 text-gray-600 dark:text-gray-400" />
       </span>
       {{ modalTitle }}
     </template>
@@ -32,7 +32,7 @@
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
               :class="selectedAction.tileClass"
             >
-              <Icon :icon="selectedAction.icon" class="h-5 w-5" />
+              <UIcon :name="selectedAction.icon" class="h-5 w-5" />
             </span>
 
             <div class="min-w-0 flex-1">
@@ -44,14 +44,14 @@
               </p>
             </div>
 
-            <Icon icon="mdi:lock-outline" class="h-4 w-4 shrink-0 text-gray-500" />
+            <UIcon name="i-lucide-lock" class="h-4 w-4 shrink-0 text-gray-500" />
           </div>
 
           <p
             v-if="isEditing && form.actionType === PolicyActionType.AutoTag && !autoTaggingEnabled"
             class="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400"
           >
-            <Icon icon="mdi:alert-circle-outline" class="mt-px h-3.5 w-3.5 shrink-0" />
+            <UIcon name="i-lucide-circle-alert" class="mt-px h-3.5 w-3.5 shrink-0" />
             Auto-tagging is turned off for this installation, so this rule does nothing. Run setup
             again to turn it back on; the rule is kept.
           </p>
@@ -72,7 +72,7 @@
                   class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
                   :class="action.tileClass"
                 >
-                  <Icon :icon="action.icon" class="h-5 w-5" />
+                  <UIcon :name="action.icon" class="h-5 w-5" />
                 </span>
 
                 <span class="min-w-0 flex-1 lg:pr-2">
@@ -84,9 +84,9 @@
                   </span>
                 </span>
 
-                <Icon
+                <UIcon
                   v-if="form.actionType === action.value"
-                  icon="mdi:check-circle"
+                  name="i-lucide-circle-check"
                   class="h-5 w-5 shrink-0 text-primary lg:absolute lg:top-4 lg:right-4"
                 />
                 <span
@@ -149,7 +149,7 @@
               v-if="form.actionType === PolicyActionType.AutoTag"
               class="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-400"
             >
-              <Icon icon="mdi:information-outline" class="mt-px h-3.5 w-3.5 shrink-0" />
+              <UIcon name="i-lucide-info" class="mt-px h-3.5 w-3.5 shrink-0" />
               Auto-tagging runs on audio for now. Other types are kept for future support.
             </p>
           </PolicyRuleStep>
@@ -236,7 +236,7 @@
             <UFormField label="Destination folder" :error="errors.destinationPath">
               <UInput
                 v-model="backupParams.destinationPath"
-                icon="i-mdi-folder-outline"
+                icon="i-lucide-folder"
                 placeholder="/alexandria/storage/backups"
                 class="w-full"
                 :ui="{ base: 'font-mono' }"
@@ -329,7 +329,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed, reactive, ref, watch } from "vue";
 import { z } from "zod";
 
@@ -404,21 +403,21 @@ const allActionOptions: ActionOption[] = [
     value: PolicyActionType.Transcode,
     label: "Transcode",
     description: "Create streaming qualities for video and audio",
-    icon: "mdi:film-open-outline",
+    icon: "i-lucide-film",
     tileClass: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
   },
   {
     value: PolicyActionType.AutoTag,
     label: "Auto-tag",
     description: "Detect genre, mood and more from audio",
-    icon: "mdi:tag-outline",
+    icon: "i-lucide-tag",
     tileClass: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
   },
   {
     value: PolicyActionType.Backup,
     label: "Backup",
     description: "Copy files to another location on a schedule",
-    icon: "mdi:cloud-upload-outline",
+    icon: "i-lucide-cloud-upload",
     tileClass: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
   },
 ];
@@ -470,15 +469,15 @@ interface GroupOption {
 // Group names come from the backend catalog; a new backend group fails type-checking here until
 // it gets an icon.
 const GROUP_ICONS: Record<PolicyFileGroup, string> = {
-  Images: "i-mdi-image-outline",
-  Videos: "i-mdi-video-outline",
-  Audio: "i-mdi-music-note-outline",
-  Documents: "i-mdi-file-document-outline",
-  Spreadsheets: "i-mdi-table-large",
-  Presentations: "i-mdi-presentation",
-  Archives: "i-mdi-archive-outline",
-  Code: "i-mdi-code-braces",
-  Text: "i-mdi-text-box-outline",
+  Images: "i-lucide-image",
+  Videos: "i-lucide-video",
+  Audio: "i-lucide-music",
+  Documents: "i-lucide-file-text",
+  Spreadsheets: "i-lucide-table",
+  Presentations: "i-lucide-presentation",
+  Archives: "i-lucide-archive",
+  Code: "i-lucide-braces",
+  Text: "i-lucide-letter-text",
 };
 
 const groupOption = (group: PolicyFileGroup): GroupOption => ({

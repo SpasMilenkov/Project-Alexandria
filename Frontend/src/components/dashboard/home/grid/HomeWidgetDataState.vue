@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+
 defineProps<{ loading: boolean; failed: boolean }>();
 
 const emit = defineEmits<{ retry: [] }>();
@@ -11,7 +13,7 @@ const emit = defineEmits<{ retry: [] }>();
     role="status"
     aria-label="Loading widget data"
   >
-    <UIcon name="i-mdi-loading" class="size-6 animate-spin text-gray-500 dark:text-gray-500" />
+    <BlockSpinner :size="24" class="text-gray-500 dark:text-gray-500" />
   </div>
 
   <div

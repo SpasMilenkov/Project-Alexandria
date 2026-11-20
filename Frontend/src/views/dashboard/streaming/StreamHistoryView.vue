@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref } from "vue";
 
@@ -84,14 +83,14 @@ const statusOf = (entry: HistoryEntry) => {
   if (entry.qualifiedPlayCount > 1) {
     return {
       color: "success" as const,
-      icon: "mdi:check-circle-outline",
+      icon: "i-lucide-circle-check",
       label: `Played ${entry.qualifiedPlayCount} times`,
     };
   }
   if (entry.qualifiedPlayCount === 1) {
-    return { color: "success" as const, icon: "mdi:check-circle-outline", label: "Played" };
+    return { color: "success" as const, icon: "i-lucide-circle-check", label: "Played" };
   }
-  return { color: "warning" as const, icon: "mdi:play-circle-outline", label: "Brief listens" };
+  return { color: "warning" as const, icon: "i-lucide-circle-play", label: "Brief listens" };
 };
 
 const subtitleOf = (entry: HistoryEntry) => {
@@ -144,7 +143,7 @@ const subtitleOf = (entry: HistoryEntry) => {
 
     <div v-else-if="error" class="flex py-16">
       <GlassEmptyState
-        icon="i-mdi-alert-circle-outline"
+        icon="i-lucide-circle-alert"
         title="Couldn't load history"
         description="Something went wrong while loading your history. Try again in a moment."
         class="m-auto"
@@ -161,7 +160,7 @@ const subtitleOf = (entry: HistoryEntry) => {
       </template>
 
       <GlassEmptyState
-        icon="i-mdi-history"
+        icon="i-lucide-history"
         :title="emptyState.title"
         description="Things you play will show up here so you can pick up where you left off."
         class="m-auto"
@@ -194,7 +193,7 @@ const subtitleOf = (entry: HistoryEntry) => {
             <div
               class="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-400"
             >
-              <Icon :icon="statusOf(entry).icon" class="w-4 h-4" />
+              <UIcon :name="statusOf(entry).icon" class="w-4 h-4" />
             </div>
 
             <div class="flex-1 min-w-0">
@@ -220,8 +219,8 @@ const subtitleOf = (entry: HistoryEntry) => {
               </span>
             </div>
 
-            <Icon
-              icon="mdi:chevron-down"
+            <UIcon
+              name="i-lucide-chevron-down"
               class="shrink-0 w-4 h-4 text-gray-500 dark:text-gray-500 transition-transform duration-200 group-data-[state=open]:rotate-180"
             />
           </button>

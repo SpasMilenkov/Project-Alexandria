@@ -358,9 +358,9 @@ export const useDirectoryUpload = () => {
       case "uploading":
         return "i-lucide-loader-circle";
       case "success":
-        return "i-lucide-check-circle";
+        return "i-lucide-circle-check";
       case "error":
-        return "i-lucide-x-circle";
+        return "i-lucide-circle-x";
     }
   };
 
@@ -369,9 +369,9 @@ export const useDirectoryUpload = () => {
       case "pending":
         return "text-gray-400 dark:text-gray-600";
       case "hashing":
-        return "text-primary animate-spin";
+        return "text-primary";
       case "uploading":
-        return "text-primary animate-spin";
+        return "text-primary";
       case "success":
         return "text-success";
       case "error":

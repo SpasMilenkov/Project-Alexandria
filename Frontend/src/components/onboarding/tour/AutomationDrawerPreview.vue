@@ -4,12 +4,12 @@
       class="flex flex-wrap items-center justify-center gap-1.5 text-xs text-gray-600 dark:text-gray-400"
     >
       <span>Right-click a folder</span>
-      <Icon icon="mdi:chevron-right" class="h-3.5 w-3.5" />
+      <UIcon name="i-lucide-chevron-right" class="h-3.5 w-3.5" />
       <span class="flex items-center gap-1 font-medium text-gray-900 dark:text-gray-100">
-        <Icon icon="mdi:information-outline" class="h-3.5 w-3.5" />
+        <UIcon name="i-lucide-info" class="h-3.5 w-3.5" />
         View details
       </span>
-      <Icon icon="mdi:chevron-right" class="h-3.5 w-3.5" />
+      <UIcon name="i-lucide-chevron-right" class="h-3.5 w-3.5" />
       <span class="font-medium text-gray-900 dark:text-gray-100">Automation</span>
     </div>
 
@@ -20,7 +20,7 @@
         <span
           class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-gray-600 dark:bg-neutral-800 dark:text-gray-400"
         >
-          <Icon icon="mdi:folder" class="h-6 w-6" />
+          <UIcon name="i-lucide-folder" class="h-6 w-6" />
         </span>
 
         <div class="min-w-0">
@@ -46,10 +46,7 @@
           v-if="rules.length === 0"
           class="flex flex-col items-center gap-1 rounded-xl border border-dashed border-gray-300/80 px-4 py-4 text-center dark:border-gray-700/80"
         >
-          <Icon
-            icon="mdi:lightning-bolt-outline"
-            class="h-6 w-6 text-gray-400 dark:text-gray-600"
-          />
+          <UIcon name="i-lucide-zap" class="h-6 w-6 text-gray-400 dark:text-gray-600" />
           <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
             No automation configured
           </p>
@@ -66,7 +63,7 @@
               class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
               :class="rule.colorClass"
             >
-              <Icon :icon="rule.icon" class="h-4 w-4" />
+              <UIcon :name="rule.icon" class="h-4 w-4" />
             </div>
 
             <div class="min-w-0 flex-1">
@@ -98,7 +95,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import { PolicyActionType, PolicyTriggerType } from "@/api/policy";

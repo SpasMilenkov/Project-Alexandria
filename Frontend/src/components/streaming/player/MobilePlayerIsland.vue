@@ -38,8 +38,8 @@
         :aria-label="playPauseLabel"
         @click.stop="store.togglePlay()"
       >
-        <Icon v-if="isBuffering" icon="mdi:loading" class="w-4 h-4 animate-spin" />
-        <Icon v-else :icon="playPauseIcon" class="w-4 h-4" />
+        <BlockSpinner v-if="isBuffering" :size="16" />
+        <UIcon v-else :name="playPauseIcon" class="w-4 h-4 icon-solid" />
       </button>
     </div>
 
@@ -115,7 +115,7 @@
               aria-label="Collapse player"
               @click="collapse"
             >
-              <Icon icon="mdi:chevron-down" class="w-5 h-5" />
+              <UIcon name="i-lucide-chevron-down" class="w-5 h-5" />
             </button>
           </div>
 
@@ -152,8 +152,8 @@
                 :aria-label="shuffleTitle"
                 @click="store.toggleShuffle()"
               >
-                <Icon v-if="orderBusy" icon="mdi:loading" class="w-5 h-5 animate-spin" />
-                <Icon v-else icon="mdi:shuffle-variant" class="w-5 h-5" />
+                <BlockSpinner v-if="orderBusy" :size="20" />
+                <UIcon v-else name="i-lucide-shuffle" class="w-5 h-5" />
               </button>
               <button
                 class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-700 dark:text-white/85 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -162,7 +162,7 @@
                 aria-label="Previous"
                 @click="store.previous()"
               >
-                <Icon icon="mdi:skip-previous" class="w-6 h-6" />
+                <UIcon name="i-lucide-skip-back" class="w-6 h-6 icon-solid" />
               </button>
               <button
                 class="w-12 h-12 rounded-full flex items-center justify-center bg-primary text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
@@ -171,8 +171,8 @@
                 :aria-label="playPauseLabel"
                 @click="store.togglePlay()"
               >
-                <Icon v-if="isBuffering" icon="mdi:loading" class="w-6 h-6 animate-spin" />
-                <Icon v-else :icon="playPauseIcon" class="w-6 h-6" />
+                <BlockSpinner v-if="isBuffering" :size="24" />
+                <UIcon v-else :name="playPauseIcon" class="w-6 h-6 icon-solid" />
               </button>
               <button
                 class="w-10 h-10 rounded-lg flex items-center justify-center text-gray-700 dark:text-white/85 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -181,7 +181,7 @@
                 aria-label="Next"
                 @click="store.next()"
               >
-                <Icon icon="mdi:skip-next" class="w-6 h-6" />
+                <UIcon name="i-lucide-skip-forward" class="w-6 h-6 icon-solid" />
               </button>
               <button
                 class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
@@ -190,7 +190,7 @@
                 aria-label="Repeat"
                 @click="store.toggleLoop()"
               >
-                <Icon :icon="repeatIcon" class="w-5 h-5" />
+                <UIcon :name="repeatIcon" class="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -205,7 +205,7 @@
               :aria-pressed="presentation === 'sheet' && pane === tab.id"
               @click="openSheet(tab.id)"
             >
-              <Icon :icon="tab.icon" class="w-4 h-4 shrink-0" />
+              <UIcon :name="tab.icon" class="w-4 h-4 shrink-0" />
               <span class="truncate max-[360px]:hidden">{{ tab.label }}</span>
             </button>
 
@@ -215,7 +215,7 @@
               aria-label="Close player"
               @click="closeIsland"
             >
-              <Icon icon="mdi:close" class="w-5 h-5" />
+              <UIcon name="i-lucide-x" class="w-5 h-5" />
             </button>
           </div>
 
@@ -239,11 +239,11 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import "@/assets/player-range.css";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import LyricsContent from "@/components/streaming/player/lyrics/LyricsContent.vue";
 import PlayerArtwork from "@/components/streaming/player/PlayerArtwork.vue";
 import QueueContent from "@/components/streaming/player/QueueContent.vue";
@@ -301,8 +301,8 @@ const shuffleTitle = computed(() => {
 });
 
 const playPauseIcon = computed(() => {
-  if (isPlaying.value) return "mdi:pause";
-  return "mdi:play";
+  if (isPlaying.value) return "i-lucide-pause";
+  return "i-lucide-play";
 });
 
 const playPauseLabel = computed(() => {
@@ -311,8 +311,8 @@ const playPauseLabel = computed(() => {
 });
 
 const repeatIcon = computed(() => {
-  if (repeatMode.value === "one") return "mdi:repeat-once";
-  return "mdi:repeat";
+  if (repeatMode.value === "one") return "i-lucide-repeat-1";
+  return "i-lucide-repeat";
 });
 
 const shuffleToggleClass = computed(() => {
@@ -340,9 +340,9 @@ const goToTrackDetails = () => {
 };
 
 const allTabs: { id: Pane; label: string; icon: string }[] = [
-  { id: "lyrics", label: "Lyrics", icon: "mdi:script-text-outline" },
-  { id: "queue", label: "Queue", icon: "mdi:playlist-play" },
-  { id: "settings", label: "Settings", icon: "mdi:tune-variant" },
+  { id: "lyrics", label: "Lyrics", icon: "i-lucide-scroll-text" },
+  { id: "queue", label: "Queue", icon: "i-lucide-list-video" },
+  { id: "settings", label: "Settings", icon: "i-lucide-sliders-horizontal" },
 ];
 
 const tabs = allTabs.filter((tab) => lyricsEnabled || tab.id !== "lyrics");

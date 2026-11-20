@@ -65,7 +65,7 @@ const items = computed(() => {
     >
       <div class="flex min-w-0 items-center gap-2 sm:gap-3">
         <span class="hidden w-5 shrink-0 justify-center sm:flex">
-          <UIcon name="i-mdi-play" class="size-4 text-gray-400 dark:text-gray-600" />
+          <UIcon name="i-lucide-play" class="size-4 text-gray-400 dark:text-gray-600" />
         </span>
 
         <span class="size-10 shrink-0 rounded-lg bg-gray-500/15 sm:size-11" />

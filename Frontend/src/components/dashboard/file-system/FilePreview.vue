@@ -27,7 +27,7 @@
             v-if="!isAudioPlaying"
             class="flex items-center justify-center w-16 h-16 frosted-glass glass-surface rounded-full hover:bg-white/40 hover:scale-110 transition-all"
           >
-            <Icon icon="mdi-play" class="w-10 h-10 text-white ml-1" />
+            <UIcon name="i-lucide-play" class="w-10 h-10 icon-solid text-white ml-1" />
           </div>
           <AudioEqualizer v-else />
         </div>
@@ -41,9 +41,9 @@
             @click.stop="toggleAudio"
             class="p-1.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded-full transition-colors shrink-0"
           >
-            <Icon
-              :icon="isAudioPlaying ? 'mdi-pause' : 'mdi-play'"
-              class="w-4 h-4 text-neutral-700 dark:text-white"
+            <UIcon
+              :name="isAudioPlaying ? 'i-lucide-pause' : 'i-lucide-play'"
+              class="w-4 h-4 icon-solid text-neutral-700 dark:text-white"
             />
           </button>
           <span class="text-xs text-neutral-600 dark:text-white/60 min-w-8.75 shrink-0">
@@ -65,16 +65,7 @@
             <button
               class="p-1.5 hover:bg-neutral-200 dark:hover:bg-white/10 rounded-full transition-colors"
             >
-              <Icon
-                :icon="
-                  isMuted || volume === 0
-                    ? 'mdi-volume-off'
-                    : volume < 0.5
-                      ? 'mdi-volume-medium'
-                      : 'mdi-volume-high'
-                "
-                class="w-4 h-4 text-neutral-700 dark:text-white"
-              />
+              <UIcon :name="volumeIcon" class="w-4 h-4 text-neutral-700 dark:text-white" />
             </button>
             <template #content>
               <div
@@ -98,8 +89,8 @@
                   @click.stop="toggleMute"
                   class="p-1 hover:bg-neutral-200 dark:hover:bg-white/10 rounded transition-colors"
                 >
-                  <Icon
-                    icon="mdi-volume-off"
+                  <UIcon
+                    name="i-lucide-volume-x"
                     class="w-3.5 h-3.5 text-neutral-600 dark:text-white/70"
                   />
                 </button>
@@ -164,7 +155,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
 import { computed, ref, watch } from "vue";
 
@@ -224,6 +214,12 @@ const currentTime = ref(0);
 const duration = ref(0);
 const volume = ref(0.2);
 const isMuted = ref(false);
+
+const volumeIcon = computed(() => {
+  if (isMuted.value || volume.value === 0) return "i-lucide-volume-x";
+  if (volume.value < 0.5) return "i-lucide-volume-1";
+  return "i-lucide-volume-2";
+});
 
 // Audio handlers
 
@@ -321,7 +317,7 @@ const archivePreviewItems = computed(() => {
   const rootNode = {
     children: [] as any[],
     defaultExpanded: true,
-    icon: "mdi-folder",
+    icon: "i-lucide-folder",
     label: tree.FileName,
   };
 
@@ -340,7 +336,7 @@ const archivePreviewItems = computed(() => {
       let folder = pathCache.get(newPath);
 
       if (!folder) {
-        folder = { children: [], icon: "mdi-folder", label: part };
+        folder = { children: [], icon: "i-lucide-folder", label: part };
         if (!parentNode.children) parentNode.children = [];
         parentNode.children.push(folder);
         pathCache.set(newPath, folder);
@@ -352,7 +348,7 @@ const archivePreviewItems = computed(() => {
 
     if (!parentNode.children) parentNode.children = [];
     const fileName = pathParts[pathParts.length - 1];
-    parentNode.children.push({ icon: "mdi-file", label: fileName });
+    parentNode.children.push({ icon: "i-lucide-file", label: fileName });
   });
 
   return [rootNode];

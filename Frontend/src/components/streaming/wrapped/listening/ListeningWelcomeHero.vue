@@ -45,7 +45,7 @@ const STEPS = [
           v-if="card.seed === 'listening-welcome-2'"
           class="absolute inset-0 flex items-center justify-center"
         >
-          <UIcon name="i-mdi-music-note-outline" class="size-10 text-white drop-shadow-md" />
+          <UIcon name="i-lucide-music" class="size-10 text-white drop-shadow-md" />
         </span>
       </MediaArtwork>
     </span>

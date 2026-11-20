@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 
@@ -97,9 +96,9 @@ const END_OPTIONS = [
             >
               {{ autoLabel }}
             </span>
-            <Icon
+            <UIcon
               v-if="abrEnabled"
-              icon="mdi:lightning-bolt"
+              name="i-lucide-zap"
               class="w-3.5 h-3.5 flex-shrink-0 text-primary"
             />
           </span>

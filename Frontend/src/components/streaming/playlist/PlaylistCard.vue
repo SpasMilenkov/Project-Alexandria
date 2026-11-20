@@ -22,7 +22,7 @@
         v-if="isPlaying"
         class="absolute top-2 left-2 flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-black/60 text-white"
       >
-        <UIcon name="mdi:volume-high" class="w-3 h-3" />
+        <UIcon name="i-lucide-volume-2" class="w-3 h-3" />
         Now playing
       </span>
 
@@ -38,9 +38,9 @@
         :aria-label="isPlaying ? 'Pause' : `Play ${playlist.name}`"
         @click.stop="emit('play')"
       >
-        <UIcon v-if="isLoading" name="mdi:loading" class="w-4 h-4 animate-spin" />
-        <UIcon v-else-if="isPlaying" name="mdi:pause" class="w-4 h-4" />
-        <UIcon v-else name="mdi:play" class="w-4 h-4 ml-0.5" />
+        <BlockSpinner v-if="isLoading" :size="16" />
+        <UIcon v-else-if="isPlaying" name="i-lucide-pause" class="w-4 h-4 icon-solid" />
+        <UIcon v-else name="i-lucide-play" class="w-4 h-4 ml-0.5 icon-solid" />
       </button>
     </div>
 
@@ -78,7 +78,7 @@
       <!-- Actions dropdown -->
       <UDropdownMenu :items="menuItems" :content="{ align: 'end' }" @click.stop>
         <UButton
-          icon="mdi:dots-horizontal"
+          icon="i-lucide-ellipsis"
           color="neutral"
           variant="ghost"
           size="xs"
@@ -94,6 +94,7 @@
 import { computed, ref, watch } from "vue";
 
 import { type PlaylistResponse, playlistApi } from "@/api/playlist";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import PlaylistCover from "@/components/streaming/playlist/PlaylistCover.vue";
 import PlaylistFavoriteButton from "@/components/streaming/playlist/PlaylistFavoriteButton.vue";
 import { playlistBadgeLabel } from "@/features/playlists/display";
@@ -135,34 +136,34 @@ const menuItems = [
   [
     {
       label: "Open",
-      icon: "lucide:arrow-up-right",
+      icon: "i-lucide-arrow-up-right",
       onSelect: () => emit("open"),
     },
     {
       label: "Play",
-      icon: "mdi:play",
+      icon: "i-lucide-play",
       onSelect: () => emit("play"),
     },
     {
       label: "Add to queue",
-      icon: "mdi:playlist-plus",
+      icon: "i-lucide-list-plus",
       onSelect: () => emit("addToQueue"),
     },
     {
       label: playlist.isStarred ? "Remove from favorites" : "Add to favorites",
-      icon: playlist.isStarred ? "mdi:heart" : "mdi:heart-outline",
+      icon: playlist.isStarred ? "i-lucide-heart-off" : "i-lucide-heart",
       onSelect: () => emit("favorite"),
     },
     {
       label: "Edit",
-      icon: "mdi:pencil",
+      icon: "i-lucide-pencil",
       onSelect: () => emit("edit"),
     },
   ],
   [
     {
       label: "Delete",
-      icon: "i-heroicons-trash",
+      icon: "i-lucide-trash-2",
       color: "error" as const,
       onSelect: () => emit("delete"),
     },

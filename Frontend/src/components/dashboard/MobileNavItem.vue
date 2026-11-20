@@ -4,7 +4,7 @@
       <UIcon :name="icon" class="size-4.5" />
     </span>
     <span class="mobile-nav-item__label">{{ label }}</span>
-    <UIcon name="i-heroicons-chevron-right" class="size-4 text-muted ml-auto opacity-90" />
+    <UIcon name="i-lucide-chevron-right" class="size-4 text-muted ml-auto opacity-90" />
   </button>
   <RouterLink v-else :to="to ?? '/'" custom v-slot="{ navigate, isExactActive }">
     <button
@@ -18,7 +18,7 @@
       </span>
       <span class="mobile-nav-item__label">{{ label }}</span>
       <span v-if="dot" class="mobile-nav-item__dot" title="Changed from default" />
-      <UIcon name="i-heroicons-chevron-right" class="size-4 text-muted ml-auto opacity-90" />
+      <UIcon name="i-lucide-chevron-right" class="size-4 text-muted ml-auto opacity-90" />
     </button>
   </RouterLink>
 </template>

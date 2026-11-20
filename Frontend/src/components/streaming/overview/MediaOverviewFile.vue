@@ -113,8 +113,8 @@ const play = () => {
         class="absolute right-2.5 top-2.5 inline-flex min-h-6 items-center gap-1 rounded-full bg-primary px-2 text-xs font-semibold text-inverted shadow-md"
       >
         <UIcon
-          :name="isPlaying ? 'i-mdi-play' : 'i-mdi-pause'"
-          class="size-3.5"
+          :name="isPlaying ? 'i-lucide-play' : 'i-lucide-pause'"
+          class="size-3.5 icon-solid"
           aria-hidden="true"
         />
         {{ isPlaying ? "Now playing" : "Paused" }}
@@ -135,9 +135,14 @@ const play = () => {
       >
         <MediaEqualizer v-if="isActive && !file.isVideo" :playing="isPlaying" />
 
-        <UIcon v-else-if="isPlaying" name="i-mdi-pause" class="size-5" aria-hidden="true" />
+        <UIcon
+          v-else-if="isPlaying"
+          name="i-lucide-pause"
+          class="size-5 icon-solid"
+          aria-hidden="true"
+        />
 
-        <UIcon v-else name="i-mdi-play" class="size-5" aria-hidden="true" />
+        <UIcon v-else name="i-lucide-play" class="size-5 icon-solid" aria-hidden="true" />
       </span>
     </MediaArtwork>
 

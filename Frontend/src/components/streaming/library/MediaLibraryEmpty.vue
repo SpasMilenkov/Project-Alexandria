@@ -12,14 +12,14 @@ const COPY = {
     title: "Nothing to play yet",
     description: "Songs show up here as soon as they are ready to stream.",
     noun: "audio",
-    icon: "i-mdi-music-note-outline",
+    icon: "i-lucide-music",
   },
   video: {
     eyebrow: "Your videos",
     title: "No videos yet",
     description: "Videos show up here as soon as they are ready to stream.",
     noun: "video",
-    icon: "i-mdi-film-open-outline",
+    icon: "i-lucide-film",
   },
 } as const;
 
@@ -51,17 +51,17 @@ const cards = computed(() =>
 
 const steps = computed(() => [
   {
-    icon: "i-mdi-upload-outline",
+    icon: "i-lucide-upload",
     title: "Upload",
     description: `Add ${copy.value.noun} files to a folder in Files.`,
   },
   {
-    icon: "i-mdi-tune-variant",
+    icon: "i-lucide-sliders-horizontal",
     title: "Convert",
     description: "A Transcode rule prepares each file in the background.",
   },
   {
-    icon: "i-mdi-play-circle-outline",
+    icon: "i-lucide-circle-play",
     title: "Play",
     description: "Finished files land here, ready to stream.",
   },

@@ -22,7 +22,7 @@ watch(coverUrl, () => {
   >
     <UIcon
       v-if="!settings.thumbnailsEnabled"
-      name="i-heroicons-musical-note"
+      name="i-lucide-music"
       class="size-8 text-gray-500 dark:text-gray-500"
     />
     <img

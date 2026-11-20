@@ -3,6 +3,8 @@ import { type Component, onErrorCaptured, ref } from "vue";
 
 import type { HomeWidget } from "@/types/home";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
+
 defineProps<{ component: Component; widget: HomeWidget }>();
 
 const failed = ref(false);
@@ -36,7 +38,7 @@ const retry = () => {
         role="status"
         aria-label="Loading widget"
       >
-        <UIcon name="i-mdi-loading" class="size-6 animate-spin text-gray-500 dark:text-gray-500" />
+        <BlockSpinner :size="24" class="text-gray-500 dark:text-gray-500" />
       </div>
     </template>
   </Suspense>

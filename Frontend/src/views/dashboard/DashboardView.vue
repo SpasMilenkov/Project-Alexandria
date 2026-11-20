@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useMediaQuery } from "@vueuse/core";
 import { computed, onMounted, ref, useId } from "vue";
 
@@ -101,7 +100,7 @@ onMounted(() => {
       <div
         class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2"
       >
-        <UIcon name="i-heroicons-folder-open" class="w-8 h-8 text-primary" />
+        <UIcon name="i-lucide-folder-open" class="w-8 h-8 text-primary" />
       </div>
       <div class="space-y-2">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">No tabs open</h3>
@@ -110,15 +109,10 @@ onMounted(() => {
         </p>
       </div>
       <div class="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-        <UButton
-          icon="i-heroicons-plus"
-          color="primary"
-          size="md"
-          @click="tabStore.createTab(null)"
-        >
+        <UButton icon="i-lucide-plus" color="primary" size="md" @click="tabStore.createTab(null)">
           Create New Tab
         </UButton>
-        <UButton icon="i-heroicons-command-line" variant="outline" color="neutral" size="md">
+        <UButton icon="i-lucide-square-terminal" variant="outline" color="neutral" size="md">
           <span class="hidden sm:inline">Press</span>
           <kbd
             class="ml-1 px-1.5 py-0.5 text-xs font-semibold rounded border border-gray-300 dark:border-gray-700"
@@ -183,7 +177,7 @@ onMounted(() => {
           @pointerup="onTabPointerUp"
           @pointerleave="onTabPointerUp"
         >
-          <Icon icon="mdi:folder" class="w-4 h-4 shrink-0" />
+          <UIcon name="i-lucide-folder" class="w-4 h-4 shrink-0" />
           <span class="truncate">{{ tab.title }}</span>
         </button>
 
@@ -207,7 +201,7 @@ onMounted(() => {
           title="New tab"
           @click="tabStore.createTab(null)"
         >
-          <Icon icon="mdi:plus" class="w-4 h-4" />
+          <UIcon name="i-lucide-plus" class="w-4 h-4" />
         </UButton>
       </div>
 
@@ -241,7 +235,7 @@ onMounted(() => {
                 aria-label="Close all tabs"
                 @click="openCloseAllModal"
               >
-                <Icon icon="mdi:folder-remove-outline" class="w-4 h-4" />
+                <UIcon name="i-lucide-folder-x" class="w-4 h-4" />
               </UButton>
             </div>
 
@@ -258,8 +252,10 @@ onMounted(() => {
                 "
                 @click="activateTab(tab.id)"
               >
-                <Icon
-                  :icon="tab.id === tabStore.activeTabId ? 'mdi:folder-open' : 'mdi:folder'"
+                <UIcon
+                  :name="
+                    tab.id === tabStore.activeTabId ? 'i-lucide-folder-open' : 'i-lucide-folder'
+                  "
                   class="w-5 h-5 shrink-0"
                   :class="tab.id === tabStore.activeTabId ? 'text-primary' : 'text-gray-400'"
                 />
@@ -275,7 +271,7 @@ onMounted(() => {
                   class="shrink-0"
                   @click.stop="closeTabFromSheet(tab.id)"
                 >
-                  <Icon icon="mdi:close" class="w-4 h-4" />
+                  <UIcon name="i-lucide-x" class="w-4 h-4" />
                 </UButton>
               </li>
             </ul>
@@ -294,7 +290,7 @@ onMounted(() => {
                   }
                 "
               >
-                <Icon icon="mdi:plus" class="w-4 h-4 mr-1.5" />
+                <UIcon name="i-lucide-plus" class="w-4 h-4 mr-1.5" />
                 New tab
               </UButton>
             </div>

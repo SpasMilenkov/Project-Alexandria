@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { getLocalTimeZone, today } from "@internationalized/date";
 import { useQuery } from "@pinia/colada";
 import { computed, reactive, ref, watch } from "vue";
@@ -408,43 +407,43 @@ interface StatusConfig {
 const statusConfig: Record<JobStatus, StatusConfig> = {
   [JobStatus.Queued]: {
     label: "Queued",
-    icon: "lucide:clock",
+    icon: "i-lucide-clock",
     chipClass: "bg-gray-200/80 dark:bg-white/10 text-gray-600 dark:text-gray-400",
     barClass: "bg-gray-400 dark:bg-white/30",
   },
   [JobStatus.Partial]: {
     label: "Partial",
-    icon: "lucide:clock-alert",
+    icon: "i-lucide-clock-alert",
     chipClass: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400",
     barClass: "bg-amber-400 dark:bg-amber-500",
   },
   [JobStatus.Processing]: {
     label: "Processing",
-    icon: "lucide:loader-circle",
+    icon: "i-lucide-loader-circle",
     chipClass: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400",
     barClass: "bg-blue-400 dark:bg-blue-500",
   },
   [JobStatus.CancellationRequested]: {
     label: "Cancelling",
-    icon: "lucide:loader-circle",
+    icon: "i-lucide-loader-circle",
     chipClass: "bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400",
     barClass: "bg-orange-400 dark:bg-orange-500",
   },
   [JobStatus.Cancelled]: {
     label: "Cancelled",
-    icon: "lucide:circle-x",
+    icon: "i-lucide-circle-x",
     chipClass: "bg-gray-200/80 dark:bg-white/[0.07] text-gray-600 dark:text-gray-400",
     barClass: "bg-gray-300 dark:bg-white/20",
   },
   [JobStatus.Ready]: {
     label: "Ready",
-    icon: "lucide:circle-check",
+    icon: "i-lucide-circle-check",
     chipClass: "bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
     barClass: "bg-emerald-400 dark:bg-emerald-500",
   },
   [JobStatus.Failed]: {
     label: "Failed",
-    icon: "lucide:circle-alert",
+    icon: "i-lucide-circle-alert",
     chipClass: "bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400",
     barClass: "bg-red-400 dark:bg-red-500",
   },
@@ -502,9 +501,9 @@ const statusFilterOptions = [
 ];
 
 const mediaFilterOptions = [
-  { label: "All", value: undefined, icon: "lucide:infinity" },
-  { label: "Video", value: true, icon: "lucide:video" },
-  { label: "Audio", value: false, icon: "lucide:music" },
+  { label: "All", value: undefined, icon: "i-lucide-infinity" },
+  { label: "Video", value: true, icon: "i-lucide-video" },
+  { label: "Audio", value: false, icon: "i-lucide-music" },
 ];
 </script>
 
@@ -588,7 +587,7 @@ const mediaFilterOptions = [
               :aria-pressed="isVideoFilter === opt.value"
               @click="selectMedia(opt.value)"
             >
-              <Icon :icon="opt.icon" class="w-3.5 h-3.5" />
+              <UIcon :name="opt.icon" class="w-3.5 h-3.5" />
               {{ opt.label }}
             </button>
           </div>
@@ -619,7 +618,7 @@ const mediaFilterOptions = [
               :aria-label="`Remove filter ${chip.label}`"
               @click="removeChip(chip.key)"
             >
-              <Icon icon="lucide:x" class="w-3.5 h-3.5" />
+              <UIcon name="i-lucide-x" class="w-3.5 h-3.5" />
             </button>
           </span>
           <UButton
@@ -838,7 +837,7 @@ const mediaFilterOptions = [
 
       <!-- Error state -->
       <div v-else-if="error" class="flex flex-col items-center gap-3 px-4 py-20 text-center">
-        <Icon icon="lucide:circle-alert" class="w-12 h-12 text-red-400" />
+        <UIcon name="i-lucide-circle-alert" class="w-12 h-12 text-red-400" />
         <p class="m-0 text-sm font-medium text-gray-900 dark:text-gray-100">Could not load jobs</p>
         <p class="m-0 text-xs text-gray-600 dark:text-gray-400">
           The jobs service did not respond. Check the connection and try again.
@@ -893,8 +892,8 @@ const mediaFilterOptions = [
           v-if="statusFilter === undefined && failedCount > 0"
           class="flex items-center gap-2 border-b border-red-200/60 bg-red-50/80 px-4 py-2 dark:border-red-500/20 dark:bg-red-500/[0.07]"
         >
-          <Icon
-            icon="lucide:circle-alert"
+          <UIcon
+            name="i-lucide-circle-alert"
             class="w-4 h-4 shrink-0 text-red-600 dark:text-red-400"
           />
           <span class="text-xs text-gray-900 dark:text-gray-100">
@@ -923,7 +922,10 @@ const mediaFilterOptions = [
               <span
                 class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200/70 text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
               >
-                <Icon :icon="group.isVideo ? 'lucide:video' : 'lucide:music'" class="w-4 h-4" />
+                <UIcon
+                  :name="group.isVideo ? 'i-lucide-video' : 'i-lucide-music'"
+                  class="w-4 h-4"
+                />
               </span>
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -946,8 +948,8 @@ const mediaFilterOptions = [
                   {{ item.count }} {{ statusConfig[item.status].label.toLowerCase() }}
                 </span>
               </span>
-              <Icon
-                icon="lucide:chevron-down"
+              <UIcon
+                name="i-lucide-chevron-down"
                 class="w-4 h-4 shrink-0 text-gray-500 transition-transform duration-200 dark:text-gray-500"
                 :class="{ 'rotate-180': isGroupOpen(group) }"
               />
@@ -967,10 +969,11 @@ const mediaFilterOptions = [
                   class="inline-flex w-fit items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium"
                   :class="statusConfig[job.status].chipClass"
                 >
-                  <Icon
-                    :icon="statusConfig[job.status].icon"
+                  <BlockSpinner v-if="isSpinning(job.status)" :size="14" class="shrink-0" />
+                  <UIcon
+                    v-else
+                    :name="statusConfig[job.status].icon"
                     class="w-3.5 h-3.5 shrink-0"
-                    :class="{ 'animate-spin': isSpinning(job.status) }"
                   />
                   {{ statusConfig[job.status].label }}
                 </span>
@@ -1011,7 +1014,7 @@ const mediaFilterOptions = [
                     class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"
                     title="Retry count"
                   >
-                    <Icon icon="lucide:rotate-ccw" class="w-3.5 h-3.5" />
+                    <UIcon name="i-lucide-rotate-ccw" class="w-3.5 h-3.5" />
                     {{ job.retryCount }}
                   </span>
                   <span :title="formatDateTime(job.createdAt)">

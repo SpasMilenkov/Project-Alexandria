@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { breakpointsTailwind, useBreakpoints, useEventListener } from "@vueuse/core";
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 
@@ -24,7 +23,7 @@ interface TextPart {
 
 const shortcutSections: ShortcutSection[] = [
   {
-    icon: "mdi:folder-outline",
+    icon: "i-lucide-folder",
     id: "file-explorer",
     shortcuts: [
       { description: "Copy selected files and folders", keys: ["meta", "C"] },
@@ -43,7 +42,7 @@ const shortcutSections: ShortcutSection[] = [
     title: "File Explorer",
   },
   {
-    icon: "mdi:magnify",
+    icon: "i-lucide-search",
     id: "search",
     shortcuts: [
       { description: "Search", keys: ["shift", "K"] },
@@ -52,7 +51,7 @@ const shortcutSections: ShortcutSection[] = [
     title: "Search",
   },
   {
-    icon: "mdi:tab",
+    icon: "i-lucide-arrow-right-to-line",
     id: "tabs",
     shortcuts: [
       { description: "Create new tab", keys: ["meta", "shift", "N"] },
@@ -61,7 +60,7 @@ const shortcutSections: ShortcutSection[] = [
     title: "Tabs",
   },
   {
-    icon: "mdi:tag-outline",
+    icon: "i-lucide-tag",
     id: "tags",
     shortcuts: [
       { description: "Select all tags", keys: ["meta", "A"] },
@@ -71,7 +70,7 @@ const shortcutSections: ShortcutSection[] = [
     title: "Tags",
   },
   {
-    icon: "mdi:keyboard-outline",
+    icon: "i-lucide-keyboard",
     id: "general",
     shortcuts: [{ description: "Show keyboard shortcuts", keys: ["meta", "K"] }],
     title: "General",
@@ -140,8 +139,9 @@ const filteredSections = computed(() => {
 });
 
 const platformOptions = computed(() => [
-  { icon: "mdi:apple", id: "mac", isActive: isMac.value, label: "Mac" },
-  { icon: "mdi:microsoft-windows", id: "windows", isActive: !isMac.value, label: "Windows" },
+  // Lucide has no brand marks; its "apple" is the fruit.
+  { icon: "i-mdi-apple", id: "mac", isActive: isMac.value, label: "Mac" },
+  { icon: "i-mdi-microsoft-windows", id: "windows", isActive: !isMac.value, label: "Windows" },
 ]);
 
 const setPlatform = (id: string) => {
@@ -231,7 +231,7 @@ onBeforeUnmount(() => observer?.disconnect());
       <div class="flex flex-col gap-4 flex-1 min-w-0">
         <div class="flex items-center gap-4">
           <div class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 shrink-0">
-            <Icon icon="mdi:keyboard-outline" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <UIcon name="i-lucide-keyboard" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </div>
           <div class="flex-1 min-w-0">
             <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100 leading-tight">
@@ -242,7 +242,7 @@ onBeforeUnmount(() => observer?.disconnect());
             </p>
           </div>
           <UButton
-            icon="i-heroicons-x-mark"
+            icon="i-lucide-x"
             size="sm"
             variant="ghost"
             color="neutral"
@@ -263,7 +263,7 @@ onBeforeUnmount(() => observer?.disconnect());
           <template #trailing>
             <UButton
               v-if="isFiltering"
-              icon="i-heroicons-x-mark"
+              icon="i-lucide-x"
               size="xs"
               variant="ghost"
               color="neutral"
@@ -302,7 +302,7 @@ onBeforeUnmount(() => observer?.disconnect());
               :aria-current="activeSection === section.id"
               @click="scrollToSection(section.id)"
             >
-              <Icon :icon="section.icon" class="w-4 h-4 shrink-0" />
+              <UIcon :name="section.icon" class="w-4 h-4 shrink-0" />
               {{ section.title }}
               <span
                 class="ml-auto text-xs font-normal tabular-nums"
@@ -321,8 +321,8 @@ onBeforeUnmount(() => observer?.disconnect());
             v-if="filteredSections.length === 0"
             class="flex flex-col items-center justify-center h-full gap-2 text-center"
           >
-            <Icon
-              icon="mdi:keyboard-off-outline"
+            <UIcon
+              name="i-lucide-keyboard-off"
               class="w-12 h-12 text-gray-400 dark:text-gray-600"
             />
             <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -345,7 +345,7 @@ onBeforeUnmount(() => observer?.disconnect());
             <h3
               class="flex items-center gap-2 mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
             >
-              <Icon :icon="section.icon" class="w-4 h-4 text-gray-500 dark:text-gray-500" />
+              <UIcon :name="section.icon" class="w-4 h-4 text-gray-500 dark:text-gray-500" />
               {{ section.title }}
             </h3>
 
@@ -401,7 +401,7 @@ onBeforeUnmount(() => observer?.disconnect());
           :aria-pressed="option.isActive"
           @click="setPlatform(option.id)"
         >
-          <Icon :icon="option.icon" class="w-3.5 h-3.5" />
+          <UIcon :name="option.icon" class="w-3.5 h-3.5" />
           {{ option.label }}
         </UButton>
       </div>

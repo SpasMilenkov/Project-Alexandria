@@ -34,7 +34,7 @@ defineProps<{ docked: boolean }>();
           <UButton
             color="neutral"
             variant="ghost"
-            icon="i-heroicons-x-mark"
+            icon="i-lucide-x"
             aria-label="Back to layout"
             @click="() => (open = false)"
           />

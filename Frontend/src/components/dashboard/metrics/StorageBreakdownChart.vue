@@ -24,7 +24,7 @@
       v-if="isEmpty"
       class="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center"
     >
-      <UIcon name="mdi:chart-donut" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+      <UIcon name="i-lucide-chart-pie" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
 
       <div class="max-w-xs space-y-1">
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No files tracked yet</p>

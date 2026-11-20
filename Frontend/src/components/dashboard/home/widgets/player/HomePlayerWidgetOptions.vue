@@ -36,23 +36,20 @@ const emit = defineEmits<{ change: [options: Partial<HomePlayerOptions>] }>();
             :src="null"
             :loaded="false"
             :spinning="false"
-            icon="i-mdi-music-note-outline"
+            icon="i-lucide-music"
           />
 
           <div
             v-else
             class="flex size-12 shrink-0 items-center justify-center rounded-lg bg-gray-700 dark:bg-gray-700"
           >
-            <UIcon
-              name="i-mdi-music-note-outline"
-              class="size-8 text-gray-200 dark:text-gray-200"
-            />
+            <UIcon name="i-lucide-music" class="size-8 text-gray-200 dark:text-gray-200" />
           </div>
 
           <div class="flex w-6 flex-col items-center gap-2" aria-hidden="true">
             <span class="h-1 w-full rounded-full bg-gray-300 dark:bg-gray-300" />
             <span class="h-0.5 w-full rounded-full bg-gray-500 dark:bg-gray-500" />
-            <UIcon name="i-mdi-play" class="size-6 text-gray-200 dark:text-gray-200" />
+            <UIcon name="i-lucide-play" class="size-6 icon-solidtext-gray-200 dark:text-gray-200" />
           </div>
         </div>
       </template>

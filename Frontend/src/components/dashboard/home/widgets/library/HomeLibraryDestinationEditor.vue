@@ -169,7 +169,7 @@ const feature = (destination: number) => {
                 color="neutral"
                 variant="ghost"
                 size="xs"
-                icon="i-heroicons-x-mark"
+                icon="i-lucide-x"
                 class="justify-center"
                 :aria-label="`Remove ${row.target.label}`"
                 :title="`Remove ${row.target.label}`"

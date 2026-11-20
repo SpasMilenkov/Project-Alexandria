@@ -15,11 +15,11 @@
     <ExplorerTooltipStat label="Owner">{{ data.owner.name }}</ExplorerTooltipStat>
 
     <template v-if="hasNotes" #notes>
-      <ExplorerTooltipNote v-if="data.currentVersion.isEncrypted" icon="i-mdi-lock">
+      <ExplorerTooltipNote v-if="data.currentVersion.isEncrypted" icon="i-lucide-lock">
         This file is encrypted
       </ExplorerTooltipNote>
 
-      <ExplorerTooltipNote v-if="data.currentVersion.isPasswordProtected" icon="i-mdi-file-lock">
+      <ExplorerTooltipNote v-if="data.currentVersion.isPasswordProtected" icon="i-lucide-file-lock">
         Opening it needs the document's password
       </ExplorerTooltipNote>
     </template>

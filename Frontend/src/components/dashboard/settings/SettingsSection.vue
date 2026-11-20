@@ -14,7 +14,7 @@
         <span
           class="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-gray-200/70 text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
         >
-          <Icon :icon="icon" class="h-5 w-5" />
+          <UIcon :name="icon" class="h-5 w-5" />
         </span>
 
         <span class="min-w-0 flex-1">
@@ -80,7 +80,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useId } from "vue";
 
 const { icon, title, description, modified } = defineProps<{

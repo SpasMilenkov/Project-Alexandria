@@ -7,6 +7,7 @@ import type { TranspilationJobResponse } from "@/api/streaming";
 import type { HomeWidget } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import HomeWidgetDataState from "@/components/dashboard/home/grid/HomeWidgetDataState.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useHomeWidgetQuery } from "@/composables/useHomeWidgetPreview";
@@ -96,7 +97,7 @@ useEventListener(document, "visibilitychange", refresh);
         class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center"
       >
         <UIcon
-          name="i-heroicons-check-circle"
+          name="i-lucide-circle-check"
           class="size-8 shrink-0 text-gray-500 dark:text-gray-500"
         />
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Nothing to transcode</p>
@@ -127,7 +128,7 @@ useEventListener(document, "visibilitychange", refresh);
             class="job-row flex h-14 min-w-0 items-center gap-2 border-b border-gray-200/50 last:border-0 dark:border-gray-700/50"
           >
             <UIcon
-              :name="job.isVideo ? 'i-heroicons-video-camera' : 'i-heroicons-musical-note'"
+              :name="job.isVideo ? 'i-lucide-video' : 'i-lucide-music'"
               class="size-5 shrink-0 text-gray-500 dark:text-gray-500"
             />
             <div class="min-w-0 flex-1">
@@ -138,10 +139,10 @@ useEventListener(document, "visibilitychange", refresh);
                 {{ job.fileName || "Media file" }}
               </p>
               <p class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                <UIcon
+                <BlockSpinner
                   v-if="job.status === JobStatus.Processing"
-                  name="i-mdi-loading"
-                  class="size-3.5 shrink-0 animate-spin"
+                  :size="14"
+                  class="shrink-0"
                 />
                 <span
                   :class="{ 'text-red-700 dark:text-red-400': job.status === JobStatus.Failed }"
@@ -155,7 +156,7 @@ useEventListener(document, "visibilitychange", refresh);
 
             <UButton
               v-if="job.status === JobStatus.Failed"
-              icon="i-heroicons-arrow-path"
+              icon="i-lucide-refresh-cw"
               color="neutral"
               variant="ghost"
               size="xs"

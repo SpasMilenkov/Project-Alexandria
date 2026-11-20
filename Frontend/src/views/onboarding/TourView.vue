@@ -85,7 +85,7 @@
                 color="neutral"
                 variant="outline"
                 size="lg"
-                leading-icon="i-mdi-arrow-left"
+                leading-icon="i-lucide-arrow-left"
                 @click="prev"
               >
                 Back
@@ -97,7 +97,7 @@
                 size="lg"
                 class="flex-1"
                 :loading="isFinishing"
-                :trailing-icon="isLast ? 'i-mdi-rocket-launch-outline' : 'i-mdi-arrow-right'"
+                :trailing-icon="isLast ? 'i-lucide-rocket' : 'i-lucide-arrow-right'"
                 @click="isLast ? handleFinish() : next()"
               >
                 {{ isLast ? "Get started" : "Next" }}
@@ -164,7 +164,7 @@
           v-if="serverError"
           class="mt-4 flex items-start gap-3 rounded-xl border border-red-200/70 bg-red-50/70 px-4 py-3.5 dark:border-red-900/50 dark:bg-red-950/30"
         >
-          <Icon icon="mdi:alert-circle-outline" class="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+          <UIcon name="i-lucide-circle-alert" class="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
           <p class="text-sm text-red-600 dark:text-red-400">{{ serverError }}</p>
         </div>
       </Transition>
@@ -173,7 +173,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useDark } from "@vueuse/core";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -276,7 +275,7 @@ const tourFeatures: TourFeature[] = [
     description:
       "Your central hub for every document, image, and file in Alexandria. Upload in bulk, create folders, and keep everything neatly organised.",
     highlight: true,
-    icon: "mdi:folder-open-outline",
+    icon: "i-lucide-folder-open",
     id: "file-management",
     image: "explorer-preview.svg",
     tips: [
@@ -289,7 +288,7 @@ const tourFeatures: TourFeature[] = [
   {
     description:
       "A flexible labelling system that works across folders. Tag a file once and find it from any view — no need to move or duplicate it.",
-    icon: "mdi:tag-multiple-outline",
+    icon: "i-lucide-tags",
     id: "tags",
     image: "tags-preview.svg",
     tips: [
@@ -302,7 +301,7 @@ const tourFeatures: TourFeature[] = [
   {
     description:
       "A full chronological log of every action performed in your library — uploads, edits, moves, deletions, and logins — so nothing goes unnoticed.",
-    icon: "mdi:history",
+    icon: "i-lucide-history",
     id: "history",
     image: "logs-preview.svg",
     tips: [
@@ -315,7 +314,7 @@ const tourFeatures: TourFeature[] = [
   {
     description:
       "Keep tabs on your storage usage and recover anything deleted by accident. Files move to Trash first, giving you a safety net before permanent removal.",
-    icon: "mdi:trash-can-outline",
+    icon: "i-lucide-trash-2",
     id: "trash",
     image: "storage-preview.svg",
     tips: [

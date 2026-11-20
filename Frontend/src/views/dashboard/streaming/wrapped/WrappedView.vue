@@ -51,7 +51,7 @@
 
           <UDropdownMenu :items="moreActions" :content="{ align: 'end' }">
             <UButton
-              icon="i-mdi-dots-horizontal"
+              icon="i-lucide-ellipsis"
               color="neutral"
               variant="ghost"
               aria-label="More Wrapped options"
@@ -76,7 +76,7 @@
         role="status"
         aria-label="Building your Wrapped"
       >
-        <UIcon name="i-mdi-loading" class="h-8 w-8 animate-spin text-gray-400 dark:text-gray-600" />
+        <BlockSpinner :size="32" class="text-gray-400 dark:text-gray-600" />
       </div>
       <div v-else-if="visibleError" class="frosted-glass glass-surface rounded-3xl p-8 text-center">
         <p class="font-semibold text-gray-900 dark:text-gray-100">Could not load your Wrapped</p>
@@ -103,7 +103,7 @@
         v-else-if="!deck?.deck.cards.length"
         class="flex flex-col items-center py-16 text-center"
       >
-        <UIcon name="mdi:music-note" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+        <UIcon name="i-lucide-music" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
         <h2 class="mt-4 font-semibold text-gray-900 dark:text-gray-100">{{ emptyState.title }}</h2>
 
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -136,6 +136,7 @@ import { useIntervalFn, useNow } from "@vueuse/core";
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import WrappedPaletteSwitcher from "@/components/streaming/wrapped/palette/WrappedPaletteSwitcher.vue";
 import WrappedBackdrop from "@/components/streaming/wrapped/story/WrappedBackdrop.vue";
 import WrappedExperience from "@/components/streaming/wrapped/story/WrappedExperience.vue";
@@ -280,7 +281,7 @@ const hasDeck = computed(
 const moreActions = computed(() => [
   {
     label: "Refresh recap",
-    icon: "i-mdi-refresh",
+    icon: "i-lucide-refresh-cw",
     disabled: isFetching.value || authWaiting.value,
 
     onSelect: () => {
@@ -291,7 +292,7 @@ const moreActions = computed(() => [
     ? [
         {
           label: "View annual Wrapped",
-          icon: "i-heroicons-calendar",
+          icon: "i-lucide-calendar",
           onSelect: () => {
             goToYear(year.value);
           },

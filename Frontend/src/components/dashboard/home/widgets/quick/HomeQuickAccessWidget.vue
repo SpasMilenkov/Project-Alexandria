@@ -58,7 +58,7 @@ const openFolder = (id: string, name: string) => {
         v-if="folders && !folders.length"
         class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center"
       >
-        <UIcon name="i-heroicons-folder" class="size-8 shrink-0 text-gray-500 dark:text-gray-500" />
+        <UIcon name="i-lucide-folder" class="size-8 shrink-0 text-gray-500 dark:text-gray-500" />
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No favorite folders</p>
         <p class="access-empty-hint text-xs text-gray-600 dark:text-gray-400">
           Add favorites from a folder's menu in File Explorer.

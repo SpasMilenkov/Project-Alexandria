@@ -40,7 +40,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "File Explorer",
     description: "Browse your files and folders",
     to: "/dashboard",
-    icon: "i-heroicons-folder",
+    icon: "i-lucide-folder",
     media: false,
   },
   {
@@ -48,7 +48,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Tags and Categories",
     description: "Find a collection by its tags",
     to: "/dashboard/tags",
-    icon: "i-heroicons-tag",
+    icon: "i-lucide-tag",
     media: false,
   },
   {
@@ -56,7 +56,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Access History",
     description: "See your recent file activity",
     to: "/access-history",
-    icon: "i-heroicons-clock",
+    icon: "i-lucide-clock",
     media: false,
   },
   {
@@ -64,7 +64,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Your Storage",
     description: "Review your usage and quota",
     to: "/my-storage",
-    icon: "i-heroicons-archive-box",
+    icon: "i-lucide-archive",
     media: false,
   },
   {
@@ -72,7 +72,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Trash",
     description: "Restore or remove deleted files",
     to: "/dashboard/trash",
-    icon: "i-heroicons-trash",
+    icon: "i-lucide-trash-2",
     media: false,
   },
   {
@@ -80,7 +80,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Media Overview",
     description: "Explore your media library",
     to: "/media",
-    icon: "i-heroicons-film",
+    icon: "i-lucide-film",
     media: true,
   },
   {
@@ -88,7 +88,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Music",
     description: "Listen to your music library",
     to: "/streaming/music",
-    icon: "i-heroicons-musical-note",
+    icon: "i-lucide-music",
     media: true,
   },
   {
@@ -96,7 +96,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Videos",
     description: "Watch your video library",
     to: "/streaming/videos",
-    icon: "i-heroicons-film",
+    icon: "i-lucide-film",
     media: true,
   },
   {
@@ -104,7 +104,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Playlists",
     description: "Explore your collections",
     to: "/streaming/playlists",
-    icon: "i-heroicons-list-bullet",
+    icon: "i-lucide-list",
     media: true,
   },
   {
@@ -112,7 +112,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Playback History",
     description: "Return to something you played",
     to: "/streaming/history",
-    icon: "i-heroicons-clock",
+    icon: "i-lucide-clock",
     media: true,
   },
   {
@@ -120,7 +120,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Encoding Jobs",
     description: "Follow your media conversions",
     to: "/streaming/jobs",
-    icon: "i-heroicons-arrow-path",
+    icon: "i-lucide-refresh-cw",
     media: true,
   },
   {
@@ -128,7 +128,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Your listening",
     description: "Timeline, recaps and Wrapped",
     to: "/stats",
-    icon: "i-heroicons-chart-bar",
+    icon: "i-lucide-chart-column",
     media: true,
   },
   {
@@ -136,7 +136,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Timeline",
     description: "Browse your daily listening history",
     to: "/stats#timeline",
-    icon: "i-heroicons-calendar",
+    icon: "i-lucide-calendar",
     media: true,
   },
   {
@@ -144,7 +144,7 @@ export const HOME_LIBRARY_DESTINATIONS: HomeLibraryLink[] = [
     label: "Recaps",
     description: "Revisit your listening highlights",
     to: "/stats#recaps",
-    icon: "i-heroicons-chart-bar",
+    icon: "i-lucide-chart-column",
     media: true,
   },
 ];

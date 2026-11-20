@@ -42,19 +42,14 @@
           v-if="!showThumbnail || !thumbnailLoaded"
           class="absolute inset-0 flex items-center justify-center"
         >
-          <Icon
-            :icon="getFileIcon(props.data.fileName)"
-            :width="iconSize"
-            :height="iconSize"
-            class="shrink-0"
-          />
+          <UIcon :name="getFileIcon(props.data.fileName)" :size="iconSize" class="shrink-0" />
         </div>
         <span
           v-if="props.data.currentVersion.isEncrypted"
           class="absolute top-2 left-2 flex items-center justify-center rounded-md bg-neutral-900/80 p-0.5 text-white"
           data-encrypted-indicator
         >
-          <Icon icon="mdi:lock" class="w-3.5 h-3.5" aria-hidden="true" />
+          <UIcon name="i-lucide-lock" class="w-3.5 h-3.5" aria-hidden="true" />
           <span class="sr-only">Encrypted</span>
         </span>
         <span
@@ -62,7 +57,7 @@
           class="absolute top-2 left-2 flex items-center justify-center rounded-md bg-neutral-900/80 p-0.5 text-white"
           data-password-protected-indicator
         >
-          <Icon icon="mdi:file-lock" class="w-3.5 h-3.5" aria-hidden="true" />
+          <UIcon name="i-lucide-file-lock" class="w-3.5 h-3.5" aria-hidden="true" />
           <span class="sr-only">Password protected</span>
         </span>
         <span
@@ -76,7 +71,7 @@
           class="absolute top-2 right-2 grid h-5 w-5 place-items-center rounded-full bg-primary text-white dark:text-neutral-900"
           aria-hidden="true"
         >
-          <Icon icon="mdi:check" class="w-3 h-3" />
+          <UIcon name="i-lucide-check" class="w-3 h-3" />
         </span>
       </div>
       <span
@@ -113,10 +108,9 @@
       :aria-pressed="isSelected"
     >
       <span class="flex min-w-0 items-center gap-3 text-gray-900 dark:text-gray-100">
-        <Icon
-          :icon="getFileIcon(props.data.fileName)"
-          :width="iconSize"
-          :height="iconSize"
+        <UIcon
+          :name="getFileIcon(props.data.fileName)"
+          :size="iconSize"
           class="shrink-0 text-gray-500 dark:text-gray-400"
         />
         <span class="truncate">{{ props.data.fileName }}</span>
@@ -125,7 +119,7 @@
           class="flex shrink-0 items-center text-gray-500 dark:text-gray-500"
           data-encrypted-indicator
         >
-          <Icon icon="mdi:lock" class="w-3.5 h-3.5" aria-hidden="true" />
+          <UIcon name="i-lucide-lock" class="w-3.5 h-3.5" aria-hidden="true" />
           <span class="sr-only">Encrypted</span>
         </span>
         <span
@@ -133,7 +127,7 @@
           class="flex shrink-0 items-center text-gray-500 dark:text-gray-500"
           data-password-protected-indicator
         >
-          <Icon icon="mdi:file-lock" class="w-3.5 h-3.5" aria-hidden="true" />
+          <UIcon name="i-lucide-file-lock" class="w-3.5 h-3.5" aria-hidden="true" />
           <span class="sr-only">Password protected</span>
         </span>
       </span>
@@ -157,7 +151,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQueryCache } from "@pinia/colada";
 import { useDebounceFn } from "@vueuse/core";
 import { computed, onUnmounted } from "vue";

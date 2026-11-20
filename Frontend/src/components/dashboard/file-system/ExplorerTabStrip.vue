@@ -121,7 +121,7 @@ const handleKeydown = (event: KeyboardEvent) => {
   >
     <div v-if="tabs.length > 1" class="flex h-10 w-10 shrink-0 items-center justify-center mt-1">
       <UButton
-        icon="i-heroicons-folder-minus"
+        icon="i-lucide-folder-minus"
         variant="ghost"
         color="error"
         aria-label="Close all tabs"
@@ -159,7 +159,7 @@ const handleKeydown = (event: KeyboardEvent) => {
             :class="tab.id === activeTabId ? 'text-primary' : 'text-gray-600 dark:text-gray-400'"
             @click="emit('activate', tab.id)"
           >
-            <UIcon name="i-heroicons-folder" class="size-4 shrink-0" />
+            <UIcon name="i-lucide-folder" class="size-4 shrink-0" />
             <span class="min-w-0 truncate">{{ tab.title }}</span>
           </button>
           <div class="flex w-8 shrink-0 items-center justify-center">
@@ -172,7 +172,7 @@ const handleKeydown = (event: KeyboardEvent) => {
               class="flex size-8 items-center justify-center rounded text-gray-500 dark:text-gray-400 hover:bg-gray-100/60 dark:hover:bg-gray-800/60 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               @click="emit('close', tab.id)"
             >
-              <UIcon name="i-heroicons-x-mark" class="size-4" />
+              <UIcon name="i-lucide-x" class="size-4" />
             </button>
           </div>
         </div>
@@ -180,7 +180,7 @@ const handleKeydown = (event: KeyboardEvent) => {
     </div>
     <div class="flex h-10 w-10 shrink-0 items-center justify-center mt-1">
       <UButton
-        icon="i-heroicons-plus"
+        icon="i-lucide-plus"
         variant="ghost"
         color="neutral"
         aria-label="New tab"

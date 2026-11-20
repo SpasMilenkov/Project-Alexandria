@@ -7,13 +7,13 @@
     <div
       class="flex items-center gap-2 border-b border-gray-200/70 px-4 py-2.5 dark:border-gray-700/70"
     >
-      <Icon icon="mdi:home-outline" class="h-4 w-4 text-gray-500 dark:text-gray-500" />
+      <UIcon name="i-lucide-house" class="h-4 w-4 text-gray-500 dark:text-gray-500" />
       <span class="text-xs font-medium text-gray-900 dark:text-gray-100">Home</span>
 
       <span
         class="ms-auto flex items-center gap-1.5 rounded-md border border-gray-200/70 px-2 py-1 text-[11px] text-gray-500 dark:border-gray-700/70 dark:text-gray-500"
       >
-        <Icon icon="mdi:magnify" class="h-3.5 w-3.5" />
+        <UIcon name="i-lucide-search" class="h-3.5 w-3.5" />
         Search
       </span>
     </div>
@@ -28,14 +28,14 @@
           <span
             class="flex h-8 w-8 items-center justify-center rounded-md bg-neutral-100 text-gray-600 dark:bg-neutral-800 dark:text-gray-400"
           >
-            <Icon :icon="tile.icon" class="h-4 w-4" />
+            <UIcon :name="tile.icon" class="h-4 w-4" />
           </span>
 
           <span
             v-if="tile.automated"
             class="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-white"
           >
-            <Icon icon="mdi:lightning-bolt" class="h-2.5 w-2.5" />
+            <UIcon name="i-lucide-zap" class="h-2.5 w-2.5" />
           </span>
         </div>
 
@@ -48,7 +48,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import {

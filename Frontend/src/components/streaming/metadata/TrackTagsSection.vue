@@ -11,7 +11,7 @@
 
         <UButton
           v-if="isAudioFile && autoTaggingEnabled"
-          icon="i-mdi-tag-outline"
+          icon="i-lucide-tag"
           label="Auto-tag"
           size="lg"
           variant="outline"
@@ -28,7 +28,7 @@
           :loading="tagsLoading"
           :items="tagOptions"
           value-key="value"
-          icon="i-mdi-plus"
+          icon="i-lucide-plus"
           placeholder="Add tag"
           size="lg"
           class="col-span-2 min-h-11 w-full md:order-2 md:col-span-1 md:min-h-9"
@@ -42,7 +42,7 @@
         </div>
 
         <div v-else-if="!tags.length" class="flex flex-col items-center gap-2 py-6 text-center">
-          <UIcon name="i-mdi-tag-outline" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+          <UIcon name="i-lucide-tag" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
           <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">No tags yet</div>
           <div class="text-xs text-gray-600 dark:text-gray-400">
             Add a tag to organize this file.
@@ -84,7 +84,7 @@
                 {{ group.tags.length }}
               </span>
               <UIcon
-                name="i-mdi-chevron-down"
+                name="i-lucide-chevron-down"
                 class="w-4 h-4 text-gray-600 transition-transform duration-200 md:hidden dark:text-gray-400"
                 :class="{ 'rotate-180': isGroupOpen(group.name) }"
               />

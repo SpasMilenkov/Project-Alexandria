@@ -6,7 +6,7 @@
     :description="drawerDescription"
   >
     <template #icon>
-      <Icon icon="mdi:folder" class="h-6 w-6" />
+      <UIcon name="i-lucide-folder" class="h-6 w-6" />
     </template>
 
     <template #meta>
@@ -15,7 +15,7 @@
       <template v-if="displayDirectory?.isStarred">
         <span aria-hidden="true">·</span>
         <span class="flex items-center gap-1">
-          <Icon icon="mdi:star" class="h-3.5 w-3.5" aria-hidden="true" />
+          <UIcon name="i-lucide-star" class="h-3.5 w-3.5 icon-solid" aria-hidden="true" />
           Favorite
         </span>
       </template>
@@ -24,7 +24,8 @@
     <template #actions>
       <UTooltip v-if="displayDirectory" :text="favoriteLabel">
         <UButton
-          :icon="displayDirectory.isStarred ? 'i-mdi-star' : 'i-mdi-star-outline'"
+          icon="i-lucide-star"
+          :ui="{ leadingIcon: displayDirectory.isStarred && !favoritePending ? 'icon-solid' : '' }"
           :loading="favoritePending"
           :aria-label="favoriteLabel"
           :aria-pressed="displayDirectory.isStarred"
@@ -40,7 +41,7 @@
     <template #toolbar>
       <div class="flex items-center gap-2">
         <UButton
-          icon="i-mdi-pencil-outline"
+          icon="i-lucide-pencil"
           label="Rename"
           size="sm"
           color="neutral"
@@ -49,7 +50,7 @@
         />
 
         <UButton
-          icon="i-mdi-folder-move-outline"
+          icon="i-lucide-folder-input"
           label="Move"
           size="sm"
           color="neutral"
@@ -58,7 +59,7 @@
         />
 
         <UButton
-          icon="i-mdi-download-outline"
+          icon="i-lucide-download"
           label="Download"
           size="sm"
           color="neutral"
@@ -73,7 +74,7 @@
 
         <UTooltip text="Delete folder">
           <UButton
-            icon="i-mdi-delete-outline"
+            icon="i-lucide-trash-2"
             size="sm"
             color="error"
             variant="ghost"
@@ -127,7 +128,7 @@
 
     <template #footer>
       <UButton
-        icon="i-mdi-folder-open-outline"
+        icon="i-lucide-folder-open"
         label="Open folder"
         color="primary"
         block
@@ -138,7 +139,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed, ref, watch } from "vue";
 
 import type { DirectorySummaryDto } from "@/api/directory";

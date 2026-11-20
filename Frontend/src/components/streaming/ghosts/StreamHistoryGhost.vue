@@ -19,7 +19,10 @@ const ROWS = Array.from({ length: 20 }, (_, index) => ({
 
       <span class="h-5 w-16 shrink-0 rounded-full bg-gray-500/15" />
       <span class="hidden h-2.5 w-20 shrink-0 rounded-full bg-gray-500/15 sm:block" />
-      <UIcon name="i-mdi-chevron-down" class="size-4 shrink-0 text-gray-400 dark:text-gray-600" />
+      <UIcon
+        name="i-lucide-chevron-down"
+        class="size-4 shrink-0 text-gray-400 dark:text-gray-600"
+      />
     </div>
   </div>
 </template>

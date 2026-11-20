@@ -88,31 +88,31 @@ const buildExplorerMenuItems = (
 const buildBackgroundItems = (actions: ExplorerMenuActions): DropdownMenuItem[][] => [
   [
     {
-      icon: "i-mdi-file-upload-outline",
+      icon: "i-lucide-file-up",
       label: "Upload File",
       onSelect: () => actions.uploadFile(),
     },
     {
-      icon: "i-mdi-folder-upload-outline",
+      icon: "i-lucide-folder-up",
       label: "Upload Folder",
       onSelect: () => actions.uploadDirectory(),
     },
     {
-      icon: "i-formkit-zip",
+      icon: "i-lucide-file-archive",
       label: "Upload Archive",
       onSelect: () => actions.uploadArchive(),
     },
   ],
   [
     {
-      icon: "i-mdi-folder-plus",
+      icon: "i-lucide-folder-plus",
       label: "New Folder",
       onSelect: () => actions.createDirectory(),
     },
   ],
   [
     {
-      icon: "i-mdi-refresh",
+      icon: "i-lucide-refresh-cw",
       label: "Refresh",
       onSelect: () => actions.refresh(),
     },
@@ -131,14 +131,14 @@ const buildFileItems = (
     return [
       [
         {
-          icon: "i-mdi-information-outline",
+          icon: "i-lucide-info",
           label: "View details",
           kbds: [{ value: "alt" }, { value: "enter" }],
           onSelect: () => actions.openFileDetails(target),
         },
         {
           disabled: !canDownload(),
-          icon: "i-mdi-download-outline",
+          icon: "i-lucide-download",
           kbds: [{ value: "D" }],
           label: "Download",
           onSelect: () => actions.downloadFile(),
@@ -147,21 +147,21 @@ const buildFileItems = (
       [
         {
           disabled: !canRename(),
-          icon: "i-mdi-pencil-outline",
+          icon: "i-lucide-pencil",
           kbds: ["R"],
           label: "Rename",
           onSelect: () => actions.renameFile(target.fileId, target.fileName),
         },
         {
           disabled: !canMove(),
-          icon: "i-mdi-folder-move-outline",
+          icon: "i-lucide-folder-input",
           label: "Move to…",
           kbds: ["⌘", "X"],
           onSelect: () => actions.moveSelection(),
         },
         {
           disabled: !canCopy(),
-          icon: "i-mdi-content-copy",
+          icon: "i-lucide-copy",
           kbds: ["⌘", "C"],
           label: "Copy to…",
           onSelect: () => actions.copySelection(),
@@ -170,7 +170,7 @@ const buildFileItems = (
       [
         {
           disabled: !canShare(),
-          icon: "i-mdi-share-variant-outline",
+          icon: "i-lucide-share-2",
           label: "Share",
           onSelect: () => actions.shareFile(target.fileId, target.fileName),
         },
@@ -179,7 +179,7 @@ const buildFileItems = (
         {
           color: "error" as const,
           disabled: !canDelete(),
-          icon: "i-mdi-delete-outline",
+          icon: "i-lucide-trash-2",
           kbds: ["Del"],
           label: "Delete",
           onSelect: () => actions.deleteSelection(),
@@ -193,7 +193,7 @@ const buildFileItems = (
     [
       {
         disabled: !canDownload(),
-        icon: "i-mdi-download-multiple-outline",
+        icon: "i-lucide-download",
         label: "Download all",
         onSelect: () => actions.downloadFile(),
       },
@@ -201,19 +201,19 @@ const buildFileItems = (
     [
       {
         disabled: !canMove(),
-        icon: "i-mdi-folder-move-outline",
+        icon: "i-lucide-folder-input",
         label: "Move all to…",
         onSelect: () => actions.moveSelection(),
       },
       {
         disabled: !canCopy(),
-        icon: "i-mdi-content-copy",
+        icon: "i-lucide-copy",
         label: "Copy all to…",
         onSelect: () => actions.copySelection(),
       },
       {
         disabled: !canShare(),
-        icon: "i-mdi-share-variant-outline",
+        icon: "i-lucide-share-2",
         label: "Share all",
         onSelect: () => actions.shareFile(target.fileId, target.fileName),
       },
@@ -222,7 +222,7 @@ const buildFileItems = (
       {
         color: "error" as const,
         disabled: !canDelete(),
-        icon: "i-mdi-delete-sweep-outline",
+        icon: "i-lucide-trash-2",
         label: `Delete ${count} items`,
         onSelect: () => actions.deleteSelection(),
       },
@@ -242,7 +242,7 @@ const buildDirectoryItems = (
     return [
       [
         {
-          icon: "i-mdi-information-outline",
+          icon: "i-lucide-info",
           label: "View details",
           kbds: [{ value: "alt" }, { value: "enter" }],
           onSelect: () => {
@@ -250,13 +250,13 @@ const buildDirectoryItems = (
           },
         },
         {
-          icon: "i-mdi-folder-open",
+          icon: "i-lucide-folder-open",
           label: "Open",
           onSelect: () => actions.openDirectory(target.id),
         },
         {
           disabled: actions.isFavoritePending(),
-          icon: target.isStarred ? "i-mdi-star" : "i-mdi-star-outline",
+          icon: target.isStarred ? "i-lucide-star-off" : "i-lucide-star",
           label: target.isStarred ? "Remove from favorites" : "Add to favorites",
           onSelect: () => actions.favoriteDirectory(target),
         },
@@ -264,7 +264,7 @@ const buildDirectoryItems = (
       [
         {
           disabled: !canRename(),
-          icon: "i-mdi-pencil-outline",
+          icon: "i-lucide-pencil",
           label: "Rename",
           kbds: ["R"],
           onSelect: () => actions.renameDirectory(target.id),
@@ -273,21 +273,21 @@ const buildDirectoryItems = (
       [
         {
           disabled: !canMove(),
-          icon: "i-mdi-folder-move-outline",
+          icon: "i-lucide-folder-input",
           label: "Move to…",
           kbds: ["⌘", "X"],
           onSelect: () => actions.moveSelection(),
         },
         {
           disabled: !canCopy(),
-          icon: "i-mdi-content-copy",
+          icon: "i-lucide-copy",
           label: "Copy to…",
           kbds: ["⌘", "C"],
           onSelect: () => actions.copySelection(),
         },
         {
           disabled: !canDownload(),
-          icon: "i-mdi-download-outline",
+          icon: "i-lucide-download",
           label: "Download",
           kbds: ["D"],
           onSelect: () => actions.downloadDirectory(),
@@ -297,7 +297,7 @@ const buildDirectoryItems = (
         {
           color: "error" as const,
           disabled: !canDelete(),
-          icon: "i-mdi-delete-outline",
+          icon: "i-lucide-trash-2",
           label: "Delete",
           kbds: ["Del"],
           onSelect: () => actions.deleteSelection(),
@@ -310,21 +310,21 @@ const buildDirectoryItems = (
     [
       {
         disabled: !canMove(),
-        icon: "i-mdi-folder-move-outline",
+        icon: "i-lucide-folder-input",
         label: `Move ${count} items to…`,
         kbds: ["⌘", "X"],
         onSelect: () => actions.moveSelection(),
       },
       {
         disabled: !canCopy(),
-        icon: "i-mdi-content-copy",
+        icon: "i-lucide-copy",
         label: `Copy ${count} items to…`,
         kbds: ["⌘", "C"],
         onSelect: () => actions.copySelection(),
       },
       {
         disabled: !canDownload(),
-        icon: "i-mdi-download-multiple-outline",
+        icon: "i-lucide-download",
         label: `Download ${count} items`,
         kbds: ["D"],
         onSelect: () => actions.downloadDirectory(),
@@ -334,7 +334,7 @@ const buildDirectoryItems = (
       {
         color: "error" as const,
         disabled: !canDelete(),
-        icon: "i-mdi-delete-sweep-outline",
+        icon: "i-lucide-trash-2",
         label: `Delete ${count} items`,
         kbds: ["Del"],
         onSelect: () => actions.deleteSelection(),

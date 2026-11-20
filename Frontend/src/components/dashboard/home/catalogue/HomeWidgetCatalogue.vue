@@ -84,7 +84,7 @@ useEventListener(window, "keydown", (event) => {
         <UButton
           color="neutral"
           variant="ghost"
-          icon="i-heroicons-x-mark"
+          icon="i-lucide-x"
           aria-label="Close widget catalogue"
           @click="open = false"
         />
@@ -94,7 +94,7 @@ useEventListener(window, "keydown", (event) => {
         <UButton
           color="neutral"
           variant="outline"
-          icon="i-heroicons-book-open"
+          icon="i-lucide-book-open"
           class="w-full justify-center"
           @click="emit('showcase')"
           >Explore all sizes</UButton

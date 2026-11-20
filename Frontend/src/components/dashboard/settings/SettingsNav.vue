@@ -8,8 +8,8 @@
           :class="linkClass(item.id)"
           @click="emit('navigate', item.id)"
         >
-          <Icon
-            :icon="item.icon"
+          <UIcon
+            :name="item.icon"
             :class="variant === 'column' ? 'h-5 w-5' : 'h-4 w-4'"
             class="shrink-0"
           />
@@ -26,8 +26,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
-
 export interface SettingsNavItem {
   id: string;
   title: string;

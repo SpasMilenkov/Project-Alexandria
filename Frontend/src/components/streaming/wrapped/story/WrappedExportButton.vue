@@ -1,5 +1,7 @@
 <template>
-  <UButton icon="mdi-export" color="neutral" variant="outline" @click="open = true">Export</UButton>
+  <UButton icon="i-lucide-share" color="neutral" variant="outline" @click="open = true"
+    >Export</UButton
+  >
 
   <UModal
     v-model:open="open"
@@ -37,7 +39,7 @@
         role="status"
         aria-label="Preparing your image"
       >
-        <UIcon name="i-mdi-loading" class="h-8 w-8 animate-spin text-gray-500" />
+        <BlockSpinner :size="32" class="text-gray-500" />
       </div>
       <div v-else-if="error" role="alert" class="py-6">
         <p class="text-sm text-gray-900 dark:text-gray-100">{{ error }}</p>
@@ -72,7 +74,7 @@
       <div class="flex w-full flex-wrap justify-end gap-2">
         <UButton
           v-if="canShare"
-          icon="i-mdi-share-variant-outline"
+          icon="i-lucide-share-2"
           color="neutral"
           variant="outline"
           :disabled="busy || !file"
@@ -82,7 +84,7 @@
         >
 
         <UButton
-          icon="i-mdi-download-outline"
+          icon="i-lucide-download"
           color="primary"
           :disabled="busy || !file || !!error"
           @click="download"
@@ -100,6 +102,7 @@ import type { WrappedDeckResponse } from "@/api/stats";
 import type { WrappedExportFormat } from "@/features/wrapped/export/render";
 import type { WrappedPalette } from "@/features/wrapped/palette";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useTheme } from "@/composables/useTheme";
 import { glassModalBody, glassModalContentWide } from "@/utils/modal-ui";
 

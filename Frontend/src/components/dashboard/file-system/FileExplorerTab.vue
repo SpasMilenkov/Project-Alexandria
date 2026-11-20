@@ -17,7 +17,7 @@
             class="rounded-none font-semibold"
             @click="handleFileUpload(selectedUploadType.label as 'File' | 'Directory' | 'Archive')"
           >
-            <Icon :icon="selectedUploadType.icon" class="w-4 h-4 mr-2" />
+            <UIcon :name="selectedUploadType.icon" class="w-4 h-4 mr-2" />
             Upload {{ selectedUploadType.label }}
           </UButton>
           <UDropdownMenu :items="uploadOptions" :ui="{ content: 'w-48' }">
@@ -27,7 +27,7 @@
               class="w-8 justify-center rounded-none border-l border-white/25 px-0 dark:border-black/25"
               aria-label="Upload options"
             >
-              <Icon icon="mdi:chevron-down" class="w-4 h-4" />
+              <UIcon name="i-lucide-chevron-down" class="w-4 h-4" />
             </UButton>
           </UDropdownMenu>
         </div>
@@ -42,7 +42,7 @@
           title="New Folder"
           @click="createNewDirectory"
         >
-          <Icon icon="mdi:folder-plus" class="w-4 h-4" />
+          <UIcon name="i-lucide-folder-plus" class="w-4 h-4" />
           <span class="hidden @5xl/explorer:inline">New Folder</span>
         </UButton>
 
@@ -80,7 +80,7 @@
               title="Sort by"
             >
               {{ sortLabel }}
-              <Icon icon="mdi:chevron-down" class="w-3.5 h-3.5" />
+              <UIcon name="i-lucide-chevron-down" class="w-3.5 h-3.5" />
             </button>
           </UDropdownMenu>
 
@@ -93,9 +93,11 @@
             :aria-label="sortDirection === SortDirection.Asc ? 'Ascending' : 'Descending'"
             @click="toggleSortDirection"
           >
-            <Icon
-              :icon="
-                sortDirection === SortDirection.Asc ? 'mdi:sort-ascending' : 'mdi:sort-descending'
+            <UIcon
+              :name="
+                sortDirection === SortDirection.Asc
+                  ? 'i-lucide-arrow-up-narrow-wide'
+                  : 'i-lucide-arrow-down-wide-narrow'
               "
               class="w-4 h-4"
             />
@@ -115,7 +117,7 @@
             :aria-pressed="viewMode === 'grid'"
             @click="viewMode = 'grid'"
           >
-            <Icon icon="mdi:view-grid" class="w-4 h-4" />
+            <UIcon name="i-lucide-layout-grid" class="w-4 h-4" />
           </button>
           <button
             type="button"
@@ -128,7 +130,7 @@
             :aria-pressed="viewMode === 'list'"
             @click="viewMode = 'list'"
           >
-            <Icon icon="mdi:view-list" class="w-4 h-4" />
+            <UIcon name="i-lucide-list" class="w-4 h-4" />
           </button>
 
           <span aria-hidden="true" class="mx-0.5 h-4 w-px bg-gray-300/70 dark:bg-gray-600/70" />
@@ -141,7 +143,7 @@
             >
               <span class="tabular-nums">{{ pageSize }}</span>
               <span>per page</span>
-              <Icon icon="mdi:chevron-down" class="w-3.5 h-3.5" />
+              <UIcon name="i-lucide-chevron-down" class="w-3.5 h-3.5" />
             </button>
           </UDropdownMenu>
         </div>
@@ -158,7 +160,7 @@
           title="Search (⌘/)"
           @click="openSearch"
         >
-          <Icon icon="mdi:magnify" class="w-4 h-4" />
+          <UIcon name="i-lucide-search" class="w-4 h-4" />
           <kbd
             class="rounded border border-gray-300/70 px-1 font-mono text-[11px] leading-4 text-gray-600 dark:border-gray-600/70 dark:text-gray-400"
           >
@@ -177,7 +179,7 @@
           aria-label="Upload"
           @click="isMobileUploadSheetOpen = true"
         >
-          <Icon icon="mdi:upload" class="w-4 h-4 mr-1.5" />
+          <UIcon name="i-lucide-upload" class="w-4 h-4 mr-1.5" />
           Upload
         </UButton>
 
@@ -189,7 +191,7 @@
           aria-label="Search files"
           @click="openSearch"
         >
-          <Icon icon="mdi:magnify" class="w-4 h-4 mr-1.5" />
+          <UIcon name="i-lucide-search" class="w-4 h-4 mr-1.5" />
           Search
         </UButton>
 
@@ -204,7 +206,7 @@
             class="justify-center rounded-lg"
             aria-label="More options"
           >
-            <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
+            <UIcon name="i-lucide-ellipsis" class="w-5 h-5" />
           </UButton>
         </UDropdownMenu>
       </div>
@@ -237,7 +239,7 @@
               <div
                 class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0"
               >
-                <Icon icon="mdi:file-outline" class="w-5 h-5 text-primary" />
+                <UIcon name="i-lucide-file" class="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p class="text-sm font-medium">File</p>
@@ -255,7 +257,7 @@
               <div
                 class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0"
               >
-                <Icon icon="mdi:folder-outline" class="w-5 h-5 text-primary" />
+                <UIcon name="i-lucide-folder" class="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p class="text-sm font-medium">Folder</p>
@@ -273,7 +275,7 @@
               <div
                 class="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0"
               >
-                <Icon icon="formkit:zip" class="w-5 h-5 text-primary" />
+                <UIcon name="i-lucide-file-archive" class="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p class="text-sm font-medium">Archive</p>
@@ -307,7 +309,7 @@
           aria-label="Back"
           @click="navigateBack()"
         >
-          <Icon icon="mdi:arrow-left" class="w-4 h-4" />
+          <UIcon name="i-lucide-arrow-left" class="w-4 h-4" />
         </UButton>
         <UButton
           size="xs"
@@ -321,7 +323,7 @@
           aria-label="Forward"
           @click="navigateForward()"
         >
-          <Icon icon="mdi:arrow-right" class="w-4 h-4" />
+          <UIcon name="i-lucide-arrow-right" class="w-4 h-4" />
         </UButton>
 
         <div class="mx-1 h-5 w-px bg-gray-300/70 dark:bg-gray-600/70" />
@@ -368,7 +370,7 @@
                 <div
                   class="flex shrink-0 items-center justify-center rounded-md bg-primary/10 p-1.5"
                 >
-                  <Icon :icon="dropIcon" class="h-5 w-5 text-primary" />
+                  <UIcon :name="dropIcon" class="h-5 w-5 text-primary" />
                 </div>
 
                 <div class="min-w-0">
@@ -664,7 +666,6 @@
 <script setup lang="ts">
 import type { BreadcrumbItem, DropdownMenuItem } from "@nuxt/ui";
 
-import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
 import { breakpointsTailwind, useBreakpoints, useEventListener } from "@vueuse/core";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
@@ -911,7 +912,7 @@ const {
 } = useDropZone();
 
 const dropIcon = computed(() =>
-  dragHasDirectory.value ? "mdi:folder-upload-outline" : "mdi:cloud-upload-outline",
+  dragHasDirectory.value ? "i-lucide-folder-up" : "i-lucide-cloud-upload",
 );
 const dropLabel = computed(() =>
   dragHasDirectory.value ? "Drop to upload this folder" : "Drop to upload files",
@@ -986,21 +987,21 @@ const pageSizeMenuItems = computed<DropdownMenuItem[]>(() => [
   })),
 ]);
 
-const selectedUploadType = ref({ icon: "mdi:file-outline", label: "File" });
+const selectedUploadType = ref({ icon: "i-lucide-file", label: "File" });
 
 const uploadOptions = ref([
   {
-    icon: "mdi:file-outline",
+    icon: "i-lucide-file",
     label: "File",
     onSelect: () => handleFileUpload("File"),
   },
   {
-    icon: "mdi:folder-outline",
+    icon: "i-lucide-folder",
     label: "Directory",
     onSelect: () => handleFileUpload("Directory"),
   },
   {
-    icon: "formkit:zip",
+    icon: "i-lucide-file-archive",
     label: "Archive",
     onSelect: () => handleFileUpload("Archive"),
   },
@@ -1163,7 +1164,7 @@ const chipFor = (id: string, kind: ExplorerItemKind) => {
 
   const directory = directoriesList.value.find((item) => item.id === id);
 
-  return { icon: "mdi:folder", id, kind, name: directory?.name ?? "Folder" };
+  return { icon: "i-lucide-folder", id, kind, name: directory?.name ?? "Folder" };
 };
 
 useExplorerItemDrag({
@@ -1240,7 +1241,10 @@ const mobileOverflowItems = computed(() => [
   ...sortMenuItems.value,
   { type: "separator" as const },
   {
-    icon: sortDirection.value === SortDirection.Asc ? "mdi:sort-ascending" : "mdi:sort-descending",
+    icon:
+      sortDirection.value === SortDirection.Asc
+        ? "i-lucide-arrow-up-narrow-wide"
+        : "i-lucide-arrow-down-wide-narrow",
     label: sortDirection.value === SortDirection.Asc ? "Ascending" : "Descending",
     onSelect: () => toggleSortDirection(),
   },
@@ -1248,7 +1252,7 @@ const mobileOverflowItems = computed(() => [
   ...pageSizeMenuItems.value,
   { type: "separator" as const },
   {
-    icon: viewMode.value === "grid" ? "mdi:view-list" : "mdi:view-grid",
+    icon: viewMode.value === "grid" ? "i-lucide-list" : "i-lucide-layout-grid",
     label: viewMode.value === "grid" ? "Switch to List view" : "Switch to Grid view",
     onSelect: () => {
       viewMode.value = viewMode.value === "grid" ? "list" : "grid";
@@ -1256,7 +1260,7 @@ const mobileOverflowItems = computed(() => [
   },
   { type: "separator" as const },
   {
-    icon: "mdi:folder-plus",
+    icon: "i-lucide-folder-plus",
     label: "New Folder",
     onSelect: () => createNewDirectory(),
   },
@@ -1301,7 +1305,7 @@ const openTransferModal = async (
   const fileChips = fileIds.map((id) => {
     const f = filesList.value.find((file) => file.fileId === id);
     return {
-      icon: f ? getFileIcon(f.fileName) : "mdi:file-outline",
+      icon: f ? getFileIcon(f.fileName) : "i-lucide-file",
       id,
       name: f?.fileName ?? "File",
       type: "file" as const,
@@ -1311,7 +1315,7 @@ const openTransferModal = async (
   const dirChips = dirIds.map((id) => {
     const d = directoriesList.value.find((dir) => dir.id === id);
     return {
-      icon: "mdi:folder-outline",
+      icon: "i-lucide-folder",
       id,
       name: d?.name ?? "Folder",
       type: "directory" as const,
@@ -1724,7 +1728,7 @@ const handleFileUpload = async (type: "File" | "Directory" | "Archive") => {
 };
 
 const breadcrumbs = computed(() => {
-  const items: NavItem[] = [{ icon: "i-heroicons-home", key: null, label: "Home" }];
+  const items: NavItem[] = [{ icon: "i-lucide-house", key: null, label: "Home" }];
   const path = pathQuery.data.value?.pathParts;
   if (path && path.length > 0) {
     items.push(...path.map((segment) => ({ key: segment.id, label: segment.name })));

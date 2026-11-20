@@ -18,7 +18,7 @@
       <UIcon v-if="isSelected" name="i-lucide-check" class="h-3 w-3" />
     </span>
 
-    <Icon :icon="icon" class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400" />
+    <UIcon :name="icon" class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400" />
 
     <div class="min-w-0 flex-1">
       <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100" :title="name">
@@ -37,7 +37,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 const {

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
 import { computed, watch } from "vue";
 
@@ -58,7 +57,7 @@ const handleResetBehavior = () => {
 <template>
   <SettingsSection
     v-model:open="isOpen"
-    icon="mdi:cog-outline"
+    icon="i-lucide-settings"
     title="Behavior"
     description="Confirmation prompts and notifications"
     :modified="settingsStore.isBehaviorModified"
@@ -89,7 +88,7 @@ const handleResetBehavior = () => {
           v-if="skipDeleteConfirmation"
           class="mt-3 flex items-start gap-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3"
         >
-          <Icon icon="mdi:alert-circle-outline" class="w-4 h-4 shrink-0 mt-0.5 text-error" />
+          <UIcon name="i-lucide-circle-alert" class="w-4 h-4 shrink-0 mt-0.5 text-error" />
           <span class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
             Deleting a folder with files in it will no longer ask first. Disabling confirmations can
             lead to accidental data loss.
@@ -126,8 +125,8 @@ const handleResetBehavior = () => {
               <span
                 class="w-8 h-8 grid place-items-center rounded-lg border border-gray-200/70 dark:border-gray-700/70"
               >
-                <Icon
-                  :icon="level.icon"
+                <UIcon
+                  :name="level.icon"
                   class="w-4.5 h-4.5 shrink-0"
                   :class="
                     toastLevel === level.value ? 'text-primary' : 'text-gray-600 dark:text-gray-400'
@@ -142,10 +141,9 @@ const handleResetBehavior = () => {
                   level.description
                 }}</span>
               </span>
-              <!-- mdi:check-circle stays filled — it marks an active/selected state, which is correct -->
-              <Icon
+              <UIcon
                 v-if="toastLevel === level.value"
-                icon="mdi:check-circle"
+                name="i-lucide-circle-check"
                 class="absolute top-3 right-3 w-4 h-4 text-primary shrink-0"
               />
             </button>

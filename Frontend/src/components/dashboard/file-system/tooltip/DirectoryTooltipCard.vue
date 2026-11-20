@@ -1,5 +1,5 @@
 <template>
-  <ExplorerTooltipCard icon="mdi:folder" :name="data.name" subtitle="Folder">
+  <ExplorerTooltipCard icon="i-lucide-folder" :name="data.name" subtitle="Folder">
     <ExplorerTooltipStat label="Size" hint="Including subfolders" emphasis>
       {{ sizeLabel }}
     </ExplorerTooltipStat>
@@ -11,7 +11,7 @@
     <ExplorerTooltipStat label="Owner">{{ data.ownerUserDto.name }}</ExplorerTooltipStat>
 
     <template v-if="data.isStarred" #notes>
-      <ExplorerTooltipNote icon="i-mdi-star">In your favorites</ExplorerTooltipNote>
+      <ExplorerTooltipNote icon="i-lucide-star">In your favorites</ExplorerTooltipNote>
     </template>
   </ExplorerTooltipCard>
 </template>

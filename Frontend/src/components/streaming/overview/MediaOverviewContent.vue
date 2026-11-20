@@ -48,7 +48,7 @@ onUnmounted(() => {
           to="/streaming/music"
           color="neutral"
           variant="outline"
-          icon="i-mdi-music-note-outline"
+          icon="i-lucide-music"
           class="frosted-glass glass-surface-strong h-11 flex-1 justify-center rounded-s-full px-5 sm:flex-none"
           >Music</UButton
         >
@@ -57,7 +57,7 @@ onUnmounted(() => {
           to="/streaming/videos"
           color="neutral"
           variant="outline"
-          icon="i-mdi-video-outline"
+          icon="i-lucide-video"
           class="frosted-glass glass-surface-strong h-11 flex-1 justify-center rounded-e-full px-5 sm:flex-none"
           >Videos</UButton
         >

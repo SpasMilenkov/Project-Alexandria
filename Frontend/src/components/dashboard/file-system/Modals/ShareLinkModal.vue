@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { useClipboard } from "@vueuse/core";
 import { computed, ref } from "vue";
@@ -123,10 +122,11 @@ const getLinkStatus = (link: ShareLinkSummaryDto): LinkStatus => {
 };
 
 const LINK_STATUS_ICONS: Record<LinkStatus, string> = {
-  active: "mdi:link-variant",
-  expired: "mdi:clock-outline",
-  "limit-reached": "mdi:download-off-outline",
-  revoked: "mdi:link-variant-remove",
+  active: "i-lucide-link",
+  expired: "i-lucide-clock",
+  // Lucide has no crossed-out download glyph.
+  "limit-reached": "i-mdi-download-off-outline",
+  revoked: "i-lucide-unlink",
 };
 
 // null = no badge for active links
@@ -221,7 +221,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
         <!-- File header -->
         <div class="flex items-center gap-3">
           <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 shrink-0">
-            <Icon :icon="getFileIcon(fileName)" class="w-5 h-5 text-primary" />
+            <UIcon :name="getFileIcon(fileName)" class="w-5 h-5 text-primary" />
           </div>
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium truncate text-gray-900 dark:text-white">{{ fileName }}</p>
@@ -243,7 +243,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
           <USkeleton v-if="linksLoading" class="h-16 w-full rounded-lg" />
 
           <div v-else-if="!sortedLinks.length" class="text-center py-6 space-y-2">
-            <Icon icon="mdi:link-variant-off" class="w-8 h-8 mx-auto text-muted" />
+            <UIcon name="i-lucide-unlink" class="w-8 h-8 mx-auto text-muted" />
             <p class="text-xs text-muted">No share links yet</p>
           </div>
 
@@ -260,8 +260,8 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
                 },
               ]"
             >
-              <Icon
-                :icon="getLinkIcon(link)"
+              <UIcon
+                :name="getLinkIcon(link)"
                 class="w-4 h-4 shrink-0"
                 :class="getLinkStatus(link) === 'revoked' ? 'text-error' : 'text-muted'"
               />
@@ -294,7 +294,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
               <div class="flex items-center gap-1 shrink-0">
                 <!-- Copy is still useful for auditing even on inactive links -->
                 <UButton
-                  icon="i-mdi-content-copy"
+                  icon="i-lucide-copy"
                   size="xs"
                   variant="ghost"
                   color="neutral"
@@ -303,7 +303,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
                 />
                 <UButton
                   v-if="getLinkStatus(link) === 'active'"
-                  icon="i-mdi-close"
+                  icon="i-lucide-x"
                   size="xs"
                   variant="ghost"
                   color="error"
@@ -327,7 +327,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
             v-if="captureMetadata?.hasLocation"
             color="warning"
             variant="subtle"
-            icon="i-mdi-map-marker-radius-outline"
+            icon="i-lucide-map-pinned"
             title="This photo includes its location"
             description="Anyone who downloads it from a share link can see where it was taken."
           />
@@ -336,7 +336,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
             v-if="documentMetadata?.hasPersonalDetails"
             color="warning"
             variant="subtle"
-            icon="i-mdi-account-alert-outline"
+            icon="i-lucide-user-round"
             title="This document names who wrote it"
             description="Anyone who downloads it from a share link can see the author and company saved in it."
           />
@@ -349,7 +349,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
               <USelect v-model="selectedMaxAccess" :items="MAX_ACCESS_OPTIONS" class="w-full" />
             </UFormField>
             <UButton color="primary" :loading="isCreating" @click="handleCreate">
-              <Icon icon="mdi:link-variant-plus" class="w-4 h-4" />
+              <UIcon name="i-lucide-link" class="w-4 h-4" />
               Generate
             </UButton>
           </div>
@@ -358,7 +358,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
             v-if="createError"
             color="error"
             variant="subtle"
-            icon="i-mdi-alert-circle"
+            icon="i-lucide-circle-alert"
             :title="createError"
           />
 
@@ -367,7 +367,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
             class="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2"
           >
             <div class="flex items-center gap-1.5 text-xs text-primary font-medium">
-              <Icon icon="mdi:check-circle" class="w-4 h-4" />
+              <UIcon name="i-lucide-circle-check" class="w-4 h-4" />
               Link created
             </div>
             <div class="flex items-center gap-2">
@@ -378,7 +378,7 @@ const sortedLinks = computed(() => [...relevantLinks.value].sort(sortByDate));
                 size="sm"
               />
               <UButton
-                icon="i-mdi-content-copy"
+                icon="i-lucide-copy"
                 size="sm"
                 variant="outline"
                 color="primary"

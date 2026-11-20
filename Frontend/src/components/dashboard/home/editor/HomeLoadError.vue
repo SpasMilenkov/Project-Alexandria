@@ -62,10 +62,7 @@ const resetDashboard = async () => {
         <div
           class="flex size-12 shrink-0 items-center justify-center rounded-xl border border-gray-200/70 dark:border-gray-700/70"
         >
-          <UIcon
-            name="i-mdi-alert-circle-outline"
-            class="size-6 text-gray-500 dark:text-gray-400"
-          />
+          <UIcon name="i-lucide-circle-alert" class="size-6 text-gray-500 dark:text-gray-400" />
         </div>
 
         <h2 :id="titleId" class="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -76,7 +73,7 @@ const resetDashboard = async () => {
       <UButton
         color="error"
         variant="outline"
-        icon="i-mdi-delete-outline"
+        icon="i-lucide-trash-2"
         :disabled="disabled || resetting"
         @click="openConfirmation"
         >Reset dashboard</UButton
@@ -91,7 +88,7 @@ const resetDashboard = async () => {
 
       <UButton
         color="primary"
-        icon="i-mdi-refresh"
+        icon="i-lucide-refresh-cw"
         :loading="retrying"
         :disabled="disabled || resetting || confirmOpen"
         @click="emit('retry')"

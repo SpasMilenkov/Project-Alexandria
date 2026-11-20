@@ -161,20 +161,20 @@ export type ToastLevel = "all" | "errors-only" | "silent";
 export const TOAST_LEVELS = [
   {
     description: "Success, errors, info — the full play-by-play",
-    icon: "mdi:bell-ring",
+    icon: "i-lucide-bell-ring",
     label: "Tell me everything",
     value: "all",
   },
   {
     description: "Stay quiet unless something actually goes wrong",
-    icon: "mdi:bell-alert",
+    icon: "i-lucide-bell-dot",
     label: "Only when it hurts",
     value: "errors-only",
   },
   {
     description:
       "No notifications at all. (Critical operations such as login, uploads and file restoration are always shown.)",
-    icon: "mdi:bell-off",
+    icon: "i-lucide-bell-off",
     label: "Zen mode",
     value: "silent",
   },

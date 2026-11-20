@@ -4,7 +4,7 @@
       <span
         class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gray-500/15 text-gray-900 dark:text-gray-100"
       >
-        <Icon :icon="icon" class="size-5" aria-hidden="true" />
+        <UIcon :name="icon" class="size-5" aria-hidden="true" />
       </span>
 
       <div class="min-w-0">
@@ -31,8 +31,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
-
 // Shared shell for the explorer's rich tooltips, in the same card language as the
 // informational hints elsewhere in the app: neutral icon tile, a detail panel of
 // ExplorerTooltipStat tiles, and optional ExplorerTooltipNote strips below it.

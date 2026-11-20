@@ -17,7 +17,7 @@
   <UFooter>
     <template #left>
       <div class="flex items-center gap-2">
-        <UIcon name="heroicons:book-open" class="w-5 h-5 text-primary" />
+        <UIcon name="i-lucide-book-open" class="w-5 h-5 text-primary" />
         <span class="text-sm font-medium text-gray-900 dark:text-white"> Alexandria </span>
       </div>
     </template>
@@ -36,7 +36,7 @@
           rel="noopener noreferrer"
           class="text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-primary transition-colors"
         >
-          <UIcon name="mdi:github" class="w-5 h-5" />
+          <UIcon name="i-mdi-github" class="w-5 h-5" />
         </a>
       </div>
     </template>

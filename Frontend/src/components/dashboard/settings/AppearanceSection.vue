@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useDebounceFn, useMediaQuery } from "@vueuse/core";
 import { computed, onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 
@@ -425,7 +424,7 @@ const backgroundTileClass = (name: string) => {
 <template>
   <SettingsSection
     v-model:open="isOpen"
-    icon="mdi:palette-outline"
+    icon="i-lucide-palette"
     title="Appearance"
     description="Colors, glass effects and file tiles"
     :modified="settingsStore.isAppearanceModified"
@@ -679,13 +678,13 @@ const backgroundTileClass = (name: string) => {
                   class="inline-flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 border border-gray-200/70 dark:border-gray-700/70 rounded-full px-2.5 py-1 truncate max-w-50"
                   :title="imageName"
                 >
-                  <Icon icon="mdi:image-outline" class="w-3.5 h-3.5 shrink-0" />
+                  <UIcon name="i-lucide-image" class="w-3.5 h-3.5 shrink-0" />
                   {{ imageName }}
                 </span>
               </div>
 
               <p v-if="imageError" class="text-xs text-error flex items-center gap-1">
-                <Icon icon="mdi:alert-circle-outline" class="w-3.5 h-3.5 shrink-0" />
+                <UIcon name="i-lucide-circle-alert" class="w-3.5 h-3.5 shrink-0" />
                 {{ imageError }}
               </p>
 

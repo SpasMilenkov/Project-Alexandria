@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
 import { computed, watch } from "vue";
 
@@ -60,7 +59,7 @@ const handleResetAutoPlaylists = () => {
 <template>
   <SettingsSection
     v-model:open="isOpen"
-    icon="mdi:playlist-music"
+    icon="i-lucide-list-music"
     title="Auto-playlists"
     description="When tag and genre playlists get created"
     :modified="settingsStore.isAutoPlaylistsModified"
@@ -105,8 +104,12 @@ const handleResetAutoPlaylists = () => {
               : 'border-dashed border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400'
           "
         >
-          <Icon
-            :icon="group.count >= settingsStore.autoPlaylistMinTracks ? 'mdi:check' : 'mdi:minus'"
+          <UIcon
+            :name="
+              group.count >= settingsStore.autoPlaylistMinTracks
+                ? 'i-lucide-check'
+                : 'i-lucide-minus'
+            "
             class="w-3.5 h-3.5 shrink-0"
             :class="
               group.count >= settingsStore.autoPlaylistMinTracks

@@ -2,8 +2,8 @@
   <div ref="wrapperRef" class="relative">
     <!-- Search input -->
     <div class="relative">
-      <Icon
-        icon="mdi:magnify"
+      <UIcon
+        name="i-lucide-search"
         class="absolute z-10 top-1/2 -translate-y-1/2 pointer-events-none"
         :class="sizeClasses.icon"
       />
@@ -24,7 +24,7 @@
         aria-label="Clear search"
         @click="clear"
       >
-        <Icon icon="mdi:close" :class="sizeClasses.clearIcon" />
+        <UIcon name="i-lucide-x" :class="sizeClasses.clearIcon" />
       </button>
     </div>
 
@@ -52,7 +52,7 @@
           v-else-if="!results.length"
           class="flex flex-col items-center justify-center gap-2 px-6 py-8 text-center"
         >
-          <Icon icon="mdi:file-search-outline" class="w-8 h-8 text-gray-400 dark:text-gray-600" />
+          <UIcon name="i-lucide-file-search" class="w-8 h-8 text-gray-400 dark:text-gray-600" />
           <p class="text-sm text-gray-600 dark:text-gray-400 m-0">
             No results for "{{ debouncedQuery }}"
           </p>
@@ -74,7 +74,7 @@
               size="xs"
               variant="ghost"
               color="neutral"
-              icon="i-heroicons-queue-list"
+              icon="i-lucide-list"
               label="Enqueue all"
               @click="enqueueAll"
             />
@@ -102,7 +102,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { onClickOutside } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 

@@ -89,21 +89,21 @@ const GROUPS: { id: string; label: string; links: HubLink[] }[] = [
     links: [
       {
         description: "Live checks for the server, database, storage and broker.",
-        icon: "mdi:heart-pulse",
+        icon: "i-lucide-heart-pulse",
         id: "status",
         route: "/dashboard/admin/service-status",
         title: "System health",
       },
       {
         description: "Daily incident patterns, per-service uptime and the full event log.",
-        icon: "mdi:calendar-clock-outline",
+        icon: "i-lucide-calendar-clock",
         id: "incidents",
         route: "/dashboard/admin/incident-history",
         title: "Incident history",
       },
       {
         description: integrationsDescription,
-        icon: "mdi:puzzle-outline",
+        icon: "i-lucide-puzzle",
         id: "integrations",
         route: "/dashboard/admin/integrations",
         title: "Integrations",
@@ -116,21 +116,21 @@ const GROUPS: { id: string; label: string; links: HubLink[] }[] = [
     links: [
       {
         description: "Accounts, roles, quotas and access.",
-        icon: "mdi:account-multiple",
+        icon: "i-lucide-users",
         id: "users",
         route: "/dashboard/admin/user-registry",
         title: "User registry",
       },
       {
         description: "Server-wide usage by artifact type and per-user consumption.",
-        icon: "mdi:archive-outline",
+        icon: "i-lucide-archive",
         id: "storage",
         route: "/dashboard/admin/storage",
         title: "Storage",
       },
       {
         description: "Sign-ins, sessions, failed attempts and account changes, plus the full log.",
-        icon: "mdi:shield-account-outline",
+        icon: "i-lucide-shield-user",
         id: "activity",
         route: "/dashboard/admin/activity",
         title: "Access & security",
@@ -143,7 +143,7 @@ const GROUPS: { id: string; label: string; links: HubLink[] }[] = [
     links: [
       {
         description: "System-wide policies, such as how long activity history is kept.",
-        icon: "mdi:tune-vertical",
+        icon: "i-lucide-sliders-vertical",
         id: "configuration",
         route: "/dashboard/admin/system-configuration",
         title: "System configuration",

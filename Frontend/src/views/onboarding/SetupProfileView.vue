@@ -16,7 +16,7 @@
                 <div
                   class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10"
                 >
-                  <Icon icon="mdi:account-circle-outline" class="h-5 w-5 text-primary" />
+                  <UIcon name="i-lucide-circle-user" class="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <h1 class="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
@@ -61,7 +61,7 @@
                 variant="solid"
                 size="lg"
                 block
-                trailing-icon="i-mdi-arrow-right"
+                trailing-icon="i-lucide-arrow-right"
                 :loading="isBusy"
               >
                 Continue

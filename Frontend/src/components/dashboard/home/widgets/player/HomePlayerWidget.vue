@@ -54,9 +54,9 @@ const subtitle = computed(() => {
 });
 
 const mediaIcon = computed(() => {
-  if (file.value?.isVideo) return "i-mdi-film-open-outline";
+  if (file.value?.isVideo) return "i-lucide-film";
 
-  return "i-mdi-music-note-outline";
+  return "i-lucide-music";
 });
 
 const duration = computed(() => {
@@ -198,7 +198,8 @@ const seek = (event: Event) => {
         <UButton
           color="neutral"
           variant="ghost"
-          icon="i-mdi-skip-previous"
+          icon="i-lucide-skip-back"
+          :ui="{ leadingIcon: 'icon-solid' }"
           aria-label="Previous"
           :disabled="disabled || !player.hasPrevious"
           class="player-skip size-10 shrink-0 justify-center rounded-full text-white hover:bg-white/10 dark:text-white dark:hover:bg-white/10"
@@ -208,7 +209,8 @@ const seek = (event: Event) => {
         <UButton
           color="neutral"
           variant="solid"
-          :icon="player.isPlaying ? 'i-mdi-pause' : 'i-mdi-play'"
+          :icon="player.isPlaying ? 'i-lucide-pause' : 'i-lucide-play'"
+          :ui="{ leadingIcon: loading ? '' : 'icon-solid' }"
           :loading="loading"
           :aria-label="playLabel"
           :disabled="disabled"
@@ -219,7 +221,8 @@ const seek = (event: Event) => {
         <UButton
           color="neutral"
           variant="ghost"
-          icon="i-mdi-skip-next"
+          icon="i-lucide-skip-forward"
+          :ui="{ leadingIcon: 'icon-solid' }"
           aria-label="Next"
           :disabled="disabled || !player.hasNext"
           class="player-skip size-10 shrink-0 justify-center rounded-full text-white hover:bg-white/10 dark:text-white dark:hover:bg-white/10"
@@ -243,7 +246,7 @@ const seek = (event: Event) => {
     class="player-empty flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center gap-2 text-center"
   >
     <UIcon
-      name="i-mdi-music-note-outline"
+      name="i-lucide-music"
       class="player-empty-icon size-8 text-gray-400 dark:text-gray-600"
       aria-hidden="true"
     />

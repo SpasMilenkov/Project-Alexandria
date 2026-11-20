@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
@@ -127,7 +126,7 @@ const handleDownload = () => {
         <div
           class="flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 dark:bg-neutral-800"
         >
-          <Icon icon="mdi:link-variant-off" class="w-8 h-8 text-gray-400 dark:text-neutral-500" />
+          <UIcon name="i-lucide-unlink" class="w-8 h-8 text-gray-400 dark:text-neutral-500" />
         </div>
         <div class="space-y-1.5">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Link not found</h2>
@@ -149,7 +148,7 @@ const handleDownload = () => {
     >
       <div class="flex flex-col items-center gap-4 text-center py-4">
         <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-warning/10">
-          <Icon icon="mdi:clock-alert-outline" class="w-8 h-8 text-warning" />
+          <UIcon name="i-lucide-clock-alert" class="w-8 h-8 text-warning" />
         </div>
         <div class="space-y-1.5">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Link expired</h2>
@@ -171,7 +170,7 @@ const handleDownload = () => {
     >
       <div class="flex flex-col items-center gap-4 text-center py-4">
         <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-error/10">
-          <Icon icon="mdi:link-variant-remove" class="w-8 h-8 text-error" />
+          <UIcon name="i-lucide-unlink" class="w-8 h-8 text-error" />
         </div>
         <div class="space-y-1.5">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Link revoked</h2>
@@ -193,7 +192,7 @@ const handleDownload = () => {
     >
       <div class="flex flex-col items-center gap-4 text-center py-4">
         <div class="flex items-center justify-center w-16 h-16 rounded-2xl bg-warning/10">
-          <Icon icon="mdi:download-off-outline" class="w-8 h-8 text-warning" />
+          <UIcon name="i-mdi-download-off-outline" class="w-8 h-8 text-warning" />
         </div>
         <div class="space-y-1.5">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -216,7 +215,7 @@ const handleDownload = () => {
           <div
             class="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 shrink-0"
           >
-            <Icon :icon="fileIcon" class="w-8 h-8 text-primary" />
+            <UIcon :name="fileIcon" class="w-8 h-8 text-primary" />
           </div>
           <div class="min-w-0 flex-1 pt-0.5">
             <h1 class="text-lg font-semibold text-gray-900 dark:text-white leading-snug break-all">
@@ -250,7 +249,7 @@ const handleDownload = () => {
         <div class="divide-y divide-gray-100 dark:divide-neutral-800/60">
           <div class="flex items-center justify-between py-2.5">
             <div class="flex items-center gap-2 text-muted">
-              <Icon icon="mdi:file-outline" class="w-4 h-4" />
+              <UIcon name="i-lucide-file" class="w-4 h-4" />
               <span class="text-sm">Size</span>
             </div>
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -259,7 +258,7 @@ const handleDownload = () => {
           </div>
           <div class="flex items-center justify-between py-2.5">
             <div class="flex items-center gap-2 text-muted">
-              <Icon icon="mdi:history" class="w-4 h-4" />
+              <UIcon name="i-lucide-history" class="w-4 h-4" />
               <span class="text-sm">Version</span>
             </div>
             <UBadge color="neutral" variant="subtle" size="sm">
@@ -268,7 +267,7 @@ const handleDownload = () => {
           </div>
           <div class="flex items-center justify-between py-2.5">
             <div class="flex items-center gap-2 text-muted">
-              <Icon icon="mdi:calendar-clock-outline" class="w-4 h-4" />
+              <UIcon name="i-lucide-calendar-clock" class="w-4 h-4" />
               <span class="text-sm">Link expires</span>
             </div>
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -287,7 +286,7 @@ const handleDownload = () => {
           :disabled="isExpired"
           @click="handleDownload"
         >
-          <Icon icon="mdi:tray-arrow-down" class="w-5 h-5" />
+          <UIcon name="i-lucide-download" class="w-5 h-5" />
           Download
         </UButton>
       </UCard>

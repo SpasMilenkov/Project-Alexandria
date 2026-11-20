@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
 import { computed } from "vue";
 
@@ -88,7 +87,7 @@ const selectSuggested = (file: MediaFileDto) => emit("select", file);
         :aria-pressed="videoAutoplay"
         @click="toggleAutoplay"
       >
-        <Icon icon="mdi:playlist-play" class="w-5 h-5" />
+        <UIcon name="i-lucide-list-video" class="w-5 h-5" />
       </button>
       <button
         type="button"
@@ -97,7 +96,7 @@ const selectSuggested = (file: MediaFileDto) => emit("select", file);
         aria-label="Hide up next"
         @click="hide"
       >
-        <Icon icon="mdi:close" class="w-4 h-4" />
+        <UIcon name="i-lucide-x" class="w-4 h-4" />
       </button>
     </div>
 
@@ -178,7 +177,7 @@ const selectSuggested = (file: MediaFileDto) => emit("select", file);
     <div
       class="flex items-center gap-2 px-4 py-2.5 border-t border-gray-200/70 dark:border-gray-700/70"
     >
-      <Icon icon="mdi:film-open-outline" class="w-3.5 h-3.5 text-primary shrink-0" />
+      <UIcon name="i-lucide-film" class="w-3.5 h-3.5 text-primary shrink-0" />
       <p class="text-xs text-gray-600 dark:text-gray-400 truncate">
         {{ nowPlaying ? `Playing from ${playingFrom}` : "Video library" }}
       </p>

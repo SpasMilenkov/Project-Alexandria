@@ -3,6 +3,7 @@ import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
 import { isAuthError } from "@/api/shuffle";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { WrappedCardType } from "@/enums/wrapped-card-type";
 import { formatSongsPlayed } from "@/features/media/play-counts";
 import { factsFor, formatWrappedDuration } from "@/features/wrapped/art";
@@ -96,7 +97,7 @@ const favorites = computed(() => {
       role="status"
       :aria-label="`Loading ${label} recap`"
     >
-      <UIcon name="i-mdi-loading" class="h-8 w-8 animate-spin text-gray-400 dark:text-gray-600" />
+      <BlockSpinner :size="32" class="text-gray-400 dark:text-gray-600" />
     </div>
     <div
       v-else-if="failed"
@@ -111,7 +112,7 @@ const favorites = computed(() => {
       v-else-if="!hasListening"
       class="flex min-h-80 flex-1 flex-col items-center justify-center text-center"
     >
-      <UIcon name="mdi:music-note-outline" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+      <UIcon name="i-lucide-music" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
       <h3 class="mt-4 font-semibold text-gray-900 dark:text-gray-100">No recorded listening</h3>
       <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
         {{

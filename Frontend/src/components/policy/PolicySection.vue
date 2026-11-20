@@ -2,7 +2,7 @@
   <DetailsSection title="Automation">
     <template v-if="policy" #actions>
       <UButton
-        icon="i-mdi-plus"
+        icon="i-lucide-plus"
         label="Add rule"
         size="xs"
         color="neutral"
@@ -12,7 +12,7 @@
 
       <UTooltip text="Remove automation">
         <UButton
-          icon="i-mdi-delete-outline"
+          icon="i-lucide-trash-2"
           size="xs"
           color="error"
           variant="ghost"
@@ -33,7 +33,7 @@
       v-else-if="!policy"
       class="flex flex-col items-center gap-3 rounded-xl border border-dashed border-gray-300/80 px-4 py-6 text-center dark:border-gray-700/80"
     >
-      <Icon icon="mdi:lightning-bolt-outline" class="h-8 w-8 text-gray-400 dark:text-gray-600" />
+      <UIcon name="i-lucide-zap" class="h-8 w-8 text-gray-400 dark:text-gray-600" />
 
       <div>
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No automation configured</p>
@@ -104,7 +104,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { ref } from "vue";
 

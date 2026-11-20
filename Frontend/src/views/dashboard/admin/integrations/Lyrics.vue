@@ -244,7 +244,7 @@ const baseOptions = computed<ChartOptions<any>>(() => ({
   <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
     <IntegrationPageHeader
       title="Lyrics"
-      icon="mdi:script-text-outline"
+      icon="i-lucide-scroll-text"
       :services="[ServiceType.Lyrics]"
     >
       <template #actions>

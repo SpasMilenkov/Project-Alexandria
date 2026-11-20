@@ -1,8 +1,8 @@
 <script setup lang="ts">
 const FLOW = [
-  { icon: "i-mdi-folder-outline", label: "Folder" },
-  { icon: "i-mdi-tune-variant", label: "Transcode rule" },
-  { icon: "i-mdi-play-circle-outline", label: "Ready to stream" },
+  { icon: "i-lucide-folder", label: "Folder" },
+  { icon: "i-lucide-sliders-horizontal", label: "Transcode rule" },
+  { icon: "i-lucide-circle-play", label: "Ready to stream" },
 ] as const;
 </script>
 
@@ -24,7 +24,7 @@ const FLOW = [
     >
       transpilation policy
       <UIcon
-        name="i-mdi-information-outline"
+        name="i-lucide-info"
         class="size-3.5 self-center text-gray-500 dark:text-gray-400"
         aria-hidden="true"
       />
@@ -36,7 +36,7 @@ const FLOW = [
           <span
             class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gray-500/15 text-gray-900 dark:text-gray-100"
           >
-            <UIcon name="i-mdi-tune-variant" class="size-5" aria-hidden="true" />
+            <UIcon name="i-lucide-sliders-horizontal" class="size-5" aria-hidden="true" />
           </span>
 
           <div class="min-w-0">
@@ -69,7 +69,10 @@ const FLOW = [
             </li>
 
             <li v-if="index < FLOW.length - 1" class="flex items-center" aria-hidden="true">
-              <UIcon name="i-mdi-chevron-right" class="size-4 text-gray-500 dark:text-gray-500" />
+              <UIcon
+                name="i-lucide-chevron-right"
+                class="size-4 text-gray-500 dark:text-gray-500"
+              />
             </li>
           </template>
         </ol>

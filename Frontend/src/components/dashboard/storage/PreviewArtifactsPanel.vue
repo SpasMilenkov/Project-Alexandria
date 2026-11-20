@@ -75,8 +75,8 @@
         :key="group.fileId"
         class="flex items-center gap-3 px-4 py-2.5 sm:px-6"
       >
-        <Icon
-          :icon="getFileIcon(group.fileName)"
+        <UIcon
+          :name="getFileIcon(group.fileName)"
           class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
         />
 
@@ -146,7 +146,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from "@nuxt/ui";
 
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref, watch } from "vue";
 

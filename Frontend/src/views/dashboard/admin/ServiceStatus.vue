@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
@@ -38,7 +37,7 @@ const statusConfig: Record<
   Degraded: {
     bg: "bg-amber-500/10",
     dot: "bg-amber-500",
-    icon: "mdi:alert-circle",
+    icon: "i-lucide-circle-alert",
     label: "Degraded",
     ring: "ring-amber-400/60",
     text: "text-amber-600 dark:text-amber-400",
@@ -46,7 +45,7 @@ const statusConfig: Record<
   Healthy: {
     bg: "bg-emerald-500/10",
     dot: "bg-emerald-500",
-    icon: "mdi:check-circle",
+    icon: "i-lucide-circle-check",
     label: "Healthy",
     ring: "ring-emerald-400/60",
     text: "text-emerald-600 dark:text-emerald-400",
@@ -54,7 +53,7 @@ const statusConfig: Record<
   Unhealthy: {
     bg: "bg-red-500/10",
     dot: "bg-red-500",
-    icon: "mdi:close-circle",
+    icon: "i-lucide-circle-x",
     label: "Unhealthy",
     ring: "ring-red-400/60",
     text: "text-red-600 dark:text-red-400",
@@ -105,14 +104,15 @@ interface CheckDisplayMeta {
 }
 
 const CHECK_DISPLAY_META: Record<string, CheckDisplayMeta> = {
-  postgres: { icon: "mdi:database-outline", label: "Database" },
-  rabbitmq: { icon: "mdi:swap-horizontal-circle-outline", label: "Message Queue" },
-  storage: { icon: "mdi:folder-network-outline", label: "File Storage" },
-  "worker-documentworker": { icon: "mdi:file-document-outline", label: "Document Worker" },
-  "worker-lyricsworker": { icon: "mdi:script-text-outline", label: "Lyrics Worker" },
-  "worker-mediametadataworker": { icon: "mdi:tag-text-outline", label: "Media Metadata Worker" },
-  "worker-mediaworker": { icon: "mdi:file-music-outline", label: "Media Worker" },
-  "worker-transpilationworker": { icon: "mdi:file-swap-outline", label: "Transpilation Worker" },
+  postgres: { icon: "i-lucide-database", label: "Database" },
+  rabbitmq: { icon: "i-lucide-arrow-left-right", label: "Message Queue" },
+  storage: { icon: "i-lucide-hard-drive", label: "File Storage" },
+  "worker-documentworker": { icon: "i-lucide-file-text", label: "Document Worker" },
+  "worker-lyricsworker": { icon: "i-lucide-scroll-text", label: "Lyrics Worker" },
+  "worker-mediametadataworker": { icon: "i-lucide-tag", label: "Media Metadata Worker" },
+  "worker-mediaworker": { icon: "i-lucide-file-music", label: "Media Worker" },
+  // Lucide has no file-conversion glyph.
+  "worker-transpilationworker": { icon: "i-mdi-file-swap-outline", label: "Transpilation Worker" },
 };
 
 const fallbackLabel = (name: string): string =>
@@ -124,11 +124,11 @@ const fallbackLabel = (name: string): string =>
 
 const checkLabel = (name: string): string => CHECK_DISPLAY_META[name]?.label ?? fallbackLabel(name);
 const checkIcon = (name: string): string =>
-  CHECK_DISPLAY_META[name]?.icon ?? "mdi:help-circle-outline";
+  CHECK_DISPLAY_META[name]?.icon ?? "i-lucide-circle-question-mark";
 
 const GROUP_META: Record<string, { label: string; icon: string }> = {
-  infrastructure: { icon: "mdi:server-network", label: "Infrastructure" },
-  worker: { icon: "mdi:cog-outline", label: "Workers" },
+  infrastructure: { icon: "i-lucide-network", label: "Infrastructure" },
+  worker: { icon: "i-lucide-settings", label: "Workers" },
 };
 
 interface CheckGroup {
@@ -155,7 +155,7 @@ const groupedChecks = computed<CheckGroup[]>(() => {
   return Array.from(groups.entries()).map(([key, checks]) => ({
     checks,
     hasIssues: checks.some((check) => check.status !== "Healthy"),
-    icon: GROUP_META[key]?.icon ?? "mdi:shape-outline",
+    icon: GROUP_META[key]?.icon ?? "i-lucide-shapes",
     key,
     label: GROUP_META[key]?.label ?? fallbackLabel(key),
   }));
@@ -309,7 +309,7 @@ const formatMb = (mb: number) =>
       variant="soft"
       title="Could not reach server"
       description="Unable to fetch health status. The server may be offline."
-      icon="i-mdi-connection"
+      icon="i-lucide-plug"
     />
 
     <template v-else-if="data">
@@ -331,8 +331,8 @@ const formatMb = (mb: number) =>
                 Overall Status
               </p>
               <div class="flex items-center gap-3">
-                <Icon
-                  :icon="overallConfig?.icon ?? 'mdi:help-circle'"
+                <UIcon
+                  :name="overallConfig?.icon ?? 'i-lucide-circle-question-mark'"
                   class="w-11 h-11 shrink-0"
                   :class="overallConfig?.text"
                 />
@@ -379,7 +379,7 @@ const formatMb = (mb: number) =>
             >
               <div class="px-4 py-2.5 flex items-center justify-between">
                 <span class="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                  <Icon icon="mdi:clock-outline" class="w-4 h-4" />Checked at
+                  <UIcon name="i-lucide-clock" class="w-4 h-4" />Checked at
                 </span>
                 <span class="text-xs font-medium text-gray-900 dark:text-gray-100">{{
                   lastChecked ?? "—"
@@ -387,7 +387,7 @@ const formatMb = (mb: number) =>
               </div>
               <div class="px-4 py-2.5 flex items-center justify-between">
                 <span class="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                  <Icon icon="mdi:timer-outline" class="w-4 h-4" />Total duration
+                  <UIcon name="i-lucide-timer" class="w-4 h-4" />Total duration
                 </span>
                 <span class="text-xs font-medium text-gray-900 dark:text-gray-100">{{
                   totalDuration ?? "—"
@@ -395,7 +395,7 @@ const formatMb = (mb: number) =>
               </div>
               <div class="px-4 py-2.5 flex items-center justify-between">
                 <span class="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                  <Icon icon="mdi:format-list-checks" class="w-4 h-4" />Total checks
+                  <UIcon name="i-lucide-list-checks" class="w-4 h-4" />Total checks
                 </span>
                 <span class="text-xs font-medium text-gray-900 dark:text-gray-100">{{
                   data.checks.length
@@ -414,7 +414,7 @@ const formatMb = (mb: number) =>
               <div
                 class="px-4 py-2.5 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2"
               >
-                <Icon :icon="group.icon" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <UIcon :name="group.icon" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{
                   group.label
                 }}</span>
@@ -442,8 +442,8 @@ const formatMb = (mb: number) =>
                 />
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5">
-                    <Icon
-                      :icon="checkIcon(check.name)"
+                    <UIcon
+                      :name="checkIcon(check.name)"
                       class="w-3.5 h-3.5 text-gray-600 dark:text-gray-400 shrink-0"
                     />
                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -494,7 +494,7 @@ const formatMb = (mb: number) =>
           <div
             class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2"
           >
-            <Icon icon="mdi:server" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            <UIcon name="i-lucide-server" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
             <span class="text-sm font-semibold text-gray-900 dark:text-gray-100"
               >Resource Usage</span
             >
@@ -512,13 +512,13 @@ const formatMb = (mb: number) =>
                 <!-- Header row -->
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex items-center gap-2">
-                    <Icon icon="mdi:memory" class="w-4 h-4" :class="memColor.text" />
+                    <UIcon name="i-lucide-memory-stick" class="w-4 h-4" :class="memColor.text" />
                     <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">
                       Memory Usage
                     </p>
                     <InfoHint
                       title="Memory usage"
-                      icon="i-mdi-memory"
+                      icon="i-lucide-memory-stick"
                       guidance="Lower is better. Staying near the limit for long is worth investigating."
                     >
                       How much of the server's memory limit is in use right now. When it fills up,
@@ -574,7 +574,7 @@ const formatMb = (mb: number) =>
                       class="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1"
                     >
                       Active use
-                      <InfoHint title="Active use" icon="i-mdi-memory">
+                      <InfoHint title="Active use" icon="i-lucide-memory-stick">
                         Physical memory the server process occupies right now, including its code
                         and cached data. This is the number measured against the limit.
                       </InfoHint>
@@ -588,7 +588,7 @@ const formatMb = (mb: number) =>
                       class="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1"
                     >
                       Allocated
-                      <InfoHint title="Allocated" icon="i-mdi-memory">
+                      <InfoHint title="Allocated" icon="i-lucide-memory-stick">
                         Memory held by the server's own data right now. Cleanups hand part of it
                         back, so this number rises and falls on its own.
                       </InfoHint>
@@ -602,7 +602,7 @@ const formatMb = (mb: number) =>
                       class="text-xs text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1"
                     >
                       Limit
-                      <InfoHint title="Limit" icon="i-mdi-memory">
+                      <InfoHint title="Limit" icon="i-lucide-memory-stick">
                         The most memory the server may use, set by its container or host. Going past
                         it gets the process stopped.
                       </InfoHint>
@@ -618,7 +618,10 @@ const formatMb = (mb: number) =>
             <div class="p-4 flex flex-col gap-3">
               <!-- Sub-header -->
               <div class="flex items-center gap-1.5">
-                <Icon icon="mdi:recycle" class="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
+                <UIcon
+                  name="i-lucide-recycle"
+                  class="w-3.5 h-3.5 text-gray-600 dark:text-gray-400"
+                />
                 <span
                   class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
                 >
@@ -626,7 +629,7 @@ const formatMb = (mb: number) =>
                 </span>
                 <InfoHint
                   title="Memory cleanups"
-                  icon="i-mdi-recycle"
+                  icon="i-lucide-recycle"
                   guidance="Routine and moderate cleanups are normal. Deep cleanups piling up quickly point to memory pressure."
                 >
                   The runtime regularly frees memory the server no longer needs. These counts run
@@ -692,7 +695,7 @@ const formatMb = (mb: number) =>
             <div class="p-4 flex flex-col gap-3">
               <!-- Sub-header -->
               <div class="flex items-center gap-1.5">
-                <Icon icon="mdi:cpu-64-bit" class="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
+                <UIcon name="i-lucide-cpu" class="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
                 <span
                   class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
                   >Process</span
@@ -708,11 +711,11 @@ const formatMb = (mb: number) =>
                   class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-1.5">
-                    <Icon icon="mdi:timer-sand" class="w-3.5 h-3.5 text-primary shrink-0" />
+                    <UIcon name="i-lucide-hourglass" class="w-3.5 h-3.5 text-primary shrink-0" />
                     <span class="text-xs text-gray-600 dark:text-gray-400">Uptime</span>
                     <InfoHint
                       title="Uptime"
-                      icon="i-mdi-timer-sand"
+                      icon="i-lucide-hourglass"
                       guidance="A reset you didn't expect means the server restarted, possibly after a crash."
                     >
                       How long the server has been running since it last started. Restarts and
@@ -728,9 +731,9 @@ const formatMb = (mb: number) =>
                   class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-1.5">
-                    <Icon icon="mdi:cpu-64-bit" class="w-3.5 h-3.5 text-primary shrink-0" />
+                    <UIcon name="i-lucide-cpu" class="w-3.5 h-3.5 text-primary shrink-0" />
                     <span class="text-xs text-gray-600 dark:text-gray-400">CPU Time</span>
-                    <InfoHint title="CPU time" icon="i-mdi-cpu-64-bit">
+                    <InfoHint title="CPU time" icon="i-lucide-cpu">
                       Processor time the server has used since it started. It only ever grows, so
                       read it next to uptime rather than on its own.
 
@@ -756,11 +759,11 @@ const formatMb = (mb: number) =>
                   class="flex items-center flex-1 justify-between px-4 py-3 bg-white/40 dark:bg-white/2"
                 >
                   <div class="flex items-center gap-1.5">
-                    <Icon icon="mdi:source-branch" class="w-3.5 h-3.5 text-primary shrink-0" />
+                    <UIcon name="i-lucide-git-branch" class="w-3.5 h-3.5 text-primary shrink-0" />
                     <span class="text-xs text-gray-600 dark:text-gray-400">Threads</span>
                     <InfoHint
                       title="Threads"
-                      icon="i-mdi-source-branch"
+                      icon="i-lucide-git-branch"
                       guidance="A steady count is healthy. One that keeps climbing can mean work is stuck waiting."
                     >
                       Work the server runs in parallel, from incoming requests to background jobs.
