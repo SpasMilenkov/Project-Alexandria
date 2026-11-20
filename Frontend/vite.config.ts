@@ -7,8 +7,6 @@ import { URL, fileURLToPath } from "node:url";
 import { defineConfig, loadEnv } from "vite";
 import vueDevTools from "vite-plugin-vue-devtools";
 
-import { iconifySubsetPlugin } from "./plugins/iconify-subset";
-
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
 
@@ -18,11 +16,24 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       vue(),
-      iconifySubsetPlugin(),
       vueDevTools(),
       DevTools(),
       PiniaColadaDevtools(),
       ui({
+        // Only the glyphs named in source are bundled. The CSP blocks the Iconify API, so a
+        // glyph the scan misses renders blank instead of loading at runtime.
+        icon: {
+          clientBundle: {
+            icons: [],
+            scan: {
+              globExclude: ["node_modules", "dist", "src/__tests__/**", "e2e/**"],
+              // The favicon glyphs and most menu icons are named in .ts files.
+              globInclude: ["src/**/*.{vue,ts}"],
+              // Collections match longest first, so "i-mdi-light..." would scan as mdi-light.
+              ignoreCollections: ["mdi-light"],
+            },
+          },
+        },
         ui: {
           colors: {
             neutral: "neutral",
