@@ -24,5 +24,11 @@ public enum DocumentTextStatus
     /// <summary>
     /// Reading threw. Retried later, up to a limit, because the cause may be temporary.
     /// </summary>
-    Failed = 4
+    Failed = 4,
+
+    /// <summary>
+    /// A book whose chapters a store's copy protection encrypts. Unlike a password, no input
+    /// from the owner could unlock it here.
+    /// </summary>
+    CopyProtected = 5
 }
