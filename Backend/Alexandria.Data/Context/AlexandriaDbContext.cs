@@ -63,6 +63,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<OverviewSummary> OverviewSummaries { get; set; }
     public DbSet<CaptureMetadata> CaptureMetadata { get; set; }
     public DbSet<DocumentMetadata> DocumentMetadata { get; set; }
+    public DbSet<DocumentText> DocumentText { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -118,6 +119,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new OverviewSummaryConfiguration());
         builder.ApplyConfiguration(new CaptureMetadataConfiguration());
         builder.ApplyConfiguration(new DocumentMetadataConfiguration());
+        builder.ApplyConfiguration(new DocumentTextConfiguration());
 
         builder.MapDatabaseFunctions();
     }

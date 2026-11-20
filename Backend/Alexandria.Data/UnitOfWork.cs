@@ -12,6 +12,7 @@ public sealed class UnitOfWork(
     IMediaMetadataRepository mediaData,
     ICaptureMetadataRepository captureMetadata,
     IDocumentMetadataRepository documentMetadata,
+    IDocumentTextRepository documentText,
     IRefreshTokenRepository refreshTokens,
     ITagRepository tags,
     IDirectoryRepository directories,
@@ -45,6 +46,7 @@ public sealed class UnitOfWork(
     public IMediaMetadataRepository MediaMetadata { get; } = mediaData;
     public ICaptureMetadataRepository CaptureMetadata { get; } = captureMetadata;
     public IDocumentMetadataRepository DocumentMetadata { get; } = documentMetadata;
+    public IDocumentTextRepository DocumentText { get; } = documentText;
     public IRefreshTokenRepository RefreshTokens { get; } = refreshTokens;
     public ITagRepository Tags { get; } = tags;
     public IDirectoryRepository Directories { get; } = directories;

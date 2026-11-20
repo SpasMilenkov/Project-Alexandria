@@ -671,6 +671,77 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("DocumentMetadata", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.DocumentText", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CharacterCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("");
+
+                    b.Property<Guid>("ContentObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorDetail")
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.Property<int>("ExtractorVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsTruncated")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .IsRequired()
+                        .HasColumnType("tsvector");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentObjectId")
+                        .IsUnique();
+
+                    b.HasIndex("SearchVector")
+                        .HasFilter("\"DeletedAt\" IS NULL");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "gin");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("DocumentText", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.EssentiaBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2511,6 +2582,17 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("FileVersion");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.DocumentText", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ContentObject", "ContentObject")
+                        .WithOne("DocumentText")
+                        .HasForeignKey("Alexandria.Data.Models.DocumentText", "ContentObjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ContentObject");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.EssentiaBatchFile", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.EssentiaBatch", "Batch")
@@ -2932,6 +3014,11 @@ namespace Alexandria.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.ContentObject", b =>
+                {
+                    b.Navigation("DocumentText");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.Directory", b =>
