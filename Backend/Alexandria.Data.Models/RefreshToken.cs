@@ -1,3 +1,5 @@
+using Alexandria.Data.Models.Enumerators;
+
 namespace Alexandria.Data.Models;
 
 public class RefreshToken : IBase
@@ -11,9 +13,11 @@ public class RefreshToken : IBase
     public DateTime? RevokedAt { get; set; }
 
     // Tokens rotate on every refresh, so these carry the session across rotations
+    public Guid SessionId { get; set; }
     public DateTime SessionStartedAt { get; set; }
     public string? CreatedByIp { get; set; }
     public string? UserAgent { get; set; }
+    public SessionClient Client { get; set; }
 
     // IBase properties
     public DateTime CreatedAt { get; set; }

@@ -1714,6 +1714,9 @@ namespace Alexandria.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Client")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1734,6 +1737,9 @@ namespace Alexandria.Data.Migrations
 
                     b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("SessionStartedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1762,6 +1768,8 @@ namespace Alexandria.Data.Migrations
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("SessionId");
 
                     b.HasIndex("Token");
 

@@ -1,5 +1,6 @@
 using Alexandria.Api.Features.Auth.Extensions;
 using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Users;
 using FastEndpoints;
 
@@ -32,10 +33,10 @@ public class LoginEndpoint : Endpoint<LoginRequest, LoginResponse>
             return;
         }
 
-        var accessToken = _authService.GenerateAccessToken(result.User);
-        var refreshToken = await _authService.GenerateRefreshTokenAsync(result.User, ct);
+        var refreshToken = await _authService.GenerateRefreshTokenAsync(result.User, SessionClient.Browser, ct);
+        var accessToken = _authService.GenerateAccessToken(result.User, refreshToken.SessionId);
 
-        HttpContext.Response.AppendSessionCookies(accessToken, refreshToken);
+        HttpContext.Response.AppendSessionCookies(accessToken, refreshToken.Token);
 
         await Send.OkAsync(new LoginResponse
         {

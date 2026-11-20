@@ -72,28 +72,32 @@ public class LogoutAuditTests
     [Fact]
     public async Task RevokeSessionAsync_otherUsersSession_returnsFalseWithoutRecording()
     {
-        _refreshTokens.GetActiveByIdAsync(Arg.Any<Guid>(), _userId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns((RefreshToken?)null);
+        _refreshTokens.GetActiveBySessionAsync(Arg.Any<Guid>(), _userId, Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>()).Returns((RefreshToken?)null);
 
         var revoked = await CreateSut().RevokeSessionAsync(_userId, Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
         revoked.Should().BeFalse();
+        await _refreshTokens.DidNotReceiveWithAnyArgs().RevokeSessionTokensAsync(default, default, default, default);
         _auditWriter.DidNotReceive().Record(Arg.Any<AuditEntry>());
     }
 
     [Fact]
-    public async Task RevokeSessionAsync_ownSession_revokesAndRecords()
+    public async Task RevokeSessionAsync_ownSession_revokesTheWholeSessionAndRecords()
     {
-        var token = new RefreshToken { Id = Guid.NewGuid(), UserId = _userId, Token = "t" };
-        _refreshTokens.GetActiveByIdAsync(token.Id, _userId, Arg.Any<DateTime>(), Arg.Any<CancellationToken>())
-            .Returns(token);
+        var token = new RefreshToken { Id = Guid.NewGuid(), SessionId = Guid.NewGuid(), UserId = _userId, Token = "t" };
+        _refreshTokens.GetActiveBySessionAsync(token.SessionId, _userId, Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>()).Returns(token);
 
-        await CreateSut().RevokeSessionAsync(_userId, token.Id, TestContext.Current.CancellationToken);
+        var revoked = await CreateSut().RevokeSessionAsync(_userId, token.SessionId,
+            TestContext.Current.CancellationToken);
 
-        token.IsRevoked.Should().BeTrue();
+        revoked.Should().BeTrue();
+        await _refreshTokens.Received(1).RevokeSessionTokensAsync(_userId, token.SessionId, Arg.Any<DateTime>(),
+            Arg.Any<CancellationToken>());
         _auditWriter.Received(1).Record(Arg.Is<AuditEntry>(e =>
-            e.EventCode == AuditEventCode.UserSessionRevoked && e.EntityId == token.Id));
+            e.EventCode == AuditEventCode.UserSessionRevoked && e.EntityId == token.SessionId));
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

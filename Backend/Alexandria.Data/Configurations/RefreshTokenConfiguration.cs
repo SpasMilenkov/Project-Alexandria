@@ -46,6 +46,10 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.Property(e => e.IsRevoked)
             .IsRequired();
 
+        builder.Property(e => e.SessionId)
+            .HasColumnType("uuid")
+            .IsRequired();
+
         builder.Property(e => e.SessionStartedAt)
             .HasColumnType("timestamp with time zone")
             .IsRequired();
@@ -58,6 +62,9 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
             .HasMaxLength(ValidationConstants.StringLengths.MediumString)
             .IsRequired(false);
 
+        builder.Property(e => e.Client)
+            .IsRequired();
+
         // Relations
         builder.HasOne(e => e.User)
             .WithMany()
@@ -66,6 +73,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 
         builder.HasIndex(e => e.Token);
         builder.HasIndex(e => e.UserId);
+        builder.HasIndex(e => e.SessionId);
         builder.HasIndex(e => e.ExpiresAt);
         builder.HasIndex(e => e.CreatedAt);
 

@@ -76,7 +76,7 @@ public class AuthService(
         await unitOfWork.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<UserSessionDto>> GetSessionsAsync(Guid userId, string? currentRefreshToken,
+    public async Task<IReadOnlyList<UserSessionDto>> GetSessionsAsync(Guid userId, Guid? currentSessionId,
         CancellationToken ct = default)
     {
         var tokens = await unitOfWork.RefreshTokens.GetActiveByUserAsync(userId, DateTime.UtcNow, ct);
@@ -84,33 +84,33 @@ public class AuthService(
         return tokens
             .Select(t => new UserSessionDto
             {
-                Id = t.Id,
+                Id = t.SessionId,
                 SessionStartedAt = t.SessionStartedAt,
                 LastActiveAt = t.CreatedAt,
                 ExpiresAt = t.ExpiresAt,
                 IpAddress = t.CreatedByIp,
                 UserAgent = t.UserAgent,
-                IsCurrent = currentRefreshToken is not null && t.Token == currentRefreshToken,
+                IsCurrent = t.SessionId == currentSessionId,
             })
             .ToList();
     }
 
     public async Task<bool> RevokeSessionAsync(Guid userId, Guid sessionId, CancellationToken ct = default)
     {
-        var token = await unitOfWork.RefreshTokens.GetActiveByIdAsync(sessionId, userId, DateTime.UtcNow, ct);
+        var now = DateTime.UtcNow;
+
+        var token = await unitOfWork.RefreshTokens.GetActiveBySessionAsync(sessionId, userId, now, ct);
         if (token is null)
             return false;
 
-        token.IsRevoked = true;
-        token.RevokedAt = DateTime.UtcNow;
-        unitOfWork.RefreshTokens.Update(token);
+        await unitOfWork.RefreshTokens.RevokeSessionTokensAsync(userId, sessionId, now, ct);
 
         auditWriter.Record(new AuditEntry
         {
             EventCode = AuditEventCode.UserSessionRevoked,
             OperationType = OperationType.Update,
             EntityType = EntityType.Session,
-            EntityId = token.Id,
+            EntityId = sessionId,
             OwnerId = userId,
             Metadata = new Dictionary<string, object?>
             {
@@ -221,7 +221,8 @@ public class AuthService(
         return authResult;
     }
 
-    public async Task<AuthResult> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
+    public async Task<AuthResult> RefreshTokenAsync(string refreshToken, SessionClient client,
+        CancellationToken ct = default)
     {
         var storedToken = await unitOfWork.RefreshTokens.GetByTokenWithUserAsync(refreshToken, ct);
 
@@ -229,6 +230,9 @@ public class AuthService(
         {
             return AuthResult.Failed();
         }
+
+        if (storedToken.Client != client)
+            return AuthResult.Failed();
 
         if (await userManager.IsLockedOutAsync(storedToken.User))
         {
@@ -258,9 +262,11 @@ public class AuthService(
                 ),
                 UserId = storedToken.UserId,
                 ExpiresAt = DateTime.UtcNow.AddDays(config.GetValue("Jwt:RefreshTokenExpiryDays", 7)),
+                SessionId = storedToken.SessionId,
                 SessionStartedAt = storedToken.SessionStartedAt,
                 CreatedByIp = auditActor.IpAddress ?? storedToken.CreatedByIp,
                 UserAgent = auditActor.UserAgent ?? storedToken.UserAgent,
+                Client = storedToken.Client,
             };
 
             await unitOfWork.RefreshTokens.AddAsync(newRefreshToken, ct);
@@ -270,6 +276,7 @@ public class AuthService(
 
             var result = AuthResult.SetSuccess(storedToken.User);
             result.RefreshToken = newRefreshToken.Token;
+            result.SessionId = newRefreshToken.SessionId;
 
             return result;
         }
@@ -288,20 +295,59 @@ public class AuthService(
     {
         var now = DateTime.UtcNow;
 
-        if (revokedAt is null || now - revokedAt.Value > RotationGrace)
+        if (revokedAt is null)
             return AuthResult.Failed();
+
+        if (now - revokedAt.Value > RotationGrace)
+        {
+            if (spent.Client == SessionClient.Native)
+                await EndReplayedSessionAsync(spent, now, ct);
+
+            return AuthResult.Failed();
+        }
 
         // A token revoked by sign-out or session removal has no successor, so it stays refused.
         var successor = await unitOfWork.RefreshTokens.GetLiveSuccessorAsync(
-            spent.UserId, spent.SessionStartedAt, spent.CreatedAt, now, ct);
+            spent.UserId, spent.SessionId, spent.CreatedAt, now, ct);
 
         if (successor is null)
             return AuthResult.Failed();
 
         var result = AuthResult.SetSuccess(spent.User!);
         result.RefreshToken = successor.Token;
+        result.SessionId = successor.SessionId;
 
         return result;
+    }
+
+    // A native client is the only holder of its token, unlike browser tabs sharing a cookie. A spent
+    // one arriving after the grace period means a copy exists somewhere else, so the whole session
+    // ends and whichever side is not the owner loses access; the owner signs in again.
+    private async Task EndReplayedSessionAsync(Data.Models.RefreshToken spent, DateTime now, CancellationToken ct)
+    {
+        var revoked = await unitOfWork.RefreshTokens.RevokeSessionTokensAsync(
+            spent.UserId, spent.SessionId, now, ct);
+
+        if (revoked == 0)
+            return;
+
+        auditWriter.Record(new AuditEntry
+        {
+            EventCode = AuditEventCode.UserSessionRevoked,
+            OperationType = OperationType.Update,
+            EntityType = EntityType.Session,
+            EntityId = spent.SessionId,
+            OwnerId = spent.UserId,
+            Metadata = new Dictionary<string, object?>
+            {
+                ["reason"] = "refresh_token_reuse",
+                ["session_started_at"] = spent.SessionStartedAt,
+                ["ip_address"] = auditActor.IpAddress,
+                ["user_agent"] = auditActor.UserAgent,
+            },
+        });
+
+        await unitOfWork.SaveChangesAsync(ct);
     }
 
     public async Task<bool> RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct = default)
@@ -309,13 +355,15 @@ public class AuthService(
         return await unitOfWork.RefreshTokens.RevokeTokenAsync(refreshToken, ct);
     }
 
-    public string GenerateAccessToken(ApplicationUser user)
+    public string GenerateAccessToken(ApplicationUser user, Guid sessionId)
     {
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Email, user.Email!),
             new(ClaimTypes.Name, user.UserName!),
+            // Lets the session list mark the caller's own session, for a native client too.
+            new(ClaimTypes.Sid, sessionId.ToString()),
         };
 
         var roles = userManager.GetRolesAsync(user).Result;
@@ -334,7 +382,8 @@ public class AuthService(
         return token;
     }
 
-    public async Task<string> GenerateRefreshTokenAsync(ApplicationUser user, CancellationToken ct = default)
+    public async Task<Data.Models.RefreshToken> GenerateRefreshTokenAsync(ApplicationUser user, SessionClient client,
+        CancellationToken ct = default)
     {
         var refreshTokenExpiry = config.GetValue("Jwt:RefreshTokenExpiryDays", 7);
 
@@ -347,14 +396,16 @@ public class AuthService(
             Token = tokenValue,
             UserId = user.Id,
             ExpiresAt = DateTime.UtcNow.AddDays(refreshTokenExpiry),
+            SessionId = Guid.NewGuid(),
             SessionStartedAt = DateTime.UtcNow,
             CreatedByIp = auditActor.IpAddress,
             UserAgent = auditActor.UserAgent,
+            Client = client,
         };
 
         await unitOfWork.RefreshTokens.AddAsync(refreshToken, ct);
 
-        return tokenValue;
+        return refreshToken;
     }
 
     public async Task RevokeAllUserTokensAsync(Guid userId, CancellationToken ct = default)

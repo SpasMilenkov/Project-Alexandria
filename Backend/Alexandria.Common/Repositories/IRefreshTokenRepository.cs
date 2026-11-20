@@ -18,11 +18,19 @@ public interface IRefreshTokenRepository
     Task<bool> RevokeIfActiveAsync(Guid id, DateTime revokedAt, CancellationToken ct = default);
 
     /// <summary>
-    /// The newest live token of the session that started at <paramref name="sessionStartedAt"/>,
-    /// issued after <paramref name="issuedAfter"/>: what a just-rotated token was replaced by.
+    /// The newest live token of session <paramref name="sessionId"/>, issued after
+    /// <paramref name="issuedAfter"/>: what a just-rotated token was replaced by.
     /// </summary>
-    Task<RefreshToken?> GetLiveSuccessorAsync(Guid userId, DateTime sessionStartedAt, DateTime issuedAfter,
+    Task<RefreshToken?> GetLiveSuccessorAsync(Guid userId, Guid sessionId, DateTime issuedAfter,
         DateTime now, CancellationToken ct = default);
+
+    /// <summary>
+    /// Revokes every live token of session <paramref name="sessionId"/>, in one statement, and
+    /// returns how many were revoked.
+    /// </summary>
+    Task<int> RevokeSessionTokensAsync(Guid userId, Guid sessionId, DateTime revokedAt,
+        CancellationToken ct = default);
+
     Task<RefreshToken> AddAsync(RefreshToken entity, CancellationToken ct = default);
     void Update(RefreshToken entity);
     Task<bool> RevokeTokenAsync(string token, CancellationToken ct = default);
@@ -34,5 +42,7 @@ public interface IRefreshTokenRepository
     /// <summary>Every account's unrevoked, unexpired tokens, reduced to holder and browser.</summary>
     Task<IReadOnlyList<AccountSessionRow>> GetAllActiveAsync(DateTime now, CancellationToken ct = default);
 
-    Task<RefreshToken?> GetActiveByIdAsync(Guid id, Guid userId, DateTime now, CancellationToken ct = default);
+    /// <summary>The session's newest live token, or null when it ended or belongs to someone else.</summary>
+    Task<RefreshToken?> GetActiveBySessionAsync(Guid sessionId, Guid userId, DateTime now,
+        CancellationToken ct = default);
 }
