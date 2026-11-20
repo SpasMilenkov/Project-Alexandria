@@ -4,7 +4,7 @@
       <section class="text-center max-w-3xl mx-auto space-y-10">
         <div class="flex justify-center">
           <div class="bg-primary p-5 rounded-2xl">
-            <Icon icon="heroicons:book-open" class="w-16 h-16 text-white" />
+            <UIcon name="i-lucide-book-open" class="w-16 h-16 text-white" />
           </div>
         </div>
 
@@ -24,7 +24,7 @@
           <UButton to="/home" size="xl" color="primary" variant="solid">
             Enter your library
             <template #trailing>
-              <Icon icon="heroicons:arrow-right" class="w-5 h-5" />
+              <UIcon name="i-lucide-arrow-right" class="w-5 h-5" />
             </template>
           </UButton>
         </div>
@@ -32,9 +32,5 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { Icon } from "@iconify/vue";
-</script>
 
 <style scoped></style>

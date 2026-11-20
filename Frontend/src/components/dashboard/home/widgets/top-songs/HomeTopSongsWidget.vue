@@ -131,7 +131,7 @@ const play = (song: TopSong) => {
       class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center"
     >
       <UIcon
-        name="i-mdi-music-note-outline"
+        name="i-lucide-music"
         class="size-8 text-gray-400 dark:text-gray-600"
         aria-hidden="true"
       />
@@ -149,7 +149,7 @@ const play = (song: TopSong) => {
         class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center"
       >
         <UIcon
-          name="i-mdi-music-note-outline"
+          name="i-lucide-music"
           class="top-songs-empty-icon size-8 text-gray-400 dark:text-gray-600"
           aria-hidden="true"
         />

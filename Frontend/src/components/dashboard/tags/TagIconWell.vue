@@ -5,12 +5,11 @@
     :style="{ '--tag-color': color }"
   >
     <UIcon v-if="isSelected" name="i-lucide-check" :class="glyphClass" />
-    <Icon v-else :icon="getIconByValue(icon) || 'mdi:tag'" :class="glyphClass" />
+    <UIcon v-else :name="getIconByValue(icon) || 'i-lucide-tag'" :class="glyphClass" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import { getIconByValue } from "@/utils/files/icons";

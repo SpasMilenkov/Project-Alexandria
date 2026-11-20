@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import type { FileResult } from "@/api/file";
@@ -51,9 +50,9 @@ const showThumbnail = computed(
       @error="thumbnail.onThumbnailError"
     />
 
-    <Icon
+    <UIcon
       v-if="!showThumbnail || !thumbnail.thumbnailLoaded.value"
-      :icon="visual.icon"
+      :name="visual.icon"
       class="size-8"
       :style="{ color: visual.color }"
       aria-hidden="true"

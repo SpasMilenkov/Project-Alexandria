@@ -89,7 +89,7 @@ const changeStyle = (type: HomeWidgetType, value: number) => {
 
       <UInput
         v-model="search"
-        icon="i-heroicons-magnifying-glass"
+        icon="i-lucide-search"
         placeholder="Find a widget"
         aria-label="Find a showcase widget"
         class="w-full sm:w-64"

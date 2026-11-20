@@ -2,7 +2,7 @@
   <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
     <IntegrationPageHeader
       title="Transpilation"
-      icon="mdi:file-swap-outline"
+      icon="i-mdi-file-swap-outline"
       :services="[ServiceType.Transpilation]"
     >
       <template #actions>

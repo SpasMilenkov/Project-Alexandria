@@ -3,13 +3,13 @@
     <UInput
       v-model="searchTerm"
       placeholder="Search tracks..."
-      icon="i-heroicons-magnifying-glass"
+      icon="i-lucide-search"
       class="w-full"
       autofocus
     />
 
     <div v-if="query.status.value === 'pending'" class="flex justify-center py-6">
-      <UIcon name="mdi:loading" class="w-5 h-5 animate-spin text-muted" />
+      <BlockSpinner :size="20" class="text-muted" />
     </div>
 
     <div
@@ -41,6 +41,7 @@ import { useDebounceFn } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 
 import { streamingApi } from "@/api/streaming";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { STREAMING_QUERY_KEYS } from "@/queries/streaming";
 
 import PlaylistTrackSearchRow from "./PlaylistTrackSearchRow.vue";

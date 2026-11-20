@@ -106,7 +106,7 @@
             <UButton
               v-if="player.playerDismissed && player.hasActiveFile && player.isAudio"
               label="Resume music"
-              icon="mdi:music-note"
+              icon="i-lucide-music"
               color="primary"
               variant="soft"
               size="sm"
@@ -128,7 +128,7 @@
             <UTooltip text="Show app shortcuts">
               <UButton
                 class="md:block hidden"
-                icon="material-symbols:keyboard-outline-rounded"
+                icon="i-lucide-keyboard"
                 size="xl"
                 variant="ghost"
                 color="neutral"

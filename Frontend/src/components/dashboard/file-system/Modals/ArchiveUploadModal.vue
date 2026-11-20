@@ -10,6 +10,7 @@ import {
 import { computed, onMounted, ref } from "vue";
 
 import { directoryApi } from "@/api/directory";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import UploadEmptyState from "@/components/dashboard/file-system/Modals/upload/UploadEmptyState.vue";
 import UploadFileTree from "@/components/dashboard/file-system/Modals/upload/UploadFileTree.vue";
 import UploadModalFooter from "@/components/dashboard/file-system/Modals/upload/UploadModalFooter.vue";
@@ -191,16 +192,13 @@ interface ArchiveStatus {
 // Plain status line under the archive name; the progress bar below carries the numbers.
 const archiveStatus = computed((): ArchiveStatus => {
   if (isExtracting.value) {
-    return {
-      icon: "i-lucide-loader-circle",
-      iconClass: "text-primary motion-safe:animate-spin",
-      text: "Unpacking…",
-    };
+    // The template draws the shared spinner for this state.
+    return { icon: "", iconClass: "", text: "Unpacking…" };
   }
 
   if (extractionPhase.value === "done") {
     return {
-      icon: "i-lucide-check-circle",
+      icon: "i-lucide-circle-check",
       iconClass: "text-success",
       text: `${formatCount(extractedFiles.value.length, "file")} unpacked`,
     };
@@ -208,7 +206,7 @@ const archiveStatus = computed((): ArchiveStatus => {
 
   if (extractionPhase.value === "error") {
     return {
-      icon: "i-lucide-x-circle",
+      icon: "i-lucide-circle-x",
       iconClass: "text-error",
       text: extractionError.value ?? "Couldn't unpack the archive",
     };
@@ -464,8 +462,9 @@ onMounted(() => {
           <p class="flex min-w-0 items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
             <span class="shrink-0">{{ formatBytes(archiveFile.size) }}</span>
             <span aria-hidden="true">·</span>
+            <BlockSpinner v-if="isExtracting" :size="14" class="shrink-0 text-primary" />
             <UIcon
-              v-if="archiveStatus.icon"
+              v-else-if="archiveStatus.icon"
               :name="archiveStatus.icon"
               class="size-3.5 shrink-0"
               :class="archiveStatus.iconClass"

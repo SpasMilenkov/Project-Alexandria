@@ -47,7 +47,7 @@ const handleResetAutoTagging = () => {
 <template>
   <SettingsSection
     v-model:open="isOpen"
-    icon="mdi:tag-multiple"
+    icon="i-lucide-tags"
     title="Auto-tagging"
     description="What happens when tagging runs again"
     :modified="settingsStore.isAutoTaggingModified"

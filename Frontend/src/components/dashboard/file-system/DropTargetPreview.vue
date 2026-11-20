@@ -10,16 +10,16 @@
     <div
       class="flex min-w-0 shrink-0 items-center gap-1 border-b border-gray-200/70 px-3 py-2 dark:border-gray-700/70"
     >
-      <Icon icon="mdi:folder" class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
+      <UIcon name="i-lucide-folder" class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
 
       <span v-if="hiddenTrailCount > 0" class="shrink-0 text-xs text-gray-500 dark:text-gray-500">
         …
       </span>
 
       <template v-for="(segment, index) in visibleTrail" :key="toDropId(segment.id)">
-        <Icon
+        <UIcon
           v-if="index > 0 || hiddenTrailCount > 0"
-          icon="mdi:chevron-right"
+          name="i-lucide-chevron-right"
           class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500"
         />
         <span
@@ -92,10 +92,10 @@
           :data-drop-dir-name="directory.name"
           data-drop-kind="preview-row"
         >
-          <Icon icon="mdi:folder" class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
+          <UIcon name="i-lucide-folder" class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
           <span class="min-w-0 flex-1 truncate">{{ directory.name }}</span>
-          <Icon
-            icon="mdi:chevron-right"
+          <UIcon
+            name="i-lucide-chevron-right"
             class="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500"
           />
         </div>
@@ -105,8 +105,8 @@
           :key="file.fileId"
           class="flex h-8 min-w-0 items-center gap-2 px-2 text-sm text-gray-600 dark:text-gray-400"
         >
-          <Icon
-            :icon="getFileIcon(file.fileName)"
+          <UIcon
+            :name="getFileIcon(file.fileName)"
             class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-500"
           />
           <span class="min-w-0 truncate">{{ file.fileName }}</span>
@@ -124,7 +124,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 

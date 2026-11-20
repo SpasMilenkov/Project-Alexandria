@@ -48,7 +48,7 @@
                 @error="previewFailed = true"
               />
               <div v-else class="flex flex-col items-center gap-4 text-gray-600 dark:text-gray-400">
-                <Icon icon="mdi:music-note-outline" class="size-8 md:size-12" />
+                <UIcon name="i-lucide-music" class="size-8 md:size-12" />
                 <span class="hidden text-sm md:block">Make it your own</span>
               </div>
             </div>
@@ -133,7 +133,6 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from "@nuxt/ui";
 
-import { Icon } from "@iconify/vue";
 import { useDropZone, useObjectUrl } from "@vueuse/core";
 import { computed, reactive, ref, watch } from "vue";
 

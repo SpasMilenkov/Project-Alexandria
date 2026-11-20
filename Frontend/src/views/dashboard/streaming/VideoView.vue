@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
@@ -7,6 +6,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type { MediaFileDto } from "@/api/streaming";
 import type { UpNextItem } from "@/stores/player/types";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import MediaGrid from "@/components/streaming/library/MediaGrid.vue";
 import VideoPlayerSkin from "@/components/streaming/player/VideoPlayerSkin.vue";
 import VideoEmptyHero from "@/components/streaming/video/VideoEmptyHero.vue";
@@ -149,7 +149,7 @@ onUnmounted(() => {
           role="status"
           aria-label="Loading videos"
         >
-          <Icon icon="mdi:loading" class="w-8 h-8 animate-spin text-gray-600 dark:text-gray-400" />
+          <BlockSpinner :size="32" class="text-gray-600 dark:text-gray-400" />
         </div>
 
         <div v-else-if="heroFile" class="video-stage-frame">

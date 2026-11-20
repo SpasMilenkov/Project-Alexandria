@@ -50,7 +50,10 @@ const openService = (service: ServiceType) => {
     <div
       class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2 flex-wrap"
     >
-      <UIcon name="i-mdi-heart-pulse" class="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
+      <UIcon
+        name="i-lucide-heart-pulse"
+        class="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0"
+      />
       <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Service health</h2>
 
       <UBadge v-if="!isLoading" :color="overallStatus.color" variant="subtle" size="sm">

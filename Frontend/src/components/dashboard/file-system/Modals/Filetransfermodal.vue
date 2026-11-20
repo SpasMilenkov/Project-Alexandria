@@ -13,7 +13,7 @@
           :key="chip.id"
           class="flex items-center gap-1.5 max-w-48 rounded-md border border-gray-200/70 dark:border-gray-700/70 px-2 py-1"
         >
-          <Icon :icon="chip.icon" class="w-3.5 h-3.5 shrink-0 text-gray-500 dark:text-gray-500" />
+          <UIcon :name="chip.icon" class="w-3.5 h-3.5 shrink-0 text-gray-500 dark:text-gray-500" />
           <span class="text-xs truncate text-gray-700 dark:text-gray-300">{{ chip.name }}</span>
         </li>
 
@@ -31,13 +31,13 @@
           <UInput
             v-model="searchQuery"
             placeholder="Search folders…"
-            icon="i-mdi-magnify"
+            icon="i-lucide-search"
             class="w-full"
             @update:model-value="handleSearchInput"
           >
             <template v-if="searchQuery" #trailing>
               <UButton
-                icon="i-mdi-close"
+                icon="i-lucide-x"
                 size="xs"
                 variant="ghost"
                 color="neutral"
@@ -62,13 +62,13 @@
             :aria-current="browsePath.length === 0 ? 'location' : undefined"
             @click="browseNavigateTo(null, 'Home')"
           >
-            <Icon icon="mdi:home-outline" class="w-3.5 h-3.5" />
+            <UIcon name="i-lucide-house" class="w-3.5 h-3.5" />
             Home
           </button>
 
           <template v-for="(segment, idx) in browsePath" :key="segment.id">
-            <Icon
-              icon="mdi:chevron-right"
+            <UIcon
+              name="i-lucide-chevron-right"
               class="w-3.5 h-3.5 shrink-0 text-gray-400 dark:text-gray-600"
             />
 
@@ -99,8 +99,8 @@
             v-else-if="pickerMode === 'search' && searchResults.length === 0"
             class="flex h-full flex-col items-center justify-center gap-2 px-6 text-center"
           >
-            <Icon
-              icon="mdi:folder-search-outline"
+            <UIcon
+              name="i-lucide-folder-search"
               class="w-12 h-12 text-gray-400 dark:text-gray-600"
             />
             <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No folders found</p>
@@ -123,7 +123,7 @@
                 @keydown.space.self.prevent="selectFolder(row)"
                 @keydown.right.self.prevent="openFolder(row)"
               >
-                <Icon :icon="row.icon" class="w-5 h-5 shrink-0" :class="ICON_CLASSES[row.state]" />
+                <UIcon :name="row.icon" class="w-5 h-5 shrink-0" :class="ICON_CLASSES[row.state]" />
 
                 <span class="flex-1 min-w-0 truncate text-sm" :class="NAME_CLASSES[row.state]">
                   {{ row.name }}
@@ -133,15 +133,15 @@
                   {{ row.hint }}
                 </span>
 
-                <Icon
+                <UIcon
                   v-if="row.state === 'selected'"
-                  icon="mdi:check-circle"
+                  name="i-lucide-circle-check"
                   class="w-4 h-4 shrink-0 text-primary"
                 />
 
                 <UTooltip v-if="row.canOpen" text="Open folder">
                   <UButton
-                    icon="i-mdi-chevron-right"
+                    icon="i-lucide-chevron-right"
                     size="xs"
                     variant="ghost"
                     color="neutral"
@@ -174,7 +174,7 @@
           v-if="isSameDirectory"
           color="warning"
           variant="subtle"
-          icon="i-mdi-alert-circle-outline"
+          icon="i-lucide-circle-alert"
           title="These items are already in this folder"
         />
       </Transition>
@@ -196,7 +196,7 @@
           <UButton label="Cancel" variant="outline" color="neutral" @click="emit('close', false)" />
           <UButton
             :label="mode === 'move' ? 'Move here' : 'Copy here'"
-            :icon="mode === 'move' ? 'i-mdi-folder-move-outline' : 'i-mdi-content-copy'"
+            :icon="mode === 'move' ? 'i-lucide-folder-input' : 'i-lucide-copy'"
             variant="solid"
             color="primary"
             :loading="isConfirming"
@@ -210,7 +210,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useDebounceFn } from "@vueuse/core";
 import { computed, onMounted, ref } from "vue";
 
@@ -303,14 +302,14 @@ const chipFor = (id: string, chips: FileChip[], fallback: Omit<FileChip, "id">):
 const allChips = computed<FileChip[]>(() => [
   ...directories.map((id) =>
     chipFor(id, dirChips, {
-      icon: "mdi:folder-outline",
+      icon: "i-lucide-folder",
       name: "Folder",
       type: "directory",
     }),
   ),
   ...files.map((id) =>
     chipFor(id, fileChips, {
-      icon: "mdi:file-outline",
+      icon: "i-lucide-file",
       name: "File",
       type: "file",
     }),
@@ -514,7 +513,7 @@ const toFolderRow = (dir: DirSummary): FolderRow => {
   return {
     canOpen: state !== "blocked",
     hint: folderHint(dir.id),
-    icon: state === "selected" ? "mdi:folder" : "mdi:folder-outline",
+    icon: state === "selected" ? "i-lucide-folder-open" : "i-lucide-folder",
     id: dir.id,
     key: dir.id,
     name: dir.name,
@@ -530,8 +529,8 @@ const currentFolderRow = computed<FolderRow>(() => {
     locationHint = mode === "move" ? "Inside a moved folder" : "Inside a copied folder";
   }
 
-  let icon = "mdi:folder-open-outline";
-  if (isHome) icon = "mdi:home-outline";
+  let icon = "i-lucide-folder-open";
+  if (isHome) icon = "i-lucide-house";
 
   return {
     canOpen: false,

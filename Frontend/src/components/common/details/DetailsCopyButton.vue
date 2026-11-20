@@ -1,6 +1,6 @@
 <template>
   <UButton
-    icon="i-mdi-content-copy"
+    icon="i-lucide-copy"
     size="xs"
     color="neutral"
     variant="ghost"

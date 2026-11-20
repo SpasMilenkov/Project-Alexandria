@@ -29,9 +29,9 @@
               placeholder="Select an icon"
             >
               <template #leading="{ modelValue }">
-                <Icon
+                <UIcon
                   v-if="modelValue"
-                  :icon="getIconByValue(modelValue as string) || 'mdi:tag'"
+                  :name="getIconByValue(modelValue as string) || 'i-lucide-tag'"
                   class="w-5 h-5 text-muted"
                 />
               </template>
@@ -55,9 +55,9 @@
               :style="{ backgroundColor: `rgb(${color.value})` }"
               :title="color.name.charAt(0).toUpperCase() + color.name.slice(1)"
             >
-              <Icon
+              <UIcon
                 v-if="state.color === `rgb(${color.value})`"
-                icon="heroicons:check-16-solid"
+                name="i-lucide-check"
                 class="text-white w-4 h-4 drop-shadow-md"
               />
             </button>
@@ -108,7 +108,6 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from "@nuxt/ui";
 
-import { Icon } from "@iconify/vue";
 import { computed, reactive, ref } from "vue";
 
 import type { TagDto } from "@/api/tag";

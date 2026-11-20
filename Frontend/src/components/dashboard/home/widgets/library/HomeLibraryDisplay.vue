@@ -127,7 +127,7 @@ const navigate = (event: MouseEvent) => {
               </span>
 
               <UIcon
-                name="i-heroicons-arrow-right"
+                name="i-lucide-arrow-right"
                 class="library-arrow size-4 text-gray-500 dark:text-gray-500"
               />
             </template>

@@ -4,10 +4,7 @@
       class="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200/70 px-4 py-3 frosted-glass glass-surface-strong md:px-5 dark:border-gray-700/70"
     >
       <div class="flex min-w-0 items-center gap-2.5">
-        <UIcon
-          name="mdi:puzzle-outline"
-          class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
-        />
+        <UIcon name="i-lucide-puzzle" class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400" />
         <h1 class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">
           Integrations
         </h1>
@@ -132,7 +129,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     description: "Queue depth, failure-rate trends and throughput.",
-    icon: "mdi:file-swap-outline",
+    icon: "i-mdi-file-swap-outline",
     id: "transpilation",
     route: "/dashboard/admin/integrations/transpilation",
     services: [ServiceType.Transpilation],
@@ -140,7 +137,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     description: "Artifact volume and incidents across the media and document workers.",
-    icon: "mdi:image-multiple-outline",
+    icon: "i-lucide-images",
     id: "previews",
     route: "/dashboard/admin/integrations/previews",
     services: [ServiceType.MediaPreviews, ServiceType.DocumentPreviews],
@@ -148,7 +145,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     description: "Sync runs, failure-rate trends and throughput.",
-    icon: "mdi:playlist-music",
+    icon: "i-lucide-list-music",
     id: "playlists",
     route: "/dashboard/admin/integrations/playlist",
     services: [ServiceType.Playlist],
@@ -156,7 +153,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     description: "Fetch outcomes, provider reliability and confidence.",
-    icon: "mdi:script-text-outline",
+    icon: "i-lucide-scroll-text",
     id: "lyrics",
     route: "/dashboard/admin/integrations/lyrics",
     services: [ServiceType.Lyrics],
@@ -164,7 +161,7 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     description: "Genre and mood tags derived from audio analysis output.",
-    icon: "mdi:tag-multiple-outline",
+    icon: "i-lucide-tags",
     id: "auto-tagging",
     note: "Runs inside audio analysis",
     route: null,

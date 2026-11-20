@@ -2,7 +2,7 @@
   <div class="px-2 md:px-6 py-5">
     <div class="flex flex-col gap-6">
       <UButton
-        icon="mdi:arrow-left"
+        icon="i-lucide-arrow-left"
         label="Library"
         color="neutral"
         variant="soft"
@@ -20,7 +20,7 @@
 
       <UAlert
         v-else-if="trackQuery.status.value === 'error'"
-        icon="mdi:alert-circle-outline"
+        icon="i-lucide-circle-alert"
         color="error"
         variant="subtle"
         title="Failed to load track"
@@ -31,7 +31,7 @@
         class="frosted-glass glass-surface flex flex-col items-center gap-2 rounded-3xl border border-gray-200/70 px-6 py-16 text-center dark:border-gray-700/70"
       >
         <UIcon
-          name="mdi:music-note-off-outline"
+          name="i-mdi-music-note-off-outline"
           class="w-12 h-12 text-gray-400 dark:text-gray-600"
         />
         <p class="m-0 text-base font-semibold text-gray-900 dark:text-gray-100">Track not found</p>
@@ -129,7 +129,7 @@
                       v-if="track.duration !== null"
                       class="flex shrink-0 items-center gap-1 tabular-nums"
                     >
-                      <UIcon name="mdi:clock-outline" class="w-3.5 h-3.5" />
+                      <UIcon name="i-lucide-clock" class="w-3.5 h-3.5" />
                       {{ formatPlaybackTime(track.duration) }}
                     </span>
                     <span
@@ -146,6 +146,7 @@
                   <div class="flex flex-wrap items-center gap-2 pt-2">
                     <UButton
                       :icon="playIcon"
+                      :ui="{ leadingIcon: 'icon-solid' }"
                       :label="playLabel"
                       color="primary"
                       size="lg"
@@ -153,7 +154,7 @@
                       @click="handlePlay"
                     />
                     <UButton
-                      icon="mdi:pencil-outline"
+                      icon="i-lucide-pencil"
                       label="Edit details"
                       color="neutral"
                       variant="outline"
@@ -163,7 +164,7 @@
                     />
                     <UButton
                       v-if="canChangeCover"
-                      icon="mdi:image-outline"
+                      icon="i-lucide-image"
                       label="Change cover"
                       color="neutral"
                       variant="outline"
@@ -244,11 +245,11 @@
                 v-else
                 class="flex h-64 w-64 items-center justify-center bg-gray-100 dark:bg-white/5"
               >
-                <UIcon name="mdi:music-note" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+                <UIcon name="i-lucide-music" class="w-12 h-12 text-gray-400 dark:text-gray-600" />
               </div>
 
               <UButton
-                icon="mdi:close"
+                icon="i-lucide-x"
                 color="neutral"
                 variant="solid"
                 size="sm"
@@ -399,7 +400,7 @@ const isCurrentTrack = computed(
 
 const isCurrentlyPlaying = computed(() => isCurrentTrack.value && isPlaying.value);
 
-const playIcon = computed(() => (isCurrentlyPlaying.value ? "mdi:pause" : "mdi:play"));
+const playIcon = computed(() => (isCurrentlyPlaying.value ? "i-lucide-pause" : "i-lucide-play"));
 const playLabel = computed(() => (isCurrentlyPlaying.value ? "Pause" : "Play"));
 
 const eyebrow = computed(() => {

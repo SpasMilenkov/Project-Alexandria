@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
-
 import type {
   DirectoryTreeItem,
   FileUploadStatus,
@@ -8,6 +6,7 @@ import type {
   UploadStatus,
 } from "@/composables/useDirectoryUpload";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import MiddleTruncatedName from "@/components/common/MiddleTruncatedName.vue";
 import { getFileIcon } from "@/utils/files/icons";
 
@@ -50,15 +49,15 @@ const labelClass = (item: DirectoryTreeItem) => {
       :ui="TREE_UI"
     >
       <template #item-leading="{ item }: { item: DirectoryTreeItem }">
-        <Icon
+        <UIcon
           v-if="item.isFolder"
-          icon="mdi:folder"
+          name="i-lucide-folder"
           class="size-4 shrink-0 transition-colors"
           :class="hasStatuses ? folderIconClass(item.fullPath) : 'text-gray-500 dark:text-gray-400'"
         />
-        <Icon
+        <UIcon
           v-else
-          :icon="getFileIcon(item.label ?? '')"
+          :name="getFileIcon(item.label ?? '')"
           class="size-4 shrink-0 text-gray-500 dark:text-gray-400"
         />
       </template>
@@ -95,7 +94,16 @@ const labelClass = (item: DirectoryTreeItem) => {
             >
               {{ statusMap.get(item.relativePath!)?.progress ?? 0 }}%
             </span>
+            <BlockSpinner
+              v-if="
+                statusMap.get(item.relativePath!)?.status === 'hashing' ||
+                statusMap.get(item.relativePath!)?.status === 'uploading'
+              "
+              :size="14"
+              class="text-primary"
+            />
             <UIcon
+              v-else
               :name="statusIcon(statusMap.get(item.relativePath!)?.status ?? 'pending')"
               class="size-3.5 transition-colors"
               :class="statusIconClass(statusMap.get(item.relativePath!)?.status ?? 'pending')"

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import { type MoodSide, buildMoodPairs } from "@/features/audio-analysis/mood-pairs";
@@ -34,15 +33,15 @@ const nameClass = (emphasised: boolean) => {
 
 // Any axis can land in the singles grid when its opposite pole is missing from the payload.
 const MOOD_ICONS: Record<string, string> = {
-  "mood_acoustic:acoustic": "lucide:guitar",
-  "mood_party:party": "lucide:disc-3",
-  "mood_happy:happy": "lucide:smile",
-  "mood_sad:sad": "lucide:cloud-rain",
-  "mood_relaxed:relaxed": "lucide:leaf",
-  "mood_aggressive:aggressive": "lucide:flame",
+  "mood_acoustic:acoustic": "i-lucide-guitar",
+  "mood_party:party": "i-lucide-disc-3",
+  "mood_happy:happy": "i-lucide-smile",
+  "mood_sad:sad": "i-lucide-cloud-rain",
+  "mood_relaxed:relaxed": "i-lucide-leaf",
+  "mood_aggressive:aggressive": "i-lucide-flame",
 };
 
-const moodIcon = (key: string) => MOOD_ICONS[key] ?? "lucide:audio-lines";
+const moodIcon = (key: string) => MOOD_ICONS[key] ?? "i-lucide-audio-lines";
 
 // A faint accent wash behind the icon; the hex alpha suffix keeps it a tint in both themes.
 const iconWash = computed(() => `${color}1f`);
@@ -54,7 +53,7 @@ const leads = (pair: { leading: MoodSide }, side: MoodSide) => pair.leading === 
   <div class="flex flex-col gap-5">
     <div class="flex flex-col gap-1">
       <div class="flex items-center gap-2">
-        <Icon icon="mdi:emoticon-outline" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+        <UIcon name="i-lucide-smile" class="w-4 h-4 text-gray-600 dark:text-gray-400" />
         <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Mood balance</h3>
       </div>
       <p v-if="leaningSummary" class="text-xs text-gray-600 dark:text-gray-400">
@@ -109,7 +108,7 @@ const leads = (pair: { leading: MoodSide }, side: MoodSide) => pair.leading === 
           class="flex w-16 shrink-0 items-center justify-center"
           :style="{ backgroundColor: iconWash }"
         >
-          <Icon :icon="moodIcon(mood.key)" class="size-7" :style="{ color }" />
+          <UIcon :name="moodIcon(mood.key)" class="size-7" :style="{ color }" />
         </div>
 
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-1 px-4 py-3">

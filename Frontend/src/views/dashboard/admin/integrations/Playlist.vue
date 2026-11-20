@@ -2,7 +2,7 @@
   <div class="flex h-full w-full flex-1 flex-col gap-3 p-3">
     <IntegrationPageHeader
       title="Playlists"
-      icon="mdi:playlist-music"
+      icon="i-lucide-list-music"
       :services="[ServiceType.Playlist]"
     >
       <template #actions>

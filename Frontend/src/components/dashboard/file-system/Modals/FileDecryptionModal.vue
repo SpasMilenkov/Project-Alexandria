@@ -9,7 +9,7 @@
         <!-- Header -->
         <div class="flex flex-col items-center gap-3 px-6 pt-7 pb-5 text-center">
           <div class="p-3 rounded-full bg-neutral-200 dark:bg-neutral-800">
-            <Icon icon="mdi-lock" class="w-6 h-6 text-primary" />
+            <UIcon name="i-lucide-lock" class="w-6 h-6 text-primary" />
           </div>
           <div>
             <h2 class="font-semibold text-base text-gray-900 dark:text-gray-100">Encrypted file</h2>
@@ -26,7 +26,7 @@
             v-if="error"
             color="error"
             variant="subtle"
-            icon="i-mdi-alert-circle-outline"
+            icon="i-lucide-circle-alert"
             :title="error"
           />
 
@@ -44,7 +44,7 @@
             >
               <template #trailing>
                 <UButton
-                  :icon="showPassword ? 'i-mdi-eye-off-outline' : 'i-mdi-eye-outline'"
+                  :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
                   variant="ghost"
                   color="neutral"
                   size="xs"
@@ -59,7 +59,7 @@
           <!-- Hint section — only rendered when hint exists -->
           <div v-if="props.hint" class="flex flex-col gap-1.5">
             <UButton
-              :icon="showHint ? 'i-mdi-chevron-up' : 'i-mdi-lightbulb-outline'"
+              :icon="showHint ? 'i-lucide-chevron-up' : 'i-lucide-lightbulb'"
               :label="showHint ? 'Hide hint' : 'Show hint'"
               variant="ghost"
               color="neutral"
@@ -95,7 +95,7 @@
           <UButton
             variant="solid"
             color="primary"
-            icon="i-mdi-download"
+            icon="i-lucide-download"
             label="Decrypt & Download"
             :loading="loading"
             :disabled="!password.trim() || loading"
@@ -108,7 +108,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { ref } from "vue";
 
 const props = defineProps<{

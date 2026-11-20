@@ -21,7 +21,7 @@ import { RouterLink } from "vue-router";
           to="/dashboard"
           class="inline-flex h-10 items-center gap-2 rounded-[var(--ui-radius)] bg-primary px-4 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
-          <UIcon name="i-mdi-folder-outline" class="size-4" aria-hidden="true" />
+          <UIcon name="i-lucide-folder" class="size-4" aria-hidden="true" />
           Open files
         </RouterLink>
 
@@ -41,7 +41,7 @@ import { RouterLink } from "vue-router";
         <span
           class="flex size-16 items-center justify-center rounded-full border border-white/30 bg-black/45 text-white"
         >
-          <UIcon name="i-mdi-film-open-outline" class="size-7" />
+          <UIcon name="i-lucide-film" class="size-7" />
         </span>
       </span>
     </span>

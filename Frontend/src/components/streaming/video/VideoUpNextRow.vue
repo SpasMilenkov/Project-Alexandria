@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { useFileThumbnail } from "@/composables/useFileThumbnail";
 import { formatPlaybackTime } from "@/utils/date-formatters";
 
@@ -72,14 +72,14 @@ const onSelect = () => emit("select", file);
         role="status"
         aria-label="Loading artwork"
       >
-        <Icon icon="mdi:loading" class="w-4 h-4 animate-spin text-gray-600 dark:text-gray-400" />
+        <BlockSpinner :size="16" class="text-gray-600 dark:text-gray-400" />
       </span>
       <span
         v-if="thumbnailErrored"
         class="absolute inset-0 flex items-center justify-center"
         aria-hidden="true"
       >
-        <Icon icon="mdi:file-video" class="w-6 h-6 text-gray-500 dark:text-gray-400" />
+        <UIcon name="i-lucide-file-play" class="w-6 h-6 text-gray-500 dark:text-gray-400" />
       </span>
       <span
         v-if="active && playing"
@@ -87,7 +87,7 @@ const onSelect = () => emit("select", file);
         role="status"
         aria-label="Now playing"
       >
-        <Icon icon="mdi:eye-outline" class="w-4 h-4 text-white animate-blink" />
+        <UIcon name="i-lucide-eye" class="w-4 h-4 text-white animate-blink" />
       </span>
       <span
         v-if="file.duration"

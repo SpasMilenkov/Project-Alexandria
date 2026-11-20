@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useMediaQuery } from "@vueuse/core";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -228,20 +227,25 @@ interface SectionMeta {
 
 const sectionMetaList: SectionMeta[] = [
   {
-    icon: "mdi:palette-outline",
+    icon: "i-lucide-palette",
     id: "appearance",
     sub: "Colors, glass, file tiles",
     title: "Appearance",
   },
-  { icon: "mdi:cog-outline", id: "behavior", sub: "Prompts and notifications", title: "Behavior" },
   {
-    icon: "mdi:tag-multiple",
+    icon: "i-lucide-settings",
+    id: "behavior",
+    sub: "Prompts and notifications",
+    title: "Behavior",
+  },
+  {
+    icon: "i-lucide-tags",
     id: "auto-tagging",
     sub: "Rules for re-running tags",
     title: "Auto-tagging",
   },
   {
-    icon: "mdi:playlist-music",
+    icon: "i-lucide-list-music",
     id: "auto-playlists",
     sub: "When playlists get made",
     title: "Auto-playlists",
@@ -483,7 +487,7 @@ const {
               color="error"
               variant="outline"
               size="sm"
-              icon="i-heroicons-arrow-path"
+              icon="i-lucide-refresh-cw"
               aria-label="Reset all settings"
               @click="handleResetAll"
             >
@@ -527,7 +531,7 @@ const {
                     <span
                       class="grid h-9 w-9 flex-none place-items-center rounded-lg border border-gray-200/70 text-gray-600 dark:border-gray-700/70 dark:text-gray-400"
                     >
-                      <Icon :icon="metaOf(id).icon" class="h-5 w-5" />
+                      <UIcon :name="metaOf(id).icon" class="h-5 w-5" />
                     </span>
                     <span class="flex min-w-0 flex-1 flex-col">
                       <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">

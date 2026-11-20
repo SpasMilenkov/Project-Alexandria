@@ -2,7 +2,7 @@
   <div class="px-2 md:px-6 py-5">
     <!-- Back -->
     <UButton
-      icon="mdi:arrow-left"
+      icon="i-lucide-arrow-left"
       label="Playlists"
       color="neutral"
       variant="ghost"
@@ -13,12 +13,12 @@
 
     <!-- Loading -->
     <div v-if="detailQuery.status.value === 'pending'" class="flex justify-center py-16">
-      <UIcon name="mdi:loading" class="w-6 h-6 animate-spin text-gray-500 dark:text-gray-500" />
+      <BlockSpinner :size="24" class="text-gray-500 dark:text-gray-500" />
     </div>
 
     <UAlert
       v-else-if="detailQuery.status.value === 'error'"
-      icon="mdi:alert-circle-outline"
+      icon="i-lucide-circle-alert"
       color="error"
       variant="subtle"
       title="Failed to load playlist"
@@ -97,7 +97,7 @@
                 v-if="isCurrentPlaylist"
                 class="inline-flex items-center gap-1 font-medium text-gray-600 dark:text-gray-400"
               >
-                <UIcon name="mdi:volume-high" class="w-3.5 h-3.5 text-primary" />
+                <UIcon name="i-lucide-volume-2" class="w-3.5 h-3.5 text-primary" />
                 Now playing
               </span>
             </div>
@@ -112,7 +112,7 @@
                   square
                   :aria-label="playButtonLabel"
                   class="size-14 rounded-full justify-center shadow-lg transition-transform hover:scale-105"
-                  :ui="{ leadingIcon: 'size-6' }"
+                  :ui="{ leadingIcon: isLoadingQueue ? 'size-6' : 'size-6 icon-solid' }"
                   :loading="isLoadingQueue"
                   :disabled="!localItems.length"
                   @click="handlePlay"
@@ -121,7 +121,7 @@
 
               <UTooltip v-if="!isMobile" text="Shuffle">
                 <UButton
-                  icon="mdi:shuffle-variant"
+                  icon="i-lucide-shuffle"
                   color="neutral"
                   variant="ghost"
                   square
@@ -143,7 +143,7 @@
 
               <UDropdownMenu :items="menuItems" :content="{ align: 'start' }">
                 <UButton
-                  icon="mdi:dots-horizontal"
+                  icon="i-lucide-ellipsis"
                   color="neutral"
                   variant="ghost"
                   square
@@ -187,7 +187,10 @@
         v-if="!localItems.length"
         class="flex flex-col items-center justify-center py-16 text-center border border-dashed border-gray-200/70 dark:border-gray-700/70 rounded-xl"
       >
-        <UIcon name="mdi:music-note-off" class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3" />
+        <UIcon
+          name="i-mdi-music-note-off"
+          class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-3"
+        />
         <p class="font-medium text-gray-900 dark:text-gray-100">No items in this playlist</p>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 mb-4">
           Add tracks from your library to start listening.
@@ -267,7 +270,7 @@
           />
 
           <UButton
-            icon="mdi:close"
+            icon="i-lucide-x"
             color="neutral"
             variant="solid"
             size="sm"
@@ -384,6 +387,7 @@ import { useRoute, useRouter } from "vue-router";
 import type { UpdatePlaylistSchema } from "@/schemas/playlist";
 
 import { type PlaylistItemResponse, playlistApi } from "@/api/playlist";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import PlaylistCover from "@/components/streaming/playlist/PlaylistCover.vue";
 import PlaylistFavoriteButton from "@/components/streaming/playlist/PlaylistFavoriteButton.vue";
 import PlaylistForm from "@/components/streaming/playlist/PlaylistForm.vue";
@@ -480,7 +484,9 @@ const isCurrentPlaylist = computed(() => store.context?.ref.playlistId === playl
 
 const isPlaylistPlaying = computed(() => isCurrentPlaylist.value && store.isPlaying);
 
-const playButtonIcon = computed(() => (isPlaylistPlaying.value ? "mdi:pause" : "mdi:play"));
+const playButtonIcon = computed(() =>
+  isPlaylistPlaying.value ? "i-lucide-pause" : "i-lucide-play",
+);
 
 const playButtonLabel = computed(() => {
   if (!isCurrentPlaylist.value) return "Play all";
@@ -606,14 +612,14 @@ const removeItemTarget = ref<string | null>(null);
 // Header display helpers
 const itemCountLabel = computed(() => formatCount(localItems.value.length, "item"));
 
-const addTracksIcon = computed(() => (showSearch.value ? "mdi:close" : "mdi:plus"));
+const addTracksIcon = computed(() => (showSearch.value ? "i-lucide-x" : "i-lucide-plus"));
 const addTracksLabel = computed(() => (showSearch.value ? "Cancel" : "Add tracks"));
 
 const favoriteActionLabel = computed(() =>
   playlist.value?.isStarred ? "Remove from favorites" : "Add to favorites",
 );
 const favoriteIcon = computed(() =>
-  playlist.value?.isStarred ? "mdi:heart" : "mdi:heart-outline",
+  playlist.value?.isStarred ? "i-lucide-heart-off" : "i-lucide-heart",
 );
 
 // Overflow menu: secondary actions first, destructive action in its own group.
@@ -626,7 +632,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
     secondary.push(
       {
         label: "Shuffle",
-        icon: "mdi:shuffle-variant",
+        icon: "i-lucide-shuffle",
         disabled: isEmpty || isLoadingQueue.value,
         onSelect: shuffleAll,
       },
@@ -642,13 +648,13 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
   secondary.push(
     {
       label: "Add all to queue",
-      icon: "mdi:playlist-plus",
+      icon: "i-lucide-list-plus",
       disabled: isEmpty || isAddingAllToQueue.value,
       onSelect: addAllToQueue,
     },
     {
       label: "Edit playlist",
-      icon: "mdi:pencil",
+      icon: "i-lucide-pencil",
       onSelect: () => {
         showEditModal.value = true;
       },
@@ -658,7 +664,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => {
   const destructive: DropdownMenuItem[] = [
     {
       label: "Delete playlist",
-      icon: "mdi:trash-can-outline",
+      icon: "i-lucide-trash-2",
       color: "error",
       onSelect: () => {
         showDeleteModal.value = true;

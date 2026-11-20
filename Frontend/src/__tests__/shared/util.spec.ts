@@ -287,17 +287,17 @@ describe("formatBytes", () => {
 // getIconByValue
 
 describe("getIconByValue", () => {
-  it("returns the correct heroicons string for known values", () => {
-    expect(getIconByValue("tag")).toBe("heroicons:tag");
-    expect(getIconByValue("folder")).toBe("heroicons:folder");
-    expect(getIconByValue("trash")).toBe("heroicons:trash");
+  it("returns the correct lucide name for known values", () => {
+    expect(getIconByValue("tag")).toBe("i-lucide-tag");
+    expect(getIconByValue("folder")).toBe("i-lucide-folder");
+    expect(getIconByValue("trash")).toBe("i-lucide-trash-2");
   });
 
   it("returns the correct icon for every value in iconOptions without undefined", () => {
     // Spot-check a handful of values that are easy to get wrong
-    expect(getIconByValue("download")).toBe("heroicons:arrow-down-tray");
-    expect(getIconByValue("upload")).toBe("heroicons:arrow-up-tray");
-    expect(getIconByValue("message")).toBe("heroicons:chat-bubble-left-right");
+    expect(getIconByValue("download")).toBe("i-lucide-download");
+    expect(getIconByValue("upload")).toBe("i-lucide-upload");
+    expect(getIconByValue("message")).toBe("i-lucide-messages-square");
   });
 });
 
@@ -305,41 +305,41 @@ describe("getIconByValue", () => {
 
 describe("getFileIcon", () => {
   it("returns the PDF icon for .pdf files", () => {
-    expect(getFileIcon("report.pdf")).toBe("mdi:file-pdf-box");
+    expect(getFileIcon("report.pdf")).toBe("i-mdi-file-pdf-box");
   });
 
   it("is case-insensitive for extensions", () => {
-    expect(getFileIcon("IMAGE.PNG")).toBe("mdi:file-image");
-    expect(getFileIcon("SCRIPT.JS")).toBe("mdi:language-javascript");
+    expect(getFileIcon("IMAGE.PNG")).toBe("i-lucide-file-image");
+    expect(getFileIcon("SCRIPT.JS")).toBe("i-mdi-language-javascript");
   });
 
   it("returns the correct icon for spreadsheet extensions", () => {
-    expect(getFileIcon("data.xlsx")).toBe("mdi:file-excel");
-    expect(getFileIcon("data.csv")).toBe("mdi:file-delimited-outline");
+    expect(getFileIcon("data.xlsx")).toBe("i-lucide-file-spreadsheet");
+    expect(getFileIcon("data.csv")).toBe("i-lucide-file-spreadsheet");
   });
 
   it("returns the correct icon for code files", () => {
-    expect(getFileIcon("component.vue")).toBe("mdi:vuejs");
-    expect(getFileIcon("app.tsx")).toBe("mdi:react");
-    expect(getFileIcon("main.py")).toBe("mdi:language-python");
+    expect(getFileIcon("component.vue")).toBe("i-mdi-vuejs");
+    expect(getFileIcon("app.tsx")).toBe("i-mdi-react");
+    expect(getFileIcon("main.py")).toBe("i-mdi-language-python");
   });
 
   it("returns the archive icon for compressed files", () => {
-    expect(getFileIcon("backup.zip")).toBe("mdi:folder-zip");
-    expect(getFileIcon("backup.tar")).toBe("mdi:folder-zip");
-    expect(getFileIcon("backup.7z")).toBe("mdi:folder-zip");
+    expect(getFileIcon("backup.zip")).toBe("i-lucide-folder-archive");
+    expect(getFileIcon("backup.tar")).toBe("i-lucide-folder-archive");
+    expect(getFileIcon("backup.7z")).toBe("i-lucide-folder-archive");
   });
 
   it("returns the fallback icon for unknown extensions", () => {
-    expect(getFileIcon("mystery.xyz")).toBe("mdi:file-outline");
+    expect(getFileIcon("mystery.xyz")).toBe("i-lucide-file");
   });
 
   it("returns the fallback icon for files with no extension", () => {
-    expect(getFileIcon("Makefile")).toBe("mdi:file-outline");
+    expect(getFileIcon("Makefile")).toBe("i-lucide-file");
   });
 
   it("returns the fallback icon for an empty string", () => {
-    expect(getFileIcon("")).toBe("mdi:file-outline");
+    expect(getFileIcon("")).toBe("i-lucide-file");
   });
 });
 

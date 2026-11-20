@@ -219,7 +219,7 @@ const relation = computed(() => {
     </template>
 
     <div v-else class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center">
-      <UIcon name="i-heroicons-calendar" class="size-6 text-gray-500 dark:text-gray-500" />
+      <UIcon name="i-lucide-calendar" class="size-6 text-gray-500 dark:text-gray-500" />
       <p class="text-sm font-medium">Choose a date</p>
       <p class="countdown-date text-xs text-gray-600 dark:text-gray-400">
         Set your event in the widget options.

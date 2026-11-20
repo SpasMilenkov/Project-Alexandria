@@ -5,7 +5,7 @@
     >
       <UIcon
         v-if="!showArtwork || !thumbnail.thumbnailLoaded.value"
-        name="mdi:music-note"
+        name="i-lucide-music"
         class="w-4 h-4 text-muted"
       />
 
@@ -30,7 +30,7 @@
     </div>
 
     <UButton
-      :icon="isAdded ? 'mdi:check' : 'i-heroicons-plus'"
+      :icon="isAdded ? 'i-lucide-check' : 'i-lucide-plus'"
       color="primary"
       variant="ghost"
       size="xs"

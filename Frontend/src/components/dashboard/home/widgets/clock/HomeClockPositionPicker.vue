@@ -35,7 +35,7 @@ const emit = defineEmits<{
     >
       <UIcon
         v-if="horizontal === anchor.horizontal && vertical === anchor.vertical"
-        :name="target === 'clock' ? 'i-heroicons-clock' : 'i-heroicons-document-text'"
+        :name="target === 'clock' ? 'i-lucide-clock' : 'i-lucide-file-text'"
         class="size-5 text-primary"
         aria-hidden="true"
       />

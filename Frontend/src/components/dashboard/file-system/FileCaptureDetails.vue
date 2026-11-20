@@ -22,8 +22,8 @@
         class="flex flex-col divide-y divide-gray-200/70 rounded-xl border border-gray-200/70 dark:divide-gray-700/70 dark:border-gray-700/70"
       >
         <li v-for="fact in facts" :key="fact.key" class="group flex items-start gap-3 p-3">
-          <Icon
-            :icon="fact.icon"
+          <UIcon
+            :name="fact.icon"
             class="mt-0.5 h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
             aria-hidden="true"
           />
@@ -64,8 +64,8 @@
             {{ settingsSummary }}
           </span>
 
-          <Icon
-            icon="mdi:chevron-down"
+          <UIcon
+            name="i-lucide-chevron-down"
             class="ml-auto h-4 w-4 shrink-0 text-gray-600 transition-transform duration-200 motion-reduce:transition-none dark:text-gray-400"
             :class="{ 'rotate-180': isSettingsOpen }"
             aria-hidden="true"
@@ -91,7 +91,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed } from "vue";
 
@@ -166,7 +165,7 @@ const momentFact = (m: CaptureMetadataDto): CaptureFact | null => {
 
   return {
     key: "moment",
-    icon: "mdi:calendar-clock-outline",
+    icon: "i-lucide-calendar-clock",
     title: moment.headline,
     detail: `${moment.date} at ${moment.time} · ${formatTimeAgo(m.capturedAt)}`,
     note: moment.zoneNote,
@@ -178,7 +177,7 @@ const deviceFact = (m: CaptureMetadataDto): CaptureFact | null => {
   const title = camera ?? m.lensModel;
   if (!title) return null;
 
-  const fact: CaptureFact = { key: "device", icon: "mdi:camera-outline", title };
+  const fact: CaptureFact = { key: "device", icon: "i-lucide-camera", title };
   if (camera && m.lensModel) fact.detail = m.lensModel;
 
   return fact;
@@ -193,7 +192,7 @@ const sizeFact = (m: CaptureMetadataDto): CaptureFact | null => {
 
   return {
     key: "size",
-    icon: "mdi:image-outline",
+    icon: "i-lucide-image",
     title: megapixels ? `${shape} · ${megapixels}` : shape,
     detail: `${m.width} × ${m.height} pixels`,
   };
@@ -204,7 +203,7 @@ const locationFact = (m: CaptureMetadataDto): CaptureFact | null => {
 
   return {
     key: "location",
-    icon: "mdi:map-marker-outline",
+    icon: "i-lucide-map-pin",
     title: formatCoordinates(m.latitude, m.longitude),
     detail: "Saved in the photo by the camera",
     copyValue: `${m.latitude}, ${m.longitude}`,

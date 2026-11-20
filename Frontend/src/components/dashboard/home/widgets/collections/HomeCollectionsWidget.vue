@@ -57,10 +57,7 @@ const sleevePositions = [
         v-if="!collections?.totalCount"
         class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center"
       >
-        <UIcon
-          name="i-heroicons-book-open"
-          class="size-8 shrink-0 text-gray-500 dark:text-gray-500"
-        />
+        <UIcon name="i-lucide-book-open" class="size-8 shrink-0 text-gray-500 dark:text-gray-500" />
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No collections yet</p>
         <p class="collections-hint text-xs text-gray-600 dark:text-gray-400">
           Automatic collections appear as your music library grows.

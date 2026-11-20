@@ -16,13 +16,14 @@ export const SERVICE_LABELS: Record<ServiceType, string> = {
 };
 
 export const SERVICE_ICONS: Record<ServiceType, string> = {
-  [ServiceType.Api]: "mdi:server",
-  [ServiceType.DocumentPreviews]: "mdi:file-document-outline",
-  [ServiceType.Lyrics]: "mdi:script-text-outline",
-  [ServiceType.MediaMetadata]: "mdi:tag-text-outline",
-  [ServiceType.MediaPreviews]: "mdi:image-multiple-outline",
-  [ServiceType.Playlist]: "mdi:playlist-music",
-  [ServiceType.Transpilation]: "mdi:file-swap-outline",
+  [ServiceType.Api]: "i-lucide-server",
+  [ServiceType.DocumentPreviews]: "i-lucide-file-text",
+  [ServiceType.Lyrics]: "i-lucide-scroll-text",
+  [ServiceType.MediaMetadata]: "i-lucide-tag",
+  [ServiceType.MediaPreviews]: "i-lucide-images",
+  [ServiceType.Playlist]: "i-lucide-list-music",
+  // Lucide has no file-conversion glyph.
+  [ServiceType.Transpilation]: "i-mdi-file-swap-outline",
 };
 
 // Single source for the surfaces that enumerate services; a new ServiceType
@@ -46,11 +47,11 @@ export const EVENT_CODE_LABELS: Record<OperationalEventCode, string> = {
 };
 
 export const EVENT_CODE_ICONS: Record<OperationalEventCode, string> = {
-  [OperationalEventCode.ErrorRateThresholdExceeded]: "mdi:trending-up",
-  [OperationalEventCode.HealthcheckUnhealthy]: "mdi:heart-off-outline",
-  [OperationalEventCode.HealthcheckUnreachable]: "mdi:lan-disconnect",
-  [OperationalEventCode.UserReportedProblem]: "mdi:account-alert-outline",
-  [OperationalEventCode.WorkerCycleFailure]: "mdi:alert-circle-outline",
+  [OperationalEventCode.ErrorRateThresholdExceeded]: "i-lucide-trending-up",
+  [OperationalEventCode.HealthcheckUnhealthy]: "i-lucide-heart-off",
+  [OperationalEventCode.HealthcheckUnreachable]: "i-lucide-unplug",
+  [OperationalEventCode.UserReportedProblem]: "i-lucide-message-square-warning",
+  [OperationalEventCode.WorkerCycleFailure]: "i-lucide-circle-alert",
 };
 
 export const SEVERITY_LABELS: Record<OperationalEventSeverity, string> = {

@@ -12,7 +12,7 @@
           <div
             class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/30"
           >
-            <Icon icon="mdi:book-open-variant" class="h-4 w-4 text-primary" />
+            <UIcon name="i-lucide-book-open" class="h-4 w-4 text-primary" />
           </div>
           <span class="text-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">
             Alexandria
@@ -42,7 +42,7 @@
                         : 'border-gray-300/60 bg-transparent text-gray-400 dark:border-gray-600/60 dark:text-gray-500',
                   ]"
                 >
-                  <Icon v-if="i < currentStep" icon="mdi:check" class="h-3.5 w-3.5" />
+                  <UIcon v-if="i < currentStep" name="i-lucide-check" class="h-3.5 w-3.5" />
                   <span v-else>{{ i + 1 }}</span>
                 </div>
 
@@ -112,7 +112,7 @@
                       : 'border-gray-300/60 bg-transparent text-gray-400 dark:border-gray-600/60 dark:text-gray-500',
                 ]"
               >
-                <Icon v-if="i < currentStep" icon="mdi:check" class="h-3 w-3" />
+                <UIcon v-if="i < currentStep" name="i-lucide-check" class="h-3 w-3" />
                 <span v-else>{{ i + 1 }}</span>
               </div>
               <span
@@ -148,7 +148,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
 

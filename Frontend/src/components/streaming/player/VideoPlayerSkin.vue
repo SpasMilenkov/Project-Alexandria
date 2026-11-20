@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { storeToRefs } from "pinia";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 
 import { fileApi } from "@/api/file";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { VIDEO_SHAKA_UI_CONFIG, usePlayerEngine } from "@/composables/usePlayerEngine";
 import { useTheme } from "@/composables/useTheme";
 import { usePlayerStore } from "@/stores/stream-player";
@@ -141,9 +141,9 @@ const onVolumeInput = (e: Event) => {
 };
 
 const volumeIcon = computed(() => {
-  if (volume.value === 0) return "mdi:volume-off";
-  if (volume.value < 0.5) return "mdi:volume-medium";
-  return "mdi:volume-high";
+  if (volume.value === 0) return "i-lucide-volume-x";
+  if (volume.value < 0.5) return "i-lucide-volume-1";
+  return "i-lucide-volume-2";
 });
 
 // Autoplay countdown ring
@@ -281,7 +281,7 @@ defineExpose({ toggleFullscreen });
       <!-- No-file placeholder -->
       <Transition name="vps-fade">
         <div v-if="!hasFile" class="vps-placeholder">
-          <Icon icon="mdi:play-circle-outline" class="w-16 h-16" style="opacity: 0.3" />
+          <UIcon name="i-lucide-circle-play" class="w-16 h-16" style="opacity: 0.3" />
           <p>Select a video below to begin</p>
         </div>
       </Transition>
@@ -296,7 +296,7 @@ defineExpose({ toggleFullscreen });
       <!-- Error -->
       <Transition name="vps-fade">
         <div v-if="loadError" class="vps-error">
-          <Icon icon="mdi:alert-circle-outline" class="w-10 h-10" style="color: #f87171" />
+          <UIcon name="i-lucide-circle-alert" class="w-10 h-10" style="color: #f87171" />
           <p>{{ loadError }}</p>
         </div>
       </Transition>
@@ -327,7 +327,7 @@ defineExpose({ toggleFullscreen });
           <div class="vps-row">
             <div class="vps-group vps-left">
               <button class="vps-btn" :title="isMuted ? 'Unmute' : 'Mute'" @click="toggleMute">
-                <Icon :icon="volumeIcon" class="w-5 h-5" />
+                <UIcon :name="volumeIcon" class="w-5 h-5" />
               </button>
               <input
                 type="range"
@@ -354,7 +354,7 @@ defineExpose({ toggleFullscreen });
                   :aria-expanded="showVolPop"
                   @click="toggleVolPop"
                 >
-                  <Icon :icon="volumeIcon" class="w-5 h-5" />
+                  <UIcon :name="volumeIcon" class="w-5 h-5" />
                 </button>
                 <Transition name="vps-fade">
                   <div v-if="showVolPop" ref="volPopRef" class="vps-vol-pop">
@@ -382,11 +382,8 @@ defineExpose({ toggleFullscreen });
                 aria-label="Shuffle"
                 @click="store.toggleShuffle()"
               >
-                <Icon
-                  :icon="orderBusy ? 'mdi:loading' : 'mdi:shuffle-variant'"
-                  class="w-5 h-5"
-                  :class="orderBusy ? 'animate-spin' : ''"
-                />
+                <BlockSpinner v-if="orderBusy" :size="20" />
+                <UIcon v-else name="i-lucide-shuffle" class="w-5 h-5" />
               </button>
               <button
                 class="vps-btn"
@@ -395,7 +392,7 @@ defineExpose({ toggleFullscreen });
                 aria-label="Previous"
                 @click="store.previous()"
               >
-                <Icon icon="mdi:skip-previous" class="w-5 h-5" />
+                <UIcon name="i-lucide-skip-back" class="w-5 h-5 icon-solid" />
               </button>
               <button
                 class="vps-btn vps-btn-play"
@@ -403,7 +400,10 @@ defineExpose({ toggleFullscreen });
                 :aria-label="isPlaying ? 'Pause' : 'Play'"
                 @click="handlePlayToggle"
               >
-                <Icon :icon="isPlaying ? 'mdi:pause' : 'mdi:play'" class="w-6 h-6" />
+                <UIcon
+                  :name="isPlaying ? 'i-lucide-pause' : 'i-lucide-play'"
+                  class="w-6 h-6 icon-solid"
+                />
               </button>
               <button
                 class="vps-btn"
@@ -412,7 +412,7 @@ defineExpose({ toggleFullscreen });
                 aria-label="Next"
                 @click="store.next()"
               >
-                <Icon icon="mdi:skip-next" class="w-5 h-5" />
+                <UIcon name="i-lucide-skip-forward" class="w-5 h-5 icon-solid" />
               </button>
               <button
                 class="vps-btn vps-collapse"
@@ -421,8 +421,8 @@ defineExpose({ toggleFullscreen });
                 aria-label="Repeat"
                 @click="store.toggleLoop()"
               >
-                <Icon
-                  :icon="repeatMode === 'one' ? 'mdi:repeat-once' : 'mdi:repeat'"
+                <UIcon
+                  :name="repeatMode === 'one' ? 'i-lucide-repeat-1' : 'i-lucide-repeat'"
                   class="w-5 h-5"
                 />
               </button>
@@ -437,7 +437,7 @@ defineExpose({ toggleFullscreen });
                 :aria-pressed="videoAutoplay"
                 @click="store.toggleVideoAutoplay()"
               >
-                <Icon icon="mdi:playlist-play" class="w-5 h-5" />
+                <UIcon name="i-lucide-list-video" class="w-5 h-5" />
               </button>
               <PlayerSettings />
               <button
@@ -448,7 +448,7 @@ defineExpose({ toggleFullscreen });
                 :aria-pressed="railOpen"
                 @click="onToggleRail"
               >
-                <Icon icon="lucide:list" class="w-5 h-5" />
+                <UIcon name="i-lucide-list" class="w-5 h-5" />
               </button>
               <button
                 class="vps-btn"
@@ -456,8 +456,8 @@ defineExpose({ toggleFullscreen });
                 :aria-label="isFullscreen ? 'Exit fullscreen' : 'Fullscreen'"
                 @click="toggleFullscreen"
               >
-                <Icon
-                  :icon="isFullscreen ? 'mdi:fullscreen-exit' : 'mdi:fullscreen'"
+                <UIcon
+                  :name="isFullscreen ? 'i-lucide-minimize' : 'i-lucide-maximize'"
                   class="w-5 h-5"
                 />
               </button>
@@ -472,7 +472,7 @@ defineExpose({ toggleFullscreen });
                   :aria-expanded="showMore"
                   @click="toggleMore"
                 >
-                  <Icon icon="mdi:dots-horizontal" class="w-5 h-5" />
+                  <UIcon name="i-lucide-ellipsis" class="w-5 h-5" />
                 </button>
                 <Transition name="vps-fade">
                   <div
@@ -490,11 +490,8 @@ defineExpose({ toggleFullscreen });
                       :disabled="orderBusy"
                       @click="moreShuffle"
                     >
-                      <Icon
-                        :icon="orderBusy ? 'mdi:loading' : 'mdi:shuffle-variant'"
-                        class="w-5 h-5 shrink-0"
-                        :class="orderBusy ? 'animate-spin' : ''"
-                      />
+                      <BlockSpinner v-if="orderBusy" :size="20" class="shrink-0" />
+                      <UIcon v-else name="i-lucide-shuffle" class="w-5 h-5 shrink-0" />
                       <span class="flex-1 text-left">Shuffle</span>
                       <span class="vps-more-state">{{ shuffleState }}</span>
                     </button>
@@ -505,8 +502,8 @@ defineExpose({ toggleFullscreen });
                       :class="repeatMode !== 'off' ? 'vps-more-row-active' : ''"
                       @click="moreRepeat"
                     >
-                      <Icon
-                        :icon="repeatMode === 'one' ? 'mdi:repeat-once' : 'mdi:repeat'"
+                      <UIcon
+                        :name="repeatMode === 'one' ? 'i-lucide-repeat-1' : 'i-lucide-repeat'"
                         class="w-5 h-5 shrink-0"
                       />
                       <span class="flex-1 text-left">Repeat</span>
@@ -519,7 +516,7 @@ defineExpose({ toggleFullscreen });
                       :class="videoAutoplay ? 'vps-more-row-active' : ''"
                       @click="moreAutoplay"
                     >
-                      <Icon icon="mdi:playlist-play" class="w-5 h-5 shrink-0" />
+                      <UIcon name="i-lucide-list-video" class="w-5 h-5 shrink-0" />
                       <span class="flex-1 text-left">Autoplay</span>
                       <span class="vps-more-state">{{ autoplayState }}</span>
                     </button>
@@ -530,7 +527,7 @@ defineExpose({ toggleFullscreen });
                       :class="railOpen ? 'vps-more-row-active' : ''"
                       @click="moreRail"
                     >
-                      <Icon icon="lucide:list" class="w-5 h-5 shrink-0" />
+                      <UIcon name="i-lucide-list" class="w-5 h-5 shrink-0" />
                       <span class="flex-1 text-left">Up next</span>
                       <span class="vps-more-state">{{ railState }}</span>
                     </button>

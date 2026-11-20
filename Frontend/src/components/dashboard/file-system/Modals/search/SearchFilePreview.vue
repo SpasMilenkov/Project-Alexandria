@@ -22,7 +22,7 @@
         <span
           class="relative flex size-20 items-center justify-center rounded-3xl bg-default text-gray-900 shadow-md ring ring-default dark:text-gray-100"
         >
-          <Icon :icon="fileIcon" class="size-10" aria-hidden="true" />
+          <UIcon :name="fileIcon" class="size-10" aria-hidden="true" />
           <span
             v-if="fallback?.icon"
             class="absolute -right-1.5 -bottom-1.5 flex size-8 items-center justify-center rounded-full bg-elevated text-gray-900 shadow-sm ring-2 ring-(--ui-bg) dark:text-gray-100"
@@ -71,7 +71,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
 import { computed, ref, watch, watchEffect } from "vue";
 

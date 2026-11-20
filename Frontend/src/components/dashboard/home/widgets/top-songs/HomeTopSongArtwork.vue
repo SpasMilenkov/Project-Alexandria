@@ -31,7 +31,7 @@ const showArtwork = computed(
   >
     <UIcon
       v-if="!showArtwork || !thumbnail.thumbnailLoaded.value"
-      name="i-mdi-music-note-outline"
+      name="i-lucide-music"
       class="size-4 text-gray-500 dark:text-gray-500"
       aria-hidden="true"
     />

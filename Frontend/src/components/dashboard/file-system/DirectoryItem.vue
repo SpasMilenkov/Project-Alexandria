@@ -35,11 +35,11 @@
       <div
         class="relative flex aspect-[4/3] w-full items-center justify-center rounded-lg bg-gray-500/[0.07] text-gray-500 dark:bg-white/[0.06] dark:text-gray-400"
       >
-        <Icon icon="mdi:folder" :width="iconSize" :height="iconSize" class="shrink-0" />
-        <Icon
+        <UIcon name="i-lucide-folder" :size="iconSize" class="shrink-0" />
+        <UIcon
           v-if="data.isStarred"
-          icon="mdi:star"
-          class="absolute top-2 left-2 w-4 h-4 text-gray-600 dark:text-gray-400"
+          name="i-lucide-star"
+          class="absolute top-2 left-2 w-4 h-4 icon-solid text-gray-600 dark:text-gray-400"
           role="img"
           aria-hidden="false"
           aria-label="Favorite folder"
@@ -49,7 +49,7 @@
           class="absolute top-2 right-2 grid h-5 w-5 place-items-center rounded-full bg-primary text-white dark:text-neutral-900"
           aria-hidden="true"
         >
-          <Icon icon="mdi:check" class="w-3 h-3" />
+          <UIcon name="i-lucide-check" class="w-3 h-3" />
         </span>
       </div>
       <span
@@ -97,17 +97,16 @@
       :aria-describedby="describedBy ?? undefined"
     >
       <span class="flex min-w-0 items-center gap-3 text-gray-900 dark:text-gray-100">
-        <Icon
-          icon="mdi:folder"
-          :width="iconSize"
-          :height="iconSize"
+        <UIcon
+          name="i-lucide-folder"
+          :size="iconSize"
           class="shrink-0 text-gray-500 dark:text-gray-400"
         />
         <span class="truncate font-medium">{{ data.name }}</span>
-        <Icon
+        <UIcon
           v-if="data.isStarred"
-          icon="mdi:star"
-          class="w-4 h-4 shrink-0 text-gray-600 dark:text-gray-400"
+          name="i-lucide-star"
+          class="w-4 h-4 shrink-0 icon-solid text-gray-600 dark:text-gray-400"
           role="img"
           aria-hidden="false"
           aria-label="Favorite folder"
@@ -121,8 +120,8 @@
       <span class="text-right text-xs tabular-nums text-gray-600 dark:text-gray-400">
         {{ sizeLabel }}
       </span>
-      <Icon
-        icon="mdi:chevron-right"
+      <UIcon
+        name="i-lucide-chevron-right"
         class="w-4 h-4 justify-self-end text-gray-400 dark:text-gray-500"
       />
     </button>
@@ -130,7 +129,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQueryCache } from "@pinia/colada";
 import { useDebounceFn } from "@vueuse/core";
 import { computed, onUnmounted } from "vue";

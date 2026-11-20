@@ -9,7 +9,7 @@
           : 'bg-gray-100/80 text-gray-500 dark:bg-white/10 dark:text-gray-400',
       ]"
     >
-      <Icon :icon="feature.icon" class="h-6 w-6" />
+      <UIcon :name="feature.icon" class="h-6 w-6" />
     </div>
 
     <!-- Title + description -->
@@ -46,8 +46,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
-
 defineProps<{
   feature: {
     icon: string;

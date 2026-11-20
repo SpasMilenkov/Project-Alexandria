@@ -41,7 +41,7 @@ const ROWS = [
     <div
       class="flex shrink-0 items-center gap-2 border-t border-gray-200/70 px-4 py-2.5 dark:border-gray-700/70"
     >
-      <UIcon name="i-mdi-film-open-outline" class="size-3.5 shrink-0 text-primary" />
+      <UIcon name="i-lucide-film" class="size-3.5 shrink-0 text-primary" />
       <p class="truncate text-xs text-gray-600 dark:text-gray-400">Video library</p>
     </div>
   </aside>

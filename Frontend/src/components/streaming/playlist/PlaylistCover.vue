@@ -2,7 +2,7 @@
   <div ref="boxRef" role="img" :aria-label="playlist.name" class="h-full w-full">
     <canvas v-if="!failed" ref="canvasRef" class="block h-full w-full" aria-hidden="true" />
     <div v-else class="flex h-full w-full items-center justify-center">
-      <UIcon name="mdi:playlist-music" class="h-10 w-10 text-gray-300 dark:text-white/20" />
+      <UIcon name="i-lucide-list-music" class="h-10 w-10 text-gray-300 dark:text-white/20" />
     </div>
   </div>
 </template>

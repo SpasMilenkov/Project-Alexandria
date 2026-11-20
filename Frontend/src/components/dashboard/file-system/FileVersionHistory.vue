@@ -17,8 +17,8 @@
         class="flex items-start gap-3 p-3 rounded-lg border transition-colors"
         :class="getVersionRowClass(version)"
       >
-        <Icon
-          :icon="getVersionIcon(version)"
+        <UIcon
+          :name="getVersionIcon(version)"
           class="w-5 h-5 mt-0.5 shrink-0"
           :class="getVersionIconClass(version)"
         />
@@ -32,7 +32,7 @@
               label="This version is encrypted"
               :delay-duration="400"
             >
-              <Icon icon="mdi-lock" class="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              <UIcon name="i-lucide-lock" class="w-3.5 h-3.5 text-gray-500 shrink-0" />
             </UTooltip>
 
             <UTooltip
@@ -40,7 +40,7 @@
               label="This version needs a password to open"
               :delay-duration="400"
             >
-              <Icon icon="mdi:file-lock" class="w-3.5 h-3.5 text-gray-500 shrink-0" />
+              <UIcon name="i-lucide-file-lock" class="w-3.5 h-3.5 text-gray-500 shrink-0" />
             </UTooltip>
 
             <UBadge
@@ -72,7 +72,7 @@
                 variant="subtle"
                 size="xs"
               >
-                <Icon icon="mdi-check-circle-outline" class="w-3.5 h-3.5 mr-0.5" />
+                <UIcon name="i-lucide-circle-check" class="w-3.5 h-3.5 mr-0.5" />
                 Queued
               </UBadge>
             </Transition>
@@ -80,11 +80,11 @@
 
           <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
             <div class="flex items-center gap-1">
-              <Icon icon="mdi-scale" class="w-3.5 h-3.5 shrink-0" />
+              <UIcon name="i-lucide-scale" class="w-3.5 h-3.5 shrink-0" />
               <span>{{ formatBytes(Number(version.size)) }}</span>
             </div>
             <div class="flex items-center gap-1 truncate">
-              <Icon icon="mdi-file-document" class="w-3.5 h-3.5 shrink-0" />
+              <UIcon name="i-lucide-file-text" class="w-3.5 h-3.5 shrink-0" />
               <span class="truncate">{{ getFileTypeReadable(version.mimeType, fileName) }}</span>
             </div>
           </div>
@@ -92,7 +92,7 @@
 
         <div class="flex items-center gap-1 shrink-0">
           <UButton
-            icon="i-mdi-download"
+            icon="i-lucide-download"
             size="xs"
             :color="version.versionNumber === currentVersionNumber ? 'primary' : 'neutral'"
             variant="ghost"
@@ -105,7 +105,7 @@
           <!-- Share link -->
           <UButton
             v-if="!version.isDeleted"
-            icon="i-mdi-link-variant"
+            icon="i-lucide-link"
             size="xs"
             color="neutral"
             variant="ghost"
@@ -117,7 +117,7 @@
           <!-- Transpilation popover -->
           <UPopover v-if="!version.isDeleted" v-model:open="transpilationPopoverOpen[version.id]">
             <UButton
-              icon="i-mdi-transfer"
+              icon="i-lucide-arrow-right-left"
               size="xs"
               color="neutral"
               variant="ghost"
@@ -193,7 +193,7 @@
           </UPopover>
 
           <UButton
-            icon="i-mdi-delete-outline"
+            icon="i-lucide-trash-2"
             size="xs"
             color="error"
             variant="ghost"
@@ -205,7 +205,7 @@
           />
           <UButton
             v-if="!version.isDeleted && version.versionNumber !== currentVersionNumber"
-            icon="i-mdi-check-circle-outline"
+            icon="i-lucide-circle-check"
             size="xs"
             color="primary"
             variant="ghost"
@@ -217,7 +217,7 @@
           />
           <UButton
             v-if="version.isDeleted && version.versionNumber !== currentVersionNumber"
-            icon="mdi-restore"
+            icon="i-lucide-rotate-ccw"
             size="xs"
             color="primary"
             variant="solid"
@@ -239,7 +239,7 @@
         </span>
         <div class="flex items-center gap-1">
           <UButton
-            icon="i-mdi-chevron-left"
+            icon="i-lucide-chevron-left"
             size="xs"
             variant="ghost"
             color="neutral"
@@ -249,7 +249,7 @@
           />
           <span class="text-xs px-1">{{ versionsPage }}</span>
           <UButton
-            icon="i-mdi-chevron-right"
+            icon="i-lucide-chevron-right"
             size="xs"
             variant="ghost"
             color="neutral"
@@ -265,14 +265,13 @@
       v-else
       class="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-300/80 py-5 dark:border-gray-700/80"
     >
-      <Icon icon="mdi-history" class="w-8 h-8 text-gray-400 dark:text-gray-600" />
+      <UIcon name="i-lucide-history" class="w-8 h-8 text-gray-400 dark:text-gray-600" />
       <span class="text-sm text-gray-600 dark:text-gray-400">No version history available</span>
     </div>
   </DetailsSection>
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -325,9 +324,9 @@ const VERSION_ROW_CLASSES: Record<VersionStatus, string> = {
 };
 
 const VERSION_ICONS: Record<VersionStatus, string> = {
-  deleted: "mdi-delete-clock",
-  current: "mdi-check-circle",
-  default: "mdi-clock-outline",
+  deleted: "i-lucide-trash-2",
+  current: "i-lucide-circle-check",
+  default: "i-lucide-clock",
 };
 
 const VERSION_ICON_CLASSES: Record<VersionStatus, string> = {

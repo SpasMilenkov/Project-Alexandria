@@ -8,24 +8,24 @@ interface ActionPresentation {
 
 const FALLBACK: ActionPresentation = {
   colorClass: "bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400",
-  icon: "mdi:cog-outline",
+  icon: "i-lucide-settings",
   label: "Rule",
 };
 
 const ACTIONS: Record<PolicyActionType, ActionPresentation> = {
   [PolicyActionType.Transcode]: {
     colorClass: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-    icon: "mdi:film-open-outline",
+    icon: "i-lucide-film",
     label: "Transcode media",
   },
   [PolicyActionType.AutoTag]: {
     colorClass: "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400",
-    icon: "mdi:tag-outline",
+    icon: "i-lucide-tag",
     label: "Auto-tag",
   },
   [PolicyActionType.Backup]: {
     colorClass: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-    icon: "mdi:cloud-upload-outline",
+    icon: "i-lucide-cloud-upload",
     label: "Backup",
   },
 };

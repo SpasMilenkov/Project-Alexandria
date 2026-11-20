@@ -15,7 +15,7 @@
                 <div
                   class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10"
                 >
-                  <Icon icon="mdi:lock-reset" class="h-5 w-5 text-primary" />
+                  <UIcon name="i-lucide-rotate-ccw-key" class="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <h1 class="text-xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
@@ -56,8 +56,8 @@
                         :aria-label="show.initial ? 'Hide password' : 'Show password'"
                         @click="show.initial = !show.initial"
                       >
-                        <Icon
-                          :icon="show.initial ? 'mdi:eye-off-outline' : 'mdi:eye-outline'"
+                        <UIcon
+                          :name="show.initial ? 'i-lucide-eye-off' : 'i-lucide-eye'"
                           class="h-4 w-4"
                         />
                       </button>
@@ -82,8 +82,8 @@
                         :aria-label="show.new ? 'Hide password' : 'Show password'"
                         @click="show.new = !show.new"
                       >
-                        <Icon
-                          :icon="show.new ? 'mdi:eye-off-outline' : 'mdi:eye-outline'"
+                        <UIcon
+                          :name="show.new ? 'i-lucide-eye-off' : 'i-lucide-eye'"
                           class="h-4 w-4"
                         />
                       </button>
@@ -108,8 +108,8 @@
                         :aria-label="show.confirm ? 'Hide password' : 'Show password'"
                         @click="show.confirm = !show.confirm"
                       >
-                        <Icon
-                          :icon="show.confirm ? 'mdi:eye-off-outline' : 'mdi:eye-outline'"
+                        <UIcon
+                          :name="show.confirm ? 'i-lucide-eye-off' : 'i-lucide-eye'"
                           class="h-4 w-4"
                         />
                       </button>
@@ -128,8 +128,8 @@
                     v-if="serverError"
                     class="flex items-start gap-3 rounded-xl border border-red-200/70 bg-red-50/70 px-4 py-3.5 dark:border-red-900/50 dark:bg-red-950/30"
                   >
-                    <Icon
-                      icon="mdi:alert-circle-outline"
+                    <UIcon
+                      name="i-lucide-circle-alert"
                       class="mt-0.5 h-4 w-4 shrink-0 text-red-500"
                     />
                     <div>
@@ -152,7 +152,7 @@
                   variant="solid"
                   size="lg"
                   block
-                  trailing-icon="i-mdi-arrow-right"
+                  trailing-icon="i-lucide-arrow-right"
                 >
                   Set password & continue
                 </UButton>
@@ -220,7 +220,10 @@
                         : 'bg-gray-100/80 dark:bg-white/5'
                     "
                   >
-                    <Icon :icon="req.met ? 'mdi:check' : 'mdi:minus'" class="h-3.5 w-3.5" />
+                    <UIcon
+                      :name="req.met ? 'i-lucide-check' : 'i-lucide-minus'"
+                      class="h-3.5 w-3.5"
+                    />
                   </div>
                   <span class="text-sm">{{ req.label }}</span>
                 </div>
@@ -234,7 +237,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed, reactive, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 

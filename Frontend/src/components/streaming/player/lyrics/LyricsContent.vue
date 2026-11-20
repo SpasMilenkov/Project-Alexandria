@@ -253,7 +253,7 @@ const manualLyrics = ref("");
 
 const FORMAT_META: Record<LyricsFormat, { icon: string; label: string; unit: string }> = {
   plain: { icon: "i-lucide-align-left", label: "Plain text", unit: "line" },
-  synced: { icon: "i-mdi-clock-outline", label: "Synced", unit: "timed line" },
+  synced: { icon: "i-lucide-clock", label: "Synced", unit: "timed line" },
 };
 
 const MANUAL_PLACEHOLDER =
@@ -352,7 +352,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
     )
     .map((provider) => ({
       label: `Switch to ${PROVIDER_LABELS[provider]}`,
-      icon: "i-mdi-swap-horizontal",
+      icon: "i-lucide-arrow-left-right",
       onSelect: () => onChangeProvider(provider),
     }));
 
@@ -360,12 +360,12 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
     [
       {
         label: manualUploadMenuLabel.value,
-        icon: "i-mdi-pencil-outline",
+        icon: "i-lucide-pencil",
         onSelect: onOpenManualUpload,
       },
       {
         label: "Refetch lyrics",
-        icon: "i-mdi-refresh",
+        icon: "i-lucide-refresh-cw",
         disabled: isFetchStatus.value,
         onSelect: onRequeue,
       },
@@ -374,7 +374,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
     [
       {
         label: "Delete lyrics",
-        icon: "i-mdi-trash-can-outline",
+        icon: "i-lucide-trash-2",
         color: "error",
         onSelect: onDeleteLyrics,
       },
@@ -402,7 +402,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
               size="sm"
               square
               aria-label="Lyrics options"
-              icon="i-mdi-dots-horizontal"
+              icon="i-lucide-ellipsis"
             />
           </UDropdownMenu>
 
@@ -412,7 +412,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
             size="sm"
             square
             aria-label="Close lyrics"
-            icon="i-mdi-close"
+            icon="i-lucide-x"
             @click="onClose"
           />
         </div>
@@ -433,7 +433,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
     <div class="flex-1 min-h-0 flex flex-col">
       <LyricsEmptyState
         v-if="!activeFile"
-        icon="i-mdi-music-note-outline"
+        icon="i-lucide-music"
         title="Nothing playing"
         description="Play a song and its lyrics will follow along here."
       >
@@ -449,7 +449,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
 
       <LyricsEmptyState
         v-else-if="!isAudio"
-        icon="i-mdi-video-outline"
+        icon="i-lucide-video"
         title="No lyrics for videos"
         description="Lyrics are only available for audio tracks."
         :ghost="false"
@@ -463,13 +463,13 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
 
       <LyricsEmptyState
         v-else-if="isFetchStatus && fetchTimedOut"
-        icon="i-mdi-timer-sand"
+        icon="i-lucide-hourglass"
         title="Taking longer than expected"
         description="The lyrics provider hasn't answered yet. Keep waiting, or ask it again."
       >
         <UButton
           label="Try again"
-          icon="i-mdi-refresh"
+          icon="i-lucide-refresh-cw"
           variant="outline"
           color="neutral"
           size="sm"
@@ -490,13 +490,13 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
 
       <LyricsEmptyState
         v-else-if="isFailedStatus && !showManualUpload"
-        icon="i-mdi-alert-circle-outline"
+        icon="i-lucide-circle-alert"
         title="Couldn't fetch lyrics"
         description="Something went wrong reaching the lyrics provider. Try again, or paste them yourself."
       >
         <UButton
           label="Try again"
-          icon="i-mdi-refresh"
+          icon="i-lucide-refresh-cw"
           variant="outline"
           color="neutral"
           size="sm"
@@ -505,7 +505,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
         />
         <UButton
           label="Add manually"
-          icon="i-mdi-pencil-outline"
+          icon="i-lucide-pencil"
           variant="ghost"
           color="neutral"
           size="sm"
@@ -516,13 +516,13 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
 
       <LyricsEmptyState
         v-else-if="isNoMatchStatus && !showManualUpload"
-        icon="i-mdi-magnify"
+        icon="i-lucide-search"
         title="No lyrics found"
         description="This track didn't match anything in the lyrics providers. Search again, or paste them yourself."
       >
         <UButton
           label="Search again"
-          icon="i-mdi-refresh"
+          icon="i-lucide-refresh-cw"
           variant="outline"
           color="neutral"
           size="sm"
@@ -531,7 +531,7 @@ const providerMenuItems = computed<DropdownMenuItem[][]>(() => {
         />
         <UButton
           label="Add manually"
-          icon="i-mdi-pencil-outline"
+          icon="i-lucide-pencil"
           variant="ghost"
           color="neutral"
           size="sm"

@@ -144,7 +144,7 @@ const reset = () => {
         <UButton
           color="neutral"
           variant="ghost"
-          icon="i-heroicons-command-line"
+          icon="i-lucide-square-terminal"
           class="w-full justify-start"
           >Shortcuts</UButton
         >
@@ -194,7 +194,7 @@ const reset = () => {
         v-else
         color="error"
         variant="ghost"
-        icon="i-heroicons-arrow-path"
+        icon="i-lucide-refresh-cw"
         class="justify-start"
         :disabled="disabled || (target === 'mobile' && !separateMobile)"
         @click="confirmReset = true"

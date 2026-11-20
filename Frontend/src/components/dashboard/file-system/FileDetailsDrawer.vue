@@ -7,7 +7,7 @@
     wide
   >
     <template #icon>
-      <Icon v-if="detail" :icon="getFileIcon(detail.fileName)" class="h-6 w-6" />
+      <UIcon v-if="detail" :name="getFileIcon(detail.fileName)" class="h-6 w-6" />
     </template>
 
     <template v-if="detail" #meta>
@@ -20,7 +20,7 @@
       <template v-if="detail.currentVersion.isEncrypted">
         <span aria-hidden="true">·</span>
         <span class="flex items-center gap-1">
-          <Icon icon="mdi:lock" class="h-3.5 w-3.5" aria-hidden="true" />
+          <UIcon name="i-lucide-lock" class="h-3.5 w-3.5" aria-hidden="true" />
           Encrypted
         </span>
       </template>
@@ -28,7 +28,7 @@
       <template v-else-if="detail.currentVersion.isPasswordProtected">
         <span aria-hidden="true">·</span>
         <span class="flex items-center gap-1">
-          <Icon icon="mdi:file-lock" class="h-3.5 w-3.5" aria-hidden="true" />
+          <UIcon name="i-lucide-file-lock" class="h-3.5 w-3.5" aria-hidden="true" />
           Password protected
         </span>
       </template>
@@ -45,8 +45,8 @@
         <div
           class="flex items-start gap-3 rounded-lg border border-gray-200/70 p-3 dark:border-gray-700/70"
         >
-          <Icon
-            icon="mdi:file-lock"
+          <UIcon
+            name="i-lucide-file-lock"
             class="mt-0.5 h-5 w-5 shrink-0 text-gray-500 dark:text-gray-400"
             aria-hidden="true"
           />
@@ -75,7 +75,7 @@
         <template #actions>
           <UButton
             v-if="isAudioFile && autoTaggingEnabled"
-            icon="i-mdi-tag-outline"
+            icon="i-lucide-tag"
             label="Auto-tag"
             size="xs"
             variant="outline"
@@ -88,7 +88,7 @@
           <UPopover v-model:open="showTagSearch" :content="{ side: 'bottom', align: 'end' }">
             <UButton
               label="Add tag"
-              icon="i-mdi-plus"
+              icon="i-lucide-plus"
               size="xs"
               variant="outline"
               color="neutral"
@@ -204,7 +204,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref, watch } from "vue";
 

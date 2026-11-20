@@ -29,7 +29,10 @@ const ROWS = Array.from({ length: 20 }, (_, index) => ({
         </span>
       </span>
 
-      <UIcon name="i-mdi-chevron-down" class="size-4 shrink-0 text-gray-400 dark:text-gray-600" />
+      <UIcon
+        name="i-lucide-chevron-down"
+        class="size-4 shrink-0 text-gray-400 dark:text-gray-600"
+      />
     </div>
   </div>
 </template>

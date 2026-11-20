@@ -24,9 +24,9 @@
           :alt="file.title ?? file.fileName"
           class="w-full h-full object-cover"
         />
-        <Icon
+        <UIcon
           v-else
-          :icon="mediaType === 'video' ? 'mdi:film-outline' : 'mdi:music-note-outline'"
+          :name="mediaType === 'video' ? 'i-lucide-film' : 'i-lucide-music'"
           class="w-4 h-4 text-gray-400 dark:text-white/30"
         />
         <!-- Preload img — invisible, just triggers onload -->
@@ -52,7 +52,7 @@
           class="flex items-center gap-1 text-xs italic text-gray-600 dark:text-gray-400 m-0 leading-snug min-w-0"
           :title="file.lyricsSnippet"
         >
-          <Icon icon="mdi:microphone-variant" class="w-3 h-3 shrink-0" aria-hidden="true" />
+          <UIcon name="i-lucide-mic-vocal" class="w-3 h-3 shrink-0" aria-hidden="true" />
           <span class="sr-only">Matched in lyrics:</span>
           <span class="truncate">{{ file.lyricsSnippet }}</span>
         </p>
@@ -74,7 +74,8 @@
             size="xs"
             variant="ghost"
             color="primary"
-            icon="i-mdi-play"
+            icon="i-lucide-play"
+            :ui="{ leadingIcon: 'icon-solid' }"
             @click.stop="playNow"
           />
         </UTooltip>
@@ -83,7 +84,7 @@
             size="xs"
             variant="ghost"
             color="neutral"
-            icon="i-mdi-plus"
+            icon="i-lucide-plus"
             @click.stop="emit('enqueue', file)"
           />
         </UTooltip>
@@ -92,7 +93,7 @@
             size="xs"
             variant="ghost"
             color="neutral"
-            icon="i-mdi-information-outline"
+            icon="i-lucide-info"
             :to="{ name: 'track-details', params: { fileId: file.fileId } }"
             :aria-label="`Track details for ${file.title ?? file.fileName}`"
             @click.stop
@@ -104,7 +105,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery } from "@pinia/colada";
 import { computed, ref } from "vue";
 

@@ -33,7 +33,7 @@ const emit = defineEmits<{ open: [id: string, name: string] }>();
         @click="emit('open', folder.id, folder.name)"
       >
         <UIcon
-          name="i-heroicons-folder"
+          name="i-lucide-folder"
           class="folder-icon shrink-0 text-gray-600 dark:text-gray-400"
         />
 

@@ -316,10 +316,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
     <div
       class="px-5 py-3 border-b border-gray-200/70 dark:border-gray-700/70 flex items-center gap-2 flex-wrap"
     >
-      <UIcon
-        name="i-mdi-format-list-bulleted"
-        class="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0"
-      />
+      <UIcon name="i-lucide-list" class="w-4 h-4 text-gray-600 dark:text-gray-400 shrink-0" />
       <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">Incident Log</span>
 
       <!-- Active date filter chip -->
@@ -496,7 +493,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
                 :class="statusIconBg(event)"
               >
                 <UIcon
-                  :name="EVENT_CODE_ICONS[event.code] ?? 'mdi:help-circle-outline'"
+                  :name="EVENT_CODE_ICONS[event.code] ?? 'i-lucide-circle-question-mark'"
                   class="w-4 h-4"
                   :class="statusIconColor(event)"
                 />
@@ -672,7 +669,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
         <div class="flex items-center gap-3">
           <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-gray-500/10">
             <UIcon
-              :name="EVENT_CODE_ICONS[resolvingEvent.code] ?? 'mdi:help-circle-outline'"
+              :name="EVENT_CODE_ICONS[resolvingEvent.code] ?? 'i-lucide-circle-question-mark'"
               class="w-4 h-4 text-gray-500 dark:text-gray-400"
             />
           </span>
@@ -693,7 +690,7 @@ const handleResolveModalClose = async (confirmed: boolean) => {
           class="rounded-lg border border-gray-200/70 dark:border-gray-700/70 px-3 py-2 flex items-center gap-2"
         >
           <UIcon
-            name="i-mdi-clock-outline"
+            name="i-lucide-clock"
             class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0"
           />
           <span class="text-xs text-gray-600 dark:text-gray-300 tabular-nums truncate">

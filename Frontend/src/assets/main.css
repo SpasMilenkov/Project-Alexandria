@@ -20,6 +20,15 @@
   backdrop-filter: blur(var(--frost-blur)) saturate(1.2);
 }
 
+/* Lucide ships outlines only. Filling the glyph's own shapes gives the solid look for
+   active states (favourite, starred) and transport controls without a second icon set.
+   CSS beats the fill="none" presentation attribute on the child shapes. */
+@utility icon-solid {
+  & > * {
+    fill: currentColor;
+  }
+}
+
 /* Pure-CSS surface tints. These replace Tailwind translucent background utilities
    on frosted surfaces (Tailwind opacity suffixes are precompiled and cannot
    read a variable).

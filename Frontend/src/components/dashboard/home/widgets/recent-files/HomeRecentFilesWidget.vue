@@ -142,10 +142,7 @@ const uploadFiles = async () => {
         v-if="data && !data.length"
         class="recent-empty flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center"
       >
-        <UIcon
-          name="i-heroicons-document-text"
-          class="size-8 shrink-0 text-gray-500 dark:text-gray-500"
-        />
+        <UIcon name="i-lucide-file-text" class="size-8 shrink-0 text-gray-500 dark:text-gray-500" />
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">No recent files</p>
         <p class="empty-description text-xs text-gray-600 dark:text-gray-400">
           {{

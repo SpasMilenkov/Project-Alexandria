@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 import { usePlayerStore } from "@/stores/stream-player";
@@ -97,7 +96,7 @@ defineExpose({ toggle, close, isOpen });
       :title="isOpen ? 'Close queue' : 'Show queue'"
       @click.stop="toggle"
     >
-      <Icon icon="mdi:playlist-play" class="w-5 h-5" />
+      <UIcon name="i-lucide-list-video" class="w-5 h-5" />
     </button>
 
     <!--

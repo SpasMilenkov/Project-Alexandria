@@ -191,7 +191,7 @@ const step = (field: (typeof fields.value)[number], delta: number) => {
       <UButton
         color="error"
         variant="ghost"
-        icon="i-heroicons-trash"
+        icon="i-lucide-trash-2"
         aria-label="Remove widget"
         :disabled="disabled"
         @click="emit('remove', widget.instanceId)"
@@ -291,7 +291,7 @@ const step = (field: (typeof fields.value)[number], delta: number) => {
               <UButton
                 color="neutral"
                 variant="ghost"
-                icon="i-heroicons-plus"
+                icon="i-lucide-plus"
                 :aria-label="field.increase"
                 :disabled="disabled || field.value >= field.max"
                 class="min-h-9 min-w-9 justify-center"

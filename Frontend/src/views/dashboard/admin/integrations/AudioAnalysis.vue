@@ -256,14 +256,14 @@ const kpiTiles = computed(() => [
   },
   {
     key: "stuck",
-    icon: "mdi:clock-alert-outline",
+    icon: "i-lucide-clock-alert",
     label: "Stuck files",
     value: `${stuckTotal.value}`,
     tone: stuckTotal.value > 0 ? ("warning" as const) : ("neutral" as const),
   },
   {
     key: "failureRate",
-    icon: "mdi:chart-line",
+    icon: "i-lucide-chart-line",
     label: `Failure rate (${rangeOptions.find((r) => r.value === rangeMs.value)?.label})`,
     value: overallFailureRate.value === null ? "—" : `${overallFailureRate.value.toFixed(1)}%`,
     tone:
@@ -273,7 +273,7 @@ const kpiTiles = computed(() => [
   },
   {
     key: "avgDuration",
-    icon: "mdi:timer-outline",
+    icon: "i-lucide-timer",
     label: "Avg duration",
     value: overallAvgDuration.value === null ? "—" : formatPlaybackTime(overallAvgDuration.value),
     tone: "neutral" as const,

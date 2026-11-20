@@ -159,7 +159,7 @@ const monthTitle = (month: YearMonthBar) => {
     </div>
 
     <div v-else-if="empty" class="flex h-56 flex-col items-center justify-center text-center">
-      <UIcon name="mdi:music-note-outline" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+      <UIcon name="i-lucide-music" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
 
       <h2 class="mt-4 font-semibold text-gray-900 dark:text-gray-100">
         Nothing played in {{ year }} yet
@@ -251,7 +251,8 @@ const monthTitle = (month: YearMonthBar) => {
           <UButton
             color="primary"
             size="lg"
-            icon="i-mdi-play"
+            icon="i-lucide-play"
+            :ui="{ leadingIcon: 'icon-solid' }"
             :disabled="disabled"
             class="min-h-11 rounded-full px-6"
             @click="playTopSongs"
@@ -263,7 +264,7 @@ const monthTitle = (month: YearMonthBar) => {
             color="neutral"
             variant="outline"
             size="lg"
-            icon="mdi:gift-outline"
+            icon="i-lucide-gift"
             class="min-h-11 rounded-full px-5"
             >Open {{ year }} Wrapped</UButton
           >

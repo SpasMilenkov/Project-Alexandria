@@ -3,7 +3,7 @@
     <div
       class="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary transition-colors duration-300"
     >
-      <Icon icon="mdi:lightning-bolt-outline" class="h-6 w-6" />
+      <UIcon name="i-lucide-zap" class="h-6 w-6" />
     </div>
 
     <div>
@@ -26,8 +26,8 @@
         @pointerenter="emit('focus', draft.kind)"
       >
         <div class="flex items-center gap-3">
-          <Icon
-            :icon="presetFor(draft.kind).icon"
+          <UIcon
+            :name="presetFor(draft.kind).icon"
             class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
           />
 
@@ -78,7 +78,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import type { AudioRung, VideoRung } from "@/api/policy";

@@ -7,6 +7,7 @@ import type { HomeWidgetSize, HomeWidgetType } from "@/enums/home-widget";
 import type { HomeEditorTarget, HomeWidget, HomeWidgetOptions } from "@/types/home";
 
 import { isAuthError } from "@/api/shuffle";
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import HomeWidgetCatalogue from "@/components/dashboard/home/catalogue/HomeWidgetCatalogue.vue";
 import HomeEditorControls from "@/components/dashboard/home/editor/HomeEditorControls.vue";
 import HomeEditorPanel from "@/components/dashboard/home/editor/HomeEditorPanel.vue";
@@ -629,7 +630,7 @@ onUnmounted(() => {
           color="neutral"
           variant="outline"
           class="ml-auto"
-          icon="i-heroicons-arrow-left"
+          icon="i-lucide-arrow-left"
           @click="closeShowcase"
           >Back to editing</UButton
         >
@@ -698,7 +699,7 @@ onUnmounted(() => {
               v-if="!previewing"
               color="neutral"
               variant="outline"
-              icon="i-heroicons-plus"
+              icon="i-lucide-plus"
               aria-label="Add widget"
               :disabled="isSaving || dragActive"
               @click="catalogueOpen = !catalogueOpen"
@@ -708,7 +709,7 @@ onUnmounted(() => {
               v-if="!wideEditor && !previewing"
               color="neutral"
               variant="ghost"
-              icon="i-heroicons-cog-6-tooth"
+              icon="i-lucide-settings"
               aria-label="Layout controls"
               :aria-expanded="controlsOpen"
               :disabled="isSaving || dragActive"
@@ -740,7 +741,7 @@ onUnmounted(() => {
       role="status"
       aria-label="Loading Home"
     >
-      <UIcon name="i-mdi-loading" class="size-8 animate-spin text-gray-500 dark:text-gray-500" />
+      <BlockSpinner :size="32" class="text-gray-500 dark:text-gray-500" />
     </div>
 
     <template v-else-if="store.settings && layout">
@@ -762,10 +763,7 @@ onUnmounted(() => {
               role="status"
               aria-label="Loading widget catalogue"
             >
-              <UIcon
-                name="i-mdi-loading"
-                class="size-8 animate-spin text-gray-500 dark:text-gray-500"
-              />
+              <BlockSpinner :size="32" class="text-gray-500 dark:text-gray-500" />
             </div>
           </template>
         </Suspense>
@@ -813,10 +811,7 @@ onUnmounted(() => {
                 v-else
                 class="frosted-glass glass-surface flex flex-col items-center gap-4 rounded-2xl border border-dashed border-gray-200/70 p-8 text-center dark:border-gray-700/70"
               >
-                <UIcon
-                  name="i-heroicons-book-open"
-                  class="size-12 text-gray-400 dark:text-gray-600"
-                />
+                <UIcon name="i-lucide-book-open" class="size-12 text-gray-400 dark:text-gray-600" />
                 <div>
                   <h2 class="font-semibold text-gray-900 dark:text-gray-100">
                     Your dashboard is empty

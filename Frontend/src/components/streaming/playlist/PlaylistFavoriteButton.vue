@@ -11,7 +11,7 @@
   >
     <span class="relative flex items-center justify-center" :class="iconBoxClass">
       <UIcon
-        name="mdi:heart-outline"
+        name="i-lucide-heart"
         class="absolute inset-0 h-full w-full transition-all duration-200 ease-out group-hover/fav:text-primary group-data-[starred=true]/fav:scale-0 group-data-[starred=true]/fav:opacity-0"
       />
 
@@ -37,7 +37,7 @@
             aria-hidden="true"
           />
           <span class="fav-icon flex" :class="iconBoxClass">
-            <UIcon name="mdi:heart" class="h-full w-full" />
+            <UIcon name="i-lucide-heart" class="h-full w-full icon-solid" />
           </span>
         </span>
       </Transition>

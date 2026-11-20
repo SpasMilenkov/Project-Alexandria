@@ -3,7 +3,7 @@
     <div
       class="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15 text-primary transition-colors duration-300"
     >
-      <Icon icon="mdi:folder-outline" class="h-6 w-6" />
+      <UIcon name="i-lucide-folder" class="h-6 w-6" />
     </div>
 
     <div>
@@ -22,7 +22,7 @@
           <span
             class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-gray-600 dark:bg-neutral-800 dark:text-gray-400"
           >
-            <Icon :icon="presetFor(draft.kind).icon" class="h-4 w-4" />
+            <UIcon :name="presetFor(draft.kind).icon" class="h-4 w-4" />
           </span>
 
           <UInput
@@ -38,7 +38,7 @@
 
           <UBadge
             v-if="isDraftAutomated(draft, capabilities)"
-            icon="i-mdi-lightning-bolt"
+            icon="i-lucide-zap"
             label="Automated"
             color="neutral"
             variant="subtle"
@@ -56,8 +56,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
-
 import {
   type LibraryCapabilities,
   type LibraryErrors,

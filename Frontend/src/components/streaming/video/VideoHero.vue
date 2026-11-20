@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { computed } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
@@ -82,7 +81,7 @@ const onRestart = () => emit("restart");
       </div>
       <div class="flex gap-2 flex-wrap">
         <button type="button" class="hero-btn hero-btn-primary" @click="onResume">
-          <Icon icon="mdi:play" class="w-4 h-4" />
+          <UIcon name="i-lucide-play" class="w-4 h-4 icon-solid" />
           {{ hasProgress ? "Resume" : "Play" }}
         </button>
         <button
@@ -116,10 +115,10 @@ const onRestart = () => emit("restart");
         class="absolute inset-0 flex items-center justify-center"
         aria-hidden="true"
       >
-        <Icon icon="mdi:file-video" class="w-10 h-10 text-white/60" />
+        <UIcon name="i-lucide-file-play" class="w-10 h-10 text-white/60" />
       </span>
       <span class="hero-play" aria-hidden="true">
-        <Icon icon="mdi:play" class="w-6 h-6" />
+        <UIcon name="i-lucide-play" class="w-6 h-6 icon-solid" />
       </span>
     </button>
     <div class="hero-keys hidden md:flex" aria-hidden="true">

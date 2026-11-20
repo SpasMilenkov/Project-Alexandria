@@ -16,7 +16,7 @@
     @click.stop="emit('play')"
   >
     <UIcon
-      name="lucide:grip-vertical"
+      name="i-lucide-grip-vertical"
       class="w-4 h-4 text-muted cursor-grab active:cursor-grabbing shrink-0"
     />
 
@@ -34,7 +34,7 @@
           class="hidden group-hover:flex items-center justify-center text-gray-500 dark:text-white/50 hover:text-primary dark:hover:text-primary transition-colors"
           @click.stop="emit('play')"
         >
-          <UIcon name="mdi:play" class="w-4 h-4" />
+          <UIcon name="i-lucide-play" class="w-4 h-4 icon-solid" />
         </button>
       </template>
     </div>
@@ -53,7 +53,7 @@
       />
       <div v-else class="flex h-full w-full items-center justify-center">
         <UIcon
-          :name="isVideo ? 'mdi:file-video' : 'mdi:music-note'"
+          :name="isVideo ? 'i-lucide-file-play' : 'i-lucide-music'"
           class="w-4 h-4 text-muted shrink-0"
         />
       </div>
@@ -78,7 +78,7 @@
     />
 
     <UButton
-      icon="i-heroicons-x-mark"
+      icon="i-lucide-x"
       color="neutral"
       variant="ghost"
       size="xs"

@@ -64,11 +64,8 @@
               :disabled="isLoading"
               @click="onRefresh"
             >
-              <Icon
-                icon="mdi:refresh"
-                class="size-4.5 transition-transform duration-500"
-                :class="{ 'animate-spin': isLoading }"
-              />
+              <BlockSpinner v-if="isLoading" :size="18" />
+              <UIcon v-else name="i-lucide-refresh-cw" class="size-4.5" />
             </button>
 
             <button
@@ -82,7 +79,7 @@
               aria-label="Toggle lyrics"
               @click="playerStore.toggleLyrics()"
             >
-              <Icon icon="mdi:script-text-outline" class="size-4.5" />
+              <UIcon name="i-lucide-scroll-text" class="size-4.5" />
             </button>
 
             <div
@@ -98,7 +95,7 @@
                 aria-label="Grid view"
                 @click="viewMode = 'grid'"
               >
-                <Icon icon="mdi:view-grid-outline" class="size-4.5" />
+                <UIcon name="i-lucide-layout-grid" class="size-4.5" />
               </button>
               <button
                 class="flex size-8 items-center justify-center rounded-md transition-all duration-150"
@@ -110,7 +107,7 @@
                 aria-label="List view"
                 @click="viewMode = 'list'"
               >
-                <Icon icon="mdi:view-list-outline" class="size-4.5" />
+                <UIcon name="i-lucide-list" class="size-4.5" />
               </button>
             </div>
 
@@ -120,7 +117,7 @@
               title="Select files"
               @click="enterSelection()"
             >
-              <Icon icon="mdi:check-box-multiple-outline" class="size-4.5" />
+              <UIcon name="i-lucide-list-checks" class="size-4.5" />
             </button>
           </div>
         </div>
@@ -178,7 +175,7 @@
         <div
           class="m-auto flex flex-col items-center gap-2.5 rounded-2xl border border-gray-200/70 px-8 py-6 text-center frosted-glass glass-surface-strong dark:border-gray-700/70"
         >
-          <Icon icon="mdi:alert-circle-outline" class="w-9 h-9 text-red-400" />
+          <UIcon name="i-lucide-circle-alert" class="w-9 h-9 text-red-400" />
           <p class="text-sm text-gray-900 dark:text-gray-100 m-0">Failed to load media library</p>
         </div>
       </div>
@@ -285,7 +282,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQuery, useQueryCache } from "@pinia/colada";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, ref, watch, watchEffect } from "vue";

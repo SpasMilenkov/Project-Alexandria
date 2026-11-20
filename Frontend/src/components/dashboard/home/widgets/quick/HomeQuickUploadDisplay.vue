@@ -3,6 +3,7 @@ import { computed } from "vue";
 
 import type { UploadKind } from "@/composables/useUploadLauncher";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import { HomeQuickUploadStyle } from "@/enums/home-widget";
 
 const {
@@ -22,19 +23,19 @@ const emit = defineEmits<{ upload: [kind: UploadKind] }>();
 const uploadMenu = computed(() => [
   {
     label: "Upload files",
-    icon: "i-mdi-file-upload-outline",
+    icon: "i-lucide-file-up",
     disabled,
     onSelect: () => emit("upload", "File"),
   },
   {
     label: "Upload folder",
-    icon: "i-mdi-folder-upload-outline",
+    icon: "i-lucide-folder-up",
     disabled,
     onSelect: () => emit("upload", "Directory"),
   },
   {
     label: "Extract ZIP archive",
-    icon: "i-mdi-archive-outline",
+    icon: "i-lucide-archive",
     disabled,
     onSelect: () => emit("upload", "Archive"),
   },
@@ -66,19 +67,24 @@ const heading = computed(() => {
         :disabled="disabled"
         @click="emit('upload', 'File')"
       >
-        <UIcon name="i-mdi-cloud-upload-outline" class="h-1/2 w-1/2" />
+        <UIcon name="i-lucide-cloud-upload" class="h-1/2 w-1/2" />
       </button>
     </div>
 
-    <UIcon
-      v-else-if="uploadStyle === HomeQuickUploadStyle.DropZone"
-      :name="preparing ? 'i-mdi-loading' : 'i-mdi-cloud-upload-outline'"
-      class="upload-icon size-8 shrink-0"
-      :class="[
-        over ? 'text-primary' : 'text-gray-600 dark:text-gray-400',
-        { 'animate-spin': preparing },
-      ]"
-    />
+    <template v-else-if="uploadStyle === HomeQuickUploadStyle.DropZone">
+      <BlockSpinner
+        v-if="preparing"
+        :size="32"
+        class="upload-icon shrink-0"
+        :class="over ? 'text-primary' : 'text-gray-600 dark:text-gray-400'"
+      />
+      <UIcon
+        v-else
+        name="i-lucide-cloud-upload"
+        class="upload-icon size-8 shrink-0"
+        :class="over ? 'text-primary' : 'text-gray-600 dark:text-gray-400'"
+      />
+    </template>
 
     <div class="upload-details flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-2">
       <div class="upload-copy min-w-0" :role="over || preparing ? 'status' : undefined">
@@ -105,7 +111,7 @@ const heading = computed(() => {
             color="neutral"
             variant="outline"
             size="sm"
-            icon="i-mdi-dots-horizontal"
+            icon="i-lucide-ellipsis"
             aria-label="More upload options"
             :disabled="disabled"
           />

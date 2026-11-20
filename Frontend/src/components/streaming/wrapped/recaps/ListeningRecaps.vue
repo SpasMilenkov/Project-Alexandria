@@ -28,10 +28,7 @@
           role="status"
           aria-label="Loading past recaps"
         >
-          <UIcon
-            name="i-mdi-loading"
-            class="h-8 w-8 animate-spin text-gray-400 dark:text-gray-600"
-          />
+          <BlockSpinner :size="32" class="text-gray-400 dark:text-gray-600" />
         </div>
         <div
           v-else-if="visibleError"
@@ -51,7 +48,7 @@
           v-else-if="!rows.length"
           class="frosted-glass glass-surface flex flex-col items-center rounded-3xl border border-gray-200/70 px-4 py-8 text-center dark:border-gray-700/70"
         >
-          <UIcon name="mdi:gift-outline" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
+          <UIcon name="i-lucide-gift" class="h-12 w-12 text-gray-400 dark:text-gray-600" />
           <h3 class="mt-4 font-semibold text-gray-900 dark:text-gray-100">No archived years yet</h3>
 
           <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -76,6 +73,7 @@ import { useQuery } from "@pinia/colada";
 import { useIntervalFn, useNow } from "@vueuse/core";
 import { computed } from "vue";
 
+import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import AnnualRecapCard from "@/components/streaming/wrapped/recaps/AnnualRecapCard.vue";
 import MonthlyRecapCard from "@/components/streaming/wrapped/recaps/MonthlyRecapCard.vue";
 import { useWrappedPalette } from "@/composables/useWrappedPalette";

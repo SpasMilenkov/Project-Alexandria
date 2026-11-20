@@ -25,10 +25,7 @@ const links = computed(() => homeLibraryLinks(widget.options, streamingEnabled))
   />
 
   <div v-else class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 text-center">
-    <UIcon
-      name="i-heroicons-musical-note"
-      class="size-8 shrink-0 text-gray-400 dark:text-gray-600"
-    />
+    <UIcon name="i-lucide-music" class="size-8 shrink-0 text-gray-400 dark:text-gray-600" />
     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Streaming is unavailable</p>
     <p class="library-unavailable-detail text-xs text-gray-600 dark:text-gray-400">
       Choose file shortcuts while streaming is disabled.

@@ -212,7 +212,7 @@ describe("buildExplorerMenuItems", () => {
     const items = flatten(buildExplorerMenuItems(snapshot, makeActions()));
     const action = items.find((item) => item.label === "Remove from favorites");
 
-    expect(action).toMatchObject({ disabled: true, icon: "i-mdi-star" });
+    expect(action).toMatchObject({ disabled: true, icon: "i-lucide-star-off" });
   });
 
   it("freezes actions to the opening snapshot", () => {

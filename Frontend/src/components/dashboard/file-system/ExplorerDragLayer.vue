@@ -39,8 +39,8 @@
           <div
             class="relative flex items-center gap-2 rounded-lg border border-gray-200/70 px-2.5 py-2 shadow-lg frosted-glass glass-surface-strong dark:border-gray-700/70"
           >
-            <Icon
-              :icon="ghost.lead.icon"
+            <UIcon
+              :name="ghost.lead.icon"
               class="h-5 w-5 shrink-0 text-gray-500 dark:text-gray-400"
             />
 
@@ -49,7 +49,7 @@
                 {{ ghost.lead.name }}
               </p>
               <p class="flex min-w-0 items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-                <Icon :icon="status.icon" class="h-3.5 w-3.5 shrink-0" />
+                <UIcon :name="status.icon" class="h-3.5 w-3.5 shrink-0" />
                 <span class="truncate">
                   {{ status.prefix }}
                   <strong v-if="status.name" class="font-semibold text-gray-900 dark:text-gray-100">
@@ -75,7 +75,6 @@
 </template>
 
 <script setup lang="ts">
-import { Icon } from "@iconify/vue";
 import { useQueryCache } from "@pinia/colada";
 import { computed, onScopeDispose, ref, shallowRef, useTemplateRef, watch } from "vue";
 
@@ -165,21 +164,21 @@ const status = computed(() => {
   const count = ghost.value?.count ?? 0;
 
   if (hoveredTabTitle.value) {
-    return { icon: "mdi:folder-move-outline", name: hoveredTabTitle.value, prefix: "Hold to open" };
+    return { icon: "i-lucide-folder-input", name: hoveredTabTitle.value, prefix: "Hold to open" };
   }
 
   if (current?.invalid === "self") {
-    return { icon: "mdi:folder-remove-outline", name: "", prefix: "Can't move into itself" };
+    return { icon: "i-lucide-folder-x", name: "", prefix: "Can't move into itself" };
   }
 
   if (current?.invalid === "origin") {
-    return { icon: "mdi:folder-remove-outline", name: "", prefix: "Already here" };
+    return { icon: "i-lucide-folder-x", name: "", prefix: "Already here" };
   }
 
-  if (current) return { icon: "mdi:folder-move-outline", name: current.name, prefix: "Move to" };
+  if (current) return { icon: "i-lucide-folder-input", name: current.name, prefix: "Move to" };
 
   return {
-    icon: "mdi:folder-move-outline",
+    icon: "i-lucide-folder-input",
     name: "",
     prefix: `Move ${formatCount(count, "item")}`,
   };
