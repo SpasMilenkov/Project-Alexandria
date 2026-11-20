@@ -12,11 +12,11 @@ RUN pip install --no-cache-dir \
 
 WORKDIR /app
 
-COPY essentia_core.py /app/essentia_core.py
+COPY essentia_core.py batch_outputs.py /app/
 COPY model_assets.py model-requirements.tsv /app/
 COPY models/models.sha256 /app/models.sha256
 COPY classify.py /app/classify.py
-COPY worker.py /app/worker.py
+COPY worker.py model_host.py model_child.py /app/
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 

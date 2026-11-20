@@ -4,10 +4,13 @@ classify.py - one-shot CLI entry point, useful for local testing/manual runs.
 For the production two-worker setup, see worker.py, which keeps models
 loaded across many batches instead of paying load cost per invocation.
 
+The output JSON contract lives in batch_outputs.py.
+
 Usage:
     python classify.py --backbone {effnet,maest} --output-dir DIR file1.mp3 [file2.mp3 ...]
 
-See essentia_core.py for the output JSON contract and exit code meanings.
+Exit codes: 0 every file succeeded, 2 some failed, 1 all failed or the
+models could not load.
 """
 
 import argparse
@@ -15,7 +18,8 @@ import os
 import sys
 import traceback
 
-from essentia_core import Models, process_file, write_fatal_failure
+from batch_outputs import write_fatal_failure
+from essentia_core import Models, process_file
 
 
 def main():

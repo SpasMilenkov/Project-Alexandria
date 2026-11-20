@@ -1,6 +1,9 @@
 **
 !Dockerfile
 !essentia_core.py
+!batch_outputs.py
+!model_host.py
+!model_child.py
 !model_assets.py
 !model-requirements.tsv
 !classify.py

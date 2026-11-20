@@ -95,7 +95,7 @@ This guide sets up Alexandria's development environment: Docker Compose runs the
    docker compose -f docker-compose.dev.yml ps
    ```
 
-   Wait until `postgres`, `garage`, and `rabbitmq` report healthy. The two Essentia workers will start too — they idle until the pipeline sends them work.
+   Wait until `postgres`, `garage`, and `rabbitmq` report healthy. The two Essentia workers will start too — they idle until the pipeline sends them work. They run as uid/gid 1000 so the files they write in `data/media-audio` belong to the same user as the host-run media-metadata worker that cleans them up; if your user has a different ID, set `DEV_UID` and `DEV_GID` in `.env` to the output of `id -u` and `id -g`.
 
 5. **Initialize Garage**
 

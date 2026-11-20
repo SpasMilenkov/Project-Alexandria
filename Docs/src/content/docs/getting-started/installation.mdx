@@ -38,7 +38,7 @@ Use the wizard's measured Docker CPU/memory and disk information together with i
 | Lyrics | 512 MB |
 | Monitoring | 1536 MB |
 
-These figures include planning headroom; they are not measured minimum requirements or a reservation. Media and inference jobs can use substantial CPU. Classifiers process one job at a time with an eight-core CPU limit and a 2 GB memory cap. Allow at least two CPU cores and additional disk space beyond your intended stored-file capacity; low resources produce warnings, and a successful preflight does not guarantee every workload will fit.
+These figures include planning headroom; they are not measured minimum requirements or a reservation. Media and inference jobs can use substantial CPU. Classifiers process one job at a time with an eight-core CPU limit and a 2 GB memory cap. A classifier loads its models when work arrives and releases that memory after five minutes without work; set `ESSENTIA_IDLE_UNLOAD_SECONDS` in `.env` to change the delay, or to `0` to keep the models loaded. Allow at least two CPU cores and additional disk space beyond your intended stored-file capacity; low resources produce warnings, and a successful preflight does not guarantee every workload will fit.
 
 ## Run Builder
 

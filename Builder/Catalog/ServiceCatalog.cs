@@ -41,7 +41,9 @@ public static class ServiceCatalog
     [
         "classificators/essentia/Dockerfile", "classificators/essentia/entrypoint.sh",
         AudioModels.PreparationScript, "classificators/essentia/essentia_core.py",
-        "classificators/essentia/classify.py", "classificators/essentia/worker.py", AudioModels.ChecksumManifest,
+        "classificators/essentia/batch_outputs.py", "classificators/essentia/classify.py",
+        "classificators/essentia/worker.py", "classificators/essentia/model_host.py",
+        "classificators/essentia/model_child.py", AudioModels.ChecksumManifest,
         "classificators/essentia/model_assets.py", "classificators/essentia/model-requirements.tsv",
     ];
 

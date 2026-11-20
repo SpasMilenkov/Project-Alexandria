@@ -1,8 +1,11 @@
 """
 essentia_core.py - shared model loading and classification logic, used by
-both classify.py (CLI, for local/manual runs) and worker.py (long-lived
-RabbitMQ consumer). This is the single place the actual Essentia pipeline
-logic lives; both entry points just call into it.
+both classify.py (CLI, for local/manual runs) and model_child.py (the model
+process the RabbitMQ worker starts on demand). This is the single place the
+actual Essentia pipeline logic lives; both entry points just call into it.
+
+Importing this module loads Essentia and TensorFlow, so the worker parent
+must never import it.
 """
 
 import json
@@ -11,6 +14,7 @@ import sys
 import time
 import traceback
 
+from batch_outputs import base_payload, write_payload
 from model_assets import (
     EFFNET_EMBEDDING_MODEL, EFFNET_EMBEDDING_OUTPUT,
     EFFNET_GENRE_MODEL, EFFNET_GENRE_META,
@@ -27,24 +31,6 @@ essentia.log.infoActive = False
 essentia.log.warningActive = False
 
 MODEL_DIR = os.environ.get("ESSENTIA_MODEL_DIR", "/app/models")
-
-
-def genre_model_name(backbone):
-    """Identifier of the genre classification model used for a backbone.
-
-    This is the exact model filename (minus extension) so downstream systems
-    (the .NET orchestrator) can store a reproducible version string without
-    guessing or hardcoding it independently on both sides. Model filenames
-    are known to drift (e.g. a '-1' -> '-2' suffix bump) between Essentia
-    model-zoo releases; this is the single source of truth for that string.
-    """
-    filename = EFFNET_GENRE_MODEL if backbone == "effnet" else MAEST_GENRE_MODEL
-    return os.path.splitext(filename)[0]
-
-
-def mood_model_name():
-    """Identifier of the EffNet embedding model used to compute every mood head."""
-    return os.path.splitext(EFFNET_EMBEDDING_MODEL)[0]
 
 
 def load_meta(json_name):
@@ -88,9 +74,9 @@ class Models:
     """
     Loads every model exactly once. In the CLI (classify.py), one instance
     is built per process invocation, shared across the files in that batch.
-    In the worker (worker.py), one instance is built ONCE at process
-    startup and reused across every batch consumed for the worker's entire
-    lifetime, this is what actually amortizes model load time.
+    In the worker, the model child (model_child.py) builds one instance when
+    it starts and reuses it across every batch until the worker parent stops
+    it after a period of inactivity.
     """
 
     def __init__(self, backbone):
@@ -156,23 +142,7 @@ def process_file(models, input_path, output_dir):
     reaching this function at all", never a silently-swallowed per-file
     error.
     """
-    stem = os.path.splitext(os.path.basename(input_path))[0]
-    final_path = os.path.join(output_dir, f"{stem}.json")
-    tmp_path = final_path + ".tmp"
-
-    payload = {
-        "input_file": os.path.basename(input_path),
-        "backbone": models.backbone,
-        "success": False,
-        "error": None,
-        "processing_seconds": None,
-        "genre": None,
-        "mood": None,
-        "model_versions": {
-            "genre": genre_model_name(models.backbone),
-            "mood": mood_model_name(),
-        },
-    }
+    payload = base_payload(input_path, models.backbone)
 
     start = time.perf_counter()
     try:
@@ -187,31 +157,6 @@ def process_file(models, input_path, output_dir):
         traceback.print_exc(file=sys.stderr)  # human-debug only, callers don't read this
     finally:
         payload["processing_seconds"] = time.perf_counter() - start
-        with open(tmp_path, "w") as f:
-            json.dump(payload, f, indent=2)
-        os.rename(tmp_path, final_path)  # atomic on the same filesystem
+        write_payload(input_path, output_dir, payload)
 
     return payload["success"]
-
-
-def write_fatal_failure(input_path, output_dir, backbone, error_message):
-    """Used when Models() itself fails to load, before any file can be attempted."""
-    stem = os.path.splitext(os.path.basename(input_path))[0]
-    final_path = os.path.join(output_dir, f"{stem}.json")
-    tmp_path = final_path + ".tmp"
-    payload = {
-        "input_file": os.path.basename(input_path),
-        "backbone": backbone,
-        "success": False,
-        "error": error_message,
-        "processing_seconds": None,
-        "genre": None,
-        "mood": None,
-        "model_versions": {
-            "genre": genre_model_name(backbone),
-            "mood": mood_model_name(),
-        },
-    }
-    with open(tmp_path, "w") as f:
-        json.dump(payload, f, indent=2)
-    os.rename(tmp_path, final_path)
