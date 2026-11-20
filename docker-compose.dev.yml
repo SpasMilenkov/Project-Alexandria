@@ -114,7 +114,11 @@ services:
       dockerfile: Dockerfile
     container_name: alexandria-essentia-effnet-dev
     restart: unless-stopped
+    # The dev media-metadata worker runs on the host as your user and deletes the
+    # batch folders this container writes, so both must share one owner.
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
     environment:
+      HOME: /tmp
       RABBITMQ_URL: amqp://essentia_worker_user:${ESSENTIA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}@rabbitmq:5672/${RABBITMQ_VHOST:-alexandria}
       EXCHANGE_NAME: content-exchange
       RESULT_ROUTING_KEY: media-metadata.completed
@@ -123,14 +127,13 @@ services:
       ESSENTIA_MODEL_DIR: /app/models
       VERIFY_MODELS: "true"
       PREFETCH_COUNT: "1"
+      ESSENTIA_IDLE_UNLOAD_SECONDS: "${ESSENTIA_IDLE_UNLOAD_SECONDS:-300}"
     volumes:
       - ./classificators/essentia/models:/app/models:ro
       - ./data/media-audio:/data
     depends_on:
       rabbitmq:
         condition: service_healthy
-    cap_add:
-          - DAC_OVERRIDE
     networks:
       - alexandria-network
 
@@ -140,7 +143,10 @@ services:
       dockerfile: Dockerfile
     container_name: alexandria-essentia-maest-dev
     restart: unless-stopped
+    # Same owner as the host-run media-metadata worker; see essentia-effnet-worker.
+    user: "${DEV_UID:-1000}:${DEV_GID:-1000}"
     environment:
+      HOME: /tmp
       RABBITMQ_URL: amqp://essentia_worker_user:${ESSENTIA_WORKER_RABBITMQ_PASSWORD:-dev_password_123}@rabbitmq:5672/${RABBITMQ_VHOST:-alexandria}
       EXCHANGE_NAME: content-exchange
       RESULT_ROUTING_KEY: media-metadata.completed
@@ -149,14 +155,13 @@ services:
       ESSENTIA_MODEL_DIR: /app/models
       VERIFY_MODELS: "true"
       PREFETCH_COUNT: "1"
+      ESSENTIA_IDLE_UNLOAD_SECONDS: "${ESSENTIA_IDLE_UNLOAD_SECONDS:-300}"
     volumes:
       - ./classificators/essentia/models:/app/models:ro
       - ./data/media-audio:/data
     depends_on:
       rabbitmq:
         condition: service_healthy
-    cap_add:
-          - DAC_OVERRIDE
     networks:
       - alexandria-network
 
