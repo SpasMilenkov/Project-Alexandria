@@ -137,7 +137,7 @@ internal sealed class CachedInferenceBrokerFixture : IDisposable
 
         overlay.AppendLine();
 
-        foreach (var name in new[] { "entrypoint.sh", "worker.py", "essentia_core.py", "model_assets.py", "model-requirements.tsv" })
+        foreach (var name in new[] { "entrypoint.sh", "worker.py", "model_host.py", "model_child.py", "essentia_core.py", "batch_outputs.py", "model_assets.py", "model-requirements.tsv" })
             overlay.AppendLine("      - " + Yaml(Path.Combine(classifierSource, name) + ":/app/" + name + ":ro"));
 
         overlay.AppendLine("      - " + Yaml(Path.Combine(classifierSource, "models", "models.sha256") + ":/app/models.sha256:ro"));

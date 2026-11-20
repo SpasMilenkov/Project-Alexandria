@@ -28,6 +28,24 @@ MOOD_CLASSIFIERS = [
 ASSET_ROOT = Path(__file__).resolve().parent
 
 
+def genre_model_name(backbone):
+    """Identifier of the genre classification model used for a backbone.
+
+    This is the exact model filename (minus extension) so downstream systems
+    (the .NET orchestrator) can store a reproducible version string without
+    guessing or hardcoding it independently on both sides. Model filenames
+    are known to drift (e.g. a '-1' -> '-2' suffix bump) between Essentia
+    model-zoo releases; this is the single source of truth for that string.
+    """
+    filename = EFFNET_GENRE_MODEL if backbone == "effnet" else MAEST_GENRE_MODEL
+    return os.path.splitext(filename)[0]
+
+
+def mood_model_name():
+    """Identifier of the EffNet embedding model used to compute every mood head."""
+    return os.path.splitext(EFFNET_EMBEDDING_MODEL)[0]
+
+
 def required_model_files(backbone):
     if backbone not in ("effnet", "maest"):
         raise ValueError("BACKBONE must be 'effnet' or 'maest'.")

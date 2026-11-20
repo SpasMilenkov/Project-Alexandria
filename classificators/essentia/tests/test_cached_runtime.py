@@ -75,7 +75,7 @@ class CachedModelRuntimeTests(unittest.TestCase):
                                  "--cpus", "4", "--memory", "2g", "--tmpfs", "/tmp:rw,nosuid,size=64m",
                                  "--mount", mount, "--mount", f"type=bind,src={cache},dst=/app/models,readonly",
                                  "--env", "BACKBONE=" + backbone]
-                    for name in ("entrypoint.sh", "model_assets.py", "essentia_core.py", "classify.py", "model-requirements.tsv"):
+                    for name in ("entrypoint.sh", "model_assets.py", "essentia_core.py", "batch_outputs.py", "classify.py", "model-requirements.tsv"):
                         arguments += ["--mount", f"type=bind,src={SOURCE_ROOT / name},dst=/app/{name},readonly"]
                     arguments += ["--mount", f"type=bind,src={SOURCE_ROOT / 'models/models.sha256'},dst=/app/models.sha256,readonly",
                                   "--entrypoint", "/bin/bash", classifier, "/app/entrypoint.sh", "/bin/sh", "-c",
