@@ -129,6 +129,24 @@ describe("searchFilterOptions", () => {
     expect(options.map((option) => option.id)).toEqual(["starred"]);
   });
 
+  it("offers is:note once a Notes folder exists", () => {
+    const without = searchFilterOptions("is", "", context());
+    const withNotes = searchFilterOptions("is", "", context([], { notesFolderId: "notes" }));
+
+    expect(without.map((option) => option.id)).toEqual(["deleted", "starred"]);
+    expect(withNotes.map((option) => option.id)).toEqual(["deleted", "starred", "note"]);
+  });
+
+  it("hides is:note once the search is limited to folders", () => {
+    const options = searchFilterOptions(
+      "is",
+      "",
+      context([{ key: "type", value: "folders" }], { notesFolderId: "notes" }),
+    );
+
+    expect(options.map((option) => option.id)).not.toContain("note");
+  });
+
   it("puts the current folder first and skips it in the search results", () => {
     const options = searchFilterOptions(
       "in",
@@ -257,6 +275,15 @@ describe("buildSearchRequests", () => {
       sortDirection: SortDirection.Desc,
     });
     expect(requests.directories).toMatchObject({ isDeleted: true });
+  });
+
+  it("searches files anywhere below the Notes folder for is:note", () => {
+    const notesFolderId = "22222222-2222-4222-8222-222222222222";
+    const requests = buildSearchRequests("trip", [{ key: "is", notesFolderId, value: "note" }]);
+
+    expect(requests.directories).toBeNull();
+    expect(requests.files).toMatchObject({ nameContains: "trip", withinDirectoryId: notesFolderId });
+    expect(requests.files?.parentDirectoryId).toBeUndefined();
   });
 
   it("only queries files when a file-only filter is set", () => {

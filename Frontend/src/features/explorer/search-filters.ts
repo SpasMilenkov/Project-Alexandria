@@ -29,6 +29,8 @@ export type SearchFilter =
   | { key: DateFilterKey; label: string; range: SearchDateRange }
   | { key: "size"; max: number | null; min: number | null }
   | { key: "is"; value: "deleted" | "starred" }
+  // Notes are the files anywhere under the Notes folder, so the filter carries which folder that is.
+  | { key: "is"; notesFolderId: string; value: "note" }
   | { key: "has"; value: "files" | "subfolders" };
 
 export interface SearchFilterDefinition {
@@ -54,6 +56,8 @@ export interface SearchFilterContext {
   currentDirectory?: { id: string; name: string } | null;
   filters: SearchFilter[];
   folders?: { id: string; name: string }[];
+  // Null until the first note creates the Notes folder; `is:note` isn't offered before that.
+  notesFolderId?: string | null;
   tags?: { id: string; name: string }[];
   today: CalendarDate;
 }
@@ -72,7 +76,7 @@ export const searchFilterDefinitions: SearchFilterDefinition[] = [
   { description: "When it was uploaded", icon: "i-lucide-calendar-plus", key: "uploaded" },
   { description: "When it last changed", icon: "i-lucide-pencil", key: "modified" },
   { description: "File size", icon: "i-lucide-hard-drive", key: "size" },
-  { description: "Deleted or starred items", icon: "i-lucide-star", key: "is" },
+  { description: "Deleted, starred or notes", icon: "i-lucide-star", key: "is" },
   { description: "Folders with files or subfolders", icon: "i-lucide-folder-tree", key: "has" },
   { description: "When it was deleted", icon: "i-lucide-trash-2", key: "deleted" },
 ];
@@ -130,6 +134,9 @@ const filterScope = (filter: SearchFilter): SearchScope => {
   }
   if (filter.key === "is" && filter.value === "starred") {
     return "directories";
+  }
+  if (filter.key === "is" && filter.value === "note") {
+    return "files";
   }
   return keyScopes[filter.key] ?? "both";
 };
@@ -335,7 +342,7 @@ const listOptions = (key: SearchFilterKey, query: string, ctx: SearchFilterConte
   }
 
   if (key === "is") {
-    return [
+    const options: SearchFilterOption[] = [
       {
         filter: { key, value: "deleted" },
         icon: "i-lucide-trash-2",
@@ -343,7 +350,18 @@ const listOptions = (key: SearchFilterKey, query: string, ctx: SearchFilterConte
         label: "Deleted",
       },
       { filter: { key, value: "starred" }, icon: "i-lucide-star", id: "starred", label: "Starred" },
-    ] satisfies SearchFilterOption[];
+    ];
+
+    if (ctx.notesFolderId) {
+      options.push({
+        filter: { key, notesFolderId: ctx.notesFolderId, value: "note" },
+        icon: "i-lucide-notebook-pen",
+        id: "note",
+        label: "Note",
+      });
+    }
+
+    return options;
   }
 
   if (key === "has") {
@@ -500,6 +518,8 @@ const applyFilter = (state: SearchUiInput, filter: SearchFilter) => {
     state.maxSize = filter.max;
   } else if (filter.key === "is" && filter.value === "deleted") {
     state.isDeleted = true;
+  } else if (filter.key === "is" && filter.value === "note") {
+    state.withinDirectoryId = filter.notesFolderId;
   } else if (filter.key === "is") {
     state.isStarred = true;
   } else if (filter.key === "has" && filter.value === "files") {

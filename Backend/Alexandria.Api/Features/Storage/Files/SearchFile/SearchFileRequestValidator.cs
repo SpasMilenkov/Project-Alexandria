@@ -71,6 +71,11 @@ public class SearchFileRequestValidator : Validator<FileSearchQuery>
             .When(x => x.ParentDirectoryId.HasValue)
             .WithMessage("ParentDirectoryId cannot be an empty GUID");
 
+        RuleFor(x => x.WithinDirectoryId)
+            .NotEqual(Guid.Empty)
+            .When(x => x.WithinDirectoryId.HasValue)
+            .WithMessage("WithinDirectoryId cannot be an empty GUID");
+
         RuleFor(x => x.SortBy)
             .IsInEnum()
             .WithMessage("Invalid sort field");

@@ -12,6 +12,7 @@ import type {
 } from "@/features/explorer/search-filters";
 
 import { searchDirectory } from "@/queries/directories";
+import { getNotesFolder } from "@/queries/notes";
 import { searchTag } from "@/queries/tags";
 
 const PICKER_DEBOUNCE_MS = 200;
@@ -62,10 +63,14 @@ export const useSearchPickerOptions = ({
     placeholderData: (prev) => prev,
   }));
 
+  // `is:note` searches below this folder, so it is only offered once the first note made one.
+  const notesFolderQuery = useQuery(getNotesFolder);
+
   const filterContext = computed<SearchFilterContext>(() => ({
     currentDirectory: currentDirectory(),
     filters: filters.value,
     folders: folderQuery.data.value?.items.map((dir) => ({ id: dir.id, name: dir.name })),
+    notesFolderId: notesFolderQuery.data.value?.id ?? null,
     tags: tagQuery.data.value?.items.map((tag) => ({ id: tag.id, name: tag.name })),
     today,
   }));
