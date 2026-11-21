@@ -17,4 +17,7 @@ public class ContentObject : IBase
 
     public Guid? UploadId { get; set; }
     public Upload? Upload { get; set; }
+
+    // Null until the text sweep has read the content, and always null for types it cannot read.
+    public DocumentText? DocumentText { get; set; }
 }

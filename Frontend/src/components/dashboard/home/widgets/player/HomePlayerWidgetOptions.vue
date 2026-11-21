@@ -49,7 +49,10 @@ const emit = defineEmits<{ change: [options: Partial<HomePlayerOptions>] }>();
           <div class="flex w-6 flex-col items-center gap-2" aria-hidden="true">
             <span class="h-1 w-full rounded-full bg-gray-300 dark:bg-gray-300" />
             <span class="h-0.5 w-full rounded-full bg-gray-500 dark:bg-gray-500" />
-            <UIcon name="i-lucide-play" class="size-6 icon-solid text-gray-200 dark:text-gray-200" />
+            <UIcon
+              name="i-lucide-play"
+              class="size-6 icon-solid text-gray-200 dark:text-gray-200"
+            />
           </div>
         </div>
       </template>

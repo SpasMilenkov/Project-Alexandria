@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 
-namespace Alexandria.Repositories;
+namespace Alexandria.Repositories.Search;
 
 /// <summary>
 /// The user-chosen ordering for file and directory listings when no search text is given.

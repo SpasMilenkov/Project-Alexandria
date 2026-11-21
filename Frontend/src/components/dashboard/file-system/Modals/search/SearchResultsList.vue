@@ -52,7 +52,15 @@
             :is-selected="directories.length + index === activeIndex"
             @click="emit('open', fileTarget(file))"
             @tooltip-enter="emit('preview', fileTarget(file))"
-          />
+          >
+            <template v-if="file.matchedInContent && query" #subtitle>
+              <SearchRowExcerpt
+                :file-id="file.fileId"
+                :version-id="file.currentVersion.id"
+                :query="query"
+              />
+            </template>
+          </FileItem>
         </div>
       </div>
     </div>
@@ -64,9 +72,16 @@ import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
 import type { SearchPreviewTarget } from "@/types/search-preview-target";
 
+import SearchRowExcerpt from "./SearchRowExcerpt.vue";
+
 // Folders come first and files after them, and the active index runs across
 // both in that order, matching how the keyboard moves through the list.
-const { activeIndex, optionIdPrefix } = defineProps<{
+// The query is the searched text, for the excerpt under a file found by its text.
+const {
+  activeIndex,
+  optionIdPrefix,
+  query = "",
+} = defineProps<{
   activeIndex: number;
   directories: DirectorySummaryDto[];
   directoryCountLabel: string;
@@ -74,6 +89,7 @@ const { activeIndex, optionIdPrefix } = defineProps<{
   files: FileResult[];
   id: string;
   optionIdPrefix: string;
+  query?: string;
 }>();
 
 const emit = defineEmits<{

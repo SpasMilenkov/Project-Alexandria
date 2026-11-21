@@ -10,7 +10,7 @@
     :excluded-ids="[]"
   />
 
-  <SearchFilePreview v-else :file="target.file" />
+  <SearchFilePreview v-else :file="target.file" :query="query" />
 </template>
 
 <script setup lang="ts">
@@ -26,7 +26,8 @@ import { directoryPath } from "@/queries/directories";
 
 import SearchFilePreview from "./SearchFilePreview.vue";
 
-const { target } = defineProps<{ target: SearchPreviewTarget }>();
+// The searched text, so a file found by its contents can show where they matched.
+const { query = "", target } = defineProps<{ query?: string; target: SearchPreviewTarget }>();
 
 const directoryId = computed(() => (target.kind === "directory" ? target.directory.id : ""));
 

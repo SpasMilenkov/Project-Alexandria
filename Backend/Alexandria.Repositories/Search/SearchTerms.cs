@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Alexandria.Repositories;
+namespace Alexandria.Repositories.Search;
 
 /// <summary>
 /// A search query split into the word tokens PostgreSQL's text-search parser would
@@ -15,15 +15,39 @@ internal sealed partial class SearchTerms
     internal const int MinLyricsQueryLength = 3;
     internal const int MinLyricsPrefixLength = 3;
 
+    // Document bodies are long, so a word shorter than this prefix-matches almost every one of
+    // them. Such words still narrow the name match; they are just left out of the body query.
+    internal const int MinContentTokenLength = 3;
+
     private SearchTerms(string normalizedQuery, IReadOnlyList<string> tokens)
     {
         NormalizedQuery = normalizedQuery;
         Tokens = tokens;
+        ContentTokens = tokens.Where(t => t.Length >= MinContentTokenLength).ToList();
     }
 
     public string NormalizedQuery { get; }
 
     public IReadOnlyList<string> Tokens { get; }
+
+    /// <summary>The words searched for inside document text.</summary>
+    public IReadOnlyList<string> ContentTokens { get; }
+
+    public bool SearchesContent => ContentTokens.Count > 0;
+
+    /// <summary>
+    /// Every word must appear somewhere in the document, each as a prefix, so "invoice" also
+    /// finds "invoices" and a half-typed last word still matches. Order and distance are free,
+    /// unlike the lyrics phrase query, because a document mentions things far apart.
+    /// </summary>
+    public string ContentTsQuery => string.Join(" & ", ContentTokens.Select(t => $"{t}:*"));
+
+    /// <summary>
+    /// A Postgres regex for the start of any content word, used only to find where in a document
+    /// to cut an excerpt. Tokens hold nothing but letters and digits, so none of them can carry
+    /// regex syntax.
+    /// </summary>
+    public string ContentWordStartPattern => $@"\m({string.Join('|', ContentTokens)})";
 
     public bool IsEmpty => Tokens.Count == 0;
 

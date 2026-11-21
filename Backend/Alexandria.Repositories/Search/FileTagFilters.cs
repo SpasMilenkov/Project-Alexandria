@@ -1,7 +1,7 @@
 using Alexandria.Data.Models.Enumerators;
 using File = Alexandria.Data.Models.File;
 
-namespace Alexandria.Repositories;
+namespace Alexandria.Repositories.Search;
 
 /// <summary>
 /// Tag filters shared by the general file search and the tag search. A tag counts only

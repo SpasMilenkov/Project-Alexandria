@@ -51,10 +51,12 @@ internal static class PackagePart
     }
 
     /// <inheritdoc cref="Load"/>
-    public static XmlReader OpenXml(ZipArchiveEntry entry, long maxBytes)
+    /// <param name="settings">Reader settings to use instead of <see cref="XmlSettings"/>; they
+    /// should still prohibit a DTD.</param>
+    public static XmlReader OpenXml(ZipArchiveEntry entry, long maxBytes, XmlReaderSettings? settings = null)
     {
         var stream = new LimitedReadStream(entry.Open(), maxBytes, entry.FullName);
 
-        return XmlReader.Create(stream, XmlSettings);
+        return XmlReader.Create(stream, settings ?? XmlSettings);
     }
 }

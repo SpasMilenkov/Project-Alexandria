@@ -1,4 +1,5 @@
 using Alexandria.Repositories;
+using Alexandria.Repositories.Search;
 using AwesomeAssertions;
 
 namespace Alexandria.Tests.Unit.Repositories;
@@ -6,11 +7,11 @@ namespace Alexandria.Tests.Unit.Repositories;
 public class LyricsSnippetExtractorTests
 {
     private const string Plain = """
-        First verse opens here
-        We're never gonna give you up
-        Never gonna let you
-        down tonight
-        """;
+                                 First verse opens here
+                                 We're never gonna give you up
+                                 Never gonna let you
+                                 down tonight
+                                 """;
 
     [Fact]
     public void Extract_phrase_in_plain_lyrics_returns_matching_line()

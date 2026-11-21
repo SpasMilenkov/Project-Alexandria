@@ -43,7 +43,7 @@ export const useSearchQuery = () => {
     if (filters.value.length > 0) {
       return "Add a name or another filter";
     }
-    return "Search by name, or type in: tag: uploaded:";
+    return "Search names and document text, or type in: tag: uploaded:";
   });
 
   // The text before an unfinished `key:`, which is what remains once it is

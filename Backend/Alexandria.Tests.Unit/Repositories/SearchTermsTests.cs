@@ -1,4 +1,4 @@
-using Alexandria.Repositories;
+using Alexandria.Repositories.Search;
 using AwesomeAssertions;
 
 namespace Alexandria.Tests.Unit.Repositories;

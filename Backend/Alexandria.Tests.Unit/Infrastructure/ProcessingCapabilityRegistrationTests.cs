@@ -3,9 +3,11 @@ using Alexandria.Common.Services;
 using Alexandria.Infrastructure;
 using Alexandria.Infrastructure.DocumentWorker;
 using Alexandria.Infrastructure.HealthChecks;
+using Alexandria.Workers.Document;
 using Alexandria.Workers.Lyrics;
 using Alexandria.Workers.Lyrics.Handlers;
 using Alexandria.Workers.MediaMetadata.Workers;
+using Alexandria.Workers.Playlist.Config;
 using Alexandria.Workers.Playlist.Workers;
 using AwesomeAssertions;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using DocumentServices = Alexandria.Workers.Document.Extensions.ServiceExtensions;
 using LyricsServices = Alexandria.Workers.Lyrics.Extensions.WorkerExtensions;
 using MetadataServices = Alexandria.Workers.MediaMetadata.Extensions.ServiceExtensions;
 using PlaylistServices = Alexandria.Workers.Playlist.Extensions.ServiceExtensions;
@@ -37,7 +40,8 @@ public class ProcessingCapabilityRegistrationTests
         var values = new Dictionary<string, string?>();
         if (configured)
         {
-            foreach (var name in new[] { "DocumentPreviews", "MediaPreviews", "AdaptiveStreaming", "AudioAnalysis", "Lyrics" })
+            foreach (var name in new[]
+                         { "DocumentPreviews", "MediaPreviews", "AdaptiveStreaming", "AudioAnalysis", "Lyrics" })
                 values[$"Features:{name}"] = "false";
         }
 
@@ -100,18 +104,43 @@ public class ProcessingCapabilityRegistrationTests
 
         scope.ServiceProvider.GetRequiredService<IAutoPlaylistSyncService>().Should().NotBeNull();
         scope.ServiceProvider.GetRequiredService<IAutoPlaylistSweepService>().Should().NotBeNull();
-        var options = provider.GetRequiredService<IOptions<Alexandria.Workers.Playlist.Config.PlaylistConsumerConfig>>().Value;
+        var options = provider.GetRequiredService<IOptions<PlaylistConsumerConfig>>().Value;
         options.SyncQueueName.Should().Be("playlist-queue");
         options.SyncRoutingKey.Should().Be("playlist.sync");
         services.Should().Contain(s => s.ImplementationType == typeof(PlaylistSyncWorker));
         services.Should().Contain(s => s.ImplementationType == typeof(PlaylistSweepWorker));
     }
 
+    [Fact]
+    public void AddWorkerServices_document_registers_text_sweep_and_binds_its_section()
+    {
+        var configuration = Configuration(new()
+        {
+            ["DocumentTextSweep:IdleDelaySeconds"] = "45",
+            ["DocumentTextSweep:MaxAttempts"] = "5"
+        });
+        var services = new ServiceCollection();
+        services.AddLogging();
+        DocumentServices.AddWorkerServices(services, configuration);
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var scope = provider.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<IDocumentTextService>().Should().NotBeNull();
+        services.Should().Contain(s => s.ImplementationType == typeof(DocumentTextSweepWorker));
+
+        var options = provider.GetRequiredService<IOptions<DocumentTextSweepConfig>>().Value;
+        options.IdleDelaySeconds.Should().Be(45);
+        options.MaxAttempts.Should().Be(5);
+        options.Enabled.Should().BeTrue();
+        options.BatchSize.Should().Be(10);
+    }
+
     [Theory]
     [InlineData(null, false)]
     [InlineData("false", false)]
     [InlineData("true", true)]
-    public void AddWorkerServices_lyrics_requires_explicit_enable_and_resolves_provider_graph(string? flag, bool enabled)
+    public void AddWorkerServices_lyrics_requires_explicit_enable_and_resolves_provider_graph(string? flag,
+        bool enabled)
     {
         var configuration = Configuration(new() { ["Features:Lyrics"] = flag });
         var services = new ServiceCollection();
@@ -138,7 +167,11 @@ public class ProcessingCapabilityRegistrationTests
     public void AddHealthMonitoring_registers_exactly_the_installed_worker_set()
     {
         var values = new Dictionary<string, string?>();
-        var names = new[] { "DocumentWorker", "MediaWorker", "TranspilationWorker", "LyricsWorker", "MediaMetadataWorker", "PlaylistWorker" };
+        var names = new[]
+        {
+            "DocumentWorker", "MediaWorker", "TranspilationWorker", "LyricsWorker", "MediaMetadataWorker",
+            "PlaylistWorker"
+        };
         for (var i = 0; i < names.Length; i++)
         {
             values[$"HealthChecks:Workers:{i}:Name"] = names[i];

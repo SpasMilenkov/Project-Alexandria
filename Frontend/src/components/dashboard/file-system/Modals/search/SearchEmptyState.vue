@@ -37,7 +37,7 @@ const COPY: Record<SearchEmptyKind, { description: string; eyebrow: string; icon
     icon: "i-lucide-filter",
   },
   idle: {
-    description: "Type a name, or start with a filter.",
+    description: "Type a name or words from a document, or start with a filter.",
     eyebrow: "Search",
     icon: "i-lucide-search",
   },

@@ -132,4 +132,7 @@ export enum AuditEventCode {
   // Sessions and retention
   UserSessionRevoked = 84,
   AuditLogsPurged = 85,
+
+  // Admin actions added later
+  DocumentTextRetried = 86,
 }
