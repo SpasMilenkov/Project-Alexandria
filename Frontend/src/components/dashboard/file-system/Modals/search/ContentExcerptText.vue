@@ -17,7 +17,7 @@ import type { ContentMatchSegment } from "@/api/file";
 // A highlighter wash, apart from the accent, which stays for selection. Plain text
 // inside, so nothing from a document is rendered as markup.
 const MARK_CLASS =
-  "rounded-sm bg-yellow-300/45 font-medium text-gray-900 dark:bg-yellow-300/25 dark:text-gray-100";
+  "rounded-sm bg-yellow-300/45 font-medium text-gray-900 dark:bg-yellow-200/25 dark:text-gray-100";
 
 defineProps<{ segments: ContentMatchSegment[] }>();
 </script>
