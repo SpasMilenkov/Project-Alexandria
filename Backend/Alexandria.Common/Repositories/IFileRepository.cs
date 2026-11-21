@@ -12,6 +12,13 @@ public interface IFileRepository : IRepository<File>
 {
     Task<File> CreateAsync(File file, CancellationToken ct = default);
     Task<string?> GetMimeTypeByVersionIdAsync(Guid versionId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The content behind the file's current version, when <paramref name="ownerId"/> owns the
+    /// file. Trashed files count, since they can still be searched.
+    /// </summary>
+    Task<Guid?> GetCurrentContentObjectIdAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
+
     Task<File> UpdateAsync(File file, CancellationToken ct = default);
     Task<FileResult?> GetFileWithTagsAsync(Guid userId, Guid fileId, CancellationToken ct = default);
     Task<string?> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);

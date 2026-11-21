@@ -121,6 +121,9 @@ public static class ServiceExtensions
         services.AddScoped<IPreviewStatsService, PreviewStatsService>();
         services.AddScoped<IAdminStorageStatsService, AdminStorageStatsService>();
         services.AddScoped<ILyricsStatsService, LyricsStatsService>();
+        services.AddScoped<IDocumentTextStatsService, DocumentTextStatsService>();
+        // The sweep runs in the document worker; the API reads its section for the retry limit.
+        services.AddOptions<DocumentTextSweepConfig>().BindConfiguration("DocumentTextSweep");
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddSingleton<PromotionQueueService>();
         services.AddSingleton<IPromotionQueue>(sp =>
