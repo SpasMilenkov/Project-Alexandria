@@ -134,6 +134,26 @@ public class DocumentTextSweepWorkerTests
             Arg.Any<CancellationToken>());
         await _repository.DidNotReceive().RecordFailureAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().FailAttemptAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SweepBatch_countsTheAttempt_beforeReadingTheDocument()
+    {
+        var candidate = Candidate();
+        Candidates(candidate);
+        Extracts(candidate, new DocumentTextResult(DocumentTextStatus.Extracted, "text", IsTruncated: false));
+
+        await CreateSut().SweepBatchAsync(Ct);
+
+        Received.InOrder(() =>
+        {
+            _repository.BeginAttemptAsync(
+                candidate.ContentObjectId, DocumentTextExtractor.CurrentVersion, Arg.Any<CancellationToken>());
+            _extractor.ExtractAsync(candidate.MimeType, Arg.Any<string>(), Arg.Any<CancellationToken>());
+            _repository.UpsertAsync(Arg.Any<DocumentText>(), Arg.Any<CancellationToken>());
+        });
     }
 
     [Fact]
@@ -149,11 +169,35 @@ public class DocumentTextSweepWorkerTests
         var processed = await CreateSut().SweepBatchAsync(Ct);
 
         processed.Should().Be(2);
-        await _repository.Received(1).RecordFailureAsync(
-            broken.ContentObjectId, DocumentTextExtractor.CurrentVersion, "damaged package",
-            Arg.Any<CancellationToken>());
+        // The attempt was already counted, so the failure only fills in why.
+        await _repository.Received(1).FailAttemptAsync(
+            broken.ContentObjectId, "damaged package", Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().RecordFailureAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().AbandonAttemptAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _repository.Received(1).UpsertAsync(
             Arg.Is<DocumentText>(t => t.ContentObjectId == healthy.ContentObjectId), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SweepBatch_shutdownWhileReading_givesTheAttemptBack()
+    {
+        var candidate = Candidate();
+        Candidates(candidate);
+        using var shutdown = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        _extractor.ExtractAsync(Pdf, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<DocumentTextResult>(_ =>
+            {
+                shutdown.Cancel();
+                throw new OperationCanceledException(shutdown.Token);
+            });
+
+        var sweep = () => CreateSut().SweepBatchAsync(shutdown.Token);
+
+        await sweep.Should().ThrowAsync<OperationCanceledException>();
+        await _repository.Received(1).AbandonAttemptAsync(candidate.ContentObjectId, Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().FailAttemptAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -187,6 +231,8 @@ public class DocumentTextSweepWorkerTests
         await sweep.Should().ThrowAsync<InvalidOperationException>().WithMessage("*connection refused*");
         await _repository.DidNotReceive().RecordFailureAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().BeginAttemptAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -202,6 +248,9 @@ public class DocumentTextSweepWorkerTests
         await sweep.Should().ThrowAsync<Win32Exception>();
         await _repository.DidNotReceive().RecordFailureAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().FailAttemptAsync(
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        await _repository.Received(1).AbandonAttemptAsync(candidate.ContentObjectId, Arg.Any<CancellationToken>());
     }
 
     [Fact]

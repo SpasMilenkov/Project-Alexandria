@@ -228,6 +228,78 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
     }
 
     [Fact]
+    public async Task BeginAttempt_thatNeverFinishes_usesUpTheAttempts()
+    {
+        // Each begin without an outcome is a worker that died while reading the document.
+        var version = await SeedVersionAsync();
+        var old = DateTime.UtcNow.AddDays(-1);
+
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            await BeginAttemptAsync(version.ContentObjectId);
+            await SetLastAttemptAsync(version.ContentObjectId, old);
+        }
+
+        var row = await GetRowAsync(version.ContentObjectId);
+        row.Status.Should().Be(DocumentTextStatus.Failed);
+        row.AttemptCount.Should().Be(3);
+        row.ErrorDetail.Should().StartWith("Reading stopped before it finished");
+        (await GetCandidatesAsync(maxAttempts: 3)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FailAttempt_fillsInTheError_withoutCountingTwice()
+    {
+        var version = await SeedVersionAsync();
+
+        await BeginAttemptAsync(version.ContentObjectId);
+        await using (var db = fixture.CreateDbContext())
+        {
+            await new DocumentTextRepository(db).FailAttemptAsync(version.ContentObjectId, "damaged package", Ct);
+        }
+
+        var row = await GetRowAsync(version.ContentObjectId);
+        row.AttemptCount.Should().Be(1);
+        row.ErrorDetail.Should().Be("damaged package");
+    }
+
+    [Fact]
+    public async Task AbandonAttempt_givesTheAttemptBack_andQueuesTheDocumentAtOnce()
+    {
+        var version = await SeedVersionAsync();
+        await RecordFailureAsync(version.ContentObjectId, error: "pdftotext exited with 1");
+
+        await BeginAttemptAsync(version.ContentObjectId);
+        await using (var db = fixture.CreateDbContext())
+        {
+            await new DocumentTextRepository(db).AbandonAttemptAsync(version.ContentObjectId, Ct);
+        }
+
+        (await GetRowAsync(version.ContentObjectId)).Should().BeEquivalentTo(new
+        {
+            Status = DocumentTextStatus.Failed,
+            AttemptCount = 1,
+            LastAttemptAt = (DateTime?)null,
+            ErrorDetail = (string?)null
+        });
+        (await GetCandidatesAsync()).Select(c => c.ContentObjectId).Should().Equal(version.ContentObjectId);
+    }
+
+    [Fact]
+    public async Task BeginAttempt_thenUpsert_clearsTheAttempt()
+    {
+        var version = await SeedVersionAsync();
+
+        await BeginAttemptAsync(version.ContentObjectId);
+        await UpsertAsync(version.ContentObjectId, "read fine");
+
+        var row = await GetRowAsync(version.ContentObjectId);
+        row.Status.Should().Be(DocumentTextStatus.Extracted);
+        row.AttemptCount.Should().Be(0);
+        row.ErrorDetail.Should().BeNull();
+    }
+
+    [Fact]
     public async Task DeletingContent_removesItsText()
     {
         var version = await SeedVersionAsync();
@@ -474,6 +546,13 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
         var repository = new DocumentTextRepository(db);
 
         await repository.RecordFailureAsync(contentObjectId, extractorVersion, error, Ct);
+    }
+
+    private async Task BeginAttemptAsync(Guid contentObjectId)
+    {
+        await using var db = fixture.CreateDbContext();
+
+        await new DocumentTextRepository(db).BeginAttemptAsync(contentObjectId, DocumentTextExtractor.CurrentVersion, Ct);
     }
 
     private async Task SetLastAttemptAsync(Guid contentObjectId, DateTime lastAttemptAt)

@@ -25,4 +25,8 @@ public partial class DocumentTextSweepWorker
 
     [LoggerMessage(4299, LogLevel.Warning, "Could not report the failed document text sweep cycle to monitoring")]
     private static partial void LogCycleFailureNotRecorded(ILogger logger, Exception ex);
+
+    [LoggerMessage(4300, LogLevel.Warning,
+        "Could not give back the text extraction attempt of content {ContentObjectId}; it keeps one counted attempt")]
+    private static partial void LogAbandonFailed(ILogger logger, Exception ex, Guid contentObjectId);
 }

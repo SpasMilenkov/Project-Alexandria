@@ -221,6 +221,42 @@ public class DocumentTextRepository(AlexandriaDbContext context) : IDocumentText
                                                             """, ct);
     }
 
+    // Stays on the row only when the worker never finished the attempt; any outcome replaces it.
+    internal const string InterruptedAttemptDetail =
+        "Reading stopped before it finished. The worker may have run out of memory or been restarted while reading this document.";
+
+    public Task BeginAttemptAsync(Guid contentObjectId, int extractorVersion, CancellationToken ct = default)
+        => RecordFailureAsync(contentObjectId, extractorVersion, InterruptedAttemptDetail, ct);
+
+    public Task FailAttemptAsync(Guid contentObjectId, string errorDetail, CancellationToken ct = default)
+    {
+        var failed = DocumentTextStatus.Failed;
+        var detail = Truncate(errorDetail, ValidationConstants.StringLengths.LongString);
+        DateTime? now = DateTime.UtcNow;
+
+        return LiveRows()
+            .Where(t => t.ContentObjectId == contentObjectId && t.Status == failed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.ErrorDetail, detail)
+                .SetProperty(t => t.UpdatedAt, now), ct);
+    }
+
+    public Task AbandonAttemptAsync(Guid contentObjectId, CancellationToken ct = default)
+    {
+        var failed = DocumentTextStatus.Failed;
+        DateTime? now = DateTime.UtcNow;
+
+        // The cleared last attempt lets the next cycle pick the document up without waiting out
+        // the retry delay, since the attempt never really happened.
+        return LiveRows()
+            .Where(t => t.ContentObjectId == contentObjectId && t.Status == failed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.AttemptCount, t => Math.Max(t.AttemptCount - 1, 0))
+                .SetProperty(t => t.LastAttemptAt, (DateTime?)null)
+                .SetProperty(t => t.ErrorDetail, (string?)null)
+                .SetProperty(t => t.UpdatedAt, now), ct);
+    }
+
     public async Task<IReadOnlyList<DocumentTextCandidate>> GetExtractionCandidatesAsync(
         IReadOnlyCollection<string> mimeTypes,
         int extractorVersion,

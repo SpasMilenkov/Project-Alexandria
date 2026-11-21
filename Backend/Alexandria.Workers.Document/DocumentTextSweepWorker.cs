@@ -29,6 +29,8 @@ public partial class DocumentTextSweepWorker(
 {
     internal const string ServiceInstance = "document-text";
 
+    private static readonly TimeSpan AbandonTimeout = TimeSpan.FromSeconds(10);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var config = options.Value;
@@ -164,6 +166,11 @@ public partial class DocumentTextSweepWorker(
     {
         DocumentTextResult result;
 
+        // Counted before reading, because a document that kills the worker never reaches the catch
+        // below and would otherwise be picked first again after every restart.
+        await unitOfWork.DocumentText.BeginAttemptAsync(
+            candidate.ContentObjectId, DocumentTextExtractor.CurrentVersion, ct);
+
         try
         {
             result = await extractor.ExtractAsync(candidate.MimeType, localPath, ct);
@@ -171,12 +178,19 @@ public partial class DocumentTextSweepWorker(
         catch (Win32Exception)
         {
             // The tool itself could not start, so every document of this type would fail the same way.
+            await AbandonAttemptAsync(unitOfWork, candidate);
             throw;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Shutting down says nothing about the document.
+            await AbandonAttemptAsync(unitOfWork, candidate);
+            throw;
+        }
+        catch (Exception ex)
         {
             LogExtractionFailed(logger, ex, candidate.ContentObjectId);
-            await RecordFailureAsync(unitOfWork, candidate, ex.Message, ct);
+            await unitOfWork.DocumentText.FailAttemptAsync(candidate.ContentObjectId, ex.Message, ct);
             return;
         }
 
@@ -201,6 +215,22 @@ public partial class DocumentTextSweepWorker(
         CancellationToken ct)
         => unitOfWork.DocumentText.RecordFailureAsync(
             candidate.ContentObjectId, DocumentTextExtractor.CurrentVersion, errorDetail, ct);
+
+    // Uses its own short timeout, because on shutdown the sweep's token is already cancelled. If the
+    // database is unreachable too, the document keeps one counted attempt, which only delays it.
+    private async Task AbandonAttemptAsync(IUnitOfWork unitOfWork, DocumentTextCandidate candidate)
+    {
+        using var timeout = new CancellationTokenSource(AbandonTimeout);
+
+        try
+        {
+            await unitOfWork.DocumentText.AbandonAttemptAsync(candidate.ContentObjectId, timeout.Token);
+        }
+        catch (Exception ex)
+        {
+            LogAbandonFailed(logger, ex, candidate.ContentObjectId);
+        }
+    }
 
     // Runs in a fresh scope, because the failed cycle may have left its own context unusable.
     private async Task ReportCycleFailureAsync(Exception failure, CancellationToken ct)

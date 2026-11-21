@@ -43,6 +43,26 @@ public interface IDocumentTextRepository : IRepository<DocumentText>
         CancellationToken ct = default);
 
     /// <summary>
+    /// Counts an attempt before the document is read, recorded as a failure that says reading
+    /// stopped partway. A document that kills the worker therefore still uses up its attempts
+    /// instead of being picked first again after every restart. The attempt then ends with
+    /// <see cref="UpsertAsync"/>, <see cref="FailAttemptAsync"/> or <see cref="AbandonAttemptAsync"/>.
+    /// </summary>
+    Task BeginAttemptAsync(Guid contentObjectId, int extractorVersion, CancellationToken ct = default);
+
+    /// <summary>
+    /// Replaces the message of the attempt in progress with why reading failed, without counting
+    /// the attempt a second time.
+    /// </summary>
+    Task FailAttemptAsync(Guid contentObjectId, string errorDetail, CancellationToken ct = default);
+
+    /// <summary>
+    /// Takes back the attempt in progress, for failures that are not the document's (a tool
+    /// missing, the worker shutting down). The sweep tries the document again on its next cycle.
+    /// </summary>
+    Task AbandonAttemptAsync(Guid contentObjectId, CancellationToken ct = default);
+
+    /// <summary>
     /// Promoted content of the given types, held by at least one live, unencrypted version of a
     /// live file, that has no final row from <paramref name="extractorVersion"/> or newer. Failed
     /// rows come back once their last attempt is older than <paramref name="retryFailedBefore"/>,
