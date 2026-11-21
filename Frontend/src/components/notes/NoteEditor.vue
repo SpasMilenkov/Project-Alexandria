@@ -59,12 +59,13 @@ watch(richEditor, (instance) => {
 });
 
 // Said once, at the point it matters: the first switch to rich text on a file it would rewrite.
-let hasNotedRewrite = false;
+// The page reads it too, so the first save can say the formatting was tidied.
+const rewroteFormatting = ref(false);
 
 watch(mode, (current) => {
-  if (current !== "rich" || !wouldRewrite.value || hasNotedRewrite) return;
+  if (current !== "rich" || !wouldRewrite.value || rewroteFormatting.value) return;
 
-  hasNotedRewrite = true;
+  rewroteFormatting.value = true;
   filesToast.info(
     "Formatting may change",
     "Editing in rich text tidies this file into the editor's markdown style.",
@@ -155,7 +156,7 @@ watch([mode, richEditor, () => headings], async () => {
   scheduleScrollReport();
 });
 
-defineExpose({ scrollToHeading });
+defineExpose({ rewroteFormatting, scrollToHeading });
 </script>
 
 <template>

@@ -151,7 +151,7 @@ const lengthLabel = computed(() => {
     </section>
 
     <p class="px-2 text-xs text-gray-500 dark:text-gray-500">
-      Saving isn't available yet, so edits stay in this tab.
+      Saves on its own after a pause, or with Ctrl+S. Every save is a version you can go back to.
     </p>
   </section>
 </template>

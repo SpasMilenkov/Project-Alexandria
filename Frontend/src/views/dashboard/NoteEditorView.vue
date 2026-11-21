@@ -1,28 +1,31 @@
 <script setup lang="ts">
 import { useQuery } from "@pinia/colada";
-import { refDebounced, useLocalStorage } from "@vueuse/core";
+import { refDebounced, useEventListener, useLocalStorage } from "@vueuse/core";
 import { computed, ref, useTemplateRef, watch } from "vue";
-import { useRoute } from "vue-router";
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from "vue-router";
 
+import { type FileContentSaveResult, MAX_NOTE_BYTES } from "@/api/notes";
 import { isAuthError } from "@/api/shuffle";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
+import ConfirmModal from "@/components/dashboard/ConfirmModal.vue";
 import SegmentedControl from "@/components/dashboard/integrations/SegmentedControl.vue";
 import NoteConnections from "@/components/notes/NoteConnections.vue";
 import NoteEditor from "@/components/notes/NoteEditor.vue";
 import NoteOutline from "@/components/notes/NoteOutline.vue";
+import NoteSaveIndicator from "@/components/notes/NoteSaveIndicator.vue";
+import NoteTitle from "@/components/notes/NoteTitle.vue";
 import { useAppToast } from "@/composables/useAppToast";
+import { useLazyModal } from "@/composables/useLazyOverlay";
+import { useNoteSave } from "@/composables/useNoteSave";
 import { NOTE_EDITOR_MODE_OPTIONS, type NoteEditorMode } from "@/features/notes/editor-modes";
 import { extractHeadings } from "@/features/notes/outline";
-import { survivesRoundTrip } from "@/features/notes/round-trip";
+import { saveIndicatorState } from "@/features/notes/save-indicator";
 import { countWords } from "@/features/notes/stats";
 import { getFile } from "@/queries/files";
 import { getNoteVersionText } from "@/queries/notes";
 import { isMarkdownMimeType } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
-
-// Past this size Tiptap gets sluggish on every keystroke, and notes are rarely this long.
-const MAX_NOTE_BYTES = 1_000_000;
 
 interface Blocker {
   icon: string;
@@ -32,6 +35,8 @@ interface Blocker {
 
 const route = useRoute();
 const clipboardToast = useAppToast("clipboard");
+const filesToast = useAppToast("files");
+const leaveModal = useLazyModal<Record<string, unknown>, boolean>(ConfirmModal);
 
 const fileId = computed(() => String(route.params.fileId ?? ""));
 
@@ -42,15 +47,44 @@ const {
   refetch: refetchFile,
 } = useQuery(() => ({ ...getFile(fileId.value), enabled: fileId.value.length > 0 }));
 
-// The editor stays on the version it opened. Following a newer version would throw away what
-// is being typed, and choosing between the two belongs to the save flow.
+// The editor stays mounted on the version it opened; saves move the version they build on
+// forward without reopening it, so the cursor and undo history survive every save. Only a
+// conflict resolved by loading the latest version opens another one.
 const openedVersionId = ref<string | null>(null);
 const draft = ref("");
 const loadedVersionId = ref<string | null>(null);
 const copied = ref(false);
 const mode = ref<NoteEditorMode>("rich");
 
-const noteEditor = useTemplateRef<{ scrollToHeading: (index: number) => void }>("noteEditor");
+const noteEditor = useTemplateRef<{
+  rewroteFormatting: boolean;
+  scrollToHeading: (index: number) => void;
+}>("noteEditor");
+
+// Said once, on the first save: rich text editing restyled markdown the file had written its
+// own way, and that rewrite is now in the stored version.
+const noteFirstSave = (_saved: FileContentSaveResult, count: number) => {
+  if (count !== 1 || !noteEditor.value?.rewroteFormatting) return;
+
+  filesToast.info(
+    "Saved with tidied formatting",
+    "Rich text editing rewrote this note's markdown in the editor's style.",
+  );
+};
+
+const {
+  isDirty,
+  isSaving,
+  lastError: saveError,
+  lastSavedAt,
+  reset: resetSaving,
+  save,
+  saveOver,
+  start: startSaving,
+  status: saveStatus,
+} = useNoteSave({ draft, fileId, onSaved: noteFirstSave });
+
+const saveIndicator = computed(() => saveIndicatorState(saveStatus.value, isDirty.value));
 
 // A layout preference for this browser only, like the gallery viewer's info panel.
 const isOutlineOpen = useLocalStorage("notes-outline-open", true);
@@ -111,6 +145,7 @@ const setActiveHeading = (index: number | null) => {
 };
 
 watch(fileId, () => {
+  resetSaving();
   openedVersionId.value = null;
   loadedVersionId.value = null;
   draft.value = "";
@@ -191,6 +226,7 @@ watch(
 
     draft.value = text;
     loadedVersionId.value = versionId;
+    startSaving(versionId, text);
   },
   { immediate: true },
 );
@@ -198,13 +234,6 @@ watch(
 const isLoaded = computed(
   () => loadedVersionId.value !== null && loadedVersionId.value === openedVersionId.value,
 );
-
-// Compared after normalising, so switching modes or undoing back to the start doesn't count.
-const isDirty = computed(() => {
-  if (!isLoaded.value || original.value === undefined) return false;
-
-  return !survivesRoundTrip(original.value, draft.value);
-});
 
 const isPending = computed(() => {
   if (isFilePending.value) return true;
@@ -249,6 +278,99 @@ const retry = () => {
   void refetchText();
 };
 
+// A failed save is said once per run of failures; the header keeps showing it with a retry.
+watch(saveStatus, (current, previous) => {
+  if (current !== "error" || previous === "error") return;
+
+  filesToast.error("Couldn't save the note", saveError.value, { retry: () => save() });
+});
+
+const saveNow = () => {
+  void save();
+};
+
+// Keeps this edit: it becomes the next version after whatever is current now.
+const keepMine = async () => {
+  const latest = await refetchFile();
+  const currentVersionId = latest.data?.currentVersion.id;
+
+  if (!currentVersionId) return;
+
+  await saveOver(currentVersionId);
+};
+
+// Drops this edit and reopens the note at its current version.
+const loadLatest = async () => {
+  const latest = await refetchFile();
+  const currentVersionId = latest.data?.currentVersion.id;
+
+  if (!currentVersionId) return;
+
+  resetSaving();
+  loadedVersionId.value = null;
+  openedVersionId.value = currentVersionId;
+};
+
+const conflictActions = computed(() => [
+  {
+    color: "neutral" as const,
+    label: "Keep my version",
+    onClick: () => void keepMine(),
+    variant: "outline" as const,
+  },
+  {
+    color: "neutral" as const,
+    label: "Load the latest",
+    onClick: () => void loadLatest(),
+    variant: "ghost" as const,
+  },
+]);
+
+// Leaving saves first, so the guard only asks when that save didn't go through.
+const confirmLeave = async (): Promise<boolean> => {
+  if (!isDirty.value && !isSaving.value) return true;
+  if (await save()) return true;
+
+  const instance = leaveModal.open({
+    cancelLabel: "Stay",
+    confirmIcon: "i-lucide-log-out",
+    confirmLabel: "Leave anyway",
+    dangerMode: true,
+    description: "Your latest changes to this note haven't been saved.",
+    title: "Leave without saving?",
+  });
+
+  return (await instance.result) === true;
+};
+
+onBeforeRouteLeave(confirmLeave);
+
+onBeforeRouteUpdate((to, from) => {
+  if (to.params.fileId === from.params.fileId) return true;
+
+  return confirmLeave();
+});
+
+// Closing the tab can't wait for a save, so the browser's own prompt covers it.
+useEventListener(window, "beforeunload", (event) => {
+  if (!isDirty.value && !isSaving.value) return;
+
+  event.preventDefault();
+});
+
+// Switching away is a natural pause, and the tab may never come back.
+useEventListener(document, "visibilitychange", () => {
+  if (document.visibilityState === "hidden") void save();
+});
+
+useEventListener(window, "keydown", (event: KeyboardEvent) => {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+  if (event.key.toLowerCase() !== "s" || !isEditing.value) return;
+
+  event.preventDefault();
+  void save();
+});
+
 const copyMarkdown = async () => {
   try {
     await navigator.clipboard.writeText(draft.value);
@@ -282,13 +404,33 @@ const copyMarkdown = async () => {
           class="h-5 w-5 shrink-0 text-gray-600 dark:text-gray-400"
         />
 
-        <h1 class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">
+        <NoteTitle
+          v-if="file && !file.deletedAt"
+          :file-id="file.fileId"
+          :file-name="file.fileName"
+          :directory-id="file.directoryId"
+        />
+
+        <h1 v-else class="truncate text-xl font-semibold text-gray-900 dark:text-gray-100">
           {{ title }}
         </h1>
       </div>
 
       <div v-if="isEditing" class="flex flex-wrap items-center gap-2">
-        <UBadge v-if="isDirty" color="neutral" variant="subtle" label="Unsaved changes" />
+        <NoteSaveIndicator :state="saveIndicator" :saved-at="lastSavedAt" @retry="saveNow" />
+
+        <UTooltip text="Save now (Ctrl+S)">
+          <UButton
+            icon="i-lucide-save"
+            label="Save"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            :loading="isSaving"
+            :disabled="!isDirty || saveStatus === 'conflict'"
+            @click="saveNow"
+          />
+        </UTooltip>
 
         <SegmentedControl v-model="mode" :options="NOTE_EDITOR_MODE_OPTIONS" label="Editor mode" />
 
@@ -348,6 +490,21 @@ const copyMarkdown = async () => {
         </Transition>
       </div>
     </header>
+
+    <!-- On a strong glass sheet, so it stays readable over a background picture. -->
+    <div
+      v-if="isEditing && saveStatus === 'conflict'"
+      class="shrink-0 rounded-xl frosted-glass glass-surface-strong"
+    >
+      <UAlert
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-git-compare"
+        title="This note changed somewhere else"
+        description="It was saved from another tab, or a version was restored, after you opened it. Your edits are still here and autosave is paused."
+        :actions="conflictActions"
+      />
+    </div>
 
     <div v-if="isPending" class="flex justify-center py-24">
       <BlockSpinner :size="24" aria-label="Loading the note" class="text-gray-500" />
