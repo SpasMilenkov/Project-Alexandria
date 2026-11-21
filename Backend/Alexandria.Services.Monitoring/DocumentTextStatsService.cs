@@ -17,15 +17,16 @@ public class DocumentTextStatsService(
     {
         // The API reads the same settings section as the worker, so both agree on the limit.
         var maxAttempts = options.Value.MaxAttempts;
+        var types = DocumentTextFileTypes.Supported.Types;
 
-        var statusCounts = await documentText.GetStatusCountsAsync(ct);
-        var waiting = await documentText.CountWaitingAsync(
-            DocumentTextFileTypes.Supported.Types, DocumentTextExtractor.CurrentVersion, ct);
+        var statusCounts = await documentText.GetStatusCountsAsync(types, ct);
+        var waiting = await documentText.CountWaitingAsync(types, DocumentTextExtractor.CurrentVersion, ct);
         var failures = await documentText.GetRecentFailuresAsync(
-            viewerId, maxAttempts, RecentFailureLimit, ct);
+            viewerId, types, maxAttempts, RecentFailureLimit, ct);
 
         return new DocumentTextOverviewResponse(statusCounts, waiting, failures, maxAttempts);
     }
 
-    public Task<int> RetryFailedAsync(CancellationToken ct) => documentText.ResetFailedAsync(ct);
+    public Task<int> RetryFailedAsync(CancellationToken ct)
+        => documentText.ResetFailedAsync(DocumentTextFileTypes.Supported.Types, ct);
 }

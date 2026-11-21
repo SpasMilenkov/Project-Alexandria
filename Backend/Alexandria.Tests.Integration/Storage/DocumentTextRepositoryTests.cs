@@ -316,18 +316,22 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
     }
 
     [Fact]
-    public async Task StatusCounts_countLiveRowsPerOutcome()
+    public async Task StatusCounts_countLiveRowsPerOutcome_ofContentTheSweepCanRead()
     {
         var first = await SeedVersionAsync();
         var second = await SeedVersionAsync();
         var broken = await SeedVersionAsync();
+        var trashed = await SeedVersionAsync(fileDeleted: true);
+        var trashedBroken = await SeedVersionAsync(fileDeleted: true);
 
         await UpsertAsync(first.ContentObjectId, "one");
         await UpsertAsync(second.ContentObjectId, "two");
         await RecordFailureAsync(broken.ContentObjectId);
+        await UpsertAsync(trashed.ContentObjectId, "in the trash");
+        await RecordFailureAsync(trashedBroken.ContentObjectId);
 
         await using var db = fixture.CreateDbContext();
-        var counts = await new DocumentTextRepository(db).GetStatusCountsAsync(Ct);
+        var counts = await new DocumentTextRepository(db).GetStatusCountsAsync(Supported, Ct);
 
         counts.Should().Equal(
             new DocumentTextStatusCount(DocumentTextStatus.Extracted, 2),
@@ -376,7 +380,7 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
 
         await using var db = fixture.CreateDbContext();
         var failures = await new DocumentTextRepository(db)
-            .GetRecentFailuresAsync(_userId, maxAttempts: 3, limit: 20, Ct);
+            .GetRecentFailuresAsync(_userId, Supported, maxAttempts: 3, limit: 20, Ct);
 
         failures.Should().HaveCount(2);
         failures.Single(f => f.ContentObjectId == own.ContentObjectId).Should().BeEquivalentTo(new
@@ -484,17 +488,20 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
     {
         var exhausted = await SeedVersionAsync();
         var extracted = await SeedVersionAsync();
+        var trashed = await SeedVersionAsync(fileDeleted: true);
 
         await RecordFailureAsync(exhausted.ContentObjectId);
         await RecordFailureAsync(exhausted.ContentObjectId);
         await RecordFailureAsync(exhausted.ContentObjectId);
         await UpsertAsync(extracted.ContentObjectId, "fine");
+        await RecordFailureAsync(trashed.ContentObjectId);
 
         (await GetCandidatesAsync(maxAttempts: 3)).Should().BeEmpty();
 
+        // The trashed file's failure is left alone: the sweep would never pick it up.
         await using (var db = fixture.CreateDbContext())
         {
-            (await new DocumentTextRepository(db).ResetFailedAsync(Ct)).Should().Be(1);
+            (await new DocumentTextRepository(db).ResetFailedAsync(Supported, Ct)).Should().Be(1);
         }
 
         (await GetCandidatesAsync(maxAttempts: 3)).Select(c => c.ContentObjectId)

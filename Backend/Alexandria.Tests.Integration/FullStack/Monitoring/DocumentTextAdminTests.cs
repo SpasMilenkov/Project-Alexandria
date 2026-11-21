@@ -123,6 +123,11 @@ public class DocumentTextAdminTests(AlexandriaFixture fixture) : FullStackTestBa
             .Select(v => v.ContentObjectId)
             .SingleAsync(Ct);
 
+        // The overview only covers content the sweep can read, which means finished uploads.
+        await db.ContentObjects
+            .Where(c => c.Id == contentObjectId)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsPromoted, true), Ct);
+
         await unitOfWork.DocumentText.RecordFailureAsync(
             contentObjectId, DocumentTextExtractor.CurrentVersion, error, Ct);
     }

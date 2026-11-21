@@ -311,8 +311,17 @@ public class DocumentTextRepository(AlexandriaDbContext context) : IDocumentText
                         && v.ContentObject.IsPromoted
                         && v.ContentObject.DeletedAt == null);
 
-    public async Task<IReadOnlyList<DocumentTextStatusCount>> GetStatusCountsAsync(CancellationToken ct = default)
-        => await LiveRows()
+    // Rows of content the sweep can read, so the admin counts and resets cover what it works on.
+    private IQueryable<DocumentText> ReadableRows(IReadOnlyCollection<string> mimeTypes)
+    {
+        var readable = ReadableVersions(mimeTypes);
+
+        return LiveRows().Where(t => readable.Any(v => v.ContentObjectId == t.ContentObjectId));
+    }
+
+    public async Task<IReadOnlyList<DocumentTextStatusCount>> GetStatusCountsAsync(
+        IReadOnlyCollection<string> mimeTypes, CancellationToken ct = default)
+        => await ReadableRows(mimeTypes)
             .AsNoTracking()
             .GroupBy(t => t.Status)
             .OrderBy(g => g.Key)
@@ -329,14 +338,14 @@ public class DocumentTextRepository(AlexandriaDbContext context) : IDocumentText
             .CountAsync(ct);
 
     public async Task<IReadOnlyList<DocumentTextFailure>> GetRecentFailuresAsync(Guid viewerId,
-        int maxAttempts, int limit, CancellationToken ct = default)
+        IReadOnlyCollection<string> mimeTypes, int maxAttempts, int limit, CancellationToken ct = default)
     {
         var failed = DocumentTextStatus.Failed;
 
         // Copies share content, so the name and type come from the viewer's newest version holding
         // it. The error message can quote storage keys or parts of the document, so it follows the
         // same rule as the name and stays hidden for content only other accounts hold.
-        return await LiveRows()
+        return await ReadableRows(mimeTypes)
             .AsNoTracking()
             .Where(t => t.Status == failed)
             .OrderByDescending(t => t.LastAttemptAt)
@@ -364,12 +373,12 @@ public class DocumentTextRepository(AlexandriaDbContext context) : IDocumentText
             .ToListAsync(ct);
     }
 
-    public Task<int> ResetFailedAsync(CancellationToken ct = default)
+    public Task<int> ResetFailedAsync(IReadOnlyCollection<string> mimeTypes, CancellationToken ct = default)
     {
         var failed = DocumentTextStatus.Failed;
         DateTime? now = DateTime.UtcNow;
 
-        return LiveRows()
+        return ReadableRows(mimeTypes)
             .Where(t => t.Status == failed)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(t => t.AttemptCount, 0)

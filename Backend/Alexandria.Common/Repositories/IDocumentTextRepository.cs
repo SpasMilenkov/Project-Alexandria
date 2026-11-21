@@ -76,8 +76,13 @@ public interface IDocumentTextRepository : IRepository<DocumentText>
         int limit,
         CancellationToken ct = default);
 
-    /// <summary>Live rows per status, for the statuses that occur.</summary>
-    Task<IReadOnlyList<DocumentTextStatusCount>> GetStatusCountsAsync(CancellationToken ct = default);
+    /// <summary>
+    /// Live rows per status, for the statuses that occur, counting only content the sweep can read
+    /// (as in <see cref="GetExtractionCandidatesAsync"/>), so the counts add up with
+    /// <see cref="CountWaitingAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<DocumentTextStatusCount>> GetStatusCountsAsync(IReadOnlyCollection<string> mimeTypes,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Content the sweep can read (as in <see cref="GetExtractionCandidatesAsync"/>) that has no
@@ -88,16 +93,17 @@ public interface IDocumentTextRepository : IRepository<DocumentText>
         CancellationToken ct = default);
 
     /// <summary>
-    /// The most recent failures, newest first. The file name, type and error message are filled in
-    /// only for content one of <paramref name="viewerId"/>'s own files holds, because an admin
-    /// never sees another account's library.
+    /// The most recent failures of content the sweep can read, newest first. The file name, type
+    /// and error message are filled in only for content one of <paramref name="viewerId"/>'s own
+    /// files holds, because an admin never sees another account's library.
     /// </summary>
-    Task<IReadOnlyList<DocumentTextFailure>> GetRecentFailuresAsync(Guid viewerId, int maxAttempts,
-        int limit, CancellationToken ct = default);
+    Task<IReadOnlyList<DocumentTextFailure>> GetRecentFailuresAsync(Guid viewerId,
+        IReadOnlyCollection<string> mimeTypes, int maxAttempts, int limit, CancellationToken ct = default);
 
     /// <summary>
-    /// Clears the attempt count and last attempt of every failed row, so the sweep's next cycle
-    /// tries them again. Returns how many rows it reset.
+    /// Clears the attempt count and last attempt of every failed row the sweep can read, so its
+    /// next cycle tries them again. Rows of trashed or deleted files are left alone, since the
+    /// sweep would never pick them up. Returns how many rows it reset.
     /// </summary>
-    Task<int> ResetFailedAsync(CancellationToken ct = default);
+    Task<int> ResetFailedAsync(IReadOnlyCollection<string> mimeTypes, CancellationToken ct = default);
 }
