@@ -1,3 +1,4 @@
+using Alexandria.Data.Models.Enumerators;
 using NpgsqlTypes;
 
 namespace Alexandria.Data.Models;
@@ -18,6 +19,12 @@ public class Directory : IBase, ISearchableByName
     public DateTime? DeletedAt { get; set; }
     public bool IsStarred { get; set; }
     public Guid? UpdatedBy { get; set; }
+
+    /// <summary>
+    /// Marks the owner's Notes folder (or a future system folder). Null for every ordinary folder,
+    /// and never copied when a folder is duplicated.
+    /// </summary>
+    public DirectorySystemKind? SystemKind { get; set; }
 
     /// <summary>
     /// Bytes of the current versions of the live files sitting directly in this folder, without

@@ -215,7 +215,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Id = d.OwnerId,
                     Name = d.Owner.Name,
                     Email = d.Owner.Email
-                }, d.IsStarred, DatabaseFunctions.DirectoryTreeSize(d.Id))).ToListAsync(cancellationToken: ct);
+                }, d.IsStarred, DatabaseFunctions.DirectoryTreeSize(d.Id), d.SystemKind))
+            .ToListAsync(cancellationToken: ct);
 
         return new PaginatedResult<DirectorySummaryDto>
         {
@@ -344,7 +345,8 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Name = d.Owner.Name
                 },
                 d.IsStarred,
-                DatabaseFunctions.DirectoryTreeSize(d.Id)
+                DatabaseFunctions.DirectoryTreeSize(d.Id),
+                d.SystemKind
             ))
             .ToListAsync(ct);
 
@@ -403,7 +405,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                     Id = d.Owner.Id,
                     Email = d.Owner.Email,
                     Name = d.Owner.Name
-                }, d.IsStarred, DatabaseFunctions.DirectoryTreeSize(d.Id)))
+                }, d.IsStarred, DatabaseFunctions.DirectoryTreeSize(d.Id), d.SystemKind))
             .ToListAsync(ct);
 
         return new PaginatedResult<DirectorySummaryDto>
@@ -544,7 +546,7 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
                  SELECT
                      "Id", "Name", "NormalizedName", "SearchVector",
                      "ParentId", "CreatedAt", "UpdatedAt", "DeletedAt", "IsStarred",
-                     "UpdatedBy", "OwnerId", "DirectFilesSize"
+                     "UpdatedBy", "OwnerId", "DirectFilesSize", "SystemKind"
                  FROM RecursiveDirs;
                  """)
             .AsNoTracking()

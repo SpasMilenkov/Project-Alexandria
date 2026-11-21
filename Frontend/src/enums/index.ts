@@ -7,6 +7,7 @@ import { AuditEventCode } from "./audit-event-code";
 import { AuditExportFormat } from "./audit-export-format";
 import { AuditSortBy } from "./audit-sort-by";
 import { AutoGroupKind } from "./auto-group-kind";
+import { DirectorySystemKind } from "./directory-system-kind";
 import { DocumentTextStatus } from "./document-text-status";
 import { EntityType } from "./entity-type";
 import { GallerySort } from "./gallery-sort";
@@ -54,6 +55,7 @@ export {
   AuditEventCode,
   AuditExportFormat,
   AuditSortBy,
+  DirectorySystemKind,
   DocumentTextStatus,
   EntityType,
   LogSource,

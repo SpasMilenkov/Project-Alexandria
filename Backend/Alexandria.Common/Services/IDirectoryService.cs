@@ -186,6 +186,9 @@ public interface IDirectoryService
     /// Thrown when a sibling directory with the same <paramref name="name"/> already exists
     /// under the same parent.
     /// </exception>
+    /// <exception cref="Exceptions.Directories.SystemDirectoryProtectedException">
+    /// Thrown when the directory is a system folder such as Notes.
+    /// </exception>
     Task<DirectoryDto> UpdateDirectoryAsync(Guid id, string name, Guid userId,
         CancellationToken ct = default);
 
@@ -207,6 +210,9 @@ public interface IDirectoryService
     /// <exception cref="Exceptions.Directories.DirectoryMoveException">
     /// Thrown when the move would create a circular reference, or when none of
     /// the specified directories could be moved.
+    /// </exception>
+    /// <exception cref="Exceptions.Directories.SystemDirectoryProtectedException">
+    /// Thrown when one of the directories is a system folder such as Notes.
     /// </exception>
     Task MoveDirectoryAsync(Guid[] ids, Guid? newParentId, Guid userId,
         CancellationToken ct = default);
@@ -232,6 +238,9 @@ public interface IDirectoryService
     /// <exception cref="Exceptions.Directories.DirectoryNotEmptyException">
     /// Thrown when <paramref name="force"/> is <c>false</c> and the directory contains
     /// one or more files or subdirectories.
+    /// </exception>
+    /// <exception cref="Exceptions.Directories.SystemDirectoryProtectedException">
+    /// Thrown when the directory is a system folder such as Notes.
     /// </exception>
     Task DeleteDirectoryAsync(Guid id, Guid userId, bool force = false,
         CancellationToken ct = default);

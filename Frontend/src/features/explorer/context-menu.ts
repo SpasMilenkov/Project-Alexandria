@@ -67,6 +67,11 @@ const canDownload = (): boolean => true;
 const canShare = (): boolean => true;
 const canDelete = (): boolean => true;
 
+// The Notes folder stays at the root under its own name: notes are found by living under it.
+// The server refuses these actions anyway; the menu just doesn't offer them.
+const isSystemFolder = (directory: DirectorySummaryDto): boolean =>
+  directory.systemKind !== null && directory.systemKind !== undefined;
+
 /**
  * Single menu model for the whole explorer. Items are computed from the snapshot
  * captured when the menu opens, so later selection changes cannot retarget them.
@@ -263,7 +268,7 @@ const buildDirectoryItems = (
       ],
       [
         {
-          disabled: !canRename(),
+          disabled: !canRename() || isSystemFolder(target),
           icon: "i-lucide-pencil",
           label: "Rename",
           kbds: ["R"],
@@ -272,7 +277,7 @@ const buildDirectoryItems = (
       ],
       [
         {
-          disabled: !canMove(),
+          disabled: !canMove() || isSystemFolder(target),
           icon: "i-lucide-folder-input",
           label: "Move to…",
           kbds: ["⌘", "X"],
@@ -296,7 +301,7 @@ const buildDirectoryItems = (
       [
         {
           color: "error" as const,
-          disabled: !canDelete(),
+          disabled: !canDelete() || isSystemFolder(target),
           icon: "i-lucide-trash-2",
           label: "Delete",
           kbds: ["Del"],
@@ -344,4 +349,4 @@ const buildDirectoryItems = (
 };
 
 export type { ContextMenuTarget, ExplorerMenuActions, ExplorerMenuKind, ExplorerMenuSnapshot };
-export { buildExplorerMenuItems, resolveContextMenuTarget };
+export { buildExplorerMenuItems, isSystemFolder, resolveContextMenuTarget };

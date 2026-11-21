@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DirectorySummaryDto } from "@/api/directory";
 import type { FileResult } from "@/api/file";
 
+import { DirectorySystemKind } from "@/enums/directory-system-kind";
 import {
   type ExplorerMenuActions,
   type ExplorerMenuSnapshot,
@@ -213,6 +214,19 @@ describe("buildExplorerMenuItems", () => {
     const action = items.find((item) => item.label === "Remove from favorites");
 
     expect(action).toMatchObject({ disabled: true, icon: "i-lucide-star-off" });
+  });
+
+  it("keeps the Notes folder in place: it can't be renamed, moved or deleted", () => {
+    const snapshot = dirSnapshot();
+    snapshot.targetDirectory!.systemKind = DirectorySystemKind.Notes;
+
+    const items = flatten(buildExplorerMenuItems(snapshot, makeActions()));
+    const disabledOf = (label: string) => items.find((item) => item.label === label)?.disabled;
+
+    expect(disabledOf("Move to…")).toBe(true);
+    expect(disabledOf("Delete")).toBe(true);
+    expect(disabledOf("Rename")).toBe(true);
+    expect(disabledOf("Copy to…")).toBe(false);
   });
 
   it("freezes actions to the opening snapshot", () => {

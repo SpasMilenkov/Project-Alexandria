@@ -477,6 +477,9 @@ namespace Alexandria.Data.Migrations
                         .HasColumnType("tsvector")
                         .HasComputedColumnSql("to_tsvector('simple', \n                regexp_replace(\n                    regexp_replace(coalesce(\"Name\", ''), '\\.[^.]*$', ''),\n                    '[_\\-()[\\]]+', ' ', 'g'\n                )\n            )", true);
 
+                    b.Property<int?>("SystemKind")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -495,6 +498,10 @@ namespace Alexandria.Data.Migrations
 
                     b.HasIndex("ParentId", "Name")
                         .IsUnique();
+
+                    b.HasIndex(new[] { "OwnerId", "SystemKind" }, "IX_Directories_Owner_SystemKind")
+                        .IsUnique()
+                        .HasFilter("\"SystemKind\" IS NOT NULL");
 
                     b.ToTable("Directories", (string)null);
                 });

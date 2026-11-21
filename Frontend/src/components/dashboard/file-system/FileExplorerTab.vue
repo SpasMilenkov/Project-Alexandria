@@ -708,6 +708,7 @@ import {
   type ExplorerMenuActions,
   type ExplorerMenuSnapshot,
   buildExplorerMenuItems,
+  isSystemFolder,
   resolveContextMenuTarget,
 } from "@/features/explorer/context-menu";
 import { EXPLORER_PAGE_SIZES } from "@/features/explorer/preferences";
@@ -1790,6 +1791,8 @@ const handleRenameSelected = () => {
 
   if (dirCount === 1) {
     const [dirId] = selectedDirectories.value;
+    const dir = directoriesList.value.find((d) => d.id === dirId);
+    if (dir && isSystemFolder(dir)) return;
     handleDirectoryRename(dirId);
   }
 };

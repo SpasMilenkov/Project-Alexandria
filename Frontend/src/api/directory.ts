@@ -1,3 +1,4 @@
+import type { DirectorySystemKind } from "@/enums/directory-system-kind";
 import type { SortBy } from "@/enums/SortBy";
 import type { SortDirection } from "@/enums/SortDirection";
 import type {
@@ -34,6 +35,8 @@ export interface DirectorySummaryDto {
   ownerUserDto: UserDto;
   // Bytes of the current versions of every live file in the folder and its subfolders.
   size: number;
+  // Set on the owner's Notes folder, which can't be renamed, trashed or moved.
+  systemKind?: DirectorySystemKind | null;
 }
 
 export interface RootContentDto {

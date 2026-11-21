@@ -74,6 +74,12 @@ public class DirectoryConfiguration : IEntityTypeConfiguration<Directory>
         builder.HasIndex(e => new { e.ParentId, e.Name }).IsUnique();
         builder.HasIndex(e => e.OwnerId);
 
+        // One folder of each system kind per owner. Trashing is blocked for these folders, so
+        // the filter doesn't need to look at DeletedAt.
+        builder.HasIndex(e => new { e.OwnerId, e.SystemKind }, "IX_Directories_Owner_SystemKind")
+            .IsUnique()
+            .HasFilter("\"SystemKind\" IS NOT NULL");
+
         builder.HasIndex(e => e.NormalizedName)
             .HasMethod("gin")
             .HasOperators("gin_trgm_ops");

@@ -35,7 +35,7 @@
       <div
         class="relative flex aspect-[4/3] w-full items-center justify-center rounded-lg bg-gray-500/[0.07] text-gray-500 dark:bg-white/[0.06] dark:text-gray-400"
       >
-        <UIcon name="i-lucide-folder" :size="iconSize" class="shrink-0" />
+        <UIcon :name="folderIcon" :size="iconSize" class="shrink-0" />
         <UIcon
           v-if="data.isStarred"
           name="i-lucide-star"
@@ -97,11 +97,7 @@
       :aria-describedby="describedBy ?? undefined"
     >
       <span class="flex min-w-0 items-center gap-3 text-gray-900 dark:text-gray-100">
-        <UIcon
-          name="i-lucide-folder"
-          :size="iconSize"
-          class="shrink-0 text-gray-500 dark:text-gray-400"
-        />
+        <UIcon :name="folderIcon" :size="iconSize" class="shrink-0 text-gray-500 dark:text-gray-400" />
         <span class="truncate font-medium">{{ data.name }}</span>
         <UIcon
           v-if="data.isStarred"
@@ -137,6 +133,7 @@ import type { DirectorySummaryDto } from "@/api/directory";
 
 import { useExplorerDragSession } from "@/composables/useExplorerDragSession";
 import { type TooltipEnterKind } from "@/composables/useExplorerTooltip";
+import { DirectorySystemKind } from "@/enums/directory-system-kind";
 import { getPolicyByDirectory } from "@/queries/policies";
 import { useSettingsStore } from "@/stores/settings";
 import { formatTimeAgo } from "@/utils/date-formatters";
@@ -163,6 +160,13 @@ const emit = defineEmits<{
 const iconSize = computed(() =>
   props.viewMode === "grid" ? settingsStore.gridIconSize : settingsStore.listIconSize,
 );
+
+// The Notes folder looks like a notebook so it reads as the home of notes, whatever it's called.
+const folderIcon = computed(() => {
+  if (props.data.systemKind === DirectorySystemKind.Notes) return "i-lucide-notebook";
+
+  return "i-lucide-folder";
+});
 
 const modifiedLabel = computed(() => formatTimeAgo(props.data.updatedAt || props.data.createdAt));
 
