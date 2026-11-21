@@ -254,6 +254,18 @@ public class DocumentTextSweepWorkerTests
     }
 
     [Fact]
+    public async Task SweepBatch_attemptLimitBelowOne_stillGivesEachDocumentOneTry()
+    {
+        Candidates();
+
+        await CreateSut(new DocumentTextSweepConfig { MaxAttempts = 0 }).SweepBatchAsync(Ct);
+
+        await _repository.Received(1).GetExtractionCandidatesAsync(
+            Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<int>(), Arg.Any<DateTime>(), 1,
+            Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Execute_failedCycle_isReportedToMonitoringForDocumentPreviews()
     {
         _repository.GetExtractionCandidatesAsync(

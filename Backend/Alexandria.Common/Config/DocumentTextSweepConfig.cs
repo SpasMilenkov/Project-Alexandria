@@ -31,7 +31,15 @@ public class DocumentTextSweepConfig
 
     /// <summary>
     /// Failed attempts at one extractor version before a document is left alone until an admin
-    /// retries it.
+    /// retries it. Read it through <see cref="AttemptLimit"/>. The API reports this limit as well,
+    /// so a value set for the document worker must be set for the API too.
     /// </summary>
     public int MaxAttempts { get; set; } = 3;
+
+    /// <summary>
+    /// <see cref="MaxAttempts"/> as the sweep applies it: every document gets at least one try.
+    /// The worker and the admin overview both read this, so they agree on what a failure's
+    /// remaining tries are.
+    /// </summary>
+    public int AttemptLimit => Math.Max(MaxAttempts, 1);
 }

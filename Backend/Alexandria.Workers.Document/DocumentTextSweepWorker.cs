@@ -82,7 +82,7 @@ public partial class DocumentTextSweepWorker(
             DocumentTextFileTypes.Supported.Types,
             DocumentTextExtractor.CurrentVersion,
             DateTime.UtcNow.AddHours(-Math.Max(config.RetryFailedAfterHours, 0)),
-            Math.Max(config.MaxAttempts, 1),
+            config.AttemptLimit,
             Math.Max(config.BatchSize, 1),
             ct);
 

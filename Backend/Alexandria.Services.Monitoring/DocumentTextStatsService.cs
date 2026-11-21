@@ -16,7 +16,7 @@ public class DocumentTextStatsService(
     public async Task<DocumentTextOverviewResponse> GetOverviewAsync(Guid viewerId, CancellationToken ct)
     {
         // The API reads the same settings section as the worker, so both agree on the limit.
-        var maxAttempts = options.Value.MaxAttempts;
+        var maxAttempts = options.Value.AttemptLimit;
         var types = DocumentTextFileTypes.Supported.Types;
 
         var statusCounts = await documentText.GetStatusCountsAsync(types, ct);

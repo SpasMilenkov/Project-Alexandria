@@ -2,6 +2,7 @@ using Alexandria.Common.Config;
 using Alexandria.Common.Helpers;
 using Alexandria.Common.Repositories;
 using Alexandria.Services.Monitoring;
+using AwesomeAssertions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -15,6 +16,18 @@ public class DocumentTextStatsServiceTests
 
     private DocumentTextStatsService CreateSut(int maxAttempts)
         => new(_repo, Options.Create(new DocumentTextSweepConfig { MaxAttempts = maxAttempts }));
+
+    [Fact]
+    public async Task Overview_reportsTheLimitTheSweepApplies_evenWhenConfiguredBelowOne()
+    {
+        var viewer = Guid.NewGuid();
+
+        var overview = await CreateSut(maxAttempts: 0).GetOverviewAsync(viewer, Ct);
+
+        overview.MaxAttempts.Should().Be(1);
+        await _repo.Received(1).GetRecentFailuresAsync(
+            viewer, DocumentTextFileTypes.Supported.Types, 1, Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
 
     [Fact]
     public async Task Overview_and_retry_coverOnlyTheTypesTheSweepReads()
