@@ -4,6 +4,10 @@
     :name="data.fileName"
     :subtitle="readableType"
   >
+    <template v-if="$slots.lead" #lead>
+      <slot name="lead" />
+    </template>
+
     <ExplorerTooltipStat label="Size" emphasis>{{ sizeLabel }}</ExplorerTooltipStat>
 
     <ExplorerTooltipStat label="Version">

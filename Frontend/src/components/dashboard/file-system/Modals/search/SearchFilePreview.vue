@@ -1,6 +1,11 @@
 <template>
   <div class="flex flex-col gap-2">
-    <TextPreviewPane v-if="textPreview" :preview="textPreview" @download="downloadPreview" />
+    <!-- A file found by its text shows where it matched instead of a picture of it. -->
+    <TextPreviewPane
+      v-if="!showsExcerpts && textPreview"
+      :preview="textPreview"
+      @download="downloadPreview"
+    />
 
     <!--
       One fixed frame for every other file, so moving between results never
@@ -8,7 +13,7 @@
       photos fill its height, landscape ones its width.
     -->
     <div
-      v-else
+      v-else-if="!showsExcerpts"
       class="relative flex h-[min(24rem,50dvh)] w-full items-center justify-center overflow-hidden rounded-lg bg-elevated"
     >
       <img
@@ -66,7 +71,15 @@
       />
     </div>
 
-    <FileTooltipCard :data="file" />
+    <FileTooltipCard :data="file">
+      <template v-if="showsExcerpts" #lead>
+        <SearchContentMatches
+          :file-id="file.fileId"
+          :version-id="file.currentVersion.id"
+          :query="query"
+        />
+      </template>
+    </FileTooltipCard>
   </div>
 </template>
 
@@ -84,7 +97,9 @@ import { FILES_QUERY_KEYS, getPreviewByVersion } from "@/queries/files";
 import { getFileIcon } from "@/utils/files/icons";
 import { getFileTypeReadable } from "@/utils/files/mimetype";
 
-const { file } = defineProps<{ file: FileResult }>();
+import SearchContentMatches from "./SearchContentMatches.vue";
+
+const { file, query = "" } = defineProps<{ file: FileResult; query?: string }>();
 
 const queryCache = useQueryCache();
 const { downloadVersion } = useFileDownload();
@@ -125,10 +140,12 @@ const {
 
 const hasThumbnail = computed(() => canHaveThumbnail.value && !thumbnailErrored.value);
 
+const showsExcerpts = computed(() => Boolean(file.matchedInContent) && query.length > 0);
+
 // The preview carries the text excerpt for files without a thumbnail and the
-// full picture for images.
+// full picture for images. A text match shows neither, so it skips the request.
 const isPreviewEnabled = computed(
-  () => !isProtected.value && (!canHaveThumbnail.value || isImage.value),
+  () => !showsExcerpts.value && !isProtected.value && (!canHaveThumbnail.value || isImage.value),
 );
 
 const { data: previewData, isPlaceholderData } = useQuery(() => ({

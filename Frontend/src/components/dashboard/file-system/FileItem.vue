@@ -88,8 +88,9 @@
   <div v-else class="relative group" tabindex="0" :data-file-id="data.fileId">
     <button
       type="button"
-      class="grid h-11 w-full cursor-pointer grid-cols-[minmax(0,1fr)_56px_88px] items-center gap-4 rounded-lg border-b border-gray-200/70 px-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_56px_112px_88px] dark:border-gray-700/70"
+      class="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_56px_88px] items-center gap-4 rounded-lg border-b border-gray-200/70 px-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary @min-[720px]/explorer:grid-cols-[minmax(0,1fr)_56px_112px_88px] dark:border-gray-700/70"
       :class="[
+        $slots.subtitle ? 'h-14' : 'h-11',
         isSelected
           ? 'bg-primary/10 ring-1 ring-inset ring-primary'
           : 'hover:bg-gray-500/5 dark:hover:bg-white/5',
@@ -113,22 +114,29 @@
           :size="iconSize"
           class="shrink-0 text-gray-500 dark:text-gray-400"
         />
-        <span class="truncate">{{ props.data.fileName }}</span>
-        <span
-          v-if="props.data.currentVersion.isEncrypted"
-          class="flex shrink-0 items-center text-gray-500 dark:text-gray-500"
-          data-encrypted-indicator
-        >
-          <UIcon name="i-lucide-lock" class="w-3.5 h-3.5" aria-hidden="true" />
-          <span class="sr-only">Encrypted</span>
-        </span>
-        <span
-          v-else-if="props.data.currentVersion.isPasswordProtected"
-          class="flex shrink-0 items-center text-gray-500 dark:text-gray-500"
-          data-password-protected-indicator
-        >
-          <UIcon name="i-lucide-file-lock" class="w-3.5 h-3.5" aria-hidden="true" />
-          <span class="sr-only">Password protected</span>
+        <span class="flex min-w-0 flex-col gap-0.5">
+          <span class="flex min-w-0 items-center gap-3">
+            <span class="truncate">{{ props.data.fileName }}</span>
+            <span
+              v-if="props.data.currentVersion.isEncrypted"
+              class="flex shrink-0 items-center text-gray-500 dark:text-gray-500"
+              data-encrypted-indicator
+            >
+              <UIcon name="i-lucide-lock" class="w-3.5 h-3.5" aria-hidden="true" />
+              <span class="sr-only">Encrypted</span>
+            </span>
+            <span
+              v-else-if="props.data.currentVersion.isPasswordProtected"
+              class="flex shrink-0 items-center text-gray-500 dark:text-gray-500"
+              data-password-protected-indicator
+            >
+              <UIcon name="i-lucide-file-lock" class="w-3.5 h-3.5" aria-hidden="true" />
+              <span class="sr-only">Password protected</span>
+            </span>
+          </span>
+
+          <!-- A second line under the name, such as search's excerpt for a text match. -->
+          <slot name="subtitle" />
         </span>
       </span>
       <span

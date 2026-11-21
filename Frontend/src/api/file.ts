@@ -1,4 +1,4 @@
-import type { TextPreviewTruncation } from "@/enums";
+import type { DocumentTextStatus, TextPreviewTruncation } from "@/enums";
 import type { GenerateSignedUrlSchema, UpdateFileMetadataSchema } from "@/schemas/file";
 import type { FileSearchQuery } from "@/schemas/search";
 import type { PaginationParams } from "@/types/pagination-params";
@@ -69,6 +69,26 @@ export interface FileResult {
   currentVersion: FileVersionDto;
   tags: TagDto[];
   owner: UserDto;
+  // Only file search sets this: the search's words appear in the document's text.
+  matchedInContent?: boolean;
+}
+
+// One run of document text, either a searched word or the context around it.
+// Plain text by design, so nothing from a document is ever rendered as markup.
+export interface ContentMatchSegment {
+  text: string;
+  isMatch: boolean;
+}
+
+export interface ContentMatchFragment {
+  segments: ContentMatchSegment[];
+}
+
+export interface ContentMatchesResponse {
+  // Null while the text has not been read, or for files whose text is never read.
+  status: DocumentTextStatus | null;
+  isTruncated: boolean;
+  fragments: ContentMatchFragment[];
 }
 
 // thumbnailUrl removed, thumbnails are a separate endpoint/call now
@@ -269,6 +289,15 @@ export const fileApi = {
 
   getDocumentMetadata: (fileId: string, versionId: string | null): Promise<DocumentMetadataDto> =>
     api.get<DocumentMetadataDto>(`/files/${fileId}/document-metadata`, { params: { versionId } }),
+
+  getContentMatches: (fileId: string, query: string): Promise<ContentMatchesResponse> =>
+    api.get<ContentMatchesResponse>(`/files/${fileId}/content-matches`, { params: { query } }),
+
+  // Only the excerpt at the first match, which the server cuts from a short stretch of text.
+  getFirstContentMatch: (fileId: string, query: string): Promise<ContentMatchesResponse> =>
+    api.get<ContentMatchesResponse>(`/files/${fileId}/content-matches`, {
+      params: { firstMatchOnly: true, query },
+    }),
 
   deleteFileVersion: async (id: string): Promise<void> => {
     await api.delete(`/files/versions/${id}`);

@@ -29,6 +29,23 @@ export const FILES_QUERY_KEYS = {
     fileId,
     versionId,
   ],
+  // The server reads the current version's text; the version id in the key makes a new
+  // version fetch fresh excerpts instead of showing the old text's.
+  contentMatches: (fileId: string, versionId: string, query: string) => [
+    ...FILES_QUERY_KEYS.root,
+    "content-matches",
+    fileId,
+    versionId,
+    query,
+  ],
+  // Separate from contentMatches: it holds one excerpt, so the preview pane can't reuse it.
+  firstContentMatch: (fileId: string, versionId: string, query: string) => [
+    ...FILES_QUERY_KEYS.root,
+    "first-content-match",
+    fileId,
+    versionId,
+    query,
+  ],
   // Every filter belongs in the key, otherwise changing one (e.g. a deletion window)
   // serves the cached result of the previous query.
   searchFiles: (query: FileSearchQuery) => [...FILES_QUERY_KEYS.root, "search-files", query],
@@ -74,6 +91,23 @@ export const getDocumentMetadata = defineQueryOptions(
   ({ fileId, versionId }: { fileId: string; versionId: string | null }) => ({
     key: FILES_QUERY_KEYS.documentMetadata(fileId, versionId),
     query: () => fileApi.getDocumentMetadata(fileId, versionId),
+  }),
+);
+
+// Moving back to a result shows its excerpts again without another request.
+export const getContentMatches = defineQueryOptions(
+  ({ fileId, versionId, query }: { fileId: string; versionId: string; query: string }) => ({
+    key: FILES_QUERY_KEYS.contentMatches(fileId, versionId, query),
+    query: () => fileApi.getContentMatches(fileId, query),
+    staleTime: 5 * 60_000,
+  }),
+);
+
+export const getFirstContentMatch = defineQueryOptions(
+  ({ fileId, versionId, query }: { fileId: string; versionId: string; query: string }) => ({
+    key: FILES_QUERY_KEYS.firstContentMatch(fileId, versionId, query),
+    query: () => fileApi.getFirstContentMatch(fileId, query),
+    staleTime: 5 * 60_000,
   }),
 );
 

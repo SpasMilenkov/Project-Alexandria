@@ -135,6 +135,9 @@ const AUDIT_EVENT_MESSAGES: Record<AuditEventCode, string> = {
   // Sessions and retention
   [AuditEventCode.UserSessionRevoked]: "Session signed out",
   [AuditEventCode.AuditLogsPurged]: "Old activity purged",
+
+  // Admin actions added later
+  [AuditEventCode.DocumentTextRetried]: "Failed document text queued again",
 };
 
 export type MetadataRenderer =

@@ -18,6 +18,9 @@
       </div>
     </div>
 
+    <!-- Content that matters more than the stats, such as where a search matched. -->
+    <slot name="lead" />
+
     <dl class="grid grid-cols-2 gap-1 rounded-xl bg-gray-500/10 p-1.5">
       <slot />
     </dl>

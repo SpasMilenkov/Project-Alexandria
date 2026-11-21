@@ -1,7 +1,7 @@
 <template>
   <UModal
     title="Search"
-    description="Search files and folders by name, narrowed with filters"
+    description="Search files and folders by name and documents by their text, narrowed with filters"
     :ui="{ body: 'p-2 sm:p-2', content: modalContent, header: 'hidden' }"
   >
     <template #body>
@@ -35,7 +35,12 @@
                 @clear-filters="clearChips"
               />
 
-              <BlockSpinner v-else-if="isWaiting" :size="32" />
+              <div
+                v-else-if="isWaiting"
+                class="flex h-full items-center justify-center text-gray-500 dark:text-gray-400"
+              >
+                <BlockSpinner :size="32" />
+              </div>
 
               <SearchEmptyState
                 v-else-if="!hasResults"
@@ -55,6 +60,7 @@
                 :active-index="activeResultIndex"
                 :directory-count-label="directoryCountLabel"
                 :file-count-label="fileCountLabel"
+                :query="debouncedName"
                 @activate="setActiveResult"
                 @open="openResult"
                 @preview="preview"
@@ -102,7 +108,11 @@
             class="absolute inset-y-0 left-0 w-[21rem] overflow-y-auto pl-3 transition-[opacity,translate] ease-out motion-reduce:transition-none"
             :class="paneContentClass"
           >
-            <SearchResultPreview v-if="shownPreview" :target="shownPreview" />
+            <SearchResultPreview
+              v-if="shownPreview"
+              :target="shownPreview"
+              :query="debouncedName"
+            />
           </div>
         </div>
       </div>
