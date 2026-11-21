@@ -19,6 +19,13 @@ public interface IFileRepository : IRepository<File>
     /// </summary>
     Task<Guid?> GetCurrentContentObjectIdAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Loads the owner's file and locks its row until the surrounding transaction ends, so two
+    /// saves against the same parent version can't both pass the current-version check. Call it
+    /// inside a transaction; trashed files are returned too, for the caller to reject.
+    /// </summary>
+    Task<File?> GetForUpdateAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
+
     Task<File> UpdateAsync(File file, CancellationToken ct = default);
     Task<FileResult?> GetFileWithTagsAsync(Guid userId, Guid fileId, CancellationToken ct = default);
     Task<string?> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);

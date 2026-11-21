@@ -7,6 +7,8 @@ using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
+using Alexandria.Common.Exceptions.Files;
+using Alexandria.Common.Exceptions.FileVersions;
 using Alexandria.Common.Mime;
 using Alexandria.Common.Queues;
 using Alexandria.Common.Services;
@@ -750,10 +752,25 @@ public partial class ContentStorageService(
         await DeleteTempObjectAsync(bucket, incomingKey, ct);
     }
 
-    public async Task<UploadResult> CommitUploadAsync(
+    public Task<UploadResult> CommitUploadAsync(
         VerifiedUpload verified,
         UploadFinalizeItem item,
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        CommitVersionAsync(verified, item, target: null, requireNewFile: false, ct);
+
+    /// <summary>
+    /// Records verified bytes as a file version. Uploads match the destination file by name, so a
+    /// second upload of a name becomes its next version. A <paramref name="target"/> addresses the
+    /// file by id instead, refuses a stale parent version and keeps the parent's MIME type.
+    /// <paramref name="requireNewFile"/> refuses to add a version to a file that already has the
+    /// name, for creates that must never land on someone's existing file.
+    /// </summary>
+    private async Task<UploadResult> CommitVersionAsync(
+        VerifiedUpload verified,
+        UploadFinalizeItem item,
+        VersionTarget? target,
+        bool requireNewFile,
+        CancellationToken ct)
     {
         var uploadId = verified.UploadId;
         var uploadedBy = verified.UploadedBy;
@@ -782,17 +799,8 @@ public partial class ContentStorageService(
             upload.Status = UploadStatus.Finished;
             upload.FinishedAt = DateTime.UtcNow;
 
-            // Encrypted payloads are ciphertext and are never sniffed. Upload.MimeType keeps the
-            // declared value as an audit trail. The sniffer swallows its own faults, so this
-            // step can never reject an upload.
-            var resolution = isEncrypted
-                ? mimeResolver.ResolveWithoutContent(objectName, upload.MimeType)
-                : mimeResolver.Resolve(objectName, verified.Header, upload.MimeType);
-            var resolvedMimeType = resolution.MimeType;
-
-            var declaredMimeType = MimeAliases.Canonicalize(upload.MimeType);
-            if (MimeAliases.IsUsable(declaredMimeType) && declaredMimeType != resolvedMimeType)
-                LogMimeCorrected(logger, upload.Id, declaredMimeType, resolvedMimeType, resolution.Source);
+            var resolvedMimeType = target?.MimeType ?? ResolveUploadMimeType(upload, objectName, verified.Header,
+                isEncrypted);
 
             var serverHash = Convert
                 .ToHexString(computedHash)
@@ -844,12 +852,24 @@ public partial class ContentStorageService(
                 unitOfWork.ContentObjects.Update(contentObject);
             }
 
-            var file = await unitOfWork.Files.FirstOrDefaultAsync(
-                f =>
-                    f.Name == objectName &&
-                    f.DirectoryId == directoryId &&
-                    f.OwnerId == uploadedBy,
-                ct);
+            FileEntity? file;
+
+            if (target is null)
+            {
+                file = await unitOfWork.Files.FirstOrDefaultAsync(
+                    f =>
+                        f.Name == objectName &&
+                        f.DirectoryId == directoryId &&
+                        f.OwnerId == uploadedBy,
+                    ct);
+            }
+            else
+            {
+                file = await LockTargetFileAsync(target, uploadedBy, ct);
+            }
+
+            if (file is not null && requireNewFile)
+                throw new FileNameTakenException(objectName, directoryId);
 
             if (file is null)
             {
@@ -942,6 +962,37 @@ public partial class ContentStorageService(
         LogUploadFinalized(logger, result.FileId, computedSize);
 
         return result;
+    }
+
+    // Encrypted payloads are ciphertext and are never sniffed. Upload.MimeType keeps the declared
+    // value as an audit trail. The sniffer swallows its own faults, so this step can never reject
+    // an upload.
+    private string ResolveUploadMimeType(Upload upload, string objectName, byte[] header, bool isEncrypted)
+    {
+        var resolution = isEncrypted
+            ? mimeResolver.ResolveWithoutContent(objectName, upload.MimeType)
+            : mimeResolver.Resolve(objectName, header, upload.MimeType);
+
+        var declaredMimeType = MimeAliases.Canonicalize(upload.MimeType);
+        if (MimeAliases.IsUsable(declaredMimeType) && declaredMimeType != resolution.MimeType)
+            LogMimeCorrected(logger, upload.Id, declaredMimeType, resolution.MimeType, resolution.Source);
+
+        return resolution.MimeType;
+    }
+
+    // The row lock holds until the commit, so the current-version check below can't be passed by
+    // two saves made from the same parent.
+    private async Task<FileEntity> LockTargetFileAsync(VersionTarget target, Guid userId, CancellationToken ct)
+    {
+        var file = await unitOfWork.Files.GetForUpdateAsync(target.FileId, userId, ct);
+
+        if (file is null || file.DeletedAt is not null)
+            throw new FileRecordNotFoundException(target.FileId);
+
+        if (file.CurrentVersionId != target.ParentVersionId)
+            throw new FileVersionConflictException(target.FileId, target.ParentVersionId, file.CurrentVersionId);
+
+        return file;
     }
 
     public async Task AbandonUploadAsync(Guid uploadId, string tempObjectKey, CancellationToken ct = default)

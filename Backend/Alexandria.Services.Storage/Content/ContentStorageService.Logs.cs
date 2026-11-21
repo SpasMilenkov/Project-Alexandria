@@ -170,4 +170,18 @@ public partial class ContentStorageService
 
     [LoggerMessage(1065, LogLevel.Error, "Could not create {Count} upload rows for a batch")]
     private static partial void LogUploadBatchInitiateFailed(ILogger logger, Exception ex, int count);
+
+    // Text written by the editor
+
+    [LoggerMessage(1066, LogLevel.Warning, "Could not save text for file {FileId} from version {ParentVersionId}")]
+    private static partial void LogTextSaveFailed(ILogger logger, Exception ex, Guid fileId, Guid parentVersionId);
+
+    [LoggerMessage(1067, LogLevel.Warning, "Could not create text file {FileName} in directory {DirectoryId}")]
+    private static partial void LogTextCreateFailed(ILogger logger, Exception ex, string fileName, Guid? directoryId);
+
+    [LoggerMessage(1068, LogLevel.Error, "Could not write staged text for upload {UploadId}")]
+    private static partial void LogTextStageFailed(ILogger logger, Exception ex, Guid uploadId);
+
+    [LoggerMessage(1069, LogLevel.Debug, "Text object {Bucket}/{Key} not found, trying the next location")]
+    private static partial void LogTextObjectMissing(ILogger logger, string bucket, string key);
 }

@@ -112,6 +112,40 @@ public interface IContentStorageService
     /// <summary>Ends a claimed upload as interrupted and removes its temp objects.</summary>
     Task AbandonUploadAsync(Guid uploadId, string tempObjectKey, CancellationToken ct = default);
 
+    /// <summary>
+    /// Reads a version's bytes for the editor. Not a download: nothing is audited and no signed
+    /// URL is issued. Works before promotion has copied a fresh save to permanent storage.
+    /// </summary>
+    /// <exception cref="Exceptions.FileVersions.FileVersionNotFoundException">Missing, trashed or not owned.</exception>
+    /// <exception cref="Exceptions.Files.FileContentNotEditableException">Encrypted or too large.</exception>
+    Task<VersionText> ReadVersionTextAsync(Guid versionId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Adds a version made from <paramref name="parentVersionId"/>, addressed by file id. The new
+    /// version keeps the parent's MIME type. Text identical to the parent writes nothing.
+    /// </summary>
+    /// <exception cref="Exceptions.FileVersions.FileVersionConflictException">
+    /// The parent is no longer the file's current version.
+    /// </exception>
+    /// <exception cref="Exceptions.Files.FileRecordNotFoundException">Missing, trashed or not owned.</exception>
+    /// <exception cref="Exceptions.FileVersions.FileVersionNotFoundException">The parent isn't one of the file's versions.</exception>
+    /// <exception cref="Exceptions.Files.FileContentNotEditableException">Encrypted parent, or text too large.</exception>
+    Task<FileContentSaveResult> SaveTextContentAsync(
+        Guid fileId,
+        Guid parentVersionId,
+        string text,
+        Guid userId,
+        CancellationToken ct = default);
+
+    /// <summary>Creates a new file holding <paramref name="text"/>; never adds to an existing file.</summary>
+    /// <exception cref="Exceptions.Files.FileNameTakenException">The name is used in the folder, trash included.</exception>
+    Task<FileContentSaveResult> CreateTextFileAsync(
+        string fileName,
+        Guid? directoryId,
+        string text,
+        Guid userId,
+        CancellationToken ct = default);
+
     Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default);
 
     Task<string> GetVersionPresignedUrl(Guid fileVersionId, Guid ownerId, CancellationToken ct = default);

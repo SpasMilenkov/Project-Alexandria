@@ -137,6 +137,30 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<File?> GetForUpdateAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    {
+        // Not composed further, so EF sends the statement as written and the lock clause stays
+        // at the top level.
+        var rows = await _files
+            .FromSqlInterpolated($"""
+                                  SELECT *
+                                  FROM "Files"
+                                  WHERE "Id" = {fileId}
+                                    AND "OwnerId" = {ownerId}
+                                  FOR UPDATE
+                                  """)
+            .ToListAsync(ct);
+
+        var file = rows.SingleOrDefault();
+
+        // A file the context already tracks comes back with the values it was first read with, so
+        // it is read again now that the lock is held.
+        if (file is not null)
+            await context.Entry(file).ReloadAsync(ct);
+
+        return file;
+    }
+
     public async Task<bool> IsPromotedAsync(Guid fileId, CancellationToken ct = default)
     {
         return await _files.Where(f => f.Id == fileId)
