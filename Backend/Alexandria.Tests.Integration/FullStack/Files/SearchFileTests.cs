@@ -162,6 +162,28 @@ public class SearchFileTests(AlexandriaFixture fixture) : FullStackTestBase(fixt
     }
 
     [Fact]
+    public async Task NameContains_FindsATypoInsideALongName()
+    {
+        await SeedFileWithVersionAsync(fb =>
+            fb.WithName("daniel-defoe_the-life-and-adventures-of-robinson-crusoe.epub"));
+
+        var names = await SearchNamesAsync("robinsn", page: 0, pageSize: 10);
+
+        names.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task NameContains_LeavesOutNamesThatOnlyShareAFewLetters()
+    {
+        // Both share trigrams with the query as a whole (0.18 and 0.14 similarity), but no word.
+        await SeedFileWithVersionAsync(fb => fb.WithName("analysis_comparison.csv"));
+        await SeedFileWithVersionAsync(fb => fb.WithName("Kecon-Gi.mp3"));
+
+        (await SearchNamesAsync("paris", page: 0, pageSize: 10)).Should().BeEmpty();
+        (await SearchNamesAsync("ML-KEM", page: 0, pageSize: 10)).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task NameContains_PunctuationOnly_ReturnsEmptyPage()
     {
         await SeedFileWithVersionAsync(fb => fb.WithName("report.txt"));

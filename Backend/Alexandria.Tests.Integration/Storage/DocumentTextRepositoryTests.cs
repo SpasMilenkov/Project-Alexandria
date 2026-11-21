@@ -1,6 +1,7 @@
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.DocumentTextStats;
 using Alexandria.Dto.Files;
 using Alexandria.Repositories;
 using Alexandria.Tests.Common.Builders;
@@ -242,6 +243,198 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
         (await check.DocumentText.AnyAsync(Ct)).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task StatusCounts_countLiveRowsPerOutcome()
+    {
+        var first = await SeedVersionAsync();
+        var second = await SeedVersionAsync();
+        var broken = await SeedVersionAsync();
+
+        await UpsertAsync(first.ContentObjectId, "one");
+        await UpsertAsync(second.ContentObjectId, "two");
+        await RecordFailureAsync(broken.ContentObjectId);
+
+        await using var db = fixture.CreateDbContext();
+        var counts = await new DocumentTextRepository(db).GetStatusCountsAsync(Ct);
+
+        counts.Should().Equal(
+            new DocumentTextStatusCount(DocumentTextStatus.Extracted, 2),
+            new DocumentTextStatusCount(DocumentTextStatus.Failed, 1));
+    }
+
+    [Fact]
+    public async Task Waiting_countsReadableContentWithoutCurrentText()
+    {
+        var unread = await SeedVersionAsync();
+        await SeedVersionAsync(sharedContentId: unread.ContentObjectId);
+        var outdated = await SeedVersionAsync();
+        var current = await SeedVersionAsync();
+        var failed = await SeedVersionAsync();
+        await SeedVersionAsync(mimeType: Image);
+
+        await UpsertAsync(outdated.ContentObjectId, "old", extractorVersion: 0);
+        await UpsertAsync(current.ContentObjectId, "new");
+        await RecordFailureAsync(failed.ContentObjectId);
+
+        await using var db = fixture.CreateDbContext();
+        var waiting = await new DocumentTextRepository(db)
+            .CountWaitingAsync(Supported, DocumentTextExtractor.CurrentVersion, Ct);
+
+        // The unread content once despite its copy, plus the outdated text.
+        waiting.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task RecentFailures_nameOnlyTheViewersFiles_andSayWhetherTheyRetry()
+    {
+        var otherUserId = Guid.NewGuid();
+        await using (var seed = fixture.CreateDbContext())
+        {
+            seed.Users.Add(new UserBuilder().WithId(otherUserId).Build());
+            await seed.SaveChangesAsync(Ct);
+        }
+
+        var own = await SeedVersionAsync(fileName: "my-scan.pdf");
+        var others = await SeedVersionAsync(ownerId: otherUserId, fileName: "their-secret.pdf");
+
+        await RecordFailureAsync(own.ContentObjectId, error: "pdftotext exited with 1");
+        await RecordFailureAsync(others.ContentObjectId);
+        await RecordFailureAsync(others.ContentObjectId);
+        await RecordFailureAsync(others.ContentObjectId);
+
+        await using var db = fixture.CreateDbContext();
+        var failures = await new DocumentTextRepository(db)
+            .GetRecentFailuresAsync(_userId, maxAttempts: 3, limit: 20, Ct);
+
+        failures.Should().HaveCount(2);
+        failures.Single(f => f.ContentObjectId == own.ContentObjectId).Should().BeEquivalentTo(new
+        {
+            FileName = "my-scan.pdf",
+            MimeType = Pdf,
+            ErrorDetail = "pdftotext exited with 1",
+            AttemptCount = 1,
+            WillRetry = true
+        });
+        failures.Single(f => f.ContentObjectId == others.ContentObjectId).Should().BeEquivalentTo(new
+        {
+            FileName = (string?)null,
+            MimeType = (string?)null,
+            ErrorDetail = (string?)null,
+            AttemptCount = 3,
+            WillRetry = false
+        });
+    }
+
+    // Words that match none of the queries below, to push a match past the excerpt window.
+    private static string Filler(int words) => string.Join(' ', Enumerable.Repeat("lorem ipsum dolor", words / 3));
+
+    [Fact]
+    public async Task FirstContentMatch_deepInALongText_matchesTheFullPassExcerpt()
+    {
+        var version = await SeedVersionAsync();
+        await UpsertAsync(version.ContentObjectId,
+            $"{Filler(3000)} the hotel invoice from Paris, total due 412 EUR. {Filler(300)} a second invoice {Filler(300)}");
+
+        await using var db = fixture.CreateDbContext();
+        var repository = new DocumentTextRepository(db);
+        var first = await repository.GetFirstContentMatchAsync(version.ContentObjectId, "invoice", Ct);
+        var full = await repository.GetContentMatchesAsync(version.ContentObjectId, "invoice", Ct);
+
+        first.Status.Should().Be(DocumentTextStatus.Extracted);
+        first.Fragments.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(full.Fragments[0]);
+        string.Concat(first.Fragments[0].Segments.Select(s => s.Text)).Should().Contain("hotel invoice from Paris");
+    }
+
+    [Fact]
+    public async Task FirstContentMatch_wordOnlyInsideAPathAtFirst_fallsBackToTheFullPass()
+    {
+        // Postgres reads docs/article1.html as one path token, so "art" does not match there even
+        // though the regex finds a word start after the slash.
+        var version = await SeedVersionAsync();
+        await UpsertAsync(version.ContentObjectId,
+            $"Open docs/article1.html first. {Filler(600)} It keeps a list of artifacts it created.");
+
+        await using var db = fixture.CreateDbContext();
+        var match = await new DocumentTextRepository(db)
+            .GetFirstContentMatchAsync(version.ContentObjectId, "art", Ct);
+
+        match.Fragments.Should().ContainSingle()
+            .Which.Segments.Where(s => s.IsMatch).Select(s => s.Text).Should().Equal("artifacts");
+    }
+
+    [Fact]
+    public async Task FirstContentMatch_wordsFarApart_fallsBackToTheFullPass()
+    {
+        var version = await SeedVersionAsync();
+        await UpsertAsync(version.ContentObjectId,
+            $"The air was cold. {Filler(600)} The temperature kept falling.");
+
+        await using var db = fixture.CreateDbContext();
+        var match = await new DocumentTextRepository(db)
+            .GetFirstContentMatchAsync(version.ContentObjectId, "air temp", Ct);
+
+        match.Fragments.Should().ContainSingle()
+            .Which.Segments.Should().Contain(s => s.IsMatch);
+    }
+
+    [Fact]
+    public async Task FirstContentMatch_noMatch_keepsTheStatus_withoutReadingAnExcerpt()
+    {
+        var version = await SeedVersionAsync();
+        await UpsertAsync(version.ContentObjectId, "Hotel invoice from Paris");
+
+        await using var db = fixture.CreateDbContext();
+        var match = await new DocumentTextRepository(db)
+            .GetFirstContentMatchAsync(version.ContentObjectId, "berlin", Ct);
+
+        match.Status.Should().Be(DocumentTextStatus.Extracted);
+        match.Fragments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FirstContentMatch_caseAndScriptInsensitive_likeTheTextSearch()
+    {
+        var version = await SeedVersionAsync();
+        await UpsertAsync(version.ContentObjectId,
+            $"{Filler(600)} Изкуственият интелект и ГОЛЕМИ данни.");
+
+        await using var db = fixture.CreateDbContext();
+        var match = await new DocumentTextRepository(db)
+            .GetFirstContentMatchAsync(version.ContentObjectId, "изкуствен голем", Ct);
+
+        match.Fragments.Should().ContainSingle()
+            .Which.Segments.Where(s => s.IsMatch).Select(s => s.Text).Should().Equal("Изкуственият", "ГОЛЕМИ");
+    }
+
+    [Fact]
+    public async Task ResetFailed_givesExhaustedFailuresFreshAttempts()
+    {
+        var exhausted = await SeedVersionAsync();
+        var extracted = await SeedVersionAsync();
+
+        await RecordFailureAsync(exhausted.ContentObjectId);
+        await RecordFailureAsync(exhausted.ContentObjectId);
+        await RecordFailureAsync(exhausted.ContentObjectId);
+        await UpsertAsync(extracted.ContentObjectId, "fine");
+
+        (await GetCandidatesAsync(maxAttempts: 3)).Should().BeEmpty();
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            (await new DocumentTextRepository(db).ResetFailedAsync(Ct)).Should().Be(1);
+        }
+
+        (await GetCandidatesAsync(maxAttempts: 3)).Select(c => c.ContentObjectId)
+            .Should().Equal(exhausted.ContentObjectId);
+        (await GetRowAsync(exhausted.ContentObjectId)).Should().BeEquivalentTo(new
+        {
+            Status = DocumentTextStatus.Failed,
+            AttemptCount = 0,
+            LastAttemptAt = (DateTime?)null
+        });
+    }
+
     private async Task<IReadOnlyList<DocumentTextCandidate>> GetCandidatesAsync(
         DateTime? retryFailedBefore = null, int maxAttempts = 3, int limit = 50)
     {
@@ -315,16 +508,19 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
         bool fileDeleted = false,
         bool versionDeleted = false,
         Guid? sharedContentId = null,
-        DateTime? createdAt = null)
+        DateTime? createdAt = null,
+        Guid? ownerId = null,
+        string? fileName = null)
     {
         await using var db = fixture.CreateDbContext();
+        var owner = ownerId ?? _userId;
 
         var content = sharedContentId is null
             ? new ContentObjectBuilder().WithIsPromoted(isPromoted).Build()
             : null;
 
         var versionBuilder = new FileVersionBuilder()
-            .WithCreatedBy(_userId)
+            .WithCreatedBy(owner)
             .WithMimeType(mimeType)
             .WithCreatedAt(createdAt ?? DateTime.UtcNow)
             .WithDeletedAt(versionDeleted ? DateTime.UtcNow : null);
@@ -344,11 +540,14 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
         }
 
         var version = versionBuilder.Build();
-        var file = new FileBuilder()
-            .WithOwner(_userId)
+        var fileBuilder = new FileBuilder()
+            .WithOwner(owner)
             .WithMimeType(mimeType)
-            .WithDeletedAt(fileDeleted ? DateTime.UtcNow : null)
-            .Build();
+            .WithDeletedAt(fileDeleted ? DateTime.UtcNow : null);
+        if (fileName is not null)
+            fileBuilder = fileBuilder.WithName(fileName);
+
+        var file = fileBuilder.Build();
         version.File = file;
 
         if (content is not null)
