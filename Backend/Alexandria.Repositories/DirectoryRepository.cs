@@ -8,6 +8,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Directories;
 using Alexandria.Dto.Files;
 using Alexandria.Repositories.Projections;
+using Alexandria.Repositories.Search;
 using Microsoft.EntityFrameworkCore;
 using Directory = Alexandria.Data.Models.Directory;
 using File = Alexandria.Data.Models.File;

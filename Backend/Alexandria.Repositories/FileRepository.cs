@@ -13,6 +13,7 @@ using Alexandria.Dto.Files.Streaming.Playlist;
 using Alexandria.Dto.Files.Streaming.Shuffle;
 using Alexandria.Dto.Tags;
 using Alexandria.Repositories.Projections;
+using Alexandria.Repositories.Search;
 using Microsoft.EntityFrameworkCore;
 using File = Alexandria.Data.Models.File;
 
@@ -127,6 +128,15 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 ct);
     }
 
+    public async Task<Guid?> GetCurrentContentObjectIdAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    {
+        return await _files
+            .AsNoTracking()
+            .Where(f => f.Id == fileId && f.OwnerId == ownerId && f.CurrentVersionId != null)
+            .Select(f => (Guid?)f.CurrentVersion.ContentObjectId)
+            .FirstOrDefaultAsync(ct);
+    }
+
     public async Task<bool> IsPromotedAsync(Guid fileId, CancellationToken ct = default)
     {
         return await _files.Where(f => f.Id == fileId)
@@ -178,10 +188,20 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
         }
 
         IOrderedQueryable<File> ordered;
+        Guid[] matchingFileIds = [];
+
+        // The text lookup runs once up front and feeds both the count and the page.
+        if (terms is { SearchesContent: true })
+            matchingFileIds = await context.MatchingFileIdsAsync(userId, terms, ct);
 
         if (terms is null)
         {
             ordered = dbQuery.OrderByRequested(query.SortBy, query.SortDirection);
+        }
+        else if (matchingFileIds.Length > 0)
+        {
+            dbQuery = dbQuery.WhereNameOrContentMatches(terms, matchingFileIds);
+            ordered = dbQuery.OrderByNameAndContentRelevance(terms, matchingFileIds);
         }
         else
         {
@@ -197,6 +217,9 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .Select(FileProjections.ToFileResult)
             .ToListAsync(ct);
 
+        if (matchingFileIds.Length > 0)
+            items = FlagContentMatches(items, matchingFileIds);
+
         return new PaginatedResult<FileResult>
         {
             Items = items,
@@ -205,6 +228,16 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             PageSize = query.PageSize,
             TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
         };
+    }
+
+    // Set after projecting, so the shared file projection stays unchanged.
+    private static List<FileResult> FlagContentMatches(List<FileResult> items, Guid[] matchingFileIds)
+    {
+        var matched = matchingFileIds.ToHashSet();
+
+        return items
+            .Select(i => matched.Contains(i.FileId) ? i with { MatchedInContent = true } : i)
+            .ToList();
     }
 
     public async Task MoveFilesAsync(
@@ -1029,7 +1062,8 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
                 CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
                 CoverUpdatedAt = context.Previews
-                    .Where(p => p.VersionId == pi.TranspilationJob!.FileVersion.File.CurrentVersionId && p.Kind == PreviewKind.Thumbnail && p.IsManual)
+                    .Where(p => p.VersionId == pi.TranspilationJob!.FileVersion.File.CurrentVersionId &&
+                                p.Kind == PreviewKind.Thumbnail && p.IsManual)
                     .Select(p => p.UpdatedAt)
                     .FirstOrDefault(),
                 PlaybackVersionId = pi.TranspilationJob.VersionId,
@@ -1470,7 +1504,8 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 MimeType = pi.TranspilationJob!.FileVersion.File.MimeType,
                 CurrentVersionId = pi.TranspilationJob!.FileVersion.File.CurrentVersionId!.Value,
                 CoverUpdatedAt = context.Previews
-                    .Where(p => p.VersionId == pi.TranspilationJob!.FileVersion.File.CurrentVersionId && p.Kind == PreviewKind.Thumbnail && p.IsManual)
+                    .Where(p => p.VersionId == pi.TranspilationJob!.FileVersion.File.CurrentVersionId &&
+                                p.Kind == PreviewKind.Thumbnail && p.IsManual)
                     .Select(p => p.UpdatedAt)
                     .FirstOrDefault(),
                 PlaybackVersionId = pi.TranspilationJob.VersionId,

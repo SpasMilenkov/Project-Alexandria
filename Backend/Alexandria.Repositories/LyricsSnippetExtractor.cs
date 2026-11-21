@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Alexandria.Repositories.Search;
 
 namespace Alexandria.Repositories;
 

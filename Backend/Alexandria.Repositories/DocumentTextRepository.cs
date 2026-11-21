@@ -4,7 +4,9 @@ using Alexandria.Common.Services;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.DocumentTextStats;
 using Alexandria.Dto.Files;
+using Alexandria.Repositories.Search;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -15,8 +17,131 @@ public class DocumentTextRepository(AlexandriaDbContext context) : IDocumentText
     // Postgres reports a search vector over its 1 MB limit with this code.
     private const string ProgramLimitExceeded = "54000";
 
+    private const int MaxContentFragments = 3;
+
+    // The stretch around the first word that the first-match query cuts excerpts from. An excerpt
+    // runs to 24 words, so this leaves room for its context on both sides.
+    private const int MatchWindowLead = 300;
+    private const int MatchWindowLength = 800;
+
     public Task<DocumentText?> GetByContentObjectIdAsync(Guid contentObjectId, CancellationToken ct = default)
         => LiveRows().AsNoTracking().FirstOrDefaultAsync(t => t.ContentObjectId == contentObjectId, ct);
+
+    // NOTE: excerpt queries run without a concurrency limit, and each one holds a whole document
+    // in Postgres memory: about 30 MB through the first-match path and about 80 MB through the
+    // full pass, for a text at the 5 M character cap. Every search row in view asks at once, so
+    // many large documents on one page, or several users searching together, add up. If Postgres
+    // memory ever becomes a problem, cap these queries with a process-wide SemaphoreSlim (around
+    // 4) so extra requests wait their turn instead of running together.
+    public async Task<ContentMatchesResponse> GetContentMatchesAsync(Guid contentObjectId, string query,
+        CancellationToken ct = default)
+    {
+        var terms = SearchTerms.Parse(query);
+
+        // Without a content word there is nothing to look for, but the status still tells the
+        // client whether the document can be searched at all.
+        var rows = terms.SearchesContent
+            ? await HeadlineRows(contentObjectId, terms.ContentTsQuery).ToListAsync(ct)
+            : await StatusRows(contentObjectId).ToListAsync(ct);
+
+        var row = rows.FirstOrDefault();
+        if (row is null)
+            return new ContentMatchesResponse();
+
+        return new ContentMatchesResponse
+        {
+            Status = (DocumentTextStatus)row.Status,
+            IsTruncated = row.IsTruncated,
+            Fragments = row.Headline is null ? [] : ContentMatchParser.Parse(row.Headline)
+        };
+    }
+
+    public async Task<ContentMatchesResponse> GetFirstContentMatchAsync(Guid contentObjectId, string query,
+        CancellationToken ct = default)
+    {
+        var terms = SearchTerms.Parse(query);
+
+        if (!terms.SearchesContent)
+            return await GetContentMatchesAsync(contentObjectId, query, ct);
+
+        var rows = await WindowRows(contentObjectId, terms).ToListAsync(ct);
+
+        var row = rows.FirstOrDefault();
+        if (row is null)
+            return new ContentMatchesResponse();
+
+        var fragments = row.Headline is null ? [] : ContentMatchParser.Parse(row.Headline);
+
+        // The regex can land on a word that Postgres reads as part of a URL or path, and a window
+        // never holds words that only appear far apart. The text did match, so the full pass will
+        // find what the window missed.
+        if (row.IsMatch && fragments.Count == 0)
+        {
+            var full = await GetContentMatchesAsync(contentObjectId, query, ct);
+            return new ContentMatchesResponse
+            {
+                Status = full.Status,
+                IsTruncated = full.IsTruncated,
+                Fragments = full.Fragments.Take(1).ToList()
+            };
+        }
+
+        return new ContentMatchesResponse
+        {
+            Status = (DocumentTextStatus)row.Status,
+            IsTruncated = row.IsTruncated,
+            Fragments = fragments.Take(1).ToList()
+        };
+    }
+
+    private IQueryable<DocumentTextWindowRow> WindowRows(Guid contentObjectId, SearchTerms terms)
+    {
+        var options = ContentMatchParser.HeadlineOptions(MaxContentFragments);
+        var tsQuery = terms.ContentTsQuery;
+        var pattern = terms.ContentWordStartPattern;
+
+        // Each reference to a stored column reads and decompresses it again, so the concatenation
+        // reads the text into memory once for both the regex and the substring, and OFFSET 0 keeps
+        // the planner from inlining it back. It is only read when the stored vector matches.
+        return context.Database.SqlQuery<DocumentTextWindowRow>($"""
+                                                                 SELECT t."Status", t."IsTruncated", b.body IS NOT NULL AS "IsMatch",
+                                                                     (SELECT ts_headline('simple',
+                                                                                 substr(b.body, greatest(x.pos - {MatchWindowLead}, 1), {MatchWindowLength}),
+                                                                                 to_tsquery('simple', {tsQuery}), {options})
+                                                                      FROM (SELECT regexp_instr(b.body, {pattern}, 1, 1, 0, 'i') AS pos) AS x
+                                                                      WHERE x.pos > 0) AS "Headline"
+                                                                 FROM "DocumentText" AS t
+                                                                 CROSS JOIN LATERAL (
+                                                                     SELECT CASE WHEN t."SearchVector" @@ to_tsquery('simple', {tsQuery})
+                                                                         THEN t."Content" || ''
+                                                                     END AS body
+                                                                     OFFSET 0) AS b
+                                                                 WHERE t."ContentObjectId" = {contentObjectId} AND t."DeletedAt" IS NULL
+                                                                 """);
+    }
+
+    private IQueryable<DocumentTextHeadlineRow> HeadlineRows(Guid contentObjectId, string tsQuery)
+    {
+        var options = ContentMatchParser.HeadlineOptions(MaxContentFragments);
+
+        // The match check first, because cutting excerpts reads the whole text even when
+        // nothing in it matches.
+        return context.Database.SqlQuery<DocumentTextHeadlineRow>($"""
+                                                                   SELECT t."Status", t."IsTruncated",
+                                                                       CASE WHEN t."SearchVector" @@ to_tsquery('simple', {tsQuery})
+                                                                           THEN ts_headline('simple', t."Content", to_tsquery('simple', {tsQuery}), {options})
+                                                                       END AS "Headline"
+                                                                   FROM "DocumentText" AS t
+                                                                   WHERE t."ContentObjectId" = {contentObjectId} AND t."DeletedAt" IS NULL
+                                                                   """);
+    }
+
+    private IQueryable<DocumentTextHeadlineRow> StatusRows(Guid contentObjectId)
+        => context.Database.SqlQuery<DocumentTextHeadlineRow>($"""
+                                                               SELECT t."Status", t."IsTruncated", NULL::text AS "Headline"
+                                                               FROM "DocumentText" AS t
+                                                               WHERE t."ContentObjectId" = {contentObjectId} AND t."DeletedAt" IS NULL
+                                                               """);
 
     public async Task<bool> UpsertAsync(DocumentText text, CancellationToken ct = default)
     {
@@ -149,6 +274,72 @@ public class DocumentTextRepository(AlexandriaDbContext context) : IDocumentText
                         && v.File.DeletedAt == null
                         && v.ContentObject.IsPromoted
                         && v.ContentObject.DeletedAt == null);
+
+    public async Task<IReadOnlyList<DocumentTextStatusCount>> GetStatusCountsAsync(CancellationToken ct = default)
+        => await LiveRows()
+            .AsNoTracking()
+            .GroupBy(t => t.Status)
+            .OrderBy(g => g.Key)
+            .Select(g => new DocumentTextStatusCount(g.Key, g.Count()))
+            .ToListAsync(ct);
+
+    public Task<int> CountWaitingAsync(IReadOnlyCollection<string> mimeTypes, int extractorVersion,
+        CancellationToken ct = default)
+        => ReadableVersions(mimeTypes)
+            .Where(v => !context.DocumentText.Any(t =>
+                t.ContentObjectId == v.ContentObjectId && t.ExtractorVersion >= extractorVersion))
+            .Select(v => v.ContentObjectId)
+            .Distinct()
+            .CountAsync(ct);
+
+    public async Task<IReadOnlyList<DocumentTextFailure>> GetRecentFailuresAsync(Guid viewerId,
+        int maxAttempts, int limit, CancellationToken ct = default)
+    {
+        var failed = DocumentTextStatus.Failed;
+
+        // Copies share content, so the name and type come from the viewer's newest version holding
+        // it. The error message can quote storage keys or parts of the document, so it follows the
+        // same rule as the name and stays hidden for content only other accounts hold.
+        return await LiveRows()
+            .AsNoTracking()
+            .Where(t => t.Status == failed)
+            .OrderByDescending(t => t.LastAttemptAt)
+            .ThenBy(t => t.Id)
+            .Take(limit)
+            .Select(t => new DocumentTextFailure(
+                t.ContentObjectId,
+                context.FileVersions
+                    .Where(v => v.ContentObjectId == t.ContentObjectId && v.File.OwnerId == viewerId)
+                    .OrderByDescending(v => v.CreatedAt)
+                    .Select(v => v.File.Name)
+                    .FirstOrDefault(),
+                context.FileVersions
+                    .Where(v => v.ContentObjectId == t.ContentObjectId && v.File.OwnerId == viewerId)
+                    .OrderByDescending(v => v.CreatedAt)
+                    .Select(v => v.MimeType)
+                    .FirstOrDefault(),
+                context.FileVersions
+                    .Any(v => v.ContentObjectId == t.ContentObjectId && v.File.OwnerId == viewerId)
+                    ? t.ErrorDetail
+                    : null,
+                t.AttemptCount,
+                t.LastAttemptAt,
+                t.AttemptCount < maxAttempts))
+            .ToListAsync(ct);
+    }
+
+    public Task<int> ResetFailedAsync(CancellationToken ct = default)
+    {
+        var failed = DocumentTextStatus.Failed;
+        DateTime? now = DateTime.UtcNow;
+
+        return LiveRows()
+            .Where(t => t.Status == failed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.AttemptCount, 0)
+                .SetProperty(t => t.LastAttemptAt, (DateTime?)null)
+                .SetProperty(t => t.UpdatedAt, now), ct);
+    }
 
     public Task<DocumentText?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => LiveRows().FirstOrDefaultAsync(t => t.Id == id, ct);

@@ -1,6 +1,6 @@
 using Alexandria.Data.Models;
 
-namespace Alexandria.Repositories;
+namespace Alexandria.Repositories.Search;
 
 /// <summary>
 /// Calendar-day filters on the audit timestamps. Days are UTC days and both ends are
