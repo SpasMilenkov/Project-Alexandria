@@ -42,7 +42,8 @@ public static class DirectoryMappings
                 UpdatedAt: dir.UpdatedAt ?? dir.CreatedAt,
                 OwnerUserDto: dir.Owner?.ToUserDto() ?? new UserDto(),
                 IsStarred: dir.IsStarred,
-                Size: treeSize
+                Size: treeSize,
+                SystemKind: dir.SystemKind
             );
         }
     }

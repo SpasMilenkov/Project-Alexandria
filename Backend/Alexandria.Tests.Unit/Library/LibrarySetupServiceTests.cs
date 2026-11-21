@@ -155,6 +155,45 @@ public class LibrarySetupServiceTests
     }
 
     [Fact]
+    public async Task FinishTour_notesChoice_createsTheNotesSystemFolderUnderItsDefaultName()
+    {
+        await CreateSut().FinishTourAsync(_userId, [Plain(LibraryFolderKind.Notes, "Journal")],
+            TestContext.Current.CancellationToken);
+
+        var folder = _addedDirectories.Should().ContainSingle().Subject;
+        folder.Name.Should().Be("Notes");
+        folder.SystemKind.Should().Be(DirectorySystemKind.Notes);
+        _addedPolicies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task FinishTour_notesChoiceMatchingAnExistingFolder_marksThatFolder()
+    {
+        var existing = new Directory { Id = Guid.NewGuid(), Name = "Notes", OwnerId = _userId };
+        GivenExistingRootFolder(existing);
+
+        await CreateSut().FinishTourAsync(_userId, [Plain(LibraryFolderKind.Notes, "Notes")],
+            TestContext.Current.CancellationToken);
+
+        _addedDirectories.Should().BeEmpty();
+        existing.SystemKind.Should().Be(DirectorySystemKind.Notes);
+        _directories.Received(1).Update(existing);
+    }
+
+    [Fact]
+    public async Task FinishTour_ownerAlreadyHasANotesFolder_addsNoSecondOne()
+    {
+        _directories.ExistsAsync(Arg.Any<Expression<Func<Directory, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await CreateSut().FinishTourAsync(_userId, [Plain(LibraryFolderKind.Notes, "Notes")],
+            TestContext.Current.CancellationToken);
+
+        _addedDirectories.Should().BeEmpty();
+        _directories.DidNotReceive().Update(Arg.Any<Directory>());
+    }
+
+    [Fact]
     public async Task FinishTour_saveFails_rollsBackAndRethrows()
     {
         _unitOfWork.CommitAsync(Arg.Any<CancellationToken>())

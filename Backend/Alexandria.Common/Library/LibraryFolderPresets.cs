@@ -23,6 +23,12 @@ public static class LibraryFolderPresets
         new LibraryFolderPreset { Kind = LibraryFolderKind.Pictures, DefaultName = "Pictures" },
         new LibraryFolderPreset { Kind = LibraryFolderKind.Videos, DefaultName = "Videos" },
         new LibraryFolderPreset { Kind = LibraryFolderKind.Documents, DefaultName = "Documents" },
+        new LibraryFolderPreset
+        {
+            Kind = LibraryFolderKind.Notes,
+            DefaultName = "Notes",
+            SystemKind = DirectorySystemKind.Notes,
+        },
     ];
 
     public static LibraryFolderPreset Get(LibraryFolderKind kind)

@@ -12,4 +12,7 @@ public sealed record LibraryFolderPreset
     public required string DefaultName { get; init; }
     public string? TranscodeGroup { get; init; }
     public string? AutoTagGroup { get; init; }
+
+    /// <summary>Set when the folder is a system folder, which is found by this marker rather than its name.</summary>
+    public DirectorySystemKind? SystemKind { get; init; }
 }

@@ -32,5 +32,10 @@ public class DeleteDirEndpoint(IDirectoryService dirService) : Endpoint<DeleteDi
                     message = "The directory is not empty. Delete its contents first or use hard delete."
                 }));
         }
+        catch (SystemDirectoryProtectedException ex)
+        {
+            AddError(r => r.Id, ex.Message);
+            await Send.ErrorsAsync(StatusCodes.Status409Conflict, ct);
+        }
     }
 }

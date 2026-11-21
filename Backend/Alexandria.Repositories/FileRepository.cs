@@ -137,6 +137,30 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             .FirstOrDefaultAsync(ct);
     }
 
+    public async Task<File?> GetForUpdateAsync(Guid fileId, Guid ownerId, CancellationToken ct = default)
+    {
+        // Not composed further, so EF sends the statement as written and the lock clause stays
+        // at the top level.
+        var rows = await _files
+            .FromSqlInterpolated($"""
+                                  SELECT *
+                                  FROM "Files"
+                                  WHERE "Id" = {fileId}
+                                    AND "OwnerId" = {ownerId}
+                                  FOR UPDATE
+                                  """)
+            .ToListAsync(ct);
+
+        var file = rows.SingleOrDefault();
+
+        // A file the context already tracks comes back with the values it was first read with, so
+        // it is read again now that the lock is held.
+        if (file is not null)
+            await context.Entry(file).ReloadAsync(ct);
+
+        return file;
+    }
+
     public async Task<bool> IsPromotedAsync(Guid fileId, CancellationToken ct = default)
     {
         return await _files.Where(f => f.Id == fileId)
@@ -171,6 +195,12 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
 
         if (query.ParentDirectoryId.HasValue)
             dbQuery = dbQuery.Where(f => f.DirectoryId == query.ParentDirectoryId.Value);
+
+        if (query.WithinDirectoryId.HasValue)
+        {
+            var subtreeIds = await SubtreeDirectoryIdsAsync(query.WithinDirectoryId.Value, userId, ct);
+            dbQuery = dbQuery.Where(f => f.DirectoryId != null && subtreeIds.Contains(f.DirectoryId.Value));
+        }
 
         if (query.TagIds.Count > 0)
             dbQuery = dbQuery.WhereHasAllTags(query.TagIds);
@@ -228,6 +258,30 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             PageSize = query.PageSize,
             TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
         };
+    }
+
+    // Trashed folders stay in, because the trash view searches the same subtree. UNION rather than
+    // UNION ALL, so a cycle left by bad data ends the walk instead of looping.
+    private async Task<Guid[]> SubtreeDirectoryIdsAsync(Guid rootId, Guid userId, CancellationToken ct)
+    {
+        return await context.Database.SqlQuery<Guid>($"""
+                                                     WITH RECURSIVE subtree AS (
+                                                         SELECT "Id"
+                                                         FROM "Directories"
+                                                         WHERE "Id" = {rootId}
+                                                           AND "OwnerId" = {userId}
+
+                                                         UNION
+
+                                                         SELECT d."Id"
+                                                         FROM "Directories" d
+                                                         JOIN subtree s ON d."ParentId" = s."Id"
+                                                         WHERE d."OwnerId" = {userId}
+                                                     )
+                                                     SELECT "Id" AS "Value"
+                                                     FROM subtree
+                                                     """)
+            .ToArrayAsync(ct);
     }
 
     // Set after projecting, so the shared file projection stays unchanged.

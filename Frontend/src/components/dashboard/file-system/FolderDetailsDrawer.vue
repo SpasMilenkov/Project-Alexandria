@@ -46,6 +46,7 @@
           size="sm"
           color="neutral"
           variant="outline"
+          :disabled="isProtected"
           @click="handleRename"
         />
 
@@ -55,6 +56,7 @@
           size="sm"
           color="neutral"
           variant="outline"
+          :disabled="isProtected"
           @click="handleMove"
         />
 
@@ -81,6 +83,7 @@
             square
             class="justify-center"
             aria-label="Delete folder"
+            :disabled="isProtected"
             @click="handleDelete"
           />
         </UTooltip>
@@ -150,6 +153,7 @@ import DetailsTile from "@/components/common/details/DetailsTile.vue";
 import EntityHistorySection from "@/components/dashboard/audit/EntityHistorySection.vue";
 import PolicySection from "@/components/policy/PolicySection.vue";
 import { EntityType } from "@/enums/entity-type";
+import { isSystemFolder } from "@/features/explorer/context-menu";
 import { formatCalendarDate, formatTimeAgo } from "@/utils/date-formatters";
 import { formatBytes } from "@/utils/size";
 
@@ -196,6 +200,10 @@ const modifiedAt = computed(() => {
   if (!displayDirectory.value) return "";
   return displayDirectory.value.updatedAt ?? displayDirectory.value.createdAt;
 });
+
+const isProtected = computed(
+  () => displayDirectory.value !== null && isSystemFolder(displayDirectory.value),
+);
 
 const favoriteLabel = computed(() => {
   if (displayDirectory.value?.isStarred) return "Remove from favorites";

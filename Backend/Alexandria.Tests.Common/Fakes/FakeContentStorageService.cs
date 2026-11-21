@@ -148,6 +148,23 @@ public class FakeContentStorageService : IContentStorageService
     public Task AbandonUploadAsync(Guid uploadId, string tempObjectKey, CancellationToken ct = default)
         => Task.CompletedTask;
 
+    public Task<VersionText> ReadVersionTextAsync(Guid versionId, Guid userId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<FileContentSaveResult> SaveTextContentAsync(Guid fileId, Guid parentVersionId, string text,
+        Guid userId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<FileContentSaveResult> CreateTextFileAsync(string fileName, Guid? directoryId, string text,
+        Guid userId, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task<StorageBreakdown> GetStorageBreakdown(Guid userId, CancellationToken ct = default)
         => Task.FromResult(new StorageBreakdown
         {

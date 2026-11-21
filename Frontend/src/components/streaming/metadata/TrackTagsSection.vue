@@ -10,7 +10,7 @@
         </div>
 
         <UButton
-          v-if="isAudioFile && autoTaggingEnabled"
+          v-if="isAudioFile && isAutoTaggingEnabled"
           icon="i-lucide-tag"
           label="Auto-tag"
           size="lg"
@@ -19,13 +19,13 @@
           class="min-h-11 justify-center md:order-3 md:min-h-9 md:w-full"
           :loading="isAutoTagging"
           :disabled="isAutoTagging"
-          @click="handleAutoTag"
+          @click="autoTag"
         />
 
         <USelectMenu
           v-model="selectedTagId"
           v-model:search-term="searchQuery"
-          :loading="tagsLoading"
+          :loading="isSearching"
           :items="tagOptions"
           value-key="value"
           icon="i-lucide-plus"
@@ -115,94 +115,44 @@ import { useMediaQuery } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 
 import type { MediaFileDto } from "@/api/streaming";
-import type { SearchTagsSchema } from "@/schemas/tag";
 
 import { FACET_LABELS, type TagDto } from "@/api/tag";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import TagBadge from "@/components/dashboard/tags/TagBadge.vue";
-import { useAppToast } from "@/composables/useAppToast";
+import { useAutoTag } from "@/composables/useAutoTag";
+import { useFileTagActions } from "@/composables/useFileTagActions";
+import { useTagSearch } from "@/composables/useTagSearch";
 import { quoted } from "@/features/toast/format";
-import { autoTagFile } from "@/mutations/files";
-import { addTagToFile, removeTagFromFile } from "@/mutations/tags";
-import { getTagsForFile, searchTag } from "@/queries/tags";
+import { getTagsForFile } from "@/queries/tags";
 import { formatCount } from "@/utils/count";
-import { getIconByValue } from "@/utils/files/icons";
 import { isAutoTagSupportedFileType } from "@/utils/files/mimetype";
 
 const { file } = defineProps<{ file: MediaFileDto }>();
 
-const appToast = useAppToast("tags");
-
 const trackLabel = computed(() => quoted(file.title || file.fileName));
-const { mutateAsync: addTagMutate } = addTagToFile();
-const { mutateAsync: removeTagMutateAsync } = removeTagFromFile();
-const { mutateAsync: autoTagMutate, isLoading: isAutoTagging } = autoTagFile();
 
-const autoTaggingEnabled = import.meta.env.VITE_AUTOTAGGING_ENABLED === "true";
 const isAudioFile = computed(() => isAutoTagSupportedFileType(file.mimeType));
 const isDesktop = useMediaQuery("(min-width: 768px)");
 
-const extractAutoTagError = (err: any): string => {
-  const data = err?.data;
-  if (data?.errors && typeof data.errors === "object") {
-    const parts = Object.values(data.errors as Record<string, string[]>)
-      .flat()
-      .filter(Boolean);
-    if (parts.length > 0) return parts.join(" · ");
-  }
-  return data?.message ?? data?.error ?? err?.message ?? "Unknown error";
-};
+const { autoTag, isAutoTagging, isAutoTaggingEnabled } = useAutoTag({
+  fileId: () => file.fileId,
+  fileLabel: trackLabel,
+});
 
-const handleAutoTag = async () => {
-  if (isAutoTagging.value) return;
-  try {
-    const result = await autoTagMutate(file.fileId);
-    if (result.queued) {
-      appToast.success(
-        `Auto-tagging ${trackLabel.value}`,
-        "Tags appear here once the background analysis finishes.",
-      );
-    } else {
-      appToast.info(`${trackLabel.value} is already auto-tagged`, result.message);
-    }
-  } catch (error) {
-    const message = extractAutoTagError(error);
-    if (message.toLowerCase().includes("disabled")) {
-      appToast.info("Auto-tagging is turned off", message);
-    } else {
-      appToast.error(`Couldn't auto-tag ${trackLabel.value}`, message, { retry: handleAutoTag });
-    }
-  }
-};
-
-const searchQuery = ref("");
+const isMenuOpen = ref(false);
 const selectedTagId = ref<string | undefined>(undefined);
 
-const searchFilters = computed<SearchTagsSchema>(() => ({
-  excludeOnFile: file.fileId,
-  nameContains: searchQuery.value || undefined,
-  ownerScope: "all",
-  page: 1,
-  pageSize: 25,
-}));
+const { isSearching, resetSearch, searchQuery, tagOptions } = useTagSearch({
+  enabled: isMenuOpen,
+  excludeFileId: () => file.fileId,
+});
 
-const { data: tagsData, isLoading: tagsLoading } = useQuery(() => ({
-  ...searchTag(searchFilters.value),
-}));
+const { addTag, removeTag } = useFileTagActions({
+  fileId: () => file.fileId,
+  fileLabel: trackLabel,
+});
 
-const tagOptions = computed(() =>
-  (tagsData.value?.items ?? []).map((t) => ({
-    label: t.name,
-    value: t.id,
-    icon: getIconByValue(t.icon),
-  })),
-);
-
-const {
-  data: fileTags,
-  isPending: fileTagsLoading,
-  refresh: refreshFileTags,
-} = useQuery(() => ({
+const { data: fileTags, isPending: fileTagsLoading } = useQuery(() => ({
   ...getTagsForFile(file.fileId),
 }));
 
@@ -256,51 +206,28 @@ const setGroupOpen = (name: string, open: boolean) => {
   openGroups.value[name] = open;
 };
 
-const handleTagAdd = async (tagId: string) => {
-  if (!tagId) return;
-  try {
-    await addTagMutate({ fileId: file.fileId, data: { tagIds: [tagId] } });
-    selectedTagId.value = undefined;
-    searchQuery.value = "";
-  } catch (error) {
-    selectedTagId.value = undefined;
-    appToast.error(`Couldn't add the tag to ${trackLabel.value}`, error);
-  }
+const resetPicker = () => {
+  resetSearch();
+  selectedTagId.value = undefined;
 };
 
-watch(selectedTagId, (tagId) => {
-  if (tagId) void handleTagAdd(tagId);
+watch(selectedTagId, async (tagId) => {
+  if (!tagId) return;
+
+  await addTag(tagId);
+  resetPicker();
 });
 
+// The search runs only while the menu is open; closing it clears what was typed.
 const handleMenuOpen = (open: boolean) => {
-  if (!open) {
-    searchQuery.value = "";
-    selectedTagId.value = undefined;
-  }
+  isMenuOpen.value = open;
+
+  if (!open) resetPicker();
 };
 
 const handleRemove = async (tagId: string) => {
-  const removedName = tags.value.find((tag) => tag.id === tagId)?.name;
-  const tagLabel = removedName ? quoted(removedName) : "the tag";
+  const name = tags.value.find((tag) => tag.id === tagId)?.name;
 
-  try {
-    await removeTagMutateAsync({ fileId: file.fileId, tagId });
-  } catch (error) {
-    appToast.error(`Couldn't remove ${tagLabel}`, error);
-    return;
-  }
-
-  refreshFileTags();
-  appToast.success(`Removed ${tagLabel}`, {
-    actions: [
-      {
-        icon: "i-lucide-undo-2",
-        label: "Undo",
-        onClick: () => {
-          void handleTagAdd(tagId);
-        },
-      },
-    ],
-  });
+  await removeTag(tagId, name);
 };
 </script>

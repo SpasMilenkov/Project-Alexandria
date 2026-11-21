@@ -364,6 +364,10 @@ export const isCaptureMetadataSupportedMimeType = (mimeType: string | null | und
 export const isDocumentMetadataSupportedMimeType = (mimeType: string | null | undefined): boolean =>
   isDocumentMetadataSupportedMime(mimeType);
 
+/** Whether the file is markdown, and so opens in the note editor. */
+export const isMarkdownMimeType = (mimeType: string | null | undefined): boolean =>
+  canonicalizeMime(mimeType) === "text/markdown";
+
 /** Whether the type is an ebook (EPUB, Mobipocket, Kindle); the list comes from the backend catalog. */
 export const isEbookMimeType = (mimeType: string | null | undefined): boolean =>
   isBookMime(mimeType);

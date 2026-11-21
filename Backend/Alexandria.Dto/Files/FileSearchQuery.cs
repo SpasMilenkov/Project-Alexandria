@@ -7,6 +7,9 @@ public class FileSearchQuery
     // Structure
     public Guid? ParentDirectoryId { get; set; }
 
+    // The folder and everything below it, at any depth. Notes-only search passes the Notes folder.
+    public Guid? WithinDirectoryId { get; set; }
+
     // Text search
     public string? NameContains { get; set; }
 

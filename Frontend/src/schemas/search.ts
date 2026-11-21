@@ -97,6 +97,8 @@ export const baseSearchUiSchema = z
   });
 
 export const fileSearchUiSchema = baseSearchUiSchema.extend({
+  // The folder and everything below it; notes-only search passes the Notes folder.
+  withinDirectoryId: z.guid().nullish(),
   maxSize: z.number().int().nullish(),
   mimeType: z.string().nullish(),
   minSize: z.number().int().nullish(),
@@ -115,6 +117,7 @@ export const unifiedSearchUiSchema = baseSearchUiSchema.extend({
   mode: z.enum(["files", "directories", "both"]).default("both"),
 
   // File-only
+  withinDirectoryId: z.guid().nullish(),
   minSize: z.number().int().nullish(),
   maxSize: z.number().int().nullish(),
   mimeType: z.string().nullish(),

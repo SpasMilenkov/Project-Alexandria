@@ -4,4 +4,5 @@ export enum LibraryFolderKind {
   Pictures = 2,
   Videos = 3,
   Documents = 4,
+  Notes = 5,
 }

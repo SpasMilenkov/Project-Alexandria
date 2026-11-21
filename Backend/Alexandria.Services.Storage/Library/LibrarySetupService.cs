@@ -59,7 +59,14 @@ public sealed partial class LibrarySetupService(
     private async Task AddFolderAsync(Guid userId, LibraryFolderChoice choice, CancellationToken ct)
     {
         var preset = LibraryFolderPresets.Get(choice.Kind);
-        var name = choice.Name.Trim();
+
+        // System folders can't be renamed later, so the tour can't name them either.
+        var name = preset.SystemKind is null ? choice.Name.Trim() : preset.DefaultName;
+
+        // A system folder the owner already has stays theirs, whatever name it was given.
+        if (preset.SystemKind is { } systemKind &&
+            await unitOfWork.Directories.ExistsAsync(d => d.OwnerId == userId && d.SystemKind == systemKind, ct))
+            return;
 
         var existing = await unitOfWork.Directories.FirstOrDefaultAsync(
             d => d.Name == name && d.ParentId == null && d.OwnerId == userId && d.DeletedAt == null, ct);
@@ -74,7 +81,13 @@ public sealed partial class LibrarySetupService(
                 Name = name,
                 OwnerId = userId,
                 ParentId = null,
+                SystemKind = preset.SystemKind,
             }, ct);
+        }
+        else if (preset.SystemKind is not null && existing.SystemKind is null)
+        {
+            existing.SystemKind = preset.SystemKind;
+            unitOfWork.Directories.Update(existing);
         }
 
         var rules = LibraryPolicyRules.Build(preset, choice, _capabilities, userId);

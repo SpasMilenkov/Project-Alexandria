@@ -46,6 +46,21 @@
           <span class="hidden @5xl/explorer:inline">New Folder</span>
         </UButton>
 
+        <!-- Inside Notes the note lands in the folder being browsed, anywhere else in Notes itself. -->
+        <UButton
+          variant="outline"
+          color="neutral"
+          size="sm"
+          class="shrink-0 gap-1 rounded-lg"
+          aria-label="New Note"
+          title="New Note"
+          :loading="isCreatingNote"
+          @click="createNewNote"
+        >
+          <UIcon v-if="!isCreatingNote" name="i-lucide-notebook-pen" class="w-4 h-4" />
+          <span class="hidden @5xl/explorer:inline">New Note</span>
+        </UButton>
+
         <div class="flex-1" />
 
         <!-- Throbber + last-refreshed label -->
@@ -687,6 +702,7 @@ import ShareLinkModal from "@/components/dashboard/file-system/Modals/ShareLinkM
 import UpdateDirectoryModal from "@/components/dashboard/file-system/Modals/UpdateDirectoryModal.vue";
 import UpdateFileModal from "@/components/dashboard/file-system/Modals/UpdateFileModal.vue";
 import { useAppToast } from "@/composables/useAppToast";
+import { useCreateNote } from "@/composables/useCreateNote";
 import { useDropZone } from "@/composables/useDropZone";
 import { useExplorerCommandGuard } from "@/composables/useExplorerCommands";
 import {
@@ -708,6 +724,7 @@ import {
   type ExplorerMenuActions,
   type ExplorerMenuSnapshot,
   buildExplorerMenuItems,
+  isSystemFolder,
   resolveContextMenuTarget,
 } from "@/features/explorer/context-menu";
 import { EXPLORER_PAGE_SIZES } from "@/features/explorer/preferences";
@@ -785,6 +802,9 @@ const {
 const dragSession = useExplorerDragSession();
 const { downloadFile, downloadBulk } = useFileDownload();
 const { canHandleCommand } = useExplorerCommandGuard(tabId);
+const { createAndOpen: createNewNote, isCreating: isCreatingNote } = useCreateNote({
+  path: () => pathQuery.data.value?.pathParts,
+});
 
 const { mutateAsync: copyFilesMutate } = copyFiles();
 const { mutateAsync: copyDirectoryMutate } = copyDirectory();
@@ -1263,6 +1283,11 @@ const mobileOverflowItems = computed(() => [
     icon: "i-lucide-folder-plus",
     label: "New Folder",
     onSelect: () => createNewDirectory(),
+  },
+  {
+    icon: "i-lucide-notebook-pen",
+    label: "New Note",
+    onSelect: () => createNewNote(),
   },
 ]);
 
@@ -1790,6 +1815,8 @@ const handleRenameSelected = () => {
 
   if (dirCount === 1) {
     const [dirId] = selectedDirectories.value;
+    const dir = directoriesList.value.find((d) => d.id === dirId);
+    if (dir && isSystemFolder(dir)) return;
     handleDirectoryRename(dirId);
   }
 };

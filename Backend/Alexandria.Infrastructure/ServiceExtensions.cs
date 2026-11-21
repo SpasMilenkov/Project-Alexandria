@@ -17,6 +17,7 @@ using Alexandria.Services.Storage.Content;
 using Alexandria.Services.Storage.Directories;
 using Alexandria.Services.Storage.Gallery;
 using Alexandria.Services.Storage.Library;
+using Alexandria.Services.Storage.Notes;
 using Alexandria.Services.Storage.Policies;
 using Alexandria.Services.Storage.Previews;
 using Alexandria.Services.Storage.Promotions;
@@ -66,6 +67,7 @@ public static class ServiceExtensions
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUploadRepository, UploadRepository>();
         services.AddScoped<IFileService, FileService>();
+        services.AddScoped<INoteService, NoteService>();
         services.AddHttpClient<MetricsService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IAccessOverviewService, AccessOverviewService>();

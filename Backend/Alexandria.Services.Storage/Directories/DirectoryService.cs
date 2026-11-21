@@ -179,6 +179,9 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
 
         var directory = await GetDirectoryByIdAsync(id, userId, ct);
 
+        if (directory.SystemKind is { } kind)
+            throw new SystemDirectoryProtectedException(directory.Id, kind, "renamed");
+
         // Check if another directory with same name exists in same location
         var existingDirectory = await unitOfWork.Directories.FirstOrDefaultAsync(
             d => d.Name == name && d.ParentId == directory.ParentId &&
@@ -218,6 +221,12 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
     {
         if (ids.Length == 0) return;
 
+        var systemDirectory = await unitOfWork.Directories.FirstOrDefaultAsync(
+            d => ids.Contains(d.Id) && d.OwnerId == userId && d.SystemKind != null, ct);
+
+        if (systemDirectory?.SystemKind is { } kind)
+            throw new SystemDirectoryProtectedException(systemDirectory.Id, kind, "moved");
+
         await unitOfWork.BeginTransactionAsync(ct);
         try
         {
@@ -236,6 +245,9 @@ public class DirectoryService(IUnitOfWork unitOfWork) : IDirectoryService
     public async Task DeleteDirectoryAsync(Guid id, Guid userId, bool force = false, CancellationToken ct = default)
     {
         var directory = await GetDirectoryByIdAsync(id, userId, ct);
+
+        if (directory.SystemKind is { } kind)
+            throw new SystemDirectoryProtectedException(directory.Id, kind, "deleted");
 
         if (!force)
         {

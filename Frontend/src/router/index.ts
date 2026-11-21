@@ -300,6 +300,12 @@ const router = createRouter({
       path: "/onboarding/tour",
     },
     {
+      component: () => import("@/views/dashboard/NoteEditorView.vue"),
+      meta: { layout: "dashboard", requiresAuth: true, siteIcon: "files", title: "Note" },
+      name: "note-editor",
+      path: "/notes/:fileId",
+    },
+    {
       component: () => import("@/views/dashboard/GalleryView.vue"),
       meta: { layout: "dashboard", requiresAuth: true, siteIcon: "photos", title: "Photos" },
       name: "gallery",

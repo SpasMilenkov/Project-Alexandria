@@ -11,8 +11,8 @@
         Your library
       </h2>
       <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-        These folders are created for you when you finish. Rename any of them now, or later from the
-        explorer like any other folder.
+        These folders are created for you when you finish. Rename them now, or later from the
+        explorer like any other folder. Notes keeps its name, since your notes live there.
       </p>
     </div>
 
@@ -34,6 +34,8 @@
             :aria-label="`${presetFor(draft.kind).defaultName} folder name`"
             :aria-invalid="Boolean(errors[draft.kind])"
             :placeholder="presetFor(draft.kind).defaultName"
+            :disabled="presetFor(draft.kind).fixedName"
+            :trailing-icon="presetFor(draft.kind).fixedName ? 'i-lucide-lock' : undefined"
           />
 
           <UBadge
