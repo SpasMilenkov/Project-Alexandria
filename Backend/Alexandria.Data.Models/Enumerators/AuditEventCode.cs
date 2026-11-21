@@ -134,5 +134,8 @@ public enum AuditEventCode
 
     // Sessions and retention
     UserSessionRevoked,
-    AuditLogsPurged
+    AuditLogsPurged,
+
+    // Admin actions added later; kept last so earlier values keep their numbers
+    DocumentTextRetried
 }
