@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 
 import RouteErrorBoundary from "@/components/common/RouteErrorBoundary.vue";
 import { useColorScheduleRunner } from "@/composables/useColorSchedule";
+import { useFocusLossSync } from "@/composables/useFocusLossSync";
 import { useSiteIcon } from "@/composables/useSiteIcon";
 import { useTheme } from "@/composables/useTheme";
 import DashboardLayout from "@/layouts/DashboardLayout.vue";
@@ -15,6 +16,8 @@ const route = useRoute();
 useTheme();
 useColorScheduleRunner();
 useSiteIcon();
+// Keeps keyboard shortcuts working after any dialog or field closes with its input focused.
+useFocusLossSync();
 
 // These pages use the default shell for anonymous visitors but the dashboard shell
 // only after the cookie-backed identity has been verified.

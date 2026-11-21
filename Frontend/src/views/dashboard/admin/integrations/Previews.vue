@@ -24,6 +24,7 @@ import { PREVIEW_JOB_STATUS, PREVIEW_JOB_TYPE, PREVIEW_STATS_BUCKET } from "@/ap
 import EventsFeed from "@/components/dashboard/admin/monitoring/EventsFeed.vue";
 import JobRecoveryPanel from "@/components/dashboard/admin/monitoring/JobRecoveryPanel.vue";
 import ChartFrame from "@/components/dashboard/integrations/ChartFrame.vue";
+import DocumentTextCoverage from "@/components/dashboard/integrations/DocumentTextCoverage.vue";
 import IntegrationPageHeader from "@/components/dashboard/integrations/IntegrationPageHeader.vue";
 import IntegrationPanel from "@/components/dashboard/integrations/IntegrationPanel.vue";
 import SegmentedControl from "@/components/dashboard/integrations/SegmentedControl.vue";
@@ -377,6 +378,22 @@ const incidentScopes = computed<IncidentScope[]>(() => {
             <JobRecoveryPanel :type="JobType.MediaPreview" title="Media preview jobs" />
             <JobRecoveryPanel :type="JobType.DocumentPreview" title="Document preview jobs" />
           </div>
+        </section>
+
+        <!-- The text sweep runs in the document worker, so it belongs to the documents half. -->
+        <section
+          v-if="scope !== 'media'"
+          aria-labelledby="previews-document-text"
+          class="flex flex-col gap-3"
+        >
+          <h2
+            id="previews-document-text"
+            class="px-1 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-400"
+          >
+            Document text
+          </h2>
+
+          <DocumentTextCoverage />
         </section>
 
         <section
