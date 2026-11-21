@@ -14,6 +14,8 @@ export interface LibraryFolderPreset {
   purpose: string;
   transcode: LibraryTranscodeTarget | null;
   autoTag: boolean;
+  // System folders keep their default name; the server ignores any other.
+  fixedName?: boolean;
 }
 
 export interface LibraryCapabilities {
@@ -70,7 +72,16 @@ export const LIBRARY_FOLDER_PRESETS: LibraryFolderPreset[] = [
     defaultName: "Documents",
     icon: "i-lucide-file-text",
     kind: LibraryFolderKind.Documents,
-    purpose: "PDFs, notes and office files",
+    purpose: "PDFs and office files",
+    transcode: null,
+  },
+  {
+    autoTag: false,
+    defaultName: "Notes",
+    fixedName: true,
+    icon: "i-lucide-notebook",
+    kind: LibraryFolderKind.Notes,
+    purpose: "Markdown notes you write in the app",
     transcode: null,
   },
 ];
@@ -168,7 +179,13 @@ export const validateFolderNames = (drafts: LibraryFolderDraft[]): LibraryErrors
   const errors: LibraryErrors = {};
   const seen = new Set<string>();
 
-  for (const draft of drafts) {
+  // Fixed names are claimed first, so a clash is reported on the folder that can still be renamed.
+  const fixedFirst = [
+    ...drafts.filter((draft) => presetFor(draft.kind).fixedName),
+    ...drafts.filter((draft) => !presetFor(draft.kind).fixedName),
+  ];
+
+  for (const draft of fixedFirst) {
     const error = nameError(draft.name);
     const key = draft.name.trim().toLowerCase();
 

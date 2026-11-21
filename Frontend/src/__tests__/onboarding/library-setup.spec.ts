@@ -24,7 +24,7 @@ const draftOf = (drafts: LibraryFolderDraft[], kind: LibraryFolderKind) => {
 };
 
 describe("createLibraryDrafts", () => {
-  it("offers all five folders with default names", () => {
+  it("offers all six folders with default names", () => {
     const drafts = createLibraryDrafts(everything);
 
     expect(drafts.map((d) => d.name)).toEqual([
@@ -33,6 +33,7 @@ describe("createLibraryDrafts", () => {
       "Pictures",
       "Videos",
       "Documents",
+      "Notes",
     ]);
   });
 
@@ -75,6 +76,16 @@ describe("validateFolderNames", () => {
       LibraryFolderKind.Documents,
     ]);
     expect(errors[LibraryFolderKind.Documents]).toMatch(/already uses/u);
+  });
+
+  it("reports a clash with the fixed Notes name on the folder that can be renamed", () => {
+    const drafts = createLibraryDrafts(everything);
+    draftOf(drafts, LibraryFolderKind.Documents).name = "notes";
+
+    const errors = validateFolderNames(drafts);
+
+    expect(errors[LibraryFolderKind.Documents]).toBe("Another folder already uses this name.");
+    expect(errors[LibraryFolderKind.Notes]).toBeUndefined();
   });
 
   it("accepts the defaults", () => {
@@ -166,7 +177,7 @@ describe("buildFinishTourRequest", () => {
 
     const { folders } = buildFinishTourRequest(drafts, nothing);
 
-    expect(folders).toHaveLength(5);
+    expect(folders).toHaveLength(6);
     expect(folders.every((f) => !f.automationEnabled && !f.autoTag)).toBe(true);
     expect(folders.every((f) => f.audioRungs.length === 0 && f.videoRungs.length === 0)).toBe(true);
   });

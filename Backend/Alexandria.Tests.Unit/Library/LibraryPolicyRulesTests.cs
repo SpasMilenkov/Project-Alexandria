@@ -142,6 +142,7 @@ public class LibraryPolicyRulesTests
     [InlineData(LibraryFolderKind.Pictures)]
     [InlineData(LibraryFolderKind.Videos)]
     [InlineData(LibraryFolderKind.Documents)]
+    [InlineData(LibraryFolderKind.Notes)]
     public void Build_plainFolder_createsNothingEvenWithAutomationOn(LibraryFolderKind kind)
     {
         var choice = MusicChoice() with { Kind = kind };
