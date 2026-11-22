@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { useQuery } from "@pinia/colada";
+import { useQuery, useQueryCache } from "@pinia/colada";
 import { refDebounced, useEventListener, useLocalStorage } from "@vueuse/core";
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from "vue-router";
 
-import { type FileContentSaveResult, MAX_NOTE_BYTES } from "@/api/notes";
+import { MAX_NOTE_BYTES } from "@/api/notes";
 import { isAuthError } from "@/api/shuffle";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
@@ -17,13 +17,15 @@ import NoteSaveIndicator from "@/components/notes/NoteSaveIndicator.vue";
 import NoteTitle from "@/components/notes/NoteTitle.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useLazyModal } from "@/composables/useLazyOverlay";
-import { useNoteSave } from "@/composables/useNoteSave";
+import { type CurrentVersion, useNoteSave } from "@/composables/useNoteSave";
 import { NOTE_EDITOR_MODE_OPTIONS, type NoteEditorMode } from "@/features/notes/editor-modes";
 import { extractHeadings } from "@/features/notes/outline";
 import { saveIndicatorState } from "@/features/notes/save-indicator";
 import { countWords } from "@/features/notes/stats";
+import { discardNoteDraft } from "@/mutations/notes";
 import { getFile } from "@/queries/files";
-import { getNoteVersionText } from "@/queries/notes";
+import { getNoteDraft, getNoteVersionText } from "@/queries/notes";
+import { formatDateTime } from "@/utils/date-formatters";
 import { isMarkdownMimeType } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
 
@@ -34,6 +36,7 @@ interface Blocker {
 }
 
 const route = useRoute();
+const queryCache = useQueryCache();
 const clipboardToast = useAppToast("clipboard");
 const filesToast = useAppToast("files");
 const leaveModal = useLazyModal<Record<string, unknown>, boolean>(ConfirmModal);
@@ -47,42 +50,72 @@ const {
   refetch: refetchFile,
 } = useQuery(() => ({ ...getFile(fileId.value), enabled: fileId.value.length > 0 }));
 
-// The editor stays mounted on the version it opened; saves move the version they build on
+// The editor stays mounted on what it opened; saves move the version and draft they build on
 // forward without reopening it, so the cursor and undo history survive every save. Only a
-// conflict resolved by loading the latest version opens another one.
+// conflict resolved by loading the latest text opens it again.
 const openedVersionId = ref<string | null>(null);
 const draft = ref("");
-const loadedVersionId = ref<string | null>(null);
+// Set until the opened version's text and the stored draft are both in and loaded.
+const needsOpening = ref(true);
+const openedText = ref("");
+const openCount = ref(0);
+// When the opened draft was written, if it was made from an older version.
+const outdatedDraftAt = ref<string | null>(null);
 const copied = ref(false);
 const mode = ref<NoteEditorMode>("rich");
 
 const noteEditor = useTemplateRef<{
   rewroteFormatting: boolean;
   scrollToHeading: (index: number) => void;
+  syncDraft: () => void;
 }>("noteEditor");
 
-// Said once, on the first save: rich text editing restyled markdown the file had written its
-// own way, and that rewrite is now in the stored version.
-const noteFirstSave = (_saved: FileContentSaveResult, count: number) => {
-  if (count !== 1 || !noteEditor.value?.rewroteFormatting) return;
+// Rich text reaches the draft after a short pause in typing, so anything that needs the exact
+// text asks the editor for it first.
+const syncDraft = () => {
+  noteEditor.value?.syncDraft();
+};
 
-  filesToast.info(
-    "Saved with tidied formatting",
-    "Rich text editing rewrote this note's markdown in the editor's style.",
-  );
+const readCurrentVersion = async (): Promise<CurrentVersion | null> => {
+  const latest = await refetchFile();
+  const versionId = latest.data?.currentVersion.id;
+
+  if (!versionId) return null;
+
+  const state = await queryCache.refresh(queryCache.ensure(getNoteVersionText(versionId)));
+
+  if (state.status !== "success") return null;
+
+  return { text: state.data, versionId };
 };
 
 const {
+  canCheckpoint,
+  checkpoint,
+  draftRevision,
   isDirty,
   isSaving,
   lastError: saveError,
   lastSavedAt,
   reset: resetSaving,
-  save,
+  saveDraft,
   saveOver,
   start: startSaving,
   status: saveStatus,
-} = useNoteSave({ draft, fileId, onSaved: noteFirstSave });
+} = useNoteSave({ draft, fileId, readCurrentVersion });
+
+const { mutateAsync: discardDraft } = discardNoteDraft();
+
+// Said once, on the first save of each opening: rich text editing restyled markdown the file had
+// written its own way, and that rewrite is now stored.
+watch(lastSavedAt, (savedAt, previous) => {
+  if (!savedAt || previous || !noteEditor.value?.rewroteFormatting) return;
+
+  filesToast.info(
+    "Saved with tidied formatting",
+    "Rich text editing rewrote this note's markdown in the editor's style.",
+  );
+});
 
 const saveIndicator = computed(() => saveIndicatorState(saveStatus.value, isDirty.value));
 
@@ -147,7 +180,8 @@ const setActiveHeading = (index: number | null) => {
 watch(fileId, () => {
   resetSaving();
   openedVersionId.value = null;
-  loadedVersionId.value = null;
+  needsOpening.value = true;
+  outdatedDraftAt.value = null;
   draft.value = "";
   mode.value = "rich";
   activeHeading.value = null;
@@ -217,32 +251,52 @@ const {
   enabled: canReadText.value,
 }));
 
+const {
+  data: storedDraft,
+  isPending: isDraftPending,
+  error: draftError,
+  refetch: refetchDraft,
+} = useQuery(() => ({ ...getNoteDraft(fileId.value), enabled: canReadText.value }));
+
+// A draft made from the opened version carries on where the last session stopped. One made from
+// an older version still opens, so nothing typed is hidden, but as a conflict to settle first.
 watch(
-  original,
-  (text) => {
+  [original, storedDraft, needsOpening],
+  ([versionText, stored]) => {
     const versionId = openedVersionId.value;
 
-    if (text === undefined || !versionId || loadedVersionId.value === versionId) return;
+    if (!needsOpening.value || !versionId || versionText === undefined || stored === undefined) {
+      return;
+    }
 
-    draft.value = text;
-    loadedVersionId.value = versionId;
-    startSaving(versionId, text);
+    const isOutdated = stored !== null && stored.baseVersionId !== versionId;
+
+    draft.value = stored?.content ?? versionText;
+    openedText.value = draft.value;
+    openCount.value += 1;
+    outdatedDraftAt.value = isOutdated ? stored.updatedAt : null;
+    needsOpening.value = false;
+
+    startSaving({
+      draft: stored ? { content: stored.content, revision: stored.revision } : null,
+      draftIsOutdated: isOutdated,
+      versionId,
+      versionText,
+    });
   },
   { immediate: true },
 );
 
-const isLoaded = computed(
-  () => loadedVersionId.value !== null && loadedVersionId.value === openedVersionId.value,
-);
+const isLoaded = computed(() => !needsOpening.value && openedVersionId.value !== null);
 
 const isPending = computed(() => {
   if (isFilePending.value) return true;
 
-  return canReadText.value && isTextPending.value;
+  return canReadText.value && (isTextPending.value || isDraftPending.value);
 });
 
 const visibleError = computed(() => {
-  const error = fileError.value ?? textError.value;
+  const error = fileError.value ?? textError.value ?? draftError.value;
 
   if (!error || isAuthError(error)) return null;
 
@@ -275,31 +329,50 @@ const retry = () => {
     return;
   }
 
-  void refetchText();
+  if (textError.value) {
+    void refetchText();
+    return;
+  }
+
+  void refetchDraft();
+};
+
+const saveVersion = () => {
+  syncDraft();
+
+  return checkpoint();
 };
 
 // A failed save is said once per run of failures; the header keeps showing it with a retry.
 watch(saveStatus, (current, previous) => {
   if (current !== "error" || previous === "error") return;
 
-  filesToast.error("Couldn't save the note", saveError.value, { retry: () => save() });
+  filesToast.error("Couldn't save the note", saveError.value, { retry: saveVersion });
 });
 
 const saveNow = () => {
-  void save();
+  void saveVersion();
 };
 
-// Keeps this edit: it becomes the next version after whatever is current now.
+// Keeps this edit: it becomes the next version after whatever is current now, replacing any
+// draft stored meanwhile.
 const keepMine = async () => {
   const latest = await refetchFile();
   const currentVersionId = latest.data?.currentVersion.id;
 
   if (!currentVersionId) return;
 
-  await saveOver(currentVersionId);
+  const stored = await refetchDraft();
+
+  if (stored.status !== "success") return;
+
+  syncDraft();
+
+  if (await saveOver(currentVersionId, stored.data?.revision ?? null)) outdatedDraftAt.value = null;
 };
 
-// Drops this edit and reopens the note at its current version.
+// Drops this edit and reopens the note as it is stored now: its current version, or the draft
+// another tab or device is keeping.
 const loadLatest = async () => {
   const latest = await refetchFile();
   const currentVersionId = latest.data?.currentVersion.id;
@@ -307,29 +380,75 @@ const loadLatest = async () => {
   if (!currentVersionId) return;
 
   resetSaving();
-  loadedVersionId.value = null;
+  await refetchDraft();
   openedVersionId.value = currentVersionId;
+  needsOpening.value = true;
 };
 
-const conflictActions = computed(() => [
-  {
-    color: "neutral" as const,
-    label: "Keep my version",
-    onClick: () => void keepMine(),
-    variant: "outline" as const,
-  },
-  {
-    color: "neutral" as const,
-    label: "Load the latest",
-    onClick: () => void loadLatest(),
-    variant: "ghost" as const,
-  },
-]);
+const discardOutdatedDraft = async () => {
+  const revision = draftRevision.value;
 
-// Leaving saves first, so the guard only asks when that save didn't go through.
+  try {
+    if (revision) await discardDraft({ fileId: fileId.value, revision });
+  } catch (error) {
+    filesToast.error("Couldn't discard the changes", error);
+    return;
+  }
+
+  await loadLatest();
+};
+
+const conflictNotice = computed(() => {
+  if (outdatedDraftAt.value) {
+    return {
+      actions: [
+        {
+          color: "neutral" as const,
+          label: "Keep these changes",
+          onClick: () => void keepMine(),
+          variant: "outline" as const,
+        },
+        {
+          color: "neutral" as const,
+          label: "Discard them",
+          onClick: () => void discardOutdatedDraft(),
+          variant: "ghost" as const,
+        },
+      ],
+      description: `These changes from ${formatDateTime(outdatedDraftAt.value)} were never saved as a version, and the note has a newer version since. Keep them as the next version, or discard them and open the latest.`,
+      title: "Unsaved changes from an older version",
+    };
+  }
+
+  return {
+    actions: [
+      {
+        color: "neutral" as const,
+        label: "Keep my version",
+        onClick: () => void keepMine(),
+        variant: "outline" as const,
+      },
+      {
+        color: "neutral" as const,
+        label: "Load the latest",
+        onClick: () => void loadLatest(),
+        variant: "ghost" as const,
+      },
+    ],
+    description:
+      "It was edited in another tab or on another device, or a version was restored, after you opened it. Your edits are still here and autosave is paused.",
+    title: "This note changed somewhere else",
+  };
+});
+
+// Leaving makes a version first, so the guard only asks when the latest text isn't on the
+// server at all. A draft that got there is safe: the idle sweep makes it a version later.
 const confirmLeave = async (): Promise<boolean> => {
-  if (!isDirty.value && !isSaving.value) return true;
-  if (await save()) return true;
+  syncDraft();
+
+  if (!isDirty.value && !isSaving.value && !canCheckpoint.value) return true;
+  if (await checkpoint()) return true;
+  if (!isDirty.value) return true;
 
   const instance = leaveModal.open({
     cancelLabel: "Stay",
@@ -351,16 +470,23 @@ onBeforeRouteUpdate((to, from) => {
   return confirmLeave();
 });
 
-// Closing the tab can't wait for a save, so the browser's own prompt covers it.
+// Closing the tab can't wait for a save, so the browser's own prompt covers text that never
+// reached the server.
 useEventListener(window, "beforeunload", (event) => {
+  syncDraft();
+
   if (!isDirty.value && !isSaving.value) return;
 
   event.preventDefault();
 });
 
-// Switching away is a natural pause, and the tab may never come back.
+// Switching away is a natural pause, and the tab may never come back. A draft is enough here:
+// looking something up in another tab shouldn't add a version each time.
 useEventListener(document, "visibilitychange", () => {
-  if (document.visibilityState === "hidden") void save();
+  if (document.visibilityState !== "hidden") return;
+
+  syncDraft();
+  void saveDraft();
 });
 
 useEventListener(window, "keydown", (event: KeyboardEvent) => {
@@ -368,10 +494,12 @@ useEventListener(window, "keydown", (event: KeyboardEvent) => {
   if (event.key.toLowerCase() !== "s" || !isEditing.value) return;
 
   event.preventDefault();
-  void save();
+  void saveVersion();
 });
 
 const copyMarkdown = async () => {
+  syncDraft();
+
   try {
     await navigator.clipboard.writeText(draft.value);
     copied.value = true;
@@ -419,7 +547,7 @@ const copyMarkdown = async () => {
       <div v-if="isEditing" class="flex flex-wrap items-center gap-2">
         <NoteSaveIndicator :state="saveIndicator" :saved-at="lastSavedAt" @retry="saveNow" />
 
-        <UTooltip text="Save now (Ctrl+S)">
+        <UTooltip text="Save a version now (Ctrl+S)">
           <UButton
             icon="i-lucide-save"
             label="Save"
@@ -427,7 +555,7 @@ const copyMarkdown = async () => {
             variant="outline"
             size="sm"
             :loading="isSaving"
-            :disabled="!isDirty || saveStatus === 'conflict'"
+            :disabled="!canCheckpoint"
             @click="saveNow"
           />
         </UTooltip>
@@ -500,9 +628,9 @@ const copyMarkdown = async () => {
         color="warning"
         variant="subtle"
         icon="i-lucide-git-compare"
-        title="This note changed somewhere else"
-        description="It was saved from another tab, or a version was restored, after you opened it. Your edits are still here and autosave is paused."
-        :actions="conflictActions"
+        :title="conflictNotice.title"
+        :description="conflictNotice.description"
+        :actions="conflictNotice.actions"
       />
     </div>
 
@@ -564,10 +692,10 @@ const copyMarkdown = async () => {
 
       <NoteEditor
         ref="noteEditor"
-        :key="openedVersionId"
+        :key="openCount"
         v-model="draft"
         v-model:mode="mode"
-        :source="original"
+        :source="openedText"
         :headings="headings"
         class="lg:min-h-0 lg:overflow-y-auto"
         @active-heading="setActiveHeading"

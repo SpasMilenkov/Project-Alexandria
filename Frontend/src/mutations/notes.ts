@@ -5,6 +5,7 @@ import {
   type FileContentSaveResult,
   type RenameNoteRequest,
   type SaveNoteContentRequest,
+  type SaveNoteDraftRequest,
   notesApi,
 } from "@/api/notes";
 import { DIRECTORY_QUERY_KEYS } from "@/queries/directories";
@@ -60,6 +61,27 @@ export const renameNote = defineMutation(() => {
     },
   });
 });
+
+// A draft is not a version, so lists, sizes and searches stay as they were. Only the name can
+// change, once per note, when the draft named one still called "Untitled"; every file query is
+// refreshed then rather than working out which listings show it.
+export const saveNoteDraft = defineMutation(() => {
+  const queryCache = useQueryCache();
+
+  return useMutation({
+    mutation: (request: SaveNoteDraftRequest) => notesApi.saveDraft(request),
+    onSuccess(saved) {
+      if (saved.renamedTo) queryCache.invalidateQueries({ key: FILES_QUERY_KEYS.root });
+    },
+  });
+});
+
+export const discardNoteDraft = defineMutation(() =>
+  useMutation({
+    mutation: ({ fileId, revision }: { fileId: string; revision: string }) =>
+      notesApi.discardDraft(fileId, revision),
+  }),
+);
 
 export const createNote = defineMutation(() => {
   const queryCache = useQueryCache();

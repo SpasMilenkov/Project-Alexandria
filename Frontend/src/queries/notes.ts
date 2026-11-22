@@ -3,6 +3,7 @@ import { defineQueryOptions } from "@pinia/colada";
 import { notesApi } from "@/api/notes";
 
 export const NOTES_QUERY_KEYS = {
+  draft: (fileId: string) => [...NOTES_QUERY_KEYS.root, "draft", fileId],
   folder: () => [...NOTES_QUERY_KEYS.root, "folder"],
   root: ["notes"] as const,
   versionText: (versionId: string) => [...NOTES_QUERY_KEYS.root, "version-text", versionId],
@@ -17,6 +18,18 @@ export const getNoteVersionText = defineQueryOptions((versionId: string) => ({
   refetchOnReconnect: false,
   refetchOnWindowFocus: false,
   staleTime: Infinity,
+}));
+
+// Read fresh on every opening, since another tab or device may have written it, and never again
+// while the editor is open: the editor's own writes move it on, and a refetch would replace the
+// text being typed. Dropped from the cache as soon as the editor closes.
+export const getNoteDraft = defineQueryOptions((fileId: string) => ({
+  gcTime: 0,
+  key: NOTES_QUERY_KEYS.draft(fileId),
+  query: () => notesApi.getDraft(fileId),
+  refetchOnReconnect: false,
+  refetchOnWindowFocus: false,
+  staleTime: 0,
 }));
 
 // Null until the first note creates the folder. It can't be renamed or moved, so it rarely changes.

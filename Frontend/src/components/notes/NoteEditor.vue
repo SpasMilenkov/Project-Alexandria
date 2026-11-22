@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { EditorToolbarProps } from "@nuxt/ui";
+import type { Editor } from "@tiptap/vue-3";
 
-import { useEventListener, usePreferredReducedMotion } from "@vueuse/core";
+import { useDebounceFn, useEventListener, usePreferredReducedMotion } from "@vueuse/core";
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from "vue";
 
 import type { NoteEditorMode } from "@/features/notes/editor-modes";
@@ -10,6 +10,7 @@ import { useAppToast } from "@/composables/useAppToast";
 import { type NoteHeading, headingAtLine, lineAtOffset } from "@/features/notes/outline";
 import { survivesRoundTrip } from "@/features/notes/round-trip";
 import { NOTE_TOOLBAR_ITEMS } from "@/features/notes/toolbar";
+import { logger } from "@/utils/logger";
 
 // The markdown as stored. The parent keys this component by version, so the check below runs
 // once per opened version.
@@ -20,9 +21,6 @@ const emit = defineEmits<{ "active-heading": [index: number | null] }>();
 const draft = defineModel<string>({ required: true });
 const mode = defineModel<NoteEditorMode>("mode", { required: true });
 
-// Tiptap's packages are Nuxt UI's own dependencies, so the type is reached through its props.
-type TiptapEditor = EditorToolbarProps["editor"];
-
 const filesToast = useAppToast("files");
 const reducedMotion = usePreferredReducedMotion();
 
@@ -32,8 +30,8 @@ const isChecked = ref(false);
 const wouldRewrite = ref(false);
 
 const sheet = useTemplateRef<HTMLElement>("sheet");
-const editorComponent = useTemplateRef<{ editor?: TiptapEditor }>("editor");
-const richEditor = computed((): TiptapEditor | null => editorComponent.value?.editor ?? null);
+const editorComponent = useTemplateRef<{ editor?: Editor }>("editor");
+const richEditor = computed((): Editor | null => editorComponent.value?.editor ?? null);
 
 const STARTER_KIT = { underline: false } as const;
 const PLACEHOLDER = { mode: "firstLine", placeholder: "Start writing…" } as const;
@@ -47,8 +45,55 @@ const EDITOR_UI = {
 // A heading counts as reached once its top passes just below the sticky toolbar.
 const REACHED_OFFSET_PX = 72;
 
+// Turning the document into markdown costs about 2 ms at 100 paragraphs and 9 ms at 400, so it
+// waits for a pause in typing instead of running on every keystroke. Steady typing still brings
+// the outline and word count up to date this often.
+const SYNC_PAUSE_MS = 300;
+const SYNC_MAX_WAIT_MS = 2000;
+
+// The rich editor is handed the text once, when it mounts, and never again: writing the model
+// back would make it serialize a second time just to compare. It mounts again on every switch
+// back from source mode, so it starts from whatever the source edits left.
+const richStart = ref(draft.value);
+let hasUnsyncedEdit = false;
+
+// Brings the model up to date with the rich editor now. The page calls it before anything that
+// needs the exact text: saving, leaving, copying.
+const syncDraft = () => {
+  const instance = richEditor.value;
+
+  if (!hasUnsyncedEdit || !instance) return;
+
+  hasUnsyncedEdit = false;
+  draft.value = instance.getMarkdown();
+};
+
+const scheduleSync = useDebounceFn(syncDraft, SYNC_PAUSE_MS, { maxWait: SYNC_MAX_WAIT_MS });
+
+const noteEdit = () => {
+  hasUnsyncedEdit = true;
+  void scheduleSync();
+};
+
 watch(richEditor, (instance) => {
-  if (!instance || isChecked.value) return;
+  if (!instance) return;
+
+  // UEditor's own update handler serializes the whole document on every keystroke to emit its
+  // model. Nothing listens to that model here, so the handler is swapped for one that only notes
+  // the edit and leaves the markdown to the pause above. UEditor overrides an `onUpdate` passed
+  // to it, so removing its handler is the only way to skip that work.
+  const ownUpdate = instance.options.onUpdate;
+
+  if (ownUpdate) {
+    instance.off("update", ownUpdate);
+  } else {
+    // Typing still works without the swap, it just serializes on every keystroke again.
+    logger.warn("UEditor no longer sets onUpdate; the note editor serializes on every keystroke");
+  }
+
+  instance.on("update", noteEdit);
+
+  if (isChecked.value) return;
 
   isChecked.value = true;
 
@@ -61,6 +106,12 @@ watch(richEditor, (instance) => {
 // Said once, at the point it matters: the first switch to rich text on a file it would rewrite.
 // The page reads it too, so the first save can say the formatting was tidied.
 const rewroteFormatting = ref(false);
+
+// Runs before the switch renders, while the rich editor is still mounted to read from.
+watch(mode, (current, previous) => {
+  if (previous === "rich") syncDraft();
+  if (current === "rich") richStart.value = draft.value;
+});
 
 watch(mode, (current) => {
   if (current !== "rich" || !wouldRewrite.value || rewroteFormatting.value) return;
@@ -156,7 +207,7 @@ watch([mode, richEditor, () => headings], async () => {
   scheduleScrollReport();
 });
 
-defineExpose({ rewroteFormatting, scrollToHeading });
+defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
 </script>
 
 <template>
@@ -182,7 +233,7 @@ defineExpose({ rewroteFormatting, scrollToHeading });
     <UEditor
       v-if="mode === 'rich'"
       ref="editor"
-      v-model="draft"
+      :model-value="richStart"
       content-type="markdown"
       :starter-kit="STARTER_KIT"
       :mention="false"
