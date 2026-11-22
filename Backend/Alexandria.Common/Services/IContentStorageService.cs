@@ -122,17 +122,24 @@ public interface IContentStorageService
 
     /// <summary>
     /// Adds a version made from <paramref name="parentVersionId"/>, addressed by file id. The new
-    /// version keeps the parent's MIME type. Text identical to the parent writes nothing.
+    /// version keeps the parent's MIME type. Text identical to the parent writes nothing. The
+    /// file's draft is removed either way, provided it is at <paramref name="draftRevision"/>.
     /// </summary>
     /// <exception cref="Exceptions.FileVersions.FileVersionConflictException">
     /// The parent is no longer the file's current version.
     /// </exception>
+    /// <exception cref="Exceptions.Files.FileDraftConflictException">
+    /// The file has a draft at another revision than <paramref name="draftRevision"/>.
+    /// </exception>
     /// <exception cref="Exceptions.Files.FileRecordNotFoundException">Missing, trashed or not owned.</exception>
     /// <exception cref="Exceptions.FileVersions.FileVersionNotFoundException">The parent isn't one of the file's versions.</exception>
-    /// <exception cref="Exceptions.Files.FileContentNotEditableException">Encrypted parent, or text too large.</exception>
+    /// <exception cref="Exceptions.Files.FileContentNotEditableException">
+    /// The parent is encrypted, not text, or too large to open; or the text is too large.
+    /// </exception>
     Task<FileContentSaveResult> SaveTextContentAsync(
         Guid fileId,
         Guid parentVersionId,
+        Guid? draftRevision,
         string text,
         Guid userId,
         CancellationToken ct = default);

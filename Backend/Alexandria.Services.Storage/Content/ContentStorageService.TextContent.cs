@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text;
 using Alexandria.Common.Exceptions;
 using Alexandria.Common.Exceptions.Files;
 using Alexandria.Common.Exceptions.FileVersions;
@@ -10,7 +9,6 @@ using Alexandria.Dto.Files;
 using Alexandria.Services.Storage.Content.Mime;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Blake3;
 
 namespace Alexandria.Services.Storage.Content;
 
@@ -19,9 +17,6 @@ namespace Alexandria.Services.Storage.Content;
 // the bytes itself, straight to the sealed prefix no signed URL can reach.
 public partial class ContentStorageService
 {
-    // No byte order mark, so a saved note hashes the same as the same text uploaded from disk.
-    private static readonly UTF8Encoding TextEncoding = new(encoderShouldEmitUTF8Identifier: false);
-
     public async Task<VersionText> ReadVersionTextAsync(Guid versionId, Guid userId, CancellationToken ct = default)
     {
         var version = await unitOfWork.FileVersions.FirstOrDefaultAsync(
@@ -38,6 +33,7 @@ public partial class ContentStorageService
     public async Task<FileContentSaveResult> SaveTextContentAsync(
         Guid fileId,
         Guid parentVersionId,
+        Guid? draftRevision,
         string text,
         Guid userId,
         CancellationToken ct = default)
@@ -50,19 +46,31 @@ public partial class ContentStorageService
                          v => v.Id == parentVersionId && v.FileId == fileId && v.DeletedAt == null, ct)
                      ?? throw new FileVersionNotFoundException(parentVersionId);
 
-        if (parent.IsEncrypted)
-            throw new FileContentNotEditableException(parentVersionId, "Encrypted versions can't be edited as text.");
+        EditableText.EnsureEditable(parent);
 
         if (file.CurrentVersionId != parentVersionId)
             throw new FileVersionConflictException(fileId, parentVersionId, file.CurrentVersionId);
 
-        var content = EncodeText(fileId, text);
-        var hash = HashOf(content);
+        // The check under the row lock is the one that counts. This one spares staging an upload
+        // that a draft written elsewhere would refuse anyway, which is the common way to lose.
+        var storedRevision = await unitOfWork.FileDrafts.GetRevisionAsync(fileId, ct);
 
-        // Saving what is already stored would only add a duplicate version to the history.
+        if (storedRevision is { } stored && stored != draftRevision)
+            throw new FileDraftConflictException(fileId, draftRevision, stored);
+
+        var content = TextContentBytes.Encode(fileId, text);
+        var hash = TextContentBytes.Hash(content);
+        var target = new VersionTarget(fileId, parentVersionId, parent.MimeType, draftRevision);
+
+        // Saving what is already stored would only add a duplicate version to the history, but a
+        // draft that wandered off and came back still has to go.
         if (hash.AsSpan().SequenceEqual(parent.ContentHash))
+        {
+            await SettleDraftWithoutVersionAsync(target, userId, ct);
+
             return ToSaveResult(file, parent.Id, parent.VersionNumber, parent.Size, parent.MimeType,
                 created: false, unchanged: true);
+        }
 
         var verified = await StageTextContentAsync(content, hash, parent.MimeType, userId, ct);
 
@@ -73,13 +81,19 @@ public partial class ContentStorageService
             committed = await CommitVersionAsync(
                 verified,
                 StagedItem(verified.UploadId, file.Name, file.DirectoryId),
-                new VersionTarget(fileId, parentVersionId, parent.MimeType),
+                target,
                 requireNewFile: false,
                 ct);
         }
         catch (Exception ex)
         {
-            LogTextSaveFailed(logger, ex, fileId, parentVersionId);
+            // Losing a race to another save or draft is a normal outcome the caller reports as a
+            // conflict, so it isn't logged as a failure.
+            if (ex is FileVersionConflictException or FileDraftConflictException)
+                LogTextSaveLostRace(logger, fileId, parentVersionId);
+            else
+                LogTextSaveFailed(logger, ex, fileId, parentVersionId);
+
             await AbandonUploadAsync(verified.UploadId, verified.TempObjectKey, CancellationToken.None);
             throw;
         }
@@ -98,8 +112,8 @@ public partial class ContentStorageService
     {
         await fileService.FolderWithOwnershipExistsAsync(directoryId, userId, ct);
 
-        var content = EncodeText(Guid.Empty, text);
-        var hash = HashOf(content);
+        var content = TextContentBytes.Encode(Guid.Empty, text);
+        var hash = TextContentBytes.Hash(content);
         var declaredMimeType = mimeResolver.Resolve(fileName, HeaderOf(content)).MimeType;
 
         var verified = await StageTextContentAsync(content, hash, declaredMimeType, userId, ct);
@@ -145,17 +159,35 @@ public partial class ContentStorageService
             throw new FileContentNotEditableException(version.Id, "This version is too large to open as text.");
     }
 
-    private static byte[] EncodeText(Guid fileId, string text)
+    // Called under the file's row lock, so a draft write can't slip in between the check and the
+    // removal. No draft is fine: there is nothing another editor could lose.
+    private async Task RemoveSettledDraftAsync(VersionTarget target, CancellationToken ct)
     {
-        var content = TextEncoding.GetBytes(text);
+        var draft = await unitOfWork.FileDrafts.GetByIdAsync(target.FileId, ct);
 
-        if (content.Length > TextContentLimits.MaxBytes)
-            throw new FileContentNotEditableException(fileId, "The text is too large to save.");
+        if (draft is null) return;
 
-        return content;
+        if (draft.Revision != target.DraftRevision)
+            throw new FileDraftConflictException(target.FileId, target.DraftRevision, draft.Revision);
+
+        unitOfWork.FileDrafts.Remove(draft);
     }
 
-    private static byte[] HashOf(byte[] content) => Hasher.Hash(content).AsSpan().ToArray();
+    private async Task SettleDraftWithoutVersionAsync(VersionTarget target, Guid userId, CancellationToken ct)
+    {
+        await unitOfWork.BeginTransactionAsync(ct);
+
+        try
+        {
+            await LockTargetFileAsync(target, userId, ct);
+            await unitOfWork.CommitAsync(ct);
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
 
     private static byte[] HeaderOf(byte[] content) =>
         content.AsSpan(0, Math.Min(content.Length, MimeSniffing.HeaderBytes)).ToArray();

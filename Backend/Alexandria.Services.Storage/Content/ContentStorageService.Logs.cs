@@ -176,6 +176,10 @@ public partial class ContentStorageService
     [LoggerMessage(1066, LogLevel.Warning, "Could not save text for file {FileId} from version {ParentVersionId}")]
     private static partial void LogTextSaveFailed(ILogger logger, Exception ex, Guid fileId, Guid parentVersionId);
 
+    [LoggerMessage(1070, LogLevel.Debug,
+        "Text for file {FileId} from version {ParentVersionId} lost to another save or draft; its staged upload is abandoned")]
+    private static partial void LogTextSaveLostRace(ILogger logger, Guid fileId, Guid parentVersionId);
+
     [LoggerMessage(1067, LogLevel.Warning, "Could not create text file {FileName} in directory {DirectoryId}")]
     private static partial void LogTextCreateFailed(ILogger logger, Exception ex, string fileName, Guid? directoryId);
 

@@ -920,6 +920,43 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("Files", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.FileDraft", b =>
+                {
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BaseVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Revision")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("FileId");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.ToTable("FileDrafts", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.FileEnrichment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2649,6 +2686,17 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Directory");
 
                     b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.FileDraft", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.File", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.FileEnrichment", b =>

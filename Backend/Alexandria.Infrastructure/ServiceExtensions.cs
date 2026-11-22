@@ -68,6 +68,8 @@ public static class ServiceExtensions
         services.AddScoped<IUploadRepository, UploadRepository>();
         services.AddScoped<IFileService, FileService>();
         services.AddScoped<INoteService, NoteService>();
+        services.AddScoped<IFileDraftRepository, FileDraftRepository>();
+        services.AddScoped<IFileDraftService, FileDraftService>();
         services.AddHttpClient<MetricsService>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<IAccessOverviewService, AccessOverviewService>();
@@ -137,6 +139,7 @@ public static class ServiceExtensions
         services.AddHostedService<PromotionScannerWorker>();
         services.AddHostedService<TempCleanupWorker>();
         services.AddHostedService<AuditRetentionWorker>();
+        services.AddHostedService<FileDraftCheckpointWorker>();
         services.AddHostedService<OverviewSummaryFinalizeWorker>();
         services.AddHostedService<OrphanedCleanupWorker>();
         services.AddHostedService<PreviewSizeBackfillWorker>();

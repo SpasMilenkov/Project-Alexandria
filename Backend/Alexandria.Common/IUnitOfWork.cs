@@ -11,6 +11,7 @@ public interface IUnitOfWork : IDisposable
     ICaptureMetadataRepository CaptureMetadata { get; }
     IDocumentMetadataRepository DocumentMetadata { get; }
     IDocumentTextRepository DocumentText { get; }
+    IFileDraftRepository FileDrafts { get; }
     IRefreshTokenRepository RefreshTokens { get; }
     ITagRepository Tags { get; }
     IDirectoryRepository Directories { get; }
