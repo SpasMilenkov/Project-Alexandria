@@ -4,6 +4,7 @@ using Alexandria.Common.Repositories;
 using Alexandria.Data.Context;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
+using Alexandria.Dto.Links;
 using Alexandria.Dto.Tags;
 using Alexandria.Repositories.Projections;
 using Microsoft.EntityFrameworkCore;
@@ -108,6 +109,26 @@ public class TagRepository(AlexandriaDbContext context) : ITagRepository
     public async Task<Tag?> GetByNameAndUserIdAsync(string name, Guid userId, CancellationToken ct = default)
     {
         return await _tags.FirstOrDefaultAsync(t => t.Name == name && t.OwnerId == userId, ct);
+    }
+
+    public async Task<IReadOnlyList<LinkTargetDto>> GetLinkTargetsAsync(IReadOnlyCollection<Guid> tagIds, Guid userId,
+        CancellationToken ct = default)
+    {
+        var systemId = SystemConfig.SystemId;
+
+        return await _tags
+            .AsNoTracking()
+            .Where(t => (t.OwnerId == userId || t.OwnerId == systemId) && t.DeletedAt == null &&
+                        tagIds.Contains(t.Id))
+            .Select(t => new LinkTargetDto
+            {
+                Kind = LinkTargetKind.Tag,
+                Id = t.Id,
+                State = LinkTargetState.Available,
+                Name = t.Name,
+                Color = t.Color,
+            })
+            .ToListAsync(ct);
     }
 
     public async Task<IEnumerable<TagDto>> GetTagsWithFilesAsync(Guid userId, CancellationToken ct = default)

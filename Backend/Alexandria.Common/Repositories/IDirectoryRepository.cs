@@ -1,6 +1,7 @@
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Directories;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Links;
 using Directory = Alexandria.Data.Models.Directory;
 using File = Alexandria.Data.Models.File;
 
@@ -9,6 +10,13 @@ namespace Alexandria.Common.Repositories;
 public interface IDirectoryRepository : IRepository<Directory>
 {
     Task<Directory?> GetDirectoryMetadataAsync(Guid id, Guid ownerId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Link targets for the folders among <paramref name="directoryIds"/> that
+    /// <paramref name="userId"/> owns. Trashed folders come back as trashed.
+    /// </summary>
+    Task<IReadOnlyList<LinkTargetDto>> GetLinkTargetsAsync(IReadOnlyCollection<Guid> directoryIds, Guid userId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Subtree size of each folder, keyed by id. Trashed or missing folders report zero.

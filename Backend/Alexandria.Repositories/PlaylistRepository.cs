@@ -6,6 +6,7 @@ using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Files.Streaming.Playlist;
+using Alexandria.Dto.Links;
 using Microsoft.EntityFrameworkCore;
 
 namespace Alexandria.Repositories;
@@ -56,6 +57,22 @@ public class PlaylistRepository(AlexandriaDbContext context) : IPlaylistReposito
             .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.IsStarred, isStarred), ct);
 
         return affected == 1;
+    }
+
+    public async Task<IReadOnlyList<LinkTargetDto>> GetLinkTargetsAsync(IReadOnlyCollection<Guid> playlistIds,
+        Guid userId, CancellationToken ct = default)
+    {
+        return await _playlists
+            .AsNoTracking()
+            .Where(p => p.OwnerId == userId && p.DeletedAt == null && playlistIds.Contains(p.Id))
+            .Select(p => new LinkTargetDto
+            {
+                Kind = LinkTargetKind.Playlist,
+                Id = p.Id,
+                State = LinkTargetState.Available,
+                Name = p.Name,
+            })
+            .ToListAsync(ct);
     }
 
     public async Task<PlaylistDto?> GetSummaryAsync(Guid id, Guid userId, CancellationToken ct = default)
