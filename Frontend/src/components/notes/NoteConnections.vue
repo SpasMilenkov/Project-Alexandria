@@ -4,20 +4,23 @@ import { computed } from "vue";
 
 import FileTagList from "@/components/dashboard/tags/FileTagList.vue";
 import FileTagPicker from "@/components/dashboard/tags/FileTagPicker.vue";
+import NoteLinksList from "@/components/notes/NoteLinksList.vue";
 import { readingMinutes } from "@/features/notes/stats";
 import { directoryPath } from "@/queries/directories";
 import { formatCount } from "@/utils/count";
 import { formatCalendarDate, formatTimeAgo } from "@/utils/date-formatters";
 import { formatBytes } from "@/utils/size";
 
-const { fileId, directoryId, versionNumber, sizeBytes, editedAt, wordCount } = defineProps<{
-  fileId: string;
-  directoryId: string | null;
-  versionNumber: number;
-  sizeBytes: number;
-  editedAt: string;
-  wordCount: number;
-}>();
+const { fileId, directoryId, versionNumber, sizeBytes, editedAt, wordCount, markdown } =
+  defineProps<{
+    fileId: string;
+    directoryId: string | null;
+    versionNumber: number;
+    sizeBytes: number;
+    editedAt: string;
+    wordCount: number;
+    markdown: string;
+  }>();
 
 const emit = defineEmits<{ collapse: [] }>();
 
@@ -74,6 +77,8 @@ const lengthLabel = computed(() => {
         />
       </UTooltip>
     </div>
+
+    <NoteLinksList :markdown="markdown" />
 
     <section aria-label="Tags" class="flex flex-col gap-2">
       <div class="flex items-center justify-between gap-2 pl-2">

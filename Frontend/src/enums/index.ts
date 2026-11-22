@@ -36,6 +36,8 @@ import {
 import { JobStatus } from "./job-status";
 import { JobType } from "./job-type";
 import { LibraryFolderKind } from "./library-folder-kind";
+import { LinkTargetKind } from "./link-target-kind";
+import { LinkTargetState } from "./link-target-state";
 import { LogSource } from "./log-source";
 import { LoginFailureReason } from "./login-failure-reason";
 import { LyricsProvider } from "./lyrics-provider";
@@ -88,6 +90,8 @@ export {
   JobStatus,
   JobType,
   LibraryFolderKind,
+  LinkTargetKind,
+  LinkTargetState,
   LyricsProvider,
   LyricsStatus,
   OperationalEventCode,

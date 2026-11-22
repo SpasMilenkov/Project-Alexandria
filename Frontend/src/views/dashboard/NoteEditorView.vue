@@ -19,12 +19,14 @@ import { useAppToast } from "@/composables/useAppToast";
 import { useLazyModal } from "@/composables/useLazyOverlay";
 import { type CurrentVersion, useNoteSave } from "@/composables/useNoteSave";
 import { NOTE_EDITOR_MODE_OPTIONS, type NoteEditorMode } from "@/features/notes/editor-modes";
+import { newNoteFolderFor } from "@/features/notes/new-note";
 import { extractHeadings } from "@/features/notes/outline";
 import { saveIndicatorState } from "@/features/notes/save-indicator";
 import { countWords } from "@/features/notes/stats";
 import { discardNoteDraft } from "@/mutations/notes";
+import { directoryPath } from "@/queries/directories";
 import { getFile } from "@/queries/files";
-import { getNoteDraft, getNoteVersionText } from "@/queries/notes";
+import { getNoteDraft, getNoteVersionText, getNotesFolder } from "@/queries/notes";
 import { formatDateTime } from "@/utils/date-formatters";
 import { isMarkdownMimeType } from "@/utils/files/mimetype";
 import { formatBytes } from "@/utils/size";
@@ -176,6 +178,14 @@ const activeHeading = ref<number | null>(null);
 const setActiveHeading = (index: number | null) => {
   activeHeading.value = index;
 };
+
+// A note created from the link picker lands next to this one when this one is inside Notes.
+const { data: notesFolder } = useQuery(getNotesFolder);
+const { data: folderPath } = useQuery(() => directoryPath(file.value?.directoryId ?? ""));
+
+const newNoteFolderId = computed(() =>
+  newNoteFolderFor(folderPath.value?.pathParts, notesFolder.value?.id),
+);
 
 watch(fileId, () => {
   resetSaving();
@@ -697,6 +707,8 @@ const copyMarkdown = async () => {
         v-model:mode="mode"
         :source="openedText"
         :headings="headings"
+        :file-id="file.fileId"
+        :new-note-folder-id="newNoteFolderId"
         class="lg:min-h-0 lg:overflow-y-auto"
         @active-heading="setActiveHeading"
       />
@@ -714,6 +726,7 @@ const copyMarkdown = async () => {
             :size-bytes="Number(file.currentVersion.size)"
             :edited-at="editedAt"
             :word-count="wordCount"
+            :markdown="settledDraft"
             @collapse="setConnectionsOpen(false)"
           />
         </div>

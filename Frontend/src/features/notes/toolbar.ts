@@ -1,7 +1,10 @@
 import type { EditorToolbarItem } from "@nuxt/ui";
 
+// The editor's own handler for this kind types "[[", which opens the link picker.
+export const NOTE_LINK_TOOL = "noteLink";
+
 // Only formatting with a markdown syntax is offered, so whatever the toolbar produces survives
-// being saved as plain markdown. Links get their own picker once ID links exist.
+// being saved as plain markdown. Links go through the picker, so they always carry an ID.
 export const NOTE_TOOLBAR_ITEMS: EditorToolbarItem[][] = [
   [
     {
@@ -59,6 +62,14 @@ export const NOTE_TOOLBAR_ITEMS: EditorToolbarItem[][] = [
       kind: "mark",
       mark: "code",
       tooltip: { text: "Inline code" },
+    },
+  ],
+  [
+    {
+      "aria-label": "Link to a note or file",
+      icon: "i-lucide-link",
+      kind: NOTE_LINK_TOOL,
+      tooltip: { text: "Link to a note or file ([[)" },
     },
   ],
   [

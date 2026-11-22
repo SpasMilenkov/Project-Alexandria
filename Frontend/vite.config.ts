@@ -70,6 +70,12 @@ export default defineConfig(({ mode }) => {
         swSrc: "src/sw.ts",
       }),
     ],
+    // Nuxt UI's editor loads Tiptap and ProseMirror unbundled in dev. Pre-bundling the Tiptap
+    // packages the notes code imports directly would give it a second ProseMirror, and two
+    // copies of its plugin registry collide as soon as the editor mounts.
+    optimizeDeps: {
+      exclude: ["@tiptap/core", "@tiptap/vue-3"],
+    },
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),

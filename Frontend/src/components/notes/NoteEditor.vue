@@ -1,20 +1,31 @@
 <script setup lang="ts">
-import type { Editor } from "@tiptap/vue-3";
+import type { EditorCustomHandlers } from "@nuxt/ui";
 
+import { type Editor, VueNodeViewRenderer } from "@tiptap/vue-3";
 import { useDebounceFn, useEventListener, usePreferredReducedMotion } from "@vueuse/core";
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from "vue";
 
 import type { NoteEditorMode } from "@/features/notes/editor-modes";
 
+import NoteLinkChip from "@/components/notes/NoteLinkChip.vue";
+import NoteLinkMenu from "@/components/notes/NoteLinkMenu.vue";
 import { useAppToast } from "@/composables/useAppToast";
+import { NoteLinkNode, noteLinkContent } from "@/features/notes/link-node";
+import { pastedLinkRef } from "@/features/notes/links";
 import { type NoteHeading, headingAtLine, lineAtOffset } from "@/features/notes/outline";
 import { survivesRoundTrip } from "@/features/notes/round-trip";
-import { NOTE_TOOLBAR_ITEMS } from "@/features/notes/toolbar";
+import { NOTE_LINK_TOOL, NOTE_TOOLBAR_ITEMS } from "@/features/notes/toolbar";
 import { logger } from "@/utils/logger";
 
 // The markdown as stored. The parent keys this component by version, so the check below runs
 // once per opened version.
-const { source, headings } = defineProps<{ source: string; headings: NoteHeading[] }>();
+const { source, headings, fileId, newNoteFolderId } = defineProps<{
+  source: string;
+  headings: NoteHeading[];
+  fileId: string;
+  // Where a note created from the link picker goes; undefined means the Notes folder itself.
+  newNoteFolderId: string | undefined;
+}>();
 
 const emit = defineEmits<{ "active-heading": [index: number | null] }>();
 
@@ -47,9 +58,44 @@ const REACHED_OFFSET_PX = 72;
 
 // Turning the document into markdown costs about 2 ms at 100 paragraphs and 9 ms at 400, so it
 // waits for a pause in typing instead of running on every keystroke. Steady typing still brings
-// the outline and word count up to date this often.
+// the outline, links and word count up to date this often.
 const SYNC_PAUSE_MS = 300;
 const SYNC_MAX_WAIT_MS = 2000;
+
+// ID links read and write their markdown in this file's node; the chip is the only UI part.
+const EXTENSIONS = [
+  NoteLinkNode.extend({ addNodeView: () => VueNodeViewRenderer(NoteLinkChip) }),
+];
+
+const inCode = (instance: Editor) => instance.isActive("code") || instance.isActive("codeBlock");
+
+// The toolbar's link button types the same "[[" that opens the picker.
+const HANDLERS: EditorCustomHandlers = {
+  [NOTE_LINK_TOOL]: {
+    canExecute: (instance) => !inCode(instance),
+    execute: (instance) => instance.chain().focus().insertContent("[["),
+    isActive: () => false,
+    isDisabled: inCode,
+  },
+};
+
+// Pasting a link to something in the library, or the address of its page here, makes a chip.
+// Everything else, other sites included, pastes as usual.
+const handlePaste = (_view: unknown, event: ClipboardEvent): boolean => {
+  const instance = richEditor.value;
+  const link = pastedLinkRef(
+    event.clipboardData?.getData("text/plain") ?? "",
+    window.location.origin,
+  );
+
+  if (!instance || !link || inCode(instance)) return false;
+
+  instance.chain().focus().insertContent(noteLinkContent(link)).run();
+
+  return true;
+};
+
+const EDITOR_PROPS = { handlePaste };
 
 // The rich editor is handed the text once, when it mounts, and never again: writing the model
 // back would make it serialize a second time just to compare. It mounts again on every switch
@@ -230,17 +276,29 @@ defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
       </span>
     </div>
 
-    <UEditor
-      v-if="mode === 'rich'"
-      ref="editor"
-      :model-value="richStart"
-      content-type="markdown"
-      :starter-kit="STARTER_KIT"
-      :mention="false"
-      :placeholder="PLACEHOLDER"
-      :class="{ invisible: !isChecked }"
-      :ui="EDITOR_UI"
-    />
+    <template v-if="mode === 'rich'">
+      <UEditor
+        ref="editor"
+        :model-value="richStart"
+        content-type="markdown"
+        :starter-kit="STARTER_KIT"
+        :mention="false"
+        :placeholder="PLACEHOLDER"
+        :extensions="EXTENSIONS"
+        :handlers="HANDLERS"
+        :editor-props="EDITOR_PROPS"
+        :class="{ invisible: !isChecked }"
+        :ui="EDITOR_UI"
+      />
+
+      <!-- Tiptap creates its editor on mount, so the menu waits for the instance. -->
+      <NoteLinkMenu
+        v-if="richEditor"
+        :editor="richEditor"
+        :file-id="fileId"
+        :new-note-folder-id="newNoteFolderId"
+      />
+    </template>
 
     <UTextarea
       v-else
