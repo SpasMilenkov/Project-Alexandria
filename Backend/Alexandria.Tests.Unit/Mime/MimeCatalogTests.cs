@@ -6,6 +6,7 @@ using Alexandria.Common.Mime;
 using Alexandria.Common.Policies;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Services.Preview;
+using Alexandria.Services.Preview.Documents;
 using Alexandria.Services.Storage.Content.Mime;
 using AwesomeAssertions;
 
@@ -96,6 +97,16 @@ public class MimeCatalogTests
     }
 
     [Fact]
+    public void PagedPreview_coversPagedCategories_andLeavesSpreadsheetsOut()
+    {
+        foreach (var (category, matcher) in MimeCategories.AllRules)
+        foreach (var type in matcher.Types)
+            MimeCategories.PagedPreview.Matches(type).Should().Be(MimeCategories.HasPagedPreview(category), type);
+
+        MimeCategories.HasPagedPreview(FileCategory.Spreadsheet).Should().BeFalse();
+    }
+
+    [Fact]
     public void Groups_everyTypeTheResolverCanEmit_belongsToExactlyOneGroup()
     {
         var emitted = ExtensionMimeMap.AllTypes
@@ -130,8 +141,17 @@ public class MimeCatalogTests
             ["autoTag"] = ToJson(AutoTagSupportedFileTypes.Supported),
             ["documentMetadata"] = ToJson(DocumentMetadataFileTypes.Supported),
             ["books"] = ToJson(DocumentMetadataFileTypes.Books),
+            ["pagedPreview"] = PagedPreviewJson(),
             ["groups"] = groups
         };
+    }
+
+    private static JsonObject PagedPreviewJson()
+    {
+        var json = ToJson(MimeCategories.PagedPreview);
+        json["pageLimit"] = PdfPreviewService.PreviewPageLimit;
+
+        return json;
     }
 
     private static JsonObject ToJson(MimeMatcher matcher) => new()
