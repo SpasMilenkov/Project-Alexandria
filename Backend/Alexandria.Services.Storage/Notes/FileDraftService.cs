@@ -14,6 +14,7 @@ public sealed partial class FileDraftService(
     IContentStorageService contentStorage,
     INoteService noteService,
     IPolicyDispatcher policyDispatcher,
+    INoteLinkIndexService linkIndex,
     ILogger<FileDraftService> logger)
     : IFileDraftService
 {
@@ -149,6 +150,9 @@ public sealed partial class FileDraftService(
             userId, ct);
 
         if (saved.Unchanged) return saved;
+
+        // The text is at hand, so the note's mentions show up elsewhere without waiting for the sweep.
+        await linkIndex.IndexVersionAsync(saved.VersionId, content, ct);
 
         var name = await noteService.NameUntitledNoteAsync(saved.FileId, content, userId, ct);
 

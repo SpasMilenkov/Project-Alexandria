@@ -48,6 +48,7 @@ public static class ServiceExtensions
         services.AddScoped<IDocumentMetadataRepository, DocumentMetadataRepository>();
         services.AddScoped<IDocumentTextRepository, DocumentTextRepository>();
         services.AddScoped<IFileDraftRepository, FileDraftRepository>();
+        services.AddScoped<INoteLinkRepository, NoteLinkRepository>();
         services.AddScoped<IStreamingRepresentationRepository, StreamingRepresentationRepository>();
         services.AddScoped<ITranspilationJobRepository, TranspilationJobRepository>();
         services.AddScoped<IPolicyRuleRepository, PolicyRuleRepository>();

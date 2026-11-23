@@ -28,6 +28,7 @@ public class FileDraftServiceTests
     private readonly IContentStorageService _contentStorage = Substitute.For<IContentStorageService>();
     private readonly INoteService _noteService = Substitute.For<INoteService>();
     private readonly IPolicyDispatcher _policyDispatcher = Substitute.For<IPolicyDispatcher>();
+    private readonly INoteLinkIndexService _linkIndex = Substitute.For<INoteLinkIndexService>();
 
     private readonly File _file;
     private readonly FileVersion _base;
@@ -90,7 +91,7 @@ public class FileDraftServiceTests
     }
 
     private FileDraftService CreateSut() => new(_unitOfWork, _contentStorage, _noteService, _policyDispatcher,
-        Substitute.For<ILogger<FileDraftService>>());
+        _linkIndex, Substitute.For<ILogger<FileDraftService>>());
 
     private static byte[] Digest(string text) => Hasher.Hash(Encoding.UTF8.GetBytes(text)).AsSpan().ToArray();
 
@@ -318,6 +319,21 @@ public class FileDraftServiceTests
         await _policyDispatcher.DidNotReceive().DispatchAsync(Arg.Any<FileFinalizedEvent>(), Arg.Any<CancellationToken>());
         await _noteService.DidNotReceive().NameUntitledNoteAsync(Arg.Any<Guid>(), Arg.Any<string>(),
             Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _linkIndex.DidNotReceive().IndexVersionAsync(Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Checkpoint_newVersion_indexesItsLinksFromTheSavedText()
+    {
+        _contentStorage.SaveTextContentAsync(_file.Id, _base.Id, null, "# Paris", _userId,
+                Arg.Any<CancellationToken>())
+            .Returns(_saved);
+
+        await CreateSut().CheckpointAsync(_file.Id, _base.Id, null, "# Paris", _userId,
+            TestContext.Current.CancellationToken);
+
+        await _linkIndex.Received(1).IndexVersionAsync(_saved.VersionId, "# Paris", Arg.Any<CancellationToken>());
     }
 
     [Fact]
