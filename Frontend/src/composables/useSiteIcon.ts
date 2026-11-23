@@ -7,6 +7,7 @@ import { useRoute } from "vue-router";
 import type { OperationalEvent } from "@/api/monitoring";
 
 import { useOnlineStatus } from "@/composables/useOnlineStatus";
+import { pageTitleOverride } from "@/composables/usePageTitle";
 import { resolveAccentRGB } from "@/composables/useTheme";
 import { OperationalEventSeverity } from "@/enums";
 import { PLACE_GLYPHS } from "@/features/site-icon/places";
@@ -104,7 +105,7 @@ export const useSiteIcon = () => {
       accentRgb: resolveAccentRGB(tabIconColorName.value),
       health: health.value,
       isOnline: isOnline.value,
-      pageTitle: route.meta.title ?? APP_NAME,
+      pageTitle: pageTitleOverride.value ?? route.meta.title ?? APP_NAME,
       place: route.meta.siteIcon ?? "home",
       playback: playback.value,
       upload: uploads.current,

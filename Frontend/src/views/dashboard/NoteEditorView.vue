@@ -18,8 +18,10 @@ import NoteTitle from "@/components/notes/NoteTitle.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useLazyModal } from "@/composables/useLazyOverlay";
 import { type CurrentVersion, useNoteSave } from "@/composables/useNoteSave";
+import { usePageTitle } from "@/composables/usePageTitle";
 import { NOTE_EDITOR_MODE_OPTIONS, type NoteEditorMode } from "@/features/notes/editor-modes";
 import { newNoteFolderFor } from "@/features/notes/new-note";
+import { noteTitleOf } from "@/features/notes/note-name";
 import { extractHeadings } from "@/features/notes/outline";
 import { saveIndicatorState } from "@/features/notes/save-indicator";
 import { countWords } from "@/features/notes/stats";
@@ -314,6 +316,12 @@ const visibleError = computed(() => {
 });
 
 const title = computed(() => file.value?.fileName ?? "Note");
+
+usePageTitle(() => {
+  if (!file.value) return null;
+
+  return noteTitleOf(file.value.fileName);
+});
 
 const isEditing = computed(
   () => isLoaded.value && original.value !== undefined && blocker.value === null,
