@@ -7,6 +7,7 @@ import type { FileResult } from "@/api/file";
 import { LinkTargetKind } from "@/enums/link-target-kind";
 import { SortBy } from "@/enums/SortBy";
 import { SortDirection } from "@/enums/SortDirection";
+import { type LinkMoment, momentOfMime } from "@/features/notes/link-picker";
 import { noteTitleOf } from "@/features/notes/note-name";
 import { searchDirectory } from "@/queries/directories";
 import { searchFile } from "@/queries/files";
@@ -26,6 +27,12 @@ export interface NoteLinkMenuItem {
   target?: { kind: LinkTargetKind; id: string };
   // Set on the item that creates a note with this title.
   createTitle?: string;
+  // Set on files a link can point into, a moment of a recording or a page of a PDF.
+  moment?: LinkMoment;
+  // The `?t=`/`#page=` the item inserts with, when one was typed or picked.
+  suffix?: string;
+  // Set when the typed moment can't be used, so picking the item waits for a fix.
+  blocked?: boolean;
 }
 
 const FILE_LIMIT = 6;
@@ -45,6 +52,7 @@ const fileItem = (file: FileResult): NoteLinkMenuItem => {
   return {
     icon: getFileIcon(file.fileName),
     label: file.fileName,
+    moment: momentOfMime(file.mimeType) ?? undefined,
     target: { id: file.fileId, kind: LinkTargetKind.File },
   };
 };

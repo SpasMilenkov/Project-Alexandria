@@ -5,8 +5,11 @@ import { computed } from "vue";
 
 import { useOpenLinkTarget } from "@/composables/useOpenLinkTarget";
 import { LinkTargetState } from "@/enums/link-target-state";
+import { deepLinkLabel } from "@/features/notes/deep-links";
 import { type NoteLinkAttributes } from "@/features/notes/link-node";
 import {
+  OPEN_CLICK_HINT,
+  isOpenClick,
   linkKindNoun,
   linkStateLabel,
   linkTargetIcon,
@@ -17,7 +20,7 @@ import { getLinkTarget } from "@/queries/links";
 
 // Tiptap's node view renderer only accepts components declaring its runtime props object.
 // oxlint-disable-next-line vue/define-props-declaration
-const { node, selected } = defineProps(nodeViewProps);
+const { editor, getPos, node, selected } = defineProps(nodeViewProps);
 
 const attrs = computed(() => node.attrs as unknown as NoteLinkAttributes);
 
@@ -48,9 +51,14 @@ const text = computed(() => {
 const icon = computed(() => linkTargetIcon(attrs.value.kind, target.value));
 const stateLabel = computed(() => linkStateLabel(target.value));
 
+// "12:04" for a timestamp, "p. 3" for a page.
+const deepLabel = computed(() => deepLinkLabel(attrs.value.suffix));
+
 const tooltip = computed(() => {
   const name = target.value ? linkTargetName(target.value) : null;
-  const parts = [name ?? text.value, stateLabel.value].filter(Boolean);
+  const parts = [name ?? text.value, deepLabel.value, stateLabel.value, OPEN_CLICK_HINT].filter(
+    Boolean,
+  );
 
   return parts.join(" · ");
 });
@@ -68,7 +76,19 @@ const tone = computed(() => {
 });
 
 const follow = () => {
-  if (canOpen.value) open(target.value);
+  if (canOpen.value) open(target.value, attrs.value.suffix);
+};
+
+// A plain click selects the chip, which opens its edit popover; that popover can open it too.
+const onClick = (event: MouseEvent) => {
+  if (isOpenClick(event)) {
+    follow();
+    return;
+  }
+
+  const pos = getPos();
+
+  if (typeof pos === "number") editor.chain().focus().setNodeSelection(pos).run();
 };
 </script>
 
@@ -82,12 +102,16 @@ const follow = () => {
       :aria-disabled="canOpen ? undefined : 'true'"
       contenteditable="false"
       draggable="false"
-      class="mx-px inline-flex max-w-full items-center gap-1 rounded-md border border-gray-200/70 bg-gray-500/10 px-1.5 align-baseline text-[0.95em] leading-snug transition-colors duration-150 dark:border-gray-700/70"
-      :class="[tone, { 'ring-2 ring-primary': selected, 'cursor-pointer': canOpen }]"
-      @click="follow"
+      class="mx-px inline-flex max-w-full cursor-pointer items-center gap-1 rounded-md border border-gray-200/70 bg-gray-500/10 px-1.5 align-baseline text-[0.95em] leading-snug transition-colors duration-150 dark:border-gray-700/70"
+      :class="[tone, { 'ring-2 ring-primary': selected }]"
+      @click="onClick"
     >
       <UIcon :name="icon" class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span class="truncate">{{ text }}</span>
+
+      <span v-if="deepLabel" class="shrink-0 tabular-nums text-gray-600 dark:text-gray-400">
+        · {{ deepLabel }}
+      </span>
     </span>
   </NodeViewWrapper>
 </template>

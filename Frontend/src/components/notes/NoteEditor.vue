@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { EditorCustomHandlers } from "@nuxt/ui";
+import type { DropdownMenuItem, EditorToolbarItem } from "@nuxt/ui";
 
 import { type Editor, VueNodeViewRenderer } from "@tiptap/vue-3";
 import { useDebounceFn, useEventListener, usePreferredReducedMotion } from "@vueuse/core";
@@ -7,14 +7,27 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 
 
 import type { NoteEditorMode } from "@/features/notes/editor-modes";
 
+import NoteEmbed from "@/components/notes/NoteEmbed.vue";
 import NoteLinkChip from "@/components/notes/NoteLinkChip.vue";
+import NoteLinkPopover from "@/components/notes/NoteLinkPopover.vue";
 import NoteLinkMenu from "@/components/notes/NoteLinkMenu.vue";
 import { useAppToast } from "@/composables/useAppToast";
+import { LinkTargetKind } from "@/enums/link-target-kind";
+import { startSuffix } from "@/features/notes/deep-links";
+import { NoteEmbedNode } from "@/features/notes/embed-node";
 import { NoteLinkNode, noteLinkContent } from "@/features/notes/link-node";
 import { pastedLinkRef } from "@/features/notes/links";
 import { type NoteHeading, headingAtLine, lineAtOffset } from "@/features/notes/outline";
 import { survivesRoundTrip } from "@/features/notes/round-trip";
-import { NOTE_LINK_TOOL, NOTE_TOOLBAR_ITEMS } from "@/features/notes/toolbar";
+import {
+  NOTE_INSERT_BLOCKS,
+  NOTE_INSERT_SLOT,
+  NOTE_TOOLBAR_ITEMS,
+  type NoteInsertActions,
+  noteInsertLinks,
+} from "@/features/notes/toolbar";
+import { usePlayerStore } from "@/stores/stream-player";
+import { formatPlaybackTime } from "@/utils/date-formatters";
 import { logger } from "@/utils/logger";
 
 // The markdown as stored. The parent keys this component by version, so the check below runs
@@ -62,21 +75,102 @@ const REACHED_OFFSET_PX = 72;
 const SYNC_PAUSE_MS = 300;
 const SYNC_MAX_WAIT_MS = 2000;
 
-// ID links read and write their markdown in this file's node; the chip is the only UI part.
+// ID links and embeds read and write their markdown in their nodes; the chip and the card are
+// the only UI parts.
 const EXTENSIONS = [
   NoteLinkNode.extend({ addNodeView: () => VueNodeViewRenderer(NoteLinkChip) }),
+  NoteEmbedNode.extend({ addNodeView: () => VueNodeViewRenderer(NoteEmbed) }),
 ];
 
 const inCode = (instance: Editor) => instance.isActive("code") || instance.isActive("codeBlock");
 
-// The toolbar's link button types the same "[[" that opens the picker.
-const HANDLERS: EditorCustomHandlers = {
-  [NOTE_LINK_TOOL]: {
-    canExecute: (instance) => !inCode(instance),
-    execute: (instance) => instance.chain().focus().insertContent("[["),
-    isActive: () => false,
-    isDisabled: inCode,
-  },
+const player = usePlayerStore();
+
+// Inside code these would only type characters into the code, so they do nothing there.
+const editableOutsideCode = (): Editor | null => {
+  const instance = richEditor.value;
+
+  if (!instance || !instance.isEditable || inCode(instance)) return null;
+
+  return instance;
+};
+
+// The link and embed buttons type the same "[[" and "![[" that open the picker.
+const typeTrigger = (trigger: string) => {
+  editableOutsideCode()?.chain().focus().insertContent(trigger).run();
+};
+
+// A chip for the playing file at the current second, with a space so typing carries on.
+const insertTimestamp = () => {
+  const instance = editableOutsideCode();
+
+  if (!instance) return;
+
+  const playing = player.activeFile;
+
+  if (!playing) {
+    filesToast.info("Nothing is playing", "Play a track or video, then link to the moment.");
+    return;
+  }
+
+  const link = {
+    id: playing.fileId,
+    kind: LinkTargetKind.File,
+    suffix: startSuffix(player.currentTime),
+  };
+
+  instance
+    .chain()
+    .focus()
+    .insertContent([noteLinkContent(link), { text: " ", type: "text" }])
+    .run();
+};
+
+const INSERT_ACTIONS: NoteInsertActions = {
+  embed: () => typeTrigger("![["),
+  link: () => typeTrigger("[["),
+  timestamp: insertTimestamp,
+};
+
+// Whole seconds, so the menu re-renders once a second while something plays, not on every tick.
+const timestampLabel = computed(() => {
+  if (!player.activeFile) return null;
+
+  return formatPlaybackTime(Math.floor(player.currentTime));
+});
+
+const insertLinks = computed(() => noteInsertLinks(INSERT_ACTIONS, timestampLabel.value));
+
+type ToolbarCheck = (item: EditorToolbarItem) => boolean;
+type ToolbarRun = (event: MouseEvent, item: EditorToolbarItem) => void;
+
+// The blocks run through the toolbar's own handlers, which the slot hands over.
+const insertMenu = (
+  isActive: ToolbarCheck,
+  isDisabled: ToolbarCheck,
+  onClick: ToolbarRun,
+): DropdownMenuItem[][] => [
+  insertLinks.value,
+  NOTE_INSERT_BLOCKS.map((item) => ({
+    ...item,
+    active: isActive(item),
+    disabled: isDisabled(item),
+    onSelect: (event: Event) => onClick(event as MouseEvent, item),
+  })),
+];
+
+// The menu would hand focus back to its button on closing, taking it from the editor just after
+// an entry typed "[[" there, which closes the picker again.
+const INSERT_MENU_CONTENT = {
+  align: "start" as const,
+  onCloseAutoFocus: (event: Event) => event.preventDefault(),
+};
+
+// Undo and redo sit at the far end; the divider before them would float in the gap.
+const TOOLBAR_UI = {
+  base: "w-full items-center gap-1",
+  group: "last:ml-auto",
+  separator: "my-1.5 bg-gray-200/70 nth-last-2:hidden dark:bg-gray-700/70",
 };
 
 // Pasting a link to something in the library, or the address of its page here, makes a chip.
@@ -268,8 +362,27 @@ defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
         v-if="mode === 'rich' && richEditor"
         :editor="richEditor"
         :items="NOTE_TOOLBAR_ITEMS"
+        :ui="TOOLBAR_UI"
         class="min-w-0 flex-1 overflow-x-auto"
-      />
+      >
+        <template #[NOTE_INSERT_SLOT]="{ isActive, isDisabled, onClick }">
+          <UDropdownMenu
+            :items="insertMenu(isActive, isDisabled, onClick)"
+            :content="INSERT_MENU_CONTENT"
+            :modal="false"
+          >
+            <UButton
+              icon="i-lucide-plus"
+              label="Insert"
+              trailing-icon="i-lucide-chevron-down"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              :ui="{ trailingIcon: 'size-3.5 text-gray-500 dark:text-gray-500' }"
+            />
+          </UDropdownMenu>
+        </template>
+      </UEditorToolbar>
 
       <span v-else class="min-w-0 flex-1 px-2 text-xs text-gray-600 dark:text-gray-400">
         {{ sourceLabel }}
@@ -285,7 +398,6 @@ defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
         :mention="false"
         :placeholder="PLACEHOLDER"
         :extensions="EXTENSIONS"
-        :handlers="HANDLERS"
         :editor-props="EDITOR_PROPS"
         :class="{ invisible: !isChecked }"
         :ui="EDITOR_UI"
@@ -298,6 +410,8 @@ defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
         :file-id="fileId"
         :new-note-folder-id="newNoteFolderId"
       />
+
+      <NoteLinkPopover v-if="richEditor" :editor="richEditor" />
     </template>
 
     <UTextarea
