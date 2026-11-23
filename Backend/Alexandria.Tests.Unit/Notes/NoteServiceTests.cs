@@ -7,6 +7,8 @@ using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Directories;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Links;
+using Alexandria.Dto.Notes;
 using Alexandria.Services.Storage.Notes;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
@@ -320,5 +322,33 @@ public class NoteServiceTests
         var act = () => CreateSut().RenameAsync(note.Id, "Plans", _userId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileRecordNotFoundException>();
+    }
+
+    [Fact]
+    public async Task GetSummaries_returnsEachRequestedNoteInOrder_withExcerptAndMentions()
+    {
+        var read = Guid.NewGuid();
+        var unread = Guid.NewGuid();
+        var documentText = Substitute.For<IDocumentTextRepository>();
+        var noteLinks = Substitute.For<INoteLinkRepository>();
+        _unitOfWork.DocumentText.Returns(documentText);
+        _unitOfWork.NoteLinks.Returns(noteLinks);
+
+        documentText.GetLeadingTextAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _userId, NoteExcerpts.SourceLength,
+                Arg.Any<CancellationToken>())
+            .Returns([new NoteTextRow { FileId = read, Name = "Trip.md", Text = "# Trip\nBook flights" }]);
+        noteLinks.CountBacklinksAsync(LinkTargetKind.File, Arg.Any<IReadOnlyCollection<Guid>>(), _userId,
+                Arg.Any<CancellationToken>())
+            .Returns([new BacklinkCount { TargetId = unread, Count = 2 }]);
+
+        var summaries = await CreateSut().GetSummariesAsync([unread, read, unread], _userId,
+            TestContext.Current.CancellationToken);
+
+        summaries.Should().BeEquivalentTo(
+            [
+                new NoteSummaryDto { FileId = unread, Excerpt = null, MentionCount = 2 },
+                new NoteSummaryDto { FileId = read, Excerpt = "Book flights", MentionCount = 0 },
+            ],
+            options => options.WithStrictOrdering());
     }
 }

@@ -162,6 +162,29 @@ public sealed partial class NoteService(
             throw new NotesFolderRequiredException(directoryId);
     }
 
+    public async Task<IReadOnlyList<NoteSummaryDto>> GetSummariesAsync(IReadOnlyCollection<Guid> fileIds,
+        Guid userId, CancellationToken ct = default)
+    {
+        var requested = fileIds.Distinct().ToList();
+
+        // The unit of work shares one context, so the two reads run one after the other.
+        var texts = await unitOfWork.DocumentText.GetLeadingTextAsync(requested, userId,
+            NoteExcerpts.SourceLength, ct);
+        var counts = await unitOfWork.NoteLinks.CountBacklinksAsync(LinkTargetKind.File, requested, userId, ct);
+
+        var excerpts = texts.ToDictionary(t => t.FileId, t => NoteExcerpts.From(t.Text, t.Name));
+        var mentions = counts.ToDictionary(c => c.TargetId, c => c.Count);
+
+        return requested
+            .Select(id => new NoteSummaryDto
+            {
+                FileId = id,
+                Excerpt = excerpts.GetValueOrDefault(id),
+                MentionCount = mentions.GetValueOrDefault(id),
+            })
+            .ToList();
+    }
+
     public async Task<string?> NameUntitledNoteAsync(Guid fileId, string text, Guid userId,
         CancellationToken ct = default)
     {

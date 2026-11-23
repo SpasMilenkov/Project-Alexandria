@@ -39,6 +39,14 @@ public interface INoteService
     /// </summary>
     Task<string?> NameUntitledNoteAsync(Guid fileId, string text, Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The excerpt and mention count of each note in <paramref name="fileIds"/>, in request order.
+    /// An excerpt is only read from the owner's own files; anything else gets none, so asking
+    /// about another account's ids returns nothing about them.
+    /// </summary>
+    Task<IReadOnlyList<NoteSummaryDto>> GetSummariesAsync(IReadOnlyCollection<Guid> fileIds, Guid userId,
+        CancellationToken ct = default);
+
     /// <summary>Names the file after <paramref name="title"/>, keeping its extension.</summary>
     /// <exception cref="Exceptions.Files.FileRecordNotFoundException">Missing, trashed or not owned.</exception>
     /// <exception cref="Exceptions.Files.FileNameTakenException">Another file in the folder has that name.</exception>

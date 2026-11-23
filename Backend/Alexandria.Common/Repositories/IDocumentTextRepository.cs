@@ -1,12 +1,21 @@
 using Alexandria.Data.Models;
 using Alexandria.Dto.DocumentTextStats;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Notes;
 
 namespace Alexandria.Common.Repositories;
 
 public interface IDocumentTextRepository : IRepository<DocumentText>
 {
     Task<DocumentText?> GetByContentObjectIdAsync(Guid contentObjectId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The first <paramref name="length"/> characters of the extracted text of the owner's live,
+    /// unencrypted files among <paramref name="fileIds"/>, read from their current versions. Files
+    /// whose text isn't read yet are left out.
+    /// </summary>
+    Task<IReadOnlyList<NoteTextRow>> GetLeadingTextAsync(IReadOnlyCollection<Guid> fileIds, Guid userId,
+        int length, CancellationToken ct = default);
 
     /// <summary>
     /// Excerpts of the content's text around the words of <paramref name="query"/>, parsed the
