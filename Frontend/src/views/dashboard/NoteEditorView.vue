@@ -502,39 +502,34 @@ const copyMarkdown = async () => {
       <div v-if="isEditing" class="flex flex-wrap items-center gap-2">
         <NoteSaveIndicator :state="saveIndicator" :saved-at="lastSavedAt" @retry="saveNow" />
 
-        <!-- Zen keeps only the name and the save state; Ctrl+S still saves. -->
-        <template v-if="!isZen">
-          <UTooltip text="Save a version now (Ctrl+S)">
-            <UButton
-              icon="i-lucide-save"
-              label="Save"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              :loading="isSaving"
-              :disabled="!canCheckpoint"
-              @click="saveNow"
-            />
-          </UTooltip>
-
-          <SegmentedControl
-            v-model="mode"
-            :options="NOTE_EDITOR_MODE_OPTIONS"
-            label="Editor mode"
+        <!-- Zen keeps the name, the save state and the editor mode, since switching between rich
+             text and markdown is part of writing; Ctrl+S still saves. -->
+        <UTooltip v-if="!isZen" text="Save a version now (Ctrl+S)">
+          <UButton
+            icon="i-lucide-save"
+            label="Save"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            :loading="isSaving"
+            :disabled="!canCheckpoint"
+            @click="saveNow"
           />
+        </UTooltip>
 
-          <UTooltip text="Copy markdown">
-            <UButton
-              :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
-              :color="copied ? 'success' : 'neutral'"
-              variant="ghost"
-              square
-              class="justify-center"
-              aria-label="Copy markdown"
-              @click="copyMarkdown"
-            />
-          </UTooltip>
-        </template>
+        <SegmentedControl v-model="mode" :options="NOTE_EDITOR_MODE_OPTIONS" label="Editor mode" />
+
+        <UTooltip v-if="!isZen" text="Copy markdown">
+          <UButton
+            :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+            :color="copied ? 'success' : 'neutral'"
+            variant="ghost"
+            square
+            class="justify-center"
+            aria-label="Copy markdown"
+            @click="copyMarkdown"
+          />
+        </UTooltip>
 
         <UTooltip :text="zenToggle.tooltip">
           <UButton
