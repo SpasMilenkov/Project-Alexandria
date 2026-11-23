@@ -4,7 +4,9 @@ import { computed } from "vue";
 
 import FileTagList from "@/components/dashboard/tags/FileTagList.vue";
 import FileTagPicker from "@/components/dashboard/tags/FileTagPicker.vue";
+import NoteBacklinksList from "@/components/notes/NoteBacklinksList.vue";
 import NoteLinksList from "@/components/notes/NoteLinksList.vue";
+import { LinkTargetKind } from "@/enums/link-target-kind";
 import { readingMinutes } from "@/features/notes/stats";
 import { directoryPath } from "@/queries/directories";
 import { formatCount } from "@/utils/count";
@@ -56,27 +58,35 @@ const lengthLabel = computed(() => {
 </script>
 
 <template>
-  <section
-    aria-label="Connections"
-    class="group frosted-glass glass-surface flex flex-col gap-4 rounded-xl border border-gray-200/70 p-3 dark:border-gray-700/70"
-  >
-    <div class="flex items-center justify-between gap-2 pl-2">
-      <h2 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Connections</h2>
+  <!-- Marginalia on the desk, like the outline: no card of its own. -->
+  <section aria-label="Connections" class="group relative flex flex-col gap-5 py-1">
+    <!-- The sections name themselves; a visible title above them would only repeat the style. -->
+    <h2 class="sr-only">Connections</h2>
 
-      <!-- Below desktop width the panel sits under the sheet, so there is nothing to collapse. -->
-      <UTooltip text="Hide connections">
-        <UButton
-          icon="i-lucide-minus"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          square
-          class="hidden justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none lg:inline-flex"
-          aria-label="Hide connections"
-          @click="emit('collapse')"
-        />
-      </UTooltip>
-    </div>
+    <!-- Below desktop width the panel sits under the sheet, so there is nothing to collapse. -->
+    <UTooltip text="Hide connections">
+      <UButton
+        icon="i-lucide-minus"
+        size="xs"
+        color="neutral"
+        variant="ghost"
+        square
+        class="absolute top-0 right-0 hidden justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 motion-reduce:transition-none lg:inline-flex"
+        aria-label="Hide connections"
+        @click="emit('collapse')"
+      />
+    </UTooltip>
+
+    <section aria-label="Mentioned in" class="flex flex-col gap-2">
+      <h3
+        class="flex items-center gap-1.5 pl-2 text-xs font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-400"
+      >
+        <UIcon name="i-lucide-text-quote" class="h-3.5 w-3.5" aria-hidden="true" />
+        Mentioned in
+      </h3>
+
+      <NoteBacklinksList :target="{ id: fileId, kind: LinkTargetKind.File }" />
+    </section>
 
     <NoteLinksList :markdown="markdown" />
 

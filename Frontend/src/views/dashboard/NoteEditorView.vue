@@ -688,9 +688,11 @@ const copyMarkdown = async () => {
 
     <div
       v-else-if="isEditing && original !== undefined && openedVersionId && file"
-      class="grid grid-cols-1 items-start gap-3 transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] lg:items-stretch lg:gap-0"
+      class="frosted-glass glass-surface grid grid-cols-1 items-start gap-3 rounded-xl border border-gray-200/70 p-2 transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none lg:min-h-0 lg:flex-1 lg:grid-rows-[minmax(0,1fr)] lg:items-stretch lg:gap-0 lg:p-3 dark:border-gray-700/70"
       :class="deskColumns"
     >
+      <!-- One desk surface with the sheet on it: the outline and connections are plain text in
+           its margins, and the desk's glass keeps that text readable over a background picture. -->
       <!-- The panel keeps its own width inside the shrinking track, so it slides out of view
            instead of squeezing its text. -->
       <aside class="hidden lg:flex lg:min-h-0 lg:min-w-0 lg:flex-col lg:overflow-hidden">
