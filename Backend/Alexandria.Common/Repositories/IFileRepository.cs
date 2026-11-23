@@ -3,6 +3,7 @@ using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Files.Streaming.Playlist;
 using Alexandria.Dto.Files.Streaming.Shuffle;
+using Alexandria.Dto.Links;
 using Alexandria.Dto.Tags;
 using File = Alexandria.Data.Models.File;
 
@@ -27,6 +28,14 @@ public interface IFileRepository : IRepository<File>
     Task<File?> GetForUpdateAsync(Guid fileId, Guid ownerId, CancellationToken ct = default);
 
     Task<File> UpdateAsync(File file, CancellationToken ct = default);
+
+    /// <summary>
+    /// Link targets for the files among <paramref name="fileIds"/> that <paramref name="userId"/>
+    /// owns and that have a current version. Trashed files come back as trashed.
+    /// </summary>
+    Task<IReadOnlyList<LinkTargetDto>> GetLinkTargetsAsync(IReadOnlyCollection<Guid> fileIds, Guid userId,
+        CancellationToken ct = default);
+
     Task<FileResult?> GetFileWithTagsAsync(Guid userId, Guid fileId, CancellationToken ct = default);
     Task<string?> VersionBelongsToUserAsync(Guid versionId, Guid userId, CancellationToken ct = default);
 

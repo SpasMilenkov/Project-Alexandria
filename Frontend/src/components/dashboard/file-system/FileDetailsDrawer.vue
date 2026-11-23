@@ -83,6 +83,7 @@
         :mime-type="detail.currentVersion.mimeType"
         :is-encrypted="detail.currentVersion.isEncrypted"
         :cover-updated-at="detail.currentVersion.coverUpdatedAt"
+        :page="previewPage"
       />
 
       <DetailsSection title="Tags">
@@ -108,6 +109,26 @@
           :enabled="isOpen"
           scroll-on-mobile
         />
+      </DetailsSection>
+
+      <DetailsSection title="Mentioned in">
+        <template #actions>
+          <UButton
+            icon="i-lucide-notebook-pen"
+            label="New note"
+            size="xs"
+            variant="outline"
+            color="neutral"
+            :loading="isCreatingNote"
+            :disabled="isCreatingNote"
+            :aria-label="`New note about ${detail.fileName}`"
+            @click="createNoteAbout"
+          />
+        </template>
+
+        <!-- Rows carry their own hover padding; pulling them out keeps their text in line with
+             the other sections. -->
+        <NoteBacklinksList :target="backlinkTarget" :enabled="isOpen" class="-mx-2" />
       </DetailsSection>
 
       <DetailsSection title="Details">
@@ -194,8 +215,11 @@ import DetailsTile from "@/components/common/details/DetailsTile.vue";
 import EntityHistorySection from "@/components/dashboard/audit/EntityHistorySection.vue";
 import FileTagList from "@/components/dashboard/tags/FileTagList.vue";
 import FileTagPicker from "@/components/dashboard/tags/FileTagPicker.vue";
+import NoteBacklinksList from "@/components/notes/NoteBacklinksList.vue";
 import { useAutoTag } from "@/composables/useAutoTag";
+import { useCreateNoteAbout } from "@/composables/useCreateNoteAbout";
 import { EntityType } from "@/enums/entity-type";
+import { LinkTargetKind } from "@/enums/link-target-kind";
 import { quoted } from "@/features/toast/format";
 import { getFile } from "@/queries/files";
 import { formatCalendarDate, formatTimeAgo } from "@/utils/date-formatters";
@@ -217,6 +241,8 @@ import FileVersionHistory from "./FileVersionHistory.vue";
 
 const props = defineProps<{
   file: FileResult | null;
+  // A preview page a note's link asked for, for PDF previews.
+  previewPage?: number | null;
 }>();
 
 const emit = defineEmits<{
@@ -294,6 +320,23 @@ const fileLabel = computed(() => {
 
   return name ? quoted(name) : "this file";
 });
+
+const backlinkTarget = computed(() => ({
+  id: displayFile.value?.fileId ?? "",
+  kind: LinkTargetKind.File,
+}));
+
+const { createAbout, isCreating: isCreatingNote } = useCreateNoteAbout();
+
+const createNoteAbout = () => {
+  if (!displayFile.value || !detail.value) return;
+
+  void createAbout({
+    id: displayFile.value.fileId,
+    kind: LinkTargetKind.File,
+    name: detail.value.fileName,
+  });
+};
 
 const { autoTag, isAutoTagging, isAutoTaggingEnabled } = useAutoTag({
   fileId: () => displayFile.value?.fileId,

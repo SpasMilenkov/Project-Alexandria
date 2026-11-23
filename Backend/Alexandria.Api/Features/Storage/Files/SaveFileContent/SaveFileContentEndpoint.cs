@@ -16,6 +16,12 @@ internal sealed class SaveFileContentRequest
     /// <summary>The version the edit started from. A save against any other version is refused.</summary>
     public Guid ParentVersionId { get; set; }
 
+    /// <summary>
+    /// The draft this save settles, or null when the editor has none. A draft at another revision
+    /// refuses the save, so another tab's draft is never dropped unseen.
+    /// </summary>
+    public Guid? DraftRevision { get; set; }
+
     public string Content { get; set; } = string.Empty;
 }
 
@@ -41,13 +47,11 @@ internal sealed class SaveFileContentRequestValidator : Validator<SaveFileConten
 }
 
 /// <summary>
-/// Saves the note editor's text as a new version of the file, addressed by id. Runs the same
-/// folder policies an upload of a new version would.
+/// A checkpoint of the note editor: saves its text as a new version of the file, addressed by
+/// id, and removes the draft it came from. Runs the same folder policies an upload of a new
+/// version would.
 /// </summary>
-internal sealed class SaveFileContentEndpoint(
-    IContentStorageService storage,
-    INoteService noteService,
-    IPolicyDispatcher policyDispatcher)
+internal sealed class SaveFileContentEndpoint(IFileDraftService drafts)
     : Endpoint<SaveFileContentRequest, FileContentSaveResult>
 {
     public override void Configure()
@@ -63,11 +67,18 @@ internal sealed class SaveFileContentEndpoint(
 
         try
         {
-            saved = await storage.SaveTextContentAsync(req.Id, req.ParentVersionId, req.Content, userId, ct);
+            saved = await drafts.CheckpointAsync(req.Id, req.ParentVersionId, req.DraftRevision, req.Content,
+                userId, ct);
         }
         catch (FileVersionConflictException)
         {
             AddError(r => r.ParentVersionId, "This file changed since the edit started.");
+            await Send.ErrorsAsync(StatusCodes.Status409Conflict, ct);
+            return;
+        }
+        catch (FileDraftConflictException)
+        {
+            AddError(r => r.DraftRevision, "The draft was changed somewhere else.");
             await Send.ErrorsAsync(StatusCodes.Status409Conflict, ct);
             return;
         }
@@ -81,22 +92,6 @@ internal sealed class SaveFileContentEndpoint(
             AddError(r => r.Content, ex.Message);
             await Send.ErrorsAsync(StatusCodes.Status422UnprocessableEntity, ct);
             return;
-        }
-
-        if (!saved.Unchanged)
-        {
-            // A note nobody has named yet takes its name from its first line, like a new document.
-            var name = await noteService.NameUntitledNoteAsync(saved.FileId, req.Content, userId, ct);
-
-            if (name is not null) saved = saved with { FileName = name };
-
-            await policyDispatcher.DispatchAsync(new FileFinalizedEvent(saved.FileId,
-                saved.VersionId,
-                saved.DirectoryId,
-                saved.MimeType,
-                saved.FileName,
-                userId,
-                IsNewVersion: true), ct);
         }
 
         await Send.OkAsync(saved, ct);

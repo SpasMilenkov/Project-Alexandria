@@ -920,6 +920,43 @@ namespace Alexandria.Data.Migrations
                     b.ToTable("Files", (string)null);
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.FileDraft", b =>
+                {
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BaseVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Revision")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("FileId");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.ToTable("FileDrafts", (string)null);
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.FileEnrichment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1332,6 +1369,57 @@ namespace Alexandria.Data.Migrations
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "gin");
 
                     b.ToTable("MediaMetadata", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.NoteLink", b =>
+                {
+                    b.Property<Guid>("ContentObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TargetKind")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Snippet")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("varchar(1000)");
+
+                    b.HasKey("ContentObjectId", "TargetKind", "TargetId");
+
+                    b.HasIndex("TargetKind", "TargetId");
+
+                    b.ToTable("NoteLinks", (string)null);
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.NoteLinkScan", b =>
+                {
+                    b.Property<Guid>("ContentObjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ScannerVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ContentObjectId");
+
+                    b.ToTable("NoteLinkScans", (string)null);
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.OperationalEvent", b =>
@@ -2651,6 +2739,17 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Alexandria.Data.Models.FileDraft", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.File", "File")
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("File");
+                });
+
             modelBuilder.Entity("Alexandria.Data.Models.FileEnrichment", b =>
                 {
                     b.HasOne("Alexandria.Data.Models.File", "File")
@@ -2729,6 +2828,28 @@ namespace Alexandria.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("File");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.NoteLink", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.NoteLinkScan", "Scan")
+                        .WithMany("Links")
+                        .HasForeignKey("ContentObjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Scan");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.NoteLinkScan", b =>
+                {
+                    b.HasOne("Alexandria.Data.Models.ContentObject", "ContentObject")
+                        .WithOne()
+                        .HasForeignKey("Alexandria.Data.Models.NoteLinkScan", "ContentObjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ContentObject");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.OverviewSummary", b =>
@@ -3061,6 +3182,11 @@ namespace Alexandria.Data.Migrations
                     b.Navigation("DocumentMetadata");
 
                     b.Navigation("Previews");
+                });
+
+            modelBuilder.Entity("Alexandria.Data.Models.NoteLinkScan", b =>
+                {
+                    b.Navigation("Links");
                 });
 
             modelBuilder.Entity("Alexandria.Data.Models.Playlist", b =>

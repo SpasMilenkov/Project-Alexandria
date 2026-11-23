@@ -20,12 +20,14 @@ public interface INoteService
     Task<DirectorySummaryDto> EnsureNotesFolderAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Creates an empty note named after <paramref name="title"/> ("Untitled" when blank), in
-    /// <paramref name="directoryId"/> or the Notes folder itself. Taken names get a number.
+    /// Creates a note named after <paramref name="title"/> ("Untitled" when blank), in
+    /// <paramref name="directoryId"/> or the Notes folder itself. Taken names get a number. The
+    /// note starts with <paramref name="content"/>, or empty.
     /// </summary>
     /// <exception cref="Exceptions.Notes.NotesFolderRequiredException">The folder is outside Notes.</exception>
     /// <exception cref="Exceptions.Directories.DirectoryNotFoundException">Missing, trashed or not owned.</exception>
-    Task<FileContentSaveResult> CreateNoteAsync(Guid userId, Guid? directoryId, string? title,
+    /// <exception cref="Exceptions.Files.FileContentNotEditableException">The content is over the text limit.</exception>
+    Task<FileContentSaveResult> CreateNoteAsync(Guid userId, Guid? directoryId, string? title, string? content,
         CancellationToken ct = default);
 
     /// <summary>
@@ -36,6 +38,14 @@ public interface INoteService
     /// save tries again.
     /// </summary>
     Task<string?> NameUntitledNoteAsync(Guid fileId, string text, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The excerpt and mention count of each note in <paramref name="fileIds"/>, in request order.
+    /// An excerpt is only read from the owner's own files; anything else gets none, so asking
+    /// about another account's ids returns nothing about them.
+    /// </summary>
+    Task<IReadOnlyList<NoteSummaryDto>> GetSummariesAsync(IReadOnlyCollection<Guid> fileIds, Guid userId,
+        CancellationToken ct = default);
 
     /// <summary>Names the file after <paramref name="title"/>, keeping its extension.</summary>
     /// <exception cref="Exceptions.Files.FileRecordNotFoundException">Missing, trashed or not owned.</exception>

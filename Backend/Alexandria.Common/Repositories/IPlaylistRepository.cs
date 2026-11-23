@@ -2,6 +2,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming.Playlist;
+using Alexandria.Dto.Links;
 
 namespace Alexandria.Common.Repositories;
 
@@ -19,6 +20,13 @@ public interface IPlaylistRepository : IRepository<Playlist>
 
     /// <summary>Returns a summary projection with a live item count. Used after mutations.</summary>
     Task<PlaylistDto?> GetSummaryAsync(Guid id, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Link targets for the live playlists among <paramref name="playlistIds"/> that
+    /// <paramref name="userId"/> owns.
+    /// </summary>
+    Task<IReadOnlyList<LinkTargetDto>> GetLinkTargetsAsync(IReadOnlyCollection<Guid> playlistIds, Guid userId,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Returns the playlist with its ordered non-deleted items projected to a detail DTO,

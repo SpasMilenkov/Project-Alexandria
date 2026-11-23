@@ -6,6 +6,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.DocumentTextStats;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Notes;
 using Alexandria.Repositories.Search;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -26,6 +27,29 @@ public class DocumentTextRepository(AlexandriaDbContext context) : IDocumentText
 
     public Task<DocumentText?> GetByContentObjectIdAsync(Guid contentObjectId, CancellationToken ct = default)
         => LiveRows().AsNoTracking().FirstOrDefaultAsync(t => t.ContentObjectId == contentObjectId, ct);
+
+    public async Task<IReadOnlyList<NoteTextRow>> GetLeadingTextAsync(IReadOnlyCollection<Guid> fileIds,
+        Guid userId, int length, CancellationToken ct = default)
+    {
+        // Only the start travels: a list of notes never needs their whole text.
+        return await context.Files
+            .AsNoTracking()
+            .Where(f => fileIds.Contains(f.Id)
+                        && f.OwnerId == userId
+                        && f.DeletedAt == null
+                        && f.CurrentVersionId != null
+                        && !f.CurrentVersion.IsEncrypted)
+            .Join(LiveRows().Where(t => t.Status == DocumentTextStatus.Extracted),
+                f => f.CurrentVersion.ContentObjectId,
+                t => t.ContentObjectId,
+                (f, t) => new NoteTextRow
+                {
+                    FileId = f.Id,
+                    Name = f.Name,
+                    Text = t.Content.Substring(0, length),
+                })
+            .ToListAsync(ct);
+    }
 
     // NOTE: excerpt queries run without a concurrency limit, and each one holds a whole document
     // in Postgres memory: about 30 MB through the first-match path and about 80 MB through the

@@ -11,6 +11,7 @@ using Alexandria.Dto.Files;
 using Alexandria.Dto.Files.Streaming;
 using Alexandria.Dto.Files.Streaming.Playlist;
 using Alexandria.Dto.Files.Streaming.Shuffle;
+using Alexandria.Dto.Links;
 using Alexandria.Dto.Tags;
 using Alexandria.Repositories.Projections;
 using Alexandria.Repositories.Search;
@@ -590,6 +591,28 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
             TotalCount = count,
             TotalPages = (int)Math.Ceiling(count / (double)pageSize)
         };
+    }
+
+    public async Task<IReadOnlyList<LinkTargetDto>> GetLinkTargetsAsync(IReadOnlyCollection<Guid> fileIds, Guid userId,
+        CancellationToken ct = default)
+    {
+        // A file without a current version is an upload that never finished, so there is nothing
+        // to open yet.
+        return await _files
+            .AsNoTracking()
+            .Where(f => f.OwnerId == userId && f.CurrentVersionId != null && fileIds.Contains(f.Id))
+            .Select(f => new LinkTargetDto
+            {
+                Kind = LinkTargetKind.File,
+                Id = f.Id,
+                State = f.DeletedAt == null ? LinkTargetState.Available : LinkTargetState.Trashed,
+                Name = f.Name,
+                MimeType = f.CurrentVersion.MimeType,
+                DirectoryId = f.DirectoryId,
+                VersionId = f.CurrentVersionId,
+                IsEncrypted = f.CurrentVersion.IsEncrypted,
+            })
+            .ToListAsync(ct);
     }
 
     public async Task<File> UpdateAsync(File file, CancellationToken ct = default)

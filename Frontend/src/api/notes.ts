@@ -21,7 +21,36 @@ export interface SaveNoteContentRequest {
   fileId: string;
   // The version the edit started from; the server refuses the save with 409 if it isn't current.
   parentVersionId: string;
+  // The draft this version replaces. A stored draft at another revision refuses the save (409).
+  draftRevision: string | null;
   content: string;
+}
+
+// The editor's working text between versions, kept on the server so autosave makes no version.
+export interface NoteDraft {
+  fileId: string;
+  // May be older than the file's current version, when a version arrived from somewhere else.
+  baseVersionId: string;
+  revision: string;
+  content: string;
+  updatedAt: string;
+}
+
+export interface SaveNoteDraftRequest {
+  fileId: string;
+  // 409 when this is no longer the file's current version.
+  baseVersionId: string;
+  // The revision this editor last saw; 409 when the stored draft is at another one.
+  expectedRevision: string | null;
+  content: string;
+}
+
+export interface NoteDraftSaveResult {
+  // Null when the text matched the version, so the server dropped the draft.
+  revision: string | null;
+  savedAt: string;
+  // Set when this write named a note still called "Untitled".
+  renamedTo: string | null;
 }
 
 export interface RenameNoteRequest {
@@ -35,10 +64,25 @@ export interface NoteRenameResult {
   fileName: string;
 }
 
+/** What a note's row on the Notes page shows beyond its file details. */
+export interface NoteSummaryDto {
+  fileId: string;
+  // The opening text after the title, as markdown with its links kept; null until the body text
+  // has been read, or when nothing follows the title.
+  excerpt: string | null;
+  // How many of the viewer's other notes link to this one.
+  mentionCount: number;
+}
+
+// Must match the backend's GetNoteSummariesRequestValidator.MaxFiles.
+export const MAX_NOTE_SUMMARIES = 100;
+
 export interface CreateNoteRequest {
   // A folder inside Notes. Left out, the note goes in the Notes folder itself.
   directoryId?: string | null;
   title?: string | null;
+  // The note's first text, such as a link to what it is about.
+  content?: string | null;
 }
 
 // Must match the backend's TextContentLimits.MaxBytes.
@@ -47,6 +91,18 @@ export const MAX_NOTE_BYTES = 1_000_000;
 export const notesApi = {
   createNote: (request: CreateNoteRequest): Promise<FileContentSaveResult> =>
     api.post<FileContentSaveResult>("/notes", request),
+
+  // One entry per requested note, in request order.
+  getSummaries: async (fileIds: string[]): Promise<NoteSummaryDto[]> =>
+    (await api.post<{ summaries: NoteSummaryDto[] }>("/notes/summaries", { fileIds })).summaries,
+
+  // Keeps a newer draft written elsewhere; the server answers 204 either way.
+  discardDraft: (fileId: string, revision: string): Promise<void> =>
+    api.delete<void>(`/files/${fileId}/draft`, { params: { revision } }),
+
+  // 204 when the file has no draft, which the client hands back as no body.
+  getDraft: async (fileId: string): Promise<NoteDraft | null> =>
+    (await api.get<NoteDraft | undefined>(`/files/${fileId}/draft`)) ?? null,
 
   // 204 until the first note creates the folder, which the client hands back as no body.
   getNotesFolder: async (): Promise<DirectorySummaryDto | null> =>
@@ -62,4 +118,7 @@ export const notesApi = {
 
   saveContent: ({ fileId, ...body }: SaveNoteContentRequest): Promise<FileContentSaveResult> =>
     api.put<FileContentSaveResult>(`/files/${fileId}/content`, body),
+
+  saveDraft: ({ fileId, ...body }: SaveNoteDraftRequest): Promise<NoteDraftSaveResult> =>
+    api.put<NoteDraftSaveResult>(`/files/${fileId}/draft`, body),
 };

@@ -7,6 +7,8 @@ using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Directories;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Links;
+using Alexandria.Dto.Notes;
 using Alexandria.Services.Storage.Notes;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
@@ -26,6 +28,7 @@ public class NoteServiceTests
     private readonly IFileRepository _files = Substitute.For<IFileRepository>();
     private readonly IDirectoryService _directoryService = Substitute.For<IDirectoryService>();
     private readonly IContentStorageService _contentStorage = Substitute.For<IContentStorageService>();
+    private readonly INoteLinkIndexService _linkIndex = Substitute.For<INoteLinkIndexService>();
 
     private readonly List<Directory> _addedDirectories = [];
 
@@ -46,7 +49,7 @@ public class NoteServiceTests
     }
 
     private NoteService CreateSut() =>
-        new(_unitOfWork, _directoryService, _contentStorage, Substitute.For<ILogger<NoteService>>());
+        new(_unitOfWork, _directoryService, _contentStorage, _linkIndex, Substitute.For<ILogger<NoteService>>());
 
     private static FileContentSaveResult Created(string fileName, Guid? directoryId) => new()
     {
@@ -94,7 +97,8 @@ public class NoteServiceTests
     [Fact]
     public async Task CreateNote_firstNote_createsTheNotesFolderAndAnUntitledNoteInIt()
     {
-        var created = await CreateSut().CreateNoteAsync(_userId, null, null, TestContext.Current.CancellationToken);
+        var created = await CreateSut().CreateNoteAsync(_userId, null, null, null,
+            TestContext.Current.CancellationToken);
 
         var folder = _addedDirectories.Should().ContainSingle().Subject;
         folder.Name.Should().Be(NoteService.NotesFolderName);
@@ -105,6 +109,22 @@ public class NoteServiceTests
         created.DirectoryId.Should().Be(folder.Id);
         await _contentStorage.Received(1).CreateTextFileAsync("Untitled.md", folder.Id, string.Empty, _userId,
             Arg.Any<CancellationToken>());
+        await _linkIndex.DidNotReceive().IndexVersionAsync(Arg.Any<Guid>(), Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task CreateNote_withContent_startsWithItAndIndexesItsLinks()
+    {
+        var notes = GivenNotesFolder();
+        const string content = "<alexandria://file/0b8c7a4e-36f1-4a6c-9a7e-1f0f3c2d4b5a>\n";
+
+        var created = await CreateSut().CreateNoteAsync(_userId, null, "Report", content,
+            TestContext.Current.CancellationToken);
+
+        await _contentStorage.Received(1).CreateTextFileAsync("Report.md", notes.Id, content, _userId,
+            Arg.Any<CancellationToken>());
+        await _linkIndex.Received(1).IndexVersionAsync(created.VersionId, content, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -113,7 +133,8 @@ public class NoteServiceTests
         var existing = new Directory { Id = Guid.NewGuid(), Name = "Notes", OwnerId = _userId };
         GivenOnlyRootFolder(existing);
 
-        var created = await CreateSut().CreateNoteAsync(_userId, null, "Ideas", TestContext.Current.CancellationToken);
+        var created = await CreateSut().CreateNoteAsync(_userId, null, "Ideas", null,
+            TestContext.Current.CancellationToken);
 
         _addedDirectories.Should().BeEmpty();
         existing.SystemKind.Should().Be(DirectorySystemKind.Notes);
@@ -129,7 +150,8 @@ public class NoteServiceTests
         var project = Guid.NewGuid();
         GivenFolderAt(project, notes.Id, project);
 
-        var created = await CreateSut().CreateNoteAsync(_userId, project, "Plan", TestContext.Current.CancellationToken);
+        var created = await CreateSut().CreateNoteAsync(_userId, project, "Plan", null,
+            TestContext.Current.CancellationToken);
 
         created.DirectoryId.Should().Be(project);
     }
@@ -141,7 +163,8 @@ public class NoteServiceTests
         var elsewhere = Guid.NewGuid();
         GivenFolderAt(elsewhere, Guid.NewGuid(), elsewhere);
 
-        var act = () => CreateSut().CreateNoteAsync(_userId, elsewhere, "Plan", TestContext.Current.CancellationToken);
+        var act = () => CreateSut().CreateNoteAsync(_userId, elsewhere, "Plan", null,
+            TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<NotesFolderRequiredException>();
         await _contentStorage.DidNotReceiveWithAnyArgs().CreateTextFileAsync(default!, default, default!, default,
@@ -155,7 +178,8 @@ public class NoteServiceTests
         _files.FindAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
             .Returns([new File { Name = "untitled.md", MimeType = "text/markdown", DeletedAt = DateTime.UtcNow }]);
 
-        var created = await CreateSut().CreateNoteAsync(_userId, null, null, TestContext.Current.CancellationToken);
+        var created = await CreateSut().CreateNoteAsync(_userId, null, null, null,
+            TestContext.Current.CancellationToken);
 
         created.FileName.Should().Be("Untitled 2.md");
         created.DirectoryId.Should().Be(notes.Id);
@@ -172,7 +196,8 @@ public class NoteServiceTests
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new FileNameTakenException("Untitled.md", null));
 
-        var created = await CreateSut().CreateNoteAsync(_userId, null, null, TestContext.Current.CancellationToken);
+        var created = await CreateSut().CreateNoteAsync(_userId, null, null, null,
+            TestContext.Current.CancellationToken);
 
         created.FileName.Should().Be("Untitled 2.md");
     }
@@ -297,5 +322,33 @@ public class NoteServiceTests
         var act = () => CreateSut().RenameAsync(note.Id, "Plans", _userId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileRecordNotFoundException>();
+    }
+
+    [Fact]
+    public async Task GetSummaries_returnsEachRequestedNoteInOrder_withExcerptAndMentions()
+    {
+        var read = Guid.NewGuid();
+        var unread = Guid.NewGuid();
+        var documentText = Substitute.For<IDocumentTextRepository>();
+        var noteLinks = Substitute.For<INoteLinkRepository>();
+        _unitOfWork.DocumentText.Returns(documentText);
+        _unitOfWork.NoteLinks.Returns(noteLinks);
+
+        documentText.GetLeadingTextAsync(Arg.Any<IReadOnlyCollection<Guid>>(), _userId, NoteExcerpts.SourceLength,
+                Arg.Any<CancellationToken>())
+            .Returns([new NoteTextRow { FileId = read, Name = "Trip.md", Text = "# Trip\nBook flights" }]);
+        noteLinks.CountBacklinksAsync(LinkTargetKind.File, Arg.Any<IReadOnlyCollection<Guid>>(), _userId,
+                Arg.Any<CancellationToken>())
+            .Returns([new BacklinkCount { TargetId = unread, Count = 2 }]);
+
+        var summaries = await CreateSut().GetSummariesAsync([unread, read, unread], _userId,
+            TestContext.Current.CancellationToken);
+
+        summaries.Should().BeEquivalentTo(
+            [
+                new NoteSummaryDto { FileId = unread, Excerpt = null, MentionCount = 2 },
+                new NoteSummaryDto { FileId = read, Excerpt = "Book flights", MentionCount = 0 },
+            ],
+            options => options.WithStrictOrdering());
     }
 }

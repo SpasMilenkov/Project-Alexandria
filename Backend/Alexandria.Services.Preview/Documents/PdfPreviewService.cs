@@ -11,6 +11,12 @@ namespace Alexandria.Services.Preview.Documents;
 
 public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdfPreviewService
 {
+    /// <summary>
+    /// How many pages a document, presentation or PDF preview keeps. Links into a file can only
+    /// open a page the preview has, so the frontend reads this from the generated MIME catalog.
+    /// </summary>
+    public const int PreviewPageLimit = 5;
+
     private const int ThumbnailMaxDimensionPx = 320;
 
     // The steps of one preview, fallback included, must total less than the job recovery stall
@@ -31,7 +37,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
                 FileCategory.Document => await GenerateWordPreviewAsync(inputPath, ct),
                 FileCategory.Presentation => await GeneratePowerPointPreviewAsync(inputPath, ct),
                 FileCategory.Spreadsheet => await GenerateExcelPreviewAsync(inputPath, ct),
-                FileCategory.Pdf => await TrimPdfWithGhostscriptAsync(inputPath, 5, ct),
+                FileCategory.Pdf => await TrimPdfWithGhostscriptAsync(inputPath, PreviewPageLimit, ct),
                 _ => await GenerateFullPdfAsync(inputPath, ct)
             };
 
@@ -121,7 +127,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
         if (!File.Exists(expectedOutput))
             throw new LibreOfficeException(inputPath, expectedOutput);
 
-        return await TrimPdfWithGhostscriptAsync(expectedOutput, 5, ct);
+        return await TrimPdfWithGhostscriptAsync(expectedOutput, PreviewPageLimit, ct);
     }
 
     /// <inheritdoc/>
@@ -135,7 +141,7 @@ public partial class PdfPreviewService(ILogger<PdfPreviewService> logger) : IPdf
         if (!File.Exists(expectedOutput))
             throw new LibreOfficeException(inputPath, expectedOutput);
 
-        return await TrimPdfWithGhostscriptAsync(expectedOutput, 5, ct);
+        return await TrimPdfWithGhostscriptAsync(expectedOutput, PreviewPageLimit, ct);
     }
 
     /// <inheritdoc/>

@@ -196,6 +196,20 @@
       "application/vnd.amazon.ebook"
     ]
   },
+  "pagedPreview": {
+    "prefixes": [],
+    "types": [
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.oasis.opendocument.text",
+      "application/rtf",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.oasis.opendocument.presentation",
+      "application/pdf"
+    ],
+    "pageLimit": 5
+  },
   "groups": {
     "Images": {
       "prefixes": ["image/"],

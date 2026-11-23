@@ -22,9 +22,14 @@ usePlayerEngine(videoRef, containerRef, { headless: true, mediaKind: "audio" });
 
 // A video can become current (queued after audio, resumed after navigation)
 // while no video surface is mounted. Without an engine it would sit selected
-// and silent, so a headless one takes over until a real surface mounts.
+// and silent, so a headless one takes over until a real surface mounts. A closed player stays
+// closed: the fallback starts playing as soon as it loads, so it never mounts for one.
 const needsVideoFallback = computed(
-  () => store.nowPlaying !== null && !store.isAudio && store.videoSurfaces === 0,
+  () =>
+    store.nowPlaying !== null &&
+    !store.isAudio &&
+    store.videoSurfaces === 0 &&
+    !store.playerDismissed,
 );
 </script>
 

@@ -5,6 +5,7 @@ using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions.Files;
 using Alexandria.Common.Exceptions.FileVersions;
+using Alexandria.Common.Notes;
 using Alexandria.Common.Queues;
 using Alexandria.Common.Repositories;
 using Alexandria.Common.Services;
@@ -32,6 +33,7 @@ public class TextContentTests
     private readonly IFileVersionRepository _versions = Substitute.For<IFileVersionRepository>();
     private readonly IContentObjectRepository _contentObjects = Substitute.For<IContentObjectRepository>();
     private readonly IUploadRepository _uploads = Substitute.For<IUploadRepository>();
+    private readonly IFileDraftRepository _drafts = Substitute.For<IFileDraftRepository>();
     private readonly IAmazonS3 _s3 = Substitute.For<IAmazonS3>();
     private readonly IPromotionQueue _promotionQueue = Substitute.For<IPromotionQueue>();
     private readonly IFileService _fileService = Substitute.For<IFileService>();
@@ -40,6 +42,8 @@ public class TextContentTests
 
     private readonly File _file;
     private readonly FileVersion _parent;
+    // Stored only in the tests that make the drafts repository return it.
+    private readonly FileDraft _draft;
     private readonly List<FileVersion> _addedVersions = [];
     private Upload? _staged;
 
@@ -49,6 +53,9 @@ public class TextContentTests
         _unitOfWork.FileVersions.Returns(_versions);
         _unitOfWork.ContentObjects.Returns(_contentObjects);
         _unitOfWork.Uploads.Returns(_uploads);
+        _unitOfWork.FileDrafts.Returns(_drafts);
+        _drafts.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((FileDraft?)null);
+        _drafts.GetRevisionAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((Guid?)null);
 
         _parent = new FileVersion
         {
@@ -69,6 +76,14 @@ public class TextContentTests
             OwnerId = _userId,
             DirectoryId = Guid.NewGuid(),
             CurrentVersionId = _parent.Id,
+        };
+
+        _draft = new FileDraft
+        {
+            FileId = _file.Id,
+            BaseVersionId = _parent.Id,
+            Revision = Guid.NewGuid(),
+            Content = "draft text",
         };
 
         _files.FirstOrDefaultAsync(Arg.Any<Expression<Func<File, bool>>>(), Arg.Any<CancellationToken>())
@@ -115,10 +130,11 @@ public class TextContentTests
 
     private static byte[] Digest(string text) => Hasher.Hash(Encoding.UTF8.GetBytes(text)).AsSpan().ToArray();
 
+
     [Fact]
     public async Task SaveText_newText_addsTheNextVersionKeepingTheParentsType()
     {
-        var saved = await CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, "# New text", _userId,
+        var saved = await CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, "# New text", _userId,
             TestContext.Current.CancellationToken);
 
         saved.Unchanged.Should().BeFalse();
@@ -141,7 +157,7 @@ public class TextContentTests
     [Fact]
     public async Task SaveText_sameTextAsTheParent_writesNothing()
     {
-        var saved = await CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, "old text", _userId,
+        var saved = await CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, "old text", _userId,
             TestContext.Current.CancellationToken);
 
         saved.Unchanged.Should().BeTrue();
@@ -155,7 +171,7 @@ public class TextContentTests
     {
         _file.CurrentVersionId = Guid.NewGuid();
 
-        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, "# New text", _userId,
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, "# New text", _userId,
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileVersionConflictException>();
@@ -176,7 +192,7 @@ public class TextContentTests
         };
         _files.GetForUpdateAsync(_file.Id, _userId, Arg.Any<CancellationToken>()).Returns(lockedFile);
 
-        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, "# New text", _userId,
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, "# New text", _userId,
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileVersionConflictException>();
@@ -188,11 +204,102 @@ public class TextContentTests
     }
 
     [Fact]
+    public async Task SaveText_draftAtTheNamedRevision_isRemovedWithTheNewVersion()
+    {
+        _drafts.GetByIdAsync(_file.Id, Arg.Any<CancellationToken>()).Returns(_draft);
+
+        await CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, _draft.Revision, "# New text", _userId,
+            TestContext.Current.CancellationToken);
+
+        _addedVersions.Should().ContainSingle();
+        _drafts.Received(1).Remove(_draft);
+        await _unitOfWork.Received().CommitAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SaveText_draftAtAnotherRevision_isRefusedBeforeAnythingIsStaged()
+    {
+        _drafts.GetRevisionAsync(_file.Id, Arg.Any<CancellationToken>()).Returns(_draft.Revision);
+
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, Guid.NewGuid(), "# New text", _userId,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<FileDraftConflictException>();
+        _staged.Should().BeNull();
+        await _unitOfWork.DidNotReceive().BeginTransactionAsync(Arg.Any<CancellationToken>());
+    }
+
+    // The pre-check saw no draft, then one was written before the row lock was taken.
+    [Fact]
+    public async Task SaveText_draftWrittenAfterThePreCheck_isRefusedUnderTheLockAndKept()
+    {
+        _drafts.GetByIdAsync(_file.Id, Arg.Any<CancellationToken>()).Returns(_draft);
+
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, Guid.NewGuid(), "# New text", _userId,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<FileDraftConflictException>();
+        _addedVersions.Should().BeEmpty();
+        _drafts.DidNotReceive().Remove(_draft);
+        await _unitOfWork.Received().RollbackAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SaveText_draftButNoRevisionNamed_isRefused()
+    {
+        _drafts.GetByIdAsync(_file.Id, Arg.Any<CancellationToken>()).Returns(_draft);
+
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, "# New text", _userId,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<FileDraftConflictException>();
+        _addedVersions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SaveText_sameTextAsTheParent_stillRemovesTheDraft()
+    {
+        _drafts.GetByIdAsync(_file.Id, Arg.Any<CancellationToken>()).Returns(_draft);
+
+        var saved = await CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, _draft.Revision, "old text", _userId,
+            TestContext.Current.CancellationToken);
+
+        saved.Unchanged.Should().BeTrue();
+        _staged.Should().BeNull();
+        _drafts.Received(1).Remove(_draft);
+        await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task SaveText_encryptedParent_isRefused()
     {
         _parent.IsEncrypted = true;
 
-        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, "# New text", _userId,
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, "# New text", _userId,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<FileContentNotEditableException>();
+        _staged.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SaveText_nonTextParent_isRefused()
+    {
+        _parent.MimeType = "video/mp4";
+
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, "# New text", _userId,
+            TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<FileContentNotEditableException>();
+        _staged.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SaveText_parentTooLargeToOpen_isRefused()
+    {
+        _parent.Size = TextContentLimits.MaxBytes + 1;
+
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, "# New text", _userId,
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileContentNotEditableException>();
@@ -202,7 +309,7 @@ public class TextContentTests
     [Fact]
     public async Task SaveText_tooLarge_isRefused()
     {
-        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, new string('a', 1_000_001), _userId,
+        var act = () => CreateSut().SaveTextContentAsync(_file.Id, _parent.Id, null, new string('a', 1_000_001), _userId,
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<FileContentNotEditableException>();

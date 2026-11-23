@@ -11,13 +11,14 @@ export const useTabStore = defineStore(
     const tabs = ref<ExplorerTab[]>([]);
     const activeTabId = ref<string | undefined>();
 
-    const createTab = (activeDirId: string | null, revealFileId?: string) => {
+    const createTab = (activeDirId: string | null, revealFileId?: string, revealPage?: number) => {
       logger.log("CREATING TAB");
       const id = crypto.randomUUID();
       tabs.value.push({
         activeDirId,
         id,
         revealFileId,
+        revealPage,
         title: "New Tab",
       });
       activeTabId.value = id;
@@ -53,6 +54,16 @@ export const useTabStore = defineStore(
       return fileId;
     };
 
+    // Read once, with the file: only the first opening of the tab jumps to the page.
+    const takeRevealPage = (tabId: string) => {
+      const tab = tabs.value.find((t) => t.id === tabId);
+      if (!tab?.revealPage) return undefined;
+
+      const page = tab.revealPage;
+      tab.revealPage = undefined;
+      return page;
+    };
+
     const setActiveDir = (tabId: string, dirId: string | null) => {
       const tab = tabs.value.find((t) => t.id === tabId);
       if (tab) {
@@ -76,6 +87,7 @@ export const useTabStore = defineStore(
       setActiveDir,
       resetSessionState,
       takeRevealFileId,
+      takeRevealPage,
       tabs,
       updateTabTitle,
     };

@@ -17,6 +17,7 @@ public sealed partial class NoteService(
     IUnitOfWork unitOfWork,
     IDirectoryService directoryService,
     IContentStorageService contentStorage,
+    INoteLinkIndexService linkIndex,
     ILogger<NoteService> logger)
     : INoteService
 {
@@ -43,8 +44,10 @@ public sealed partial class NoteService(
     }
 
     public async Task<FileContentSaveResult> CreateNoteAsync(Guid userId, Guid? directoryId, string? title,
-        CancellationToken ct = default)
+        string? content, CancellationToken ct = default)
     {
+        var text = content ?? string.Empty;
+
         var notesFolderId = await EnsureNotesFolderIdAsync(userId, ct);
         var targetId = directoryId ?? notesFolderId;
 
@@ -60,9 +63,11 @@ public sealed partial class NoteService(
 
             try
             {
-                var created = await contentStorage.CreateTextFileAsync(name, targetId, string.Empty, userId, ct);
+                var created = await contentStorage.CreateTextFileAsync(name, targetId, text, userId, ct);
 
                 LogNoteCreated(logger, created.FileId, targetId, userId);
+
+                if (text.Length > 0) await linkIndex.IndexVersionAsync(created.VersionId, text, ct);
 
                 return created;
             }
@@ -155,6 +160,29 @@ public sealed partial class NoteService(
 
         if (path.Count == 0 || path[0].Id != notesFolderId)
             throw new NotesFolderRequiredException(directoryId);
+    }
+
+    public async Task<IReadOnlyList<NoteSummaryDto>> GetSummariesAsync(IReadOnlyCollection<Guid> fileIds,
+        Guid userId, CancellationToken ct = default)
+    {
+        var requested = fileIds.Distinct().ToList();
+
+        // The unit of work shares one context, so the two reads run one after the other.
+        var texts = await unitOfWork.DocumentText.GetLeadingTextAsync(requested, userId,
+            NoteExcerpts.SourceLength, ct);
+        var counts = await unitOfWork.NoteLinks.CountBacklinksAsync(LinkTargetKind.File, requested, userId, ct);
+
+        var excerpts = texts.ToDictionary(t => t.FileId, t => NoteExcerpts.From(t.Text, t.Name));
+        var mentions = counts.ToDictionary(c => c.TargetId, c => c.Count);
+
+        return requested
+            .Select(id => new NoteSummaryDto
+            {
+                FileId = id,
+                Excerpt = excerpts.GetValueOrDefault(id),
+                MentionCount = mentions.GetValueOrDefault(id),
+            })
+            .ToList();
     }
 
     public async Task<string?> NameUntitledNoteAsync(Guid fileId, string text, Guid userId,

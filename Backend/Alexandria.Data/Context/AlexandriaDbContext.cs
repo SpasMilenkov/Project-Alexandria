@@ -64,6 +64,9 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<CaptureMetadata> CaptureMetadata { get; set; }
     public DbSet<DocumentMetadata> DocumentMetadata { get; set; }
     public DbSet<DocumentText> DocumentText { get; set; }
+    public DbSet<FileDraft> FileDrafts { get; set; }
+    public DbSet<NoteLinkScan> NoteLinkScans { get; set; }
+    public DbSet<NoteLink> NoteLinks { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -120,6 +123,9 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new CaptureMetadataConfiguration());
         builder.ApplyConfiguration(new DocumentMetadataConfiguration());
         builder.ApplyConfiguration(new DocumentTextConfiguration());
+        builder.ApplyConfiguration(new FileDraftConfiguration());
+        builder.ApplyConfiguration(new NoteLinkScanConfiguration());
+        builder.ApplyConfiguration(new NoteLinkConfiguration());
 
         builder.MapDatabaseFunctions();
     }

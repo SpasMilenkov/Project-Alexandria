@@ -135,10 +135,16 @@
 
     <!-- PDF Preview -->
     <div
-      v-else-if="pdfPreviewMimes.includes(mimeType) && previewUrl"
+      v-else-if="isPdfPreviewMimeType(mimeType) && previewUrl"
       class="relative h-[36rem] w-full overflow-hidden rounded-lg border border-gray-200/70 dark:border-gray-700/70"
     >
-      <embed :src="previewUrl" type="application/pdf" class="w-full h-full" />
+      <!-- Keyed by page, since the PDF viewer reads the fragment only when it loads. -->
+      <embed
+        :key="pdfSrc"
+        :src="pdfSrc"
+        type="application/pdf"
+        class="w-full h-full"
+      />
     </div>
 
     <!-- Archive Preview -->
@@ -162,8 +168,10 @@ import { type PreviewResultDto, fileApi } from "@/api/file";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import AudioEqualizer from "@/components/dashboard/AudioEqualizer.vue";
 import { useFileDownload } from "@/composables/useFileDownload";
+import { atPdfPage } from "@/features/notes/deep-links";
 import { FILES_QUERY_KEYS, getPreviewByVersion } from "@/queries/files";
 import { formatPlaybackTime } from "@/utils/date-formatters";
+import { isPdfPreviewMimeType } from "@/utils/files/mimetype";
 
 import TextPreviewPane from "./TextPreviewPane.vue";
 
@@ -174,6 +182,8 @@ const props = defineProps<{
   mimeType: string;
   isEncrypted?: boolean;
   coverUpdatedAt?: string | null;
+  // A page a note's link asked for; PDF previews open at it.
+  page?: number | null;
 }>();
 
 // Preview query
@@ -199,6 +209,7 @@ const { data: previewData, isLoading: previewLoading } = useQuery(() => ({
 const previewUrl = computed(() => previewData.value?.previewUrl ?? null);
 const archivePreview = computed(() => previewData.value?.archivePreview ?? null);
 const textPreview = computed(() => previewData.value?.textPreview ?? null);
+const pdfSrc = computed(() => atPdfPage(previewUrl.value ?? "", props.page ?? null));
 
 const { downloadVersion } = useFileDownload();
 
@@ -354,25 +365,6 @@ const archivePreviewItems = computed(() => {
   return [rootNode];
 });
 
-// Formatters
-
-// MIME helpers
-
-const pdfPreviewMimes = [
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.oasis.opendocument.text",
-  "application/rtf",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.oasis.opendocument.spreadsheet",
-  "text/csv",
-  "text/tab-separated-values",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.oasis.opendocument.presentation",
-];
 </script>
 
 <style scoped>

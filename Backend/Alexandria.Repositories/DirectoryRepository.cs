@@ -7,6 +7,7 @@ using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Directories;
 using Alexandria.Dto.Files;
+using Alexandria.Dto.Links;
 using Alexandria.Repositories.Projections;
 using Alexandria.Repositories.Search;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,22 @@ public class DirectoryRepository(AlexandriaDbContext context) : IDirectoryReposi
             .Include(d => d.Owner)
             .FirstOrDefaultAsync(d =>
                 d.Id == id && d.OwnerId == ownerId && d.DeletedAt == null, ct);
+    }
+
+    public async Task<IReadOnlyList<LinkTargetDto>> GetLinkTargetsAsync(IReadOnlyCollection<Guid> directoryIds,
+        Guid userId, CancellationToken ct = default)
+    {
+        return await context.Directories
+            .AsNoTracking()
+            .Where(d => d.OwnerId == userId && directoryIds.Contains(d.Id))
+            .Select(d => new LinkTargetDto
+            {
+                Kind = LinkTargetKind.Folder,
+                Id = d.Id,
+                State = d.DeletedAt == null ? LinkTargetState.Available : LinkTargetState.Trashed,
+                Name = d.Name,
+            })
+            .ToListAsync(ct);
     }
 
     public async Task<Dictionary<Guid, long>> GetTreeSizesAsync(IReadOnlyCollection<Guid> directoryIds,

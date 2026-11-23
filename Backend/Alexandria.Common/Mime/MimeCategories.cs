@@ -56,6 +56,13 @@ public static class MimeCategories
     public static MimeMatcher PreviewWorker { get; } =
         MimeMatcher.Union(Rules.Where(r => UsesPreviewWorker(r.Category)).Select(r => r.Matcher));
 
+    /// <summary>
+    /// Every type whose preview is its own pages, so a link can point at one. Spreadsheets also
+    /// preview as a PDF, but of their first rows, where a page number means nothing.
+    /// </summary>
+    public static MimeMatcher PagedPreview { get; } =
+        MimeMatcher.Union(Rules.Where(r => HasPagedPreview(r.Category)).Select(r => r.Matcher));
+
     internal static IReadOnlyList<(FileCategory Category, MimeMatcher Matcher)> AllRules => Rules;
 
     /// <summary>Category of a MIME type. Input is canonicalized first; unknown or blank input is Unknown.</summary>
@@ -72,6 +79,10 @@ public static class MimeCategories
     }
 
     public static bool IsText(string? mimeType) => Categorize(mimeType) == FileCategory.Text;
+
+    /// <summary>Categories whose preview keeps their pages, the first few of them.</summary>
+    public static bool HasPagedPreview(FileCategory category) => category
+        is FileCategory.Document or FileCategory.Presentation or FileCategory.Pdf;
 
     /// <summary>Categories rendered asynchronously by a preview worker, which also produces the thumbnail.</summary>
     public static bool UsesPreviewWorker(FileCategory category) => category

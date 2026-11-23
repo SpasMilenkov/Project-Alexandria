@@ -50,6 +50,7 @@ describe("sidebar navigation", () => {
     expect(activeLabels("lyrics-dashboard")).toEqual(["admin:Integrations"]);
     expect(activeLabels("wrapped")).toEqual(["media:Listening stats"]);
     expect(activeLabels("playlist-details")).toEqual(["media:Playlists"]);
+    expect(activeLabels("note-editor")).toEqual(["library:Notes"]);
   });
 
   it("highlights nothing for pages outside the sidebar", () => {

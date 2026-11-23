@@ -1,6 +1,7 @@
 import { useDark, useMediaQuery } from "@vueuse/core";
 import { watchEffect } from "vue";
 
+import { useAppChrome } from "@/composables/useAppChrome";
 import {
   AVAILABLE_BACKGROUNDS,
   AVAILABLE_COLORS,
@@ -80,6 +81,7 @@ export const useTheme = () => {
   const store = useSettingsStore();
   const isDark = useDark();
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const { isHidden: isChromeHidden } = useAppChrome();
 
   watchEffect(() => {
     if (typeof document === "undefined") return;
@@ -97,7 +99,9 @@ export const useTheme = () => {
 
     const preset = resolvePreset(store.backgroundColor);
 
-    if (store.backgroundImage) {
+    // A page that asks the app to step aside, like zen mode in the note editor, gets the plain
+    // background colour. The picture stays loaded, so it comes back at once.
+    if (store.backgroundImage && !isChromeHidden.value) {
       applyImageBackground(preset, {
         image: store.backgroundImage,
         isDark: isDark.value,

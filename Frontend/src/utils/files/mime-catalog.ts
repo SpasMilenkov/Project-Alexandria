@@ -27,6 +27,7 @@ const PREVIEW_WORKER = toMatcher(catalog.previewWorker);
 const AUTO_TAG = toMatcher(catalog.autoTag);
 const DOCUMENT_METADATA = toMatcher(catalog.documentMetadata);
 const BOOKS = toMatcher(catalog.books);
+const PAGED_PREVIEW = toMatcher(catalog.pagedPreview);
 
 /** Every policy group in backend declaration order. */
 export const POLICY_FILE_GROUPS = Object.keys(catalog.groups) as PolicyFileGroup[];
@@ -60,6 +61,19 @@ export const routesToPreviewWorker = (mimeType: string | null | undefined): bool
   const canonical = canonicalizeMime(mimeType);
 
   return canonical.length > 0 && matches(PREVIEW_WORKER, canonical);
+};
+
+/** How many pages a document, presentation or PDF preview keeps; links can't open past it. */
+export const PREVIEW_PAGE_LIMIT: number = catalog.pagedPreview.pageLimit;
+
+/**
+ * True when this type's preview is its own pages, so a link can open one. Spreadsheets preview
+ * their first rows instead, where a page number means nothing.
+ */
+export const hasPagedPreview = (mimeType: string | null | undefined): boolean => {
+  const canonical = canonicalizeMime(mimeType);
+
+  return canonical.length > 0 && matches(PAGED_PREVIEW, canonical);
 };
 
 /** True when the auto-tag endpoint accepts this type. */

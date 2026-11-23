@@ -980,8 +980,8 @@ public partial class ContentStorageService(
         return resolution.MimeType;
     }
 
-    // The row lock holds until the commit, so the current-version check below can't be passed by
-    // two saves made from the same parent.
+    // The row lock holds until the commit, so the current-version and draft checks below can't be
+    // passed by two saves made from the same parent, or by a draft written meanwhile.
     private async Task<FileEntity> LockTargetFileAsync(VersionTarget target, Guid userId, CancellationToken ct)
     {
         var file = await unitOfWork.Files.GetForUpdateAsync(target.FileId, userId, ct);
@@ -991,6 +991,8 @@ public partial class ContentStorageService(
 
         if (file.CurrentVersionId != target.ParentVersionId)
             throw new FileVersionConflictException(target.FileId, target.ParentVersionId, file.CurrentVersionId);
+
+        await RemoveSettledDraftAsync(target, ct);
 
         return file;
     }

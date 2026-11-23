@@ -70,6 +70,16 @@ const shortcutSections: ShortcutSection[] = [
     title: "Tags",
   },
   {
+    icon: "i-lucide-notebook-pen",
+    id: "notes",
+    shortcuts: [
+      { description: "Save a version of the note", keys: ["meta", "S"] },
+      { description: "Turn zen mode on or off", keys: ["meta", "shift", "F"] },
+      { description: "Leave zen mode", keys: ["Escape"] },
+    ],
+    title: "Notes",
+  },
+  {
     icon: "i-lucide-keyboard",
     id: "general",
     shortcuts: [{ description: "Show keyboard shortcuts", keys: ["meta", "K"] }],

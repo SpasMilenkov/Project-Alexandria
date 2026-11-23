@@ -153,8 +153,8 @@ public class FakeContentStorageService : IContentStorageService
         throw new NotImplementedException();
     }
 
-    public Task<FileContentSaveResult> SaveTextContentAsync(Guid fileId, Guid parentVersionId, string text,
-        Guid userId, CancellationToken ct = default)
+    public Task<FileContentSaveResult> SaveTextContentAsync(Guid fileId, Guid parentVersionId, Guid? draftRevision,
+        string text, Guid userId, CancellationToken ct = default)
     {
         throw new NotImplementedException();
     }

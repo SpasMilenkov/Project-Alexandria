@@ -46,10 +46,8 @@ watch(
 </script>
 
 <template>
-  <nav
-    aria-label="Outline"
-    class="group frosted-glass glass-surface flex min-h-0 flex-col gap-2 rounded-xl border border-gray-200/70 p-3 dark:border-gray-700/70"
-  >
+  <!-- Marginalia on the desk: no card of its own, so the sheet stays the one surface. -->
+  <nav aria-label="Outline" class="group flex min-h-0 flex-col gap-2 py-1">
     <div class="flex shrink-0 items-center justify-between gap-2 pl-2">
       <h2 class="text-xs font-semibold tracking-wide text-gray-600 uppercase dark:text-gray-400">
         Outline
@@ -73,7 +71,7 @@ watch(
       Headings you add show up here.
     </p>
 
-    <!-- The card grows with its headings and scrolls on its own once it reaches the desk's height. -->
+    <!-- The list grows with its headings and scrolls on its own once it reaches the desk's height. -->
     <ol
       v-else
       ref="list"

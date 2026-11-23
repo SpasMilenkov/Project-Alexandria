@@ -14,6 +14,9 @@ export interface NowPlaying {
   origin: Origin;
   ended: boolean;
   restored: boolean;
+  // Where a deep link asked playback to start, in seconds. A restored entry resumes from
+  // history instead.
+  startSeconds?: number | null;
 }
 
 export interface RangeResult {

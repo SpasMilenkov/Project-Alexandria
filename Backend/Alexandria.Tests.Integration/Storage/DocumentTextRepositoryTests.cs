@@ -484,6 +484,31 @@ public class DocumentTextRepositoryTests(DatabaseFixture fixture) : IAsyncLifeti
     }
 
     [Fact]
+    public async Task LeadingText_readsTheStartOfOwnExtractedFiles_only()
+    {
+        var otherUserId = Guid.NewGuid();
+        await using (var seed = fixture.CreateDbContext())
+        {
+            seed.Users.Add(new UserBuilder().WithId(otherUserId).Build());
+            await seed.SaveChangesAsync(Ct);
+        }
+
+        var note = await SeedVersionAsync(mimeType: "text/markdown", fileName: "Trip.md");
+        var unread = await SeedVersionAsync(mimeType: "text/markdown");
+        var someoneElses = await SeedVersionAsync(mimeType: "text/markdown", ownerId: otherUserId);
+
+        await UpsertAsync(note.ContentObjectId, "# Trip\nBook flights by Friday");
+        await UpsertAsync(someoneElses.ContentObjectId, "private");
+
+        await using var db = fixture.CreateDbContext();
+        var rows = await new DocumentTextRepository(db)
+            .GetLeadingTextAsync([note.FileId, unread.FileId, someoneElses.FileId], _userId, 10, Ct);
+
+        rows.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new { note.FileId, Name = "Trip.md", Text = "# Trip\nBoo" });
+    }
+
+    [Fact]
     public async Task ResetFailed_givesExhaustedFailuresFreshAttempts()
     {
         var exhausted = await SeedVersionAsync();

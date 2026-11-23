@@ -233,6 +233,8 @@ export const createRecovery = (deps: RecoveryDeps) => {
   const setIsPlaying = (value: boolean) => {
     state.transport.isPlaying.value = value;
     if (!value) return;
+    // Something audibly playing is never a closed player, whichever surface started it.
+    state.playerDismissed.value = false;
     countdown.clear();
     unavailableStreak = 0;
     const current = state.nowPlaying.value;
