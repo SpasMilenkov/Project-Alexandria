@@ -8,10 +8,7 @@
       :max-size="20"
       :default-size="14"
       :collapsed-size="4"
-      :ui="{
-        root: 'frosted-glass glass-surface transition-[width] duration-200 ease-out motion-reduce:transition-none data-[dragging=true]:transition-none',
-        footer: 'border-t border-default py-2',
-      }"
+      :ui="sidebarUi"
       mode="modal"
       toggle-side="right"
     >
@@ -98,10 +95,7 @@
 
     <UDashboardPanel :ui="{ body: 'sm:p-0 p-0 gap-0 overflow-hidden' }">
       <template #header>
-        <UDashboardNavbar
-          toggle-side="right"
-          :ui="{ root: 'glass-surface frosted-glass', left: 'flex-1 min-w-0' }"
-        >
+        <UDashboardNavbar toggle-side="right" :ui="navbarUi">
           <template #left>
             <UButton
               v-if="player.playerDismissed && player.hasActiveFile && player.isAudio"
@@ -178,6 +172,7 @@ import SidebarUserMenu from "@/components/dashboard/SidebarUserMenu.vue";
 import KeyboardShortcutsModal from "@/components/modals/KeyboardShortcutsModal.vue";
 import ReportProblemModal from "@/components/modals/ReportProblemModal.vue";
 import LyricsPanel from "@/components/streaming/player/lyrics/LyricsPanel.vue";
+import { useAppChrome } from "@/composables/useAppChrome";
 import { useOnboardingGuard } from "@/composables/useOnboardingGuard";
 import { useSettingsSync } from "@/composables/useSettingsSync";
 import { useStreamingMediaContext } from "@/composables/useStreamingMediaContext";
@@ -221,6 +216,34 @@ const settingsStore = useSettingsStore();
 const route = useRoute();
 
 const isCollapsed = ref(false);
+
+// A page can ask for the navigation to step aside, as the note editor's zen mode does. The
+// sidebar and its resize handle only show on desktop anyway. The navbar stays on phones,
+// because it carries the player island and the menu button there. Both stay mounted, so the
+// sidebar keeps its width and section state for when they come back.
+const { isHidden: isChromeHidden } = useAppChrome();
+
+const SIDEBAR_ROOT =
+  "frosted-glass glass-surface transition-[width] duration-200 ease-out motion-reduce:transition-none data-[dragging=true]:transition-none";
+const NAVBAR_ROOT = "glass-surface frosted-glass";
+
+const sidebarUi = computed(() => {
+  if (isChromeHidden.value) {
+    return {
+      footer: "border-t border-default py-2",
+      handle: "lg:hidden",
+      root: `${SIDEBAR_ROOT} lg:hidden`,
+    };
+  }
+
+  return { footer: "border-t border-default py-2", root: SIDEBAR_ROOT };
+});
+
+const navbarUi = computed(() => {
+  if (isChromeHidden.value) return { left: "flex-1 min-w-0", root: `${NAVBAR_ROOT} md:hidden` };
+
+  return { left: "flex-1 min-w-0", root: NAVBAR_ROOT };
+});
 
 const overlay = useOverlay();
 const shortcutsModal = overlay.create(KeyboardShortcutsModal);

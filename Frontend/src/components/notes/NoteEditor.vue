@@ -32,12 +32,15 @@ import { logger } from "@/utils/logger";
 
 // The markdown as stored. The parent keys this component by version, so the check below runs
 // once per opened version.
-const { source, headings, fileId, newNoteFolderId } = defineProps<{
+const { source, headings, fileId, newNoteFolderId, narrow } = defineProps<{
   source: string;
   headings: NoteHeading[];
   fileId: string;
   // Where a note created from the link picker goes; undefined means the Notes folder itself.
   newNoteFolderId: string | undefined;
+  // Set when the sheet spans the whole desk: the text keeps to a readable line length, centred,
+  // while the sheet stays full width so scrolling works anywhere over it.
+  narrow: boolean;
 }>();
 
 const emit = defineEmits<{ "active-heading": [index: number | null] }>();
@@ -62,9 +65,18 @@ const PLACEHOLDER = { mode: "firstLine", placeholder: "Start writing…" } as co
 const HEADING_SELECTOR = ":scope > :is(h1, h2, h3, h4, h5, h6)";
 
 // Headings keep clear of the sticky toolbar when the outline scrolls to them.
-const EDITOR_UI = {
-  base: "min-h-[60vh] px-4 py-6 sm:px-8 [&_:is(h1,h2,h3,h4,h5,h6)]:scroll-mt-16",
-};
+const EDITOR_BASE = "min-h-[60vh] px-4 py-6 sm:px-8 [&_:is(h1,h2,h3,h4,h5,h6)]:scroll-mt-16";
+
+// About 80 characters of body text once the side padding is taken off.
+const READING_COLUMN = "mx-auto w-full max-w-3xl";
+
+const column = computed(() => {
+  if (narrow) return READING_COLUMN;
+
+  return "";
+});
+
+const editorUi = computed(() => ({ base: `${EDITOR_BASE} ${column.value}` }));
 
 // A heading counts as reached once its top passes just below the sticky toolbar.
 const REACHED_OFFSET_PX = 72;
@@ -364,6 +376,7 @@ defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
         :items="NOTE_TOOLBAR_ITEMS"
         :ui="TOOLBAR_UI"
         class="min-w-0 flex-1 overflow-x-auto"
+        :class="column"
       >
         <template #[NOTE_INSERT_SLOT]="{ isActive, isDisabled, onClick }">
           <UDropdownMenu
@@ -384,7 +397,11 @@ defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
         </template>
       </UEditorToolbar>
 
-      <span v-else class="min-w-0 flex-1 px-2 text-xs text-gray-600 dark:text-gray-400">
+      <span
+        v-else
+        class="min-w-0 flex-1 px-2 text-xs text-gray-600 dark:text-gray-400"
+        :class="column"
+      >
         {{ sourceLabel }}
       </span>
     </div>
@@ -400,7 +417,7 @@ defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
         :extensions="EXTENSIONS"
         :editor-props="EDITOR_PROPS"
         :class="{ invisible: !isChecked }"
-        :ui="EDITOR_UI"
+        :ui="editorUi"
       />
 
       <!-- Tiptap creates its editor on mount, so the menu waits for the instance. -->
@@ -422,6 +439,7 @@ defineExpose({ rewroteFormatting, scrollToHeading, syncDraft });
       variant="none"
       aria-label="Markdown source"
       class="w-full"
+      :class="column"
       :ui="{ base: 'min-h-[60vh] px-4 py-6 font-mono text-sm leading-6 sm:px-8' }"
       @click="trackCaret"
       @keyup="trackCaret"

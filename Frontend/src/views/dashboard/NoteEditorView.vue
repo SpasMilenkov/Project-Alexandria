@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { useQuery, useQueryCache } from "@pinia/colada";
-import { refDebounced, useEventListener, useLocalStorage } from "@vueuse/core";
+import { refDebounced, useEventListener } from "@vueuse/core";
 import { computed, ref, useTemplateRef, watch } from "vue";
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from "vue-router";
 
-import { MAX_NOTE_BYTES } from "@/api/notes";
 import { isAuthError } from "@/api/shuffle";
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import GlassEmptyState from "@/components/common/GlassEmptyState.vue";
@@ -17,10 +16,13 @@ import NoteSaveIndicator from "@/components/notes/NoteSaveIndicator.vue";
 import NoteTitle from "@/components/notes/NoteTitle.vue";
 import { useAppToast } from "@/composables/useAppToast";
 import { useLazyModal } from "@/composables/useLazyOverlay";
+import { useNoteDesk } from "@/composables/useNoteDesk";
+import { useNoteEditorKeys } from "@/composables/useNoteEditorKeys";
 import { type CurrentVersion, useNoteSave } from "@/composables/useNoteSave";
 import { usePageTitle } from "@/composables/usePageTitle";
 import { NOTE_EDITOR_MODE_OPTIONS, type NoteEditorMode } from "@/features/notes/editor-modes";
 import { newNoteFolderFor } from "@/features/notes/new-note";
+import { type NoteBlocker, noteBlocker } from "@/features/notes/note-blocker";
 import { noteTitleOf } from "@/features/notes/note-name";
 import { extractHeadings } from "@/features/notes/outline";
 import { saveIndicatorState } from "@/features/notes/save-indicator";
@@ -30,14 +32,6 @@ import { directoryPath } from "@/queries/directories";
 import { getFile } from "@/queries/files";
 import { getNoteDraft, getNoteVersionText, getNotesFolder } from "@/queries/notes";
 import { formatDateTime } from "@/utils/date-formatters";
-import { isMarkdownMimeType } from "@/utils/files/mimetype";
-import { formatBytes } from "@/utils/size";
-
-interface Blocker {
-  icon: string;
-  title: string;
-  description: string;
-}
 
 const route = useRoute();
 const queryCache = useQueryCache();
@@ -123,53 +117,27 @@ watch(lastSavedAt, (savedAt, previous) => {
 
 const saveIndicator = computed(() => saveIndicatorState(saveStatus.value, isDirty.value));
 
-// A layout preference for this browser only, like the gallery viewer's info panel.
-const isOutlineOpen = useLocalStorage("notes-outline-open", true);
-const isConnectionsOpen = useLocalStorage("notes-connections-open", true);
+const {
+  connectionsPanelState,
+  deskColumns,
+  exitZen,
+  isConnectionsOpen,
+  isOutlineOpen,
+  isSheetAlone,
+  isZen,
+  outlinePanelState,
+  setConnectionsOpen,
+  setOutlineOpen,
+  toggleZen,
+} = useNoteDesk();
 
-// Full class literals, so Tailwind sees every column layout at build time. The desk always has
-// three tracks so the browser can animate between them: a collapsed panel's track shrinks to
-// zero and the sheet grows into the space. Each side track includes its 0.75rem gap, because a
-// grid gap would stay behind next to an empty track.
-const DESK_COLUMNS = {
-  both: "lg:grid-cols-[13.75rem_minmax(0,1fr)_17.75rem]",
-  connections: "lg:grid-cols-[0rem_minmax(0,1fr)_17.75rem]",
-  none: "lg:grid-cols-[0rem_minmax(0,1fr)_0rem]",
-  outline: "lg:grid-cols-[13.75rem_minmax(0,1fr)_0rem]",
-} as const;
+const zenToggle = computed(() => {
+  if (isZen.value) {
+    return { icon: "i-lucide-minimize-2", label: "Leave zen mode", tooltip: "Leave zen mode (Esc)" };
+  }
 
-// Panels fade as their track closes and end up invisible, which also takes them out of the tab
-// order while collapsed. Connections only collapse on desktop; below it they sit under the sheet.
-const OUTLINE_CLOSED = "opacity-0 invisible";
-const CONNECTIONS_CLOSED = "lg:opacity-0 lg:invisible";
-
-const outlinePanelState = computed(() => {
-  if (isOutlineOpen.value) return "opacity-100 visible";
-
-  return OUTLINE_CLOSED;
+  return { icon: "i-lucide-maximize-2", label: "Zen mode", tooltip: "Zen mode (Ctrl+Shift+F)" };
 });
-
-const connectionsPanelState = computed(() => {
-  if (isConnectionsOpen.value) return "";
-
-  return CONNECTIONS_CLOSED;
-});
-
-const deskColumns = computed(() => {
-  if (isOutlineOpen.value && isConnectionsOpen.value) return DESK_COLUMNS.both;
-  if (isOutlineOpen.value) return DESK_COLUMNS.outline;
-  if (isConnectionsOpen.value) return DESK_COLUMNS.connections;
-
-  return DESK_COLUMNS.none;
-});
-
-const setOutlineOpen = (open: boolean) => {
-  isOutlineOpen.value = open;
-};
-
-const setConnectionsOpen = (open: boolean) => {
-  isConnectionsOpen.value = open;
-};
 
 // The outline trails typing slightly, so long notes aren't re-read on every keystroke.
 const settledDraft = refDebounced(draft, 250);
@@ -197,6 +165,7 @@ watch(fileId, () => {
   draft.value = "";
   mode.value = "rich";
   activeHeading.value = null;
+  exitZen();
 });
 
 watch(
@@ -207,48 +176,10 @@ watch(
   { immediate: true },
 );
 
-const blocker = computed((): Blocker | null => {
-  const current = file.value;
+const blocker = computed((): NoteBlocker | null => {
+  if (!file.value) return null;
 
-  if (!current) return null;
-
-  const version = current.currentVersion;
-
-  if (current.deletedAt) {
-    return {
-      description: "Restore it from the trash to open it again.",
-      icon: "i-lucide-file-x",
-      title: "This note is in the trash",
-    };
-  }
-
-  if (!isMarkdownMimeType(version.mimeType)) {
-    return {
-      description: "Only markdown files open in the note editor.",
-      icon: "i-lucide-file-x",
-      title: "Not a markdown file",
-    };
-  }
-
-  if (version.isEncrypted) {
-    return {
-      description: "Encrypted notes need a password step the editor doesn't have yet.",
-      icon: "i-lucide-lock",
-      title: "Encrypted notes can't be opened yet",
-    };
-  }
-
-  const size = Number(version.size);
-
-  if (size > MAX_NOTE_BYTES) {
-    return {
-      description: `The editor opens notes up to ${formatBytes(MAX_NOTE_BYTES)}, and this one is ${formatBytes(size)}.`,
-      icon: "i-lucide-file-warning",
-      title: "Too large for the editor",
-    };
-  }
-
-  return null;
+  return noteBlocker(file.value);
 });
 
 const canReadText = computed(() => openedVersionId.value !== null && blocker.value === null);
@@ -326,6 +257,11 @@ usePageTitle(() => {
 const isEditing = computed(
   () => isLoaded.value && original.value !== undefined && blocker.value === null,
 );
+
+// Zen only makes sense over an open note; a note that stops being editable gets the app back.
+watch(isEditing, (editing) => {
+  if (!editing) exitZen();
+});
 
 const editedAt = computed(() => file.value?.updatedAt ?? file.value?.createdAt ?? "");
 
@@ -507,12 +443,12 @@ useEventListener(document, "visibilitychange", () => {
   void saveDraft();
 });
 
-useEventListener(window, "keydown", (event: KeyboardEvent) => {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
-  if (event.key.toLowerCase() !== "s" || !isEditing.value) return;
-
-  event.preventDefault();
-  void saveVersion();
+useNoteEditorKeys({
+  exitZen,
+  isEditing,
+  isZen,
+  saveVersion: () => void saveVersion(),
+  toggleZen,
 });
 
 const copyMarkdown = async () => {
@@ -536,6 +472,7 @@ const copyMarkdown = async () => {
     >
       <div class="flex min-w-0 items-center gap-2.5">
         <UButton
+          v-if="!isZen"
           icon="i-lucide-arrow-left"
           color="neutral"
           variant="ghost"
@@ -565,30 +502,50 @@ const copyMarkdown = async () => {
       <div v-if="isEditing" class="flex flex-wrap items-center gap-2">
         <NoteSaveIndicator :state="saveIndicator" :saved-at="lastSavedAt" @retry="saveNow" />
 
-        <UTooltip text="Save a version now (Ctrl+S)">
-          <UButton
-            icon="i-lucide-save"
-            label="Save"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            :loading="isSaving"
-            :disabled="!canCheckpoint"
-            @click="saveNow"
+        <!-- Zen keeps only the name and the save state; Ctrl+S still saves. -->
+        <template v-if="!isZen">
+          <UTooltip text="Save a version now (Ctrl+S)">
+            <UButton
+              icon="i-lucide-save"
+              label="Save"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              :loading="isSaving"
+              :disabled="!canCheckpoint"
+              @click="saveNow"
+            />
+          </UTooltip>
+
+          <SegmentedControl
+            v-model="mode"
+            :options="NOTE_EDITOR_MODE_OPTIONS"
+            label="Editor mode"
           />
-        </UTooltip>
 
-        <SegmentedControl v-model="mode" :options="NOTE_EDITOR_MODE_OPTIONS" label="Editor mode" />
+          <UTooltip text="Copy markdown">
+            <UButton
+              :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+              :color="copied ? 'success' : 'neutral'"
+              variant="ghost"
+              square
+              class="justify-center"
+              aria-label="Copy markdown"
+              @click="copyMarkdown"
+            />
+          </UTooltip>
+        </template>
 
-        <UTooltip text="Copy markdown">
+        <UTooltip :text="zenToggle.tooltip">
           <UButton
-            :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
-            :color="copied ? 'success' : 'neutral'"
+            :icon="zenToggle.icon"
+            color="neutral"
             variant="ghost"
             square
             class="justify-center"
-            aria-label="Copy markdown"
-            @click="copyMarkdown"
+            :aria-label="zenToggle.label"
+            :aria-pressed="isZen"
+            @click="toggleZen"
           />
         </UTooltip>
 
@@ -719,6 +676,7 @@ const copyMarkdown = async () => {
         :headings="headings"
         :file-id="file.fileId"
         :new-note-folder-id="newNoteFolderId"
+        :narrow="isSheetAlone"
         class="lg:min-h-0 lg:overflow-y-auto"
         @active-heading="setActiveHeading"
       />

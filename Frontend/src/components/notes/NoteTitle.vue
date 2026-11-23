@@ -76,7 +76,7 @@ const commit = async () => {
       v-model="draftName"
       size="lg"
       aria-label="Note name"
-      class="w-full min-w-48 sm:w-96"
+      class="w-full max-w-full min-w-48 sm:w-96 lg:w-[40rem]"
       :ui="{ base: 'text-xl font-semibold' }"
       @keydown.enter.prevent="commit"
       @keydown.esc.prevent="cancel"
