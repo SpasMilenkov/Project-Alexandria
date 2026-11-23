@@ -17,6 +17,7 @@ const target = (overrides: Partial<LinkTargetDto>): LinkTargetDto => ({
   mimeType: null,
   name: "Trip.md",
   state: LinkTargetState.Available,
+  versionId: null,
   ...overrides,
 });
 

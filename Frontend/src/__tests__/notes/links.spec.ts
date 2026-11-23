@@ -3,13 +3,16 @@ import { describe, expect, it } from "vitest";
 import { LinkTargetKind } from "@/enums/link-target-kind";
 import {
   extractNoteLinks,
+  findNoteEmbedStart,
   findNoteLinkStart,
   formatAppHref,
   labelText,
   linkKey,
+  matchNoteEmbed,
   matchNoteLink,
   parseAppHref,
   pastedLinkRef,
+  renderNoteEmbedMarkdown,
   renderNoteLinkMarkdown,
   sanitizePastedLabel,
 } from "@/features/notes/links";
@@ -217,5 +220,39 @@ describe("pastedLinkRef", () => {
     expect(pastedLinkRef(`${ORIGIN}/dashboard/tags`, ORIGIN)).toBeNull();
     expect(pastedLinkRef(`look at ${ORIGIN}/notes/${ID}`, ORIGIN)).toBeNull();
     expect(pastedLinkRef("", ORIGIN)).toBeNull();
+  });
+});
+
+describe("note embeds", () => {
+  it("reads an embed with its caption and deep-link suffix", () => {
+    expect(matchNoteEmbed(`![Slides \\[v2\\]](alexandria://file/${ID}#page=3) after`)).toEqual({
+      caption: String.raw`Slides \[v2\]`,
+      raw: `![Slides \\[v2\\]](alexandria://file/${ID}#page=3)`,
+      ref: { id: ID, kind: LinkTargetKind.File, suffix: "#page=3" },
+    });
+  });
+
+  it("reads an empty caption", () => {
+    expect(matchNoteEmbed(`![](alexandria://file/${ID})`)?.caption).toBe("");
+  });
+
+  it("leaves web images and malformed ids alone", () => {
+    expect(matchNoteEmbed("![x](https://example.com/a.png)")).toBeNull();
+    expect(matchNoteEmbed("![x](alexandria://file/nope)")).toBeNull();
+  });
+
+  it("finds the next embed, skipping an escaped one", () => {
+    const text = `\\![no](alexandria://file/${ID}) then ![yes](alexandria://file/${ID})`;
+
+    expect(findNoteEmbedStart(text)).toBe(text.lastIndexOf("![yes]"));
+  });
+
+  it("writes an embed back as read, and escapes a caption that would break out", () => {
+    const ref = { id: ID, kind: LinkTargetKind.File, suffix: "?t=90" };
+
+    expect(renderNoteEmbedMarkdown(ref, "Clip")).toBe(`![Clip](alexandria://file/${ID}?t=90)`);
+    expect(renderNoteEmbedMarkdown(ref, "a](https://x.y) [b")).toBe(
+      String.raw`![a\](https://x.y) \[b](alexandria://file/${ID}?t=90)`,
+    );
   });
 });

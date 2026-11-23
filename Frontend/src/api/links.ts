@@ -15,6 +15,8 @@ export interface LinkTargetDto extends LinkTargetRef {
   // Files only.
   mimeType: string | null;
   directoryId: string | null;
+  // The current version, which embeds read their preview and thumbnail from.
+  versionId: string | null;
   isEncrypted: boolean;
   // Tags only.
   color: string | null;

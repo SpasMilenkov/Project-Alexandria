@@ -124,6 +124,9 @@ const LINE_BREAKS = /\s*[\r\n]+\s*/gu;
 const escapeLabel = (text: string): string =>
   text.replace(LINE_BREAKS, " ").replace(LABEL_SPECIAL, String.raw`\$&`);
 
+/** Plain text someone typed as a label or caption, written so it reads back as exactly that. */
+export const labelSourceOf = (text: string): string => escapeLabel(text.trim());
+
 /**
  * A label from pasted HTML, made safe to write as markdown. The attribute is whatever the page
  * that was copied put there, so unescaped, `notes](https://example.com) [x` would save as a web
@@ -133,6 +136,52 @@ export const sanitizePastedLabel = (label: string | null): string | null => {
   if (label === null) return null;
 
   return escapeLabel(labelText(label));
+};
+
+/** An embed in markdown: the target plus its caption source, which may be empty. */
+export interface NoteEmbedMatch {
+  raw: string;
+  ref: NoteLinkRef;
+  caption: string;
+}
+
+const EMBED = new RegExp(
+  String.raw`^!\[(?<caption>${LABEL_BODY})\]\((?<href>alexandria:\/\/[^\s()<>]+)\)`,
+  "u",
+);
+const EMBED_START = /!\[/gu;
+
+/** Reads an embed, `![caption](alexandria://...)`, at the very start of `src`. */
+export const matchNoteEmbed = (src: string): NoteEmbedMatch | null => {
+  const embed = EMBED.exec(src);
+
+  if (!embed?.groups) return null;
+
+  const ref = parseAppHref(embed.groups.href);
+
+  if (!ref) return null;
+
+  return { caption: embed.groups.caption, raw: embed[0], ref };
+};
+
+/** Where the next embed starts in `src`, or -1. An escaped "!" or "[" is text. */
+export const findNoteEmbedStart = (src: string): number => {
+  for (const match of src.matchAll(EMBED_START)) {
+    const escaped = src[match.index - 1] === "\\";
+
+    if (!escaped && matchNoteEmbed(src.slice(match.index))) return match.index;
+  }
+
+  return -1;
+};
+
+/** Writes an embed back as read, escaping a caption that didn't come from markdown. */
+export const renderNoteEmbedMarkdown = (ref: NoteLinkRef, caption: string): string => {
+  const href = formatAppHref(ref);
+
+  if (!LABEL_SOURCE.test(caption)) return `![${escapeLabel(labelText(caption))}](${href})`;
+
+  return `![${caption}](${href})`;
 };
 
 /** Writes a link back in the form it was read in. */
