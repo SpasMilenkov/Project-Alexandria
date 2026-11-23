@@ -4,14 +4,19 @@ import type { LinkTargetDto } from "@/api/links";
 
 import { LinkTargetKind } from "@/enums/link-target-kind";
 import { LinkTargetState } from "@/enums/link-target-state";
+import { pdfPageOf, startSecondsOf } from "@/features/notes/deep-links";
 import { noteTitleOf } from "@/features/notes/note-name";
 import { getFileIcon } from "@/utils/files/icons";
-import { isMarkdownMimeType } from "@/utils/files/mimetype";
+import { isMarkdownMimeType, isPdfPreviewMimeType } from "@/utils/files/mimetype";
 
-/** Where following a link leads: a page, or a file selected in its folder. */
+/**
+ * Where following a link leads: a page, a file selected in its folder (its details open at a
+ * page when the link names one), or playback from a time.
+ */
 export type LinkDestination =
   | { type: "route"; to: RouteLocationRaw }
-  | { type: "reveal"; directoryId: string | null; fileId: string };
+  | { type: "reveal"; directoryId: string | null; fileId: string; page?: number }
+  | { type: "play"; fileId: string; startSeconds: number; fallback: LinkDestination };
 
 const KIND_NOUNS: Record<LinkTargetKind, string> = {
   [LinkTargetKind.File]: "file",
@@ -47,17 +52,54 @@ export const linkTargetName = (target: LinkTargetDto): string | null => {
   return target.name;
 };
 
-export const linkDestination = (target: LinkTargetDto): LinkDestination | null => {
+// A plain click on a link or embed selects it for editing; a modified click opens it, the way
+// links behave in document editors.
+export const isOpenClick = (event: MouseEvent): boolean => event.ctrlKey || event.metaKey;
+
+const IS_APPLE = typeof navigator !== "undefined" && /Mac|iPhone|iPad/u.test(navigator.userAgent);
+
+export const OPEN_CLICK_HINT = IS_APPLE ? "⌘-click to open" : "Ctrl+click to open";
+
+export const isMediaTarget = (target: LinkTargetDto): boolean =>
+  target.kind === LinkTargetKind.File &&
+  (target.mimeType?.startsWith("audio/") === true || target.mimeType?.startsWith("video/") === true);
+
+// Media that can't play yet still has a page: tracks their details, videos their folder.
+const mediaFallback = (target: LinkTargetDto): LinkDestination => {
+  if (target.mimeType?.startsWith("audio/")) {
+    return { to: { name: "track-details", params: { fileId: target.id } }, type: "route" };
+  }
+
+  return { directoryId: target.directoryId, fileId: target.id, type: "reveal" };
+};
+
+const fileDestination = (target: LinkTargetDto, suffix: string): LinkDestination => {
+  if (isNoteFile(target) && !target.isEncrypted) {
+    return { to: { name: "note-editor", params: { fileId: target.id } }, type: "route" };
+  }
+
+  const startSeconds = startSecondsOf(suffix);
+
+  if (startSeconds !== null && isMediaTarget(target)) {
+    return { fallback: mediaFallback(target), fileId: target.id, startSeconds, type: "play" };
+  }
+
+  const page = pdfPageOf(suffix);
+  const reveal: LinkDestination = { directoryId: target.directoryId, fileId: target.id, type: "reveal" };
+
+  if (page !== null && isPdfPreviewMimeType(target.mimeType) && !target.isEncrypted) {
+    return { ...reveal, page };
+  }
+
+  return reveal;
+};
+
+/** Where the link goes; `suffix` is the `?t=`/`#page=` part as written, when there is one. */
+export const linkDestination = (target: LinkTargetDto, suffix = ""): LinkDestination | null => {
   if (target.state === LinkTargetState.Unavailable) return null;
   if (target.state === LinkTargetState.Trashed) return { to: { name: "trash" }, type: "route" };
 
-  if (target.kind === LinkTargetKind.File) {
-    if (isNoteFile(target) && !target.isEncrypted) {
-      return { to: { name: "note-editor", params: { fileId: target.id } }, type: "route" };
-    }
-
-    return { directoryId: target.directoryId, fileId: target.id, type: "reveal" };
-  }
+  if (target.kind === LinkTargetKind.File) return fileDestination(target, suffix);
 
   if (target.kind === LinkTargetKind.Folder) {
     return { to: { name: "dashboard", params: { dirId: target.id } }, type: "route" };

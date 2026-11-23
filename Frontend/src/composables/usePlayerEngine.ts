@@ -481,7 +481,10 @@ export const usePlayerEngine = (
     file: MediaFileDto | null,
     instanceId: number | null,
     restored: boolean,
+    startSeconds: number | null,
   ) => {
+    // A deep link's start wins over the resume prompt; a restored session keeps its history.
+    const linkedStart = restored ? null : startSeconds;
     const fileIsAudio = file?.mimeType.startsWith("audio/") ?? false;
     if (file && (options.mediaKind === "audio") !== fileIsAudio) {
       releaseForeign();
@@ -510,7 +513,7 @@ export const usePlayerEngine = (
     if (loadedFileId === file.fileId && loadedVersionId === versionId && shakaPlayer) {
       loadedInstanceId = instanceId;
       if (videoRef.value) {
-        videoRef.value.currentTime = 0;
+        videoRef.value.currentTime = linkedStart ?? 0;
         delayedPlay(videoRef.value, loadSequence);
       }
       updateMediaSession(file);
@@ -544,13 +547,15 @@ export const usePlayerEngine = (
       if (restored) {
         await shakaPlayer.load(manifestUrl, savedPosition > 0 ? savedPosition : null);
       } else if (fileIsAudio) {
-        await shakaPlayer.load(manifestUrl, null);
+        await shakaPlayer.load(manifestUrl, linkedStart);
         if (loadSequence !== loadSequenceCounter) return;
         delayedPlay(videoRef.value, loadSequence);
       } else {
         pendingLoadSequence = loadSequence;
-        if (savedPosition > RESUME_MIN_POSITION) pendingResumePosition = savedPosition;
-        await shakaPlayer.load(manifestUrl, null);
+        if (linkedStart === null && savedPosition > RESUME_MIN_POSITION) {
+          pendingResumePosition = savedPosition;
+        }
+        await shakaPlayer.load(manifestUrl, linkedStart);
       }
 
       syncVariantTracks();
@@ -572,7 +577,12 @@ export const usePlayerEngine = (
     () => store.nowPlaying?.instanceId ?? null,
     (instanceId) => {
       const playing = store.nowPlaying;
-      void loadFile(playing?.file ?? null, instanceId, playing?.restored ?? false);
+      void loadFile(
+        playing?.file ?? null,
+        instanceId,
+        playing?.restored ?? false,
+        playing?.startSeconds ?? null,
+      );
     },
     { immediate: true },
   );

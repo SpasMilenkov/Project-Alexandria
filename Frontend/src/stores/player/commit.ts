@@ -7,6 +7,7 @@ export interface CommitOptions {
   position?: number;
   record?: boolean;
   markHeard?: boolean;
+  startSeconds?: number | null;
 }
 
 export interface CommitDeps {
@@ -28,6 +29,7 @@ export const createCommit = (deps: CommitDeps) => {
       origin,
       ended: false,
       restored: false,
+      startSeconds: options.startSeconds ?? null,
     };
     state.playerDismissed.value = false;
     state.queueEnded.value = false;

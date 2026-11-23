@@ -168,13 +168,14 @@ export const createIntents = (deps: IntentDeps) => {
     );
   };
 
-  const playNow = (files: MediaFileDto[]): Promise<void> => {
+  // A start position applies to the first file only, the one a deep link points at.
+  const playNow = (files: MediaFileDto[], options: { startSeconds?: number | null } = {}): Promise<void> => {
     const [first, ...rest] = files;
     if (!first) return Promise.resolve();
     // oxlint-disable-next-line require-await
     return transitions.run(async () => {
       if (rest.length) queue.add(rest, null, true);
-      commitFile(first, "interrupt", { markHeard: false });
+      commitFile(first, "interrupt", { markHeard: false, startSeconds: options.startSeconds });
     });
   };
 

@@ -638,6 +638,7 @@
     <!-- shared file details drawer — single instance for all FileItem triggers -->
     <FileDetailsDrawer
       v-model:file="activeDetailsFile"
+      :preview-page="detailsPreviewPage"
       @file-trashed="handleFileTrashed"
       @file-restored="refreshDir"
     />
@@ -2084,6 +2085,16 @@ useEventListener(window, "keydown", (event) => {
 });
 
 const revealFileId = tabStore.takeRevealFileId(tabId);
+const revealPage = tabStore.takeRevealPage(tabId);
+
+// A note's `#page=` link: the revealed file's details open at that page, and only that file's.
+const previewPage = ref<{ fileId: string; page: number } | null>(null);
+
+const detailsPreviewPage = computed(() => {
+  if (!previewPage.value || activeDetailsFile.value?.fileId !== previewPage.value.fileId) return null;
+
+  return previewPage.value.page;
+});
 
 if (revealFileId) {
   useExplorerReveal({
@@ -2097,6 +2108,15 @@ if (revealFileId) {
       clearSelection();
       toggleSelect(fileId, "file");
       lastSelected.value = fileId;
+
+      if (revealPage === undefined) return;
+
+      const file = filesList.value.find((candidate) => candidate.fileId === fileId);
+
+      if (!file) return;
+
+      previewPage.value = { fileId, page: revealPage };
+      activeDetailsFile.value = file;
     },
   });
 }

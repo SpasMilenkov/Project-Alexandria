@@ -372,6 +372,28 @@ export const isMarkdownMimeType = (mimeType: string | null | undefined): boolean
 export const isEbookMimeType = (mimeType: string | null | undefined): boolean =>
   isBookMime(mimeType);
 
+// The preview worker turns office documents and spreadsheets into PDF, so these all preview in
+// the browser's PDF viewer.
+const PDF_PREVIEW_MIMES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.oasis.opendocument.text",
+  "application/rtf",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "text/csv",
+  "text/tab-separated-values",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.oasis.opendocument.presentation",
+]);
+
+/** Whether the file's preview is a PDF, so it can open at a page. */
+export const isPdfPreviewMimeType = (mimeType: string | null | undefined): boolean =>
+  PDF_PREVIEW_MIMES.has(canonicalizeMime(mimeType));
+
 export interface GroupedMimeSizeResult {
   categories: FileGroup[];
   size: number[];

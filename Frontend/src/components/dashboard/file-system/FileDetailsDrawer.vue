@@ -83,6 +83,7 @@
         :mime-type="detail.currentVersion.mimeType"
         :is-encrypted="detail.currentVersion.isEncrypted"
         :cover-updated-at="detail.currentVersion.coverUpdatedAt"
+        :page="previewPage"
       />
 
       <DetailsSection title="Tags">
@@ -240,6 +241,8 @@ import FileVersionHistory from "./FileVersionHistory.vue";
 
 const props = defineProps<{
   file: FileResult | null;
+  // A preview page a note's link asked for, for PDF previews.
+  previewPage?: number | null;
 }>();
 
 const emit = defineEmits<{

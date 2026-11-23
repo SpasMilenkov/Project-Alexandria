@@ -52,6 +52,39 @@ describe("linkDestination", () => {
     });
   });
 
+  it("plays a track from a timestamp, with its details page to fall back on", () => {
+    expect(linkDestination(target({ mimeType: "audio/flac", name: "Song.flac" }), "?t=90")).toEqual({
+      fallback: { to: { name: "track-details", params: { fileId: ID } }, type: "route" },
+      fileId: ID,
+      startSeconds: 90,
+      type: "play",
+    });
+  });
+
+  it("falls back to the folder for a video that can't play", () => {
+    const destination = linkDestination(target({ mimeType: "video/mp4" }), "?t=1:30");
+
+    expect(destination).toMatchObject({ fallback: { type: "reveal" }, startSeconds: 90, type: "play" });
+  });
+
+  it("shows a media file without a time in its folder, as before", () => {
+    expect(linkDestination(target({ mimeType: "audio/flac" }))?.type).toBe("reveal");
+  });
+
+  it("opens a PDF at its page, and ignores a page on other files", () => {
+    expect(linkDestination(target({ mimeType: "application/pdf" }), "#page=3")).toEqual({
+      directoryId: null,
+      fileId: ID,
+      page: 3,
+      type: "reveal",
+    });
+    expect(linkDestination(target({ mimeType: "image/png" }), "#page=3")).not.toHaveProperty("page");
+  });
+
+  it("opens notes in the editor whatever the suffix", () => {
+    expect(linkDestination(target({ mimeType: "text/markdown" }), "?t=9#page=2")?.type).toBe("route");
+  });
+
   it("sends trashed targets to the trash and leaves unavailable ones unlinked", () => {
     expect(linkDestination(target({ state: LinkTargetState.Trashed }))).toEqual({
       to: { name: "trash" },
