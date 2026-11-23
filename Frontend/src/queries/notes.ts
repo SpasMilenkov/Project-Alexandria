@@ -6,8 +6,17 @@ export const NOTES_QUERY_KEYS = {
   draft: (fileId: string) => [...NOTES_QUERY_KEYS.root, "draft", fileId],
   folder: () => [...NOTES_QUERY_KEYS.root, "folder"],
   root: ["notes"] as const,
+  summaries: (fileIds: string[]) => [...NOTES_QUERY_KEYS.summariesRoot, fileIds.join(",")],
+  summariesRoot: ["notes", "summaries"] as const,
   versionText: (versionId: string) => [...NOTES_QUERY_KEYS.root, "version-text", versionId],
 };
+
+// Saves invalidate these; a note's excerpt otherwise changes only when its text does.
+export const getNoteSummaries = defineQueryOptions((fileIds: string[]) => ({
+  key: NOTES_QUERY_KEYS.summaries(fileIds),
+  query: () => notesApi.getSummaries(fileIds),
+  staleTime: 30_000,
+}));
 
 // A version's bytes never change, so the text is read once. Refetching on focus would replace
 // the editor's starting point while someone is typing.

@@ -1,6 +1,8 @@
 export type SiteIconPlace =
   | "home"
   | "files"
+  | "notes"
+  | "note"
   | "photos"
   | "tags"
   | "trash"
@@ -26,6 +28,8 @@ export const PLACE_GLYPHS: Record<SiteIconPlace, string> = {
   home: "heroicons:book-open-solid",
   jobs: "heroicons:queue-list-solid",
   music: "heroicons:musical-note-solid",
+  note: "heroicons:pencil-square-solid",
+  notes: "heroicons:document-text-solid",
   photos: "heroicons:photo-solid",
   settings: "heroicons:cog-6-tooth-solid",
   share: "heroicons:link-solid",

@@ -5,6 +5,8 @@ import { getSignInDestination } from "@/features/home/landing";
 import { useAuthStore } from "@/stores/auth";
 import { logger } from "@/utils/logger";
 
+import { NOTES_ROUTES } from "./notes-routes";
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -299,12 +301,7 @@ const router = createRouter({
       name: "tour",
       path: "/onboarding/tour",
     },
-    {
-      component: () => import("@/views/dashboard/NoteEditorView.vue"),
-      meta: { layout: "dashboard", requiresAuth: true, siteIcon: "files", title: "Note" },
-      name: "note-editor",
-      path: "/notes/:fileId",
-    },
+    ...NOTES_ROUTES,
     {
       component: () => import("@/views/dashboard/GalleryView.vue"),
       meta: { layout: "dashboard", requiresAuth: true, siteIcon: "photos", title: "Photos" },

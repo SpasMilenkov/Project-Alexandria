@@ -30,6 +30,7 @@ const invalidateAfterWrite = (queryCache: QueryCache, saved: FileContentSaveResu
   // The server indexes a saved version's links before answering, so whatever it now mentions,
   // or stopped mentioning, is ready to show.
   queryCache.invalidateQueries({ key: LINK_QUERY_KEYS.backlinksRoot });
+  queryCache.invalidateQueries({ key: NOTES_QUERY_KEYS.summariesRoot });
 };
 
 export const saveNoteContent = defineMutation(() => {

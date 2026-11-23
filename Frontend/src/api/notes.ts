@@ -64,6 +64,19 @@ export interface NoteRenameResult {
   fileName: string;
 }
 
+/** What a note's row on the Notes page shows beyond its file details. */
+export interface NoteSummaryDto {
+  fileId: string;
+  // The opening text after the title, as markdown with its links kept; null until the body text
+  // has been read, or when nothing follows the title.
+  excerpt: string | null;
+  // How many of the viewer's other notes link to this one.
+  mentionCount: number;
+}
+
+// Must match the backend's GetNoteSummariesRequestValidator.MaxFiles.
+export const MAX_NOTE_SUMMARIES = 100;
+
 export interface CreateNoteRequest {
   // A folder inside Notes. Left out, the note goes in the Notes folder itself.
   directoryId?: string | null;
@@ -78,6 +91,10 @@ export const MAX_NOTE_BYTES = 1_000_000;
 export const notesApi = {
   createNote: (request: CreateNoteRequest): Promise<FileContentSaveResult> =>
     api.post<FileContentSaveResult>("/notes", request),
+
+  // One entry per requested note, in request order.
+  getSummaries: async (fileIds: string[]): Promise<NoteSummaryDto[]> =>
+    (await api.post<{ summaries: NoteSummaryDto[] }>("/notes/summaries", { fileIds })).summaries,
 
   // Keeps a newer draft written elsewhere; the server answers 204 either way.
   discardDraft: (fileId: string, revision: string): Promise<void> =>
