@@ -24,10 +24,28 @@ interface ResolveLinksResponse {
   targets: LinkTargetDto[];
 }
 
+/** A note that links to an item, with the line the link sits on. */
+export interface NoteBacklinkDto {
+  fileId: string;
+  name: string;
+  directoryId: string | null;
+  updatedAt: string;
+  // Markdown, so its links can show their labels or live names.
+  snippet: string;
+}
+
+interface NoteBacklinksResponse {
+  notes: NoteBacklinkDto[];
+}
+
 // Must match the backend's ResolveLinksRequestValidator.MaxTargets.
 export const MAX_RESOLVE_TARGETS = 200;
 
 export const linksApi = {
+  // The viewer's own notes linking to the target, most recently edited first.
+  backlinks: async ({ kind, id }: LinkTargetRef): Promise<NoteBacklinkDto[]> =>
+    (await api.get<NoteBacklinksResponse>("/links/backlinks", { params: { id, kind } })).notes,
+
   // One entry per distinct target, in request order.
   resolve: async (targets: LinkTargetRef[]): Promise<LinkTargetDto[]> =>
     (await api.post<ResolveLinksResponse>("/links/resolve", { targets })).targets,

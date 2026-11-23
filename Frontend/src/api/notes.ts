@@ -68,6 +68,8 @@ export interface CreateNoteRequest {
   // A folder inside Notes. Left out, the note goes in the Notes folder itself.
   directoryId?: string | null;
   title?: string | null;
+  // The note's first text, such as a link to what it is about.
+  content?: string | null;
 }
 
 // Must match the backend's TextContentLimits.MaxBytes.

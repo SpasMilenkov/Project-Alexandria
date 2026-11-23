@@ -10,6 +10,7 @@ import {
 } from "@/api/notes";
 import { DIRECTORY_QUERY_KEYS } from "@/queries/directories";
 import { FILES_QUERY_KEYS } from "@/queries/files";
+import { LINK_QUERY_KEYS } from "@/queries/links";
 import { NOTES_QUERY_KEYS } from "@/queries/notes";
 
 // A new version changes the file's size and dates in every list that shows it, and the subtree
@@ -25,6 +26,10 @@ const invalidateAfterWrite = (queryCache: QueryCache, saved: FileContentSaveResu
 
   queryCache.invalidateQueries({ key: listing });
   queryCache.invalidateQueries({ key: DIRECTORY_QUERY_KEYS.root });
+
+  // The server indexes a saved version's links before answering, so whatever it now mentions,
+  // or stopped mentioning, is ready to show.
+  queryCache.invalidateQueries({ key: LINK_QUERY_KEYS.backlinksRoot });
 };
 
 export const saveNoteContent = defineMutation(() => {
@@ -88,8 +93,8 @@ export const createNote = defineMutation(() => {
 
   return useMutation({
     mutation: (request: CreateNoteRequest) => notesApi.createNote(request),
-    onSuccess(created) {
-      queryCache.setQueryData(NOTES_QUERY_KEYS.versionText(created.versionId), "");
+    onSuccess(created, request) {
+      queryCache.setQueryData(NOTES_QUERY_KEYS.versionText(created.versionId), request.content ?? "");
       // The first note also creates the Notes folder at the root.
       queryCache.invalidateQueries({ key: NOTES_QUERY_KEYS.folder() });
       invalidateAfterWrite(queryCache, created);

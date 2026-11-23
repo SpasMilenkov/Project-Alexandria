@@ -5,6 +5,8 @@ import { createBatcher } from "@/features/notes/link-batcher";
 import { linkKey } from "@/features/notes/links";
 
 export const LINK_QUERY_KEYS = {
+  backlinks: (ref: LinkTargetRef) => [...LINK_QUERY_KEYS.backlinksRoot, linkKey(ref)],
+  backlinksRoot: ["links", "backlinks"] as const,
   root: ["links"] as const,
   target: (ref: LinkTargetRef) => [...LINK_QUERY_KEYS.root, "target", linkKey(ref)],
 };
@@ -24,4 +26,12 @@ export const getLinkTarget = defineQueryOptions((ref: LinkTargetRef) => ({
   key: LINK_QUERY_KEYS.target(ref),
   query: () => targetLoader.load({ id: ref.id, kind: ref.kind }),
   staleTime: 30_000,
+}));
+
+// Saves from this tab invalidate it; notes uploaded or swept in elsewhere show up on the next
+// opening or focus.
+export const getBacklinks = defineQueryOptions((ref: LinkTargetRef) => ({
+  key: LINK_QUERY_KEYS.backlinks(ref),
+  query: () => linksApi.backlinks({ id: ref.id, kind: ref.kind }),
+  staleTime: 15_000,
 }));
