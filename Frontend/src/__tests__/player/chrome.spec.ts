@@ -92,6 +92,16 @@ describe("player chrome", () => {
     expect(store.playerDismissed).toBe(false);
   });
 
+  it("a track that starts playing reopens a closed player", async () => {
+    const store = usePlayerStore();
+    await store.startContext(playlistRef, { label: "P" });
+    store.closePlayer();
+    store.setIsPlaying(false);
+    expect(store.playerDismissed).toBe(true);
+    store.setIsPlaying(true);
+    expect(store.playerDismissed).toBe(false);
+  });
+
   it("toggles the shared lyrics panel", () => {
     const store = usePlayerStore();
     expect(store.lyricsOpen).toBe(false);
