@@ -609,6 +609,7 @@ public class FileRepository(AlexandriaDbContext context) : IFileRepository
                 Name = f.Name,
                 MimeType = f.CurrentVersion.MimeType,
                 DirectoryId = f.DirectoryId,
+                VersionId = f.CurrentVersionId,
                 IsEncrypted = f.CurrentVersion.IsEncrypted,
             })
             .ToListAsync(ct);

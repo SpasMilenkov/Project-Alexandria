@@ -19,6 +19,9 @@ public sealed record LinkTargetDto
     /// <summary>Files only, null at the root: the folder "show in folder" opens.</summary>
     public Guid? DirectoryId { get; init; }
 
+    /// <summary>Files only: the current version, which embeds read their preview and thumbnail from.</summary>
+    public Guid? VersionId { get; init; }
+
     /// <summary>Files only: the current version is owner-encrypted, so the editor can't open it.</summary>
     public bool IsEncrypted { get; init; }
 

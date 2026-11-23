@@ -91,6 +91,7 @@ public class ResolveLinksTests(AlexandriaFixture fixture) : FullStackTestBase(fi
         var file = targets[1];
         file.MimeType.Should().Be("text/markdown");
         file.DirectoryId.Should().Be(folder.Id);
+        file.VersionId.Should().Be(note.CurrentVersionId);
         file.IsEncrypted.Should().BeFalse();
     }
 
