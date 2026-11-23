@@ -20,12 +20,14 @@ public interface INoteService
     Task<DirectorySummaryDto> EnsureNotesFolderAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Creates an empty note named after <paramref name="title"/> ("Untitled" when blank), in
-    /// <paramref name="directoryId"/> or the Notes folder itself. Taken names get a number.
+    /// Creates a note named after <paramref name="title"/> ("Untitled" when blank), in
+    /// <paramref name="directoryId"/> or the Notes folder itself. Taken names get a number. The
+    /// note starts with <paramref name="content"/>, or empty.
     /// </summary>
     /// <exception cref="Exceptions.Notes.NotesFolderRequiredException">The folder is outside Notes.</exception>
     /// <exception cref="Exceptions.Directories.DirectoryNotFoundException">Missing, trashed or not owned.</exception>
-    Task<FileContentSaveResult> CreateNoteAsync(Guid userId, Guid? directoryId, string? title,
+    /// <exception cref="Exceptions.Files.FileContentNotEditableException">The content is over the text limit.</exception>
+    Task<FileContentSaveResult> CreateNoteAsync(Guid userId, Guid? directoryId, string? title, string? content,
         CancellationToken ct = default);
 
     /// <summary>

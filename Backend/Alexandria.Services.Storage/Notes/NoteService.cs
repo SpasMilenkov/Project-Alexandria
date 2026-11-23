@@ -17,6 +17,7 @@ public sealed partial class NoteService(
     IUnitOfWork unitOfWork,
     IDirectoryService directoryService,
     IContentStorageService contentStorage,
+    INoteLinkIndexService linkIndex,
     ILogger<NoteService> logger)
     : INoteService
 {
@@ -43,8 +44,10 @@ public sealed partial class NoteService(
     }
 
     public async Task<FileContentSaveResult> CreateNoteAsync(Guid userId, Guid? directoryId, string? title,
-        CancellationToken ct = default)
+        string? content, CancellationToken ct = default)
     {
+        var text = content ?? string.Empty;
+
         var notesFolderId = await EnsureNotesFolderIdAsync(userId, ct);
         var targetId = directoryId ?? notesFolderId;
 
@@ -60,9 +63,11 @@ public sealed partial class NoteService(
 
             try
             {
-                var created = await contentStorage.CreateTextFileAsync(name, targetId, string.Empty, userId, ct);
+                var created = await contentStorage.CreateTextFileAsync(name, targetId, text, userId, ct);
 
                 LogNoteCreated(logger, created.FileId, targetId, userId);
+
+                if (text.Length > 0) await linkIndex.IndexVersionAsync(created.VersionId, text, ct);
 
                 return created;
             }
