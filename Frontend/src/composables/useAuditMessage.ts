@@ -138,6 +138,7 @@ const AUDIT_EVENT_MESSAGES: Record<AuditEventCode, string> = {
 
   // Admin actions added later
   [AuditEventCode.DocumentTextRetried]: "Failed document text queued again",
+  [AuditEventCode.OutboxMessagesResent]: "Dead relay messages resent",
 };
 
 export type MetadataRenderer =

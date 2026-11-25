@@ -104,6 +104,7 @@ interface CheckDisplayMeta {
 }
 
 const CHECK_DISPLAY_META: Record<string, CheckDisplayMeta> = {
+  outbox: { icon: "i-lucide-send", label: "Message Relay" },
   postgres: { icon: "i-lucide-database", label: "Database" },
   rabbitmq: { icon: "i-lucide-arrow-left-right", label: "Message Queue" },
   storage: { icon: "i-lucide-hard-drive", label: "File Storage" },
@@ -128,6 +129,7 @@ const checkIcon = (name: string): string =>
 
 const GROUP_META: Record<string, { label: string; icon: string }> = {
   infrastructure: { icon: "i-lucide-network", label: "Infrastructure" },
+  outbox: { icon: "i-lucide-send", label: "Messaging" },
   worker: { icon: "i-lucide-settings", label: "Workers" },
 };
 

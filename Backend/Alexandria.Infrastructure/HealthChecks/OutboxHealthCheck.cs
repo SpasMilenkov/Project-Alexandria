@@ -37,6 +37,6 @@ public class OutboxHealthCheck(
             return HealthCheckResult.Healthy($"Oldest message waiting {waited.TotalSeconds:F0}s");
 
         return HealthCheckResult.Unhealthy(
-            $"Outbox messages have been waiting {waited.TotalMinutes:F0} min; the relay may be stuck or the broker refusing them");
+            $"Messages have been waiting {waited.TotalMinutes:F0} min; the relay may be stuck or the broker refusing them");
     }
 }

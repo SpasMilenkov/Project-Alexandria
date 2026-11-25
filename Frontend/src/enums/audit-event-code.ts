@@ -135,4 +135,5 @@ export enum AuditEventCode {
 
   // Admin actions added later
   DocumentTextRetried = 86,
+  OutboxMessagesResent = 87,
 }
