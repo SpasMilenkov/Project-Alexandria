@@ -36,7 +36,7 @@ public partial class VideoTranspilationService(
         var dashDir = Path.Combine(outputDirectory, "dash");
         Directory.CreateDirectory(dashDir);
 
-        await RunDashPassAsync(jobId, inputPath, dashDir, lanes, source.HasAudio, ct);
+        await RunDashPassAsync(jobId, inputPath, dashDir, lanes, source, ct);
 
         LogTranspilationCompleted(logger, inputPath);
 
@@ -56,11 +56,14 @@ public partial class VideoTranspilationService(
         string inputPath,
         string dashDir,
         IReadOnlyList<VideoQualityLane> lanes,
-        bool hasAudio,
+        VideoSource source,
         CancellationToken ct)
     {
         var manifestPath = Path.Combine(dashDir, "manifest.mpd");
+        var hasAudio = source.HasAudio;
         var encoder = await encoderSelector.SelectAsync(ct);
+        var budget = new TranscodeBudget(TranscodeProcess.MaxDuration);
+        var ratePlan = new GpuRatePlan();
 
         await VideoEncodeFallback.RunAsync(
             VideoEncodeFallback.AttemptsFor(encoder),
@@ -84,19 +87,20 @@ public partial class VideoTranspilationService(
             var device = encoder.GpuDevice ?? throw new InvalidOperationException("A GPU attempt needs a selected GPU.");
             var gpuDecode = attempt == VideoEncodeAttempt.GpuDecodeAndEncode;
 
+            if (ratePlan.KnownToOvershoot)
+                LogStraightToCapped(logger, inputPath, attempt);
+
             // Constant QP keeps static footage small; busy footage that runs past a lane's
-            // ceiling is encoded again capped, since it needs the whole budget anyway.
-            await RunPassAsync(attempt, DashVideoArguments.ForGpu(inputPath, manifestPath, lanes, hasAudio, device,
-                gpuDecode, GpuRateControl.ConstantQuality));
-
-            if (LaneBitrateCheck.FindProblem(manifestPath, lanes) is not { } problem)
-                return;
-
-            LogCappedReencode(logger, inputPath, problem);
-            ClearOutput(dashDir);
-
-            await RunPassAsync(attempt, DashVideoArguments.ForGpu(inputPath, manifestPath, lanes, hasAudio, device,
-                gpuDecode, GpuRateControl.CappedBitrate));
+            // ceiling is encoded again capped, since it needs the whole bitrate allowance anyway.
+            await ratePlan.RunAsync(
+                rateControl => RunPassAsync(attempt, DashVideoArguments.ForGpu(inputPath, manifestPath, lanes, hasAudio,
+                    device, gpuDecode, rateControl)),
+                () => LaneBitrateCheck.FindProblem(manifestPath, lanes),
+                problem =>
+                {
+                    LogCappedReencode(logger, inputPath, problem);
+                    ClearOutput(dashDir);
+                });
         }
 
         async Task RunPassAsync(VideoEncodeAttempt attempt, string arguments)
@@ -104,7 +108,9 @@ public partial class VideoTranspilationService(
             LogDashPassStarting(logger, inputPath, attempt);
 
             await TranscodeProcess.RunFfmpegAsync(
-                new TranscodeRequest(jobId, inputPath, arguments, $"video DASH ({attempt})", manifestPath),
+                new TranscodeRequest(jobId, inputPath, arguments, $"video DASH ({attempt})", manifestPath,
+                    source.Duration),
+                budget,
                 unitOfWork,
                 logger,
                 ct);

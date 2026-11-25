@@ -15,6 +15,11 @@ public partial class VideoTranspilationService
     private static partial void LogTranspilationCompleted(
         ILogger logger, string inputPath);
 
+    [LoggerMessage(8002, LogLevel.Information,
+        "Constant quality already ran past the ceilings for '{InputPath}'; {Attempt} encodes capped right away")]
+    private static partial void LogStraightToCapped(
+        ILogger logger, string inputPath, VideoEncodeAttempt attempt);
+
     [LoggerMessage(8009, LogLevel.Information,
         "Source '{InputPath}' shows at {SourceSize}; encoding lanes {Lanes}")]
     private static partial void LogLanesFitted(

@@ -38,11 +38,37 @@ public static partial class ExternalProcess
 
     /// <inheritdoc cref="RunAsync(string, string, TimeSpan, ILogger, CancellationToken)"/>
     /// <param name="environment">Variables to set for the tool, on top of the ones it inherits.</param>
-    public static async Task<ExternalProcessResult> RunAsync(
+    public static Task<ExternalProcessResult> RunAsync(
         string fileName,
         string arguments,
         TimeSpan timeout,
         IReadOnlyDictionary<string, string>? environment,
+        ILogger logger,
+        CancellationToken ct) =>
+        RunCoreAsync(fileName, arguments, timeout, environment, onStdOutLine: null, logger, ct);
+
+    /// <summary>
+    /// Runs the tool to completion while handing each line it writes to standard output to
+    /// <paramref name="onStdOutLine"/> as it arrives, for tools that report as they go. Those
+    /// lines are not collected, so the result's <see cref="ExternalProcessResult.StdOut"/> is empty.
+    /// </summary>
+    /// <param name="onStdOutLine">Runs on the thread reading the output and must not throw.</param>
+    /// <inheritdoc cref="RunAsync(string, string, TimeSpan, ILogger, CancellationToken)"/>
+    public static Task<ExternalProcessResult> RunAsync(
+        string fileName,
+        string arguments,
+        TimeSpan timeout,
+        Action<string> onStdOutLine,
+        ILogger logger,
+        CancellationToken ct) =>
+        RunCoreAsync(fileName, arguments, timeout, environment: null, onStdOutLine, logger, ct);
+
+    private static async Task<ExternalProcessResult> RunCoreAsync(
+        string fileName,
+        string arguments,
+        TimeSpan timeout,
+        IReadOnlyDictionary<string, string>? environment,
+        Action<string>? onStdOutLine,
         ILogger logger,
         CancellationToken ct)
     {
@@ -77,7 +103,9 @@ public static partial class ExternalProcess
         deadline.CancelAfter(timeout);
 
         using var drainStop = new CancellationTokenSource();
-        var stdout = DrainAsync(process.StandardOutput, AppendHead, fileName, "stdout", logger, drainStop.Token);
+        var stdout = onStdOutLine is null
+            ? DrainAsync(process.StandardOutput, AppendHead, fileName, "stdout", logger, drainStop.Token)
+            : ForwardLinesAsync(process.StandardOutput, onStdOutLine, fileName, "stdout", logger, drainStop.Token);
         var stderr = DrainAsync(process.StandardError, AppendTail, fileName, "stderr", logger, drainStop.Token);
 
         var exited = false;
@@ -166,6 +194,32 @@ public static partial class ExternalProcess
         }
 
         return captured.ToString();
+    }
+
+    // Forwarded lines are not kept, so the capture it returns is always empty.
+    private static async Task<string> ForwardLinesAsync(
+        StreamReader reader,
+        Action<string> onLine,
+        string fileName,
+        string stream,
+        ILogger logger,
+        CancellationToken stop)
+    {
+        try
+        {
+            while (await reader.ReadLineAsync(stop) is { } line)
+                onLine(line);
+        }
+        catch (OperationCanceledException)
+        {
+            LogDrainStopped(logger, stream, fileName, DrainGrace);
+        }
+        catch (IOException ex)
+        {
+            LogDrainFailed(logger, ex, stream, fileName);
+        }
+
+        return string.Empty;
     }
 
     // Past the cap the chunks are still read and discarded, otherwise the pipe would fill up.

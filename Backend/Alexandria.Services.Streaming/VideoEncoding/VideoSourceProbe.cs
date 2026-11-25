@@ -4,14 +4,14 @@ using System.Text.Json;
 namespace Alexandria.Services.Streaming.VideoEncoding;
 
 /// <summary>
-/// Reads the source's shape and whether it has audio with one ffprobe call, before any lane is
-/// sized from it.
+/// Reads the source's shape, length and whether it has audio with one ffprobe call, before any
+/// lane is sized from it.
 /// </summary>
 internal static class VideoSourceProbe
 {
     public static string Arguments(string inputPath) =>
         "-v error -show_entries stream=codec_type,width,height,sample_aspect_ratio" +
-        ":stream_disposition=attached_pic:stream_side_data=rotation -of json " +
+        ":stream_disposition=attached_pic:stream_side_data=rotation:format=duration -of json " +
         $"\"{inputPath}\"";
 
     /// <summary>
@@ -45,8 +45,13 @@ internal static class VideoSourceProbe
         if (IsQuarterTurn(video))
             (width, height) = (height, width);
 
-        return new VideoSource(width, height, hasAudio);
+        return new VideoSource(width, height, hasAudio, Duration(document.RootElement));
     }
+
+    private static TimeSpan? Duration(JsonElement root) =>
+        root.TryGetProperty("format", out var format) && format.TryGetProperty("duration", out var duration)
+            ? MediaDuration.Parse(duration.GetString())
+            : null;
 
     private static string? CodecType(JsonElement stream) =>
         stream.TryGetProperty("codec_type", out var type) ? type.GetString() : null;

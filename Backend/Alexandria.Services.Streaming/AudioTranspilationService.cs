@@ -21,6 +21,9 @@ public partial class AudioTranspilationService(
         [AudioRung.Kbps320] = 320
     };
 
+    // Reading stream headers is quick; a source that takes longer is not worth transcoding.
+    private static readonly TimeSpan DurationProbeTimeout = TimeSpan.FromMinutes(1);
+
     /// <inheritdoc/> 
     public async Task<TranspilationOutput> TranspileAsync(
         Guid jobId,
@@ -72,12 +75,30 @@ public partial class AudioTranspilationService(
             $"\"{manifestPath}\""
         ]);
 
+        var duration = await ProbeDurationAsync(inputPath, ct);
+
         LogDashPassStarting(logger, inputPath);
         await TranscodeProcess.RunFfmpegAsync(
-            new TranscodeRequest(jobId, inputPath, string.Join(" ", args), "audio DASH", manifestPath),
+            new TranscodeRequest(jobId, inputPath, string.Join(" ", args), "audio DASH", manifestPath, duration),
+            new TranscodeBudget(TranscodeProcess.MaxDuration),
             unitOfWork,
             logger,
             ct);
         LogDashPassCompleted(logger, manifestPath);
+    }
+
+    // The length only feeds the progress bar, so a source ffprobe cannot time is still
+    // transcoded, without progress.
+    private async Task<TimeSpan?> ProbeDurationAsync(string inputPath, CancellationToken ct)
+    {
+        var result = await ExternalProcess.RunAsync(
+            "ffprobe", MediaDuration.ProbeArguments(inputPath), DurationProbeTimeout, logger, ct);
+
+        var duration = result.ExitCode == 0 ? MediaDuration.Parse(result.StdOut) : null;
+
+        if (duration is null)
+            LogDurationUnknown(logger, inputPath, result.ExitCode);
+
+        return duration;
     }
 }

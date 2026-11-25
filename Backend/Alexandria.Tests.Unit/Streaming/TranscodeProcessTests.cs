@@ -174,6 +174,114 @@ public class TranscodeProcessTests
     }
 
     [Fact]
+    public async Task RunAsync_progressWritten_reportsItsPercentageOnceEach()
+    {
+        RequireLinux();
+        StatusIs(JobStatus.Processing);
+        var ct = TestContext.Current.CancellationToken;
+        var directory = Directory.CreateTempSubdirectory("transcode-process-test-").FullName;
+        var output = Path.Combine(directory, "manifest.mpd");
+
+        try
+        {
+            // Half of a 4 s source, then three quarters, with polls in between.
+            var script = "printf 'out_time_us=N/A\\nprogress=continue\\nout_time_us=2000000\\nprogress=continue\\n'; " +
+                         $"sleep 0.5; printf 'out_time_us=3000000\\nprogress=end\\n'; sleep 0.5; touch '{output}'";
+            var request = Request(script, output) with { SourceDuration = TimeSpan.FromSeconds(4) };
+
+            await RunAsync(request, ct);
+
+            await _unitOfWork.Jobs.Received(1).UpdateProgressAsync(_jobId, 50, Arg.Any<CancellationToken>());
+            await _unitOfWork.Jobs.Received(1).UpdateProgressAsync(_jobId, 75, Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RunAsync_unknownDuration_reportsNoProgress()
+    {
+        RequireLinux();
+        StatusIs(JobStatus.Processing);
+        var directory = Directory.CreateTempSubdirectory("transcode-process-test-").FullName;
+        var output = Path.Combine(directory, "manifest.mpd");
+
+        try
+        {
+            await RunAsync(Request($"printf 'out_time_us=2000000\\n'; sleep 0.3; touch '{output}'", output),
+                TestContext.Current.CancellationToken);
+
+            await _unitOfWork.Jobs.DidNotReceive()
+                .UpdateProgressAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task RunFfmpegAsync_budgetSpent_failsWithTheJobLimitBeforeStarting()
+    {
+        var budget = new TranscodeBudget(TimeSpan.Zero);
+
+        var act = () => TranscodeProcess.RunFfmpegAsync(
+            Request("exit 0"), budget, _unitOfWork, _logger, TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<ExternalProcessTimeoutException>()).Which.Timeout.Should().Be(TimeSpan.Zero);
+        await _unitOfWork.Jobs.DidNotReceive().GetStatusAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    // The run only gets what is left of the job's time, but the failure has to name the job's
+    // limit, not the leftover the run happened to get.
+    [Fact]
+    public async Task RunFfmpegAsync_budgetRunsOutMidRun_reportsTheJobLimit()
+    {
+        Assert.SkipUnless(OnPath("ffmpeg"), "ffmpeg is not installed.");
+        StatusIs(JobStatus.Processing);
+        var budget = new TranscodeBudget(TimeSpan.FromSeconds(1));
+        var request = new TranscodeRequest(
+            _jobId, "/nonexistent/source", "-v error -re -f lavfi -i nullsrc=d=30 -f null -", "test pass", "/nonexistent/output");
+
+        var act = () => TranscodeProcess.RunFfmpegAsync(request, budget, _unitOfWork, _logger,
+            TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<ExternalProcessTimeoutException>()).Which.Timeout.Should().Be(budget.Total);
+    }
+
+    // Real ffmpeg output, read the way production reads it, with ffmpeg writing far more often
+    // than in production so a short run produces several blocks.
+    [Fact]
+    public async Task RunAsync_realFfmpeg_reportsProgressBetweenStartAndFinish()
+    {
+        Assert.SkipUnless(OnPath("ffmpeg"), "ffmpeg is not installed.");
+        StatusIs(JobStatus.Processing);
+        var ct = TestContext.Current.CancellationToken;
+        var directory = Directory.CreateTempSubdirectory("transcode-process-test-").FullName;
+        var output = Path.Combine(directory, "out.mkv");
+
+        try
+        {
+            var request = new TranscodeRequest(_jobId, "/nonexistent/source",
+                "-v error -progress pipe:1 -stats_period 0.1 -re -f lavfi -i testsrc2=size=160x90:rate=10:duration=2 " +
+                $"-c:v ffv1 \"{output}\"",
+                "test pass", output, TimeSpan.FromSeconds(2));
+
+            await TranscodeProcess.RunAsync("ffmpeg", request, NoLimit, TimeSpan.FromMilliseconds(200),
+                _unitOfWork, _logger, ct);
+
+            await _unitOfWork.Jobs.Received().UpdateProgressAsync(
+                _jobId, Arg.Is<int>(percent => percent > 0 && percent < 100), Arg.Any<CancellationToken>());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void MaxDuration_staysBelowTheRecoveryStallThreshold()
     {
         var stalled = TimeSpan.FromMinutes(new JobRecoveryOptions().TranspilationStalledMinutes);

@@ -25,7 +25,23 @@ public class VideoSourceProbeTests
     {
         VideoSourceProbe.Arguments("/in/my source").Should().Be(
             "-v error -show_entries stream=codec_type,width,height,sample_aspect_ratio" +
-            ":stream_disposition=attached_pic:stream_side_data=rotation -of json \"/in/my source\"");
+            ":stream_disposition=attached_pic:stream_side_data=rotation:format=duration -of json \"/in/my source\"");
+    }
+
+    [Fact]
+    public void Parse_containerWithALength_readsIt()
+    {
+        var json = $$"""{ "streams": [ {{Video(1920, 1080)}} ], "format": { "duration": "209.400000" } }""";
+
+        VideoSourceProbe.Parse(json)!.Duration.Should().Be(TimeSpan.FromSeconds(209.4));
+    }
+
+    [Fact]
+    public void Parse_containerWithoutALength_leavesItUnknown()
+    {
+        var json = $$"""{ "streams": [ {{Video(1920, 1080)}} ], "format": { "duration": "N/A" } }""";
+
+        VideoSourceProbe.Parse(json)!.Duration.Should().BeNull();
     }
 
     [Fact]
