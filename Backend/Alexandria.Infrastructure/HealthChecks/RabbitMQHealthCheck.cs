@@ -12,7 +12,7 @@ public class RabbitMqHealthCheck(IMessageBrokerStatus broker) : IHealthCheck
     {
         var result = broker.IsAvailable
             ? HealthCheckResult.Healthy("Connected")
-            : HealthCheckResult.Unhealthy("RabbitMQ is not connected");
+            : HealthCheckResult.Unhealthy("RabbitMQ is not connected or is blocking publishes");
 
         return Task.FromResult(result);
     }

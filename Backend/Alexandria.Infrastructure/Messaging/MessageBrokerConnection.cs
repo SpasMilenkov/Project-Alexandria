@@ -15,10 +15,16 @@ public sealed class MessageBrokerConnection(bool isEnabled) : IMessageBrokerStat
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     private IConnection? _connection;
+    private volatile bool _blocked;
 
     public bool IsEnabled { get; } = isEnabled;
 
-    public bool IsAvailable => _connection is { IsOpen: true };
+    /// <summary>
+    /// False while the connection is down or the broker has blocked it over a resource alarm. A
+    /// blocked connection stays open but takes no publishes, so it counts as an outage rather than
+    /// a failure of the message being sent.
+    /// </summary>
+    public bool IsAvailable => _connection is { IsOpen: true } && !_blocked;
 
     /// <summary>
     /// Completes once the first connection is up. While the broker is disabled it only ends
@@ -35,6 +41,10 @@ public sealed class MessageBrokerConnection(bool isEnabled) : IMessageBrokerStat
     {
         if (!IsEnabled)
             throw new MessageBrokerUnavailableException(disabled: true);
+
+        // Every publish on a blocked connection would wait out a protocol timeout and then fail.
+        if (_blocked)
+            throw new MessageBrokerUnavailableException(disabled: false);
 
         if (_connection is { IsOpen: true } open)
             return open;
@@ -59,6 +69,12 @@ public sealed class MessageBrokerConnection(bool isEnabled) : IMessageBrokerStat
         _connection = connection;
         _connected.TrySetResult(connection);
     }
+
+    /// <summary>
+    /// Follows the broker's blocked and unblocked notifications. A recovered or closed connection
+    /// clears the flag, since the unblock for the old socket never arrives.
+    /// </summary>
+    internal void SetBlocked(bool blocked) => _blocked = blocked;
 
     public async ValueTask DisposeAsync()
     {

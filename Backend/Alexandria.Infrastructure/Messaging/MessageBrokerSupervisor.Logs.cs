@@ -30,4 +30,11 @@ public sealed partial class MessageBrokerSupervisor
 
     [LoggerMessage(Level = LogLevel.Information, Message = "RabbitMQ connection recovered.")]
     private static partial void LogRecovered(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "RabbitMQ blocked publishing ({Reason}); outbox messages wait until the broker unblocks.")]
+    private static partial void LogBlocked(ILogger logger, string reason);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "RabbitMQ unblocked publishing.")]
+    private static partial void LogUnblocked(ILogger logger);
 }

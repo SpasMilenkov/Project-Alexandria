@@ -70,6 +70,28 @@ public class MessageBrokerConnectionTests
     }
 
     [Fact]
+    public async Task blocked_connection_is_unavailable_and_refuses_publishers_until_unblocked()
+    {
+        var broker = new MessageBrokerConnection(isEnabled: true);
+        var connection = OpenConnection();
+        broker.SetConnection(connection);
+
+        broker.SetBlocked(true);
+
+        var act = () => broker.GetConnectionAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
+
+        broker.IsAvailable.Should().BeFalse();
+        (await act.Should().ThrowAsync<MessageBrokerUnavailableException>())
+            .Which.Disabled.Should().BeFalse();
+
+        broker.SetBlocked(false);
+
+        broker.IsAvailable.Should().BeTrue();
+        (await broker.GetConnectionAsync(TimeSpan.Zero, TestContext.Current.CancellationToken))
+            .Should().BeSameAs(connection);
+    }
+
+    [Fact]
     public async Task wait_for_connection_completes_when_connection_arrives()
     {
         var broker = new MessageBrokerConnection(isEnabled: true);

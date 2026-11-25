@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 
 namespace Alexandria.Tests.Unit.Infrastructure;
 
@@ -55,6 +56,58 @@ public class MessageBrokerSupervisorTests
         connected.Should().BeSameAs(connection);
         broker.IsAvailable.Should().BeTrue();
         await _factory.Received(3).CreateConnectionAsync(Arg.Any<CancellationToken>());
+
+        await sut.StopAsync(ct);
+    }
+
+    private async Task<(MessageBrokerConnection Broker, IConnection Connection, MessageBrokerSupervisor Sut)>
+        ConnectedAsync(CancellationToken ct)
+    {
+        var broker = new MessageBrokerConnection(isEnabled: true);
+        var connection = Substitute.For<IConnection>();
+
+        connection.IsOpen.Returns(true);
+        _factory.CreateConnectionAsync(Arg.Any<CancellationToken>()).Returns(connection);
+
+        var sut = CreateSut(broker);
+
+        await sut.StartAsync(ct);
+        await broker.WaitForConnectionAsync(ct).WaitAsync(TimeSpan.FromSeconds(5), ct);
+
+        return (broker, connection, sut);
+    }
+
+    [Fact]
+    public async Task blocked_notification_makes_the_broker_unavailable_until_unblocked()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (broker, connection, sut) = await ConnectedAsync(ct);
+
+        connection.ConnectionBlockedAsync += Raise.Event<AsyncEventHandler<ConnectionBlockedEventArgs>>(
+            connection, new ConnectionBlockedEventArgs("low on disk"));
+
+        broker.IsAvailable.Should().BeFalse();
+
+        connection.ConnectionUnblockedAsync += Raise.Event<AsyncEventHandler<AsyncEventArgs>>(
+            connection, new AsyncEventArgs(CancellationToken.None));
+
+        broker.IsAvailable.Should().BeTrue();
+
+        await sut.StopAsync(ct);
+    }
+
+    [Fact]
+    public async Task recovery_clears_a_block_whose_unblock_never_arrived()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (broker, connection, sut) = await ConnectedAsync(ct);
+
+        connection.ConnectionBlockedAsync += Raise.Event<AsyncEventHandler<ConnectionBlockedEventArgs>>(
+            connection, new ConnectionBlockedEventArgs("low on memory"));
+        connection.RecoverySucceededAsync += Raise.Event<AsyncEventHandler<AsyncEventArgs>>(
+            connection, new AsyncEventArgs(CancellationToken.None));
+
+        broker.IsAvailable.Should().BeTrue();
 
         await sut.StopAsync(ct);
     }
