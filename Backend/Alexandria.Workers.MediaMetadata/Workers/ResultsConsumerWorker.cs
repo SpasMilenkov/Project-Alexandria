@@ -139,20 +139,33 @@ public partial class ResultsConsumerWorker(
         var outputDirMissing = localOutputDir is null || !Directory.Exists(localOutputDir);
         var succeededFileIds = new List<Guid>();
 
+        // The timeout sweep already failed this batch's pending files and deleted its inputs, so
+        // a late completion only contributes the files that did finish. Its failures add nothing
+        // the timeout did not record, and would replace the job's real reason with a symptom.
+        var lateCompletion = batch.Status == EssentiaBatchStatus.TimedOut;
+
         foreach (var batchFile in batch.Files)
         {
             if (outputDirMissing)
             {
-                MarkFailed(batchFile, "output directory missing");
-                LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
+                if (!lateCompletion)
+                {
+                    MarkFailed(batchFile, "output directory missing");
+                    LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
+                }
+
                 continue;
             }
 
             var jsonPath = Path.Combine(localOutputDir!, $"{batchFile.FileId}.json");
             if (!File.Exists(jsonPath))
             {
-                MarkFailed(batchFile, "output file missing");
-                LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
+                if (!lateCompletion)
+                {
+                    MarkFailed(batchFile, "output file missing");
+                    LogMissingOutput(logger, batchFile.FileId, completion.BatchId);
+                }
+
                 continue;
             }
 
@@ -169,8 +182,12 @@ public partial class ResultsConsumerWorker(
 
             if (output is null)
             {
-                MarkFailed(batchFile, "malformed per-file output");
-                LogMalformedPerFile(logger, batchFile.FileId, completion.BatchId);
+                if (!lateCompletion)
+                {
+                    MarkFailed(batchFile, "malformed per-file output");
+                    LogMalformedPerFile(logger, batchFile.FileId, completion.BatchId);
+                }
+
                 continue;
             }
 
@@ -184,10 +201,13 @@ public partial class ResultsConsumerWorker(
                 batchFile.Job.Status = JobStatus.Ready;
                 batchFile.Job.ProgressPercent = 100;
                 batchFile.Job.CompletedAt = DateTime.UtcNow;
+                // A late completion rescues a job the timeout sweep already failed; its reason no
+                // longer applies once the file has a result.
+                batchFile.Job.ErrorDetail = null;
                 succeededFileIds.Add(batchFile.FileId);
                 LogFileSucceeded(logger, batchFile.FileId, completion.BatchId);
             }
-            else
+            else if (!lateCompletion)
             {
                 var error = string.IsNullOrWhiteSpace(output.Error) ? "unknown error" : output.Error;
                 await UpsertFailureAsync(unitOfWork, batchFile.FileId, backbone, output, error, ct);
@@ -196,8 +216,13 @@ public partial class ResultsConsumerWorker(
             }
         }
 
-        batch.Status = EssentiaBatchStatus.Completed;
-        batch.CompletedAt = DateTime.UtcNow;
+        // A timed-out batch stays TimedOut, so the dashboards keep showing why it failed.
+        if (!lateCompletion)
+        {
+            batch.Status = EssentiaBatchStatus.Completed;
+            batch.CompletedAt = DateTime.UtcNow;
+        }
+
         batch.UpdatedAt = DateTime.UtcNow;
         batch.UpdatedBy = SystemConfig.SystemId;
 
@@ -224,7 +249,11 @@ public partial class ResultsConsumerWorker(
 
         Cleanup(batch, config, localOutputDir);
 
-        LogBatchCompleted(logger, completion.BatchId, batch.Files.Count);
+        if (lateCompletion)
+            LogLateCompletion(logger, completion.BatchId, succeededFileIds.Count, batch.Files.Count);
+        else
+            LogBatchCompleted(logger, completion.BatchId, batch.Files.Count);
+
         return;
 
         static void MarkFailed(EssentiaBatchFile batchFile, string error)

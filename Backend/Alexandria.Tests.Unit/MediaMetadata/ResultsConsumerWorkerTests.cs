@@ -192,6 +192,65 @@ public class ResultsConsumerWorkerTests : IDisposable
     }
 
     [Fact]
+    public async Task late_failure_for_a_timed_out_batch_keeps_the_timeout_and_its_reason()
+    {
+        var (batch, job, fileId) = StoredFile(JobStatus.Failed);
+        batch.Status = EssentiaBatchStatus.TimedOut;
+        job.ErrorDetail = "batch timed out";
+        _batches.GetWithFilesAsync(batch.Id, Arg.Any<CancellationToken>()).Returns(batch);
+        var dir = OutputDirFor(batch.Id);
+        await IoFile.WriteAllTextAsync(Path.Combine(dir, $"{fileId}.json"),
+            """{"success":false,"error":"AudioLoader: Could not open file"}""",
+            TestContext.Current.CancellationToken);
+
+        await _sut.HandleCompletionAsync(
+            CompletionFor(batch.Id, dir), TestContext.Current.CancellationToken);
+
+        batch.Status.Should().Be(EssentiaBatchStatus.TimedOut);
+        job.Status.Should().Be(JobStatus.Failed);
+        job.ErrorDetail.Should().Be("batch timed out");
+        await _enrichments.DidNotReceiveWithAnyArgs().UpsertFailureAsync(
+            Arg.Any<FileEnrichment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task late_success_for_a_timed_out_batch_is_kept_and_drops_the_timeout_reason()
+    {
+        var (batch, job, fileId) = StoredFile(JobStatus.Failed);
+        batch.Status = EssentiaBatchStatus.TimedOut;
+        job.ErrorDetail = "batch timed out";
+        _batches.GetWithFilesAsync(batch.Id, Arg.Any<CancellationToken>()).Returns(batch);
+        var dir = OutputDirFor(batch.Id);
+        await IoFile.WriteAllTextAsync(Path.Combine(dir, $"{fileId}.json"),
+            """{"success":true,"backbone":"effnet","genre":{"predictions":[{"label":"rock","score":0.9}]},"mood":{"happy":{"joy":0.8}},"model_versions":{"genre":"g1","mood":"m1"}}""",
+            TestContext.Current.CancellationToken);
+
+        await _sut.HandleCompletionAsync(
+            CompletionFor(batch.Id, dir), TestContext.Current.CancellationToken);
+
+        job.Status.Should().Be(JobStatus.Ready);
+        job.ErrorDetail.Should().BeNull();
+        batch.Status.Should().Be(EssentiaBatchStatus.TimedOut);
+        await _enrichments.Received(2).UpsertAsync(
+            Arg.Any<FileEnrichment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task late_completion_without_output_leaves_the_timed_out_jobs_alone()
+    {
+        var (batch, job, _) = StoredFile(JobStatus.Failed);
+        batch.Status = EssentiaBatchStatus.TimedOut;
+        job.ErrorDetail = "batch timed out";
+        _batches.GetWithFilesAsync(batch.Id, Arg.Any<CancellationToken>()).Returns(batch);
+
+        await _sut.HandleCompletionAsync(
+            CompletionFor(batch.Id, null), TestContext.Current.CancellationToken);
+
+        batch.Status.Should().Be(EssentiaBatchStatus.TimedOut);
+        job.ErrorDetail.Should().Be("batch timed out");
+    }
+
+    [Fact]
     public async Task completion_cleans_only_its_own_staged_inputs()
     {
         var (batch, _, fileId) = StoredFile();
