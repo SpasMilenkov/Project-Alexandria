@@ -20,7 +20,8 @@ public partial class EnrichmentBackfillWorker(
     ILogger<EnrichmentBackfillWorker> logger,
     MessageBrokerConnection broker,
     IServiceProvider serviceProvider,
-    IOptions<RabbitMqConsumerConfig> rabbitOptions) : BackgroundService
+    IOptions<RabbitMqConsumerConfig> rabbitOptions,
+    DeliveryRetry deliveryRetry) : BackgroundService
 {
     private static readonly JsonSerializerOptions BackfillJsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -96,15 +97,15 @@ public partial class EnrichmentBackfillWorker(
 
                 var result = await backfill.BackfillRuleAsync(request, stoppingToken);
                 LogBackfillDrained(logger, request.PolicyId, result.Published, result.Candidates);
-                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, stoppingToken);
+                await DeliverySettlement.AckAsync(_channel, eventArgs.DeliveryTag, logger, stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Backfill is idempotent per file, so redelivery only re-publishes
                 // triggers the shared guard would have skipped anyway.
                 LogBackfillError(logger, ex, request.PolicyId);
-                await ConsumerRetry.HandleFailureAsync(_channel, eventArgs, exchangeName, ex, serviceProvider,
-                    stoppingToken);
+                await ConsumerRetry.HandleFailureAsync(deliveryRetry, _channel, eventArgs, ex, serviceProvider,
+                    logger, stoppingToken);
             }
         };
 

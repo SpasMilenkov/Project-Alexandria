@@ -32,6 +32,12 @@ public interface IEssentiaBatchFileRepository : IRepository<EssentiaBatchFile>
         CancellationToken ct = default);
 
     /// <summary>
+    /// True while an enrichment attempt for the file is Queued or Processing, so a duplicate
+    /// trigger would only analyse the same file a second time.
+    /// </summary>
+    Task<bool> HasAttemptInFlightAsync(Guid fileId, CancellationToken ct = default);
+
+    /// <summary>
     /// Rule backfill candidates: live files sitting directly in one of
     /// <paramref name="directoryIds"/>, created strictly before
     /// <paramref name="predatingCutoff"/> (the rule or scope change timestamp), with no

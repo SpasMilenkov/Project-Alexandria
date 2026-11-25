@@ -1,4 +1,3 @@
-using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Services;
@@ -14,7 +13,7 @@ namespace Alexandria.Services.Preview;
 public class PreviewService(
     IContentStorageService storageService,
     IPreviewArtifactService previewArtifacts,
-    IPublisherService publisherService,
+    IOutbox outbox,
     IMessageBrokerStatus brokerStatus,
     IUnitOfWork unitOfWork,
     ITextPreviewService textPreviewService,
@@ -66,10 +65,10 @@ public class PreviewService(
             && routingKey.StartsWith("image.", StringComparison.Ordinal))
             return null;
 
-        // Preview and thumbnail reads trigger dispatch. While the broker is down they skip
-        // without creating job rows, and drop the in-flight marker so the first read after
-        // recovery dispatches normally.
-        if (!brokerStatus.IsAvailable)
+        // Preview and thumbnail reads trigger dispatch. Without a broker nothing would render the
+        // job, so they skip without creating rows and drop the in-flight marker. A broker that is
+        // only down does not stop dispatch: the outbox sends the job once it is back.
+        if (!brokerStatus.IsEnabled)
         {
             ClearJob(versionId);
             return null;
@@ -87,12 +86,32 @@ public class PreviewService(
                 && routingKey.StartsWith("media.", StringComparison.Ordinal))
                 return null;
 
-            await unitOfWork.Jobs.UpdateStatusAsync(existing.JobId, JobStatus.Queued, progress: 0, ct: ct);
-            await unitOfWork.Jobs.ClearErrorAsync(existing.JobId, ct);
-            await PublishOrFailAsync(existing.JobId, routingKey, ct);
+            if (!await RequeueExistingAsync(existing.JobId, routingKey, ct))
+                return null;
+
             return existing.JobId;
         }
 
+        return await CreateJobAsync(versionId, userId, kind, routingKey, jobType, ct);
+    }
+
+    // The status read above can be stale: a worker may have claimed the job since. The
+    // conditional requeue only wins while the job is still finished, so two workers never
+    // render the same preview.
+    private Task<bool> RequeueExistingAsync(Guid jobId, string routingKey, CancellationToken ct)
+        => unitOfWork.InTransactionAsync(async () =>
+        {
+            if (!await unitOfWork.Jobs.TryRequeueFinishedAsync(jobId, ct))
+                return false;
+
+            await EnqueueAsync(jobId, routingKey, ct);
+            return true;
+        }, ct);
+
+    private async Task<Guid?> CreateJobAsync(
+        Guid versionId, Guid userId, PreviewKind kind, string routingKey, JobType jobType,
+        CancellationToken ct)
+    {
         var job = new Job
         {
             Id = Guid.NewGuid(),
@@ -100,45 +119,58 @@ public class PreviewService(
             Type = jobType,
             UserId = userId
         };
-        await unitOfWork.Jobs.AddAsync(job, ct);
 
+        await unitOfWork.BeginTransactionAsync(ct);
+
+        try
+        {
+            await unitOfWork.Jobs.AddAsync(job, ct);
+
+            if (!await TryAddPreviewJobAsync(job.Id, versionId, kind, userId, ct))
+            {
+                // Lost a dispatch race on the (version, kind, owner) unique index. Rolling back
+                // drops this job row too, and the winner's delivery does the work.
+                await unitOfWork.RollbackAsync(CancellationToken.None);
+                return null;
+            }
+
+            await EnqueueAsync(job.Id, routingKey, ct);
+            await unitOfWork.CommitAsync(ct);
+        }
+        catch
+        {
+            await unitOfWork.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+
+        return job.Id;
+    }
+
+    private async Task<bool> TryAddPreviewJobAsync(
+        Guid jobId, Guid versionId, PreviewKind kind, Guid userId, CancellationToken ct)
+    {
         try
         {
             await unitOfWork.PreviewJobs.AddAsync(new PreviewJob
             {
                 Id = Guid.NewGuid(),
-                JobId = job.Id,
+                JobId = jobId,
                 VersionId = versionId,
                 Kind = kind,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow
             }, ct);
+
+            return true;
         }
         catch (DbUpdateException)
         {
-            // Lost a dispatch race on the (version, kind, owner) unique index:
-            // drop the orphan job and let the winner's delivery do the work.
-            unitOfWork.Jobs.Remove(job);
-            await unitOfWork.SaveChangesAsync(ct);
-            return null;
-        }
-
-        await PublishOrFailAsync(job.Id, routingKey, ct);
-        return job.Id;
-    }
-
-    private async Task PublishOrFailAsync(Guid jobId, string routingKey, CancellationToken ct)
-    {
-        try
-        {
-            await publisherService.PublishAsync(Encoding.UTF8.GetBytes(jobId.ToString()), routingKey);
-        }
-        catch (Exception)
-        {
-            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: "publish failed", ct: ct);
-            throw;
+            return false;
         }
     }
+
+    private Task EnqueueAsync(Guid jobId, string routingKey, CancellationToken ct)
+        => outbox.EnqueueJobAsync(routingKey, jobId, ct);
 
     /// <inheritdoc/>
     public async Task<bool> RepublishJobAsync(Guid jobId, CancellationToken ct = default)
@@ -161,7 +193,7 @@ public class PreviewService(
         if (routingKey is null)
             return false;
 
-        await publisherService.PublishAsync(Encoding.UTF8.GetBytes(jobId.ToString()), routingKey);
+        await EnqueueAsync(jobId, routingKey, ct);
         return true;
     }
 

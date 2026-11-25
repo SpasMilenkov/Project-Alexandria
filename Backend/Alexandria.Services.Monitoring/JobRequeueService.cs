@@ -12,7 +12,7 @@ namespace Alexandria.Services.Monitoring;
 public class JobRequeueService(
     IUnitOfWork unitOfWork,
     IPreviewService previewService,
-    IPublisherService publisher,
+    IOutbox outbox,
     IMessageBrokerStatus brokerStatus,
     IOptions<JobRecoveryOptions> options) : IJobRequeueService
 {
@@ -27,14 +27,13 @@ public class JobRequeueService(
         if (job is null || job.DeletedAt is not null)
             return JobRequeueOutcome.NotFound;
 
-        // Checked before the reset so an outage never leaves a job flipped to Queued
-        // with no message behind it.
-        MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
+        // A broker that is only down is fine: the outbox holds the message until it is back.
+        MessageBrokerUnavailableException.ThrowIfDisabled(brokerStatus);
 
         return job.Type switch
         {
             JobType.MediaPreview or JobType.DocumentPreview => await RequeuePreviewAsync(job.Id, job.Type, ct),
-            JobType.Transpilation => await ResetAndPublishAsync(job.Id, job.Type, TranspilationRoutingKey, ct),
+            JobType.Transpilation => await ResetAndEnqueueAsync(job.Id, job.Type, TranspilationRoutingKey, ct),
             JobType.LyricsFetch => await RequeueLyricsAsync(job.Id, ct),
             JobType.MetadataEnrichment => await RequeueEnrichmentAsync(job.Id, job.Status, ct),
             _ => JobRequeueOutcome.Unsupported
@@ -43,7 +42,7 @@ public class JobRequeueService(
 
     public async Task<int> RequeueFailedAsync(JobType type, int limit, CancellationToken ct)
     {
-        MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
+        MessageBrokerUnavailableException.ThrowIfDisabled(brokerStatus);
 
         var failed = await unitOfWork.Jobs.FindJobsAsync(
             new JobQuery { Status = JobStatus.Failed, Type = type, PageSize = Math.Clamp(limit, 1, 500) }, ct);
@@ -58,28 +57,20 @@ public class JobRequeueService(
         return requeued;
     }
 
-    private async Task<JobRequeueOutcome> RequeuePreviewAsync(Guid jobId, JobType type, CancellationToken ct)
-    {
-        if (!await TryResetAsync(jobId, type, ct))
-            return JobRequeueOutcome.NotEligible;
-
-        try
+    private Task<JobRequeueOutcome> RequeuePreviewAsync(Guid jobId, JobType type, CancellationToken ct)
+        => unitOfWork.InTransactionAsync(async () =>
         {
+            if (!await TryResetAsync(jobId, type, ct))
+                return JobRequeueOutcome.NotEligible;
+
             if (await previewService.RepublishJobAsync(jobId, ct))
                 return JobRequeueOutcome.Requeued;
-        }
-        catch (Exception)
-        {
-            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed,
-                errorDetail: JobRecoveryService.PublishFailedError, ct: ct);
-            throw;
-        }
 
-        await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed,
-            errorDetail: JobRecoveryService.SourceGoneError, ct: ct);
-        await unitOfWork.Jobs.MarkNonRetryableAsync(jobId, ct);
-        return JobRequeueOutcome.SourceUnavailable;
-    }
+            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed,
+                errorDetail: JobRecoveryService.SourceGoneError, ct: ct);
+            await unitOfWork.Jobs.MarkNonRetryableAsync(jobId, ct);
+            return JobRequeueOutcome.SourceUnavailable;
+        }, ct);
 
     private async Task<JobRequeueOutcome> RequeueLyricsAsync(Guid jobId, CancellationToken ct)
     {
@@ -90,16 +81,20 @@ public class JobRequeueService(
         if (lyrics.SourceProvider == LyricsProvider.Manual)
             return JobRequeueOutcome.NotEligible;
 
-        if (!await TryResetAsync(jobId, JobType.LyricsFetch, ct))
-            return JobRequeueOutcome.NotEligible;
+        return await unitOfWork.InTransactionAsync(async () =>
+        {
+            if (!await TryResetAsync(jobId, JobType.LyricsFetch, ct))
+                return JobRequeueOutcome.NotEligible;
 
-        // The tracked row is saved without Update() so its included Job is not written back
-        // over the reset that just happened.
-        lyrics.Status = LyricsStatus.PendingFetch;
-        lyrics.FetchedAt = null;
-        await unitOfWork.SaveChangesAsync(ct);
+            // The tracked row is saved without Update() so its included Job is not written back
+            // over the reset that just happened.
+            lyrics.Status = LyricsStatus.PendingFetch;
+            lyrics.FetchedAt = null;
+            await unitOfWork.SaveChangesAsync(ct);
 
-        return await PublishOrFailAsync(jobId, LyricsRoutingKey, ct);
+            await EnqueueJobAsync(jobId, LyricsRoutingKey, ct);
+            return JobRequeueOutcome.Requeued;
+        }, ct);
     }
 
     // Enrichment attempts are immutable batch rows: a retry is a fresh trigger for the file,
@@ -113,38 +108,30 @@ public class JobRequeueService(
         if (attempt is null)
             return JobRequeueOutcome.SourceUnavailable;
 
-        await publisher.PublishAsync(Encoding.UTF8.GetBytes(attempt.FileId.ToString()), EnrichRoutingKey);
+        return await unitOfWork.InTransactionAsync(async () =>
+        {
+            await outbox.EnqueueAsync(EnrichRoutingKey, Encoding.UTF8.GetBytes(attempt.FileId.ToString()), ct);
 
-        // Retire the old attempt so it leaves the failed list and no longer counts toward the
-        // automatic retry cap; the new trigger creates its own job.
-        await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Cancelled, errorDetail: SupersededError, ct: ct);
-        return JobRequeueOutcome.Requeued;
+            // Retire the old attempt so it leaves the failed list and no longer counts toward the
+            // automatic retry cap; the new trigger creates its own job.
+            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Cancelled, errorDetail: SupersededError, ct: ct);
+            return JobRequeueOutcome.Requeued;
+        }, ct);
     }
 
-    private async Task<JobRequeueOutcome> ResetAndPublishAsync(
+    private Task<JobRequeueOutcome> ResetAndEnqueueAsync(
         Guid jobId, JobType type, string routingKey, CancellationToken ct)
-    {
-        if (!await TryResetAsync(jobId, type, ct))
-            return JobRequeueOutcome.NotEligible;
-
-        return await PublishOrFailAsync(jobId, routingKey, ct);
-    }
-
-    private async Task<JobRequeueOutcome> PublishOrFailAsync(Guid jobId, string routingKey, CancellationToken ct)
-    {
-        try
+        => unitOfWork.InTransactionAsync(async () =>
         {
-            await publisher.PublishAsync(Encoding.UTF8.GetBytes(jobId.ToString()), routingKey);
-        }
-        catch (Exception)
-        {
-            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed,
-                errorDetail: JobRecoveryService.PublishFailedError, ct: ct);
-            throw;
-        }
+            if (!await TryResetAsync(jobId, type, ct))
+                return JobRequeueOutcome.NotEligible;
 
-        return JobRequeueOutcome.Requeued;
-    }
+            await EnqueueJobAsync(jobId, routingKey, ct);
+            return JobRequeueOutcome.Requeued;
+        }, ct);
+
+    private Task EnqueueJobAsync(Guid jobId, string routingKey, CancellationToken ct)
+        => outbox.EnqueueJobAsync(routingKey, jobId, ct);
 
     private Task<bool> TryResetAsync(Guid jobId, JobType type, CancellationToken ct)
         => unitOfWork.Jobs.TryResetForManualRequeueAsync(jobId, DateTime.UtcNow - StalledThreshold(type), ct);

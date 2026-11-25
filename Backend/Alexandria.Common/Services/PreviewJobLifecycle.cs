@@ -1,3 +1,4 @@
+using System.Text;
 using Alexandria.Common.Exceptions.Preview;
 using Alexandria.Common.Exceptions.Preview.Documents;
 using Alexandria.Common.Exceptions.Preview.Images;
@@ -55,10 +56,26 @@ public static class PreviewJobLifecycle
 
     /// <summary>
     /// Hands a claimed job back when the worker stops mid-generation, so the broker's
-    /// redelivery (or the recovery sweep) can claim it again. Runs uncancellable on purpose.
+    /// redelivery can claim it again. Runs uncancellable on purpose.
     /// </summary>
     public static Task ReleaseAsync(IUnitOfWork unitOfWork, Guid jobId)
         => unitOfWork.Jobs.ReleaseClaimAsync(jobId, CancellationToken.None);
+
+    internal const string UnclaimedError = "delivery kept failing before a worker could claim the job";
+
+    /// <summary>
+    /// Gives up on a delivery that kept failing before any worker claimed its job. The job is
+    /// failed only while still Queued, so automatic retry takes it from there; a job a worker
+    /// claimed keeps the outcome that worker recorded. Throws when the job cannot be updated, so
+    /// the caller keeps the message instead of leaving the job Queued with nothing behind it.
+    /// </summary>
+    public static async Task FailUnclaimedAsync(IUnitOfWork unitOfWork, byte[] body, CancellationToken ct)
+    {
+        if (!Guid.TryParse(Encoding.UTF8.GetString(body), out var jobId))
+            return;
+
+        await unitOfWork.Jobs.FailIfQueuedAsync(jobId, UnclaimedError, ct);
+    }
 
     internal static bool IsPermanent(Exception ex)
         => ex is UnsupportedImageFormatException

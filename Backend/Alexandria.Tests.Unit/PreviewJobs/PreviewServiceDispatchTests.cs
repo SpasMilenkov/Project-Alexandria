@@ -10,6 +10,7 @@ using Alexandria.Dto.Files;
 using Alexandria.Services.Preview;
 using Alexandria.Tests.Common.Builders;
 using AwesomeAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -21,7 +22,7 @@ public class PreviewServiceDispatchTests
 {
     private readonly IContentStorageService _storage = Substitute.For<IContentStorageService>();
     private readonly IPreviewArtifactService _artifacts = Substitute.For<IPreviewArtifactService>();
-    private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IOutbox _outbox = Substitute.For<IOutbox>();
     private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IFileRepository _files = Substitute.For<IFileRepository>();
@@ -51,7 +52,7 @@ public class PreviewServiceDispatchTests
 
         var cache = new MemoryCache(new MemoryCacheOptions { SizeLimit = 100 });
         _sut = new PreviewService(
-            _storage, _artifacts, _publisher, _broker, _unitOfWork,
+            _storage, _artifacts, _outbox, _broker, _unitOfWork,
             _textPreview, _archivePreview, cache, Options.Create(_capabilities));
     }
 
@@ -77,7 +78,8 @@ public class PreviewServiceDispatchTests
         var result = await _sut.RepublishJobAsync(job.Id, TestContext.Current.CancellationToken);
 
         result.Should().Be(expected);
-        await _publisher.Received(expected ? 1 : 0).PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.Received(expected ? 1 : 0)
+            .EnqueueJobAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     private File StoredFile(string mimeType) =>
@@ -114,8 +116,8 @@ public class PreviewServiceDispatchTests
         await _sut.GeneratePreviewAsync(_versionId, _userId, ct: TestContext.Current.CancellationToken);
 
         await _jobs.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
-        await _jobs.DidNotReceiveWithAnyArgs().UpdateStatusAsync(default, default, default, default, default);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await _jobs.DidNotReceiveWithAnyArgs().TryRequeueFinishedAsync(default, TestContext.Current.CancellationToken);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -131,7 +133,7 @@ public class PreviewServiceDispatchTests
         await _sut.GeneratePreviewAsync(_versionId, _userId, ct: TestContext.Current.CancellationToken);
 
         await _jobs.Received(1).AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
-        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), "media.mpeg");
+        await _outbox.Received(1).EnqueueJobAsync("media.mpeg", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -148,8 +150,8 @@ public class PreviewServiceDispatchTests
 
         await _sut.GeneratePreviewAsync(_versionId, _userId, ct: TestContext.Current.CancellationToken);
 
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
-        await _jobs.DidNotReceiveWithAnyArgs().UpdateStatusAsync(default, default, default, default, default);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
+        await _jobs.DidNotReceiveWithAnyArgs().TryRequeueFinishedAsync(default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -165,13 +167,14 @@ public class PreviewServiceDispatchTests
             TestContext.Current.CancellationToken);
 
         await _jobs.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
-    public async Task broker_unavailable_skips_dispatch_without_job_rows()
+    public async Task broker_disabled_skips_dispatch_without_job_rows()
     {
         StoredImage();
+        _broker.IsEnabled.Returns(false);
         _broker.IsAvailable.Returns(false);
 
         await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview,
@@ -179,23 +182,20 @@ public class PreviewServiceDispatchTests
 
         await _jobs.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
         await _previewJobs.DidNotReceive().AddAsync(Arg.Any<PreviewJob>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
-    public async Task broker_recovery_dispatches_on_next_read()
+    public async Task broker_outage_still_dispatches_through_the_outbox()
     {
         StoredImage();
         _broker.IsAvailable.Returns(false);
-        var ct = TestContext.Current.CancellationToken;
 
-        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview, ct);
+        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview,
+            TestContext.Current.CancellationToken);
 
-        _broker.IsAvailable.Returns(true);
-
-        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview, ct);
-
-        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), "image.png");
+        await _jobs.Received(1).AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+        await _outbox.Received(1).EnqueueJobAsync("image.png", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public class PreviewServiceDispatchTests
             TestContext.Current.CancellationToken);
 
         await _jobs.DidNotReceive().AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -235,8 +235,40 @@ public class PreviewServiceDispatchTests
                 p.JobId == created.Id && p.VersionId == _versionId
                                       && p.Kind == PreviewKind.Preview && p.UserId == _userId),
             Arg.Any<CancellationToken>());
-        await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == created.Id.ToString()), "image.png");
+        await _outbox.Received(1).EnqueueJobAsync("image.png", created.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task fresh_dispatch_commits_job_rows_and_message_in_one_transaction()
+    {
+        StoredImage();
+        var ct = TestContext.Current.CancellationToken;
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview, ct);
+
+        Received.InOrder(() =>
+        {
+            _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
+            _jobs.AddAsync(Arg.Any<Job>(), Arg.Any<CancellationToken>());
+            _previewJobs.AddAsync(Arg.Any<PreviewJob>(), Arg.Any<CancellationToken>());
+            _outbox.EnqueueJobAsync("image.png", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task lost_dispatch_race_rolls_back_without_enqueueing()
+    {
+        StoredImage();
+        _previewJobs.AddAsync(Arg.Any<PreviewJob>(), Arg.Any<CancellationToken>())
+            .Returns<PreviewJob>(_ => throw new DbUpdateException("duplicate (version, kind, owner)"));
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview,
+            TestContext.Current.CancellationToken);
+
+        await _unitOfWork.Received(1).RollbackAsync(Arg.Any<CancellationToken>());
+        await _unitOfWork.DidNotReceive().CommitAsync(Arg.Any<CancellationToken>());
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -259,28 +291,22 @@ public class PreviewServiceDispatchTests
 
         created.Should().NotBeNull();
         created!.Type.Should().Be(JobType.DocumentPreview);
-        await _publisher.Received(1).PublishAsync(
-            Arg.Any<byte[]>(), "document.pdf");
+        await _outbox.Received(1).EnqueueJobAsync("document.pdf", Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task publish_failure_marks_job_failed_and_throws()
+    public async Task enqueue_failure_rolls_back_the_job_and_throws()
     {
         StoredImage();
-        Job? created = null;
-        _jobs.AddAsync(Arg.Do<Job>(j => created = j), Arg.Any<CancellationToken>())
-            .Returns(ci => ci.Arg<Job>());
-        _publisher.PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>())
-            .Returns(Task.FromException(new InvalidOperationException("broker down")));
+        _outbox.EnqueueJobAsync(Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("database down")));
 
         var act = () => _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview,
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        created.Should().NotBeNull();
-        await _jobs.Received(1).UpdateStatusAsync(
-            created!.Id, JobStatus.Failed, Arg.Any<int?>(), Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+        await _unitOfWork.Received(1).RollbackAsync(Arg.Any<CancellationToken>());
+        await _unitOfWork.DidNotReceive().CommitAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -292,17 +318,33 @@ public class PreviewServiceDispatchTests
                 Arg.Any<Expression<Func<PreviewJob, bool>>>(),
                 Arg.Any<CancellationToken>())
             .Returns(new PreviewJobBuilder().WithJob(job).WithVersion(_versionId).WithUser(_userId).Build());
+        _jobs.TryRequeueFinishedAsync(job.Id, Arg.Any<CancellationToken>()).Returns(true);
 
         await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview,
             TestContext.Current.CancellationToken);
 
         await _previewJobs.DidNotReceive().AddAsync(Arg.Any<PreviewJob>(), Arg.Any<CancellationToken>());
-        await _jobs.Received(1).UpdateStatusAsync(
-            job.Id, JobStatus.Queued, Arg.Any<int?>(), Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-        await _jobs.Received(1).ClearErrorAsync(job.Id, Arg.Any<CancellationToken>());
-        await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == job.Id.ToString()), "image.png");
+        await _jobs.Received(1).TryRequeueFinishedAsync(job.Id, Arg.Any<CancellationToken>());
+        await _outbox.Received(1).EnqueueJobAsync("image.png", job.Id, Arg.Any<CancellationToken>());
+        await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task terminal_job_claimed_by_a_worker_since_the_read_is_not_requeued()
+    {
+        StoredImage();
+        var job = new JobBuilder().WithStatus(JobStatus.Failed).WithUser(_userId).Build();
+        _previewJobs.FirstOrDefaultAsync(
+                Arg.Any<Expression<Func<PreviewJob, bool>>>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new PreviewJobBuilder().WithJob(job).WithVersion(_versionId).WithUser(_userId).Build());
+        _jobs.TryRequeueFinishedAsync(job.Id, Arg.Any<CancellationToken>()).Returns(false);
+
+        await _sut.GeneratePreviewAsync(_versionId, _userId, PreviewKind.Preview,
+            TestContext.Current.CancellationToken);
+
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
+        await _previewJobs.DidNotReceive().AddAsync(Arg.Any<PreviewJob>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -22,70 +22,100 @@ public class AutoTagTriggerTests
     [Fact]
     public async Task QueueAutoTagAsync_policy_enabled_analysis_disabled_refuses_without_publish()
     {
-        var (publisher, unitOfWork) = Create();
+        var (outbox, unitOfWork) = Create();
         var sut = new JobQueue(Substitute.For<ITranspilationJobService>(), Substitute.For<IPreviewService>(),
-            publisher, unitOfWork, Substitute.For<ILogger<JobQueue>>(),
+            outbox, unitOfWork, Substitute.For<ILogger<JobQueue>>(),
             Options.Create(new ProcessingCapabilities { Autotagging = true, AudioAnalysis = false }));
 
         var act = () => sut.QueueAutoTagAsync(FileId, new AutoTagParameters(TagSource.Auto), AudioMime,
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<AutoTaggingDisabledException>();
-        await publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await NothingEnqueued(outbox);
     }
 
     [Fact]
     public async Task QueueIfNeededAsync_throws_when_flag_is_off()
     {
-        var (publisher, unitOfWork) = Create();
+        var (outbox, unitOfWork) = Create();
 
-        var act = () => AutoTagTrigger.QueueIfNeededAsync(publisher, unitOfWork, false, FileId, AudioMime);
+        var act = () => AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, false, FileId, AudioMime,
+            ct: TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<AutoTaggingDisabledException>();
-        await publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await NothingEnqueued(outbox);
     }
 
     [Fact]
     public async Task QueueIfNeededAsync_skips_when_successful_enrichment_exists()
     {
-        var (publisher, unitOfWork) = Create();
+        var (outbox, unitOfWork) = Create();
         unitOfWork.FileEnrichments.HasSuccessfulAutoTagEnrichmentAsync(FileId, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        var queued = await AutoTagTrigger.QueueIfNeededAsync(publisher, unitOfWork, true, FileId, AudioMime);
+        var queued = await AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, true, FileId, AudioMime,
+            ct: TestContext.Current.CancellationToken);
 
         queued.Should().BeFalse();
-        await publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await NothingEnqueued(outbox);
+    }
+
+    [Fact]
+    public async Task QueueIfNeededAsync_skips_when_an_attempt_is_already_in_flight()
+    {
+        var (outbox, unitOfWork) = Create();
+        unitOfWork.EssentiaBatchFiles.HasAttemptInFlightAsync(FileId, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var queued = await AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, true, FileId, AudioMime,
+            ct: TestContext.Current.CancellationToken);
+
+        queued.Should().BeFalse();
+        await NothingEnqueued(outbox);
     }
 
     [Fact]
     public async Task QueueIfNeededAsync_publishes_when_no_successful_enrichment()
     {
-        var (publisher, unitOfWork) = Create();
+        var (outbox, unitOfWork) = Create();
         unitOfWork.FileEnrichments.HasSuccessfulAutoTagEnrichmentAsync(FileId, Arg.Any<CancellationToken>())
             .Returns(false);
 
-        var queued = await AutoTagTrigger.QueueIfNeededAsync(publisher, unitOfWork, true, FileId, AudioMime);
+        var queued = await AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, true, FileId, AudioMime,
+            ct: TestContext.Current.CancellationToken);
 
         queued.Should().BeTrue();
-        await publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(body => Encoding.UTF8.GetString(body) == FileId.ToString()),
-            AutoTagTrigger.EnrichRoutingKey);
+        await TriggerEnqueued(outbox);
     }
 
     [Fact]
     public async Task QueueIfNeededAsync_publishes_when_only_failure_rows_exist()
     {
-        var (publisher, unitOfWork) = Create();
+        var (outbox, unitOfWork) = Create();
         unitOfWork.FileEnrichments.HasSuccessfulAutoTagEnrichmentAsync(FileId, Arg.Any<CancellationToken>())
             .Returns(false);
 
-        var queued = await AutoTagTrigger.QueueIfNeededAsync(publisher, unitOfWork, true, FileId, AudioMime);
+        var queued = await AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, true, FileId, AudioMime,
+            ct: TestContext.Current.CancellationToken);
 
         queued.Should().BeTrue();
-        await publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(body => Encoding.UTF8.GetString(body) == FileId.ToString()),
-            AutoTagTrigger.EnrichRoutingKey);
+        await TriggerEnqueued(outbox);
+    }
+
+    [Fact]
+    public async Task QueueIfNeededAsync_enqueues_inside_a_transaction()
+    {
+        var (outbox, unitOfWork) = Create();
+
+        await AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, true, FileId, AudioMime,
+            ct: TestContext.Current.CancellationToken);
+
+        Received.InOrder(() =>
+        {
+            unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
+            outbox.EnqueueAsync(AutoTagTrigger.EnrichRoutingKey, Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+            unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
     }
 
     [Theory]
@@ -95,12 +125,13 @@ public class AutoTagTriggerTests
     [InlineData(null)]
     public async Task QueueIfNeededAsync_skips_unsupported_mime_type_without_publish(string? mimeType)
     {
-        var (publisher, unitOfWork) = Create();
+        var (outbox, unitOfWork) = Create();
 
-        var queued = await AutoTagTrigger.QueueIfNeededAsync(publisher, unitOfWork, true, FileId, mimeType!);
+        var queued = await AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, true, FileId, mimeType!,
+            ct: TestContext.Current.CancellationToken);
 
         queued.Should().BeFalse();
-        await publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await NothingEnqueued(outbox);
         await unitOfWork.FileEnrichments
             .DidNotReceive()
             .HasSuccessfulAutoTagEnrichmentAsync(FileId, Arg.Any<CancellationToken>());
@@ -109,21 +140,33 @@ public class AutoTagTriggerTests
     [Fact]
     public async Task QueueIfNeededAsync_supports_application_ogg()
     {
-        var (publisher, unitOfWork) = Create();
+        var (outbox, unitOfWork) = Create();
         unitOfWork.FileEnrichments.HasSuccessfulAutoTagEnrichmentAsync(FileId, Arg.Any<CancellationToken>())
             .Returns(false);
 
-        var queued = await AutoTagTrigger.QueueIfNeededAsync(publisher, unitOfWork, true, FileId, "application/ogg");
+        var queued = await AutoTagTrigger.QueueIfNeededAsync(outbox, unitOfWork, true, FileId, "application/ogg",
+            ct: TestContext.Current.CancellationToken);
 
         queued.Should().BeTrue();
-        await publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), AutoTagTrigger.EnrichRoutingKey);
+        await outbox.Received(1).EnqueueAsync(AutoTagTrigger.EnrichRoutingKey, Arg.Any<byte[]>(),
+            Arg.Any<CancellationToken>());
     }
 
-    private static (IPublisherService Publisher, IUnitOfWork UnitOfWork) Create()
+    private static Task NothingEnqueued(IOutbox outbox)
+        => outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
+
+    private static Task TriggerEnqueued(IOutbox outbox)
+        => outbox.Received(1).EnqueueAsync(
+            AutoTagTrigger.EnrichRoutingKey,
+            Arg.Is<byte[]>(body => Encoding.UTF8.GetString(body) == FileId.ToString()),
+            Arg.Any<CancellationToken>());
+
+    private static (IOutbox Outbox, IUnitOfWork UnitOfWork) Create()
     {
-        var publisher = Substitute.For<IPublisherService>();
+        var outbox = Substitute.For<IOutbox>();
         var unitOfWork = Substitute.For<IUnitOfWork>();
         unitOfWork.FileEnrichments.Returns(Substitute.For<IFileEnrichmentRepository>());
-        return (publisher, unitOfWork);
+        unitOfWork.EssentiaBatchFiles.Returns(Substitute.For<IEssentiaBatchFileRepository>());
+        return (outbox, unitOfWork);
     }
 }

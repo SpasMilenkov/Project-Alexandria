@@ -6,6 +6,10 @@ namespace Alexandria.Infrastructure.Messaging;
 public sealed class ChannelPool(MessageBrokerConnection broker, TimeSpan connectWait, int maxSize = 10)
     : IChannelPool, IDisposable
 {
+    private static readonly CreateChannelOptions ConfirmedChannel = new(
+        publisherConfirmationsEnabled: true,
+        publisherConfirmationTrackingEnabled: true);
+
     private readonly ConcurrentBag<IChannel> _channels = new();
     private readonly SemaphoreSlim _semaphore = new(maxSize, maxSize);
     private bool _disposed;
@@ -28,7 +32,9 @@ public sealed class ChannelPool(MessageBrokerConnection broker, TimeSpan connect
             // blocks on the broker and a broker that appears later is picked up.
             var connection = await broker.GetConnectionAsync(connectWait, cancellationToken);
 
-            return await connection.CreateChannelAsync(cancellationToken: cancellationToken);
+            // With tracking on, a publish returns only once the broker has confirmed it, and a
+            // refused or unroutable message throws instead of disappearing.
+            return await connection.CreateChannelAsync(ConfirmedChannel, cancellationToken);
         }
         catch
         {

@@ -18,7 +18,7 @@ public static class ServiceExtensions
         IConfiguration configuration)
     {
         services.AddCoreWorkerServices();
-        services.AddRabbitMqAsync(configuration);
+        services.AddRabbitMqAsync(configuration, ServiceType.Playlist);
 
         services.Configure<PlaylistConsumerConfig>(configuration.GetSection("RabbitMQ:Consumer"));
 

@@ -1,18 +1,18 @@
 using Alexandria.Common;
 using Alexandria.Common.Config;
+using Alexandria.Common.Playlists;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Tags;
-using Alexandria.Services.Storage.Playlists;
 using Microsoft.Extensions.Logging;
 
 namespace Alexandria.Services.Storage;
 
 public partial class FileTagService(
     IUnitOfWork unitOfWork,
-    IPublisherService publisher,
+    IOutbox outbox,
     ILogger<FileTagService> logger) : IFileTagService
 {
     public async Task<Tag> CreateAsync(string name,
@@ -211,9 +211,9 @@ public partial class FileTagService(
             }
 
             await unitOfWork.SaveChangesAsync(ct);
+            await outbox.EnqueueAsync(
+                PlaylistSyncMessage.SyncRoutingKey, PlaylistSyncMessage.Encode(fileId, userId), ct);
             await unitOfWork.CommitAsync(ct);
-
-            await PlaylistSyncNotifier.PublishFileChangedAsync(publisher, fileId, userId, logger);
 
             LogTagsAddedToFile(logger, tagIds.Count, fileId);
         }
@@ -259,9 +259,9 @@ public partial class FileTagService(
                 fileTag.Source = TagSource.Suppressed;
 
             await unitOfWork.SaveChangesAsync(ct);
+            await outbox.EnqueueAsync(
+                PlaylistSyncMessage.SyncRoutingKey, PlaylistSyncMessage.Encode(fileId, userId), ct);
             await unitOfWork.CommitAsync(ct);
-
-            await PlaylistSyncNotifier.PublishFileChangedAsync(publisher, fileId, userId, logger);
 
             LogTagRemovedFromFile(logger, tagId, fileId);
         }

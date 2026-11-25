@@ -51,7 +51,7 @@ public class BulkMetadataRollbackTests(DatabaseFixture fixture) : AuditTriggerTe
         {
             await using var scope = provider.CreateAsyncScope();
             var sp = scope.ServiceProvider;
-            var service = new FileService(sp.GetRequiredService<IUnitOfWork>(), null!, new FakePublisherService(),
+            var service = new FileService(sp.GetRequiredService<IUnitOfWork>(), null!, new FakeOutbox(),
                 sp.GetRequiredService<IAuditWriter>(), NullLogger<FileService>.Instance);
 
             var results = await service.BulkUpdateFileMetadataAsync(ids.ToArray(), UserId, newTitle: "new title",

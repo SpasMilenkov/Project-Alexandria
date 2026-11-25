@@ -44,6 +44,7 @@ public static class ServiceExtensions
         services.AddScoped<IAdminSettingsRepository, AdminSettingsRepository>();
         services.AddScoped<IStreamHistoryRepository, StreamHistoryRepository>();
         services.AddScoped<IOverviewSummaryRepository, OverviewSummaryRepository>();
+        services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
         services.AddScoped<ICaptureMetadataRepository, CaptureMetadataRepository>();
         services.AddScoped<IDocumentMetadataRepository, DocumentMetadataRepository>();
         services.AddScoped<IDocumentTextRepository, DocumentTextRepository>();

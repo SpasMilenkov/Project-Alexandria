@@ -47,8 +47,10 @@ public class ImagePreviewGenerationHandler(
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
+            // Recorded on the job, where automatic retry picks it up with backoff; rethrowing
+            // would make the consumer retry the delivery as well.
+            logger.LogError(ex, "Image preview job {JobId} failed", jobId);
             await PreviewJobLifecycle.FailAsync(unitOfWork, jobId, ex, ct);
-            throw;
         }
     }
 

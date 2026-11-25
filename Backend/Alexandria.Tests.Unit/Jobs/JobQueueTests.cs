@@ -19,7 +19,7 @@ public class JobQueueTests
         var sut = new JobQueue(
             Substitute.For<ITranspilationJobService>(),
             preview,
-            Substitute.For<IPublisherService>(),
+            Substitute.For<IOutbox>(),
             Substitute.For<IUnitOfWork>(),
             NullLogger<JobQueue>.Instance,
             Options.Create(new ProcessingCapabilities()));

@@ -119,6 +119,15 @@ public class EssentiaBatchFileRepository(AlexandriaDbContext context) : IEssenti
         return succeeded.Where(id => !autoTaggedSet.Contains(id)).ToList();
     }
 
+    public async Task<bool> HasAttemptInFlightAsync(Guid fileId, CancellationToken ct = default)
+    {
+        return await _batchFiles
+            .AsNoTracking()
+            .AnyAsync(f => f.FileId == fileId
+                           && f.DeletedAt == null
+                           && (f.Job.Status == JobStatus.Queued || f.Job.Status == JobStatus.Processing), ct);
+    }
+
     public async Task<IEnumerable<Guid>> GetAutoTagRetryCandidatesAsync(
         DateTime attemptCutoff,
         int maxFailedAttempts,

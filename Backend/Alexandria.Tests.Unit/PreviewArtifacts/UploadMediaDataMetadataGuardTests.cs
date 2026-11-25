@@ -52,7 +52,7 @@ public class UploadMediaDataMetadataGuardTests
             Substitute.For<ILogger<PreviewArtifactService>>(),
             new AuditContext(),
             _settings,
-            Substitute.For<IPublisherService>());
+            Substitute.For<IOutbox>());
     }
 
     private void GivenVersionWithOwner()

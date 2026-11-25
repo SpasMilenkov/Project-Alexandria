@@ -89,6 +89,65 @@ public class AutoTagSyncServiceTests
     }
 
     [Fact]
+    public async Task SyncFileAsync_failure_row_listed_before_a_success_does_not_shadow_it()
+    {
+        var (service, uow, derivation, settings, fileTags) = CreateService();
+        uow.Files.GetByIdAsync(FileId, Arg.Any<CancellationToken>())
+            .Returns(File());
+
+        // A timeout files its failure under "unknown"; the later real result gets its own row.
+        var genreTimeout = GenreRow("essentia-genre-effnet", """{"success":false,"error":"batch timed out"}""");
+        genreTimeout.Version = "unknown";
+        var genreResult = GenreRow("essentia-genre-effnet", """{"backbone":"effnet","predictions":[]}""");
+        var moodTimeout = MoodRow("""{"success":false,"error":"batch timed out"}""");
+        moodTimeout.Version = "unknown";
+        var moodResult = MoodRow();
+
+        uow.FileEnrichments.FindAsync(Arg.Any<Expression<Func<FileEnrichment, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns([genreTimeout, genreResult, moodTimeout, moodResult]);
+        derivation.DeriveAsync(Arg.Any<IReadOnlyCollection<FileEnrichment>>(), Arg.Any<CancellationToken>())
+            .Returns([Candidate(GenreTagId, 0.5, TagFacet.Genre)]);
+        settings.GetBehaviorAsync(OwnerId, Arg.Any<CancellationToken>())
+            .Returns(new BehaviorSettingsValue());
+
+        await service.SyncFileAsync(FileId, TestContext.Current.CancellationToken);
+
+        await derivation.Received(1).DeriveAsync(
+            Arg.Is<IReadOnlyCollection<FileEnrichment>>(rows =>
+                rows.Count == 2 && rows.Contains(genreResult) && rows.Contains(moodResult)),
+            Arg.Any<CancellationToken>());
+        await fileTags.Received(1).ApplyAutoTagsAsync(
+            FileId, Arg.Any<IReadOnlyCollection<TagCandidate>>(), false, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SyncFileAsync_newest_success_wins_between_model_versions()
+    {
+        var (service, uow, derivation, settings, _) = CreateService();
+        uow.Files.GetByIdAsync(FileId, Arg.Any<CancellationToken>())
+            .Returns(File());
+
+        var older = GenreRow("essentia-genre-effnet", """{"backbone":"effnet","predictions":[]}""");
+        older.UpdatedAt = new DateTime(2026, 8, 4, 0, 0, 0, DateTimeKind.Utc);
+        var newer = GenreRow("essentia-genre-effnet", """{"backbone":"effnet","predictions":[]}""");
+        newer.Version = "2.0";
+        newer.UpdatedAt = new DateTime(2026, 11, 24, 0, 0, 0, DateTimeKind.Utc);
+
+        uow.FileEnrichments.FindAsync(Arg.Any<Expression<Func<FileEnrichment, bool>>>(), Arg.Any<CancellationToken>())
+            .Returns([older, newer]);
+        derivation.DeriveAsync(Arg.Any<IReadOnlyCollection<FileEnrichment>>(), Arg.Any<CancellationToken>())
+            .Returns([Candidate(GenreTagId, 0.5, TagFacet.Genre)]);
+        settings.GetBehaviorAsync(OwnerId, Arg.Any<CancellationToken>())
+            .Returns(new BehaviorSettingsValue());
+
+        await service.SyncFileAsync(FileId, TestContext.Current.CancellationToken);
+
+        await derivation.Received(1).DeriveAsync(
+            Arg.Is<IReadOnlyCollection<FileEnrichment>>(rows => rows.Count == 1 && rows.Contains(newer)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task SyncFileAsync_no_authoritative_rows_does_not_apply()
     {
         var (service, uow, derivation, _, fileTags) = CreateService();
@@ -181,7 +240,7 @@ public class AutoTagSyncServiceTests
             settings,
             derivation,
             fileTags,
-            Substitute.For<IPublisherService>(),
+            Substitute.For<IOutbox>(),
             NullLogger<AutoTagSyncService>.Instance);
 
         return (service, unitOfWork, derivation, settings, fileTags);

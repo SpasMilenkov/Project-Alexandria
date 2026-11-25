@@ -25,7 +25,6 @@ public partial class AccumulatorWorker(
     ILogger<AccumulatorWorker> logger,
     AccumulatorBuffer buffer,
     IOptions<EssentiaConfig> essentiaOptions,
-    IPublisherService publisher,
     IServiceProvider serviceProvider,
     IOptions<ProcessingCapabilities>? capabilities = null) : BackgroundService
 {
@@ -150,10 +149,29 @@ public partial class AccumulatorWorker(
                 .ToList()
         };
 
+        var outputDir = $"{config.ToVolumePath(config.OutputDir.TrimEnd('/'))}/{batchId}";
+        var files = inputs.Select(config.ToVolumePath).ToArray();
+
+        var request = new ClassifyRequest
+        {
+            BatchId = batchId,
+            OutputDir = outputDir,
+            Files = files
+        };
+
+        // The batch, its jobs and the dispatch commit together, so a batch is never saved without
+        // the message that starts it; once saved, TimeoutSweepWorker covers a lost reply.
         try
         {
-            await unitOfWork.EssentiaBatches.AddAsync(batchEntity, stoppingToken);
-            await unitOfWork.SaveChangesAsync(stoppingToken);
+            var outbox = scope.ServiceProvider.GetRequiredService<IOutbox>();
+
+            await unitOfWork.InTransactionAsync(async () =>
+            {
+                await unitOfWork.EssentiaBatches.AddAsync(batchEntity, stoppingToken);
+                await unitOfWork.SaveChangesAsync(stoppingToken);
+                await outbox.EnqueueAsync(routingKey, JsonSerializer.SerializeToUtf8Bytes(request, JsonOptions),
+                    stoppingToken);
+            }, stoppingToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -166,44 +184,11 @@ public partial class AccumulatorWorker(
             // Redelivered triggers stage fresh copies, so nothing will read this batch's inputs.
             DeleteBatchDirectory(batchDir);
 
-            // The failed context still tracks the unsaved batch, so it cannot record anything.
             await RecordCycleFailureAsync(ex, stoppingToken);
             return;
         }
 
-        var outputDir = $"{config.ToVolumePath(config.OutputDir.TrimEnd('/'))}/{batchId}";
-        var files = inputs.Select(config.ToVolumePath).ToArray();
-
         await SettleAsync(batch, persisted: true);
-
-        var request = new ClassifyRequest
-        {
-            BatchId = batchId,
-            OutputDir = outputDir,
-            Files = files
-        };
-
-        try
-        {
-            await publisher.PublishAsync(JsonSerializer.SerializeToUtf8Bytes(request, JsonOptions), routingKey);
-        }
-        catch (Exception ex)
-        {
-            LogDispatchError(logger, ex, batchId, batch.Count);
-
-            // Batch and per-file Job rows are already persisted, but the message that
-            // would ever trigger their completion never went out. Without this they'd
-            // sit in Queued forever, invisible to TimeoutSweepWorker since it
-            // only looks at batches it believes were successfully dispatched.
-            var jobIds = batchEntity.Files.Select(f => f.JobId).ToList();
-            await unitOfWork.Jobs.UpdateStatusForJobsAsync(jobIds, JobStatus.Failed, "publish failed", stoppingToken);
-
-            DeleteBatchDirectory(batchDir);
-
-            await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaMetadata, "media-metadata", ex,
-                stoppingToken);
-            return;
-        }
 
         LogBatchDispatched(logger, batchId, backbone, batch.Count, outputDir, routingKey);
     }

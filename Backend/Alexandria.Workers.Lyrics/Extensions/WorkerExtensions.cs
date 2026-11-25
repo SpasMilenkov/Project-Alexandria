@@ -17,7 +17,7 @@ public static class WorkerExtensions
         IConfiguration configuration)
     {
         services.AddCoreWorkerServices();
-        services.AddRabbitMqAsync(configuration);
+        services.AddRabbitMqAsync(configuration, ServiceType.Lyrics);
 
         if (!configuration.GetValue<bool>("Features:Lyrics")) return services;
 

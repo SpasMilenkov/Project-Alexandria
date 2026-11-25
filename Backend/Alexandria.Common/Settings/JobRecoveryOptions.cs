@@ -23,7 +23,4 @@ public sealed class JobRecoveryOptions
     /// First automatic preview retry waits this long after the failure; each further attempt doubles it.
     /// </summary>
     public int PreviewRetryBaseDelayMinutes { get; set; } = 5;
-
-    /// <summary>A preview job still Queued after this long is assumed to have lost its message.</summary>
-    public int OrphanedQueuedMinutes { get; set; } = 30;
 }

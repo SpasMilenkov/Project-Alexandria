@@ -43,4 +43,9 @@ public partial class ResultsConsumerWorker
 
     [LoggerMessage(22412, LogLevel.Warning, "Failed to enqueue auto-tag sync for file {FileId}")]
     private static partial void LogEnqueueError(ILogger logger, Exception ex, Guid fileId);
+
+    [LoggerMessage(22413, LogLevel.Information,
+        "Late completion for timed-out batch {BatchId}: kept {Succeeded} of {Count} file(s) that finished; " +
+        "the rest stay failed by the timeout")]
+    private static partial void LogLateCompletion(ILogger logger, Guid batchId, int succeeded, int count);
 }

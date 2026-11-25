@@ -68,6 +68,7 @@ const EVENT_ICONS: Partial<Record<AuditEventCode, string>> = {
   [AuditEventCode.TrackCoverRemoved]: "i-lucide-image-off",
   [AuditEventCode.AuditLogsPurged]: "i-lucide-history",
   [AuditEventCode.DocumentTextRetried]: "i-lucide-text-search",
+  [AuditEventCode.OutboxMessagesResent]: "i-lucide-send",
 };
 
 export const auditIcon = (eventCode: AuditEventCode, entityType: EntityType): string =>
@@ -253,6 +254,7 @@ export const ADMIN_EVENT_CODES: AuditEventCode[] = [
   AuditEventCode.JobRequeued,
   AuditEventCode.JobsRequeuedBulk,
   AuditEventCode.DocumentTextRetried,
+  AuditEventCode.OutboxMessagesResent,
   AuditEventCode.IncidentResolved,
   AuditEventCode.AdminSettingChanged,
   AuditEventCode.AuditLogsPurged,

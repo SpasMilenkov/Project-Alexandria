@@ -58,10 +58,20 @@ public interface IJobRepository : IRepository<Job>
     Task<bool> TryRequeueForRetryAsync(Guid jobId, CancellationToken ct = default);
 
     /// <summary>
-    /// Resets a Failed, Cancelled, or stalled Processing job to a fresh Queued state with its retry
-    /// budget restored. Returns <see langword="false"/> when the job is in any other state.
+    /// Resets a Failed or Cancelled job, or one stuck in Processing or Queued since before
+    /// <paramref name="stalledBefore"/>, to a fresh Queued state with its retry budget restored.
+    /// A job stuck in Queued lost its message on the broker side, for example after a purge.
+    /// Returns <see langword="false"/> when the job is in any other state.
     /// </summary>
     Task<bool> TryResetForManualRequeueAsync(Guid jobId, DateTime stalledBefore, CancellationToken ct = default);
+
+    /// <summary>
+    /// Atomically moves a finished job (Ready, Partial, Failed or Cancelled) back to a fresh Queued
+    /// state for a rerun the user asked for, with its retry budget restored. Returns
+    /// <see langword="false"/> while the job is still queued or running, so a rerun can never reopen
+    /// a claim a worker holds.
+    /// </summary>
+    Task<bool> TryRequeueFinishedAsync(Guid jobId, CancellationToken ct = default);
 
     /// <summary>
     /// Exhausts the automatic retry budget for a job whose failure cannot succeed on retry.
@@ -76,14 +86,10 @@ public interface IJobRepository : IRepository<Job>
         int limit, CancellationToken ct = default);
 
     /// <summary>
-    /// Queued jobs of the given types untouched since <paramref name="queuedBefore"/>; their
-    /// broker message was most likely lost.
+    /// Fails the job only while it is still Queued, for a delivery that was given up on before any
+    /// worker claimed it. A job a worker already claimed keeps the outcome that worker recorded.
     /// </summary>
-    Task<IReadOnlyList<Job>> GetOrphanedQueuedJobsAsync(IReadOnlyCollection<JobType> types, DateTime queuedBefore,
-        int limit, CancellationToken ct = default);
-
-    /// <summary>Stamps <c>UpdatedAt</c> so recovery sweeps measure from the latest republish.</summary>
-    Task TouchAsync(Guid jobId, CancellationToken ct = default);
+    Task<bool> FailIfQueuedAsync(Guid jobId, string errorDetail, CancellationToken ct = default);
 
     /// <summary>Current all-time job count per status, optionally filtered to one job type.</summary>
     Task<IReadOnlyList<JobStatusCount>> GetStatusCountsAsync(

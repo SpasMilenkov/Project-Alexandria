@@ -11,7 +11,7 @@ namespace Alexandria.Services.Storage.Policies;
 
 public sealed partial class EnrichmentBackfillService(
     IUnitOfWork unitOfWork,
-    IPublisherService publisher,
+    IOutbox outbox,
     ILogger<EnrichmentBackfillService> logger,
     IOptions<ProcessingCapabilities> capabilities) : IEnrichmentBackfillService
 {
@@ -54,20 +54,27 @@ public sealed partial class EnrichmentBackfillService(
         var candidates = await unitOfWork.EssentiaBatchFiles
             .GetEnrichmentBackfillCandidatesAsync(directoryIds, request.Cutoff.UtcDateTime, ct);
 
-        // Per-file triggers reuse the shared guard: unsupported MIME types and files
-        // that gained a successful enrichment since candidate selection are skipped,
-        // so the sweep is idempotent and safe to re-run.
-        var published = 0;
-        foreach (var candidate in candidates)
+        // Per-file triggers reuse the shared guard: unsupported MIME types, files that gained a
+        // successful enrichment since candidate selection and files still being analysed are
+        // skipped, so the sweep is idempotent and safe to re-run. One transaction for the whole
+        // rule, so a failure part way leaves nothing enqueued and the redelivery starts clean.
+        var published = await unitOfWork.InTransactionAsync(async () =>
         {
-            if (!PolicyRuleTrigger.Matches(rule.TriggerType, rule.TriggerValue, candidate.MimeType))
-                continue;
+            var count = 0;
 
-            if (await AutoTagTrigger.QueueIfNeededAsync(
-                    publisher, unitOfWork, _autoTaggingEnabled,
-                    candidate.FileId, candidate.MimeType, logger, ct))
-                published++;
-        }
+            foreach (var candidate in candidates)
+            {
+                if (!PolicyRuleTrigger.Matches(rule.TriggerType, rule.TriggerValue, candidate.MimeType))
+                    continue;
+
+                if (await AutoTagTrigger.QueueIfNeededAsync(
+                        outbox, unitOfWork, _autoTaggingEnabled,
+                        candidate.FileId, candidate.MimeType, logger, ct))
+                    count++;
+            }
+
+            return count;
+        }, ct);
 
         LogBackfillCompleted(logger, policyId, candidates.Count, published);
         return new EnrichmentBackfillResult(candidates.Count, published, candidates.Count - published);

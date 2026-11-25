@@ -25,8 +25,7 @@ public static class WorkerExtensions
         services.AddScoped<IStreamingRepresentationService, StreamingRepresentationService>();
         services.AddScoped<IVideoTranspilationService, VideoTranspilationService>();
         services.AddScoped<IAudioTranspilationService, AudioTranspilationService>();
-        services.AddRabbitMqAsync(configuration);
-        services.AddScoped<IPublisherService, PublisherService>();
+        services.AddRabbitMqAsync(configuration, ServiceType.Transpilation);
         services.AddScoped<TranspilationJobHandler>();
 
         // Monitoring

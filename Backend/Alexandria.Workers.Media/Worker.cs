@@ -1,4 +1,7 @@
 using System.Text;
+using Alexandria.Common;
+using Alexandria.Common.Services;
+using Alexandria.Data.Models.Enumerators.Monitoring;
 using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.Media.Handlers;
 using RabbitMQ.Client;
@@ -10,7 +13,8 @@ public class Worker(
     ILogger<Worker> logger,
     MessageBrokerConnection broker,
     IConfiguration configuration,
-    IServiceProvider serviceProvider)
+    IServiceProvider serviceProvider,
+    DeliveryRetry deliveryRetry)
     : BackgroundService
 {
     private IChannel? _channel;
@@ -67,7 +71,7 @@ public class Worker(
 
                 await handler.HandleAsync(message, ct);
 
-                await _channel.BasicAckAsync(eventArgs.DeliveryTag, false, ct);
+                await DeliverySettlement.AckAsync(_channel, eventArgs.DeliveryTag, logger, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -78,8 +82,12 @@ public class Worker(
             }
             catch (Exception ex)
             {
+                // The handlers record failures after the claim on the job itself, so what lands
+                // here failed before any claim: retried a few times, then the job is failed so
+                // automatic retry takes over instead of the message being dropped.
                 logger.LogError(ex, "Error processing message");
-                await _channel.BasicNackAsync(eventArgs.DeliveryTag, false, requeue: false, ct);
+                await deliveryRetry.HandleFailureAsync(
+                    _channel, eventArgs, new DeliveryRetryOptions(), _ => ParkAsync(eventArgs, ex, ct), ct);
             }
         };
 
@@ -89,6 +97,24 @@ public class Worker(
             consumer: consumer,
             cancellationToken: ct);
         logger.LogInformation("RabbitMQ Worker started and listening on queue: {QueueName}", queueName);
+    }
+
+    private async Task ParkAsync(BasicDeliverEventArgs eventArgs, Exception ex, CancellationToken ct)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        await PreviewJobLifecycle.FailUnclaimedAsync(unitOfWork, eventArgs.Body.ToArray(), ct);
+
+        try
+        {
+            await WorkerCycleFailureRecorder.RecordAsync(unitOfWork, ServiceType.MediaPreviews, "media", ex, ct);
+        }
+        catch (Exception recordEx) when (recordEx is not OperationCanceledException)
+        {
+            // The job is already failed and visible; the incident is extra signal.
+            logger.LogWarning(recordEx, "Could not record the incident for a parked preview delivery");
+        }
     }
 
     public override async Task StopAsync(CancellationToken ct)

@@ -93,6 +93,8 @@
           </div>
         </AdminHubCard>
       </div>
+
+      <OutboxPanel class="mt-3" />
     </div>
   </div>
 </template>
@@ -102,6 +104,7 @@ import { computed } from "vue";
 
 import BlockSpinner from "@/components/common/BlockSpinner.vue";
 import AdminHubCard from "@/components/dashboard/admin/AdminHubCard.vue";
+import OutboxPanel from "@/components/dashboard/admin/monitoring/OutboxPanel.vue";
 import { formatUptime, uptimeClass, useServiceStatus } from "@/composables/useServiceStatus";
 import { ServiceType } from "@/enums";
 import { UPTIME_WINDOW_DAYS } from "@/queries/monitoring";

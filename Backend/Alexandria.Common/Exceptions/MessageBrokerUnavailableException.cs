@@ -7,12 +7,13 @@ public class MessageBrokerUnavailableException(bool disabled)
 {
     public bool Disabled { get; } = disabled;
 
-    public static void ThrowIfUnavailable(Services.IMessageBrokerStatus broker)
+    /// <summary>
+    /// Refuses work on a server without a broker. A broker that is only down is not refused: the
+    /// outbox keeps the message until the broker is back.
+    /// </summary>
+    public static void ThrowIfDisabled(Services.IMessageBrokerStatus broker)
     {
         if (!broker.IsEnabled)
             throw new MessageBrokerUnavailableException(disabled: true);
-
-        if (!broker.IsAvailable)
-            throw new MessageBrokerUnavailableException(disabled: false);
     }
 }

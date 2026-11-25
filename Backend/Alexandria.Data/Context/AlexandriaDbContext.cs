@@ -67,6 +67,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
     public DbSet<FileDraft> FileDrafts { get; set; }
     public DbSet<NoteLinkScan> NoteLinkScans { get; set; }
     public DbSet<NoteLink> NoteLinks { get; set; }
+    public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -126,6 +127,7 @@ public class AlexandriaDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfiguration(new FileDraftConfiguration());
         builder.ApplyConfiguration(new NoteLinkScanConfiguration());
         builder.ApplyConfiguration(new NoteLinkConfiguration());
+        builder.ApplyConfiguration(new OutboxMessageConfiguration());
 
         builder.MapDatabaseFunctions();
     }

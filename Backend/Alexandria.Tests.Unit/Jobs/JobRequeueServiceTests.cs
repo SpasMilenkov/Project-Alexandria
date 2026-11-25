@@ -22,7 +22,7 @@ public class JobRequeueServiceTests
     private readonly ITrackLyricsRepository _lyrics = Substitute.For<ITrackLyricsRepository>();
     private readonly IEssentiaBatchFileRepository _batchFiles = Substitute.For<IEssentiaBatchFileRepository>();
     private readonly IPreviewService _previews = Substitute.For<IPreviewService>();
-    private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IOutbox _outbox = Substitute.For<IOutbox>();
     private readonly IMessageBrokerStatus _broker = Substitute.For<IMessageBrokerStatus>();
 
     public JobRequeueServiceTests()
@@ -35,13 +35,19 @@ public class JobRequeueServiceTests
     }
 
     private JobRequeueService CreateSut() =>
-        new(_unitOfWork, _previews, _publisher, _broker, Options.Create(new JobRecoveryOptions()));
+        new(_unitOfWork, _previews, _outbox, _broker, Options.Create(new JobRecoveryOptions()));
 
     private Job GivenJob(JobType type, JobStatus status = JobStatus.Failed)
     {
         var job = new Job { Id = Guid.NewGuid(), Type = type, Status = status };
         _jobs.GetByIdAsync(job.Id, Arg.Any<CancellationToken>()).Returns(job);
         return job;
+    }
+
+    private async Task NothingEnqueued()
+    {
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
+        await _outbox.DidNotReceiveWithAnyArgs().EnqueueJobAsync(default!, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -53,9 +59,10 @@ public class JobRequeueServiceTests
     }
 
     [Fact]
-    public async Task requeue_broker_unavailable_throws_before_reset()
+    public async Task requeue_broker_disabled_throws_before_reset()
     {
         var job = GivenJob(JobType.Transpilation);
+        _broker.IsEnabled.Returns(false);
         _broker.IsAvailable.Returns(false);
 
         var act = () => CreateSut().RequeueAsync(job.Id, TestContext.Current.CancellationToken);
@@ -63,13 +70,27 @@ public class JobRequeueServiceTests
         await act.Should().ThrowAsync<MessageBrokerUnavailableException>();
         await _jobs.DidNotReceive().TryResetForManualRequeueAsync(
             Arg.Any<Guid>(), Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await NothingEnqueued();
     }
 
     [Fact]
-    public async Task requeue_failed_broker_unavailable_throws_before_listing()
+    public async Task requeue_during_broker_outage_is_accepted_and_enqueued()
     {
+        var job = GivenJob(JobType.Transpilation);
         _broker.IsAvailable.Returns(false);
+        _jobs.TryResetForManualRequeueAsync(job.Id, Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(true);
+
+        var outcome = await CreateSut().RequeueAsync(job.Id, TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(JobRequeueOutcome.Requeued);
+        await _outbox.Received(1).EnqueueJobAsync(
+            JobRequeueService.TranspilationRoutingKey, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task requeue_failed_broker_disabled_throws_before_listing()
+    {
+        _broker.IsEnabled.Returns(false);
 
         var act = () => CreateSut().RequeueFailedAsync(JobType.MediaPreview, 10, TestContext.Current.CancellationToken);
 
@@ -78,7 +99,7 @@ public class JobRequeueServiceTests
     }
 
     [Fact]
-    public async Task requeue_preview_resets_then_republishes()
+    public async Task requeue_preview_resets_then_republishes_in_one_transaction()
     {
         var job = GivenJob(JobType.MediaPreview);
         _jobs.TryResetForManualRequeueAsync(job.Id, Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(true);
@@ -89,9 +110,26 @@ public class JobRequeueServiceTests
         outcome.Should().Be(JobRequeueOutcome.Requeued);
         Received.InOrder(() =>
         {
+            _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
             _jobs.TryResetForManualRequeueAsync(job.Id, Arg.Any<DateTime>(), Arg.Any<CancellationToken>());
             _previews.RepublishJobAsync(job.Id, Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
         });
+    }
+
+    [Fact]
+    public async Task requeue_preview_with_missing_source_fails_the_job_for_good()
+    {
+        var job = GivenJob(JobType.MediaPreview);
+        _jobs.TryResetForManualRequeueAsync(job.Id, Arg.Any<DateTime>(), Arg.Any<CancellationToken>()).Returns(true);
+        _previews.RepublishJobAsync(job.Id, Arg.Any<CancellationToken>()).Returns(false);
+
+        var outcome = await CreateSut().RequeueAsync(job.Id, TestContext.Current.CancellationToken);
+
+        outcome.Should().Be(JobRequeueOutcome.SourceUnavailable);
+        await _jobs.Received(1).UpdateStatusAsync(job.Id, JobStatus.Failed, Arg.Any<int?>(),
+            JobRecoveryService.SourceGoneError, Arg.Any<CancellationToken>());
+        await _jobs.Received(1).MarkNonRetryableAsync(job.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -103,7 +141,7 @@ public class JobRequeueServiceTests
         var outcome = await CreateSut().RequeueAsync(job.Id, TestContext.Current.CancellationToken);
 
         outcome.Should().Be(JobRequeueOutcome.NotEligible);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await NothingEnqueued();
     }
 
     [Fact]
@@ -115,9 +153,9 @@ public class JobRequeueServiceTests
         var outcome = await CreateSut().RequeueAsync(job.Id, TestContext.Current.CancellationToken);
 
         outcome.Should().Be(JobRequeueOutcome.Requeued);
-        await _publisher.Received(1).PublishAsync(
-            Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == job.Id.ToString()),
-            JobRequeueService.TranspilationRoutingKey);
+        await _outbox.Received(1).EnqueueJobAsync(
+            JobRequeueService.TranspilationRoutingKey, job.Id, Arg.Any<CancellationToken>());
+        await _unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -146,7 +184,8 @@ public class JobRequeueServiceTests
         outcome.Should().Be(JobRequeueOutcome.Requeued);
         record.Status.Should().Be(LyricsStatus.PendingFetch);
         _lyrics.DidNotReceiveWithAnyArgs().Update(default!);
-        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), JobRequeueService.LyricsRoutingKey);
+        await _outbox.Received(1).EnqueueJobAsync(
+            JobRequeueService.LyricsRoutingKey, Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -161,9 +200,10 @@ public class JobRequeueServiceTests
         var outcome = await CreateSut().RequeueAsync(job.Id, TestContext.Current.CancellationToken);
 
         outcome.Should().Be(JobRequeueOutcome.Requeued);
-        await _publisher.Received(1).PublishAsync(
+        await _outbox.Received(1).EnqueueAsync(
+            JobRequeueService.EnrichRoutingKey,
             Arg.Is<byte[]>(b => Encoding.UTF8.GetString(b) == fileId.ToString()),
-            JobRequeueService.EnrichRoutingKey);
+            Arg.Any<CancellationToken>());
         await _jobs.Received(1).UpdateStatusAsync(job.Id, JobStatus.Cancelled, Arg.Any<int?>(),
             JobRequeueService.SupersededError, Arg.Any<CancellationToken>());
     }

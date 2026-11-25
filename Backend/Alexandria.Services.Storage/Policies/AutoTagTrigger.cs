@@ -13,19 +13,20 @@ namespace Alexandria.Services.Storage.Policies;
 /// <see cref="AutoTaggingDisabledException"/> when the feature flag is off, silently skips
 /// files whose MIME type is not routable to the audio pipeline, skips files that already have
 /// a successful enrichment (idempotent, since failure rows share the analyzer keys of later
-/// retries), and otherwise publishes a <c>media-metadata.enrich</c> trigger.
+/// retries) or one still running, and otherwise enqueues a <c>media-metadata.enrich</c> trigger.
 /// </summary>
 public static partial class AutoTagTrigger
 {
     public const string EnrichRoutingKey = "media-metadata.enrich";
 
     /// <summary>
-    /// Returns true when an enrich trigger was published, false when the file was skipped
-    /// (unsupported MIME type or already successfully enriched). Throws
-    /// <see cref="AutoTaggingDisabledException"/> when the feature flag is off.
+    /// Returns true when an enrich trigger was enqueued, false when the file was skipped
+    /// (unsupported MIME type, already successfully enriched, or an attempt still running).
+    /// Throws <see cref="AutoTaggingDisabledException"/> when the feature flag is off. Joins the
+    /// caller's transaction when one is open.
     /// </summary>
     public static async Task<bool> QueueIfNeededAsync(
-        IPublisherService publisher,
+        IOutbox outbox,
         IUnitOfWork unitOfWork,
         bool autoTaggingEnabled,
         Guid fileId,
@@ -47,9 +48,17 @@ public static partial class AutoTagTrigger
         if (await unitOfWork.FileEnrichments.HasSuccessfulAutoTagEnrichmentAsync(fileId, ct))
             return false;
 
-        await publisher.PublishAsync(
-            Encoding.UTF8.GetBytes(fileId.ToString()),
-            EnrichRoutingKey);
+        // A redelivered backfill or a repeated request would otherwise run the expensive
+        // analysis twice for a file the pipeline is already working on.
+        if (await unitOfWork.EssentiaBatchFiles.HasAttemptInFlightAsync(fileId, ct))
+        {
+            if (logger is not null)
+                LogAutoTagSkippedInFlight(logger, fileId);
+            return false;
+        }
+
+        await unitOfWork.InTransactionAsync(
+            () => outbox.EnqueueAsync(EnrichRoutingKey, Encoding.UTF8.GetBytes(fileId.ToString()), ct), ct);
 
         return true;
     }
@@ -57,4 +66,8 @@ public static partial class AutoTagTrigger
     [LoggerMessage(3001, LogLevel.Information,
         "Auto-tag skipped for file {FileId}: MIME type '{MimeType}' is not supported")]
     private static partial void LogAutoTagSkippedUnsupportedType(ILogger logger, Guid fileId, string mimeType);
+
+    [LoggerMessage(3002, LogLevel.Debug,
+        "Auto-tag skipped for file {FileId}: an enrichment attempt is already queued or running")]
+    private static partial void LogAutoTagSkippedInFlight(ILogger logger, Guid fileId);
 }

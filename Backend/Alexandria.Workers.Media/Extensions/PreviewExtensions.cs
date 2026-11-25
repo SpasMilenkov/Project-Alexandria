@@ -20,7 +20,7 @@ public static class PreviewExtensions
     {
         services.AddCoreWorkerServices();
         services.Configure<ProcessingCapabilities>(configuration.GetSection(ProcessingCapabilities.SectionName));
-        services.AddRabbitMqAsync(configuration);
+        services.AddRabbitMqAsync(configuration, ServiceType.MediaPreviews);
 
         services.AddScoped<IMediaPreviewService, MediaPreviewService>();
         services.Configure<ImagePreviewConfig>(configuration.GetSection("ImagePreview"));

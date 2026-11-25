@@ -30,7 +30,7 @@ public class DirectoryPolicyBackfillTriggerTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IDirectoryPolicyRepository _policies = Substitute.For<IDirectoryPolicyRepository>();
     private readonly IPolicyRuleRepository _rules = Substitute.For<IPolicyRuleRepository>();
-    private readonly IPublisherService _publisher = Substitute.For<IPublisherService>();
+    private readonly IOutbox _outbox = Substitute.For<IOutbox>();
 
     public DirectoryPolicyBackfillTriggerTests()
     {
@@ -58,7 +58,7 @@ public class DirectoryPolicyBackfillTriggerTests
     private DirectoryPolicyService CreateSut(bool enabled = true, bool audioAnalysis = true)
     {
         return new DirectoryPolicyService(_unitOfWork, Substitute.For<IDirectoryService>(),
-            _publisher, Substitute.For<ILogger<DirectoryPolicyService>>(),
+            _outbox, Substitute.For<ILogger<DirectoryPolicyService>>(),
             Options.Create(new ProcessingCapabilities { Autotagging = enabled, AudioAnalysis = audioAnalysis }));
     }
 
@@ -76,6 +76,15 @@ public class DirectoryPolicyBackfillTriggerTests
         TriggerValue = "*",
         Parameters = JsonDocument.Parse("{}")
     };
+
+    private Task NoBackfillEnqueued()
+        => _outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
+
+    private Task BackfillEnqueued(DateTime cutoff)
+        => _outbox.Received(1).EnqueueAsync(
+            EnrichmentBackfill.BackfillRoutingKey,
+            Arg.Is<byte[]>(body => MatchesRequest(body, cutoff)),
+            Arg.Any<CancellationToken>());
 
     [Fact]
     public async Task UpdatePolicyAsync_audio_analysis_disabled_preserves_policy_without_backfill_message()
@@ -97,7 +106,7 @@ public class DirectoryPolicyBackfillTriggerTests
             PolicyId, inheritedByChildren: true, OwnerId, TestContext.Current.CancellationToken);
 
         await _unitOfWork.Received(1).SaveChangesAsync(TestContext.Current.CancellationToken);
-        await _publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+        await NoBackfillEnqueued();
     }
 
     [Fact]
@@ -106,7 +115,7 @@ public class DirectoryPolicyBackfillTriggerTests
         await CreateSut().CreatePolicyAsync(new CreateDirectoryPolicyRequest { DirectoryId = DirectoryId },
             OwnerId, TestContext.Current.CancellationToken);
 
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await NoBackfillEnqueued();
     }
 
     [Theory]
@@ -130,14 +139,9 @@ public class DirectoryPolicyBackfillTriggerTests
         await CreateSut().UpdatePolicyAsync(PolicyId, true, OwnerId, TestContext.Current.CancellationToken);
 
         if (actionType == PolicyActionType.AutoTag)
-        {
-            await _publisher.Received(1).PublishAsync(
-                Arg.Is<byte[]>(body => MatchesRequest(body, UpdatedAt)), EnrichmentBackfill.BackfillRoutingKey);
-        }
+            await BackfillEnqueued(UpdatedAt);
         else
-        {
-            await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
-        }
+            await NoBackfillEnqueued();
     }
 
     [Theory]
@@ -149,14 +153,9 @@ public class DirectoryPolicyBackfillTriggerTests
             TestContext.Current.CancellationToken);
 
         if (actionType == PolicyActionType.AutoTag)
-        {
-            await _publisher.Received(1).PublishAsync(
-                Arg.Is<byte[]>(body => MatchesRequest(body, CreatedAt)), EnrichmentBackfill.BackfillRoutingKey);
-        }
+            await BackfillEnqueued(CreatedAt);
         else
-        {
-            await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
-        }
+            await NoBackfillEnqueued();
     }
 
     [Theory]
@@ -180,14 +179,9 @@ public class DirectoryPolicyBackfillTriggerTests
         }, OwnerId, TestContext.Current.CancellationToken);
 
         if (actionType == PolicyActionType.AutoTag)
-        {
-            await _publisher.Received(1).PublishAsync(
-                Arg.Is<byte[]>(body => MatchesRequest(body, UpdatedAt)), EnrichmentBackfill.BackfillRoutingKey);
-        }
+            await BackfillEnqueued(UpdatedAt);
         else
-        {
-            await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
-        }
+            await NoBackfillEnqueued();
     }
 
     [Fact]
@@ -196,19 +190,23 @@ public class DirectoryPolicyBackfillTriggerTests
         await CreateSut(enabled: false).AddRuleAsync(PolicyId, RuleRequest(PolicyActionType.AutoTag), OwnerId,
             TestContext.Current.CancellationToken);
 
-        await _publisher.DidNotReceive().PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>());
+        await NoBackfillEnqueued();
     }
 
     [Fact]
-    public async Task AddRuleAsync_broker_failure_still_returns_saved_rule()
+    public async Task AddRuleAsync_saves_the_rule_and_its_backfill_in_one_transaction()
     {
-        _publisher.PublishAsync(Arg.Any<byte[]>(), Arg.Any<string>())
-            .Returns(Task.FromException(new InvalidOperationException("broker down")));
-
         var result = await CreateSut().AddRuleAsync(PolicyId, RuleRequest(PolicyActionType.AutoTag), OwnerId,
             TestContext.Current.CancellationToken);
 
         result.Id.Should().Be(RuleId);
-        await _publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), EnrichmentBackfill.BackfillRoutingKey);
+        Received.InOrder(() =>
+        {
+            _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
+            _rules.AddAsync(Arg.Any<PolicyRule>(), Arg.Any<CancellationToken>());
+            _outbox.EnqueueAsync(EnrichmentBackfill.BackfillRoutingKey, Arg.Any<byte[]>(),
+                Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
     }
 }

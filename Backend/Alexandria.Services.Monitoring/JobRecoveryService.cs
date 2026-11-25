@@ -8,9 +8,9 @@ using Microsoft.Extensions.Options;
 namespace Alexandria.Services.Monitoring;
 
 /// <summary>
-/// Database-driven recovery for jobs whose broker message is gone or whose worker died:
-/// stalled Processing jobs are failed so they become claimable again, failed previews are
-/// retried with backoff, and previews stuck in Queued are republished.
+/// Database-driven recovery for jobs whose worker died or whose work failed: stalled Processing
+/// jobs are failed so they become claimable again, and failed previews are retried with backoff.
+/// Lost messages need no recovery here, since every job message goes through the outbox.
 /// </summary>
 public class JobRecoveryService(
     IUnitOfWork unitOfWork,
@@ -21,7 +21,6 @@ public class JobRecoveryService(
 {
     internal const string StalledError = "stalled: no progress within the recovery threshold";
     internal const string SourceGoneError = "preview source is no longer available";
-    internal const string PublishFailedError = "publish failed";
 
     private static readonly JobType[] PreviewTypes = [JobType.MediaPreview, JobType.DocumentPreview];
 
@@ -29,12 +28,12 @@ public class JobRecoveryService(
     {
         await FailStalledJobsAsync(now, ct);
 
-        // Republishing during an outage would only fail again and burn the retry budget.
-        if (!brokerStatus.IsAvailable)
+        // Without a broker a retried job would sit in Queued with nothing to send it. A broker
+        // that is only down is fine: the outbox holds the message until it is back.
+        if (!brokerStatus.IsEnabled)
             return;
 
         await RetryFailedPreviewsAsync(now, ct);
-        await RepublishOrphanedPreviewsAsync(now, ct);
     }
 
     internal async Task FailStalledJobsAsync(DateTime now, CancellationToken ct)
@@ -70,49 +69,34 @@ public class JobRecoveryService(
             if (job.CompletedAt + RetryDelay(baseDelay, job.RetryCount) > now)
                 continue;
 
-            if (!await unitOfWork.Jobs.TryRequeueForRetryAsync(job.Id, ct))
-                continue;
-
-            await RepublishAsync(job.Id, ct);
+            await RetryAsync(job.Id, ct);
         }
-    }
-
-    internal async Task RepublishOrphanedPreviewsAsync(DateTime now, CancellationToken ct)
-    {
-        var config = options.Value;
-        var cutoff = now - TimeSpan.FromMinutes(Math.Max(config.OrphanedQueuedMinutes, 1));
-        var orphans = await unitOfWork.Jobs.GetOrphanedQueuedJobsAsync(
-            PreviewTypes, cutoff, Math.Max(config.BatchSize, 1), ct);
-
-        foreach (var job in orphans)
-        {
-            // Restarts the orphan clock so a message still sitting in a busy queue is not
-            // republished on every sweep; duplicate deliveries lose the claim and are acked.
-            await unitOfWork.Jobs.TouchAsync(job.Id, ct);
-            await RepublishAsync(job.Id, ct);
-        }
-
-        if (orphans.Count > 0)
-            logger.LogInformation("Republished {Count} orphaned queued preview jobs", orphans.Count);
     }
 
     internal static TimeSpan RetryDelay(TimeSpan baseDelay, int retryCount)
         => baseDelay * Math.Pow(2, Math.Clamp(retryCount, 0, 10));
 
-    private async Task RepublishAsync(Guid jobId, CancellationToken ct)
+    // The requeue and its message commit together, so a failure leaves the job Failed for the
+    // next sweep instead of Queued with no message behind it.
+    private async Task RetryAsync(Guid jobId, CancellationToken ct)
     {
         try
         {
-            if (await previewService.RepublishJobAsync(jobId, ct))
-                return;
+            await unitOfWork.InTransactionAsync(async () =>
+            {
+                if (!await unitOfWork.Jobs.TryRequeueForRetryAsync(jobId, ct))
+                    return;
 
-            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: SourceGoneError, ct: ct);
-            await unitOfWork.Jobs.MarkNonRetryableAsync(jobId, ct);
+                if (await previewService.RepublishJobAsync(jobId, ct))
+                    return;
+
+                await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: SourceGoneError, ct: ct);
+                await unitOfWork.Jobs.MarkNonRetryableAsync(jobId, ct);
+            }, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Republishing preview job {JobId} failed", jobId);
-            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: PublishFailedError, ct: ct);
+            logger.LogWarning(ex, "Retrying preview job {JobId} failed; the next sweep tries again", jobId);
         }
     }
 }

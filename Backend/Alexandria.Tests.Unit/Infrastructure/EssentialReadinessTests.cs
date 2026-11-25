@@ -28,6 +28,21 @@ public class EssentialReadinessTests
         monitoring.Entries.Should().NotContainKey("worker-playlist");
     }
 
+    [Fact]
+    public async Task CheckHealthAsync_outboxBacklog_readinessHealthyAndMonitoringUnhealthy()
+    {
+        using var provider = CreateSut("outbox");
+        var service = provider.GetRequiredService<HealthCheckService>();
+
+        var readiness = await service.CheckHealthAsync(
+            HealthMonitoringExtension.IsEssentialReadinessCheck, TestContext.Current.CancellationToken);
+        var monitoring = await service.CheckHealthAsync(TestContext.Current.CancellationToken);
+
+        readiness.Status.Should().Be(HealthStatus.Healthy);
+        readiness.Entries.Should().NotContainKey("outbox");
+        monitoring.Entries["outbox"].Status.Should().Be(HealthStatus.Unhealthy);
+    }
+
     [Theory]
     [InlineData("postgres")]
     [InlineData("storage")]

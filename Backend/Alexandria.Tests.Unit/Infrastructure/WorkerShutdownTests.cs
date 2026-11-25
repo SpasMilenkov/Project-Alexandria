@@ -1,5 +1,6 @@
 using System.Text;
 using Alexandria.Common.Config;
+using Alexandria.Common.Services;
 using Alexandria.Infrastructure.Messaging;
 using Alexandria.Tests.Unit.Common;
 using Alexandria.Workers.Lyrics;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using RabbitMQ.Client;
@@ -65,6 +67,7 @@ public class WorkerShutdownTests
 
         var configuration = new ConfigurationBuilder().Build();
         var rabbit = Options.Create(new RabbitMqConsumerConfig());
+        var retry = new DeliveryRetry(Substitute.For<IPublisherService>(), NullLogger<DeliveryRetry>.Instance);
 
         Harness Build<T>(Func<ILogger<T>, BackgroundService> create)
         {
@@ -74,16 +77,16 @@ public class WorkerShutdownTests
 
         return name switch
         {
-            Media => Build<MediaWorker>(l => new MediaWorker(l, broker, configuration, provider)),
-            Document => Build<DocumentWorker>(l => new DocumentWorker(l, broker, configuration, provider)),
-            Transpilation => Build<TranspilationWorker>(l => new TranspilationWorker(l, broker, configuration, provider)),
-            Lyrics => Build<LyricsWorker>(l => new LyricsWorker(l, broker, configuration, provider)),
+            Media => Build<MediaWorker>(l => new MediaWorker(l, broker, configuration, provider, retry)),
+            Document => Build<DocumentWorker>(l => new DocumentWorker(l, broker, configuration, provider, retry)),
+            Transpilation => Build<TranspilationWorker>(l => new TranspilationWorker(l, broker, configuration, provider, retry)),
+            Lyrics => Build<LyricsWorker>(l => new LyricsWorker(l, broker, configuration, provider, retry)),
             Trigger => Build<TriggerConsumerWorker>(l =>
-                new TriggerConsumerWorker(l, broker, provider, rabbit, new AccumulatorBuffer())),
+                new TriggerConsumerWorker(l, broker, provider, rabbit, new AccumulatorBuffer(), retry)),
             Results => Build<ResultsConsumerWorker>(l => new ResultsConsumerWorker(
                 l, broker, provider, rabbit, Options.Create(new EssentiaConfig()), Options.Create(new ProcessingCapabilities()),
-                Substitute.For<IAutoTagQueue>())),
-            Backfill => Build<EnrichmentBackfillWorker>(l => new EnrichmentBackfillWorker(l, broker, provider, rabbit)),
+                Substitute.For<IAutoTagQueue>(), retry)),
+            Backfill => Build<EnrichmentBackfillWorker>(l => new EnrichmentBackfillWorker(l, broker, provider, rabbit, retry)),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
         };
     }

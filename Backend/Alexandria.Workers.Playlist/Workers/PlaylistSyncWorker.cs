@@ -1,5 +1,6 @@
 using Alexandria.Common.Playlists;
 using Alexandria.Common.Services;
+using Alexandria.Dto.Files.Streaming.Playlist;
 using Alexandria.Infrastructure.Messaging;
 using Alexandria.Workers.Playlist.Config;
 using Alexandria.Workers.Playlist.Queueing;
@@ -140,19 +141,14 @@ public partial class PlaylistSyncWorker(
                 .SelectMany(item => item.DeliveryTags)
                 .ToArray();
 
+            AutoPlaylistSyncResult result;
+
             try
             {
                 using var scope = serviceProvider.CreateScope();
                 var sync = scope.ServiceProvider.GetRequiredService<IAutoPlaylistSyncService>();
 
-                var result = await sync.SyncFilesAsync(ownerBatch.Key, fileIds, ct);
-
-                foreach (var deliveryTag in deliveryTags)
-                    await AckAsync(deliveryTag, ct);
-
-                LogBatchSynced(logger, ownerBatch.Key, fileIds.Length,
-                    result.PlaylistsSynced, result.ItemsAdded,
-                    result.ItemsRevived, result.ItemsRemoved);
+                result = await sync.SyncFilesAsync(ownerBatch.Key, fileIds, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -163,21 +159,38 @@ public partial class PlaylistSyncWorker(
                 LogSyncError(logger, ex, ownerBatch.Key, fileIds.Length);
 
                 foreach (var deliveryTag in deliveryTags)
-                    await NackAsync(deliveryTag, requeue: true, ct);
+                {
+                    if (!await NackAsync(deliveryTag, requeue: true, ct))
+                        break;
+                }
+
+                continue;
             }
+
+            // Settled outside the sync's try: the sync is committed, so a lost ack is not a failed
+            // sync. Once the channel is closed the broker requeues the rest of the batch anyway.
+            foreach (var deliveryTag in deliveryTags)
+            {
+                if (!await AckAsync(deliveryTag, ct))
+                    break;
+            }
+
+            LogBatchSynced(logger, ownerBatch.Key, fileIds.Length,
+                result.PlaylistsSynced, result.ItemsAdded,
+                result.ItemsRevived, result.ItemsRemoved);
         }
     }
 
-    private async Task AckAsync(ulong deliveryTag, CancellationToken ct)
+    private async Task<bool> AckAsync(ulong deliveryTag, CancellationToken ct)
     {
         if (_channel is null)
-            return;
+            return false;
 
         await _channelGate.WaitAsync(ct);
 
         try
         {
-            await _channel.BasicAckAsync(deliveryTag, multiple: false, ct);
+            return await DeliverySettlement.AckAsync(_channel, deliveryTag, logger, ct);
         }
         finally
         {
@@ -185,17 +198,16 @@ public partial class PlaylistSyncWorker(
         }
     }
 
-    private async Task NackAsync(ulong deliveryTag, bool requeue, CancellationToken ct)
+    private async Task<bool> NackAsync(ulong deliveryTag, bool requeue, CancellationToken ct)
     {
         if (_channel is null)
-            return;
+            return false;
 
         await _channelGate.WaitAsync(ct);
 
         try
         {
-            await _channel.BasicNackAsync(
-                deliveryTag, multiple: false, requeue: requeue, cancellationToken: ct);
+            return await DeliverySettlement.NackAsync(_channel, deliveryTag, requeue, logger, ct);
         }
         finally
         {

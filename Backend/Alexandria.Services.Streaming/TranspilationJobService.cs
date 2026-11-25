@@ -1,4 +1,3 @@
-using System.Text;
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Exceptions;
@@ -16,11 +15,13 @@ namespace Alexandria.Services.Streaming;
 
 public partial class TranspilationJobService(
     IUnitOfWork unitOfWork,
-    IPublisherService publisherService,
+    IOutbox outbox,
     IMessageBrokerStatus brokerStatus,
     ILogger<TranspilationJobService> logger,
     IOptions<ProcessingCapabilities>? capabilities = null) : ITranspilationJobService
 {
+    private const string TranspilationRoutingKey = "transpilation.job";
+
     private readonly ProcessingCapabilities _capabilities = capabilities?.Value ?? new();
 
     private static readonly IReadOnlyDictionary<JobStatus, IReadOnlySet<JobStatus>>
@@ -50,7 +51,7 @@ public partial class TranspilationJobService(
         CancellationToken ct = default)
     {
         EnsureTranspilationAvailable();
-        MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
+        MessageBrokerUnavailableException.ThrowIfDisabled(brokerStatus);
 
         var isVideo = await unitOfWork.ContentObjects.IsVideo(versionId, userId, ct);
 
@@ -68,8 +69,6 @@ public partial class TranspilationJobService(
             UserId = userId,
         };
 
-        await unitOfWork.Jobs.AddAsync(job, ct);
-
         var transpilation = new TranspilationJob
         {
             Id = Guid.NewGuid(),
@@ -84,11 +83,16 @@ public partial class TranspilationJobService(
             UserId = userId
         };
 
-        await unitOfWork.TranspilationJobs.AddAsync(transpilation, ct);
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            await unitOfWork.Jobs.AddAsync(job, ct);
+            await unitOfWork.TranspilationJobs.AddAsync(transpilation, ct);
 
-        // Job.Id is the canonical id published to the queue - it's what the worker
-        // claims and reports status against.
-        await PublishOrFailAsync(job.Id, ct);
+            // Job.Id is the canonical id published to the queue - it's what the worker
+            // claims and reports status against.
+            await EnqueueAsync(job.Id, ct);
+        }, ct);
+
         LogJobCreated(logger, transpilation.Id, versionId);
 
         transpilation.Job = job; // set so ToDto() below doesn't need a reload
@@ -186,19 +190,12 @@ public partial class TranspilationJobService(
         if (targetStatus == JobStatus.Queued)
         {
             EnsureTranspilationAvailable();
-            MessageBrokerUnavailableException.ThrowIfUnavailable(brokerStatus);
+            MessageBrokerUnavailableException.ThrowIfDisabled(brokerStatus);
 
             if (audioRungs is not null) transpilation.AudioRungs = audioRungs;
             if (videoRungs is not null) transpilation.VideoRungs = videoRungs;
 
-            await unitOfWork.TranspilationJobs.UpdateDetailsAsync(
-                transpilation.Id, audioRungs: audioRungs, videoRungs: videoRungs, ct: ct);
-
-            // Reset progress so the UI doesn't show stale 100% on a requeued job.
-            await unitOfWork.Jobs.UpdateStatusAsync(transpilation.JobId, JobStatus.Queued, progress: 0, ct: ct);
-            await unitOfWork.Jobs.ClearErrorAsync(transpilation.JobId, ct);
-
-            await PublishOrFailAsync(transpilation.JobId, ct);
+            await RequeueAsync(transpilation, audioRungs, videoRungs, ct);
 
             LogJobRequeued(logger, jobId);
             return;
@@ -270,20 +267,26 @@ public partial class TranspilationJobService(
         return claimed;
     }
 
-    // A queued job whose message never reached the broker would sit in Queued forever,
-    // so a failed publish marks it Failed where retry and requeue can pick it up.
-    private async Task PublishOrFailAsync(Guid jobId, CancellationToken ct)
-    {
-        try
+    private Task RequeueAsync(
+        TranspilationJob transpilation, AudioRung[]? audioRungs, VideoRung[]? videoRungs, CancellationToken ct)
+        => unitOfWork.InTransactionAsync(async () =>
         {
-            await publisherService.PublishAsync(Encoding.UTF8.GetBytes(jobId.ToString()), "transpilation.job");
-        }
-        catch (Exception)
-        {
-            await unitOfWork.Jobs.UpdateStatusAsync(jobId, JobStatus.Failed, errorDetail: "publish failed", ct: ct);
-            throw;
-        }
-    }
+            // The transition check ran on a status read that can be stale. Claiming the requeue
+            // atomically keeps a worker that picked the job up since from rendering it twice.
+            if (!await unitOfWork.Jobs.TryRequeueFinishedAsync(transpilation.JobId, ct))
+            {
+                var current = await unitOfWork.Jobs.GetStatusAsync(transpilation.JobId, ct);
+                throw new InvalidTranspilationTransitionException(current, JobStatus.Queued, transpilation.Id);
+            }
+
+            await unitOfWork.TranspilationJobs.UpdateDetailsAsync(
+                transpilation.Id, audioRungs: audioRungs, videoRungs: videoRungs, ct: ct);
+
+            await EnqueueAsync(transpilation.JobId, ct);
+        }, ct);
+
+    private Task EnqueueAsync(Guid jobId, CancellationToken ct)
+        => outbox.EnqueueJobAsync(TranspilationRoutingKey, jobId, ct);
 
     private void EnsureTranspilationAvailable()
     {

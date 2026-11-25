@@ -28,7 +28,6 @@ public class JobRecoveryServiceTests
         LyricsStalledMinutes = 15,
         TranspilationStalledMinutes = 360,
         PreviewRetryBaseDelayMinutes = 5,
-        OrphanedQueuedMinutes = 30,
         BatchSize = 50
     };
 
@@ -39,9 +38,6 @@ public class JobRecoveryServiceTests
         _broker.IsAvailable.Returns(true);
         _jobs.GetRetryCandidatesAsync(Arg.Any<IReadOnlyCollection<JobType>>(), Arg.Any<DateTime>(), Arg.Any<int>(),
                 Arg.Any<CancellationToken>())
-            .Returns([]);
-        _jobs.GetOrphanedQueuedJobsAsync(Arg.Any<IReadOnlyCollection<JobType>>(), Arg.Any<DateTime>(),
-                Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([]);
     }
 
@@ -58,8 +54,9 @@ public class JobRecoveryServiceTests
     };
 
     [Fact]
-    public async Task sweep_broker_unavailable_fails_stalled_but_skips_republishing()
+    public async Task sweep_broker_disabled_fails_stalled_but_skips_retries()
     {
+        _broker.IsEnabled.Returns(false);
         _broker.IsAvailable.Returns(false);
 
         await CreateSut().SweepAsync(Now, TestContext.Current.CancellationToken);
@@ -68,7 +65,16 @@ public class JobRecoveryServiceTests
             Arg.Any<JobType>(), Arg.Any<DateTime>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
         await _jobs.DidNotReceive().GetRetryCandidatesAsync(Arg.Any<IReadOnlyCollection<JobType>>(),
             Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
-        await _jobs.DidNotReceive().GetOrphanedQueuedJobsAsync(Arg.Any<IReadOnlyCollection<JobType>>(),
+    }
+
+    [Fact]
+    public async Task sweep_broker_outage_still_retries_because_the_outbox_holds_the_message()
+    {
+        _broker.IsAvailable.Returns(false);
+
+        await CreateSut().SweepAsync(Now, TestContext.Current.CancellationToken);
+
+        await _jobs.Received(1).GetRetryCandidatesAsync(Arg.Any<IReadOnlyCollection<JobType>>(),
             Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
@@ -115,8 +121,14 @@ public class JobRecoveryServiceTests
 
         await CreateSut().RetryFailedPreviewsAsync(Now, TestContext.Current.CancellationToken);
 
-        await _previews.Received(1).RepublishJobAsync(job.Id, Arg.Any<CancellationToken>());
         await _jobs.DidNotReceive().MarkNonRetryableAsync(job.Id, Arg.Any<CancellationToken>());
+        Received.InOrder(() =>
+        {
+            _unitOfWork.BeginTransactionAsync(Arg.Any<CancellationToken>());
+            _jobs.TryRequeueForRetryAsync(job.Id, Arg.Any<CancellationToken>());
+            _previews.RepublishJobAsync(job.Id, Arg.Any<CancellationToken>());
+            _unitOfWork.CommitAsync(Arg.Any<CancellationToken>());
+        });
     }
 
     [Fact]
@@ -151,7 +163,7 @@ public class JobRecoveryServiceTests
     }
 
     [Fact]
-    public async Task retry_publish_failure_returns_job_to_failed()
+    public async Task retry_failure_rolls_back_so_the_job_stays_failed_for_the_next_sweep()
     {
         var job = FailedJob(retryCount: 0, completedAt: Now.AddMinutes(-6));
         _jobs.GetRetryCandidatesAsync(Arg.Any<IReadOnlyCollection<JobType>>(), Arg.Any<DateTime>(), Arg.Any<int>(),
@@ -159,30 +171,13 @@ public class JobRecoveryServiceTests
             .Returns([job]);
         _jobs.TryRequeueForRetryAsync(job.Id, Arg.Any<CancellationToken>()).Returns(true);
         _previews.RepublishJobAsync(job.Id, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<bool>(new InvalidOperationException("broker down")));
+            .Returns(Task.FromException<bool>(new InvalidOperationException("database down")));
 
-        await CreateSut().RetryFailedPreviewsAsync(Now, TestContext.Current.CancellationToken);
+        var act = () => CreateSut().RetryFailedPreviewsAsync(Now, TestContext.Current.CancellationToken);
 
-        await _jobs.Received(1).UpdateStatusAsync(job.Id, JobStatus.Failed, Arg.Any<int?>(),
-            JobRecoveryService.PublishFailedError, Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task orphaned_queued_previews_are_touched_then_republished()
-    {
-        var orphan = new Job { Id = Guid.NewGuid(), Type = JobType.DocumentPreview, Status = JobStatus.Queued };
-        _jobs.GetOrphanedQueuedJobsAsync(Arg.Any<IReadOnlyCollection<JobType>>(), Now.AddMinutes(-30),
-                Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns([orphan]);
-        _previews.RepublishJobAsync(orphan.Id, Arg.Any<CancellationToken>()).Returns(true);
-
-        await CreateSut().RepublishOrphanedPreviewsAsync(Now, TestContext.Current.CancellationToken);
-
-        Received.InOrder(() =>
-        {
-            _jobs.TouchAsync(orphan.Id, Arg.Any<CancellationToken>());
-            _previews.RepublishJobAsync(orphan.Id, Arg.Any<CancellationToken>());
-        });
+        await act.Should().NotThrowAsync();
+        await _unitOfWork.Received(1).RollbackAsync(Arg.Any<CancellationToken>());
+        await _unitOfWork.DidNotReceive().CommitAsync(Arg.Any<CancellationToken>());
     }
 
     [Theory]

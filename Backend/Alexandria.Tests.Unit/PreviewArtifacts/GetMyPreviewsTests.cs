@@ -33,7 +33,7 @@ public class GetMyPreviewsTests
             Substitute.For<ILogger<PreviewArtifactService>>(),
             new AuditContext(),
             Substitute.For<IUserSettingsService>(),
-            Substitute.For<IPublisherService>());
+            Substitute.For<IOutbox>());
     }
 
     [Fact]

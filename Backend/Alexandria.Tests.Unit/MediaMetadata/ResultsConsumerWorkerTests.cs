@@ -1,6 +1,7 @@
 using Alexandria.Common;
 using Alexandria.Common.Config;
 using Alexandria.Common.Repositories;
+using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
 using Alexandria.Infrastructure.Messaging;
@@ -12,6 +13,7 @@ using Alexandria.Workers.MediaMetadata.Workers;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using IoDirectory = System.IO.Directory;
@@ -58,7 +60,8 @@ public class ResultsConsumerWorkerTests : IDisposable
             Options.Create(new RabbitMqConsumerConfig()),
             essentiaOptions,
             Options.Create(new ProcessingCapabilities()),
-            Substitute.For<IAutoTagQueue>());
+            Substitute.For<IAutoTagQueue>(),
+            new DeliveryRetry(Substitute.For<IPublisherService>(), NullLogger<DeliveryRetry>.Instance));
     }
 
     public void Dispose()
@@ -186,6 +189,65 @@ public class ResultsConsumerWorkerTests : IDisposable
         await _enrichments.DidNotReceiveWithAnyArgs().UpsertAsync(
             Arg.Any<FileEnrichment>(), Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task late_failure_for_a_timed_out_batch_keeps_the_timeout_and_its_reason()
+    {
+        var (batch, job, fileId) = StoredFile(JobStatus.Failed);
+        batch.Status = EssentiaBatchStatus.TimedOut;
+        job.ErrorDetail = "batch timed out";
+        _batches.GetWithFilesAsync(batch.Id, Arg.Any<CancellationToken>()).Returns(batch);
+        var dir = OutputDirFor(batch.Id);
+        await IoFile.WriteAllTextAsync(Path.Combine(dir, $"{fileId}.json"),
+            """{"success":false,"error":"AudioLoader: Could not open file"}""",
+            TestContext.Current.CancellationToken);
+
+        await _sut.HandleCompletionAsync(
+            CompletionFor(batch.Id, dir), TestContext.Current.CancellationToken);
+
+        batch.Status.Should().Be(EssentiaBatchStatus.TimedOut);
+        job.Status.Should().Be(JobStatus.Failed);
+        job.ErrorDetail.Should().Be("batch timed out");
+        await _enrichments.DidNotReceiveWithAnyArgs().UpsertFailureAsync(
+            Arg.Any<FileEnrichment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task late_success_for_a_timed_out_batch_is_kept_and_drops_the_timeout_reason()
+    {
+        var (batch, job, fileId) = StoredFile(JobStatus.Failed);
+        batch.Status = EssentiaBatchStatus.TimedOut;
+        job.ErrorDetail = "batch timed out";
+        _batches.GetWithFilesAsync(batch.Id, Arg.Any<CancellationToken>()).Returns(batch);
+        var dir = OutputDirFor(batch.Id);
+        await IoFile.WriteAllTextAsync(Path.Combine(dir, $"{fileId}.json"),
+            """{"success":true,"backbone":"effnet","genre":{"predictions":[{"label":"rock","score":0.9}]},"mood":{"happy":{"joy":0.8}},"model_versions":{"genre":"g1","mood":"m1"}}""",
+            TestContext.Current.CancellationToken);
+
+        await _sut.HandleCompletionAsync(
+            CompletionFor(batch.Id, dir), TestContext.Current.CancellationToken);
+
+        job.Status.Should().Be(JobStatus.Ready);
+        job.ErrorDetail.Should().BeNull();
+        batch.Status.Should().Be(EssentiaBatchStatus.TimedOut);
+        await _enrichments.Received(2).UpsertAsync(
+            Arg.Any<FileEnrichment>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task late_completion_without_output_leaves_the_timed_out_jobs_alone()
+    {
+        var (batch, job, _) = StoredFile(JobStatus.Failed);
+        batch.Status = EssentiaBatchStatus.TimedOut;
+        job.ErrorDetail = "batch timed out";
+        _batches.GetWithFilesAsync(batch.Id, Arg.Any<CancellationToken>()).Returns(batch);
+
+        await _sut.HandleCompletionAsync(
+            CompletionFor(batch.Id, null), TestContext.Current.CancellationToken);
+
+        batch.Status.Should().Be(EssentiaBatchStatus.TimedOut);
+        job.ErrorDetail.Should().Be("batch timed out");
     }
 
     [Fact]

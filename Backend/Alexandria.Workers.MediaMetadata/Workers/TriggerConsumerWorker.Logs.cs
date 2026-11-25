@@ -17,15 +17,16 @@ public partial class TriggerConsumerWorker
     [LoggerMessage(22204, LogLevel.Warning, "Accumulator buffer full, requeueing trigger for file {FileId}")]
     private static partial void LogBufferFull(ILogger logger, Guid fileId);
 
-    [LoggerMessage(22205, LogLevel.Error, "Failed to stage file {FileId}; requeueing trigger")]
+    [LoggerMessage(22205, LogLevel.Error, "Failed to stage file {FileId}; retrying the trigger")]
     private static partial void LogStageError(ILogger logger, Exception ex, Guid fileId);
 
     [LoggerMessage(22208, LogLevel.Error,
         "Staging failed {Attempts} times for file {FileId}; trigger parked, failure event recorded")]
     private static partial void LogTriggerParked(ILogger logger, Exception ex, Guid fileId, int attempts);
 
-    [LoggerMessage(22209, LogLevel.Error, "Failed to park poison trigger for file {FileId}; requeueing")]
-    private static partial void LogParkFailed(ILogger logger, Exception ex, Guid fileId);
+    [LoggerMessage(22212, LogLevel.Warning,
+        "Trigger parked, but its failure event could not be recorded")]
+    private static partial void LogParkRecordFailed(ILogger logger, Exception ex);
 
     [LoggerMessage(22206, LogLevel.Information,
         "Trigger consumer started, listening on queue {QueueName} via exchange {ExchangeName}")]
@@ -33,9 +34,6 @@ public partial class TriggerConsumerWorker
 
     [LoggerMessage(22207, LogLevel.Information, "Trigger consumer stopping")]
     private static partial void LogWorkerStopping(ILogger logger);
-
-    [LoggerMessage(22210, LogLevel.Error, "Failed to republish trigger for file {FileId} after a staging error; requeueing")]
-    private static partial void LogRetryPublishFailed(ILogger logger, Exception ex, Guid fileId);
 
     [LoggerMessage(22211, LogLevel.Information,
         "Stopping mid-message; delivery {DeliveryTag} goes back to the queue when the channel closes.")]

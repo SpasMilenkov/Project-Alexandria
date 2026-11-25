@@ -25,13 +25,14 @@ public class AutoTagSweepCapabilityTests
         var fileId = Guid.NewGuid();
         files.GetAutoTagBackstopCandidatesAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<Guid>());
         files.GetAutoTagRetryCandidatesAsync(Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(new[] { fileId });
+        var outbox = Substitute.For<IOutbox>();
         var provider = Substitute.For<IServiceProvider>();
         provider.GetService(typeof(IUnitOfWork)).Returns(unitOfWork);
+        provider.GetService(typeof(IOutbox)).Returns(outbox);
         var scope = Substitute.For<IServiceScope>();
         scope.ServiceProvider.Returns(provider);
-        var publisher = Substitute.For<IPublisherService>();
         var sut = new AutoTagSweepWorker(Substitute.For<ILogger<AutoTagSweepWorker>>(),
-            Options.Create(new AutoTaggingOptions()), provider, new AutoTagQueueService(), publisher,
+            Options.Create(new AutoTaggingOptions()), provider, new AutoTagQueueService(),
             Options.Create(new ProcessingCapabilities { Autotagging = true, AudioAnalysis = enabled }));
 
         await sut.SweepAsync(scope, TestContext.Current.CancellationToken);
@@ -39,13 +40,15 @@ public class AutoTagSweepCapabilityTests
         if (enabled)
         {
             await files.Received(1).GetAutoTagBackstopCandidatesAsync(TestContext.Current.CancellationToken);
-            await publisher.Received(1).PublishAsync(Arg.Any<byte[]>(), "media-metadata.enrich");
+            await outbox.Received(1).EnqueueAsync(
+                "media-metadata.enrich", Arg.Any<byte[]>(), Arg.Any<CancellationToken>());
+            await unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
         }
         else
         {
             await files.DidNotReceiveWithAnyArgs().GetAutoTagBackstopCandidatesAsync(default);
             await files.DidNotReceiveWithAnyArgs().GetAutoTagRetryCandidatesAsync(default, default, default);
-            await publisher.DidNotReceiveWithAnyArgs().PublishAsync(default!, default!);
+            await outbox.DidNotReceiveWithAnyArgs().EnqueueAsync(default!, default!, TestContext.Current.CancellationToken);
         }
     }
 }

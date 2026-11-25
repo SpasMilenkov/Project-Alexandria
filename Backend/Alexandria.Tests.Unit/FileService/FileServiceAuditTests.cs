@@ -27,7 +27,7 @@ public class FileServiceAuditTests
     private Services.Storage.FileService CreateSut() => new(
         _unitOfWork,
         Substitute.For<IDirectoryService>(),
-        Substitute.For<IPublisherService>(),
+        Substitute.For<IOutbox>(),
         _auditWriter,
         Substitute.For<ILogger<Services.Storage.FileService>>());
 

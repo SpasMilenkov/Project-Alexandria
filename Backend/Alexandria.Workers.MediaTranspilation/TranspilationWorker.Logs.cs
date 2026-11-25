@@ -14,4 +14,7 @@ public partial class TranspilationWorker
 
     [LoggerMessage(12002, LogLevel.Warning, "Discarding transpilation message without a valid job id")]
     private static partial void LogMalformedMessage(ILogger logger);
+
+    [LoggerMessage(12004, LogLevel.Warning, "Could not record the incident for a parked transpilation delivery")]
+    private static partial void LogIncidentRecordFailed(ILogger logger, Exception ex);
 }

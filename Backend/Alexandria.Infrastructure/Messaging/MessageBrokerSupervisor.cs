@@ -44,6 +44,8 @@ public sealed partial class MessageBrokerSupervisor(
 
                 connection.ConnectionShutdownAsync += OnShutdownAsync;
                 connection.RecoverySucceededAsync += OnRecoveredAsync;
+                connection.ConnectionBlockedAsync += OnBlockedAsync;
+                connection.ConnectionUnblockedAsync += OnUnblockedAsync;
                 broker.SetConnection(connection);
 
                 LogConnected(logger, endpoint, attempt);
@@ -86,17 +88,34 @@ public sealed partial class MessageBrokerSupervisor(
         }
     }
 
-    private Task OnShutdownAsync(object sender, ShutdownEventArgs args)
+    internal Task OnShutdownAsync(object sender, ShutdownEventArgs args)
     {
+        broker.SetBlocked(false);
+
         if (args.Initiator != ShutdownInitiator.Application)
             LogConnectionLost(logger, args.ReplyText);
 
         return Task.CompletedTask;
     }
 
-    private Task OnRecoveredAsync(object sender, AsyncEventArgs args)
+    internal Task OnRecoveredAsync(object sender, AsyncEventArgs args)
     {
+        broker.SetBlocked(false);
         LogRecovered(logger);
+        return Task.CompletedTask;
+    }
+
+    internal Task OnBlockedAsync(object sender, ConnectionBlockedEventArgs args)
+    {
+        broker.SetBlocked(true);
+        LogBlocked(logger, args.Reason);
+        return Task.CompletedTask;
+    }
+
+    internal Task OnUnblockedAsync(object sender, AsyncEventArgs args)
+    {
+        broker.SetBlocked(false);
+        LogUnblocked(logger);
         return Task.CompletedTask;
     }
 

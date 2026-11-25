@@ -1,6 +1,7 @@
 using Alexandria.Common;
 using Alexandria.Common.Audit;
 using Alexandria.Common.Config;
+using Alexandria.Common.Playlists;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models;
 using Alexandria.Data.Models.Enumerators;
@@ -8,7 +9,6 @@ using Alexandria.Dto.Extensions;
 using Alexandria.Dto.Files;
 using Alexandria.Dto.Previews;
 using Alexandria.Services.Storage.MediaMetadata;
-using Alexandria.Services.Storage.Playlists;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Logging;
@@ -27,7 +27,7 @@ public partial class PreviewArtifactService(
     ILogger<PreviewArtifactService> logger,
     AuditContext auditContext,
     IUserSettingsService userSettingsService,
-    IPublisherService publisher)
+    IOutbox outbox)
     : IPreviewArtifactService
 {
     public async Task UploadPreview(
@@ -163,11 +163,15 @@ public partial class PreviewArtifactService(
         var version = await unitOfWork.FileVersions.GetByIdAsync(versionId, ct)
                       ?? throw new InvalidOperationException("File for metadata not found");
 
-        await PersistMediaMetadataAsync(version, metadataDto, ct);
-        await unitOfWork.SaveChangesAsync(ct);
-
-        await PlaylistSyncNotifier.PublishFileChangedAsync(
-            publisher, version.FileId, version.File.OwnerId, logger);
+        await unitOfWork.InTransactionAsync(async () =>
+        {
+            await PersistMediaMetadataAsync(version, metadataDto, ct);
+            await unitOfWork.SaveChangesAsync(ct);
+            await outbox.EnqueueAsync(
+                PlaylistSyncMessage.SyncRoutingKey,
+                PlaylistSyncMessage.Encode(version.FileId, version.File.OwnerId),
+                ct);
+        }, ct);
     }
 
     // Media metadata holds descriptive/technical fields only; Previews owns the thumbnail location.
@@ -345,10 +349,11 @@ public partial class PreviewArtifactService(
                 await unitOfWork.Previews.CreateAsync(thumbnail, ct);
             }
 
+            await outbox.EnqueueAsync(
+                PlaylistSyncMessage.SyncRoutingKey,
+                PlaylistSyncMessage.Encode(version.FileId, version.File.OwnerId),
+                ct);
             await unitOfWork.CommitAsync(ct);
-
-            await PlaylistSyncNotifier.PublishFileChangedAsync(
-                publisher, version.FileId, version.File.OwnerId, logger);
 
             LogMediaDataUploadCompleted(logger, versionId, previewStream.Length);
         }
