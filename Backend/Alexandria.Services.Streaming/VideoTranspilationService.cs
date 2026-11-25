@@ -1,4 +1,5 @@
 using Alexandria.Common;
+using Alexandria.Common.Exceptions.Transpilation;
 using Alexandria.Common.Processes;
 using Alexandria.Common.Services;
 using Alexandria.Data.Models.Enumerators;
@@ -11,7 +12,8 @@ public partial class VideoTranspilationService(
     ILogger<VideoTranspilationService> logger,
     IUnitOfWork unitOfWork) : IVideoTranspilationService
 {
-    private sealed record VideoQualityLane(int Width, int Height, int BitrateKbps, int Crf);
+    // Reading stream headers is quick; a source that takes longer is not worth transcoding.
+    private static readonly TimeSpan AudioProbeTimeout = TimeSpan.FromMinutes(1);
 
     private static readonly IReadOnlyDictionary<VideoRung, VideoQualityLane> RungMap =
         new Dictionary<VideoRung, VideoQualityLane>
@@ -65,37 +67,33 @@ public partial class VideoTranspilationService(
         CancellationToken ct)
     {
         var manifestPath = Path.Combine(dashDir, "manifest.mpd");
+        var hasAudio = await HasAudioAsync(inputPath, ct);
+        var arguments = DashVideoArguments.ForCpu(inputPath, manifestPath, lanes, hasAudio);
 
-        var args = new List<string> { FfmpegThreads.Input, "-i", $"\"{inputPath}\"" };
-
-        for (var i = 0; i < lanes.Count; i++)
-        {
-            var lane = lanes[i];
-            args.AddRange([
-                "-map", "0:v",
-                $"-c:v:{i}", "libx264",
-                "-preset", "fast",
-                $"-crf", lane.Crf.ToString(),
-                $"-vf:{i}", $"scale={lane.Width}:{lane.Height}",
-                $"-b:v:{i}", $"{lane.BitrateKbps}k",
-            ]);
-        }
-
-        args.AddRange([
-            "-map", "0:a",
-            "-c:a", "aac",
-            "-b:a", "128k",
-            "-f", "dash",
-            "-seg_duration", "6",
-            "-adaptation_sets", "\"id=0,streams=v id=1,streams=a\"",
-            FfmpegThreads.Output,
-            $"\"{manifestPath}\""
-        ]);
+        LogDashPassStarting(logger, inputPath);
 
         await TranscodeProcess.RunFfmpegAsync(
-            new TranscodeRequest(jobId, inputPath, string.Join(" ", args), "video DASH", manifestPath),
+            new TranscodeRequest(jobId, inputPath, arguments, "video DASH", manifestPath),
             unitOfWork,
             logger,
             ct);
+
+        LogDashPassCompleted(logger, manifestPath);
+    }
+
+    private async Task<bool> HasAudioAsync(string inputPath, CancellationToken ct)
+    {
+        var result = await ExternalProcess.RunAsync(
+            "ffprobe", DashVideoArguments.AudioProbe(inputPath), AudioProbeTimeout, logger, ct);
+
+        if (result.ExitCode != 0)
+            throw new TranspilationFfprobeException(inputPath, result.ExitCode, result.StdErrTail);
+
+        var hasAudio = !string.IsNullOrWhiteSpace(result.StdOut);
+
+        if (!hasAudio)
+            LogSourceWithoutAudio(logger, inputPath);
+
+        return hasAudio;
     }
 }

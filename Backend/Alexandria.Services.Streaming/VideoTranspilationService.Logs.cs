@@ -23,4 +23,9 @@ public partial class VideoTranspilationService
         "Video DASH pass completed → '{ManifestPath}'")]
     private static partial void LogDashPassCompleted(
         ILogger logger, string manifestPath);
+
+    [LoggerMessage(8006, LogLevel.Information,
+        "Source '{InputPath}' has no audio track; the stream is published without audio")]
+    private static partial void LogSourceWithoutAudio(
+        ILogger logger, string inputPath);
 }
